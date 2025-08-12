@@ -7,6 +7,7 @@ import {
   FaAlignLeft,
   FaAlignCenter,
   FaAlignRight,
+  FaAlignJustify,
   FaListUl,
   FaListOl,
   FaLink,
@@ -15,6 +16,13 @@ import {
   FaEye,
   FaCode,
   FaFont,
+  FaCopy,
+  FaCut,
+  FaPaste,
+  FaIndent,
+  FaOutdent,
+  FaSuperscript,
+  FaSubscript,
 } from "react-icons/fa";
 
 interface HtmlMapperProps {
@@ -95,314 +103,678 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
   return (
     <div className="html-mapper-container">
       {label && (
-        <label className="block mb-3 text-base font-semibold text-gray-800 tracking-wide">
+        <label className="block mb-3 text-base font-semibold tracking-wide">
           {label}
         </label>
       )}
 
-      <div className="border rounded-2xl overflow-hidden bg-gradient-to-br from-white via-gray-50 to-gray-100 shadow-xl transition-shadow duration-300 hover:shadow-2xl">
-        {/* Mode Toggle */}
-        <div className="bg-gradient-to-r from-blue-50 to-blue-100 px-4 py-2 border-b flex gap-2 sticky top-0 z-10">
-          <button
-            type="button"
-            onClick={() => {
-              setIsPreview(false);
-              setIsSourceView(false);
-            }}
-            className={`flex items-center gap-1 px-4 py-1.5 text-sm rounded-full font-medium shadow transition-all duration-150 ${
-              !isPreview && !isSourceView
-                ? "bg-blue-600 text-white shadow-md"
-                : "bg-white text-blue-700 hover:bg-blue-50"
-            }`}
-          >
-            <FaFont className="inline" /> Editar
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setIsPreview(true);
-              setIsSourceView(false);
-            }}
-            className={`flex items-center gap-1 px-4 py-1.5 text-sm rounded-full font-medium shadow transition-all duration-150 ${
-              isPreview
-                ? "bg-blue-600 text-white shadow-md"
-                : "bg-white text-blue-700 hover:bg-blue-50"
-            }`}
-          >
-            <FaEye className="inline" /> Vista previa
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setIsPreview(false);
-              setIsSourceView(true);
-            }}
-            className={`flex items-center gap-1 px-4 py-1.5 text-sm rounded-full font-medium shadow transition-all duration-150 ${
-              isSourceView
-                ? "bg-blue-600 text-white shadow-md"
-                : "bg-white text-blue-700 hover:bg-blue-50"
-            }`}
-          >
-            <FaCode className="inline" /> Código
-          </button>
+      <div className="word-editor-container">
+        {/* Header con tabs */}
+        <div className="word-header">
+          <div className="word-tabs">
+            <button
+              type="button"
+              onClick={() => {
+                setIsPreview(false);
+                setIsSourceView(false);
+              }}
+              className={`word-tab ${!isPreview && !isSourceView ? "word-tab-active" : ""}`}
+            >
+              <FaFont className="inline mr-1" /> Inicio
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsPreview(true);
+                setIsSourceView(false);
+              }}
+              className={`word-tab ${isPreview ? "word-tab-active" : ""}`}
+            >
+              <FaEye className="inline mr-1" /> Vista previa
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsPreview(false);
+                setIsSourceView(true);
+              }}
+              className={`word-tab ${isSourceView ? "word-tab-active" : ""}`}
+            >
+              <FaCode className="inline mr-1" /> HTML
+            </button>
+          </div>
         </div>
 
-        {/* Toolbar */}
+        {/* Ribbon Toolbar - estilo Word */}
         {!isPreview && !isSourceView && (
-          <div className="bg-white/80 backdrop-blur p-4 border-b">
-            {/* Primera fila */}
-            <div className="flex flex-wrap gap-2 mb-3">
-              {/* Undo/Redo */}
-              <button
-                type="button"
-                onClick={() => execCommand("undo")}
-                className="toolbar-btn"
-                title="Deshacer"
-              >
-                <FaUndo />
-              </button>
-              <button
-                type="button"
-                onClick={() => execCommand("redo")}
-                className="toolbar-btn"
-                title="Rehacer"
-              >
-                <FaRedo />
-              </button>
-
-              <div className="w-px h-8 bg-gray-200 mx-2" />
-
-              {/* Text Formatting */}
-              <button
-                type="button"
-                onClick={() => execCommand("bold")}
-                className="toolbar-btn font-bold"
-                title="Negrita"
-              >
-                <FaBold />
-              </button>
-              <button
-                type="button"
-                onClick={() => execCommand("italic")}
-                className="toolbar-btn"
-                title="Cursiva"
-              >
-                <FaItalic />
-              </button>
-              <button
-                type="button"
-                onClick={() => execCommand("underline")}
-                className="toolbar-btn"
-                title="Subrayado"
-              >
-                <FaUnderline />
-              </button>
-              <button
-                type="button"
-                onClick={() => execCommand("strikeThrough")}
-                className="toolbar-btn"
-                title="Tachado"
-              >
-                <FaStrikethrough />
-              </button>
-
-              <div className="w-px h-8 bg-gray-200 mx-2" />
-
-              {/* Colors */}
-              <div className="flex items-center gap-1">
-                <label className="text-xs text-gray-500">Texto:</label>
-                <input
-                  type="color"
-                  onChange={changeTextColor}
-                  className="w-7 h-7 border-2 border-gray-200 rounded-full cursor-pointer"
-                  title="Color de texto"
-                />
-              </div>
-              <div className="flex items-center gap-1">
-                <label className="text-xs text-gray-500">Fondo:</label>
-                <input
-                  type="color"
-                  onChange={changeBackgroundColor}
-                  className="w-7 h-7 border-2 border-gray-200 rounded-full cursor-pointer"
-                  title="Color de fondo"
-                />
+          <div className="word-ribbon">
+            {/* Portapapeles */}
+            <div className="ribbon-group">
+              <div className="ribbon-group-header">Portapapeles</div>
+              <div className="ribbon-group-content">
+                <div className="ribbon-large-buttons">
+                  <button className="ribbon-large-btn" title="Pegar">
+                    <FaPaste className="text-xl" />
+                    <span>Pegar</span>
+                  </button>
+                </div>
+                <div className="ribbon-small-buttons">
+                  <button
+                    className="ribbon-small-btn"
+                    title="Cortar"
+                    onClick={() => execCommand("cut")}
+                  >
+                    <FaCut />
+                    <span>Cortar</span>
+                  </button>
+                  <button
+                    className="ribbon-small-btn"
+                    title="Copiar"
+                    onClick={() => execCommand("copy")}
+                  >
+                    <FaCopy />
+                    <span>Copiar</span>
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Segunda fila */}
-            <div className="flex flex-wrap gap-2 mb-3">
-              {/* Font Family */}
-              <select
-                onChange={changeFontFamily}
-                className="px-2 py-1 text-sm border rounded-lg bg-white shadow-sm"
-                defaultValue=""
-              >
-                <option value="">Fuente</option>
-                <option value="Arial">Arial</option>
-                <option value="Helvetica">Helvetica</option>
-                <option value="Times New Roman">Times New Roman</option>
-                <option value="Georgia">Georgia</option>
-                <option value="Verdana">Verdana</option>
-                <option value="Courier New">Courier New</option>
-              </select>
+            <div className="ribbon-separator" />
 
-              {/* Font Size */}
-              <select
-                onChange={changeFontSize}
-                className="px-2 py-1 text-sm border rounded-lg bg-white shadow-sm"
-                defaultValue=""
-              >
-                <option value="">Tamaño</option>
-                <option value="1">Muy pequeño</option>
-                <option value="2">Pequeño</option>
-                <option value="3">Normal</option>
-                <option value="4">Mediano</option>
-                <option value="5">Grande</option>
-                <option value="6">Muy grande</option>
-                <option value="7">Enorme</option>
-              </select>
-
-              {/* Format Block */}
-              <select
-                onChange={formatBlock}
-                className="px-2 py-1 text-sm border rounded-lg bg-white shadow-sm"
-                defaultValue=""
-              >
-                <option value="">Formato</option>
-                <option value="h1">Título 1</option>
-                <option value="h2">Título 2</option>
-                <option value="h3">Título 3</option>
-                <option value="h4">Título 4</option>
-                <option value="h5">Título 5</option>
-                <option value="h6">Título 6</option>
-                <option value="p">Párrafo</option>
-                <option value="div">Div</option>
-                <option value="pre">Preformateado</option>
-              </select>
+            {/* Fuente */}
+            <div className="ribbon-group">
+              <div className="ribbon-group-header">Fuente</div>
+              <div className="ribbon-group-content">
+                <div className="ribbon-font-controls">
+                  <select
+                    onChange={changeFontFamily}
+                    className="font-selector"
+                    defaultValue=""
+                  >
+                    <option value="">Calibri</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Georgia">Georgia</option>
+                    <option value="Verdana">Verdana</option>
+                    <option value="Helvetica">Helvetica</option>
+                  </select>
+                  <select
+                    onChange={changeFontSize}
+                    className="size-selector"
+                    defaultValue=""
+                  >
+                    <option value="">11</option>
+                    <option value="1">8</option>
+                    <option value="2">10</option>
+                    <option value="3">12</option>
+                    <option value="4">14</option>
+                    <option value="5">18</option>
+                    <option value="6">24</option>
+                    <option value="7">36</option>
+                  </select>
+                </div>
+                <div className="ribbon-format-buttons">
+                  <button
+                    onClick={() => execCommand("bold")}
+                    className="ribbon-format-btn"
+                    title="Negrita"
+                  >
+                    <FaBold />
+                  </button>
+                  <button
+                    onClick={() => execCommand("italic")}
+                    className="ribbon-format-btn"
+                    title="Cursiva"
+                  >
+                    <FaItalic />
+                  </button>
+                  <button
+                    onClick={() => execCommand("underline")}
+                    className="ribbon-format-btn"
+                    title="Subrayado"
+                  >
+                    <FaUnderline />
+                  </button>
+                  <button
+                    onClick={() => execCommand("strikeThrough")}
+                    className="ribbon-format-btn"
+                    title="Tachado"
+                  >
+                    <FaStrikethrough />
+                  </button>
+                  <button
+                    onClick={() => execCommand("subscript")}
+                    className="ribbon-format-btn"
+                    title="Subíndice"
+                  >
+                    <FaSubscript />
+                  </button>
+                  <button
+                    onClick={() => execCommand("superscript")}
+                    className="ribbon-format-btn"
+                    title="Superíndice"
+                  >
+                    <FaSuperscript />
+                  </button>
+                </div>
+                <div className="ribbon-color-controls">
+                  <div className="color-picker-wrapper">
+                    <label>A</label>
+                    <input
+                      type="color"
+                      onChange={changeTextColor}
+                      className="color-picker"
+                      title="Color de texto"
+                    />
+                  </div>
+                  <div className="color-picker-wrapper">
+                    <label>ab</label>
+                    <input
+                      type="color"
+                      onChange={changeBackgroundColor}
+                      className="color-picker"
+                      title="Color de resaltado"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Tercera fila */}
-            <div className="flex flex-wrap gap-2">
-              {/* Alignment */}
-              <button
-                type="button"
-                onClick={() => execCommand("justifyLeft")}
-                className="toolbar-btn"
-                title="Alinear a la izquierda"
-              >
-                <FaAlignLeft />
-              </button>
-              <button
-                type="button"
-                onClick={() => execCommand("justifyCenter")}
-                className="toolbar-btn"
-                title="Centrar"
-              >
-                <FaAlignCenter />
-              </button>
-              <button
-                type="button"
-                onClick={() => execCommand("justifyRight")}
-                className="toolbar-btn"
-                title="Alinear a la derecha"
-              >
-                <FaAlignRight />
-              </button>
+            <div className="ribbon-separator" />
 
-              <div className="w-px h-8 bg-gray-200 mx-2" />
+            {/* Párrafo */}
+            <div className="ribbon-group">
+              <div className="ribbon-group-header">Párrafo</div>
+              <div className="ribbon-group-content">
+                <div className="ribbon-paragraph-row">
+                  <button
+                    onClick={() => execCommand("insertUnorderedList")}
+                    className="ribbon-format-btn"
+                    title="Viñetas"
+                  >
+                    <FaListUl />
+                  </button>
+                  <button
+                    onClick={() => execCommand("insertOrderedList")}
+                    className="ribbon-format-btn"
+                    title="Numeración"
+                  >
+                    <FaListOl />
+                  </button>
+                  <button
+                    onClick={() => execCommand("outdent")}
+                    className="ribbon-format-btn"
+                    title="Disminuir sangría"
+                  >
+                    <FaOutdent />
+                  </button>
+                  <button
+                    onClick={() => execCommand("indent")}
+                    className="ribbon-format-btn"
+                    title="Aumentar sangría"
+                  >
+                    <FaIndent />
+                  </button>
+                </div>
+                <div className="ribbon-paragraph-row">
+                  <button
+                    onClick={() => execCommand("justifyLeft")}
+                    className="ribbon-format-btn"
+                    title="Alinear a la izquierda"
+                  >
+                    <FaAlignLeft />
+                  </button>
+                  <button
+                    onClick={() => execCommand("justifyCenter")}
+                    className="ribbon-format-btn"
+                    title="Centrar"
+                  >
+                    <FaAlignCenter />
+                  </button>
+                  <button
+                    onClick={() => execCommand("justifyRight")}
+                    className="ribbon-format-btn"
+                    title="Alinear a la derecha"
+                  >
+                    <FaAlignRight />
+                  </button>
+                  <button
+                    onClick={() => execCommand("justifyFull")}
+                    className="ribbon-format-btn"
+                    title="Justificar"
+                  >
+                    <FaAlignJustify />
+                  </button>
+                </div>
+              </div>
+            </div>
 
-              {/* Lists */}
-              <button
-                type="button"
-                onClick={() => execCommand("insertUnorderedList")}
-                className="toolbar-btn"
-                title="Lista de viñetas"
-              >
-                <FaListUl />
-              </button>
-              <button
-                type="button"
-                onClick={() => execCommand("insertOrderedList")}
-                className="toolbar-btn"
-                title="Lista numerada"
-              >
-                <FaListOl />
-              </button>
+            <div className="ribbon-separator" />
 
-              <div className="w-px h-8 bg-gray-200 mx-2" />
+            {/* Estilos */}
+            <div className="ribbon-group">
+              <div className="ribbon-group-header">Estilos</div>
+              <div className="ribbon-group-content">
+                <select
+                  onChange={formatBlock}
+                  className="style-selector"
+                  defaultValue=""
+                >
+                  <option value="p">Normal</option>
+                  <option value="h1">Título 1</option>
+                  <option value="h2">Título 2</option>
+                  <option value="h3">Título 3</option>
+                  <option value="h4">Título 4</option>
+                  <option value="h5">Título 5</option>
+                  <option value="h6">Título 6</option>
+                </select>
+              </div>
+            </div>
 
-              {/* Links & Images */}
-              <button
-                type="button"
-                onClick={insertLink}
-                className="toolbar-btn"
-                title="Insertar enlace"
-              >
-                <FaLink />
-              </button>
-              <button
-                type="button"
-                onClick={insertImage}
-                className="toolbar-btn"
-                title="Insertar imagen"
-              >
-                🖼️
-              </button>
+            <div className="ribbon-separator" />
 
-              <div className="w-px h-8 bg-gray-200 mx-2" />
+            {/* Insertar */}
+            <div className="ribbon-group">
+              <div className="ribbon-group-header">Insertar</div>
+              <div className="ribbon-group-content">
+                <button
+                  onClick={insertLink}
+                  className="ribbon-insert-btn"
+                  title="Hipervínculo"
+                >
+                  <FaLink />
+                  <span>Vínculo</span>
+                </button>
+                <button
+                  onClick={insertImage}
+                  className="ribbon-insert-btn"
+                  title="Imagen"
+                >
+                  🖼️
+                  <span>Imagen</span>
+                </button>
+              </div>
+            </div>
 
-              {/* Clear Formatting */}
-              <button
-                type="button"
-                onClick={() => execCommand("removeFormat")}
-                className="toolbar-btn"
-                title="Limpiar formato"
-              >
-                Limpiar
-              </button>
+            <div className="ribbon-separator" />
+
+            {/* Edición */}
+            <div className="ribbon-group">
+              <div className="ribbon-group-header">Edición</div>
+              <div className="ribbon-group-content">
+                <button
+                  onClick={() => execCommand("undo")}
+                  className="ribbon-insert-btn"
+                  title="Deshacer"
+                >
+                  <FaUndo />
+                  <span>Deshacer</span>
+                </button>
+                <button
+                  onClick={() => execCommand("redo")}
+                  className="ribbon-insert-btn"
+                  title="Rehacer"
+                >
+                  <FaRedo />
+                  <span>Rehacer</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {/* Editor Area */}
-        <div className="min-h-[400px] transition-all duration-300">
+        <div className="word-editor-area">
           {isPreview ? (
             <div
-              className="p-6 prose max-w-none bg-white/70 rounded-b-2xl min-h-[400px] animate-fade-in"
-              style={{ minHeight: "400px" }}
+              className="word-preview"
               dangerouslySetInnerHTML={{ __html: value }}
             />
           ) : isSourceView ? (
             <textarea
               value={sourceCode}
               onChange={handleSourceChange}
-              className="w-full p-6 font-mono text-sm border-0 resize-none focus:outline-none bg-gray-50 rounded-b-2xl min-h-[400px] animate-fade-in"
-              style={{ minHeight: "400px" }}
+              className="word-source-editor"
               placeholder="Introduce código HTML..."
             />
           ) : (
-            <div
-              ref={editorRef}
-              contentEditable
-              className="p-6 focus:outline-none bg-white/90 rounded-b-2xl min-h-[400px] animate-fade-in"
-              onInput={handleInput}
-              style={{ minHeight: "400px" }}
-              suppressContentEditableWarning={true}
-            />
+            <div className="word-document">
+              <div className="word-page">
+                <div
+                  ref={editorRef}
+                  contentEditable
+                  className="word-content"
+                  onInput={handleInput}
+                  suppressContentEditableWarning={true}
+                />
+              </div>
+            </div>
           )}
         </div>
       </div>
-      {/* Extra: estilos para los botones de la toolbar */}
+
+      {/* Estilos CSS usando variables de la app */}
       <style>{`
-        .toolbar-btn {
-          @apply p-2 bg-white text-gray-700 rounded-lg shadow-sm hover:bg-blue-100 hover:text-blue-700 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-300;
+        .word-editor-container {
+          border: 1px solid var(--neutral-mid);
+          border-radius: 8px;
+          background: var(--neutral-light);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
-        .animate-fade-in {
-          animation: fadeIn 0.3s;
+
+        .word-header {
+          background: var(--primary-purple);
+          color: var(--text-light);
+          padding: 0;
         }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px);}
-          to { opacity: 1; transform: translateY(0);}
+
+        .word-tabs {
+          display: flex;
+          padding: 4px 8px 0;
+        }
+
+        .word-tab {
+          padding: 8px 16px;
+          background: transparent;
+          border: none;
+          color: var(--text-light);
+          border-radius: 4px 4px 0 0;
+          margin-right: 2px;
+          cursor: pointer;
+          font-size: 13px;
+          transition: all 0.2s;
+          opacity: 0.8;
+        }
+
+        .word-tab:hover {
+          background: rgba(255,255,255,0.1);
+          opacity: 1;
+        }
+
+        .word-tab-active {
+          background: var(--neutral-light) !important;
+          color: var(--text-dark) !important;
+          opacity: 1 !important;
+        }
+
+        .word-ribbon {
+          background: var(--neutral-light);
+          border-bottom: 1px solid var(--neutral-mid);
+          padding: 12px 16px;
+          display: flex;
+          gap: 16px;
+          align-items: flex-start;
+          flex-wrap: wrap;
+        }
+
+        .ribbon-group {
+          display: flex;
+          flex-direction: column;
+          min-width: 80px;
+        }
+
+        .ribbon-group-header {
+          font-size: 11px;
+          color: var(--text-dark);
+          margin-bottom: 4px;
+          text-align: center;
+          font-weight: 500;
+          opacity: 0.7;
+        }
+
+        .ribbon-group-content {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .ribbon-separator {
+          width: 1px;
+          background: var(--neutral-mid);
+          height: 60px;
+          margin: 0 4px;
+        }
+
+        .ribbon-large-buttons {
+          display: flex;
+          gap: 4px;
+        }
+
+        .ribbon-large-btn {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 8px 12px;
+          background: var(--neutral-light);
+          border: 1px solid var(--neutral-mid);
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 11px;
+          gap: 4px;
+          transition: all 0.2s;
+          min-width: 60px;
+          color: var(--text-dark);
+        }
+
+        .ribbon-large-btn:hover {
+          background: var(--light-purple);
+          color: var(--text-light);
+          border-color: var(--primary-purple);
+        }
+
+        .ribbon-small-buttons {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .ribbon-small-btn {
+          display: flex;
+          align-items: center;
+          padding: 3px 8px;
+          background: var(--neutral-light);
+          border: 1px solid var(--neutral-mid);
+          border-radius: 3px;
+          cursor: pointer;
+          font-size: 10px;
+          gap: 4px;
+          transition: all 0.2s;
+          color: var(--text-dark);
+        }
+
+        .ribbon-small-btn:hover {
+          background: var(--light-purple);
+          color: var(--text-light);
+          border-color: var(--primary-purple);
+        }
+
+        .ribbon-font-controls {
+          display: flex;
+          gap: 4px;
+          margin-bottom: 4px;
+        }
+
+        .font-selector, .size-selector, .style-selector {
+          padding: 4px 6px;
+          border: 1px solid var(--neutral-mid);
+          border-radius: 3px;
+          background: var(--neutral-light);
+          color: var(--text-dark);
+          font-size: 11px;
+          cursor: pointer;
+        }
+
+        .font-selector {
+          width: 120px;
+        }
+
+        .size-selector {
+          width: 50px;
+        }
+
+        .style-selector {
+          width: 100px;
+        }
+
+        .ribbon-format-buttons {
+          display: flex;
+          gap: 2px;
+          margin-bottom: 4px;
+          flex-wrap: wrap;
+        }
+
+        .ribbon-format-btn {
+          width: 24px;
+          height: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--neutral-light);
+          border: 1px solid var(--neutral-mid);
+          border-radius: 3px;
+          cursor: pointer;
+          font-size: 11px;
+          transition: all 0.2s;
+          color: var(--text-dark);
+        }
+
+        .ribbon-format-btn:hover {
+          background: var(--primary-purple);
+          color: var(--text-light);
+          border-color: var(--primary-purple);
+        }
+
+        .ribbon-color-controls {
+          display: flex;
+          gap: 4px;
+        }
+
+        .color-picker-wrapper {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 2px;
+        }
+
+        .color-picker-wrapper label {
+          font-size: 10px;
+          font-weight: bold;
+          color: var(--text-dark);
+        }
+
+        .color-picker {
+          width: 20px;
+          height: 16px;
+          border: 1px solid var(--neutral-mid);
+          border-radius: 2px;
+          cursor: pointer;
+        }
+
+        .ribbon-paragraph-row {
+          display: flex;
+          gap: 2px;
+          margin-bottom: 2px;
+        }
+
+        .ribbon-insert-btn {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 6px 8px;
+          background: var(--neutral-light);
+          border: 1px solid var(--neutral-mid);
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 10px;
+          gap: 2px;
+          transition: all 0.2s;
+          min-width: 50px;
+          color: var(--text-dark);
+        }
+
+        .ribbon-insert-btn:hover {
+          background: var(--gold);
+          color: var(--text-dark);
+          border-color: var(--gold);
+        }
+
+        .word-editor-area {
+          background: var(--neutral-mid);
+          min-height: 500px;
+          padding: 20px;
+        }
+
+        .word-document {
+          display: flex;
+          justify-content: center;
+        }
+
+        .word-page {
+          width: 100%;
+          max-width: 8.5in;
+          min-height: 11in;
+          background: var(--neutral-light);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+          margin: 0 auto;
+        }
+
+        .word-content {
+          padding: 1in;
+          min-height: 9in;
+          font-family: 'Calibri', 'Arial', sans-serif;
+          font-size: 11pt;
+          line-height: 1.15;
+          color: var(--text-dark);
+          outline: none;
+        }
+
+        .word-content:focus {
+          outline: none;
+        }
+
+        .word-preview {
+          background: var(--neutral-light);
+          padding: 1in;
+          min-height: 500px;
+          font-family: 'Calibri', 'Arial', sans-serif;
+          font-size: 11pt;
+          line-height: 1.15;
+          color: var(--text-dark);
+        }
+
+        .word-source-editor {
+          width: 100%;
+          height: 500px;
+          padding: 20px;
+          font-family: 'Consolas', 'Monaco', monospace;
+          font-size: 12px;
+          border: none;
+          background: var(--neutral-dark);
+          color: var(--text-light);
+          resize: none;
+          outline: none;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+          .word-ribbon {
+            flex-direction: column;
+            gap: 8px;
+          }
+          
+          .ribbon-separator {
+            width: 100%;
+            height: 1px;
+            margin: 4px 0;
+          }
+          
+          .word-page {
+            margin: 0 10px;
+          }
+          
+          .word-content {
+            padding: 0.5in;
+          }
         }
       `}</style>
     </div>
