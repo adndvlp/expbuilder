@@ -137,10 +137,6 @@ function reconstructObject(node, content) {
 async function extractInfoObjects() {
   await fs.mkdir(outputDir, { recursive: true });
 
-  // Crear directorio para plugins que necesitan refactoring
-  const failedDir = path.resolve(__dirname, "plugins-to-refactor");
-  await fs.mkdir(failedDir, { recursive: true });
-
   for (const pluginsPath of pluginsDir) {
     let pluginDirs = [];
     try {
@@ -231,8 +227,6 @@ async function extractInfoObjects() {
 
         if (!infoNode) {
           console.warn(`⚠️ No info object in ${pluginName}`);
-          await copyToRefactorFolder(jsFile, pluginName, failedDir);
-          await generateRefactorInstructions(pluginName, failedDir);
           continue;
         }
 
