@@ -1,0 +1,92 @@
+{
+  "name": "video-keyboard-response",
+  "version": "2.1.0",
+  "parameters": {
+    "stimulus": {
+      "type": "video_array",
+      "pretty_name": "Video",
+      "default": "__undefined__"
+    },
+    "choices": {
+      "type": "string_array",
+      "pretty_name": "Choices",
+      "default": "ALL_KEYS"
+    },
+    "prompt": {
+      "type": "html_string",
+      "pretty_name": "Prompt",
+      "default": null
+    },
+    "width": {
+      "type": "number",
+      "pretty_name": "Width",
+      "default": ""
+    },
+    "height": {
+      "type": "number",
+      "pretty_name": "Height",
+      "default": ""
+    },
+    "autoplay": {
+      "type": "boolean",
+      "pretty_name": "Autoplay",
+      "default": true
+    },
+    "controls": {
+      "type": "boolean",
+      "pretty_name": "Controls",
+      "default": false
+    },
+    "start": {
+      "type": "number",
+      "pretty_name": "Start",
+      "default": null
+    },
+    "stop": {
+      "type": "number",
+      "pretty_name": "Stop",
+      "default": null
+    },
+    "rate": {
+      "type": "number",
+      "pretty_name": "Rate",
+      "default": 1
+    },
+    "trial_ends_after_video": {
+      "type": "boolean",
+      "pretty_name": "End trial after video finishes",
+      "default": false
+    },
+    "trial_duration": {
+      "type": "number",
+      "pretty_name": "Trial duration",
+      "default": null
+    },
+    "response_ends_trial": {
+      "type": "boolean",
+      "pretty_name": "Response ends trial",
+      "default": true
+    },
+    "response_allowed_while_playing": {
+      "type": "boolean",
+      "pretty_name": "Response allowed while playing",
+      "default": true
+    }
+  },
+  "data": {
+    "response": {
+      "type": "string"
+    },
+    "rt": {
+      "type": "number"
+    },
+    "stimulus": {
+      "type": "string",
+      "array": true
+    }
+  },
+  "citations": {
+    "apa": "de Leeuw, J. R., Gilbert, R. A., & Luchterhandt, B. (2023). jsPsych: Enabling an Open-Source Collaborative Ecosystem of Behavioral Experiments. Journal of Open Source Software, 8(85), 5351. https://doi.org/10.21105/joss.05351 ",
+    "bibtex": "@article{Leeuw2023jsPsych, \tauthor = {de Leeuw, Joshua R. and Gilbert, Rebecca A. and Luchterhandt, Bj{\\\" o}rn}, \tjournal = {Journal of Open Source Software}, \tdoi = {10.21105/joss.05351}, \tissn = {2475-9066}, \tnumber = {85}, \tyear = {2023}, \tmonth = {may 11}, \tpages = {5351}, \tpublisher = {Open Journals}, \ttitle = {jsPsych: Enabling an {Open}-{Source} {Collaborative} {Ecosystem} of {Behavioral} {Experiments}}, \turl = {https://joss.theoj.org/papers/10.21105/joss.05351}, \tvolume = {8}, }  "
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "name": "survey-likert",
+  "version": "2.1.0",
+  "parameters": {
+    "questions": {
+      "type": "complex_array",
+      "nested": {
+        "prompt": {
+          "type": "html_string",
+          "default": "__undefined__"
+        },
+        "labels": {
+          "type": "string",
+          "array": true,
+          "default": "__undefined__"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "name": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "randomize_question_order": {
+      "type": "boolean",
+      "default": false
+    },
+    "preamble": {
+      "type": "html_string",
+      "default": null
+    },
+    "scale_width": {
+      "type": "number",
+      "default": null
+    },
+    "button_label": {
+      "type": "string",
+      "default": "Continue"
+    },
+    "autocomplete": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "data": {
+    "response": {
+      "type": "object"
+    },
+    "rt": {
+      "type": "number"
+    },
+    "question_order": {
+      "type": "number",
+      "array": true
+    }
+  },
+  "citations": {
+    "apa": "de Leeuw, J. R., Gilbert, R. A., & Luchterhandt, B. (2023). jsPsych: Enabling an Open-Source Collaborative Ecosystem of Behavioral Experiments. Journal of Open Source Software, 8(85), 5351. https://doi.org/10.21105/joss.05351 ",
+    "bibtex": "@article{Leeuw2023jsPsych, \tauthor = {de Leeuw, Joshua R. and Gilbert, Rebecca A. and Luchterhandt, Bj{\\\" o}rn}, \tjournal = {Journal of Open Source Software}, \tdoi = {10.21105/joss.05351}, \tissn = {2475-9066}, \tnumber = {85}, \tyear = {2023}, \tmonth = {may 11}, \tpages = {5351}, \tpublisher = {Open Journals}, \ttitle = {jsPsych: Enabling an {Open}-{Source} {Collaborative} {Ecosystem} of {Behavioral} {Experiments}}, \turl = {https://joss.theoj.org/papers/10.21105/joss.05351}, \tvolume = {8}, }  "
+  }
+}

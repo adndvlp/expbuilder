@@ -1,0 +1,506 @@
+// Updated api.js with improved static file serving
+import express from "express";
+import mongoose from "mongoose";
+import multer from "multer";
+import path from "path";
+import { v2 as cloudinary } from "cloudinary";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
+import { fileURLToPath } from "url";
+import * as cheerio from "cheerio";
+import fs from "fs";
+import cors from "cors";
+import { Parser } from "json2csv";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+const port = 3000;
+
+// Configure CORS to allow requests from your frontend
+app.use(
+  cors({
+    origin: "http://localhost:5173", // Replace with your frontend URL if different
+    credentials: true,
+  })
+);
+
+app.use(express.json({ limit: "50mb" })); // Increased limit for larger code files
+
+mongoose.connect(process.env.MONGODB_URI);
+
+// Setup static file serving
+app.use(express.static(path.join(__dirname, "dist"))); // Serve dist/ at root level
+app.use(express.static(path.join(__dirname))); // Serve root directory
+app.use(express.static(path.join(__dirname, "plugins"))); // Serve app/ directory
+
+// Serve the experiment page
+app.get("/experiment", (req, res) => {
+  res.sendFile(path.join(__dirname, "experiment.html"));
+});
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
+const metadataPath = path.resolve(__dirname, "metadata");
+
+// Serve the metadata directory at `/metadata` URL path
+app.use("/metadata", express.static(metadataPath));
+
+app.get("/api/plugins-list", (req, res) => {
+  const metadataDir = path.join(__dirname, "metadata");
+  fs.readdir(metadataDir, (err, files) => {
+    if (err) return res.status(500).json({ error: "No metadata dir" });
+    // Solo archivos .json
+    const plugins = files
+      .filter((f) => f.endsWith(".json"))
+      .map((f) => f.replace(/\.json$/, ""));
+    res.json({ plugins });
+  });
+});
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Cloudinary storage for multer
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: async (req, file) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    let folder = "others";
+    if (/\.(png|jpg|jpeg|gif)$/i.test(ext)) folder = "img";
+    else if (/\.(mp3|wav|ogg|m4a)$/i.test(ext)) folder = "aud";
+    else if (/\.(mp4|webm|mov|avi)$/i.test(ext)) folder = "vid";
+    return {
+      folder,
+      public_id: file.originalname.replace(/\.[^/.]+$/, ""),
+      resource_type: "auto",
+    };
+  },
+});
+
+const upload = multer({ storage });
+
+app.post("/api/upload-file", upload.single("file"), (req, res) => {
+  if (!req.file || !req.file.path) {
+    return res.status(400).json({ error: "No file uploaded" });
+  }
+  res.json({ fileUrl: req.file.path, folder: req.file.folder });
+});
+
+app.post("/api/upload-files-folder", upload.array("files"), (req, res) => {
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ error: "No files uploaded" });
+  }
+  const fileUrls = req.files.map((file) => file.path);
+  res.json({ fileUrls });
+});
+
+app.get("/api/list-files/:folder", async (req, res) => {
+  const folder = req.params.folder;
+  let resourceType = "image";
+  if (folder === "aud") resourceType = "video"; // audio but cloudinary treats it as video
+  if (folder === "vid") resourceType = "video";
+  try {
+    const result = await cloudinary.search
+      .expression(`resource_type:${resourceType} AND folder:${folder}`)
+      .sort_by("created_at", "desc")
+      .max_results(100)
+      .execute();
+    const files = result.resources.map((file) => ({
+      name: `${folder}/${file.public_id.replace(/^.*?\//, "")}${
+        file.format ? "." + file.format : ""
+      }`,
+      url: file.secure_url,
+    }));
+    res.json({ files });
+  } catch (err) {
+    res.status(500).json({ files: [], error: err.message });
+  }
+});
+
+app.delete("/api/delete-file/:folder/:filename", async (req, res) => {
+  let { folder, filename } = req.params;
+  filename = filename.replace(/\.[^/.]+$/, ""); // sin extensión
+
+  let resourceType = "image";
+  if (folder === "aud" || folder === "vid") resourceType = "video";
+
+  try {
+    const result = await cloudinary.uploader.destroy(`${folder}/${filename}`, {
+      resource_type: resourceType,
+    });
+    if (result.result === "ok") res.json({ success: true });
+    else res.status(404).json({ success: false, error: "File not found" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+const ConfigSchema = new mongoose.Schema(
+  {
+    data: { type: Object, required: true },
+    isDevMode: { type: Boolean, default: false },
+  },
+  { timestamps: true }
+);
+const Config = mongoose.models.Config || mongoose.model("Config", ConfigSchema);
+
+const TrialsSchema = new mongoose.Schema(
+  { data: { type: Object, required: true } },
+  { timestamps: true }
+);
+const Trials = mongoose.models.Trials || mongoose.model("Trials", TrialsSchema);
+
+app.get("/api/load-trials", async (req, res) => {
+  try {
+    const trialsDoc = await Trials.findOne({});
+    if (!trialsDoc) return res.json({ trials: null });
+    res.json({ trials: trialsDoc.data });
+  } catch (error) {
+    res.status(500).json({ trials: null, error: error.message });
+  }
+});
+
+app.post("/api/save-trials", async (req, res) => {
+  try {
+    const trials = req.body;
+    const updated = await Trials.findOneAndUpdate(
+      {},
+      { data: trials },
+      { upsert: true, new: true }
+    );
+    res.json({ success: true, trials: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.delete("/api/trials/:id", async (req, res) => {
+  try {
+    // Convierte el id a número para que coincida con el tipo en la base de datos
+    const idToDelete = Number(req.params.id);
+
+    // Elimina el trial del array trials dentro del documento
+    const updated = await Trials.findOneAndUpdate(
+      { "data.trials.id": idToDelete },
+      { $pull: { "data.trials": { id: idToDelete } } },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Trial not found." });
+    }
+
+    res.json({ success: true, trials: updated.data.trials });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+const PluginItemSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    scripTag: { type: String, required: true },
+    pluginCode: { type: String, required: true },
+    index: { type: Number, required: true },
+  },
+  { _id: false }
+);
+
+const PluginConfigSchema = new mongoose.Schema({
+  plugins: { type: [PluginItemSchema], default: [] }, // <- aquí va el array de plugins
+  config: { type: Object, default: {} }, // otras opciones del editor/experimento
+});
+
+const PluginConfig =
+  mongoose.models.PluginConfig ||
+  mongoose.model("PluginConfig", PluginConfigSchema);
+
+// Save or update a plugin by index
+app.post("/api/save-plugins", async (req, res) => {
+  try {
+    const { name, scripTag, pluginCode, index } = req.body;
+    if (typeof index !== "number")
+      return res.status(400).json({ success: false, error: "Index required" });
+
+    const plugin = { name, scripTag, pluginCode, index };
+
+    let doc = await PluginConfig.findOne({});
+    if (!doc) {
+      doc = await PluginConfig.create({ plugins: [plugin] });
+      return res.json({ success: true, plugin });
+    }
+
+    const i = doc.plugins.findIndex((p) => p.index === index);
+    if (i >= 0) doc.plugins[i] = plugin;
+    else doc.plugins.push(plugin);
+
+    await doc.save();
+    res.json({ success: true, plugin });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete a plugin by index
+app.delete("/api/delete-plugin/:index", async (req, res) => {
+  try {
+    const index = Number(req.params.index);
+    if (isNaN(index)) {
+      return res.status(400).json({ success: false, error: "Invalid index" });
+    }
+    const updated = await PluginConfig.findOneAndUpdate(
+      {},
+      { $pull: { plugins: { index } } },
+      { new: true }
+    );
+    if (!updated) {
+      return res.status(404).json({ success: false, error: "No config doc" });
+    }
+    const stillThere = updated.plugins.some((p) => p.index === index);
+    if (stillThere) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Plugin not found" });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Endpoint para cargar la configuración de plugin
+app.get("/api/load-plugin-config", async (req, res) => {
+  try {
+    const doc = await PluginConfig.findOne({});
+    res.json({ config: doc?.config ?? null, plugins: doc?.plugins ?? [] });
+  } catch (error) {
+    res.status(500).json({ config: null, error: error.message });
+  }
+});
+
+app.get("/api/load-config", async (req, res) => {
+  try {
+    const configDoc = await Config.findOne({});
+    if (!configDoc) return res.json({ config: null, isDevMode: false });
+    res.json({ config: configDoc.data, isDevMode: configDoc.isDevMode });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ config: null, isDevMode: false, error: error.message });
+  }
+});
+
+// API endpoint to save configuration and generated code
+app.post("/api/save-config", async (req, res) => {
+  try {
+    const { config, isDevMode } = req.body;
+    const updated = await Config.findOneAndUpdate(
+      {},
+      { data: config, isDevMode: isDevMode },
+      { upsert: true, new: true }
+    );
+    res.json({ success: true, config: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/run-experiment", async (req, res) => {
+  try {
+    const usePlugins = req.body?.usePlugins;
+
+    let plugins = [];
+    if (usePlugins) {
+      const pluginConfigDoc = await PluginConfig.findOne({});
+      plugins = pluginConfigDoc?.plugins || [];
+
+      if (!plugins.length) {
+        return res
+          .status(404)
+          .json({ success: false, error: "No plugins found" });
+      }
+
+      const pluginsDir = path.join(__dirname, "plugins");
+      if (!fs.existsSync(pluginsDir)) fs.mkdirSync(pluginsDir);
+
+      plugins.forEach((plugin) => {
+        if (plugin.pluginCode && plugin.scripTag) {
+          const fileName = path.basename(plugin.scripTag);
+          const filePath = path.join(pluginsDir, fileName);
+          fs.writeFileSync(filePath, plugin.pluginCode, "utf8");
+        }
+      });
+    }
+
+    const experimentHtmlPath = path.join(__dirname, "experiment.html");
+    if (!fs.existsSync(experimentHtmlPath)) {
+      return res
+        .status(500)
+        .json({ success: false, error: "experiment.html not found" });
+    }
+    let html = fs.readFileSync(experimentHtmlPath, "utf8");
+    const $ = cheerio.load(html);
+
+    // Elimina scripts previos de plugins y generated-script
+    $("script[id^='plugin-script']").remove();
+    $("script#generated-script").remove();
+
+    // Si hay plugins, inserta los scripts
+    if (usePlugins && plugins.length) {
+      plugins.forEach((plugin, idx) => {
+        if (plugin.scripTag) {
+          $("body").append(
+            `<script src="${plugin.scripTag}" id="plugin-script-${idx}"></script>`
+          );
+        }
+      });
+    }
+
+    // Inserta el código generado (desde config)
+    const configDoc = await Config.findOne({});
+    if (!configDoc || !configDoc.data || !configDoc.data.generatedCode) {
+      return res
+        .status(400)
+        .json({ success: false, error: "No generated code found in config" });
+    }
+    $("body").append(
+      `<script id="generated-script">\n${configDoc.data.generatedCode}\n</script>`
+    );
+
+    // Guarda el HTML modificado
+    fs.writeFileSync(experimentHtmlPath, $.html());
+
+    res.json({
+      success: true,
+      message: usePlugins
+        ? "Experiment built and ready to run (plugins and code injected)"
+        : "Experiment built and ready to run",
+      experimentUrl: "http://localhost:3000/experiment",
+    });
+  } catch (error) {
+    console.error(`Error running experiment: ${error.message}`);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Modelo para resultados individuales por participante
+const SessionResultSchema = new mongoose.Schema({
+  sessionId: { type: String, required: true, unique: true },
+  createdAt: { type: Date, default: Date.now },
+  data: { type: Array, default: [] },
+});
+const SessionResult =
+  mongoose.models.SessionResult ||
+  mongoose.model("SessionResult", SessionResultSchema);
+
+// Endpoint para agregar una respuesta a la sesión
+app.post("/api/append-result", async (req, res) => {
+  try {
+    let { sessionId, response } = req.body;
+    if (!sessionId || !response)
+      return res
+        .status(400)
+        .json({ success: false, error: "sessionId and response required" });
+
+    // Si recibes un string, parsea:
+    if (typeof response === "string") response = JSON.parse(response);
+
+    // Busca el documento o créalo si no existe
+    const updated = await SessionResult.findOneAndUpdate(
+      { sessionId },
+      { $push: { data: response } },
+      { upsert: true, new: true }
+    );
+
+    res.json({ success: true, id: updated._id });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Endpoint para obtener los resultados de una sesión
+app.get("/api/session-results", async (req, res) => {
+  try {
+    const sessions = await SessionResult.find({}, { data: 0 }).sort({
+      createdAt: -1,
+    });
+    res.json({ sessions });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/download-session/:sessionId", async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    // 1. Buscar el documento
+    const doc = await SessionResult.findOne({ sessionId });
+    if (!doc) return res.status(404).send("Session not found");
+
+    // 2. Filtrar si es necesario
+    // const filteredData = doc.data.filter((row) => row.trial_type !== "preload");
+    const filteredData = doc.data;
+
+    if (!filteredData.length)
+      return res.status(400).send("No valid data to export");
+
+    // 3. Extraer todos los campos únicos
+    const allFields = Array.from(
+      new Set(filteredData.flatMap((row) => Object.keys(row)))
+    );
+
+    // 4. Convertir a CSV con json2csv
+    const parser = new Parser({ fields: allFields });
+    const csv = parser.parse(filteredData);
+
+    // 5. Enviar como descarga
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="session_${sessionId}.csv"`
+    );
+    res.status(200).send(csv);
+  } catch (err) {
+    console.error("Error exporting CSV:", err);
+    res.status(500).send("Error generating CSV");
+  }
+});
+
+app.delete("/api/session-results/:sessionId", async (req, res) => {
+  try {
+    const deleted = await SessionResult.findOneAndDelete({
+      sessionId: req.params.sessionId,
+    });
+    if (!deleted) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Session not found" });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Middleware to handle 404 errors
+app.use((req, res) => {
+  console.log(`404 Not Found: ${req.url}`);
+  res.status(404).send("This page doesn't exist.");
+});
+
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+  console.log(`- Experiment URL: http://localhost:${port}/experiment`);
+});

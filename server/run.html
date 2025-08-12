@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <input type="file" webkitdirectory multiple />
+    <script>
+      document.querySelector("input").addEventListener("change", (e) => {
+        console.log(e.target.files);
+      });
+    </script>
+  </body>
+</html>

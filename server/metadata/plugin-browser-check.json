@@ -1,0 +1,97 @@
+{
+  "name": "browser-check",
+  "version": "2.1.0",
+  "parameters": {
+    "features": {
+      "type": "string_array",
+      "default": [
+        "width",
+        "height",
+        "webaudio",
+        "browser",
+        "browser_version",
+        "mobile",
+        "os",
+        "fullscreen",
+        "vsync_rate",
+        "webcam",
+        "microphone"
+      ]
+    },
+    "skip_features": {
+      "type": "string_array",
+      "default": []
+    },
+    "vsync_frame_count": {
+      "type": "number",
+      "default": 60
+    },
+    "allow_window_resize": {
+      "type": "boolean",
+      "default": true
+    },
+    "minimum_width": {
+      "type": "number",
+      "default": 0
+    },
+    "minimum_height": {
+      "type": "number",
+      "default": 0
+    },
+    "window_resize_message": {
+      "type": "html_string",
+      "default": "`<p>Your browser window is too small to complete this experiment. Please maximize the size of your browser window. \n        If your browser window is already maximized, you will not be able to complete this experiment.</p>\n        <p>The minimum window width is <span id=\"browser-check-min-width\"></span> px.</p>\n        <p>Your current window width is <span id=\"browser-check-actual-width\"></span> px.</p>\n        <p>The minimum window height is <span id=\"browser-check-min-height\"></span> px.</p>\n        <p>Your current window height is <span id=\"browser-check-actual-height\"></span> px.</p>`"
+    },
+    "resize_fail_button_text": {
+      "type": "string",
+      "default": "I cannot make the window any larger"
+    },
+    "inclusion_function": {
+      "type": "function",
+      "default": "()=>!0"
+    },
+    "exclusion_message": {
+      "type": "function",
+      "default": "()=>\"<p>Your browser does not meet the requirements to participate in this experiment.</p>\""
+    }
+  },
+  "data": {
+    "width": {
+      "type": "number"
+    },
+    "height": {
+      "type": "number"
+    },
+    "browser": {
+      "type": "string"
+    },
+    "browser_version": {
+      "type": "string"
+    },
+    "os": {
+      "type": "string"
+    },
+    "mobile": {
+      "type": "boolean"
+    },
+    "webaudio": {
+      "type": "boolean"
+    },
+    "fullscreen": {
+      "type": "boolean"
+    },
+    "vsync_rate": {
+      "type": "number"
+    },
+    "webcam": {
+      "type": "boolean"
+    },
+    "microphone": {
+      "type": "boolean"
+    }
+  },
+  "citations": {
+    "apa": "de Leeuw, J. R., Gilbert, R. A., & Luchterhandt, B. (2023). jsPsych: Enabling an Open-Source Collaborative Ecosystem of Behavioral Experiments. Journal of Open Source Software, 8(85), 5351. https://doi.org/10.21105/joss.05351 ",
+    "bibtex": "@article{Leeuw2023jsPsych, \tauthor = {de Leeuw, Joshua R. and Gilbert, Rebecca A. and Luchterhandt, Bj{\\\" o}rn}, \tjournal = {Journal of Open Source Software}, \tdoi = {10.21105/joss.05351}, \tissn = {2475-9066}, \tnumber = {85}, \tyear = {2023}, \tmonth = {may 11}, \tpages = {5351}, \tpublisher = {Open Journals}, \ttitle = {jsPsych: Enabling an {Open}-{Source} {Collaborative} {Ecosystem} of {Behavioral} {Experiments}}, \turl = {https://joss.theoj.org/papers/10.21105/joss.05351}, \tvolume = {8}, }  "
+  }
+}

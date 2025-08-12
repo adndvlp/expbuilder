@@ -1,0 +1,130 @@
+import { useRef, useState, useEffect, useCallback } from "react";
+
+type UseFileUploadProps = {
+  folder: string;
+};
+type UploadedFile = { name: string; url: string };
+
+type FileCache = {
+  [key: string]: UploadedFile[];
+};
+
+export function useFileUpload({ folder }: UseFileUploadProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+
+  // Agregar caché de archivos
+  const filesCache = useRef<FileCache>({});
+  const lastFetchTime = useRef<{ [key: string]: number }>({});
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos en milisegundos
+
+  // solo para navegadores modernos, hacer poder subir carpetas
+  useEffect(() => {
+    if (folderInputRef.current) {
+      folderInputRef.current.setAttribute("webkitdirectory", "");
+    }
+  }, []);
+
+  const refreshUploadedFiles = useCallback(() => {
+    const now = Date.now();
+    const lastFetch = lastFetchTime.current[folder] || 0;
+
+    // Si hay caché válido, usarlo
+    if (filesCache.current[folder] && now - lastFetch < CACHE_DURATION) {
+      setUploadedFiles(filesCache.current[folder]);
+      return;
+    }
+
+    // Si no hay caché o expiró, hacer fetch
+    fetch(`/api/list-files/${folder}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setUploadedFiles(data.files);
+        // Actualizar caché
+        filesCache.current[folder] = data.files;
+        lastFetchTime.current[folder] = now;
+      });
+  }, [folder]);
+
+  useEffect(() => {
+    refreshUploadedFiles();
+  }, [folder, refreshUploadedFiles]);
+
+  const invalidateCache = useCallback(() => {
+    // Elimina el caché para la carpeta actual
+    delete filesCache.current[folder];
+    delete lastFetchTime.current[folder];
+  }, [folder]);
+
+  const handleSingleFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const response = await fetch("/api/upload-file", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Error at file upload");
+
+        invalidateCache();
+        refreshUploadedFiles();
+      } catch (err) {
+        alert("Error at file upload");
+        console.error(err);
+      }
+    }
+  };
+
+  const handleFolderUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const formData = new FormData();
+    Array.from(files).forEach((file) => {
+      formData.append("files", file);
+    });
+
+    try {
+      const response = await fetch("/api/upload-files-folder", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(data.error || "Error at uploading files");
+
+      invalidateCache();
+      refreshUploadedFiles();
+    } catch (err) {
+      alert("Error at uploading files");
+      console.error(err);
+    }
+  };
+
+  const handleDeleteFile = async (fileName: string) => {
+    const filename = fileName.split("/").pop();
+    await fetch(`/api/delete-file/${folder}/${filename}`, {
+      method: "DELETE",
+    });
+    invalidateCache();
+    setUploadedFiles((prev) => prev.filter((i) => i.name !== fileName));
+  };
+
+  return {
+    fileInputRef,
+    folderInputRef,
+    uploadedFiles,
+    setUploadedFiles,
+    handleSingleFileUpload,
+    handleFolderUpload,
+    handleDeleteFile,
+    refreshUploadedFiles,
+  };
+}

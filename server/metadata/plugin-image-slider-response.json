@@ -1,0 +1,93 @@
+{
+  "name": "image-slider-response",
+  "version": "2.1.0",
+  "parameters": {
+    "stimulus": {
+      "type": "image",
+      "default": "__undefined__"
+    },
+    "stimulus_height": {
+      "type": "number",
+      "default": null
+    },
+    "stimulus_width": {
+      "type": "number",
+      "default": null
+    },
+    "maintain_aspect_ratio": {
+      "type": "boolean",
+      "default": true
+    },
+    "min": {
+      "type": "number",
+      "default": 0
+    },
+    "max": {
+      "type": "number",
+      "default": 100
+    },
+    "slider_start": {
+      "type": "number",
+      "default": 50
+    },
+    "step": {
+      "type": "number",
+      "default": 1
+    },
+    "labels": {
+      "type": "string_array",
+      "default": []
+    },
+    "slider_width": {
+      "type": "number",
+      "default": null
+    },
+    "button_label": {
+      "type": "string",
+      "default": "Continue",
+      "array": false
+    },
+    "require_movement": {
+      "type": "boolean",
+      "default": false
+    },
+    "prompt": {
+      "type": "html_string",
+      "default": null
+    },
+    "stimulus_duration": {
+      "type": "number",
+      "default": null
+    },
+    "trial_duration": {
+      "type": "number",
+      "default": null
+    },
+    "response_ends_trial": {
+      "type": "boolean",
+      "default": true
+    },
+    "render_on_canvas": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "data": {
+    "stimulus": {
+      "type": "string"
+    },
+    "response": {
+      "type": "number"
+    },
+    "rt": {
+      "type": "number"
+    },
+    "slider_start": {
+      "type": "number"
+    }
+  },
+  "citations": {
+    "apa": "de Leeuw, J. R., Gilbert, R. A., & Luchterhandt, B. (2023). jsPsych: Enabling an Open-Source Collaborative Ecosystem of Behavioral Experiments. Journal of Open Source Software, 8(85), 5351. https://doi.org/10.21105/joss.05351 ",
+    "bibtex": "@article{Leeuw2023jsPsych, \tauthor = {de Leeuw, Joshua R. and Gilbert, Rebecca A. and Luchterhandt, Bj{\\\" o}rn}, \tjournal = {Journal of Open Source Software}, \tdoi = {10.21105/joss.05351}, \tissn = {2475-9066}, \tnumber = {85}, \tyear = {2023}, \tmonth = {may 11}, \tpages = {5351}, \tpublisher = {Open Journals}, \ttitle = {jsPsych: Enabling an {Open}-{Source} {Collaborative} {Ecosystem} of {Behavioral} {Experiments}}, \turl = {https://joss.theoj.org/papers/10.21105/joss.05351}, \tvolume = {8}, }  "
+  }
+}

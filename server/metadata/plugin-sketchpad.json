@@ -1,0 +1,158 @@
+{
+  "name": "sketchpad",
+  "version": "2.1.0",
+  "parameters": {
+    "canvas_shape": {
+      "type": "string",
+      "default": "rectangle"
+    },
+    "canvas_width": {
+      "type": "number",
+      "default": 500
+    },
+    "canvas_height": {
+      "type": "number",
+      "default": 500
+    },
+    "canvas_diameter": {
+      "type": "number",
+      "default": 500
+    },
+    "canvas_border_width": {
+      "type": "number",
+      "default": 0
+    },
+    "canvas_border_color": {
+      "type": "string",
+      "default": "#000"
+    },
+    "background_image": {
+      "type": "image",
+      "default": null
+    },
+    "background_color": {
+      "type": "string",
+      "default": "#ffffff"
+    },
+    "stroke_width": {
+      "type": "number",
+      "default": 2
+    },
+    "stroke_color": {
+      "type": "string",
+      "default": "#000000"
+    },
+    "stroke_color_palette": {
+      "type": "string_array",
+      "default": []
+    },
+    "prompt": {
+      "type": "html_string",
+      "default": null
+    },
+    "prompt_location": {
+      "type": "string",
+      "default": "abovecanvas"
+    },
+    "save_final_image": {
+      "type": "boolean",
+      "default": true
+    },
+    "save_strokes": {
+      "type": "boolean",
+      "default": true
+    },
+    "key_to_draw": {
+      "type": "key",
+      "default": null
+    },
+    "show_finished_button": {
+      "type": "boolean",
+      "default": true
+    },
+    "finished_button_label": {
+      "type": "string",
+      "default": "Finished"
+    },
+    "show_clear_button": {
+      "type": "boolean",
+      "default": true
+    },
+    "clear_button_label": {
+      "type": "string",
+      "default": "Clear"
+    },
+    "show_undo_button": {
+      "type": "boolean",
+      "default": true
+    },
+    "undo_button_label": {
+      "type": "string",
+      "default": "Undo"
+    },
+    "show_redo_button": {
+      "type": "boolean",
+      "default": true
+    },
+    "redo_button_label": {
+      "type": "string",
+      "default": "Redo"
+    },
+    "choices": {
+      "type": "string_array",
+      "default": "NO_KEYS"
+    },
+    "trial_duration": {
+      "type": "number",
+      "default": null
+    },
+    "show_countdown_trial_duration": {
+      "type": "boolean",
+      "default": false
+    },
+    "countdown_timer_html": {
+      "type": "html_string",
+      "default": "<span id=\"sketchpad-timer\"></span> remaining"
+    }
+  },
+  "data": {
+    "rt": {
+      "type": "number"
+    },
+    "response": {
+      "type": "string"
+    },
+    "png": {
+      "type": "string"
+    },
+    "strokes": {
+      "type": "complex",
+      "array": true,
+      "nested": {
+        "action": {
+          "type": "string"
+        },
+        "x": {
+          "type": "number",
+          "optional": true
+        },
+        "y": {
+          "type": "number",
+          "optional": true
+        },
+        "t": {
+          "type": "number",
+          "optional": true
+        },
+        "color": {
+          "type": "string",
+          "optional": true
+        }
+      }
+    }
+  },
+  "citations": {
+    "apa": "de Leeuw, J. R., Gilbert, R. A., & Luchterhandt, B. (2023). jsPsych: Enabling an Open-Source Collaborative Ecosystem of Behavioral Experiments. Journal of Open Source Software, 8(85), 5351. https://doi.org/10.21105/joss.05351 ",
+    "bibtex": "@article{Leeuw2023jsPsych, \tauthor = {de Leeuw, Joshua R. and Gilbert, Rebecca A. and Luchterhandt, Bj{\\\" o}rn}, \tjournal = {Journal of Open Source Software}, \tdoi = {10.21105/joss.05351}, \tissn = {2475-9066}, \tnumber = {85}, \tyear = {2023}, \tmonth = {may 11}, \tpages = {5351}, \tpublisher = {Open Journals}, \ttitle = {jsPsych: Enabling an {Open}-{Source} {Collaborative} {Ecosystem} of {Behavioral} {Experiments}}, \turl = {https://joss.theoj.org/papers/10.21105/joss.05351}, \tvolume = {8}, }  "
+  }
+}

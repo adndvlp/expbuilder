@@ -1,0 +1,112 @@
+{
+  "name": "virtual-chinrest",
+  "version": "3.1.0",
+  "parameters": {
+    "resize_units": {
+      "type": "select",
+      "options": [
+        "none",
+        "cm",
+        "inch",
+        "deg"
+      ],
+      "default": "none"
+    },
+    "pixels_per_unit": {
+      "type": "number",
+      "default": 100
+    },
+    "adjustment_prompt": {
+      "type": "html_string",
+      "default": "`\n          <div style=\"text-align: left;\">\n          <p>Click and drag the lower right corner of the image until it is the same size as a credit card held up to the screen.</p>\n          <p>You can use any card that is the same size as a credit card, like a membership card or driver's license.</p>\n          <p>If you do not have access to a real card you can use a ruler to measure the image width to 3.37 inches or 85.6 mm.</p>\n          </div>`"
+    },
+    "adjustment_button_prompt": {
+      "type": "html_string",
+      "default": "Click here when the image is the correct size"
+    },
+    "item_path": {
+      "type": "image",
+      "default": null,
+      "preload": false
+    },
+    "item_height_mm": {
+      "type": "number",
+      "default": 53.98
+    },
+    "item_width_mm": {
+      "type": "number",
+      "default": 85.6
+    },
+    "item_init_size": {
+      "type": "number",
+      "default": 250
+    },
+    "blindspot_reps": {
+      "type": "number",
+      "default": 5
+    },
+    "blindspot_prompt": {
+      "type": "html_string",
+      "pretty_name": "Blindspot prompt",
+      "default": "`\n          <p>Now we will quickly measure how far away you are sitting.</p>\n          <div style=\"text-align: left\">\n            <ol>\n              <li>Put your left hand on the <b>space bar</b>.</li>\n              <li>Cover your right eye with your right hand.</li>\n              <li>Using your left eye, focus on the black square. Keep your focus on the black square.</li>\n              <li>The <span style=\"color: red; font-weight: bold;\">red ball</span> will disappear as it moves from right to left. Press the space bar as soon as the ball disappears.</li>\n            </ol>\n          </div>\n          <p>Press the space bar when you are ready to begin.</p>\n          `"
+    },
+    "blindspot_measurements_prompt": {
+      "type": "html_string",
+      "default": "Remaining measurements: "
+    },
+    "viewing_distance_report": {
+      "type": "html_string",
+      "default": "<p>Based on your responses, you are sitting about <span id='distance-estimate' style='font-weight: bold;'></span> from the screen.</p><p>Does that seem about right?</p>"
+    },
+    "redo_measurement_button_label": {
+      "type": "html_string",
+      "default": "No, that is not close. Try again."
+    },
+    "blindspot_done_prompt": {
+      "type": "html_string",
+      "default": "Yes"
+    }
+  },
+  "data": {
+    "rt": {
+      "type": "number"
+    },
+    "item_height_mm": {
+      "type": "number"
+    },
+    "item_width_mm": {
+      "type": "number"
+    },
+    "item_height_deg": {
+      "type": "number"
+    },
+    "item_width_deg": {
+      "type": "number"
+    },
+    "item_width_px": {
+      "type": "number"
+    },
+    "px2deg": {
+      "type": "number"
+    },
+    "px2mm": {
+      "type": "number"
+    },
+    "scale_factor": {
+      "type": "number"
+    },
+    "win_width_deg": {
+      "type": "number"
+    },
+    "win_height_deg": {
+      "type": "number"
+    },
+    "view_dist_mm": {
+      "type": "number"
+    }
+  },
+  "citations": {
+    "apa": "de Leeuw, J. R., Gilbert, R. A., & Luchterhandt, B. (2023). jsPsych: Enabling an Open-Source Collaborative Ecosystem of Behavioral Experiments. Journal of Open Source Software, 8(85), 5351. https://doi.org/10.21105/joss.05351 ",
+    "bibtex": "@article{Leeuw2023jsPsych, \tauthor = {de Leeuw, Joshua R. and Gilbert, Rebecca A. and Luchterhandt, Bj{\\\" o}rn}, \tjournal = {Journal of Open Source Software}, \tdoi = {10.21105/joss.05351}, \tissn = {2475-9066}, \tnumber = {85}, \tyear = {2023}, \tmonth = {may 11}, \tpages = {5351}, \tpublisher = {Open Journals}, \ttitle = {jsPsych: Enabling an {Open}-{Source} {Collaborative} {Ecosystem} of {Behavioral} {Experiments}}, \turl = {https://joss.theoj.org/papers/10.21105/joss.05351}, \tvolume = {8}, }  "
+  }
+}

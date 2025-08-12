@@ -1,0 +1,118 @@
+{
+  "name": "webgazer-validate",
+  "version": "2.1.0",
+  "parameters": {
+    "validation_points": {
+      "type": "number_array",
+      "default": [
+        [
+          10,
+          10
+        ],
+        [
+          10,
+          50
+        ],
+        [
+          10,
+          90
+        ],
+        [
+          50,
+          10
+        ],
+        [
+          50,
+          50
+        ],
+        [
+          50,
+          90
+        ],
+        [
+          90,
+          10
+        ],
+        [
+          90,
+          50
+        ],
+        [
+          90,
+          90
+        ]
+      ]
+    },
+    "validation_point_coordinates": {
+      "type": "select",
+      "default": "percent",
+      "options": [
+        "percent",
+        "center-offset-pixels"
+      ]
+    },
+    "roi_radius": {
+      "type": "number",
+      "default": 200
+    },
+    "randomize_validation_order": {
+      "type": "boolean",
+      "default": false
+    },
+    "time_to_saccade": {
+      "type": "number",
+      "default": 1000
+    },
+    "validation_duration": {
+      "type": "number",
+      "default": 2000
+    },
+    "point_size": {
+      "type": "number",
+      "default": 20
+    },
+    "show_validation_data": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "data": {
+    "raw_gaze": {
+      "type": "complex",
+      "array": true,
+      "nested": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "dx": {
+          "type": "number"
+        },
+        "dy": {
+          "type": "number"
+        }
+      }
+    },
+    "percent_in_roi": {
+      "type": "number",
+      "array": true
+    },
+    "average_offset": {
+      "type": "number",
+      "array": true
+    },
+    "samples_per_sec": {
+      "type": "number"
+    },
+    "validation_points": {
+      "type": "number",
+      "array": true
+    }
+  },
+  "citations": {
+    "apa": "de Leeuw, J. R., Gilbert, R. A., & Luchterhandt, B. (2023). jsPsych: Enabling an Open-Source Collaborative Ecosystem of Behavioral Experiments. Journal of Open Source Software, 8(85), 5351. https://doi.org/10.21105/joss.05351 ",
+    "bibtex": "@article{Leeuw2023jsPsych, \tauthor = {de Leeuw, Joshua R. and Gilbert, Rebecca A. and Luchterhandt, Bj{\\\" o}rn}, \tjournal = {Journal of Open Source Software}, \tdoi = {10.21105/joss.05351}, \tissn = {2475-9066}, \tnumber = {85}, \tyear = {2023}, \tmonth = {may 11}, \tpages = {5351}, \tpublisher = {Open Journals}, \ttitle = {jsPsych: Enabling an {Open}-{Source} {Collaborative} {Ecosystem} of {Behavioral} {Experiments}}, \turl = {https://joss.theoj.org/papers/10.21105/joss.05351}, \tvolume = {8}, }  "
+  }
+}
