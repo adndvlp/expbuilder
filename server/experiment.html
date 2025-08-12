@@ -148,10 +148,10 @@ const welcome = {
 timeline.push(welcome);
 
 
-    const test_stimuli_colafnkfns = [{consent_text: "",
+    const test_stimuli_afa = [{consent_text: "<p style=\"text-align: center;\"><strong>NckjbPIQCBvroihnwvrrvwrvrvwrvrrwrvwwvwkbwvrlwknr\"\"kwnkvnskd</strong></p>",
 fixation: "4",
 fixation_duration: 500}];
-      const colafnkfns_fixation = {
+      const afa_fixation = {
       type: jsPsychHtmlKeyboardResponse,
       stimulus: jsPsych.timelineVariable("fixation"),
       choices: "NO_KEYS",
@@ -161,21 +161,21 @@ fixation_duration: 500}];
       },
     };
     
-    const colafnkfns_timeline = {
+    const afa_timeline = {
     type: consentPlugin, consent_text: jsPsych.timelineVariable("consent_text"),
     data: {
       
     },};
     
-    const colafnkfns_procedure = {
+    const afa_procedure = {
     timeline: 
-    [colafnkfns_fixation, colafnkfns_timeline],
-    timeline_variables: test_stimuli_colafnkfns,
+    [afa_fixation, afa_timeline],
+    timeline_variables: test_stimuli_afa,
     repetitions: 1,
     randomize_order: false,
     
     };
-    timeline.push(colafnkfns_procedure);
+    timeline.push(afa_procedure);
   
 
 jsPsych.run(timeline);

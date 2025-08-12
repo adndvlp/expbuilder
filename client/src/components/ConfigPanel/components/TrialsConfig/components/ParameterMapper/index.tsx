@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { IoIosHelpCircle } from "react-icons/io";
 import HtmlMapper from "./HtmlMapper";
+import { BiEdit } from "react-icons/bi";
+import Modal from "./Modal";
 
 type Parameter = {
   label: string;
@@ -61,6 +63,34 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
       return needsUpdate ? updatedMapping : prevMapping;
     });
   }, [parameters, setColumnMapping]);
+
+  // Modal
+  const [isHtmlModalOpen, setIsHtmlModalOpen] = useState(false);
+  const [currentHtmlKey, setCurrentHtmlKey] = useState<string>("");
+
+  const openHtmlModal = (key: string) => {
+    setCurrentHtmlKey(key);
+    setIsHtmlModalOpen(true);
+  };
+
+  const closeHtmlModal = () => {
+    setIsHtmlModalOpen(false);
+    setCurrentHtmlKey("");
+  };
+
+  const handleHtmlChange = (htmlValue: string) => {
+    if (currentHtmlKey) {
+      setColumnMapping((prev) => ({
+        ...prev,
+        [currentHtmlKey]: {
+          source: "typed",
+          value: htmlValue,
+        },
+      }));
+    }
+  };
+
+  // Modal
 
   return (
     <div className="mb-4 p-4 border rounded bg-gray-50">
@@ -165,15 +195,28 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                     </select>
                   ) : type === "html_string" ? (
                     <>
-                      <HtmlMapper
-                        value={
-                          typeof entry.value === "string" ? entry.value : ""
-                        }
-                        onChange={(htmlValue) =>
-                          handleTypedValueChange(htmlValue)
-                        }
-                        placeholder={`Enter HTML content for ${label.toLowerCase()}`}
-                      />
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          type="text"
+                          className="flex-1 p-2 border rounded bg-gray-100"
+                          value={
+                            typeof entry.value === "string"
+                              ? entry.value.substring(0, 50) +
+                                (entry.value.length > 50 ? "..." : "")
+                              : ""
+                          }
+                          readOnly
+                          placeholder="Click edit to add HTML content"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => openHtmlModal(key)}
+                          className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-1 transition-colors"
+                        >
+                          <BiEdit size={16} />
+                          Edit
+                        </button>
+                      </div>
                     </>
                   ) : type === "number" ? (
                     <input
@@ -426,6 +469,24 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
           );
         })}
       </div>
+      {/* HTML Modal */}
+      <Modal
+        isOpen={isHtmlModalOpen}
+        onClose={closeHtmlModal}
+        title={`Edit HTML Content - ${parameters.find((p) => p.key === currentHtmlKey)?.label || ""}`}
+      >
+        {currentHtmlKey && (
+          <HtmlMapper
+            value={
+              typeof columnMapping[currentHtmlKey]?.value === "string"
+                ? columnMapping[currentHtmlKey].value
+                : ""
+            }
+            onChange={handleHtmlChange}
+            placeholder={`Enter HTML content for ${parameters.find((p) => p.key === currentHtmlKey)?.label?.toLowerCase()}`}
+          />
+        )}
+      </Modal>
     </div>
   );
 };

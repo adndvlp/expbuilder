@@ -4,7 +4,7 @@ import type { FieldDefinition, FieldType, DataDefinition } from "../types";
 function resolveFieldType(type: string): FieldType {
   const baseMap: Record<string, FieldType> = {
     string: "string",
-    html_string: "string",
+    html_string: "html_string",
     audio: "string",
     image: "string",
     number: "number",
@@ -36,7 +36,7 @@ export function mapMetadataToFields(
     key,
     type: resolveFieldType(param.type),
     default:
-      param.default === "__undefined__" ? undefined : param.default ?? null,
+      param.default === "__undefined__" ? undefined : (param.default ?? null),
   }));
 }
 

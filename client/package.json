@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
-    "@syncfusion/ej2-react-richtexteditor": "^30.2.4",
     "bootstrap": "^5.3.5",
     "exceljs": "^4.4.0",
     "lodash.isequal": "^4.5.0",

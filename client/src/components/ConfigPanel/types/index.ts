@@ -23,6 +23,7 @@ export interface Trial {
 
 export type FieldType =
   | "string"
+  | "html_string"
   | "number"
   | "boolean"
   | "function"
