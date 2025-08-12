@@ -148,10 +148,10 @@ const welcome = {
 timeline.push(welcome);
 
 
-    const test_stimuli_cola = [{consent_text: "",
+    const test_stimuli_colafnkfns = [{consent_text: "",
 fixation: "4",
 fixation_duration: 500}];
-      const cola_fixation = {
+      const colafnkfns_fixation = {
       type: jsPsychHtmlKeyboardResponse,
       stimulus: jsPsych.timelineVariable("fixation"),
       choices: "NO_KEYS",
@@ -161,21 +161,21 @@ fixation_duration: 500}];
       },
     };
     
-    const cola_timeline = {
+    const colafnkfns_timeline = {
     type: consentPlugin, consent_text: jsPsych.timelineVariable("consent_text"),
     data: {
       
     },};
     
-    const cola_procedure = {
+    const colafnkfns_procedure = {
     timeline: 
-    [cola_fixation, cola_timeline],
-    timeline_variables: test_stimuli_cola,
+    [colafnkfns_fixation, colafnkfns_timeline],
+    timeline_variables: test_stimuli_colafnkfns,
     repetitions: 1,
     randomize_order: false,
     
     };
-    timeline.push(cola_procedure);
+    timeline.push(colafnkfns_procedure);
   
 
 jsPsych.run(timeline);

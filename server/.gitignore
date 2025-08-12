@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+plugins
+plugins-to-refactor
+experiment.html
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
