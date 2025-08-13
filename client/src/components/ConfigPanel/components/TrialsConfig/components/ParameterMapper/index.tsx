@@ -80,11 +80,14 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
 
   const handleHtmlChange = (htmlValue: string) => {
     if (currentHtmlKey) {
+      const param = parameters.find((p) => p.key === currentHtmlKey);
+      const isHtmlArray = param?.type === "html_string_array";
+
       setColumnMapping((prev) => ({
         ...prev,
         [currentHtmlKey]: {
           source: "typed",
-          value: htmlValue,
+          value: isHtmlArray ? [htmlValue] : htmlValue,
         },
       }));
     }
@@ -238,52 +241,82 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                   ) : type.endsWith("_array") &&
                     key !== "calibration_points" &&
                     key !== "validation_points" ? (
-                    <input
-                      type="text"
-                      className="w-full p-2 border rounded mt-2"
-                      placeholder={`Comma-separated values for ${label.toLowerCase()}`}
-                      value={
-                        typeof entry.value === "string"
-                          ? entry.value
-                          : Array.isArray(entry.value)
-                            ? entry.value.join(", ")
-                            : ""
-                      }
-                      onChange={(e) => {
-                        handleTypedValueChange(e.target.value);
-                      }}
-                      onBlur={(e) => {
-                        const input = e.target.value.trim();
-                        const rawItems = input
-                          .split(",")
-                          .map((item) => item.trim())
-                          .filter((item) => item.length > 0);
+                    // Verificar si es html_string_array para usar el modal HTML
+                    type === "html_string_array" ? (
+                      <>
+                        <div className="mt-2 flex items-center gap-2">
+                          <input
+                            type="text"
+                            className="flex-1 p-2 border rounded bg-gray-100"
+                            value={
+                              Array.isArray(entry.value) &&
+                              entry.value.length > 0 &&
+                              typeof entry.value[0] === "string"
+                                ? entry.value[0].substring(0, 50) +
+                                  (entry.value[0].length > 50 ? "..." : "")
+                                : ""
+                            }
+                            readOnly
+                            placeholder="Click edit to add HTML content (array)"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => openHtmlModal(key)}
+                            className="px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 flex items-center gap-1 transition-colors"
+                          >
+                            <BiEdit size={16} />
+                            Edit HTML Array
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <input
+                        type="text"
+                        className="w-full p-2 border rounded mt-2"
+                        placeholder={`Comma-separated values for ${label.toLowerCase()}`}
+                        value={
+                          typeof entry.value === "string"
+                            ? entry.value
+                            : Array.isArray(entry.value)
+                              ? entry.value.join(", ")
+                              : ""
+                        }
+                        onChange={(e) => {
+                          handleTypedValueChange(e.target.value);
+                        }}
+                        onBlur={(e) => {
+                          const input = e.target.value.trim();
+                          const rawItems = input
+                            .split(",")
+                            .map((item) => item.trim())
+                            .filter((item) => item.length > 0);
 
-                        const baseType = type.replace(/_array$/, "");
+                          const baseType = type.replace(/_array$/, "");
 
-                        const castedArray = rawItems.map((item) => {
-                          switch (baseType) {
-                            case "number":
-                            case "int":
-                            case "float":
-                              if (item === "" || isNaN(Number(item))) {
+                          const castedArray = rawItems.map((item) => {
+                            switch (baseType) {
+                              case "number":
+                              case "int":
+                              case "float":
+                                if (item === "" || isNaN(Number(item))) {
+                                  return item;
+                                }
+                                return Number(item);
+                              case "boolean":
+                              case "bool":
+                                const lower = item.toLowerCase();
+                                if (lower === "true") return true;
+                                if (lower === "false") return false;
                                 return item;
-                              }
-                              return Number(item);
-                            case "boolean":
-                            case "bool":
-                              const lower = item.toLowerCase();
-                              if (lower === "true") return true;
-                              if (lower === "false") return false;
-                              return item;
-                            default:
-                              return item;
-                          }
-                        });
+                              default:
+                                return item;
+                            }
+                          });
 
-                        handleTypedValueChange(castedArray);
-                      }}
-                    />
+                          handleTypedValueChange(castedArray);
+                        }}
+                      />
+                    )
                   ) : (type.endsWith("_array") &&
                       key === "calibration_points") ||
                     key === "validation_points" ? (
@@ -477,11 +510,22 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
       >
         {currentHtmlKey && (
           <HtmlMapper
-            value={
-              typeof columnMapping[currentHtmlKey]?.value === "string"
-                ? columnMapping[currentHtmlKey].value
-                : ""
-            }
+            value={(() => {
+              const param = parameters.find((p) => p.key === currentHtmlKey);
+              const currentValue = columnMapping[currentHtmlKey]?.value;
+
+              // Si es html_string_array, extraer el primer elemento del array
+              if (param?.type === "html_string_array") {
+                return Array.isArray(currentValue) &&
+                  currentValue.length > 0 &&
+                  typeof currentValue[0] === "string"
+                  ? currentValue[0]
+                  : "";
+              }
+
+              // Si es html_string normal, usar directamente
+              return typeof currentValue === "string" ? currentValue : "";
+            })()}
             onChange={handleHtmlChange}
             placeholder={`Enter HTML content for ${parameters.find((p) => p.key === currentHtmlKey)?.label?.toLowerCase()}`}
           />

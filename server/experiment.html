@@ -148,34 +148,48 @@ const welcome = {
 timeline.push(welcome);
 
 
-    const test_stimuli_afa = [{consent_text: "<p style=\"text-align: left;\"><font size=\"4\"><b>nkkg</b></font></p>",
-fixation: "4",
-fixation_duration: 500}];
-      const afa_fixation = {
-      type: jsPsychHtmlKeyboardResponse,
-      stimulus: jsPsych.timelineVariable("fixation"),
-      choices: "NO_KEYS",
-      trial_duration: jsPsych.timelineVariable("fixation_duration"),
-      data: {
-        task: "fixation",
-      },
-    };
-    
-    const afa_timeline = {
-    type: consentPlugin, consent_text: jsPsych.timelineVariable("consent_text"),
+    const test_stimuli_afarlvfsknñdlsm = [{pages: ["<div style=\"text-align: center;\"><span style=\"font-size: 11pt;\">Hlkbfckwrv</span></div><div>rvljbeñvev</div><div style=\"text-align: center;\">etbljbelt</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><img src=\"https://res.cloudinary.com/dksfewgts/image/upload/v1750266938/img/armadillo.png\"></div>"]}];
+    const afarlvfsknñdlsm_timeline = {
+    type: jsPsychInstructions, pages: jsPsych.timelineVariable("pages"),
     data: {
-      
+      view_history: "view_history",
+rt: "rt",
     },};
     
-    const afa_procedure = {
+    const afarlvfsknñdlsm_procedure = {
     timeline: 
-    [afa_fixation, afa_timeline],
-    timeline_variables: test_stimuli_afa,
+    [afarlvfsknñdlsm_timeline],
+    timeline_variables: test_stimuli_afarlvfsknñdlsm,
     repetitions: 1,
     randomize_order: false,
     
     };
-    timeline.push(afa_procedure);
+    timeline.push(afarlvfsknñdlsm_procedure);
+  
+
+
+    const test_stimuli_sfknwkñ = [{consent_text: "<p>¿Consientes participar en este estudio?</p>",
+yes_label: "Sí",
+no_label: "No",
+goodbye_text: "<p>Gracias por tu tiempo. Puedes cerrar esta ventana.</p>"}];
+    const sfknwkñ_timeline = {
+    type: consentPlugin, consent_text: jsPsych.timelineVariable("consent_text"),
+yes_label: jsPsych.timelineVariable("yes_label"),
+no_label: jsPsych.timelineVariable("no_label"),
+goodbye_text: jsPsych.timelineVariable("goodbye_text"),
+    data: {
+      
+    },};
+    
+    const sfknwkñ_procedure = {
+    timeline: 
+    [sfknwkñ_timeline],
+    timeline_variables: test_stimuli_sfknwkñ,
+    repetitions: 1,
+    randomize_order: false,
+    
+    };
+    timeline.push(sfknwkñ_procedure);
   
 
 jsPsych.run(timeline);
