@@ -39,6 +39,13 @@ app.use(express.static(path.join(__dirname, "plugins"))); // Serve app/ director
 
 // Serve the experiment page
 app.get("/experiment", (req, res) => {
+  // no-cache headers to prevent browser caching
+  res.set({
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    Pragma: "no-cache",
+    Expires: "0",
+    "Last-Modified": new Date().toUTCString(),
+  });
   res.sendFile(path.join(__dirname, "experiment.html"));
 });
 

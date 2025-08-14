@@ -148,48 +148,22 @@ const welcome = {
 timeline.push(welcome);
 
 
-    const test_stimuli_afarlvfsknñdlsm = [{pages: ["<div style=\"text-align: center;\"><span style=\"font-size: 11pt;\">Hlkbfckwrv</span></div><div>rvljbeñvev</div><div style=\"text-align: center;\">etbljbelt</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><img src=\"https://res.cloudinary.com/dksfewgts/image/upload/v1750266938/img/armadillo.png\"></div>"]}];
-    const afarlvfsknñdlsm_timeline = {
-    type: jsPsychInstructions, pages: jsPsych.timelineVariable("pages"),
-    data: {
-      view_history: "view_history",
-rt: "rt",
-    },};
-    
-    const afarlvfsknñdlsm_procedure = {
-    timeline: 
-    [afarlvfsknñdlsm_timeline],
-    timeline_variables: test_stimuli_afarlvfsknñdlsm,
-    repetitions: 1,
-    randomize_order: false,
-    
-    };
-    timeline.push(afarlvfsknñdlsm_procedure);
-  
-
-
-    const test_stimuli_sfknwkñ = [{consent_text: "<p>¿Consientes participar en este estudio?</p>",
-yes_label: "Sí",
-no_label: "No",
-goodbye_text: "<p>Gracias por tu tiempo. Puedes cerrar esta ventana.</p>"}];
-    const sfknwkñ_timeline = {
+    const test_stimuli_New_Trial = [{consent_text: "evkmlekmvf"}];
+    const New_Trial_timeline = {
     type: consentPlugin, consent_text: jsPsych.timelineVariable("consent_text"),
-yes_label: jsPsych.timelineVariable("yes_label"),
-no_label: jsPsych.timelineVariable("no_label"),
-goodbye_text: jsPsych.timelineVariable("goodbye_text"),
     data: {
       
     },};
     
-    const sfknwkñ_procedure = {
+    const New_Trial_procedure = {
     timeline: 
-    [sfknwkñ_timeline],
-    timeline_variables: test_stimuli_sfknwkñ,
+    [New_Trial_timeline],
+    timeline_variables: test_stimuli_New_Trial,
     repetitions: 1,
     randomize_order: false,
     
     };
-    timeline.push(sfknwkñ_procedure);
+    timeline.push(New_Trial_procedure);
   
 
 jsPsych.run(timeline);

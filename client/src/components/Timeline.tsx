@@ -5,6 +5,7 @@ import useTrials from "../hooks/useTrials";
 import useUrl from "../hooks/useUrl";
 import useDevMode from "../hooks/useDevMode";
 import usePlugins from "../hooks/usePlugins";
+import { useExperimentState } from "../hooks/useExpetimentState";
 
 type TimelineProps = {};
 
@@ -20,6 +21,8 @@ function Component({}: TimelineProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const didMount = useRef(false);
+
+  const { incrementVersion } = useExperimentState();
 
   const onAddTrial = (type: string) => {
     // Obtén todos los nombres actuales
@@ -222,6 +225,7 @@ jsPsych.run(timeline);`;
           setSubmitStatus("Experiment ready!");
           // window.alert("Experiment ready!");
           setSubmitStatus("");
+          incrementVersion();
           // window.open(runResult.experimentUrl, "_blank"); // <--- ABRE AUTOMÁTICAMENTE
         } else {
           setSubmitStatus(

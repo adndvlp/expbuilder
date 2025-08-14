@@ -41,7 +41,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
         className="relative bg-white rounded-lg shadow-2xl w-full mx-4 overflow-hidden"
         style={{
           maxWidth: "80vw",
-          maxHeight: "90vh",
+          maxHeight: "100vh",
           zIndex: 1000000,
           position: "relative",
         }}
@@ -60,21 +60,8 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
         </div>
 
         {/* Cuerpo del modal con scroll */}
-        <div
-          className="p-6 overflow-y-auto"
-          style={{ maxHeight: "calc(90vh - 140px)" }}
-        >
+        <div className="p-6 overflow-y-auto" style={{ maxHeight: "100vh" }}>
           {children}
-        </div>
-
-        {/* Footer del modal */}
-        <div className="flex justify-end gap-3 p-4 border-t bg-gray-50">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-          >
-            Done
-          </button>
         </div>
       </div>
     </div>,

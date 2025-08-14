@@ -120,7 +120,7 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
               }}
               className={`word-tab ${!isPreview && !isSourceView ? "word-tab-active" : ""}`}
             >
-              <FaFont className="inline mr-1" /> Inicio
+              <FaFont className="inline mr-1" /> Home
             </button>
             <button
               type="button"
@@ -130,7 +130,7 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
               }}
               className={`word-tab ${isPreview ? "word-tab-active" : ""}`}
             >
-              <FaEye className="inline mr-1" /> Vista previa
+              <FaEye className="inline mr-1" /> Preview
             </button>
             <button
               type="button"
@@ -150,30 +150,30 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
           <div className="word-ribbon">
             {/* Portapapeles */}
             <div className="ribbon-group">
-              <div className="ribbon-group-header">Portapapeles</div>
+              <div className="ribbon-group-header">Clipboard</div>
               <div className="ribbon-group-content">
                 <div className="ribbon-large-buttons">
-                  <button className="ribbon-large-btn" title="Pegar">
+                  <button className="ribbon-large-btn" title="Paste">
                     <FaPaste className="text-xl" />
-                    <span>Pegar</span>
+                    <span>Paste</span>
                   </button>
                 </div>
                 <div className="ribbon-small-buttons">
                   <button
                     className="ribbon-small-btn"
-                    title="Cortar"
+                    title="Cut"
                     onClick={() => execCommand("cut")}
                   >
                     <FaCut />
-                    <span>Cortar</span>
+                    <span>Cut</span>
                   </button>
                   <button
                     className="ribbon-small-btn"
-                    title="Copiar"
+                    title="Copy"
                     onClick={() => execCommand("copy")}
                   >
                     <FaCopy />
-                    <span>Copiar</span>
+                    <span>Copy</span>
                   </button>
                 </div>
               </div>
@@ -183,7 +183,7 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
 
             {/* Fuente */}
             <div className="ribbon-group">
-              <div className="ribbon-group-header">Fuente</div>
+              <div className="ribbon-group-header">Font</div>
               <div className="ribbon-group-content">
                 <div className="ribbon-font-controls">
                   <select
@@ -217,42 +217,42 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
                   <button
                     onClick={() => execCommand("bold")}
                     className="ribbon-format-btn"
-                    title="Negrita"
+                    title="Bold"
                   >
                     <FaBold />
                   </button>
                   <button
                     onClick={() => execCommand("italic")}
                     className="ribbon-format-btn"
-                    title="Cursiva"
+                    title="Italic"
                   >
                     <FaItalic />
                   </button>
                   <button
                     onClick={() => execCommand("underline")}
                     className="ribbon-format-btn"
-                    title="Subrayado"
+                    title="Underlined"
                   >
                     <FaUnderline />
                   </button>
                   <button
                     onClick={() => execCommand("strikeThrough")}
                     className="ribbon-format-btn"
-                    title="Tachado"
+                    title="Crossed Out"
                   >
                     <FaStrikethrough />
                   </button>
                   <button
                     onClick={() => execCommand("subscript")}
                     className="ribbon-format-btn"
-                    title="Subíndice"
+                    title="Subscript"
                   >
                     <FaSubscript />
                   </button>
                   <button
                     onClick={() => execCommand("superscript")}
                     className="ribbon-format-btn"
-                    title="Superíndice"
+                    title="Superscript"
                   >
                     <FaSuperscript />
                   </button>
@@ -264,7 +264,7 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
                       type="color"
                       onChange={changeTextColor}
                       className="color-picker"
-                      title="Color de texto"
+                      title="Text Color"
                     />
                   </div>
                   <div className="color-picker-wrapper">
@@ -273,7 +273,7 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
                       type="color"
                       onChange={changeBackgroundColor}
                       className="color-picker"
-                      title="Color de resaltado"
+                      title="Highlight Color"
                     />
                   </div>
                 </div>
@@ -284,34 +284,34 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
 
             {/* Párrafo */}
             <div className="ribbon-group">
-              <div className="ribbon-group-header">Párrafo</div>
+              <div className="ribbon-group-header">Paragraph</div>
               <div className="ribbon-group-content">
                 <div className="ribbon-paragraph-row">
                   <button
                     onClick={() => execCommand("insertUnorderedList")}
                     className="ribbon-format-btn"
-                    title="Viñetas"
+                    title="Bullets"
                   >
                     <FaListUl />
                   </button>
                   <button
                     onClick={() => execCommand("insertOrderedList")}
                     className="ribbon-format-btn"
-                    title="Numeración"
+                    title="Numbering"
                   >
                     <FaListOl />
                   </button>
                   <button
                     onClick={() => execCommand("outdent")}
                     className="ribbon-format-btn"
-                    title="Disminuir sangría"
+                    title="Decrease Indent"
                   >
                     <FaOutdent />
                   </button>
                   <button
                     onClick={() => execCommand("indent")}
                     className="ribbon-format-btn"
-                    title="Aumentar sangría"
+                    title="Increase Indent"
                   >
                     <FaIndent />
                   </button>
@@ -320,28 +320,28 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
                   <button
                     onClick={() => execCommand("justifyLeft")}
                     className="ribbon-format-btn"
-                    title="Alinear a la izquierda"
+                    title="Align Left"
                   >
                     <FaAlignLeft />
                   </button>
                   <button
                     onClick={() => execCommand("justifyCenter")}
                     className="ribbon-format-btn"
-                    title="Centrar"
+                    title="Center"
                   >
                     <FaAlignCenter />
                   </button>
                   <button
                     onClick={() => execCommand("justifyRight")}
                     className="ribbon-format-btn"
-                    title="Alinear a la derecha"
+                    title="Align Right"
                   >
                     <FaAlignRight />
                   </button>
                   <button
                     onClick={() => execCommand("justifyFull")}
                     className="ribbon-format-btn"
-                    title="Justificar"
+                    title="Justify"
                   >
                     <FaAlignJustify />
                   </button>
@@ -351,9 +351,9 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
 
             <div className="ribbon-separator" />
 
-            {/* Estilos */}
+            {/* Styles */}
             <div className="ribbon-group">
-              <div className="ribbon-group-header">Estilos</div>
+              <div className="ribbon-group-header">Styles</div>
               <div className="ribbon-group-content">
                 <select
                   onChange={formatBlock}
@@ -361,62 +361,62 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
                   defaultValue=""
                 >
                   <option value="p">Normal</option>
-                  <option value="h1">Título 1</option>
-                  <option value="h2">Título 2</option>
-                  <option value="h3">Título 3</option>
-                  <option value="h4">Título 4</option>
-                  <option value="h5">Título 5</option>
-                  <option value="h6">Título 6</option>
+                  <option value="h1">Heading 1</option>
+                  <option value="h2">Heading 2</option>
+                  <option value="h3">Heading 3</option>
+                  <option value="h4">Heading 4</option>
+                  <option value="h5">Heading 5</option>
+                  <option value="h6">Heading 6</option>
                 </select>
               </div>
             </div>
 
             <div className="ribbon-separator" />
 
-            {/* Insertar */}
+            {/* Insert */}
             <div className="ribbon-group">
-              <div className="ribbon-group-header">Insertar</div>
+              <div className="ribbon-group-header">Insert</div>
               <div className="ribbon-group-content">
                 <button
                   onClick={insertLink}
                   className="ribbon-insert-btn"
-                  title="Hipervínculo"
+                  title="Hyperlink"
                 >
                   <FaLink />
-                  <span>Vínculo</span>
+                  <span>Link</span>
                 </button>
                 <button
                   onClick={insertImage}
                   className="ribbon-insert-btn"
-                  title="Imagen"
+                  title="Image"
                 >
                   🖼️
-                  <span>Imagen</span>
+                  <span>Image</span>
                 </button>
               </div>
             </div>
 
             <div className="ribbon-separator" />
 
-            {/* Edición */}
+            {/* Editing */}
             <div className="ribbon-group">
-              <div className="ribbon-group-header">Edición</div>
+              <div className="ribbon-group-header">Editing</div>
               <div className="ribbon-group-content">
                 <button
                   onClick={() => execCommand("undo")}
                   className="ribbon-insert-btn"
-                  title="Deshacer"
+                  title="Undo"
                 >
                   <FaUndo />
-                  <span>Deshacer</span>
+                  <span>Undo</span>
                 </button>
                 <button
                   onClick={() => execCommand("redo")}
                   className="ribbon-insert-btn"
-                  title="Rehacer"
+                  title="Redo"
                 >
                   <FaRedo />
-                  <span>Rehacer</span>
+                  <span>Redo</span>
                 </button>
               </div>
             </div>
@@ -435,7 +435,7 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
               value={sourceCode}
               onChange={handleSourceChange}
               className="word-source-editor"
-              placeholder="Introduce código HTML..."
+              placeholder="Enter HTML code..."
             />
           ) : (
             <div className="word-document">
@@ -463,6 +463,8 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
         }
 
         .word-header {
+          position: sticky;
+          top: 0;
           background: var(--primary-purple);
           color: var(--text-light);
           padding: 0;
@@ -498,6 +500,8 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
         }
 
         .word-ribbon {
+          position: sticky;
+          top: 38px;
           background: var(--neutral-light);
           border-bottom: 1px solid var(--neutral-mid);
           padding: 12px 16px;
