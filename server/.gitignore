@@ -15,6 +15,7 @@ dist-ssr
 plugins
 plugins-to-refactor
 experiment.html
+.DS_Store
 
 # Editor directories and files
 .vscode/*
