@@ -148,11 +148,14 @@ const welcome = {
 timeline.push(welcome);
 
 
-    const test_stimuli_New_Trial = [{consent_text: "evkmlekmvf"}];
+    const test_stimuli_New_Trial = [{pages: ["<div style=\"text-align: center;\">COlaloca</div>"],
+key_forward: "f"}];
     const New_Trial_timeline = {
-    type: consentPlugin, consent_text: jsPsych.timelineVariable("consent_text"),
+    type: jsPsychInstructions, pages: jsPsych.timelineVariable("pages"),
+key_forward: jsPsych.timelineVariable("key_forward"),
     data: {
-      
+      view_history: "view_history",
+rt: "rt",
     },};
     
     const New_Trial_procedure = {
@@ -164,6 +167,33 @@ timeline.push(welcome);
     
     };
     timeline.push(New_Trial_procedure);
+  
+
+
+    const preloadNew_Trial_1 = {
+        type: jsPsychPreload,
+       files: ["https://res.cloudinary.com/dksfewgts/image/upload/v1750266938/img/cofre.png","https://res.cloudinary.com/dksfewgts/image/upload/v1750266938/img/armadillo.png","https://res.cloudinary.com/dksfewgts/image/upload/v1750266938/img/blue.png","https://res.cloudinary.com/dksfewgts/image/upload/v1750266937/img/green.png","https://res.cloudinary.com/dksfewgts/image/upload/v1750266937/img/bmw.png","https://res.cloudinary.com/dksfewgts/image/upload/v1750266937/img/orange.png","https://res.cloudinary.com/dksfewgts/image/upload/v1750266937/img/dis.png"],
+    }
+    timeline.push(preloadNew_Trial_1);
+    
+    const test_stimuli_New_Trial_1 = [{stimulus: "https://res.cloudinary.com/dksfewgts/image/upload/v1750266938/img/cofre.png"}];
+    const New_Trial_1_timeline = {
+    type: jsPsychImageKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
+    data: {
+      stimulus: "stimulus",
+response: "response",
+rt: "rt",
+    },};
+    
+    const New_Trial_1_procedure = {
+    timeline: 
+    [New_Trial_1_timeline],
+    timeline_variables: test_stimuli_New_Trial_1,
+    repetitions: 1,
+    randomize_order: false,
+    
+    };
+    timeline.push(New_Trial_1_procedure);
   
 
 jsPsych.run(timeline);

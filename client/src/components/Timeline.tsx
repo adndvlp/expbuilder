@@ -171,6 +171,7 @@ jsPsych.run(timeline);`;
       setIsSubmitting(true);
 
       try {
+        const generatedCode = generateExperiment();
         if (!isDevMode) {
           setSubmitStatus("Saving configuration...");
           const generatedCode = generateExperiment();
@@ -194,7 +195,6 @@ jsPsych.run(timeline);`;
           const result = await response.json();
           if (!result.success) {
             setSubmitStatus("Failed to save configuration.");
-
             setIsSubmitting(false);
             return;
           }
@@ -208,7 +208,10 @@ jsPsych.run(timeline);`;
         const runResponse = await fetch("/api/run-experiment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ usePlugins: plugins.length > 0 }),
+          body: JSON.stringify({
+            usePlugins: plugins.length > 0,
+            generatedCode,
+          }),
           credentials: "include",
           mode: "cors",
         });

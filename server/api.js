@@ -39,18 +39,7 @@ app.use(express.static(path.join(__dirname, "plugins"))); // Serve app/ director
 
 // Serve the experiment page
 app.get("/experiment", (req, res) => {
-  // no-cache headers to prevent browser caching
-  res.set({
-    "Cache-Control": "no-cache, no-store, must-revalidate",
-    Pragma: "no-cache",
-    Expires: "0",
-    "Last-Modified": new Date().toUTCString(),
-  });
   res.sendFile(path.join(__dirname, "experiment.html"));
-});
-
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
 });
 
 const metadataPath = path.resolve(__dirname, "metadata");
@@ -325,7 +314,9 @@ app.post("/api/save-config", async (req, res) => {
 
 app.post("/api/run-experiment", async (req, res) => {
   try {
-    const usePlugins = req.body?.usePlugins;
+    const { usePlugins, generatedCode } = req.body;
+
+    // const usePlugins = req.body?.usePlugins;
 
     let plugins = [];
     if (usePlugins) {
@@ -375,14 +366,25 @@ app.post("/api/run-experiment", async (req, res) => {
     }
 
     // Inserta el código generado (desde config)
-    const configDoc = await Config.findOne({});
-    if (!configDoc || !configDoc.data || !configDoc.data.generatedCode) {
+    // const configDoc = await Config.findOne({});
+    // if (!configDoc || !configDoc.data || !configDoc.data.generatedCode) {
+    //   return res
+    //     .status(400)
+    //     .json({ success: false, error: "No generated code found in config" });
+    // }
+
+    // $("body").append(
+    //   `<script id="generated-script">\n${configDoc.data.generatedCode}\n</script>`
+    // );
+    // Usa el código pasado en el body en lugar de leerlo de la BD
+    if (!generatedCode) {
       return res
         .status(400)
-        .json({ success: false, error: "No generated code found in config" });
+        .json({ success: false, error: "No generated code provided" });
     }
+
     $("body").append(
-      `<script id="generated-script">\n${configDoc.data.generatedCode}\n</script>`
+      `<script id="generated-script">\n${generatedCode}\n</script>`
     );
 
     // Guarda el HTML modificado

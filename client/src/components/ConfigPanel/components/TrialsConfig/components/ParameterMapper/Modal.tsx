@@ -40,7 +40,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
       <div
         className="relative bg-white rounded-lg shadow-2xl w-full mx-4 overflow-hidden"
         style={{
-          maxWidth: "80vw",
+          maxWidth: "90vw",
           maxHeight: "100vh",
           zIndex: 1000000,
           position: "relative",
