@@ -91,7 +91,7 @@
     
   
 
-<script id="generated-script">
+<script src="/plugins/plugin-colon.js" id="plugin-script-0"></script><script src="/plugins/plugin-probable.js" id="plugin-script-1"></script><script id="generated-script">
 
 
 const trialSessionId =
@@ -148,19 +148,11 @@ const welcome = {
 timeline.push(welcome);
 
 
-    const test_stimuli_Consentimiento = [{img_left: "mckmfc",
-img_right: "evtlkmetv"}];
+    const test_stimuli_Consentimiento = [{consent_text: "Que tranza pero"}];
     const Consentimiento_timeline = {
-    type: jsPsychProbabilisticSelectionTask, img_left: jsPsych.timelineVariable("img_left"),
-img_right: jsPsych.timelineVariable("img_right"),
+    type: jsPsychNuevo, consent_text: jsPsych.timelineVariable("consent_text"),
     data: {
-      key_press: "key_press",
-side_press: "side_press",
-rt: "rt",
-correct: "correct",
-rewarded: "rewarded",
-trial_score: "trial_score",
-total_score: "total_score",
+      
     },};
     
     const Consentimiento_procedure = {
@@ -175,42 +167,28 @@ total_score: "total_score",
   
 
 
-    const test_stimuli_Trial_1 = [{stimulus: "eglkmt",
-button_html: function(r,s){return`<button class="jspsych-btn">${r}</button>`},
-trial_duration: null,
-button_layout: "grid",
-grid_rows: 1,
-grid_columns: null,
-response_ends_trial: true,
-trial_ends_after_audio: false,
-response_allowed_while_playing: true,
-enable_button_after: 0}];
-    const Trial_1_timeline = {
-    type: Plugin231, stimulus: jsPsych.timelineVariable("stimulus"),
-button_html: jsPsych.timelineVariable("button_html"),
-trial_duration: jsPsych.timelineVariable("trial_duration"),
-button_layout: jsPsych.timelineVariable("button_layout"),
-grid_rows: jsPsych.timelineVariable("grid_rows"),
-grid_columns: jsPsych.timelineVariable("grid_columns"),
-response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
-trial_ends_after_audio: jsPsych.timelineVariable("trial_ends_after_audio"),
-response_allowed_while_playing: jsPsych.timelineVariable("response_allowed_while_playing"),
-enable_button_after: jsPsych.timelineVariable("enable_button_after"),
+    const test_stimuli_New_Trial = [{}];
+    const New_Trial_timeline = {
+    type: jsPsychProbable, 
     data: {
-      stimulus: "stimulus",
+      key_press: "key_press",
+side_press: "side_press",
 rt: "rt",
-response: "response",
+correct: "correct",
+rewarded: "rewarded",
+trial_score: "trial_score",
+total_score: "total_score",
     },};
     
-    const Trial_1_procedure = {
+    const New_Trial_procedure = {
     timeline: 
-    [Trial_1_timeline],
-    timeline_variables: test_stimuli_Trial_1,
+    [New_Trial_timeline],
+    timeline_variables: test_stimuli_New_Trial,
     repetitions: 1,
     randomize_order: false,
     
     };
-    timeline.push(Trial_1_procedure);
+    timeline.push(New_Trial_procedure);
   
 
 jsPsych.run(timeline);

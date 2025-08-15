@@ -43,7 +43,7 @@ const PluginEditor: React.FC = () => {
 
   // Add empty plugin
   const handleAddPlugin = () => {
-    const name = `Plugin ${plugins.length + 1}`;
+    const name = `plugin-${plugins.length + 1}`;
     setPlugins([
       ...plugins,
       {
