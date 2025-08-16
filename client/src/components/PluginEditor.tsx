@@ -124,7 +124,9 @@ const PluginEditor: React.FC = () => {
     >
       {/* Multi-file upload */}
       <div className="form-group">
-        <label htmlFor="jsFiles">Write or Upload JS file(s)</label>
+        <label htmlFor="jsFiles" style={{ color: "var(--text-dark)" }}>
+          Write or Upload JS file(s)
+        </label>
         <input
           id="jsFiles"
           type="file"

@@ -91,7 +91,7 @@
     
   
 
-<script src="/plugins/plugin-colon.js" id="plugin-script-0"></script><script src="/plugins/plugin-probable.js" id="plugin-script-1"></script><script id="generated-script">
+<script id="generated-script">
 
 
 const trialSessionId =
@@ -103,7 +103,7 @@ const trialSessionId =
 
   const jsPsych = initJsPsych({
     
-  
+  extensions: [],
 
   on_data_update: function(data) {
 
@@ -148,36 +148,11 @@ const welcome = {
 timeline.push(welcome);
 
 
-    const test_stimuli_Consentimiento = [{consent_text: "Que tranza pero"}];
-    const Consentimiento_timeline = {
-    type: jsPsychNuevo, consent_text: jsPsych.timelineVariable("consent_text"),
+    const test_stimuli_New_Trial = [{consent_text: "Cola?"}];
+    const New_Trial_timeline = {
+    type: jsPsychComo, consent_text: jsPsych.timelineVariable("consent_text"),
     data: {
       
-    },};
-    
-    const Consentimiento_procedure = {
-    timeline: 
-    [Consentimiento_timeline],
-    timeline_variables: test_stimuli_Consentimiento,
-    repetitions: 1,
-    randomize_order: false,
-    
-    };
-    timeline.push(Consentimiento_procedure);
-  
-
-
-    const test_stimuli_New_Trial = [{}];
-    const New_Trial_timeline = {
-    type: jsPsychProbable, 
-    data: {
-      key_press: "key_press",
-side_press: "side_press",
-rt: "rt",
-correct: "correct",
-rewarded: "rewarded",
-trial_score: "trial_score",
-total_score: "total_score",
     },};
     
     const New_Trial_procedure = {
