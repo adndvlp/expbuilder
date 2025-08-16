@@ -112,22 +112,24 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
               }),
               menu: (base) => ({
                 ...base,
-                backgroundColor: "black",
+                backgroundColor: "var(--primary-purple)",
                 borderRadius: "6px",
                 boxShadow: "0 2px 8px rgba(61,146,180,0.08)",
               }),
+
+              // Placeholder
               option: (base, state) => ({
                 ...base,
                 backgroundColor: state.isFocused
                   ? "var(--gold)"
                   : "var(--light-purple)",
                 color: state.isFocused
-                  ? "var(--text-dark)"
+                  ? "var(--text-light)" // Text color when placeholder
                   : "var(--text-light)",
                 fontWeight: state.isSelected ? 600 : 400,
                 "&:hover": {
                   backgroundColor: "var(--gold)",
-                  color: "var(--text-dark)",
+                  color: "var(--text-light)", // Text color when placeholder
                 },
               }),
               placeholder: (base) => ({

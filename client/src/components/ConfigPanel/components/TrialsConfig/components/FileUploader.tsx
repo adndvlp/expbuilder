@@ -34,8 +34,13 @@ const FileUploader = ({
   };
 
   return (
-    <div className="mb-4 p-4 border rounded bg-gray-50">
-      <h4 className="font-bold mb-3">File</h4>
+    <div
+      className="mb-4 p-4 rounded bg-gray-50"
+      style={{
+        border: "1px solid",
+      }}
+    >
+      <h4 className="font-bold mb-3">Files</h4>
       <div className="mb-4">
         <label className="block mb-1 font-medium">Upload single file:</label>
         <input
@@ -44,6 +49,7 @@ const FileUploader = ({
           type="file"
           accept={accept}
           onChange={onSingleFileUpload}
+          style={{ borderColor: "var(--text-dark)" }}
         />
         <label className="block mt-2 mb-1 font-medium">
           Upload file folder:
@@ -54,26 +60,39 @@ const FileUploader = ({
           accept={accept}
           multiple
           onChange={onFolderUpload}
+          style={{ borderColor: "var(--text-dark)" }}
         />
         <div className="mt-4">
           {uploadedFiles.length > 0 && (
             <>
-              <h4
-                className="mb-4 font-bold text-center"
-                style={{ color: "#fff" }}
-              >
-                Uploaded files
-              </h4>
+              <h4 className="mb-4 text-center">Uploaded files</h4>
               <ul style={{ padding: 0, margin: 0 }}>
                 {uploadedFiles.map((file) => (
+                  // <li
+                  //   key={file.name}
+                  //   style={{
+                  //     listStyle: "none",
+                  //     display: "flex",
+                  //     alignItems: "center",
+                  //     background: "#3e7d96",
+                  //     border: "1px solid #f1c40f",
+                  //     borderRadius: "6px",
+                  //     padding: "8px 12px",
+                  //     marginBottom: "8px",
+                  //     fontSize: "15px",
+                  //     fontWeight: 500,
+                  //     color: "#fff",
+                  //     boxShadow: "0 1px 3px rgba(0,0,0,0.18)",
+                  //   }}
+                  // >
                   <li
                     key={file.name}
                     style={{
                       listStyle: "none",
                       display: "flex",
                       alignItems: "center",
-                      background: "#111",
-                      border: "1px solid #444",
+                      background: "var(--neutral-light)",
+                      border: "1px solid var(--text-dark)",
                       borderRadius: "6px",
                       padding: "8px 12px",
                       marginBottom: "8px",
@@ -89,7 +108,7 @@ const FileUploader = ({
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
-                        color: "#fff",
+                        color: "var(--text-dark)",
                         cursor: "pointer",
                       }}
                       // title={file.name.split("/").pop()}
@@ -109,7 +128,7 @@ const FileUploader = ({
                       style={{
                         marginLeft: "12px",
                         background: "transparent",
-                        color: "#FFD700",
+                        color: "var(--text-dark)",
                         border: "none",
                         borderRadius: "50%",
                         width: "26px",

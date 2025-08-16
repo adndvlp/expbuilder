@@ -140,7 +140,7 @@ const PluginEditor: React.FC = () => {
 
       <button
         className="action-button"
-        style={{ marginBottom: 16 }}
+        style={{ marginBottom: 16, color: "white" }}
         onClick={handleAddPlugin}
       >
         + Write plugin

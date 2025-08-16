@@ -551,10 +551,9 @@ jsPsych.run(timeline);`;
             style={{
               margin: "16px 0",
               padding: "12px",
-              backgroundColor: "#3e7d96",
               borderRadius: "8px",
               border: "none",
-              color: "white",
+              color: "var(--text-dark)",
             }}
           >
             <FileUploader
