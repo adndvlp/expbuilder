@@ -103,7 +103,7 @@ const trialSessionId =
 
   const jsPsych = initJsPsych({
     
-  
+  extensions: [{type: jsPsychExtensionWebgazer}],
 
   on_data_update: function(data) {
 
@@ -268,17 +268,11 @@ rt: "rt",
   
 
 
-    const test_stimuli_probabilistic = [{choices: ["m"]}];
+    const test_stimuli_probabilistic = [{}];
     const probabilistic_timeline = {
-    type: jsPsychProbabilisticSelectionTask, choices: jsPsych.timelineVariable("choices"),
+    type: jsPsychCloze, 
     data: {
-      key_press: "key_press",
-side_press: "side_press",
-rt: "rt",
-correct: "correct",
-rewarded: "rewarded",
-trial_score: "trial_score",
-total_score: "total_score",
+      response: "response",
     },};
     
     const probabilistic_procedure = {
