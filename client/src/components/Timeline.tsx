@@ -131,10 +131,11 @@ const trialSessionId =
 
   //     isFirstSave = false;
   // },
-  
-  on_finish: function() {
-    jsPsych.data.displayData();
-  },
+
+  // Uncomment to see the json results after finishing a sesssion experiment
+  // on_finish: function() {
+  //   jsPsych.data.displayData();
+  // },
 });
 
 const timeline = [];

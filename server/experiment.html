@@ -91,7 +91,7 @@
     
   
 
-<script id="generated-script">
+<script src="/plugins/plugin-consent.js" id="plugin-script-0"></script><script id="generated-script">
 
 
 const trialSessionId =
@@ -103,7 +103,7 @@ const trialSessionId =
 
   const jsPsych = initJsPsych({
     
-  extensions: [],
+  extensions: [{type: jsPsychExtensionWebgazer}],
 
   on_data_update: function(data) {
 
@@ -131,10 +131,11 @@ const trialSessionId =
 
   //     isFirstSave = false;
   // },
-  
-  on_finish: function() {
-    jsPsych.data.displayData();
-  },
+
+  // Uncomment to see the json results after finishing a sesssion experiment
+  // on_finish: function() {
+  //   jsPsych.data.displayData();
+  // },
 });
 
 const timeline = [];
@@ -148,9 +149,9 @@ const welcome = {
 timeline.push(welcome);
 
 
-    const test_stimuli_New_Trial = [{consent_text: "Cola?"}];
+    const test_stimuli_New_Trial = [{}];
     const New_Trial_timeline = {
-    type: jsPsychComo, consent_text: jsPsych.timelineVariable("consent_text"),
+    type: jsPsychConsent, 
     data: {
       
     },};
@@ -164,6 +165,61 @@ timeline.push(welcome);
     
     };
     timeline.push(New_Trial_procedure);
+  
+
+
+    const preloadNew_Trial_1 = {
+        type: jsPsychPreload,
+       files: ["https://res.cloudinary.com/dksfewgts/image/upload/v1750266938/img/cofre.png","https://res.cloudinary.com/dksfewgts/image/upload/v1750266938/img/armadillo.png","https://res.cloudinary.com/dksfewgts/image/upload/v1750266938/img/blue.png","https://res.cloudinary.com/dksfewgts/image/upload/v1750266937/img/green.png","https://res.cloudinary.com/dksfewgts/image/upload/v1750266937/img/bmw.png","https://res.cloudinary.com/dksfewgts/image/upload/v1750266937/img/orange.png","https://res.cloudinary.com/dksfewgts/image/upload/v1750266937/img/dis.png"],
+    }
+    timeline.push(preloadNew_Trial_1);
+    
+    const test_stimuli_New_Trial_1 = [{stimulus: "https://res.cloudinary.com/dksfewgts/image/upload/v1750266938/img/cofre.png",
+stimulus_height: 100,
+stimulus_width: 100,
+choices: ["Yes","No"]}];
+    const New_Trial_1_timeline = {
+    type: jsPsychImageButtonResponse, stimulus: jsPsych.timelineVariable("stimulus"),
+stimulus_height: jsPsych.timelineVariable("stimulus_height"),
+stimulus_width: jsPsych.timelineVariable("stimulus_width"),
+choices: jsPsych.timelineVariable("choices"),
+    data: {
+      stimulus: "stimulus",
+response: "response",
+rt: "rt",
+    },};
+    
+    const New_Trial_1_procedure = {
+    timeline: 
+    [New_Trial_1_timeline],
+    timeline_variables: test_stimuli_New_Trial_1,
+    repetitions: 1,
+    randomize_order: false,
+    
+    };
+    timeline.push(New_Trial_1_procedure);
+  
+
+
+    const test_stimuli_New_Trial_2 = [{pages: ["<div style=\"text-align: center;\"><span style=\"font-size: 11pt;\">You can close this tab</span></div>"],
+show_clickable_nav: true}];
+    const New_Trial_2_timeline = {
+    type: jsPsychInstructions, pages: jsPsych.timelineVariable("pages"),
+show_clickable_nav: jsPsych.timelineVariable("show_clickable_nav"),
+    data: {
+      view_history: "view_history",
+rt: "rt",
+    },};
+    
+    const New_Trial_2_procedure = {
+    timeline: 
+    [New_Trial_2_timeline],
+    timeline_variables: test_stimuli_New_Trial_2,
+    repetitions: 1,
+    randomize_order: false,
+    
+    };
+    timeline.push(New_Trial_2_procedure);
   
 
 jsPsych.run(timeline);

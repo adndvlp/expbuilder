@@ -59,7 +59,7 @@ export default function ResultsList() {
                         window.open(`/api/download-session/${s.sessionId}`)
                       }
                     >
-                      Download CSV
+                      CSV
                     </button>
                     <button
                       className="remove-button"

@@ -1,0 +1,22 @@
+{
+  "name": "consent",
+  "parameters": {
+    "consent_text": {
+      "type": "html_string",
+      "default": "<p>¿Do you want to participate on this study?</p>"
+    },
+    "yes_label": {
+      "type": "string",
+      "default": "Yes"
+    },
+    "no_label": {
+      "type": "string",
+      "default": "No"
+    },
+    "goodbye_text": {
+      "type": "html_string",
+      "default": "<p>Thanks for your time. You can close this window.</p>"
+    }
+  },
+  "version": "unknown_version"
+}
