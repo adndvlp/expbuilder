@@ -6,6 +6,8 @@ import useUrl from "../hooks/useUrl";
 import useDevMode from "../hooks/useDevMode";
 import usePlugins from "../hooks/usePlugins";
 import { useExperimentState } from "../hooks/useExpetimentState";
+import FileUploader from "./ConfigPanel/components/TrialsConfig/components/FileUploader";
+import { useFileUpload } from "./ConfigPanel/components/TrialsConfig/hooks/useFileUpload";
 
 type TimelineProps = {};
 
@@ -13,6 +15,9 @@ function Component({}: TimelineProps) {
   const [submitStatus, setSubmitStatus] = useState<string>("");
   const { experimentUrl } = useUrl();
   const [copyStatus, setCopyStatus] = useState<string>("");
+
+  const [draggedItem, setDraggedItem] = useState<number | null>(null);
+  const [dragOverItem, setDragOverItem] = useState<number | null>(null);
 
   const { trials, setTrials, selectedTrial, setSelectedTrial } = useTrials();
   const { isDevMode, code, setCode } = useDevMode();
@@ -23,6 +28,70 @@ function Component({}: TimelineProps) {
   const didMount = useRef(false);
 
   const { incrementVersion } = useExperimentState();
+
+  // For files in devmode
+  const folder = "all";
+  const accept = "audio/*,video/*,image/*";
+
+  const {
+    fileInputRef,
+    folderInputRef,
+    uploadedFiles,
+    handleSingleFileUpload,
+    handleFolderUpload,
+    handleDeleteFile,
+  } = useFileUpload({ folder });
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedItem(index);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverItem(index);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverItem(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+
+    if (draggedItem === null || draggedItem === dropIndex) {
+      setDraggedItem(null);
+      setDragOverItem(null);
+      return;
+    }
+
+    const newTrials = [...trials];
+    const draggedTrial = newTrials[draggedItem];
+
+    // Remove the dragged item
+    newTrials.splice(draggedItem, 1);
+
+    // Insert at the new position
+    let insertIndex;
+    if (dropIndex >= trials.length) {
+      // Si se suelta al final
+      insertIndex = newTrials.length;
+    } else {
+      insertIndex = draggedItem < dropIndex ? dropIndex - 1 : dropIndex;
+    }
+
+    newTrials.splice(insertIndex, 0, draggedTrial);
+
+    setTrials(newTrials);
+    setDraggedItem(null);
+    setDragOverItem(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+    setDragOverItem(null);
+  };
 
   const onAddTrial = (type: string) => {
     // Obtén todos los nombres actuales
@@ -278,7 +347,7 @@ jsPsych.run(timeline);`;
         <img className="logo-img" alt="Logo" />
       </div>
       {/* Trials */}
-      {!isDevMode && (
+      {/* {!isDevMode && (
         <div>
           {trials.map((trial) => (
             <div
@@ -291,6 +360,91 @@ jsPsych.run(timeline);`;
               {trial.name}
             </div>
           ))}
+          <div className="add-trial-button" onClick={() => onAddTrial("Trial")}>
+            +
+          </div>
+        </div>
+      )} */}
+
+      {!isDevMode && (
+        <div>
+          {trials.map((trial, index) => (
+            <div key={trial.id} style={{ position: "relative" }}>
+              <div
+                className={`timeline-item ${
+                  selectedTrial && selectedTrial.id === trial.id
+                    ? "selected"
+                    : ""
+                } ${draggedItem === index ? "dragging" : ""} ${
+                  dragOverItem === index ? "drag-over" : ""
+                }`}
+                onClick={() => onSelectTrial(trial)}
+                draggable
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, index)}
+                onDragEnd={handleDragEnd}
+                style={{
+                  cursor: draggedItem === index ? "grabbing" : "grab",
+                  position: "relative",
+                  opacity: draggedItem === index ? 0.7 : 1,
+                  transform:
+                    dragOverItem === index ? "translateY(2px)" : "none",
+                  borderTop:
+                    dragOverItem === index ? "2px solid #d4af37" : "none",
+                }}
+              >
+                {/* Flechas dentro del trial cuando está en dragging */}
+                {draggedItem === index && (
+                  <>
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "5px",
+                        right: "8px",
+                        width: 0,
+                        height: 0,
+                        borderLeft: "6px solid transparent",
+                        borderRight: "6px solid transparent",
+                        borderBottom: "8px solid var(--gold)",
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: "absolute",
+                        bottom: "5px",
+                        right: "8px",
+                        width: 0,
+                        height: 0,
+                        borderLeft: "6px solid transparent",
+                        borderRight: "6px solid transparent",
+                        borderTop: "8px solid var(--gold)",
+                      }}
+                    />
+                  </>
+                )}
+                {trial.name}
+              </div>
+            </div>
+          ))}
+
+          {/* Zona de drop al final */}
+          <div
+            className={`drop-zone-end ${dragOverItem === trials.length ? "drag-over" : ""}`}
+            onDragOver={(e) => handleDragOver(e, trials.length)}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleDrop(e, trials.length)}
+            style={{
+              height: "20px",
+              // backgroundColor:
+              //   dragOverItem === trials.length ? "black" : "transparent",
+              borderBottom:
+                dragOverItem === trials.length ? "2px solid #d4af37" : "none",
+              marginBottom: "8px",
+              transition: "all 0.2s ease",
+            }}
+          />
           <div className="add-trial-button" onClick={() => onAddTrial("Trial")}>
             +
           </div>
@@ -392,6 +546,29 @@ jsPsych.run(timeline);`;
             </p>
           )}
         </div>
+
+        {isDevMode && (
+          <div
+            style={{
+              margin: "16px 0",
+              padding: "12px",
+              backgroundColor: "#3e7d96",
+              borderRadius: "8px",
+              border: "none",
+              color: "white",
+            }}
+          >
+            <FileUploader
+              uploadedFiles={uploadedFiles}
+              onSingleFileUpload={handleSingleFileUpload}
+              onFolderUpload={handleFolderUpload}
+              onDeleteFile={handleDeleteFile}
+              fileInputRef={fileInputRef}
+              folderInputRef={folderInputRef}
+              accept={accept}
+            />
+          </div>
+        )}
 
         {/* Run Experiment Button */}
 

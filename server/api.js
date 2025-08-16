@@ -100,23 +100,81 @@ app.post("/api/upload-files-folder", upload.array("files"), (req, res) => {
   res.json({ fileUrls });
 });
 
+// app.get("/api/list-files/:folder", async (req, res) => {
+//   const folder = req.params.folder;
+//   let resourceType = "image";
+//   if (folder === "aud") resourceType = "video"; // audio but cloudinary treats it as video
+//   if (folder === "vid") resourceType = "video";
+//   try {
+//     const result = await cloudinary.search
+//       .expression(`resource_type:${resourceType} AND folder:${folder}`)
+//       .sort_by("created_at", "desc")
+//       .max_results(100)
+//       .execute();
+//     const files = result.resources.map((file) => ({
+//       name: `${folder}/${file.public_id.replace(/^.*?\//, "")}${
+//         file.format ? "." + file.format : ""
+//       }`,
+//       url: file.secure_url,
+//     }));
+//     res.json({ files });
+//   } catch (err) {
+//     res.status(500).json({ files: [], error: err.message });
+//   }
+// });
+
 app.get("/api/list-files/:folder", async (req, res) => {
   const folder = req.params.folder;
-  let resourceType = "image";
-  if (folder === "aud") resourceType = "video"; // audio but cloudinary treats it as video
-  if (folder === "vid") resourceType = "video";
+
   try {
-    const result = await cloudinary.search
-      .expression(`resource_type:${resourceType} AND folder:${folder}`)
-      .sort_by("created_at", "desc")
-      .max_results(100)
-      .execute();
-    const files = result.resources.map((file) => ({
-      name: `${folder}/${file.public_id.replace(/^.*?\//, "")}${
-        file.format ? "." + file.format : ""
-      }`,
-      url: file.secure_url,
-    }));
+    let files = [];
+
+    if (folder === "all") {
+      // Para "all", buscar en todas las carpetas (img, aud, vid)
+      const folders = ["img", "aud", "vid"];
+
+      for (const currentFolder of folders) {
+        let resourceType = "image";
+        if (currentFolder === "aud") resourceType = "video"; // audio but cloudinary treats it as video
+        if (currentFolder === "vid") resourceType = "video";
+
+        const result = await cloudinary.search
+          .expression(
+            `resource_type:${resourceType} AND folder:${currentFolder}`
+          )
+          .sort_by("created_at", "desc")
+          .max_results(100)
+          .execute();
+
+        const folderFiles = result.resources.map((file) => ({
+          name: `${currentFolder}/${file.public_id.replace(/^.*?\//, "")}${
+            file.format ? "." + file.format : ""
+          }`,
+          url: file.secure_url,
+        }));
+
+        files = files.concat(folderFiles);
+      }
+    } else {
+      // Lógica original para carpetas específicas
+      let resourceType = "image";
+      if (folder === "aud") resourceType = "video"; // audio but cloudinary treats it as video
+      if (folder === "vid") resourceType = "video";
+
+      const result = await cloudinary.search
+        .expression(`resource_type:${resourceType} AND folder:${folder}`)
+        .sort_by("created_at", "desc")
+        .max_results(100)
+        .execute();
+
+      files = result.resources.map((file) => ({
+        name: `${folder}/${file.public_id.replace(/^.*?\//, "")}${
+          file.format ? "." + file.format : ""
+        }`,
+        url: file.secure_url,
+      }));
+    }
+
     res.json({ files });
   } catch (err) {
     res.status(500).json({ files: [], error: err.message });

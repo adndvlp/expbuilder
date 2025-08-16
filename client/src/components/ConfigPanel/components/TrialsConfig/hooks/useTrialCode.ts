@@ -43,6 +43,132 @@ export function useTrialCode({
   const activeParameters = parameters.filter(
     (p) => columnMapping[p.key]?.source !== "none"
   );
+  // const mappedJson = (() => {
+  //   const mapRow = (row?: Record<string, any>, idx?: number) => {
+  //     const result: Record<string, any> = {};
+
+  //     activeParameters.forEach((param) => {
+  //       const { key } = param;
+
+  //       const mediaKeys = ["stimulus", "images", "audio", "video"];
+
+  //       if (mediaKeys.includes(key) && needsFileUpload) {
+  //         const value = getColumnValue(columnMapping[key], row, undefined, key);
+
+  //         let stimulusValue;
+  //         if (Array.isArray(value)) {
+  //           // Si es un array, procesar cada valor individualmente
+  //           stimulusValue = value.map((v) => {
+  //             if (v && !/^https?:\/\//.test(v)) {
+  //               const found = filteredFiles.find((f) => f.name.endsWith(v));
+  //               return found ? found.url : v;
+  //             } else {
+  //               return v ?? "";
+  //             }
+  //           });
+  //         } else {
+  //           // let val: string[];
+  //           // val = value.split(", ");
+  //           // stimulusValue = val.forEach((v) => {
+  //           //   if (v && !/^https?:\/\//.test(v)) {
+  //           //     const found = filteredFiles.find((f) => f.name.endsWith(v));
+  //           //     return found ? found.url : v;
+  //           //   } else {
+  //           //     return v ?? "";
+  //           //   }
+  //           // });
+  //           if (value && !/^https?:\/\//.test(value)) {
+  //             const found = filteredFiles.find((f) => f.name.endsWith(value));
+  //             stimulusValue = found ? found.url : value;
+  //           } else {
+  //             stimulusValue = value ?? filteredFiles[idx ?? 0]?.url ?? "";
+  //           }
+  //         }
+
+  //         // let stimulusValue;
+  //         // if (Array.isArray(val)) {
+  //         //   // Si es un array, procesar cada valor individualmente
+  //         //   stimulusValue = val.map((v) => {
+  //         //     if (v && !/^https?:\/\//.test(v)) {
+  //         //       const found = filteredFiles.find((f) => f.name.endsWith(v));
+  //         //       return found ? found.url : v;
+  //         //     } else {
+  //         //       return v ?? "";
+  //         //     }
+  //         //   });
+  //         // } else {
+  //         //   if (val && !/^https?:\/\//.test(val)) {
+  //         //     const found = filteredFiles.find((f) => f.name.endsWith(val));
+  //         //     stimulusValue = found ? found.url : val;
+  //         //   } else {
+  //         //     stimulusValue = val ?? filteredFiles[idx ?? 0]?.url ?? "";
+  //         //   }
+  //         // }
+
+  //         // Si es video, envolver en array
+  //         // result[key] = isVideoPlugin ? [stimulusValue] : stimulusValue;
+  //         result[key] = stimulusValue;
+  //         // console.log(result);
+  //       } else {
+  //         result[key] = getColumnValue(columnMapping[key], row, undefined, key);
+  //       }
+  //     });
+
+  //     if (includeFixation) {
+  //       fieldGroups.fixation.forEach((fixParam) => {
+  //         result[fixParam.key] = getColumnValue(
+  //           columnMapping[fixParam.key],
+  //           row,
+  //           fixParam.default,
+  //           fixParam.key
+  //         );
+  //       });
+  //     }
+
+  //     return result;
+  //   };
+
+  //   // let stimulusValue: string = "";
+  //   // let values: string[] = [""];
+  //   // let urls: string[] = [];
+  //   // let names: string[] = [];
+  //   // let value = "";
+
+  //   // activeParameters.forEach((param) => {
+  //   //   if (param.key === "stimulus" && filteredFiles.length > 0) {
+  //   //     stimulusValue = getColumnValue(columnMapping[param.key]);
+  //   //     value = stimulusValue;
+  //   //     values = stimulusValue.split(", ");
+
+  //   //     values.forEach((val) => {
+  //   //       if (val && !/^https?:\/\//.test(val)) {
+  //   //         const foundFile = filteredFiles.find((f) => f.name.endsWith(val));
+  //   //         if (foundFile) {
+  //   //           urls.push(foundFile.url);
+  //   //           names.push(foundFile.name);
+  //   //         } else {
+  //   //           urls.push(val);
+  //   //         }
+  //   //       } else {
+  //   //         urls.push(val ?? "");
+  //   //       }
+  //   //     });
+  //   //   }
+  //   // });
+  //   // console.log(value);
+  //   // console.log(urls);
+
+  //   if (csvJson.length > 0) {
+  //     return csvJson.map((row, idx) => mapRow(row, idx));
+  //   }
+  //   // else if (filteredFiles.length > 0 && needsFileUpload) {
+  //   //   return filteredFiles.map((_, idx) => mapRow(undefined, idx));
+  //   // }
+  //   else {
+  //     return [mapRow()];
+  //   }
+  // })();
+
   const mappedJson = (() => {
     const mapRow = (row?: Record<string, any>, idx?: number) => {
       const result: Record<string, any> = {};
@@ -50,14 +176,36 @@ export function useTrialCode({
       activeParameters.forEach((param) => {
         const { key } = param;
 
-        const mediaKeys = ["stimulus", "images", "audio", "video"];
+        // const mediaKeys = ["stimulus", "images", "audio", "video"];
+        const isMediaParameter = (key: string) => {
+          const keyLower = key.toLowerCase();
+          return (
+            keyLower.includes("img") ||
+            keyLower.includes("image") ||
+            keyLower.includes("stimulus") ||
+            keyLower.includes("audio") ||
+            keyLower.includes("video") ||
+            keyLower.includes("sound") ||
+            keyLower.includes("media")
+          );
+        };
 
-        if (mediaKeys.includes(key) && needsFileUpload) {
-          const value = getColumnValue(columnMapping[key], row, undefined, key);
+        if (
+          // mediaKeys.includes(key)
+          isMediaParameter(key) &&
+          needsFileUpload
+        ) {
+          // Si row tiene el valor específico para este parámetro (viene de mockRow), usarlo
+          // Si no, obtener el valor original del columnMapping
+          const value =
+            row && row[key] !== undefined
+              ? row[key]
+              : getColumnValue(columnMapping[key], row, undefined, key);
 
           let stimulusValue;
+
           if (Array.isArray(value)) {
-            // Si es un array, procesar cada valor individualmente
+            // Si ya es un array, procesar cada valor individualmente
             stimulusValue = value.map((v) => {
               if (v && !/^https?:\/\//.test(v)) {
                 const found = filteredFiles.find((f) => f.name.endsWith(v));
@@ -67,16 +215,7 @@ export function useTrialCode({
               }
             });
           } else {
-            // let val: string[];
-            // val = value.split(", ");
-            // stimulusValue = val.forEach((v) => {
-            //   if (v && !/^https?:\/\//.test(v)) {
-            //     const found = filteredFiles.find((f) => f.name.endsWith(v));
-            //     return found ? found.url : v;
-            //   } else {
-            //     return v ?? "";
-            //   }
-            // });
+            // Valor único (ya procesado por la lógica de múltiples inputs)
             if (value && !/^https?:\/\//.test(value)) {
               const found = filteredFiles.find((f) => f.name.endsWith(value));
               stimulusValue = found ? found.url : value;
@@ -85,30 +224,7 @@ export function useTrialCode({
             }
           }
 
-          // let stimulusValue;
-          // if (Array.isArray(val)) {
-          //   // Si es un array, procesar cada valor individualmente
-          //   stimulusValue = val.map((v) => {
-          //     if (v && !/^https?:\/\//.test(v)) {
-          //       const found = filteredFiles.find((f) => f.name.endsWith(v));
-          //       return found ? found.url : v;
-          //     } else {
-          //       return v ?? "";
-          //     }
-          //   });
-          // } else {
-          //   if (val && !/^https?:\/\//.test(val)) {
-          //     const found = filteredFiles.find((f) => f.name.endsWith(val));
-          //     stimulusValue = found ? found.url : val;
-          //   } else {
-          //     stimulusValue = val ?? filteredFiles[idx ?? 0]?.url ?? "";
-          //   }
-          // }
-
-          // Si es video, envolver en array
-          // result[key] = isVideoPlugin ? [stimulusValue] : stimulusValue;
           result[key] = stimulusValue;
-          // console.log(result);
         } else {
           result[key] = getColumnValue(columnMapping[key], row, undefined, key);
         }
@@ -128,44 +244,88 @@ export function useTrialCode({
       return result;
     };
 
-    // let stimulusValue: string = "";
-    // let values: string[] = [""];
-    // let urls: string[] = [];
-    // let names: string[] = [];
-    // let value = "";
-
-    // activeParameters.forEach((param) => {
-    //   if (param.key === "stimulus" && filteredFiles.length > 0) {
-    //     stimulusValue = getColumnValue(columnMapping[param.key]);
-    //     value = stimulusValue;
-    //     values = stimulusValue.split(", ");
-
-    //     values.forEach((val) => {
-    //       if (val && !/^https?:\/\//.test(val)) {
-    //         const foundFile = filteredFiles.find((f) => f.name.endsWith(val));
-    //         if (foundFile) {
-    //           urls.push(foundFile.url);
-    //           names.push(foundFile.name);
-    //         } else {
-    //           urls.push(val);
-    //         }
-    //       } else {
-    //         urls.push(val ?? "");
-    //       }
-    //     });
-    //   }
-    // });
-    // console.log(value);
-    // console.log(urls);
-
     if (csvJson.length > 0) {
       return csvJson.map((row, idx) => mapRow(row, idx));
-    }
-    // else if (filteredFiles.length > 0 && needsFileUpload) {
-    //   return filteredFiles.map((_, idx) => mapRow(undefined, idx));
-    // }
-    else {
-      return [mapRow()];
+    } else {
+      // Verificar si hay múltiples archivos separados por comas en algún parámetro
+      const multipleInputsParams: { [key: string]: string[] } = {};
+      let hasMultipleInputs = false;
+
+      activeParameters.forEach((param) => {
+        // const mediaKeys = ["stimulus", "images", "audio", "video"];
+        const isMediaParameter = (key: string) => {
+          const keyLower = key.toLowerCase();
+          return (
+            keyLower.includes("img") ||
+            keyLower.includes("image") ||
+            keyLower.includes("stimulus") ||
+            keyLower.includes("audio") ||
+            keyLower.includes("video") ||
+            keyLower.includes("sound") ||
+            keyLower.includes("media")
+          );
+        };
+        if (
+          // mediaKeys.includes(param.key)
+          isMediaParameter(param.key) &&
+          needsFileUpload
+        ) {
+          const value = getColumnValue(
+            columnMapping[param.key],
+            undefined,
+            undefined,
+            param.key
+          );
+          if (typeof value === "string" && value.includes(",")) {
+            const values = value
+              .split(",")
+              .map((v) => v.trim())
+              .filter((v) => v.length > 0);
+            multipleInputsParams[param.key] = values;
+            hasMultipleInputs = true;
+          }
+        }
+      });
+
+      if (hasMultipleInputs) {
+        // Encontrar el parámetro con más elementos para determinar el número de trials
+        let maxTrials = 1;
+        Object.values(multipleInputsParams).forEach((values) => {
+          maxTrials = Math.max(maxTrials, values.length);
+        });
+
+        // Generar un trial por cada archivo detectado en el input
+        return Array.from({ length: maxTrials }, (_, idx) => {
+          const mockRow: Record<string, any> = {};
+
+          // Para cada parámetro con múltiples inputs, usar solo el valor correspondiente al índice actual
+          Object.keys(multipleInputsParams).forEach((key) => {
+            const values = multipleInputsParams[key];
+            // Usar solo UN archivo por trial
+            mockRow[key] = values[idx] || values[values.length - 1];
+          });
+
+          // Para parámetros que no tienen múltiples inputs, usar el valor normal
+          activeParameters.forEach((param) => {
+            if (!multipleInputsParams[param.key]) {
+              const value = getColumnValue(
+                columnMapping[param.key],
+                undefined,
+                undefined,
+                param.key
+              );
+              if (value !== undefined) {
+                mockRow[param.key] = value;
+              }
+            }
+          });
+
+          return mapRow(mockRow, idx);
+        });
+      } else {
+        // Si no hay múltiples inputs, generar un solo trial
+        return [mapRow()];
+      }
     }
   })();
 

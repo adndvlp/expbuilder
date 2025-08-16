@@ -91,7 +91,7 @@
     
   
 
-<script src="/plugins/plugin-consent.js" id="plugin-script-0"></script><script id="generated-script">
+<script src="/plugins/plugin-probabilistic-selection-task.js" id="plugin-script-0"></script><script id="generated-script">
 
 
 const trialSessionId =
@@ -103,7 +103,7 @@ const trialSessionId =
 
   const jsPsych = initJsPsych({
     
-  extensions: [{type: jsPsychExtensionWebgazer}],
+  
 
   on_data_update: function(data) {
 
@@ -149,22 +149,83 @@ const welcome = {
 timeline.push(welcome);
 
 
-    const test_stimuli_New_Trial = [{}];
-    const New_Trial_timeline = {
-    type: jsPsychConsent, 
+    const test_stimuli_preload = [{images: ["https://res.cloudinary.com/dksfewgts/image/upload/v1750266937/img/orange.png","https://res.cloudinary.com/dksfewgts/image/upload/v1750266938/img/blue.png","https://res.cloudinary.com/dksfewgts/image/upload/v1750266937/img/bmw.png"],
+video: ["https://res.cloudinary.com/dksfewgts/video/upload/v1755312750/vid/d.mp4"]}];
+    const preload_timeline = {
+    type: jsPsychPreload, images: jsPsych.timelineVariable("images"),
+video: jsPsych.timelineVariable("video"),
     data: {
-      
+      success: "success",
+timeout: "timeout",
+failed_images: "failed_images",
+failed_audio: "failed_audio",
+failed_video: "failed_video",
     },};
     
-    const New_Trial_procedure = {
+    const preload_procedure = {
     timeline: 
-    [New_Trial_timeline],
-    timeline_variables: test_stimuli_New_Trial,
+    [preload_timeline],
+    timeline_variables: test_stimuli_preload,
     repetitions: 1,
     randomize_order: false,
     
     };
-    timeline.push(New_Trial_procedure);
+    timeline.push(preload_procedure);
+  
+
+
+    const test_stimuli_instructions = [{pages: ["<div style=\"text-align: center;\"><span style=\"font-size: 11pt;\">You will be shown something, click <b style=\"\"><font color=\"#000000\">yes</font></b> or <b style=\"\"><font color=\"#080808\">no</font></b> whether you like it.</span></div><div style=\"text-align: center;\"><span style=\"font-size: 11pt;\"><br></span></div><div style=\"text-align: center;\"><span style=\"font-size: 11pt;\">\"Click next to continue\"</span></div>"],
+show_clickable_nav: true}];
+    const instructions_timeline = {
+    type: jsPsychInstructions, pages: jsPsych.timelineVariable("pages"),
+show_clickable_nav: jsPsych.timelineVariable("show_clickable_nav"),
+    data: {
+      view_history: "view_history",
+rt: "rt",
+    },};
+    
+    const instructions_procedure = {
+    timeline: 
+    [instructions_timeline],
+    timeline_variables: test_stimuli_instructions,
+    repetitions: 1,
+    randomize_order: false,
+    
+    };
+    timeline.push(instructions_procedure);
+  
+
+
+    const preloadNew_Trial_ = {
+        type: jsPsychPreload,
+       files: ["https://res.cloudinary.com/dksfewgts/video/upload/v1755312750/vid/d.mp4","https://res.cloudinary.com/dksfewgts/video/upload/v1750614002/vid/default.mp4"],
+    }
+    timeline.push(preloadNew_Trial_);
+    
+    const test_stimuli_New_Trial_ = [{stimulus: ["https://res.cloudinary.com/dksfewgts/video/upload/v1755312750/vid/d.mp4"],
+choices: ["yes","no"],
+width: 300,
+height: 300}];
+    const New_Trial__timeline = {
+    type: jsPsychVideoButtonResponse, stimulus: jsPsych.timelineVariable("stimulus"),
+choices: jsPsych.timelineVariable("choices"),
+width: jsPsych.timelineVariable("width"),
+height: jsPsych.timelineVariable("height"),
+    data: {
+      response: "response",
+rt: "rt",
+stimulus: "stimulus",
+    },};
+    
+    const New_Trial__procedure = {
+    timeline: 
+    [New_Trial__timeline],
+    timeline_variables: test_stimuli_New_Trial_,
+    repetitions: 1,
+    randomize_order: false,
+    
+    };
+    timeline.push(New_Trial__procedure);
   
 
 
@@ -174,7 +235,13 @@ timeline.push(welcome);
     }
     timeline.push(preloadNew_Trial_1);
     
-    const test_stimuli_New_Trial_1 = [{stimulus: "https://res.cloudinary.com/dksfewgts/image/upload/v1750266938/img/cofre.png",
+    const test_stimuli_New_Trial_1 = [{stimulus: "https://res.cloudinary.com/dksfewgts/image/upload/v1750266937/img/orange.png",
+stimulus_height: 100,
+stimulus_width: 100,
+choices: ["Yes","No"]},{stimulus: "https://res.cloudinary.com/dksfewgts/image/upload/v1750266938/img/blue.png",
+stimulus_height: 100,
+stimulus_width: 100,
+choices: ["Yes","No"]},{stimulus: "https://res.cloudinary.com/dksfewgts/image/upload/v1750266937/img/bmw.png",
 stimulus_height: 100,
 stimulus_width: 100,
 choices: ["Yes","No"]}];
@@ -201,9 +268,34 @@ rt: "rt",
   
 
 
-    const test_stimuli_New_Trial_2 = [{pages: ["<div style=\"text-align: center;\"><span style=\"font-size: 11pt;\">You can close this tab</span></div>"],
+    const test_stimuli_probabilistic = [{choices: ["m"]}];
+    const probabilistic_timeline = {
+    type: jsPsychProbabilisticSelectionTask, choices: jsPsych.timelineVariable("choices"),
+    data: {
+      key_press: "key_press",
+side_press: "side_press",
+rt: "rt",
+correct: "correct",
+rewarded: "rewarded",
+trial_score: "trial_score",
+total_score: "total_score",
+    },};
+    
+    const probabilistic_procedure = {
+    timeline: 
+    [probabilistic_timeline],
+    timeline_variables: test_stimuli_probabilistic,
+    repetitions: 1,
+    randomize_order: false,
+    
+    };
+    timeline.push(probabilistic_procedure);
+  
+
+
+    const test_stimuli_final = [{pages: ["<div style=\"text-align: center;\"><span style=\"font-size: 11pt;\">That was it, you can close this tab</span></div>"],
 show_clickable_nav: true}];
-    const New_Trial_2_timeline = {
+    const final_timeline = {
     type: jsPsychInstructions, pages: jsPsych.timelineVariable("pages"),
 show_clickable_nav: jsPsych.timelineVariable("show_clickable_nav"),
     data: {
@@ -211,15 +303,15 @@ show_clickable_nav: jsPsych.timelineVariable("show_clickable_nav"),
 rt: "rt",
     },};
     
-    const New_Trial_2_procedure = {
+    const final_procedure = {
     timeline: 
-    [New_Trial_2_timeline],
-    timeline_variables: test_stimuli_New_Trial_2,
+    [final_timeline],
+    timeline_variables: test_stimuli_final,
     repetitions: 1,
     randomize_order: false,
     
     };
-    timeline.push(New_Trial_2_procedure);
+    timeline.push(final_procedure);
   
 
 jsPsych.run(timeline);
