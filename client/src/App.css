@@ -116,9 +116,9 @@ body {
 }
 
 .timeline-item.selected {
-  /* border: 1px solid var(--gold); */
+  /* border: 2px solid var(--gold); */
   background-color: var(--dark-purple);
-  /* box-shadow: 0 0 0 2px var(--gold); */
+  box-shadow: 0 0 0 2px var(--gold);
 }
 
 .timeline-item.dragging {

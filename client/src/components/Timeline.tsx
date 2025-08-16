@@ -430,21 +430,20 @@ jsPsych.run(timeline);`;
           ))}
 
           {/* Zona de drop al final */}
+
           <div
             className={`drop-zone-end ${dragOverItem === trials.length ? "drag-over" : ""}`}
             onDragOver={(e) => handleDragOver(e, trials.length)}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, trials.length)}
             style={{
-              height: "20px",
-              // backgroundColor:
-              //   dragOverItem === trials.length ? "black" : "transparent",
-              borderBottom:
-                dragOverItem === trials.length ? "2px solid #d4af37" : "none",
-              marginBottom: "8px",
+              height: draggedItem !== null ? "20px" : "0px",
+              borderBottom: draggedItem !== null ? "2px solid #d4af37" : "none",
+
               transition: "all 0.2s ease",
             }}
           />
+
           <div className="add-trial-button" onClick={() => onAddTrial("Trial")}>
             +
           </div>

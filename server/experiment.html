@@ -91,7 +91,7 @@
     
   
 
-<script src="/plugins/plugin-probabilistic-selection-task.js" id="plugin-script-0"></script><script id="generated-script">
+<script id="generated-script">
 
 
 const trialSessionId =
@@ -196,39 +196,6 @@ rt: "rt",
   
 
 
-    const preloadNew_Trial_ = {
-        type: jsPsychPreload,
-       files: ["https://res.cloudinary.com/dksfewgts/video/upload/v1755312750/vid/d.mp4","https://res.cloudinary.com/dksfewgts/video/upload/v1750614002/vid/default.mp4"],
-    }
-    timeline.push(preloadNew_Trial_);
-    
-    const test_stimuli_New_Trial_ = [{stimulus: ["https://res.cloudinary.com/dksfewgts/video/upload/v1755312750/vid/d.mp4"],
-choices: ["yes","no"],
-width: 300,
-height: 300}];
-    const New_Trial__timeline = {
-    type: jsPsychVideoButtonResponse, stimulus: jsPsych.timelineVariable("stimulus"),
-choices: jsPsych.timelineVariable("choices"),
-width: jsPsych.timelineVariable("width"),
-height: jsPsych.timelineVariable("height"),
-    data: {
-      response: "response",
-rt: "rt",
-stimulus: "stimulus",
-    },};
-    
-    const New_Trial__procedure = {
-    timeline: 
-    [New_Trial__timeline],
-    timeline_variables: test_stimuli_New_Trial_,
-    repetitions: 1,
-    randomize_order: false,
-    
-    };
-    timeline.push(New_Trial__procedure);
-  
-
-
     const preloadNew_Trial_1 = {
         type: jsPsychPreload,
        files: ["https://res.cloudinary.com/dksfewgts/image/upload/v1750266938/img/cofre.png","https://res.cloudinary.com/dksfewgts/image/upload/v1750266938/img/armadillo.png","https://res.cloudinary.com/dksfewgts/image/upload/v1750266938/img/blue.png","https://res.cloudinary.com/dksfewgts/image/upload/v1750266937/img/green.png","https://res.cloudinary.com/dksfewgts/image/upload/v1750266937/img/bmw.png","https://res.cloudinary.com/dksfewgts/image/upload/v1750266937/img/orange.png","https://res.cloudinary.com/dksfewgts/image/upload/v1750266937/img/dis.png"],
@@ -265,6 +232,39 @@ rt: "rt",
     
     };
     timeline.push(New_Trial_1_procedure);
+  
+
+
+    const preloadNew_Trial_ = {
+        type: jsPsychPreload,
+       files: ["https://res.cloudinary.com/dksfewgts/video/upload/v1755312750/vid/d.mp4","https://res.cloudinary.com/dksfewgts/video/upload/v1750614002/vid/default.mp4"],
+    }
+    timeline.push(preloadNew_Trial_);
+    
+    const test_stimuli_New_Trial_ = [{stimulus: ["https://res.cloudinary.com/dksfewgts/video/upload/v1755312750/vid/d.mp4"],
+choices: ["yes","no"],
+width: 300,
+height: 300}];
+    const New_Trial__timeline = {
+    type: jsPsychVideoButtonResponse, stimulus: jsPsych.timelineVariable("stimulus"),
+choices: jsPsych.timelineVariable("choices"),
+width: jsPsych.timelineVariable("width"),
+height: jsPsych.timelineVariable("height"),
+    data: {
+      response: "response",
+rt: "rt",
+stimulus: "stimulus",
+    },};
+    
+    const New_Trial__procedure = {
+    timeline: 
+    [New_Trial__timeline],
+    timeline_variables: test_stimuli_New_Trial_,
+    repetitions: 1,
+    randomize_order: false,
+    
+    };
+    timeline.push(New_Trial__procedure);
   
 
 
