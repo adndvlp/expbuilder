@@ -16,6 +16,7 @@ export default function PluginsProvider({ children }: Props) {
   const [plugins, setPlugins] = useState<Plugin[]>([]);
   const [isPluginEditor, setIsPluginEditor] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Load plugin config from backend
   useEffect(() => {
@@ -37,8 +38,9 @@ export default function PluginsProvider({ children }: Props) {
 
   // Autosave
   useEffect(() => {
-    if (isLoading || plugins.length === 0) return;
+    if (isLoading || plugins.length === 0 || isSaving) return;
 
+    setIsSaving(true);
     const timeoutId = setTimeout(async () => {
       try {
         await Promise.all(
@@ -52,9 +54,14 @@ export default function PluginsProvider({ children }: Props) {
         );
       } catch (error) {
         console.error("Error saving plugin config:", error);
+      } finally {
+        setIsSaving(false);
       }
     }, 800);
-    return () => clearTimeout(timeoutId);
+    return () => {
+      clearTimeout(timeoutId);
+      setIsSaving(false);
+    };
   }, [plugins, isLoading]);
 
   return (
