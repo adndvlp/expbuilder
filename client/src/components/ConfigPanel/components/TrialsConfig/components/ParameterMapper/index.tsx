@@ -285,10 +285,11 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                           handleTypedValueChange(e.target.value);
                         }}
                         onBlur={(e) => {
-                          const input = e.target.value.trim();
+                          const input = e.target.value;
+                          // .trim();
                           const rawItems = input
                             .split(",")
-                            .map((item) => item.trim())
+                            // .map((item) => item.trim())
                             .filter((item) => item.length > 0);
 
                           const baseType = type.replace(/_array$/, "");
