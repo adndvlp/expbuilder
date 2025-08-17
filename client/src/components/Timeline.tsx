@@ -266,7 +266,11 @@ jsPsych.run(timeline);`;
       setIsSubmitting(true);
 
       try {
-        const generatedCode = generateExperiment();
+        let generatedCode;
+        isDevMode
+          ? (generatedCode = code)
+          : (generatedCode = generateExperiment());
+
         if (!isDevMode) {
           setSubmitStatus("Saving configuration...");
           const generatedCode = generateExperiment();
