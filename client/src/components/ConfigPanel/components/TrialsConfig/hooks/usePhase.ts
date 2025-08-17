@@ -214,7 +214,15 @@ export const usePhase = ({
     if (pluginName === "plugin-webgazer-recalibrate") {
       code += `
     const recalibrate_timeline = {
-        timeline: [plugin_webgazer_recalibrate_instructions, plugin_webgazer_calibrate_procedure, plugin_webgazer_validate_procedure],
+        timeline: [`;
+
+      if (includeInstructions) {
+        code += `
+        plugin_webgazer_recalibrate_instructions, `;
+      }
+
+      code += `
+        plugin_webgazer_calibrate_procedure, plugin_webgazer_validate_procedure],
         conditional_function: function(){
           var validation_data = jsPsych.data.get().filter({task: 'validate'}).values()[0];
           return validation_data.percent_in_roi.some(function(x){
