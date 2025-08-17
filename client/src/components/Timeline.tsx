@@ -132,28 +132,53 @@ function Component({}: TimelineProps) {
 
   let extensions = "";
 
+  // useEffect(() => {
+  //   const includesExtension = trials.map(
+  //     (trial) => trial.parameters?.includesExtensions
+  //   );
+
+  //   if (
+  //     (includesExtension.length > 0 && includesExtension !== undefined) ||
+  //     null
+  //   ) {
+  //     let rawExtensionsChain: string[] = [];
+  //     trials.forEach((trial) => {
+  //       rawExtensionsChain.push(trial.parameters?.extensionType);
+  //     });
+
+  //     rawExtensionsChain = [
+  //       ...new Set(rawExtensionsChain.filter((val) => val !== "")),
+  //     ];
+
+  //     const extensionsArrayStr = rawExtensionsChain
+  //       .map((e) => `{type: ${e}}`)
+  //       .join(",");
+
+  //     extensions = `extensions: [${extensionsArrayStr}],`;
+  //   } else {
+  //     extensions = "";
+  //   }
+  // }, [trials, isDevMode]);
+
   useEffect(() => {
-    const includesExtension = trials.map(
-      (trial) => trial.parameters?.includesExtensions
-    );
+    // Solo incluir extensiones si includesExtensions es true
+    const rawExtensionsChain: string[] = [];
+    trials.forEach((trial) => {
+      if (trial.parameters?.includesExtensions) {
+        if (trial.parameters?.extensionType) {
+          rawExtensionsChain.push(trial.parameters.extensionType);
+        }
+      }
+    });
 
-    if (
-      (includesExtension.length > 0 && includesExtension !== undefined) ||
-      null
-    ) {
-      let rawExtensionsChain: string[] = [];
-      trials.forEach((trial) => {
-        rawExtensionsChain.push(trial.parameters?.extensionType);
-      });
+    const uniqueExtensions = [
+      ...new Set(rawExtensionsChain.filter((val) => val !== "")),
+    ];
 
-      rawExtensionsChain = [
-        ...new Set(rawExtensionsChain.filter((val) => val !== "")),
-      ];
-
-      const extensionsArrayStr = rawExtensionsChain
+    if (uniqueExtensions.length > 0) {
+      const extensionsArrayStr = uniqueExtensions
         .map((e) => `{type: ${e}}`)
         .join(",");
-
       extensions = `extensions: [${extensionsArrayStr}],`;
     } else {
       extensions = "";
