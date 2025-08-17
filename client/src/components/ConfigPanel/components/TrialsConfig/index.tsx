@@ -13,7 +13,6 @@ import { useCsvData } from "./hooks/useCsvData";
 import { useTrialPersistence } from "./hooks/useTrialPersistence";
 import { useColumnMapping } from "./hooks/useColumnMapping";
 import { useCsvMapper } from "./hooks/useCsvMapper";
-import type { ColumnMappingEntry } from "../../types";
 import { useTrialCode } from "./hooks/useTrialCode";
 import { useExtensions } from "./hooks/useExtensions";
 import ExtensionsConfig from "./components/ExtensionsConfig";
@@ -215,7 +214,7 @@ function TrialsConfig({ pluginName }: Props) {
   // guardar y actualizar el estado global del ensayo
 
   useEffect(() => {
-    if (!trialName || !canSave || isLoadingTrial) return;
+    if (!trialName || isLoadingTrial) return;
 
     if (isInitialFileLoad.current) {
       isInitialFileLoad.current = false;
@@ -286,24 +285,6 @@ function TrialsConfig({ pluginName }: Props) {
     setCsvJson([]);
     setCsvColumns([]);
   };
-
-  // manejo para guardar trial
-  const isTyped = (field?: ColumnMappingEntry) =>
-    field?.source === "typed" &&
-    typeof field.value === "string" &&
-    field.value.trim() !== "";
-
-  const isCsv = (field?: ColumnMappingEntry) =>
-    field?.source === "csv" &&
-    typeof field.value === "string" &&
-    field.value.trim() !== "";
-
-  const hasStimulus =
-    isTyped(columnMapping.stimulus) ||
-    isCsv(columnMapping.stimulus) ||
-    filteredFiles.length > 0;
-
-  const canSave = !!trialName && hasStimulus;
 
   return (
     <div id="plugin-config">
