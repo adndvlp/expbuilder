@@ -286,10 +286,20 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                         }}
                         onBlur={(e) => {
                           const input = e.target.value;
+
+                          // Detecta si es un parámetro de teclado
+                          const isKeyboardArray =
+                            key === "choices" ||
+                            label.toLowerCase().includes("key") ||
+                            label.toLowerCase().includes("keyboard");
+
                           // .trim();
                           const rawItems = input
                             .split(",")
                             // .map((item) => item.trim())
+                            .map((item) =>
+                              isKeyboardArray ? item : item.trim()
+                            )
                             .filter((item) => item.length > 0);
 
                           const baseType = type.replace(/_array$/, "");
