@@ -13,7 +13,6 @@ import {
   FaLink,
   FaUndo,
   FaRedo,
-  FaEye,
   FaCode,
   FaFont,
   FaCopy,
@@ -33,19 +32,19 @@ interface HtmlMapperProps {
 }
 
 const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
-  const [isPreview, setIsPreview] = useState(false);
   const [isSourceView, setIsSourceView] = useState(false);
   const [sourceCode, setSourceCode] = useState(value);
   const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (editorRef.current && !isPreview && !isSourceView) {
+    if (editorRef.current && !isSourceView) {
       if (editorRef.current.innerHTML !== value) {
         editorRef.current.innerHTML = value;
       }
+      editorRef.current.focus();
     }
     setSourceCode(value);
-  }, [value, isPreview, isSourceView]);
+  }, [value, isSourceView]);
 
   const execCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value);
@@ -115,27 +114,16 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
             <button
               type="button"
               onClick={() => {
-                setIsPreview(false);
                 setIsSourceView(false);
               }}
-              className={`word-tab ${!isPreview && !isSourceView ? "word-tab-active" : ""}`}
+              className={`word-tab ${!isSourceView ? "word-tab-active" : ""}`}
             >
               <FaFont className="inline mr-1" /> Home
             </button>
+
             <button
               type="button"
               onClick={() => {
-                setIsPreview(true);
-                setIsSourceView(false);
-              }}
-              className={`word-tab ${isPreview ? "word-tab-active" : ""}`}
-            >
-              <FaEye className="inline mr-1" /> Preview
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setIsPreview(false);
                 setIsSourceView(true);
               }}
               className={`word-tab ${isSourceView ? "word-tab-active" : ""}`}
@@ -146,7 +134,7 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
         </div>
 
         {/* Ribbon Toolbar - estilo Word */}
-        {!isPreview && !isSourceView && (
+        {!isSourceView && (
           <div className="word-ribbon">
             {/* Portapapeles */}
             <div className="ribbon-group">
@@ -425,12 +413,7 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
 
         {/* Editor Area */}
         <div className="word-editor-area">
-          {isPreview ? (
-            <div
-              className="word-preview"
-              dangerouslySetInnerHTML={{ __html: value }}
-            />
-          ) : isSourceView ? (
+          {isSourceView ? (
             <textarea
               value={sourceCode}
               onChange={handleSourceChange}
