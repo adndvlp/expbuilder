@@ -43,6 +43,10 @@ app.get("/experiment", (req, res) => {
   res.sendFile(path.join(__dirname, "experiment.html"));
 });
 
+app.get("/trials-preview", (req, res) => {
+  res.sendFile(path.join(__dirname, "trials_preview.html"));
+});
+
 const metadataPath = path.resolve(__dirname, "metadata");
 
 // Serve the metadata directory at `/metadata` URL path
@@ -654,6 +658,47 @@ app.post("/api/run-experiment", async (req, res) => {
         ? "Experiment built and ready to run (plugins and code injected)"
         : "Experiment built and ready to run",
       experimentUrl: "http://localhost:3000/experiment",
+    });
+  } catch (error) {
+    console.error(`Error running experiment: ${error.message}`);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/trials-preview", async (req, res) => {
+  try {
+    const { generatedCode } = req.body;
+
+    const experimentHtmlPath = path.join(__dirname, "trials_preview.html");
+    if (!fs.existsSync(experimentHtmlPath)) {
+      return res
+        .status(500)
+        .json({ success: false, error: "trials_preview.html not found" });
+    }
+    let html = fs.readFileSync(experimentHtmlPath, "utf8");
+    const $ = cheerio.load(html);
+
+    // Elimina scripts previos de plugins y generated-script
+    $("script#generated-script").remove();
+
+    // Usa el código pasado en el body en lugar de leerlo de la BD
+    if (!generatedCode) {
+      return res
+        .status(400)
+        .json({ success: false, error: "No generated code provided" });
+    }
+
+    $("body").append(
+      `<script id="generated-script">\n${generatedCode}\n</script>`
+    );
+
+    // Guarda el HTML modificado
+    fs.writeFileSync(experimentHtmlPath, $.html());
+
+    res.json({
+      success: true,
+      message: "Experiment built and ready to run",
+      experimentUrl: "http://localhost:3000/trials_preview",
     });
   } catch (error) {
     console.error(`Error running experiment: ${error.message}`);

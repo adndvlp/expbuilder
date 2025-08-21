@@ -3,7 +3,7 @@ import useUrl from "../hooks/useUrl";
 import { useExperimentState } from "../hooks/useExpetimentState";
 
 function ExperimentPreview() {
-  const { experimentUrl } = useUrl();
+  const { trialUrl } = useUrl();
   const { version } = useExperimentState();
   const [started, setStarted] = useState(false);
   const [key, setKey] = useState(0);
@@ -43,7 +43,7 @@ function ExperimentPreview() {
           <div style={{ width: "100%", height: "60vh" }}>
             <iframe
               key={key}
-              src={experimentUrl}
+              src={trialUrl}
               title="Experiment Preview"
               width="100%"
               height="100%"

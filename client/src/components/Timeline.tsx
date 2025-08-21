@@ -130,6 +130,8 @@ function Component({}: TimelineProps) {
     .filter(Boolean)
     .join("\n\n");
 
+  const selectedTrialCode = selectedTrial?.trialCode;
+
   let extensions = "";
 
   // useEffect(() => {
@@ -196,11 +198,15 @@ const trialSessionId =
 // let isFirstSave = true;
 
   const jsPsych = initJsPsych({
+
+  ${
+    selectedTrial
+      ? ""
+      : `
     
   ${extensions}
 
   on_data_update: function(data) {
-
   fetch("/api/append-result", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
@@ -210,6 +216,8 @@ const trialSessionId =
       }),
     });
   },
+  `
+  }
 
   
   // fetch("https://pipe.jspsych.org/api/data/", {
@@ -242,7 +250,7 @@ const welcome = {
 
 timeline.push(welcome);
 
-${allTrialCodes}
+${selectedTrial ? selectedTrialCode : allTrialCodes}
 
 jsPsych.run(timeline);`;
   };
@@ -300,9 +308,25 @@ jsPsych.run(timeline);`;
 
           setSubmitStatus("Saved Configuration! Building experiment...");
         }
+        // trials preview
+        if (selectedTrial) {
+          setSubmitStatus("Loading Trial preview...");
+          const runResponse = await fetch("/api/trials-preview", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ generatedCode }),
+            credentials: "include",
+            mode: "cors",
+          });
+          if (!runResponse.ok) {
+            throw new Error(
+              `Server responded with status: ${runResponse.status} when running experiment`
+            );
+          }
+          setSubmitStatus("Trial preview ready");
+        }
 
         // Paso 2: Llama al build/run-experiment
-
         setSubmitStatus("Running experiment...");
         const runResponse = await fetch("/api/run-experiment", {
           method: "POST",
