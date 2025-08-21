@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 .DS_Store
+Dockerfile
 
 # Editor directories and files
 .vscode/*

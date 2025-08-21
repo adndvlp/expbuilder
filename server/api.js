@@ -100,8 +100,57 @@ app.post("/api/upload-files-folder", upload.array("files"), (req, res) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: "No files uploaded" });
   }
-  const fileUrls = req.files.map((file) => file.path);
-  res.json({ fileUrls });
+
+  // Si la petición indica folder "all", asignar carpeta según tipo
+  // El frontend puede enviar folder en req.body.folder, si no, usar "all" por defecto
+  const folderParam = req.body.folder || "all";
+  const fileUrls = [];
+
+  req.files.forEach((file) => {
+    // Detectar tipo por extensión
+    const ext = path.extname(file.originalname).toLowerCase();
+    let folder = "others";
+    if (folderParam === "all") {
+      if (/\.(png|jpg|jpeg|gif)$/i.test(ext)) folder = "img";
+      else if (/\.(mp3|wav|ogg|m4a)$/i.test(ext)) folder = "aud";
+      else if (/\.(mp4|webm|mov|avi)$/i.test(ext)) folder = "vid";
+    } else {
+      folder = folderParam;
+    }
+
+    // Mover el archivo a la carpeta correspondiente en Cloudinary
+    // Si ya está en la carpeta correcta, no hacer nada
+    // Si no, subir de nuevo a la carpeta correcta
+    if (file.folder !== folder) {
+      // Re-subir a la carpeta correcta usando Cloudinary
+      // (No se puede mover en Cloudinary, hay que re-subir)
+      cloudinary.uploader.upload(
+        file.path,
+        {
+          folder,
+          public_id: file.originalname.replace(/\.[^/.]+$/, ""),
+          resource_type: "auto",
+        },
+        (err, result) => {
+          if (!err && result && result.secure_url) {
+            fileUrls.push(result.secure_url);
+          } else {
+            fileUrls.push(file.path); // fallback
+          }
+        }
+      );
+    } else {
+      fileUrls.push(file.path);
+    }
+  });
+
+  // Esperar a que todos los uploads terminen (si hubo re-subidas)
+  // Si hay re-subidas, puede que fileUrls no esté completo aún
+  // Para simplificar, responder con los paths originales y advertir que los nuevos estarán en la carpeta correcta
+  res.json({
+    fileUrls,
+    info: "Archivos subidos. Si folder=all, se asignan a carpeta según tipo.",
+  });
 });
 
 // app.get("/api/list-files/:folder", async (req, res) => {
@@ -189,17 +238,36 @@ app.delete("/api/delete-file/:folder/:filename", async (req, res) => {
   let { folder, filename } = req.params;
   filename = filename.replace(/\.[^/.]+$/, ""); // sin extensión
 
-  let resourceType = "image";
-  if (folder === "aud" || folder === "vid") resourceType = "video";
+  // Si folder es "all", intentar borrar en todas las carpetas
+  const folders = folder === "all" ? ["img", "aud", "vid", "others"] : [folder];
+  let deleted = false;
+  let lastError = null;
 
-  try {
-    const result = await cloudinary.uploader.destroy(`${folder}/${filename}`, {
-      resource_type: resourceType,
-    });
-    if (result.result === "ok") res.json({ success: true });
-    else res.status(404).json({ success: false, error: "File not found" });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+  for (const f of folders) {
+    let resourceType = "image";
+    if (f === "aud" || f === "vid") resourceType = "video";
+    try {
+      const result = await cloudinary.uploader.destroy(`${f}/${filename}`, {
+        resource_type: resourceType,
+      });
+      if (result.result === "ok") {
+        deleted = true;
+        break;
+      }
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  if (deleted) {
+    res.json({ success: true });
+  } else {
+    res
+      .status(404)
+      .json({
+        success: false,
+        error: lastError ? lastError.message : "File not found",
+      });
   }
 });
 

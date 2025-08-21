@@ -22,6 +22,7 @@ import {
   FaOutdent,
   FaSuperscript,
   FaSubscript,
+  FaHighlighter,
 } from "react-icons/fa";
 
 interface HtmlMapperProps {
@@ -246,8 +247,8 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
                   </button>
                 </div>
                 <div className="ribbon-color-controls">
-                  <div className="color-picker-wrapper">
-                    <label>A</label>
+                  <div className="color-picker-wrapper color-horizontal">
+                    <FaFont title="Text Color" className="color-icon" />
                     <input
                       type="color"
                       onChange={changeTextColor}
@@ -255,8 +256,11 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
                       title="Text Color"
                     />
                   </div>
-                  <div className="color-picker-wrapper">
-                    <label>ab</label>
+                  <div className="color-picker-wrapper color-horizontal">
+                    <FaHighlighter
+                      title="Highlight Color"
+                      className="color-icon"
+                    />
                     <input
                       type="color"
                       onChange={changeBackgroundColor}
@@ -642,11 +646,16 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
           align-items: center;
           gap: 2px;
         }
+        .color-picker-wrapper.color-horizontal {
+          flex-direction: row;
+          align-items: center;
+          gap: 4px;
+        }
 
-        .color-picker-wrapper label {
-          font-size: 10px;
-          font-weight: bold;
-          color: var(--text-dark);
+        @media (prefers-color-scheme: dark) {
+          .color-picker-wrapper.color-horizontal svg {
+            color: var(--text-light) !important;
+          }
         }
 
         .color-picker {
@@ -737,11 +746,14 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
           font-size: 12px;
           border: none;
           background: var(--neutral-dark);
-          color: var(--text-light);
+          color: var(--text-dark);
           resize: none;
           outline: none;
         }
 
+        .color-icon {
+          font-size: 16px;
+        }
         /* Responsive adjustments */
         @media (max-width: 768px) {
           .word-ribbon {
