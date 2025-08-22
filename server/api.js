@@ -25,6 +25,7 @@ const port = 3000;
 app.use(
   cors({
     origin: "http://localhost:5173", // Replace with your frontend URL if different
+    // origin: "https://adndvlp.github.io",
     credentials: true,
   })
 );
@@ -262,12 +263,10 @@ app.delete("/api/delete-file/:folder/:filename", async (req, res) => {
   if (deleted) {
     res.json({ success: true });
   } else {
-    res
-      .status(404)
-      .json({
-        success: false,
-        error: lastError ? lastError.message : "File not found",
-      });
+    res.status(404).json({
+      success: false,
+      error: lastError ? lastError.message : "File not found",
+    });
   }
 });
 
@@ -474,6 +473,102 @@ app.post("/api/save-plugins", async (req, res) => {
       console.log(`🗑️ Deleted metadata for regeneration: ${name}.json`);
     }
 
+    // inserción de script en experiment.html
+    let plugins = [];
+
+    const pluginConfigDoc = await PluginConfig.findOne({});
+    plugins = pluginConfigDoc?.plugins || [];
+
+    if (!plugins.length) {
+      return res
+        .status(404)
+        .json({ success: false, error: "No plugins found" });
+    }
+
+    const pluginsDir = path.join(__dirname, "plugins");
+    if (!fs.existsSync(pluginsDir)) fs.mkdirSync(pluginsDir);
+
+    // plugins.forEach((plugin) => {
+    //   if (plugin.pluginCode && plugin.scripTag) {
+    //     const fileName = path.basename(plugin.scripTag);
+    //     const filePath = path.join(pluginsDir, fileName);
+    //     fs.writeFileSync(filePath, plugin.pluginCode, "utf8");
+    //   }
+    // });
+
+    // Ejecutar extract-metadata.mjs después de escribir los plugins
+    console.log("🔄 Running extract-metadata script...");
+    try {
+      await new Promise((resolve, reject) => {
+        const extractScript = spawn(
+          "node",
+          [path.join(__dirname, "extract-metadata.mjs")],
+          {
+            cwd: __dirname,
+            stdio: "inherit", // Para ver la salida en la consola del servidor
+          }
+        );
+
+        extractScript.on("close", (code) => {
+          if (code === 0) {
+            console.log("✅ Extract-metadata script completed successfully");
+            resolve();
+          } else {
+            console.error(
+              `❌ Extract-metadata script failed with code ${code}`
+            );
+            // No rechazamos aquí para que el experimento pueda continuar
+            resolve();
+          }
+        });
+
+        extractScript.on("error", (err) => {
+          console.error(
+            `❌ Error running extract-metadata script: ${err.message}`
+          );
+          // No rechazamos aquí para que el experimento pueda continuar
+          resolve();
+        });
+      });
+    } catch (metadataError) {
+      console.error(
+        `❌ Error with metadata extraction: ${metadataError.message}`
+      );
+      // Continuamos con el experimento aunque falle la extracción de metadata
+    }
+
+    const html1Path = path.join(__dirname, "experiment.html");
+    const html2Path = path.join(__dirname, "trials_preview.html");
+
+    // Leer cada HTML
+    let html1 = fs.readFileSync(html1Path, "utf8");
+    let html2 = fs.readFileSync(html2Path, "utf8");
+
+    // Cargar en Cheerio
+    const $1 = cheerio.load(html1);
+    const $2 = cheerio.load(html2);
+
+    // Limpiar scripts antiguos
+    $1("script[id^='plugin-script']").remove();
+    $2("script[id^='plugin-script']").remove();
+
+    // Insertar los plugins en ambos
+    plugins.forEach((p, idx) => {
+      if (p.scripTag) {
+        $1("body").append(
+          `<script src="${p.scripTag}" id="plugin-script-${idx}"></script>`
+        );
+        $2("body").append(
+          `<script src="${p.scripTag}" id="plugin-script-${idx}"></script>`
+        );
+      }
+    });
+
+    // Guardar los HTML modificados
+    fs.writeFileSync(html1Path, $1.html(), "utf8");
+    fs.writeFileSync(html2Path, $2.html(), "utf8");
+    console.log("script insertion completed");
+
     res.json({ success: true, plugin });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -603,73 +698,7 @@ app.post("/api/save-config", async (req, res) => {
 
 app.post("/api/run-experiment", async (req, res) => {
   try {
-    const { usePlugins, generatedCode } = req.body;
-
-    // const usePlugins = req.body?.usePlugins;
-
-    let plugins = [];
-    if (usePlugins) {
-      const pluginConfigDoc = await PluginConfig.findOne({});
-      plugins = pluginConfigDoc?.plugins || [];
-
-      if (!plugins.length) {
-        return res
-          .status(404)
-          .json({ success: false, error: "No plugins found" });
-      }
-
-      const pluginsDir = path.join(__dirname, "plugins");
-      if (!fs.existsSync(pluginsDir)) fs.mkdirSync(pluginsDir);
-
-      plugins.forEach((plugin) => {
-        if (plugin.pluginCode && plugin.scripTag) {
-          const fileName = path.basename(plugin.scripTag);
-          const filePath = path.join(pluginsDir, fileName);
-          fs.writeFileSync(filePath, plugin.pluginCode, "utf8");
-        }
-      });
-
-      // Ejecutar extract-metadata.mjs después de escribir los plugins
-      console.log("🔄 Running extract-metadata script...");
-      try {
-        await new Promise((resolve, reject) => {
-          const extractScript = spawn(
-            "node",
-            [path.join(__dirname, "extract-metadata.mjs")],
-            {
-              cwd: __dirname,
-              stdio: "inherit", // Para ver la salida en la consola del servidor
-            }
-          );
-
-          extractScript.on("close", (code) => {
-            if (code === 0) {
-              console.log("✅ Extract-metadata script completed successfully");
-              resolve();
-            } else {
-              console.error(
-                `❌ Extract-metadata script failed with code ${code}`
-              );
-              // No rechazamos aquí para que el experimento pueda continuar
-              resolve();
-            }
-          });
-
-          extractScript.on("error", (err) => {
-            console.error(
-              `❌ Error running extract-metadata script: ${err.message}`
-            );
-            // No rechazamos aquí para que el experimento pueda continuar
-            resolve();
-          });
-        });
-      } catch (metadataError) {
-        console.error(
-          `❌ Error with metadata extraction: ${metadataError.message}`
-        );
-        // Continuamos con el experimento aunque falle la extracción de metadata
-      }
-    }
+    const { generatedCode } = req.body;
 
     const experimentHtmlPath = path.join(__dirname, "experiment.html");
     if (!fs.existsSync(experimentHtmlPath)) {
@@ -680,20 +709,9 @@ app.post("/api/run-experiment", async (req, res) => {
     let html = fs.readFileSync(experimentHtmlPath, "utf8");
     const $ = cheerio.load(html);
 
-    // Elimina scripts previos de plugins y generated-script
-    $("script[id^='plugin-script']").remove();
-    $("script#generated-script").remove();
+    // Elimina script previo: generated-script
 
-    // Si hay plugins, inserta los scripts
-    if (usePlugins && plugins.length) {
-      plugins.forEach((plugin, idx) => {
-        if (plugin.scripTag) {
-          $("body").append(
-            `<script src="${plugin.scripTag}" id="plugin-script-${idx}"></script>`
-          );
-        }
-      });
-    }
+    $("script#generated-script").remove();
 
     // Inserta el código generado (desde config)
     // const configDoc = await Config.findOne({});
@@ -722,9 +740,7 @@ app.post("/api/run-experiment", async (req, res) => {
 
     res.json({
       success: true,
-      message: usePlugins
-        ? "Experiment built and ready to run (plugins and code injected)"
-        : "Experiment built and ready to run",
+      message: "Experiment built and ready to run",
       experimentUrl: "http://localhost:3000/experiment",
     });
   } catch (error) {
@@ -746,7 +762,7 @@ app.post("/api/trials-preview", async (req, res) => {
     let html = fs.readFileSync(experimentHtmlPath, "utf8");
     const $ = cheerio.load(html);
 
-    // Elimina scripts previos de plugins y generated-script
+    // Elimina scripts previos de generated-script
     $("script#generated-script").remove();
 
     // Usa el código pasado en el body en lugar de leerlo de la BD

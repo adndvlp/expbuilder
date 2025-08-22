@@ -66,7 +66,14 @@ export default function PluginsProvider({ children }: Props) {
 
   return (
     <PluginsContext.Provider
-      value={{ plugins, setPlugins, isPluginEditor, setIsPluginEditor }}
+      value={{
+        plugins,
+        setPlugins,
+        isPluginEditor,
+        setIsPluginEditor,
+        isSaving,
+        setIsSaving,
+      }}
     >
       {children}
     </PluginsContext.Provider>

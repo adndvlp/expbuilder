@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import useTrials from "../../hooks/useTrials";
 import Select from "react-select";
 import TrialsConfig from "./components/TrialsConfig";
 import WebGazer from "./components/TrialsConfig/components/WebGazer";
 import PluginEditor from "../PluginEditor";
+import usePlugins from "../../hooks/usePlugins";
 
 interface ConfigPanelProps {}
 
@@ -11,12 +12,43 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
   const { selectedTrial, trials, setTrials, setSelectedTrial } = useTrials();
   const [selectedId, setSelectedId] = useState<string>("");
   const [pluginList, setPluginList] = useState<string[]>([]);
+  const { isSaving, plugins } = usePlugins();
+
+  const prevPluginList = useRef<string[]>([]);
 
   useEffect(() => {
-    fetch("/api/plugins-list")
-      .then((res) => res.json())
-      .then((data) => setPluginList(data.plugins || []));
-  }, []);
+    if (isSaving) return;
+    (async () => {
+      await fetch("/api/plugins-list")
+        .then((res) => res.json())
+        .then((data) => {
+          setPluginList(data.plugins || []);
+          prevPluginList.current = pluginList;
+        });
+
+      if (prevPluginList.current.length > 0) {
+        const newPlugins = pluginList.filter(
+          (plugin) => !prevPluginList.current.includes(plugin)
+        );
+        if (newPlugins.length > 0) {
+          // Por cada nuevo plugin, crea un trial
+          newPlugins.forEach((plugin) => {
+            const newTrial = {
+              id: Date.now() + Math.random(), // o usa tu generador de IDs
+              plugin: plugin,
+              type: "Trial",
+              name: `${Math.random}`,
+              parameters: {},
+              trialCode: "",
+            };
+            setTrials([...trials, newTrial]);
+            setSelectedTrial(newTrial);
+          });
+        }
+      }
+      prevPluginList.current = pluginList;
+    })();
+  }, [plugins]);
 
   useEffect(() => {
     if (selectedTrial?.plugin) {

@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import useUrl from "../hooks/useUrl";
 import { useExperimentState } from "../hooks/useExpetimentState";
+import useTrials from "../hooks/useTrials";
 
 function ExperimentPreview() {
   const { trialUrl } = useUrl();
-  const { version } = useExperimentState();
+  const { version, incrementVersion } = useExperimentState();
   const [started, setStarted] = useState(false);
   const [key, setKey] = useState(0);
 
@@ -22,6 +23,45 @@ function ExperimentPreview() {
   const handleStop = () => {
     setStarted(false);
   };
+
+  const { selectedTrial, trials } = useTrials();
+
+  // trials preview
+  useEffect(() => {
+    if (selectedTrial && selectedTrial.trialCode) {
+      const trialCode = `
+      const jsPsych = initJsPsych({
+        on_finish: function() {
+          jsPsych.data.displayData();
+      },
+      });
+
+      const timeline = [];
+
+      const welcome = {
+        type: jsPsychHtmlButtonResponse,
+        stimulus: "Trial Preview",
+        choices: ['View'],
+      };
+
+      timeline.push(welcome);
+
+      ${selectedTrial?.trialCode}
+
+      jsPsych.run(timeline);`;
+
+      (async () => {
+        await fetch("/api/trials-preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ generatedCode: trialCode }),
+          credentials: "include",
+          mode: "cors",
+        });
+        incrementVersion();
+      })();
+    }
+  }, [selectedTrial, trials]);
 
   // Crear URL con parámetros únicos para evitar caché
 

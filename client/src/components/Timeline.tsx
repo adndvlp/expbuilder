@@ -1,11 +1,9 @@
 // src/components/Timeline.tsx
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Trial } from "./ConfigPanel/types";
 import useTrials from "../hooks/useTrials";
 import useUrl from "../hooks/useUrl";
 import useDevMode from "../hooks/useDevMode";
-import usePlugins from "../hooks/usePlugins";
-import { useExperimentState } from "../hooks/useExpetimentState";
 import FileUploader from "./ConfigPanel/components/TrialsConfig/components/FileUploader";
 import { useFileUpload } from "./ConfigPanel/components/TrialsConfig/hooks/useFileUpload";
 
@@ -21,13 +19,8 @@ function Component({}: TimelineProps) {
 
   const { trials, setTrials, selectedTrial, setSelectedTrial } = useTrials();
   const { isDevMode, code, setCode } = useDevMode();
-  const { plugins } = usePlugins();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const didMount = useRef(false);
-
-  const { incrementVersion } = useExperimentState();
 
   // For files in devmode
   const folder = "all";
@@ -130,8 +123,6 @@ function Component({}: TimelineProps) {
     .filter(Boolean)
     .join("\n\n");
 
-  const selectedTrialCode = selectedTrial?.trialCode;
-
   let extensions = "";
 
   // useEffect(() => {
@@ -199,11 +190,6 @@ const trialSessionId =
 
   const jsPsych = initJsPsych({
 
-  ${
-    selectedTrial
-      ? ""
-      : `
-    
   ${extensions}
 
   on_data_update: function(data) {
@@ -216,9 +202,6 @@ const trialSessionId =
       }),
     });
   },
-  `
-  }
-
   
   // fetch("https://pipe.jspsych.org/api/data/", {
   //       method: "POST",
@@ -250,7 +233,7 @@ const welcome = {
 
 timeline.push(welcome);
 
-${selectedTrial ? selectedTrialCode : allTrialCodes}
+${allTrialCodes}
 
 jsPsych.run(timeline);`;
   };
@@ -260,126 +243,195 @@ jsPsych.run(timeline);`;
     trials.every((trial) => !!trial.trialCode && trial.trialCode.trim() !== "");
 
   // Handle running the experiment
-  useEffect(() => {
-    // Skip first load
-    if (!didMount.current) {
-      didMount.current = true;
-      return;
-    }
-    if (isSubmitting || (!allTrialsHaveCode && !isDevMode)) return;
+  // useEffect(() => {
+  //   // Skip first load
+  //   if (!didMount.current) {
+  //     didMount.current = true;
+  //     return;
+  //   }
+  //   if (isSubmitting || (!allTrialsHaveCode && !isDevMode)) return;
 
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+  //   if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
-    timeoutRef.current = setTimeout(async () => {
-      setIsSubmitting(true);
+  //   timeoutRef.current = setTimeout(async () => {
+  //     setIsSubmitting(true);
 
-      try {
-        let generatedCode;
-        isDevMode
-          ? (generatedCode = code)
-          : (generatedCode = generateExperiment());
+  //     try {
+  //       let generatedCode;
+  //       isDevMode
+  //         ? (generatedCode = code)
+  //         : (generatedCode = generateExperiment());
 
-        if (!isDevMode) {
-          setSubmitStatus("Saving configuration...");
-          const generatedCode = generateExperiment();
+  //       if (!isDevMode) {
+  //         setSubmitStatus("Saving configuration...");
+  //         const generatedCode = generateExperiment();
 
-          setCode(generatedCode);
+  //         setCode(generatedCode);
 
-          const config = { generatedCode };
+  //         const config = { generatedCode };
 
-          // Paso 1: Guarda la configuración
-          const response = await fetch("/api/save-config", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(config),
-            credentials: "include",
-            mode: "cors",
-          });
+  //         // Paso 1: Guarda la configuración
+  //         const response = await fetch("/api/save-config", {
+  //           method: "POST",
+  //           headers: { "Content-Type": "application/json" },
+  //           body: JSON.stringify(config),
+  //           credentials: "include",
+  //           mode: "cors",
+  //         });
 
-          if (!response.ok) {
-            throw new Error(`Server responded with status: ${response.status}`);
-          }
-          const result = await response.json();
-          if (!result.success) {
-            setSubmitStatus("Failed to save configuration.");
-            setIsSubmitting(false);
-            return;
-          }
+  //         if (!response.ok) {
+  //           throw new Error(`Server responded with status: ${response.status}`);
+  //         }
+  //         const result = await response.json();
+  //         if (!result.success) {
+  //           setSubmitStatus("Failed to save configuration.");
+  //           setIsSubmitting(false);
+  //           return;
+  //         }
 
-          setSubmitStatus("Saved Configuration! Building experiment...");
-        }
-        // trials preview
-        if (selectedTrial) {
-          setSubmitStatus("Loading Trial preview...");
-          const runResponse = await fetch("/api/trials-preview", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ generatedCode }),
-            credentials: "include",
-            mode: "cors",
-          });
-          if (!runResponse.ok) {
-            throw new Error(
-              `Server responded with status: ${runResponse.status} when running experiment`
-            );
-          }
-          setSubmitStatus("Trial preview ready");
-        }
+  //         setSubmitStatus("Saved Configuration! Building experiment...");
+  //       }
 
-        // Paso 2: Llama al build/run-experiment
-        setSubmitStatus("Running experiment...");
-        const runResponse = await fetch("/api/run-experiment", {
+  //       // Paso 2: Llama al build/run-experiment
+  //       setSubmitStatus("Running experiment...");
+  //       const runResponse = await fetch("/api/run-experiment", {
+  //         method: "POST",
+  //         headers: { "Content-Type": "application/json" },
+  //         body: JSON.stringify({
+  //           usePlugins: plugins.length > 0,
+  //           generatedCode,
+  //         }),
+  //         credentials: "include",
+  //         mode: "cors",
+  //       });
+
+  //       if (!runResponse.ok) {
+  //         throw new Error(
+  //           `Server responded with status: ${runResponse.status} when running experiment`
+  //         );
+  //       }
+
+  //       const runResult = await runResponse.json();
+  //       if (runResult.success) {
+  //         // setExperimentUrl(result.urlExperiment);
+  //         setSubmitStatus("Experiment ready!");
+  //         // window.alert("Experiment ready!");
+  //         setSubmitStatus("");
+  //         incrementVersion();
+  //         // window.open(runResult.experimentUrl, "_blank"); // <--- ABRE AUTOMÁTICAMENTE
+  //       } else {
+  //         setSubmitStatus(
+  //           "Saved configuration but failed at running the experiment."
+  //         );
+  //         window.alert(
+  //           "Saved configuration but failed at running the experiment."
+  //         );
+  //       }
+  //     } catch (error) {
+  //       console.error("Error submitting configuration:", error);
+  //       setSubmitStatus(
+  //         `An error occurred: ${
+  //           error instanceof Error ? error.message : "Unknown error"
+  //         }`
+  //       );
+  //     } finally {
+  //       setIsSubmitting(false);
+  //       console.log(generateExperiment());
+  //     }
+  //   }, 3000);
+
+  //   return () => {
+  //     if (timeoutRef.current) {
+  //       clearTimeout(timeoutRef.current);
+  //     }
+  //   };
+  // }, [trials, code, isDevMode, plugins]);
+
+  const handleRunExperiment = async () => {
+    setIsSubmitting(true);
+
+    try {
+      let generatedCode;
+      isDevMode
+        ? (generatedCode = code)
+        : (generatedCode = generateExperiment());
+
+      if (!isDevMode) {
+        setSubmitStatus("Saving configuration...");
+        const generatedCode = generateExperiment();
+
+        setCode(generatedCode);
+
+        const config = { generatedCode };
+
+        // Paso 1: Guarda la configuración
+        const response = await fetch("/api/save-config", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            usePlugins: plugins.length > 0,
-            generatedCode,
-          }),
+          body: JSON.stringify(config),
           credentials: "include",
           mode: "cors",
         });
 
-        if (!runResponse.ok) {
-          throw new Error(
-            `Server responded with status: ${runResponse.status} when running experiment`
-          );
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
+        const result = await response.json();
+        if (!result.success) {
+          setSubmitStatus("Failed to save configuration.");
+          setIsSubmitting(false);
+          return;
         }
 
-        const runResult = await runResponse.json();
-        if (runResult.success) {
-          // setExperimentUrl(result.urlExperiment);
-          setSubmitStatus("Experiment ready!");
-          // window.alert("Experiment ready!");
-          setSubmitStatus("");
-          incrementVersion();
-          // window.open(runResult.experimentUrl, "_blank"); // <--- ABRE AUTOMÁTICAMENTE
-        } else {
-          setSubmitStatus(
-            "Saved configuration but failed at running the experiment."
-          );
-          window.alert(
-            "Saved configuration but failed at running the experiment."
-          );
-        }
-      } catch (error) {
-        console.error("Error submitting configuration:", error);
-        setSubmitStatus(
-          `An error occurred: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`
+        setSubmitStatus("Saved Configuration! Building experiment...");
+      }
+
+      // Paso 2: Llama al build/run-experiment
+      setSubmitStatus("Running experiment...");
+      const runResponse = await fetch("/api/run-experiment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ generatedCode }),
+        credentials: "include",
+        mode: "cors",
+      });
+
+      if (!runResponse.ok) {
+        throw new Error(
+          `Server responded with status: ${runResponse.status} when running experiment`
         );
-      } finally {
-        setIsSubmitting(false);
-        console.log(generateExperiment());
       }
-    }, 3000);
 
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
+      const runResult = await runResponse.json();
+      if (runResult.success) {
+        // setExperimentUrl(result.urlExperiment);
+        setSubmitStatus("Experiment ready!");
+        // window.alert("Experiment ready!");
+        setSubmitStatus("");
+
+        // window.open(runResult.experimentUrl, "_blank"); // <--- ABRE AUTOMÁTICAMENTE
+      } else {
+        setSubmitStatus(
+          "Saved configuration but failed at running the experiment."
+        );
+        window.alert(
+          "Saved configuration but failed at running the experiment."
+        );
       }
-    };
-  }, [trials, code, isDevMode, plugins]);
+    } catch (error) {
+      console.error("Error submitting configuration:", error);
+      setSubmitStatus(
+        `An error occurred: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    } finally {
+      setIsSubmitting(false);
+      console.log(generateExperiment());
+    }
+  };
+
+  const isDisabled = isSubmitting || (!allTrialsHaveCode && !isDevMode);
 
   const handleCopyLink = async () => {
     if (experimentUrl) {
@@ -599,6 +651,22 @@ jsPsych.run(timeline);`;
           )}
         </div>
 
+        {/* Run Experiment Button */}
+
+        <div style={{ marginTop: "16px" }}>
+          <button
+            className="run-experiment-btn"
+            onClick={handleRunExperiment}
+            disabled={isDisabled}
+          >
+            {isSubmitting
+              ? "Processing..."
+              : experimentUrl
+                ? "Run Experiment"
+                : "Run Experiment"}
+          </button>
+        </div>
+
         {isDevMode && (
           <div
             style={{
@@ -620,22 +688,6 @@ jsPsych.run(timeline);`;
             />
           </div>
         )}
-
-        {/* Run Experiment Button */}
-
-        {/* <div style={{ marginTop: "16px" }}>
-          <button
-            className="run-experiment-btn"
-            onClick={handleRunExperiment}
-            disabled={}
-          >
-            {isSubmitting
-              ? "Processing..."
-              : experimentUrl
-                ? "Run Experiment"
-                : "Run Experiment"}
-          </button>
-        </div> */}
       </div>
     </div>
   );
