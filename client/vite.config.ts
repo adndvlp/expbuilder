@@ -4,6 +4,7 @@ import react from "@vitejs/plugin-react";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  base: "./",
   server: {
     // Configure the proxy to forward API requests to your Express server
     proxy: {
