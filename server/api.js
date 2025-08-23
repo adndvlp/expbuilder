@@ -24,8 +24,7 @@ const port = 3000;
 // Configure CORS to allow requests from your frontend
 app.use(
   cors({
-    origin: "http://localhost:5173", // Replace with your frontend URL if different
-    // origin: "https://adndvlp.github.io",
+    origin: `${process.env.ORIGIN}`, // Replace with your frontend URL if different
     credentials: true,
   })
 );
@@ -498,6 +497,8 @@ app.post("/api/save-plugins", async (req, res) => {
 
     // Ejecutar extract-metadata.mjs después de escribir los plugins
     console.log("🔄 Running extract-metadata script...");
+    let metadataStatus = "ok";
+    let metadataErrorMsg = "";
     try {
       await new Promise((resolve, reject) => {
         const extractScript = spawn(
@@ -517,7 +518,8 @@ app.post("/api/save-plugins", async (req, res) => {
             console.error(
               `❌ Extract-metadata script failed with code ${code}`
             );
-            // No rechazamos aquí para que el experimento pueda continuar
+            metadataStatus = "error";
+            metadataErrorMsg = `Extract-metadata script failed with code ${code}`;
             resolve();
           }
         });
@@ -526,7 +528,8 @@ app.post("/api/save-plugins", async (req, res) => {
           console.error(
             `❌ Error running extract-metadata script: ${err.message}`
           );
-          // No rechazamos aquí para que el experimento pueda continuar
+          metadataStatus = "error";
+          metadataErrorMsg = `Error running extract-metadata script: ${err.message}`;
           resolve();
         });
       });
@@ -534,6 +537,8 @@ app.post("/api/save-plugins", async (req, res) => {
       console.error(
         `❌ Error with metadata extraction: ${metadataError.message}`
       );
+      metadataStatus = "error";
+      metadataErrorMsg = metadataError.message;
       // Continuamos con el experimento aunque falle la extracción de metadata
     }
 
@@ -569,7 +574,12 @@ app.post("/api/save-plugins", async (req, res) => {
     fs.writeFileSync(html2Path, $2.html(), "utf8");
     console.log("script insertion completed");
 
-    res.json({ success: true, plugin });
+    res.json({
+      success: true,
+      plugin,
+      metadataStatus,
+      metadataError: metadataErrorMsg,
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

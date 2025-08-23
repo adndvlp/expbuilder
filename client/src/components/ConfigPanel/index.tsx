@@ -5,6 +5,7 @@ import TrialsConfig from "./components/TrialsConfig";
 import WebGazer from "./components/TrialsConfig/components/WebGazer";
 import PluginEditor from "../PluginEditor";
 import usePlugins from "../../hooks/usePlugins";
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface ConfigPanelProps {}
 
@@ -12,6 +13,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
   const { selectedTrial, trials, setTrials, setSelectedTrial } = useTrials();
   const [selectedId, setSelectedId] = useState<string>("");
   const [pluginList, setPluginList] = useState<string[]>([]);
+  const [pluginEditor, setPluginEditor] = useState<boolean>(false);
   const { isSaving, plugins } = usePlugins();
 
   const prevPluginList = useRef<string[]>([]);
@@ -19,36 +21,13 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
   useEffect(() => {
     if (isSaving) return;
     (async () => {
-      await fetch("/api/plugins-list")
-        .then((res) => res.json())
-        .then((data) => {
-          setPluginList(data.plugins || []);
-          prevPluginList.current = pluginList;
-        });
-
-      if (prevPluginList.current.length > 0) {
-        const newPlugins = pluginList.filter(
-          (plugin) => !prevPluginList.current.includes(plugin)
-        );
-        if (newPlugins.length > 0) {
-          // Por cada nuevo plugin, crea un trial
-          newPlugins.forEach((plugin) => {
-            const newTrial = {
-              id: Date.now() + Math.random(), // o usa tu generador de IDs
-              plugin: plugin,
-              type: "Trial",
-              name: `${Math.random}`,
-              parameters: {},
-              trialCode: "",
-            };
-            setTrials([...trials, newTrial]);
-            setSelectedTrial(newTrial);
-          });
-        }
-      }
-      prevPluginList.current = pluginList;
+      const res = await fetch(`${API_URL}/api/plugins-list`);
+      const data = await res.json();
+      const newPluginList = data.plugins || [];
+      setPluginList(newPluginList);
+      prevPluginList.current = newPluginList;
     })();
-  }, [plugins]);
+  }, [plugins, isSaving]);
 
   useEffect(() => {
     if (selectedTrial?.plugin) {
@@ -85,7 +64,6 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
   );
 
   const options = [
-    { value: "custom", label: "Custom Plugin" },
     ...filteredPlugins.map((plugin) => {
       const value = /plugin-webgazer/i.test(plugin) ? "webgazer" : plugin;
       return {
@@ -112,97 +90,108 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
   return (
     <div className="config-panel">
       <div className="input-section">
-        <div className="form-group">
-          <label htmlFor="pluginSelect">Select a plugin:</label>
-          <Select
-            id="pluginSelect"
-            options={options}
-            value={options.find((opt) => opt.value === selectedId) || null}
-            onChange={handleChange}
-            placeholder="Select a stimulus-response"
-            styles={{
-              control: (baseStyles, state) => ({
-                ...baseStyles,
-                backgroundColor: "var(--neutral-light)",
-                color: "var(--text-dark)",
-                borderColor: state.isFocused
-                  ? "var(--primary-purple)"
-                  : "var(--neutral-mid)",
-                boxShadow: state.isFocused
-                  ? "0 0 0 2px var(--primary-purple)"
-                  : "none",
-                "&:hover": {
-                  borderColor: "var(--primary-purple)",
-                },
-                borderRadius: "6px",
-                height: "20%",
-              }),
-              singleValue: (base) => ({
-                ...base,
-                color: "var(--text-dark)",
-                fontWeight: 500,
-              }),
-              menu: (base) => ({
-                ...base,
-                backgroundColor: "var(--primary-purple)",
-                borderRadius: "6px",
-                boxShadow: "0 2px 8px rgba(61,146,180,0.08)",
-              }),
-
-              // Placeholder
-              option: (base, state) => ({
-                ...base,
-                backgroundColor: state.isFocused
-                  ? "var(--gold)"
-                  : "var(--light-purple)",
-                color: state.isFocused
-                  ? "var(--text-light)" // Text color when placeholder
-                  : "var(--text-light)",
-                fontWeight: state.isSelected ? 600 : 400,
-                "&:hover": {
-                  backgroundColor: "var(--gold)",
-                  color: "var(--text-light)", // Text color when placeholder
-                },
-              }),
-              placeholder: (base) => ({
-                ...base,
-                color: "var(--text-dark)",
-                fontStyle: "italic",
-              }),
-              input: (base) => ({
-                ...base,
-                color: "var(--text-dark)",
-              }),
-              dropdownIndicator: (base, state) => ({
-                ...base,
-                color: state.isFocused
-                  ? "var(--primary-purple)"
-                  : "var(--primary-purple)",
-                "&:hover": {
-                  color: "var(--gold)",
-                },
-              }),
-              indicatorSeparator: (base) => ({
-                ...base,
-                backgroundColor: "var(--primary-purple)",
-              }),
-            }}
-          ></Select>
-
-          <hr />
-          <div>
-            {selectedId &&
-              selectedId !== "webgazer" &&
-              selectedId !== "custom" &&
-              selectedId !== "Select a stimulus-response" && (
-                <TrialsConfig pluginName={selectedId} />
-              )}
-            {selectedId === "webgazer" && (
-              <WebGazer webgazerPlugins={webgazerPlugins} />
-            )}
-            {selectedId === "custom" && <PluginEditor />}
-          </div>
+        <div>
+          Create Plugin
+          <input
+            type="checkbox"
+            checked={pluginEditor}
+            onChange={(e) => setPluginEditor(e.target.checked)}
+          ></input>
+          {pluginEditor && <PluginEditor />}
         </div>
+        {!pluginEditor && (
+          <div className="form-group">
+            <label htmlFor="pluginSelect">Select a plugin:</label>
+            <Select
+              id="pluginSelect"
+              options={options}
+              value={options.find((opt) => opt.value === selectedId) || null}
+              onChange={handleChange}
+              placeholder="Select a stimulus-response"
+              styles={{
+                control: (baseStyles, state) => ({
+                  ...baseStyles,
+                  backgroundColor: "var(--neutral-light)",
+                  color: "var(--text-dark)",
+                  borderColor: state.isFocused
+                    ? "var(--primary-purple)"
+                    : "var(--neutral-mid)",
+                  boxShadow: state.isFocused
+                    ? "0 0 0 2px var(--primary-purple)"
+                    : "none",
+                  "&:hover": {
+                    borderColor: "var(--primary-purple)",
+                  },
+                  borderRadius: "6px",
+                  height: "20%",
+                }),
+                singleValue: (base) => ({
+                  ...base,
+                  color: "var(--text-dark)",
+                  fontWeight: 500,
+                }),
+                menu: (base) => ({
+                  ...base,
+                  backgroundColor: "var(--primary-purple)",
+                  borderRadius: "6px",
+                  boxShadow: "0 2px 8px rgba(61,146,180,0.08)",
+                }),
+
+                // Placeholder
+                option: (base, state) => ({
+                  ...base,
+                  backgroundColor: state.isFocused
+                    ? "var(--gold)"
+                    : "var(--light-purple)",
+                  color: state.isFocused
+                    ? "var(--text-light)" // Text color when placeholder
+                    : "var(--text-light)",
+                  fontWeight: state.isSelected ? 600 : 400,
+                  "&:hover": {
+                    backgroundColor: "var(--gold)",
+                    color: "var(--text-light)", // Text color when placeholder
+                  },
+                }),
+                placeholder: (base) => ({
+                  ...base,
+                  color: "var(--text-dark)",
+                  fontStyle: "italic",
+                }),
+                input: (base) => ({
+                  ...base,
+                  color: "var(--text-dark)",
+                }),
+                dropdownIndicator: (base, state) => ({
+                  ...base,
+                  color: state.isFocused
+                    ? "var(--primary-purple)"
+                    : "var(--primary-purple)",
+                  "&:hover": {
+                    color: "var(--gold)",
+                  },
+                }),
+                indicatorSeparator: (base) => ({
+                  ...base,
+                  backgroundColor: "var(--primary-purple)",
+                }),
+              }}
+            ></Select>
+
+            <hr />
+            <div>
+              {selectedId &&
+                selectedId !== "webgazer" &&
+                selectedId !== "custom" &&
+                selectedId !== "Select a stimulus-response" && (
+                  <TrialsConfig pluginName={selectedId} />
+                )}
+              {selectedId === "webgazer" && (
+                <WebGazer webgazerPlugins={webgazerPlugins} />
+              )}
+              {selectedId === "custom" && <PluginEditor />}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

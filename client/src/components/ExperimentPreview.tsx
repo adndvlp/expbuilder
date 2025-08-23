@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import useUrl from "../hooks/useUrl";
 import { useExperimentState } from "../hooks/useExpetimentState";
 import useTrials from "../hooks/useTrials";
+const API_URL = import.meta.env.VITE_API_URL;
 
 function ExperimentPreview() {
   const { trialUrl } = useUrl();
@@ -51,7 +52,7 @@ function ExperimentPreview() {
       jsPsych.run(timeline);`;
 
       (async () => {
-        await fetch("/api/trials-preview", {
+        await fetch(`${API_URL}/api/trials-preview`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ generatedCode: trialCode }),

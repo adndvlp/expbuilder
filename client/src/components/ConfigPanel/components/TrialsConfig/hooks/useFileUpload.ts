@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from "react";
+const API_URL = import.meta.env.VITE_API_URL;
 
 type UseFileUploadProps = {
   folder: string;
@@ -37,7 +38,7 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
     }
 
     // Si no hay caché o expiró, hacer fetch
-    fetch(`/api/list-files/${folder}`)
+    fetch(`${API_URL}/api/list-files/${folder}`)
       .then((res) => res.json())
       .then((data) => {
         setUploadedFiles(data.files);
@@ -66,7 +67,7 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
       formData.append("file", file);
 
       try {
-        const response = await fetch("/api/upload-file", {
+        const response = await fetch(`${API_URL}/api/upload-file`, {
           method: "POST",
           body: formData,
         });
@@ -92,7 +93,7 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
     });
 
     try {
-      const response = await fetch("/api/upload-files-folder", {
+      const response = await fetch(`${API_URL}/api/upload-files-folder`, {
         method: "POST",
         body: formData,
       });
@@ -110,7 +111,7 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
 
   const handleDeleteFile = async (fileName: string) => {
     const filename = fileName.split("/").pop();
-    await fetch(`/api/delete-file/${folder}/${filename}`, {
+    await fetch(`${API_URL}/api/delete-file/${folder}/${filename}`, {
       method: "DELETE",
     });
     invalidateCache();

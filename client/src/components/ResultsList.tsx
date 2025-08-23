@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import ExperimentPreview from "./ExperimentPreview";
+const API_URL = import.meta.env.VITE_API_URL;
 
 type SessionMeta = {
   _id: string;
@@ -13,7 +14,7 @@ export default function ResultsList() {
 
   const fetchSessions = async () => {
     setLoading(true);
-    const res = await fetch("/api/session-results");
+    const res = await fetch(`${API_URL}/api/session-results`);
     const data = await res.json();
     setSessions(data.sessions || []);
     setLoading(false);
@@ -26,7 +27,9 @@ export default function ResultsList() {
   const handleDeleteSession = async (sessionId: string) => {
     if (!window.confirm("Are you sure you want to delete this session result?"))
       return;
-    await fetch(`/api/session-results/${sessionId}`, { method: "DELETE" });
+    await fetch(`${API_URL}/api/session-results/${sessionId}`, {
+      method: "DELETE",
+    });
     fetchSessions();
   };
 
@@ -56,7 +59,9 @@ export default function ResultsList() {
                     <button
                       className="download-csv-btn"
                       onClick={() =>
-                        window.open(`/api/download-session/${s.sessionId}`)
+                        window.open(
+                          `${API_URL}/api/download-session/${s.sessionId}`
+                        )
                       }
                     >
                       CSV

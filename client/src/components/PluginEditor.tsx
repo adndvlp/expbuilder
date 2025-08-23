@@ -1,6 +1,9 @@
 import { Editor } from "@monaco-editor/react";
 import { useRef, useState } from "react";
+import useTrials from "../hooks/useTrials";
+import { Trial } from "./ConfigPanel/types";
 import usePlugins from "../hooks/usePlugins";
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface Plugin {
   name: string;
@@ -11,6 +14,7 @@ interface Plugin {
 
 const PluginEditor: React.FC = () => {
   const { plugins, setPlugins } = usePlugins();
+  const { trials, setTrials, setSelectedTrial } = useTrials();
   const [selectedIdx, setSelectedIdx] = useState<number>(0);
   const [saveIndicator, setSaveIndicator] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -38,6 +42,22 @@ const PluginEditor: React.FC = () => {
     }
     setPlugins([...plugins, ...newPlugins]);
     setSelectedIdx(plugins.length); // select first new plugin
+    // Crear trial por cada plugin subido
+    newPlugins.forEach((plugin) => {
+      const newTrial: Trial = {
+        id: Date.now() + Math.random(),
+        plugin: plugin.name,
+        type: "Trial",
+        name: `${plugin.name.replace(/^plugin-/, "").replace(/-/g, " ")}`,
+        parameters: {},
+        trialCode: "",
+        columnMapping: {},
+        csvJson: [],
+        csvColumns: [],
+      };
+      setTrials([...trials, newTrial]);
+      setSelectedTrial(newTrial);
+    });
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -87,7 +107,7 @@ const PluginEditor: React.FC = () => {
     if (!pluginToDelete) return;
     // Remove from backend
     try {
-      await fetch(`/api/delete-plugin/${pluginToDelete.index}`, {
+      await fetch(`${API_URL}/api/delete-plugin/${pluginToDelete.index}`, {
         method: "DELETE",
       });
     } catch (err) {

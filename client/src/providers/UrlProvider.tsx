@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import UrlContext from "../contexts/UrlContext";
+const API_URL = import.meta.env.VITE_API_URL;
 
 type Props = {
   children: ReactNode;
@@ -10,8 +11,8 @@ export default function TrialsProvider({ children }: Props) {
   const [trialUrl, setTrialUrl] = useState<string>("");
 
   useEffect(() => {
-    setTrialUrl("http://localhost:3000/trials-preview");
-    setExperimentUrl("http://localhost:3000/experiment");
+    setTrialUrl(`${API_URL}/trials-preview`);
+    setExperimentUrl(`${API_URL}/experiment`);
   }, []);
 
   return (

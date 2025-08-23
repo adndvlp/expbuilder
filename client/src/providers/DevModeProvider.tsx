@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
-
 import DevModeContext from "../contexts/DevModeContext";
+const API_URL = import.meta.env.VITE_API_URL;
 
 type Props = {
   children: ReactNode;
@@ -13,7 +13,7 @@ export default function DevModeProvider({ children }: Props) {
 
   useEffect(() => {
     setIsLoading(true);
-    fetch("/api/load-config")
+    fetch(`${API_URL}/api/load-config`)
       .then((res) => res.json())
       .then((data) => {
         if (data?.config) {
@@ -33,7 +33,7 @@ export default function DevModeProvider({ children }: Props) {
     if (isLoading) return;
     const timeoutId = setTimeout(async () => {
       try {
-        const response = await fetch("/api/save-config", {
+        const response = await fetch(`${API_URL}/api/save-config`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

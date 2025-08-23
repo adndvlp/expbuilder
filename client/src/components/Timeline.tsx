@@ -6,6 +6,7 @@ import useUrl from "../hooks/useUrl";
 import useDevMode from "../hooks/useDevMode";
 import FileUploader from "./ConfigPanel/components/TrialsConfig/components/FileUploader";
 import { useFileUpload } from "./ConfigPanel/components/TrialsConfig/hooks/useFileUpload";
+const API_URL = import.meta.env.VITE_API_URL;
 
 type TimelineProps = {};
 
@@ -365,7 +366,7 @@ jsPsych.run(timeline);`;
         const config = { generatedCode };
 
         // Paso 1: Guarda la configuración
-        const response = await fetch("/api/save-config", {
+        const response = await fetch(`${API_URL}/api/save-config`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(config),
@@ -388,7 +389,7 @@ jsPsych.run(timeline);`;
 
       // Paso 2: Llama al build/run-experiment
       setSubmitStatus("Running experiment...");
-      const runResponse = await fetch("/api/run-experiment", {
+      const runResponse = await fetch(`${API_URL}/api/run-experiment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ generatedCode }),

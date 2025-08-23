@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+const API_URL = import.meta.env.VITE_API_URL;
 
 type UseTrialPersistenceProps = {
   trials: any[];
@@ -19,7 +20,7 @@ export function useTrialPersistence({
     const saveTrials = async () => {
       try {
         const savedTrials = { trials };
-        const response = await fetch("/api/save-trials", {
+        const response = await fetch(`${API_URL}/api/save-trials`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(savedTrials),
@@ -41,7 +42,7 @@ export function useTrialPersistence({
   // Borrar trial de la base de datos
   const deleteTrial = async (id: number) => {
     try {
-      const response = await fetch(`/api/trials/${id}`, {
+      const response = await fetch(`${API_URL}/api/trials/${id}`, {
         method: "DELETE",
       });
 

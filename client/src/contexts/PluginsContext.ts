@@ -14,6 +14,7 @@ type PluginsContextType = {
   setIsPluginEditor: React.Dispatch<React.SetStateAction<boolean>>;
   isSaving: boolean;
   setIsSaving: React.Dispatch<React.SetStateAction<boolean>>;
+  metadataError: string;
 };
 
 const PluginsContext = createContext<PluginsContextType | undefined>(undefined);
