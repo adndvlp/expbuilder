@@ -19,6 +19,7 @@ export interface Trial {
   columnMapping?: Record<string, any>;
   csvJson?: any[];
   csvColumns?: string[];
+  editPluginMode?: boolean;
 }
 
 export type FieldType =

@@ -153,29 +153,6 @@ app.post("/api/upload-files-folder", upload.array("files"), (req, res) => {
   });
 });
 
-// app.get("/api/list-files/:folder", async (req, res) => {
-//   const folder = req.params.folder;
-//   let resourceType = "image";
-//   if (folder === "aud") resourceType = "video"; // audio but cloudinary treats it as video
-//   if (folder === "vid") resourceType = "video";
-//   try {
-//     const result = await cloudinary.search
-//       .expression(`resource_type:${resourceType} AND folder:${folder}`)
-//       .sort_by("created_at", "desc")
-//       .max_results(100)
-//       .execute();
-//     const files = result.resources.map((file) => ({
-//       name: `${folder}/${file.public_id.replace(/^.*?\//, "")}${
-//         file.format ? "." + file.format : ""
-//       }`,
-//       url: file.secure_url,
-//     }));
-//     res.json({ files });
-//   } catch (err) {
-//     res.status(500).json({ files: [], error: err.message });
-//   }
-// });
-
 app.get("/api/list-files/:folder", async (req, res) => {
   const folder = req.params.folder;
 
@@ -351,37 +328,12 @@ const PluginConfig =
   mongoose.models.PluginConfig ||
   mongoose.model("PluginConfig", PluginConfigSchema);
 
-// Save or update a plugin by index, previous enpoint
-// app.post("/api/save-plugins", async (req, res) => {
-//   try {
-//     const { name, scripTag, pluginCode, index } = req.body;
-//     if (typeof index !== "number")
-//       return res.status(400).json({ success: false, error: "Index required" });
-
-//     const plugin = { name, scripTag, pluginCode, index };
-
-//     let doc = await PluginConfig.findOne({});
-//     if (!doc) {
-//       doc = await PluginConfig.create({ plugins: [plugin] });
-//       return res.json({ success: true, plugin });
-//     }
-
-//     const i = doc.plugins.findIndex((p) => p.index === index);
-//     if (i >= 0) doc.plugins[i] = plugin;
-//     else doc.plugins.push(plugin);
-
-//     await doc.save();
-//     res.json({ success: true, plugin });
-//   } catch (error) {
-//     res.status(500).json({ success: false, error: error.message });
-//   }
-// });
-
-// Save or update a plugin by index
-app.post("/api/save-plugins", async (req, res) => {
+// Guardar un solo plugin por id
+app.post("/api/save-plugin/:id", async (req, res) => {
   try {
-    const { name, scripTag, pluginCode, index } = req.body;
-    if (typeof index !== "number")
+    const index = Number(req.params.id);
+    const { name, scripTag, pluginCode } = req.body;
+    if (isNaN(index))
       return res.status(400).json({ success: false, error: "Index required" });
 
     const plugin = { name, scripTag, pluginCode, index };
@@ -393,171 +345,67 @@ app.post("/api/save-plugins", async (req, res) => {
       const existingPluginIndex = doc.plugins.findIndex(
         (p) => p.index === index
       );
-
-      // Si estamos actualizando un plugin existente
       if (existingPluginIndex >= 0) {
         const oldPlugin = doc.plugins[existingPluginIndex];
-
-        // Verificar si hay cambios en nombre, scripTag o código
+        // Limpieza de archivos y metadata si hay cambios
         const nameChanged = oldPlugin.name !== name;
         const scripTagChanged = oldPlugin.scripTag !== scripTag;
         const codeChanged = oldPlugin.pluginCode !== pluginCode;
-
-        // Si hay cualquier cambio, limpiar archivos anteriores
         if (nameChanged || scripTagChanged || codeChanged) {
-          // Eliminar archivo anterior del plugin
           if (oldPlugin.scripTag) {
             const oldFileName = path.basename(oldPlugin.scripTag);
             const oldFilePath = path.join(__dirname, "plugins", oldFileName);
-            if (fs.existsSync(oldFilePath)) {
-              fs.unlinkSync(oldFilePath);
-              console.log(`🗑️ Deleted old plugin file: ${oldFileName}`);
-            }
+            if (fs.existsSync(oldFilePath)) fs.unlinkSync(oldFilePath);
           }
-
-          // Eliminar metadata anterior
           if (oldPlugin.name) {
             const oldMetadataPath = path.join(
               __dirname,
               "metadata",
               `${oldPlugin.name}.json`
             );
-            if (fs.existsSync(oldMetadataPath)) {
-              fs.unlinkSync(oldMetadataPath);
-              console.log(`🗑️ Deleted old metadata: ${oldPlugin.name}.json`);
-            }
+            if (fs.existsSync(oldMetadataPath)) fs.unlinkSync(oldMetadataPath);
           }
-
-          // Si el nombre cambió y es diferente al nuevo, eliminar también la nueva metadata si existe
           if (nameChanged && name !== oldPlugin.name) {
             const newMetadataPath = path.join(
               __dirname,
               "metadata",
               `${name}.json`
             );
-            if (fs.existsSync(newMetadataPath)) {
-              fs.unlinkSync(newMetadataPath);
-              console.log(
-                `🗑️ Deleted existing metadata for new name: ${name}.json`
-              );
-            }
+            if (fs.existsSync(newMetadataPath)) fs.unlinkSync(newMetadataPath);
           }
         }
-
-        // Actualizar el plugin existente
         doc.plugins[existingPluginIndex] = plugin;
       } else {
-        // Agregar nuevo plugin
         doc.plugins.push(plugin);
       }
     }
-
     await doc.save();
 
-    // Escribir o sobrescribir el archivo del plugin
+    // Guardar archivo del plugin
     if (pluginCode && scripTag) {
       const pluginsDir = path.join(__dirname, "plugins");
       if (!fs.existsSync(pluginsDir)) fs.mkdirSync(pluginsDir);
-
       const fileName = path.basename(scripTag);
       const filePath = path.join(pluginsDir, fileName);
       fs.writeFileSync(filePath, pluginCode, "utf8");
-      console.log(`💾 Saved plugin file: ${fileName}`);
     }
 
-    // Siempre eliminar metadata actual para forzar regeneración
-    const metadataPath = path.join(__dirname, "metadata", `${name}.json`);
-    if (fs.existsSync(metadataPath)) {
-      fs.unlinkSync(metadataPath);
-      console.log(`🗑️ Deleted metadata for regeneration: ${name}.json`);
-    }
+    // Eliminar metadata actual para forzar regeneración
+    const metadataPathFile = path.join(__dirname, "metadata", `${name}.json`);
+    if (fs.existsSync(metadataPathFile)) fs.unlinkSync(metadataPathFile);
 
-    // inserción de script en experiment.html
+    // Actualizar experiment.html y trials_preview.html
     let plugins = [];
-
     const pluginConfigDoc = await PluginConfig.findOne({});
     plugins = pluginConfigDoc?.plugins || [];
-
-    if (!plugins.length) {
-      return res
-        .status(404)
-        .json({ success: false, error: "No plugins found" });
-    }
-
-    const pluginsDir = path.join(__dirname, "plugins");
-    if (!fs.existsSync(pluginsDir)) fs.mkdirSync(pluginsDir);
-
-    // plugins.forEach((plugin) => {
-    //   if (plugin.pluginCode && plugin.scripTag) {
-    //     const fileName = path.basename(plugin.scripTag);
-    //     const filePath = path.join(pluginsDir, fileName);
-    //     fs.writeFileSync(filePath, plugin.pluginCode, "utf8");
-    //   }
-    // });
-
-    // Ejecutar extract-metadata.mjs después de escribir los plugins
-    console.log("🔄 Running extract-metadata script...");
-    let metadataStatus = "ok";
-    let metadataErrorMsg = "";
-    try {
-      await new Promise((resolve, reject) => {
-        const extractScript = spawn(
-          "node",
-          [path.join(__dirname, "extract-metadata.mjs")],
-          {
-            cwd: __dirname,
-            stdio: "inherit", // Para ver la salida en la consola del servidor
-          }
-        );
-
-        extractScript.on("close", (code) => {
-          if (code === 0) {
-            console.log("✅ Extract-metadata script completed successfully");
-            resolve();
-          } else {
-            console.error(
-              `❌ Extract-metadata script failed with code ${code}`
-            );
-            metadataStatus = "error";
-            metadataErrorMsg = `Extract-metadata script failed with code ${code}`;
-            resolve();
-          }
-        });
-
-        extractScript.on("error", (err) => {
-          console.error(
-            `❌ Error running extract-metadata script: ${err.message}`
-          );
-          metadataStatus = "error";
-          metadataErrorMsg = `Error running extract-metadata script: ${err.message}`;
-          resolve();
-        });
-      });
-    } catch (metadataError) {
-      console.error(
-        `❌ Error with metadata extraction: ${metadataError.message}`
-      );
-      metadataStatus = "error";
-      metadataErrorMsg = metadataError.message;
-      // Continuamos con el experimento aunque falle la extracción de metadata
-    }
-
     const html1Path = path.join(__dirname, "experiment.html");
     const html2Path = path.join(__dirname, "trials_preview.html");
-
-    // Leer cada HTML
     let html1 = fs.readFileSync(html1Path, "utf8");
     let html2 = fs.readFileSync(html2Path, "utf8");
-
-    // Cargar en Cheerio
     const $1 = cheerio.load(html1);
     const $2 = cheerio.load(html2);
-
-    // Limpiar scripts antiguos
     $1("script[id^='plugin-script']").remove();
     $2("script[id^='plugin-script']").remove();
-
-    // Insertar los plugins en ambos
     plugins.forEach((p, idx) => {
       if (p.scripTag) {
         $1("body").append(
@@ -568,11 +416,40 @@ app.post("/api/save-plugins", async (req, res) => {
         );
       }
     });
-
-    // Guardar los HTML modificados
     fs.writeFileSync(html1Path, $1.html(), "utf8");
     fs.writeFileSync(html2Path, $2.html(), "utf8");
-    console.log("script insertion completed");
+
+    // Ejecutar extract-metadata.mjs
+    let metadataStatus = "ok";
+    let metadataErrorMsg = "";
+    try {
+      await new Promise((resolve, reject) => {
+        const extractScript = spawn(
+          "node",
+          [path.join(__dirname, "extract-metadata.mjs")],
+          {
+            cwd: __dirname,
+            stdio: "inherit",
+          }
+        );
+        extractScript.on("close", (code) => {
+          if (code === 0) resolve();
+          else {
+            metadataStatus = "error";
+            metadataErrorMsg = `Extract-metadata script failed with code ${code}`;
+            resolve();
+          }
+        });
+        extractScript.on("error", (err) => {
+          metadataStatus = "error";
+          metadataErrorMsg = `Error running extract-metadata script: ${err.message}`;
+          resolve();
+        });
+      });
+    } catch (metadataError) {
+      metadataStatus = "error";
+      metadataErrorMsg = metadataError.message;
+    }
 
     res.json({
       success: true,
@@ -585,34 +462,6 @@ app.post("/api/save-plugins", async (req, res) => {
   }
 });
 
-// Delete a plugin by index, previous endpoint
-// app.delete("/api/delete-plugin/:index", async (req, res) => {
-//   try {
-//     const index = Number(req.params.index);
-//     if (isNaN(index)) {
-//       return res.status(400).json({ success: false, error: "Invalid index" });
-//     }
-//     const updated = await PluginConfig.findOneAndUpdate(
-//       {},
-//       { $pull: { plugins: { index } } },
-//       { new: true }
-//     );
-//     if (!updated) {
-//       return res.status(404).json({ success: false, error: "No config doc" });
-//     }
-//     const stillThere = updated.plugins.some((p) => p.index === index);
-//     if (stillThere) {
-//       return res
-//         .status(404)
-//         .json({ success: false, error: "Plugin not found" });
-//     }
-//     res.json({ success: true });
-//   } catch (error) {
-//     res.status(500).json({ success: false, error: error.message });
-//   }
-// });
-
-// Delete a plugin by index
 app.delete("/api/delete-plugin/:index", async (req, res) => {
   try {
     const index = Number(req.params.index);
@@ -669,13 +518,18 @@ app.delete("/api/delete-plugin/:index", async (req, res) => {
   }
 });
 
-// Endpoint para cargar la configuración de plugin
-app.get("/api/load-plugin-config", async (req, res) => {
+// Obtener un solo plugin por id
+app.get("/api/load-plugin/:id", async (req, res) => {
   try {
+    const index = Number(req.params.id);
+    if (isNaN(index))
+      return res.status(400).json({ plugin: null, error: "Invalid id" });
     const doc = await PluginConfig.findOne({});
-    res.json({ config: doc?.config ?? null, plugins: doc?.plugins ?? [] });
+    if (!doc) return res.json({ plugin: null });
+    const plugin = doc.plugins.find((p) => p.index === index);
+    res.json({ plugin: plugin ?? null });
   } catch (error) {
-    res.status(500).json({ config: null, error: error.message });
+    res.status(500).json({ plugin: null, error: error.message });
   }
 });
 

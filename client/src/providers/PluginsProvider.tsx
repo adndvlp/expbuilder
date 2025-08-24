@@ -20,25 +20,34 @@ export default function PluginsProvider({ children }: Props) {
   const [metadataError, setMetadataError] = useState<string>("");
   const API_URL = import.meta.env.VITE_API_URL;
 
-  // Load plugin config from backend
+  // Load plugins from backend (iterate indices until no plugin is found)
   useEffect(() => {
+    let isMounted = true;
     setIsLoading(true);
-    fetch(`${API_URL}/api/load-plugin-config`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && Array.isArray(data.plugins)) {
-          setPlugins(data.plugins);
+    const loadPlugins = async () => {
+      const loaded: Plugin[] = [];
+      let idx = 0;
+      while (true) {
+        try {
+          const res = await fetch(`${API_URL}/api/load-plugin/${idx}`);
+          const data = await res.json();
+          if (!data.plugin) break;
+          loaded.push(data.plugin);
+        } catch (err) {
+          break;
         }
-      })
-      .catch((error) => {
-        console.error("Error loading plugins:", error);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+        idx++;
+      }
+      if (isMounted) setPlugins(loaded);
+      setIsLoading(false);
+    };
+    loadPlugins();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // Autosave
+  // Autosave each plugin by index
   useEffect(() => {
     if (isLoading || plugins.length === 0 || isSaving) return;
 
@@ -46,17 +55,18 @@ export default function PluginsProvider({ children }: Props) {
     const timeoutId = setTimeout(async () => {
       try {
         const results = await Promise.all(
-          plugins.map((plugin) =>
-            fetch(`${API_URL}/api/save-plugins`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(plugin),
-            })
-              .then((res) => res.json())
-              .catch(() => null)
-          )
+          plugins.map(async (plugin) => {
+            const res = await fetch(
+              `${API_URL}/api/save-plugin/${plugin.index}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(plugin),
+              }
+            );
+            return res.json();
+          })
         );
-        // Busca si alguna respuesta tiene metadataStatus "error"
         const errorResult = results.find(
           (r) => r && r.metadataStatus === "error"
         );
@@ -89,6 +99,7 @@ export default function PluginsProvider({ children }: Props) {
         isSaving,
         setIsSaving,
         metadataError,
+        setMetadataError,
       }}
     >
       {children}

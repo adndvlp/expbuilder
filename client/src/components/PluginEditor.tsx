@@ -15,118 +15,90 @@ interface Plugin {
 const PluginEditor: React.FC = () => {
   const { plugins, setPlugins } = usePlugins();
   const { trials, setTrials, setSelectedTrial } = useTrials();
-  const [selectedIdx, setSelectedIdx] = useState<number>(0);
+  // Solo un plugin en el editor
   const [saveIndicator, setSaveIndicator] = useState(false);
+  const [localPlugin, setLocalPlugin] = useState<Plugin | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const autosaveTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // Add plugins from file upload (multiple)
+  // Subir plugin solo si no hay uno presente
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
-    const newPlugins: Plugin[] = [];
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const name = file.name.replace(/\.js$/, "");
-      const text = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (ev) => resolve(ev.target?.result as string);
-        reader.readAsText(file);
-      });
-      newPlugins.push({
-        name,
-        scripTag: `/plugins/${name}.js`,
-        pluginCode: text,
-        index: plugins.length + i,
-      });
-    }
-    setPlugins([...plugins, ...newPlugins]);
-    setSelectedIdx(plugins.length); // select first new plugin
-    // Crear trial por cada plugin subido
-    newPlugins.forEach((plugin) => {
-      const newTrial: Trial = {
-        id: Date.now() + Math.random(),
-        plugin: plugin.name,
-        type: "Trial",
-        name: `${plugin.name.replace(/^plugin-/, "").replace(/-/g, " ")}`,
-        parameters: {},
-        trialCode: "",
-        columnMapping: {},
-        csvJson: [],
-        csvColumns: [],
-      };
-      setTrials([...trials, newTrial]);
-      setSelectedTrial(newTrial);
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    const name = file.name.replace(/\.js$/, "");
+    const text = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => resolve(ev.target?.result as string);
+      reader.readAsText(file);
     });
+    const newPlugin: Plugin = {
+      name,
+      scripTag: `/plugins/${name}.js`,
+      pluginCode: text,
+      index: plugins.length,
+    };
+    setPlugins([...plugins, newPlugin]);
+
+    // Crear trial para el plugin subido
+    const newTrial: Trial = {
+      id: Date.now() + Math.random(),
+      plugin: newPlugin.name,
+      type: "Trial",
+      name: `${newPlugin.name.replace(/^plugin-/, "").replace(/-/g, " ")}`,
+      parameters: {},
+      trialCode: "",
+      columnMapping: {},
+      csvJson: [],
+      csvColumns: [],
+    };
+    setTrials([...trials, newTrial]);
+    setSelectedTrial(newTrial);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Add empty plugin
-  const handleAddPlugin = () => {
-    const name = `plugin-${plugins.length + 1}`;
-    setPlugins([
-      ...plugins,
-      {
-        name,
-        scripTag: `/plugins/${name}.js`,
-        pluginCode: "",
-        index: plugins.length,
-      },
-    ]);
-    setSelectedIdx(plugins.length);
-  };
-
-  // Update plugin field with autosave
-  const handleChange = (idx: number, field: keyof Plugin, value: string) => {
-    const updated = plugins.map((p, i) => {
-      if (i !== idx) return p;
-      if (field === "name") {
-        return {
-          ...p,
-          name: value,
-          scripTag: `/plugins/${value}.js`,
-        };
-      }
-      return { ...p, [field]: value };
-    });
-    setPlugins(updated);
-    // Debounced save indicator
+  // Actualizar plugin único
+  const plugin = plugins[0];
+  const handleChange = (field: keyof Plugin, value: string) => {
+    if (!plugin) return;
+    let updated: Plugin;
+    if (field === "name") {
+      updated = {
+        ...plugin,
+        name: value,
+        scripTag: `/plugins/${value}.js`,
+      };
+    } else {
+      updated = { ...plugin, [field]: value };
+    }
+    setLocalPlugin(updated);
     if (autosaveTimeout.current) clearTimeout(autosaveTimeout.current);
     autosaveTimeout.current = setTimeout(() => {
+      setPlugins([updated]);
       setSaveIndicator(true);
       setTimeout(() => setSaveIndicator(false), 1500);
-    }, 800);
+      setLocalPlugin(null);
+    }, 5000);
   };
 
   // No need for local save effect, context provider handles persistence
 
-  // Remove plugin (local and backend)
-  const handleRemovePlugin = async (idx: number) => {
-    window.confirm("Are you sure on deleting this plugin?");
-    const pluginToDelete = plugins[idx];
-    if (!pluginToDelete) return;
+  // Eliminar plugin único
+  const handleRemovePlugin = async () => {
+    if (!plugin) return;
+    if (!window.confirm("Are you sure on deleting this plugin?")) return;
     // Remove from backend
     try {
-      await fetch(`${API_URL}/api/delete-plugin/${pluginToDelete.index}`, {
+      await fetch(`${API_URL}/api/delete-plugin/${plugin.index}`, {
         method: "DELETE",
       });
     } catch (err) {
-      // Puedes mostrar un error si quieres
       console.error("Error deleting plugin from backend", err);
     }
-    // Remove locally
-    const updated = plugins.filter((_, i) => i !== idx);
-    setPlugins(updated);
-    if (selectedIdx === idx) setSelectedIdx(0);
-    else if (selectedIdx > idx) setSelectedIdx(selectedIdx - 1);
+    setPlugins([]);
+    setTrials([]);
+    setSelectedTrial(null);
   };
-
-  // Horizontal selector for plugins
-  const maxPerRow = 3;
-  const rows = [];
-  for (let i = 0; i < plugins.length; i += maxPerRow) {
-    rows.push(plugins.slice(i, i + maxPerRow));
-  }
 
   return (
     <div
@@ -142,95 +114,54 @@ const PluginEditor: React.FC = () => {
         padding: "20px",
       }}
     >
-      {/* Multi-file upload */}
+      {/* Upload solo si no hay plugin */}
+
       <div className="form-group">
         <label htmlFor="jsFiles" style={{ color: "var(--text-dark)" }}>
-          Write or Upload JS file(s)
+          Upload JS plugin file
         </label>
         <input
           id="jsFiles"
           type="file"
           accept=".js"
-          multiple
           ref={fileInputRef}
           onChange={handleFileUpload}
           style={{ marginBottom: 10 }}
         />
       </div>
 
-      <button
-        className="action-button"
-        style={{ marginBottom: 16, color: "white" }}
-        onClick={handleAddPlugin}
-      >
-        + Write plugin
-      </button>
-
-      {/* Selector de plugins */}
-      <div>
-        {rows.map((row, rowIdx) => (
-          <div key={rowIdx} style={{ display: "flex", gap: 8 }}>
-            {row.map((plugin, idx) => {
-              const globalIdx = rowIdx * maxPerRow + idx;
-              return (
-                <div
-                  key={globalIdx}
-                  className={
-                    "timeline-item" +
-                    (selectedIdx === globalIdx ? " selected" : "")
-                  }
-                  style={{
-                    minWidth: 100,
-                    maxWidth: 160,
-                    padding: "10px 16px",
-                    background:
-                      selectedIdx === globalIdx
-                        ? "var(--dark-purple)"
-                        : "var(--primary-purple)",
-                    color: "var(--text-light)",
-                    borderRadius: 8,
-                    cursor: "pointer",
-                    textAlign: "center",
-                    fontWeight: 500,
-                    boxShadow: "0 2px 4px rgba(0,0,0,0.08)",
-                    border:
-                      selectedIdx === globalIdx
-                        ? "2px solid var(--gold)"
-                        : "none",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                  }}
-                  onClick={() => setSelectedIdx(globalIdx)}
-                >
-                  <input
-                    type="text"
-                    value={plugin.name}
-                    onChange={(e) =>
-                      handleChange(globalIdx, "name", e.target.value)
-                    }
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      color: "inherit",
-                      fontWeight: "bold",
-                      fontSize: 14,
-                      textAlign: "center",
-                      width: "80px",
-                    }}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-
-      {/* Editor del plugin seleccionado */}
-      {plugins[selectedIdx] && (
-        <div>
-          {/* scripTag is now set automatically based on name, no input shown */}
+      {/* Editor para el plugin único */}
+      {(localPlugin || plugin) && (
+        <>
+          <input
+            type="text"
+            value={(localPlugin || plugin).name}
+            onChange={(e) => handleChange("name", e.target.value)}
+            style={{
+              background: "var(--neutral-light)",
+              border: "2px solid var(--gold)",
+              color: "var(--gold)",
+              fontWeight: "bold",
+              fontSize: 16,
+              textAlign: "center",
+              width: "100%",
+              borderRadius: 8,
+              boxShadow: "0 2px 8px rgba(255, 215, 0, 0.15)",
+              margin: "12px auto 24px auto",
+              outline: "none",
+              transition: "border 0.3s, box-shadow 0.3s",
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.border = "2px solid var(--primary-purple)";
+              e.currentTarget.style.boxShadow =
+                "0 4px 16px rgba(61,146,180,0.15)";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.border = "2px solid var(--gold)";
+              e.currentTarget.style.boxShadow =
+                "0 2px 8px rgba(255, 215, 0, 0.15)";
+            }}
+          />
           <div className="form-group" style={{ marginBottom: 0 }}>
             <div
               id="plugin-save-indicator"
@@ -252,11 +183,9 @@ const PluginEditor: React.FC = () => {
             >
               <Editor
                 defaultLanguage="javascript"
-                value={plugins[selectedIdx].pluginCode}
+                value={(localPlugin || plugin).pluginCode}
                 theme="vs-dark"
-                onChange={(value) =>
-                  handleChange(selectedIdx, "pluginCode", value || "")
-                }
+                onChange={(value) => handleChange("pluginCode", value || "")}
                 options={{
                   automaticLayout: true,
                   minimap: { enabled: false },
@@ -264,8 +193,6 @@ const PluginEditor: React.FC = () => {
                   lineNumbers: "on",
                   wordWrap: "off",
                   folding: true,
-                  // Mejoras para colorear sintaxis
-
                   bracketPairColorization: {
                     enabled: true,
                   },
@@ -282,7 +209,6 @@ const PluginEditor: React.FC = () => {
                     comments: true,
                     strings: true,
                   },
-                  // Configuración adicional para JavaScript
                   tabCompletion: "on",
                   acceptSuggestionOnEnter: "on",
                   snippetSuggestions: "top",
@@ -291,45 +217,43 @@ const PluginEditor: React.FC = () => {
               />
             </div>
           </div>
-        </div>
+          <button
+            className="remove-button"
+            style={{
+              fontSize: 14,
+              padding: "8px 18px",
+              margin: "16px 0 0 0",
+              color: "#fff",
+              background: "linear-gradient(90deg, #d32f2f 0%, #ff5252 100%)",
+              border: "none",
+              borderRadius: 6,
+              boxShadow: "0 2px 8px rgba(211,47,47,0.15)",
+              fontWeight: 600,
+              letterSpacing: 0.5,
+              cursor: "pointer",
+              transition:
+                "background 1s cubic-bezier(.4,0,.2,1), box-shadow 0.7s cubic-bezier(.4,0,.2,1)",
+            }}
+            onMouseOver={(e) => {
+              const btn = e.currentTarget as HTMLButtonElement;
+              btn.style.background =
+                "linear-gradient(90deg, #b71c1c 0%, #ff1744 100%)";
+              btn.style.boxShadow = "0 4px 12px rgba(211,47,47,0.25)";
+            }}
+            onMouseOut={(e) => {
+              const btn = e.currentTarget as HTMLButtonElement;
+              btn.style.background =
+                "linear-gradient(90deg, #d32f2f 0%, #ff5252 100%)";
+              btn.style.boxShadow = "0 2px 8px rgba(211,47,47,0.15)";
+            }}
+            onClick={handleRemovePlugin}
+          >
+            Delete Plugin
+          </button>
+        </>
       )}
 
-      {/* Remove Button: only show if there is at least one plugin */}
-      {plugins.length > 0 && (
-        <button
-          className="remove-button"
-          style={{
-            fontSize: 14,
-            padding: "8px 18px",
-            margin: "16px 0 0 0",
-            color: "#fff",
-            background: "linear-gradient(90deg, #d32f2f 0%, #ff5252 100%)",
-            border: "none",
-            borderRadius: 6,
-            boxShadow: "0 2px 8px rgba(211,47,47,0.15)",
-            fontWeight: 600,
-            letterSpacing: 0.5,
-            cursor: "pointer",
-            transition:
-              "background 1s cubic-bezier(.4,0,.2,1), box-shadow 0.7s cubic-bezier(.4,0,.2,1)",
-          }}
-          onMouseOver={(e) => {
-            const btn = e.currentTarget as HTMLButtonElement;
-            btn.style.background =
-              "linear-gradient(90deg, #b71c1c 0%, #ff1744 100%)";
-            btn.style.boxShadow = "0 4px 12px rgba(211,47,47,0.25)";
-          }}
-          onMouseOut={(e) => {
-            const btn = e.currentTarget as HTMLButtonElement;
-            btn.style.background =
-              "linear-gradient(90deg, #d32f2f 0%, #ff5252 100%)";
-            btn.style.boxShadow = "0 2px 8px rgba(211,47,47,0.15)";
-          }}
-          onClick={() => handleRemovePlugin(selectedIdx)}
-        >
-          Delete Plugin
-        </button>
-      )}
+      {/* ...eliminado render duplicado del botón Delete Plugin... */}
     </div>
   );
 };
