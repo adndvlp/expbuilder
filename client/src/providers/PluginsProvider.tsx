@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import PluginsContext from "../contexts/PluginsContext";
+import isEqual from "lodash.isequal";
 
 type Plugin = {
   name: string;
@@ -41,9 +42,18 @@ export default function PluginsProvider({ children }: Props) {
     };
   }, []);
 
-  // Autosave each plugin by index
+  // Autosave solo si plugins cambian respecto al inicial (como TrialsConfig)
+
+  const [initialPlugins, setInitialPlugins] = useState<Plugin[]>([]);
+
   useEffect(() => {
+    if (!isLoading && initialPlugins.length === 0) {
+      setInitialPlugins(plugins);
+      return;
+    }
     if (isLoading || plugins.length === 0 || isSaving) return;
+
+    if (isEqual(plugins, initialPlugins)) return;
 
     setIsSaving(true);
     const timeoutId = setTimeout(async () => {
@@ -71,6 +81,7 @@ export default function PluginsProvider({ children }: Props) {
         } else {
           setMetadataError("");
         }
+        setInitialPlugins(plugins);
       } catch (error) {
         console.error("Error saving plugin config:", error);
       } finally {
@@ -81,7 +92,7 @@ export default function PluginsProvider({ children }: Props) {
       clearTimeout(timeoutId);
       setIsSaving(false);
     };
-  }, [plugins, isLoading]);
+  }, [plugins, isLoading, initialPlugins]);
 
   return (
     <PluginsContext.Provider
