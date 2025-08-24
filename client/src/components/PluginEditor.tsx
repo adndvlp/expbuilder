@@ -38,13 +38,45 @@ const PluginEditor: React.FC<PluginEditorProps> = ({ selectedPluginName }) => {
       reader.onload = (ev) => resolve(ev.target?.result as string);
       reader.readAsText(file);
     });
-    const newPlugin: Plugin = {
-      name,
-      scripTag: `/plugins/${name}.js`,
-      pluginCode: text,
-      index: plugins.length,
-    };
-    setPlugins([...plugins, newPlugin]);
+    // Si el nombre coincide con el plugin seleccionado, sobrescribe los valores
+    let newPlugin: Plugin;
+    if (plugin && plugin.name === name) {
+      newPlugin = {
+        ...plugin,
+        name,
+        scripTag: `/plugins/${name}.js`,
+        pluginCode: text,
+      };
+      setPlugins(plugins.map((p) => (p.name === plugin.name ? newPlugin : p)));
+    } else if (plugin && !plugins.some((p) => p.name === name)) {
+      // Si es un nuevo plugin y el nombre no existe, reemplaza el plugin actual en vez de crear uno nuevo
+      newPlugin = {
+        ...plugin,
+        name,
+        scripTag: `/plugins/${name}.js`,
+        pluginCode: text,
+      };
+      setPlugins(plugins.map((p) => (p.name === plugin.name ? newPlugin : p)));
+    } else {
+      // Si el nombre ya existe en otro plugin, crea uno nuevo con 'copy', 'copy2', etc.
+      let finalName = name;
+      if (plugins.some((p) => p.name === name)) {
+        let copyIndex = 1;
+        let candidate = `${name} copy`;
+        while (plugins.some((p) => p.name === candidate)) {
+          copyIndex++;
+          candidate = `${name} copy${copyIndex}`;
+        }
+        finalName = candidate;
+      }
+      newPlugin = {
+        name: finalName,
+        scripTag: `/plugins/${finalName}.js`,
+        pluginCode: text,
+        index: plugins.length,
+      };
+      setPlugins([...plugins, newPlugin]);
+    }
 
     // Asigna el plugin subido al trial seleccionado (no crea trial nuevo)
     if (trials && setTrials && setSelectedTrial) {
@@ -99,9 +131,10 @@ const PluginEditor: React.FC<PluginEditorProps> = ({ selectedPluginName }) => {
     } catch (err) {
       console.error("Error deleting plugin from backend", err);
     }
-    setPlugins([]);
-    setTrials([]);
-    setSelectedTrial(null);
+    // Fuerza un refresh para limpiar el estado y recargar desde el backend
+    setTimeout(() => {
+      window.location.reload();
+    }, 300);
   };
 
   return (

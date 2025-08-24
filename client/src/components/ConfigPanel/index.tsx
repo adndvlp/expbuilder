@@ -50,7 +50,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
       fetch(`${API_URL}/metadata/${selectedTrial.plugin}.json`)
         .then((res) => {
           if (res.status === 404) {
-            setMetadataError(`No info object in ${selectedTrial.plugin}`);
+            setMetadataError(`No valid info object in ${selectedTrial.plugin}`);
             setMetadata404(true);
           } else {
             setMetadataError("");
@@ -58,7 +58,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
           }
         })
         .catch(() => {
-          setMetadataError(`No info object in ${selectedTrial.plugin}`);
+          setMetadataError(`No valid info object in ${selectedTrial.plugin}`);
           setMetadata404(true);
         });
     } else {
