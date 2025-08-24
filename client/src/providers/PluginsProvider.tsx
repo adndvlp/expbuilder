@@ -20,26 +20,20 @@ export default function PluginsProvider({ children }: Props) {
   const [metadataError, setMetadataError] = useState<string>("");
   const API_URL = import.meta.env.VITE_API_URL;
 
-  // Load plugins from backend (iterate indices until no plugin is found)
+  // Load all plugins from backend (single request)
   useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
     const loadPlugins = async () => {
-      const loaded: Plugin[] = [];
-      let idx = 0;
-      while (true) {
-        try {
-          const res = await fetch(`${API_URL}/api/load-plugin/${idx}`);
-          const data = await res.json();
-          if (!data.plugin) break;
-          loaded.push(data.plugin);
-        } catch (err) {
-          break;
-        }
-        idx++;
+      try {
+        const res = await fetch(`${API_URL}/api/load-plugins`);
+        const data = await res.json();
+        if (isMounted) setPlugins(data.plugins || []);
+      } catch (err) {
+        if (isMounted) setPlugins([]);
+      } finally {
+        setIsLoading(false);
       }
-      if (isMounted) setPlugins(loaded);
-      setIsLoading(false);
     };
     loadPlugins();
     return () => {

@@ -1,7 +1,6 @@
 import { Editor } from "@monaco-editor/react";
 import { useRef, useState } from "react";
 import useTrials from "../hooks/useTrials";
-import { Trial } from "./ConfigPanel/types";
 import usePlugins from "../hooks/usePlugins";
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -12,14 +11,21 @@ interface Plugin {
   index: number;
 }
 
-const PluginEditor: React.FC = () => {
+interface PluginEditorProps {
+  selectedPluginName?: string;
+}
+
+const PluginEditor: React.FC<PluginEditorProps> = ({ selectedPluginName }) => {
   const { plugins, setPlugins } = usePlugins();
   const { trials, setTrials, setSelectedTrial } = useTrials();
-  // Solo un plugin en el editor
   const [saveIndicator, setSaveIndicator] = useState(false);
   const [localPlugin, setLocalPlugin] = useState<Plugin | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const autosaveTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // Busca el plugin seleccionado por nombre
+  const plugin =
+    plugins.find((p) => p.name === selectedPluginName) || plugins[0];
 
   // Subir plugin solo si no hay uno presente
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,25 +46,23 @@ const PluginEditor: React.FC = () => {
     };
     setPlugins([...plugins, newPlugin]);
 
-    // Crear trial para el plugin subido
-    const newTrial: Trial = {
-      id: Date.now() + Math.random(),
-      plugin: newPlugin.name,
-      type: "Trial",
-      name: `${newPlugin.name.replace(/^plugin-/, "").replace(/-/g, " ")}`,
-      parameters: {},
-      trialCode: "",
-      columnMapping: {},
-      csvJson: [],
-      csvColumns: [],
-    };
-    setTrials([...trials, newTrial]);
-    setSelectedTrial(newTrial);
+    // Asigna el plugin subido al trial seleccionado (no crea trial nuevo)
+    if (trials && setTrials && setSelectedTrial) {
+      const selectedTrial =
+        trials.find((t) => t.plugin === selectedPluginName) || trials[0];
+      if (selectedTrial) {
+        const updatedTrial = { ...selectedTrial, plugin: name };
+        setTrials(
+          trials.map((t) => (t.id === selectedTrial.id ? updatedTrial : t))
+        );
+        setSelectedTrial(updatedTrial);
+      }
+    }
+    setLocalPlugin(newPlugin);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Actualizar plugin único
-  const plugin = plugins[0];
+  // Actualizar plugin seleccionado
   const handleChange = (field: keyof Plugin, value: string) => {
     if (!plugin) return;
     let updated: Plugin;
@@ -74,7 +78,7 @@ const PluginEditor: React.FC = () => {
     setLocalPlugin(updated);
     if (autosaveTimeout.current) clearTimeout(autosaveTimeout.current);
     autosaveTimeout.current = setTimeout(() => {
-      setPlugins([updated]);
+      setPlugins(plugins.map((p) => (p.name === plugin.name ? updated : p)));
       setSaveIndicator(true);
       setTimeout(() => setSaveIndicator(false), 1500);
       setLocalPlugin(null);

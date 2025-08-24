@@ -16,10 +16,9 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
   const [pluginEditor, setPluginEditor] = useState<boolean>(false);
   const { isSaving, plugins, metadataError, setPlugins, setMetadataError } =
     usePlugins();
-  // Detecta si el plugin seleccionado es custom/subido
-  const isCustomPlugin =
-    selectedId === "custom" || plugins.some((p) => p.name === selectedId);
-
+  // Detecta si el plugin seleccionado es custom/subido (subido por el usuario)
+  const isCustomPlugin = plugins.some((p) => p.name === selectedId);
+  const [metadata404, setMetadata404] = useState<boolean>(false);
   const prevPluginList = useRef<string[]>([]);
 
   useEffect(() => {
@@ -36,7 +35,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
         setMetadataError("Could not load plugin list");
       }
     })();
-  }, [plugins, isSaving]);
+  }, [isSaving]);
 
   useEffect(() => {
     if (selectedTrial?.plugin) {
@@ -45,31 +44,27 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
       // Evita el fetch si el plugin es 'webgazer'
       if (selectedTrial.plugin === "webgazer") {
         setMetadataError("");
+        setMetadata404(false);
         return;
       }
-      // Si es custom/subido, no borra el error si no hay metadata
       fetch(`${API_URL}/metadata/${selectedTrial.plugin}.json`)
         .then((res) => {
           if (res.status === 404) {
             setMetadataError(`No info object in ${selectedTrial.plugin}`);
+            setMetadata404(true);
           } else {
-            // Solo borra el error si no es custom/subido
-            if (
-              !(
-                selectedTrial.plugin === "custom" ||
-                plugins.some((p) => p.name === selectedTrial.plugin)
-              )
-            ) {
-              setMetadataError("");
-            }
+            setMetadataError("");
+            setMetadata404(false);
           }
         })
         .catch(() => {
           setMetadataError(`No info object in ${selectedTrial.plugin}`);
+          setMetadata404(true);
         });
     } else {
       setSelectedId("");
       setMetadataError("");
+      setMetadata404(false);
     }
   }, [selectedTrial, plugins, isSaving]);
 
@@ -89,12 +84,12 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
     /plugin-webgazer/i.test(plugin)
   );
 
+  // filteredPlugins solo incluye plugins del backend, nunca los subidos por el usuario
   const filteredPlugins = Array.from(
     new Set([
       ...pluginList
         .filter((plugin) => !plugins.some((p) => p.name === plugin))
         .map((plugin) => {
-          // Para los plugin-webgazer válidos, los normalizamos a un solo valor
           if (/plugin-webgazer/i.test(plugin)) return "webgazer";
           return plugin;
         }),
@@ -110,48 +105,53 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
     value: p.name,
     label: p.name.replace(/^plugin-/, "").replace(/-/g, " "),
   }));
+  // Los plugins subidos por el usuario solo aparecen en userPluginsOptions
   const options = [
     { value: "new-plugin", label: "Create plugin" },
-    ...filteredPlugins.map((plugin) => {
-      const value = /plugin-webgazer/i.test(plugin) ? "webgazer" : plugin;
-      return {
-        value,
-        label: value.replace(/^plugin-/, "").replace(/-/g, " "),
-      };
-    }),
+    ...filteredPlugins
+      .filter((plugin) => !plugins.some((p) => p.name === plugin))
+      .map((plugin) => {
+        const value = /plugin-webgazer/i.test(plugin) ? "webgazer" : plugin;
+        return {
+          value,
+          label: value.replace(/^plugin-/, "").replace(/-/g, " "),
+        };
+      }),
     ...userPluginsOptions,
   ];
 
   const handleChange = (newValue: { label: string; value: string } | null) => {
     if (!newValue) return;
-
     setSelectedId(newValue.value);
 
     if (newValue.value === "new-plugin") {
+      // Genera nombre incremental: "1", "2", ...
+      let nextNum = 1;
+      const usedNames = plugins.map((p) => p.name);
+      while (usedNames.includes(String(nextNum))) {
+        nextNum++;
+      }
+      const name = String(nextNum);
+      if (usedNames.includes(name)) {
+        setMetadataError("Plugin name already exists");
+        return;
+      }
       setPluginEditor(true);
-      // Simula el click en '+ Write plugin' de PluginEditor
-      const name = `plugin-${Date.now()}`;
       const newPlugin = {
         name,
         scripTag: `/plugins/${name}.js`,
         pluginCode: "",
         index: plugins.length,
       };
-      // Agrega el nuevo plugin al array existente
       setPlugins([...plugins, newPlugin]);
-      const newTrial = {
-        id: Date.now() + Math.random(),
-        plugin: newPlugin.name,
-        type: "Trial",
-        name: `${newPlugin.name.replace(/^plugin-/, "").replace(/-/g, " ")}`,
-        parameters: {},
-        trialCode: "",
-        columnMapping: {},
-        csvJson: [],
-        csvColumns: [],
-      };
-      setTrials([...trials, newTrial]);
-      setSelectedTrial(newTrial);
+      if (selectedTrial) {
+        const updatedTrial = { ...selectedTrial, plugin: name };
+        setTrials(
+          trials.map((t) => (t.id === selectedTrial.id ? updatedTrial : t))
+        );
+        setSelectedTrial(updatedTrial);
+      }
+      setSelectedId(name);
       return;
     }
 
@@ -162,8 +162,11 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
       );
       setSelectedTrial(updatedTrial);
     }
-    // Si selecciona custom, limpia el editor y activa el checkbox
-    if (newValue.value === "custom") {
+
+    // Si selecciona un plugin subido por el usuario, activa el editor automáticamente
+    if (plugins.some((p) => p.name === newValue.value)) {
+      setPluginEditor(true);
+    } else if (newValue.value === "custom") {
       setPluginEditor(true);
     } else {
       setPluginEditor(false);
@@ -250,10 +253,10 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
           <div>
             {/* Si selecciona "Nuevo plugin", solo renderiza PluginEditor */}
             {selectedId === "new-plugin" ? (
-              <PluginEditor />
+              <PluginEditor selectedPluginName={selectedId} />
             ) : (
               <>
-                {/* Solo muestra el checkbox si el plugin seleccionado es custom/subido */}
+                {/* Siempre muestra el checkbox y editor para plugins subidos por el usuario */}
                 {isCustomPlugin && (
                   <div>
                     <label>
@@ -262,11 +265,10 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
                         type="checkbox"
                         checked={pluginEditor}
                         onChange={(e) => setPluginEditor(e.target.checked)}
-                        disabled={metadataError ? true : false}
+                        disabled={metadata404}
                       />
                     </label>
-                    {/* Muestra el error si existe y no es custom */}
-                    {metadataError && selectedId !== "custom" && (
+                    {metadataError && (
                       <span
                         style={{
                           color: "#960909ff",
@@ -277,11 +279,11 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
                         ⚠️ {metadataError}
                       </span>
                     )}
+                    {/* Renderiza el editor si el checkbox está activo o hay error de metadata */}
+                    {(pluginEditor || metadataError) && (
+                      <PluginEditor selectedPluginName={selectedId} />
+                    )}
                   </div>
-                )}
-                {/* Renderiza el editor si el checkbox está activo o hay error de metadata */}
-                {isCustomPlugin && (pluginEditor || metadataError) && (
-                  <PluginEditor />
                 )}
               </>
             )}
@@ -289,7 +291,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
 
           {selectedId !== "new-plugin" &&
             !pluginEditor &&
-            !metadataError &&
+            !metadata404 &&
             selectedTrial?.parameters && (
               <div>
                 <hr />
@@ -304,26 +306,11 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
                     <WebGazer webgazerPlugins={webgazerPlugins} />
                   )}
                   {/* Si es custom/subido y hay parámetros, muestra TrialsConfig */}
-                  {isCustomPlugin && !metadataError && (
+                  {isCustomPlugin && !metadata404 && (
                     <TrialsConfig pluginName={selectedId} />
                   )}
                 </div>
               </div>
-            )}
-          {/* Si no hay parámetros, muestra advertencia en vez de TrialsConfig */}
-          {selectedId !== "new-plugin" &&
-            !pluginEditor &&
-            metadataError &&
-            !selectedTrial?.parameters && (
-              <span
-                style={{
-                  color: "#d32f2f",
-                  fontWeight: 600,
-                  marginLeft: 12,
-                }}
-              >
-                ⚠️ No parameters extracted for this plugin
-              </span>
             )}
         </div>
       </div>

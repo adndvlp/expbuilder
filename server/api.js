@@ -518,18 +518,14 @@ app.delete("/api/delete-plugin/:index", async (req, res) => {
   }
 });
 
-// Obtener un solo plugin por id
-app.get("/api/load-plugin/:id", async (req, res) => {
+// Endpoint para obtener todos los plugins custom/subidos
+app.get("/api/load-plugins", async (req, res) => {
   try {
-    const index = Number(req.params.id);
-    if (isNaN(index))
-      return res.status(400).json({ plugin: null, error: "Invalid id" });
     const doc = await PluginConfig.findOne({});
-    if (!doc) return res.json({ plugin: null });
-    const plugin = doc.plugins.find((p) => p.index === index);
-    res.json({ plugin: plugin ?? null });
+    if (!doc) return res.json({ plugins: [] });
+    res.json({ plugins: doc.plugins });
   } catch (error) {
-    res.status(500).json({ plugin: null, error: error.message });
+    res.status(500).json({ plugins: [], error: error.message });
   }
 });
 
