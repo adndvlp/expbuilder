@@ -21,6 +21,8 @@ type Props = {
   randomize: boolean;
   extensions: string;
   includesExtensions: boolean;
+  orders: boolean;
+  stimuliOrders: any[];
 };
 
 export function useTrialCode({
@@ -39,6 +41,8 @@ export function useTrialCode({
   randomize,
   extensions,
   includesExtensions,
+  orders,
+  stimuliOrders,
 }: Props) {
   const activeParameters = parameters.filter(
     (p) => columnMapping[p.key]?.source !== "none"
@@ -407,8 +411,29 @@ export function useTrialCode({
     const testStimuliCode = mappedJson.map((row) =>
       stringifyWithFunctions(activeParameters, row)
     );
-    code += `
+
+    if (orders) {
+      code += `
+    let test_stimuli_${trialNameSanitized} = [];
+    
+    if (typeof participantNumber === "number" && !isNaN(participantNumber)) {
+    const stimuliOrders = ${JSON.stringify(stimuliOrders)}
+    const orederIndex = (participantNumber - 1) % stimuliOrders.length;
+    const index_order = stimuliOrders[orederIndex]; // Orden deseado de los índices
+
+    const test_stimuli_previous_${trialNameSanitized} = [${testStimuliCode.join(",")}];
+
+    test_stimuli_${trialNameSanitized} = index_order.map(
+      (i) => test_stimuli_previous_${trialNameSanitized}[i]
+    );
+
+    console.log(test_stimuli_${trialNameSanitized})
+
+    }`;
+    } else {
+      code += `
     const test_stimuli_${trialNameSanitized} = [${testStimuliCode.join(",")}];`;
+    }
 
     if (includeFixation) {
       code += `

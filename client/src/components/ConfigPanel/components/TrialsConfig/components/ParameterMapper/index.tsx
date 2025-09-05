@@ -142,10 +142,66 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                         (typeof entry.value === "string" ||
                           typeof entry.value === "number")
                       ? entry.value
-                      : ""
+                      : type.endsWith("_array") &&
+                          (key === "calibration_points" ||
+                            key === "validation_points") &&
+                          Array.isArray(entry.value)
+                        ? JSON.stringify(entry.value)
+                        : ""
                 }
                 onChange={(e) => {
                   const value = e.target.value;
+                  // Si es uno de los presets, parsea el string a array
+                  if (
+                    type.endsWith("_array") &&
+                    (key === "calibration_points" ||
+                      key === "validation_points") &&
+                    (value ===
+                      JSON.stringify([
+                        [20, 20],
+                        [80, 20],
+                        [50, 50],
+                        [20, 80],
+                        [80, 80],
+                      ]) ||
+                      value ===
+                        JSON.stringify([
+                          [20, 20],
+                          [50, 20],
+                          [80, 20],
+                          [20, 50],
+                          [50, 50],
+                          [80, 50],
+                          [20, 80],
+                          [50, 80],
+                          [80, 80],
+                        ]) ||
+                      value ===
+                        JSON.stringify([
+                          [20, 20],
+                          [50, 20],
+                          [80, 20],
+                          [20, 50],
+                          [50, 50],
+                          [80, 50],
+                          [20, 80],
+                          [50, 80],
+                          [80, 80],
+                          [35, 35],
+                          [65, 35],
+                          [35, 65],
+                          [65, 65],
+                        ]))
+                  ) {
+                    setColumnMapping((prev) => ({
+                      ...prev,
+                      [key]: {
+                        source: "typed",
+                        value: JSON.parse(value),
+                      },
+                    }));
+                    return;
+                  }
                   const source =
                     value === "type_value"
                       ? "typed"
@@ -181,6 +237,58 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                     {col}
                   </option>
                 ))}
+                {/* Presets para calibration/validation */}
+                {type.endsWith("_array") &&
+                  (key === "calibration_points" ||
+                    key === "validation_points") && (
+                    <>
+                      <option
+                        value={JSON.stringify([
+                          [20, 20],
+                          [80, 20],
+                          [50, 50],
+                          [20, 80],
+                          [80, 80],
+                        ])}
+                      >
+                        5 points
+                      </option>
+                      <option
+                        value={JSON.stringify([
+                          [20, 20],
+                          [50, 20],
+                          [80, 20],
+                          [20, 50],
+                          [50, 50],
+                          [80, 50],
+                          [20, 80],
+                          [50, 80],
+                          [80, 80],
+                        ])}
+                      >
+                        9 points
+                      </option>
+                      <option
+                        value={JSON.stringify([
+                          [20, 20],
+                          [50, 20],
+                          [80, 20],
+                          [20, 50],
+                          [50, 50],
+                          [80, 50],
+                          [20, 80],
+                          [50, 80],
+                          [80, 80],
+                          [35, 35],
+                          [65, 35],
+                          [35, 65],
+                          [65, 65],
+                        ])}
+                      >
+                        13 points
+                      </option>
+                    </>
+                  )}
               </select>
 
               {entry.source === "typed" && (
@@ -328,9 +436,9 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                         }}
                       />
                     )
-                  ) : (type.endsWith("_array") &&
-                      key === "calibration_points") ||
-                    key === "validation_points" ? (
+                  ) : type.endsWith("_array") &&
+                    (key === "calibration_points" ||
+                      key === "validation_points") ? (
                     <input
                       type="text"
                       className="w-full p-2 border rounded mt-2"

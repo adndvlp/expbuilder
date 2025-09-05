@@ -601,7 +601,68 @@ const SessionResult =
   mongoose.model("SessionResult", SessionResultSchema);
 
 // Endpoint para agregar una respuesta a la sesión
+// app.post("/api/append-result", async (req, res) => {
+//   try {
+//     let { sessionId, response } = req.body;
+//     if (!sessionId || !response)
+//       return res
+//         .status(400)
+//         .json({ success: false, error: "sessionId and response required" });
+
+//     // Si recibes un string, parsea:
+//     if (typeof response === "string") response = JSON.parse(response);
+
+//     // Busca el documento o créalo si no existe
+//     const updated = await SessionResult.findOneAndUpdate(
+//       { sessionId },
+//       { $push: { data: response } },
+//       { upsert: true, new: true }
+//     );
+
+//     // Obtén todas las sesiones ordenadas por fecha
+//     const sessions = await SessionResult.find({}).sort({ createdAt: 1 });
+//     // Busca el índice de la sesión actual
+//     const participantNumber =
+//       sessions.findIndex((s) => s.sessionId === sessionId) + 1;
+
+//     res.json({ success: true, id: updated._id, participantNumber });
+//   } catch (err) {
+//     res.status(500).json({ success: false, error: err.message });
+//   }
+// });
+
 app.post("/api/append-result", async (req, res) => {
+  try {
+    let { sessionId } = req.body;
+    if (!sessionId)
+      return res
+        .status(400)
+        .json({ success: false, error: "sessionId required" });
+
+    // Solo crear si no existe
+    let existing = await SessionResult.findOne({ sessionId });
+    if (existing) {
+      return res
+        .status(409)
+        .json({ success: false, error: "Session already exists" });
+    }
+
+    const created = await SessionResult.create({
+      sessionId,
+    });
+
+    // Obtener participantNumber
+    const sessions = await SessionResult.find({}).sort({ createdAt: 1 });
+    const participantNumber =
+      sessions.findIndex((s) => s.sessionId === sessionId) + 1;
+
+    res.json({ success: true, id: created._id, participantNumber });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.put("/api/append-result", async (req, res) => {
   try {
     let { sessionId, response } = req.body;
     if (!sessionId || !response)
@@ -609,17 +670,25 @@ app.post("/api/append-result", async (req, res) => {
         .status(400)
         .json({ success: false, error: "sessionId and response required" });
 
-    // Si recibes un string, parsea:
     if (typeof response === "string") response = JSON.parse(response);
 
-    // Busca el documento o créalo si no existe
-    const updated = await SessionResult.findOneAndUpdate(
-      { sessionId },
-      { $push: { data: response } },
-      { upsert: true, new: true }
-    );
+    // Solo añadir si existe
+    let existing = await SessionResult.findOne({ sessionId });
+    if (!existing) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Session not found" });
+    }
 
-    res.json({ success: true, id: updated._id });
+    existing.data.push(response);
+    await existing.save();
+
+    // Obtener participantNumber
+    const sessions = await SessionResult.find({}).sort({ createdAt: 1 });
+    const participantNumber =
+      sessions.findIndex((s) => s.sessionId === sessionId) + 1;
+
+    res.json({ success: true, id: existing._id, participantNumber });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

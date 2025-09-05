@@ -182,10 +182,36 @@ function Component({}: TimelineProps) {
   const generateExperiment = () => {
     return `
 
-const trialSessionId =
+    
+
+  const trialSessionId =
     (crypto.randomUUID
       ? crypto.randomUUID()
       : Math.random().toString(36).slice(2) + Date.now());
+
+let participantNumber;
+
+   async function saveSession(trialSessionId) {
+        const res = await fetch("/api/append-result", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: trialSessionId,
+          }),
+        });
+        const result = await res.json();
+        participantNumber = result.participantNumber;
+        return participantNumber;
+  }
+        
+(async () => {
+  participantNumber = await saveSession(trialSessionId);
+
+  if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
+    alert("El número de participante no está asignado. Por favor, espera.");
+    throw new Error("participantNumber no asignado");
+  }
+        
 
 // let isFirstSave = true;
 
@@ -193,16 +219,41 @@ const trialSessionId =
 
   ${extensions}
 
-  on_data_update: function(data) {
-  fetch("/api/append-result", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-        sessionId: trialSessionId,
-        response: data,
-      }),
-    });
-  },
+  // on_data_update: function(data) {
+  // fetch("/api/append-result", {
+  // method: "POST",
+  // headers: { "Content-Type": "application/json" },
+  // body: JSON.stringify({
+  //       sessionId: trialSessionId,
+  //       response: data,
+  //     }),
+  //   });
+  // },
+
+  // on_data_update: async function (data) {
+  //       const res = await fetch("/api/append-result", {
+  //         method: "POST",
+  //         headers: { "Content-Type": "application/json" },
+  //         body: JSON.stringify({
+  //           sessionId: trialSessionId,
+  //           response: data,
+  //         }),
+  //       });
+  //       const result = await res.json();
+  //       participantNumber = result.participantNumber;
+  // }
+
+  on_data_update: function (data) {
+        const res = fetch("/api/append-result", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: trialSessionId,
+            response: data,
+          }),
+        });
+     
+  }
   
   // fetch("https://pipe.jspsych.org/api/data/", {
   //       method: "POST",
@@ -236,7 +287,10 @@ timeline.push(welcome);
 
 ${allTrialCodes}
 
-jsPsych.run(timeline);`;
+jsPsych.run(timeline);
+
+})();
+`;
   };
 
   const allTrialsHaveCode =

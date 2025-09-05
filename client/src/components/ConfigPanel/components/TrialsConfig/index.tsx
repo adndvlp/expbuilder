@@ -17,6 +17,8 @@ import { useTrialCode } from "./hooks/useTrialCode";
 import { useExtensions } from "./hooks/useExtensions";
 import ExtensionsConfig from "./components/ExtensionsConfig";
 import isEqual from "lodash.isequal";
+import { useTrialOrders } from "./hooks/useTrialOrders";
+import TrialOrders from "./components/TrialOrders";
 
 type Props = { pluginName: string };
 
@@ -162,10 +164,18 @@ function TrialsConfig({ pluginName }: Props) {
           : includesExtensions
       );
       setExtensionType(selectedTrial.parameters?.extensionType || "");
+
       // Restaura CSV y columnas si existen
       setColumnMapping(selectedTrial.columnMapping || {});
       setCsvJson(selectedTrial.csvJson || []);
       setCsvColumns(selectedTrial.csvColumns || []);
+      setOrders(selectedTrial.parameters?.orders || false);
+
+      setOrderColumns(selectedTrial.parameters?.orderColumns || []);
+      mapOrdersFromCsv(
+        selectedTrial.csvJson || [],
+        selectedTrial.parameters?.orderColumns || []
+      );
 
       setTimeout(() => {
         setIsLoadingTrial(false);
@@ -193,6 +203,15 @@ function TrialsConfig({ pluginName }: Props) {
     fieldGroups: fieldGroups,
   });
 
+  const {
+    orders,
+    setOrders,
+    stimuliOrders,
+    orderColumns,
+    setOrderColumns,
+    mapOrdersFromCsv,
+  } = useTrialOrders();
+
   const { genTrialCode } = useTrialCode({
     pluginName: pluginName,
     parameters: parameters,
@@ -209,6 +228,8 @@ function TrialsConfig({ pluginName }: Props) {
     randomize: randomize,
     extensions: extensions,
     includesExtensions: includesExtensions,
+    orders: orders,
+    stimuliOrders: stimuliOrders,
   });
 
   // guardar y actualizar el estado global del ensayo
@@ -235,6 +256,10 @@ function TrialsConfig({ pluginName }: Props) {
         repetitions: repetitions,
         includesExtensions: includesExtensions,
         extensionType: extensionType,
+        // Orders
+        orders: orders,
+        orderColumns: orderColumns,
+        stimuliOrders: stimuliOrders,
       },
       trialCode: genTrialCode(),
       columnMapping: { ...columnMapping },
@@ -254,7 +279,7 @@ function TrialsConfig({ pluginName }: Props) {
 
       // window.alert("Ensayo guardado exitosamente.");
       // console.log(csvJson);
-      // console.log(genTrialCode());
+      console.log(genTrialCode());
 
       // less intrusve indicator
       setSaveIndicator(true);
@@ -277,6 +302,8 @@ function TrialsConfig({ pluginName }: Props) {
     csvJson,
     csvColumns,
     trialName,
+    orders,
+    orderColumns,
     isLoadingTrial,
   ]);
 
@@ -361,6 +388,17 @@ function TrialsConfig({ pluginName }: Props) {
           columnMapping={columnMapping}
           setColumnMapping={setColumnMapping}
           csvColumns={csvColumns}
+        />
+
+        {/* Orders */}
+        <TrialOrders
+          orders={orders}
+          setOrders={setOrders}
+          columnOptions={csvColumns}
+          orderColumns={orderColumns}
+          setOrderColumns={setOrderColumns}
+          mapOrdersFromCsv={mapOrdersFromCsv}
+          csvJson={csvJson}
         />
 
         {/* Repetitions y Randomize al final */}
