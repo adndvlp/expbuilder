@@ -5,7 +5,7 @@ export function useTrialOrders() {
   const [stimuliOrders, setStimuliOrders] = useState<any[]>([]);
   const [orderColumns, setOrderColumns] = useState<string[]>([]);
 
-  // Mapea los valores del csvJson por columnas
+  // Mapea los valores del csvJson por columnas de orden
   function mapOrdersFromCsv(csvJson: any[], columnKeys: string[]) {
     const mapped = columnKeys.map((key) =>
       csvJson.map((row) => Number(row[key] - 1)).filter((v) => !isNaN(v))

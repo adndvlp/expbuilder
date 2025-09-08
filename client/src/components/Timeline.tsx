@@ -184,6 +184,8 @@ let participantNumber;
     throw new Error("participantNumber no asignado");
   }
 
+  // let isFirstSave = true;
+
   const jsPsych = initJsPsych({
 
   ${extensions}

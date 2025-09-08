@@ -176,7 +176,6 @@ function TrialsConfig({ pluginName }: Props) {
         selectedTrial.csvJson || [],
         selectedTrial.parameters?.orderColumns || []
       );
-
       setTimeout(() => {
         setIsLoadingTrial(false);
       }, 100);
