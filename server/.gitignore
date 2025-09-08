@@ -15,8 +15,6 @@ database
 
 plugins
 plugins-to-refactor
-experiment.html
-trials_preview.html
 Dockerfile
 .DS_Store
 
