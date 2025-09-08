@@ -173,20 +173,20 @@ const welcome = {
 timeline.push(welcome);
 
 
-    const preloadNew_Trial = {
+    const preloadh = {
         type: jsPsychPreload,
        files: ["/uploads/img/armadillo.png","/uploads/img/bmw.png","/uploads/img/cofre.png","/uploads/img/dis.png","/uploads/img/green.png"],
     }
-    timeline.push(preloadNew_Trial);
+    timeline.push(preloadh);
     
-    let test_stimuli_New_Trial = [];
+    let test_stimuli_h = [];
     
     if (typeof participantNumber === "number" && !isNaN(participantNumber)) {
     const stimuliOrders = [[-1,0,-1,1,-1],[9,5,6,7,8],[2,9,8,5,3],[4,3,2,1,0],[0,1,2,3,4]]
     const orederIndex = (participantNumber - 1) % stimuliOrders.length;
     const index_order = stimuliOrders[orederIndex]; // Orden deseado de los índices
 
-    const test_stimuli_previous_New_Trial = [{stimulus: "primero",
+    const test_stimuli_previous_h = [{stimulus: "primero",
 fixation: "1",
 fixation_duration: 100},{stimulus: "segundo",
 fixation: "2",
@@ -199,14 +199,25 @@ fixation: "5",
 fixation_duration: 600}];
 
 
-    test_stimuli_New_Trial = index_order
-      .filter((i) => i !== -1 && i >= 0 && i < test_stimuli_previous_New_Trial.length)
-      .map((i) => test_stimuli_previous_New_Trial[i]);
+      // Filtrar por categoría
+      const selectedCategory = typeof categoryColumn !== "undefined" ? categoryColumn : "";
+      const csvRows = [{"stimuli":"primero","x":"0","y":"0.5","response":"f","fixation":"1","fixation duration ms":"100","alto":"50","ancho":"50","Orden 1":"","Orden 2":"10","Orden 3":"3","Orden 4":"5","Orden 5":"1","Categories":"loca"},{"stimuli":"segundo","x":"0","y":"0.75","response":"f","fixation":"2","fixation duration ms":"300","alto":"70","ancho":"70","Orden 1":"1","Orden 2":"6","Orden 3":"10","Orden 4":"4","Orden 5":"2","Categories":"loco"},{"stimuli":"tercero","x":"-0.75","y":"0","response":"j","fixation":"3","fixation duration ms":"400","alto":"80","ancho":"80","Orden 1":"","Orden 2":"7","Orden 3":"9","Orden 4":"3","Orden 5":"3","Categories":"loca"},{"stimuli":"cuarto","x":"1","y":"1","response":"f","fixation":"4","fixation duration ms":"500","alto":"90","ancho":"90","Orden 1":"2","Orden 2":"8","Orden 3":"6","Orden 4":"2","Orden 5":"4","Categories":"loco"},{"stimuli":"quinto","x":"0","y":"0","response":"j","fixation":"5","fixation duration ms":"600","alto":"100","ancho":"100","Orden 1":"","Orden 2":"9","Orden 3":"4","Orden 4":"1","Orden 5":"5","Categories":"loca"}];
+      // Si hay categoría seleccionada, filtrar los índices que no pertenezcan a esa categoría
+      test_stimuli_h = index_order
+        .filter((i) => {
+          if (i === -1 || i < 0 || i >= test_stimuli_previous_h.length) return false;
+          if (selectedCategory && csvRows[i] && csvRows[i][selectedCategory] !== undefined) {
+            // Solo incluir si la categoría coincide
+            return csvRows[i][selectedCategory] === categoryValue;
+          }
+          return true;
+        })
+        .map((i) => test_stimuli_previous_h[i]);
 
-    console.log(test_stimuli_New_Trial)
+      console.log(test_stimuli_h)
 
     }
-      const New_Trial_fixation = {
+      const h_fixation = {
       type: jsPsychHtmlKeyboardResponse,
       stimulus: jsPsych.timelineVariable("fixation"),
       choices: "NO_KEYS",
@@ -216,7 +227,7 @@ fixation_duration: 600}];
       },
     };
     
-    const New_Trial_timeline = {
+    const h_timeline = {
     type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
     data: {
       response: "response",
@@ -224,15 +235,15 @@ rt: "rt",
 stimulus: "stimulus",
     },};
     
-    const New_Trial_procedure = {
+    const h_procedure = {
     timeline: 
-    [New_Trial_fixation, New_Trial_timeline],
-    timeline_variables: test_stimuli_New_Trial,
+    [h_fixation, h_timeline],
+    timeline_variables: test_stimuli_h,
     repetitions: 1,
     randomize_order: false,
     
     };
-    timeline.push(New_Trial_procedure);
+    timeline.push(h_procedure);
   
 
 jsPsych.run(timeline);
