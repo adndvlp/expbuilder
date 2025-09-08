@@ -126,34 +126,6 @@ function Component({}: TimelineProps) {
 
   let extensions = "";
 
-  // useEffect(() => {
-  //   const includesExtension = trials.map(
-  //     (trial) => trial.parameters?.includesExtensions
-  //   );
-
-  //   if (
-  //     (includesExtension.length > 0 && includesExtension !== undefined) ||
-  //     null
-  //   ) {
-  //     let rawExtensionsChain: string[] = [];
-  //     trials.forEach((trial) => {
-  //       rawExtensionsChain.push(trial.parameters?.extensionType);
-  //     });
-
-  //     rawExtensionsChain = [
-  //       ...new Set(rawExtensionsChain.filter((val) => val !== "")),
-  //     ];
-
-  //     const extensionsArrayStr = rawExtensionsChain
-  //       .map((e) => `{type: ${e}}`)
-  //       .join(",");
-
-  //     extensions = `extensions: [${extensionsArrayStr}],`;
-  //   } else {
-  //     extensions = "";
-  //   }
-  // }, [trials, isDevMode]);
-
   useEffect(() => {
     // Solo incluir extensiones si includesExtensions es true
     const rawExtensionsChain: string[] = [];
@@ -211,37 +183,10 @@ let participantNumber;
     alert("El número de participante no está asignado. Por favor, espera.");
     throw new Error("participantNumber no asignado");
   }
-        
-
-// let isFirstSave = true;
 
   const jsPsych = initJsPsych({
 
   ${extensions}
-
-  // on_data_update: function(data) {
-  // fetch("/api/append-result", {
-  // method: "POST",
-  // headers: { "Content-Type": "application/json" },
-  // body: JSON.stringify({
-  //       sessionId: trialSessionId,
-  //       response: data,
-  //     }),
-  //   });
-  // },
-
-  // on_data_update: async function (data) {
-  //       const res = await fetch("/api/append-result", {
-  //         method: "POST",
-  //         headers: { "Content-Type": "application/json" },
-  //         body: JSON.stringify({
-  //           sessionId: trialSessionId,
-  //           response: data,
-  //         }),
-  //       });
-  //       const result = await res.json();
-  //       participantNumber = result.participantNumber;
-  // }
 
   on_data_update: function (data) {
         const res = fetch("/api/append-result", {
@@ -296,111 +241,6 @@ jsPsych.run(timeline);
   const allTrialsHaveCode =
     trials.length > 0 &&
     trials.every((trial) => !!trial.trialCode && trial.trialCode.trim() !== "");
-
-  // Handle running the experiment
-  // useEffect(() => {
-  //   // Skip first load
-  //   if (!didMount.current) {
-  //     didMount.current = true;
-  //     return;
-  //   }
-  //   if (isSubmitting || (!allTrialsHaveCode && !isDevMode)) return;
-
-  //   if (timeoutRef.current) clearTimeout(timeoutRef.current);
-
-  //   timeoutRef.current = setTimeout(async () => {
-  //     setIsSubmitting(true);
-
-  //     try {
-  //       let generatedCode;
-  //       isDevMode
-  //         ? (generatedCode = code)
-  //         : (generatedCode = generateExperiment());
-
-  //       if (!isDevMode) {
-  //         setSubmitStatus("Saving configuration...");
-  //         const generatedCode = generateExperiment();
-
-  //         setCode(generatedCode);
-
-  //         const config = { generatedCode };
-
-  //         // Paso 1: Guarda la configuración
-  //         const response = await fetch("/api/save-config", {
-  //           method: "POST",
-  //           headers: { "Content-Type": "application/json" },
-  //           body: JSON.stringify(config),
-  //           credentials: "include",
-  //           mode: "cors",
-  //         });
-
-  //         if (!response.ok) {
-  //           throw new Error(`Server responded with status: ${response.status}`);
-  //         }
-  //         const result = await response.json();
-  //         if (!result.success) {
-  //           setSubmitStatus("Failed to save configuration.");
-  //           setIsSubmitting(false);
-  //           return;
-  //         }
-
-  //         setSubmitStatus("Saved Configuration! Building experiment...");
-  //       }
-
-  //       // Paso 2: Llama al build/run-experiment
-  //       setSubmitStatus("Running experiment...");
-  //       const runResponse = await fetch("/api/run-experiment", {
-  //         method: "POST",
-  //         headers: { "Content-Type": "application/json" },
-  //         body: JSON.stringify({
-  //           usePlugins: plugins.length > 0,
-  //           generatedCode,
-  //         }),
-  //         credentials: "include",
-  //         mode: "cors",
-  //       });
-
-  //       if (!runResponse.ok) {
-  //         throw new Error(
-  //           `Server responded with status: ${runResponse.status} when running experiment`
-  //         );
-  //       }
-
-  //       const runResult = await runResponse.json();
-  //       if (runResult.success) {
-  //         // setExperimentUrl(result.urlExperiment);
-  //         setSubmitStatus("Experiment ready!");
-  //         // window.alert("Experiment ready!");
-  //         setSubmitStatus("");
-  //         incrementVersion();
-  //         // window.open(runResult.experimentUrl, "_blank"); // <--- ABRE AUTOMÁTICAMENTE
-  //       } else {
-  //         setSubmitStatus(
-  //           "Saved configuration but failed at running the experiment."
-  //         );
-  //         window.alert(
-  //           "Saved configuration but failed at running the experiment."
-  //         );
-  //       }
-  //     } catch (error) {
-  //       console.error("Error submitting configuration:", error);
-  //       setSubmitStatus(
-  //         `An error occurred: ${
-  //           error instanceof Error ? error.message : "Unknown error"
-  //         }`
-  //       );
-  //     } finally {
-  //       setIsSubmitting(false);
-  //       console.log(generateExperiment());
-  //     }
-  //   }, 3000);
-
-  //   return () => {
-  //     if (timeoutRef.current) {
-  //       clearTimeout(timeoutRef.current);
-  //     }
-  //   };
-  // }, [trials, code, isDevMode, plugins]);
 
   const handleRunExperiment = async () => {
     setIsSubmitting(true);
