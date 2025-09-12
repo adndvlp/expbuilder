@@ -3,8 +3,6 @@ import express from "express";
 import mongoose from "mongoose";
 import multer from "multer";
 import path from "path";
-import { v2 as cloudinary } from "cloudinary";
-import { CloudinaryStorage } from "multer-storage-cloudinary";
 import { fileURLToPath } from "url";
 import * as cheerio from "cheerio";
 import fs from "fs";
@@ -64,92 +62,57 @@ app.get("/api/plugins-list", (req, res) => {
   });
 });
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+const uploadsDir = path.join(__dirname, "uploads");
+const imgDir = path.join(uploadsDir, "img");
+const audDir = path.join(uploadsDir, "aud");
+const vidDir = path.join(uploadsDir, "vid");
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+if (!fs.existsSync(imgDir)) fs.mkdirSync(imgDir);
+if (!fs.existsSync(audDir)) fs.mkdirSync(audDir);
+if (!fs.existsSync(vidDir)) fs.mkdirSync(vidDir);
 
-// Cloudinary storage for multer
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: async (req, file) => {
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
     const ext = path.extname(file.originalname).toLowerCase();
-    let folder = "others";
-    if (/\.(png|jpg|jpeg|gif)$/i.test(ext)) folder = "img";
-    else if (/\.(mp3|wav|ogg|m4a)$/i.test(ext)) folder = "aud";
-    else if (/\.(mp4|webm|mov|avi)$/i.test(ext)) folder = "vid";
-    return {
-      folder,
-      public_id: file.originalname.replace(/\.[^/.]+$/, ""),
-      resource_type: "auto",
-    };
+    let folder = uploadsDir;
+    if (/\.(png|jpg|jpeg|gif)$/i.test(ext)) folder = imgDir;
+    else if (/\.(mp3|wav|ogg|m4a)$/i.test(ext)) folder = audDir;
+    else if (/\.(mp4|webm|mov|avi)$/i.test(ext)) folder = vidDir;
+    cb(null, folder);
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.originalname);
   },
 });
-
 const upload = multer({ storage });
+
+app.use("/uploads", express.static(uploadsDir));
 
 app.post("/api/upload-file", upload.single("file"), (req, res) => {
   if (!req.file || !req.file.path) {
     return res.status(400).json({ error: "No file uploaded" });
   }
-  res.json({ fileUrl: req.file.path, folder: req.file.folder });
+  let folder = "others";
+  if (req.file.destination === imgDir) folder = "img";
+  else if (req.file.destination === audDir) folder = "aud";
+  else if (req.file.destination === vidDir) folder = "vid";
+  res.json({ fileUrl: `/uploads/${folder}/${req.file.filename}`, folder });
 });
 
 app.post("/api/upload-files-folder", upload.array("files"), (req, res) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: "No files uploaded" });
   }
-
-  // Si la petición indica folder "all", asignar carpeta según tipo
-  // El frontend puede enviar folder en req.body.folder, si no, usar "all" por defecto
-  const folderParam = req.body.folder || "all";
-  const fileUrls = [];
-
-  req.files.forEach((file) => {
-    // Detectar tipo por extensión
-    const ext = path.extname(file.originalname).toLowerCase();
+  const fileUrls = req.files.map((file) => {
     let folder = "others";
-    if (folderParam === "all") {
-      if (/\.(png|jpg|jpeg|gif)$/i.test(ext)) folder = "img";
-      else if (/\.(mp3|wav|ogg|m4a)$/i.test(ext)) folder = "aud";
-      else if (/\.(mp4|webm|mov|avi)$/i.test(ext)) folder = "vid";
-    } else {
-      folder = folderParam;
-    }
-
-    // Mover el archivo a la carpeta correspondiente en Cloudinary
-    // Si ya está en la carpeta correcta, no hacer nada
-    // Si no, subir de nuevo a la carpeta correcta
-    if (file.folder !== folder) {
-      // Re-subir a la carpeta correcta usando Cloudinary
-      // (No se puede mover en Cloudinary, hay que re-subir)
-      cloudinary.uploader.upload(
-        file.path,
-        {
-          folder,
-          public_id: file.originalname.replace(/\.[^/.]+$/, ""),
-          resource_type: "auto",
-        },
-        (err, result) => {
-          if (!err && result && result.secure_url) {
-            fileUrls.push(result.secure_url);
-          } else {
-            fileUrls.push(file.path); // fallback
-          }
-        }
-      );
-    } else {
-      fileUrls.push(file.path);
-    }
+    if (file.destination === imgDir) folder = "img";
+    else if (file.destination === audDir) folder = "aud";
+    else if (file.destination === vidDir) folder = "vid";
+    return `/uploads/${folder}/${file.filename}`;
   });
-
-  // Esperar a que todos los uploads terminen (si hubo re-subidas)
-  // Si hay re-subidas, puede que fileUrls no esté completo aún
-  // Para simplificar, responder con los paths originales y advertir que los nuevos estarán en la carpeta correcta
   res.json({
     fileUrls,
-    info: "Archivos subidos. Si folder=all, se asignan a carpeta según tipo.",
+    info: "Archivos subidos localmente.",
   });
 });
 
@@ -158,53 +121,27 @@ app.get("/api/list-files/:folder", async (req, res) => {
 
   try {
     let files = [];
-
+    let foldersToList = [];
     if (folder === "all") {
-      // Para "all", buscar en todas las carpetas (img, aud, vid)
-      const folders = ["img", "aud", "vid"];
-
-      for (const currentFolder of folders) {
-        let resourceType = "image";
-        if (currentFolder === "aud") resourceType = "video"; // audio but cloudinary treats it as video
-        if (currentFolder === "vid") resourceType = "video";
-
-        const result = await cloudinary.search
-          .expression(
-            `resource_type:${resourceType} AND folder:${currentFolder}`
-          )
-          .sort_by("created_at", "desc")
-          .max_results(100)
-          .execute();
-
-        const folderFiles = result.resources.map((file) => ({
-          name: `${currentFolder}/${file.public_id.replace(/^.*?\//, "")}${
-            file.format ? "." + file.format : ""
-          }`,
-          url: file.secure_url,
-        }));
-
-        files = files.concat(folderFiles);
-      }
+      foldersToList = [imgDir, audDir, vidDir];
+    } else if (folder === "img") {
+      foldersToList = [imgDir];
+    } else if (folder === "aud") {
+      foldersToList = [audDir];
+    } else if (folder === "vid") {
+      foldersToList = [vidDir];
     } else {
-      // Lógica original para carpetas específicas
-      let resourceType = "image";
-      if (folder === "aud") resourceType = "video"; // audio but cloudinary treats it as video
-      if (folder === "vid") resourceType = "video";
-
-      const result = await cloudinary.search
-        .expression(`resource_type:${resourceType} AND folder:${folder}`)
-        .sort_by("created_at", "desc")
-        .max_results(100)
-        .execute();
-
-      files = result.resources.map((file) => ({
-        name: `${folder}/${file.public_id.replace(/^.*?\//, "")}${
-          file.format ? "." + file.format : ""
-        }`,
-        url: file.secure_url,
-      }));
+      foldersToList = [uploadsDir];
     }
-
+    for (const dir of foldersToList) {
+      if (fs.existsSync(dir)) {
+        const dirFiles = fs.readdirSync(dir).map((filename) => ({
+          name: `${path.basename(dir)}/${filename}`,
+          url: `/uploads/${path.basename(dir)}/${filename}`,
+        }));
+        files = files.concat(dirFiles);
+      }
+    }
     res.json({ files });
   } catch (err) {
     res.status(500).json({ files: [], error: err.message });
@@ -213,29 +150,32 @@ app.get("/api/list-files/:folder", async (req, res) => {
 
 app.delete("/api/delete-file/:folder/:filename", async (req, res) => {
   let { folder, filename } = req.params;
-  filename = filename.replace(/\.[^/.]+$/, ""); // sin extensión
-
-  // Si folder es "all", intentar borrar en todas las carpetas
-  const folders = folder === "all" ? ["img", "aud", "vid", "others"] : [folder];
   let deleted = false;
   let lastError = null;
-
-  for (const f of folders) {
-    let resourceType = "image";
-    if (f === "aud" || f === "vid") resourceType = "video";
-    try {
-      const result = await cloudinary.uploader.destroy(`${f}/${filename}`, {
-        resource_type: resourceType,
-      });
-      if (result.result === "ok") {
+  let foldersToDelete = [];
+  if (folder === "all") {
+    foldersToDelete = [imgDir, audDir, vidDir];
+  } else if (folder === "img") {
+    foldersToDelete = [imgDir];
+  } else if (folder === "aud") {
+    foldersToDelete = [audDir];
+  } else if (folder === "vid") {
+    foldersToDelete = [vidDir];
+  } else {
+    foldersToDelete = [uploadsDir];
+  }
+  for (const dir of foldersToDelete) {
+    const filePath = path.join(dir, filename);
+    if (fs.existsSync(filePath)) {
+      try {
+        fs.unlinkSync(filePath);
         deleted = true;
         break;
+      } catch (err) {
+        lastError = err;
       }
-    } catch (err) {
-      lastError = err;
     }
   }
-
   if (deleted) {
     res.json({ success: true });
   } else {
@@ -661,7 +601,68 @@ const SessionResult =
   mongoose.model("SessionResult", SessionResultSchema);
 
 // Endpoint para agregar una respuesta a la sesión
+// app.post("/api/append-result", async (req, res) => {
+//   try {
+//     let { sessionId, response } = req.body;
+//     if (!sessionId || !response)
+//       return res
+//         .status(400)
+//         .json({ success: false, error: "sessionId and response required" });
+
+//     // Si recibes un string, parsea:
+//     if (typeof response === "string") response = JSON.parse(response);
+
+//     // Busca el documento o créalo si no existe
+//     const updated = await SessionResult.findOneAndUpdate(
+//       { sessionId },
+//       { $push: { data: response } },
+//       { upsert: true, new: true }
+//     );
+
+//     // Obtén todas las sesiones ordenadas por fecha
+//     const sessions = await SessionResult.find({}).sort({ createdAt: 1 });
+//     // Busca el índice de la sesión actual
+//     const participantNumber =
+//       sessions.findIndex((s) => s.sessionId === sessionId) + 1;
+
+//     res.json({ success: true, id: updated._id, participantNumber });
+//   } catch (err) {
+//     res.status(500).json({ success: false, error: err.message });
+//   }
+// });
+
 app.post("/api/append-result", async (req, res) => {
+  try {
+    let { sessionId } = req.body;
+    if (!sessionId)
+      return res
+        .status(400)
+        .json({ success: false, error: "sessionId required" });
+
+    // Solo crear si no existe
+    let existing = await SessionResult.findOne({ sessionId });
+    if (existing) {
+      return res
+        .status(409)
+        .json({ success: false, error: "Session already exists" });
+    }
+
+    const created = await SessionResult.create({
+      sessionId,
+    });
+
+    // Obtener participantNumber
+    const sessions = await SessionResult.find({}).sort({ createdAt: 1 });
+    const participantNumber =
+      sessions.findIndex((s) => s.sessionId === sessionId) + 1;
+
+    res.json({ success: true, id: created._id, participantNumber });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.put("/api/append-result", async (req, res) => {
   try {
     let { sessionId, response } = req.body;
     if (!sessionId || !response)
@@ -669,17 +670,25 @@ app.post("/api/append-result", async (req, res) => {
         .status(400)
         .json({ success: false, error: "sessionId and response required" });
 
-    // Si recibes un string, parsea:
     if (typeof response === "string") response = JSON.parse(response);
 
-    // Busca el documento o créalo si no existe
-    const updated = await SessionResult.findOneAndUpdate(
-      { sessionId },
-      { $push: { data: response } },
-      { upsert: true, new: true }
-    );
+    // Solo añadir si existe
+    let existing = await SessionResult.findOne({ sessionId });
+    if (!existing) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Session not found" });
+    }
 
-    res.json({ success: true, id: updated._id });
+    existing.data.push(response);
+    await existing.save();
+
+    // Obtener participantNumber
+    const sessions = await SessionResult.find({}).sort({ createdAt: 1 });
+    const participantNumber =
+      sessions.findIndex((s) => s.sessionId === sessionId) + 1;
+
+    res.json({ success: true, id: existing._id, participantNumber });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
