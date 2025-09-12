@@ -13,8 +13,7 @@ dist-ssr
 *.local
 .DS_Store
 Dockerfile
-.env
-.env.production
+
 
 # Editor directories and files
 .vscode/*

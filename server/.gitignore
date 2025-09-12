@@ -17,8 +17,7 @@ plugins
 plugins-to-refactor
 Dockerfile
 .DS_Store
-.env
-.env.production
+
 
 # Editor directories and files
 .vscode/*
