@@ -44,7 +44,7 @@ export const usePhase = ({
 
       setTimeout(() => {
         setIsLoadingTrial(false);
-      }, 100);
+      }, 100); // 500 en producción
     }
     // eslint-disable-next-line
   }, [selectedTrial]);

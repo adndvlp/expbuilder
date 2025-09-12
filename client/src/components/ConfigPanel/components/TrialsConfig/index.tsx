@@ -178,7 +178,7 @@ function TrialsConfig({ pluginName }: Props) {
       );
       setTimeout(() => {
         setIsLoadingTrial(false);
-      }, 100);
+      }, 100); // 500 en producción
     }
 
     // eslint-disable-next-line
