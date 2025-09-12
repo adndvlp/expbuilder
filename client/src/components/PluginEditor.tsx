@@ -114,7 +114,7 @@ const PluginEditor: React.FC<PluginEditorProps> = ({ selectedPluginName }) => {
       setSaveIndicator(true);
       setTimeout(() => setSaveIndicator(false), 1500);
       setLocalPlugin(null);
-    }, 5000);
+    }, 3000);
   };
 
   // No need for local save effect, context provider handles persistence

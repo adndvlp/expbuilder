@@ -2,10 +2,20 @@ import React from "react";
 
 type TrialActionsProps = {
   onDelete: () => void;
+  // onSave: () => void;
 };
 
-const TrialActions: React.FC<TrialActionsProps> = ({ onDelete }) => (
+const TrialActions: React.FC<TrialActionsProps> = ({
+  onDelete,
+  //  onSave
+}) => (
   <div className="mt-8 gap-6 justify-center">
+    {/* <button
+      onClick={onSave}
+      className="mt-4 save-button mb-4 w-full p-3 bg-green-600 hover:bg-green-700 font-medium rounded"
+    >
+      Save trial
+    </button> */}
     <br />
     <button
       onClick={() => {

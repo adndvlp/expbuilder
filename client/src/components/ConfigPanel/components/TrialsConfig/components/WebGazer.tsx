@@ -283,7 +283,7 @@ function WebGazer({ webgazerPlugins }: Props) {
       setTimeout(() => {
         setSaveIndicator(false);
       }, 2000);
-    }, 5000);
+    }, 1000);
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };

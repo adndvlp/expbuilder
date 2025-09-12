@@ -87,7 +87,7 @@ export default function PluginsProvider({ children }: Props) {
       } finally {
         setIsSaving(false);
       }
-    }, 800);
+    }, 1000);
     return () => {
       clearTimeout(timeoutId);
       setIsSaving(false);

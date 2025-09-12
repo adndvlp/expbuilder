@@ -285,7 +285,7 @@ function TrialsConfig({ pluginName }: Props) {
       setTimeout(() => {
         setSaveIndicator(false);
       }, 2000);
-    }, 5000);
+    }, 1000);
 
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -305,6 +305,59 @@ function TrialsConfig({ pluginName }: Props) {
     orderColumns,
     isLoadingTrial,
   ]);
+
+  // const handleSaveTrial = () => {
+  //   if (!trialName || isLoadingTrial) return;
+
+  //   if (isInitialFileLoad.current) {
+  //     isInitialFileLoad.current = false;
+  //     return;
+  //   }
+
+  //   const trialIndex = trials.findIndex((t) => t.name === trialName);
+  //   if (trialIndex === -1) return;
+
+  //   const prevTrial = trials[trialIndex];
+
+  //   const updatedTrial = {
+  //     ...trials[trialIndex],
+  //     plugin: pluginName,
+  //     parameters: {
+  //       include_fixation: includeFixation,
+  //       randomize: randomize,
+  //       repetitions: repetitions,
+  //       includesExtensions: includesExtensions,
+  //       extensionType: extensionType,
+  //       // Orders
+  //       orders: orders,
+  //       orderColumns: orderColumns,
+  //       stimuliOrders: stimuliOrders,
+  //     },
+  //     trialCode: genTrialCode(),
+  //     columnMapping: { ...columnMapping },
+  //     csvJson: [...csvJson],
+  //     csvColumns: [...csvColumns],
+  //   };
+
+  //   if (isEqual(updatedTrial, prevTrial)) return;
+
+  //   if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+  //   const updatedTrials = [...trials];
+  //   updatedTrials[trialIndex] = updatedTrial;
+  //   setTrials(updatedTrials);
+  //   setSelectedTrial(updatedTrial);
+
+  //   // window.alert("Ensayo guardado exitosamente.");
+  //   // console.log(csvJson);
+  //   console.log(genTrialCode());
+
+  //   // less intrusve indicator
+  //   setSaveIndicator(true);
+  //   setTimeout(() => {
+  //     setSaveIndicator(false);
+  //   }, 2000);
+  // };
 
   const deleteCsv = () => {
     if (csvJson.length === 0) return;
@@ -441,7 +494,10 @@ function TrialsConfig({ pluginName }: Props) {
         ></ExtensionsConfig>
       </div>
 
-      <TrialActions onDelete={handleDeleteTrial} />
+      <TrialActions
+        onDelete={handleDeleteTrial}
+        // onSave={handleSaveTrial}
+      />
     </div>
   );
 }
