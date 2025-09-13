@@ -31,7 +31,13 @@ app.use(
 
 app.use(express.json({ limit: "50mb" })); // Increased limit for larger code files
 
-mongoose.connect(process.env.MONGODB_URI);
+mongoose.connect(process.env.MONGODB_URI).then(async () => {
+  if (process.env.NODE_ENV === "production") {
+    await regeneratePluginsFromDatabase();
+  } else {
+    console.log("🚧 Skipping plugin regeneration (not in production mode)");
+  }
+});
 
 // Setup static file serving
 app.use(express.static(path.join(__dirname, "dist"))); // Serve dist/ at root level
@@ -327,6 +333,113 @@ const PluginConfigSchema = new mongoose.Schema({
 const PluginConfig =
   mongoose.models.PluginConfig ||
   mongoose.model("PluginConfig", PluginConfigSchema);
+
+// Función para regenerar archivos de plugins y actualizar HTML desde la BD. Solo en entorno de producción
+async function regeneratePluginsFromDatabase() {
+  try {
+    console.log("🔄 Regenerating plugins from database...");
+
+    // Obtener plugins de la BD
+    const pluginConfigDoc = await PluginConfig.findOne({});
+    const plugins = pluginConfigDoc?.plugins || [];
+
+    if (plugins.length === 0) {
+      console.log("ℹ️ No plugins found in database");
+      return;
+    }
+
+    // Crear directorio de plugins si no existe
+    const pluginsDir = path.join(__dirname, "plugins");
+    if (!fs.existsSync(pluginsDir)) {
+      fs.mkdirSync(pluginsDir, { recursive: true });
+    }
+
+    // Crear directorio de metadata si no existe
+    const metadataDir = path.join(__dirname, "metadata");
+    if (!fs.existsSync(metadataDir)) {
+      fs.mkdirSync(metadataDir, { recursive: true });
+    }
+
+    // Regenerar archivos de plugins
+    plugins.forEach((plugin) => {
+      if (plugin.pluginCode && plugin.scripTag) {
+        const fileName = path.basename(plugin.scripTag);
+        const filePath = path.join(pluginsDir, fileName);
+        fs.writeFileSync(filePath, plugin.pluginCode, "utf8");
+        console.log(`✅ Regenerated plugin file: ${fileName}`);
+      }
+    });
+
+    // Actualizar experiment.html y trials_preview.html
+    const htmlFiles = [
+      {
+        path: path.join(__dirname, "experiment.html"),
+        name: "experiment.html",
+      },
+      {
+        path: path.join(__dirname, "trials_preview.html"),
+        name: "trials_preview.html",
+      },
+    ];
+
+    htmlFiles.forEach(({ path: htmlPath, name }) => {
+      if (fs.existsSync(htmlPath)) {
+        let html = fs.readFileSync(htmlPath, "utf8");
+        const $ = cheerio.load(html);
+
+        // Remover scripts de plugins existentes
+        $("script[id^='plugin-script']").remove();
+
+        // Agregar scripts de plugins desde la BD
+        plugins.forEach((p, idx) => {
+          if (p.scripTag) {
+            $("body").append(
+              `<script src="${p.scripTag}" id="plugin-script-${idx}"></script>`
+            );
+          }
+        });
+
+        fs.writeFileSync(htmlPath, $.html(), "utf8");
+        console.log(`✅ Updated ${name} with ${plugins.length} plugin scripts`);
+      }
+    });
+
+    // Ejecutar extract-metadata.mjs para regenerar metadata
+    try {
+      await new Promise((resolve, reject) => {
+        const extractScript = spawn(
+          "node",
+          [path.join(__dirname, "extract-metadata.mjs")],
+          {
+            cwd: __dirname,
+            stdio: "inherit",
+          }
+        );
+        extractScript.on("close", (code) => {
+          if (code === 0) {
+            console.log("✅ Metadata regenerated successfully");
+            resolve();
+          } else {
+            console.log(`⚠️ Extract-metadata script failed with code ${code}`);
+            resolve(); // No rechazamos para no bloquear el inicio
+          }
+        });
+        extractScript.on("error", (err) => {
+          console.log(
+            `⚠️ Error running extract-metadata script: ${err.message}`
+          );
+          resolve(); // No rechazamos para no bloquear el inicio
+        });
+      });
+    } catch (metadataError) {
+      console.log(`⚠️ Metadata regeneration error: ${metadataError.message}`);
+    }
+
+    console.log("🎉 Plugin regeneration completed");
+  } catch (error) {
+    console.error("❌ Error regenerating plugins:", error.message);
+  }
+}
 
 // Guardar un solo plugin por id
 app.post("/api/save-plugin/:id", async (req, res) => {
