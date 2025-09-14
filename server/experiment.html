@@ -86,14 +86,23 @@
   <body>
     <div id="jspsych-target"></div>
 
-    <script id="generated-script">
-      const trialSessionId = crypto.randomUUID
-        ? crypto.randomUUID()
-        : Math.random().toString(36).slice(2) + Date.now();
+    <script src="/plugins/jspsych-probabilistic-selection-task.js" id="plugin-script-0"></script>
+    
+  
 
-      let participantNumber;
+<script id="generated-script">
 
-      async function saveSession(trialSessionId) {
+
+    
+
+  const trialSessionId =
+    (crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2) + Date.now());
+
+let participantNumber;
+
+   async function saveSession(trialSessionId) {
         const res = await fetch("/api/append-result", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -104,234 +113,93 @@
         const result = await res.json();
         participantNumber = result.participantNumber;
         return participantNumber;
-      }
+  }
+        
+(async () => {
+  participantNumber = await saveSession(trialSessionId);
 
-      (async () => {
-        participantNumber = await saveSession(trialSessionId);
+  if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
+    alert("El número de participante no está asignado. Por favor, espera.");
+    throw new Error("participantNumber no asignado");
+  }
 
-        if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
-          alert(
-            "El número de participante no está asignado. Por favor, espera."
-          );
-          throw new Error("participantNumber no asignado");
-        }
+  // let isFirstSave = true;
 
-        // let isFirstSave = true;
+  const jsPsych = initJsPsych({
 
-        const jsPsych = initJsPsych({
-          on_data_update: function (data) {
-            const res = fetch("/api/append-result", {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                sessionId: trialSessionId,
-                response: data,
-              }),
-            });
-          },
-
-          // fetch("https://pipe.jspsych.org/api/data/", {
-          //       method: "POST",
-          //       headers: { "Content-Type": "application/json", Accept: "*/*" },
-          //       body: JSON.stringify({
-          //         experimentID: "tjStL4X8Yrep",
-          //         data: JSON.stringify(data),
-          //         filename: ` ${trialSessionId}`,
-          //         append: !isFirstSave,
-          //       }),
-          //     });
-
-          //     isFirstSave = false;
-          // },
-
-          // Uncomment to see the json results after finishing a sesssion experiment
-          // on_finish: function() {
-          //   jsPsych.data.displayData();
-          // },
-        });
-
-        const timeline = [];
-
-        const welcome = {
-          type: jsPsychHtmlButtonResponse,
-          stimulus: "Welcome to the experiment. Press 'Start' to begin.",
-          choices: ["Start"],
-        };
-
-        timeline.push(welcome);
-
-        const preloadh = {
-          type: jsPsychPreload,
-          files: [
-            "/uploads/img/armadillo.png",
-            "/uploads/img/bmw.png",
-            "/uploads/img/cofre.png",
-            "/uploads/img/dis.png",
-            "/uploads/img/green.png",
-          ],
-        };
-        timeline.push(preloadh);
-
-        let test_stimuli_h = [];
-
-        if (
-          typeof participantNumber === "number" &&
-          !isNaN(participantNumber)
-        ) {
-          const stimuliOrders = [
-            [-1, 0, -1, 1, -1],
-            [9, 5, 6, 7, 8],
-            [2, 9, 8, 5, 3],
-            [4, 3, 2, 1, 0],
-            [0, 1, 2, 3, 4],
-          ];
-          const orederIndex = (participantNumber - 1) % stimuliOrders.length;
-          const index_order = stimuliOrders[orederIndex]; // Orden deseado de los índices
-
-          const test_stimuli_previous_h = [
-            { stimulus: "primero", fixation: "1", fixation_duration: 100 },
-            { stimulus: "segundo", fixation: "2", fixation_duration: 300 },
-            { stimulus: "tercero", fixation: "3", fixation_duration: 400 },
-            { stimulus: "cuarto", fixation: "4", fixation_duration: 500 },
-            { stimulus: "quinto", fixation: "5", fixation_duration: 600 },
-          ];
-
-          // Filtrar por categoría
-          const selectedCategory =
-            typeof categoryColumn !== "undefined" ? categoryColumn : "";
-          const csvRows = [
-            {
-              stimuli: "primero",
-              x: "0",
-              y: "0.5",
-              response: "f",
-              fixation: "1",
-              "fixation duration ms": "100",
-              alto: "50",
-              ancho: "50",
-              "Orden 1": "",
-              "Orden 2": "10",
-              "Orden 3": "3",
-              "Orden 4": "5",
-              "Orden 5": "1",
-              Categories: "loca",
-            },
-            {
-              stimuli: "segundo",
-              x: "0",
-              y: "0.75",
-              response: "f",
-              fixation: "2",
-              "fixation duration ms": "300",
-              alto: "70",
-              ancho: "70",
-              "Orden 1": "1",
-              "Orden 2": "6",
-              "Orden 3": "10",
-              "Orden 4": "4",
-              "Orden 5": "2",
-              Categories: "loco",
-            },
-            {
-              stimuli: "tercero",
-              x: "-0.75",
-              y: "0",
-              response: "j",
-              fixation: "3",
-              "fixation duration ms": "400",
-              alto: "80",
-              ancho: "80",
-              "Orden 1": "",
-              "Orden 2": "7",
-              "Orden 3": "9",
-              "Orden 4": "3",
-              "Orden 5": "3",
-              Categories: "loca",
-            },
-            {
-              stimuli: "cuarto",
-              x: "1",
-              y: "1",
-              response: "f",
-              fixation: "4",
-              "fixation duration ms": "500",
-              alto: "90",
-              ancho: "90",
-              "Orden 1": "2",
-              "Orden 2": "8",
-              "Orden 3": "6",
-              "Orden 4": "2",
-              "Orden 5": "4",
-              Categories: "loco",
-            },
-            {
-              stimuli: "quinto",
-              x: "0",
-              y: "0",
-              response: "j",
-              fixation: "5",
-              "fixation duration ms": "600",
-              alto: "100",
-              ancho: "100",
-              "Orden 1": "",
-              "Orden 2": "9",
-              "Orden 3": "4",
-              "Orden 4": "1",
-              "Orden 5": "5",
-              Categories: "loca",
-            },
-          ];
-          // Si hay categoría seleccionada, filtrar los índices que no pertenezcan a esa categoría
-          test_stimuli_h = index_order
-            .filter((i) => {
-              if (i === -1 || i < 0 || i >= test_stimuli_previous_h.length)
-                return false;
-              if (
-                selectedCategory &&
-                csvRows[i] &&
-                csvRows[i][selectedCategory] !== undefined
-              ) {
-                // Solo incluir si la categoría coincide
-                return csvRows[i][selectedCategory] === categoryValue;
-              }
-              return true;
-            })
-            .map((i) => test_stimuli_previous_h[i]);
-
-          console.log(test_stimuli_h);
-        }
-        const h_fixation = {
-          type: jsPsychHtmlKeyboardResponse,
-          stimulus: jsPsych.timelineVariable("fixation"),
-          choices: "NO_KEYS",
-          trial_duration: jsPsych.timelineVariable("fixation_duration"),
-          data: {
-            task: "fixation",
-          },
-        };
-
-        const h_timeline = {
-          type: jsPsychHtmlKeyboardResponse,
-          stimulus: jsPsych.timelineVariable("stimulus"),
-          data: {
-            response: "response",
-            rt: "rt",
-            stimulus: "stimulus",
-          },
-        };
-
-        const h_procedure = {
-          timeline: [h_fixation, h_timeline],
-          timeline_variables: test_stimuli_h,
-          repetitions: 1,
-          randomize_order: false,
-        };
-        timeline.push(h_procedure);
-
-        jsPsych.run(timeline);
-      })();
-    </script>
-    
   
 
-<script src="/plugins/jspsych-probabilistic-selection-task.js" id="plugin-script-0"></script></body></html>
+  on_data_update: function (data) {
+        const res = fetch("/api/append-result", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: trialSessionId,
+            response: data,
+          }),
+        });
+     
+  }
+  
+  // fetch("https://pipe.jspsych.org/api/data/", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json", Accept: "*/*" },
+  //       body: JSON.stringify({
+  //         experimentID: "tjStL4X8Yrep",
+  //         data: JSON.stringify(data),
+  //         filename: ` ${trialSessionId}`,
+  //         append: !isFirstSave,
+  //       }),
+  //     });
+
+  //     isFirstSave = false;
+  // },
+
+  // Uncomment to see the json results after finishing a sesssion experiment
+  // on_finish: function() {
+  //   jsPsych.data.displayData();
+  // },
+});
+
+const timeline = [];
+
+const welcome = {
+  type: jsPsychHtmlButtonResponse,
+  stimulus: "Welcome to the experiment. Press 'Start' to begin.",
+  choices: ['Start'],
+};
+
+timeline.push(welcome);
+
+
+    const preloadcategoriesee = {
+        type: jsPsychPreload,
+       files: ["https://res.cloudinary.com/dksfewgts/image/upload/v1755991779/img/dis.png","https://res.cloudinary.com/dksfewgts/image/upload/v1755991778/img/green.png","https://res.cloudinary.com/dksfewgts/image/upload/v1755991777/img/cofre.png","https://res.cloudinary.com/dksfewgts/image/upload/v1755991777/img/armadillo.png","https://res.cloudinary.com/dksfewgts/image/upload/v1755991777/img/bmw.png"],
+    }
+    timeline.push(preloadcategoriesee);
+    
+    const test_stimuli_categoriesee = [{stimulus: "primero"},{stimulus: "segundo"},{stimulus: "tercero"},{stimulus: "cuarto"},{stimulus: "quinto"}];
+    const categoriesee_timeline = {
+    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
+    data: {
+      response: "response",
+rt: "rt",
+stimulus: "stimulus",
+    },};
+    
+    const categoriesee_procedure = {
+    timeline: 
+    [categoriesee_timeline],
+    timeline_variables: test_stimuli_categoriesee,
+    repetitions: 1,
+    randomize_order: false,
+    
+    };
+    timeline.push(categoriesee_procedure);
+  
+
+jsPsych.run(timeline);
+
+})();
+
+</script></body></html>

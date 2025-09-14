@@ -89,7 +89,7 @@
     
   
 
-<script id="generated-script">
+<script src="/plugins/jspsych-probabilistic-selection-task.js" id="plugin-script-0"></script><script id="generated-script">
 
       const jsPsych = initJsPsych({
         on_finish: function() {
@@ -108,14 +108,14 @@
       timeline.push(welcome);
 
       
-    const preloadNew_Trial = {
+    const preloadcategoriesee = {
         type: jsPsychPreload,
-       files: ["/uploads/img/armadillo.png","/uploads/img/bmw.png","/uploads/img/cofre.png","/uploads/img/dis.png","/uploads/img/green.png"],
+       files: ["https://res.cloudinary.com/dksfewgts/image/upload/v1755991779/img/dis.png","https://res.cloudinary.com/dksfewgts/image/upload/v1755991778/img/green.png","https://res.cloudinary.com/dksfewgts/image/upload/v1755991777/img/cofre.png","https://res.cloudinary.com/dksfewgts/image/upload/v1755991777/img/armadillo.png","https://res.cloudinary.com/dksfewgts/image/upload/v1755991777/img/bmw.png"],
     }
-    timeline.push(preloadNew_Trial);
+    timeline.push(preloadcategoriesee);
     
-    const test_stimuli_New_Trial = [{stimulus: "bñiñsns ef"}];
-    const New_Trial_timeline = {
+    const test_stimuli_categoriesee = [{stimulus: "primero"},{stimulus: "segundo"},{stimulus: "tercero"},{stimulus: "cuarto"},{stimulus: "quinto"}];
+    const categoriesee_timeline = {
     type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
     data: {
       response: "response",
@@ -123,16 +123,16 @@ rt: "rt",
 stimulus: "stimulus",
     },};
     
-    const New_Trial_procedure = {
+    const categoriesee_procedure = {
     timeline: 
-    [New_Trial_timeline],
-    timeline_variables: test_stimuli_New_Trial,
+    [categoriesee_timeline],
+    timeline_variables: test_stimuli_categoriesee,
     repetitions: 1,
     randomize_order: false,
     
     };
-    timeline.push(New_Trial_procedure);
+    timeline.push(categoriesee_procedure);
   
 
       jsPsych.run(timeline);
-</script><script src="/plugins/jspsych-probabilistic-selection-task.js" id="plugin-script-0"></script></body></html>
+</script></body></html>

@@ -23,6 +23,7 @@ type Props = {
   includesExtensions: boolean;
   orders: boolean;
   stimuliOrders: any[];
+  categoryColumn: string;
 };
 
 export function useTrialCode({

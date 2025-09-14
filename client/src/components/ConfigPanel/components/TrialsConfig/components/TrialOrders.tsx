@@ -8,9 +8,8 @@ type Props = {
   setOrderColumns: (cols: string[]) => void;
   mapOrdersFromCsv: (csvJson: any[], columnKeys: string[]) => void;
   csvJson: any[];
-  // categoryColumn: string;
-  // setCategoryColumn: (col: string) => void;
-  // mapCategoryFromCsv: (csvJson: any[], column: string) => void;
+  categoryColumn: string;
+  setCategoryColumn: (col: string) => void;
 };
 
 function TrialOrders({
@@ -21,9 +20,8 @@ function TrialOrders({
   setOrderColumns,
   mapOrdersFromCsv,
   csvJson,
-  // categoryColumn,
-  // setCategoryColumn,
-  // mapCategoryFromCsv,
+  categoryColumn,
+  setCategoryColumn,
 }: Props) {
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const cols = Array.from(e.target.selectedOptions, (opt) => opt.value);
@@ -32,10 +30,7 @@ function TrialOrders({
   };
 
   const [useCategory, setUseCategory] = React.useState(false);
-  // const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-  //   setCategoryColumn(e.target.value);
-  //   mapCategoryFromCsv(csvJson, e.target.value);
-  // };
+
   return (
     <div className="mb-4 p-4 border rounded bg-gray-50">
       <div className="flex items-center">
@@ -73,13 +68,13 @@ function TrialOrders({
             onChange={(e) => setUseCategory(e.target.checked)}
           />
         </div>
-        {/* {useCategory && (
+        {useCategory && (
           <div className="ml-4">
             <label htmlFor="category-column">Select category column:</label>
             <select
               id="category-column"
               value={categoryColumn}
-              onChange={handleCategoryChange}
+              onChange={(e) => setCategoryColumn(e.target.value)}
               className="ml-2"
             >
               <option value="">Select</option>
@@ -90,7 +85,7 @@ function TrialOrders({
               ))}
             </select>
           </div>
-        )} */}
+        )}
       </div>
     </div>
   );
