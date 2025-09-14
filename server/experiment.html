@@ -1,7 +1,9 @@
-<!DOCTYPE html><html lang="en"><head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png+xml" href="/icon/fp black.png">
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png+xml" href="/icon/fp black.png" />
     <title>Experiment</title>
     <script src="https://unpkg.com/jspsych@8.2.1"></script>
     <script src="https://unpkg.com/@jspsych/plugin-animation@2.1.0"></script>
@@ -69,8 +71,15 @@
     <script src="https://unpkg.com/@jspsych/extension-record-video@1.2.0"></script>
     <script src="https://unpkg.com/@jspsych/extension-mouse-tracking@1.0.0"></script>
 
-    <link href="https://unpkg.com/jspsych@7.3.1/css/jspsych.css" rel="stylesheet" type="text/css">
-    <link rel="stylesheet" href="https://unpkg.com/@jspsych/plugin-survey@2.1.0/css/survey.css">
+    <link
+      href="https://unpkg.com/jspsych@7.3.1/css/jspsych.css"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/@jspsych/plugin-survey@2.1.0/css/survey.css"
+    />
 
     <style>
       body {
@@ -86,23 +95,14 @@
   <body>
     <div id="jspsych-target"></div>
 
-    <script src="/plugins/jspsych-probabilistic-selection-task.js" id="plugin-script-0"></script>
-    
-  
+    <script id="generated-script">
+      const trialSessionId = crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2) + Date.now();
 
-<script id="generated-script">
+      let participantNumber;
 
-
-    
-
-  const trialSessionId =
-    (crypto.randomUUID
-      ? crypto.randomUUID()
-      : Math.random().toString(36).slice(2) + Date.now());
-
-let participantNumber;
-
-   async function saveSession(trialSessionId) {
+      async function saveSession(trialSessionId) {
         const res = await fetch("/api/append-result", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -113,93 +113,101 @@ let participantNumber;
         const result = await res.json();
         participantNumber = result.participantNumber;
         return participantNumber;
-  }
-        
-(async () => {
-  participantNumber = await saveSession(trialSessionId);
+      }
 
-  if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
-    alert("El número de participante no está asignado. Por favor, espera.");
-    throw new Error("participantNumber no asignado");
-  }
+      (async () => {
+        participantNumber = await saveSession(trialSessionId);
 
-  // let isFirstSave = true;
+        if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
+          alert(
+            "El número de participante no está asignado. Por favor, espera."
+          );
+          throw new Error("participantNumber no asignado");
+        }
 
-  const jsPsych = initJsPsych({
+        // let isFirstSave = true;
 
-  
+        const jsPsych = initJsPsych({
+          on_data_update: function (data) {
+            const res = fetch("/api/append-result", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                sessionId: trialSessionId,
+                response: data,
+              }),
+            });
+          },
 
-  on_data_update: function (data) {
-        const res = fetch("/api/append-result", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sessionId: trialSessionId,
-            response: data,
-          }),
+          // fetch("https://pipe.jspsych.org/api/data/", {
+          //       method: "POST",
+          //       headers: { "Content-Type": "application/json", Accept: "*/*" },
+          //       body: JSON.stringify({
+          //         experimentID: "tjStL4X8Yrep",
+          //         data: JSON.stringify(data),
+          //         filename: ` ${trialSessionId}`,
+          //         append: !isFirstSave,
+          //       }),
+          //     });
+
+          //     isFirstSave = false;
+          // },
+
+          // Uncomment to see the json results after finishing a sesssion experiment
+          // on_finish: function() {
+          //   jsPsych.data.displayData();
+          // },
         });
-     
-  }
-  
-  // fetch("https://pipe.jspsych.org/api/data/", {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json", Accept: "*/*" },
-  //       body: JSON.stringify({
-  //         experimentID: "tjStL4X8Yrep",
-  //         data: JSON.stringify(data),
-  //         filename: ` ${trialSessionId}`,
-  //         append: !isFirstSave,
-  //       }),
-  //     });
 
-  //     isFirstSave = false;
-  // },
+        const timeline = [];
 
-  // Uncomment to see the json results after finishing a sesssion experiment
-  // on_finish: function() {
-  //   jsPsych.data.displayData();
-  // },
-});
+        const welcome = {
+          type: jsPsychHtmlButtonResponse,
+          stimulus: "Welcome to the experiment. Press 'Start' to begin.",
+          choices: ["Start"],
+        };
 
-const timeline = [];
+        timeline.push(welcome);
 
-const welcome = {
-  type: jsPsychHtmlButtonResponse,
-  stimulus: "Welcome to the experiment. Press 'Start' to begin.",
-  choices: ['Start'],
-};
+        const preloadcategoriesee = {
+          type: jsPsychPreload,
+          files: [
+            "https://res.cloudinary.com/dksfewgts/image/upload/v1755991779/img/dis.png",
+            "https://res.cloudinary.com/dksfewgts/image/upload/v1755991778/img/green.png",
+            "https://res.cloudinary.com/dksfewgts/image/upload/v1755991777/img/cofre.png",
+            "https://res.cloudinary.com/dksfewgts/image/upload/v1755991777/img/armadillo.png",
+            "https://res.cloudinary.com/dksfewgts/image/upload/v1755991777/img/bmw.png",
+          ],
+        };
+        timeline.push(preloadcategoriesee);
 
-timeline.push(welcome);
+        const test_stimuli_categoriesee = [
+          { stimulus: "primero" },
+          { stimulus: "segundo" },
+          { stimulus: "tercero" },
+          { stimulus: "cuarto" },
+          { stimulus: "quinto" },
+        ];
+        const categoriesee_timeline = {
+          type: jsPsychHtmlKeyboardResponse,
+          stimulus: jsPsych.timelineVariable("stimulus"),
+          data: {
+            response: "response",
+            rt: "rt",
+            stimulus: "stimulus",
+          },
+        };
 
+        const categoriesee_procedure = {
+          timeline: [categoriesee_timeline],
+          timeline_variables: test_stimuli_categoriesee,
+          repetitions: 1,
+          randomize_order: false,
+        };
+        timeline.push(categoriesee_procedure);
 
-    const preloadcategoriesee = {
-        type: jsPsychPreload,
-       files: ["https://res.cloudinary.com/dksfewgts/image/upload/v1755991779/img/dis.png","https://res.cloudinary.com/dksfewgts/image/upload/v1755991778/img/green.png","https://res.cloudinary.com/dksfewgts/image/upload/v1755991777/img/cofre.png","https://res.cloudinary.com/dksfewgts/image/upload/v1755991777/img/armadillo.png","https://res.cloudinary.com/dksfewgts/image/upload/v1755991777/img/bmw.png"],
-    }
-    timeline.push(preloadcategoriesee);
-    
-    const test_stimuli_categoriesee = [{stimulus: "primero"},{stimulus: "segundo"},{stimulus: "tercero"},{stimulus: "cuarto"},{stimulus: "quinto"}];
-    const categoriesee_timeline = {
-    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
-    data: {
-      response: "response",
-rt: "rt",
-stimulus: "stimulus",
-    },};
-    
-    const categoriesee_procedure = {
-    timeline: 
-    [categoriesee_timeline],
-    timeline_variables: test_stimuli_categoriesee,
-    repetitions: 1,
-    randomize_order: false,
-    
-    };
-    timeline.push(categoriesee_procedure);
-  
-
-jsPsych.run(timeline);
-
-})();
-
-</script></body></html>
+        jsPsych.run(timeline);
+      })();
+    </script>
+  </body>
+</html>
