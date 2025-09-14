@@ -8,8 +8,11 @@ type Props = {
   setOrderColumns: (cols: string[]) => void;
   mapOrdersFromCsv: (csvJson: any[], columnKeys: string[]) => void;
   csvJson: any[];
+  categories: boolean;
+  setCategories: React.Dispatch<React.SetStateAction<boolean>>;
   categoryColumn: string;
   setCategoryColumn: (col: string) => void;
+  mapCategoriesFromCsv: (csvJson: any[], categoryColumn: string) => void;
 };
 
 function TrialOrders({
@@ -20,8 +23,11 @@ function TrialOrders({
   setOrderColumns,
   mapOrdersFromCsv,
   csvJson,
+  categories,
+  setCategories,
   categoryColumn,
   setCategoryColumn,
+  mapCategoriesFromCsv,
 }: Props) {
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const cols = Array.from(e.target.selectedOptions, (opt) => opt.value);
@@ -29,7 +35,11 @@ function TrialOrders({
     mapOrdersFromCsv(csvJson, cols);
   };
 
-  const [useCategory, setUseCategory] = React.useState(false);
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const column = e.target.value;
+    setCategoryColumn(column);
+    mapCategoriesFromCsv(csvJson, column); // Agregar esta línea
+  };
 
   return (
     <div className="mb-4 p-4 border rounded bg-gray-50">
@@ -64,17 +74,17 @@ function TrialOrders({
           <h6>Set category column</h6>
           <input
             type="checkbox"
-            checked={useCategory}
-            onChange={(e) => setUseCategory(e.target.checked)}
+            checked={categories}
+            onChange={(e) => setCategories(e.target.checked)}
           />
         </div>
-        {useCategory && (
+        {categories && (
           <div className="ml-4">
             <label htmlFor="category-column">Select category column:</label>
             <select
               id="category-column"
               value={categoryColumn}
-              onChange={(e) => setCategoryColumn(e.target.value)}
+              onChange={handleCategoryChange}
               className="ml-2"
             >
               <option value="">Select</option>

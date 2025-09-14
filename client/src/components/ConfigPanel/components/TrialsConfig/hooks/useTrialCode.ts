@@ -23,7 +23,8 @@ type Props = {
   includesExtensions: boolean;
   orders: boolean;
   stimuliOrders: any[];
-  categoryColumn: string;
+  categories: boolean;
+  categoryData: any[];
 };
 
 export function useTrialCode({
@@ -44,6 +45,8 @@ export function useTrialCode({
   includesExtensions,
   orders,
   stimuliOrders,
+  categories,
+  categoryData,
 }: Props) {
   const activeParameters = parameters.filter(
     (p) => columnMapping[p.key]?.source !== "none"
@@ -288,24 +291,96 @@ export function useTrialCode({
       stringifyWithFunctions(activeParameters, row)
     );
 
-    if (orders) {
+    // if (orders) {
+    //   code += `
+    // let test_stimuli_${trialNameSanitized} = [];
+
+    // if (typeof participantNumber === "number" && !isNaN(participantNumber)) {
+    // const stimuliOrders = ${JSON.stringify(stimuliOrders)}
+    // const orderIndex = (participantNumber - 1) % stimuliOrders.length;
+    // const index_order = stimuliOrders[orderIndex]; // Orden deseado de los índices
+
+    // const test_stimuli_previous_${trialNameSanitized} = [${testStimuliCode.join(",")}];
+
+    // test_stimuli_${trialNameSanitized} = index_order
+    //   .filter((i) => i !== -1 && i >= 0 && i < test_stimuli_previous_${trialNameSanitized}.length)
+    //   .map((i) => test_stimuli_previous_${trialNameSanitized}[i]);
+
+    // console.log(test_stimuli_${trialNameSanitized})
+
+    // }`;
+    // } else {
+    //   code += `
+    // const test_stimuli_${trialNameSanitized} = [${testStimuliCode.join(",")}];`;
+    // }
+
+    if (orders || categories) {
       code += `
     let test_stimuli_${trialNameSanitized} = [];
     
     if (typeof participantNumber === "number" && !isNaN(participantNumber)) {
-    const stimuliOrders = ${JSON.stringify(stimuliOrders)}
-    const orederIndex = (participantNumber - 1) % stimuliOrders.length;
-    const index_order = stimuliOrders[orederIndex]; // Orden deseado de los índices
+      const stimuliOrders = ${JSON.stringify(stimuliOrders)};
+      const categoryData = ${JSON.stringify(categoryData)};
+      const test_stimuli_previous_${trialNameSanitized} = [${testStimuliCode.join(",")}];
+      
+      if (categoryData.length > 0) {
+        // Obtener todas las categorías únicas
+        const allCategories = [...new Set(categoryData)];
+        
+        // Determinar qué categoría le corresponde a este participante
+        const categoryIndex = (participantNumber - 1) % allCategories.length;
+        const participantCategory = allCategories[categoryIndex];
+        
+        // Encontrar los índices que corresponden a esta categoría
+        const categoryIndices = [];
+        categoryData.forEach((category, index) => {
+          if (category === participantCategory) {
+            categoryIndices.push(index);
+          }
+        });
+        
+        // Filtrar los estímulos por categoría
+        const categoryFilteredStimuli = categoryIndices.map(index => 
+          test_stimuli_previous_${trialNameSanitized}[index]
+        );
 
-    const test_stimuli_previous_${trialNameSanitized} = [${testStimuliCode.join(",")}];
-
-
-    test_stimuli_${trialNameSanitized} = index_order
-      .filter((i) => i !== -1 && i >= 0 && i < test_stimuli_previous_${trialNameSanitized}.length)
-      .map((i) => test_stimuli_previous_${trialNameSanitized}[i]);
-
-    console.log(test_stimuli_${trialNameSanitized})
-
+        // Aplicar el orden si existe
+        if (stimuliOrders.length > 0) {
+          const orderIndex = (participantNumber - 1) % stimuliOrders.length;
+          const index_order = stimuliOrders[orderIndex];
+          
+          // Crear mapeo de índices originales a índices filtrados
+          const indexMapping = {};
+          categoryIndices.forEach((originalIndex, filteredIndex) => {
+            indexMapping[originalIndex] = filteredIndex;
+          });
+          
+          // Aplicar el orden solo a los índices que existen en la categoría filtrada
+          const orderedIndices = index_order
+            .filter(i => indexMapping.hasOwnProperty(i))
+            .map(i => indexMapping[i]);
+          
+          test_stimuli_${trialNameSanitized} = orderedIndices
+            .filter(i => i >= 0 && i < categoryFilteredStimuli.length)
+            .map(i => categoryFilteredStimuli[i]);
+        } else {
+          test_stimuli_${trialNameSanitized} = categoryFilteredStimuli;
+        }
+        
+        console.log("Participant:", participantNumber, "Category:", participantCategory);
+        console.log("Category indices:", categoryIndices);
+        console.log("Filtered stimuli:", test_stimuli_${trialNameSanitized});
+        } else {
+        // Lógica original sin categorías
+        const orderIndex = (participantNumber - 1) % stimuliOrders.length;
+        const index_order = stimuliOrders[orderIndex];
+        
+        test_stimuli_${trialNameSanitized} = index_order
+          .filter((i) => i !== -1 && i >= 0 && i < test_stimuli_previous_${trialNameSanitized}.length)
+          .map((i) => test_stimuli_previous_${trialNameSanitized}[i]);
+          
+        console.log(test_stimuli_${trialNameSanitized});
+      }
     }`;
     } else {
       code += `

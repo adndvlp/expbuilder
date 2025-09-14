@@ -169,13 +169,21 @@ function TrialsConfig({ pluginName }: Props) {
       setColumnMapping(selectedTrial.columnMapping || {});
       setCsvJson(selectedTrial.csvJson || []);
       setCsvColumns(selectedTrial.csvColumns || []);
-      setOrders(selectedTrial.parameters?.orders || false);
 
+      setOrders(selectedTrial.parameters?.orders || false);
       setOrderColumns(selectedTrial.parameters?.orderColumns || []);
       mapOrdersFromCsv(
         selectedTrial.csvJson || [],
         selectedTrial.parameters?.orderColumns || []
       );
+
+      setCategories(selectedTrial.parameters?.categories || false);
+      setCategoryColumn(selectedTrial.parameters?.categoryColumn || "");
+      mapCategoriesFromCsv(
+        selectedTrial.csvJson || [],
+        selectedTrial.parameters?.categoryColumn || ""
+      );
+
       setTimeout(() => {
         setIsLoadingTrial(false);
       }, 100); // 500 en producción
@@ -209,8 +217,12 @@ function TrialsConfig({ pluginName }: Props) {
     orderColumns,
     setOrderColumns,
     mapOrdersFromCsv,
+    categories,
+    setCategories,
     categoryColumn,
     setCategoryColumn,
+    categoryData,
+    mapCategoriesFromCsv,
   } = useTrialOrders();
 
   const { genTrialCode } = useTrialCode({
@@ -231,7 +243,8 @@ function TrialsConfig({ pluginName }: Props) {
     includesExtensions: includesExtensions,
     orders: orders,
     stimuliOrders: stimuliOrders,
-    categoryColumn: categoryColumn,
+    categories: categories,
+    categoryData: categoryData,
   });
 
   // guardar y actualizar el estado global del ensayo
@@ -262,6 +275,10 @@ function TrialsConfig({ pluginName }: Props) {
         orders: orders,
         orderColumns: orderColumns,
         stimuliOrders: stimuliOrders,
+        // Categories
+        categories: categories,
+        categoryColumn: categoryColumn,
+        categoryData: categoryData,
       },
       trialCode: genTrialCode(),
       columnMapping: { ...columnMapping },
@@ -306,6 +323,9 @@ function TrialsConfig({ pluginName }: Props) {
     trialName,
     orders,
     orderColumns,
+    categories,
+    categoryColumn,
+    categoryData,
     isLoadingTrial,
   ]);
 
@@ -453,8 +473,11 @@ function TrialsConfig({ pluginName }: Props) {
           orderColumns={orderColumns}
           setOrderColumns={setOrderColumns}
           mapOrdersFromCsv={mapOrdersFromCsv}
+          categories={categories}
+          setCategories={setCategories}
           categoryColumn={categoryColumn}
           setCategoryColumn={setCategoryColumn}
+          mapCategoriesFromCsv={mapCategoriesFromCsv}
           csvJson={csvJson}
         />
 
