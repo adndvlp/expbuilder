@@ -295,7 +295,8 @@ button[disabled] {
 /* UTILITY BUTTONS */
 button.remove-button {
   background-color: var(--danger);
-  color: var(--neutral-light);
+  /* color: var(--neutral-light); */
+  color: #fff;
   border: none;
   padding: 5px 10px;
   font-size: 12px;

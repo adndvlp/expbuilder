@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { usePluginParameters } from "../../../hooks/usePluginParameters"; // Make sure path is correct
+import { usePluginParameters } from "../../hooks/usePluginParameters"; // Make sure path is correct
 import { useCsvMapper } from "./useCsvMapper";
-import { ColumnMapping, Trial } from "../../../types";
+import { ColumnMapping, Trial } from "../../types";
 
 type PhaseProps = {
   pluginName: string;

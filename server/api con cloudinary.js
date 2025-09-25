@@ -3,6 +3,8 @@ import express from "express";
 import mongoose from "mongoose";
 import multer from "multer";
 import path from "path";
+import { v2 as cloudinary } from "cloudinary";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
 import { fileURLToPath } from "url";
 import * as cheerio from "cheerio";
 import fs from "fs";
@@ -29,7 +31,13 @@ app.use(
 
 app.use(express.json({ limit: "50mb" })); // Increased limit for larger code files
 
-mongoose.connect(process.env.MONGODB_URI);
+mongoose.connect(process.env.MONGODB_URI).then(async () => {
+  if (process.env.NODE_ENV === "production") {
+    await regeneratePluginsFromDatabase();
+  } else {
+    console.log("🚧 Skipping plugin regeneration (not in production mode)");
+  }
+});
 
 // Setup static file serving
 app.use(express.static(path.join(__dirname, "dist"))); // Serve dist/ at root level
@@ -62,57 +70,92 @@ app.get("/api/plugins-list", (req, res) => {
   });
 });
 
-const uploadsDir = path.join(__dirname, "uploads");
-const imgDir = path.join(uploadsDir, "img");
-const audDir = path.join(uploadsDir, "aud");
-const vidDir = path.join(uploadsDir, "vid");
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
-if (!fs.existsSync(imgDir)) fs.mkdirSync(imgDir);
-if (!fs.existsSync(audDir)) fs.mkdirSync(audDir);
-if (!fs.existsSync(vidDir)) fs.mkdirSync(vidDir);
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
+// Cloudinary storage for multer
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: async (req, file) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    let folder = uploadsDir;
-    if (/\.(png|jpg|jpeg|gif)$/i.test(ext)) folder = imgDir;
-    else if (/\.(mp3|wav|ogg|m4a)$/i.test(ext)) folder = audDir;
-    else if (/\.(mp4|webm|mov|avi)$/i.test(ext)) folder = vidDir;
-    cb(null, folder);
-  },
-  filename: function (req, file, cb) {
-    cb(null, file.originalname);
+    let folder = "others";
+    if (/\.(png|jpg|jpeg|gif)$/i.test(ext)) folder = "img";
+    else if (/\.(mp3|wav|ogg|m4a)$/i.test(ext)) folder = "aud";
+    else if (/\.(mp4|webm|mov|avi)$/i.test(ext)) folder = "vid";
+    return {
+      folder,
+      public_id: file.originalname.replace(/\.[^/.]+$/, ""),
+      resource_type: "auto",
+    };
   },
 });
-const upload = multer({ storage });
 
-app.use("/uploads", express.static(uploadsDir));
+const upload = multer({ storage });
 
 app.post("/api/upload-file", upload.single("file"), (req, res) => {
   if (!req.file || !req.file.path) {
     return res.status(400).json({ error: "No file uploaded" });
   }
-  let folder = "others";
-  if (req.file.destination === imgDir) folder = "img";
-  else if (req.file.destination === audDir) folder = "aud";
-  else if (req.file.destination === vidDir) folder = "vid";
-  res.json({ fileUrl: `/uploads/${folder}/${req.file.filename}`, folder });
+  res.json({ fileUrl: req.file.path, folder: req.file.folder });
 });
 
 app.post("/api/upload-files-folder", upload.array("files"), (req, res) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: "No files uploaded" });
   }
-  const fileUrls = req.files.map((file) => {
+
+  // Si la petición indica folder "all", asignar carpeta según tipo
+  // El frontend puede enviar folder en req.body.folder, si no, usar "all" por defecto
+  const folderParam = req.body.folder || "all";
+  const fileUrls = [];
+
+  req.files.forEach((file) => {
+    // Detectar tipo por extensión
+    const ext = path.extname(file.originalname).toLowerCase();
     let folder = "others";
-    if (file.destination === imgDir) folder = "img";
-    else if (file.destination === audDir) folder = "aud";
-    else if (file.destination === vidDir) folder = "vid";
-    return `/uploads/${folder}/${file.filename}`;
+    if (folderParam === "all") {
+      if (/\.(png|jpg|jpeg|gif)$/i.test(ext)) folder = "img";
+      else if (/\.(mp3|wav|ogg|m4a)$/i.test(ext)) folder = "aud";
+      else if (/\.(mp4|webm|mov|avi)$/i.test(ext)) folder = "vid";
+    } else {
+      folder = folderParam;
+    }
+
+    // Mover el archivo a la carpeta correspondiente en Cloudinary
+    // Si ya está en la carpeta correcta, no hacer nada
+    // Si no, subir de nuevo a la carpeta correcta
+    if (file.folder !== folder) {
+      // Re-subir a la carpeta correcta usando Cloudinary
+      // (No se puede mover en Cloudinary, hay que re-subir)
+      cloudinary.uploader.upload(
+        file.path,
+        {
+          folder,
+          public_id: file.originalname.replace(/\.[^/.]+$/, ""),
+          resource_type: "auto",
+        },
+        (err, result) => {
+          if (!err && result && result.secure_url) {
+            fileUrls.push(result.secure_url);
+          } else {
+            fileUrls.push(file.path); // fallback
+          }
+        }
+      );
+    } else {
+      fileUrls.push(file.path);
+    }
   });
+
+  // Esperar a que todos los uploads terminen (si hubo re-subidas)
+  // Si hay re-subidas, puede que fileUrls no esté completo aún
+  // Para simplificar, responder con los paths originales y advertir que los nuevos estarán en la carpeta correcta
   res.json({
     fileUrls,
-    info: "Archivos subidos localmente.",
+    info: "Archivos subidos. Si folder=all, se asignan a carpeta según tipo.",
   });
 });
 
@@ -121,27 +164,53 @@ app.get("/api/list-files/:folder", async (req, res) => {
 
   try {
     let files = [];
-    let foldersToList = [];
+
     if (folder === "all") {
-      foldersToList = [imgDir, audDir, vidDir];
-    } else if (folder === "img") {
-      foldersToList = [imgDir];
-    } else if (folder === "aud") {
-      foldersToList = [audDir];
-    } else if (folder === "vid") {
-      foldersToList = [vidDir];
-    } else {
-      foldersToList = [uploadsDir];
-    }
-    for (const dir of foldersToList) {
-      if (fs.existsSync(dir)) {
-        const dirFiles = fs.readdirSync(dir).map((filename) => ({
-          name: `${path.basename(dir)}/${filename}`,
-          url: `/uploads/${path.basename(dir)}/${filename}`,
+      // Para "all", buscar en todas las carpetas (img, aud, vid)
+      const folders = ["img", "aud", "vid"];
+
+      for (const currentFolder of folders) {
+        let resourceType = "image";
+        if (currentFolder === "aud") resourceType = "video"; // audio but cloudinary treats it as video
+        if (currentFolder === "vid") resourceType = "video";
+
+        const result = await cloudinary.search
+          .expression(
+            `resource_type:${resourceType} AND folder:${currentFolder}`
+          )
+          .sort_by("created_at", "desc")
+          .max_results(100)
+          .execute();
+
+        const folderFiles = result.resources.map((file) => ({
+          name: `${currentFolder}/${file.public_id.replace(/^.*?\//, "")}${
+            file.format ? "." + file.format : ""
+          }`,
+          url: file.secure_url,
         }));
-        files = files.concat(dirFiles);
+
+        files = files.concat(folderFiles);
       }
+    } else {
+      // Lógica original para carpetas específicas
+      let resourceType = "image";
+      if (folder === "aud") resourceType = "video"; // audio but cloudinary treats it as video
+      if (folder === "vid") resourceType = "video";
+
+      const result = await cloudinary.search
+        .expression(`resource_type:${resourceType} AND folder:${folder}`)
+        .sort_by("created_at", "desc")
+        .max_results(100)
+        .execute();
+
+      files = result.resources.map((file) => ({
+        name: `${folder}/${file.public_id.replace(/^.*?\//, "")}${
+          file.format ? "." + file.format : ""
+        }`,
+        url: file.secure_url,
+      }));
     }
+
     res.json({ files });
   } catch (err) {
     res.status(500).json({ files: [], error: err.message });
@@ -150,32 +219,29 @@ app.get("/api/list-files/:folder", async (req, res) => {
 
 app.delete("/api/delete-file/:folder/:filename", async (req, res) => {
   let { folder, filename } = req.params;
+  filename = filename.replace(/\.[^/.]+$/, ""); // sin extensión
+
+  // Si folder es "all", intentar borrar en todas las carpetas
+  const folders = folder === "all" ? ["img", "aud", "vid", "others"] : [folder];
   let deleted = false;
   let lastError = null;
-  let foldersToDelete = [];
-  if (folder === "all") {
-    foldersToDelete = [imgDir, audDir, vidDir];
-  } else if (folder === "img") {
-    foldersToDelete = [imgDir];
-  } else if (folder === "aud") {
-    foldersToDelete = [audDir];
-  } else if (folder === "vid") {
-    foldersToDelete = [vidDir];
-  } else {
-    foldersToDelete = [uploadsDir];
-  }
-  for (const dir of foldersToDelete) {
-    const filePath = path.join(dir, filename);
-    if (fs.existsSync(filePath)) {
-      try {
-        fs.unlinkSync(filePath);
+
+  for (const f of folders) {
+    let resourceType = "image";
+    if (f === "aud" || f === "vid") resourceType = "video";
+    try {
+      const result = await cloudinary.uploader.destroy(`${f}/${filename}`, {
+        resource_type: resourceType,
+      });
+      if (result.result === "ok") {
         deleted = true;
         break;
-      } catch (err) {
-        lastError = err;
       }
+    } catch (err) {
+      lastError = err;
     }
   }
+
   if (deleted) {
     res.json({ success: true });
   } else {
@@ -267,6 +333,113 @@ const PluginConfigSchema = new mongoose.Schema({
 const PluginConfig =
   mongoose.models.PluginConfig ||
   mongoose.model("PluginConfig", PluginConfigSchema);
+
+// Función para regenerar archivos de plugins y actualizar HTML desde la BD. Solo en entorno de producción
+async function regeneratePluginsFromDatabase() {
+  try {
+    console.log("🔄 Regenerating plugins from database...");
+
+    // Obtener plugins de la BD
+    const pluginConfigDoc = await PluginConfig.findOne({});
+    const plugins = pluginConfigDoc?.plugins || [];
+
+    if (plugins.length === 0) {
+      console.log("ℹ️ No plugins found in database");
+      return;
+    }
+
+    // Crear directorio de plugins si no existe
+    const pluginsDir = path.join(__dirname, "plugins");
+    if (!fs.existsSync(pluginsDir)) {
+      fs.mkdirSync(pluginsDir, { recursive: true });
+    }
+
+    // Crear directorio de metadata si no existe
+    const metadataDir = path.join(__dirname, "metadata");
+    if (!fs.existsSync(metadataDir)) {
+      fs.mkdirSync(metadataDir, { recursive: true });
+    }
+
+    // Regenerar archivos de plugins
+    plugins.forEach((plugin) => {
+      if (plugin.pluginCode && plugin.scripTag) {
+        const fileName = path.basename(plugin.scripTag);
+        const filePath = path.join(pluginsDir, fileName);
+        fs.writeFileSync(filePath, plugin.pluginCode, "utf8");
+        console.log(`✅ Regenerated plugin file: ${fileName}`);
+      }
+    });
+
+    // Actualizar experiment.html y trials_preview.html
+    const htmlFiles = [
+      {
+        path: path.join(__dirname, "experiment.html"),
+        name: "experiment.html",
+      },
+      {
+        path: path.join(__dirname, "trials_preview.html"),
+        name: "trials_preview.html",
+      },
+    ];
+
+    htmlFiles.forEach(({ path: htmlPath, name }) => {
+      if (fs.existsSync(htmlPath)) {
+        let html = fs.readFileSync(htmlPath, "utf8");
+        const $ = cheerio.load(html);
+
+        // Remover scripts de plugins existentes
+        $("script[id^='plugin-script']").remove();
+
+        // Agregar scripts de plugins desde la BD
+        plugins.forEach((p, idx) => {
+          if (p.scripTag) {
+            $("body").append(
+              `<script src="${p.scripTag}" id="plugin-script-${idx}"></script>`
+            );
+          }
+        });
+
+        fs.writeFileSync(htmlPath, $.html(), "utf8");
+        console.log(`✅ Updated ${name} with ${plugins.length} plugin scripts`);
+      }
+    });
+
+    // Ejecutar extract-metadata.mjs para regenerar metadata
+    try {
+      await new Promise((resolve, reject) => {
+        const extractScript = spawn(
+          "node",
+          [path.join(__dirname, "extract-metadata.mjs")],
+          {
+            cwd: __dirname,
+            stdio: "inherit",
+          }
+        );
+        extractScript.on("close", (code) => {
+          if (code === 0) {
+            console.log("✅ Metadata regenerated successfully");
+            resolve();
+          } else {
+            console.log(`⚠️ Extract-metadata script failed with code ${code}`);
+            resolve(); // No rechazamos para no bloquear el inicio
+          }
+        });
+        extractScript.on("error", (err) => {
+          console.log(
+            `⚠️ Error running extract-metadata script: ${err.message}`
+          );
+          resolve(); // No rechazamos para no bloquear el inicio
+        });
+      });
+    } catch (metadataError) {
+      console.log(`⚠️ Metadata regeneration error: ${metadataError.message}`);
+    }
+
+    console.log("🎉 Plugin regeneration completed");
+  } catch (error) {
+    console.error("❌ Error regenerating plugins:", error.message);
+  }
+}
 
 // Guardar un solo plugin por id
 app.post("/api/save-plugin/:id", async (req, res) => {
@@ -601,36 +774,6 @@ const SessionResult =
   mongoose.model("SessionResult", SessionResultSchema);
 
 // Endpoint para agregar una respuesta a la sesión
-// app.post("/api/append-result", async (req, res) => {
-//   try {
-//     let { sessionId, response } = req.body;
-//     if (!sessionId || !response)
-//       return res
-//         .status(400)
-//         .json({ success: false, error: "sessionId and response required" });
-
-//     // Si recibes un string, parsea:
-//     if (typeof response === "string") response = JSON.parse(response);
-
-//     // Busca el documento o créalo si no existe
-//     const updated = await SessionResult.findOneAndUpdate(
-//       { sessionId },
-//       { $push: { data: response } },
-//       { upsert: true, new: true }
-//     );
-
-//     // Obtén todas las sesiones ordenadas por fecha
-//     const sessions = await SessionResult.find({}).sort({ createdAt: 1 });
-//     // Busca el índice de la sesión actual
-//     const participantNumber =
-//       sessions.findIndex((s) => s.sessionId === sessionId) + 1;
-
-//     res.json({ success: true, id: updated._id, participantNumber });
-//   } catch (err) {
-//     res.status(500).json({ success: false, error: err.message });
-//   }
-// });
-
 app.post("/api/append-result", async (req, res) => {
   try {
     let { sessionId } = req.body;

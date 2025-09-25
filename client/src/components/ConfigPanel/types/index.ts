@@ -9,6 +9,23 @@ export type ColumnMappingEntry = {
 
 export type ColumnMapping = Record<string, ColumnMappingEntry>;
 
+export interface Loop {
+  id: string;
+  name: string;
+  repetitions: number;
+  randomize: boolean;
+  orders: boolean;
+  stimuliOrders: any[];
+  orderColumns: string[];
+  categories: boolean;
+  categoryColumn: string;
+  categoryData: any[];
+  trials: Trial[];
+  code: string;
+  csvJson?: any[];
+  csvColumns?: string[];
+}
+
 export interface Trial {
   id: number;
   type: string;
@@ -19,8 +36,19 @@ export interface Trial {
   columnMapping?: Record<string, any>;
   csvJson?: any[];
   csvColumns?: string[];
+  csvFromLoop?: boolean;
+  csvJsonLoop?: any[];
+  csvColumnsLoop?: string[];
   editPluginMode?: boolean;
 }
+
+export type TrialOrLoop = Trial | Loop;
+
+export type MoveItemParams = {
+  dragged: { type: "trial" | "loop"; id: string | number };
+  target: { type: "trial" | "loop"; id: string | number | null };
+  position: "before" | "after" | "inside";
+};
 
 export type FieldType =
   | "string"

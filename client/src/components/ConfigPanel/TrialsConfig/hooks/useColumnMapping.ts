@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ColumnMapping } from "../../../types";
+import type { ColumnMapping } from "../../types";
 
 export function useColumnMapping(initialMapping: ColumnMapping = {}) {
   const [columnMapping, setColumnMapping] =

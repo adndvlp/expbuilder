@@ -4,17 +4,24 @@ type CsvUploaderProps = {
   onCsvUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   csvJson: any[];
   onDeleteCSV: () => void;
+  disabled?: boolean;
 };
 
 const CsvUploader: React.FC<CsvUploaderProps> = ({
   onCsvUpload,
   csvJson,
   onDeleteCSV,
+  disabled = false,
 }) => (
   <div className="mt-4 mb-4 p-4 border rounded bg-gray-50">
     <h4 className="font-bold mb-3">CSV or XLSX</h4>
     <label className="block mb-1 font-medium">Upload .csv or .xlsx file:</label>
-    <input type="file" accept=".csv, .xlsx" onChange={onCsvUpload} />
+    <input
+      type="file"
+      accept=".csv, .xlsx"
+      onChange={onCsvUpload}
+      disabled={disabled}
+    />
     {csvJson.length > 0 && (
       <div className="mt-4">
         <h5 className="font-semibold">JSON Data Preview:</h5>

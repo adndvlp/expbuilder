@@ -1,4 +1,4 @@
-import { ColumnMapping, ColumnMappingEntry } from "../../../types";
+import { ColumnMapping, ColumnMappingEntry } from "../../types";
 
 type Props = {
   pluginName: string;
@@ -13,18 +13,15 @@ type Props = {
   needsFileUpload: boolean;
   columnMapping: ColumnMapping;
   filteredFiles: any[];
-  includeFixation: boolean;
   csvJson: any[];
-  fieldGroups: { pluginParameters: any[]; fixation: any[] };
   trialName: string;
-  repetitions: number;
-  randomize: boolean;
-  extensions: string;
   includesExtensions: boolean;
+  extensions: string;
   orders: boolean;
   stimuliOrders: any[];
   categories: boolean;
   categoryData: any[];
+  isInLoop?: boolean;
 };
 
 export function useTrialCode({
@@ -34,19 +31,16 @@ export function useTrialCode({
   needsFileUpload,
   columnMapping,
   filteredFiles,
-  includeFixation,
   csvJson,
-  fieldGroups,
   trialName,
   data,
-  repetitions,
-  randomize,
-  extensions,
   includesExtensions,
+  extensions,
   orders,
   stimuliOrders,
   categories,
   categoryData,
+  isInLoop,
 }: Props) {
   const activeParameters = parameters.filter(
     (p) => columnMapping[p.key]?.source !== "none"
@@ -60,7 +54,8 @@ export function useTrialCode({
         const { key } = param;
 
         // const mediaKeys = ["stimulus", "images", "audio", "video"];
-        const isMediaParameter = (key: string) => {
+        const isMediaParameter = (key: string | undefined) => {
+          if (typeof key !== "string") return false;
           const keyLower = key.toLowerCase();
           return (
             keyLower.includes("img") ||
@@ -112,17 +107,6 @@ export function useTrialCode({
           result[key] = getColumnValue(columnMapping[key], row, undefined, key);
         }
       });
-
-      if (includeFixation) {
-        fieldGroups.fixation.forEach((fixParam) => {
-          result[fixParam.key] = getColumnValue(
-            columnMapping[fixParam.key],
-            row,
-            fixParam.default,
-            fixParam.key
-          );
-        });
-      }
 
       return result;
     };
@@ -291,28 +275,7 @@ export function useTrialCode({
       stringifyWithFunctions(activeParameters, row)
     );
 
-    // if (orders) {
-    //   code += `
-    // let test_stimuli_${trialNameSanitized} = [];
-
-    // if (typeof participantNumber === "number" && !isNaN(participantNumber)) {
-    // const stimuliOrders = ${JSON.stringify(stimuliOrders)}
-    // const orderIndex = (participantNumber - 1) % stimuliOrders.length;
-    // const index_order = stimuliOrders[orderIndex]; // Orden deseado de los índices
-
-    // const test_stimuli_previous_${trialNameSanitized} = [${testStimuliCode.join(",")}];
-
-    // test_stimuli_${trialNameSanitized} = index_order
-    //   .filter((i) => i !== -1 && i >= 0 && i < test_stimuli_previous_${trialNameSanitized}.length)
-    //   .map((i) => test_stimuli_previous_${trialNameSanitized}[i]);
-
-    // console.log(test_stimuli_${trialNameSanitized})
-
-    // }`;
-    // } else {
-    //   code += `
-    // const test_stimuli_${trialNameSanitized} = [${testStimuliCode.join(",")}];`;
-    // }
+    const timelineProps = generateTrialProps(activeParameters, data);
 
     if (orders || categories) {
       code += `
@@ -387,51 +350,45 @@ export function useTrialCode({
     const test_stimuli_${trialNameSanitized} = [${testStimuliCode.join(",")}];`;
     }
 
-    if (includeFixation) {
-      code += `
-      const ${trialNameSanitized}_fixation = {
-      type: jsPsychHtmlKeyboardResponse,
-      stimulus: jsPsych.timelineVariable("fixation"),
-      choices: "NO_KEYS",
-      trial_duration: jsPsych.timelineVariable("fixation_duration"),
-      data: {
-        task: "fixation",
-      },
-    };
-    `;
-    }
-
-    const timelineProps = generateTrialProps(activeParameters, data);
-
     code += `
     const ${trialNameSanitized}_timeline = {
-    type: ${pluginNameImport}, ${timelineProps}};
+    type: ${pluginNameImport}, ${timelineProps}
     `;
 
-    code += `
-    const ${trialNameSanitized}_procedure = {
-    timeline: 
-    [${
-      includeFixation ? `${trialNameSanitized}_fixation, ` : ""
-    }${trialNameSanitized}_timeline],
-    timeline_variables: test_stimuli_${trialNameSanitized},
-    repetitions: ${repetitions},
-    randomize_order: ${randomize},
-    `;
     if (includesExtensions && extensions !== "") {
       code += `
     extensions: ${extensions}
     };
-    timeline.push(${trialNameSanitized}_procedure);
     `;
     } else {
+      code += `};`;
+    }
+
+    if (isInLoop) {
+      return code;
+    } else {
       code += `
+    const ${trialNameSanitized}_procedure = {
+    timeline: 
+    [${trialNameSanitized}_timeline],
+    timeline_variables: test_stimuli_${trialNameSanitized},
+    `;
+
+      if (includesExtensions && extensions !== "") {
+        code += `
+    extensions: ${extensions}
+    };
+    timeline.push(${trialNameSanitized}_procedure);
+    `;
+      } else {
+        code += `
     };
     timeline.push(${trialNameSanitized}_procedure);
   `;
-    }
+      }
 
-    return code;
+      return code;
+    }
   };
 
   return { genTrialCode };

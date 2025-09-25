@@ -89,7 +89,7 @@
     
   
 
-<script src="/plugins/jspsych-probabilistic-selection-task.js" id="plugin-script-0"></script><script id="generated-script">
+<script src="/plugins/plugin-prob-discount.js" id="plugin-script-0"></script><script id="generated-script">
 
       const jsPsych = initJsPsych({
         on_finish: function() {
@@ -108,95 +108,21 @@
       timeline.push(welcome);
 
       
-    const preloadcategories = {
-        type: jsPsychPreload,
-       files: ["https://res.cloudinary.com/dksfewgts/image/upload/v1755991779/img/dis.png","https://res.cloudinary.com/dksfewgts/image/upload/v1755991778/img/green.png","https://res.cloudinary.com/dksfewgts/image/upload/v1755991777/img/cofre.png","https://res.cloudinary.com/dksfewgts/image/upload/v1755991777/img/armadillo.png","https://res.cloudinary.com/dksfewgts/image/upload/v1755991777/img/bmw.png"],
-    }
-    timeline.push(preloadcategories);
-    
-    let test_stimuli_categories = [];
-    
-    if (typeof participantNumber === "number" && !isNaN(participantNumber)) {
-      const stimuliOrders = [[0,1,2,3,4],[3,4,0,1,2],[2,1,0,4,3],[0,2,3,5,4]];
-      const categoryData = ["perro","perro","loco","gato","gato"];
-      const test_stimuli_previous_categories = [{stimulus: "perro 1"},{stimulus: "perro 2"},{stimulus: "loco"},{stimulus: "gato 1"},{stimulus: "gato 2"}];
-      
-      if (categoryData.length > 0) {
-        // Obtener todas las categorías únicas
-        const allCategories = [...new Set(categoryData)];
-        
-        // Determinar qué categoría le corresponde a este participante
-        const categoryIndex = (participantNumber - 1) % allCategories.length;
-        const participantCategory = allCategories[categoryIndex];
-        
-        // Encontrar los índices que corresponden a esta categoría
-        const categoryIndices = [];
-        categoryData.forEach((category, index) => {
-          if (category === participantCategory) {
-            categoryIndices.push(index);
-          }
-        });
-        
-        // Filtrar los estímulos por categoría
-        const categoryFilteredStimuli = categoryIndices.map(index => 
-          test_stimuli_previous_categories[index]
-        );
-
-        // Aplicar el orden si existe
-        if (stimuliOrders.length > 0) {
-          const orderIndex = (participantNumber - 1) % stimuliOrders.length;
-          const index_order = stimuliOrders[orderIndex];
-          
-          // Crear mapeo de índices originales a índices filtrados
-          const indexMapping = {};
-          categoryIndices.forEach((originalIndex, filteredIndex) => {
-            indexMapping[originalIndex] = filteredIndex;
-          });
-          
-          // Aplicar el orden solo a los índices que existen en la categoría filtrada
-          const orderedIndices = index_order
-            .filter(i => indexMapping.hasOwnProperty(i))
-            .map(i => indexMapping[i]);
-          
-          test_stimuli_categories = orderedIndices
-            .filter(i => i >= 0 && i < categoryFilteredStimuli.length)
-            .map(i => categoryFilteredStimuli[i]);
-        } else {
-          test_stimuli_categories = categoryFilteredStimuli;
-        }
-        
-        console.log("Participant:", participantNumber, "Category:", participantCategory);
-        console.log("Category indices:", categoryIndices);
-        console.log("Filtered stimuli:", test_stimuli_categories);
-        } else {
-        // Lógica original sin categorías
-        const orderIndex = (participantNumber - 1) % stimuliOrders.length;
-        const index_order = stimuliOrders[orderIndex];
-        
-        test_stimuli_categories = index_order
-          .filter((i) => i !== -1 && i >= 0 && i < test_stimuli_previous_categories.length)
-          .map((i) => test_stimuli_previous_categories[i]);
-          
-        console.log(test_stimuli_categories);
-      }
-    }
-    const categories_timeline = {
-    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
+    const test_stimuli_final = [{pages: ["lola"]}];
+    const final_timeline = {
+    type: jsPsychInstructions, pages: jsPsych.timelineVariable("pages"),
     data: {
-      response: "response",
+      view_history: "view_history",
 rt: "rt",
-stimulus: "stimulus",
-    },};
-    
-    const categories_procedure = {
+    },
+    };
+    const final_procedure = {
     timeline: 
-    [categories_timeline],
-    timeline_variables: test_stimuli_categories,
-    repetitions: 1,
-    randomize_order: false,
+    [final_timeline],
+    timeline_variables: test_stimuli_final,
     
     };
-    timeline.push(categories_procedure);
+    timeline.push(final_procedure);
   
 
       jsPsych.run(timeline);

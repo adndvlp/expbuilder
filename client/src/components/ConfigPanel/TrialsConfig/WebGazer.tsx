@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from "react";
-import { useCsvData } from "../hooks/useCsvData";
-import useTrials from "../../../../../hooks/useTrials";
-import { useTrialPersistence } from "../hooks/useTrialPersistence";
+import { useCsvData } from "./hooks/useCsvData";
+import useTrials from "../../../hooks/useTrials";
+import { useTrialPersistence } from "./hooks/useTrialPersistence";
 import TrialMetaConfig from "./TrialMetaConfig";
 import CsvUploader from "./CsvUploader";
 import ParameterMapper from "./ParameterMapper";
 import TrialActions from "./TrialActions";
 import InstructionsConfig from "./InstructionsConfig";
-import { usePhase } from "../hooks/usePhase";
-import { useColumnMapping } from "../hooks/useColumnMapping";
+import { usePhase } from "./hooks/usePhase";
+import { useColumnMapping } from "./hooks/useColumnMapping";
 import isEqual from "lodash.isequal";
 
 type Props = { webgazerPlugins: string[] };
@@ -251,8 +251,10 @@ function WebGazer({ webgazerPlugins }: Props) {
 
     const prevTrial = trials[trialIndex];
 
+    if (!("type" in prevTrial)) return;
+
     const updatedTrial = {
-      ...trials[trialIndex],
+      ...prevTrial,
       plugin: "webgazer",
       parameters: {
         include_instructions: include_instructions,

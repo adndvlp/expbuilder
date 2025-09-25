@@ -1,11 +1,12 @@
 // src/components/Timeline.tsx
 import { useEffect, useState } from "react";
-import { Loop, Trial } from "./ConfigPanel/types";
+import { Trial } from "./ConfigPanel/types";
 import useTrials from "../hooks/useTrials";
 import useUrl from "../hooks/useUrl";
 import useDevMode from "../hooks/useDevMode";
 import FileUploader from "./ConfigPanel/TrialsConfig/FileUploader";
 import { useFileUpload } from "./ConfigPanel/TrialsConfig/hooks/useFileUpload";
+import useLoops from "../hooks/useLoops";
 import { FiRefreshCw } from "react-icons/fi";
 import LoopRangeModal from "./ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeModal";
 const API_URL = import.meta.env.VITE_API_URL;
@@ -17,21 +18,11 @@ function Component({}: TimelineProps) {
   const { experimentUrl } = useUrl();
   const [copyStatus, setCopyStatus] = useState<string>("");
 
-  const {
-    trials,
-    setTrials,
-    selectedTrial,
-    setSelectedTrial,
-    groupTrialsAsLoop,
-    selectedLoop,
-    setSelectedLoop,
-    moveTrialOrLoop,
-  } = useTrials();
+  const [draggedItem, setDraggedItem] = useState<number | null>(null);
+  const [dragOverItem, setDragOverItem] = useState<number | null>(null);
 
-  function isTrial(trial: any): trial is Trial {
-    return "parameters" in trial;
-  }
-
+  const { trials, setTrials, selectedTrial, setSelectedTrial } = useTrials();
+  const { selectedLoopId, setSelectedLoopId, loops, setLoops } = useLoops();
   const [showLoopModal, setShowLoopModal] = useState(false);
 
   const { isDevMode, code, setCode } = useDevMode();
@@ -50,34 +41,56 @@ function Component({}: TimelineProps) {
     handleFolderUpload,
     handleDeleteFile,
   } = useFileUpload({ folder });
-
-  const [dragged, setDragged] = useState<{
-    type: "trial" | "loop";
-    id: string | number;
-  } | null>(null);
-
-  const handleDragStart = (item: Trial | Loop) => {
-    setDragged(
-      isTrial(item)
-        ? { type: "trial", id: item.id }
-        : { type: "loop", id: item.id }
-    );
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedItem(index);
+    e.dataTransfer.effectAllowed = "move";
   };
 
-  const handleDrop = (
-    target: Trial | Loop | null,
-    position: "before" | "after" | "inside"
-  ) => {
-    if (dragged && moveTrialOrLoop) {
-      moveTrialOrLoop({
-        dragged,
-        target: target
-          ? { type: isTrial(target) ? "trial" : "loop", id: target.id }
-          : { type: "trial", id: null }, // null para drop al final
-        position,
-      });
-      setDragged(null);
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverItem(index);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverItem(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+
+    if (draggedItem === null || draggedItem === dropIndex) {
+      setDraggedItem(null);
+      setDragOverItem(null);
+      return;
     }
+
+    const newTrials = [...trials];
+    const draggedTrial = newTrials[draggedItem];
+
+    // Remove the dragged item
+    newTrials.splice(draggedItem, 1);
+
+    // Insert at the new position
+    let insertIndex;
+    if (dropIndex >= trials.length) {
+      // Si se suelta al final
+      insertIndex = newTrials.length;
+    } else {
+      insertIndex = draggedItem < dropIndex ? dropIndex - 1 : dropIndex;
+    }
+
+    newTrials.splice(insertIndex, 0, draggedTrial);
+
+    setTrials(newTrials);
+    setDraggedItem(null);
+    setDragOverItem(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+    setDragOverItem(null);
   };
 
   const onAddTrial = (type: string) => {
@@ -107,37 +120,30 @@ function Component({}: TimelineProps) {
     setSelectedTrial(newTrial);
   };
 
+  const handleAddLoop = (trialIds: number[]) => {
+    const newLoop = {
+      id: Date.now().toString(),
+      trialIds,
+      name: `Loop ${loops.length + 1}`,
+      repetitions: 1,
+      randomize: false,
+      orders: false,
+      stimuliOrders: [],
+      categories: false,
+      categoryData: [],
+    };
+    setLoops([...loops, newLoop]);
+  };
+
   // Handle selecting a trial from the timeline
   const onSelectTrial = (trial: Trial) => {
     setSelectedTrial(trial);
   };
 
-  const trialCodes = trials
-    .filter((item) => "parameters" in item)
+  const allTrialCodes = trials
     .map((trial) => trial.trialCode)
-    .filter(Boolean);
-
-  const loopCodes = trials
-    .filter((item) => "trials" in item)
-    .map((loop) => loop.code)
-    .filter(Boolean);
-
-  const allCodes = [...trialCodes, ...loopCodes].join("\n\n");
-  console.log(allCodes);
-
-  const handleAddLoop = (trialIds: number[]) => {
-    console.log(trials);
-    // Encuentra los índices de los trials seleccionados
-    const indices = trialIds
-      .map((id) => trials.findIndex((t) => "id" in t && t.id === id))
-      .filter((idx) => idx !== -1);
-
-    if (indices.length > 1 && groupTrialsAsLoop) {
-      groupTrialsAsLoop(indices);
-    }
-    setShowLoopModal(false);
-    console.log(trials);
-  };
+    .filter(Boolean)
+    .join("\n\n");
 
   let extensions = "";
 
@@ -145,7 +151,7 @@ function Component({}: TimelineProps) {
     // Solo incluir extensiones si includesExtensions es true
     const rawExtensionsChain: string[] = [];
     trials.forEach((trial) => {
-      if (isTrial(trial) && trial.parameters?.includesExtensions) {
+      if (trial.parameters?.includesExtensions) {
         if (trial.parameters?.extensionType) {
           rawExtensionsChain.push(trial.parameters.extensionType);
         }
@@ -247,13 +253,17 @@ const welcome = {
 
 timeline.push(welcome);
 
-${allCodes}
+${allTrialCodes}
 
 jsPsych.run(timeline);
 
 })();
 `;
   };
+
+  const allTrialsHaveCode =
+    trials.length > 0 &&
+    trials.every((trial) => !!trial.trialCode && trial.trialCode.trim() !== "");
 
   const handleRunExperiment = async () => {
     setIsSubmitting(true);
@@ -339,22 +349,7 @@ jsPsych.run(timeline);
     }
   };
 
-  const allTrialsHaveCode =
-    trials.filter(isTrial).length > 0 &&
-    trials
-      .filter(isTrial)
-      .every((trial) => !!trial.trialCode && trial.trialCode.trim() !== "");
-
-  const allLoopsHaveCode =
-    trials.filter((item) => "trials" in item).length === 0 ||
-    trials
-      .filter((item) => "trials" in item)
-      .every((loop) => !!loop.code && loop.code.trim() !== "");
-
-  const isDisabled =
-    isSubmitting ||
-    (!allTrialsHaveCode && !isDevMode) ||
-    (!allLoopsHaveCode && !isDevMode);
+  const isDisabled = isSubmitting || (!allTrialsHaveCode && !isDevMode);
 
   const handleCopyLink = async () => {
     if (experimentUrl) {
@@ -371,139 +366,95 @@ jsPsych.run(timeline);
 
   return (
     <div className="timeline">
-      <div style={{ marginBottom: "8px" }}>
+      <div>
         <img className="logo-img" alt="Logo" />
       </div>
 
       {!isDevMode && (
         <div>
-          {trials.map((item) => {
-            if (isTrial(item)) {
-              // Trial normal
-              return (
-                <div key={item.id} style={{ position: "relative" }}>
-                  <div
-                    className={`timeline-item ${
-                      selectedTrial && selectedTrial.id === item.id
-                        ? "selected"
-                        : ""
-                    }`}
-                    onClick={() => {
-                      onSelectTrial(item);
-                      setSelectedLoop(null);
-                    }}
-                    draggable
-                    onDragStart={() => handleDragStart(item)}
-                    onDrop={() => handleDrop(item, "before")}
-                    onDragOver={(e) => e.preventDefault()}
-                    style={{
-                      cursor: "grab",
-                      position: "relative",
-                      borderRadius: "8px",
-                      padding: "12px",
-                      marginBottom: "8px",
-                    }}
-                  >
-                    {item.name}
-                  </div>
-                </div>
-              );
-            } else {
-              // Loop y sus trials alineados
-              const loop = item as Loop;
-              const loopTrials = loop.trials;
+          {trials.map((trial, index) => (
+            <div key={trial.id} style={{ position: "relative" }}>
+              <div
+                className={`timeline-item ${
+                  selectedTrial && selectedTrial.id === trial.id
+                    ? "selected"
+                    : ""
+                } ${draggedItem === index ? "dragging" : ""} ${
+                  dragOverItem === index ? "drag-over" : ""
+                }`}
+                onClick={() => onSelectTrial(trial)}
+                draggable
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, index)}
+                onDragEnd={handleDragEnd}
+                style={{
+                  cursor: draggedItem === index ? "grabbing" : "grab",
+                  position: "relative",
+                  opacity: draggedItem === index ? 0.7 : 1,
+                  transform:
+                    dragOverItem === index ? "translateY(2px)" : "none",
+                  borderTop:
+                    dragOverItem === index ? "2px solid #d4af37" : "none",
+                }}
+              >
+                {/* Flechas dentro del trial cuando está en dragging */}
+                {draggedItem === index && (
+                  <>
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "5px",
+                        right: "8px",
+                        width: 0,
+                        height: 0,
+                        borderLeft: "6px solid transparent",
+                        borderRight: "6px solid transparent",
+                        borderBottom: "8px solid var(--gold)",
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: "absolute",
+                        bottom: "5px",
+                        right: "8px",
+                        width: 0,
+                        height: 0,
+                        borderLeft: "6px solid transparent",
+                        borderRight: "6px solid transparent",
+                        borderTop: "8px solid var(--gold)",
+                      }}
+                    />
+                  </>
+                )}
+                {trial.name}
+              </div>
+            </div>
+          ))}
 
-              return (
-                <div
-                  key={loop.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    margin: "12px 0",
-                  }}
-                >
-                  {/* Loop bloque */}
-                  <div
-                    className={`timeline-item timeline-loop ${selectedLoop?.id === loop.id ? "selected" : ""}`}
-                    style={{
-                      width: "48%",
-                      minWidth: "120px",
-                      maxWidth: "180px",
-                      marginRight: "8px",
-                      borderRadius: "8px",
-                      padding: "12px",
-                      textAlign: "center",
-                      cursor: "pointer",
-                    }}
-                    onClick={() => {
-                      setSelectedLoop(loop);
-                      setSelectedTrial(null);
-                    }}
-                    draggable
-                    onDragStart={() => handleDragStart(loop)}
-                    onDrop={() => handleDrop(loop, "inside")}
-                    onDragOver={(e) => e.preventDefault()}
-                  >
-                    <strong>{loop.name}</strong>
-                  </div>
-                  {/* Trials dentro del loop */}
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      flex: 1,
-                    }}
-                  >
-                    {loopTrials.map((trial) => (
-                      <div
-                        key={trial.id}
-                        className={`timeline-item ${
-                          selectedTrial && selectedTrial.id === trial.id
-                            ? "selected"
-                            : ""
-                        }`}
-                        onClick={() => {
-                          onSelectTrial(trial);
-                          setSelectedLoop(null);
-                        }}
-                        draggable
-                        onDragStart={() => handleDragStart(trial)}
-                        onDrop={() => handleDrop(loop, "before")}
-                        onDragOver={(e) => e.preventDefault()}
-                        style={{
-                          width: "50%",
-                          minWidth: "120px",
-                          maxWidth: "180px",
-                          marginBottom: "8px",
-                          marginLeft: "auto",
-                          borderRadius: "8px",
-                          padding: "12px",
-                          textAlign: "center",
-                          cursor: "grab",
-                        }}
-                      >
-                        {trial.name}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            }
-          })}
           {/* Zona de drop al final */}
+
           <div
-            className="drop-zone-end"
-            onDrop={() => handleDrop(null, "after")}
-            onDragOver={(e) => e.preventDefault()}
+            className={`drop-zone-end ${dragOverItem === trials.length ? "drag-over" : ""}`}
+            onDragOver={(e) => handleDragOver(e, trials.length)}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleDrop(e, trials.length)}
             style={{
-              height: dragged ? "20px" : "0px",
-              borderBottom: dragged ? "2px solid #d4af37" : "none",
+              height: draggedItem !== null ? "20px" : "0px",
+              borderBottom: draggedItem !== null ? "2px solid #d4af37" : "none",
+
               transition: "all 0.2s ease",
             }}
           />
+
+          {/* <div className="add-trial-button" onClick={() => onAddTrial("Trial")}>
+            +
+          </div> */}
+
           {showLoopModal && (
             <LoopRangeModal
-              trials={trials.filter((t) => "id" in t) as Trial[]}
+              trials={trials}
               onConfirm={handleAddLoop}
               onClose={() => setShowLoopModal(false)}
             />
@@ -518,27 +469,6 @@ jsPsych.run(timeline);
               marginBottom: "18px",
             }}
           >
-            {/* Botón para agregar loop */}
-            <div
-              className="add-loop-button"
-              style={{
-                width: "40px",
-                height: "40px",
-                background: "#e5e5e5",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                position: "relative",
-                margin: 0,
-              }}
-              onClick={() => setShowLoopModal(true)}
-              title="Add loop"
-            >
-              {/* Ejemplo de ícono de loop, puedes usar un SVG */}
-              <FiRefreshCw size={22} />
-            </div>
             {/* Botón para agregar trial */}
             <div
               className="add-trial-button"
@@ -559,6 +489,27 @@ jsPsych.run(timeline);
             >
               {/* Puedes usar un ícono SVG aquí */}
               <span style={{ fontSize: "24px", fontWeight: "bold" }}>+</span>
+            </div>
+            {/* Botón para agregar loop */}
+            <div
+              className="add-loop-button"
+              style={{
+                width: "40px",
+                height: "40px",
+                background: "#e5e5e5",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                position: "relative",
+                margin: 0,
+              }}
+              onClick={() => setShowLoopModal(true)}
+              title="Add loop"
+            >
+              {/* Ejemplo de ícono de loop, puedes usar un SVG */}
+              <FiRefreshCw size={22} />
             </div>
           </div>
         </div>

@@ -1,13 +1,12 @@
 // src/components/Plugin.tsx
 import { useState, useEffect, useRef } from "react";
-import useTrials from "../../../../hooks/useTrials";
-import { usePluginParameters } from "../../hooks/usePluginParameters";
-import FileUploader from "./components/FileUploader";
-import TrialMetaConfig from "./components/TrialMetaConfig";
-import CsvUploader from "./components/CsvUploader";
-import ParameterMapper from "./components/ParameterMapper";
-import FixationConfig from "./components/FixationConfig";
-import TrialActions from "./components/TrialActions";
+import useTrials from "../../../hooks/useTrials";
+import { usePluginParameters } from "../hooks/usePluginParameters";
+import FileUploader from "./FileUploader";
+import TrialMetaConfig from "./TrialMetaConfig";
+import CsvUploader from "./CsvUploader";
+import ParameterMapper from "./ParameterMapper";
+import TrialActions from "./TrialActions";
 import { useFileUpload } from "./hooks/useFileUpload";
 import { useCsvData } from "./hooks/useCsvData";
 import { useTrialPersistence } from "./hooks/useTrialPersistence";
@@ -15,10 +14,10 @@ import { useColumnMapping } from "./hooks/useColumnMapping";
 import { useCsvMapper } from "./hooks/useCsvMapper";
 import { useTrialCode } from "./hooks/useTrialCode";
 import { useExtensions } from "./hooks/useExtensions";
-import ExtensionsConfig from "./components/ExtensionsConfig";
+import ExtensionsConfig from "./ExtensionsConfig";
 import isEqual from "lodash.isequal";
+import { Trial } from "../types";
 import { useTrialOrders } from "./hooks/useTrialOrders";
-import TrialOrders from "./components/TrialOrders";
 
 type Props = { pluginName: string };
 
@@ -26,9 +25,6 @@ function TrialsConfig({ pluginName }: Props) {
   // Basic trial configuration
   const { trials, setTrials, selectedTrial, setSelectedTrial } = useTrials();
   const [trialName, setTrialName] = useState<string>("");
-  const [repetitions, setRepetitions] = useState<number>(1);
-  const [randomize, setRandomize] = useState<boolean>(false);
-  const [includeFixation, setIncludeFixation] = useState<boolean>(false);
 
   // Autosave
   const [isLoadingTrial, setIsLoadingTrial] = useState(false);
@@ -146,18 +142,80 @@ function TrialsConfig({ pluginName }: Props) {
     setSelectedTrial,
   });
 
+  function getLoopCsvData(trial: Trial) {
+    if (!trial?.csvFromLoop)
+      return {
+        csvJson: trial?.csvJson || [],
+        csvColumns: trial?.csvColumns || [],
+      };
+    const parentLoop = trials.find(
+      (item) => "trials" in item && item.trials.some((t) => t.id === trial.id)
+    );
+    if (parentLoop) {
+      return {
+        csvJson: parentLoop.csvJson || [],
+        csvColumns: parentLoop.csvColumns || [],
+      };
+    }
+    return {
+      csvJson: trial?.csvJson || [],
+      csvColumns: trial?.csvColumns || [],
+    };
+  }
+
+  function getLoopOrderCategoryProps(trial: Trial) {
+    if (!trial?.csvFromLoop) {
+      // Si el trial no está en un loop, no hay orders/categories
+      return {
+        orders: false,
+        orderColumns: [],
+        stimuliOrders: [],
+        categories: false,
+        categoryColumn: "",
+        categoryData: [],
+      };
+    }
+    const parentLoop = trials.find(
+      (item) => "trials" in item && item.trials.some((t) => t.id === trial.id)
+    );
+    if (parentLoop && "orders" in parentLoop) {
+      return {
+        orders: parentLoop.orders ?? false,
+        orderColumns: parentLoop.orderColumns ?? [],
+        stimuliOrders: parentLoop.stimuliOrders ?? [],
+        categories: parentLoop.categories ?? false,
+        categoryColumn: parentLoop.categoryColumn ?? "",
+        categoryData: parentLoop.categoryData ?? [],
+      };
+    }
+    // Si no se encuentra el loop, retorna valores vacíos
+    return {
+      orders: false,
+      orderColumns: [],
+      stimuliOrders: [],
+      categories: false,
+      categoryColumn: "",
+      categoryData: [],
+    };
+  }
+
+  const {
+    orders,
+    setOrders,
+    setOrderColumns,
+    stimuliOrders,
+    setStimuliOrders,
+    categories,
+    setCategories,
+    setCategoryColumn,
+    categoryData,
+  } = useTrialOrders();
+
   // Persistir/traer datos del trial
   useEffect(() => {
     if (selectedTrial) {
       setIsLoadingTrial(true);
       setTrialName(selectedTrial.name || "");
-      setIncludeFixation(
-        selectedTrial.parameters?.include_fixation !== undefined
-          ? !!selectedTrial.parameters.include_fixation
-          : includeFixation
-      );
-      setRepetitions(selectedTrial.parameters?.repetitions || 1);
-      setRandomize(selectedTrial.parameters?.randomize || false);
       setIncludeExtensions(
         selectedTrial.parameters?.includesExtensions !== undefined
           ? !!selectedTrial.parameters.includesExtensions
@@ -170,19 +228,25 @@ function TrialsConfig({ pluginName }: Props) {
       setCsvJson(selectedTrial.csvJson || []);
       setCsvColumns(selectedTrial.csvColumns || []);
 
-      setOrders(selectedTrial.parameters?.orders || false);
-      setOrderColumns(selectedTrial.parameters?.orderColumns || []);
-      mapOrdersFromCsv(
-        selectedTrial.csvJson || [],
-        selectedTrial.parameters?.orderColumns || []
-      );
+      // Csv loop
+      const { csvJson: effectiveCsvJson, csvColumns: effectiveCsvColumns } =
+        getLoopCsvData(selectedTrial);
+      setCsvJson(effectiveCsvJson);
+      setCsvColumns(effectiveCsvColumns);
 
-      setCategories(selectedTrial.parameters?.categories || false);
-      setCategoryColumn(selectedTrial.parameters?.categoryColumn || "");
-      mapCategoriesFromCsv(
-        selectedTrial.csvJson || [],
-        selectedTrial.parameters?.categoryColumn || ""
-      );
+      const {
+        orders,
+        orderColumns,
+        stimuliOrders,
+        categories,
+        categoryColumn,
+      } = getLoopOrderCategoryProps(selectedTrial);
+
+      setOrders(orders);
+      setOrderColumns(orderColumns);
+      setStimuliOrders(stimuliOrders);
+      setCategories(categories);
+      setCategoryColumn(categoryColumn);
 
       setTimeout(() => {
         setIsLoadingTrial(false);
@@ -195,35 +259,14 @@ function TrialsConfig({ pluginName }: Props) {
   // parámetros mapeados de los plugins
   const fieldGroups = {
     pluginParameters: parameters,
-    fixation: [
-      { label: "Fixation", key: "fixation", type: "string" },
-      {
-        label: "Fixation Duration",
-        key: "fixation_duration",
-        type: "number",
-        default: 500,
-      },
-    ],
   };
 
   const { getColumnValue } = useCsvMapper({
     fieldGroups: fieldGroups,
   });
+  // ^Por la implementación del webgazer esto se define así^
 
-  const {
-    orders,
-    setOrders,
-    stimuliOrders,
-    orderColumns,
-    setOrderColumns,
-    mapOrdersFromCsv,
-    categories,
-    setCategories,
-    categoryColumn,
-    setCategoryColumn,
-    categoryData,
-    mapCategoriesFromCsv,
-  } = useTrialOrders();
+  const isTrialInLoop = !!selectedTrial?.csvFromLoop;
 
   const { genTrialCode } = useTrialCode({
     pluginName: pluginName,
@@ -232,19 +275,16 @@ function TrialsConfig({ pluginName }: Props) {
     needsFileUpload: needsFileUpload,
     columnMapping: columnMapping,
     filteredFiles: filteredFiles,
-    includeFixation: includeFixation,
     csvJson: csvJson,
-    fieldGroups: fieldGroups,
     trialName: trialName,
     data: data,
-    repetitions: repetitions,
-    randomize: randomize,
-    extensions: extensions,
     includesExtensions: includesExtensions,
+    extensions: extensions,
     orders: orders,
     stimuliOrders: stimuliOrders,
     categories: categories,
     categoryData: categoryData,
+    isInLoop: isTrialInLoop,
   });
 
   // guardar y actualizar el estado global del ensayo
@@ -257,33 +297,48 @@ function TrialsConfig({ pluginName }: Props) {
       return;
     }
 
-    const trialIndex = trials.findIndex((t) => t.name === trialName);
-    if (trialIndex === -1) return;
+    // Busca el trial en el array principal
+    let trialIndex = trials.findIndex((t) => t.name === trialName);
 
-    const prevTrial = trials[trialIndex];
+    // Si no está en el array principal, búscalo dentro de un loop
+    let loopIndex = -1;
+    let trialInLoopIndex = -1;
+    if (trialIndex === -1) {
+      loopIndex = trials.findIndex(
+        (item) =>
+          "trials" in item && item.trials.some((t) => t.name === trialName)
+      );
+      if (loopIndex !== -1) {
+        trialInLoopIndex = (trials[loopIndex] as any).trials.findIndex(
+          (t: any) => t.name === trialName
+        );
+      }
+    }
+
+    // Si no se encuentra el trial, salir
+    if (trialIndex === -1 && trialInLoopIndex === -1) return;
+
+    // Construye el trial actualizado
+    const prevTrial =
+      trialIndex !== -1
+        ? trials[trialIndex]
+        : (trials[loopIndex] as any).trials[trialInLoopIndex];
+
+    if (!("type" in prevTrial)) return;
 
     const updatedTrial = {
-      ...trials[trialIndex],
+      ...prevTrial, //////// Checar <
+      id: Number(prevTrial.id),
       plugin: pluginName,
       parameters: {
-        include_fixation: includeFixation,
-        randomize: randomize,
-        repetitions: repetitions,
         includesExtensions: includesExtensions,
         extensionType: extensionType,
-        // Orders
-        orders: orders,
-        orderColumns: orderColumns,
-        stimuliOrders: stimuliOrders,
-        // Categories
-        categories: categories,
-        categoryColumn: categoryColumn,
-        categoryData: categoryData,
       },
       trialCode: genTrialCode(),
       columnMapping: { ...columnMapping },
       csvJson: [...csvJson],
       csvColumns: [...csvColumns],
+      // type: prevTrial.type,
     };
 
     if (isEqual(updatedTrial, prevTrial)) return;
@@ -291,10 +346,24 @@ function TrialsConfig({ pluginName }: Props) {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
     timeoutRef.current = setTimeout(() => {
-      const updatedTrials = [...trials];
-      updatedTrials[trialIndex] = updatedTrial;
-      setTrials(updatedTrials);
-      setSelectedTrial(updatedTrial);
+      let updatedTrials = [...trials];
+
+      if (trialIndex !== -1) {
+        // Actualiza el trial en el array principal
+        updatedTrials[trialIndex] = updatedTrial;
+        setTrials(updatedTrials);
+        setSelectedTrial(updatedTrial);
+      } else if (loopIndex !== -1 && trialInLoopIndex !== -1) {
+        // Actualiza el trial dentro del loop
+        const updatedLoop = { ...updatedTrials[loopIndex] };
+        if ("trials" in updatedLoop) {
+          updatedLoop.trials = [...updatedLoop.trials];
+          updatedLoop.trials[trialInLoopIndex] = updatedTrial;
+          updatedTrials[loopIndex] = updatedLoop;
+        }
+        setTrials(updatedTrials);
+        setSelectedTrial(updatedTrial);
+      }
 
       // window.alert("Ensayo guardado exitosamente.");
       // console.log(csvJson);
@@ -312,75 +381,14 @@ function TrialsConfig({ pluginName }: Props) {
     };
   }, [
     pluginName,
-    includeFixation,
-    randomize,
-    repetitions,
     includesExtensions,
     extensionType,
     columnMapping,
     csvJson,
     csvColumns,
     trialName,
-    orders,
-    orderColumns,
-    categories,
-    categoryColumn,
-    categoryData,
     isLoadingTrial,
   ]);
-
-  // const handleSaveTrial = () => {
-  //   if (!trialName || isLoadingTrial) return;
-
-  //   if (isInitialFileLoad.current) {
-  //     isInitialFileLoad.current = false;
-  //     return;
-  //   }
-
-  //   const trialIndex = trials.findIndex((t) => t.name === trialName);
-  //   if (trialIndex === -1) return;
-
-  //   const prevTrial = trials[trialIndex];
-
-  //   const updatedTrial = {
-  //     ...trials[trialIndex],
-  //     plugin: pluginName,
-  //     parameters: {
-  //       include_fixation: includeFixation,
-  //       randomize: randomize,
-  //       repetitions: repetitions,
-  //       includesExtensions: includesExtensions,
-  //       extensionType: extensionType,
-  //       // Orders
-  //       orders: orders,
-  //       orderColumns: orderColumns,
-  //       stimuliOrders: stimuliOrders,
-  //     },
-  //     trialCode: genTrialCode(),
-  //     columnMapping: { ...columnMapping },
-  //     csvJson: [...csvJson],
-  //     csvColumns: [...csvColumns],
-  //   };
-
-  //   if (isEqual(updatedTrial, prevTrial)) return;
-
-  //   if (timeoutRef.current) clearTimeout(timeoutRef.current);
-
-  //   const updatedTrials = [...trials];
-  //   updatedTrials[trialIndex] = updatedTrial;
-  //   setTrials(updatedTrials);
-  //   setSelectedTrial(updatedTrial);
-
-  //   // window.alert("Ensayo guardado exitosamente.");
-  //   // console.log(csvJson);
-  //   console.log(genTrialCode());
-
-  //   // less intrusve indicator
-  //   setSaveIndicator(true);
-  //   setTimeout(() => {
-  //     setSaveIndicator(false);
-  //   }, 2000);
-  // };
 
   const deleteCsv = () => {
     if (csvJson.length === 0) return;
@@ -425,6 +433,19 @@ function TrialsConfig({ pluginName }: Props) {
         />
 
         {/* CSV and XLSX section */}
+        {selectedTrial?.csvFromLoop && (
+          <div>
+            <label>
+              <input
+                type="checkbox"
+                checked={selectedTrial.csvFromLoop}
+                disabled
+                style={{ marginRight: 8 }}
+              />
+              Using CSV from loop
+            </label>
+          </div>
+        )}
         <CsvUploader
           onCsvUpload={handleCsvUpload}
           csvJson={csvJson}
@@ -449,72 +470,15 @@ function TrialsConfig({ pluginName }: Props) {
         {/* Parameter section */}
         <ParameterMapper
           pluginName={pluginName}
-          parameters={fieldGroups.pluginParameters}
+          parameters={parameters}
           columnMapping={columnMapping}
           setColumnMapping={setColumnMapping}
           csvColumns={csvColumns}
         />
-
-        {/* Fixation point */}
-        <FixationConfig
-          includeFixation={includeFixation}
-          setIncludeFixation={setIncludeFixation}
-          fixationFields={fieldGroups.fixation}
-          columnMapping={columnMapping}
-          setColumnMapping={setColumnMapping}
-          csvColumns={csvColumns}
-        />
-
-        {/* Orders */}
-        <TrialOrders
-          orders={orders}
-          setOrders={setOrders}
-          columnOptions={csvColumns}
-          orderColumns={orderColumns}
-          setOrderColumns={setOrderColumns}
-          mapOrdersFromCsv={mapOrdersFromCsv}
-          categories={categories}
-          setCategories={setCategories}
-          categoryColumn={categoryColumn}
-          setCategoryColumn={setCategoryColumn}
-          mapCategoriesFromCsv={mapCategoriesFromCsv}
-          csvJson={csvJson}
-        />
-
-        {/* Repetitions y Randomize al final */}
-        <div className="mb-2 p-4 border rounded bg-gray-50">
-          <div className="flex items-center">
-            <label className="font-bold">Repetitions</label>
-            <input
-              type="number"
-              value={repetitions}
-              min={1}
-              step={1}
-              onChange={(e) => {
-                const val = Math.max(
-                  1,
-                  Math.floor(Number(e.target.value)) || 1
-                );
-                setRepetitions(val);
-              }}
-              className="mr-2"
-              placeholder="1"
-            />
-          </div>
-          <div className="mt-3 mb-3 flex items-center">
-            <label className="font-bold">Randomize</label>
-            <input
-              type="checkbox"
-              checked={randomize}
-              onChange={(e) => setRandomize(e.target.checked)}
-              className="ml-2"
-            />
-          </div>
-        </div>
 
         {/* Extensions */}
         <ExtensionsConfig
-          parameters={fieldGroups.pluginParameters}
+          parameters={parameters}
           includesExtensions={includesExtensions}
           setIncludeExtensions={setIncludeExtensions}
           extensionType={extensionType}
@@ -522,10 +486,7 @@ function TrialsConfig({ pluginName }: Props) {
         ></ExtensionsConfig>
       </div>
 
-      <TrialActions
-        onDelete={handleDeleteTrial}
-        // onSave={handleSaveTrial}
-      />
+      <TrialActions onDelete={handleDeleteTrial} />
     </div>
   );
 }

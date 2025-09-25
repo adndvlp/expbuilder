@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
 import useTrials from "../../hooks/useTrials";
 import Select from "react-select";
-import TrialsConfig from "./components/TrialsConfig";
-import WebGazer from "./components/TrialsConfig/components/WebGazer";
+import TrialsConfig from "./TrialsConfig";
+import WebGazer from "./TrialsConfig/WebGazer";
 import PluginEditor from "../PluginEditor";
 import usePlugins from "../../hooks/usePlugins";
+import TrialLoops from "./TrialsConfig/LoopsConfig";
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface ConfigPanelProps {}
 
 const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
-  const { selectedTrial, trials, setTrials, setSelectedTrial } = useTrials();
+  const { trials, setTrials, selectedTrial, setSelectedTrial, selectedLoop } =
+    useTrials();
   const [selectedId, setSelectedId] = useState<string>("");
   const [pluginList, setPluginList] = useState<string[]>([]);
   const [pluginEditor, setPluginEditor] = useState<boolean>(false);
@@ -67,6 +69,14 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
       setMetadata404(false);
     }
   }, [selectedTrial, plugins, isSaving]);
+
+  if (selectedLoop) {
+    return (
+      <div className="config-panel">
+        <TrialLoops loop={selectedLoop} />
+      </div>
+    );
+  }
 
   if (!selectedTrial) {
     return (

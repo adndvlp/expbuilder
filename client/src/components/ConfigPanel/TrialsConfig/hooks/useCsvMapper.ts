@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import type { ColumnMappingEntry } from "../../../types";
+import type { ColumnMappingEntry } from "../../types";
 
 type Parameter = {
   key: string;
