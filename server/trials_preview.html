@@ -89,7 +89,7 @@
     
   
 
-<script src="/plugins/plugin-prob-discount.js" id="plugin-script-0"></script><script id="generated-script">
+<script src="/plugins/jsPsychDProbabilistice.js" id="plugin-script-0"></script><script src="/plugins/jsPsychDProbabilistic.js" id="plugin-script-1"></script><script id="generated-script">
 
       const jsPsych = initJsPsych({
         on_finish: function() {
@@ -108,21 +108,28 @@
       timeline.push(welcome);
 
       
-    const test_stimuli_final = [{pages: ["lola"]}];
-    const final_timeline = {
-    type: jsPsychInstructions, pages: jsPsych.timelineVariable("pages"),
+    const preloadNew_Trial = {
+        type: jsPsychPreload,
+       files: ["/uploads/img/armadillo.png","/uploads/img/bmw.png","/uploads/img/cofre.png","/uploads/img/dis.png","/uploads/img/green.png"],
+    }
+    timeline.push(preloadNew_Trial);
+    
+    const test_stimuli_New_Trial = [{stimulus: "/uploads/img/dis.png"},{stimulus: "/uploads/img/green.png"}];
+    const New_Trial_timeline = {
+    type: jsPsychImageKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
     data: {
-      view_history: "view_history",
+      stimulus: "stimulus",
+response: "response",
 rt: "rt",
     },
     };
-    const final_procedure = {
+    const New_Trial_procedure = {
     timeline: 
-    [final_timeline],
-    timeline_variables: test_stimuli_final,
+    [New_Trial_timeline],
+    timeline_variables: test_stimuli_New_Trial,
     
     };
-    timeline.push(final_procedure);
+    timeline.push(New_Trial_procedure);
   
 
       jsPsych.run(timeline);

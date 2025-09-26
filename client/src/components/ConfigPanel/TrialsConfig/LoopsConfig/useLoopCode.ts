@@ -36,12 +36,19 @@ export default function useLoopCode({ repetitions, randomize, trials }: Props) {
       })
       .join(", ");
 
+    const timelineVariablesRefs = trials
+      .map((trial) => {
+        const trialNameSanitized = sanitizeName(trial.trialName);
+        return `test_stimuli_${trialNameSanitized}`;
+      })
+      .join(", ");
+
     const code = `
 ${trialDefinitions}
 
 const loop_procedure = {
   timeline: [${timelineRefs}],
-  timeline_variables: [{}],
+  timeline_variables: [${timelineVariablesRefs}],
   repetitions: ${repetitions},
   randomize_order: ${randomize},
 };

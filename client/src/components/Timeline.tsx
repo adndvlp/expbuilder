@@ -666,7 +666,7 @@ jsPsych.run(timeline);
           <button
             className="run-experiment-btn"
             onClick={handleRunExperiment}
-            disabled={isDisabled}
+            // disabled={isDisabled}
           >
             {isSubmitting
               ? "Processing..."

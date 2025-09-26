@@ -17,7 +17,7 @@ export default function TrialsProvider({ children }: Props) {
     trialIndices: number[],
     loopProps?: Partial<Omit<Loop, "trials" | "id">>
   ) => {
-    if (trialIndices.length < 2) return; // Deben ser al menos 2
+    if (trialIndices.length < 2) return;
 
     const loopCount = trials.filter((t) => "trials" in t).length;
     const loopName = `Loop ${loopCount + 1}`;
@@ -25,19 +25,23 @@ export default function TrialsProvider({ children }: Props) {
     // Extrae los trials a agrupar
     const trialsToGroup = trialIndices
       .map((i) => trials[i])
-      .filter((t) => t && "id" in t);
-
+      .filter((t) => t && "id" in t)
+      .map((trial) => ({
+        ...trial,
+        // Elimina cualquier CSV individual y marca que usa el CSV del loop
+        csvJson: undefined,
+        csvColumns: undefined,
+        csvFromLoop: true,
+      }));
     // Crea el loop
     const newLoop: Loop = {
       id: "loop_" + Date.now(),
       name: loopProps?.name || loopName,
       repetitions: loopProps?.repetitions ?? 1,
       randomize: loopProps?.randomize ?? false,
-      // Orders
       orders: loopProps?.orders ?? false,
       stimuliOrders: loopProps?.stimuliOrders ?? [],
       orderColumns: loopProps?.orderColumns ?? [],
-      // Categories
       categoryColumn: loopProps?.categoryColumn ?? "",
       categories: loopProps?.categories ?? false,
       categoryData: loopProps?.categoryData ?? [],
@@ -45,9 +49,7 @@ export default function TrialsProvider({ children }: Props) {
       code: "",
     };
 
-    // Elimina los trials agrupados
     const newTrials = trials.filter((_, idx) => !trialIndices.includes(idx));
-    // Inserta el loop en la posición más baja de los índices agrupados
     const insertIndex = Math.min(...trialIndices);
     newTrials.splice(insertIndex, 0, newLoop);
 
@@ -89,22 +91,12 @@ export default function TrialsProvider({ children }: Props) {
           if (loop.trials.length === 0) {
             newTrials.splice(loopIndex, 1);
           }
-          // Restaura el CSV individual si existe
-          if (trial.csvJson) {
-            trial = {
-              ...trial,
-              csvJson: trial.csvJson,
-              csvColumns: trial.csvColumns,
-              csvFromLoop: false,
-              csvJsonLoop: undefined,
-              csvColumnsLoop: undefined,
-            };
-          } else {
-            trial = {
-              ...trial,
-              csvFromLoop: false,
-            };
-          }
+          // Al sacar el trial del loop, NO restaurar ningún CSV previo
+          trial = {
+            ...trial,
+            csvJson: undefined,
+            csvColumns: undefined,
+          };
           draggedItem = trial;
         }
       }
@@ -121,11 +113,9 @@ export default function TrialsProvider({ children }: Props) {
         );
         if (loopIndex !== -1) {
           const loop = newTrials[loopIndex] as Loop;
-          // Copia el CSV del loop al trial y marca csvFromLoop
+          // Al meter el trial al loop, elimina cualquier CSV individual y marca csvFromLoop
           const trialWithLoopCsv = {
             ...draggedItem,
-            prevCsvJson: draggedItem.csvJson,
-            prevCsvColumns: draggedItem.csvColumns,
             csvJson: loop.csvJson,
             csvColumns: loop.csvColumns,
             csvFromLoop: true,
@@ -160,7 +150,7 @@ export default function TrialsProvider({ children }: Props) {
         newTrials.splice(targetIndex + 1, 0, draggedItem);
       }
 
-      // Propaga el CSV del loop a todos los trials dentro de cada loop (por si se actualizó el CSV del loop)
+      // Propaga el CSV del loop a todos los trials dentro de cada loop
       newTrials = newTrials.map((item) => {
         if (item && "trials" in item && item.csvJson && item.csvColumns) {
           const loop = item as Loop;
@@ -178,6 +168,7 @@ export default function TrialsProvider({ children }: Props) {
       return [...newTrials];
     });
   }
+  // ...existing code...
 
   const removeLoop = (loopId: string) => {
     setTrials((prevTrials) => {

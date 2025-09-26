@@ -9,6 +9,7 @@ import isEqual from "lodash.isequal";
 import useLoopCode from "./useLoopCode";
 import { useTrialCode } from "../hooks/useTrialCode";
 import { usePluginParameters } from "../../hooks/usePluginParameters";
+import { useCsvMapper } from "../hooks/useCsvMapper";
 
 type Props = { loop?: Loop };
 
@@ -93,18 +94,36 @@ function LoopsConfig({ loop }: Props) {
     mapCategoriesFromCsv,
   } = useTrialOrders();
 
+  function toCamelCase(str: string): string {
+    return str
+      .replace(/^plugin/, "jsPsych") // elimina el prefijo "plugin-" y agrega "jsPsych"
+      .split("-") // divide el string por guiones
+      .map((word, index) =>
+        index === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1)
+      )
+      .join("");
+  }
+
   const trialsData =
     loop?.trials.map((trial: any) => {
-      const { parameters, data } = usePluginParameters(trial.type);
+      // debugger;
+      const { parameters, data } = usePluginParameters(trial.plugin);
+      const fieldGroups = {
+        pluginParameters: parameters,
+      };
+      const { getColumnValue } = useCsvMapper({
+        fieldGroups: fieldGroups,
+      });
+
       const { genTrialCode } = useTrialCode({
-        pluginName: trial.type,
+        pluginName: trial.plugin,
         parameters: parameters,
         data: data,
-        getColumnValue: trial.getColumnValue || (() => null),
+        getColumnValue: getColumnValue,
         needsFileUpload: trial.needsFileUpload || false,
         columnMapping: trial.columnMapping || {},
         filteredFiles: trial.filteredFiles || [],
-        csvJson: csvJson,
+        csvJson: trial.csvJson ?? [],
         trialName: trial.name,
         includesExtensions: trial.includesExtensions || false,
         extensions: trial.extensions || "",
@@ -117,7 +136,7 @@ function LoopsConfig({ loop }: Props) {
 
       return {
         trialName: trial.name,
-        pluginName: trial.type,
+        pluginName: toCamelCase(trial.plugin),
         timelineProps: genTrialCode(),
       };
     }) || [];
@@ -141,7 +160,7 @@ function LoopsConfig({ loop }: Props) {
 
     const prevLoop = trials[loopIndex];
 
-    console.log(loopCode);
+    // console.log(loopCode);
 
     const updatedLoop = {
       ...prevLoop,

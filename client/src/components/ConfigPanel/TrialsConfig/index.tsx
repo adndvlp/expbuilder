@@ -268,6 +268,25 @@ function TrialsConfig({ pluginName }: Props) {
 
   const isTrialInLoop = !!selectedTrial?.csvFromLoop;
 
+  console.log("Estado actual del trial en TrialsConfig:", {
+    pluginName,
+    parameters,
+    data,
+    getColumnValue,
+    needsFileUpload,
+    columnMapping,
+    filteredFiles,
+    csvJson,
+    trialName,
+    includesExtensions,
+    extensions,
+    orders,
+    stimuliOrders,
+    categories,
+    categoryData,
+    isInLoop: true,
+  });
+
   const { genTrialCode } = useTrialCode({
     pluginName: pluginName,
     parameters: parameters,

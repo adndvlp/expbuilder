@@ -37,8 +37,6 @@ export interface Trial {
   csvJson?: any[];
   csvColumns?: string[];
   csvFromLoop?: boolean;
-  csvJsonLoop?: any[];
-  csvColumnsLoop?: string[];
   editPluginMode?: boolean;
 }
 
