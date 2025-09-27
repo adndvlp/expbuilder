@@ -173,48 +173,29 @@ const welcome = {
 timeline.push(welcome);
 
 
-const new_trial_timeline = {
-    type: jsPsychHtmlKeyboardResponse, 
+    const preloadNew_Trial = {
+        type: jsPsychPreload,
+       files: ["/uploads/img/armadillo.png","/uploads/img/bmw.png","/uploads/img/cofre.png","/uploads/img/dis.png","/uploads/img/green.png"],
+    }
+    timeline.push(preloadNew_Trial);
     
-    const test_stimuli_New_Trial = [{stimulus: "perro 1",
-choices: ["f"]},{stimulus: "perro 2",
-choices: ["f"]},{stimulus: "loco",
-choices: ["j"]},{stimulus: "gato 1",
-choices: ["f"]},{stimulus: "gato 2",
-choices: ["j"]}];
+    const test_stimuli_New_Trial = [{stimulus: "/uploads/img/dis.png"}];
     const New_Trial_timeline = {
-    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
-choices: jsPsych.timelineVariable("choices"),
+    type: jsPsychImageKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
     data: {
-      response: "response",
+      stimulus: "stimulus",
+response: "response",
 rt: "rt",
-stimulus: "stimulus",
     },
     };
-};
-
-const new_trial_1_timeline = {
-    type: jsPsychHtmlKeyboardResponse, 
+    const New_Trial_procedure = {
+    timeline: 
+    [New_Trial_timeline],
+    timeline_variables: test_stimuli_New_Trial,
     
-    const test_stimuli_New_Trial_1 = [{stimulus: "1"},{stimulus: "2"},{stimulus: "3"},{stimulus: "4"},{stimulus: "5"}];
-    const New_Trial_1_timeline = {
-    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
-    data: {
-      response: "response",
-rt: "rt",
-stimulus: "stimulus",
-    },
     };
-};
-
-const loop_procedure = {
-  timeline: [new_trial_timeline, new_trial_1_timeline],
-  timeline_variables: [test_stimuli_new_trial, test_stimuli_new_trial_1],
-  repetitions: 1,
-  randomize_order: false,
-};
-timeline.push(loop_procedure);
-
+    timeline.push(New_Trial_procedure);
+  
 
 jsPsych.run(timeline);
 
