@@ -114,23 +114,27 @@
     }
     timeline.push(preloadNew_Trial);
     
-    const test_stimuli_New_Trial = [{stimulus: "/uploads/img/dis.png"}];
+    const test_stimuli_New_Trial = [{stimulus: "perro 1",
+choices: ["f"],
+response_ends_trial: false},{stimulus: "perro 2",
+choices: ["f"],
+response_ends_trial: false},{stimulus: "loco",
+choices: ["j"],
+response_ends_trial: "-0.75"},{stimulus: "gato 1",
+choices: ["f"],
+response_ends_trial: true},{stimulus: "gato 2",
+choices: ["j"],
+response_ends_trial: false}];
     const New_Trial_timeline = {
-    type: jsPsychImageKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
+    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
+choices: jsPsych.timelineVariable("choices"),
+response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
     data: {
-      stimulus: "stimulus",
-response: "response",
+      response: "response",
 rt: "rt",
+stimulus: "stimulus",
     },
     };
-    const New_Trial_procedure = {
-    timeline: 
-    [New_Trial_timeline],
-    timeline_variables: test_stimuli_New_Trial,
-    
-    };
-    timeline.push(New_Trial_procedure);
-  
 
       jsPsych.run(timeline);
 </script></body></html>

@@ -173,29 +173,82 @@ const welcome = {
 timeline.push(welcome);
 
 
-    const preloadNew_Trial = {
-        type: jsPsychPreload,
-       files: ["/uploads/img/armadillo.png","/uploads/img/bmw.png","/uploads/img/cofre.png","/uploads/img/dis.png","/uploads/img/green.png"],
-    }
-    timeline.push(preloadNew_Trial);
+
     
-    const test_stimuli_New_Trial = [{stimulus: "/uploads/img/dis.png"}];
+    const test_stimuli_New_Trial = [{stimulus: "perro 1",
+choices: ["f"],
+response_ends_trial: false},{stimulus: "perro 2",
+choices: ["f"],
+response_ends_trial: false},{stimulus: "loco",
+choices: ["j"],
+response_ends_trial: "-0.75"},{stimulus: "gato 1",
+choices: ["f"],
+response_ends_trial: true},{stimulus: "gato 2",
+choices: ["j"],
+response_ends_trial: false}];
     const New_Trial_timeline = {
-    type: jsPsychImageKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
+    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
+choices: jsPsych.timelineVariable("choices"),
+response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
     data: {
-      stimulus: "stimulus",
-response: "response",
+      response: "response",
 rt: "rt",
+stimulus: "stimulus",
     },
     };
-    const New_Trial_procedure = {
-    timeline: 
-    [New_Trial_timeline],
-    timeline_variables: test_stimuli_New_Trial,
+
+
+
     
+    const test_stimuli_New_Trial_1 = [{stimulus: "f",
+choices: "ALL_KEYS",
+prompt: null,
+stimulus_duration: null,
+trial_duration: null,
+response_ends_trial: true},{stimulus: "f",
+choices: "ALL_KEYS",
+prompt: null,
+stimulus_duration: null,
+trial_duration: null,
+response_ends_trial: true},{stimulus: "j",
+choices: "ALL_KEYS",
+prompt: null,
+stimulus_duration: null,
+trial_duration: null,
+response_ends_trial: true},{stimulus: "f",
+choices: "ALL_KEYS",
+prompt: null,
+stimulus_duration: null,
+trial_duration: null,
+response_ends_trial: true},{stimulus: "j",
+choices: "ALL_KEYS",
+prompt: null,
+stimulus_duration: null,
+trial_duration: null,
+response_ends_trial: true}];
+    const New_Trial_1_timeline = {
+    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
+choices: jsPsych.timelineVariable("choices"),
+prompt: jsPsych.timelineVariable("prompt"),
+stimulus_duration: jsPsych.timelineVariable("stimulus_duration"),
+trial_duration: jsPsych.timelineVariable("trial_duration"),
+response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
+    data: {
+      response: "response",
+rt: "rt",
+stimulus: "stimulus",
+    },
     };
-    timeline.push(New_Trial_procedure);
-  
+
+
+const loop_procedure = {
+  timeline: [New_Trial_timeline, New_Trial_1_timeline],
+  timeline_variables: [test_stimuli_New_Trial, test_stimuli_New_Trial_1],
+  repetitions: 1,
+  randomize_order: false,
+};
+timeline.push(loop_procedure);
+
 
 jsPsych.run(timeline);
 

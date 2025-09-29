@@ -12,19 +12,16 @@ type Props = {
 
 export default function useLoopCode({ repetitions, randomize, trials }: Props) {
   const sanitizeName = (name: string) => {
-    return name.replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase();
+    return name.replace(/[^a-zA-Z0-9_]/g, "_");
   };
 
   const genLoopCode = () => {
     // Generar el código de cada trial
     const trialDefinitions = trials
       .map((trial) => {
-        const trialNameSanitized = sanitizeName(trial.trialName);
-        const pluginNameImport = trial.pluginName;
-        return `const ${trialNameSanitized}_timeline = {
-    type: ${pluginNameImport}, 
+        return `
     ${trial.timelineProps}
-};`;
+`;
       })
       .join("\n\n");
 
