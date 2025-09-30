@@ -86,15 +86,11 @@
   <body>
     <div id="jspsych-target"></div>
 
-    
-  
-
-<script src="/plugins/jsPsychDProbabilistice.js" id="plugin-script-0"></script><script src="/plugins/jsPsychDProbabilistic.js" id="plugin-script-1"></script><script id="generated-script">
-
+    <script id="generated-script">
       const jsPsych = initJsPsych({
-        on_finish: function() {
+        on_finish: function () {
           jsPsych.data.displayData();
-      },
+        },
       });
 
       const timeline = [];
@@ -102,35 +98,41 @@
       const welcome = {
         type: jsPsychHtmlButtonResponse,
         stimulus: "Trial Preview",
-        choices: ['View'],
+        choices: ["View"],
       };
 
       timeline.push(welcome);
 
-      
-    const preloadNew_Trial_4 = {
+      const preloadNew_Trial_4 = {
         type: jsPsychPreload,
-       files: ["/uploads/img/armadillo.png","/uploads/img/bmw.png","/uploads/img/cofre.png","/uploads/img/dis.png","/uploads/img/green.png"],
-    }
-    timeline.push(preloadNew_Trial_4);
-    
-    const test_stimuli_New_Trial_4 = [{stimulus: "al final 2"}];
-    const New_Trial_4_timeline = {
-    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
-    data: {
-      response: "response",
-rt: "rt",
-stimulus: "stimulus",
-    },
-    };
-    const New_Trial_4_procedure = {
-    timeline: 
-    [New_Trial_4_timeline],
-    timeline_variables: test_stimuli_New_Trial_4,
-    
-    };
-    timeline.push(New_Trial_4_procedure);
-  
+        files: [
+          "/uploads/img/armadillo.png",
+          "/uploads/img/bmw.png",
+          "/uploads/img/cofre.png",
+          "/uploads/img/dis.png",
+          "/uploads/img/green.png",
+        ],
+      };
+      timeline.push(preloadNew_Trial_4);
+
+      const test_stimuli_New_Trial_4 = [{ stimulus: "al final 2" }];
+      const New_Trial_4_timeline = {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: jsPsych.timelineVariable("stimulus"),
+        data: {
+          response: "response",
+          rt: "rt",
+          stimulus: "stimulus",
+        },
+      };
+      const New_Trial_4_procedure = {
+        timeline: [New_Trial_4_timeline],
+        timeline_variables: test_stimuli_New_Trial_4,
+      };
+      timeline.push(New_Trial_4_procedure);
 
       jsPsych.run(timeline);
-</script></body></html>
+    </script>
+  
+
+</body></html>

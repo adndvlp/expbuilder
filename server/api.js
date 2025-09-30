@@ -537,12 +537,12 @@ app.delete("/api/delete-plugin/:index", async (req, res) => {
         .json({ success: false, error: "Plugin not found" });
     }
 
-    // Eliminar el plugin de la base de datos
-    const updated = await PluginConfig.findOneAndUpdate(
-      {},
-      { $pull: { plugins: { index } } },
-      { new: true }
-    );
+    // // Eliminar el plugin de la base de datos
+    // const updated = await PluginConfig.findOneAndUpdate(
+    //   {},
+    //   { $pull: { plugins: { index } } },
+    //   { new: true }
+    // );
 
     // Eliminar archivo físico del plugin
     if (pluginToDelete.scripTag) {
@@ -566,6 +566,20 @@ app.delete("/api/delete-plugin/:index", async (req, res) => {
         console.log(`🗑️ Deleted metadata: ${pluginToDelete.name}.json`);
       }
     }
+
+    // Solo borrar la etiqueta <script id="plugin-script-{index}">
+    const htmlFiles = [
+      path.join(__dirname, "experiment.html"),
+      path.join(__dirname, "trials_preview.html"),
+    ];
+    htmlFiles.forEach((htmlPath) => {
+      if (fs.existsSync(htmlPath)) {
+        let html = fs.readFileSync(htmlPath, "utf8");
+        const $ = cheerio.load(html);
+        $(`script#plugin-script-${index}`).remove();
+        fs.writeFileSync(htmlPath, $.html(), "utf8");
+      }
+    });
 
     res.json({ success: true });
   } catch (error) {
