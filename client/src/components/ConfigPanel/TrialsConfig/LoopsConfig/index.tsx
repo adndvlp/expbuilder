@@ -115,7 +115,7 @@ function LoopsConfig({ loop }: Props) {
         fieldGroups: fieldGroups,
       });
 
-      const { genTrialCode } = useTrialCode({
+      const { genTrialCode, mappedJson } = useTrialCode({
         pluginName: trial.plugin,
         parameters: parameters,
         data: data,
@@ -138,14 +138,37 @@ function LoopsConfig({ loop }: Props) {
         trialName: trial.name,
         pluginName: toCamelCase(trial.plugin),
         timelineProps: genTrialCode(),
+        mappedJson,
       };
     }) || [];
+
+  function mergeStimuliArrays(arrays: Record<string, any>[][]) {
+    const maxLength = Math.max(...arrays.map((arr) => arr.length));
+    const merged: Record<string, any>[] = [];
+    for (let i = 0; i < maxLength; i++) {
+      const obj: Record<string, any> = {};
+      arrays.forEach((arr) => {
+        Object.assign(obj, arr[i] || {});
+      });
+      merged.push(obj);
+    }
+    return merged;
+  }
+
+  const unifiedStimuli = mergeStimuliArrays(
+    trialsData.map((t) => t.mappedJson)
+  );
 
   // Usar useLoopCode con los datos generados
   const generateLoopCode = useLoopCode({
     repetitions,
     randomize,
+    orders,
+    stimuliOrders,
+    categories,
+    categoryData,
     trials: trialsData,
+    unifiedStimuli,
   });
 
   const loopCode = generateLoopCode();
@@ -185,6 +208,13 @@ function LoopsConfig({ loop }: Props) {
       const updatedTrials = [...trials];
       updatedTrials[loopIndex] = updatedLoop;
       setTrials(updatedTrials);
+
+      // Guardar en backend
+      fetch(import.meta.env.VITE_API_URL + "/api/save-trials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trials: updatedTrials }),
+      });
 
       setSaveIndicator(true);
       setTimeout(() => setSaveIndicator(false), 2000);

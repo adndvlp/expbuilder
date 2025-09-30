@@ -300,6 +300,7 @@ button.remove-button {
   border: none;
   padding: 5px 10px;
   font-size: 12px;
+  border-radius: 4px;
 }
 
 button.remove-button:hover {

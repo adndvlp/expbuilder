@@ -82,7 +82,12 @@ function Component({}: TimelineProps) {
 
   const onAddTrial = (type: string) => {
     // Obtén todos los nombres actuales
-    const existingNames = trials.map((t) => t.name);
+    const existingNames = [
+      ...trials.filter((t) => "parameters" in t).map((t) => t.name),
+      ...trials
+        .filter((t) => "trials" in t)
+        .flatMap((loop: any) => loop.trials.map((trial: any) => trial.name)),
+    ];
 
     // Genera un nombre base
     let baseName = "New Trial";
@@ -112,18 +117,25 @@ function Component({}: TimelineProps) {
     setSelectedTrial(trial);
   };
 
-  const trialCodes = trials
-    .filter((item) => "parameters" in item)
-    .map((trial) => trial.trialCode)
-    .filter(Boolean);
+  // const trialCodes = trials
+  //   .filter((item) => "parameters" in item)
+  //   .map((trial) => trial.trialCode)
+  //   .filter(Boolean);
 
-  const loopCodes = trials
-    .filter((item) => "trials" in item)
-    .map((loop) => loop.code)
-    .filter(Boolean);
+  // const loopCodes = trials
+  //   .filter((item) => "trials" in item)
+  //   .map((loop) => loop.code)
+  //   .filter(Boolean);
 
-  const allCodes = [...trialCodes, ...loopCodes].join("\n\n");
-  console.log(allCodes);
+  // const allCodes = [...trialCodes, ...loopCodes].join("\n\n");
+  const allCodes = trials
+    .map((item) => {
+      if ("parameters" in item) return item.trialCode;
+      if ("trials" in item) return item.code;
+      return "";
+    })
+    .filter(Boolean)
+    .join("\n\n");
 
   const handleAddLoop = (trialIds: number[]) => {
     console.log(trials);
@@ -339,22 +351,23 @@ jsPsych.run(timeline);
     }
   };
 
+  const hasTrials = trials.filter(isTrial).length > 0;
+  const hasLoops = trials.filter((item) => "trials" in item).length > 0;
+
   const allTrialsHaveCode =
-    trials.filter(isTrial).length > 0 &&
+    !hasTrials ||
     trials
       .filter(isTrial)
       .every((trial) => !!trial.trialCode && trial.trialCode.trim() !== "");
 
   const allLoopsHaveCode =
-    trials.filter((item) => "trials" in item).length === 0 ||
+    !hasLoops ||
     trials
       .filter((item) => "trials" in item)
       .every((loop) => !!loop.code && loop.code.trim() !== "");
 
   const isDisabled =
-    isSubmitting ||
-    (!allTrialsHaveCode && !isDevMode) ||
-    (!allLoopsHaveCode && !isDevMode);
+    isSubmitting || ((!allTrialsHaveCode || !allLoopsHaveCode) && !isDevMode);
 
   const handleCopyLink = async () => {
     if (experimentUrl) {
@@ -666,7 +679,7 @@ jsPsych.run(timeline);
           <button
             className="run-experiment-btn"
             onClick={handleRunExperiment}
-            // disabled={isDisabled}
+            disabled={isDisabled}
           >
             {isSubmitting
               ? "Processing..."

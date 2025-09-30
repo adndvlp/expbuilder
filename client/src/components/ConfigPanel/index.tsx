@@ -117,7 +117,6 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
   }));
   // Los plugins subidos por el usuario solo aparecen en userPluginsOptions
   const options = [
-    { value: "new-plugin", label: "Create plugin" },
     ...filteredPlugins
       .filter((plugin) => !plugins.some((p) => p.name === plugin))
       .map((plugin) => {
@@ -128,6 +127,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
         };
       }),
     ...userPluginsOptions,
+    { value: "new-plugin", label: "Create plugin" },
   ];
 
   const handleChange = (newValue: { label: string; value: string } | null) => {

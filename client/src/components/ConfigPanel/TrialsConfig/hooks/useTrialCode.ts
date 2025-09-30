@@ -45,6 +45,7 @@ export function useTrialCode({
   const activeParameters = parameters.filter(
     (p) => columnMapping[p.key]?.source !== "none"
   );
+  const trialNameSanitized = trialName.replace(/\s+/g, "_");
 
   const mappedJson = (() => {
     const mapRow = (row?: Record<string, any>, idx?: number) => {
@@ -52,7 +53,7 @@ export function useTrialCode({
 
       activeParameters.forEach((param) => {
         const { key } = param;
-
+        const prefixedkey = isInLoop ? `${key}_${trialNameSanitized}` : key;
         // const mediaKeys = ["stimulus", "images", "audio", "video"];
         const isMediaParameter = (key: string | undefined) => {
           if (typeof key !== "string") return false;
@@ -102,9 +103,16 @@ export function useTrialCode({
             }
           }
 
-          result[key] = stimulusValue;
+          // result[key] = stimulusValue;
+          result[prefixedkey] = stimulusValue;
         } else {
-          result[key] = getColumnValue(columnMapping[key], row, undefined, key);
+          // result[key] = getColumnValue(columnMapping[key], row, undefined, key);
+          result[prefixedkey] = getColumnValue(
+            columnMapping[key],
+            row,
+            undefined,
+            key
+          );
         }
       });
 
@@ -200,13 +208,15 @@ export function useTrialCode({
   const generateTrialProps = (params: any[], data: any): string => {
     const paramProps = params
       .map(({ key }: { key: string }) => {
-        return `${key}: jsPsych.timelineVariable("${key}"),`;
+        const propKey = isInLoop ? `${key}_${trialNameSanitized}` : key;
+        return `${key}: jsPsych.timelineVariable("${propKey}"),`;
       })
       .join("\n");
 
     const dataProps = data
       .map(({ key }: { key: string }) => {
-        return `${key}: "${key}",`;
+        const propKey = isInLoop ? `${key}_${trialNameSanitized}` : key;
+        return `${key}: "${propKey}",`;
       })
       .join("\n");
 
@@ -257,8 +267,6 @@ export function useTrialCode({
   }
 
   const genTrialCode = () => {
-    const trialNameSanitized = trialName.replace(/\s+/g, "_");
-
     let code = "";
 
     if (needsFileUpload && pluginName != "plugin-preload") {
@@ -276,9 +284,9 @@ export function useTrialCode({
     );
 
     const timelineProps = generateTrialProps(activeParameters, data);
-
-    if (orders || categories) {
-      code += `
+    if (!isInLoop) {
+      if (orders || categories) {
+        code += `
     let test_stimuli_${trialNameSanitized} = [];
     
     if (typeof participantNumber === "number" && !isNaN(participantNumber)) {
@@ -345,11 +353,11 @@ export function useTrialCode({
         console.log(test_stimuli_${trialNameSanitized});
       }
     }`;
-    } else {
-      code += `
+      } else {
+        code += `
     const test_stimuli_${trialNameSanitized} = [${testStimuliCode.join(",")}];`;
+      }
     }
-
     code += `
     const ${trialNameSanitized}_timeline = {
     type: ${pluginNameImport}, ${timelineProps}
@@ -391,5 +399,5 @@ export function useTrialCode({
     }
   };
 
-  return { genTrialCode };
+  return { genTrialCode, mappedJson };
 }
