@@ -25,11 +25,14 @@ function ExperimentPreview() {
     setStarted(false);
   };
 
-  const { selectedTrial, trials } = useTrials();
+  const { selectedTrial, selectedLoop, trials } = useTrials();
 
   // trials preview
   useEffect(() => {
-    if (selectedTrial && selectedTrial.trialCode) {
+    if (
+      (selectedTrial && selectedTrial.trialCode) ||
+      (selectedLoop && selectedLoop.code)
+    ) {
       const trialCode = `
       const jsPsych = initJsPsych({
         on_finish: function() {
@@ -47,7 +50,7 @@ function ExperimentPreview() {
 
       timeline.push(welcome);
 
-      ${selectedTrial?.trialCode}
+      ${selectedTrial?.trialCode ? selectedTrial?.trialCode : selectedLoop?.code}
 
       jsPsych.run(timeline);`;
 

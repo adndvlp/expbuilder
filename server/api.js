@@ -537,12 +537,12 @@ app.delete("/api/delete-plugin/:index", async (req, res) => {
         .json({ success: false, error: "Plugin not found" });
     }
 
-    // // Eliminar el plugin de la base de datos
-    // const updated = await PluginConfig.findOneAndUpdate(
-    //   {},
-    //   { $pull: { plugins: { index } } },
-    //   { new: true }
-    // );
+    // Eliminar el plugin de la base de datos
+    const updated = await PluginConfig.findOneAndUpdate(
+      {},
+      { $pull: { plugins: { index } } },
+      { new: true }
+    );
 
     // Eliminar archivo físico del plugin
     if (pluginToDelete.scripTag) {

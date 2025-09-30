@@ -86,14 +86,22 @@
   <body>
     <div id="jspsych-target"></div>
 
-    <script id="generated-script">
-      const trialSessionId = crypto.randomUUID
-        ? crypto.randomUUID()
-        : Math.random().toString(36).slice(2) + Date.now();
+    
+  
 
-      let participantNumber;
+<script id="generated-script">
 
-      async function saveSession(trialSessionId) {
+
+    
+
+  const trialSessionId =
+    (crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2) + Date.now());
+
+let participantNumber;
+
+   async function saveSession(trialSessionId) {
         const res = await fetch("/api/append-result", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -104,312 +112,215 @@
         const result = await res.json();
         participantNumber = result.participantNumber;
         return participantNumber;
-      }
+  }
+        
+(async () => {
+  participantNumber = await saveSession(trialSessionId);
 
-      (async () => {
-        participantNumber = await saveSession(trialSessionId);
+  if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
+    alert("El número de participante no está asignado. Por favor, espera.");
+    throw new Error("participantNumber no asignado");
+  }
 
-        if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
-          alert(
-            "El número de participante no está asignado. Por favor, espera."
-          );
-          throw new Error("participantNumber no asignado");
-        }
+  // let isFirstSave = true;
 
-        // let isFirstSave = true;
+  const jsPsych = initJsPsych({
 
-        const jsPsych = initJsPsych({
-          on_data_update: function (data) {
-            const res = fetch("/api/append-result", {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                sessionId: trialSessionId,
-                response: data,
-              }),
-            });
-          },
-
-          // fetch("https://pipe.jspsych.org/api/data/", {
-          //       method: "POST",
-          //       headers: { "Content-Type": "application/json", Accept: "*/*" },
-          //       body: JSON.stringify({
-          //         experimentID: "tjStL4X8Yrep",
-          //         data: JSON.stringify(data),
-          //         filename: ` ${trialSessionId}`,
-          //         append: !isFirstSave,
-          //       }),
-          //     });
-
-          //     isFirstSave = false;
-          // },
-
-          // Uncomment to see the json results after finishing a sesssion experiment
-          // on_finish: function() {
-          //   jsPsych.data.displayData();
-          // },
-        });
-
-        const timeline = [];
-
-        const welcome = {
-          type: jsPsychHtmlButtonResponse,
-          stimulus: "Welcome to the experiment. Press 'Start' to begin.",
-          choices: ["Start"],
-        };
-
-        timeline.push(welcome);
-
-        const preloadNew_Trial_2 = {
-          type: jsPsychPreload,
-          files: [
-            "/uploads/img/armadillo.png",
-            "/uploads/img/bmw.png",
-            "/uploads/img/cofre.png",
-            "/uploads/img/dis.png",
-            "/uploads/img/green.png",
-          ],
-        };
-        timeline.push(preloadNew_Trial_2);
-
-        const test_stimuli_New_Trial_2 = [{ stimulus: "al principio" }];
-        const New_Trial_2_timeline = {
-          type: jsPsychHtmlKeyboardResponse,
-          stimulus: jsPsych.timelineVariable("stimulus"),
-          data: {
-            response: "response",
-            rt: "rt",
-            stimulus: "stimulus",
-          },
-        };
-        const New_Trial_2_procedure = {
-          timeline: [New_Trial_2_timeline],
-          timeline_variables: test_stimuli_New_Trial_2,
-        };
-        timeline.push(New_Trial_2_procedure);
-
-        let test_stimuli_Loop = [];
-
-        if (
-          typeof participantNumber === "number" &&
-          !isNaN(participantNumber)
-        ) {
-          const stimuliOrders = [
-            [0, 1, 2, 3, 4],
-            [3, 4, 0, 1, 2],
-            [2, 1, 0, 4, 3],
-            [0, 2, 3, 5, 4],
-          ];
-          const categoryData = ["perro", "perro", "loco", "gato", "gato"];
-          const test_stimuli_previous_Loop = [
-            {
-              stimulus_New_Trial: "perro 1",
-              stimulus_New_Trial_1: "1",
-              prompt_New_Trial_1: null,
-              stimulus_duration_New_Trial_1: null,
-              trial_duration_New_Trial_1: null,
-              response_ends_trial_New_Trial_1: true,
-            },
-            {
-              stimulus_New_Trial: "perro 2",
-              stimulus_New_Trial_1: "2",
-              prompt_New_Trial_1: null,
-              stimulus_duration_New_Trial_1: null,
-              trial_duration_New_Trial_1: null,
-              response_ends_trial_New_Trial_1: true,
-            },
-            {
-              stimulus_New_Trial: "loco",
-              stimulus_New_Trial_1: "3",
-              prompt_New_Trial_1: null,
-              stimulus_duration_New_Trial_1: null,
-              trial_duration_New_Trial_1: null,
-              response_ends_trial_New_Trial_1: true,
-            },
-            {
-              stimulus_New_Trial: "gato 1",
-              stimulus_New_Trial_1: "4",
-              prompt_New_Trial_1: null,
-              stimulus_duration_New_Trial_1: null,
-              trial_duration_New_Trial_1: null,
-              response_ends_trial_New_Trial_1: true,
-            },
-            {
-              stimulus_New_Trial: "gato 2",
-              stimulus_New_Trial_1: "5",
-              prompt_New_Trial_1: null,
-              stimulus_duration_New_Trial_1: null,
-              trial_duration_New_Trial_1: null,
-              response_ends_trial_New_Trial_1: true,
-            },
-          ];
-
-          if (categoryData.length > 0) {
-            // Obtener todas las categorías únicas
-            const allCategories = [...new Set(categoryData)];
-
-            // Determinar qué categoría le corresponde a este participante
-            const categoryIndex =
-              (participantNumber - 1) % allCategories.length;
-            const participantCategory = allCategories[categoryIndex];
-
-            // Encontrar los índices que corresponden a esta categoría
-            const categoryIndices = [];
-            categoryData.forEach((category, index) => {
-              if (category === participantCategory) {
-                categoryIndices.push(index);
-              }
-            });
-
-            // Filtrar los estímulos por categoría
-            const categoryFilteredStimuli = categoryIndices.map(
-              (index) => test_stimuli_previous_Loop[index]
-            );
-
-            // Aplicar el orden si existe
-            if (stimuliOrders.length > 0) {
-              const orderIndex = (participantNumber - 1) % stimuliOrders.length;
-              const index_order = stimuliOrders[orderIndex];
-
-              // Crear mapeo de índices originales a índices filtrados
-              const indexMapping = {};
-              categoryIndices.forEach((originalIndex, filteredIndex) => {
-                indexMapping[originalIndex] = filteredIndex;
-              });
-
-              // Aplicar el orden solo a los índices que existen en la categoría filtrada
-              const orderedIndices = index_order
-                .filter((i) => indexMapping.hasOwnProperty(i))
-                .map((i) => indexMapping[i]);
-
-              test_stimuli_Loop = orderedIndices
-                .filter((i) => i >= 0 && i < categoryFilteredStimuli.length)
-                .map((i) => categoryFilteredStimuli[i]);
-            } else {
-              test_stimuli_Loop = categoryFilteredStimuli;
-            }
-
-            console.log(
-              "Participant:",
-              participantNumber,
-              "Category:",
-              participantCategory
-            );
-            console.log("Category indices:", categoryIndices);
-            console.log("Filtered stimuli:", test_stimuli_Loop);
-          } else {
-            // Lógica original sin categorías
-            const orderIndex = (participantNumber - 1) % stimuliOrders.length;
-            const index_order = stimuliOrders[orderIndex];
-
-            test_stimuli_Loop = index_order
-              .filter(
-                (i) =>
-                  i !== -1 && i >= 0 && i < test_stimuli_previous_Loop.length
-              )
-              .map((i) => test_stimuli_previous_Loop[i]);
-
-            console.log(test_stimuli_Loop);
-          }
-        }
-
-        const New_Trial_timeline = {
-          type: jsPsychHtmlKeyboardResponse,
-          stimulus: jsPsych.timelineVariable("stimulus_New_Trial"),
-          data: {
-            response: "response_New_Trial",
-            rt: "rt_New_Trial",
-            stimulus: "stimulus_New_Trial",
-          },
-        };
-
-        const New_Trial_1_timeline = {
-          type: jsPsychHtmlKeyboardResponse,
-          stimulus: jsPsych.timelineVariable("stimulus_New_Trial_1"),
-          prompt: jsPsych.timelineVariable("prompt_New_Trial_1"),
-          stimulus_duration: jsPsych.timelineVariable(
-            "stimulus_duration_New_Trial_1"
-          ),
-          trial_duration: jsPsych.timelineVariable(
-            "trial_duration_New_Trial_1"
-          ),
-          response_ends_trial: jsPsych.timelineVariable(
-            "response_ends_trial_New_Trial_1"
-          ),
-          data: {
-            response: "response_New_Trial_1",
-            rt: "rt_New_Trial_1",
-            stimulus: "stimulus_New_Trial_1",
-          },
-        };
-
-        const loop_procedure = {
-          timeline: [New_Trial_timeline, New_Trial_1_timeline],
-          timeline_variables: test_stimuli_Loop,
-          repetitions: 1,
-          randomize_order: false,
-        };
-        timeline.push(loop_procedure);
-
-        const preloadNew_Trial_3 = {
-          type: jsPsychPreload,
-          files: [
-            "/uploads/img/armadillo.png",
-            "/uploads/img/bmw.png",
-            "/uploads/img/cofre.png",
-            "/uploads/img/dis.png",
-            "/uploads/img/green.png",
-          ],
-        };
-        timeline.push(preloadNew_Trial_3);
-
-        const test_stimuli_New_Trial_3 = [{ stimulus: "al final" }];
-        const New_Trial_3_timeline = {
-          type: jsPsychHtmlKeyboardResponse,
-          stimulus: jsPsych.timelineVariable("stimulus"),
-          data: {
-            response: "response",
-            rt: "rt",
-            stimulus: "stimulus",
-          },
-        };
-        const New_Trial_3_procedure = {
-          timeline: [New_Trial_3_timeline],
-          timeline_variables: test_stimuli_New_Trial_3,
-        };
-        timeline.push(New_Trial_3_procedure);
-
-        const preloadNew_Trial_4 = {
-          type: jsPsychPreload,
-          files: [
-            "/uploads/img/armadillo.png",
-            "/uploads/img/bmw.png",
-            "/uploads/img/cofre.png",
-            "/uploads/img/dis.png",
-            "/uploads/img/green.png",
-          ],
-        };
-        timeline.push(preloadNew_Trial_4);
-
-        const test_stimuli_New_Trial_4 = [{ stimulus: "al final 2" }];
-        const New_Trial_4_timeline = {
-          type: jsPsychHtmlKeyboardResponse,
-          stimulus: jsPsych.timelineVariable("stimulus"),
-          data: {
-            response: "response",
-            rt: "rt",
-            stimulus: "stimulus",
-          },
-        };
-        const New_Trial_4_procedure = {
-          timeline: [New_Trial_4_timeline],
-          timeline_variables: test_stimuli_New_Trial_4,
-        };
-        timeline.push(New_Trial_4_procedure);
-
-        jsPsych.run(timeline);
-      })();
-    </script>
   
 
-</body></html>
+  on_data_update: function (data) {
+        const res = fetch("/api/append-result", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: trialSessionId,
+            response: data,
+          }),
+        });
+     
+  }
+  
+  // fetch("https://pipe.jspsych.org/api/data/", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json", Accept: "*/*" },
+  //       body: JSON.stringify({
+  //         experimentID: "tjStL4X8Yrep",
+  //         data: JSON.stringify(data),
+  //         filename: ` ${trialSessionId}`,
+  //         append: !isFirstSave,
+  //       }),
+  //     });
+
+  //     isFirstSave = false;
+  // },
+
+  // Uncomment to see the json results after finishing a sesssion experiment
+  // on_finish: function() {
+  //   jsPsych.data.displayData();
+  // },
+});
+
+const timeline = [];
+
+const welcome = {
+  type: jsPsychHtmlButtonResponse,
+  stimulus: "Welcome to the experiment. Press 'Start' to begin.",
+  choices: ['Start'],
+};
+
+timeline.push(welcome);
+
+
+    let test_stimuli_Loop = [];
+    
+    if (typeof participantNumber === "number" && !isNaN(participantNumber)) {
+      const stimuliOrders = [[0,1,2,3,4],[3,4,0,1,2],[2,1,0,4,3],[0,2,3,5,4]];
+      const categoryData = ["perro","perro","loco","gato","gato"];
+      const test_stimuli_previous_Loop = [
+  {
+    "stimulus_New_Trial": "perro 1",
+    "stimulus_New_Trial_1": "1",
+    "prompt_New_Trial_1": null,
+    "stimulus_duration_New_Trial_1": null,
+    "trial_duration_New_Trial_1": null,
+    "response_ends_trial_New_Trial_1": true
+  },
+  {
+    "stimulus_New_Trial": "perro 2",
+    "stimulus_New_Trial_1": "2",
+    "prompt_New_Trial_1": null,
+    "stimulus_duration_New_Trial_1": null,
+    "trial_duration_New_Trial_1": null,
+    "response_ends_trial_New_Trial_1": true
+  },
+  {
+    "stimulus_New_Trial": "loco",
+    "stimulus_New_Trial_1": "3",
+    "prompt_New_Trial_1": null,
+    "stimulus_duration_New_Trial_1": null,
+    "trial_duration_New_Trial_1": null,
+    "response_ends_trial_New_Trial_1": true
+  },
+  {
+    "stimulus_New_Trial": "gato 1",
+    "stimulus_New_Trial_1": "4",
+    "prompt_New_Trial_1": null,
+    "stimulus_duration_New_Trial_1": null,
+    "trial_duration_New_Trial_1": null,
+    "response_ends_trial_New_Trial_1": true
+  },
+  {
+    "stimulus_New_Trial": "gato 2",
+    "stimulus_New_Trial_1": "5",
+    "prompt_New_Trial_1": null,
+    "stimulus_duration_New_Trial_1": null,
+    "trial_duration_New_Trial_1": null,
+    "response_ends_trial_New_Trial_1": true
+  }
+];
+      
+      
+      if (categoryData.length > 0) {
+        // Obtener todas las categorías únicas
+        const allCategories = [...new Set(categoryData)];
+        
+        // Determinar qué categoría le corresponde a este participante
+        const categoryIndex = (participantNumber - 1) % allCategories.length;
+        const participantCategory = allCategories[categoryIndex];
+        
+        // Encontrar los índices que corresponden a esta categoría
+        const categoryIndices = [];
+        categoryData.forEach((category, index) => {
+          if (category === participantCategory) {
+            categoryIndices.push(index);
+          }
+        });
+        
+        // Filtrar los estímulos por categoría
+        const categoryFilteredStimuli = categoryIndices.map(index => 
+          test_stimuli_previous_Loop[index]
+        );
+
+        // Aplicar el orden si existe
+        if (stimuliOrders.length > 0) {
+          const orderIndex = (participantNumber - 1) % stimuliOrders.length;
+          const index_order = stimuliOrders[orderIndex];
+          
+          // Crear mapeo de índices originales a índices filtrados
+          const indexMapping = {};
+          categoryIndices.forEach((originalIndex, filteredIndex) => {
+            indexMapping[originalIndex] = filteredIndex;
+          });
+          
+          // Aplicar el orden solo a los índices que existen en la categoría filtrada
+          const orderedIndices = index_order
+            .filter(i => indexMapping.hasOwnProperty(i))
+            .map(i => indexMapping[i]);
+          
+          test_stimuli_Loop = orderedIndices
+            .filter(i => i >= 0 && i < categoryFilteredStimuli.length)
+            .map(i => categoryFilteredStimuli[i]);
+        } else {
+          test_stimuli_Loop = categoryFilteredStimuli;
+        }
+        
+        console.log("Participant:", participantNumber, "Category:", participantCategory);
+        console.log("Category indices:", categoryIndices);
+        console.log("Filtered stimuli:", test_stimuli_Loop);
+        } else {
+        // Lógica original sin categorías
+        const orderIndex = (participantNumber - 1) % stimuliOrders.length;
+        const index_order = stimuliOrders[orderIndex];
+        
+        test_stimuli_Loop = index_order
+          .filter((i) => i !== -1 && i >= 0 && i < test_stimuli_previous_Loop.length)
+          .map((i) => test_stimuli_previous_Loop[i]);
+          
+        console.log(test_stimuli_Loop);
+      }
+    }
+    
+    
+    
+    const New_Trial_timeline = {
+    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus_New_Trial"),
+    data: {
+      response: "response_New_Trial",
+rt: "rt_New_Trial",
+stimulus: "stimulus_New_Trial",
+    },
+    };
+
+
+
+    
+    const New_Trial_1_timeline = {
+    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus_New_Trial_1"),
+prompt: jsPsych.timelineVariable("prompt_New_Trial_1"),
+stimulus_duration: jsPsych.timelineVariable("stimulus_duration_New_Trial_1"),
+trial_duration: jsPsych.timelineVariable("trial_duration_New_Trial_1"),
+response_ends_trial: jsPsych.timelineVariable("response_ends_trial_New_Trial_1"),
+    data: {
+      response: "response_New_Trial_1",
+rt: "rt_New_Trial_1",
+stimulus: "stimulus_New_Trial_1",
+    },
+    };
+
+
+
+
+const loop_procedure = {
+  timeline: [New_Trial_timeline, New_Trial_1_timeline],
+  timeline_variables: test_stimuli_Loop,
+  repetitions: 1,
+  randomize_order: false,
+};
+timeline.push(loop_procedure);
+
+
+jsPsych.run(timeline);
+
+})();
+
+</script></body></html>
