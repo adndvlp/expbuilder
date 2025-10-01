@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import ExperimentPreview from "./ExperimentPreview";
+import { useExperimentID } from "../hooks/useExperimentID";
 const API_URL = import.meta.env.VITE_API_URL;
 
 type SessionMeta = {
@@ -14,9 +15,11 @@ export default function ResultsList() {
   const [selected, setSelected] = useState<string[]>([]);
   const [selectMode, setSelectMode] = useState(false);
 
+  const experimentID = useExperimentID();
+
   const fetchSessions = async () => {
     setLoading(true);
-    const res = await fetch(`${API_URL}/api/session-results`);
+    const res = await fetch(`${API_URL}/api/session-results/${experimentID}`);
     const data = await res.json();
     setSessions(data.sessions || []);
     setLoading(false);
@@ -31,7 +34,7 @@ export default function ResultsList() {
   const handleDeleteSession = async (sessionId: string) => {
     if (!window.confirm("Are you sure you want to delete this session result?"))
       return;
-    await fetch(`${API_URL}/api/session-results/${sessionId}`, {
+    await fetch(`${API_URL}/api/session-results/${sessionId}/${experimentID}`, {
       method: "DELETE",
     });
     fetchSessions();
@@ -46,7 +49,9 @@ export default function ResultsList() {
       return;
     await Promise.all(
       selected.map((id) =>
-        fetch(`${API_URL}/api/session-results/${id}`, { method: "DELETE" })
+        fetch(`${API_URL}/api/session-results/${id}/${experimentID}`, {
+          method: "DELETE",
+        })
       )
     );
     fetchSessions();
@@ -174,7 +179,7 @@ export default function ResultsList() {
                       className="download-csv-btn"
                       onClick={() =>
                         window.open(
-                          `${API_URL}/api/download-session/${s.sessionId}`
+                          `${API_URL}/api/download-session/${s.sessionId}/${experimentID}`
                         )
                       }
                     >

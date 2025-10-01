@@ -8,6 +8,7 @@ import FileUploader from "./ConfigPanel/TrialsConfig/FileUploader";
 import { useFileUpload } from "./ConfigPanel/TrialsConfig/hooks/useFileUpload";
 import { FiRefreshCw } from "react-icons/fi";
 import LoopRangeModal from "./ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeModal";
+import { useExperimentID } from "../hooks/useExperimentID";
 const API_URL = import.meta.env.VITE_API_URL;
 
 type TimelineProps = {};
@@ -16,6 +17,8 @@ function Component({}: TimelineProps) {
   const [submitStatus, setSubmitStatus] = useState<string>("");
   const { experimentUrl } = useUrl();
   const [copyStatus, setCopyStatus] = useState<string>("");
+
+  const experimentID = useExperimentID();
 
   const {
     trials,
@@ -191,7 +194,7 @@ function Component({}: TimelineProps) {
 let participantNumber;
 
    async function saveSession(trialSessionId) {
-        const res = await fetch("/api/append-result", {
+        const res = await fetch("/api/append-result/${experimentID}", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -218,7 +221,7 @@ let participantNumber;
   ${extensions}
 
   on_data_update: function (data) {
-        const res = fetch("/api/append-result", {
+        const res = fetch("/api/append-result/${experimentID}", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -285,13 +288,16 @@ jsPsych.run(timeline);
         const config = { generatedCode };
 
         // Paso 1: Guarda la configuración
-        const response = await fetch(`${API_URL}/api/save-config`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(config),
-          credentials: "include",
-          mode: "cors",
-        });
+        const response = await fetch(
+          `${API_URL}/api/save-config/${experimentID}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(config),
+            credentials: "include",
+            mode: "cors",
+          }
+        );
 
         if (!response.ok) {
           throw new Error(`Server responded with status: ${response.status}`);
@@ -308,13 +314,16 @@ jsPsych.run(timeline);
 
       // Paso 2: Llama al build/run-experiment
       setSubmitStatus("Running experiment...");
-      const runResponse = await fetch(`${API_URL}/api/run-experiment`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ generatedCode }),
-        credentials: "include",
-        mode: "cors",
-      });
+      const runResponse = await fetch(
+        `${API_URL}/api/run-experiment/${experimentID}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ generatedCode }),
+          credentials: "include",
+          mode: "cors",
+        }
+      );
 
       if (!runResponse.ok) {
         throw new Error(

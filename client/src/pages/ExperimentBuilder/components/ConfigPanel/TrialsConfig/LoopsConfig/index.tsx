@@ -10,6 +10,7 @@ import useLoopCode from "./useLoopCode";
 import { useTrialCode } from "../hooks/useTrialCode";
 import { usePluginParameters } from "../../hooks/usePluginParameters";
 import { useCsvMapper } from "../hooks/useCsvMapper";
+import { useExperimentID } from "../../../../hooks/useExperimentID";
 
 type Props = { loop?: Loop };
 
@@ -19,6 +20,8 @@ function LoopsConfig({ loop }: Props) {
   const [isLoadingLoop, setIsLoadingLoop] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [saveIndicator, setSaveIndicator] = useState(false);
+
+  const experimentID = useExperimentID();
 
   const [repetitions, setRepetitions] = useState<number>(
     loop?.repetitions || 1
@@ -210,7 +213,7 @@ function LoopsConfig({ loop }: Props) {
       setTrials(updatedTrials);
 
       // Guardar en backend
-      fetch(import.meta.env.VITE_API_URL + "/api/save-trials", {
+      fetch(import.meta.env.VITE_API_URL + `/api/save-trials/${experimentID}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ trials: updatedTrials }),

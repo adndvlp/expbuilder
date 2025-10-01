@@ -1,5 +1,5 @@
-import { createHashRouter } from "react-router-dom";
-import DashBoard from "./Dashboard";
+import { createBrowserRouter } from "react-router-dom";
+import Dashboard from "./Dashboard";
 import ExperimentBuilder from "./ExperimentBuilder";
 import PluginsProvider from "./ExperimentBuilder/providers/PluginsProvider";
 import DevModeProvider from "./ExperimentBuilder/providers/DevModeProvider";
@@ -7,13 +7,15 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import LandingPage from "./LandingPage";
 import Register from "./Auth/Register";
 import Login from "./Auth/Login";
+import ErrorDetail from "./ErrorDetail";
 
 // import ProtectedRoute from "../components/ProtectedRoute";
 
-const router = createHashRouter([
+const router = createBrowserRouter([
   {
     path: "/",
     element: <LandingPage />,
+    errorElement: <ErrorDetail />,
   },
   {
     path: "/auth/register",
@@ -26,30 +28,31 @@ const router = createHashRouter([
   {
     path: "/home",
     element: (
-      <ProtectedRoute>
-        <DashBoard />
-      </ProtectedRoute>
+      // <ProtectedRoute>
+      <Dashboard />
+      // </ProtectedRoute>
     ),
     children: [
       {
         index: true,
-        element: <DashBoard />,
       },
       {
         path: "settings",
-        element: <DashBoard />,
-      },
-      {
-        path: "experimet/:id",
-        element: (
-          <DevModeProvider>
-            <PluginsProvider>
-              <ExperimentBuilder />
-            </PluginsProvider>
-          </DevModeProvider>
-        ),
+        element: <Dashboard />,
       },
     ],
+  },
+  {
+    path: "/home/experiment/:id",
+    element: (
+      // <ProtectedRoute>
+      <DevModeProvider>
+        <PluginsProvider>
+          <ExperimentBuilder />
+        </PluginsProvider>
+      </DevModeProvider>
+      // </ProtectedRoute>
+    ),
   },
 ]);
 

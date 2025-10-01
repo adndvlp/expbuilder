@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import DevModeContext from "../contexts/DevModeContext";
+import { useExperimentID } from "../hooks/useExperimentID";
 const API_URL = import.meta.env.VITE_API_URL;
 
 type Props = {
@@ -10,10 +11,11 @@ export default function DevModeProvider({ children }: Props) {
   const [isDevMode, setDevMode] = useState<boolean>(false);
   const [code, setCode] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const experimentID = useExperimentID();
 
   useEffect(() => {
     setIsLoading(true);
-    fetch(`${API_URL}/api/load-config`)
+    fetch(`${API_URL}/api/load-config/${experimentID}`)
       .then((res) => res.json())
       .then((data) => {
         if (data?.config) {
@@ -33,14 +35,17 @@ export default function DevModeProvider({ children }: Props) {
     if (isLoading) return;
     const timeoutId = setTimeout(async () => {
       try {
-        const response = await fetch(`${API_URL}/api/save-config`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            config: { generatedCode: code },
-            isDevMode: isDevMode,
-          }),
-        });
+        const response = await fetch(
+          `${API_URL}/api/save-config/${experimentID}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              config: { generatedCode: code },
+              isDevMode: isDevMode,
+            }),
+          }
+        );
 
         if (!response.ok) {
           throw new Error("Failed to save dev mode state");

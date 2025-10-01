@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import useUrl from "../hooks/useUrl";
 import { useExperimentState } from "../hooks/useExpetimentState";
 import useTrials from "../hooks/useTrials";
+import { useExperimentID } from "../hooks/useExperimentID";
 const API_URL = import.meta.env.VITE_API_URL;
 
 function ExperimentPreview() {
@@ -9,6 +10,8 @@ function ExperimentPreview() {
   const { version, incrementVersion } = useExperimentState();
   const [started, setStarted] = useState(false);
   const [key, setKey] = useState(0);
+
+  const experimentID = useExperimentID();
 
   useEffect(() => {
     if (started && version) {
@@ -55,7 +58,7 @@ function ExperimentPreview() {
       jsPsych.run(timeline);`;
 
       (async () => {
-        await fetch(`${API_URL}/api/trials-preview`, {
+        await fetch(`${API_URL}/api/trials-preview/${experimentID}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ generatedCode: trialCode }),

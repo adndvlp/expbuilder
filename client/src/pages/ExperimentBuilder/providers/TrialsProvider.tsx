@@ -1,6 +1,7 @@
 import { ReactNode, useState, useEffect } from "react";
 import TrialsContext from "../contexts/TrialsContext";
 import { Loop, Trial, TrialOrLoop } from "../components/ConfigPanel/types";
+import { useExperimentID } from "../hooks/useExperimentID";
 const API_URL = import.meta.env.VITE_API_URL;
 
 type Props = {
@@ -11,6 +12,8 @@ export default function TrialsProvider({ children }: Props) {
   const [trials, setTrials] = useState<TrialOrLoop[]>([]);
   const [selectedTrial, setSelectedTrial] = useState<Trial | null>(null);
   const [selectedLoop, setSelectedLoop] = useState<Loop | null>(null);
+
+  const experimentID = useExperimentID();
 
   // Agrupa trials en un loop
   const groupTrialsAsLoop = (
@@ -186,7 +189,7 @@ export default function TrialsProvider({ children }: Props) {
       ];
 
       // Actualiza en el backend
-      fetch(`${API_URL}/api/save-trials`, {
+      fetch(`${API_URL}/api/save-trials/${experimentID}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ trials: newTrials }),
@@ -198,7 +201,7 @@ export default function TrialsProvider({ children }: Props) {
   };
 
   useEffect(() => {
-    fetch(`${API_URL}/api/load-trials`)
+    fetch(`${API_URL}/api/load-trials/${experimentID}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.trials && data.trials.trials) {

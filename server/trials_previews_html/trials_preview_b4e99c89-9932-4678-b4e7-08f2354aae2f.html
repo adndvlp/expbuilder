@@ -1,0 +1,247 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png+xml" href="/icon/fp black.png">
+    <title>Experiment</title>
+    <script src="https://unpkg.com/jspsych@8.2.1"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-animation@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-audio-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-audio-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-audio-slider-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-browser-check@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-call-function@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-canvas-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-canvas-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-canvas-slider-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-categorize-animation@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-categorize-html@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-categorize-image@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-cloze@2.2.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-external-html@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-free-sort@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-fullscreen@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-audio-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-slider-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-video-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-iat-html@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-iat-image@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-image-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-image-keyboard-response@2.1.0"></script>
+
+    <script src="/plugins/plugin-custom-image-keyboard-response.js"></script>
+    <script src="/plugins/plugin-multi-image-keyboard-response.js"></script>
+
+    <script src="https://unpkg.com/@jspsych/plugin-image-slider-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-initialize-camera@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-initialize-microphone@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-instructions@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-maxdiff@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-mirror-camera@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-preload@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-reconstruction@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-resize@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-same-different-html@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-same-different-image@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-serial-reaction-time@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-serial-reaction-time-mouse@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-sketchpad@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-html-form@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-likert@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-multi-choice@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-multi-select@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-text@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-video-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-video-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-video-slider-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-virtual-chinrest@3.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-visual-search-circle@2.2.0"></script>
+
+    <script src="https://cdn.jsdelivr.net/gh/jspsych/jspsych@jspsych@7.0.0/examples/js/webgazer/webgazer.js"></script>
+
+    <script src="https://unpkg.com/@jspsych/extension-webgazer@1.2.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-webgazer-calibrate@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-webgazer-init-camera@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-webgazer-validate@2.1.0"></script>
+
+    <script src="https://unpkg.com/@jspsych/extension-record-video@1.2.0"></script>
+    <script src="https://unpkg.com/@jspsych/extension-mouse-tracking@1.0.0"></script>
+
+    <link href="https://unpkg.com/jspsych@7.3.1/css/jspsych.css" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="https://unpkg.com/@jspsych/plugin-survey@2.1.0/css/survey.css">
+
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #f0f0f0;
+      }
+      #jspsych-target {
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="jspsych-target"></div>
+
+    
+  
+
+<script id="generated-script">
+
+      const jsPsych = initJsPsych({
+        on_finish: function() {
+          jsPsych.data.displayData();
+      },
+      });
+
+      const timeline = [];
+
+      const welcome = {
+        type: jsPsychHtmlButtonResponse,
+        stimulus: "Trial Preview",
+        choices: ['View'],
+      };
+
+      timeline.push(welcome);
+
+      
+    const test_stimuli_plugin_webgazer_init_camera = [{instructions: "`\n            <p>Position your head so that the webcam has a good view of your eyes.</p>\n            <p>Center your face in the box and look directly towards the camera.</p>\n            <p>It is important that you try and keep your head reasonably still throughout the experiment, so please take a moment to adjust your setup to be comfortable.</p>\n            <p>When your face is centered in the box and the box is green, you can click to continue.</p>`",
+button_text: "Continue"}];
+
+    
+    const plugin_webgazer_init_camera_timeline = {
+    type: jsPsychWebgazerInitCamera, 
+    instructions: jsPsych.timelineVariable("instructions"),
+button_text: jsPsych.timelineVariable("button_text"),
+    data: {
+      load_time: "load_time",
+    },};;
+    
+    const plugin_webgazer_init_camera_procedure = {
+    timeline: 
+    [
+    
+    
+    plugin_webgazer_init_camera_timeline 
+    ],
+    timeline_variables: test_stimuli_plugin_webgazer_init_camera,
+  };
+    timeline.push(plugin_webgazer_init_camera_procedure);
+  ;
+    const test_stimuli_plugin_webgazer_calibrate = [{calibration_points: [[10,10],[10,50],[10,90],[50,10],[50,50],[50,90],[90,10],[90,50],[90,90]],
+calibration_mode: "click",
+point_size: 20,
+repetitions_per_point: 1,
+randomize_calibration_order: false,
+time_to_saccade: 1000,
+time_per_point: 1000}];
+
+    
+    const plugin_webgazer_calibrate_timeline = {
+    type: jsPsychWebgazerCalibrate, 
+    calibration_points: jsPsych.timelineVariable("calibration_points"),
+calibration_mode: jsPsych.timelineVariable("calibration_mode"),
+point_size: jsPsych.timelineVariable("point_size"),
+repetitions_per_point: jsPsych.timelineVariable("repetitions_per_point"),
+randomize_calibration_order: jsPsych.timelineVariable("randomize_calibration_order"),
+time_to_saccade: jsPsych.timelineVariable("time_to_saccade"),
+time_per_point: jsPsych.timelineVariable("time_per_point"),
+    data: {
+      
+    },};;
+    
+    const plugin_webgazer_calibrate_procedure = {
+    timeline: 
+    [
+    
+    
+    plugin_webgazer_calibrate_timeline 
+    ],
+    timeline_variables: test_stimuli_plugin_webgazer_calibrate,
+  };
+    timeline.push(plugin_webgazer_calibrate_procedure);
+  ;
+    const test_stimuli_plugin_webgazer_validate = [{validation_points: [[10,10],[10,50],[10,90],[50,10],[50,50],[50,90],[90,10],[90,50],[90,90]],
+validation_point_coordinates: "percent",
+roi_radius: 200,
+randomize_validation_order: false,
+time_to_saccade: 1000,
+validation_duration: 2000,
+point_size: 20,
+show_validation_data: false}];
+
+    
+    const plugin_webgazer_validate_timeline = {
+    type: jsPsychWebgazerValidate, validation_points: jsPsych.timelineVariable("validation_points"),
+validation_point_coordinates: jsPsych.timelineVariable("validation_point_coordinates"),
+roi_radius: jsPsych.timelineVariable("roi_radius"),
+randomize_validation_order: jsPsych.timelineVariable("randomize_validation_order"),
+time_to_saccade: jsPsych.timelineVariable("time_to_saccade"),
+validation_duration: jsPsych.timelineVariable("validation_duration"),
+point_size: jsPsych.timelineVariable("point_size"),
+show_validation_data: jsPsych.timelineVariable("show_validation_data"),
+    data: {
+      task: 'validate'
+    }};;
+    
+    const plugin_webgazer_validate_procedure = {
+    timeline: 
+    [
+    
+    
+    plugin_webgazer_validate_timeline 
+    ],
+    timeline_variables: test_stimuli_plugin_webgazer_validate,
+  };
+    timeline.push(plugin_webgazer_validate_procedure);
+  ;
+    const test_stimuli_plugin_webgazer_recalibrate = [{}];
+
+    ;
+    
+    const plugin_webgazer_recalibrate_procedure = {
+    timeline: 
+    [
+    
+    
+    
+    ],
+    timeline_variables: test_stimuli_plugin_webgazer_recalibrate,
+  };
+    timeline.push(plugin_webgazer_recalibrate_procedure);
+  ;
+    const recalibrate_timeline = {
+        timeline: [
+        plugin_webgazer_calibrate_procedure, plugin_webgazer_validate_procedure],
+        conditional_function: function(){
+          var validation_data = jsPsych.data.get().filter({task: 'validate'}).values()[0];
+          return validation_data.percent_in_roi.some(function(x){
+            var minimum_percent_acceptable = 50;
+            return x < minimum_percent_acceptable;
+          });
+        },
+        data: {
+          phase: 'recalibration'
+        }
+      } 
+ const recalibrateWebGazer_procedure = {
+    timeline: 
+    [recalibrate_timeline],
+    timeline_variables: test_stimuli_plugin_webgazer_recalibrate,
+  };
+    timeline.push(recalibrateWebGazer_procedure);
+  ;const calibration_done = {
+        type: jsPsychHtmlButtonResponse,
+        stimulus: `
+          <p>Great, we're done with calibration!</p>
+        `,
+        choices: ['OK']
+      }
+    timeline.push(calibration_done);
+
+
+      jsPsych.run(timeline);
+</script></body></html>

@@ -10,7 +10,6 @@ import cors from "cors";
 import { Parser } from "json2csv";
 import dotenv from "dotenv";
 import { spawn } from "child_process"; // Para script de extract-metadata.mjs en run-experiment
-import { v4 as uuidv4 } from "uuid";
 
 dotenv.config();
 
@@ -40,125 +39,18 @@ mongoose.connect(process.env.MONGODB_URI).then(async () => {
   }
 });
 
-const ExperimentSchema = new mongoose.Schema(
-  {
-    experimentID: { type: String, required: true, unique: true },
-    name: { type: String, required: true },
-    description: { type: String },
-    createdAt: { type: Date, default: Date.now },
-    author: { type: String },
-  },
-  { timestamps: true }
-);
-
-const Experiment =
-  mongoose.models.Experiment || mongoose.model("Experiment", ExperimentSchema);
-
-// Listar experimentos
-app.get("/api/load-experiments", async (req, res) => {
-  try {
-    const experiments = await Experiment.find({}).sort({ createdAt: -1 });
-    res.json({ experiments });
-  } catch (error) {
-    res.status(500).json({ experiments: [], error: error.message });
-  }
-});
-
-// Obtener experimento por experimentID
-app.get("/api/experiment/:experimentID", async (req, res) => {
-  try {
-    const experiment = await Experiment.findOne({
-      experimentID: req.params.experimentID,
-    });
-    if (!experiment) {
-      return res.status(404).json({ experiment: null });
-    }
-    res.json({ experiment });
-  } catch (error) {
-    res.status(500).json({ experiment: null, error: error.message });
-  }
-});
-
-// Endpoint para crear experimento
-app.post("/api/create-experiment", async (req, res) => {
-  try {
-    const { name, description, author } = req.body;
-    if (!name)
-      return res.status(400).json({ success: false, error: "Name required" });
-
-    const experimentID = uuidv4();
-    const experiment = await Experiment.create({
-      experimentID,
-      name,
-      description,
-      author,
-    });
-
-    res.json({ success: true, experiment });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Eliminar experimento
-app.delete("/api/delete-experiment/:experimentID", async (req, res) => {
-  try {
-    const { experimentID } = req.params;
-    const deleted = await Experiment.findOneAndDelete({ experimentID });
-    await Trials.deleteMany({ experimentID });
-    await Config.deleteMany({ experimentID });
-    await SessionResult.deleteMany({ experimentID });
-
-    // Opcional: borrar archivos HTML
-    const experimentHtmlPath = path.join(
-      experimentsHtmlDir,
-      `experiment_${experimentID}.html`
-    );
-    if (fs.existsSync(experimentHtmlPath)) fs.unlinkSync(experimentHtmlPath);
-
-    const previewHtmlPath = path.join(
-      trialsPreviewsHtmlDir,
-      `trials_preview_${experimentID}.html`
-    );
-    if (fs.existsSync(previewHtmlPath)) fs.unlinkSync(previewHtmlPath);
-
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 // Setup static file serving
 app.use(express.static(path.join(__dirname, "dist"))); // Serve dist/ at root level
 app.use(express.static(path.join(__dirname))); // Serve root directory
 app.use(express.static(path.join(__dirname, "plugins"))); // Serve app/ directory
 
-const experimentsHtmlDir = path.join(__dirname, "experiments_html");
-const trialsPreviewsHtmlDir = path.join(__dirname, "trials_previews_html");
-if (!fs.existsSync(experimentsHtmlDir)) fs.mkdirSync(experimentsHtmlDir);
-if (!fs.existsSync(trialsPreviewsHtmlDir)) fs.mkdirSync(trialsPreviewsHtmlDir);
-
-// Modifica los endpoints para servir los archivos
-app.get("/experiment/:experimentID", (req, res) => {
-  const experimentHtmlPath = path.join(
-    experimentsHtmlDir,
-    `experiment_${req.params.experimentID}.html`
-  );
-  if (!fs.existsSync(experimentHtmlPath)) {
-    return res.status(404).send("Experiment not found");
-  }
-  res.sendFile(experimentHtmlPath);
+// Serve the experiment page
+app.get("/experiment", (req, res) => {
+  res.sendFile(path.join(__dirname, "experiment.html"));
 });
 
-app.get("/trials-preview/:experimentID", (req, res) => {
-  const previewHtmlPath = path.join(
-    trialsPreviewsHtmlDir,
-    `trials_preview_${req.params.experimentID}.html`
-  );
-  if (!fs.existsSync(previewHtmlPath)) {
-    return res.status(404).send("Preview not found");
-  }
-  res.sendFile(previewHtmlPath);
+app.get("/trials-preview", (req, res) => {
+  res.sendFile(path.join(__dirname, "trials_preview.html"));
 });
 
 const metadataPath = path.resolve(__dirname, "metadata");
@@ -304,7 +196,6 @@ app.delete("/api/delete-file/:folder/:filename", async (req, res) => {
 
 const ConfigSchema = new mongoose.Schema(
   {
-    experimentID: { type: String, required: true },
     data: { type: Object, required: true },
     isDevMode: { type: Boolean, default: false },
   },
@@ -313,19 +204,14 @@ const ConfigSchema = new mongoose.Schema(
 const Config = mongoose.models.Config || mongoose.model("Config", ConfigSchema);
 
 const TrialsSchema = new mongoose.Schema(
-  {
-    experimentID: { type: String, required: true },
-    data: { type: Object, required: true },
-  },
+  { data: { type: Object, required: true } },
   { timestamps: true }
 );
 const Trials = mongoose.models.Trials || mongoose.model("Trials", TrialsSchema);
 
-app.get("/api/load-trials/:experimentID", async (req, res) => {
+app.get("/api/load-trials", async (req, res) => {
   try {
-    const trialsDoc = await Trials.findOne({
-      experimentID: req.params.experimentID,
-    });
+    const trialsDoc = await Trials.findOne({});
     if (!trialsDoc) return res.json({ trials: null });
     res.json({ trials: trialsDoc.data });
   } catch (error) {
@@ -333,11 +219,11 @@ app.get("/api/load-trials/:experimentID", async (req, res) => {
   }
 });
 
-app.post("/api/save-trials/:experimentID", async (req, res) => {
+app.post("/api/save-trials", async (req, res) => {
   try {
     const trials = req.body;
     const updated = await Trials.findOneAndUpdate(
-      { experimentID: req.params.experimentID },
+      {},
       { data: trials },
       { upsert: true, new: true }
     );
@@ -347,14 +233,14 @@ app.post("/api/save-trials/:experimentID", async (req, res) => {
   }
 });
 
-app.delete("/api/trials/:id/:experimentID", async (req, res) => {
+app.delete("/api/trials/:id", async (req, res) => {
   try {
     // Convierte el id a número para que coincida con el tipo en la base de datos
     const idToDelete = Number(req.params.id);
 
     // Elimina el trial del array trials dentro del documento
     const updated = await Trials.findOneAndUpdate(
-      { experimentID: req.params.experimentID, "data.trials.id": idToDelete },
+      { "data.trials.id": idToDelete },
       { $pull: { "data.trials": { id: idToDelete } } },
       { new: true }
     );
@@ -396,9 +282,7 @@ async function regeneratePluginsFromDatabase() {
     console.log("🔄 Regenerating plugins from database...");
 
     // Obtener plugins de la BD
-    const pluginConfigDoc = await PluginConfig.findOne({
-      experimentID: req.params.experimentID,
-    });
+    const pluginConfigDoc = await PluginConfig.findOne({});
     const plugins = pluginConfigDoc?.plugins || [];
 
     if (plugins.length === 0) {
@@ -714,11 +598,9 @@ app.get("/api/load-plugins", async (req, res) => {
   }
 });
 
-app.get("/api/load-config/:experimentID", async (req, res) => {
+app.get("/api/load-config", async (req, res) => {
   try {
-    const configDoc = await Config.findOne({
-      experimentID: req.params.experimentID,
-    });
+    const configDoc = await Config.findOne({});
     if (!configDoc) return res.json({ config: null, isDevMode: false });
     res.json({ config: configDoc.data, isDevMode: configDoc.isDevMode });
   } catch (error) {
@@ -729,11 +611,11 @@ app.get("/api/load-config/:experimentID", async (req, res) => {
 });
 
 // API endpoint to save configuration and generated code
-app.post("/api/save-config/:experimentID", async (req, res) => {
+app.post("/api/save-config", async (req, res) => {
   try {
     const { config, isDevMode } = req.body;
     const updated = await Config.findOneAndUpdate(
-      { experimentID: req.params.experimentID },
+      {},
       { data: config, isDevMode: isDevMode },
       { upsert: true, new: true }
     );
@@ -743,25 +625,15 @@ app.post("/api/save-config/:experimentID", async (req, res) => {
   }
 });
 
-app.post("/api/run-experiment/:experimentID", async (req, res) => {
+app.post("/api/run-experiment", async (req, res) => {
   try {
     const { generatedCode } = req.body;
-    const experimentID = req.params.experimentID;
 
-    // Ruta de template y destino
-    const templatePath = path.join(
-      __dirname,
-      "templates",
-      "experiment_template.html"
-    );
-    const experimentHtmlPath = path.join(
-      experimentsHtmlDir,
-      `experiment_${experimentID}.html`
-    );
-
-    // Copia el template si no existe
+    const experimentHtmlPath = path.join(__dirname, "experiment.html");
     if (!fs.existsSync(experimentHtmlPath)) {
-      fs.copyFileSync(templatePath, experimentHtmlPath);
+      return res
+        .status(500)
+        .json({ success: false, error: "experiment.html not found" });
     }
     let html = fs.readFileSync(experimentHtmlPath, "utf8");
     const $ = cheerio.load(html);
@@ -798,7 +670,7 @@ app.post("/api/run-experiment/:experimentID", async (req, res) => {
     res.json({
       success: true,
       message: "Experiment built and ready to run",
-      experimentUrl: `http://localhost:3000/experiment/${experimentID}`,
+      experimentUrl: "http://localhost:3000/experiment",
     });
   } catch (error) {
     console.error(`Error running experiment: ${error.message}`);
@@ -806,24 +678,17 @@ app.post("/api/run-experiment/:experimentID", async (req, res) => {
   }
 });
 
-app.post("/api/trials-preview/:experimentID", async (req, res) => {
+app.post("/api/trials-preview", async (req, res) => {
   try {
     const { generatedCode } = req.body;
-    const experimentID = req.params.experimentID;
 
-    const templatePath = path.join(
-      __dirname,
-      "templates",
-      "trials_preview_template.html"
-    );
-    const previewHtmlPath = path.join(
-      trialsPreviewsHtmlDir,
-      `trials_preview_${experimentID}.html`
-    );
-    if (!fs.existsSync(previewHtmlPath)) {
-      fs.copyFileSync(templatePath, previewHtmlPath);
+    const experimentHtmlPath = path.join(__dirname, "trials_preview.html");
+    if (!fs.existsSync(experimentHtmlPath)) {
+      return res
+        .status(500)
+        .json({ success: false, error: "trials_preview.html not found" });
     }
-    let html = fs.readFileSync(previewHtmlPath, "utf8");
+    let html = fs.readFileSync(experimentHtmlPath, "utf8");
     const $ = cheerio.load(html);
 
     // Elimina scripts previos de generated-script
@@ -841,12 +706,12 @@ app.post("/api/trials-preview/:experimentID", async (req, res) => {
     );
 
     // Guarda el HTML modificado
-    fs.writeFileSync(previewHtmlPath, $.html());
+    fs.writeFileSync(experimentHtmlPath, $.html());
 
     res.json({
       success: true,
       message: "Experiment built and ready to run",
-      experimentUrl: `http://localhost:3000/trials_preview/${experimentID}`,
+      experimentUrl: "http://localhost:3000/trials_preview",
     });
   } catch (error) {
     console.error(`Error running experiment: ${error.message}`);
@@ -856,7 +721,6 @@ app.post("/api/trials-preview/:experimentID", async (req, res) => {
 
 // Modelo para resultados individuales por participante
 const SessionResultSchema = new mongoose.Schema({
-  experimentID: { type: String, required: true },
   sessionId: { type: String, required: true, unique: true },
   createdAt: { type: Date, default: Date.now },
   data: { type: Array, default: [] },
@@ -896,7 +760,7 @@ const SessionResult =
 //   }
 // });
 
-app.post("/api/append-result/:experimentID", async (req, res) => {
+app.post("/api/append-result", async (req, res) => {
   try {
     let { sessionId } = req.body;
     if (!sessionId)
@@ -905,10 +769,7 @@ app.post("/api/append-result/:experimentID", async (req, res) => {
         .json({ success: false, error: "sessionId required" });
 
     // Solo crear si no existe
-    let existing = await SessionResult.findOne({
-      experimentID: req.params.experimentID,
-      sessionId,
-    });
+    let existing = await SessionResult.findOne({ sessionId });
     if (existing) {
       return res
         .status(409)
@@ -916,14 +777,11 @@ app.post("/api/append-result/:experimentID", async (req, res) => {
     }
 
     const created = await SessionResult.create({
-      experimentID: req.params.experimentID,
       sessionId,
     });
 
     // Obtener participantNumber
-    const sessions = await SessionResult.find({
-      experimentID: req.params.experimentID,
-    }).sort({ createdAt: 1 });
+    const sessions = await SessionResult.find({}).sort({ createdAt: 1 });
     const participantNumber =
       sessions.findIndex((s) => s.sessionId === sessionId) + 1;
 
@@ -933,7 +791,7 @@ app.post("/api/append-result/:experimentID", async (req, res) => {
   }
 });
 
-app.put("/api/append-result/:experimentID", async (req, res) => {
+app.put("/api/append-result", async (req, res) => {
   try {
     let { sessionId, response } = req.body;
     if (!sessionId || !response)
@@ -944,10 +802,7 @@ app.put("/api/append-result/:experimentID", async (req, res) => {
     if (typeof response === "string") response = JSON.parse(response);
 
     // Solo añadir si existe
-    let existing = await SessionResult.findOne({
-      experimentID: req.params.experimentID,
-      sessionId,
-    });
+    let existing = await SessionResult.findOne({ sessionId });
     if (!existing) {
       return res
         .status(404)
@@ -958,9 +813,7 @@ app.put("/api/append-result/:experimentID", async (req, res) => {
     await existing.save();
 
     // Obtener participantNumber
-    const sessions = await SessionResult.find({
-      experimentID: req.params.experimentID,
-    }).sort({ createdAt: 1 });
+    const sessions = await SessionResult.find({}).sort({ createdAt: 1 });
     const participantNumber =
       sessions.findIndex((s) => s.sessionId === sessionId) + 1;
 
@@ -971,12 +824,9 @@ app.put("/api/append-result/:experimentID", async (req, res) => {
 });
 
 // Endpoint para obtener los resultados de una sesión
-app.get("/api/session-results/:experimentID", async (req, res) => {
+app.get("/api/session-results", async (req, res) => {
   try {
-    const sessions = await SessionResult.find(
-      { experimentID: req.params.experimentID },
-      { data: 0 }
-    ).sort({
+    const sessions = await SessionResult.find({}, { data: 0 }).sort({
       createdAt: -1,
     });
     res.json({ sessions });
@@ -985,15 +835,12 @@ app.get("/api/session-results/:experimentID", async (req, res) => {
   }
 });
 
-app.get("/api/download-session/:sessionId/:experimentID", async (req, res) => {
+app.get("/api/download-session/:sessionId", async (req, res) => {
   try {
     const { sessionId } = req.params;
 
     // 1. Buscar el documento
-    const doc = await SessionResult.findOne({
-      experimentID: req.params.experimentID,
-      sessionId,
-    });
+    const doc = await SessionResult.findOne({ sessionId });
     if (!doc) return res.status(404).send("Session not found");
 
     // 2. Filtrar si es necesario
@@ -1025,25 +872,21 @@ app.get("/api/download-session/:sessionId/:experimentID", async (req, res) => {
   }
 });
 
-app.delete(
-  "/api/session-results/:sessionId/:experimentID",
-  async (req, res) => {
-    try {
-      const deleted = await SessionResult.findOneAndDelete({
-        experimentID: req.params.experimentID,
-        sessionId: req.params.sessionId,
-      });
-      if (!deleted) {
-        return res
-          .status(404)
-          .json({ success: false, error: "Session not found" });
-      }
-      res.json({ success: true });
-    } catch (err) {
-      res.status(500).json({ success: false, error: err.message });
+app.delete("/api/session-results/:sessionId", async (req, res) => {
+  try {
+    const deleted = await SessionResult.findOneAndDelete({
+      sessionId: req.params.sessionId,
+    });
+    if (!deleted) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Session not found" });
     }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
-);
+});
 
 // Middleware to handle 404 errors
 app.use((req, res) => {

@@ -7,12 +7,13 @@ import TrialsProvider from "./providers/TrialsProvider";
 import UrlProvider from "./providers/UrlProvider";
 import ResultsList from "./components/ResultsList";
 import ExperimentPreview from "./components/ExperimentPreview";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { FaTimeline } from "react-icons/fa6";
 import { PiGearSixBold } from "react-icons/pi";
 import CodeEditor from "./components/CodeEditor";
 import useDevMode from "./hooks/useDevMode";
+import { useNavigate, useParams } from "react-router-dom";
 
 function ExperimentBuilder() {
   const [showTimeline, setShowTimeline] = useState(true);
@@ -26,6 +27,21 @@ function ExperimentBuilder() {
   const isResizingConfig = useRef(false);
 
   const { isDevMode, setDevMode } = useDevMode();
+
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    async function fetchExperiment() {
+      const res = await fetch(`/api/experiment/${id}`);
+      const data = await res.json();
+      if (!res.ok || !data.experiment) {
+        navigate("/home");
+      }
+      // Si quieres guardar el experimento, hazlo aquí
+    }
+    fetchExperiment();
+  }, [id, navigate]);
 
   const handleMouseMove = (e: MouseEvent) => {
     if (isResizingTimeline.current) {

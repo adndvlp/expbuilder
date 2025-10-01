@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useExperimentID } from "../../../../hooks/useExperimentID";
 const API_URL = import.meta.env.VITE_API_URL;
 
 type UseTrialPersistenceProps = {
@@ -15,18 +16,22 @@ export function useTrialPersistence({
   setSelectedTrial,
 }: UseTrialPersistenceProps) {
   // Guardar trials en la base de datos cuando cambian
+  const experimentID = useExperimentID();
 
   useEffect(() => {
     const saveTrials = async () => {
       try {
         const savedTrials = { trials };
-        const response = await fetch(`${API_URL}/api/save-trials`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(savedTrials),
-          credentials: "include",
-          mode: "cors",
-        });
+        const response = await fetch(
+          `${API_URL}/api/save-trials/${experimentID}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(savedTrials),
+            credentials: "include",
+            mode: "cors",
+          }
+        );
         if (!response.ok) {
           throw new Error(`Server responded with status: ${response.status}`);
         }
@@ -42,9 +47,12 @@ export function useTrialPersistence({
   // Borrar trial de la base de datos
   const deleteTrial = async (id: number) => {
     try {
-      const response = await fetch(`${API_URL}/api/trials/${id}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `${API_URL}/api/trials/${id}/${experimentID}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`Server responded with status: ${response.status}`);
