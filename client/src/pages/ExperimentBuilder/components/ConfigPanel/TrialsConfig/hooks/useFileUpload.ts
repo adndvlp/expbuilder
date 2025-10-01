@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from "react";
+import { useExperimentID } from "../../../../hooks/useExperimentID";
 const API_URL = import.meta.env.VITE_API_URL;
 
 type UseFileUploadProps = {
@@ -14,6 +15,8 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+
+  const experimentID = useExperimentID();
 
   // Agregar caché de archivos
   const filesCache = useRef<FileCache>({});
@@ -38,7 +41,7 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
     }
 
     // Si no hay caché o expiró, hacer fetch
-    fetch(`${API_URL}/api/list-files/${folder}`)
+    fetch(`${API_URL}/api/list-files/${folder}/${experimentID}`)
       .then((res) => res.json())
       .then((data) => {
         setUploadedFiles(data.files);
@@ -67,10 +70,13 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
       formData.append("file", file);
 
       try {
-        const response = await fetch(`${API_URL}/api/upload-file`, {
-          method: "POST",
-          body: formData,
-        });
+        const response = await fetch(
+          `${API_URL}/api/upload-file/${experimentID}`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Error at file upload");
 
@@ -93,10 +99,13 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
     });
 
     try {
-      const response = await fetch(`${API_URL}/api/upload-files-folder`, {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(
+        `${API_URL}/api/upload-files-folder/${experimentID}`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
       const data = await response.json();
       if (!response.ok)
         throw new Error(data.error || "Error at uploading files");
@@ -111,9 +120,12 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
 
   const handleDeleteFile = async (fileName: string) => {
     const filename = fileName.split("/").pop();
-    await fetch(`${API_URL}/api/delete-file/${folder}/${filename}`, {
-      method: "DELETE",
-    });
+    await fetch(
+      `${API_URL}/api/delete-file/${folder}/${filename}/${experimentID}`,
+      {
+        method: "DELETE",
+      }
+    );
     invalidateCache();
     setUploadedFiles((prev) => prev.filter((i) => i.name !== fileName));
   };

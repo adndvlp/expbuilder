@@ -122,6 +122,12 @@ app.delete("/api/delete-experiment/:experimentID", async (req, res) => {
     );
     if (fs.existsSync(previewHtmlPath)) fs.unlinkSync(previewHtmlPath);
 
+    // Borrar todos los archivos subidos del experimento
+    const experimentUploadsDir = path.join(uploadsDir, experimentID);
+    if (fs.existsSync(experimentUploadsDir)) {
+      fs.rmSync(experimentUploadsDir, { recursive: true, force: true });
+    }
+
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -179,21 +185,18 @@ app.get("/api/plugins-list", (req, res) => {
 });
 
 const uploadsDir = path.join(__dirname, "uploads");
-const imgDir = path.join(uploadsDir, "img");
-const audDir = path.join(uploadsDir, "aud");
-const vidDir = path.join(uploadsDir, "vid");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
-if (!fs.existsSync(imgDir)) fs.mkdirSync(imgDir);
-if (!fs.existsSync(audDir)) fs.mkdirSync(audDir);
-if (!fs.existsSync(vidDir)) fs.mkdirSync(vidDir);
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
+    const experimentID = req.body.experimentID || req.params.experimentID;
     const ext = path.extname(file.originalname).toLowerCase();
-    let folder = uploadsDir;
-    if (/\.(png|jpg|jpeg|gif)$/i.test(ext)) folder = imgDir;
-    else if (/\.(mp3|wav|ogg|m4a)$/i.test(ext)) folder = audDir;
-    else if (/\.(mp4|webm|mov|avi)$/i.test(ext)) folder = vidDir;
+    let type = "others";
+    if (/\.(png|jpg|jpeg|gif)$/i.test(ext)) type = "img";
+    else if (/\.(mp3|wav|ogg|m4a)$/i.test(ext)) type = "aud";
+    else if (/\.(mp4|webm|mov|avi)$/i.test(ext)) type = "vid";
+    const folder = path.join(uploadsDir, experimentID, type);
+    fs.mkdirSync(folder, { recursive: true });
     cb(null, folder);
   },
   filename: function (req, file, cb) {
@@ -204,58 +207,66 @@ const upload = multer({ storage });
 
 app.use("/uploads", express.static(uploadsDir));
 
-app.post("/api/upload-file", upload.single("file"), (req, res) => {
-  if (!req.file || !req.file.path) {
-    return res.status(400).json({ error: "No file uploaded" });
+app.post(
+  "/api/upload-file/:experimentID",
+  upload.single("file"),
+  (req, res) => {
+    if (!req.file || !req.file.path) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+    const experimentID = req.params.experimentID;
+    const type = path.basename(path.dirname(req.file.path));
+    res.json({
+      fileUrl: `/uploads/${experimentID}/${type}/${req.file.filename}`,
+      folder: type,
+    });
   }
-  let folder = "others";
-  if (req.file.destination === imgDir) folder = "img";
-  else if (req.file.destination === audDir) folder = "aud";
-  else if (req.file.destination === vidDir) folder = "vid";
-  res.json({ fileUrl: `/uploads/${folder}/${req.file.filename}`, folder });
-});
+);
 
-app.post("/api/upload-files-folder", upload.array("files"), (req, res) => {
-  if (!req.files || req.files.length === 0) {
-    return res.status(400).json({ error: "No files uploaded" });
+app.post(
+  "/api/upload-files-folder/:experimentID",
+  upload.array("files"),
+  (req, res) => {
+    const experimentID = req.params.experimentID;
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: "No files uploaded" });
+    }
+    const fileUrls = req.files.map((file) => {
+      const type = path.basename(path.dirname(file.path));
+      return `/uploads/${experimentID}/${type}/${file.filename}`;
+    });
+    res.json({
+      fileUrls,
+      info: "Archivos subidos localmente.",
+    });
   }
-  const fileUrls = req.files.map((file) => {
-    let folder = "others";
-    if (file.destination === imgDir) folder = "img";
-    else if (file.destination === audDir) folder = "aud";
-    else if (file.destination === vidDir) folder = "vid";
-    return `/uploads/${folder}/${file.filename}`;
-  });
-  res.json({
-    fileUrls,
-    info: "Archivos subidos localmente.",
-  });
-});
+);
 
-app.get("/api/list-files/:folder", async (req, res) => {
-  const folder = req.params.folder;
-
+app.get("/api/list-files/:type/:experimentID", async (req, res) => {
+  const { experimentID, type } = req.params;
   try {
     let files = [];
-    let foldersToList = [];
-    if (folder === "all") {
-      foldersToList = [imgDir, audDir, vidDir];
-    } else if (folder === "img") {
-      foldersToList = [imgDir];
-    } else if (folder === "aud") {
-      foldersToList = [audDir];
-    } else if (folder === "vid") {
-      foldersToList = [vidDir];
+    if (type === "all") {
+      const types = ["img", "aud", "vid", "others"];
+      types.forEach((t) => {
+        const dir = path.join(uploadsDir, experimentID, t);
+        if (fs.existsSync(dir)) {
+          const typeFiles = fs.readdirSync(dir).map((filename) => ({
+            name: filename,
+            url: `/uploads/${experimentID}/${t}/${filename}`,
+            type: t,
+          }));
+          files = files.concat(typeFiles);
+        }
+      });
     } else {
-      foldersToList = [uploadsDir];
-    }
-    for (const dir of foldersToList) {
+      const dir = path.join(uploadsDir, experimentID, type);
       if (fs.existsSync(dir)) {
-        const dirFiles = fs.readdirSync(dir).map((filename) => ({
-          name: `${path.basename(dir)}/${filename}`,
-          url: `/uploads/${path.basename(dir)}/${filename}`,
+        files = fs.readdirSync(dir).map((filename) => ({
+          name: filename,
+          url: `/uploads/${experimentID}/${type}/${filename}`,
+          type,
         }));
-        files = files.concat(dirFiles);
       }
     }
     res.json({ files });
@@ -264,43 +275,23 @@ app.get("/api/list-files/:folder", async (req, res) => {
   }
 });
 
-app.delete("/api/delete-file/:folder/:filename", async (req, res) => {
-  let { folder, filename } = req.params;
-  let deleted = false;
-  let lastError = null;
-  let foldersToDelete = [];
-  if (folder === "all") {
-    foldersToDelete = [imgDir, audDir, vidDir];
-  } else if (folder === "img") {
-    foldersToDelete = [imgDir];
-  } else if (folder === "aud") {
-    foldersToDelete = [audDir];
-  } else if (folder === "vid") {
-    foldersToDelete = [vidDir];
-  } else {
-    foldersToDelete = [uploadsDir];
-  }
-  for (const dir of foldersToDelete) {
-    const filePath = path.join(dir, filename);
-    if (fs.existsSync(filePath)) {
-      try {
+app.delete(
+  "/api/delete-file/:type/:filename/:experimentID",
+  async (req, res) => {
+    const { experimentID, type, filename } = req.params;
+    const filePath = path.join(uploadsDir, experimentID, type, filename);
+    try {
+      if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
-        deleted = true;
-        break;
-      } catch (err) {
-        lastError = err;
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ success: false, error: "File not found" });
       }
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
     }
   }
-  if (deleted) {
-    res.json({ success: true });
-  } else {
-    res.status(404).json({
-      success: false,
-      error: lastError ? lastError.message : "File not found",
-    });
-  }
-});
+);
 
 const ConfigSchema = new mongoose.Schema(
   {
