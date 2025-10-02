@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useExperimentID } from "../../../../hooks/useExperimentID";
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -17,32 +16,6 @@ export function useTrialPersistence({
 }: UseTrialPersistenceProps) {
   // Guardar trials en la base de datos cuando cambian
   const experimentID = useExperimentID();
-
-  useEffect(() => {
-    const saveTrials = async () => {
-      try {
-        const savedTrials = { trials };
-        const response = await fetch(
-          `${API_URL}/api/save-trials/${experimentID}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(savedTrials),
-            credentials: "include",
-            mode: "cors",
-          }
-        );
-        if (!response.ok) {
-          throw new Error(`Server responded with status: ${response.status}`);
-        }
-      } catch (error) {
-        console.error("Error saving trial:", error);
-      }
-    };
-    if (trials.length > 0) {
-      saveTrials();
-    }
-  }, [trials]);
 
   // Borrar trial de la base de datos
   const deleteTrial = async (id: number) => {

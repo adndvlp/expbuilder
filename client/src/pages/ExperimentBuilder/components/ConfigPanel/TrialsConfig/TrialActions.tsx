@@ -1,15 +1,27 @@
 import React from "react";
 
 type TrialActionsProps = {
+  onSave: () => void;
+  canSave: boolean;
   onDelete: () => void;
-  // onSave: () => void;
+  isLoop?: boolean;
 };
 
 const TrialActions: React.FC<TrialActionsProps> = ({
   onDelete,
-  //  onSave
+  onSave,
+  canSave,
+  isLoop,
 }) => (
   <div className="mt-8 gap-6 justify-center">
+    <button
+      onClick={onSave}
+      className="mt-4 save-button mb-4 w-full p-3 bg-green-600 hover:bg-green-700 font-medium rounded"
+      disabled={!canSave}
+    >
+      {isLoop ? "Save Loop" : "Save trial"}
+    </button>
+
     <br />
     <button
       onClick={() => {

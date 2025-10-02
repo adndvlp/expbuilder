@@ -171,7 +171,6 @@ export default function TrialsProvider({ children }: Props) {
       return [...newTrials];
     });
   }
-  // ...existing code...
 
   const removeLoop = (loopId: string) => {
     setTrials((prevTrials) => {
@@ -209,6 +208,16 @@ export default function TrialsProvider({ children }: Props) {
         }
       });
   }, []);
+
+  useEffect(() => {
+    if (trials.length === 0) return;
+    // Guardar trials en backend cuando cambian
+    fetch(`${API_URL}/api/save-trials/${experimentID}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ trials }),
+    });
+  }, [trials]);
 
   return (
     <TrialsContext.Provider

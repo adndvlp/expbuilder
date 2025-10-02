@@ -237,9 +237,11 @@ function WebGazer({ webgazerPlugins }: Props) {
 
   // guardar y actualizar el estado global del ensayo
 
-  useEffect(() => {
+  const canSave = !!trialName && !isLoadingTrial;
+  const handleSave = () => {
     // Evita autoguardado si no hay nombre válido o si no hay estímulo
-    if (!trialName || !canSave) return;
+    // if (!trialName || !canSave) return;
+    if (!canSave) return;
 
     if (isInitialFileLoad.current) {
       isInitialFileLoad.current = false;
@@ -286,6 +288,9 @@ function WebGazer({ webgazerPlugins }: Props) {
         setSaveIndicator(false);
       }, 2000);
     }, 1000);
+  };
+  useEffect(() => {
+    handleSave();
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
@@ -303,8 +308,6 @@ function WebGazer({ webgazerPlugins }: Props) {
     setCsvJson([]);
     setCsvColumns([]);
   };
-
-  const canSave = !!trialName;
 
   return (
     <div id="plugin-config">
@@ -401,7 +404,11 @@ function WebGazer({ webgazerPlugins }: Props) {
       </div>
 
       {/* Save button */}
-      <TrialActions onDelete={handleDeleteTrial} />
+      <TrialActions
+        onSave={handleSave}
+        canSave={canSave}
+        onDelete={handleDeleteTrial}
+      />
     </div>
   );
 }

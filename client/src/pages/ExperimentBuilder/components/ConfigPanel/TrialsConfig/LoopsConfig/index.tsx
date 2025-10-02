@@ -10,7 +10,6 @@ import useLoopCode from "./useLoopCode";
 import { useTrialCode } from "../hooks/useTrialCode";
 import { usePluginParameters } from "../../hooks/usePluginParameters";
 import { useCsvMapper } from "../hooks/useCsvMapper";
-import { useExperimentID } from "../../../../hooks/useExperimentID";
 import { useFileUpload } from "../hooks/useFileUpload";
 
 type Props = { loop?: Loop };
@@ -21,8 +20,6 @@ function LoopsConfig({ loop }: Props) {
   const [isLoadingLoop, setIsLoadingLoop] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [saveIndicator, setSaveIndicator] = useState(false);
-
-  const experimentID = useExperimentID();
 
   const [repetitions, setRepetitions] = useState<number>(
     loop?.repetitions || 1
@@ -254,8 +251,11 @@ function LoopsConfig({ loop }: Props) {
 
   const loopCode = generateLoopCode();
 
-  useEffect(() => {
-    if (!loop || isLoadingLoop) return;
+  const canSave = !!loop && !isLoadingLoop;
+
+  const handleSave = () => {
+    // if (!loop || isLoadingLoop) return;
+    if (!canSave) return;
 
     const loopIndex = trials.findIndex(
       (item) => "trials" in item && item.id === loop.id
@@ -290,16 +290,13 @@ function LoopsConfig({ loop }: Props) {
       updatedTrials[loopIndex] = updatedLoop;
       setTrials(updatedTrials);
 
-      // Guardar en backend
-      fetch(import.meta.env.VITE_API_URL + `/api/save-trials/${experimentID}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ trials: updatedTrials }),
-      });
-
       setSaveIndicator(true);
       setTimeout(() => setSaveIndicator(false), 2000);
     }, 1000);
+  };
+
+  useEffect(() => {
+    handleSave();
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
@@ -399,7 +396,16 @@ function LoopsConfig({ loop }: Props) {
             />
           </div>
         </div>
-        {/* Delete Loop */}
+        {/* Save and Delete Loop */}
+        <button
+          onClick={handleSave}
+          className="mt-4 save-button mb-4 w-full p-3 bg-green-600 hover:bg-green-700 font-medium rounded"
+          disabled={!canSave}
+        >
+          Save loop
+        </button>
+
+        <br />
         <button
           className="remove-button"
           onClick={() => removeLoop && loop && removeLoop(loop.id)}

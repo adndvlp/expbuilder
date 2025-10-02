@@ -287,10 +287,11 @@ function TrialsConfig({ pluginName }: Props) {
     isInLoop: isTrialInLoop,
   });
 
+  const canSave = !!trialName && !isLoadingTrial;
   // guardar y actualizar el estado global del ensayo
-
-  useEffect(() => {
-    if (!trialName || isLoadingTrial) return;
+  const handleSave = () => {
+    // if (!trialName || isLoadingTrial) return;
+    if (!canSave) return;
 
     if (isInitialFileLoad.current) {
       isInitialFileLoad.current = false;
@@ -375,7 +376,9 @@ function TrialsConfig({ pluginName }: Props) {
         setSaveIndicator(false);
       }, 2000);
     }, 1000);
-
+  };
+  useEffect(() => {
+    handleSave();
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
@@ -486,7 +489,11 @@ function TrialsConfig({ pluginName }: Props) {
         ></ExtensionsConfig>
       </div>
 
-      <TrialActions onDelete={handleDeleteTrial} />
+      <TrialActions
+        onSave={handleSave}
+        canSave={canSave}
+        onDelete={handleDeleteTrial}
+      />
     </div>
   );
 }
