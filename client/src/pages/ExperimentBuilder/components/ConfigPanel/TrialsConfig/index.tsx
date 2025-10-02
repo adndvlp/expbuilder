@@ -132,7 +132,7 @@ function TrialsConfig({ pluginName }: Props) {
       file &&
       typeof file === "object" &&
       typeof file.name === "string" &&
-      (folder === "all" || file.name.startsWith(`${folder}/`))
+      (folder === "all" || file.type === folder)
   );
 
   const { handleDeleteTrial } = useTrialPersistence({

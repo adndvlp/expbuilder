@@ -191,10 +191,16 @@ const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const experimentID = req.body.experimentID || req.params.experimentID;
     const ext = path.extname(file.originalname).toLowerCase();
-    let type = "others";
+    let type = null;
     if (/\.(png|jpg|jpeg|gif)$/i.test(ext)) type = "img";
     else if (/\.(mp3|wav|ogg|m4a)$/i.test(ext)) type = "aud";
     else if (/\.(mp4|webm|mov|avi)$/i.test(ext)) type = "vid";
+
+    if (!type) {
+      // Rechaza el archivo si no es de los tipos permitidos
+      return cb(new Error("File type not allowed"), null);
+    }
+
     const folder = path.join(uploadsDir, experimentID, type);
     fs.mkdirSync(folder, { recursive: true });
     cb(null, folder);
@@ -203,6 +209,7 @@ const storage = multer.diskStorage({
     cb(null, file.originalname);
   },
 });
+
 const upload = multer({ storage });
 
 app.use("/uploads", express.static(uploadsDir));

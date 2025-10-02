@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-type UploadedFile = { name: string; url: string };
+type UploadedFile = { name: string; url: string; type: string };
 
 type FileUploaderProps = {
   uploadedFiles: UploadedFile[];

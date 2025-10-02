@@ -11,6 +11,7 @@ import { useTrialCode } from "../hooks/useTrialCode";
 import { usePluginParameters } from "../../hooks/usePluginParameters";
 import { useCsvMapper } from "../hooks/useCsvMapper";
 import { useExperimentID } from "../../../../hooks/useExperimentID";
+import { useFileUpload } from "../hooks/useFileUpload";
 
 type Props = { loop?: Loop };
 
@@ -118,14 +119,91 @@ function LoopsConfig({ loop }: Props) {
         fieldGroups: fieldGroups,
       });
 
+      const hasMediaParameters = (params: any[]) => {
+        return params.some((param) => {
+          const keyLower = param.key.toLowerCase();
+          return (
+            keyLower.includes("img") ||
+            keyLower.includes("image") ||
+            keyLower.includes("stimulus") ||
+            keyLower.includes("audio") ||
+            keyLower.includes("video") ||
+            keyLower.includes("sound") ||
+            keyLower.includes("media")
+          );
+        });
+      };
+
+      const needsFileUpload =
+        /plugin-audio|plugin-video|plugin-image|multi-image|custom-image|plugin-preload/i.test(
+          trial.plugin
+        ) || hasMediaParameters(parameters);
+
+      const getFileTypeAndFolder = () => {
+        if (/plugin-audio/i.test(trial.plugin)) {
+          return { accept: "audio/*", folder: "aud" };
+        }
+        if (/plugin-video/i.test(trial.plugin)) {
+          return { accept: "video/*", folder: "vid" };
+        }
+
+        if (/plugin-preload/i.test(trial.plugin)) {
+          return { accept: "audio/*,video/*,image/*", folder: "all" };
+        }
+
+        // For custom plugins, determine file type based on parameters
+        if (hasMediaParameters(parameters)) {
+          const hasAudio = parameters.some((p) => {
+            const keyLower = p.key.toLowerCase();
+            return keyLower.includes("audio") || keyLower.includes("sound");
+          });
+          const hasVideo = parameters.some((p) => {
+            const keyLower = p.key.toLowerCase();
+            return keyLower.includes("video");
+          });
+          const hasImage = parameters.some((p) => {
+            const keyLower = p.key.toLowerCase();
+            return (
+              keyLower.includes("img") ||
+              keyLower.includes("image") ||
+              keyLower.includes("stimulus")
+            );
+          });
+
+          // If multiple types, accept all
+          if ([hasAudio, hasVideo, hasImage].filter(Boolean).length > 1) {
+            return { accept: "audio/*,video/*,image/*", folder: "all" };
+          }
+
+          if (hasAudio) return { accept: "audio/*", folder: "aud" };
+          if (hasVideo) return { accept: "video/*", folder: "vid" };
+          if (hasImage) return { accept: "image/*", folder: "img" };
+        }
+
+        // Por defecto imagen
+        return { accept: "image/*", folder: "img" };
+      };
+
+      const { folder } = getFileTypeAndFolder();
+
+      const { uploadedFiles } = useFileUpload({ folder });
+
+      const filteredFiles = uploadedFiles.filter(
+        (file) =>
+          file &&
+          typeof file === "object" &&
+          typeof file.name === "string" &&
+          (folder === "all" || file.type === folder)
+      );
+
       const { genTrialCode, mappedJson } = useTrialCode({
         pluginName: trial.plugin,
         parameters: parameters,
         data: data,
         getColumnValue: getColumnValue,
-        needsFileUpload: trial.needsFileUpload || false,
+        needsFileUpload: needsFileUpload || false,
         columnMapping: trial.columnMapping || {},
-        filteredFiles: trial.filteredFiles || [],
+        filteredFiles: filteredFiles || [],
         csvJson: trial.csvJson ?? [],
         trialName: trial.name,
         includesExtensions: trial.includesExtensions || false,

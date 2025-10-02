@@ -5,7 +5,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 type UseFileUploadProps = {
   folder: string;
 };
-type UploadedFile = { name: string; url: string };
+type UploadedFile = { name: string; url: string; type: string };
 
 type FileCache = {
   [key: string]: UploadedFile[];
