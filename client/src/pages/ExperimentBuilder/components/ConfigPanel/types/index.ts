@@ -37,6 +37,14 @@ export interface Trial {
   csvJson?: any[];
   csvColumns?: string[];
   csvFromLoop?: boolean;
+
+  orders: boolean;
+  stimuliOrders: any[];
+  orderColumns: string[];
+  categories: boolean;
+  categoryColumn: string;
+  categoryData: any[];
+
   editPluginMode?: boolean;
 }
 

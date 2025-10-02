@@ -18,6 +18,7 @@ import ExtensionsConfig from "./ExtensionsConfig";
 import isEqual from "lodash.isequal";
 import { Trial } from "../types";
 import { useTrialOrders } from "./hooks/useTrialOrders";
+import TrialOrders from "./TrialOrders";
 
 type Props = { pluginName: string };
 
@@ -163,52 +164,20 @@ function TrialsConfig({ pluginName }: Props) {
     };
   }
 
-  function getLoopOrderCategoryProps(trial: Trial) {
-    if (!trial?.csvFromLoop) {
-      // Si el trial no está en un loop, no hay orders/categories
-      return {
-        orders: false,
-        orderColumns: [],
-        stimuliOrders: [],
-        categories: false,
-        categoryColumn: "",
-        categoryData: [],
-      };
-    }
-    const parentLoop = trials.find(
-      (item) => "trials" in item && item.trials.some((t) => t.id === trial.id)
-    );
-    if (parentLoop && "orders" in parentLoop) {
-      return {
-        orders: parentLoop.orders ?? false,
-        orderColumns: parentLoop.orderColumns ?? [],
-        stimuliOrders: parentLoop.stimuliOrders ?? [],
-        categories: parentLoop.categories ?? false,
-        categoryColumn: parentLoop.categoryColumn ?? "",
-        categoryData: parentLoop.categoryData ?? [],
-      };
-    }
-    // Si no se encuentra el loop, retorna valores vacíos
-    return {
-      orders: false,
-      orderColumns: [],
-      stimuliOrders: [],
-      categories: false,
-      categoryColumn: "",
-      categoryData: [],
-    };
-  }
-
   const {
     orders,
     setOrders,
+    orderColumns,
     setOrderColumns,
+    mapOrdersFromCsv,
     stimuliOrders,
     setStimuliOrders,
     categories,
     setCategories,
+    categoryColumn,
     setCategoryColumn,
     categoryData,
+    mapCategoriesFromCsv,
   } = useTrialOrders();
 
   // Persistir/traer datos del trial
@@ -234,19 +203,11 @@ function TrialsConfig({ pluginName }: Props) {
       setCsvJson(effectiveCsvJson);
       setCsvColumns(effectiveCsvColumns);
 
-      const {
-        orders,
-        orderColumns,
-        stimuliOrders,
-        categories,
-        categoryColumn,
-      } = getLoopOrderCategoryProps(selectedTrial);
-
-      setOrders(orders);
-      setOrderColumns(orderColumns);
-      setStimuliOrders(stimuliOrders);
-      setCategories(categories);
-      setCategoryColumn(categoryColumn);
+      setOrders(selectedTrial.orders || false);
+      setOrderColumns(selectedTrial.orderColumns || []);
+      setStimuliOrders(selectedTrial.stimuliOrders || []);
+      setCategories(selectedTrial.categories || false);
+      setCategoryColumn(selectedTrial.categoryColumn || "");
 
       setTimeout(() => {
         setIsLoadingTrial(false);
@@ -339,6 +300,11 @@ function TrialsConfig({ pluginName }: Props) {
       columnMapping: { ...columnMapping },
       csvJson: [...csvJson],
       csvColumns: [...csvColumns],
+      orders,
+      orderColumns,
+      stimuliOrders,
+      categories,
+      categoryColumn,
       // type: prevTrial.type,
     };
 
@@ -389,6 +355,8 @@ function TrialsConfig({ pluginName }: Props) {
     columnMapping,
     csvJson,
     csvColumns,
+    orders,
+    categories,
     trialName,
     isLoadingTrial,
   ]);
@@ -478,6 +446,21 @@ function TrialsConfig({ pluginName }: Props) {
           setColumnMapping={setColumnMapping}
           csvColumns={csvColumns}
         />
+
+        <TrialOrders
+          orders={orders}
+          setOrders={setOrders}
+          columnOptions={csvColumns}
+          orderColumns={orderColumns}
+          setOrderColumns={setOrderColumns}
+          mapOrdersFromCsv={mapOrdersFromCsv}
+          csvJson={csvJson}
+          categories={categories}
+          setCategories={setCategories}
+          setCategoryColumn={setCategoryColumn}
+          categoryColumn={categoryColumn}
+          mapCategoriesFromCsv={mapCategoriesFromCsv}
+        ></TrialOrders>
 
         {/* Extensions */}
         <ExtensionsConfig
