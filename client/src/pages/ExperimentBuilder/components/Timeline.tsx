@@ -18,6 +18,8 @@ function Component({}: TimelineProps) {
   const [submitStatus, setSubmitStatus] = useState<string>("");
   const { experimentUrl } = useUrl();
   const [copyStatus, setCopyStatus] = useState<string>("");
+  const [publishStatus, setPublishStatus] = useState<string>("");
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const experimentID = useExperimentID();
 
@@ -420,6 +422,63 @@ jsPsych.run(timeline);
     }
   };
 
+  const handlePublishToGitHub = async () => {
+    setIsPublishing(true);
+    setPublishStatus("Publishing to GitHub...");
+
+    try {
+      const userStr = window.localStorage.getItem("user");
+      if (!userStr) {
+        setPublishStatus("Error: User not logged in");
+        setIsPublishing(false);
+        return;
+      }
+      const user = JSON.parse(userStr);
+      const uid = user.uid;
+
+      const response = await fetch(
+        `${API_URL}/api/publish-experiment/${experimentID}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uid }),
+          credentials: "include",
+          mode: "cors",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setPublishStatus(`Published! GitHub Pages URL: ${result.pagesUrl}`);
+        // Optionally copy the GitHub Pages URL
+        try {
+          await navigator.clipboard.writeText(result.pagesUrl);
+          setTimeout(() => {
+            setPublishStatus((prev) => prev + " (copied to clipboard)");
+          }, 100);
+        } catch (err) {
+          console.error("Failed to copy GitHub Pages URL: ", err);
+        }
+      } else {
+        setPublishStatus(`Error: ${result.message || "Failed to publish"}`);
+      }
+    } catch (error) {
+      console.error("Error publishing to GitHub:", error);
+      setPublishStatus(
+        `Error: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    } finally {
+      setIsPublishing(false);
+      // Clear status after 5 seconds
+      setTimeout(() => setPublishStatus(""), 5000);
+    }
+  };
+
   return (
     <div className="timeline">
       <div style={{ marginBottom: "8px" }}>
@@ -725,6 +784,56 @@ jsPsych.run(timeline);
                 ? "Run Experiment"
                 : "Run Experiment"}
           </button>
+        </div>
+
+        {/* Publish to GitHub Button */}
+        <div style={{ marginTop: "12px" }}>
+          <button
+            onClick={handlePublishToGitHub}
+            disabled={isPublishing || !experimentUrl}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: "10px 0",
+              backgroundColor:
+                isPublishing || !experimentUrl ? "#cccccc" : "#ff9800",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              fontWeight: "600",
+              fontSize: 14,
+              letterSpacing: "0.05em",
+              cursor:
+                isPublishing || !experimentUrl ? "not-allowed" : "pointer",
+              transition: "background-color 0.3s ease",
+            }}
+            onMouseEnter={(e) => {
+              if (!isPublishing && experimentUrl) {
+                e.currentTarget.style.backgroundColor = "#f57c00";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isPublishing && experimentUrl) {
+                e.currentTarget.style.backgroundColor = "#ff9800";
+              }
+            }}
+          >
+            {isPublishing ? "Publishing..." : "Publish to GitHub Pages"}
+          </button>
+          {publishStatus && (
+            <p
+              style={{
+                fontSize: 13,
+                color: publishStatus.includes("Error") ? "#f44336" : "#4caf50",
+                textAlign: "center",
+                marginTop: 8,
+                fontWeight: "500",
+                wordBreak: "break-word",
+              }}
+            >
+              {publishStatus}
+            </p>
+          )}
         </div>
 
         {isDevMode && (

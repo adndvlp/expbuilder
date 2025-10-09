@@ -136,7 +136,71 @@ app.post("/api/create-experiment", async (req, res) => {
       // No bloqueamos la creación local si falla Firebase
     }
 
-    res.json({ success: true, experiment });
+    // Llamar al endpoint de GitHub para crear el repositorio si uid está presente
+    let githubRepoUrl = null;
+    let githubPagesUrl = null;
+    if (uid) {
+      try {
+        const githubUrl =
+          process.env.NODE_ENV === "production"
+            ? process.env.GITHUB_CREATE_FUNCTION_URL
+            : "http://localhost:5001/osf-relay/us-central1/githubCreateAndPublish";
+
+        // Por ahora solo creamos el repo con un HTML básico
+        const basicHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <title>${name}</title>
+  <meta charset="UTF-8">
+</head>
+<body>
+  <h1>${name}</h1>
+  <p>Experiment ID: ${experimentID}</p>
+  <p>This experiment will be available soon.</p>
+</body>
+</html>`;
+
+        const githubResponse = await fetch(githubUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            uid: uid,
+            repoName: `experiment-${experimentID}`,
+            htmlContent: basicHtml,
+            description: description || `Experiment: ${name}`,
+            isPrivate: false,
+          }),
+        });
+
+        const githubData = await githubResponse.json();
+
+        if (githubData.success) {
+          githubRepoUrl = githubData.repoUrl;
+          githubPagesUrl = githubData.pagesUrl;
+          console.log("GitHub repository created:", githubRepoUrl);
+          console.log("GitHub Pages URL:", githubPagesUrl);
+        } else {
+          console.warn(
+            "Warning: GitHub repository creation failed:",
+            githubData.message
+          );
+        }
+      } catch (githubError) {
+        console.error(
+          "Error calling GitHub create repository:",
+          githubError.message
+        );
+      }
+    }
+
+    res.json({
+      success: true,
+      experiment,
+      ...(githubRepoUrl && { githubRepoUrl }),
+      ...(githubPagesUrl && { githubPagesUrl }),
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -216,6 +280,43 @@ app.delete("/api/delete-experiment/:experimentID", async (req, res) => {
         firebaseError.message
       );
       // No bloqueamos la eliminación local si falla Firebase
+    }
+
+    // Llamar al endpoint de GitHub para eliminar el repositorio si uid está presente
+    if (uid) {
+      try {
+        const githubUrl =
+          process.env.NODE_ENV === "production"
+            ? process.env.GITHUB_DELETE_FUNCTION_URL
+            : "http://localhost:5001/osf-relay/us-central1/githubDeleteRepository";
+
+        const githubResponse = await fetch(githubUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            uid: uid,
+            repoName: `experiment-${experimentID}`,
+          }),
+        });
+
+        const githubData = await githubResponse.json();
+
+        if (githubData.success) {
+          console.log("GitHub repository deleted successfully");
+        } else {
+          console.warn(
+            "Warning: GitHub repository deletion failed:",
+            githubData.message
+          );
+        }
+      } catch (githubError) {
+        console.error(
+          "Error calling GitHub delete repository:",
+          githubError.message
+        );
+      }
     }
 
     res.json({ success: true });
@@ -938,6 +1039,88 @@ app.post("/api/trials-preview/:experimentID", async (req, res) => {
     });
   } catch (error) {
     console.error(`Error running experiment: ${error.message}`);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Endpoint para publicar experimento en GitHub
+app.post("/api/publish-experiment/:experimentID", async (req, res) => {
+  try {
+    const { experimentID } = req.params;
+    const { uid } = req.body;
+
+    if (!uid) {
+      return res.status(400).json({
+        success: false,
+        error: "User ID (uid) is required",
+      });
+    }
+
+    // Verificar que el HTML del experimento exista
+    const experimentHtmlPath = path.join(
+      experimentsHtmlDir,
+      `experiment_${experimentID}.html`
+    );
+
+    if (!fs.existsSync(experimentHtmlPath)) {
+      return res.status(404).json({
+        success: false,
+        error: "Experiment HTML not found. Please run the experiment first.",
+      });
+    }
+
+    // Leer el contenido del HTML
+    const htmlContent = fs.readFileSync(experimentHtmlPath, "utf8");
+
+    // Llamar al endpoint de GitHub para actualizar el HTML
+    try {
+      const githubUrl =
+        process.env.NODE_ENV === "production"
+          ? process.env.GITHUB_UPDATE_FUNCTION_URL
+          : "http://localhost:5001/osf-relay/us-central1/githubUpdateHtml";
+
+      const githubResponse = await fetch(githubUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          uid: uid,
+          repoName: `experiment-${experimentID}`,
+          htmlContent: htmlContent,
+          // Opcionalmente puedes agregar envContent aquí si lo necesitas
+        }),
+      });
+
+      const githubData = await githubResponse.json();
+
+      if (githubData.success) {
+        console.log(
+          "Experiment published to GitHub Pages:",
+          githubData.pagesUrl
+        );
+        res.json({
+          success: true,
+          message: "Experiment published successfully",
+          repoUrl: githubData.repoUrl,
+          pagesUrl: githubData.pagesUrl,
+        });
+      } else {
+        console.warn("Warning: GitHub publish failed:", githubData.message);
+        res.status(400).json({
+          success: false,
+          error: githubData.message || "Failed to publish experiment",
+        });
+      }
+    } catch (githubError) {
+      console.error("Error calling GitHub update HTML:", githubError.message);
+      res.status(500).json({
+        success: false,
+        error: "Error publishing to GitHub: " + githubError.message,
+      });
+    }
+  } catch (error) {
+    console.error(`Error publishing experiment: ${error.message}`);
     res.status(500).json({ success: false, error: error.message });
   }
 });

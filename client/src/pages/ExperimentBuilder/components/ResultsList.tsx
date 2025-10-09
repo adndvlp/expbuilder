@@ -117,27 +117,27 @@ export default function ResultsList() {
         }),
       });
 
-      const data = await res.json();
-
-      if (data.success && data.csv) {
-        // Crear un blob con el CSV
-        const blob = new Blob([data.csv], { type: "text/csv;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-
-        // Crear un elemento <a> temporal para descargar
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = data.filename || `session_${sessionId}.csv`;
-        document.body.appendChild(link);
-        link.click();
-
-        // Limpiar
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      } else {
-        console.error("Error downloading CSV:", data.message);
-        alert("Failed to download session data");
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
       }
+
+      // The API returns CSV as text, not JSON
+      const csvText = await res.text();
+
+      // Crear un blob con el CSV
+      const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+
+      // Crear un elemento <a> temporal para descargar
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${experimentID}_${sessionId}.csv`;
+      document.body.appendChild(link);
+      link.click();
+
+      // Limpiar
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error downloading session:", error);
       alert("Failed to download session data");
@@ -193,6 +193,7 @@ export default function ResultsList() {
                   <span>Actions</span>
                   {!selectMode && (
                     <button
+                      key="select-btn"
                       className="select-mode-btn"
                       style={{ marginLeft: 0 }}
                       onClick={() => setSelectMode(true)}
@@ -201,7 +202,10 @@ export default function ResultsList() {
                     </button>
                   )}
                   {selectMode && (
-                    <>
+                    <div
+                      key="select-mode-buttons"
+                      style={{ display: "contents" }}
+                    >
                       <button
                         className="cancel-select-btn"
                         style={{ marginLeft: 0 }}
@@ -217,7 +221,7 @@ export default function ResultsList() {
                       >
                         Delete({selected.length})
                       </button>
-                    </>
+                    </div>
                   )}
                 </th>
               </tr>
