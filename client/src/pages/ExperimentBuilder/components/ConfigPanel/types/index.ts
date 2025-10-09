@@ -38,12 +38,12 @@ export interface Trial {
   csvColumns?: string[];
   csvFromLoop?: boolean;
 
-  orders: boolean;
-  stimuliOrders: any[];
-  orderColumns: string[];
-  categories: boolean;
-  categoryColumn: string;
-  categoryData: any[];
+  orders?: boolean;
+  stimuliOrders?: any[];
+  orderColumns?: string[];
+  categories?: boolean;
+  categoryColumn?: string;
+  categoryData?: any[];
 
   editPluginMode?: boolean;
 }

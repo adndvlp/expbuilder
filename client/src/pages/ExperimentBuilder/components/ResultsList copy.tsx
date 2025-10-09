@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import ExperimentPreview from "./ExperimentPreview";
 import { useExperimentID } from "../hooks/useExperimentID";
-const DATA_API_URL = import.meta.env.VITE_DATA_API_URL;
+const API_URL = import.meta.env.VITE_API_URL;
 
 type SessionMeta = {
   _id: string;
@@ -19,21 +19,9 @@ export default function ResultsList() {
 
   const fetchSessions = async () => {
     setLoading(true);
-    try {
-      const res = await fetch(DATA_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "list",
-          experimentID: experimentID,
-        }),
-      });
-      const data = await res.json();
-      setSessions(data.sessions || []);
-    } catch (error) {
-      console.error("Error fetching sessions:", error);
-      setSessions([]);
-    }
+    const res = await fetch(`${API_URL}/api/session-results/${experimentID}`);
+    const data = await res.json();
+    setSessions(data.sessions || []);
     setLoading(false);
     setSelected([]);
     setSelectMode(false);
@@ -46,20 +34,10 @@ export default function ResultsList() {
   const handleDeleteSession = async (sessionId: string) => {
     if (!window.confirm("Are you sure you want to delete this session result?"))
       return;
-    try {
-      await fetch(DATA_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "delete",
-          experimentID: experimentID,
-          sessionId: sessionId,
-        }),
-      });
-      fetchSessions();
-    } catch (error) {
-      console.error("Error deleting session:", error);
-    }
+    await fetch(`${API_URL}/api/session-results/${sessionId}/${experimentID}`, {
+      method: "DELETE",
+    });
+    fetchSessions();
   };
 
   // Borrar múltiples sesiones
@@ -69,24 +47,14 @@ export default function ResultsList() {
       !window.confirm(`Delete ${selected.length} selected session(s)?`)
     )
       return;
-    try {
-      await Promise.all(
-        selected.map((sessionId) =>
-          fetch(DATA_API_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "delete",
-              experimentID: experimentID,
-              sessionId: sessionId,
-            }),
-          })
-        )
-      );
-      fetchSessions();
-    } catch (error) {
-      console.error("Error deleting sessions:", error);
-    }
+    await Promise.all(
+      selected.map((id) =>
+        fetch(`${API_URL}/api/session-results/${id}/${experimentID}`, {
+          method: "DELETE",
+        })
+      )
+    );
+    fetchSessions();
   };
 
   // Manejar selección individual y global
@@ -103,45 +71,6 @@ export default function ResultsList() {
   const handleCancelSelect = () => {
     setSelectMode(false);
     setSelected([]);
-  };
-
-  const handleDownloadCSV = async (sessionId: string) => {
-    try {
-      const res = await fetch(DATA_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "download",
-          experimentID: experimentID,
-          sessionId: sessionId,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (data.success && data.csv) {
-        // Crear un blob con el CSV
-        const blob = new Blob([data.csv], { type: "text/csv;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-
-        // Crear un elemento <a> temporal para descargar
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = data.filename || `session_${sessionId}.csv`;
-        document.body.appendChild(link);
-        link.click();
-
-        // Limpiar
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      } else {
-        console.error("Error downloading CSV:", data.message);
-        alert("Failed to download session data");
-      }
-    } catch (error) {
-      console.error("Error downloading session:", error);
-      alert("Failed to download session data");
-    }
   };
 
   return (
@@ -248,7 +177,11 @@ export default function ResultsList() {
                   <td>
                     <button
                       className="download-csv-btn"
-                      onClick={() => handleDownloadCSV(s.sessionId)}
+                      onClick={() =>
+                        window.open(
+                          `${API_URL}/api/download-session/${s.sessionId}/${experimentID}`
+                        )
+                      }
                     >
                       CSV
                     </button>

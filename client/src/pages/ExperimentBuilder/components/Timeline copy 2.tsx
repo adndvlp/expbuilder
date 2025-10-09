@@ -10,7 +10,6 @@ import { FiRefreshCw } from "react-icons/fi";
 import LoopRangeModal from "./ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeModal";
 import { useExperimentID } from "../hooks/useExperimentID";
 const API_URL = import.meta.env.VITE_API_URL;
-const DATA_API_URL = import.meta.env.VITE_DATA_API_URL;
 
 type TimelineProps = {};
 
@@ -185,95 +184,67 @@ function Component({}: TimelineProps) {
   const generateExperiment = () => {
     return `
 
-  function getUid() {
-    try {
-      const userStr = window.localStorage.getItem('user');
-      if (userStr) return JSON.parse(userStr).uid;
-    } catch (e) {}
-    return undefined;
-  }
+    
 
   const trialSessionId =
     (crypto.randomUUID
       ? crypto.randomUUID()
       : Math.random().toString(36).slice(2) + Date.now());
 
-  let participantNumber;
+let participantNumber;
 
-  async function saveSession(trialSessionId) {
-    try {
-      const res = await fetch("${DATA_API_URL}", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "*/*" },
-        body: JSON.stringify({
-          experimentID: "${experimentID}",
-          sessionId: trialSessionId,
-        }),
-      });
-      
-      console.log('Response status:', res.status);
-      
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error('Error creating session:', errorText);
-        throw new Error(\`Failed to create session: \${res.status} - \${errorText}\`);
-      }
-      
-      const result = await res.json();
-      console.log('Session created successfully:', result);
-      
-      if (!result.success) {
-        throw new Error(result.message || 'Failed to create session');
-      }
-      
-      participantNumber = result.participantNumber;
-      return participantNumber;
-    } catch (error) {
-      console.error('Error in saveSession:', error);
-      alert('Error al crear la sesión: ' + error.message);
-      throw error;
-    }
+   async function saveSession(trialSessionId) {
+        const res = await fetch("/api/append-result/${experimentID}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: trialSessionId,
+          }),
+        });
+        const result = await res.json();
+        participantNumber = result.participantNumber;
+        return participantNumber;
+  }
+        
+(async () => {
+  participantNumber = await saveSession(trialSessionId);
+
+  if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
+    alert("El número de participante no está asignado. Por favor, espera.");
+    throw new Error("participantNumber no asignado");
   }
 
-  (async () => {
-    participantNumber = await saveSession(trialSessionId);
+  // let isFirstSave = true;
 
-    if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
-      alert("El número de participante no está asignado. Por favor, espera.");
-      throw new Error("participantNumber no asignado");
-    }
+  const jsPsych = initJsPsych({
 
-    const jsPsych = initJsPsych({
+  ${extensions}
 
-    ${extensions}
+  on_data_update: function (data) {
+        const res = fetch("/api/append-result/${experimentID}", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: trialSessionId,
+            response: data,
+          }),
+        });
+     
+  }
+  
+  // fetch("https://pipe.jspsych.org/api/data/", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json", Accept: "*/*" },
+  //       body: JSON.stringify({
+  //         experimentID: "tjStL4X8Yrep",
+  //         data: JSON.stringify(data),
+  //         filename: \` \${trialSessionId}\`,
+  //         append: !isFirstSave,
+  //       }),
+  //     });
 
-    on_data_update: function (data) {
-      fetch("${DATA_API_URL}", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "*/*" },
-        body: JSON.stringify({
-          experimentID: "${experimentID}",
-          sessionId: trialSessionId,
-          data: data,
-        }),
-      })
-      .then(res => {
-        console.log('Data append response status:', res.status);
-        if (!res.ok) {
-          return res.text().then(text => {
-            console.error('Error appending data:', text);
-            throw new Error(\`Failed to append data: \${res.status}\`);
-          });
-        }
-        return res.json();
-      })
-      .then(result => {
-        console.log('Data appended successfully:', result);
-      })
-      .catch(error => {
-        console.error('Error in on_data_update:', error);
-      });
-    },
+  //     isFirstSave = false;
+  // },
 
   // Uncomment to see the json results after finishing a sesssion experiment
   // on_finish: function() {

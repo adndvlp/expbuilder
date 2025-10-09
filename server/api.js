@@ -82,7 +82,7 @@ app.get("/api/experiment/:experimentID", async (req, res) => {
 // Endpoint para crear experimento
 app.post("/api/create-experiment", async (req, res) => {
   try {
-    const { name, description, author } = req.body;
+    const { name, description, author, uid } = req.body;
     if (!name)
       return res.status(400).json({ success: false, error: "Name required" });
 
@@ -94,6 +94,48 @@ app.post("/api/create-experiment", async (req, res) => {
       author,
     });
 
+    // Llamar a la función de Firebase para crear el experimento en DataPipe
+    try {
+      // URL del emulador local o producción según el entorno
+      const firebaseUrl =
+        process.env.NODE_ENV === "production"
+          ? process.env.FIREBASE_FUNCTION_URL // URL de producción
+          : "http://localhost:5001/osf-relay/us-central1/apicreateexperiment"; // Emulador local
+
+      // Incluir uid si está presente
+      const firebaseBody = {
+        experimentID: experimentID,
+        experimentName: name,
+      };
+      if (uid) {
+        firebaseBody.uid = uid;
+      }
+
+      const firebaseResponse = await fetch(firebaseUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(firebaseBody),
+      });
+
+      const firebaseData = await firebaseResponse.json();
+
+      if (!firebaseData.success) {
+        console.warn(
+          "Warning: Firebase experiment creation failed:",
+          firebaseData.message
+        );
+        // No bloqueamos la respuesta, pero registramos el warning
+      }
+    } catch (firebaseError) {
+      console.error(
+        "Error calling Firebase create experiment:",
+        firebaseError.message
+      );
+      // No bloqueamos la creación local si falla Firebase
+    }
+
     res.json({ success: true, experiment });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -104,6 +146,8 @@ app.post("/api/create-experiment", async (req, res) => {
 app.delete("/api/delete-experiment/:experimentID", async (req, res) => {
   try {
     const { experimentID } = req.params;
+    const { uid } = req.body; // Obtener uid del body si está presente
+
     const deleted = await Experiment.findOneAndDelete({ experimentID });
     await Trials.deleteMany({ experimentID });
     await Config.deleteMany({ experimentID });
@@ -126,6 +170,52 @@ app.delete("/api/delete-experiment/:experimentID", async (req, res) => {
     const experimentUploadsDir = path.join(uploadsDir, experimentID);
     if (fs.existsSync(experimentUploadsDir)) {
       fs.rmSync(experimentUploadsDir, { recursive: true, force: true });
+    }
+
+    // Llamar a la función de Firebase para eliminar el experimento en DataPipe (incluyendo carpeta de Dropbox)
+    try {
+      // URL del emulador local o producción según el entorno
+      const firebaseUrl =
+        process.env.NODE_ENV === "production"
+          ? process.env.FIREBASE_DELETE_FUNCTION_URL // URL de producción para delete
+          : "http://localhost:5001/osf-relay/us-central1/apideleteexperiment"; // Emulador local
+
+      // Incluir uid si está presente para eliminar también la carpeta de Dropbox
+      const firebaseBody = {
+        experimentID: experimentID,
+      };
+      if (uid) {
+        firebaseBody.uid = uid;
+      }
+
+      const firebaseResponse = await fetch(firebaseUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(firebaseBody),
+      });
+
+      const firebaseData = await firebaseResponse.json();
+
+      if (!firebaseData.success) {
+        console.warn(
+          "Warning: Firebase experiment deletion failed:",
+          firebaseData.message
+        );
+        // No bloqueamos la respuesta, pero registramos el warning
+      } else if (firebaseData.dropboxWarning) {
+        console.warn(
+          "Warning: Dropbox folder deletion had issues:",
+          firebaseData.dropboxWarning
+        );
+      }
+    } catch (firebaseError) {
+      console.error(
+        "Error calling Firebase delete experiment:",
+        firebaseError.message
+      );
+      // No bloqueamos la eliminación local si falla Firebase
     }
 
     res.json({ success: true });
@@ -1050,6 +1140,7 @@ app.use((req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-  console.log(`- Experiment URL: http://localhost:${port}/experiment`);
+  console.log(`🚀 Server running on port ${port}`);
+  console.log(`📊 Experiment URL: http://localhost:${port}/experiment`);
+  console.log(`🔗 API URL: http://localhost:${port}/api`);
 });

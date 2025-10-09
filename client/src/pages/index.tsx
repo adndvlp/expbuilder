@@ -28,30 +28,30 @@ const router = createBrowserRouter([
   {
     path: "/home",
     element: (
-      // <ProtectedRoute>
-      <Dashboard />
-      // </ProtectedRoute>
+      <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
     ),
-    children: [
-      {
-        index: true,
-      },
-      {
-        path: "settings",
-        element: <Dashboard />,
-      },
-    ],
+    index: true,
   },
+  // {
+  //   path: "/home/settings",
+  //   element: (
+  //     <ProtectedRoute>
+  //       <Account />
+  //     </ProtectedRoute>
+  //   ),
+  // },
   {
     path: "/home/experiment/:id",
     element: (
-      // <ProtectedRoute>
-      <DevModeProvider>
-        <PluginsProvider>
-          <ExperimentBuilder />
-        </PluginsProvider>
-      </DevModeProvider>
-      // </ProtectedRoute>
+      <ProtectedRoute>
+        <DevModeProvider>
+          <PluginsProvider>
+            <ExperimentBuilder />
+          </PluginsProvider>
+        </DevModeProvider>
+      </ProtectedRoute>
     ),
   },
 ]);

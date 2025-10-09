@@ -1,29 +1,30 @@
-import { Navigate, useParams } from "react-router-dom";
-import React from "react";
-
-// Simulación de autenticación (reemplaza con tu lógica real)
-function getCurrentUserId() {
-  // Ejemplo: obtén el userId desde localStorage o contexto
-  return localStorage.getItem("userId");
-}
+import { Navigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { onAuthStateChanged, User } from "firebase/auth";
+import { auth } from "../lib/firebase";
 
 type Props = {
   children: React.ReactNode;
 };
 
 function ProtectedRoute({ children }: Props) {
-  const { userId } = useParams();
-  const token = localStorage.getItem("token");
-  const currentUserId = getCurrentUserId();
+  const [user, setUser] = useState<User | null | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
 
-  // Si no hay token, redirige al login
-  if (!token) {
-    return <Navigate to="/auth/login" replace />;
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) {
+    return <div>Loading...</div>;
   }
 
-  // Si la ruta tiene userId y no coincide con el usuario autenticado, redirige al home
-  if (userId && currentUserId && userId !== currentUserId) {
-    return <Navigate to={`/user/${currentUserId}/home`} replace />;
+  if (!user) {
+    return <Navigate to="/auth/login" replace />;
   }
 
   return <>{children}</>;
