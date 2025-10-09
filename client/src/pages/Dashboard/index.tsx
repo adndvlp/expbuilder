@@ -116,7 +116,7 @@ function Dashboard() {
               onClick={() => {
                 setMenuOpen(false);
                 // Aquí deberías limpiar el estado de autenticación si existe
-                navigate("/signin");
+                navigate("/auth/login");
               }}
             >
               Logout
