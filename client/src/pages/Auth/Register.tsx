@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase";
+import "./index.css";
 
 const Register: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -53,65 +54,78 @@ const Register: React.FC = () => {
   };
 
   return (
-    <div
-      style={{
-        maxWidth: 400,
-        margin: "40px auto",
-        padding: 24,
-        border: "1px solid #eee",
-        borderRadius: 8,
-      }}
-    >
-      <h2>Sign Up</h2>
-      <form onSubmit={onSubmit}>
-        <div style={{ marginBottom: 16 }}>
-          <label>Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={{ width: "100%", padding: 8, marginTop: 4 }}
-            required
-          />
-          {errorEmail && (
-            <div style={{ color: "red", fontSize: 14 }}>{errorEmail}</div>
+    <div className="auth-forms">
+      <div
+        style={{
+          maxWidth: 400,
+          margin: "40px auto",
+          padding: 24,
+          border: "1px solid #eee",
+          borderRadius: 8,
+        }}
+      >
+        <h2 className="auth-text-color">Sign Up</h2>
+        <form onSubmit={onSubmit}>
+          <div style={{ marginBottom: 16 }}>
+            <label className="auth-text-color">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              style={{ width: "100%", padding: 8, marginTop: 4 }}
+              required
+            />
+            {errorEmail && (
+              <div style={{ color: "red", fontSize: 14 }}>{errorEmail}</div>
+            )}
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <label className="auth-text-color">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              style={{ width: "100%", padding: 8, marginTop: 4 }}
+              required
+            />
+            <div
+              style={{
+                fontSize: 12,
+                color: errorPassword ? "red" : "#cececeff",
+              }}
+            >
+              {errorPassword || "Password must be at least 12 characters"}
+            </div>
+          </div>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            style={{
+              width: "100%",
+              padding: 10,
+              background: "#b7950b",
+              color: "#fff",
+              border: 0,
+              borderRadius: 4,
+            }}
+          >
+            {isSubmitting ? "Creating..." : "Create Account"}
+          </button>
+          {success && (
+            <div style={{ color: "green", marginTop: 16 }}>
+              Account created! You can now log in.
+            </div>
           )}
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <label>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ width: "100%", padding: 8, marginTop: 4 }}
-            required
-          />
-          <div style={{ fontSize: 12, color: errorPassword ? "red" : "#888" }}>
-            {errorPassword || "Password must be at least 12 characters"}
-          </div>
-        </div>
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          style={{
-            width: "100%",
-            padding: 10,
-            background: "#007bff",
-            color: "#fff",
-            border: 0,
-            borderRadius: 4,
-          }}
+        </form>
+        <div
+          className="auth-text-color"
+          style={{ marginTop: 16, textAlign: "center" }}
         >
-          {isSubmitting ? "Creating..." : "Create Account"}
-        </button>
-        {success && (
-          <div style={{ color: "green", marginTop: 16 }}>
-            Account created! You can now log in.
-          </div>
-        )}
-      </form>
-      <div style={{ marginTop: 16, textAlign: "center" }}>
-        Already have an account? <a href="/auth/login">Sign In</a>
+          Already have an account?{" "}
+          <a style={{ color: "#f1c40f" }} href="/auth/login">
+            Sign In
+          </a>
+        </div>
       </div>
     </div>
   );

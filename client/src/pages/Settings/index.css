@@ -441,11 +441,11 @@
 }
 
 /* Form styles */
-.form-group {
+.form-group-settings {
   margin-bottom: 20px;
 }
 
-.form-group label {
+.form-group-settings label {
   display: block;
   margin-bottom: 8px;
   font-weight: 500;
@@ -453,7 +453,7 @@
   font-size: 14px;
 }
 
-.form-group input {
+.form-group-settings input {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid #ced4da;
@@ -462,17 +462,17 @@
   transition: all 0.2s;
 }
 
-.form-group input:focus {
+.form-group-settings input:focus {
   outline: none;
   border-color: #17a2b8;
   box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.1);
 }
 
-.form-group input.input-error {
+.form-group-settings input.input-error {
   border-color: #dc3545;
 }
 
-.form-group input.input-error:focus {
+.form-group-settings input.input-error:focus {
   box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
 }
 

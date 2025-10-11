@@ -72,7 +72,7 @@ export default function ChangePassword() {
               </button>
             </div>
             <div className="modal-body">
-              <div className="form-group">
+              <div className="form-group-settings">
                 <label htmlFor="new-password">New Password</label>
                 <input
                   id="new-password"
@@ -91,7 +91,7 @@ export default function ChangePassword() {
                   </span>
                 )}
               </div>
-              <div className="form-group">
+              <div className="form-group-settings">
                 <label htmlFor="confirm-password">Confirm Password</label>
                 <input
                   id="confirm-password"

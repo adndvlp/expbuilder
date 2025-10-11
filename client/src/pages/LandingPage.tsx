@@ -9,7 +9,7 @@ function LandingPage({}: Props) {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(120deg, #3b82f6 0%, #06b6d4 100%)",
+        background: "linear-gradient(120deg, #3d92b4 0%, #06b6d4 100%)",
         color: "#fff",
         textAlign: "center",
         padding: 24,
@@ -55,8 +55,8 @@ function LandingPage({}: Props) {
         style={{
           display: "inline-block",
           padding: "16px 40px",
-          background: "linear-gradient(90deg,#fff,#e0f2fe)",
-          color: "#0ea5e9",
+          background: "linear-gradient(90deg,#d4af37,#f1c40f)",
+          color: "#fff",
           borderRadius: 12,
           fontWeight: 700,
           fontSize: 20,
@@ -65,13 +65,13 @@ function LandingPage({}: Props) {
           transition: "background 0.2s, color 0.2s",
         }}
         onMouseOver={(e) => {
-          (e.currentTarget as HTMLAnchorElement).style.background = "#fff";
-          (e.currentTarget as HTMLAnchorElement).style.color = "#06b6d4";
+          (e.currentTarget as HTMLAnchorElement).style.background = "#b7950b";
+          (e.currentTarget as HTMLAnchorElement).style.color = "#fff";
         }}
         onMouseOut={(e) => {
           (e.currentTarget as HTMLAnchorElement).style.background =
-            "linear-gradient(90deg,#fff,#e0f2fe)";
-          (e.currentTarget as HTMLAnchorElement).style.color = "#0ea5e9";
+            "linear-gradient(90deg,#d4af37,#f1c40f)";
+          (e.currentTarget as HTMLAnchorElement).style.color = "#fff";
         }}
       >
         Get Started
