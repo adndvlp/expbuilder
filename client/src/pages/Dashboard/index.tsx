@@ -106,20 +106,10 @@ function Dashboard() {
               className="menu-item"
               onClick={() => {
                 setMenuOpen(false);
-                navigate("/home/settings");
+                navigate("/settings");
               }}
             >
               Settings
-            </div>
-            <div
-              className="menu-item"
-              onClick={() => {
-                setMenuOpen(false);
-                // Aquí deberías limpiar el estado de autenticación si existe
-                navigate("/auth/login");
-              }}
-            >
-              Logout
             </div>
           </div>
         )}

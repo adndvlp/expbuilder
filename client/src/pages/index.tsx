@@ -8,6 +8,10 @@ import LandingPage from "./LandingPage";
 import Register from "./Auth/Register";
 import Login from "./Auth/Login";
 import ErrorDetail from "./ErrorDetail";
+import Settings from "./Settings";
+import GoogleDriveCallback from "./Settings/GoogleDriveCallback";
+import DropboxCallback from "./Settings/DropboxCallback";
+import GithubCallback from "./Settings/GithubCallback";
 
 // import ProtectedRoute from "../components/ProtectedRoute";
 
@@ -34,14 +38,26 @@ const router = createBrowserRouter([
     ),
     index: true,
   },
-  // {
-  //   path: "/home/settings",
-  //   element: (
-  //     <ProtectedRoute>
-  //       <Account />
-  //     </ProtectedRoute>
-  //   ),
-  // },
+  {
+    path: "/settings",
+    element: (
+      <ProtectedRoute>
+        <Settings />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/google-drive-callback",
+    element: <GoogleDriveCallback />,
+  },
+  {
+    path: "/dropbox-callback",
+    element: <DropboxCallback />,
+  },
+  {
+    path: "/github-callback",
+    element: <GithubCallback />,
+  },
   {
     path: "/home/experiment/:id",
     element: (

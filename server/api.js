@@ -100,7 +100,7 @@ app.post("/api/create-experiment", async (req, res) => {
       const firebaseUrl =
         process.env.NODE_ENV === "production"
           ? process.env.FIREBASE_FUNCTION_URL // URL de producción
-          : "http://localhost:5001/osf-relay/us-central1/apicreateexperiment"; // Emulador local
+          : "http://localhost:5001/test-e4cf9/us-central1/apicreateexperiment"; // Emulador local
 
       // Incluir uid si está presente
       const firebaseBody = {
@@ -144,7 +144,7 @@ app.post("/api/create-experiment", async (req, res) => {
         const githubUrl =
           process.env.NODE_ENV === "production"
             ? process.env.GITHUB_CREATE_FUNCTION_URL
-            : "http://localhost:5001/osf-relay/us-central1/githubCreateAndPublish";
+            : "http://localhost:5001/test-e4cf9/us-central1/githubCreateAndPublish";
 
         // Por ahora solo creamos el repo con un HTML básico
         const basicHtml = `<!DOCTYPE html>
@@ -242,7 +242,7 @@ app.delete("/api/delete-experiment/:experimentID", async (req, res) => {
       const firebaseUrl =
         process.env.NODE_ENV === "production"
           ? process.env.FIREBASE_DELETE_FUNCTION_URL // URL de producción para delete
-          : "http://localhost:5001/osf-relay/us-central1/apideleteexperiment"; // Emulador local
+          : "http://localhost:5001/test-e4cf9/us-central1/apideleteexperiment"; // Emulador local
 
       // Incluir uid si está presente para eliminar también la carpeta de Dropbox
       const firebaseBody = {
@@ -288,7 +288,7 @@ app.delete("/api/delete-experiment/:experimentID", async (req, res) => {
         const githubUrl =
           process.env.NODE_ENV === "production"
             ? process.env.GITHUB_DELETE_FUNCTION_URL
-            : "http://localhost:5001/osf-relay/us-central1/githubDeleteRepository";
+            : "http://localhost:5001/test-e4cf9/us-central1/githubDeleteRepository";
 
         const githubResponse = await fetch(githubUrl, {
           method: "POST",
@@ -1077,7 +1077,7 @@ app.post("/api/publish-experiment/:experimentID", async (req, res) => {
       const githubUrl =
         process.env.NODE_ENV === "production"
           ? process.env.GITHUB_UPDATE_FUNCTION_URL
-          : "http://localhost:5001/osf-relay/us-central1/githubUpdateHtml";
+          : "http://localhost:5001/test-e4cf9/us-central1/githubUpdateHtml";
 
       const githubResponse = await fetch(githubUrl, {
         method: "POST",
