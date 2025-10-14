@@ -260,27 +260,57 @@ function Component({}: TimelineProps) {
         }),
       })
       .then(res => {
-        console.log('Data append response status:', res.status);
         if (!res.ok) {
           return res.text().then(text => {
             console.error('Error appending data:', text);
-            throw new Error(\`Failed to append data: \${res.status}\`);
           });
         }
         return res.json();
       })
       .then(result => {
-        console.log('Data appended successfully:', result);
+        if (result && result.success) {
+          console.log('Data appended to temporary storage');
+        }
       })
       .catch(error => {
         console.error('Error in on_data_update:', error);
       });
     },
 
-  // Uncomment to see the json results after finishing a sesssion experiment
-  // on_finish: function() {
-  //   jsPsych.data.displayData();
-  // },
+  on_finish: async function() {
+    // Finalizar la sesión: enviar todos los resultados a Google Drive
+    try {
+      console.log('Finishing session and sending data to Google Drive...');
+      
+      const finishResponse = await fetch("${DATA_API_URL}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "*/*" },
+        body: JSON.stringify({
+          experimentID: "${experimentID}",
+          sessionId: trialSessionId,
+          action: "finish",
+        }),
+      });
+
+      if (!finishResponse.ok) {
+        const errorText = await finishResponse.text();
+        console.error('Error finishing session:', errorText);
+        throw new Error(\`Failed to finish session: \${finishResponse.status}\`);
+      }
+
+      const finishResult = await finishResponse.json();
+      console.log('Session finished successfully:', finishResult);
+      
+      if (finishResult.success) {
+        console.log(\`Sent \${finishResult.resultsSent} results to Google Drive\`);
+      }
+    } catch (error) {
+      console.error('Error in on_finish:', error);
+      alert('Error al finalizar la sesión: ' + error.message);
+    }
+  },
+  // Uncomment to see the json results after finishing a session experiment
+  // jsPsych.data.displayData('csv');
 });
 
 const timeline = [];

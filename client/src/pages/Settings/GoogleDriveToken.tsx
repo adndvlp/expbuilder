@@ -58,6 +58,7 @@ export default function GoogleDriveToken() {
     try {
       await updateDoc(doc(db, "users", user.uid), {
         googleDriveTokens: null,
+        uid: user.uid,
       });
       setHasToken(false);
     } catch (err) {

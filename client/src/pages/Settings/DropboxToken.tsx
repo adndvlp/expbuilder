@@ -56,6 +56,7 @@ export default function DropboxToken() {
     try {
       await updateDoc(doc(db, "users", user.uid), {
         dropboxTokens: null,
+        uid: user.uid,
       });
       setHasToken(false);
     } catch (err) {

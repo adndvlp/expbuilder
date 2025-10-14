@@ -1,6 +1,8 @@
 import "./index.css";
 import { useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../../lib/firebase";
 
 type Experiment = {
   experimentID: string;
@@ -23,11 +25,20 @@ function Dashboard() {
 
   console.log(localStorage.getItem("user"));
 
+  // Hook para saber si el usuario tiene los tokens requeridos
+  async function userHasRequiredTokens(uid: string): Promise<boolean> {
+    const docRef = doc(db, "users", uid);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) return false;
+    const data = docSnap.data();
+    // Debe tener (Drive o Dropbox) Y Github
+    const hasDriveOrDropbox = !!(data.googleDriveTokens || data.dropboxTokens);
+    const hasGithub = !!data.githubTokens;
+    return hasDriveOrDropbox && hasGithub;
+  }
+
   // Crear experimento
   const handleCreate = async () => {
-    const name = prompt("Experiment name:");
-    if (!name) return;
-    setLoading(true);
     // Obtener el uid del usuario autenticado si está disponible
     let uid = null;
     try {
@@ -41,6 +52,20 @@ function Dashboard() {
     } catch (e) {
       // Ignorar errores de parseo
     }
+    // Validar tokens si hay uid ANTES del prompt
+    if (uid) {
+      const hasRequired = await userHasRequiredTokens(uid);
+      if (!hasRequired) {
+        alert(
+          "You must connect Github and at least one of Google Drive or Dropbox in Settings before creating experiments."
+        );
+        navigate("/settings");
+        return;
+      }
+    }
+    const name = prompt("Experiment name:");
+    if (!name) return;
+    setLoading(true);
     const body = uid ? { name, uid } : { name };
     const res = await fetch("/api/create-experiment", {
       method: "POST",
@@ -120,7 +145,8 @@ function Dashboard() {
           onClick={handleCreate}
           disabled={loading}
         >
-          + Create experiment
+          {loading ? "Creating..." : "+ Create experiment"}
+          {/* Also apply for deleting */}
         </button>
       </div>
       <div className="dashboard-list">

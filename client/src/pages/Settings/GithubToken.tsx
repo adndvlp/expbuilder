@@ -53,6 +53,7 @@ export default function GithubToken() {
     try {
       await updateDoc(doc(db, "users", user.uid), {
         githubTokens: null,
+        uid: user.uid,
       });
       setHasToken(false);
     } catch (err) {
