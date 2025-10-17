@@ -1,0 +1,375 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png+xml" href="/icon/fp black.png">
+    <title>Experiment</title>
+    <script src="https://unpkg.com/jspsych@8.2.1"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-animation@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-audio-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-audio-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-audio-slider-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-browser-check@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-call-function@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-canvas-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-canvas-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-canvas-slider-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-categorize-animation@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-categorize-html@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-categorize-image@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-cloze@2.2.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-external-html@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-free-sort@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-fullscreen@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-audio-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-slider-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-video-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-iat-html@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-iat-image@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-image-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-image-keyboard-response@2.1.0"></script>
+
+    <script src="/plugins/plugin-custom-image-keyboard-response.js"></script>
+    <script src="/plugins/plugin-multi-image-keyboard-response.js"></script>
+
+    <script src="https://unpkg.com/@jspsych/plugin-image-slider-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-initialize-camera@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-initialize-microphone@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-instructions@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-maxdiff@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-mirror-camera@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-preload@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-reconstruction@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-resize@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-same-different-html@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-same-different-image@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-serial-reaction-time@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-serial-reaction-time-mouse@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-sketchpad@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-html-form@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-likert@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-multi-choice@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-multi-select@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-text@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-video-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-video-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-video-slider-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-virtual-chinrest@3.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-visual-search-circle@2.2.0"></script>
+
+    <script src="https://cdn.jsdelivr.net/gh/jspsych/jspsych@jspsych@7.0.0/examples/js/webgazer/webgazer.js"></script>
+
+    <script src="https://unpkg.com/@jspsych/extension-webgazer@1.2.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-webgazer-calibrate@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-webgazer-init-camera@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-webgazer-validate@2.1.0"></script>
+
+    <script src="https://unpkg.com/@jspsych/extension-record-video@1.2.0"></script>
+    <script src="https://unpkg.com/@jspsych/extension-mouse-tracking@1.0.0"></script>
+
+    <link href="https://unpkg.com/jspsych@7.3.1/css/jspsych.css" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="https://unpkg.com/@jspsych/plugin-survey@2.1.0/css/survey.css">
+
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #f0f0f0;
+      }
+      #jspsych-target {
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="jspsych-target"></div>
+
+    
+  
+
+<script id="generated-script">
+
+
+    // --- Función robusta para convertir JSON a CSV ---
+  function jsonToCsv(data, options = {}) {
+    if (!Array.isArray(data) || data.length === 0) return '';
+    
+    const config = {
+      includeHeaders: options.includeHeaders !== false,
+      delimiter: options.delimiter || ',',
+      eol: options.eol || '\n',
+      fields: options.fields || null
+    };
+
+    let fields = config.fields;
+    if (!fields || fields.length === 0) {
+      const fieldsSet = new Set();
+      data.forEach(row => {
+        if (row && typeof row === 'object') {
+          Object.keys(row).forEach(key => fieldsSet.add(key));
+        }
+      });
+      fields = Array.from(fieldsSet);
+    }
+
+    if (fields.length === 0) return '';
+
+    function formatValue(value) {
+      if (value === null || value === undefined) return '';
+      if (typeof value === 'object') {
+        try {
+          value = JSON.stringify(value);
+        } catch (e) {
+          value = String(value);
+        }
+      }
+        let strValue = String(value);
+      const needsQuotes = 
+        strValue.includes(config.delimiter) ||
+        strValue.includes('"') ||
+        strValue.includes('\n') ||
+        strValue.includes('\r');
+      if (needsQuotes) {
+        strValue = strValue.replace(/"/g, '""');
+        return `"${strValue}"`;
+      }
+      return strValue;
+    }
+
+    const csvRows = [];
+    if (config.includeHeaders) {
+      csvRows.push(fields.map(field => formatValue(field)).join(config.delimiter));
+    }
+
+    data.forEach(row => {
+      if (!row || typeof row !== 'object') return;
+      const values = fields.map(field => formatValue(row[field]));
+      csvRows.push(values.join(config.delimiter));
+    });
+
+    return csvRows.join(config.eol);
+  }
+
+  // --- Firebase config ---
+  const firebaseConfig = {
+    apiKey: "AIzaSyBEbJ-uGKzsaf2u24KPamBPVZrUmvhFk-Q",
+    authDomain: "test-e4cf9.firebaseapp.com",
+    databaseURL: "http://localhost:9000?ns=test-e4cf9",
+    projectId: "test-e4cf9",
+    storageBucket: "test-e4cf9.firebasestorage.app",
+    messagingSenderId: "414213417080",
+    appId: "1:414213417080:web:98607c621a54d07656e58d"
+  };
+
+  // --- Cargar Firebase SDK ---
+  if (typeof window.firebase === 'undefined') {
+    const script = document.createElement('script');
+    script.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';
+    script.onload = () => {
+      const dbScript = document.createElement('script');
+      dbScript.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';
+      dbScript.onload = () => { window._firebaseReady = true; };
+      document.head.appendChild(dbScript);
+    };
+    document.head.appendChild(script);
+  } else {
+    window._firebaseReady = true;
+  }
+
+  function waitForFirebase() {
+    return new Promise(resolve => {
+      if (window._firebaseReady) return resolve();
+      const interval = setInterval(() => {
+        if (window._firebaseReady) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 50);
+    });
+  }
+
+  function getUid() {
+    try {
+      const userStr = window.localStorage.getItem('user');
+      if (userStr) return JSON.parse(userStr).uid;
+    } catch (e) {}
+    return undefined;
+  }
+
+  const trialSessionId =
+    (crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2) + Date.now());
+
+  let participantNumber;
+
+  async function saveSession(trialSessionId) {
+    try {
+      const res = await fetch("http://localhost:5001/test-e4cf9/us-central1/apidata", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "*/*" },
+        body: JSON.stringify({
+          experimentID: "3ac3d252-8ad0-491f-aebf-ed2d9f534957",
+          sessionId: trialSessionId,
+        }),
+      });
+      
+      console.log('Response status:', res.status);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Error creating session:', errorText);
+        throw new Error(`Failed to create session: ${res.status} - ${errorText}`);
+      }
+      
+      const result = await res.json();
+      console.log('Session created successfully:', result);
+      
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to create session');
+      }
+      
+      participantNumber = result.participantNumber;
+      return participantNumber;
+    } catch (error) {
+      console.error('Error in saveSession:', error);
+      alert('Error al crear la sesión: ' + error.message);
+      throw error;
+    }
+  }
+
+  (async () => {
+    // Esperar e inicializar Firebase
+    await waitForFirebase();
+    if (!window.firebase.apps.length) {
+      window.firebase.initializeApp(firebaseConfig);
+    }
+    const db = window.firebase.database();
+
+    participantNumber = await saveSession(trialSessionId);
+
+    if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
+      alert("El número de participante no está asignado. Por favor, espera.");
+      throw new Error("participantNumber no asignado");
+    }
+
+    // --- Configurar onDisconnect para finalizar sesión automáticamente ---
+    const sessionRef = db.ref('sessions/3ac3d252-8ad0-491f-aebf-ed2d9f534957/' + trialSessionId);
+    await sessionRef.set({
+      connected: true,
+      experimentID: '3ac3d252-8ad0-491f-aebf-ed2d9f534957',
+      sessionId: trialSessionId,
+      startedAt: window.firebase.database.ServerValue.TIMESTAMP
+    });
+    
+    // Cuando se desconecte, marcar para que el backend finalice la sesión
+    // Incluir needsFinalization para que se procesen los datos en caso de desconexión
+    sessionRef.onDisconnect().update({
+      connected: false,
+      needsFinalization: true,
+      disconnectedAt: window.firebase.database.ServerValue.TIMESTAMP
+    });
+
+    const jsPsych = initJsPsych({
+
+    
+
+    on_data_update: function (data) {
+    const csvData = jsonToCsv([data], {
+        includeHeaders: true
+      });
+      fetch("http://localhost:5001/test-e4cf9/us-central1/apidata", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "*/*" },
+        body: JSON.stringify({
+          experimentID: "3ac3d252-8ad0-491f-aebf-ed2d9f534957",
+          sessionId: trialSessionId,
+          data: csvData,
+        }),
+      })
+      .then(res => {
+        if (!res.ok) {
+          return res.text().then(text => {
+            console.error('Error appending data:', text);
+          });
+        }
+        return res.json();
+      })
+      .then(result => {
+        if (result && result.success) {
+          console.log('Data appended to temporary storage');
+        }
+      })
+      .catch(error => {
+        console.error('Error in on_data_update:', error);
+      });
+    },
+
+  on_finish: async function() {
+    // Finalizar la sesión normalmente y marcar en Firebase que terminó correctamente
+    console.log('Experiment finished normally, sending data to Google Drive...');
+    
+    try {
+      // Cancelar el onDisconnect para evitar conflictos
+      await sessionRef.onDisconnect().cancel();
+      
+      // Marcar en Firebase que terminó correctamente Y necesita finalización
+      await sessionRef.update({
+        connected: false,
+        finished: true,
+        needsFinalization: true,
+        finishedAt: window.firebase.database.ServerValue.TIMESTAMP
+      });
+      
+      // El backend procesará la finalización al detectar needsFinalization=true
+      console.log('Session marked for finalization in Firebase');
+    } catch (error) {
+      console.error('Error marking session as finished:', error);
+    }
+  },
+  // Uncomment to see the json results after finishing a session experiment
+  // jsPsych.data.displayData('csv');
+});
+
+const timeline = [];
+
+const welcome = {
+  type: jsPsychHtmlButtonResponse,
+  stimulus: "Welcome to the experiment. Press 'Start' to begin.",
+  choices: ['Start'],
+};
+
+timeline.push(welcome);
+
+
+    const preloadNew_Trial = {
+        type: jsPsychPreload,
+       files: [],
+    }
+    timeline.push(preloadNew_Trial);
+    
+    const test_stimuli_New_Trial = [{stimulus: "felvf dmmldggdvdvdsfsddssdsdfscwolañcmsf"}];
+    const New_Trial_timeline = {
+    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
+    data: {
+      response: "response",
+rt: "rt",
+stimulus: "stimulus",
+    },
+    };
+    const New_Trial_procedure = {
+    timeline: 
+    [New_Trial_timeline],
+    timeline_variables: test_stimuli_New_Trial,
+    
+    };
+    timeline.push(New_Trial_procedure);
+  
+
+jsPsych.run(timeline);
+
+})();
+
+</script></body></html>

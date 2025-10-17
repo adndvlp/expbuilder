@@ -187,6 +187,104 @@ function Component({}: TimelineProps) {
   const generateExperiment = () => {
     return `
 
+    // --- Función robusta para convertir JSON a CSV ---
+  function jsonToCsv(data, options = {}) {
+    if (!Array.isArray(data) || data.length === 0) return '';
+    
+    const config = {
+      includeHeaders: options.includeHeaders !== false,
+      delimiter: options.delimiter || ',',
+      eol: options.eol || '\\n',
+      fields: options.fields || null
+    };
+
+    let fields = config.fields;
+    if (!fields || fields.length === 0) {
+      const fieldsSet = new Set();
+      data.forEach(row => {
+        if (row && typeof row === 'object') {
+          Object.keys(row).forEach(key => fieldsSet.add(key));
+        }
+      });
+      fields = Array.from(fieldsSet);
+    }
+
+    if (fields.length === 0) return '';
+
+    function formatValue(value) {
+      if (value === null || value === undefined) return '';
+      if (typeof value === 'object') {
+        try {
+          value = JSON.stringify(value);
+        } catch (e) {
+          value = String(value);
+        }
+      }
+        let strValue = String(value);
+      const needsQuotes = 
+        strValue.includes(config.delimiter) ||
+        strValue.includes('"') ||
+        strValue.includes('\\n') ||
+        strValue.includes('\\r');
+      if (needsQuotes) {
+        strValue = strValue.replace(/"/g, '""');
+        return \`"\${strValue}"\`;
+      }
+      return strValue;
+    }
+
+    const csvRows = [];
+    if (config.includeHeaders) {
+      csvRows.push(fields.map(field => formatValue(field)).join(config.delimiter));
+    }
+
+    data.forEach(row => {
+      if (!row || typeof row !== 'object') return;
+      const values = fields.map(field => formatValue(row[field]));
+      csvRows.push(values.join(config.delimiter));
+    });
+
+    return csvRows.join(config.eol);
+  }
+
+  // --- Firebase config ---
+  const firebaseConfig = {
+    apiKey: "${import.meta.env.VITE_FIREBASE_API_KEY}",
+    authDomain: "${import.meta.env.VITE_FIREBASE_AUTH_DOMAIN}",
+    databaseURL: "${import.meta.env.VITE_FIREBASE_DATABASE_URL || "https://" + import.meta.env.VITE_FIREBASE_PROJECT_ID + ".firebaseio.com"}",
+    projectId: "${import.meta.env.VITE_FIREBASE_PROJECT_ID}",
+    storageBucket: "${import.meta.env.VITE_FIREBASE_STORAGE_BUCKET}",
+    messagingSenderId: "${import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID}",
+    appId: "${import.meta.env.VITE_FIREBASE_APP_ID}"
+  };
+
+  // --- Cargar Firebase SDK ---
+  if (typeof window.firebase === 'undefined') {
+    const script = document.createElement('script');
+    script.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';
+    script.onload = () => {
+      const dbScript = document.createElement('script');
+      dbScript.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';
+      dbScript.onload = () => { window._firebaseReady = true; };
+      document.head.appendChild(dbScript);
+    };
+    document.head.appendChild(script);
+  } else {
+    window._firebaseReady = true;
+  }
+
+  function waitForFirebase() {
+    return new Promise(resolve => {
+      if (window._firebaseReady) return resolve();
+      const interval = setInterval(() => {
+        if (window._firebaseReady) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 50);
+    });
+  }
+
   function getUid() {
     try {
       const userStr = window.localStorage.getItem('user');
@@ -238,6 +336,13 @@ function Component({}: TimelineProps) {
   }
 
   (async () => {
+    // Esperar e inicializar Firebase
+    await waitForFirebase();
+    if (!window.firebase.apps.length) {
+      window.firebase.initializeApp(firebaseConfig);
+    }
+    const db = window.firebase.database();
+
     participantNumber = await saveSession(trialSessionId);
 
     if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
@@ -245,18 +350,38 @@ function Component({}: TimelineProps) {
       throw new Error("participantNumber no asignado");
     }
 
+    // --- Configurar onDisconnect para finalizar sesión automáticamente ---
+    const sessionRef = db.ref('sessions/${experimentID}/' + trialSessionId);
+    await sessionRef.set({
+      connected: true,
+      experimentID: '${experimentID}',
+      sessionId: trialSessionId,
+      startedAt: window.firebase.database.ServerValue.TIMESTAMP
+    });
+    
+    // Cuando se desconecte, marcar para que el backend finalice la sesión
+    // Incluir needsFinalization para que se procesen los datos en caso de desconexión
+    sessionRef.onDisconnect().update({
+      connected: false,
+      needsFinalization: true,
+      disconnectedAt: window.firebase.database.ServerValue.TIMESTAMP
+    });
+
     const jsPsych = initJsPsych({
 
     ${extensions}
 
     on_data_update: function (data) {
+    const csvData = jsonToCsv([data], {
+        includeHeaders: true
+      });
       fetch("${DATA_API_URL}", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "*/*" },
         body: JSON.stringify({
           experimentID: "${experimentID}",
           sessionId: trialSessionId,
-          data: data,
+          data: csvData,
         }),
       })
       .then(res => {
@@ -278,35 +403,25 @@ function Component({}: TimelineProps) {
     },
 
   on_finish: async function() {
-    // Finalizar la sesión: enviar todos los resultados a Google Drive
+    // Finalizar la sesión normalmente y marcar en Firebase que terminó correctamente
+    console.log('Experiment finished normally, sending data to Google Drive...');
+    
     try {
-      console.log('Finishing session and sending data to Google Drive...');
+      // Cancelar el onDisconnect para evitar conflictos
+      await sessionRef.onDisconnect().cancel();
       
-      const finishResponse = await fetch("${DATA_API_URL}", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "*/*" },
-        body: JSON.stringify({
-          experimentID: "${experimentID}",
-          sessionId: trialSessionId,
-          action: "finish",
-        }),
+      // Marcar en Firebase que terminó correctamente Y necesita finalización
+      await sessionRef.update({
+        connected: false,
+        finished: true,
+        needsFinalization: true,
+        finishedAt: window.firebase.database.ServerValue.TIMESTAMP
       });
-
-      if (!finishResponse.ok) {
-        const errorText = await finishResponse.text();
-        console.error('Error finishing session:', errorText);
-        throw new Error(\`Failed to finish session: \${finishResponse.status}\`);
-      }
-
-      const finishResult = await finishResponse.json();
-      console.log('Session finished successfully:', finishResult);
       
-      if (finishResult.success) {
-        console.log(\`Sent \${finishResult.resultsSent} results to Google Drive\`);
-      }
+      // El backend procesará la finalización al detectar needsFinalization=true
+      console.log('Session marked for finalization in Firebase');
     } catch (error) {
-      console.error('Error in on_finish:', error);
-      alert('Error al finalizar la sesión: ' + error.message);
+      console.error('Error marking session as finished:', error);
     }
   },
   // Uncomment to see the json results after finishing a session experiment

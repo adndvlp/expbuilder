@@ -5,7 +5,7 @@ import Timeline from "./components/Timeline";
 import ConfigPanel from "./components/ConfigPanel";
 import TrialsProvider from "./providers/TrialsProvider";
 import UrlProvider from "./providers/UrlProvider";
-import ResultsList from "./components/ResultsList";
+// import ResultsList from "./components/ResultsList";
 import ExperimentPreview from "./components/ExperimentPreview";
 import { useEffect, useRef, useState } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -186,7 +186,7 @@ function ExperimentBuilder() {
               {!isDevMode && (
                 <div style={{ overflowY: "auto" }}>
                   <ExperimentPreview />
-                  <ResultsList />
+                  {/* <ResultsList /> */}
                 </div>
               )}
             </div>
