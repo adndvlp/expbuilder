@@ -80,12 +80,29 @@ const PluginEditor: React.FC<PluginEditorProps> = ({ selectedPluginName }) => {
 
     // Asigna el plugin subido al trial seleccionado (no crea trial nuevo)
     if (trials && setTrials && setSelectedTrial) {
+      // Solo considera items que son Trial (tienen id numérico y propiedad plugin)
       const selectedTrial =
-        trials.find((t) => t.plugin === selectedPluginName) || trials[0];
-      if (selectedTrial) {
+        trials.find(
+          (t) =>
+            typeof t.id === "number" &&
+            "plugin" in t &&
+            t.plugin === selectedPluginName
+        ) || trials.find((t) => typeof t.id === "number" && "plugin" in t);
+
+      if (
+        selectedTrial &&
+        typeof selectedTrial.id === "number" &&
+        "plugin" in selectedTrial
+      ) {
         const updatedTrial = { ...selectedTrial, plugin: name };
         setTrials(
-          trials.map((t) => (t.id === selectedTrial.id ? updatedTrial : t))
+          trials.map((t) =>
+            typeof t.id === "number" &&
+            "plugin" in t &&
+            t.id === selectedTrial.id
+              ? updatedTrial
+              : t
+          )
         );
         setSelectedTrial(updatedTrial);
       }

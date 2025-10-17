@@ -12,8 +12,6 @@ dist
 dist-ssr
 *.local
 
-plugins
-plugins-to-refactor
 Dockerfile
 .DS_Store
 

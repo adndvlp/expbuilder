@@ -9,6 +9,7 @@ const __dirname = path.dirname(__filename);
 
 const pluginsDir = [path.resolve(__dirname, "./plugins")];
 const outputDir = path.resolve(__dirname, "metadata");
+const failedDir = path.resolve(__dirname, "plugins_refactor");
 
 // Mapeo base de tipos
 const typeMap = {
@@ -136,6 +137,7 @@ function reconstructObject(node, content) {
 
 async function extractInfoObjects() {
   await fs.mkdir(outputDir, { recursive: true });
+  await fs.mkdir(failedDir, { recursive: true });
 
   for (const pluginsPath of pluginsDir) {
     let pluginDirs = [];

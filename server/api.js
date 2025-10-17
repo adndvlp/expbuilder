@@ -651,13 +651,21 @@ app.post("/api/save-plugin/:id", async (req, res) => {
     const metadataPathFile = path.join(__dirname, "metadata", `${name}.json`);
     if (fs.existsSync(metadataPathFile)) fs.unlinkSync(metadataPathFile);
 
-    // Actualizar experiment.html y trials_preview.html
+    // Actualizar experiment_template.html y trials_preview_template.html
     await db.read();
     let plugins = [];
     const pluginConfigDoc = db.data.pluginConfigs[0];
     plugins = pluginConfigDoc?.plugins || [];
-    const html1Path = path.join(__dirname, "experiment.html");
-    const html2Path = path.join(__dirname, "trials_preview.html");
+    const html1Path = path.join(
+      __dirname,
+      "templates",
+      "experiment_template.html"
+    );
+    const html2Path = path.join(
+      __dirname,
+      "templates",
+      "trials_preview_template.html"
+    );
     let html1 = fs.readFileSync(html1Path, "utf8");
     let html2 = fs.readFileSync(html2Path, "utf8");
     const $1 = cheerio.load(html1);
@@ -771,8 +779,8 @@ app.delete("/api/delete-plugin/:index", async (req, res) => {
 
     // Solo borrar la etiqueta <script id="plugin-script-{index}">
     const htmlFiles = [
-      path.join(__dirname, "experiment.html"),
-      path.join(__dirname, "trials_preview.html"),
+      path.join(__dirname, "templates", "experiment_template.html"),
+      path.join(__dirname, "templates", "trials_preview_template.html"),
     ];
     htmlFiles.forEach((htmlPath) => {
       if (fs.existsSync(htmlPath)) {
@@ -1037,37 +1045,6 @@ app.post("/api/publish-experiment/:experimentID", async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
-
-// Endpoint para agregar una respuesta a la sesión
-// app.post("/api/append-result", async (req, res) => {
-//   try {
-//     let { sessionId, response } = req.body;
-//     if (!sessionId || !response)
-//       return res
-//         .status(400)
-//         .json({ success: false, error: "sessionId and response required" });
-
-//     // Si recibes un string, parsea:
-//     if (typeof response === "string") response = JSON.parse(response);
-
-//     // Busca el documento o créalo si no existe
-//     const updated = await SessionResult.findOneAndUpdate(
-//       { sessionId },
-//       { $push: { data: response } },
-//       { upsert: true, new: true }
-//     );
-
-//     // Obtén todas las sesiones ordenadas por fecha
-//     const sessions = await SessionResult.find({}).sort({ createdAt: 1 });
-//     // Busca el índice de la sesión actual
-//     const participantNumber =
-//       sessions.findIndex((s) => s.sessionId === sessionId) + 1;
-
-//     res.json({ success: true, id: updated._id, participantNumber });
-//   } catch (err) {
-//     res.status(500).json({ success: false, error: err.message });
-//   }
-// });
 
 app.post("/api/append-result/:experimentID", async (req, res) => {
   try {
