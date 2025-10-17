@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+const VITE_API = import.meta.env.VITE_API_URL;
 
 type Experiment = {
   experimentID: string;
@@ -18,7 +19,7 @@ function Dashboard() {
 
   // Cargar experimentos al montar
   useEffect(() => {
-    fetch("/api/load-experiments")
+    fetch(`${VITE_API}/api/load-experiments`)
       .then((res) => res.json())
       .then((data) => setExperiments(data.experiments || []));
   }, []);
@@ -67,7 +68,7 @@ function Dashboard() {
     if (!name) return;
     setLoading(true);
     const body = uid ? { name, uid } : { name };
-    const res = await fetch("/api/create-experiment", {
+    const res = await fetch(`${VITE_API}/api/create-experiment`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -97,7 +98,7 @@ function Dashboard() {
     }
 
     const body = uid ? { uid } : {};
-    await fetch(`/api/delete-experiment/${id}`, {
+    await fetch(`${VITE_API}/api/delete-experiment/${id}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

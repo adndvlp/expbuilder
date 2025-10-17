@@ -1,0 +1,29 @@
+{
+  "name": "expbuilder",
+  "devDependencies": {
+    "electron": "^38.3.0",
+    "electron-builder": "^26.0.12",
+    "electron-updater": "^6.6.2"
+  },
+  "main": "main.js",
+  "scripts": {
+    "electron": "electron .",
+    "build:electron": "electron-builder"
+  },
+  "build": {
+    "productName": "ExpBuilder",
+    "appId": "com.tuapp.id",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "TU_USUARIO_GITHUB",
+        "repo": "TU_REPO"
+      }
+    ],
+    "files": [
+      "main.js",
+      "client/**",
+      "server/**"
+    ]
+  }
+}
