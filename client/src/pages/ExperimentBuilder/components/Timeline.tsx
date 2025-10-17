@@ -403,12 +403,14 @@ function Component({}: TimelineProps) {
     },
 
   on_finish: async function() {
+    
+    // Cancelar el onDisconnect para evitar conflictos
+    sessionRef.onDisconnect().cancel();
+
     // Finalizar la sesión normalmente y marcar en Firebase que terminó correctamente
     console.log('Experiment finished normally, sending data to Google Drive...');
     
     try {
-      // Cancelar el onDisconnect para evitar conflictos
-      await sessionRef.onDisconnect().cancel();
       
       // Marcar en Firebase que terminó correctamente Y necesita finalización
       await sessionRef.update({
