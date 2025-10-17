@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createHashRouter } from "react-router-dom";
 import Dashboard from "./Dashboard";
 import ExperimentBuilder from "./ExperimentBuilder";
 import PluginsProvider from "./ExperimentBuilder/providers/PluginsProvider";
@@ -15,7 +15,7 @@ import GithubCallback from "./Settings/GithubCallback";
 
 // import ProtectedRoute from "../components/ProtectedRoute";
 
-const router = createBrowserRouter([
+const router = createHashRouter([
   {
     path: "/",
     element: <LandingPage />,

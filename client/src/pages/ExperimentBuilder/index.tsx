@@ -89,6 +89,31 @@ function ExperimentBuilder() {
       <TrialsProvider>
         <UrlProvider>
           <div className="app-container">
+            {/* Botones de navegación */}
+            <div
+              style={{
+                position: "fixed",
+                top: 16,
+                left: 16,
+                zIndex: 1000,
+                display: "flex",
+                gap: "8px",
+              }}
+            >
+              <button
+                onClick={() => navigate(-1)}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 4,
+                  background: "#3d92b4",
+                  color: "white",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                ←
+              </button>
+            </div>
             {/* Timeline */}
             {showTimeline && (
               <div

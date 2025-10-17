@@ -3,6 +3,7 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase";
 import "./index.css";
+import { Link } from "react-router-dom";
 
 const Register: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -121,9 +122,9 @@ const Register: React.FC = () => {
         style={{ marginTop: 16, textAlign: "center" }}
       >
         Already have an account?{" "}
-        <a style={{ color: "#f1c40f" }} href="/auth/login">
+        <Link style={{ color: "#f1c40f" }} to="/auth/login">
           Sign In
-        </a>
+        </Link>
       </div>
     </div>
   );

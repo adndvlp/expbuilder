@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../../lib/firebase";
 import "./index.css";
@@ -108,9 +108,9 @@ const Login: React.FC = () => {
         style={{ marginTop: 16, textAlign: "center" }}
       >
         Need an account?{" "}
-        <a style={{ color: "#f1c40f" }} href="/auth/register">
+        <Link style={{ color: "#f1c40f" }} to="/auth/register">
           Sign Up
-        </a>
+        </Link>
       </div>
     </div>
   );

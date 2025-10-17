@@ -7,7 +7,7 @@ export const ERROR = {
   EMAIL_NOT_FOUND: "auth/user-not-found",
 };
 
-export const getError = (code) => {
+export const getError = (code: string) => {
   switch (code) {
     case ERROR.PASSWORD_WEAK:
       return "Password must be at least 12 characters";

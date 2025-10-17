@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import { PromptModal } from "./PromptModal";
 const VITE_API = import.meta.env.VITE_API_URL;
 
 type Experiment = {
@@ -15,6 +16,7 @@ function Dashboard() {
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [loading, setLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showPromptModal, setShowPromptModal] = useState(false);
   const navigate = useNavigate();
 
   // Cargar experimentos al montar
@@ -64,9 +66,28 @@ function Dashboard() {
         return;
       }
     }
-    const name = prompt("Experiment name:");
-    if (!name) return;
+    // Abrir el modal en lugar de usar prompt()
+    setShowPromptModal(true);
+  };
+
+  // Confirmar creación del experimento con el nombre ingresado
+  const handleConfirmCreate = async (name: string) => {
+    setShowPromptModal(false);
     setLoading(true);
+
+    let uid = null;
+    try {
+      const userStr = localStorage.getItem("user");
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        if (user && user.uid) {
+          uid = user.uid;
+        }
+      }
+    } catch (e) {
+      // Ignorar errores de parseo
+    }
+
     const body = uid ? { name, uid } : { name };
     const res = await fetch(`${VITE_API}/api/create-experiment`, {
       method: "POST",
@@ -173,6 +194,13 @@ function Dashboard() {
         ))}
       </div>
       <Outlet />
+      <PromptModal
+        isOpen={showPromptModal}
+        title="Experiment name:"
+        placeholder="Enter experiment name"
+        onConfirm={handleConfirmCreate}
+        onCancel={() => setShowPromptModal(false)}
+      />
     </div>
   );
 }

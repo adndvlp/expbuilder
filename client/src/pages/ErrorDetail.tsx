@@ -1,4 +1,4 @@
-import { isRouteErrorResponse, useRouteError } from "react-router-dom";
+import { isRouteErrorResponse, Link, useRouteError } from "react-router-dom";
 
 type Props = {};
 
@@ -39,8 +39,8 @@ function ErrorDetail({}: Props) {
         <p style={{ fontSize: 18, marginBottom: 24 }}>
           The page you are looking for does not exist or was moved.
         </p>
-        <a
-          href="/"
+        <Link
+          to="/"
           style={{
             display: "inline-block",
             padding: "10px 24px",
@@ -55,7 +55,7 @@ function ErrorDetail({}: Props) {
           }}
         >
           Back to home
-        </a>
+        </Link>
       </div>
     );
   }

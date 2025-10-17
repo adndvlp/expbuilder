@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 type Props = {};
 
 function LandingPage({}: Props) {
@@ -50,8 +52,8 @@ function LandingPage({}: Props) {
         Create, manage, and launch behavioral experiments in minutes. <br />
         No code required. 100% open source.
       </p>
-      <a
-        href="/home"
+      <Link
+        to="/home"
         style={{
           display: "inline-block",
           padding: "16px 40px",
@@ -75,7 +77,7 @@ function LandingPage({}: Props) {
         }}
       >
         Get Started
-      </a>
+      </Link>
       <div style={{ marginTop: 48, opacity: 0.7, fontSize: 16 }}></div>
     </div>
   );

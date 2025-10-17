@@ -1,48 +1,49 @@
 import { app, BrowserWindow } from "electron";
-import { autoUpdater } from "electron-updater";
+import path from "path";
+import { spawn } from "child_process";
+import { fileURLToPath } from "url";
+import pkg from "electron-updater";
+const { autoUpdater } = pkg;
 
-// Variable para guardar la URL recibida por el esquema personalizado
-let deepLinkUrl = null;
+// Definir __dirname en ES module
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-function createWindow() {
-  const win = new BrowserWindow({ width: 1200, height: 800 });
-  win.loadFile("JsPsych/client/index.html"); // Cambia la ruta si usas build/dist
+// Si este proceso es el backend, no lanzar ventana ni backend de nuevo
+if (process.env.IS_ELECTRON_BACKEND === "1") {
+  // Solo backend, no ventana
+} else {
+  let serverProcess;
 
-  // Envía la URL recibida al renderizador si existe
-  if (deepLinkUrl) {
-    win.webContents.once("did-finish-load", () => {
-      win.webContents.send("deep-link-url", deepLinkUrl);
+  function startBackend() {
+    const serverPath = path.join(process.resourcesPath, "server", "api.js");
+    serverProcess = spawn(process.execPath, [serverPath], {
+      cwd: path.join(process.resourcesPath, "server"),
+      stdio: "inherit",
+      shell: false,
+      env: {
+        ...process.env,
+        ELECTRON_RUN_AS_NODE: "1",
+        IS_ELECTRON_BACKEND: "1",
+      },
     });
+    app.on("before-quit", () => serverProcess.kill());
   }
-}
 
-app.whenReady().then(() => {
-  createWindow();
-  autoUpdater.checkForUpdatesAndNotify();
-});
-
-// Manejo de esquema personalizado en macOS
-app.on("open-url", (event, url) => {
-  event.preventDefault();
-  deepLinkUrl = url;
-  // Si la ventana ya está creada, puedes enviar el URL al renderizador aquí
-});
-
-// Manejo en Windows/Linux: revisar argumentos al iniciar
-if (!app.isDefaultProtocolClient("expbuilder")) {
-  app.setAsDefaultProtocolClient("expbuilder");
-}
-
-if (process.platform === "win32" || process.platform === "linux") {
-  // El argumento con el esquema personalizado estará en process.argv
-  const deeplinkArg = process.argv.find((arg) =>
-    arg.startsWith("expbuilder://")
-  );
-  if (deeplinkArg) {
-    deepLinkUrl = deeplinkArg;
+  function createWindow() {
+    const win = new BrowserWindow({
+      width: 1200,
+      height: 800,
+    });
+    win.loadFile(path.join(process.resourcesPath, "client/dist/index.html"));
   }
-}
 
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
-});
+  app.whenReady().then(() => {
+    startBackend();
+    createWindow();
+    autoUpdater.checkForUpdatesAndNotify();
+  });
+
+  app.on("window-all-closed", () => {
+    if (process.platform !== "darwin") app.quit();
+  });
+}

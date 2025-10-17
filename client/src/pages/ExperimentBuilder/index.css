@@ -155,7 +155,7 @@ body {
 
 .add-trial-button:hover {
   background-color: var(--primary-purple);
-  color: var(--neutral-light);
+  color: #d4af37;
 }
 
 /* CANVAS ITEMS */

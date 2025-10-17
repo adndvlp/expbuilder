@@ -5,7 +5,9 @@
   "author": "Andrés",
   "devDependencies": {
     "electron": "^38.3.0",
-    "electron-builder": "^26.0.12",
+    "electron-builder": "^26.0.12"
+  },
+  "dependencies": {
     "electron-updater": "^6.6.2"
   },
   "main": "main.js",
@@ -25,8 +27,22 @@
     ],
     "files": [
       "main.js",
-      "client/**",
+      "server/node_modules/**",
       "server/**"
+    ],
+    "extraResources": [
+      {
+        "from": "client/dist",
+        "to": "client/dist"
+      },
+      {
+        "from": "server",
+        "to": "server"
+      },
+      {
+        "from": "server/node_modules",
+        "to": "server/node_modules"
+      }
     ],
     "icon": "icon/icon.png",
     "mac": {
