@@ -33,7 +33,8 @@ export default function GoogleDriveCallback() {
         const isDev = import.meta.env.DEV;
         const functionUrl = isDev
           ? `http://127.0.0.1:5001/test-e4cf9/us-central1/googleDriveOAuthCallback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`
-          : `https://us-central1-test-e4cf9.cloudfunctions.net/googleDriveOAuthCallback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
+          : // : `https://us-central1-test-e4cf9.cloudfunctions.net/googleDriveOAuthCallback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
+            `expbuilder://google-drive-callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
 
         // Llamar al Cloud Function - éste guardará los tokens y redirigirá
         window.location.href = functionUrl;
