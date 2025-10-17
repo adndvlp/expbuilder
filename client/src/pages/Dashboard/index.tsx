@@ -24,7 +24,7 @@ function Dashboard() {
       .then((data) => setExperiments(data.experiments || []));
   }, []);
 
-  console.log(localStorage.getItem("user"));
+  // console.log(localStorage.getItem("user"));
 
   // Hook para saber si el usuario tiene los tokens requeridos
   async function userHasRequiredTokens(uid: string): Promise<boolean> {

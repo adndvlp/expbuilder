@@ -534,7 +534,7 @@ jsPsych.run(timeline);
       );
     } finally {
       setIsSubmitting(false);
-      console.log(generateExperiment());
+      // console.log(generateExperiment());
     }
   };
 
