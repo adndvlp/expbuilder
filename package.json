@@ -1,5 +1,8 @@
 {
   "name": "expbuilder",
+  "version": "1.0.0",
+  "description": "Experiment Builder App",
+  "author": "Andrés",
   "devDependencies": {
     "electron": "^38.3.0",
     "electron-builder": "^26.0.12",
@@ -24,6 +27,30 @@
       "main.js",
       "client/**",
       "server/**"
-    ]
+    ],
+    "icon": "icon/icon.png",
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "icon/icon.icns",
+      "identity": null
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "icon": "icon/icon.ico"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb",
+        "zip"
+      ],
+      "icon": "icon/icon.png"
+    }
   }
 }
