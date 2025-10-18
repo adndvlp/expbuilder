@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import logo from "../../../icon/icon.png";
 
 type Props = {};
 
@@ -17,20 +18,23 @@ function LandingPage({}: Props) {
         padding: 24,
       }}
     >
-      <svg
-        width="80"
-        height="80"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="#fff"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        style={{ marginBottom: 32 }}
-      >
-        <rect x="3" y="3" width="18" height="18" rx="4" />
-        <path d="M7 12h10M12 7v10" />
-      </svg>
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 32 }}>
+        <div style={{ marginBottom: "8px", marginRight: "16px" }}>
+          <img
+            src={logo}
+            style={{ width: 120, height: 120, objectFit: "contain" }}
+          />
+        </div>
+        <div>
+          <div style={{ marginBottom: "8px" }}>
+            <img
+              className="logo-img"
+              alt="Logo"
+              style={{ width: 120, height: 120, objectFit: "contain" }}
+            />
+          </div>
+        </div>
+      </div>
       <h1
         style={{
           fontSize: 48,
