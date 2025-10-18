@@ -2,7 +2,10 @@
   "name": "expbuilder",
   "version": "1.0.0",
   "description": "Experiment Builder App",
-  "author": "Andrés Pacheco Fabián",
+  "author": {
+    "name": "Andrés Pacheco Fabián",
+    "email": "andngdv.lpr@gmail.com"
+  },
   "devDependencies": {
     "electron": "^38.3.0",
     "electron-builder": "^26.0.12"
