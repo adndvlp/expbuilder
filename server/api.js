@@ -24,12 +24,10 @@ const port = 3000;
 // Configure CORS to allow requests from your frontend
 app.use(
   cors({
-    origin: `http://localhost:5173`, // Replace with your frontend URL if different
+    origin: `${process.env.ORIGIN}`, // Replace with your frontend URL if different
     credentials: true,
   })
 );
-
-const FIREBASE_URL = "https://us-central1-test-e4cf9.cloudfunctions.net";
 
 app.use(express.json({ limit: "50mb" })); // Increased limit for larger code files
 
@@ -109,7 +107,7 @@ app.post("/api/create-experiment", async (req, res) => {
     // Llamar a la función de Firebase para crear el experimento en DataPipe
     try {
       // URL del emulador local o producción según el entorno
-      const firebaseUrl = `${FIREBASE_URL}/apicreateexperiment`; // URL de producción // Emulador local
+      const firebaseUrl = `${process.env.FIREBASE_URL}/apicreateexperiment`; // URL de producción // Emulador local
       // Incluir uid si está presente
       const firebaseBody = {
         experimentID: experimentID,
@@ -149,7 +147,7 @@ app.post("/api/create-experiment", async (req, res) => {
     let githubPagesUrl = null;
     if (uid) {
       try {
-        const githubUrl = `${FIREBASE_URL}/githubCreateAndPublish`;
+        const githubUrl = `${process.env.FIREBASE_URL}/githubCreateAndPublish`;
 
         // Por ahora solo creamos el repo con un HTML básico
         const basicHtml = `<!DOCTYPE html>
@@ -265,7 +263,7 @@ app.delete("/api/delete-experiment/:experimentID", async (req, res) => {
     // Llamar a la función de Firebase para eliminar el experimento en DataPipe (incluyendo carpeta de Dropbox)
     try {
       // URL del emulador local o producción según el entorno
-      const firebaseUrl = `${FIREBASE_URL}/apideleteexperiment`; // URL
+      const firebaseUrl = `${process.env.FIREBASE_URL}/apideleteexperiment`; // URL
 
       // Incluir uid si está presente para eliminar también la carpeta de Dropbox
       const firebaseBody = {
@@ -308,7 +306,7 @@ app.delete("/api/delete-experiment/:experimentID", async (req, res) => {
     // Llamar al endpoint de GitHub para eliminar el repositorio si uid está presente
     if (uid) {
       try {
-        const githubUrl = `${FIREBASE_URL}/githubDeleteRepository`;
+        const githubUrl = `${process.env.FIREBASE_URL}/githubDeleteRepository`;
 
         const githubResponse = await fetch(githubUrl, {
           method: "POST",
@@ -1000,7 +998,7 @@ app.post("/api/publish-experiment/:experimentID", async (req, res) => {
 
     // Llamar al endpoint de GitHub para actualizar el HTML
     try {
-      const githubUrl = `${FIREBASE_URL}/githubUpdateHtml`;
+      const githubUrl = `${process.env.FIREBASE_URL}/githubUpdateHtml`;
 
       const githubResponse = await fetch(githubUrl, {
         method: "POST",
