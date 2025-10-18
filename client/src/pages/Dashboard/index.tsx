@@ -201,6 +201,9 @@ function Dashboard() {
         onConfirm={handleConfirmCreate}
         onCancel={() => setShowPromptModal(false)}
       />
+      <div style={{ textAlign: "center", marginTop: 32, color: "#888" }}>
+        Made by Andrés
+      </div>
     </div>
   );
 }
