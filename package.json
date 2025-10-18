@@ -31,9 +31,7 @@
     "files": [
       "main.js",
       "oauth-handler.js",
-      "preload.js",
-      "server/node_modules/**",
-      "server/**"
+      "preload.js"
     ],
     "extraResources": [
       {
@@ -43,10 +41,6 @@
       {
         "from": "server",
         "to": "server"
-      },
-      {
-        "from": "server/node_modules",
-        "to": "server/node_modules"
       }
     ],
     "icon": "icon/icon.png",
@@ -56,7 +50,17 @@
         "zip"
       ],
       "icon": "icon/icon.icns",
-      "identity": null
+      "identity": null,
+      "files": [
+        "server/node_modules/**",
+        "server/**"
+      ],
+      "extraResources": [
+        {
+          "from": "server/node_modules",
+          "to": "server/node_modules"
+        }
+      ]
     },
     "win": {
       "target": [
