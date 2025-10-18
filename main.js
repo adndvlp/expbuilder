@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { dialog } from "electron";
 import path from "path";
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
@@ -109,6 +110,20 @@ if (process.env.IS_ELECTRON_BACKEND === "1") {
     startBackend();
     createWindow();
     autoUpdater.checkForUpdatesAndNotify();
+    autoUpdater.on("update-downloaded", async () => {
+      const result = await dialog.showMessageBox({
+        type: "info",
+        buttons: ["Install now", "Later"],
+        defaultId: 0,
+        cancelId: 1,
+        title: "Update available",
+        message:
+          "A new version is available. Do you want to install it now? The application will restart.",
+      });
+      if (result.response === 0) {
+        autoUpdater.quitAndInstall();
+      }
+    });
   });
 
   app.on("window-all-closed", () => {
