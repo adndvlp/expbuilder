@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+.env
+.env.example
+.env.production
+
 Dockerfile
 .DS_Store
 
