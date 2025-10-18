@@ -562,7 +562,7 @@ jsPsych.run(timeline);
     if (lastPagesUrl) {
       try {
         await navigator.clipboard.writeText(lastPagesUrl);
-        setCopyStatus("Copied link!");
+        setCopyStatus("Link copied!");
         setTimeout(() => setCopyStatus(""), 2000); // Clear message after 2 seconds
       } catch (err) {
         console.error("Failed to copy: ", err);
