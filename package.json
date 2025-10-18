@@ -16,8 +16,7 @@
   "main": "main.js",
   "scripts": {
     "electron": "electron .",
-    "build:electron": "electron-builder",
-    "clean:client": "rimraf client/node_modules client/package-lock.json"
+    "build:electron": "electron-builder"
   },
   "build": {
     "productName": "ExpBuilder",
@@ -64,7 +63,8 @@
         "nsis",
         "zip"
       ],
-      "icon": "icon/icon.ico"
+      "icon": "icon/icon.ico",
+      "sign": false
     },
     "linux": {
       "target": [
