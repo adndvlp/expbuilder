@@ -121,7 +121,7 @@ if (process.env.IS_ELECTRON_BACKEND === "1") {
           "A new version is available. Do you want to install it now? The application will restart.",
       });
       if (result.response === 0) {
-        autoUpdater.quitAndInstall(false, true);
+        autoUpdater.quitAndInstall();
       }
     });
   });
