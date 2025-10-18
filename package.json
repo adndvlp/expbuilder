@@ -21,8 +21,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "TU_USUARIO_GITHUB",
-        "repo": "TU_REPO"
+        "owner": "adndvlp",
+        "repo": "expbuilder"
       }
     ],
     "files": [
