@@ -27,6 +27,8 @@
     ],
     "files": [
       "main.js",
+      "oauth-handler.js",
+      "preload.js",
       "server/node_modules/**",
       "server/**"
     ],

@@ -356,7 +356,11 @@ function TrialsConfig({ pluginName }: Props) {
     csvJson,
     csvColumns,
     orders,
+    orderColumns,
     categories,
+    categoryColumn,
+    stimuliOrders,
+    categoryData,
     trialName,
     isLoadingTrial,
   ]);

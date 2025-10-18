@@ -1,5 +1,6 @@
 // src/components/Timeline.tsx
 import { useEffect, useState } from "react";
+import { openExternal } from "../../../lib/openExternal";
 import { Loop, Trial } from "./ConfigPanel/types";
 import useTrials from "../hooks/useTrials";
 import useUrl from "../hooks/useUrl";
@@ -18,6 +19,7 @@ function Component({}: TimelineProps) {
   const [submitStatus, setSubmitStatus] = useState<string>("");
   const { experimentUrl } = useUrl();
   const [copyStatus, setCopyStatus] = useState<string>("");
+  const [lastPagesUrl, setLastPagesUrl] = useState<string>("");
   const [publishStatus, setPublishStatus] = useState<string>("");
   const [isPublishing, setIsPublishing] = useState(false);
 
@@ -557,15 +559,18 @@ jsPsych.run(timeline);
     isSubmitting || ((!allTrialsHaveCode || !allLoopsHaveCode) && !isDevMode);
 
   const handleCopyLink = async () => {
-    if (experimentUrl) {
+    if (lastPagesUrl) {
       try {
-        await navigator.clipboard.writeText(experimentUrl);
+        await navigator.clipboard.writeText(lastPagesUrl);
         setCopyStatus("Copied link!");
         setTimeout(() => setCopyStatus(""), 2000); // Clear message after 2 seconds
       } catch (err) {
         console.error("Failed to copy: ", err);
         setCopyStatus("Failed to copy link.");
       }
+    } else {
+      setCopyStatus("No published link available.");
+      setTimeout(() => setCopyStatus(""), 2000);
     }
   };
 
@@ -602,6 +607,7 @@ jsPsych.run(timeline);
 
       if (result.success) {
         setPublishStatus(`Published! GitHub Pages URL: ${result.pagesUrl}`);
+        setLastPagesUrl(result.pagesUrl || "");
         // Optionally copy the GitHub Pages URL
         try {
           await navigator.clipboard.writeText(result.pagesUrl);
@@ -849,10 +855,8 @@ jsPsych.run(timeline);
         )}
 
         <div style={{ marginTop: 16 }}>
-          <a
-            href={experimentUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
             style={{
               display: "block",
               width: "100%",
@@ -866,16 +870,22 @@ jsPsych.run(timeline);
               fontSize: 14,
               letterSpacing: "0.05em",
               transition: "background-color 0.3s ease",
+              cursor: experimentUrl ? "pointer" : "not-allowed",
+              opacity: experimentUrl ? 1 : 0.6,
             }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.backgroundColor = "#43a047")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.backgroundColor = "#4caf50")
-            }
+            disabled={!experimentUrl}
+            onClick={() => experimentUrl && openExternal(experimentUrl)}
+            onMouseEnter={(e) => {
+              if (experimentUrl)
+                e.currentTarget.style.backgroundColor = "#43a047";
+            }}
+            onMouseLeave={(e) => {
+              if (experimentUrl)
+                e.currentTarget.style.backgroundColor = "#4caf50";
+            }}
           >
             Open experiment
-          </a>
+          </button>
           <button
             onClick={handleCopyLink}
             style={{

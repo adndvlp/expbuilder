@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { openExternal } from "../../../../../../lib/openExternal";
 import { IoIosHelpCircle } from "react-icons/io";
 import HtmlMapper from "./HtmlMapper";
 import { BiEdit } from "react-icons/bi";
@@ -97,7 +98,8 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
 
   return (
     <div className="mb-4 p-4 border rounded bg-gray-50">
-      <a
+      <button
+        type="button"
         style={{
           color: "white",
           display: "flex",
@@ -105,12 +107,15 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
           top: "0px",
           right: "0px",
           width: "16px",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: 0,
         }}
-        target="_blank"
-        href={pluginLink()}
+        onClick={() => openExternal(pluginLink())}
       >
         <IoIosHelpCircle />
-      </a>
+      </button>
       <h4 className="mb-2 text-center ">Plugin parameters</h4>
 
       <div className="mb-2 grid grid-cols-2 gap-2">
