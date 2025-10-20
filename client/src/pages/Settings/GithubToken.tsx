@@ -23,7 +23,7 @@ export default function GithubToken() {
       ? "http://localhost:5173/github-callback"
       : "https://test-e4cf9.firebaseapp.com/github-callback";
 
-  const SCOPE = "repo delete_repo workflow";
+  const SCOPE = "public_repo delete_repo workflow";
 
   const oauthUrl = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
     REDIRECT_URI
