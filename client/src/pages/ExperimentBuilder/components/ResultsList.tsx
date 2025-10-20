@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import ExperimentPreview from "./ExperimentPreview";
 import { useExperimentID } from "../hooks/useExperimentID";
-const DATA_API_URL = import.meta.env.VITE_DATA_API_URL;
+// No usar Firebase, usar endpoints REST locales
+const API_URL = import.meta.env.VITE_API_URL;
 
 type SessionMeta = {
   _id: string;
@@ -17,17 +18,11 @@ export default function ResultsList() {
 
   const experimentID = useExperimentID();
 
+  // Usar endpoint local para obtener sesiones
   const fetchSessions = async () => {
     setLoading(true);
     try {
-      const res = await fetch(DATA_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "list",
-          experimentID: experimentID,
-        }),
-      });
+      const res = await fetch(`${API_URL}/api/session-results/${experimentID}`);
       const data = await res.json();
       setSessions(data.sessions || []);
     } catch (error) {
@@ -43,26 +38,24 @@ export default function ResultsList() {
     fetchSessions();
   }, [ExperimentPreview]);
 
+  // Usar endpoint local para borrar una sesión
   const handleDeleteSession = async (sessionId: string) => {
     if (!window.confirm("Are you sure you want to delete this session result?"))
       return;
     try {
-      await fetch(DATA_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "delete",
-          experimentID: experimentID,
-          sessionId: sessionId,
-        }),
-      });
+      await fetch(
+        `${API_URL}/api/session-results/${sessionId}/${experimentID}`,
+        {
+          method: "DELETE",
+        }
+      );
       fetchSessions();
     } catch (error) {
       console.error("Error deleting session:", error);
     }
   };
 
-  // Borrar múltiples sesiones
+  // Borrar múltiples sesiones usando endpoint local
   const handleDeleteSelected = async () => {
     if (
       selected.length === 0 ||
@@ -70,19 +63,14 @@ export default function ResultsList() {
     )
       return;
     try {
-      await Promise.all(
-        selected.map((sessionId) =>
-          fetch(DATA_API_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "delete",
-              experimentID: experimentID,
-              sessionId: sessionId,
-            }),
-          })
-        )
-      );
+      for (const sessionId of selected) {
+        await fetch(
+          `${API_URL}/api/session-results/${sessionId}/${experimentID}`,
+          {
+            method: "DELETE",
+          }
+        );
+      }
       fetchSessions();
     } catch (error) {
       console.error("Error deleting sessions:", error);
@@ -105,37 +93,23 @@ export default function ResultsList() {
     setSelected([]);
   };
 
+  // Descargar CSV usando endpoint local
   const handleDownloadCSV = async (sessionId: string) => {
     try {
-      const res = await fetch(DATA_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "download",
-          experimentID: experimentID,
-          sessionId: sessionId,
-        }),
-      });
-
+      const res = await fetch(
+        `${API_URL}/api/download-session/${sessionId}/${experimentID}`
+      );
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
       }
-
-      // The API returns CSV as text, not JSON
       const csvText = await res.text();
-
-      // Crear un blob con el CSV
       const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
-
-      // Crear un elemento <a> temporal para descargar
       const link = document.createElement("a");
       link.href = url;
       link.download = `${experimentID}_${sessionId}.csv`;
       document.body.appendChild(link);
       link.click();
-
-      // Limpiar
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error) {

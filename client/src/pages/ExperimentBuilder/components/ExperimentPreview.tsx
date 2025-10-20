@@ -37,11 +37,51 @@ function ExperimentPreview() {
       (selectedLoop && selectedLoop.code)
     ) {
       const trialCode = `
-      const jsPsych = initJsPsych({
-        on_finish: function() {
-          jsPsych.data.displayData();
-      },
-      });
+
+        const trialSessionId =
+            (crypto.randomUUID
+              ? crypto.randomUUID()
+              : Math.random().toString(36).slice(2) + Date.now());
+
+        let participantNumber;
+
+          async function saveSession(trialSessionId) {
+          const res = await fetch("/api/append-result/${experimentID}", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "*/*" },
+            body: JSON.stringify({
+              sessionId: trialSessionId,
+            }),
+          });
+
+          const result = await res.json();
+          participantNumber = result.participantNumber;
+          return participantNumber;
+    }
+(async () => {
+  participantNumber = await saveSession(trialSessionId);
+
+  if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
+    alert("El número de participante no está asignado. Por favor, espera.");
+    throw new Error("participantNumber no asignado");
+  }
+    const jsPsych = initJsPsych({
+          on_data_update: function (data) {
+            const res = fetch("/api/append-result/${experimentID}", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", Accept: "*/*" },
+              body: JSON.stringify({
+                sessionId: trialSessionId,
+                response: data,
+              }),
+            });
+        
+          },
+
+          on_finish: function() {
+              jsPsych.data.displayData();
+          },
+    });
 
       const timeline = [];
 
@@ -55,7 +95,10 @@ function ExperimentPreview() {
 
       ${selectedTrial?.trialCode ? selectedTrial?.trialCode : selectedLoop?.code}
 
-      jsPsych.run(timeline);`;
+      jsPsych.run(timeline);
+      
+      })()
+      `;
 
       (async () => {
         await fetch(`${API_URL}/api/trials-preview/${experimentID}`, {

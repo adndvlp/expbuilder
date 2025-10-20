@@ -5,7 +5,7 @@ import Timeline from "./components/Timeline";
 import ConfigPanel from "./components/ConfigPanel";
 import TrialsProvider from "./providers/TrialsProvider";
 import UrlProvider from "./providers/UrlProvider";
-// import ResultsList from "./components/ResultsList";
+import ResultsList from "./components/ResultsList";
 import ExperimentPreview from "./components/ExperimentPreview";
 import { useEffect, useRef, useState } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -93,7 +93,7 @@ function ExperimentBuilder() {
             <div
               style={{
                 position: "fixed",
-                top: 16,
+                top: 8,
                 left: 16,
                 zIndex: 1000,
                 display: "flex",
@@ -105,7 +105,7 @@ function ExperimentBuilder() {
                 style={{
                   padding: "6px 12px",
                   borderRadius: 4,
-                  background: "#3d92b4",
+                  background: "#3e7d96",
                   color: "white",
                   border: "none",
                   cursor: "pointer",
@@ -211,7 +211,7 @@ function ExperimentBuilder() {
               {!isDevMode && (
                 <div style={{ overflowY: "auto" }}>
                   <ExperimentPreview />
-                  {/* <ResultsList /> */}
+                  <ResultsList />
                 </div>
               )}
             </div>

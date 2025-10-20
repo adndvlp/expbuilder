@@ -4,14 +4,7 @@
   "configs": [],
   "pluginConfigs": [
     {
-      "plugins": [
-        {
-          "name": "plugin-consent",
-          "scripTag": "/plugins/plugin-consent.js",
-          "pluginCode": "var jsPsychConsent = (function(jspsych){        \r\n  \"use strict\";\r\n\r\n  \r\n  const info = {\r\n    name: \"consent\",                            \r\n    parameters: {\r\n      consent_text: {\r\n        type: jspsych.ParameterType.HTML_STRING,\r\n        default: \"<p>¿Consientes participar en este estudio?</p>\"\r\n      },\r\n      yes_label: {\r\n        type: jspsych.ParameterType.STRING,\r\n        default: \"Sí\"\r\n      },\r\n      no_label: {\r\n        type: jspsych.ParameterType.STRING,\r\n        default: \"No\"\r\n      },\r\n      goodbye_text: {\r\n        type: jspsych.ParameterType.HTML_STRING,\r\n        default: \"<p>Gracias por tu tiempo. Puedes cerrar esta ventana.</p>\"\r\n      }\r\n    }\r\n  };\r\n\r\n  class ConsentPlugin {\r\n    static info = info;                          \r\n\r\n    constructor(jsPsych){\r\n      this.jsPsych = jsPsych;                    \r\n    }\r\n\r\n    trial(display_element, trial){\r\n      display_element.innerHTML = `\r\n        <div id=\"consent-container\">\r\n          ${trial.consent_text}\r\n          <div style=\"margin-top:20px;\">\r\n            <button id=\"btn-yes\">${trial.yes_label}</button>\r\n            <button id=\"btn-no\">${trial.no_label}</button>\r\n          </div>\r\n        </div>`;\r\n\r\n      /* — botón “Sí” — */\r\n      document.getElementById(\"btn-yes\")\r\n        .addEventListener(\"click\", () => {\r\n          this.jsPsych.finishTrial({ consent:true });\r\n        });\r\n\r\n      /* — botón “No” — */\r\n      document.getElementById(\"btn-no\")\r\n        .addEventListener(\"click\", () => {\r\n          display_element.innerHTML = trial.goodbye_text;\r\n          setTimeout(() => {\r\n            this.jsPsych.endExperiment(\r\n              \"El participante no otorgó su consentimiento.\"\r\n            );\r\n          }, 2000);\r\n        });\r\n    }\r\n  }\r\n\r\n  return ConsentPlugin;                          // ¡ahora sí es un constructor!\r\n})(jsPsychModule);\r\n",
-          "index": 0
-        }
-      ],
+      "plugins": [],
       "config": {}
     }
   ],

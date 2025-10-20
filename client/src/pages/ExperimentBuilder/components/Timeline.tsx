@@ -188,67 +188,6 @@ function Component({}: TimelineProps) {
 
   const generateExperiment = () => {
     return `
-
-    // --- Función robusta para convertir JSON a CSV ---
-  function jsonToCsv(data, options = {}) {
-    if (!Array.isArray(data) || data.length === 0) return '';
-    
-    const config = {
-      includeHeaders: options.includeHeaders !== false,
-      delimiter: options.delimiter || ',',
-      eol: options.eol || '\\n',
-      fields: options.fields || null
-    };
-
-    let fields = config.fields;
-    if (!fields || fields.length === 0) {
-      const fieldsSet = new Set();
-      data.forEach(row => {
-        if (row && typeof row === 'object') {
-          Object.keys(row).forEach(key => fieldsSet.add(key));
-        }
-      });
-      fields = Array.from(fieldsSet);
-    }
-
-    if (fields.length === 0) return '';
-
-    function formatValue(value) {
-      if (value === null || value === undefined) return '';
-      if (typeof value === 'object') {
-        try {
-          value = JSON.stringify(value);
-        } catch (e) {
-          value = String(value);
-        }
-      }
-        let strValue = String(value);
-      const needsQuotes = 
-        strValue.includes(config.delimiter) ||
-        strValue.includes('"') ||
-        strValue.includes('\\n') ||
-        strValue.includes('\\r');
-      if (needsQuotes) {
-        strValue = strValue.replace(/"/g, '""');
-        return \`"\${strValue}"\`;
-      }
-      return strValue;
-    }
-
-    const csvRows = [];
-    if (config.includeHeaders) {
-      csvRows.push(fields.map(field => formatValue(field)).join(config.delimiter));
-    }
-
-    data.forEach(row => {
-      if (!row || typeof row !== 'object') return;
-      const values = fields.map(field => formatValue(row[field]));
-      csvRows.push(values.join(config.delimiter));
-    });
-
-    return csvRows.join(config.eol);
-  }
-
   // --- Firebase config ---
   const firebaseConfig = {
     apiKey: "${import.meta.env.VITE_FIREBASE_API_KEY}",
@@ -374,9 +313,9 @@ function Component({}: TimelineProps) {
     ${extensions}
 
     on_data_update: function (data) {
-    const csvData = jsonToCsv([data], {
-        includeHeaders: true
-      });
+    
+      const csvData= jsPsych.data.getLastTrialData().csv()
+
       fetch("${DATA_API_URL}", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "*/*" },
