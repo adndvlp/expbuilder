@@ -165,6 +165,10 @@ function Dashboard() {
       return;
     }
     setExperiments((prev) => prev.filter((exp) => exp.experimentID !== id));
+    // Eliminar storage local asociado al experimento
+    try {
+      localStorage.removeItem(`experiment_storage_${id}`);
+    } catch (e) {}
     setLoading(false);
   };
 
