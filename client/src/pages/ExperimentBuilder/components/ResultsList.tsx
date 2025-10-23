@@ -169,7 +169,7 @@ export default function ResultsList() {
                     <button
                       key="select-btn"
                       className="select-mode-btn"
-                      style={{ marginLeft: 0 }}
+                      style={{ marginLeft: 0, borderRadius: "6px" }}
                       onClick={() => setSelectMode(true)}
                     >
                       Select sessions
@@ -182,7 +182,7 @@ export default function ResultsList() {
                     >
                       <button
                         className="cancel-select-btn"
-                        style={{ marginLeft: 0 }}
+                        style={{ marginLeft: 0, borderRadius: "6px" }}
                         onClick={handleCancelSelect}
                       >
                         Cancel

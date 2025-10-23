@@ -10,6 +10,7 @@ import { useFileUpload } from "./ConfigPanel/TrialsConfig/hooks/useFileUpload";
 import { FiRefreshCw } from "react-icons/fi";
 import LoopRangeModal from "./ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeModal";
 import { useExperimentID } from "../hooks/useExperimentID";
+import { useExperimentStorage } from "../hooks/useStorage";
 const API_URL = import.meta.env.VITE_API_URL;
 const DATA_API_URL = import.meta.env.VITE_DATA_API_URL;
 
@@ -17,13 +18,16 @@ type TimelineProps = {};
 
 function Component({}: TimelineProps) {
   const [submitStatus, setSubmitStatus] = useState<string>("");
-  const { experimentUrl } = useUrl();
+  const { experimentUrl, setExperimentUrl } = useUrl();
   const [copyStatus, setCopyStatus] = useState<string>("");
+  const [tunnelStatus, setTunnelStatus] = useState<string>("");
+  const [isTunnelActive, setTunnelActive] = useState<boolean>(false);
   const [lastPagesUrl, setLastPagesUrl] = useState<string>("");
   const [publishStatus, setPublishStatus] = useState<string>("");
   const [isPublishing, setIsPublishing] = useState(false);
 
   const experimentID = useExperimentID();
+  const storage = useExperimentStorage(experimentID ?? "");
 
   const {
     trials,
@@ -186,6 +190,77 @@ function Component({}: TimelineProps) {
     }
   }, [trials, isDevMode]);
 
+  const generateLocalExperiment = () => {
+    return `
+  const trialSessionId =
+    (crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2) + Date.now());
+
+  let participantNumber;
+
+  async function saveSession(trialSessionId) {
+   
+   const res = await fetch("/api/append-result/${experimentID}", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "*/*" },
+      body: JSON.stringify({
+        sessionId: trialSessionId,
+      }),
+    });
+  
+    const result = await res.json();
+    participantNumber = result.participantNumber;
+    return participantNumber;
+    
+  }
+
+  (async () => {
+    participantNumber = await saveSession(trialSessionId);
+
+    if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
+      alert("The participant number is not assigned. Please, wait.");
+      throw new Error("participantNumber not assigned");
+    }
+
+    const jsPsych = initJsPsych({
+
+    ${extensions}
+
+    on_data_update: function (data) {
+      const res = fetch("/api/append-result/${experimentID}", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Accept: "*/*" },
+        body: JSON.stringify({
+          sessionId: trialSessionId,
+          response: data,
+        }),
+      });
+    },
+
+  on_finish: function() {
+    jsPsych.data.displayData
+  }
+});
+
+const timeline = [];
+
+const welcome = {
+  type: jsPsychHtmlButtonResponse,
+  stimulus: "Welcome to the experiment. Press 'Start' to begin.",
+  choices: ['Start'],
+};
+
+timeline.push(welcome);
+
+${allCodes}
+
+jsPsych.run(timeline);
+
+})();
+`;
+  };
+
   const generateExperiment = () => {
     return `
   // --- Firebase config ---
@@ -249,6 +324,7 @@ function Component({}: TimelineProps) {
         body: JSON.stringify({
           experimentID: "${experimentID}",
           sessionId: trialSessionId,
+          storage: "${storage}",
         }),
       });
       
@@ -264,6 +340,11 @@ function Component({}: TimelineProps) {
       console.log('Session created successfully:', result);
       
       if (!result.success) {
+        if (result.message?.includes("INVALID_GOOGLE_DRIVE_TOKEN") || result.message?.includes("Invalid Google Drive token")) {
+          alert("Warning: Google Drive token not found or invalid. Please reconnect your Drive account in Settings.");
+        } else if (result.message?.includes("INVALID_DROPBOX_TOKEN") || result.message?.includes("Invalid Dropbox token")) {
+          alert("Warning: Dropbox token not found or invalid. Please reconnect your Dropbox account in Settings.");
+        }
         throw new Error(result.message || 'Failed to create session');
       }
       
@@ -271,7 +352,7 @@ function Component({}: TimelineProps) {
       return participantNumber;
     } catch (error) {
       console.error('Error in saveSession:', error);
-      alert('Error al crear la sesión: ' + error.message);
+      alert('Error creating session: ' + error.message);
       throw error;
     }
   }
@@ -287,8 +368,8 @@ function Component({}: TimelineProps) {
     participantNumber = await saveSession(trialSessionId);
 
     if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
-      alert("El número de participante no está asignado. Por favor, espera.");
-      throw new Error("participantNumber no asignado");
+      alert("The participant number is not assigned. Please, wait.");
+      throw new Error("participantNumber not assigned");
     }
 
     // --- Configurar onDisconnect para finalizar sesión automáticamente ---
@@ -323,6 +404,7 @@ function Component({}: TimelineProps) {
           experimentID: "${experimentID}",
           sessionId: trialSessionId,
           data: csvData,
+          storage: "${storage}",
         }),
       })
       .then(res => {
@@ -396,7 +478,7 @@ jsPsych.run(timeline);
       let generatedCode;
       isDevMode
         ? (generatedCode = code)
-        : (generatedCode = generateExperiment());
+        : (generatedCode = generateLocalExperiment());
 
       if (!isDevMode) {
         setSubmitStatus("Saving configuration...");
@@ -479,23 +561,76 @@ jsPsych.run(timeline);
     }
   };
 
-  const hasTrials = trials.filter(isTrial).length > 0;
-  const hasLoops = trials.filter((item) => "trials" in item).length > 0;
+  const handleShareLocalExperiment = async () => {
+    const confirm = window.confirm(
+      "Warning: All your local experiments will be public until you close the tunnel or exit the app. Anyone with a link can access them."
+    );
+    if (!confirm) return;
+    try {
+      const res = await fetch(`${API_URL}/api/create-tunnel`, {
+        method: "POST",
+      });
 
-  const allTrialsHaveCode =
-    !hasTrials ||
-    trials
-      .filter(isTrial)
-      .every((trial) => !!trial.trialCode && trial.trialCode.trim() !== "");
+      const data = await res.json();
+      if (data.success) {
+        setExperimentUrl(`${data.url}/experiment/${experimentID}`);
+        // Persist tunnel state in localStorage (global, not per experiment)
+        localStorage.setItem("tunnelActive", "true");
+        localStorage.setItem("tunnelUrl", data.url);
+        let url = `${data.url}/experiment/${experimentID}`;
+        try {
+          await navigator.clipboard.writeText(url);
+          setTunnelStatus("Public link copied to clipboard");
+        } catch (err) {
+          console.error("Failed to copy public link: ", err);
+        }
+        setTunnelActive(true);
+        setTimeout(() => setTunnelStatus(""), 4000);
+        return url;
+      } else {
+        console.error("Error creating tunnel:", data.error);
+      }
+    } catch (error) {
+      console.error("Connection error:", error);
+    }
+  };
 
-  const allLoopsHaveCode =
-    !hasLoops ||
-    trials
-      .filter((item) => "trials" in item)
-      .every((loop) => !!loop.code && loop.code.trim() !== "");
+  const handleCloseTunnel = async () => {
+    const confirm = window.confirm(
+      "Stop sharing your local experiment? Participants won't be able to access it until you reopen the tunnel. Collected results will not be lost."
+    );
+    if (!confirm) return;
+    try {
+      const res = await fetch(`${API_URL}/api/close-tunnel`, {
+        method: "POST",
+      });
+      const data = await res.json();
 
-  const isDisabled =
-    isSubmitting || ((!allTrialsHaveCode || !allLoopsHaveCode) && !isDevMode);
+      if (data.success) {
+        setExperimentUrl(`${API_URL}/experiment/${experimentID}`);
+        setTunnelStatus(data.message);
+        setTunnelActive(false);
+        // Remove tunnel state from localStorage (global)
+        localStorage.removeItem("tunnelActive");
+        localStorage.removeItem("tunnelUrl");
+        setTimeout(() => setTunnelStatus(""), 2000);
+      } else {
+        console.error(data.message);
+      }
+    } catch (err) {
+      console.error("Error closing tunnel:", err);
+    }
+  };
+  // Restore tunnel state on mount (global, always show for current experiment)
+  useEffect(() => {
+    const tunnelActive = localStorage.getItem("tunnelActive") === "true";
+    const tunnelUrl = localStorage.getItem("tunnelUrl");
+    if (tunnelActive && tunnelUrl) {
+      setTunnelActive(true);
+      setExperimentUrl(`${tunnelUrl}/experiment/${experimentID}`);
+    }
+    // eslint-disable-next-line
+  }, [experimentID, setExperimentUrl]);
 
   const handleCopyLink = async () => {
     if (lastPagesUrl) {
@@ -544,8 +679,18 @@ jsPsych.run(timeline);
 
       const result = await response.json();
 
+      if (
+        !result.success &&
+        result.message?.includes("GitHub token not found or invalid")
+      ) {
+        setPublishStatus(
+          "Warning: GitHub publish failed. Please reconnect your GitHub account in Settings."
+        );
+        // Opcional: podría redirigir al usuario a Settings
+        return;
+      }
       if (result.success) {
-        setPublishStatus(`Published! GitHub Pages URL: ${result.pagesUrl}`);
+        setPublishStatus(`Published! GitHub Pages URL copied to clipboard`);
         setLastPagesUrl(result.pagesUrl || "");
         // Optionally copy the GitHub Pages URL
         try {
@@ -570,6 +715,24 @@ jsPsych.run(timeline);
       setTimeout(() => setPublishStatus(""), 5000);
     }
   };
+
+  const hasTrials = trials.filter(isTrial).length > 0;
+  const hasLoops = trials.filter((item) => "trials" in item).length > 0;
+
+  const allTrialsHaveCode =
+    !hasTrials ||
+    trials
+      .filter(isTrial)
+      .every((trial) => !!trial.trialCode && trial.trialCode.trim() !== "");
+
+  const allLoopsHaveCode =
+    !hasLoops ||
+    trials
+      .filter((item) => "trials" in item)
+      .every((loop) => !!loop.code && loop.code.trim() !== "");
+
+  const isDisabled =
+    isSubmitting || ((!allTrialsHaveCode || !allLoopsHaveCode) && !isDevMode);
 
   return (
     <div className="timeline">
@@ -792,6 +955,21 @@ jsPsych.run(timeline);
             {submitStatus}
           </div>
         )}
+        {/* Run Experiment Button */}
+
+        <div style={{ marginTop: "16px" }}>
+          <button
+            className="run-experiment-btn"
+            onClick={handleRunExperiment}
+            disabled={isDisabled}
+          >
+            {isSubmitting
+              ? "Processing..."
+              : experimentUrl
+                ? "Build Experiment"
+                : "Build Experiment"}
+          </button>
+        </div>
 
         <div style={{ marginTop: 16 }}>
           <button
@@ -823,63 +1001,55 @@ jsPsych.run(timeline);
                 e.currentTarget.style.backgroundColor = "#4caf50";
             }}
           >
-            Open experiment
+            Run experiment
           </button>
           <button
-            onClick={handleCopyLink}
             style={{
               display: "block",
               width: "100%",
               padding: "10px 0",
-              backgroundColor: "#2196f3",
+              backgroundColor: isTunnelActive ? "#cccccc" : "#604cafff",
               color: "#fff",
-              border: "none",
+              textAlign: "center",
+              textDecoration: "none",
               borderRadius: 6,
               fontWeight: "600",
               fontSize: 14,
               letterSpacing: "0.05em",
-              cursor: "pointer",
               marginTop: 12,
               transition: "background-color 0.3s ease",
+              cursor: isTunnelActive ? "not-allowed" : "pointer",
+              opacity: isTunnelActive ? 0.6 : 1,
             }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.backgroundColor = "#1e88e5")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.backgroundColor = "#2196f3")
-            }
+            onClick={isTunnelActive ? undefined : handleShareLocalExperiment}
+            disabled={isTunnelActive}
           >
-            Copy Experiment Link
+            Share Local Experiment
           </button>
-          {copyStatus && (
-            <p
-              style={{
-                fontSize: 13,
-                color: copyStatus.includes("link!") ? "#4caf50" : "#f44336",
-                textAlign: "center",
-                marginTop: 8,
-                fontWeight: "500",
-              }}
-            >
-              {copyStatus}
-            </p>
+          {tunnelStatus && (
+            <div style={{ marginTop: 6 }}>
+              <p
+                style={{
+                  fontSize: 13,
+                  color: "#4caf50",
+                  textAlign: "center",
+                  marginTop: 8,
+                  fontWeight: "500",
+                }}
+              >
+                {tunnelStatus}
+              </p>
+            </div>
           )}
-        </div>
-
-        {/* Run Experiment Button */}
-
-        <div style={{ marginTop: "16px" }}>
-          <button
-            className="run-experiment-btn"
-            onClick={handleRunExperiment}
-            disabled={isDisabled}
-          >
-            {isSubmitting
-              ? "Processing..."
-              : experimentUrl
-                ? "Run Experiment"
-                : "Run Experiment"}
-          </button>
+          {isTunnelActive && (
+            <button
+              style={{ marginTop: 6, marginBottom: 6, width: "100%" }}
+              onClick={handleCloseTunnel}
+              className="remove-button"
+            >
+              Close tunnel
+            </button>
+          )}
         </div>
 
         {/* Publish to GitHub Button */}
@@ -928,6 +1098,45 @@ jsPsych.run(timeline);
               }}
             >
               {publishStatus}
+            </p>
+          )}
+          <button
+            onClick={handleCopyLink}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: "10px 0",
+              backgroundColor: "#2196f3",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              fontWeight: "600",
+              fontSize: 14,
+              letterSpacing: "0.05em",
+              cursor: "pointer",
+              marginTop: 12,
+              transition: "background-color 0.3s ease",
+            }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.backgroundColor = "#1e88e5")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.backgroundColor = "#2196f3")
+            }
+          >
+            Copy Experiment Link
+          </button>
+          {copyStatus && (
+            <p
+              style={{
+                fontSize: 13,
+                color: copyStatus.includes("link!") ? "#4caf50" : "#f44336",
+                textAlign: "center",
+                marginTop: 8,
+                fontWeight: "500",
+              }}
+            >
+              {copyStatus}
             </p>
           )}
         </div>

@@ -62,8 +62,8 @@ function ExperimentPreview() {
   participantNumber = await saveSession(trialSessionId);
 
   if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
-    alert("El número de participante no está asignado. Por favor, espera.");
-    throw new Error("participantNumber no asignado");
+    alert("The participant number is not assigned. Please, wait.");
+    throw new Error("participantNumber not assigned");
   }
     const jsPsych = initJsPsych({
           on_data_update: function (data) {

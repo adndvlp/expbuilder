@@ -400,19 +400,10 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                         onBlur={(e) => {
                           const input = e.target.value;
 
-                          // Detecta si es un parámetro de teclado
-                          const isKeyboardArray =
-                            key === "choices" ||
-                            label.toLowerCase().includes("key") ||
-                            label.toLowerCase().includes("keyboard");
-
-                          // .trim();
                           const rawItems = input
                             .split(",")
-                            // .map((item) => item.trim())
-                            .map((item) =>
-                              isKeyboardArray ? item : item.trim()
-                            )
+
+                            .map((item) => item.trim().replace(/\s{2,}/g, " "))
                             .filter((item) => item.length > 0);
 
                           const baseType = type.replace(/_array$/, "");
@@ -493,10 +484,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                               return newState;
                             });
                           } catch (error) {
-                            console.error(
-                              "Error de formato en el input:",
-                              error
-                            );
+                            console.error("Input format error:", error);
                             // No actualices si hay error, el texto incorrecto
                             // permanecerá en el input para que el usuario lo corrija.
                           }

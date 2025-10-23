@@ -408,7 +408,7 @@ function TrialsConfig({ pluginName }: Props) {
         />
 
         {/* CSV and XLSX section */}
-        {selectedTrial?.csvFromLoop && (
+        {selectedTrial?.csvFromLoop ? (
           <div>
             <label>
               <input
@@ -420,12 +420,13 @@ function TrialsConfig({ pluginName }: Props) {
               Using CSV from loop
             </label>
           </div>
+        ) : (
+          <CsvUploader
+            onCsvUpload={handleCsvUpload}
+            csvJson={csvJson}
+            onDeleteCSV={deleteCsv}
+          />
         )}
-        <CsvUploader
-          onCsvUpload={handleCsvUpload}
-          csvJson={csvJson}
-          onDeleteCSV={deleteCsv}
-        />
 
         {/* File section */}
         {needsFileUpload && (

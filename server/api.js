@@ -2,6 +2,7 @@
 import express from "express";
 import multer from "multer";
 import path from "path";
+import os from "os";
 import { fileURLToPath } from "url";
 import * as cheerio from "cheerio";
 import fs from "fs";
@@ -85,7 +86,7 @@ app.get("/api/experiment/:experimentID", async (req, res) => {
 // Endpoint para crear experimento
 app.post("/api/create-experiment", async (req, res) => {
   try {
-    const { name, description, author, uid } = req.body;
+    const { name, description, author, uid, storage } = req.body;
     if (!name)
       return res.status(400).json({ success: false, error: "Name required" });
 
@@ -97,6 +98,7 @@ app.post("/api/create-experiment", async (req, res) => {
       author,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      storage,
     };
 
     await db.read();
@@ -104,7 +106,7 @@ app.post("/api/create-experiment", async (req, res) => {
     db.data.experiments.push(experiment);
     await db.write();
 
-    // Llamar a la función de Firebase para crear el experimento en DataPipe
+    // Llamar a la función de Firebase para crear el experimento
     try {
       // URL del emulador local o producción según el entorno
       const firebaseUrl = `${process.env.FIREBASE_URL}/apicreateexperiment`; // URL de producción // Emulador local
@@ -112,10 +114,9 @@ app.post("/api/create-experiment", async (req, res) => {
       const firebaseBody = {
         experimentID: experimentID,
         experimentName: name,
+        ...(uid && { uid }),
+        ...(storage && { storage }),
       };
-      if (uid) {
-        firebaseBody.uid = uid;
-      }
 
       const firebaseResponse = await fetch(firebaseUrl, {
         method: "POST",
@@ -213,10 +214,16 @@ app.post("/api/create-experiment", async (req, res) => {
 app.delete("/api/delete-experiment/:experimentID", async (req, res) => {
   try {
     const { experimentID } = req.params;
-    const { uid } = req.body; // Obtener uid del body si está presente
+    const { uid } = req.body; // storage ya no se recibe del body
 
     await db.read();
     ensureDbData();
+    // Obtener storage desde la base de datos
+    const experiment = db.data.experiments.find(
+      (e) => e.experimentID === experimentID
+    );
+    const storage = experiment?.storage;
+
     const experimentIndex = db.data.experiments.findIndex(
       (e) => e.experimentID === experimentID
     );
@@ -260,18 +267,17 @@ app.delete("/api/delete-experiment/:experimentID", async (req, res) => {
       fs.rmSync(experimentUploadsDir, { recursive: true, force: true });
     }
 
-    // Llamar a la función de Firebase para eliminar el experimento en DataPipe (incluyendo carpeta de Dropbox)
+    // Llamar a la función de Firebase para eliminar el experimento en ExpBuilder (incluyendo carpeta de Dropbox)
     try {
       // URL del emulador local o producción según el entorno
-      const firebaseUrl = `${process.env.FIREBASE_URL}/apideleteexperiment`; // URL
+      const firebaseUrl = `${process.env.FIREBASE_URL}/apideleteexperiment`;
 
-      // Incluir uid si está presente para eliminar también la carpeta de Dropbox
+      // Incluir uid y storage desde la base de datos
       const firebaseBody = {
         experimentID: experimentID,
+        ...(uid && { uid }),
+        ...(storage && { storage }),
       };
-      if (uid) {
-        firebaseBody.uid = uid;
-      }
 
       const firebaseResponse = await fetch(firebaseUrl, {
         method: "POST",
@@ -919,6 +925,109 @@ app.post("/api/run-experiment/:experimentID", async (req, res) => {
   }
 });
 
+function getCloudflaredPath() {
+  const baseDir = path.join(__dirname, "cloudflared");
+  if (os.platform() === "darwin") {
+    // MacOS (asegúrate de que el binario esté descomprimido y con permisos de ejecución)
+    return path.join(baseDir, "cloudflared-darwin-arm64");
+  } else if (os.platform() === "win32") {
+    // Windows
+    return path.join(baseDir, "cloudflared-windows-amd64.exe");
+  } else if (os.platform() === "linux") {
+    // Linux
+    return path.join(baseDir, "cloudflared-linux-amd64");
+  } else {
+    throw new Error("Unsupported OS for cloudflared");
+  }
+}
+
+let tunnelProcess = null;
+
+app.post("/api/create-tunnel", async (req, res) => {
+  const maxAttempts = 3;
+  const timeoutMs = 10000; // 10 seconds
+  const urlRegex =
+    /https?:\/\/[a-zA-Z0-9-]+(-[a-zA-Z0-9-]+){0,3}\.trycloudflare.com/;
+  let attempt = 0;
+  let responded = false;
+
+  async function tryCreateTunnel() {
+    attempt++;
+    const cloudflaredPath = getCloudflaredPath();
+    tunnelProcess = spawn(cloudflaredPath, [
+      "tunnel",
+      "--url",
+      "http://localhost:3000",
+      "--no-autoupdate",
+    ]);
+
+    let tunnelUrl = null;
+    let timeoutId = null;
+
+    function cleanup() {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (tunnelProcess) {
+        try {
+          tunnelProcess.kill();
+        } catch (e) {}
+      }
+    }
+
+    function handleTunnelOutput(data) {
+      if (responded) return;
+      const output = data.toString();
+      const match = output.match(urlRegex);
+      if (match && !tunnelUrl) {
+        tunnelUrl = `${match[0]}`;
+        responded = true;
+        cleanup();
+        res.json({ success: true, url: tunnelUrl });
+      }
+    }
+
+    tunnelProcess.stdout.on("data", handleTunnelOutput);
+    tunnelProcess.stderr.on("data", handleTunnelOutput);
+
+    tunnelProcess.on("error", (err) => {
+      if (!responded) {
+        responded = true;
+        cleanup();
+        res.status(500).json({ success: false, error: err.message });
+      }
+    });
+
+    timeoutId = setTimeout(() => {
+      if (!responded) {
+        cleanup();
+        if (attempt < maxAttempts) {
+          // Retry
+          tryCreateTunnel();
+        } else {
+          responded = true;
+          res.status(504).json({
+            success: false,
+            error: `Could not obtain the tunnel URL after ${maxAttempts} attempts.`,
+          });
+        }
+      }
+    }, timeoutMs);
+  }
+
+  tryCreateTunnel();
+});
+
+app.post("/api/close-tunnel", (req, res) => {
+  if (tunnelProcess) {
+    tunnelProcess.kill();
+    tunnelProcess = null;
+    return res.json({ success: true, message: "Tunnel closed" });
+  } else {
+    return res
+      .status(400)
+      .json({ success: false, message: "No active tunnel" });
+  }
+});
+
 app.post("/api/trials-preview/:experimentID", async (req, res) => {
   try {
     const { generatedCode } = req.body;
@@ -971,7 +1080,7 @@ app.post("/api/trials-preview/:experimentID", async (req, res) => {
 app.post("/api/publish-experiment/:experimentID", async (req, res) => {
   try {
     const { experimentID } = req.params;
-    const { uid } = req.body;
+    const { uid } = req.body; // storage ya no se recibe del body
 
     if (!uid) {
       return res.status(400).json({
@@ -996,6 +1105,13 @@ app.post("/api/publish-experiment/:experimentID", async (req, res) => {
     // Leer el contenido del HTML
     const htmlContent = fs.readFileSync(experimentHtmlPath, "utf8");
 
+    // Obtener storage desde la base de datos
+    await db.read();
+    const experiment = db.data.experiments.find(
+      (e) => e.experimentID === experimentID
+    );
+    const storage = experiment?.storage;
+
     // Llamar al endpoint de GitHub para actualizar el HTML
     try {
       const githubUrl = `${process.env.FIREBASE_URL}/githubUpdateHtml`;
@@ -1009,6 +1125,7 @@ app.post("/api/publish-experiment/:experimentID", async (req, res) => {
           uid: uid,
           repoName: `experiment-${experimentID}`,
           htmlContent: htmlContent,
+          ...(storage && { storage }),
           // Opcionalmente puedes agregar envContent aquí si lo necesitas
         }),
       });

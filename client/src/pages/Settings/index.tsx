@@ -166,6 +166,34 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* Sección de Tokens */}
+        <div className="settings-section">
+          <h2 className="settings-section-title">Integration Tokens</h2>
+          <div className="tokens-list">
+            <GoogleDriveToken />
+            <DropboxToken />
+            <GithubToken />
+          </div>
+        </div>
+
+        {/* Sección de Seguridad */}
+        <div className="settings-section">
+          <h2 className="settings-section-title">Security</h2>
+          <ChangePassword />
+        </div>
+
+        {/* Botón de Logout */}
+        <div className="settings-section logout-section">
+          <h2 className="settings-section-title">Session</h2>
+          <button
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="logout-button"
+          >
+            {isLoggingOut ? "Logging out..." : "Logout"}
+          </button>
+        </div>
+
         {/* Exportar/Importar datos */}
         <div className="settings-section">
           <h2 className="settings-section-title">Backup & Restore</h2>
@@ -273,34 +301,6 @@ export default function Settings() {
           <div style={{ fontSize: 13, color: "#888", marginTop: 8 }}>
             Export your data to restore it later if you reinstall the app.
           </div>
-        </div>
-
-        {/* Sección de Tokens */}
-        <div className="settings-section">
-          <h2 className="settings-section-title">Integration Tokens</h2>
-          <div className="tokens-list">
-            <GoogleDriveToken />
-            <DropboxToken />
-            <GithubToken />
-          </div>
-        </div>
-
-        {/* Sección de Seguridad */}
-        <div className="settings-section">
-          <h2 className="settings-section-title">Security</h2>
-          <ChangePassword />
-        </div>
-
-        {/* Botón de Logout */}
-        <div className="settings-section logout-section">
-          <h2 className="settings-section-title">Session</h2>
-          <button
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-            className="logout-button"
-          >
-            {isLoggingOut ? "Logging out..." : "Logout"}
-          </button>
         </div>
 
         {/* Zona de Peligro */}
