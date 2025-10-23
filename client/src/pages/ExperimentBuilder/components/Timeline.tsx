@@ -9,7 +9,10 @@ import FileUploader from "./ConfigPanel/TrialsConfig/FileUploader";
 import { useFileUpload } from "./ConfigPanel/TrialsConfig/hooks/useFileUpload";
 import { FiRefreshCw } from "react-icons/fi";
 import LoopRangeModal from "./ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeModal";
-import { useExperimentID } from "../hooks/useExperimentID";
+import {
+  fetchExperimentNameByID,
+  useExperimentID,
+} from "../hooks/useExperimentID";
 import { useExperimentStorage } from "../hooks/useStorage";
 const API_URL = import.meta.env.VITE_API_URL;
 const DATA_API_URL = import.meta.env.VITE_DATA_API_URL;
@@ -26,7 +29,15 @@ function Component({}: TimelineProps) {
   const [publishStatus, setPublishStatus] = useState<string>("");
   const [isPublishing, setIsPublishing] = useState(false);
 
+  const [experimentName, setExperimentName] = useState("Experiment");
+
   const experimentID = useExperimentID();
+  useEffect(() => {
+    if (experimentID) {
+      fetchExperimentNameByID(experimentID).then(setExperimentName);
+    }
+  }, [experimentID]);
+
   // Obtén el storage desde el hook, pero si está undefined, usa el valor cacheado en localStorage
   let storage = useExperimentStorage(experimentID ?? "");
   if (!storage && experimentID) {
@@ -310,13 +321,10 @@ jsPsych.run(timeline);
     });
   }
 
-  function getUid() {
-    try {
-      const userStr = window.localStorage.getItem('user');
-      if (userStr) return JSON.parse(userStr).uid;
-    } catch (e) {}
-    return undefined;
-  }
+ 
+  const userStr = ${window.localStorage.getItem("user")};
+
+  const Uid = userStr.uid
 
   const trialSessionId =
     (crypto.randomUUID
@@ -332,8 +340,10 @@ jsPsych.run(timeline);
         headers: { "Content-Type": "application/json", Accept: "*/*" },
         body: JSON.stringify({
           experimentID: "${experimentID}",
+          experimentName: "${experimentName}", 
           sessionId: trialSessionId,
           storage: "${storage}",
+          uid: Uid
         }),
       });
       
