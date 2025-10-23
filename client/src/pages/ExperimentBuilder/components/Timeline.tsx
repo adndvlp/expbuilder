@@ -987,18 +987,31 @@ jsPsych.run(timeline);
               fontSize: 14,
               letterSpacing: "0.05em",
               transition: "background-color 0.3s ease",
-              cursor: experimentUrl ? "pointer" : "not-allowed",
-              opacity: experimentUrl ? 1 : 0.6,
+              cursor: localStorage.getItem("tunnelUrl")
+                ? "pointer"
+                : experimentUrl
+                  ? "pointer"
+                  : "not-allowed",
+              opacity: localStorage.getItem("tunnelUrl")
+                ? 1
+                : experimentUrl
+                  ? 1
+                  : 0.6,
             }}
-            disabled={!experimentUrl}
-            onClick={() => experimentUrl && openExternal(experimentUrl)}
+            disabled={!(localStorage.getItem("tunnelUrl") || experimentUrl)}
+            onClick={() => {
+              const url = localStorage.getItem("tunnelUrl")
+                ? `${localStorage.getItem("tunnelUrl")}/experiment/${experimentID}`
+                : experimentUrl;
+              if (url) openExternal(url);
+            }}
             onMouseEnter={(e) => {
-              if (experimentUrl)
-                e.currentTarget.style.backgroundColor = "#43a047";
+              const url = localStorage.getItem("tunnelUrl") || experimentUrl;
+              if (url) e.currentTarget.style.backgroundColor = "#43a047";
             }}
             onMouseLeave={(e) => {
-              if (experimentUrl)
-                e.currentTarget.style.backgroundColor = "#4caf50";
+              const url = localStorage.getItem("tunnelUrl") || experimentUrl;
+              if (url) e.currentTarget.style.backgroundColor = "#4caf50";
             }}
           >
             Run experiment
