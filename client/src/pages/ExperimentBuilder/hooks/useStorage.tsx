@@ -5,9 +5,21 @@ export function useExperimentStorage(experimentID: string) {
 
   useEffect(() => {
     if (experimentID) {
-      fetch(`${import.meta.env.API_URL}/api/experiment/${experimentID}`)
+      fetch(`${import.meta.env.VITE_API_URL}/api/experiment/${experimentID}`)
         .then((res) => res.json())
-        .then((data) => setStorage(data.experiment?.storage || "drive"));
+        .then((data) => {
+          const storageValue = data.experiment?.storage || "drive";
+          setStorage(storageValue);
+          // Guardar en localStorage
+          try {
+            localStorage.setItem(
+              `experiment_storage_${experimentID}`,
+              storageValue
+            );
+          } catch (e) {
+            // Ignorar errores de localStorage
+          }
+        });
     }
   }, [experimentID]);
 

@@ -27,7 +27,16 @@ function Component({}: TimelineProps) {
   const [isPublishing, setIsPublishing] = useState(false);
 
   const experimentID = useExperimentID();
-  const storage = useExperimentStorage(experimentID ?? "");
+  // Obtén el storage desde el hook, pero si está undefined, usa el valor cacheado en localStorage
+  let storage = useExperimentStorage(experimentID ?? "");
+  if (!storage && experimentID) {
+    try {
+      const cached = localStorage.getItem(`experiment_storage_${experimentID}`);
+      if (cached) storage = cached;
+    } catch (e) {
+      // Ignorar errores de localStorage
+    }
+  }
 
   const {
     trials,
@@ -690,13 +699,13 @@ jsPsych.run(timeline);
         return;
       }
       if (result.success) {
-        setPublishStatus(`Published! GitHub Pages URL copied to clipboard`);
+        setPublishStatus(`Published! GitHub Pages URL`);
         setLastPagesUrl(result.pagesUrl || "");
         // Optionally copy the GitHub Pages URL
         try {
           await navigator.clipboard.writeText(result.pagesUrl);
           setTimeout(() => {
-            setPublishStatus((prev) => prev + " (copied to clipboard)");
+            setPublishStatus((prev) => prev + " copied to clipboard");
           }, 100);
         } catch (err) {
           console.error("Failed to copy GitHub Pages URL: ", err);
@@ -1143,7 +1152,7 @@ jsPsych.run(timeline);
             <p
               style={{
                 fontSize: 13,
-                color: copyStatus.includes("link!") ? "#4caf50" : "#f44336",
+                color: copyStatus.includes("copied!") ? "#4caf50" : "#f44336",
                 textAlign: "center",
                 marginTop: 8,
                 fontWeight: "500",

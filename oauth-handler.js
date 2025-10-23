@@ -50,20 +50,6 @@ export function createOAuthCallbackServer(port = 8888, timeout = 300000) {
               color: #333333;
               margin: 0;
             }
-            .close-btn {
-              margin-top: 24px;
-              padding: 10px 20px;
-              background: linear-gradient(135deg, #d4af37, #b7950b);
-              color: #fff;
-              border: none;
-              border-radius: 6px;
-              font-weight: 500;
-              cursor: pointer;
-              transition: background 0.2s;
-            }
-            .close-btn:hover {
-              background: linear-gradient(135deg, #b7950b, #d4af37);
-            }
           </style>
         </head>
         <body>
@@ -71,7 +57,6 @@ export function createOAuthCallbackServer(port = 8888, timeout = 300000) {
             <div class="success-icon">✓</div>
             <h1>Authentication Successful!</h1>
             <p>You can close this window and return to the app.</p>
-            <button class="close-btn" onclick="window.close()">Close</button>
           </div>
         </body>
       </html>
@@ -114,20 +99,6 @@ export function createOAuthCallbackServer(port = 8888, timeout = 300000) {
               color: #333333;
               margin: 0;
             }
-            .close-btn {
-              margin-top: 24px;
-              padding: 10px 20px;
-              background: linear-gradient(135deg, #d4af37, #cf000b);
-              color: #333333;
-              border: none;
-              border-radius: 6px;
-              font-weight: 500;
-              cursor: pointer;
-              transition: background 0.2s;
-            }
-            .close-btn:hover {
-              background: linear-gradient(135deg, #cf000b, #d4af37);
-            }
           </style>
         </head>
         <body>
@@ -135,7 +106,6 @@ export function createOAuthCallbackServer(port = 8888, timeout = 300000) {
             <div class="error-icon">✗</div>
             <h1>Authentication Error</h1>
             <p>Please close this window and try again.</p>
-            <button class="close-btn" onclick="window.close()">Close</button>
           </div>
         </body>
       </html>

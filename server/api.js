@@ -109,13 +109,16 @@ app.post("/api/create-experiment", async (req, res) => {
     // Llamar a la función de Firebase para crear el experimento
     try {
       // URL del emulador local o producción según el entorno
-      const firebaseUrl = `${process.env.FIREBASE_URL}/apicreateexperiment`; // URL de producción // Emulador local
+      const firebaseUrl = `${process.env.FIREBASE_URL}/apidata`;
       // Incluir uid si está presente
       const firebaseBody = {
+        action: "createExperiment",
+        storage: storage,
         experimentID: experimentID,
         experimentName: name,
         ...(uid && { uid }),
-        ...(storage && { storage }),
+        ...(description && { description }),
+        ...(author && { author }),
       };
 
       const firebaseResponse = await fetch(firebaseUrl, {
@@ -270,13 +273,14 @@ app.delete("/api/delete-experiment/:experimentID", async (req, res) => {
     // Llamar a la función de Firebase para eliminar el experimento en ExpBuilder (incluyendo carpeta de Dropbox)
     try {
       // URL del emulador local o producción según el entorno
-      const firebaseUrl = `${process.env.FIREBASE_URL}/apideleteexperiment`;
+      const firebaseUrl = `${process.env.FIREBASE_URL}/apidata`;
 
       // Incluir uid y storage desde la base de datos
       const firebaseBody = {
+        action: "deleteExperiment",
+        storage: storage,
         experimentID: experimentID,
         ...(uid && { uid }),
-        ...(storage && { storage }),
       };
 
       const firebaseResponse = await fetch(firebaseUrl, {
@@ -1098,17 +1102,34 @@ app.post("/api/publish-experiment/:experimentID", async (req, res) => {
       });
     }
 
-    // Leer el contenido del HTML
-    const htmlContent = fs.readFileSync(experimentHtmlPath, "utf8");
+    // Leer y modificar el HTML para reemplazar el script generado
+    let html = fs.readFileSync(experimentHtmlPath, "utf8");
+    const $ = cheerio.load(html);
+
+    // Obtener el código generado más reciente desde config
+    await db.read();
+    const configDoc = db.data.configs.find(
+      (c) => c.experimentID === experimentID
+    );
+    const generatedCode = configDoc?.data?.generatedCode || "";
+
+    // Reemplazar el script generado
+    $("script#generated-script").remove();
+    if (generatedCode) {
+      $("body").append(
+        `<script id=\"generated-script\">\n${generatedCode}\n</script>`
+      );
+    }
 
     // Obtener storage desde la base de datos
-    await db.read();
     const experiment = db.data.experiments.find(
       (e) => e.experimentID === experimentID
     );
     const storage = experiment?.storage;
 
-    // Llamar al endpoint de GitHub para actualizar el HTML
+    // Usar el HTML modificado para publicar en GitHub
+    const htmlContent = $.html();
+
     try {
       const githubUrl = `${process.env.FIREBASE_URL}/githubUpdateHtml`;
 
