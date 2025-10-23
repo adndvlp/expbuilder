@@ -1375,6 +1375,17 @@ app.use((req, res) => {
   res.status(404).send("This page doesn't exist.");
 });
 
+// Global error handlers to prevent process exit on uncaught exceptions or unhandled rejections
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+  // Optionally log to a file or external service
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+  // Optionally log to a file or external service
+});
+
 app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
   console.log(`📊 Experiment URL: http://localhost:${port}/experiment`);
