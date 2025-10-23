@@ -966,11 +966,7 @@ app.post("/api/create-tunnel", async (req, res) => {
 
     function cleanup() {
       if (timeoutId) clearTimeout(timeoutId);
-      if (tunnelProcess) {
-        try {
-          tunnelProcess.kill();
-        } catch (e) {}
-      }
+      // No matamos el proceso aquí, solo limpiamos el timeout
     }
 
     function handleTunnelOutput(data) {

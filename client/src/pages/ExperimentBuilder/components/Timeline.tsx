@@ -606,17 +606,17 @@ jsPsych.run(timeline);
       });
       const data = await res.json();
 
+      setExperimentUrl(`${API_URL}/experiment/${experimentID}`);
+      setTunnelActive(false);
+      localStorage.removeItem("tunnelActive");
+      localStorage.removeItem("tunnelUrl");
       if (data.success) {
-        setExperimentUrl(`${API_URL}/experiment/${experimentID}`);
         setTunnelStatus(data.message);
-        setTunnelActive(false);
-        // Remove tunnel state from localStorage (global)
-        localStorage.removeItem("tunnelActive");
-        localStorage.removeItem("tunnelUrl");
-        setTimeout(() => setTunnelStatus(""), 2000);
       } else {
+        setTunnelStatus("Error closing tunnel");
         console.error(data.message);
       }
+      setTimeout(() => setTunnelStatus(""), 2000);
     } catch (err) {
       console.error("Error closing tunnel:", err);
     }
