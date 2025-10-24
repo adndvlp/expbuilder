@@ -932,8 +932,12 @@ app.post("/api/run-experiment/:experimentID", async (req, res) => {
 function getCloudflaredPath() {
   const baseDir = path.join(__dirname, "cloudflared");
   if (os.platform() === "darwin") {
-    // MacOS (asegúrate de que el binario esté descomprimido y con permisos de ejecución)
-    return path.join(baseDir, "cloudflared-darwin-arm64");
+    // MacOS: selecciona el binario correcto según la arquitectura
+    if (os.arch() === "arm64") {
+      return path.join(baseDir, "cloudflared-darwin-arm64");
+    } else {
+      return path.join(baseDir, "cloudflared-darwin-amd64");
+    }
   } else if (os.platform() === "win32") {
     // Windows
     return path.join(baseDir, "cloudflared-windows-amd64.exe");

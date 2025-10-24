@@ -52,16 +52,36 @@
     "icon": "icon/icon.png",
     "mac": {
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "icon/icon.icns",
       "identity": null
     },
     "win": {
       "target": [
-        "nsis",
-        "zip"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "icon/icon.ico"
     },
@@ -69,6 +89,7 @@
       "target": [
         "AppImage",
         "deb",
+        "rpm",
         "zip"
       ],
       "icon": "icon/icon.png"
