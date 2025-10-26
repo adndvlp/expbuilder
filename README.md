@@ -1,22 +1,24 @@
 # Project Description
 
-The expbuilder project is an Electron-based platform designed for creating experiments. It leverages free resources like GitHub Pages, CDN (Jspsych), Cloudflare tunnels, and low-cost Firebase for hosting and collecting results. This platform is tailored for the scientific, educational, and student community, enabling experiment creation without the need for extensive coding (except for customizations), integrating all necessary tools into one cohesive environment.
+**expbuilder** is an Electron-based platform for creating scientific, educational, and student experiments. It leverages free resources like GitHub Pages, Cloudflare Tunnels (for sharing experiments via self-hosting), and low-cost Firebase for hosting and collecting results. **Jspsych** is used as the core engine for building and managing experiments, allowing anyone to create experiments without coding, except for advanced customizations. Everything is integrated into a single tool to support the community.
 
 # Features
-- Electron-based platform for easy experimentation
-- Utilizes GitHub Pages for hosting
-- Integrates CDN (Jspsych) for experiment management
-- Cloudflare tunnels for secure connections
-- Low-cost Firebase for data collection and hosting
-- No coding required for basic experiments
+
+- Desktop platform based on Electron
+- Uses GitHub Pages for free hosting
+- **Jspsych** as the main engine for experiment creation
+- **Cloudflare Tunnels** for sharing experiments via self-hosting
+- Firebase for inexpensive data capture and storage
+- No coding required for most experiments
 
 # Installation
-Follow these steps to set up the project:
+
 1. Clone the repository:
    ```bash
    git clone https://github.com/adndvlp/expbuilder.git
    cd expbuilder
    ```
+
 2. Install dependencies for both client and server:
    ```bash
    cd client
@@ -27,25 +29,29 @@ Follow these steps to set up the project:
    ```
 
 # Development
-To run the client and server, use the following commands:
+
+To run the application in development mode:
 
 1. Start the client:
    ```bash
    cd client
    npm run dev
    ```
+   The client will be available at **port 5173** (by default).
+
 2. Start the server:
    ```bash
    cd server
    node api.js
    ```
 
-Make sure both client and server are running for full functionality.
+Make sure both processes are running for full functionality.
 
 # Build Instructions
+
 To create a production build of the app:
 
-1. Install dependencies for both client and server:
+1. Install dependencies (if you haven't already):
    ```bash
    cd client
    npm install
@@ -53,11 +59,13 @@ To create a production build of the app:
    npm install
    cd ..
    ```
+
 2. Build the client:
    ```bash
    cd client
    npm run build
    ```
+
 3. From the root of the project, build the Electron app:
    ```bash
    npm run build:electron
@@ -66,13 +74,22 @@ To create a production build of the app:
 This ensures all dependencies are installed before building the application.
 
 # Usage
-Once the server and client are running, access the application via your web browser. Follow the on-screen instructions to create and manage experiments.
+
+- **Development mode:** Access the client in your browser at [http://localhost:5173](http://localhost:5173).
+- **Production mode:** Use the Electron-generated application (the executable) to run the platform locally.
+
+Follow the on-screen instructions to create and manage your experiments.
 
 # Contribution Guidelines
-Contributions are welcome! Please fork the repository and submit a pull request with your improvements. Ensure to follow the coding standards and add tests for new features.
+
+Contributions are welcome! Fork the repository and submit your pull request following the coding conventions and adding tests for new features.
 
 # License
-This project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0). Commercial use is prohibited.
+
+This project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0).
+Commercial use is prohibited.
 
 # Author
-This project is maintained by the adndvlp team. We welcome collaboration from everyone interested in enhancing this platform!
+
+Developed by **adndvlp** under the guidance and supervision of the Laboratory of Psycholinguistics at the Faculty of Psychology, UNAM.
+[Laboratory website](https://psicolinguistica.psicologia.unam.mx)
