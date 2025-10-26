@@ -51,15 +51,6 @@ Make sure both processes are running for full functionality.
 
 To create a production build of the app:
 
-1. Install dependencies (if you haven't already):
-   ```bash
-   cd client
-   npm install
-   cd ../server
-   npm install
-   cd ..
-   ```
-
 2. Build the client:
    ```bash
    cd client
