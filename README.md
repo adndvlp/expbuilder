@@ -23,6 +23,7 @@ Follow these steps to set up the project:
    npm install
    cd ../server
    npm install
+   cd ..
    ```
 
 # Development
@@ -30,19 +31,39 @@ To run the client and server, use the following commands:
 
 1. Start the client:
    ```bash
-   cd client && npm run dev
+   cd client
+   npm run dev
    ```
 2. Start the server:
    ```bash
-   cd server && node api.js
+   cd server
+   node api.js
    ```
 
+Make sure both client and server are running for full functionality.
+
 # Build Instructions
-To build the project for production, run the following commands:
-```bash
-cd client
-npm run build
-```  
+To create a production build of the app:
+
+1. Install dependencies for both client and server:
+   ```bash
+   cd client
+   npm install
+   cd ../server
+   npm install
+   cd ..
+   ```
+2. Build the client:
+   ```bash
+   cd client
+   npm run build
+   ```
+3. From the root of the project, build the Electron app:
+   ```bash
+   npm run build:electron
+   ```
+
+This ensures all dependencies are installed before building the application.
 
 # Usage
 Once the server and client are running, access the application via your web browser. Follow the on-screen instructions to create and manage experiments.
