@@ -2,17 +2,17 @@ import http from "http";
 import { URL } from "url";
 
 /**
- * Crea un servidor HTTP local temporal para recibir el callback de OAuth
- * @param {number} port - Puerto local (ej: 8888)
- * @param {number} timeout - Tiempo máximo de espera en ms (default: 5 minutos)
- * @returns {Promise<{code: string, state: string}>} - Código y state de OAuth
+ * Creates a temporary local HTTP server to receive the OAuth callback
+ * @param {number} port - Local port (e.g., 8888)
+ * @param {number} timeout - Maximum wait time in ms (default: 5 minutes)
+ * @returns {Promise<{code: string, state: string}>} - OAuth code and state
  */
 export function createOAuthCallbackServer(port = 8888, timeout = 300000) {
   return new Promise((resolve, reject) => {
     let server;
     let timeoutId;
 
-    // HTML de respuesta para mostrar en el navegador (colores acorde a la app)
+    // HTML response to display in the browser (colors matching the app)
     const successHtml = `
       <!DOCTYPE html>
       <html>
@@ -111,17 +111,17 @@ export function createOAuthCallbackServer(port = 8888, timeout = 300000) {
       </html>
     `;
 
-    // Crear servidor HTTP
+    // Create HTTP server
     server = http.createServer((req, res) => {
       const url = new URL(req.url, `http://localhost:${port}`);
 
-      // Solo aceptar requests al path /callback
+      // Only accept requests to the /callback path
       if (url.pathname === "/callback") {
         const code = url.searchParams.get("code");
         const state = url.searchParams.get("state");
         const error = url.searchParams.get("error");
 
-        // Enviar respuesta al navegador
+        // Send response to the browser
         res.writeHead(200, { "Content-Type": "text/html" });
 
         if (error || !code) {
@@ -139,7 +139,7 @@ export function createOAuthCallbackServer(port = 8888, timeout = 300000) {
       }
     });
 
-    // Función para limpiar recursos
+    // Function to clean up resources
     const cleanup = () => {
       if (timeoutId) clearTimeout(timeoutId);
       if (server) {
@@ -147,20 +147,20 @@ export function createOAuthCallbackServer(port = 8888, timeout = 300000) {
       }
     };
 
-    // Timeout de seguridad
+    // Safety timeout
     timeoutId = setTimeout(() => {
       cleanup();
       reject(new Error("OAuth callback timeout"));
     }, timeout);
 
-    // Iniciar servidor
+    // Start server
     server.listen(port, () => {
       console.log(
         `OAuth callback server listening on http://localhost:${port}/callback`
       );
     });
 
-    // Manejar errores del servidor
+    // Handle server errors
     server.on("error", (err) => {
       cleanup();
       reject(err);
@@ -169,8 +169,8 @@ export function createOAuthCallbackServer(port = 8888, timeout = 300000) {
 }
 
 /**
- * Verifica si un puerto está disponible
- * @param {number} port - Puerto a verificar
+ * Checks if a port is available
+ * @param {number} port - Port to check
  * @returns {Promise<boolean>}
  */
 export function isPortAvailable(port) {

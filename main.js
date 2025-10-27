@@ -7,12 +7,12 @@ import pkg from "electron-updater";
 import { createOAuthCallbackServer, isPortAvailable } from "./oauth-handler.js";
 const { autoUpdater } = pkg;
 
-// Definir __dirname en ES module
+// Define __dirname in ES module
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Si este proceso es el backend, no lanzar ventana ni backend de nuevo
+// If this process is the backend, do not launch window or backend again
 if (process.env.IS_ELECTRON_BACKEND === "1") {
-  // Solo backend, no ventana
+  // Backend only, no window
 } else {
   let serverProcess;
 
@@ -31,26 +31,26 @@ if (process.env.IS_ELECTRON_BACKEND === "1") {
     app.on("before-quit", () => serverProcess.kill());
   }
 
-  // Handler IPC para abrir URLs externas
+  // IPC handler to open external URLs
   ipcMain.handle("open-external", (event, url) => {
     return shell.openExternal(url);
   });
 
-  // Handler IPC para iniciar el flujo OAuth con servidor local
+  // IPC handler to start OAuth flow with local server
   ipcMain.handle(
     "start-oauth-flow",
     async (event, { provider, clientId, scope, state }) => {
       try {
-        // Puerto para el callback local
+        // Port for local callback
         const OAUTH_PORT = 8888;
 
-        // Verificar si el puerto está disponible
+        // Check if the port is available
         const portAvailable = await isPortAvailable(OAUTH_PORT);
         if (!portAvailable) {
           throw new Error(`Port ${OAUTH_PORT} is not available`);
         }
 
-        // Construir la URL de autorización según el proveedor
+        // Build the authorization URL according to the provider
         let authUrl;
         const redirectUri = `http://localhost:${OAUTH_PORT}/callback`;
 
@@ -74,10 +74,10 @@ if (process.env.IS_ELECTRON_BACKEND === "1") {
           throw new Error(`Unsupported provider: ${provider}`);
         }
 
-        // Abrir el navegador con la URL de autorización
+        // Open the browser with the authorization URL
         await shell.openExternal(authUrl);
 
-        // Esperar el callback en el servidor local
+        // Wait for the callback on the local server
         const result = await createOAuthCallbackServer(OAUTH_PORT);
 
         return {

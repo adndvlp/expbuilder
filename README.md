@@ -9,7 +9,7 @@
 - **Jspsych** as the main engine for experiment creation
 - **Cloudflare Tunnels** for sharing experiments via self-hosting
 - Connection to a [serverless API](https://github.com/adndvlp/builder_api) (for free) for data capture and storage
-- No coding required, but it can go deeper with code.
+- No coding required, but advanced users can extend functionality with it.
 
 # Installation
 
