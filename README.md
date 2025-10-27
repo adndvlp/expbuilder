@@ -84,5 +84,5 @@ Commercial use is prohibited.
 
 # Author
 
-Developed by **adndvlp** under the guidance and supervision of the Laboratory of Psycholinguistics at the Faculty of Psychology, UNAM.
+Developed by Andrés Pacheco Fabián under the guidance and supervision of Dr. Armando Quetzalcóatl Angulo Chavira from the Laboratory of Psycholinguistics at the Faculty of Psychology, UNAM.
 [Laboratory website](https://www.labpsicolinguistica.psicol.unam.mx/contacto.html)
