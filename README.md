@@ -1,6 +1,6 @@
 # Project Description
 
-**expbuilder** is an Electron-based platform for creating scientific, educational, and student experiments. It leverages free resources like GitHub Pages, Cloudflare Tunnels (for sharing experiments via self-hosting), and low-cost Firebase for hosting and collecting results. **Jspsych** is used as the core engine for building and managing experiments, allowing anyone to create experiments without coding, except for advanced customizations. Everything is integrated into a single tool to support the community.
+**expbuilder** is a desktop app, Electron-based (electronjs.org), for creating cognitive and behavioral experiments based on the Jspsych framework (jspsych.org). It leverages free resources like Cloudflare Tunnels (for sharing the crafted experiments via self-hosting), and GitHub Pages for hosting with a serverless API (Firebase) to send the experiment results to the user’s Dropbox and/or Google Drive. Jspsych requires code for building experiments, so Expbuilder provides a user interface that translates your experiment design into the code required by Jspsych.
 
 # Features
 
@@ -8,12 +8,13 @@
 - Uses GitHub Pages for free hosting
 - **Jspsych** as the main engine for experiment creation
 - **Cloudflare Tunnels** for sharing experiments via self-hosting
-- Firebase for inexpensive data capture and storage
-- No coding required for most experiments
+- Connection to a Firebase project (for free) for data capture and storage
+- No coding required, but it can go deeper with code.
 
 # Installation
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/adndvlp/expbuilder.git
    cd expbuilder
@@ -33,10 +34,12 @@
 To run the application in development mode:
 
 1. Start the client:
+
    ```bash
    cd client
    npm run dev
    ```
+
    The client will be available at **port 5173** (by default).
 
 2. Start the server:
@@ -52,6 +55,7 @@ Make sure both processes are running for full functionality.
 To create a production build of the app:
 
 2. Build the client:
+
    ```bash
    cd client
    npm run build
@@ -61,8 +65,6 @@ To create a production build of the app:
    ```bash
    npm run build:electron
    ```
-
-This ensures all dependencies are installed before building the application.
 
 # Usage
 
@@ -83,4 +85,4 @@ Commercial use is prohibited.
 # Author
 
 Developed by **adndvlp** under the guidance and supervision of the Laboratory of Psycholinguistics at the Faculty of Psychology, UNAM.
-[Laboratory website](https://psicolinguistica.psicologia.unam.mx)
+[Laboratory website](https://www.labpsicolinguistica.psicol.unam.mx/contacto.html)
