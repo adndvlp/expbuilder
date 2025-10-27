@@ -29,6 +29,11 @@
    cd ..
    ```
 
+# Cloudflare Tunnel Setup
+
+- Add a folder named `cloudflared` inside the `server` directory.
+- Place the Cloudflare Tunnel binary ([Download here](https://github.com/cloudflare/cloudflared/releases)) for your operating system and CPU architecture inside this folder.
+
 # Development
 
 To run the application in development mode:
@@ -61,7 +66,9 @@ To create a production build of the app:
    npm run build
    ```
 
-3. From the root of the project, build the Electron app:
+3. Specify the correct architecture (`arch`) in the `package.json` file to ensure compatibility with your system.
+
+4. From the root of the project, build the Electron app:
    ```bash
    npm run build:electron
    ```
@@ -70,8 +77,6 @@ To create a production build of the app:
 
 - **Development mode:** Access the client in your browser at [http://localhost:5173](http://localhost:5173).
 - **Production mode:** Use the Electron-generated application (the executable) to run the platform locally.
-
-Follow the on-screen instructions to create and manage your experiments.
 
 # Contribution Guidelines
 
