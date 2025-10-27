@@ -1,5 +1,6 @@
 # Project Description
 
+**Expbuilder** is a desktop app, Electron-based ([electronjs.org](https://electronjs.org)), for creating cognitive and behavioral experiments based on the Jspsych framework ([jspsych.org](https://www.jspsych.org)). It leverages free resources like [Cloudflare Tunnels](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/), and GitHub Pages for hosting with a [serverless API](https://github.com/adndvlp/builder_api) to send the experiment results to the user’s Dropbox and/or Google Drive. Jspsych requires code for building experiments, so Expbuilder provides a user interface that translates your experiment design into the code required by Jspsych.
 **Expbuilder** is a desktop app, Electron-based (electronjs.org), for creating cognitive and behavioral experiments based on the Jspsych framework (jspsych.org). It leverages free resources like Cloudflare Tunnels (for sharing the crafted experiments via self-hosting), and GitHub Pages for hosting with a serverless API (Firebase) to send the experiment results to the user’s Dropbox and/or Google Drive. Jspsych requires code for building experiments, so Expbuilder provides a user interface that translates your experiment design into the code required by Jspsych.
 
 # Features
@@ -8,7 +9,7 @@
 - Uses GitHub Pages for free hosting
 - **Jspsych** as the main engine for experiment creation
 - **Cloudflare Tunnels** for sharing experiments via self-hosting
-- Connection to a Firebase project (for free) for data capture and storage
+- Connection to a [serverless API](https://github.com/adndvlp/builder_api) (for free) for data capture and storage
 - No coding required, but it can go deeper with code.
 
 # Installation
