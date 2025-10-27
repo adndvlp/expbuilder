@@ -7,12 +7,9 @@ import pkg from "electron-updater";
 import { createOAuthCallbackServer, isPortAvailable } from "./oauth-handler.js";
 const { autoUpdater } = pkg;
 
-// Define __dirname in ES module
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// If this process is the backend, do not launch window or backend again
 if (process.env.IS_ELECTRON_BACKEND === "1") {
-  // Backend only, no window
 } else {
   let serverProcess;
 
@@ -31,26 +28,21 @@ if (process.env.IS_ELECTRON_BACKEND === "1") {
     app.on("before-quit", () => serverProcess.kill());
   }
 
-  // IPC handler to open external URLs
   ipcMain.handle("open-external", (event, url) => {
     return shell.openExternal(url);
   });
 
-  // IPC handler to start OAuth flow with local server
   ipcMain.handle(
     "start-oauth-flow",
-    async (event, { provider, clientId, scope, state }) => {
+    async (_event, { provider, clientId, scope, state }) => {
       try {
-        // Port for local callback
         const OAUTH_PORT = 8888;
 
-        // Check if the port is available
         const portAvailable = await isPortAvailable(OAUTH_PORT);
         if (!portAvailable) {
           throw new Error(`Port ${OAUTH_PORT} is not available`);
         }
 
-        // Build the authorization URL according to the provider
         let authUrl;
         const redirectUri = `http://localhost:${OAUTH_PORT}/callback`;
 
@@ -74,10 +66,8 @@ if (process.env.IS_ELECTRON_BACKEND === "1") {
           throw new Error(`Unsupported provider: ${provider}`);
         }
 
-        // Open the browser with the authorization URL
         await shell.openExternal(authUrl);
 
-        // Wait for the callback on the local server
         const result = await createOAuthCallbackServer(OAUTH_PORT);
 
         return {

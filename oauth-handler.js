@@ -12,7 +12,6 @@ export function createOAuthCallbackServer(port = 8888, timeout = 300000) {
     let server;
     let timeoutId;
 
-    // HTML response to display in the browser (colors matching the app)
     const successHtml = `
       <!DOCTYPE html>
       <html>
@@ -111,17 +110,14 @@ export function createOAuthCallbackServer(port = 8888, timeout = 300000) {
       </html>
     `;
 
-    // Create HTTP server
     server = http.createServer((req, res) => {
       const url = new URL(req.url, `http://localhost:${port}`);
 
-      // Only accept requests to the /callback path
       if (url.pathname === "/callback") {
         const code = url.searchParams.get("code");
         const state = url.searchParams.get("state");
         const error = url.searchParams.get("error");
 
-        // Send response to the browser
         res.writeHead(200, { "Content-Type": "text/html" });
 
         if (error || !code) {
@@ -139,7 +135,6 @@ export function createOAuthCallbackServer(port = 8888, timeout = 300000) {
       }
     });
 
-    // Function to clean up resources
     const cleanup = () => {
       if (timeoutId) clearTimeout(timeoutId);
       if (server) {
@@ -147,20 +142,17 @@ export function createOAuthCallbackServer(port = 8888, timeout = 300000) {
       }
     };
 
-    // Safety timeout
     timeoutId = setTimeout(() => {
       cleanup();
       reject(new Error("OAuth callback timeout"));
     }, timeout);
 
-    // Start server
     server.listen(port, () => {
       console.log(
         `OAuth callback server listening on http://localhost:${port}/callback`
       );
     });
 
-    // Handle server errors
     server.on("error", (err) => {
       cleanup();
       reject(err);
