@@ -592,11 +592,11 @@ jsPsych.run(timeline);
 
       const data = await res.json();
       if (data.success) {
-        setExperimentUrl(`${data.url}/experiment/${experimentID}`);
+        setExperimentUrl(`${data.url}/${experimentID}-experiment`);
         // Persist tunnel state in localStorage (global, not per experiment)
         localStorage.setItem("tunnelActive", "true");
         localStorage.setItem("tunnelUrl", data.url);
-        let url = `${data.url}/experiment/${experimentID}`;
+        let url = `${data.url}/${experimentID}-experiment`;
         try {
           await navigator.clipboard.writeText(url);
           setTunnelStatus("Public link copied to clipboard");
@@ -625,7 +625,7 @@ jsPsych.run(timeline);
       });
       const data = await res.json();
 
-      setExperimentUrl(`${API_URL}/experiment/${experimentID}`);
+      setExperimentUrl(`${API_URL}/${experimentID}-experiment`);
       setTunnelActive(false);
       localStorage.removeItem("tunnelActive");
       localStorage.removeItem("tunnelUrl");
@@ -646,7 +646,7 @@ jsPsych.run(timeline);
     const tunnelUrl = localStorage.getItem("tunnelUrl");
     if (tunnelActive && tunnelUrl) {
       setTunnelActive(true);
-      setExperimentUrl(`${tunnelUrl}/experiment/${experimentID}`);
+      setExperimentUrl(`${tunnelUrl}/${experimentID}-experiment`);
     }
     // eslint-disable-next-line
   }, [experimentID, setExperimentUrl]);
@@ -1020,7 +1020,7 @@ jsPsych.run(timeline);
             disabled={!(localStorage.getItem("tunnelUrl") || experimentUrl)}
             onClick={() => {
               const url = localStorage.getItem("tunnelUrl")
-                ? `${localStorage.getItem("tunnelUrl")}/experiment/${experimentID}`
+                ? `${localStorage.getItem("tunnelUrl")}/${experimentID}-experiment`
                 : experimentUrl;
               if (url) openExternal(url);
             }}

@@ -211,7 +211,7 @@ export default function Settings() {
                 fontSize: 16,
                 boxShadow: "0 2px 8px rgba(61,146,180,0.08)",
                 cursor: "pointer",
-                transition: "background 0.2s",
+                transition: "background 0.2s ease",
               }}
               onMouseOver={(e) =>
                 (e.currentTarget.style.background =
@@ -264,7 +264,7 @@ export default function Settings() {
                 fontSize: 16,
                 boxShadow: "0 2px 8px rgba(229,115,115,0.08)",
                 cursor: "pointer",
-                transition: "background 0.2s",
+                transition: "background 0.2s ease",
               }}
               onMouseOver={(e) =>
                 (e.currentTarget.style.background =

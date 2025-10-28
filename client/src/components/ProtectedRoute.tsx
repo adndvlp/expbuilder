@@ -34,7 +34,7 @@ function ProtectedRoute({ children }: Props) {
             width: 48,
             height: 48,
             border: "6px solid #eee",
-            borderTop: "6px solid #3b82f6",
+            borderTop: "6px solid #d4af37",
             borderRadius: "50%",
             animation: "spin 1s linear infinite",
           }}

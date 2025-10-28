@@ -38,7 +38,7 @@
 
 .prompt-modal-input:focus {
   outline: none;
-  border-color: #4a90e2;
+  border-color: #f1c40f;
 }
 
 .prompt-modal-buttons {
@@ -66,7 +66,7 @@
 }
 
 .prompt-modal-btn.confirm {
-  background: linear-gradient(135deg, #2196f3 0%, #21cbf3 100%);
+  background: linear-gradient(135deg, #d4af37 0%, #f1c40f 100%);
   color: white;
 }
 

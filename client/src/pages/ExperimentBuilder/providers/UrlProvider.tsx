@@ -14,9 +14,9 @@ export default function TrialsProvider({ children }: Props) {
   const experimentID = useExperimentID();
 
   useEffect(() => {
-    setTrialUrl(`${API_URL}/trials-preview/${experimentID}`);
-    setExperimentUrl(`${API_URL}/experiment/${experimentID}`);
-  }, []);
+    setTrialUrl(`${API_URL}/${experimentID}-preview`);
+    setExperimentUrl(`${API_URL}/${experimentID}-experiment`);
+  }, [experimentID]);
 
   return (
     <UrlContext.Provider

@@ -174,7 +174,7 @@ app.post("/api/create-experiment", async (req, res) => {
           },
           body: JSON.stringify({
             uid: uid,
-            repoName: `experiment-${experimentID}`,
+            repoName: `${name}-experiment`,
             htmlContent: basicHtml,
             description: description || `Experiment: ${name}`,
             isPrivate: false,
@@ -265,7 +265,11 @@ app.delete("/api/delete-experiment/:experimentID", async (req, res) => {
     if (fs.existsSync(previewHtmlPath)) fs.unlinkSync(previewHtmlPath);
 
     // Borrar todos los archivos subidos del experimento
-    const experimentUploadsDir = path.join(uploadsDir, experimentID);
+    let experimentName = experimentID;
+    if (experiment && experiment.name) {
+      experimentName = `${experiment.name}-experiment`;
+    }
+    const experimentUploadsDir = path.join(__dirname, experimentName);
     if (fs.existsSync(experimentUploadsDir)) {
       fs.rmSync(experimentUploadsDir, { recursive: true, force: true });
     }
@@ -325,7 +329,7 @@ app.delete("/api/delete-experiment/:experimentID", async (req, res) => {
           },
           body: JSON.stringify({
             uid: uid,
-            repoName: `experiment-${experimentID}`,
+            repoName: `${experiment?.name}-experiment`,
           }),
         });
 
@@ -358,32 +362,61 @@ app.use(express.static(path.join(__dirname, "dist"))); // Serve dist/ at root le
 app.use(express.static(path.join(__dirname))); // Serve root directory
 app.use(express.static(path.join(__dirname, "plugins"))); // Serve app/ directory
 
+// Serve experiment files dynamically
+app.use((req, res, next) => {
+  // Match paths like /experimentName/type/filename
+  const match = req.path.match(/^\/([^\/]+)\/(img|aud|vid|others)\/(.+)$/);
+  if (match) {
+    const [, experimentName, type, filename] = match;
+    const filePath = path.join(__dirname, experimentName, type, filename);
+    if (fs.existsSync(filePath)) {
+      return res.sendFile(filePath);
+    }
+  }
+  next();
+});
+
 const experimentsHtmlDir = path.join(__dirname, "experiments_html");
 const trialsPreviewsHtmlDir = path.join(__dirname, "trials_previews_html");
 if (!fs.existsSync(experimentsHtmlDir)) fs.mkdirSync(experimentsHtmlDir);
 if (!fs.existsSync(trialsPreviewsHtmlDir)) fs.mkdirSync(trialsPreviewsHtmlDir);
 
-// Modifica los endpoints para servir los archivos
-app.get("/experiment/:experimentID", (req, res) => {
-  const experimentHtmlPath = path.join(
-    experimentsHtmlDir,
-    `experiment_${req.params.experimentID}.html`
+// Endpoint para servir el experimento en /:experimentID-experiment
+app.get("/:experimentID-experiment", async (req, res) => {
+  const experimentID = req.params.experimentID;
+  await db.read();
+  const experiment = db.data.experiments.find(
+    (e) => e.experimentID === experimentID
   );
-  if (!fs.existsSync(experimentHtmlPath)) {
+  if (!experiment || !experiment.name)
     return res.status(404).send("Experiment not found");
-  }
-  res.sendFile(experimentHtmlPath);
+  const experimentName = experiment.name;
+  const htmlPath = path.join(
+    experimentsHtmlDir,
+    `${experimentName}-experiment.html`
+  );
+  if (!fs.existsSync(htmlPath))
+    return res.status(404).send("Experiment HTML not found");
+  res.sendFile(htmlPath);
 });
 
-app.get("/trials-preview/:experimentID", (req, res) => {
-  const previewHtmlPath = path.join(
-    trialsPreviewsHtmlDir,
-    `trials_preview_${req.params.experimentID}.html`
+// Endpoint para servir el preview en /:experimentID-preview
+app.get("/:experimentID-preview", async (req, res) => {
+  const experimentID = req.params.experimentID;
+  await db.read();
+  const experiment = db.data.experiments.find(
+    (e) => e.experimentID === experimentID
   );
-  if (!fs.existsSync(previewHtmlPath)) {
-    return res.status(404).send("Preview not found");
-  }
-  res.sendFile(previewHtmlPath);
+  if (!experiment || !experiment.name)
+    return res.status(404).send("Experiment not found");
+  const experimentName = experiment.name;
+  const htmlPath = path.join(
+    trialsPreviewsHtmlDir,
+    `${experimentName}-preview.html`
+  );
+  if (!fs.existsSync(htmlPath))
+    return res.status(404).send("Preview HTML not found");
+  res.sendFile(htmlPath);
 });
 
 const metadataPath = path.resolve(__dirname, "metadata");
@@ -403,26 +436,37 @@ app.get("/api/plugins-list", (req, res) => {
   });
 });
 
-const uploadsDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
-
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const experimentID = req.body.experimentID || req.params.experimentID;
-    const ext = path.extname(file.originalname).toLowerCase();
-    let type = null;
-    if (/\.(png|jpg|jpeg|gif)$/i.test(ext)) type = "img";
-    else if (/\.(mp3|wav|ogg|m4a)$/i.test(ext)) type = "aud";
-    else if (/\.(mp4|webm|mov|avi)$/i.test(ext)) type = "vid";
+  destination: async function (req, file, cb) {
+    try {
+      const experimentID = req.body.experimentID || req.params.experimentID;
+      const ext = path.extname(file.originalname).toLowerCase();
+      let type = null;
+      if (/\.(png|jpg|jpeg|gif)$/i.test(ext)) type = "img";
+      else if (/\.(mp3|wav|ogg|m4a)$/i.test(ext)) type = "aud";
+      else if (/\.(mp4|webm|mov|avi)$/i.test(ext)) type = "vid";
 
-    if (!type) {
-      // Rechaza el archivo si no es de los tipos permitidos
-      return cb(new Error("File type not allowed"), null);
+      if (!type) {
+        // Rechaza el archivo si no es de los tipos permitidos
+        return cb(new Error("File type not allowed"), null);
+      }
+
+      // Obtener el nombre del experimento
+      let experimentName = experimentID;
+      await db.read();
+      const experiment = db.data.experiments.find(
+        (e) => e.experimentID === experimentID
+      );
+      if (experiment && experiment.name) {
+        experimentName = `${experiment.name}-experiment`;
+      }
+
+      const folder = path.join(__dirname, experimentName, type);
+      fs.mkdirSync(folder, { recursive: true });
+      cb(null, folder);
+    } catch (err) {
+      cb(err, null);
     }
-
-    const folder = path.join(uploadsDir, experimentID, type);
-    fs.mkdirSync(folder, { recursive: true });
-    cb(null, folder);
   },
   filename: function (req, file, cb) {
     cb(null, file.originalname);
@@ -431,19 +475,25 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-app.use("/uploads", express.static(uploadsDir));
-
 app.post(
   "/api/upload-file/:experimentID",
   upload.single("file"),
-  (req, res) => {
+  async (req, res) => {
     if (!req.file || !req.file.path) {
       return res.status(400).json({ error: "No file uploaded" });
     }
     const experimentID = req.params.experimentID;
     const type = path.basename(path.dirname(req.file.path));
+    let experimentName = experimentID;
+    await db.read();
+    const experiment = db.data.experiments.find(
+      (e) => e.experimentID === experimentID
+    );
+    if (experiment && experiment.name) {
+      experimentName = `${experiment.name}-experiment`;
+    }
     res.json({
-      fileUrl: `/uploads/${experimentID}/${type}/${req.file.filename}`,
+      fileUrl: `${experimentName}/${type}/${req.file.filename}`,
       folder: type,
     });
   }
@@ -452,14 +502,22 @@ app.post(
 app.post(
   "/api/upload-files-folder/:experimentID",
   upload.array("files"),
-  (req, res) => {
+  async (req, res) => {
     const experimentID = req.params.experimentID;
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: "No files uploaded" });
     }
+    let experimentName = experimentID;
+    await db.read();
+    const experiment = db.data.experiments.find(
+      (e) => e.experimentID === experimentID
+    );
+    if (experiment && experiment.name) {
+      experimentName = `${experiment.name}-experiment`;
+    }
     const fileUrls = req.files.map((file) => {
       const type = path.basename(path.dirname(file.path));
-      return `/uploads/${experimentID}/${type}/${file.filename}`;
+      return `${experimentName}/${type}/${file.filename}`;
     });
     res.json({
       fileUrls,
@@ -472,25 +530,34 @@ app.get("/api/list-files/:type/:experimentID", async (req, res) => {
   const { experimentID, type } = req.params;
   try {
     let files = [];
+    // Buscar el nombre del experimento
+    let experimentName = experimentID;
+    await db.read();
+    const experiment = db.data.experiments.find(
+      (e) => e.experimentID === experimentID
+    );
+    if (experiment && experiment.name) {
+      experimentName = `${experiment.name}-experiment`;
+    }
     if (type === "all") {
       const types = ["img", "aud", "vid", "others"];
       types.forEach((t) => {
-        const dir = path.join(uploadsDir, experimentID, t);
+        const dir = path.join(__dirname, experimentName, t);
         if (fs.existsSync(dir)) {
           const typeFiles = fs.readdirSync(dir).map((filename) => ({
             name: filename,
-            url: `/uploads/${experimentID}/${t}/${filename}`,
+            url: `${experimentName}/${t}/${filename}`,
             type: t,
           }));
           files = files.concat(typeFiles);
         }
       });
     } else {
-      const dir = path.join(uploadsDir, experimentID, type);
+      const dir = path.join(__dirname, experimentName, type);
       if (fs.existsSync(dir)) {
         files = fs.readdirSync(dir).map((filename) => ({
           name: filename,
-          url: `/uploads/${experimentID}/${type}/${filename}`,
+          url: `${experimentName}/${type}/${filename}`,
           type,
         }));
       }
@@ -505,7 +572,15 @@ app.delete(
   "/api/delete-file/:type/:filename/:experimentID",
   async (req, res) => {
     const { experimentID, type, filename } = req.params;
-    const filePath = path.join(uploadsDir, experimentID, type, filename);
+    let experimentName = experimentID;
+    await db.read();
+    const experiment = db.data.experiments.find(
+      (e) => e.experimentID === experimentID
+    );
+    if (experiment && experiment.name) {
+      experimentName = `${experiment.name}-experiment`;
+    }
+    const filePath = path.join(__dirname, experimentName, type, filename);
     try {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
@@ -871,6 +946,17 @@ app.post("/api/run-experiment/:experimentID", async (req, res) => {
     const { generatedCode } = req.body;
     const experimentID = req.params.experimentID;
 
+    // Obtener el nombre del experimento
+    await db.read();
+    const experiment = db.data.experiments.find(
+      (e) => e.experimentID === experimentID
+    );
+    if (!experiment || !experiment.name) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Experiment not found" });
+    }
+    const experimentName = experiment.name;
     // Ruta de template y destino
     const templatePath = path.join(
       __dirname,
@@ -879,49 +965,28 @@ app.post("/api/run-experiment/:experimentID", async (req, res) => {
     );
     const experimentHtmlPath = path.join(
       experimentsHtmlDir,
-      `experiment_${experimentID}.html`
+      `${experimentName}-experiment.html`
     );
-
     // Copia el template si no existe
     if (!fs.existsSync(experimentHtmlPath)) {
       fs.copyFileSync(templatePath, experimentHtmlPath);
     }
     let html = fs.readFileSync(experimentHtmlPath, "utf8");
     const $ = cheerio.load(html);
-
-    // Elimina script previo: generated-script
-
     $("script#generated-script").remove();
-
-    // Inserta el código generado (desde config)
-    // const configDoc = await Config.findOne({});
-    // if (!configDoc || !configDoc.data || !configDoc.data.generatedCode) {
-    //   return res
-    //     .status(400)
-    //     .json({ success: false, error: "No generated code found in config" });
-    // }
-
-    // $("body").append(
-    //   `<script id="generated-script">\n${configDoc.data.generatedCode}\n</script>`
-    // );
-    // Usa el código pasado en el body en lugar de leerlo de la BD
     if (!generatedCode) {
       return res
         .status(400)
         .json({ success: false, error: "No generated code provided" });
     }
-
     $("body").append(
       `<script id="generated-script">\n${generatedCode}\n</script>`
     );
-
-    // Guarda el HTML modificado
     fs.writeFileSync(experimentHtmlPath, $.html());
-
     res.json({
       success: true,
       message: "Experiment built and ready to run",
-      experimentUrl: `http://localhost:3000/experiment/${experimentID}`,
+      experimentUrl: `http://localhost:3000/${experimentName}-experiment`,
     });
   } catch (error) {
     console.error(`Error running experiment: ${error.message}`);
@@ -1037,6 +1102,17 @@ app.post("/api/trials-preview/:experimentID", async (req, res) => {
     const { generatedCode } = req.body;
     const experimentID = req.params.experimentID;
 
+    // Obtener el nombre del experimento
+    await db.read();
+    const experiment = db.data.experiments.find(
+      (e) => e.experimentID === experimentID
+    );
+    if (!experiment || !experiment.name) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Experiment not found" });
+    }
+    const experimentName = experiment.name;
     const templatePath = path.join(
       __dirname,
       "templates",
@@ -1044,35 +1120,27 @@ app.post("/api/trials-preview/:experimentID", async (req, res) => {
     );
     const previewHtmlPath = path.join(
       trialsPreviewsHtmlDir,
-      `trials_preview_${experimentID}.html`
+      `${experimentName}-experiment-preview.html`
     );
     if (!fs.existsSync(previewHtmlPath)) {
       fs.copyFileSync(templatePath, previewHtmlPath);
     }
     let html = fs.readFileSync(previewHtmlPath, "utf8");
     const $ = cheerio.load(html);
-
-    // Elimina scripts previos de generated-script
     $("script#generated-script").remove();
-
-    // Usa el código pasado en el body en lugar de leerlo de la BD
     if (!generatedCode) {
       return res
         .status(400)
         .json({ success: false, error: "No generated code provided" });
     }
-
     $("body").append(
       `<script id="generated-script">\n${generatedCode}\n</script>`
     );
-
-    // Guarda el HTML modificado
     fs.writeFileSync(previewHtmlPath, $.html());
-
     res.json({
       success: true,
       message: "Experiment built and ready to run",
-      experimentUrl: `http://localhost:3000/trials_preview/${experimentID}`,
+      experimentUrl: `http://localhost:3000/${experimentName}-experiment-preview`,
     });
   } catch (error) {
     console.error(`Error running experiment: ${error.message}`);
@@ -1093,19 +1161,29 @@ app.post("/api/publish-experiment/:experimentID", async (req, res) => {
       });
     }
 
+    // Buscar el nombre del experimento
+    await db.read();
+    const experimentPublish = db.data.experiments.find(
+      (e) => e.experimentID === experimentID
+    );
+    if (!experimentPublish || !experimentPublish.name) {
+      return res.status(404).json({
+        success: false,
+        error: "Experiment not found",
+      });
+    }
+    const experimentNamePublish = experimentPublish.name;
     // Verificar que el HTML del experimento exista
     const experimentHtmlPath = path.join(
       experimentsHtmlDir,
-      `experiment_${experimentID}.html`
+      `${experimentNamePublish}-experiment.html`
     );
-
     if (!fs.existsSync(experimentHtmlPath)) {
       return res.status(404).json({
         success: false,
         error: "Experiment HTML not found. Please run the experiment first.",
       });
     }
-
     // Leer y modificar el HTML para reemplazar el script generado
     let html = fs.readFileSync(experimentHtmlPath, "utf8");
     const $ = cheerio.load(html);
@@ -1134,6 +1212,35 @@ app.post("/api/publish-experiment/:experimentID", async (req, res) => {
     // Usar el HTML modificado para publicar en GitHub
     const htmlContent = $.html();
 
+    // Leer archivos multimedia y convertir a base64
+    let experimentNameUploads = experimentID;
+    if (experimentPublish && experimentPublish.name) {
+      experimentNameUploads = `${experimentPublish.name}-experiment`;
+    }
+    const uploadsBase = path.join(__dirname, experimentNameUploads);
+    const mediaTypes = ["img", "vid", "aud"];
+    let mediaFiles = [];
+    for (const type of mediaTypes) {
+      const typeDir = path.join(uploadsBase, type);
+      if (fs.existsSync(typeDir)) {
+        const files = fs.readdirSync(typeDir);
+        for (const filename of files) {
+          const filePath = path.join(typeDir, filename);
+          try {
+            const fileBuffer = fs.readFileSync(filePath);
+            const base64Content = fileBuffer.toString("base64");
+            mediaFiles.push({
+              type,
+              filename,
+              content: base64Content,
+            });
+          } catch (err) {
+            console.warn(`Error reading file ${filePath}:`, err.message);
+          }
+        }
+      }
+    }
+
     try {
       const githubUrl = `${process.env.FIREBASE_URL}/githubUpdateHtml`;
 
@@ -1144,9 +1251,10 @@ app.post("/api/publish-experiment/:experimentID", async (req, res) => {
         },
         body: JSON.stringify({
           uid: uid,
-          repoName: `experiment-${experimentID}`,
+          repoName: `${experiment?.name}-experiment`,
           htmlContent: htmlContent,
           ...(storage && { storage }),
+          mediaFiles: mediaFiles.length > 0 ? mediaFiles : undefined,
           // Opcionalmente puedes agregar envContent aquí si lo necesitas
         }),
       });

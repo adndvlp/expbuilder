@@ -10,6 +10,8 @@ const Register: React.FC = () => {
   const [password, setPassword] = useState("");
   const [errorEmail, setErrorEmail] = useState("");
   const [errorPassword, setErrorPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [errorConfirmPassword, setErrorConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -17,9 +19,14 @@ const Register: React.FC = () => {
     e.preventDefault();
     setErrorEmail("");
     setErrorPassword("");
+    setErrorConfirmPassword("");
     setSuccess(false);
     if (password.length < 12) {
       setErrorPassword("Password must be at least 12 characters");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setErrorConfirmPassword("Passwords do not match");
       return;
     }
     setIsSubmitting(true);
@@ -42,6 +49,7 @@ const Register: React.FC = () => {
       setSuccess(true);
       setEmail("");
       setPassword("");
+      setConfirmPassword("");
     } catch (error: any) {
       if (error.code === "auth/weak-password") {
         setErrorPassword("Password is too weak");
@@ -95,6 +103,24 @@ const Register: React.FC = () => {
             }}
           >
             {errorPassword || "Password must be at least 12 characters"}
+          </div>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label className="auth-text-color">Confirm Password</label>
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            style={{ width: "100%", padding: 8, marginTop: 4 }}
+            required
+          />
+          <div
+            style={{
+              fontSize: 12,
+              color: errorConfirmPassword ? "red" : "#cececeff",
+            }}
+          >
+            {errorConfirmPassword || "Repeat your password"}
           </div>
         </div>
         <button

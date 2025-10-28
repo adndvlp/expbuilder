@@ -123,7 +123,7 @@
 }
 
 .menu-item:hover {
-  background: var(--primary-purple);
+  background: #d4af37;
   color: white;
   transform: translateX(4px);
 }
