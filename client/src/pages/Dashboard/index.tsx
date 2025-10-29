@@ -61,17 +61,9 @@ function Dashboard() {
     } catch (e) {
       // Ignorar errores de parseo
     }
-    // Validar tokens si hay uid ANTES del prompt
+    // Determinar opciones disponibles para el modal
     if (uid) {
       const tokens = await getUserTokens(uid);
-      if (!tokens.github || (!tokens.drive && !tokens.dropbox)) {
-        alert(
-          "You must connect Github and at least one of Google Drive or Dropbox in Settings before creating experiments."
-        );
-        navigate("/settings");
-        return;
-      }
-      // Determinar opciones disponibles para el modal
       const storages: string[] = [];
       if (tokens.drive) storages.push("drive");
       if (tokens.dropbox) storages.push("dropbox");

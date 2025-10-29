@@ -20,6 +20,57 @@ const DATA_API_URL = import.meta.env.VITE_DATA_API_URL;
 type TimelineProps = {};
 
 function Component({}: TimelineProps) {
+  // Estado para tokens del usuario
+  const [userTokens, setUserTokens] = useState<{
+    drive: boolean;
+    dropbox: boolean;
+    github: boolean;
+  } | null>(null);
+
+  // Mostrar tooltip solo si el botón está deshabilitado por falta de tokens
+  function isDisabledByTokens() {
+    return !(
+      userTokens &&
+      userTokens.github &&
+      (userTokens.drive || userTokens.dropbox)
+    );
+  }
+
+  // Función para obtener tokens del usuario desde Firestore
+  async function getUserTokens(
+    uid: string
+  ): Promise<{ drive: boolean; dropbox: boolean; github: boolean }> {
+    try {
+      // Importar Firestore dinámicamente para evitar dependencias innecesarias
+      const { doc, getDoc } = await import("firebase/firestore");
+      const { db } = await import("../../../lib/firebase");
+      const docRef = doc(db, "users", uid);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists())
+        return { drive: false, dropbox: false, github: false };
+      const data = docSnap.data();
+      return {
+        drive: !!data.googleDriveTokens,
+        dropbox: !!data.dropboxTokens,
+        github: !!data.githubTokens,
+      };
+    } catch {
+      return { drive: false, dropbox: false, github: false };
+    }
+  }
+
+  // Cargar tokens al montar
+  useEffect(() => {
+    const userStr = window.localStorage.getItem("user");
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user && user.uid) {
+          getUserTokens(user.uid).then(setUserTokens);
+        }
+      } catch {}
+    }
+  }, []);
   const [submitStatus, setSubmitStatus] = useState<string>("");
   const { experimentUrl, setExperimentUrl } = useUrl();
   const [copyStatus, setCopyStatus] = useState<string>("");
@@ -397,7 +448,8 @@ jsPsych.run(timeline);
       connected: true,
       experimentID: '${experimentID}',
       sessionId: trialSessionId,
-      startedAt: window.firebase.database.ServerValue.TIMESTAMP
+      startedAt: window.firebase.database.ServerValue.TIMESTAMP,
+      storage: '${storage}'
     });
     
     // Cuando se desconecte, marcar para que el backend finalice la sesión
@@ -405,7 +457,8 @@ jsPsych.run(timeline);
     sessionRef.onDisconnect().update({
       connected: false,
       needsFinalization: true,
-      disconnectedAt: window.firebase.database.ServerValue.TIMESTAMP
+      disconnectedAt: window.firebase.database.ServerValue.TIMESTAMP,
+      storage: '${storage}'
     });
 
     const jsPsych = initJsPsych({
@@ -413,8 +466,6 @@ jsPsych.run(timeline);
     ${extensions}
 
     on_data_update: function (data) {
-    
-      const csvData= jsPsych.data.getLastTrialData().csv()
 
       fetch("${DATA_API_URL}", {
         method: "POST",
@@ -422,7 +473,7 @@ jsPsych.run(timeline);
         body: JSON.stringify({
           experimentID: "${experimentID}",
           sessionId: trialSessionId,
-          data: csvData,
+          data: data,
           storage: "${storage}",
         }),
       })
@@ -652,9 +703,19 @@ jsPsych.run(timeline);
   }, [experimentID, setExperimentUrl]);
 
   const handleCopyLink = async () => {
+    let linkToCopy = "";
+    // Prioridad: el último link publicado (GitHub Pages) si existe
     if (lastPagesUrl) {
+      linkToCopy = lastPagesUrl;
+    } else if (isTunnelActive && experimentID) {
+      const tunnelUrl = localStorage.getItem("tunnelUrl");
+      if (tunnelUrl) {
+        linkToCopy = `${tunnelUrl}/${experimentID}-experiment`;
+      }
+    }
+    if (linkToCopy) {
       try {
-        await navigator.clipboard.writeText(lastPagesUrl);
+        await navigator.clipboard.writeText(linkToCopy);
         setCopyStatus("Link copied!");
         setTimeout(() => setCopyStatus(""), 2000); // Clear message after 2 seconds
       } catch (err) {
@@ -705,13 +766,11 @@ jsPsych.run(timeline);
         setPublishStatus(
           "Warning: GitHub publish failed. Please reconnect your GitHub account in Settings."
         );
-        // Opcional: podría redirigir al usuario a Settings
         return;
       }
       if (result.success) {
         setPublishStatus(`Published! GitHub Pages URL`);
         setLastPagesUrl(result.pagesUrl || "");
-        // Optionally copy the GitHub Pages URL
         try {
           await navigator.clipboard.writeText(result.pagesUrl);
           setTimeout(() => {
@@ -730,7 +789,6 @@ jsPsych.run(timeline);
       );
     } finally {
       setIsPublishing(false);
-      // Clear status after 5 seconds
       setTimeout(() => setPublishStatus(""), 5000);
     }
   };
@@ -751,7 +809,13 @@ jsPsych.run(timeline);
       .every((loop) => !!loop.code && loop.code.trim() !== "");
 
   const isDisabled =
-    isSubmitting || ((!allTrialsHaveCode || !allLoopsHaveCode) && !isDevMode);
+    isSubmitting ||
+    ((!allTrialsHaveCode || !allLoopsHaveCode) && !isDevMode) ||
+    !(
+      userTokens &&
+      userTokens.github &&
+      (userTokens.drive || userTokens.dropbox)
+    );
 
   return (
     <div className="timeline">
@@ -1087,52 +1151,6 @@ jsPsych.run(timeline);
         {/* Publish to GitHub Button */}
         <div style={{ marginTop: "12px" }}>
           <button
-            onClick={handlePublishToGitHub}
-            disabled={isPublishing || !experimentUrl}
-            style={{
-              display: "block",
-              width: "100%",
-              padding: "10px 0",
-              backgroundColor:
-                isPublishing || !experimentUrl ? "#cccccc" : "#ff9800",
-              color: "#fff",
-              border: "none",
-              borderRadius: 6,
-              fontWeight: "600",
-              fontSize: 14,
-              letterSpacing: "0.05em",
-              cursor:
-                isPublishing || !experimentUrl ? "not-allowed" : "pointer",
-              transition: "background-color 0.3s ease",
-            }}
-            onMouseEnter={(e) => {
-              if (!isPublishing && experimentUrl) {
-                e.currentTarget.style.backgroundColor = "#f57c00";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isPublishing && experimentUrl) {
-                e.currentTarget.style.backgroundColor = "#ff9800";
-              }
-            }}
-          >
-            {isPublishing ? "Publishing..." : "Publish to GitHub Pages"}
-          </button>
-          {publishStatus && (
-            <p
-              style={{
-                fontSize: 13,
-                color: publishStatus.includes("Error") ? "#f44336" : "#4caf50",
-                textAlign: "center",
-                marginTop: 8,
-                fontWeight: "500",
-                wordBreak: "break-word",
-              }}
-            >
-              {publishStatus}
-            </p>
-          )}
-          <button
             onClick={handleCopyLink}
             style={{
               display: "block",
@@ -1169,6 +1187,49 @@ jsPsych.run(timeline);
               }}
             >
               {copyStatus}
+            </p>
+          )}
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={handlePublishToGitHub}
+              disabled={isPublishing || !experimentUrl || isDisabledByTokens()}
+              style={{
+                display: "block",
+                width: "100%",
+                padding: "10px 0",
+                backgroundColor:
+                  isPublishing || !experimentUrl || isDisabledByTokens()
+                    ? "#cccccc"
+                    : "#ff9800",
+                color: "#fff",
+                border: "none",
+                borderRadius: 6,
+                fontWeight: "600",
+                fontSize: 14,
+                letterSpacing: "0.05em",
+                marginTop: 12,
+                cursor:
+                  isPublishing || !experimentUrl || isDisabledByTokens()
+                    ? "not-allowed"
+                    : "pointer",
+                transition: "background-color 0.3s ease",
+              }}
+            >
+              {isPublishing ? "Publishing..." : "Publish to GitHub Pages"}
+            </button>
+          </div>
+          {publishStatus && (
+            <p
+              style={{
+                fontSize: 13,
+                color: publishStatus.includes("Error") ? "#f44336" : "#4caf50",
+                textAlign: "center",
+                marginTop: 8,
+                fontWeight: "500",
+                wordBreak: "break-word",
+              }}
+            >
+              {publishStatus}
             </p>
           )}
         </div>

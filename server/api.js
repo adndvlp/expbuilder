@@ -1255,7 +1255,6 @@ app.post("/api/publish-experiment/:experimentID", async (req, res) => {
           htmlContent: htmlContent,
           ...(storage && { storage }),
           mediaFiles: mediaFiles.length > 0 ? mediaFiles : undefined,
-          // Opcionalmente puedes agregar envContent aquí si lo necesitas
         }),
       });
 
