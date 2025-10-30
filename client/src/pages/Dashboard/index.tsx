@@ -203,8 +203,7 @@ function Dashboard() {
           onClick={handleCreate}
           disabled={loading}
         >
-          {loading ? "Creating..." : "+ Create experiment"}
-          {/* Also apply for deleting */}
+          + Create experiment
         </button>
       </div>
       <div className="dashboard-list">

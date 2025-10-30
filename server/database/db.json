@@ -1,12 +1,368 @@
 {
-  "experiments": [],
-  "trials": [],
-  "configs": [],
+  "experiments": [
+    {
+      "experimentID": "77ffc510-be89-498e-8813-344a1b47d9d2",
+      "name": "loops",
+      "createdAt": "2025-10-30T03:45:59.872Z",
+      "updatedAt": "2025-10-30T03:45:59.872Z",
+      "storage": "drive"
+    }
+  ],
+  "trials": [
+    {
+      "experimentID": "77ffc510-be89-498e-8813-344a1b47d9d2",
+      "data": {
+        "trials": [
+          {
+            "id": 1761799568817,
+            "type": "Trial",
+            "name": "New Trial",
+            "parameters": {
+              "includesExtensions": false,
+              "extensionType": ""
+            },
+            "trialCode": "\n    const preloadNew_Trial = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial);\n    \n    const test_stimuli_New_Trial = [{stimulus: \"Ahola\",\nchoices: [\"loco\",\"loca\"]}];\n    const New_Trial_timeline = {\n    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\nchoices: jsPsych.timelineVariable(\"choices\"),\n    data: {\n      rt: \"rt\",\nresponse: \"response\",\nstimulus: \"stimulus\",\n    },\n    };\n    const New_Trial_procedure = {\n    timeline: \n    [New_Trial_timeline],\n    timeline_variables: test_stimuli_New_Trial,\n    \n    };\n    timeline.push(New_Trial_procedure);\n  ",
+            "plugin": "plugin-html-button-response",
+            "columnMapping": {
+              "stimulus": {
+                "source": "typed",
+                "value": "Ahola"
+              },
+              "choices": {
+                "source": "typed",
+                "value": [
+                  "loco",
+                  "loca"
+                ]
+              },
+              "prompt": {
+                "source": "none",
+                "value": null
+              },
+              "trial_duration": {
+                "source": "none",
+                "value": null
+              },
+              "response_ends_trial": {
+                "source": "none",
+                "value": null
+              },
+              "trial_ends_after_audio": {
+                "source": "none",
+                "value": null
+              },
+              "response_allowed_while_playing": {
+                "source": "none",
+                "value": null
+              },
+              "stimulus_duration": {
+                "source": "none",
+                "value": null
+              },
+              "button_html": {
+                "source": "none",
+                "value": null
+              },
+              "button_layout": {
+                "source": "none",
+                "value": null
+              },
+              "grid_rows": {
+                "source": "none",
+                "value": null
+              },
+              "grid_columns": {
+                "source": "none",
+                "value": null
+              },
+              "enable_button_after": {
+                "source": "none",
+                "value": null
+              }
+            },
+            "csvJson": [],
+            "csvColumns": [],
+            "orders": false,
+            "orderColumns": [],
+            "stimuliOrders": [],
+            "categories": false,
+            "categoryColumn": ""
+          },
+          {
+            "id": "loop_1761801997255",
+            "name": "Loop 1",
+            "repetitions": 1,
+            "randomize": false,
+            "orders": false,
+            "stimuliOrders": [],
+            "orderColumns": [],
+            "categoryColumn": "",
+            "categories": false,
+            "categoryData": [],
+            "trials": [
+              {
+                "id": 1761799573104,
+                "type": "Trial",
+                "name": "New Trial 1",
+                "parameters": {
+                  "includesExtensions": false,
+                  "extensionType": ""
+                },
+                "trialCode": "\n    const preloadNew_Trial_1 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_1);\n    \n    const New_Trial_1_timeline = {\n    type: jsPsychAudioButtonResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_1\"),\n    data: {\n      stimulus: \"stimulus_New_Trial_1\",\nrt: \"rt_New_Trial_1\",\nresponse: \"response_New_Trial_1\",\n    },\n    };",
+                "plugin": "plugin-audio-button-response",
+                "columnMapping": {
+                  "stimulus": {
+                    "source": "typed",
+                    "value": "hola"
+                  },
+                  "choices": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "button_html": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "prompt": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "trial_duration": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "button_layout": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "grid_rows": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "grid_columns": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "response_ends_trial": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "trial_ends_after_audio": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "response_allowed_while_playing": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "enable_button_after": {
+                    "source": "none",
+                    "value": null
+                  }
+                },
+                "orders": false,
+                "orderColumns": [],
+                "stimuliOrders": [],
+                "categories": false,
+                "categoryColumn": "",
+                "csvFromLoop": true,
+                "csvJson": [],
+                "csvColumns": []
+              },
+              {
+                "id": 1761799575821,
+                "type": "Trial",
+                "name": "New Trial 2",
+                "parameters": {
+                  "includesExtensions": false,
+                  "extensionType": ""
+                },
+                "trialCode": "\n    const preloadNew_Trial_2 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_2);\n    \n    const New_Trial_2_timeline = {\n    type: jsPsychAudioButtonResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_2\"),\nchoices: jsPsych.timelineVariable(\"choices_New_Trial_2\"),\nbutton_html: jsPsych.timelineVariable(\"button_html_New_Trial_2\"),\nprompt: jsPsych.timelineVariable(\"prompt_New_Trial_2\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration_New_Trial_2\"),\nbutton_layout: jsPsych.timelineVariable(\"button_layout_New_Trial_2\"),\ngrid_rows: jsPsych.timelineVariable(\"grid_rows_New_Trial_2\"),\ngrid_columns: jsPsych.timelineVariable(\"grid_columns_New_Trial_2\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial_New_Trial_2\"),\ntrial_ends_after_audio: jsPsych.timelineVariable(\"trial_ends_after_audio_New_Trial_2\"),\nresponse_allowed_while_playing: jsPsych.timelineVariable(\"response_allowed_while_playing_New_Trial_2\"),\nenable_button_after: jsPsych.timelineVariable(\"enable_button_after_New_Trial_2\"),\n    data: {\n      stimulus: \"stimulus_New_Trial_2\",\nrt: \"rt_New_Trial_2\",\nresponse: \"response_New_Trial_2\",\n    },\n    };",
+                "plugin": "plugin-audio-button-response",
+                "columnMapping": {},
+                "orders": false,
+                "orderColumns": [],
+                "stimuliOrders": [],
+                "categories": false,
+                "categoryColumn": "",
+                "csvFromLoop": true,
+                "csvJson": [],
+                "csvColumns": []
+              }
+            ],
+            "code": "\n\n    const test_stimuli_Loop = [\n  {\n    \"stimulus_New_Trial_1\": \"hola\",\n    \"stimulus_New_Trial_2\": \"\",\n    \"button_html_New_Trial_2\": \"function(r,s){return`<button class=\\\"jspsych-btn\\\">${r}</button>`}\",\n    \"prompt_New_Trial_2\": null,\n    \"trial_duration_New_Trial_2\": null,\n    \"button_layout_New_Trial_2\": \"grid\",\n    \"grid_rows_New_Trial_2\": 1,\n    \"grid_columns_New_Trial_2\": null,\n    \"response_ends_trial_New_Trial_2\": true,\n    \"trial_ends_after_audio_New_Trial_2\": false,\n    \"response_allowed_while_playing_New_Trial_2\": true,\n    \"enable_button_after_New_Trial_2\": 0\n  }\n];\n    \n    \n    \n    const preloadNew_Trial_1 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_1);\n    \n    const New_Trial_1_timeline = {\n    type: jsPsychAudioButtonResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_1\"),\n    data: {\n      stimulus: \"stimulus_New_Trial_1\",\nrt: \"rt_New_Trial_1\",\nresponse: \"response_New_Trial_1\",\n    },\n    };\n\n\n\n    \n    const preloadNew_Trial_2 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_2);\n    \n    const New_Trial_2_timeline = {\n    type: jsPsychAudioButtonResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_2\"),\nchoices: jsPsych.timelineVariable(\"choices_New_Trial_2\"),\nbutton_html: jsPsych.timelineVariable(\"button_html_New_Trial_2\"),\nprompt: jsPsych.timelineVariable(\"prompt_New_Trial_2\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration_New_Trial_2\"),\nbutton_layout: jsPsych.timelineVariable(\"button_layout_New_Trial_2\"),\ngrid_rows: jsPsych.timelineVariable(\"grid_rows_New_Trial_2\"),\ngrid_columns: jsPsych.timelineVariable(\"grid_columns_New_Trial_2\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial_New_Trial_2\"),\ntrial_ends_after_audio: jsPsych.timelineVariable(\"trial_ends_after_audio_New_Trial_2\"),\nresponse_allowed_while_playing: jsPsych.timelineVariable(\"response_allowed_while_playing_New_Trial_2\"),\nenable_button_after: jsPsych.timelineVariable(\"enable_button_after_New_Trial_2\"),\n    data: {\n      stimulus: \"stimulus_New_Trial_2\",\nrt: \"rt_New_Trial_2\",\nresponse: \"response_New_Trial_2\",\n    },\n    };\n\n\n\n\nconst loop_procedure = {\n  timeline: [New_Trial_1_timeline, New_Trial_2_timeline],\n  timeline_variables: test_stimuli_Loop,\n  repetitions: 1,\n  randomize_order: false,\n};\ntimeline.push(loop_procedure);\n",
+            "csvJson": [],
+            "csvColumns": []
+          },
+          {
+            "id": 1761801986070,
+            "type": "Trial",
+            "name": "New Trial 3",
+            "parameters": {
+              "includesExtensions": false,
+              "extensionType": ""
+            },
+            "trialCode": "\n    const preloadNew_Trial_3 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_3);\n    \n    const test_stimuli_New_Trial_3 = [{}];\n    const New_Trial_3_timeline = {\n    type: jsPsychAudioKeyboardResponse, \n    data: {\n      response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n    },\n    };\n    const New_Trial_3_procedure = {\n    timeline: \n    [New_Trial_3_timeline],\n    timeline_variables: test_stimuli_New_Trial_3,\n    \n    };\n    timeline.push(New_Trial_3_procedure);\n  ",
+            "plugin": "plugin-audio-keyboard-response",
+            "columnMapping": {
+              "stimulus": {
+                "source": "none",
+                "value": null
+              },
+              "choices": {
+                "source": "none",
+                "value": null
+              },
+              "prompt": {
+                "source": "none",
+                "value": null
+              },
+              "trial_duration": {
+                "source": "none",
+                "value": null
+              },
+              "response_ends_trial": {
+                "source": "none",
+                "value": null
+              },
+              "trial_ends_after_audio": {
+                "source": "none",
+                "value": null
+              },
+              "response_allowed_while_playing": {
+                "source": "none",
+                "value": null
+              }
+            },
+            "csvJson": [],
+            "csvColumns": [],
+            "orders": false,
+            "orderColumns": [],
+            "stimuliOrders": [],
+            "categories": false,
+            "categoryColumn": ""
+          },
+          {
+            "id": 1761801986236,
+            "type": "Trial",
+            "name": "New Trial 4",
+            "parameters": {},
+            "trialCode": "",
+            "plugin": "plugin-audio-button-response"
+          }
+        ]
+      },
+      "createdAt": "2025-10-30T03:46:27.174Z",
+      "updatedAt": "2025-10-30T06:04:43.956Z"
+    }
+  ],
+  "configs": [
+    {
+      "experimentID": "77ffc510-be89-498e-8813-344a1b47d9d2",
+      "data": {
+        "generatedCode": ""
+      },
+      "isDevMode": false,
+      "createdAt": "2025-10-30T03:46:27.059Z",
+      "updatedAt": "2025-10-30T06:04:45.826Z"
+    }
+  ],
   "pluginConfigs": [
     {
       "plugins": [],
       "config": {}
     }
   ],
-  "sessionResults": []
+  "sessionResults": [
+    {
+      "experimentID": "77ffc510-be89-498e-8813-344a1b47d9d2",
+      "sessionId": "014c4ff9-4c58-438e-8ae9-ebf10376ab56",
+      "createdAt": "2025-10-30T06:03:18.406Z",
+      "data": []
+    },
+    {
+      "experimentID": "77ffc510-be89-498e-8813-344a1b47d9d2",
+      "sessionId": "b0b89193-08c0-44e3-837e-9957cdc48963",
+      "createdAt": "2025-10-30T06:03:19.547Z",
+      "data": []
+    },
+    {
+      "experimentID": "77ffc510-be89-498e-8813-344a1b47d9d2",
+      "sessionId": "3dd50387-ce11-4f82-b4e8-36e449d17c0a",
+      "createdAt": "2025-10-30T06:03:22.292Z",
+      "data": []
+    },
+    {
+      "experimentID": "77ffc510-be89-498e-8813-344a1b47d9d2",
+      "sessionId": "d45d594f-bebd-49b8-b607-1ea41824473b",
+      "createdAt": "2025-10-30T06:03:27.268Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 790
+        }
+      ]
+    },
+    {
+      "experimentID": "77ffc510-be89-498e-8813-344a1b47d9d2",
+      "sessionId": "5a3924ac-211a-4e51-95f4-ca1ddb53e0c3",
+      "createdAt": "2025-10-30T06:03:28.490Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 680
+        },
+        {
+          "rt": 1795,
+          "response": 0,
+          "stimulus": "Ahola",
+          "trial_type": "html-button-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2476
+        }
+      ]
+    },
+    {
+      "experimentID": "77ffc510-be89-498e-8813-344a1b47d9d2",
+      "sessionId": "d708de24-2cc2-43bf-bbb8-087b2d527ef9",
+      "createdAt": "2025-10-30T06:03:38.269Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1039
+        },
+        {
+          "rt": 1112,
+          "response": 1,
+          "stimulus": "Ahola",
+          "trial_type": "html-button-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2153
+        }
+      ]
+    }
+  ]
 }

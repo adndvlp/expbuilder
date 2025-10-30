@@ -19,6 +19,7 @@ import isEqual from "lodash.isequal";
 import { Trial } from "../types";
 import { useTrialOrders } from "./hooks/useTrialOrders";
 import TrialOrders from "./TrialOrders";
+import BranchedTrial from "./BranchedTrial";
 
 type Props = { pluginName: string };
 
@@ -373,30 +374,31 @@ function TrialsConfig({ pluginName }: Props) {
 
   return (
     <div id="plugin-config">
-      {/* Indicador de guardado */}
-      <div
-        style={{
-          opacity: saveIndicator ? 1 : 0,
-          transition: "opacity 0.3s",
-          color: "green",
-          fontWeight: "500",
-          position: "fixed",
-          top: "20px",
-          right: "20px",
-          zIndex: 1000,
-          backgroundColor: "rgba(255, 255, 255, 0.9)",
-          padding: "6px 12px",
-          borderRadius: "4px",
-          fontSize: "14px",
-          boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-          border: "1px solid #22c55e",
-        }}
-      >
-        ✓ Saved Trial
-      </div>
-
       <div className="mb-1 input-section p-4 border rounded">
         <h4 className="text-lg font-bold mb-3"> {pluginName} </h4>
+
+        {/* Indicador de guardado */}
+        <div
+          style={{
+            opacity: saveIndicator ? 1 : 0,
+            transition: "opacity 0.3s",
+            color: "green",
+            fontWeight: "500",
+            position: "fixed",
+            top: "20px",
+            right: "20px",
+            zIndex: 1000,
+            backgroundColor: "rgba(255, 255, 255, 0.9)",
+            padding: "6px 12px",
+            borderRadius: "4px",
+            fontSize: "14px",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+            border: "1px solid #22c55e",
+          }}
+        >
+          ✓ Saved Trial
+        </div>
+
         {/* Trial name */}
         <TrialMetaConfig
           trialName={trialName}
@@ -442,6 +444,10 @@ function TrialsConfig({ pluginName }: Props) {
             />
           </div>
         )}
+
+        {/* Branched Trial */}
+
+        <BranchedTrial />
 
         {/* Parameter section */}
         <ParameterMapper

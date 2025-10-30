@@ -1,7 +1,6 @@
-// src/App.tsx
 import "./index.css";
 import Timeline from "./components/Timeline";
-// import Canvas from "./components/Canvas";
+import Canvas from "./components/Canvas";
 import ConfigPanel from "./components/ConfigPanel";
 import TrialsProvider from "./providers/TrialsProvider";
 import UrlProvider from "./providers/UrlProvider";
@@ -11,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { FaTimeline } from "react-icons/fa6";
 import { PiGearSixBold } from "react-icons/pi";
+import { FaHammer } from "react-icons/fa";
 import CodeEditor from "./components/CodeEditor";
 import useDevMode from "./hooks/useDevMode";
 import { useNavigate, useParams } from "react-router-dom";
@@ -126,6 +126,7 @@ function ExperimentBuilder() {
               >
                 <div className="timeline-header">Timeline</div>
                 <Timeline />
+                {!isDevMode && <ResultsList />}
 
                 {/* Barra de redimensionamiento derecha */}
                 <div
@@ -165,7 +166,22 @@ function ExperimentBuilder() {
                     <FaTimeline />
                   </div>
                 )}
-                Preview
+
+                {!isDevMode && <ExperimentPreview />}
+                <label
+                  htmlFor="devMode"
+                  className="flex items-center cursor-pointer gap-2"
+                >
+                  <FaHammer style={{ marginRight: "2px" }} />
+
+                  <input
+                    id="devMode"
+                    type="checkbox"
+                    checked={isDevMode}
+                    onChange={(e) => setDevMode(e.target.checked)}
+                    className="ml-2 h-4 w-4 cursor-pointer"
+                  />
+                </label>
                 {!showConfig && (
                   <div
                     style={{
@@ -191,27 +207,12 @@ function ExperimentBuilder() {
                     alignItems: "center",
                     gap: "8px",
                   }}
-                >
-                  <label
-                    htmlFor="devMode"
-                    className="flex items-center cursor-pointer"
-                  >
-                    DevMode
-                    <input
-                      id="devMode"
-                      type="checkbox"
-                      checked={isDevMode}
-                      onChange={(e) => setDevMode(e.target.checked)}
-                      className="ml-2 h-4 w-4 cursor-pointer"
-                    ></input>
-                  </label>
-                </div>
+                ></div>
               </div>
               {isDevMode && <CodeEditor />}
               {!isDevMode && (
                 <div style={{ overflowY: "auto" }}>
-                  <ExperimentPreview />
-                  <ResultsList />
+                  <Canvas />
                 </div>
               )}
             </div>

@@ -6,17 +6,9 @@ import useDevMode from "../hooks/useDevMode";
 const CodeEditor: React.FC = () => {
   const { code, setCode } = useDevMode();
   const [saveIndicator, setSaveIndicator] = useState(false);
-  // ──────────────────────────────────────────────
-  // 1.  Give the ref the right generic type
-  //    (IStandaloneCodeEditor | null, never plain `null`)
-  // ──────────────────────────────────────────────
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ──────────────────────────────────────────────
-  // 2.  onMount gets an editor instance + the Monaco namespace.
-  //     Typing it with OnMount removes the “implicitly‑any” errors.
-  // ──────────────────────────────────────────────
   const handleEditorDidMount: OnMount = (editor, _monaco) => {
     editorRef.current = editor;
 
@@ -59,20 +51,8 @@ const CodeEditor: React.FC = () => {
     };
   }, []);
 
-  // ──────────────────────────────────────────────
-  // 3.  Always null‑check the ref before using it.
-  // ──────────────────────────────────────────────
-  // const showValue = () => {
-  //   if (editorRef.current) {
-  //     alert("Code Saved");
-  //     setCode(editorRef.current.getValue());
-  //     console.log(code);
-  //   }
-  // };
-
   return (
     <>
-      {/* Indicador de guardado */}
       <div
         id="plugin-save-indicator"
         style={{
@@ -93,7 +73,6 @@ const CodeEditor: React.FC = () => {
         theme="vs-dark"
         onMount={handleEditorDidMount}
         options={{
-          // Agregar opciones para mejorar la experiencia
           automaticLayout: true,
           minimap: { enabled: true },
           scrollBeyondLastLine: false,
@@ -101,7 +80,6 @@ const CodeEditor: React.FC = () => {
           wordWrap: "off",
           tabSize: 2,
           fontSize: 14,
-          // Habilitar undo/redo
           lineNumbers: "on",
           folding: true,
           bracketPairColorization: {
@@ -120,7 +98,6 @@ const CodeEditor: React.FC = () => {
             comments: true,
             strings: true,
           },
-          // Configuración adicional para JavaScript
           tabCompletion: "on",
           acceptSuggestionOnEnter: "on",
           snippetSuggestions: "top",

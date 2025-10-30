@@ -84,7 +84,7 @@ body {
   background-color: var(--light-purple);
   color: var(--text-light);
   padding: 15px;
-  margin-bottom: 15px;
+  /* margin-bottom: 15px; */
   text-align: center;
   font-weight: 500;
   letter-spacing: 0.5px;

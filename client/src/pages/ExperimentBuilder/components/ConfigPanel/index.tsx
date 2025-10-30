@@ -185,7 +185,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
 
   return (
     <div className="config-panel">
-      <div className="input-section">
+      <div className="input-section border">
         <div className="form-group">
           <label htmlFor="pluginSelect">Select a plugin:</label>
           <Select

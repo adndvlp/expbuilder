@@ -1120,7 +1120,7 @@ app.post("/api/trials-preview/:experimentID", async (req, res) => {
     );
     const previewHtmlPath = path.join(
       trialsPreviewsHtmlDir,
-      `${experimentName}-experiment-preview.html`
+      `${experimentName}-preview.html`
     );
     if (!fs.existsSync(previewHtmlPath)) {
       fs.copyFileSync(templatePath, previewHtmlPath);
@@ -1140,7 +1140,7 @@ app.post("/api/trials-preview/:experimentID", async (req, res) => {
     res.json({
       success: true,
       message: "Experiment built and ready to run",
-      experimentUrl: `http://localhost:3000/${experimentName}-experiment-preview`,
+      experimentUrl: `http://localhost:3000/${experimentName}-preview`,
     });
   } catch (error) {
     console.error(`Error running experiment: ${error.message}`);
