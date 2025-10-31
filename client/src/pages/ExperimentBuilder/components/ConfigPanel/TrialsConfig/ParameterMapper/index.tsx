@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { openExternal } from "../../../../../../lib/openExternal";
 import { IoIosHelpCircle } from "react-icons/io";
-import HtmlMapper from "./HtmlMapper";
+import GrapesHtmlEditor from "./GrapesHtmlEditor";
 import { BiEdit } from "react-icons/bi";
-import Modal from "./Modal";
 
 type Parameter = {
   label: string;
@@ -316,10 +315,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                           type="text"
                           className="flex-1 p-2 border rounded bg-gray-100"
                           value={
-                            typeof entry.value === "string"
-                              ? entry.value.substring(0, 50) +
-                                (entry.value.length > 50 ? "..." : "")
-                              : ""
+                            typeof entry.value === "string" ? entry.value : ""
                           }
                           readOnly
                           placeholder="Click edit to add HTML content"
@@ -615,34 +611,24 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
         })}
       </div>
       {/* HTML Modal */}
-      <Modal
+      <GrapesHtmlEditor
         isOpen={isHtmlModalOpen}
         onClose={closeHtmlModal}
         title={`Edit HTML Content - ${parameters.find((p) => p.key === currentHtmlKey)?.label || ""}`}
-      >
-        {currentHtmlKey && (
-          <HtmlMapper
-            value={(() => {
-              const param = parameters.find((p) => p.key === currentHtmlKey);
-              const currentValue = columnMapping[currentHtmlKey]?.value;
-
-              // Si es html_string_array, extraer el primer elemento del array
-              if (param?.type === "html_string_array") {
-                return Array.isArray(currentValue) &&
-                  currentValue.length > 0 &&
-                  typeof currentValue[0] === "string"
-                  ? currentValue[0]
-                  : "";
-              }
-
-              // Si es html_string normal, usar directamente
-              return typeof currentValue === "string" ? currentValue : "";
-            })()}
-            onChange={handleHtmlChange}
-            placeholder={`Enter HTML content for ${parameters.find((p) => p.key === currentHtmlKey)?.label?.toLowerCase()}`}
-          />
-        )}
-      </Modal>
+        value={(() => {
+          const param = parameters.find((p) => p.key === currentHtmlKey);
+          const currentValue = columnMapping[currentHtmlKey]?.value;
+          if (param?.type === "html_string_array") {
+            return Array.isArray(currentValue) &&
+              currentValue.length > 0 &&
+              typeof currentValue[0] === "string"
+              ? currentValue[0]
+              : "";
+          }
+          return typeof currentValue === "string" ? currentValue : "";
+        })()}
+        onChange={handleHtmlChange}
+      />
     </div>
   );
 };

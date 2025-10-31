@@ -149,46 +149,11 @@ const welcome = {
 timeline.push(welcome);
 
 
-    const preloadNew_Trial = {
-        type: jsPsychPreload,
-       files: [",ñ{l-experiment/img/armadillo.png",",ñ{l-experiment/img/bmw.png",",ñ{l-experiment/img/cofre.png",",ñ{l-experiment/img/dis.png",",ñ{l-experiment/img/green.png"],
-    }
-    timeline.push(preloadNew_Trial);
-    
-    const test_stimuli_New_Trial = [{stimulus: "jnlnk"}];
-    const New_Trial_timeline = {
-    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
-    data: {
-      response: "response",
-rt: "rt",
-stimulus: "stimulus",
-    },
-    };
-    const New_Trial_procedure = {
-    timeline: 
-    [New_Trial_timeline],
-    timeline_variables: test_stimuli_New_Trial,
-    
-    };
-    timeline.push(New_Trial_procedure);
-  
-
-
 
     const test_stimuli_Loop = [
   {
-    "stimulus_New_Trial_1": ",ñ{l-experiment/img/armadillo.png",
-    "choices_New_Trial_1": "ALL_KEYS",
-    "prompt_New_Trial_1": null,
-    "stimulus_duration_New_Trial_1": ",ñ{l-experiment/img/armadillo.png",
-    "trial_duration_New_Trial_1": null,
-    "response_ends_trial_New_Trial_1": true,
-    "stimulus_New_Trial_2": ",ñ{l-experiment/img/armadillo.png",
-    "choices_New_Trial_2": "ALL_KEYS",
-    "prompt_New_Trial_2": null,
-    "stimulus_duration_New_Trial_2": ",ñ{l-experiment/img/armadillo.png",
-    "trial_duration_New_Trial_2": null,
-    "response_ends_trial_New_Trial_2": true
+    "stimulus_New_Trial_1": "<body id=\"iujr\"><div id=\"iy55\">Hola<br/><br/>Como estás?</div><button id=\"iyeh\">Loco<span id=\"i0m2f\"></span></button><div id=\"i740j\"><div id=\"ifyc6\">Holac comoecacee</div><div id=\"ikc8x\">ncñwneñkvnwñkenvkñwv</div></div></body>",
+    "stimulus_New_Trial_2": "<body><div id=\"izxu\">Listo?</div></body>"
   }
 ];
     
@@ -202,11 +167,6 @@ stimulus: "stimulus",
     
     const New_Trial_1_timeline = {
     type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus_New_Trial_1"),
-choices: jsPsych.timelineVariable("choices_New_Trial_1"),
-prompt: jsPsych.timelineVariable("prompt_New_Trial_1"),
-stimulus_duration: jsPsych.timelineVariable("stimulus_duration_New_Trial_1"),
-trial_duration: jsPsych.timelineVariable("trial_duration_New_Trial_1"),
-response_ends_trial: jsPsych.timelineVariable("response_ends_trial_New_Trial_1"),
     data: {
       response: "response_New_Trial_1",
 rt: "rt_New_Trial_1",
@@ -225,11 +185,6 @@ stimulus: "stimulus_New_Trial_1",
     
     const New_Trial_2_timeline = {
     type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus_New_Trial_2"),
-choices: jsPsych.timelineVariable("choices_New_Trial_2"),
-prompt: jsPsych.timelineVariable("prompt_New_Trial_2"),
-stimulus_duration: jsPsych.timelineVariable("stimulus_duration_New_Trial_2"),
-trial_duration: jsPsych.timelineVariable("trial_duration_New_Trial_2"),
-response_ends_trial: jsPsych.timelineVariable("response_ends_trial_New_Trial_2"),
     data: {
       response: "response_New_Trial_2",
 rt: "rt_New_Trial_2",
@@ -256,19 +211,9 @@ timeline.push(loop_procedure);
     }
     timeline.push(preloadNew_Trial_3);
     
-    const test_stimuli_New_Trial_3 = [{stimulus: ",ñ{l-experiment/img/armadillo.png",
-choices: "ALL_KEYS",
-prompt: null,
-stimulus_duration: ",ñ{l-experiment/img/armadillo.png",
-trial_duration: null,
-response_ends_trial: true}];
+    const test_stimuli_New_Trial_3 = [{stimulus: "<body id=\"ig1j\"><div id=\"imag\">Loco</div></body>"}];
     const New_Trial_3_timeline = {
     type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
-choices: jsPsych.timelineVariable("choices"),
-prompt: jsPsych.timelineVariable("prompt"),
-stimulus_duration: jsPsych.timelineVariable("stimulus_duration"),
-trial_duration: jsPsych.timelineVariable("trial_duration"),
-response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
     data: {
       response: "response",
 rt: "rt",

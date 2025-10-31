@@ -3,7 +3,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png+xml" href="/icon/fp black.png">
     <title>Experiment</title>
-    <script src="https://unpkg.com/jspsych@8.2.1"></script>
+    <script src="../../node_modules/jspsych/dist/jspsych.js"></script>
     <script src="https://unpkg.com/@jspsych/plugin-animation@2.1.0"></script>
     <script src="https://unpkg.com/@jspsych/plugin-audio-button-response@2.1.0"></script>
     <script src="https://unpkg.com/@jspsych/plugin-audio-keyboard-response@2.1.0"></script>
@@ -65,7 +65,7 @@
     <script src="https://unpkg.com/@jspsych/extension-record-video@1.2.0"></script>
     <script src="https://unpkg.com/@jspsych/extension-mouse-tracking@1.0.0"></script>
 
-    <link href="https://unpkg.com/jspsych@7.3.1/css/jspsych.css" rel="stylesheet" type="text/css">
+    <link href="../../node_modules/jspsych/css/jspsych.css" rel="stylesheet" type="text/css">
     <link rel="stylesheet" href="https://unpkg.com/@jspsych/plugin-survey@2.1.0/css/survey.css">
 
     <style>
@@ -87,80 +87,94 @@
 
 <script id="generated-script">
 
+  const trialSessionId =
+    (crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2, 10));
 
-        const trialSessionId =
-            "New Trial 1_result_" + (crypto.randomUUID
-              ? crypto.randomUUID()
-              : Math.random().toString(36).slice(2, 10));
+  let participantNumber;
 
-        let participantNumber;
-
-          async function saveSession(trialSessionId) {
-          const res = await fetch("/api/append-result/ed9557aa-dd34-4cfe-a3bc-61238954f7c0", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Accept: "*/*" },
-            body: JSON.stringify({
-              sessionId: trialSessionId,
-            }),
-          });
-
-          const result = await res.json();
-          participantNumber = result.participantNumber;
-          return participantNumber;
-    }
-(async () => {
-  participantNumber = await saveSession(trialSessionId);
-
-  if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
-    alert("The participant number is not assigned. Please, wait.");
-    throw new Error("participantNumber not assigned");
-  }
-    const jsPsych = initJsPsych({
-          on_data_update: function (data) {
-            const res = fetch("/api/append-result/ed9557aa-dd34-4cfe-a3bc-61238954f7c0", {
-              method: "PUT",
-              headers: { "Content-Type": "application/json", Accept: "*/*" },
-              body: JSON.stringify({
-                sessionId: trialSessionId,
-                response: data,
-              }),
-            });
-        
-          },
-
-          on_finish: function() {
-              jsPsych.data.displayData();
-          },
+  async function saveSession(trialSessionId) {
+   
+   const res = await fetch("/api/append-result/445690e3-1676-4ab0-943a-efde2e8d9a0c", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "*/*" },
+      body: JSON.stringify({
+        sessionId: trialSessionId,
+      }),
     });
-
-      const timeline = [];
-
-      const welcome = {
-        type: jsPsychHtmlButtonResponse,
-        stimulus: "Trial Preview",
-        choices: ['View'],
-      };
-
-      timeline.push(welcome);
-
-      
-    const preloadNew_Trial_1 = {
-        type: jsPsychPreload,
-       files: [",ñ{l-experiment/img/armadillo.png",",ñ{l-experiment/img/bmw.png",",ñ{l-experiment/img/cofre.png",",ñ{l-experiment/img/dis.png",",ñ{l-experiment/img/green.png"],
-    }
-    timeline.push(preloadNew_Trial_1);
+  
+    const result = await res.json();
+    participantNumber = result.participantNumber;
+    return participantNumber;
     
-    const New_Trial_1_timeline = {
-    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus_New_Trial_1"),
+  }
+
+  (async () => {
+    participantNumber = await saveSession(trialSessionId);
+
+    if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
+      alert("The participant number is not assigned. Please, wait.");
+      throw new Error("participantNumber not assigned");
+    }
+
+    const jsPsych = initJsPsych({
+
+    
+
+    on_data_update: function (data) {
+      const res = fetch("/api/append-result/445690e3-1676-4ab0-943a-efde2e8d9a0c", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Accept: "*/*" },
+        body: JSON.stringify({
+          sessionId: trialSessionId,
+          response: data,
+        }),
+      });
+    },
+
+  on_finish: function() {
+    jsPsych.data.displayData
+  }
+});
+
+const timeline = [];
+
+const welcome = {
+  type: jsPsychHtmlButtonResponse,
+  stimulus: "Welcome to the experiment. Press 'Start' to begin.",
+  choices: ['Start'],
+};
+
+timeline.push(welcome);
+
+
+    const preloadNew_Trial = {
+        type: jsPsychPreload,
+       files: [],
+    }
+    timeline.push(preloadNew_Trial);
+    
+    const test_stimuli_New_Trial = [{stimulus: "<body><div id=\"iv9i\">Type or design here</div></body>"}];
+    const New_Trial_timeline = {
+    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
     data: {
-      response: "response_New_Trial_1",
-rt: "rt_New_Trial_1",
-stimulus: "stimulus_New_Trial_1",
+      response: "response",
+rt: "rt",
+stimulus: "stimulus",
     },
     };
+    const New_Trial_procedure = {
+    timeline: 
+    [New_Trial_timeline],
+    timeline_variables: test_stimuli_New_Trial,
+    
+    };
+    timeline.push(New_Trial_procedure);
+  
 
-      jsPsych.run(timeline);
-      
-      })()
-      
+jsPsych.run(timeline);
+
+})();
+
 </script></body></html>

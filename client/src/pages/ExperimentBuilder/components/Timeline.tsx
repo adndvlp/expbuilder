@@ -365,7 +365,7 @@ jsPsych.run(timeline);
         if (lastTrialData) {
         trial.data.prev_response = lastTrialData.response;
         }
-      }
+      },
 
       ${extensions}
 

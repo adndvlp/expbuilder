@@ -140,18 +140,20 @@ export function useTrialCode({
             keyLower.includes("media")
           );
         };
-        if (
-          // mediaKeys.includes(param.key)
-          isMediaParameter(param.key) &&
-          needsFileUpload
-        ) {
+        if (isMediaParameter(param.key) && needsFileUpload) {
           const value = getColumnValue(
             columnMapping[param.key],
             undefined,
             undefined,
             param.key
           );
-          if (typeof value === "string" && value.includes(",")) {
+          // Solo dividir si NO es html_string
+          const paramType = parameters.find((p) => p.key === param.key)?.type;
+          if (
+            typeof value === "string" &&
+            value.includes(",") &&
+            paramType !== "html_string"
+          ) {
             const values = value
               .split(",")
               .map((v) => v.trim())

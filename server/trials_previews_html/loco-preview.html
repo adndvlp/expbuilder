@@ -89,14 +89,14 @@
 
 
         const trialSessionId =
-            "New Trial 1_result_" + (crypto.randomUUID
+            "New Trial_result_" + (crypto.randomUUID
               ? crypto.randomUUID()
               : Math.random().toString(36).slice(2, 10));
 
         let participantNumber;
 
           async function saveSession(trialSessionId) {
-          const res = await fetch("/api/append-result/ed9557aa-dd34-4cfe-a3bc-61238954f7c0", {
+          const res = await fetch("/api/append-result/41daf84b-d6cd-49c8-8634-9e424194e127", {
             method: "POST",
             headers: { "Content-Type": "application/json", Accept: "*/*" },
             body: JSON.stringify({
@@ -117,7 +117,7 @@
   }
     const jsPsych = initJsPsych({
           on_data_update: function (data) {
-            const res = fetch("/api/append-result/ed9557aa-dd34-4cfe-a3bc-61238954f7c0", {
+            const res = fetch("/api/append-result/41daf84b-d6cd-49c8-8634-9e424194e127", {
               method: "PUT",
               headers: { "Content-Type": "application/json", Accept: "*/*" },
               body: JSON.stringify({
@@ -144,20 +144,29 @@
       timeline.push(welcome);
 
       
-    const preloadNew_Trial_1 = {
+    const preloadNew_Trial = {
         type: jsPsychPreload,
-       files: [",ñ{l-experiment/img/armadillo.png",",ñ{l-experiment/img/bmw.png",",ñ{l-experiment/img/cofre.png",",ñ{l-experiment/img/dis.png",",ñ{l-experiment/img/green.png"],
+       files: [],
     }
-    timeline.push(preloadNew_Trial_1);
+    timeline.push(preloadNew_Trial);
     
-    const New_Trial_1_timeline = {
-    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus_New_Trial_1"),
+    const test_stimuli_New_Trial = [{stimulus: "<body id=\"isl7\"><div id=\"ixjo\">Type or design here</div></body>"}];
+    const New_Trial_timeline = {
+    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
     data: {
-      response: "response_New_Trial_1",
-rt: "rt_New_Trial_1",
-stimulus: "stimulus_New_Trial_1",
+      response: "response",
+rt: "rt",
+stimulus: "stimulus",
     },
     };
+    const New_Trial_procedure = {
+    timeline: 
+    [New_Trial_timeline],
+    timeline_variables: test_stimuli_New_Trial,
+    
+    };
+    timeline.push(New_Trial_procedure);
+  
 
       jsPsych.run(timeline);
       

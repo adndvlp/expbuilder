@@ -12,7 +12,6 @@ interface ModalProps {
 const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
 
-  // Usar createPortal para renderizar el modal directamente en document.body
   return createPortal(
     <div
       className="fixed inset-0 flex items-center justify-center"
@@ -26,7 +25,6 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
         backgroundColor: "rgba(0, 0, 0, 0.5)",
       }}
     >
-      {/* Overlay oscuro que cubre toda la pantalla */}
       <div
         className="fixed inset-0"
         style={{
@@ -36,7 +34,6 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
         onClick={onClose}
       />
 
-      {/* Contenedor del modal centrado */}
       <div
         className="relative bg-white rounded-lg shadow-2xl w-full mx-4 overflow-hidden"
         style={{
@@ -48,9 +45,9 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
       >
         {/* Header del modal */}
         <div className="flex items-center justify-between p-4 border-b bg-gray-50">
-          <h3 className="text-lg font-semibold text-gray-900">
+          <h4 className="text-lg font-semibold text-gray-900">
             {title || "HTML Editor"}
-          </h3>
+          </h4>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded hover:bg-gray-200"

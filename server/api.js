@@ -1481,7 +1481,7 @@ app.use((req, res) => {
 // Global error handlers to prevent process exit on uncaught exceptions or unhandled rejections
 process.on("uncaughtException", (err) => {
   console.error("Uncaught Exception:", err);
-  // Optionally log to a file or external service
+  // Optionally log to a file or external service, PM2
 });
 
 process.on("unhandledRejection", (reason, promise) => {
@@ -1490,7 +1490,7 @@ process.on("unhandledRejection", (reason, promise) => {
 });
 
 app.listen(port, () => {
-  console.log(`🚀 Server running on port ${port}`);
-  console.log(`📊 Experiment URL: http://localhost:${port}/experiment`);
-  console.log(`🔗 API URL: http://localhost:${port}/api`);
+  console.log(`Server running on port ${port}`);
+  console.log(`Experiment URL: http://localhost:${port}/experiment`);
+  console.log(`API URL: http://localhost:${port}/api`);
 });
