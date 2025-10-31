@@ -162,14 +162,24 @@ export default function ResultsList() {
             <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
               <button
                 className="cancel-select-btn"
-                style={{ fontSize: "12px" }}
+                style={{
+                  borderRadius: "6px",
+                  fontSize: "12px",
+                  background:
+                    "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+                }}
                 onClick={handleCancelSelect}
               >
                 Cancel selection
               </button>
               <button
                 className="download-csv-btn"
-                style={{ fontSize: "12px" }}
+                style={{
+                  borderRadius: "6px",
+                  fontSize: "12px",
+                  background:
+                    "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+                }}
                 disabled={selected.length === 0}
                 onClick={handleDownloadSelected}
               >
@@ -227,7 +237,12 @@ export default function ResultsList() {
                     <button
                       key="select-btn"
                       className="select-mode-btn"
-                      style={{ marginLeft: 0, borderRadius: "6px" }}
+                      style={{
+                        marginLeft: 0,
+                        borderRadius: "6px",
+                        background:
+                          "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+                      }}
                       onClick={() => setSelectMode(true)}
                     >
                       Select sessions

@@ -452,7 +452,7 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
         .word-header {
           position: sticky;
           top: 0;
-          background: var(--primary-purple);
+          background: var(--primary-blue);
           color: var(--text-light);
           padding: 0;
         }
@@ -548,9 +548,9 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
         }
 
         .ribbon-large-btn:hover {
-          background: var(--light-purple);
+          background: var(--light-blue);
           color: var(--text-light);
-          border-color: var(--primary-purple);
+          border-color: var(--primary-blue);
         }
 
         .ribbon-small-buttons {
@@ -574,9 +574,9 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
         }
 
         .ribbon-small-btn:hover {
-          background: var(--light-purple);
+          background: var(--light-blue);
           color: var(--text-light);
-          border-color: var(--primary-purple);
+          border-color: var(--primary-blue);
         }
 
         .ribbon-font-controls {
@@ -630,9 +630,9 @@ const HtmlMapper: React.FC<HtmlMapperProps> = ({ value, onChange, label }) => {
         }
 
         .ribbon-format-btn:hover {
-          background: var(--primary-purple);
+          background: var(--primary-blue);
           color: var(--text-light);
-          border-color: var(--primary-purple);
+          border-color: var(--primary-blue);
         }
 
         .ribbon-color-controls {

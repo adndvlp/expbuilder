@@ -121,16 +121,22 @@ function ExperimentPreview() {
         <div>
           <button
             style={{ width: "100%", borderRadius: "5px" }}
-            className="mt-3"
             onClick={handleStart}
           >
             Run Demo
           </button>
         </div>
       )}
+
       {started && (
         <div>
-          <div style={{ width: "100%", height: "60vh" }}>
+          <button
+            style={{ width: "100%", borderRadius: "5px" }}
+            onClick={handleStop}
+          >
+            Stop Demo
+          </button>
+          <div style={{ width: "100%", height: "60vh", marginTop: "1rem" }}>
             <iframe
               key={key}
               src={trialUrl}
@@ -140,13 +146,6 @@ function ExperimentPreview() {
               style={{ border: "none" }}
             />
           </div>
-          <button
-            style={{ width: "100%", borderRadius: "5px" }}
-            className="mt-3"
-            onClick={handleStop}
-          >
-            Stop Demo
-          </button>
         </div>
       )}
     </div>

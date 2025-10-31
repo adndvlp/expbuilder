@@ -35,7 +35,7 @@ const FileUploader = ({
 
   return (
     <div
-      className="mb-4 p-4 rounded bg-gray-50"
+      className="p-4 rounded bg-gray-50"
       style={{
         border: "1px solid",
       }}

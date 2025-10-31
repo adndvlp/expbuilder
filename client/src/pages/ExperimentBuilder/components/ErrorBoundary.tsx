@@ -24,7 +24,6 @@ class ErrorBoundary extends React.Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
-      // Estilo visual alternativo, pantalla negra u opaca
       return (
         <div
           style={{
@@ -39,8 +38,8 @@ class ErrorBoundary extends React.Component<Props, State> {
             textAlign: "center",
           }}
         >
-          <h1>⚠️ Algo salió mal</h1>
-          <p>La aplicación encontró un error. Por favor recarga la página.</p>
+          <h1>⚠️ Something went wrong</h1>
+          <p>The application encountered an error. Please reload the page.</p>
         </div>
       );
     }

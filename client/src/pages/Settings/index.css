@@ -22,7 +22,6 @@
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Notificación */
 .notification {
   position: relative;
   margin-bottom: 24px;
@@ -260,7 +259,6 @@
   color: #6c757d;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .settings-container {
     padding: 20px 16px;
@@ -286,7 +284,6 @@
   }
 }
 
-/* Animaciones */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -314,7 +311,6 @@
   animation-delay: 0.3s;
 }
 
-/* Settings items para Change Password y Delete Account */
 .settings-item {
   display: flex;
   justify-content: space-between;
@@ -347,7 +343,6 @@
   color: #343a40;
 }
 
-/* Modal styles */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -440,7 +435,6 @@
   border-radius: 0 0 12px 12px;
 }
 
-/* Form styles */
 .form-group-settings {
   margin-bottom: 20px;
 }
@@ -514,7 +508,6 @@
   line-height: 1.6;
 }
 
-/* Spinner para páginas de callback */
 .spinner {
   width: 50px;
   height: 50px;

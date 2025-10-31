@@ -19,7 +19,6 @@ import isEqual from "lodash.isequal";
 import { Trial } from "../types";
 import { useTrialOrders } from "./hooks/useTrialOrders";
 import TrialOrders from "./TrialOrders";
-import BranchedTrial from "./BranchedTrial";
 
 type Props = { pluginName: string };
 
@@ -445,9 +444,7 @@ function TrialsConfig({ pluginName }: Props) {
           </div>
         )}
 
-        {/* Branched Trial */}
-
-        <BranchedTrial />
+        {/* Branched Trial moved to Canvas modal */}
 
         {/* Parameter section */}
         <ParameterMapper

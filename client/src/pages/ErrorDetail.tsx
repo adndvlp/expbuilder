@@ -14,7 +14,7 @@ function ErrorDetail({}: Props) {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          color: "#222",
+          color: "#fff",
           textAlign: "center",
         }}
       >
@@ -23,16 +23,30 @@ function ErrorDetail({}: Props) {
           height="80"
           viewBox="0 0 24 24"
           fill="none"
-          stroke="#3b82f6"
+          stroke="var(--primary-blue)"
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          style={{ marginBottom: 24 }}
+          style={{ marginBottom: 16 }}
         >
           <circle cx="12" cy="12" r="10" />
           <line x1="9" y1="9" x2="15" y2="15" />
           <line x1="15" y1="9" x2="9" y2="15" />
         </svg>
+        <div
+          style={{
+            fontSize: 64,
+            fontWeight: 900,
+            letterSpacing: "2px",
+            marginBottom: 8,
+            background: "linear-gradient(90deg,var(--gold),var(--dark-gold))",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            textShadow: "0 2px 16px rgba(212,175,55,0.25)",
+          }}
+        >
+          404
+        </div>
         <h2 style={{ fontWeight: 700, fontSize: 28, marginBottom: 8 }}>
           Page not found
         </h2>
@@ -44,7 +58,7 @@ function ErrorDetail({}: Props) {
           style={{
             display: "inline-block",
             padding: "10px 24px",
-            background: "linear-gradient(90deg,#3b82f6,#06b6d4)",
+            background: "linear-gradient(90deg,var(--gold),var(--dark-gold))",
             color: "#fff",
             borderRadius: 8,
             textDecoration: "none",

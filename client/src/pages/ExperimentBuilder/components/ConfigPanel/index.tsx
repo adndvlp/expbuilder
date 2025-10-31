@@ -200,13 +200,13 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
                 backgroundColor: "var(--neutral-light)",
                 color: "var(--text-dark)",
                 borderColor: state.isFocused
-                  ? "var(--primary-purple)"
+                  ? "var(--primary-blue)"
                   : "var(--neutral-mid)",
                 boxShadow: state.isFocused
-                  ? "0 0 0 2px var(--primary-purple)"
+                  ? "0 0 0 2px var(--primary-blue)"
                   : "none",
                 "&:hover": {
-                  borderColor: "var(--primary-purple)",
+                  borderColor: "var(--primary-blue)",
                 },
                 borderRadius: "6px",
                 height: "20%",
@@ -218,7 +218,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
               }),
               menu: (base) => ({
                 ...base,
-                backgroundColor: "var(--primary-purple)",
+                backgroundColor: "var(--primary-blue)",
                 borderRadius: "6px",
                 boxShadow: "0 2px 8px rgba(61,146,180,0.08)",
               }),
@@ -226,7 +226,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
                 ...base,
                 backgroundColor: state.isFocused
                   ? "var(--gold)"
-                  : "var(--light-purple)",
+                  : "var(--light-blue)",
                 color: state.isFocused
                   ? "var(--text-light)"
                   : "var(--text-light)",
@@ -248,15 +248,15 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
               dropdownIndicator: (base, state) => ({
                 ...base,
                 color: state.isFocused
-                  ? "var(--primary-purple)"
-                  : "var(--primary-purple)",
+                  ? "var(--primary-blue)"
+                  : "var(--primary-blue)",
                 "&:hover": {
                   color: "var(--gold)",
                 },
               }),
               indicatorSeparator: (base) => ({
                 ...base,
-                backgroundColor: "var(--primary-purple)",
+                backgroundColor: "var(--primary-blue)",
               }),
             }}
           ></Select>

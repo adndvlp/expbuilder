@@ -1,14 +1,16 @@
+import "@xyflow/react/dist/style.css";
 import { FiRefreshCw } from "react-icons/fi";
+import { TbBinaryTree } from "react-icons/tb";
+import { FiX } from "react-icons/fi";
 import { Trial } from "../ConfigPanel/types";
 import LoopRangeModal from "../ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeModal";
 import useTrials from "../../hooks/useTrials";
 import { useState } from "react";
-
 import ReactFlow from "reactflow";
 import TrialNode from "./TrialNode";
 import LoopSubCanvas from "./LoopSubCanvas";
+import BranchedTrial from "../ConfigPanel/TrialsConfig/BranchedTrial";
 
-// Solo un tipo de nodo: trial
 const nodeTypes = {
   trial: TrialNode,
 };
@@ -27,7 +29,8 @@ function Canvas({}: Props) {
   } = useTrials();
 
   const [showLoopModal, setShowLoopModal] = useState(false);
-  const [openLoop, setOpenLoop] = useState<any>(null); // loop actualmente abierto
+  const [openLoop, setOpenLoop] = useState<any>(null);
+  const [showBranchedModal, setShowBranchedModal] = useState(false);
 
   function isTrial(trial: any): trial is Trial {
     return "parameters" in trial;
@@ -65,7 +68,6 @@ function Canvas({}: Props) {
 
   const handleAddLoop = (trialIds: number[]) => {
     console.log(trials);
-    // Encuentra los índices de los trials seleccionados
     const indices = trialIds
       .map((id) => trials.findIndex((t) => "id" in t && t.id === id))
       .filter((idx) => idx !== -1);
@@ -78,24 +80,19 @@ function Canvas({}: Props) {
   };
 
   let nodes: any[] = [];
-  let edges: any[] = [];
   let yPos = 100;
   const xTrial = 250;
-  const yStep = 40;
+  const yStep = 100;
 
-  // Para el rediseño: los trials que están dentro de loops NO se renderizan, y los loops se renderizan como trials
-  // Primero, obtener los ids de los trials que están dentro de loops
   const trialIdsInLoops = trials
     .filter((item) => "trials" in item)
     .flatMap((loop: any) => loop.trials.map((t: any) => t.id));
 
-  // Renderizar los bloques en el orden original del array de trials, omitiendo los trials que están dentro de loops
   const allBlocks = trials.filter((item) =>
     isTrial(item) ? !trialIdsInLoops.includes(item.id) : true
   );
 
   allBlocks.forEach((item) => {
-    // Usar TrialNode para ambos tipos
     nodes.push({
       id: isTrial(item) ? String(item.id) : `loop-${item.id}`,
       type: "trial",
@@ -109,7 +106,6 @@ function Canvas({}: Props) {
           if (isTrial(item)) {
             onSelectTrial(item);
             setSelectedLoop(null);
-            // Si el trial pertenece a un loop, mantener openLoop
             const parentLoop = trials.find(
               (t: any) =>
                 t.trials && t.trials.some((tr: any) => tr.id === item.id)
@@ -127,16 +123,20 @@ function Canvas({}: Props) {
         },
       },
       position: { x: xTrial, y: yPos },
+      draggable: false,
     });
-    if (nodes.length > 1) {
-      edges.push({
-        id: `e${nodes[nodes.length - 2].id}-${nodes[nodes.length - 1].id}`,
-        source: String(nodes[nodes.length - 2].id),
-        target: String(nodes[nodes.length - 1].id),
-      });
-    }
     yPos += yStep;
   });
+
+  let edges: any[] = [];
+  for (let i = 0; i < nodes.length - 1; i++) {
+    edges.push({
+      id: `e${nodes[i].id}-${nodes[i + 1].id}`,
+      source: nodes[i].id,
+      target: nodes[i + 1].id,
+      type: "default",
+    });
+  }
 
   const isDark =
     window.matchMedia &&
@@ -150,7 +150,7 @@ function Canvas({}: Props) {
     width: "100%",
     height: "100vh",
     position: "relative",
-    overflow: "hidden",
+    overflow: "visible",
   };
 
   const patternStyle: React.CSSProperties = {
@@ -200,7 +200,6 @@ function Canvas({}: Props) {
           zIndex: 1,
         }}
       >
-        {/* Botones en la esquina superior izquierda */}
         <div
           style={{
             position: "absolute",
@@ -243,37 +242,93 @@ function Canvas({}: Props) {
           >
             <span style={{ fontWeight: "bold", color: "#fff" }}>+</span>
           </button>
+          {selectedTrial && (
+            <button
+              style={{
+                ...fabStyle,
+                position: "static",
+                width: 48,
+                height: 48,
+                fontSize: 24,
+                background: "#4caf50",
+                color: "#fff",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+              }}
+              title="Branch"
+              onClick={() => setShowBranchedModal(true)}
+            >
+              <TbBinaryTree size={24} color="#fff" />
+            </button>
+          )}
+          {showBranchedModal && (
+            <div
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                width: "100vw",
+                height: "100vh",
+                background: "rgba(0,0,0,0.32)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 9999,
+              }}
+            >
+              <div style={{ position: "relative", zIndex: 10000 }}>
+                <button
+                  style={{
+                    position: "absolute",
+                    top: 12,
+                    right: 12,
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    background: "none",
+                    color: "#fff",
+                    border: "none",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 22,
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                  }}
+                  onClick={() => setShowBranchedModal(false)}
+                  title="Cerrar"
+                >
+                  <FiX />
+                </button>
+                <BranchedTrial selectedTrial={selectedTrial} />
+              </div>
+            </div>
+          )}
         </div>
         <ReactFlow
           proOptions={{ hideAttribution: true }}
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
-          defaultEdgeOptions={{
-            style: { stroke: isDark ? "#fff" : "#222", strokeWidth: 2 },
-          }}
-          style={{ background: "transparent", zIndex: 2 }}
+          style={{ background: "transparent", zIndex: 0 }}
         />
-        {/* Sub-canvas para loop abierto (por selección de loop o trial interno) */}
         {openLoop && openLoop.trials && (
           <LoopSubCanvas
             trials={openLoop.trials}
             loopName={openLoop.name}
             isDark={isDark}
+            selectedTrial={selectedTrial}
             onClose={() => {
               setOpenLoop(null);
               setSelectedLoop(null);
             }}
-            selectedTrial={selectedTrial}
             onSelectTrial={(trial) => {
               setSelectedTrial(trial);
               setSelectedLoop(null);
-              // Actualiza openLoop con la referencia actualizada desde trials
               const updatedLoop = trials.find((t: any) => t.id === openLoop.id);
               if (updatedLoop) setOpenLoop(updatedLoop);
             }}
             onUpdateTrial={(updatedTrial) => {
-              // Actualiza el trial dentro del loop y refresca openLoop y trials
               const updatedLoops = trials.map((loop: any) => {
                 if (loop.id === openLoop.id) {
                   return {
@@ -293,7 +348,6 @@ function Canvas({}: Props) {
             }}
           />
         )}
-        {/* Modales igual que antes */}
         {showLoopModal && (
           <div
             style={{

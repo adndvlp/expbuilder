@@ -18,7 +18,7 @@ function LoopRangeModal({ trials, onConfirm, onClose }: Props) {
   return (
     <div
       style={{
-        background: "var(--neutral-light)",
+        background: "rgba(0,0,0,0.32)",
         padding: "20px 18px",
         borderRadius: "12px",
         boxShadow: "0 2px 12px rgba(0,0,0,0.14)",

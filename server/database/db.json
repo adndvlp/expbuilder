@@ -1,28 +1,64 @@
 {
   "experiments": [
     {
-      "experimentID": "bbdb3c0b-d140-4605-bc5b-7f3b209c3281",
-      "name": "jlnn",
-      "createdAt": "2025-10-30T20:10:40.931Z",
-      "updatedAt": "2025-10-30T20:10:40.931Z",
+      "experimentID": "ed9557aa-dd34-4cfe-a3bc-61238954f7c0",
+      "name": ",ñ{l",
+      "createdAt": "2025-10-31T04:34:51.816Z",
+      "updatedAt": "2025-10-31T04:34:51.816Z",
       "storage": "drive"
     }
   ],
   "trials": [
     {
-      "experimentID": "bbdb3c0b-d140-4605-bc5b-7f3b209c3281",
+      "experimentID": "ed9557aa-dd34-4cfe-a3bc-61238954f7c0",
       "data": {
         "trials": [
           {
-            "id": 1761866153051,
+            "id": 1761885296473,
             "type": "Trial",
             "name": "New Trial",
-            "parameters": {},
-            "trialCode": "",
-            "plugin": "plugin-audio-keyboard-response"
+            "parameters": {
+              "includesExtensions": false,
+              "extensionType": ""
+            },
+            "trialCode": "\n    const preloadNew_Trial = {\n        type: jsPsychPreload,\n       files: [\",ñ{l-experiment/img/armadillo.png\",\",ñ{l-experiment/img/bmw.png\",\",ñ{l-experiment/img/cofre.png\",\",ñ{l-experiment/img/dis.png\",\",ñ{l-experiment/img/green.png\"],\n    }\n    timeline.push(preloadNew_Trial);\n    \n    const test_stimuli_New_Trial = [{stimulus: \"jnlnk\"}];\n    const New_Trial_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n    data: {\n      response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n    },\n    };\n    const New_Trial_procedure = {\n    timeline: \n    [New_Trial_timeline],\n    timeline_variables: test_stimuli_New_Trial,\n    \n    };\n    timeline.push(New_Trial_procedure);\n  ",
+            "plugin": "plugin-html-keyboard-response",
+            "columnMapping": {
+              "stimulus": {
+                "source": "typed",
+                "value": "jnlnk"
+              },
+              "choices": {
+                "source": "none",
+                "value": null
+              },
+              "prompt": {
+                "source": "none",
+                "value": null
+              },
+              "stimulus_duration": {
+                "source": "none",
+                "value": null
+              },
+              "trial_duration": {
+                "source": "none",
+                "value": null
+              },
+              "response_ends_trial": {
+                "source": "none",
+                "value": null
+              }
+            },
+            "csvJson": [],
+            "csvColumns": [],
+            "orders": false,
+            "orderColumns": [],
+            "stimuliOrders": [],
+            "categories": false,
+            "categoryColumn": ""
           },
           {
-            "id": "loop_1761866167667",
+            "id": "loop_1761887085305",
             "name": "Loop 1",
             "repetitions": 1,
             "randomize": false,
@@ -34,61 +70,29 @@
             "categoryData": [],
             "trials": [
               {
-                "id": 1761866155333,
+                "id": 1761887059339,
                 "type": "Trial",
                 "name": "New Trial 1",
                 "parameters": {
                   "includesExtensions": false,
                   "extensionType": ""
                 },
-                "trialCode": "\n    const preloadNew_Trial_1 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_1);\n    \n    const New_Trial_1_timeline = {\n    type: jsPsychAudioButtonResponse, \n    data: {\n      stimulus: \"stimulus_New_Trial_1\",\nrt: \"rt_New_Trial_1\",\nresponse: \"response_New_Trial_1\",\n    },\n    };",
-                "plugin": "plugin-audio-button-response",
+                "trialCode": "\n    const New_Trial_1_timeline = {\n    type: jsPsychFullscreen, \n    data: {\n      success: \"success_New_Trial_1\",\nrt: \"rt_New_Trial_1\",\n    },\n    };",
+                "plugin": "plugin-fullscreen",
                 "columnMapping": {
-                  "stimulus": {
+                  "fullscreen_mode": {
                     "source": "none",
                     "value": null
                   },
-                  "choices": {
+                  "message": {
                     "source": "none",
                     "value": null
                   },
-                  "button_html": {
+                  "button_label": {
                     "source": "none",
                     "value": null
                   },
-                  "prompt": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "trial_duration": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "button_layout": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "grid_rows": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "grid_columns": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "response_ends_trial": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "trial_ends_after_audio": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "response_allowed_while_playing": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "enable_button_after": {
+                  "delay_after": {
                     "source": "none",
                     "value": null
                   }
@@ -103,57 +107,20 @@
                 "csvColumns": []
               },
               {
-                "id": 1761866157362,
+                "id": 1761887070253,
                 "type": "Trial",
                 "name": "New Trial 2",
                 "parameters": {
                   "includesExtensions": false,
                   "extensionType": ""
                 },
-                "trialCode": "\n    const preloadNew_Trial_2 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_2);\n    \n    const New_Trial_2_timeline = {\n    type: jsPsychAudioButtonResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_2\"),\nchoices: jsPsych.timelineVariable(\"choices_New_Trial_2\"),\nbutton_html: jsPsych.timelineVariable(\"button_html_New_Trial_2\"),\nprompt: jsPsych.timelineVariable(\"prompt_New_Trial_2\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration_New_Trial_2\"),\nbutton_layout: jsPsych.timelineVariable(\"button_layout_New_Trial_2\"),\ngrid_rows: jsPsych.timelineVariable(\"grid_rows_New_Trial_2\"),\ngrid_columns: jsPsych.timelineVariable(\"grid_columns_New_Trial_2\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial_New_Trial_2\"),\ntrial_ends_after_audio: jsPsych.timelineVariable(\"trial_ends_after_audio_New_Trial_2\"),\nresponse_allowed_while_playing: jsPsych.timelineVariable(\"response_allowed_while_playing_New_Trial_2\"),\nenable_button_after: jsPsych.timelineVariable(\"enable_button_after_New_Trial_2\"),\n    data: {\n      stimulus: \"stimulus_New_Trial_2\",\nrt: \"rt_New_Trial_2\",\nresponse: \"response_New_Trial_2\",\n    },\n    };",
-                "plugin": "plugin-audio-button-response",
-                "csvFromLoop": true,
-                "columnMapping": {},
-                "csvJson": [],
-                "csvColumns": [],
-                "orders": false,
-                "orderColumns": [],
-                "stimuliOrders": [],
-                "categories": false,
-                "categoryColumn": ""
-              }
-            ],
-            "code": "\n\n    const test_stimuli_Loop = [\n  {\n    \"stimulus_New_Trial_2\": \"\",\n    \"button_html_New_Trial_2\": \"function(r,s){return`<button class=\\\"jspsych-btn\\\">${r}</button>`}\",\n    \"prompt_New_Trial_2\": null,\n    \"trial_duration_New_Trial_2\": null,\n    \"button_layout_New_Trial_2\": \"grid\",\n    \"grid_rows_New_Trial_2\": 1,\n    \"grid_columns_New_Trial_2\": null,\n    \"response_ends_trial_New_Trial_2\": true,\n    \"trial_ends_after_audio_New_Trial_2\": false,\n    \"response_allowed_while_playing_New_Trial_2\": true,\n    \"enable_button_after_New_Trial_2\": 0\n  }\n];\n    \n    \n    \n    const preloadNew_Trial_1 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_1);\n    \n    const New_Trial_1_timeline = {\n    type: jsPsychAudioButtonResponse, \n    data: {\n      stimulus: \"stimulus_New_Trial_1\",\nrt: \"rt_New_Trial_1\",\nresponse: \"response_New_Trial_1\",\n    },\n    };\n\n\n\n    \n    const preloadNew_Trial_2 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_2);\n    \n    const New_Trial_2_timeline = {\n    type: jsPsychAudioButtonResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_2\"),\nchoices: jsPsych.timelineVariable(\"choices_New_Trial_2\"),\nbutton_html: jsPsych.timelineVariable(\"button_html_New_Trial_2\"),\nprompt: jsPsych.timelineVariable(\"prompt_New_Trial_2\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration_New_Trial_2\"),\nbutton_layout: jsPsych.timelineVariable(\"button_layout_New_Trial_2\"),\ngrid_rows: jsPsych.timelineVariable(\"grid_rows_New_Trial_2\"),\ngrid_columns: jsPsych.timelineVariable(\"grid_columns_New_Trial_2\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial_New_Trial_2\"),\ntrial_ends_after_audio: jsPsych.timelineVariable(\"trial_ends_after_audio_New_Trial_2\"),\nresponse_allowed_while_playing: jsPsych.timelineVariable(\"response_allowed_while_playing_New_Trial_2\"),\nenable_button_after: jsPsych.timelineVariable(\"enable_button_after_New_Trial_2\"),\n    data: {\n      stimulus: \"stimulus_New_Trial_2\",\nrt: \"rt_New_Trial_2\",\nresponse: \"response_New_Trial_2\",\n    },\n    };\n\n\n\n\nconst loop_procedure = {\n  timeline: [New_Trial_1_timeline, New_Trial_2_timeline],\n  timeline_variables: test_stimuli_Loop,\n  repetitions: 1,\n  randomize_order: false,\n};\ntimeline.push(loop_procedure);\n",
-            "csvJson": [],
-            "csvColumns": []
-          },
-          {
-            "id": "loop_1761866243618",
-            "name": "Loop 2",
-            "repetitions": 1,
-            "randomize": false,
-            "orders": false,
-            "stimuliOrders": [],
-            "orderColumns": [],
-            "categoryColumn": "",
-            "categories": false,
-            "categoryData": [],
-            "trials": [
-              {
-                "id": 1761866160266,
-                "type": "Trial",
-                "name": "New Trial 3",
-                "parameters": {
-                  "includesExtensions": false,
-                  "extensionType": ""
-                },
-                "trialCode": "\n    const preloadNew_Trial_3 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_3);\n    \n    const New_Trial_3_timeline = {\n    type: jsPsychAudioKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_3\"),\n    data: {\n      response: \"response_New_Trial_3\",\nrt: \"rt_New_Trial_3\",\nstimulus: \"stimulus_New_Trial_3\",\n    },\n    };",
-                "plugin": "plugin-audio-keyboard-response",
+                "trialCode": "\n    const preloadNew_Trial_2 = {\n        type: jsPsychPreload,\n       files: [\",ñ{l-experiment/img/armadillo.png\",\",ñ{l-experiment/img/bmw.png\",\",ñ{l-experiment/img/cofre.png\",\",ñ{l-experiment/img/dis.png\",\",ñ{l-experiment/img/green.png\"],\n    }\n    timeline.push(preloadNew_Trial_2);\n    \n    const New_Trial_2_timeline = {\n    type: jsPsychHtmlKeyboardResponse, \n    data: {\n      response: \"response_New_Trial_2\",\nrt: \"rt_New_Trial_2\",\nstimulus: \"stimulus_New_Trial_2\",\n    },\n    };",
+                "plugin": "plugin-html-keyboard-response",
                 "csvFromLoop": true,
                 "columnMapping": {
                   "stimulus": {
-                    "source": "typed",
-                    "value": "loaca"
+                    "source": "none",
+                    "value": null
                   },
                   "choices": {
                     "source": "none",
@@ -163,19 +130,15 @@
                     "source": "none",
                     "value": null
                   },
+                  "stimulus_duration": {
+                    "source": "none",
+                    "value": null
+                  },
                   "trial_duration": {
                     "source": "none",
                     "value": null
                   },
                   "response_ends_trial": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "trial_ends_after_audio": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "response_allowed_while_playing": {
                     "source": "none",
                     "value": null
                   }
@@ -187,120 +150,71 @@
                 "stimuliOrders": [],
                 "categories": false,
                 "categoryColumn": ""
+              }
+            ],
+            "code": "\n\n    const test_stimuli_Loop = [\n  {}\n];\n    \n    \n    \n    const New_Trial_1_timeline = {\n    type: jsPsychFullscreen, \n    data: {\n      success: \"success_New_Trial_1\",\nrt: \"rt_New_Trial_1\",\n    },\n    };\n\n\n\n    \n    const preloadNew_Trial_2 = {\n        type: jsPsychPreload,\n       files: [\",ñ{l-experiment/img/armadillo.png\",\",ñ{l-experiment/img/bmw.png\",\",ñ{l-experiment/img/cofre.png\",\",ñ{l-experiment/img/dis.png\",\",ñ{l-experiment/img/green.png\"],\n    }\n    timeline.push(preloadNew_Trial_2);\n    \n    const New_Trial_2_timeline = {\n    type: jsPsychHtmlKeyboardResponse, \n    data: {\n      response: \"response_New_Trial_2\",\nrt: \"rt_New_Trial_2\",\nstimulus: \"stimulus_New_Trial_2\",\n    },\n    };\n\n\n\n\nconst loop_procedure = {\n  timeline: [New_Trial_1_timeline, New_Trial_2_timeline],\n  timeline_variables: test_stimuli_Loop,\n  repetitions: 1,\n  randomize_order: false,\n};\ntimeline.push(loop_procedure);\n",
+            "csvJson": [],
+            "csvColumns": []
+          },
+          {
+            "id": 1761887076772,
+            "type": "Trial",
+            "name": "New Trial 3",
+            "parameters": {
+              "includesExtensions": false,
+              "extensionType": ""
+            },
+            "trialCode": "\n    const preloadNew_Trial_3 = {\n        type: jsPsychPreload,\n       files: [\",ñ{l-experiment/img/armadillo.png\",\",ñ{l-experiment/img/bmw.png\",\",ñ{l-experiment/img/cofre.png\",\",ñ{l-experiment/img/dis.png\",\",ñ{l-experiment/img/green.png\"],\n    }\n    timeline.push(preloadNew_Trial_3);\n    \n    const test_stimuli_New_Trial_3 = [{}];\n    const New_Trial_3_timeline = {\n    type: jsPsychHtmlKeyboardResponse, \n    data: {\n      response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n    },\n    };\n    const New_Trial_3_procedure = {\n    timeline: \n    [New_Trial_3_timeline],\n    timeline_variables: test_stimuli_New_Trial_3,\n    \n    };\n    timeline.push(New_Trial_3_procedure);\n  ",
+            "plugin": "plugin-html-keyboard-response",
+            "columnMapping": {
+              "stimulus": {
+                "source": "none",
+                "value": null
               },
-              {
-                "id": 1761866231738,
-                "type": "Trial",
-                "name": "New Trial 4",
-                "parameters": {
-                  "includesExtensions": false,
-                  "extensionType": ""
-                },
-                "trialCode": "\n    const preloadNew_Trial_4 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_4);\n    \n    const New_Trial_4_timeline = {\n    type: jsPsychAudioButtonResponse, \n    data: {\n      stimulus: \"stimulus_New_Trial_4\",\nrt: \"rt_New_Trial_4\",\nresponse: \"response_New_Trial_4\",\n    },\n    };",
-                "plugin": "plugin-audio-button-response",
-                "csvFromLoop": true,
-                "columnMapping": {
-                  "stimulus": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "choices": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "button_html": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "prompt": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "trial_duration": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "button_layout": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "grid_rows": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "grid_columns": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "response_ends_trial": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "trial_ends_after_audio": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "response_allowed_while_playing": {
-                    "source": "none",
-                    "value": null
-                  },
-                  "enable_button_after": {
-                    "source": "none",
-                    "value": null
-                  }
-                },
-                "csvJson": [],
-                "csvColumns": [],
-                "orders": false,
-                "orderColumns": [],
-                "stimuliOrders": [],
-                "categories": false,
-                "categoryColumn": ""
+              "choices": {
+                "source": "none",
+                "value": null
+              },
+              "prompt": {
+                "source": "none",
+                "value": null
+              },
+              "stimulus_duration": {
+                "source": "none",
+                "value": null
+              },
+              "trial_duration": {
+                "source": "none",
+                "value": null
+              },
+              "response_ends_trial": {
+                "source": "none",
+                "value": null
               }
-            ],
-            "code": "\n\n    const test_stimuli_Loop = [\n  {\n    \"stimulus_New_Trial_3\": \"loaca\"\n  }\n];\n    \n    \n    \n    const preloadNew_Trial_3 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_3);\n    \n    const New_Trial_3_timeline = {\n    type: jsPsychAudioKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_3\"),\n    data: {\n      response: \"response_New_Trial_3\",\nrt: \"rt_New_Trial_3\",\nstimulus: \"stimulus_New_Trial_3\",\n    },\n    };\n\n\n\n    \n    const preloadNew_Trial_4 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_4);\n    \n    const New_Trial_4_timeline = {\n    type: jsPsychAudioButtonResponse, \n    data: {\n      stimulus: \"stimulus_New_Trial_4\",\nrt: \"rt_New_Trial_4\",\nresponse: \"response_New_Trial_4\",\n    },\n    };\n\n\n\n\nconst loop_procedure = {\n  timeline: [New_Trial_3_timeline, New_Trial_4_timeline],\n  timeline_variables: test_stimuli_Loop,\n  repetitions: 1,\n  randomize_order: false,\n};\ntimeline.push(loop_procedure);\n",
+            },
             "csvJson": [],
-            "csvColumns": []
-          },
-          {
-            "id": 1761866235934,
-            "type": "Trial",
-            "name": "New Trial 5",
-            "parameters": {},
-            "trialCode": "",
-            "plugin": "plugin-call-function"
-          },
-          {
-            "id": 1761867153761,
-            "type": "Trial",
-            "name": "New Trial 6",
-            "parameters": {},
-            "trialCode": "",
-            "plugin": "plugin-audio-button-response"
-          },
-          {
-            "id": 1761867484630,
-            "type": "Trial",
-            "name": "New Trial 7",
-            "parameters": {},
-            "trialCode": "",
-            "plugin": "plugin-animation"
+            "csvColumns": [],
+            "orders": false,
+            "orderColumns": [],
+            "stimuliOrders": [],
+            "categories": false,
+            "categoryColumn": ""
           }
         ]
       },
-      "createdAt": "2025-10-30T20:40:32.276Z",
-      "updatedAt": "2025-10-31T00:30:13.179Z"
+      "createdAt": "2025-10-31T04:34:56.516Z",
+      "updatedAt": "2025-10-31T10:05:31.636Z"
     }
   ],
   "configs": [
     {
-      "experimentID": "bbdb3c0b-d140-4605-bc5b-7f3b209c3281",
+      "experimentID": "ed9557aa-dd34-4cfe-a3bc-61238954f7c0",
       "data": {
-        "generatedCode": ""
+        "generatedCode": "\n  // --- Firebase config ---\n  const firebaseConfig = {\n    apiKey: \"AIzaSyBEbJ-uGKzsaf2u24KPamBPVZrUmvhFk-Q\",\n    authDomain: \"test-e4cf9.firebaseapp.com\",\n    databaseURL: \"http://localhost:9000?ns=test-e4cf9\",\n    projectId: \"test-e4cf9\",\n    storageBucket: \"test-e4cf9.firebasestorage.app\",\n    messagingSenderId: \"414213417080\",\n    appId: \"1:414213417080:web:98607c621a54d07656e58d\"\n  };\n\n  // --- Cargar Firebase SDK ---\n  if (typeof window.firebase === 'undefined') {\n    const script = document.createElement('script');\n    script.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';\n    script.onload = () => {\n      const dbScript = document.createElement('script');\n      dbScript.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';\n      dbScript.onload = () => { window._firebaseReady = true; };\n      document.head.appendChild(dbScript);\n    };\n    document.head.appendChild(script);\n  } else {\n    window._firebaseReady = true;\n  }\n\n  function waitForFirebase() {\n    return new Promise(resolve => {\n      if (window._firebaseReady) return resolve();\n      const interval = setInterval(() => {\n        if (window._firebaseReady) {\n          clearInterval(interval);\n          resolve();\n        }\n      }, 50);\n    });\n  }\n\n \n  const userStr = null;\n\n  const Uid = userStr.uid\n\n  const trialSessionId =\n    (crypto.randomUUID\n      ? crypto.randomUUID()\n      : Math.random().toString(36).slice(2, 10));\n\n  let participantNumber;\n\n  async function saveSession(trialSessionId) {\n    try {\n      const res = await fetch(\"http://localhost:5001/test-e4cf9/us-central1/apidata\", {\n        method: \"POST\",\n        headers: { \"Content-Type\": \"application/json\", Accept: \"*/*\" },\n        body: JSON.stringify({\n          experimentID: \"ed9557aa-dd34-4cfe-a3bc-61238954f7c0\",\n          experimentName: \",ñ{l\", \n          sessionId: trialSessionId,\n          storage: \"drive\",\n          uid: Uid\n        }),\n      });\n      \n      console.log('Response status:', res.status);\n      \n      if (!res.ok) {\n        const errorText = await res.text();\n        console.error('Error creating session:', errorText);\n        throw new Error(`Failed to create session: ${res.status} - ${errorText}`);\n      }\n      \n      const result = await res.json();\n      console.log('Session created successfully:', result);\n      \n      if (!result.success) {\n        if (result.message?.includes(\"INVALID_GOOGLE_DRIVE_TOKEN\") || result.message?.includes(\"Invalid Google Drive token\")) {\n          alert(\"Warning: Google Drive token not found or invalid. Please reconnect your Drive account in Settings.\");\n        } else if (result.message?.includes(\"INVALID_DROPBOX_TOKEN\") || result.message?.includes(\"Invalid Dropbox token\")) {\n          alert(\"Warning: Dropbox token not found or invalid. Please reconnect your Dropbox account in Settings.\");\n        }\n        throw new Error(result.message || 'Failed to create session');\n      }\n      \n      participantNumber = result.participantNumber;\n      return participantNumber;\n    } catch (error) {\n      console.error('Error in saveSession:', error);\n      alert('Error creating session: ' + error.message);\n      throw error;\n    }\n  }\n\n  (async () => {\n    // Esperar e inicializar Firebase\n    await waitForFirebase();\n    if (!window.firebase.apps.length) {\n      window.firebase.initializeApp(firebaseConfig);\n    }\n    const db = window.firebase.database();\n\n    participantNumber = await saveSession(trialSessionId);\n\n    if (typeof participantNumber !== \"number\" || isNaN(participantNumber)) {\n      alert(\"The participant number is not assigned. Please, wait.\");\n      throw new Error(\"participantNumber not assigned\");\n    }\n\n    // --- Configurar onDisconnect para finalizar sesión automáticamente ---\n    const sessionRef = db.ref('sessions/ed9557aa-dd34-4cfe-a3bc-61238954f7c0/' + trialSessionId);\n    await sessionRef.set({\n      connected: true,\n      experimentID: 'ed9557aa-dd34-4cfe-a3bc-61238954f7c0',\n      sessionId: trialSessionId,\n      startedAt: window.firebase.database.ServerValue.TIMESTAMP,\n      storage: 'drive'\n    });\n    \n    // Cuando se desconecte, marcar para que el backend finalice la sesión\n    // Incluir needsFinalization para que se procesen los datos en caso de desconexión\n    sessionRef.onDisconnect().update({\n      connected: false,\n      needsFinalization: true,\n      disconnectedAt: window.firebase.database.ServerValue.TIMESTAMP,\n      storage: 'drive'\n    });\n\n    const jsPsych = initJsPsych({\n\n      on_trial_start: function(trial) {\n        const lastTrialData = jsPsych.data.get()\n        if (lastTrialData) {\n        trial.data.prev_response = lastTrialData.response;\n        }\n      }\n\n      \n\n      on_data_update: function (data) {\n\n        fetch(\"http://localhost:5001/test-e4cf9/us-central1/apidata\", {\n          method: \"POST\",\n          headers: { \"Content-Type\": \"application/json\", Accept: \"*/*\" },\n          body: JSON.stringify({\n            experimentID: \"ed9557aa-dd34-4cfe-a3bc-61238954f7c0\",\n            sessionId: trialSessionId,\n            data: data,\n            storage: \"drive\",\n          }),\n        })\n        .then(res => {\n          if (!res.ok) {\n            return res.text().then(text => {\n              console.error('Error appending data:', text);\n            });\n          }\n          return res.json();\n        })\n        .then(result => {\n          if (result && result.success) {\n            console.log('Data appended to temporary storage');\n          }\n        })\n        .catch(error => {\n          console.error('Error in on_data_update:', error);\n        });\n      },\n\n      on_finish: async function() {\n        \n        // Cancelar el onDisconnect para evitar conflictos\n        sessionRef.onDisconnect().cancel();\n\n        // Finalizar la sesión normalmente y marcar en Firebase que terminó correctamente\n        console.log('Experiment finished normally, sending data to Google Drive...');\n        \n        try {\n          \n          // Marcar en Firebase que terminó correctamente Y necesita finalización\n          await sessionRef.update({\n            connected: false,\n            finished: true,\n            needsFinalization: true,\n            finishedAt: window.firebase.database.ServerValue.TIMESTAMP\n          });\n          \n          // El backend procesará la finalización al detectar needsFinalization=true\n          console.log('Session marked for finalization in Firebase');\n        } catch (error) {\n          console.error('Error marking session as finished:', error);\n        }\n      },\n  // Uncomment to see the json results after finishing a session experiment\n  // jsPsych.data.displayData('csv');\n});\n\nconst timeline = [];\n\nconst welcome = {\n  type: jsPsychHtmlButtonResponse,\n  stimulus: \"Welcome to the experiment. Press 'Start' to begin.\",\n  choices: ['Start'],\n};\n\ntimeline.push(welcome);\n\n\n    const preloadNew_Trial = {\n        type: jsPsychPreload,\n       files: [\",ñ{l-experiment/img/armadillo.png\",\",ñ{l-experiment/img/bmw.png\",\",ñ{l-experiment/img/cofre.png\",\",ñ{l-experiment/img/dis.png\",\",ñ{l-experiment/img/green.png\"],\n    }\n    timeline.push(preloadNew_Trial);\n    \n    const test_stimuli_New_Trial = [{stimulus: \"jnlnk\"}];\n    const New_Trial_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n    data: {\n      response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n    },\n    };\n    const New_Trial_procedure = {\n    timeline: \n    [New_Trial_timeline],\n    timeline_variables: test_stimuli_New_Trial,\n    \n    };\n    timeline.push(New_Trial_procedure);\n  \n\n\n\n    const test_stimuli_Loop = [\n  {\n    \"stimulus_New_Trial_1\": \",ñ{l-experiment/img/armadillo.png\",\n    \"choices_New_Trial_1\": \"ALL_KEYS\",\n    \"prompt_New_Trial_1\": null,\n    \"stimulus_duration_New_Trial_1\": \",ñ{l-experiment/img/armadillo.png\",\n    \"trial_duration_New_Trial_1\": null,\n    \"response_ends_trial_New_Trial_1\": true,\n    \"stimulus_New_Trial_2\": \",ñ{l-experiment/img/armadillo.png\",\n    \"choices_New_Trial_2\": \"ALL_KEYS\",\n    \"prompt_New_Trial_2\": null,\n    \"stimulus_duration_New_Trial_2\": \",ñ{l-experiment/img/armadillo.png\",\n    \"trial_duration_New_Trial_2\": null,\n    \"response_ends_trial_New_Trial_2\": true\n  }\n];\n    \n    \n    \n    const preloadNew_Trial_1 = {\n        type: jsPsychPreload,\n       files: [\",ñ{l-experiment/img/armadillo.png\",\",ñ{l-experiment/img/bmw.png\",\",ñ{l-experiment/img/cofre.png\",\",ñ{l-experiment/img/dis.png\",\",ñ{l-experiment/img/green.png\"],\n    }\n    timeline.push(preloadNew_Trial_1);\n    \n    const New_Trial_1_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_1\"),\nchoices: jsPsych.timelineVariable(\"choices_New_Trial_1\"),\nprompt: jsPsych.timelineVariable(\"prompt_New_Trial_1\"),\nstimulus_duration: jsPsych.timelineVariable(\"stimulus_duration_New_Trial_1\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration_New_Trial_1\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial_New_Trial_1\"),\n    data: {\n      response: \"response_New_Trial_1\",\nrt: \"rt_New_Trial_1\",\nstimulus: \"stimulus_New_Trial_1\",\n    },\n    };\n\n\n\n    \n    const preloadNew_Trial_2 = {\n        type: jsPsychPreload,\n       files: [\",ñ{l-experiment/img/armadillo.png\",\",ñ{l-experiment/img/bmw.png\",\",ñ{l-experiment/img/cofre.png\",\",ñ{l-experiment/img/dis.png\",\",ñ{l-experiment/img/green.png\"],\n    }\n    timeline.push(preloadNew_Trial_2);\n    \n    const New_Trial_2_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_2\"),\nchoices: jsPsych.timelineVariable(\"choices_New_Trial_2\"),\nprompt: jsPsych.timelineVariable(\"prompt_New_Trial_2\"),\nstimulus_duration: jsPsych.timelineVariable(\"stimulus_duration_New_Trial_2\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration_New_Trial_2\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial_New_Trial_2\"),\n    data: {\n      response: \"response_New_Trial_2\",\nrt: \"rt_New_Trial_2\",\nstimulus: \"stimulus_New_Trial_2\",\n    },\n    };\n\n\n\n\nconst loop_procedure = {\n  timeline: [New_Trial_1_timeline, New_Trial_2_timeline],\n  timeline_variables: test_stimuli_Loop,\n  repetitions: 1,\n  randomize_order: false,\n};\ntimeline.push(loop_procedure);\n\n\n\n    const preloadNew_Trial_3 = {\n        type: jsPsychPreload,\n       files: [\",ñ{l-experiment/img/armadillo.png\",\",ñ{l-experiment/img/bmw.png\",\",ñ{l-experiment/img/cofre.png\",\",ñ{l-experiment/img/dis.png\",\",ñ{l-experiment/img/green.png\"],\n    }\n    timeline.push(preloadNew_Trial_3);\n    \n    const test_stimuli_New_Trial_3 = [{stimulus: \",ñ{l-experiment/img/armadillo.png\",\nchoices: \"ALL_KEYS\",\nprompt: null,\nstimulus_duration: \",ñ{l-experiment/img/armadillo.png\",\ntrial_duration: null,\nresponse_ends_trial: true}];\n    const New_Trial_3_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\nchoices: jsPsych.timelineVariable(\"choices\"),\nprompt: jsPsych.timelineVariable(\"prompt\"),\nstimulus_duration: jsPsych.timelineVariable(\"stimulus_duration\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial\"),\n    data: {\n      response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n    },\n    };\n    const New_Trial_3_procedure = {\n    timeline: \n    [New_Trial_3_timeline],\n    timeline_variables: test_stimuli_New_Trial_3,\n    \n    };\n    timeline.push(New_Trial_3_procedure);\n  \n\njsPsych.run(timeline);\n\n})();\n"
       },
       "isDevMode": false,
-      "createdAt": "2025-10-30T20:11:58.393Z",
-      "updatedAt": "2025-10-31T00:30:14.267Z"
+      "createdAt": "2025-10-31T04:34:55.910Z",
+      "updatedAt": "2025-10-31T09:46:22.240Z"
     }
   ],
   "pluginConfigs": [

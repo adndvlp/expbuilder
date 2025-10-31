@@ -1,4 +1,3 @@
-// Updated api.js with improved static file serving
 import express from "express";
 import multer from "multer";
 import path from "path";
@@ -9,7 +8,7 @@ import fs from "fs";
 import cors from "cors";
 import { Parser } from "json2csv";
 import dotenv from "dotenv";
-import { spawn } from "child_process"; // Para script de extract-metadata.mjs en run-experiment
+import { spawn } from "child_process";
 import { v4 as uuidv4 } from "uuid";
 import { Low } from "lowdb";
 import { JSONFile } from "lowdb/node";
@@ -22,17 +21,15 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = 3000;
 
-// Configure CORS to allow requests from your frontend
 app.use(
   cors({
-    origin: `${process.env.ORIGIN}`, // Replace with your frontend URL if different
+    origin: `${process.env.ORIGIN}`,
     credentials: true,
   })
 );
 
-app.use(express.json({ limit: "50mb" })); // Increased limit for larger code files
+app.use(express.json({ limit: "50mb" }));
 
-// Configurar lowdb
 const dbPath = path.join(__dirname, "database", "db.json");
 const dbDir = path.dirname(dbPath);
 if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
@@ -40,7 +37,6 @@ if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 const adapter = new JSONFile(dbPath);
 const db = new Low(adapter, {});
 
-// Inicializar la base de datos
 function ensureDbData() {
   db.data ||= {};
   db.data.experiments ||= [];
@@ -53,7 +49,6 @@ await db.read();
 ensureDbData();
 await db.write();
 
-// Listar experimentos
 app.get("/api/load-experiments", async (req, res) => {
   try {
     await db.read();
@@ -67,7 +62,6 @@ app.get("/api/load-experiments", async (req, res) => {
   }
 });
 
-// Obtener experimento por experimentID
 app.get("/api/experiment/:experimentID", async (req, res) => {
   try {
     await db.read();
@@ -83,7 +77,6 @@ app.get("/api/experiment/:experimentID", async (req, res) => {
   }
 });
 
-// Endpoint para crear experimento
 app.post("/api/create-experiment", async (req, res) => {
   try {
     const { name, description, author, uid, storage } = req.body;
@@ -1019,8 +1012,7 @@ let tunnelProcess = null;
 app.post("/api/create-tunnel", async (req, res) => {
   const maxAttempts = 3;
   const timeoutMs = 10000; // 10 seconds
-  const urlRegex =
-    /https?:\/\/[a-zA-Z0-9-]+(-[a-zA-Z0-9-]+){0,3}\.trycloudflare.com/;
+  const urlRegex = /https?:\/\/(.*?)\.trycloudflare\.com/;
   let attempt = 0;
   let responded = false;
 

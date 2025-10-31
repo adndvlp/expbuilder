@@ -206,7 +206,7 @@ const PluginEditor: React.FC<PluginEditorProps> = ({ selectedPluginName }) => {
               transition: "border 0.3s, box-shadow 0.3s",
             }}
             onFocus={(e) => {
-              e.currentTarget.style.border = "2px solid var(--primary-purple)";
+              e.currentTarget.style.border = "2px solid var(--primary-blue)";
               e.currentTarget.style.boxShadow =
                 "0 4px 16px rgba(61,146,180,0.15)";
             }}

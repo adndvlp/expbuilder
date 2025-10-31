@@ -1,33 +1,31 @@
-// TrialNode.tsx
 import { Handle, Position } from "reactflow";
+import "./index.css";
 
 interface TrialNodeData {
   name: string;
   selected: boolean;
   onClick: () => void;
+  color?: string;
 }
 
 function TrialNode({ data }: { data: TrialNodeData }) {
   return (
     <div
-      className={`timeline-item ${data.selected ? "selected" : ""}`}
-      style={{
-        width: "180px",
-        minWidth: "120px",
-        borderRadius: "8px",
-        padding: "12px",
-        textAlign: "center",
-        background: data.selected ? "#d4af37" : "#3d92b4",
-        border: data.selected ? "2px solid #d4af37" : "1px solid #ccc",
-        cursor: "grab",
-        position: "relative",
-        marginBottom: "8px",
-      }}
+      className={`trial-node${data.selected ? " trial-node--selected" : ""}`}
       onClick={data.onClick}
+      style={data.color ? { background: data.color, color: "#fff" } : {}}
     >
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="react-flow__handle react-flow__handle-top"
+      />
       {data.name}
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Bottom} />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="react-flow__handle react-flow__handle-bottom"
+      />
     </div>
   );
 }

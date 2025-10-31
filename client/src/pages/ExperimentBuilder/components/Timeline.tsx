@@ -713,13 +713,7 @@ jsPsych.run(timeline);
       .every((loop) => !!loop.code && loop.code.trim() !== "");
 
   const isDisabled =
-    isSubmitting ||
-    ((!allTrialsHaveCode || !allLoopsHaveCode) && !isDevMode) ||
-    !(
-      userTokens &&
-      userTokens.github &&
-      (userTokens.drive || userTokens.dropbox)
-    );
+    isSubmitting || ((!allTrialsHaveCode || !allLoopsHaveCode) && !isDevMode);
 
   return (
     <div className="timeline">

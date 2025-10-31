@@ -1,26 +1,9 @@
-/* Usa las variables de color del root */
-:root {
-  --primary-purple: #3d92b4;
-  --dark-purple: #3e6879;
-  --light-purple: #3e7d96;
-  --gold: #d4af37;
-  --light-gold: #f1c40f;
-  --dark-gold: #b7950b;
-  --neutral-dark: #2c3e50;
-  --neutral-light: #f8f9fa;
-  --neutral-mid: #ddd;
-  --danger: #cf000b;
-  --text-light: #ffffff;
-  --text-dark: #333333;
-}
-
-/* Fondo general */
 .dashboard-bg {
   min-height: 100vh;
   background: linear-gradient(
     135deg,
-    var(--primary-purple) 0%,
-    var(--light-purple) 100%
+    var(--primary-blue) 0%,
+    var(--light-blue) 100%
   );
   display: flex;
   flex-direction: column;
@@ -50,7 +33,6 @@
   pointer-events: none;
 }
 
-/* Menú superior */
 .dashboard-menu {
   width: 100%;
   max-width: 1400px;
@@ -136,7 +118,6 @@
   transition: all 0.3s ease;
 }
 
-/* Acciones */
 .dashboard-actions {
   width: 100%;
   max-width: 1300px;
@@ -212,7 +193,6 @@
     0 2px 5px rgba(0, 0, 0, 0.15);
 }
 
-/* Lista de experimentos */
 .dashboard-list {
   width: 100%;
   max-width: 900px;
@@ -232,7 +212,7 @@
 .experiment-bar {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
-  color: var(--primary-purple);
+  color: var(--primary-blue);
   padding: 16px 24px;
   border-radius: 14px;
   font-size: 1rem;
@@ -276,7 +256,6 @@
   border-color: var(--gold);
 }
 
-/* Responsive */
 @media (max-width: 700px) {
   .dashboard-bg {
     padding: 24px 12px;
