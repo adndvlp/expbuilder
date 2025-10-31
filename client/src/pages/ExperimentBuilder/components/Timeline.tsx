@@ -728,6 +728,27 @@ jsPsych.run(timeline);
       </div>
 
       {/* Experiment */}
+      {isDevMode && (
+        <div
+          style={{
+            margin: "16px 0",
+            padding: "12px",
+            borderRadius: "8px",
+            border: "none",
+            color: "var(--text-dark)",
+          }}
+        >
+          <FileUploader
+            uploadedFiles={uploadedFiles}
+            onSingleFileUpload={handleSingleFileUpload}
+            onFolderUpload={handleFolderUpload}
+            onDeleteFile={handleDeleteFile}
+            fileInputRef={fileInputRef}
+            folderInputRef={folderInputRef}
+            accept={accept}
+          />
+        </div>
+      )}
       <div>
         {submitStatus && (
           <div
@@ -948,28 +969,6 @@ jsPsych.run(timeline);
             </p>
           )}
         </div>
-
-        {isDevMode && (
-          <div
-            style={{
-              margin: "16px 0",
-              padding: "12px",
-              borderRadius: "8px",
-              border: "none",
-              color: "var(--text-dark)",
-            }}
-          >
-            <FileUploader
-              uploadedFiles={uploadedFiles}
-              onSingleFileUpload={handleSingleFileUpload}
-              onFolderUpload={handleFolderUpload}
-              onDeleteFile={handleDeleteFile}
-              fileInputRef={fileInputRef}
-              folderInputRef={folderInputRef}
-              accept={accept}
-            />
-          </div>
-        )}
       </div>
     </div>
   );

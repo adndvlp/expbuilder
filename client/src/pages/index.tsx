@@ -3,7 +3,7 @@ import Dashboard from "./Dashboard";
 import ExperimentBuilder from "./ExperimentBuilder";
 import PluginsProvider from "./ExperimentBuilder/providers/PluginsProvider";
 import DevModeProvider from "./ExperimentBuilder/providers/DevModeProvider";
-import ProtectedRoute from "../components/ProtectedRoute";
+// import ProtectedRoute from "../components/ProtectedRoute";
 import LandingPage from "./LandingPage";
 import Register from "./Auth/Register";
 import Login from "./Auth/Login";
@@ -12,6 +12,7 @@ import Settings from "./Settings";
 import GoogleDriveCallback from "./Settings/GoogleDriveCallback";
 import DropboxCallback from "./Settings/DropboxCallback";
 import GithubCallback from "./Settings/GithubCallback";
+import ExperimentPanel from "./ExperimentPanel";
 
 // import ProtectedRoute from "../components/ProtectedRoute";
 
@@ -32,18 +33,18 @@ const router = createHashRouter([
   {
     path: "/home",
     element: (
-      <ProtectedRoute>
-        <Dashboard />
-      </ProtectedRoute>
+      // <ProtectedRoute>
+      <Dashboard />
+      // </ProtectedRoute>
     ),
     index: true,
   },
   {
     path: "/settings",
     element: (
-      <ProtectedRoute>
-        <Settings />
-      </ProtectedRoute>
+      // <ProtectedRoute>
+      <Settings />
+      // </ProtectedRoute>
     ),
   },
   {
@@ -61,13 +62,19 @@ const router = createHashRouter([
   {
     path: "/home/experiment/:id",
     element: (
-      <ProtectedRoute>
-        <DevModeProvider>
-          <PluginsProvider>
-            <ExperimentBuilder />
-          </PluginsProvider>
-        </DevModeProvider>
-      </ProtectedRoute>
+      // <ProtectedRoute>
+      <ExperimentPanel />
+      // </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/home/experiment/:id/builder",
+    element: (
+      <DevModeProvider>
+        <PluginsProvider>
+          <ExperimentBuilder />
+        </PluginsProvider>
+      </DevModeProvider>
     ),
   },
 ]);

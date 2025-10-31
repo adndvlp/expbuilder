@@ -18,7 +18,7 @@ export default function ResultsList() {
 
   const experimentID = useExperimentID();
 
-  // Usar endpoint local para obtener sesiones
+  // Use local endpoint to get sessions
   const fetchSessions = async () => {
     setLoading(true);
     try {
@@ -38,7 +38,7 @@ export default function ResultsList() {
     fetchSessions();
   }, [ExperimentPreview]);
 
-  // Usar endpoint local para borrar una sesión
+  // Use local endpoint to delete a session
   const handleDeleteSession = async (sessionId: string) => {
     if (!window.confirm("Are you sure you want to delete this session result?"))
       return;
@@ -55,7 +55,7 @@ export default function ResultsList() {
     }
   };
 
-  // Borrar múltiples sesiones usando endpoint local
+  // Delete multiple sessions using local endpoint
   const handleDeleteSelected = async () => {
     if (
       selected.length === 0 ||
@@ -77,7 +77,38 @@ export default function ResultsList() {
     }
   };
 
-  // Manejar selección individual y global
+  // Download multiple sessions as CSV and save them in a ZIP in the folder chosen by the user (Electron)
+  const handleDownloadSelected = async () => {
+    if (selected.length === 0) return;
+    try {
+      // Download all CSVs
+      const files = [];
+      for (const sessionId of selected) {
+        const res = await fetch(
+          `${API_URL}/api/download-session/${sessionId}/${experimentID}`
+        );
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const csvText = await res.text();
+        files.push({
+          name: `${experimentID}_${sessionId}.csv`,
+          content: csvText,
+        });
+      }
+      // Call Electron to save the ZIP
+      // @ts-ignore
+      const result = await window.electron.saveCsvZip(files, "sessions.zip");
+      if (result.success) {
+        alert("ZIP saved successfully.");
+      } else {
+        alert("Failed to save ZIP: " + (result.error || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Error downloading sessions:", error);
+      alert("Failed to download selected sessions");
+    }
+  };
+
+  // Handle individual and global selection
   const toggleSelect = (id: string) => {
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
@@ -93,7 +124,7 @@ export default function ResultsList() {
     setSelected([]);
   };
 
-  // Descargar CSV usando endpoint local
+  // Download CSV using local endpoint
   const handleDownloadCSV = async (sessionId: string) => {
     try {
       const res = await fetch(
@@ -120,13 +151,40 @@ export default function ResultsList() {
 
   return (
     <div className="results-container" style={{ marginTop: 25 }}>
-      <h4 className="results-title">Session results</h4>
+      <h4 className="results-title">Session Results</h4>
       {loading ? (
         <p className="results-text">Loading...</p>
       ) : sessions.length === 0 ? (
         <p className="results-text">There are no session results.</p>
       ) : (
         <div className="results-table-container">
+          {selectMode && (
+            <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
+              <button
+                className="cancel-select-btn"
+                style={{ fontSize: "12px" }}
+                onClick={handleCancelSelect}
+              >
+                Cancel selection
+              </button>
+              <button
+                className="download-csv-btn"
+                style={{ fontSize: "12px" }}
+                disabled={selected.length === 0}
+                onClick={handleDownloadSelected}
+              >
+                Download selected
+              </button>
+              <button
+                className="remove-button"
+                style={{ fontSize: "12px" }}
+                disabled={selected.length === 0}
+                onClick={handleDeleteSelected}
+              >
+                Delete selected ({selected.length})
+              </button>
+            </div>
+          )}
           <table className="results-table">
             <thead>
               <tr>
@@ -174,28 +232,6 @@ export default function ResultsList() {
                     >
                       Select sessions
                     </button>
-                  )}
-                  {selectMode && (
-                    <div
-                      key="select-mode-buttons"
-                      style={{ display: "contents" }}
-                    >
-                      <button
-                        className="cancel-select-btn"
-                        style={{ marginLeft: 0, borderRadius: "6px" }}
-                        onClick={handleCancelSelect}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        className="remove-button"
-                        style={{ marginLeft: 0, fontSize: "11px" }}
-                        disabled={selected.length === 0}
-                        onClick={handleDeleteSelected}
-                      >
-                        Delete({selected.length})
-                      </button>
-                    </div>
                   )}
                 </th>
               </tr>

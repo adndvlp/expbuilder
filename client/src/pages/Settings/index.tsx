@@ -55,7 +55,6 @@ export default function Settings() {
     try {
       await auth.signOut();
       localStorage.removeItem("user");
-      navigate("/auth/login");
     } catch (error) {
       console.error("Error logging out:", error);
     } finally {
@@ -66,23 +65,28 @@ export default function Settings() {
   // Referencia para el input de importación
   const importInputRef = useRef<HTMLInputElement>(null);
 
-  // Exportar db.json
+  // Exportar db.json usando Electron (guardar en carpeta elegida)
   const handleExportDb = async () => {
     try {
       const res = await fetch(`${API_URL}/api/export-db`);
       if (!res.ok) throw new Error("Error downloading db.json");
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "db.json";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-      setNotification({ type: "success", message: "Database exported!" });
+      const jsonText = await res.text();
+      // @ts-ignore
+      const result = await window.electron.saveJsonFile(jsonText, "db.json");
+      if (result.success) {
+        setNotification({
+          type: "success",
+          message: "Database exported successfully!",
+        });
+      } else {
+        setNotification({
+          type: "error",
+          message:
+            "Failed to export database: " + (result.error || "Unknown error"),
+        });
+      }
     } catch (err) {
-      setNotification({ type: "error", message: "Error exporting database" });
+      setNotification({ type: "error", message: "Failed to export database" });
     }
   };
 
@@ -99,16 +103,19 @@ export default function Settings() {
       });
       const data = await res.json();
       if (data.success) {
-        setNotification({ type: "success", message: "Database imported!" });
+        setNotification({
+          type: "success",
+          message: "Database imported successfully!",
+        });
         setTimeout(() => window.location.reload(), 1500);
       } else {
         setNotification({
           type: "error",
-          message: data.error || "Error importing database",
+          message: data.error || "Failed to import database",
         });
       }
     } catch (err) {
-      setNotification({ type: "error", message: "Error importing database" });
+      setNotification({ type: "error", message: "Failed to import database" });
     }
   };
 
@@ -141,7 +148,6 @@ export default function Settings() {
       </div>
       <div className="settings-container">
         <h1 className="settings-title">Settings</h1>
-
         {/* Notificación de OAuth y export/import */}
         {notification && (
           <div className={`notification notification-${notification.type}`}>
@@ -154,47 +160,7 @@ export default function Settings() {
             </button>
           </div>
         )}
-
-        {/* Información del usuario */}
-        <div className="settings-section account-info">
-          <h2 className="settings-section-title">Account Information</h2>
-          <div className="account-info-item">
-            <strong>Email:</strong> {user?.email}
-          </div>
-          <div className="account-info-item">
-            <strong>UID:</strong> {user?.uid}
-          </div>
-        </div>
-
-        {/* Sección de Tokens */}
-        <div className="settings-section">
-          <h2 className="settings-section-title">Integration Tokens</h2>
-          <div className="tokens-list">
-            <GoogleDriveToken />
-            <DropboxToken />
-            <GithubToken />
-          </div>
-        </div>
-
-        {/* Sección de Seguridad */}
-        <div className="settings-section">
-          <h2 className="settings-section-title">Security</h2>
-          <ChangePassword />
-        </div>
-
-        {/* Botón de Logout */}
-        <div className="settings-section logout-section">
-          <h2 className="settings-section-title">Session</h2>
-          <button
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-            className="logout-button"
-          >
-            {isLoggingOut ? "Logging out..." : "Logout"}
-          </button>
-        </div>
-
-        {/* Exportar/Importar datos */}
+        {/* Exportar/Importar datos (siempre visible) */}
         <div className="settings-section">
           <h2 className="settings-section-title">Backup & Restore</h2>
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
@@ -302,11 +268,122 @@ export default function Settings() {
             Export your data to restore it later if you reinstall the app.
           </div>
         </div>
+        {/* Overlay borroso solo para secciones de usuario hacia abajo */}
+        <div style={{ position: "relative" }}>
+          {/* Información del usuario */}
+          <div
+            className="settings-section account-info"
+            style={!user ? { filter: "blur(4px)", pointerEvents: "none" } : {}}
+          >
+            <h2 className="settings-section-title">Account Information</h2>
+            <div className="account-info-item">
+              <strong>Email:</strong> {user?.email}
+            </div>
+            <div className="account-info-item">
+              <strong>UID:</strong> {user?.uid}
+            </div>
+          </div>
 
-        {/* Zona de Peligro */}
-        <div className="settings-section logout-section">
-          <h2 className="settings-section-title">Danger Zone</h2>
-          <DeleteAccount />
+          {/* Sección de Tokens */}
+          <div
+            className="settings-section"
+            style={!user ? { filter: "blur(4px)", pointerEvents: "none" } : {}}
+          >
+            <h2 className="settings-section-title">Integration Tokens</h2>
+            <div className="tokens-list">
+              <GoogleDriveToken />
+              <DropboxToken />
+              <GithubToken />
+            </div>
+          </div>
+
+          {/* Sección de Seguridad */}
+          <div
+            className="settings-section"
+            style={!user ? { filter: "blur(4px)", pointerEvents: "none" } : {}}
+          >
+            <h2 className="settings-section-title">Security</h2>
+            <ChangePassword />
+          </div>
+
+          {/* Botón de Logout */}
+          <div
+            className="settings-section logout-section"
+            style={!user ? { filter: "blur(4px)", pointerEvents: "none" } : {}}
+          >
+            <h2 className="settings-section-title">Session</h2>
+            <button
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="logout-button"
+            >
+              {isLoggingOut ? "Logging out..." : "Logout"}
+            </button>
+          </div>
+
+          {/* Zona de Peligro */}
+          <div
+            className="settings-section logout-section"
+            style={!user ? { filter: "blur(1px)", pointerEvents: "none" } : {}}
+          >
+            <h2 className="settings-section-title">Danger Zone</h2>
+            <DeleteAccount />
+          </div>
+
+          {/* Si no hay usuario, mostrar el overlay borroso y el mensaje SOLO sobre estas secciones */}
+          {!user && (
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                zIndex: 999,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(255,255,255,0.3)",
+                backdropFilter: "blur(2px)",
+              }}
+            >
+              <div
+                style={{
+                  background: "#fffbe6",
+                  color: "#b7950b",
+                  padding: "32px 40px",
+                  borderRadius: 12,
+                  boxShadow: "0 4px 24px rgba(183,149,11,0.12)",
+                  fontSize: 22,
+                  fontWeight: 700,
+                  marginBottom: 24,
+                  textAlign: "center",
+                  border: "2px solid #b7950b",
+                  maxWidth: 400,
+                }}
+              >
+                You need an account to access these settings.
+                <button
+                  onClick={() => navigate("/auth/login")}
+                  style={{
+                    marginTop: 24,
+                    padding: "12px 32px",
+                    borderRadius: 8,
+                    background: "#b7950b",
+                    color: "white",
+                    border: "none",
+                    fontWeight: 700,
+                    fontSize: 18,
+                    cursor: "pointer",
+                    boxShadow: "0 2px 8px rgba(183,149,11,0.12)",
+                    transition: "background 0.2s ease",
+                  }}
+                >
+                  Go to Login
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

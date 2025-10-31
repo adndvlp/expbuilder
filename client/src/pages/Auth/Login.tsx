@@ -111,6 +111,11 @@ const Login: React.FC = () => {
         <Link style={{ color: "#f1c40f" }} to="/auth/register">
           Sign Up
         </Link>
+        <div style={{ marginTop: 8 }}>
+          <Link style={{ color: "#f1c40f" }} to="/home">
+            ← Back to Home
+          </Link>
+        </div>
       </div>
     </div>
   );

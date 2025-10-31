@@ -87,77 +87,80 @@
 
 <script id="generated-script">
 
+  const trialSessionId =
+    (crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2, 10));
 
-        const trialSessionId =
-            (crypto.randomUUID
-              ? crypto.randomUUID()
-              : Math.random().toString(36).slice(2, 10));
+  let participantNumber;
 
-        let participantNumber;
-
-          async function saveSession(trialSessionId) {
-          const res = await fetch("/api/append-result/77ffc510-be89-498e-8813-344a1b47d9d2", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Accept: "*/*" },
-            body: JSON.stringify({
-              sessionId: trialSessionId,
-            }),
-          });
-
-          const result = await res.json();
-          participantNumber = result.participantNumber;
-          return participantNumber;
-    }
-(async () => {
-  participantNumber = await saveSession(trialSessionId);
-
-  if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
-    alert("The participant number is not assigned. Please, wait.");
-    throw new Error("participantNumber not assigned");
-  }
-    const jsPsych = initJsPsych({
-          on_data_update: function (data) {
-            const res = fetch("/api/append-result/77ffc510-be89-498e-8813-344a1b47d9d2", {
-              method: "PUT",
-              headers: { "Content-Type": "application/json", Accept: "*/*" },
-              body: JSON.stringify({
-                sessionId: trialSessionId,
-                response: data,
-              }),
-            });
-        
-          },
-
-          on_finish: function() {
-              jsPsych.data.displayData();
-          },
+  async function saveSession(trialSessionId) {
+   
+   const res = await fetch("/api/append-result/6d0be191-da86-4a91-8a5d-a052372c9dd1", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "*/*" },
+      body: JSON.stringify({
+        sessionId: trialSessionId,
+      }),
     });
+  
+    const result = await res.json();
+    participantNumber = result.participantNumber;
+    return participantNumber;
+    
+  }
 
-      const timeline = [];
+  (async () => {
+    participantNumber = await saveSession(trialSessionId);
 
-      const welcome = {
-        type: jsPsychHtmlButtonResponse,
-        stimulus: "Trial Preview",
-        choices: ['View'],
-      };
+    if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
+      alert("The participant number is not assigned. Please, wait.");
+      throw new Error("participantNumber not assigned");
+    }
 
-      timeline.push(welcome);
+    const jsPsych = initJsPsych({
 
-      
+    
+
+    on_data_update: function (data) {
+      const res = fetch("/api/append-result/6d0be191-da86-4a91-8a5d-a052372c9dd1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Accept: "*/*" },
+        body: JSON.stringify({
+          sessionId: trialSessionId,
+          response: data,
+        }),
+      });
+    },
+
+  on_finish: function() {
+    jsPsych.data.displayData
+  }
+});
+
+const timeline = [];
+
+const welcome = {
+  type: jsPsychHtmlButtonResponse,
+  stimulus: "Welcome to the experiment. Press 'Start' to begin.",
+  choices: ['Start'],
+};
+
+timeline.push(welcome);
+
+
     const preloadNew_Trial = {
         type: jsPsychPreload,
        files: [],
     }
     timeline.push(preloadNew_Trial);
     
-    const test_stimuli_New_Trial = [{stimulus: "",
-choices: ["n","d","e"]}];
+    const test_stimuli_New_Trial = [{stimulus: "dede"}];
     const New_Trial_timeline = {
-    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable("stimulus"),
-choices: jsPsych.timelineVariable("choices"),
+    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
     data: {
-      rt: "rt",
-response: "response",
+      response: "response",
+rt: "rt",
 stimulus: "stimulus",
     },
     };
@@ -170,8 +173,8 @@ stimulus: "stimulus",
     timeline.push(New_Trial_procedure);
   
 
-      jsPsych.run(timeline);
-      
-      })()
-      
+jsPsych.run(timeline);
+
+})();
+
 </script></body></html>

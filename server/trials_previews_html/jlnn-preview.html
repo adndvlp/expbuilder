@@ -89,14 +89,14 @@
 
 
         const trialSessionId =
-            (crypto.randomUUID
+            "undefined_result_" + (crypto.randomUUID
               ? crypto.randomUUID()
               : Math.random().toString(36).slice(2, 10));
 
         let participantNumber;
 
           async function saveSession(trialSessionId) {
-          const res = await fetch("/api/append-result/77ffc510-be89-498e-8813-344a1b47d9d2", {
+          const res = await fetch("/api/append-result/bbdb3c0b-d140-4605-bc5b-7f3b209c3281", {
             method: "POST",
             headers: { "Content-Type": "application/json", Accept: "*/*" },
             body: JSON.stringify({
@@ -117,7 +117,7 @@
   }
     const jsPsych = initJsPsych({
           on_data_update: function (data) {
-            const res = fetch("/api/append-result/77ffc510-be89-498e-8813-344a1b47d9d2", {
+            const res = fetch("/api/append-result/bbdb3c0b-d140-4605-bc5b-7f3b209c3281", {
               method: "PUT",
               headers: { "Content-Type": "application/json", Accept: "*/*" },
               body: JSON.stringify({
@@ -144,31 +144,57 @@
       timeline.push(welcome);
 
       
-    const preloadNew_Trial = {
+
+    const test_stimuli_Loop = [
+  {}
+];
+    
+    
+    
+    const preloadNew_Trial_3 = {
         type: jsPsychPreload,
        files: [],
     }
-    timeline.push(preloadNew_Trial);
+    timeline.push(preloadNew_Trial_3);
     
-    const test_stimuli_New_Trial = [{stimulus: "",
-choices: ["n","d","e"]}];
-    const New_Trial_timeline = {
-    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable("stimulus"),
-choices: jsPsych.timelineVariable("choices"),
+    const New_Trial_3_timeline = {
+    type: jsPsychAudioKeyboardResponse, 
     data: {
-      rt: "rt",
-response: "response",
-stimulus: "stimulus",
+      response: "response_New_Trial_3",
+rt: "rt_New_Trial_3",
+stimulus: "stimulus_New_Trial_3",
     },
     };
-    const New_Trial_procedure = {
-    timeline: 
-    [New_Trial_timeline],
-    timeline_variables: test_stimuli_New_Trial,
+
+
+
     
+    const preloadNew_Trial_4 = {
+        type: jsPsychPreload,
+       files: [],
+    }
+    timeline.push(preloadNew_Trial_4);
+    
+    const New_Trial_4_timeline = {
+    type: jsPsychAudioButtonResponse, 
+    data: {
+      stimulus: "stimulus_New_Trial_4",
+rt: "rt_New_Trial_4",
+response: "response_New_Trial_4",
+    },
     };
-    timeline.push(New_Trial_procedure);
-  
+
+
+
+
+const loop_procedure = {
+  timeline: [New_Trial_3_timeline, New_Trial_4_timeline],
+  timeline_variables: test_stimuli_Loop,
+  repetitions: 1,
+  randomize_order: false,
+};
+timeline.push(loop_procedure);
+
 
       jsPsych.run(timeline);
       

@@ -24,6 +24,7 @@ export interface Loop {
   code: string;
   csvJson?: any[];
   csvColumns?: string[];
+  branches?: Array<string | number>;
 }
 
 export interface Trial {
@@ -46,6 +47,8 @@ export interface Trial {
   categoryData?: any[];
 
   editPluginMode?: boolean;
+
+  branches?: Array<string | number>;
 }
 
 export type TrialOrLoop = Trial | Loop;

@@ -6,12 +6,11 @@ import { useState } from "react";
 
 import ReactFlow from "reactflow";
 import TrialNode from "./TrialNode";
-import LoopNode from "./LoopNode";
+import LoopSubCanvas from "./LoopSubCanvas";
 
-// Memoize nodeTypes outside the component to avoid recreating on each render
+// Solo un tipo de nodo: trial
 const nodeTypes = {
   trial: TrialNode,
-  loop: LoopNode,
 };
 
 type Props = {};
@@ -28,6 +27,7 @@ function Canvas({}: Props) {
   } = useTrials();
 
   const [showLoopModal, setShowLoopModal] = useState(false);
+  const [openLoop, setOpenLoop] = useState<any>(null); // loop actualmente abierto
 
   function isTrial(trial: any): trial is Trial {
     return "parameters" in trial;
@@ -81,94 +81,61 @@ function Canvas({}: Props) {
   let edges: any[] = [];
   let yPos = 100;
   const xTrial = 250;
-  const xLoop = 60;
   const yStep = 40;
 
-  trials.forEach((item) => {
-    if (isTrial(item)) {
-      // Trial normal, alineado en la columna de trials
-      nodes.push({
-        id: String(item.id),
-        type: "trial",
-        data: {
-          name: item.name,
-          selected: selectedTrial && selectedTrial.id === item.id,
-          onClick: () => {
+  // Para el rediseño: los trials que están dentro de loops NO se renderizan, y los loops se renderizan como trials
+  // Primero, obtener los ids de los trials que están dentro de loops
+  const trialIdsInLoops = trials
+    .filter((item) => "trials" in item)
+    .flatMap((loop: any) => loop.trials.map((t: any) => t.id));
+
+  // Renderizar los bloques en el orden original del array de trials, omitiendo los trials que están dentro de loops
+  const allBlocks = trials.filter((item) =>
+    isTrial(item) ? !trialIdsInLoops.includes(item.id) : true
+  );
+
+  allBlocks.forEach((item) => {
+    // Usar TrialNode para ambos tipos
+    nodes.push({
+      id: isTrial(item) ? String(item.id) : `loop-${item.id}`,
+      type: "trial",
+      data: {
+        name: item.name,
+        selected: isTrial(item)
+          ? selectedTrial && selectedTrial.id === item.id
+          : (selectedLoop && selectedLoop.id === item.id) ||
+            (openLoop && openLoop.id === item.id),
+        onClick: () => {
+          if (isTrial(item)) {
             onSelectTrial(item);
             setSelectedLoop(null);
-          },
-        },
-        position: { x: xTrial, y: yPos },
-      });
-      // Edge con el trial anterior si existe y es trial
-      if (nodes.length > 1 && nodes[nodes.length - 2].type === "trial") {
-        edges.push({
-          id: `e${nodes[nodes.length - 2].id}-${item.id}`,
-          source: String(nodes[nodes.length - 2].id),
-          target: String(item.id),
-        });
-      }
-      yPos += yStep;
-    } else if ("trials" in item) {
-      // Loop: loop centrado en la mitad del rango de los trials
-      const loopTrials = item.trials;
-      if (loopTrials.length > 0) {
-        let trialYs: number[] = [];
-        let trialNodes: any[] = [];
-        // Trials del loop
-        for (let tIdx = 0; tIdx < loopTrials.length; tIdx++) {
-          trialNodes.push({
-            id: String(loopTrials[tIdx].id),
-            type: "trial",
-            data: {
-              name: loopTrials[tIdx].name,
-              selected:
-                selectedTrial && selectedTrial.id === loopTrials[tIdx].id,
-              onClick: () => {
-                onSelectTrial(loopTrials[tIdx]);
-                setSelectedLoop(null);
-              },
-            },
-            position: { x: xTrial, y: yPos },
-          });
-          trialYs.push(yPos);
-          // Edge entre trials dentro del loop
-          if (tIdx > 0) {
-            edges.push({
-              id: `e${loopTrials[tIdx - 1].id}-${loopTrials[tIdx].id}`,
-              source: String(loopTrials[tIdx - 1].id),
-              target: String(loopTrials[tIdx].id),
-            });
+            // Si el trial pertenece a un loop, mantener openLoop
+            const parentLoop = trials.find(
+              (t: any) =>
+                t.trials && t.trials.some((tr: any) => tr.id === item.id)
+            );
+            if (parentLoop) {
+              setOpenLoop(parentLoop);
+            } else {
+              setOpenLoop(null);
+            }
+          } else {
+            setSelectedLoop(item);
+            setSelectedTrial(null);
+            setOpenLoop(item);
           }
-          // Edge del loop a cada trial del loop
-          edges.push({
-            id: `e${`loop-${item.id}`}-${loopTrials[tIdx].id}`,
-            source: `loop-${item.id}`,
-            target: String(loopTrials[tIdx].id),
-          });
-          yPos += yStep;
-        }
-        // Loop node alineado a la izquierda y centrado verticalmente respecto a los trials
-        const loopCenterY =
-          trialYs.length > 0
-            ? trialYs[0] + (trialYs[trialYs.length - 1] - trialYs[0]) / 2
-            : yPos;
-        nodes.push({
-          id: `loop-${item.id}`,
-          type: "loop",
-          data: {
-            name: item.name,
-            selected: selectedLoop && selectedLoop.id === item.id,
-            onClick: () => {
-              setSelectedLoop(item);
-              setSelectedTrial(null);
-            },
-          },
-          position: { x: xLoop, y: loopCenterY },
-        });
-        nodes.push(...trialNodes);
-      }
+        },
+      },
+      position: { x: xTrial, y: yPos },
+    });
+    if (nodes.length > 1) {
+      edges.push({
+        id: `e${nodes[nodes.length - 2].id}-${nodes[nodes.length - 1].id}`,
+        source: String(nodes[nodes.length - 2].id),
+        target: String(nodes[nodes.length - 1].id),
+      });
     }
+    yPos += yStep;
   });
 
   const isDark =
@@ -287,6 +254,45 @@ function Canvas({}: Props) {
           }}
           style={{ background: "transparent", zIndex: 2 }}
         />
+        {/* Sub-canvas para loop abierto (por selección de loop o trial interno) */}
+        {openLoop && openLoop.trials && (
+          <LoopSubCanvas
+            trials={openLoop.trials}
+            loopName={openLoop.name}
+            isDark={isDark}
+            onClose={() => {
+              setOpenLoop(null);
+              setSelectedLoop(null);
+            }}
+            selectedTrial={selectedTrial}
+            onSelectTrial={(trial) => {
+              setSelectedTrial(trial);
+              setSelectedLoop(null);
+              // Actualiza openLoop con la referencia actualizada desde trials
+              const updatedLoop = trials.find((t: any) => t.id === openLoop.id);
+              if (updatedLoop) setOpenLoop(updatedLoop);
+            }}
+            onUpdateTrial={(updatedTrial) => {
+              // Actualiza el trial dentro del loop y refresca openLoop y trials
+              const updatedLoops = trials.map((loop: any) => {
+                if (loop.id === openLoop.id) {
+                  return {
+                    ...loop,
+                    trials: loop.trials.map((t: any) =>
+                      t.id === updatedTrial.id ? updatedTrial : t
+                    ),
+                  };
+                }
+                return loop;
+              });
+              setTrials(updatedLoops);
+              const refreshedLoop = updatedLoops.find(
+                (l: any) => l.id === openLoop.id
+              );
+              if (refreshedLoop) setOpenLoop(refreshedLoop);
+            }}
+          />
+        )}
         {/* Modales igual que antes */}
         {showLoopModal && (
           <div

@@ -1,5 +1,7 @@
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { dialog } from "electron";
+import JSZip from "jszip";
+import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
@@ -118,5 +120,42 @@ if (process.env.IS_ELECTRON_BACKEND === "1") {
 
   app.on("window-all-closed", () => {
     if (process.platform !== "darwin") app.quit();
+  });
+  // Handler to save ZIP of CSVs
+  ipcMain.handle("save-csv-zip", async (_event, { files, defaultName }) => {
+    try {
+      // Select destination folder
+      const { canceled, filePath } = await dialog.showSaveDialog({
+        title: "Save sessions ZIP",
+        defaultPath: defaultName || "sessions.zip",
+        filters: [{ name: "ZIP", extensions: ["zip"] }],
+      });
+      if (canceled || !filePath) return { success: false, error: "Cancelled" };
+      const zip = new JSZip();
+      for (const f of files) {
+        zip.file(f.name, f.content);
+      }
+      const zipContent = await zip.generateAsync({ type: "nodebuffer" });
+      fs.writeFileSync(filePath, zipContent);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  // Handler to save db.json in the chosen path
+  ipcMain.handle("save-json-file", async (_event, { content, defaultName }) => {
+    try {
+      const { canceled, filePath } = await dialog.showSaveDialog({
+        title: "Save database file",
+        defaultPath: defaultName || "db.json",
+        filters: [{ name: "JSON", extensions: ["json"] }],
+      });
+      if (canceled || !filePath) return { success: false, error: "Cancelled" };
+      fs.writeFileSync(filePath, content, "utf8");
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
   });
 }

@@ -4,7 +4,6 @@ import Canvas from "./components/Canvas";
 import ConfigPanel from "./components/ConfigPanel";
 import TrialsProvider from "./providers/TrialsProvider";
 import UrlProvider from "./providers/UrlProvider";
-import ResultsList from "./components/ResultsList";
 import ExperimentPreview from "./components/ExperimentPreview";
 import { useEffect, useRef, useState } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -126,7 +125,6 @@ function ExperimentBuilder() {
               >
                 <div className="timeline-header">Timeline</div>
                 <Timeline />
-                {!isDevMode && <ResultsList />}
 
                 {/* Barra de redimensionamiento derecha */}
                 <div
@@ -167,7 +165,6 @@ function ExperimentBuilder() {
                   </div>
                 )}
 
-                {!isDevMode && <ExperimentPreview />}
                 <label
                   htmlFor="devMode"
                   className="flex items-center cursor-pointer gap-2"
@@ -182,6 +179,7 @@ function ExperimentBuilder() {
                     className="ml-2 h-4 w-4 cursor-pointer"
                   />
                 </label>
+                {!isDevMode && <ExperimentPreview />}
                 {!showConfig && (
                   <div
                     style={{

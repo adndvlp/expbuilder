@@ -18,7 +18,7 @@ function Dashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showPromptModal, setShowPromptModal] = useState(false);
   const [availableStorages, setAvailableStorages] = useState<string[]>([]);
-  // Eliminado el provider/context de storage
+
   const navigate = useNavigate();
 
   // Cargar experimentos al montar

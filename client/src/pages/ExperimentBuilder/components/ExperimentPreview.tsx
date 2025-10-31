@@ -39,7 +39,7 @@ function ExperimentPreview() {
       const trialCode = `
 
         const trialSessionId =
-            (crypto.randomUUID
+            "${selectedTrial?.name}_result_" + (crypto.randomUUID
               ? crypto.randomUUID()
               : Math.random().toString(36).slice(2, 10));
 
