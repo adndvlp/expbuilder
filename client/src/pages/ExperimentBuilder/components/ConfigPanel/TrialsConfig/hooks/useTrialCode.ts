@@ -229,6 +229,7 @@ export function useTrialCode({
   };
 
   function toCamelCase(str: string): string {
+    if (!str) return "";
     return str
       .replace(/^plugin/, "jsPsych") // elimina el prefijo "plugin-" y agrega "jsPsych"
       .split("-") // divide el string por guiones

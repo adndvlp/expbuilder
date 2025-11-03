@@ -89,14 +89,14 @@
 
 
         const trialSessionId =
-            "New Trial 5_result_" + (crypto.randomUUID
+            "New Trial_result_" + (crypto.randomUUID
               ? crypto.randomUUID()
               : Math.random().toString(36).slice(2, 10));
 
         let participantNumber;
 
           async function saveSession(trialSessionId) {
-          const res = await fetch("/api/append-result/59a22d85-e25a-4def-bc26-3c3ed90be07b", {
+          const res = await fetch("/api/append-result/0b371cd8-d4b8-4d7a-b1bf-bdeedd8b09c8", {
             method: "POST",
             headers: { "Content-Type": "application/json", Accept: "*/*" },
             body: JSON.stringify({
@@ -117,7 +117,7 @@
   }
     const jsPsych = initJsPsych({
           on_data_update: function (data) {
-            const res = fetch("/api/append-result/59a22d85-e25a-4def-bc26-3c3ed90be07b", {
+            const res = fetch("/api/append-result/0b371cd8-d4b8-4d7a-b1bf-bdeedd8b09c8", {
               method: "PUT",
               headers: { "Content-Type": "application/json", Accept: "*/*" },
               body: JSON.stringify({
@@ -144,140 +144,51 @@
       timeline.push(welcome);
 
       
-    const test_stimuli_plugin_webgazer_init_camera = [{instructions: "`\n            <p>Position your head so that the webcam has a good view of your eyes.</p>\n            <p>Center your face in the box and look directly towards the camera.</p>\n            <p>It is important that you try and keep your head reasonably still throughout the experiment, so please take a moment to adjust your setup to be comfortable.</p>\n            <p>When your face is centered in the box and the box is green, you can click to continue.</p>`",
-button_text: "Continue"}];
-
+    const preloadNew_Trial = {
+        type: jsPsychPreload,
+       files: [],
+    }
+    timeline.push(preloadNew_Trial);
     
-    const plugin_webgazer_init_camera_timeline = {
-    type: jsPsychWebgazerInitCamera, 
-    instructions: jsPsych.timelineVariable("instructions"),
-button_text: jsPsych.timelineVariable("button_text"),
+    const test_stimuli_New_Trial = [{stimulus: "",
+choices: undefined,
+button_html: function(r,s){return`<button class="jspsych-btn">${r}</button>`},
+prompt: null,
+trial_duration: null,
+button_layout: "grid",
+grid_rows: 1,
+grid_columns: null,
+response_ends_trial: true,
+trial_ends_after_audio: false,
+response_allowed_while_playing: true,
+enable_button_after: 0}];
+    const New_Trial_timeline = {
+    type: jsPsychAudioButtonResponse, stimulus: jsPsych.timelineVariable("stimulus"),
+choices: jsPsych.timelineVariable("choices"),
+button_html: jsPsych.timelineVariable("button_html"),
+prompt: jsPsych.timelineVariable("prompt"),
+trial_duration: jsPsych.timelineVariable("trial_duration"),
+button_layout: jsPsych.timelineVariable("button_layout"),
+grid_rows: jsPsych.timelineVariable("grid_rows"),
+grid_columns: jsPsych.timelineVariable("grid_columns"),
+response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
+trial_ends_after_audio: jsPsych.timelineVariable("trial_ends_after_audio"),
+response_allowed_while_playing: jsPsych.timelineVariable("response_allowed_while_playing"),
+enable_button_after: jsPsych.timelineVariable("enable_button_after"),
     data: {
-      load_time: "load_time",
-    },};;
-    
-    const plugin_webgazer_init_camera_procedure = {
+      stimulus: "stimulus",
+rt: "rt",
+response: "response",
+    },
+    };
+    const New_Trial_procedure = {
     timeline: 
-    [
+    [New_Trial_timeline],
+    timeline_variables: test_stimuli_New_Trial,
     
-    
-    plugin_webgazer_init_camera_timeline 
-    ],
-    timeline_variables: test_stimuli_plugin_webgazer_init_camera,
-  };
-    timeline.push(plugin_webgazer_init_camera_procedure);
-  ;
-    const test_stimuli_plugin_webgazer_calibrate = [{calibration_points: [[10,10],[10,50],[10,90],[50,10],[50,50],[50,90],[90,10],[90,50],[90,90]],
-calibration_mode: "click",
-point_size: 20,
-repetitions_per_point: 1,
-randomize_calibration_order: false,
-time_to_saccade: 1000,
-time_per_point: 1000}];
-
-    
-    const plugin_webgazer_calibrate_timeline = {
-    type: jsPsychWebgazerCalibrate, 
-    calibration_points: jsPsych.timelineVariable("calibration_points"),
-calibration_mode: jsPsych.timelineVariable("calibration_mode"),
-point_size: jsPsych.timelineVariable("point_size"),
-repetitions_per_point: jsPsych.timelineVariable("repetitions_per_point"),
-randomize_calibration_order: jsPsych.timelineVariable("randomize_calibration_order"),
-time_to_saccade: jsPsych.timelineVariable("time_to_saccade"),
-time_per_point: jsPsych.timelineVariable("time_per_point"),
-    data: {
-      
-    },};;
-    
-    const plugin_webgazer_calibrate_procedure = {
-    timeline: 
-    [
-    
-    
-    plugin_webgazer_calibrate_timeline 
-    ],
-    timeline_variables: test_stimuli_plugin_webgazer_calibrate,
-  };
-    timeline.push(plugin_webgazer_calibrate_procedure);
-  ;
-    const test_stimuli_plugin_webgazer_validate = [{validation_points: [[10,10],[10,50],[10,90],[50,10],[50,50],[50,90],[90,10],[90,50],[90,90]],
-validation_point_coordinates: "percent",
-roi_radius: 200,
-randomize_validation_order: false,
-time_to_saccade: 1000,
-validation_duration: 2000,
-point_size: 20,
-show_validation_data: false}];
-
-    
-    const plugin_webgazer_validate_timeline = {
-    type: jsPsychWebgazerValidate, validation_points: jsPsych.timelineVariable("validation_points"),
-validation_point_coordinates: jsPsych.timelineVariable("validation_point_coordinates"),
-roi_radius: jsPsych.timelineVariable("roi_radius"),
-randomize_validation_order: jsPsych.timelineVariable("randomize_validation_order"),
-time_to_saccade: jsPsych.timelineVariable("time_to_saccade"),
-validation_duration: jsPsych.timelineVariable("validation_duration"),
-point_size: jsPsych.timelineVariable("point_size"),
-show_validation_data: jsPsych.timelineVariable("show_validation_data"),
-    data: {
-      task: 'validate'
-    }};;
-    
-    const plugin_webgazer_validate_procedure = {
-    timeline: 
-    [
-    
-    
-    plugin_webgazer_validate_timeline 
-    ],
-    timeline_variables: test_stimuli_plugin_webgazer_validate,
-  };
-    timeline.push(plugin_webgazer_validate_procedure);
-  ;
-    const test_stimuli_plugin_webgazer_recalibrate = [{}];
-
-    ;
-    
-    const plugin_webgazer_recalibrate_procedure = {
-    timeline: 
-    [
-    
-    
-    
-    ],
-    timeline_variables: test_stimuli_plugin_webgazer_recalibrate,
-  };
-    timeline.push(plugin_webgazer_recalibrate_procedure);
-  ;
-    const recalibrate_timeline = {
-        timeline: [
-        plugin_webgazer_calibrate_procedure, plugin_webgazer_validate_procedure],
-        conditional_function: function(){
-          var validation_data = jsPsych.data.get().filter({task: 'validate'}).values()[0];
-          return validation_data.percent_in_roi.some(function(x){
-            var minimum_percent_acceptable = 50;
-            return x < minimum_percent_acceptable;
-          });
-        },
-        data: {
-          phase: 'recalibration'
-        }
-      } 
- const recalibrateWebGazer_procedure = {
-    timeline: 
-    [recalibrate_timeline],
-    timeline_variables: test_stimuli_plugin_webgazer_recalibrate,
-  };
-    timeline.push(recalibrateWebGazer_procedure);
-  ;const calibration_done = {
-        type: jsPsychHtmlButtonResponse,
-        stimulus: `
-          <p>Great, we're done with calibration!</p>
-        `,
-        choices: ['OK']
-      }
-    timeline.push(calibration_done);
-
+    };
+    timeline.push(New_Trial_procedure);
+  
 
       jsPsych.run(timeline);
       

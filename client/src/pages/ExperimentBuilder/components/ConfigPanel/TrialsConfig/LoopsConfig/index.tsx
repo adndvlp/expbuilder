@@ -96,6 +96,7 @@ function LoopsConfig({ loop }: Props) {
   } = useTrialOrders();
 
   function toCamelCase(str: string): string {
+    if (!str) return "";
     return str
       .replace(/^plugin/, "jsPsych") // elimina el prefijo "plugin-" y agrega "jsPsych"
       .split("-") // divide el string por guiones
@@ -106,119 +107,121 @@ function LoopsConfig({ loop }: Props) {
   }
 
   const trialsData =
-    loop?.trials.map((trial: any) => {
-      // debugger;
-      const { parameters, data } = usePluginParameters(trial.plugin);
-      const fieldGroups = {
-        pluginParameters: parameters,
-      };
-      const { getColumnValue } = useCsvMapper({
-        fieldGroups: fieldGroups,
-      });
-
-      const hasMediaParameters = (params: any[]) => {
-        return params.some((param) => {
-          const keyLower = param.key.toLowerCase();
-          return (
-            keyLower.includes("img") ||
-            keyLower.includes("image") ||
-            keyLower.includes("stimulus") ||
-            keyLower.includes("audio") ||
-            keyLower.includes("video") ||
-            keyLower.includes("sound") ||
-            keyLower.includes("media")
-          );
+    loop?.trials
+      .filter((trial: any) => trial.plugin) // Filter out trials without plugin
+      .map((trial: any) => {
+        // debugger;
+        const { parameters, data } = usePluginParameters(trial.plugin);
+        const fieldGroups = {
+          pluginParameters: parameters,
+        };
+        const { getColumnValue } = useCsvMapper({
+          fieldGroups: fieldGroups,
         });
-      };
 
-      const needsFileUpload =
-        /plugin-audio|plugin-video|plugin-image|multi-image|custom-image|plugin-preload/i.test(
-          trial.plugin
-        ) || hasMediaParameters(parameters);
-
-      const getFileTypeAndFolder = () => {
-        if (/plugin-audio/i.test(trial.plugin)) {
-          return { accept: "audio/*", folder: "aud" };
-        }
-        if (/plugin-video/i.test(trial.plugin)) {
-          return { accept: "video/*", folder: "vid" };
-        }
-
-        if (/plugin-preload/i.test(trial.plugin)) {
-          return { accept: "audio/*,video/*,image/*", folder: "all" };
-        }
-
-        // For custom plugins, determine file type based on parameters
-        if (hasMediaParameters(parameters)) {
-          const hasAudio = parameters.some((p) => {
-            const keyLower = p.key.toLowerCase();
-            return keyLower.includes("audio") || keyLower.includes("sound");
-          });
-          const hasVideo = parameters.some((p) => {
-            const keyLower = p.key.toLowerCase();
-            return keyLower.includes("video");
-          });
-          const hasImage = parameters.some((p) => {
-            const keyLower = p.key.toLowerCase();
+        const hasMediaParameters = (params: any[]) => {
+          return params.some((param) => {
+            const keyLower = param.key.toLowerCase();
             return (
               keyLower.includes("img") ||
               keyLower.includes("image") ||
-              keyLower.includes("stimulus")
+              keyLower.includes("stimulus") ||
+              keyLower.includes("audio") ||
+              keyLower.includes("video") ||
+              keyLower.includes("sound") ||
+              keyLower.includes("media")
             );
           });
+        };
 
-          // If multiple types, accept all
-          if ([hasAudio, hasVideo, hasImage].filter(Boolean).length > 1) {
+        const needsFileUpload =
+          /plugin-audio|plugin-video|plugin-image|multi-image|custom-image|plugin-preload/i.test(
+            trial.plugin
+          ) || hasMediaParameters(parameters);
+
+        const getFileTypeAndFolder = () => {
+          if (/plugin-audio/i.test(trial.plugin)) {
+            return { accept: "audio/*", folder: "aud" };
+          }
+          if (/plugin-video/i.test(trial.plugin)) {
+            return { accept: "video/*", folder: "vid" };
+          }
+
+          if (/plugin-preload/i.test(trial.plugin)) {
             return { accept: "audio/*,video/*,image/*", folder: "all" };
           }
 
-          if (hasAudio) return { accept: "audio/*", folder: "aud" };
-          if (hasVideo) return { accept: "video/*", folder: "vid" };
-          if (hasImage) return { accept: "image/*", folder: "img" };
-        }
+          // For custom plugins, determine file type based on parameters
+          if (hasMediaParameters(parameters)) {
+            const hasAudio = parameters.some((p) => {
+              const keyLower = p.key.toLowerCase();
+              return keyLower.includes("audio") || keyLower.includes("sound");
+            });
+            const hasVideo = parameters.some((p) => {
+              const keyLower = p.key.toLowerCase();
+              return keyLower.includes("video");
+            });
+            const hasImage = parameters.some((p) => {
+              const keyLower = p.key.toLowerCase();
+              return (
+                keyLower.includes("img") ||
+                keyLower.includes("image") ||
+                keyLower.includes("stimulus")
+              );
+            });
 
-        // Por defecto imagen
-        return { accept: "image/*", folder: "img" };
-      };
+            // If multiple types, accept all
+            if ([hasAudio, hasVideo, hasImage].filter(Boolean).length > 1) {
+              return { accept: "audio/*,video/*,image/*", folder: "all" };
+            }
 
-      const { folder } = getFileTypeAndFolder();
+            if (hasAudio) return { accept: "audio/*", folder: "aud" };
+            if (hasVideo) return { accept: "video/*", folder: "vid" };
+            if (hasImage) return { accept: "image/*", folder: "img" };
+          }
 
-      const { uploadedFiles } = useFileUpload({ folder });
+          // Por defecto imagen
+          return { accept: "image/*", folder: "img" };
+        };
 
-      const filteredFiles = uploadedFiles.filter(
-        (file) =>
-          file &&
-          typeof file === "object" &&
-          typeof file.name === "string" &&
-          (folder === "all" || file.type === folder)
-      );
+        const { folder } = getFileTypeAndFolder();
 
-      const { genTrialCode, mappedJson } = useTrialCode({
-        pluginName: trial.plugin,
-        parameters: parameters,
-        data: data,
-        getColumnValue: getColumnValue,
-        needsFileUpload: needsFileUpload || false,
-        columnMapping: trial.columnMapping || {},
-        filteredFiles: filteredFiles || [],
-        csvJson: trial.csvJson ?? [],
-        trialName: trial.name,
-        includesExtensions: trial.includesExtensions || false,
-        extensions: trial.extensions || "",
-        orders: orders,
-        stimuliOrders: stimuliOrders,
-        categories: categories,
-        categoryData: categoryData,
-        isInLoop: true,
-      });
+        const { uploadedFiles } = useFileUpload({ folder });
 
-      return {
-        trialName: trial.name,
-        pluginName: toCamelCase(trial.plugin),
-        timelineProps: genTrialCode(),
-        mappedJson,
-      };
-    }) || [];
+        const filteredFiles = uploadedFiles.filter(
+          (file) =>
+            file &&
+            typeof file === "object" &&
+            typeof file.name === "string" &&
+            (folder === "all" || file.type === folder)
+        );
+
+        const { genTrialCode, mappedJson } = useTrialCode({
+          pluginName: trial.plugin,
+          parameters: parameters,
+          data: data,
+          getColumnValue: getColumnValue,
+          needsFileUpload: needsFileUpload || false,
+          columnMapping: trial.columnMapping || {},
+          filteredFiles: filteredFiles || [],
+          csvJson: trial.csvJson ?? [],
+          trialName: trial.name,
+          includesExtensions: trial.includesExtensions || false,
+          extensions: trial.extensions || "",
+          orders: orders,
+          stimuliOrders: stimuliOrders,
+          categories: categories,
+          categoryData: categoryData,
+          isInLoop: true,
+        });
+
+        return {
+          trialName: trial.name,
+          pluginName: toCamelCase(trial.plugin),
+          timelineProps: genTrialCode(),
+          mappedJson,
+        };
+      }) || [];
 
   function mergeStimuliArrays(arrays: Record<string, any>[][]) {
     const maxLength = Math.max(...arrays.map((arr) => arr.length));

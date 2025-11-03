@@ -57,3 +57,33 @@
     color 0.3s,
     border 0.3s;
 }
+
+.trial-node__add-branch-btn {
+  position: absolute;
+  bottom: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #4caf50;
+  color: #fff;
+  border: 2px solid #fff;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s;
+  z-index: 150;
+  line-height: 1;
+  padding: 0;
+}
+
+.trial-node__add-branch-btn:hover {
+  background: #45a049;
+  transform: translateX(-50%) scale(1.1);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}

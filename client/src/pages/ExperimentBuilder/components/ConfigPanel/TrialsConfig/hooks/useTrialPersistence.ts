@@ -35,13 +35,51 @@ export function useTrialPersistence({
     }
   };
 
-  // Borrar trial del estado global y de la base de datos
+  // Borrar trial del estado global y de la base de datos, y eliminar referencias en branches
   const handleDeleteTrial = () => {
     if (!selectedTrial) return;
-    const updatedTrials = trials.filter((t) => t.id !== selectedTrial.id);
+    const trialIdToDelete = selectedTrial.id;
+    // Elimina el trial del array principal
+    let updatedTrials = trials.filter((t) => t.id !== trialIdToDelete);
+
+    // Elimina referencias en branches de todos los trials y loops
+    updatedTrials = updatedTrials.map((t: any) => {
+      // Si es un trial con branches
+      if (t.branches && Array.isArray(t.branches)) {
+        return {
+          ...t,
+          branches: t.branches.filter(
+            (id: number | string) =>
+              id !== trialIdToDelete && id !== String(trialIdToDelete)
+          ),
+        };
+      }
+      // Si es un loop con trials
+      if (t.trials && Array.isArray(t.trials)) {
+        return {
+          ...t,
+          trials: t.trials
+            .map((trial: any) => {
+              if (trial.branches && Array.isArray(trial.branches)) {
+                return {
+                  ...trial,
+                  branches: trial.branches.filter(
+                    (id: number | string) =>
+                      id !== trialIdToDelete && id !== String(trialIdToDelete)
+                  ),
+                };
+              }
+              return trial;
+            })
+            .filter((trial: any) => trial.id !== trialIdToDelete),
+        };
+      }
+      return t;
+    });
+
     setTrials(updatedTrials);
     setSelectedTrial(null);
-    deleteTrial(selectedTrial.id);
+    deleteTrial(trialIdToDelete);
   };
 
   return {

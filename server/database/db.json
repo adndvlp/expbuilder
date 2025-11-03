@@ -1,42 +1,69 @@
 {
   "experiments": [
     {
-      "experimentID": "59a22d85-e25a-4def-bc26-3c3ed90be07b",
-      "name": "flksmv",
-      "createdAt": "2025-10-31T22:09:19.569Z",
-      "updatedAt": "2025-10-31T22:09:19.569Z",
+      "experimentID": "0173354c-b4d6-4ad3-8d1b-bf607b987bf6",
+      "name": "n´nk",
+      "createdAt": "2025-11-03T02:23:46.046Z",
+      "updatedAt": "2025-11-03T02:23:46.046Z",
       "storage": "drive"
     }
   ],
   "trials": [
     {
-      "experimentID": "59a22d85-e25a-4def-bc26-3c3ed90be07b",
+      "experimentID": "0173354c-b4d6-4ad3-8d1b-bf607b987bf6",
       "data": {
         "trials": [
           {
-            "id": 1761951905574,
+            "id": 1762136628685,
             "type": "Trial",
             "name": "New Trial",
             "parameters": {
               "includesExtensions": false,
               "extensionType": ""
             },
-            "trialCode": "\n    const preloadNew_Trial = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial);\n    \n    const test_stimuli_New_Trial = [{stimulus: \"<div id=\\\"iwkg\\\" style=\\\"box-sizing: border-box; text-align: left; font-size: 100px; font-family: Arial Black, Gadget, sans-serif; color: red;\\\">Type or design here</div>\"}];\n    const New_Trial_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n    data: {\n      response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n    },\n    };\n    const New_Trial_procedure = {\n    timeline: \n    [New_Trial_timeline],\n    timeline_variables: test_stimuli_New_Trial,\n    \n    };\n    timeline.push(New_Trial_procedure);\n  ",
-            "plugin": "plugin-html-keyboard-response",
+            "trialCode": "\n    const preloadNew_Trial = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial);\n    \n    const New_Trial_timeline = {\n    type: jsPsychAudioSliderResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial\"),\n    data: {\n      response: \"response_New_Trial\",\nrt: \"rt_New_Trial\",\nstimulus: \"stimulus_New_Trial\",\nslider_start: \"slider_start_New_Trial\",\n    },\n    };",
+            "plugin": "plugin-audio-slider-response",
+            "branches": [
+              "loop_1762139103216"
+            ],
             "columnMapping": {
               "stimulus": {
                 "source": "typed",
-                "value": "<div id=\"iwkg\" style=\"box-sizing: border-box; text-align: left; font-size: 100px; font-family: Arial Black, Gadget, sans-serif; color: red;\">Type or design here</div>"
+                "value": "kmñkmñl"
               },
-              "choices": {
+              "min": {
+                "source": "none",
+                "value": null
+              },
+              "max": {
+                "source": "none",
+                "value": null
+              },
+              "slider_start": {
+                "source": "none",
+                "value": null
+              },
+              "step": {
+                "source": "none",
+                "value": null
+              },
+              "labels": {
+                "source": "none",
+                "value": null
+              },
+              "slider_width": {
+                "source": "none",
+                "value": null
+              },
+              "button_label": {
+                "source": "none",
+                "value": null
+              },
+              "require_movement": {
                 "source": "none",
                 "value": null
               },
               "prompt": {
-                "source": "none",
-                "value": null
-              },
-              "stimulus_duration": {
                 "source": "none",
                 "value": null
               },
@@ -47,31 +74,413 @@
               "response_ends_trial": {
                 "source": "none",
                 "value": null
+              },
+              "trial_ends_after_audio": {
+                "source": "none",
+                "value": null
+              },
+              "response_allowed_while_playing": {
+                "source": "none",
+                "value": null
               }
             },
-            "csvJson": [],
-            "csvColumns": [],
             "orders": false,
             "orderColumns": [],
             "stimuliOrders": [],
             "categories": false,
-            "categoryColumn": ""
+            "categoryColumn": "",
+            "csvFromLoop": true,
+            "csvJson": [],
+            "csvColumns": []
+          },
+          {
+            "id": "loop_1762139103216",
+            "name": "Loop 1",
+            "repetitions": 1,
+            "randomize": false,
+            "orders": false,
+            "stimuliOrders": [],
+            "orderColumns": [],
+            "categoryColumn": "",
+            "categories": false,
+            "categoryData": [],
+            "trials": [
+              {
+                "id": 1762136631603,
+                "type": "Trial",
+                "name": "New Trial 1",
+                "parameters": {
+                  "includesExtensions": false,
+                  "extensionType": ""
+                },
+                "trialCode": "\n    const preloadNew_Trial_1 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_1);\n    \n    const New_Trial_1_timeline = {\n    type: jsPsychAudioButtonResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_1\"),\nchoices: jsPsych.timelineVariable(\"choices_New_Trial_1\"),\nbutton_html: jsPsych.timelineVariable(\"button_html_New_Trial_1\"),\nprompt: jsPsych.timelineVariable(\"prompt_New_Trial_1\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration_New_Trial_1\"),\nbutton_layout: jsPsych.timelineVariable(\"button_layout_New_Trial_1\"),\ngrid_rows: jsPsych.timelineVariable(\"grid_rows_New_Trial_1\"),\ngrid_columns: jsPsych.timelineVariable(\"grid_columns_New_Trial_1\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial_New_Trial_1\"),\ntrial_ends_after_audio: jsPsych.timelineVariable(\"trial_ends_after_audio_New_Trial_1\"),\nresponse_allowed_while_playing: jsPsych.timelineVariable(\"response_allowed_while_playing_New_Trial_1\"),\nenable_button_after: jsPsych.timelineVariable(\"enable_button_after_New_Trial_1\"),\n    data: {\n      stimulus: \"stimulus_New_Trial_1\",\nrt: \"rt_New_Trial_1\",\nresponse: \"response_New_Trial_1\",\n    },\n    };",
+                "plugin": "plugin-audio-button-response",
+                "columnMapping": {},
+                "orders": false,
+                "orderColumns": [],
+                "stimuliOrders": [],
+                "categories": false,
+                "categoryColumn": "",
+                "branches": [
+                  1762137766330
+                ],
+                "csvFromLoop": true,
+                "csvJson": [],
+                "csvColumns": []
+              },
+              {
+                "id": 1762137766330,
+                "type": "Trial",
+                "name": "New Trial 2",
+                "parameters": {
+                  "includesExtensions": false,
+                  "extensionType": ""
+                },
+                "trialCode": "\n    const preloadNew_Trial_2 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_2);\n    \n    const New_Trial_2_timeline = {\n    type: jsPsychAudioSliderResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_2\"),\n    data: {\n      response: \"response_New_Trial_2\",\nrt: \"rt_New_Trial_2\",\nstimulus: \"stimulus_New_Trial_2\",\nslider_start: \"slider_start_New_Trial_2\",\n    },\n    };",
+                "plugin": "plugin-audio-slider-response",
+                "csvFromLoop": true,
+                "branches": [
+                  1762138683400,
+                  1762139105997
+                ],
+                "columnMapping": {
+                  "stimulus": {
+                    "source": "typed",
+                    "value": "lkmkmñkmñmñmkñ"
+                  },
+                  "choices": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "button_html": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "prompt": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "trial_duration": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "button_layout": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "grid_rows": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "grid_columns": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "response_ends_trial": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "trial_ends_after_audio": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "response_allowed_while_playing": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "enable_button_after": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "min": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "max": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "slider_start": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "step": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "labels": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "slider_width": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "button_label": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "require_movement": {
+                    "source": "none",
+                    "value": null
+                  }
+                },
+                "csvJson": [],
+                "csvColumns": [],
+                "orders": false,
+                "orderColumns": [],
+                "stimuliOrders": [],
+                "categories": false,
+                "categoryColumn": ""
+              },
+              {
+                "id": 1762138683400,
+                "type": "Trial",
+                "name": "New Trial 3",
+                "parameters": {
+                  "includesExtensions": false,
+                  "extensionType": ""
+                },
+                "trialCode": "\n    const New_Trial_3_timeline = {\n    type: jsPsychAnimation, \n    data: {\n      animation_sequence: \"animation_sequence_New_Trial_3\",\nresponse: \"response_New_Trial_3\",\n    },\n    };",
+                "plugin": "plugin-animation",
+                "columnMapping": {
+                  "features": {
+                    "source": "typed",
+                    "value": "nb"
+                  },
+                  "skip_features": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "vsync_frame_count": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "allow_window_resize": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "minimum_width": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "minimum_height": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "window_resize_message": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "resize_fail_button_text": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "inclusion_function": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "exclusion_message": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "stimuli": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "frame_time": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "frame_isi": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "sequence_reps": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "choices": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "prompt": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "render_on_canvas": {
+                    "source": "none",
+                    "value": null
+                  }
+                },
+                "orders": false,
+                "orderColumns": [],
+                "stimuliOrders": [],
+                "categories": false,
+                "categoryColumn": "",
+                "csvFromLoop": true,
+                "branches": [
+                  1762139144413
+                ],
+                "csvJson": [],
+                "csvColumns": []
+              },
+              {
+                "id": 1762139105997,
+                "type": "Trial",
+                "name": "New Trial",
+                "parameters": {
+                  "includesExtensions": false,
+                  "extensionType": ""
+                },
+                "trialCode": "\n    const test_stimuli_New_Trial = [{stimuli: \"\"}];\n    const New_Trial_timeline = {\n    type: jsPsychAnimation, stimuli: jsPsych.timelineVariable(\"stimuli\"),\n    data: {\n      animation_sequence: \"animation_sequence\",\nresponse: \"response\",\n    },\n    };\n    const New_Trial_procedure = {\n    timeline: \n    [New_Trial_timeline],\n    timeline_variables: test_stimuli_New_Trial,\n    \n    };\n    timeline.push(New_Trial_procedure);\n  ",
+                "plugin": "plugin-animation",
+                "columnMapping": {
+                  "stimulus": {
+                    "source": "typed",
+                    "value": "klmñk,ñlmlñmñlmllmñlñ"
+                  },
+                  "choices": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "button_html": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "prompt": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "trial_duration": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "button_layout": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "grid_rows": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "grid_columns": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "response_ends_trial": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "trial_ends_after_audio": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "response_allowed_while_playing": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "enable_button_after": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "stimuli": {
+                    "source": "typed",
+                    "value": ""
+                  },
+                  "frame_time": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "frame_isi": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "sequence_reps": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "render_on_canvas": {
+                    "source": "none",
+                    "value": null
+                  }
+                },
+                "csvJson": [],
+                "csvColumns": [],
+                "orders": false,
+                "orderColumns": [],
+                "stimuliOrders": [],
+                "categories": false,
+                "categoryColumn": ""
+              },
+              {
+                "id": 1762139144413,
+                "type": "Trial",
+                "name": "New Trial 4",
+                "parameters": {
+                  "includesExtensions": false,
+                  "extensionType": ""
+                },
+                "trialCode": "\n    const preloadNew_Trial_4 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_4);\n    \n    const test_stimuli_New_Trial_4 = [{stimulus: \"evwkmvllnln\"}];\n    const New_Trial_4_timeline = {\n    type: jsPsychAudioKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n    data: {\n      response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n    },\n    };\n    const New_Trial_4_procedure = {\n    timeline: \n    [New_Trial_4_timeline],\n    timeline_variables: test_stimuli_New_Trial_4,\n    \n    };\n    timeline.push(New_Trial_4_procedure);\n  ",
+                "plugin": "plugin-audio-keyboard-response",
+                "columnMapping": {
+                  "stimulus": {
+                    "source": "typed",
+                    "value": "evwkmvllnln"
+                  },
+                  "choices": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "prompt": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "trial_duration": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "response_ends_trial": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "trial_ends_after_audio": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "response_allowed_while_playing": {
+                    "source": "none",
+                    "value": null
+                  }
+                },
+                "csvJson": [],
+                "csvColumns": [],
+                "orders": false,
+                "orderColumns": [],
+                "stimuliOrders": [],
+                "categories": false,
+                "categoryColumn": ""
+              }
+            ],
+            "code": "\n\n    const test_stimuli_Loop = [\n  {\n    \"stimulus_New_Trial_1\": \"\",\n    \"button_html_New_Trial_1\": \"function(r,s){return`<button class=\\\"jspsych-btn\\\">${r}</button>`}\",\n    \"prompt_New_Trial_1\": null,\n    \"trial_duration_New_Trial_1\": null,\n    \"button_layout_New_Trial_1\": \"grid\",\n    \"grid_rows_New_Trial_1\": 1,\n    \"grid_columns_New_Trial_1\": null,\n    \"response_ends_trial_New_Trial_1\": true,\n    \"trial_ends_after_audio_New_Trial_1\": false,\n    \"response_allowed_while_playing_New_Trial_1\": true,\n    \"enable_button_after_New_Trial_1\": 0,\n    \"stimulus_New_Trial_2\": \"lkmkmñkmñmñmkñ\",\n    \"stimuli_New_Trial\": \"\",\n    \"stimulus_New_Trial_4\": \"evwkmvllnln\"\n  }\n];\n    \n    \n    \n    const preloadNew_Trial_1 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_1);\n    \n    const New_Trial_1_timeline = {\n    type: jsPsychAudioButtonResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_1\"),\nchoices: jsPsych.timelineVariable(\"choices_New_Trial_1\"),\nbutton_html: jsPsych.timelineVariable(\"button_html_New_Trial_1\"),\nprompt: jsPsych.timelineVariable(\"prompt_New_Trial_1\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration_New_Trial_1\"),\nbutton_layout: jsPsych.timelineVariable(\"button_layout_New_Trial_1\"),\ngrid_rows: jsPsych.timelineVariable(\"grid_rows_New_Trial_1\"),\ngrid_columns: jsPsych.timelineVariable(\"grid_columns_New_Trial_1\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial_New_Trial_1\"),\ntrial_ends_after_audio: jsPsych.timelineVariable(\"trial_ends_after_audio_New_Trial_1\"),\nresponse_allowed_while_playing: jsPsych.timelineVariable(\"response_allowed_while_playing_New_Trial_1\"),\nenable_button_after: jsPsych.timelineVariable(\"enable_button_after_New_Trial_1\"),\n    data: {\n      stimulus: \"stimulus_New_Trial_1\",\nrt: \"rt_New_Trial_1\",\nresponse: \"response_New_Trial_1\",\n    },\n    };\n\n\n\n    \n    const preloadNew_Trial_2 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_2);\n    \n    const New_Trial_2_timeline = {\n    type: jsPsychAudioSliderResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_2\"),\n    data: {\n      response: \"response_New_Trial_2\",\nrt: \"rt_New_Trial_2\",\nstimulus: \"stimulus_New_Trial_2\",\nslider_start: \"slider_start_New_Trial_2\",\n    },\n    };\n\n\n\n    \n    const New_Trial_3_timeline = {\n    type: jsPsychAnimation, \n    data: {\n      animation_sequence: \"animation_sequence_New_Trial_3\",\nresponse: \"response_New_Trial_3\",\n    },\n    };\n\n\n\n    \n    const New_Trial_timeline = {\n    type: jsPsychAnimation, stimuli: jsPsych.timelineVariable(\"stimuli_New_Trial\"),\n    data: {\n      animation_sequence: \"animation_sequence_New_Trial\",\nresponse: \"response_New_Trial\",\n    },\n    };\n\n\n\n    \n    const preloadNew_Trial_4 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_4);\n    \n    const New_Trial_4_timeline = {\n    type: jsPsychAudioKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_4\"),\n    data: {\n      response: \"response_New_Trial_4\",\nrt: \"rt_New_Trial_4\",\nstimulus: \"stimulus_New_Trial_4\",\n    },\n    };\n\n\n\n\nconst loop_procedure = {\n  timeline: [New_Trial_1_timeline, New_Trial_2_timeline, New_Trial_3_timeline, New_Trial_timeline, New_Trial_4_timeline],\n  timeline_variables: test_stimuli_Loop,\n  repetitions: 1,\n  randomize_order: false,\n};\ntimeline.push(loop_procedure);\n",
+            "csvJson": [],
+            "csvColumns": []
           }
         ]
       },
-      "createdAt": "2025-10-31T22:09:22.080Z",
-      "updatedAt": "2025-10-31T23:58:20.125Z"
+      "createdAt": "2025-11-03T02:23:48.732Z",
+      "updatedAt": "2025-11-03T03:15:22.381Z"
     }
   ],
   "configs": [
     {
-      "experimentID": "59a22d85-e25a-4def-bc26-3c3ed90be07b",
+      "experimentID": "0173354c-b4d6-4ad3-8d1b-bf607b987bf6",
       "data": {
-        "generatedCode": "\n  // --- Firebase config ---\n  const firebaseConfig = {\n    apiKey: \"AIzaSyBEbJ-uGKzsaf2u24KPamBPVZrUmvhFk-Q\",\n    authDomain: \"test-e4cf9.firebaseapp.com\",\n    databaseURL: \"http://localhost:9000?ns=test-e4cf9\",\n    projectId: \"test-e4cf9\",\n    storageBucket: \"test-e4cf9.firebasestorage.app\",\n    messagingSenderId: \"414213417080\",\n    appId: \"1:414213417080:web:98607c621a54d07656e58d\"\n  };\n\n  // --- Cargar Firebase SDK ---\n  if (typeof window.firebase === 'undefined') {\n    const script = document.createElement('script');\n    script.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';\n    script.onload = () => {\n      const dbScript = document.createElement('script');\n      dbScript.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';\n      dbScript.onload = () => { window._firebaseReady = true; };\n      document.head.appendChild(dbScript);\n    };\n    document.head.appendChild(script);\n  } else {\n    window._firebaseReady = true;\n  }\n\n  function waitForFirebase() {\n    return new Promise(resolve => {\n      if (window._firebaseReady) return resolve();\n      const interval = setInterval(() => {\n        if (window._firebaseReady) {\n          clearInterval(interval);\n          resolve();\n        }\n      }, 50);\n    });\n  }\n\n \n  const userStr = null;\n\n  const Uid = userStr.uid\n\n  const trialSessionId =\n    (crypto.randomUUID\n      ? crypto.randomUUID()\n      : Math.random().toString(36).slice(2, 10));\n\n  let participantNumber;\n\n  async function saveSession(trialSessionId) {\n    try {\n      const res = await fetch(\"http://localhost:5001/test-e4cf9/us-central1/apidata\", {\n        method: \"POST\",\n        headers: { \"Content-Type\": \"application/json\", Accept: \"*/*\" },\n        body: JSON.stringify({\n          experimentID: \"59a22d85-e25a-4def-bc26-3c3ed90be07b\",\n          experimentName: \"flksmv\", \n          sessionId: trialSessionId,\n          storage: \"drive\",\n          uid: Uid\n        }),\n      });\n      \n      console.log('Response status:', res.status);\n      \n      if (!res.ok) {\n        const errorText = await res.text();\n        console.error('Error creating session:', errorText);\n        throw new Error(`Failed to create session: ${res.status} - ${errorText}`);\n      }\n      \n      const result = await res.json();\n      console.log('Session created successfully:', result);\n      \n      if (!result.success) {\n        if (result.message?.includes(\"INVALID_GOOGLE_DRIVE_TOKEN\") || result.message?.includes(\"Invalid Google Drive token\")) {\n          alert(\"Warning: Google Drive token not found or invalid. Please reconnect your Drive account in Settings.\");\n        } else if (result.message?.includes(\"INVALID_DROPBOX_TOKEN\") || result.message?.includes(\"Invalid Dropbox token\")) {\n          alert(\"Warning: Dropbox token not found or invalid. Please reconnect your Dropbox account in Settings.\");\n        }\n        throw new Error(result.message || 'Failed to create session');\n      }\n      \n      participantNumber = result.participantNumber;\n      return participantNumber;\n    } catch (error) {\n      console.error('Error in saveSession:', error);\n      alert('Error creating session: ' + error.message);\n      throw error;\n    }\n  }\n\n  (async () => {\n    // Esperar e inicializar Firebase\n    await waitForFirebase();\n    if (!window.firebase.apps.length) {\n      window.firebase.initializeApp(firebaseConfig);\n    }\n    const db = window.firebase.database();\n\n    participantNumber = await saveSession(trialSessionId);\n\n    if (typeof participantNumber !== \"number\" || isNaN(participantNumber)) {\n      alert(\"The participant number is not assigned. Please, wait.\");\n      throw new Error(\"participantNumber not assigned\");\n    }\n\n    // --- Configurar onDisconnect para finalizar sesión automáticamente ---\n    const sessionRef = db.ref('sessions/59a22d85-e25a-4def-bc26-3c3ed90be07b/' + trialSessionId);\n    await sessionRef.set({\n      connected: true,\n      experimentID: '59a22d85-e25a-4def-bc26-3c3ed90be07b',\n      sessionId: trialSessionId,\n      startedAt: window.firebase.database.ServerValue.TIMESTAMP,\n      storage: 'drive'\n    });\n    \n    // Cuando se desconecte, marcar para que el backend finalice la sesión\n    // Incluir needsFinalization para que se procesen los datos en caso de desconexión\n    sessionRef.onDisconnect().update({\n      connected: false,\n      needsFinalization: true,\n      disconnectedAt: window.firebase.database.ServerValue.TIMESTAMP,\n      storage: 'drive'\n    });\n\n    const jsPsych = initJsPsych({\n\n      on_trial_start: function(trial) {\n        const lastTrialData = jsPsych.data.get()\n        if (lastTrialData) {\n        trial.data.prev_response = lastTrialData.response;\n        }\n      },\n\n      \n\n      on_data_update: function (data) {\n\n        fetch(\"http://localhost:5001/test-e4cf9/us-central1/apidata\", {\n          method: \"POST\",\n          headers: { \"Content-Type\": \"application/json\", Accept: \"*/*\" },\n          body: JSON.stringify({\n            experimentID: \"59a22d85-e25a-4def-bc26-3c3ed90be07b\",\n            sessionId: trialSessionId,\n            data: data,\n            storage: \"drive\",\n          }),\n        })\n        .then(res => {\n          if (!res.ok) {\n            return res.text().then(text => {\n              console.error('Error appending data:', text);\n            });\n          }\n          return res.json();\n        })\n        .then(result => {\n          if (result && result.success) {\n            console.log('Data appended to temporary storage');\n          }\n        })\n        .catch(error => {\n          console.error('Error in on_data_update:', error);\n        });\n      },\n\n      on_finish: async function() {\n        \n        // Cancelar el onDisconnect para evitar conflictos\n        sessionRef.onDisconnect().cancel();\n\n        // Finalizar la sesión normalmente y marcar en Firebase que terminó correctamente\n        console.log('Experiment finished normally, sending data to Google Drive...');\n        \n        try {\n          \n          // Marcar en Firebase que terminó correctamente Y necesita finalización\n          await sessionRef.update({\n            connected: false,\n            finished: true,\n            needsFinalization: true,\n            finishedAt: window.firebase.database.ServerValue.TIMESTAMP\n          });\n          \n          // El backend procesará la finalización al detectar needsFinalization=true\n          console.log('Session marked for finalization in Firebase');\n        } catch (error) {\n          console.error('Error marking session as finished:', error);\n        }\n      },\n  // Uncomment to see the json results after finishing a session experiment\n  // jsPsych.data.displayData('csv');\n});\n\nconst timeline = [];\n\nconst welcome = {\n  type: jsPsychHtmlButtonResponse,\n  stimulus: \"Welcome to the experiment. Press 'Start' to begin.\",\n  choices: ['Start'],\n};\n\ntimeline.push(welcome);\n\n\n    const preloadNew_Trial = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial);\n    \n    const test_stimuli_New_Trial = [{stimulus: \"<div id=\\\"iwkg\\\" style=\\\"box-sizing: border-box; text-align: left; font-size: 100px; font-family: Arial Black, Gadget, sans-serif; color: red;\\\">Type or design here</div>\"}];\n    const New_Trial_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n    data: {\n      response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n    },\n    };\n    const New_Trial_procedure = {\n    timeline: \n    [New_Trial_timeline],\n    timeline_variables: test_stimuli_New_Trial,\n    \n    };\n    timeline.push(New_Trial_procedure);\n  \n\njsPsych.run(timeline);\n\n})();\n"
+        "generatedCode": ""
       },
       "isDevMode": false,
-      "createdAt": "2025-10-31T22:09:22.051Z",
-      "updatedAt": "2025-10-31T23:58:30.983Z"
+      "createdAt": "2025-11-03T02:23:49.043Z",
+      "updatedAt": "2025-11-03T03:05:30.201Z"
     }
   ],
   "pluginConfigs": [
@@ -80,420 +489,5 @@
       "config": {}
     }
   ],
-  "sessionResults": [
-    {
-      "experimentID": "59a22d85-e25a-4def-bc26-3c3ed90be07b",
-      "sessionId": "81960744-c738-47a0-852f-9d6c300c4831",
-      "createdAt": "2025-10-31T22:09:40.680Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 640
-        },
-        {
-          "response": "f",
-          "rt": 413,
-          "stimulus": "<body id=\"iica\"><div id=\"ijky\">Loca loca</div></body>",
-          "trial_type": "html-keyboard-response",
-          "trial_index": 2,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1055
-        }
-      ]
-    },
-    {
-      "experimentID": "59a22d85-e25a-4def-bc26-3c3ed90be07b",
-      "sessionId": "e0404c60-adb5-4362-b559-fe9b2bd70d6a",
-      "createdAt": "2025-10-31T22:10:26.211Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 612
-        }
-      ]
-    },
-    {
-      "experimentID": "59a22d85-e25a-4def-bc26-3c3ed90be07b",
-      "sessionId": "99413d9b-2c43-42d9-abda-ef1af3612742",
-      "createdAt": "2025-10-31T22:36:48.365Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 765
-        }
-      ]
-    },
-    {
-      "experimentID": "59a22d85-e25a-4def-bc26-3c3ed90be07b",
-      "sessionId": "4693046f-e092-46ff-a9d8-2cec20ef0b96",
-      "createdAt": "2025-10-31T22:37:25.777Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1246
-        }
-      ]
-    },
-    {
-      "experimentID": "59a22d85-e25a-4def-bc26-3c3ed90be07b",
-      "sessionId": "73dcac5e-a282-434e-bf68-d3403a6b80fc",
-      "createdAt": "2025-10-31T22:37:35.000Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 837
-        },
-        {
-          "response": "d",
-          "rt": 563,
-          "stimulus": "<style>* { box-sizing: border-box; } body {margin: 0;}*{box-sizing:border-box;}body{margin-top:0px;margin-right:0px;margin-bottom:0px;margin-left:0px;}#i62g{text-align:right;font-size:100px;font-family:\"Courier New\"",
-          "trial_type": "html-keyboard-response",
-          "trial_index": 2,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1402
-        },
-        {
-          "response": "d",
-          "rt": 1282,
-          "stimulus": "Courier",
-          "trial_type": "html-keyboard-response",
-          "trial_index": 3,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 2686
-        },
-        {
-          "response": "d",
-          "rt": 1647,
-          "stimulus": "monospace;}</style><body><div id=\"i62g\">Type or design here</div></body>",
-          "trial_type": "html-keyboard-response",
-          "trial_index": 4,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 4335
-        }
-      ]
-    },
-    {
-      "experimentID": "59a22d85-e25a-4def-bc26-3c3ed90be07b",
-      "sessionId": "935cd3b3-6eef-4ccc-9d41-7d380467dd55",
-      "createdAt": "2025-10-31T22:37:47.428Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 927
-        },
-        {
-          "response": "m",
-          "rt": 339,
-          "stimulus": "<style>* { box-sizing: border-box; } body {margin: 0;}*{box-sizing:border-box;}body{margin-top:0px;margin-right:0px;margin-bottom:0px;margin-left:0px;}#i62g{text-align:right;font-size:100px;font-family:\"Courier New\"",
-          "trial_type": "html-keyboard-response",
-          "trial_index": 2,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1269
-        },
-        {
-          "response": "m",
-          "rt": 1207,
-          "stimulus": "Courier",
-          "trial_type": "html-keyboard-response",
-          "trial_index": 3,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 2478
-        },
-        {
-          "response": "m",
-          "rt": 4577,
-          "stimulus": "monospace;}</style><body><div id=\"i62g\">Type or design here</div></body>",
-          "trial_type": "html-keyboard-response",
-          "trial_index": 4,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 7058
-        }
-      ]
-    },
-    {
-      "experimentID": "59a22d85-e25a-4def-bc26-3c3ed90be07b",
-      "sessionId": "43da310e-716d-4233-a707-8ccd788e6084",
-      "createdAt": "2025-10-31T23:36:48.344Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 588
-        },
-        {
-          "response": "r",
-          "rt": 650,
-          "stimulus": "<body style=\"box-sizing: border-box; margin: 0;\"><div id=\"iwkg\" style=\"box-sizing: border-box; text-align: right; font-size: 100px; font-family: Arial Black",
-          "trial_type": "html-keyboard-response",
-          "trial_index": 2,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1239
-        },
-        {
-          "response": "r",
-          "rt": 528,
-          "stimulus": "Gadget",
-          "trial_type": "html-keyboard-response",
-          "trial_index": 3,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1768
-        },
-        {
-          "response": "r",
-          "rt": 952,
-          "stimulus": "sans-serif;\">Type or design here</div></body>",
-          "trial_type": "html-keyboard-response",
-          "trial_index": 4,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 2721
-        }
-      ]
-    },
-    {
-      "experimentID": "59a22d85-e25a-4def-bc26-3c3ed90be07b",
-      "sessionId": "35400ba0-1fb6-4d1e-b2dc-1eabf0d3f7ea",
-      "createdAt": "2025-10-31T23:37:41.193Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1185
-        },
-        {
-          "response": "n",
-          "rt": 672,
-          "stimulus": "<div id=\"iwkg\" style=\"box-sizing: border-box; text-align: right; font-size: 100px; font-family: Arial Black",
-          "trial_type": "html-keyboard-response",
-          "trial_index": 2,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1858
-        },
-        {
-          "response": "n",
-          "rt": 471,
-          "stimulus": "Gadget",
-          "trial_type": "html-keyboard-response",
-          "trial_index": 3,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 2332
-        },
-        {
-          "response": "n",
-          "rt": 398,
-          "stimulus": "sans-serif;\">Type or design here</div>",
-          "trial_type": "html-keyboard-response",
-          "trial_index": 4,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 2732
-        }
-      ]
-    },
-    {
-      "experimentID": "59a22d85-e25a-4def-bc26-3c3ed90be07b",
-      "sessionId": "06988eb5-7ca0-463d-964e-29eba1eae228",
-      "createdAt": "2025-10-31T23:40:21.383Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 702
-        },
-        {
-          "response": "j",
-          "rt": 4930,
-          "stimulus": "<div id=\"iwkg\" style=\"box-sizing: border-box; text-align: left; font-size: 100px; font-family: Arial Black",
-          "trial_type": "html-keyboard-response",
-          "trial_index": 2,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 5633
-        },
-        {
-          "response": "j",
-          "rt": 604,
-          "stimulus": "Gadget",
-          "trial_type": "html-keyboard-response",
-          "trial_index": 3,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 6240
-        },
-        {
-          "response": "j",
-          "rt": 1238,
-          "stimulus": "sans-serif;\">Type or design here</div>",
-          "trial_type": "html-keyboard-response",
-          "trial_index": 4,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 7480
-        }
-      ]
-    },
-    {
-      "experimentID": "59a22d85-e25a-4def-bc26-3c3ed90be07b",
-      "sessionId": "64514ee3-6c23-4cff-a07d-26cce6018681",
-      "createdAt": "2025-10-31T23:46:51.646Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 716
-        },
-        {
-          "response": "m",
-          "rt": 144121,
-          "stimulus": "<div id=\"iwkg\" style=\"box-sizing: border-box; text-align: left; font-size: 100px; font-family: Arial Black, Gadget, sans-serif; color: red;\">Type or design here</div>",
-          "trial_type": "html-keyboard-response",
-          "trial_index": 2,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 667146
-        }
-      ]
-    },
-    {
-      "experimentID": "59a22d85-e25a-4def-bc26-3c3ed90be07b",
-      "sessionId": "New Trial_result_406daf6b-fcc1-4a39-8685-42b41e22f6ad",
-      "createdAt": "2025-10-31T23:58:23.755Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 598
-        },
-        {
-          "response": "d",
-          "rt": 1276,
-          "stimulus": "<div id=\"iwkg\" style=\"box-sizing: border-box; text-align: left; font-size: 100px; font-family: Arial Black, Gadget, sans-serif; color: red;\">Type or design here</div>",
-          "trial_type": "html-keyboard-response",
-          "trial_index": 2,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1876
-        }
-      ]
-    },
-    {
-      "experimentID": "59a22d85-e25a-4def-bc26-3c3ed90be07b",
-      "sessionId": "New Trial_result_2df842e3-28cb-418a-bd4f-20ed234a5814",
-      "createdAt": "2025-10-31T23:58:31.475Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 792
-        },
-        {
-          "response": "d",
-          "rt": 2196,
-          "stimulus": "<div id=\"iwkg\" style=\"box-sizing: border-box; text-align: left; font-size: 100px; font-family: Arial Black, Gadget, sans-serif; color: red;\">Type or design here</div>",
-          "trial_type": "html-keyboard-response",
-          "trial_index": 2,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 2989
-        }
-      ]
-    },
-    {
-      "experimentID": "59a22d85-e25a-4def-bc26-3c3ed90be07b",
-      "sessionId": "New Trial_result_2da6b190-b4aa-49d1-a9c4-5c6612c177e7",
-      "createdAt": "2025-10-31T23:58:41.023Z",
-      "data": [
-        {
-          "rt": 506,
-          "stimulus": "Trial Preview",
-          "response": 0,
-          "trial_type": "html-button-response",
-          "trial_index": 0,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 508
-        },
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 511
-        }
-      ]
-    }
-  ]
+  "sessionResults": []
 }

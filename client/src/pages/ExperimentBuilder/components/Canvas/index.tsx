@@ -1,15 +1,24 @@
 import "@xyflow/react/dist/style.css";
-import { FiRefreshCw } from "react-icons/fi";
-import { TbBinaryTree } from "react-icons/tb";
-import { FiX } from "react-icons/fi";
-import { Trial } from "../ConfigPanel/types";
-import LoopRangeModal from "../ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeModal";
+import { useState, useEffect } from "react";
+import ReactFlow, { Connection } from "reactflow";
 import useTrials from "../../hooks/useTrials";
-import { useState } from "react";
-import ReactFlow from "reactflow";
+import { Trial } from "../ConfigPanel/types";
 import TrialNode from "./TrialNode";
 import LoopSubCanvas from "./LoopSubCanvas";
-import BranchedTrial from "../ConfigPanel/TrialsConfig/BranchedTrial";
+import LoopRangeModal from "../ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeModal";
+import CanvasToolbar from "./components/CanvasToolbar";
+import { useFlowLayout } from "./hooks/useFlowLayout";
+import {
+  generateUniqueName,
+  getAllExistingNames,
+  validateConnection,
+} from "./utils/trialUtils";
+import {
+  getIsDarkMode,
+  getCanvasBackground,
+  getPatternStyle,
+  getFabStyle,
+} from "./utils/styleUtils";
 
 const nodeTypes = {
   trial: TrialNode,
@@ -23,33 +32,18 @@ function Canvas({}: Props) {
     setTrials,
     selectedTrial,
     setSelectedTrial,
-    groupTrialsAsLoop,
     selectedLoop,
     setSelectedLoop,
+    groupTrialsAsLoop,
   } = useTrials();
 
   const [showLoopModal, setShowLoopModal] = useState(false);
   const [openLoop, setOpenLoop] = useState<any>(null);
-  const [showBranchedModal, setShowBranchedModal] = useState(false);
-
-  function isTrial(trial: any): trial is Trial {
-    return "parameters" in trial;
-  }
 
   const onAddTrial = (type: string) => {
-    const existingNames = [
-      ...trials.filter((t) => "parameters" in t).map((t) => t.name),
-      ...trials
-        .filter((t) => "trials" in t)
-        .flatMap((loop: any) => loop.trials.map((trial: any) => trial.name)),
-    ];
-    let baseName = "New Trial";
-    let newName = baseName;
-    let counter = 1;
-    while (existingNames.includes(newName)) {
-      newName = `${baseName} ${counter}`;
-      counter++;
-    }
+    const existingNames = getAllExistingNames(trials);
+    const newName = generateUniqueName(existingNames);
+
     const newTrial: Trial = {
       id: Date.now(),
       type: type,
@@ -57,137 +51,264 @@ function Canvas({}: Props) {
       parameters: {},
       trialCode: "",
     };
-    setTrials([...trials, newTrial]);
+
+    // If there's a selected trial or loop, insert the new trial after it
+    // Otherwise, add it at the end
+    if (selectedTrial) {
+      const selectedIndex = trials.findIndex(
+        (t: any) => "id" in t && t.id === selectedTrial.id
+      );
+      if (selectedIndex !== -1) {
+        const newTrials = [...trials];
+        newTrials.splice(selectedIndex + 1, 0, newTrial);
+        setTrials(newTrials);
+      } else {
+        setTrials([...trials, newTrial]);
+      }
+    } else if (selectedLoop) {
+      const selectedIndex = trials.findIndex(
+        (t: any) => "id" in t && t.id === selectedLoop.id
+      );
+      if (selectedIndex !== -1) {
+        const newTrials = [...trials];
+        newTrials.splice(selectedIndex + 1, 0, newTrial);
+        setTrials(newTrials);
+      } else {
+        setTrials([...trials, newTrial]);
+      }
+    } else {
+      setTrials([...trials, newTrial]);
+    }
+
     setSelectedTrial(newTrial);
     setSelectedLoop(null);
   };
 
-  const onSelectTrial = (trial: Trial) => {
-    setSelectedTrial(trial);
+  const handleCreateLoop = () => {
+    // Si hay un trial seleccionado, verificar si tiene branches
+    if (selectedTrial) {
+      const trialWithBranches = trials.find(
+        (t: any) => "id" in t && t.id === selectedTrial.id
+      ) as Trial | undefined;
+
+      if (
+        trialWithBranches &&
+        trialWithBranches.branches &&
+        trialWithBranches.branches.length > 0
+      ) {
+        // El trial tiene branches, crear el loop inmediatamente
+        const trialIndex = trials.findIndex(
+          (t: any) => "id" in t && t.id === selectedTrial.id
+        );
+
+        if (trialIndex !== -1) {
+          // Función recursiva para obtener todos los trial IDs (incluyendo branches anidados)
+          const getAllNestedTrialIds = (
+            trialId: number | string,
+            visited = new Set<number | string>()
+          ): Set<number | string> => {
+            const allIds = new Set<number | string>();
+
+            // Evitar ciclos infinitos
+            if (visited.has(trialId)) {
+              return allIds;
+            }
+            visited.add(trialId);
+
+            // Agregar el ID actual
+            allIds.add(trialId);
+
+            // Encontrar el trial actual
+            const currentTrial = trials.find(
+              (t: any) => "id" in t && t.id === trialId
+            ) as Trial | undefined;
+
+            if (
+              currentTrial &&
+              currentTrial.branches &&
+              currentTrial.branches.length > 0
+            ) {
+              // Recursivamente agregar branches y sus sub-branches
+              currentTrial.branches.forEach((branchId) => {
+                const nestedIds = getAllNestedTrialIds(branchId, visited);
+                nestedIds.forEach((nestedId) => allIds.add(nestedId));
+              });
+            }
+
+            return allIds;
+          };
+
+          // Obtener todos los trial IDs (el principal y todos sus branches anidados)
+          const allTrialIds = getAllNestedTrialIds(selectedTrial.id);
+
+          // Convertir los IDs a índices
+          const allIndices = Array.from(allTrialIds)
+            .map((trialId) =>
+              trials.findIndex((t: any) => "id" in t && t.id === trialId)
+            )
+            .filter((idx) => idx !== -1);
+
+          if (groupTrialsAsLoop) {
+            groupTrialsAsLoop(allIndices);
+          }
+        }
+        return;
+      }
+    }
+
+    // Si no hay trial seleccionado o no tiene branches, mostrar el modal
+    setShowLoopModal(true);
   };
 
   const handleAddLoop = (trialIds: number[]) => {
-    console.log(trials);
     const indices = trialIds
-      .map((id) => trials.findIndex((t) => "id" in t && t.id === id))
+      .map((id) => trials.findIndex((t: any) => "id" in t && t.id === id))
       .filter((idx) => idx !== -1);
 
-    if (indices.length > 1 && groupTrialsAsLoop) {
+    if (indices.length < 2) {
+      alert("You must select at least 2 trials to create a loop.");
+      setShowLoopModal(false);
+      return;
+    }
+
+    if (groupTrialsAsLoop) {
       groupTrialsAsLoop(indices);
     }
     setShowLoopModal(false);
-    console.log(trials);
   };
 
-  let nodes: any[] = [];
-  let yPos = 100;
-  const xTrial = 250;
-  const yStep = 100;
+  // Keep openLoop synchronized with trials updates
+  useEffect(() => {
+    if (openLoop) {
+      const updatedLoop = trials.find((t: any) => t.id === openLoop.id);
+      if (!updatedLoop) {
+        // Loop was deleted
+        setOpenLoop(null);
+      } else if ("trials" in updatedLoop) {
+        // Loop exists, update it to reflect changes in trials
+        setOpenLoop(updatedLoop);
+      }
+    }
+  }, [trials]);
 
-  const trialIdsInLoops = trials
-    .filter((item) => "trials" in item)
-    .flatMap((loop: any) => loop.trials.map((t: any) => t.id));
+  const onAddBranch = (parentId: number | string) => {
+    const existingNames = getAllExistingNames(trials);
+    const newName = generateUniqueName(existingNames);
 
-  const allBlocks = trials.filter((item) =>
-    isTrial(item) ? !trialIdsInLoops.includes(item.id) : true
-  );
+    const newBranchTrial: Trial = {
+      id: Date.now(),
+      type: "Trial",
+      name: newName,
+      parameters: {},
+      trialCode: "",
+    };
 
-  allBlocks.forEach((item) => {
-    nodes.push({
-      id: isTrial(item) ? String(item.id) : `loop-${item.id}`,
-      type: "trial",
-      data: {
-        name: item.name,
-        selected: isTrial(item)
-          ? selectedTrial && selectedTrial.id === item.id
-          : (selectedLoop && selectedLoop.id === item.id) ||
-            (openLoop && openLoop.id === item.id),
-        onClick: () => {
-          if (isTrial(item)) {
-            onSelectTrial(item);
-            setSelectedLoop(null);
-            const parentLoop = trials.find(
-              (t: any) =>
-                t.trials && t.trials.some((tr: any) => tr.id === item.id)
-            );
-            if (parentLoop) {
-              setOpenLoop(parentLoop);
-            } else {
-              setOpenLoop(null);
-            }
-          } else {
-            setSelectedLoop(item);
-            setSelectedTrial(null);
-            setOpenLoop(item);
-          }
-        },
-      },
-      position: { x: xTrial, y: yPos },
-      draggable: false,
+    // Add the new trial to trials list
+    const updatedTrials = [...trials, newBranchTrial];
+
+    // Update the parent (trial or loop) to include this branch
+    const updatedTrialsWithBranch = updatedTrials.map((t: any) => {
+      if ("parameters" in t && t.id === parentId) {
+        return {
+          ...t,
+          branches: [...(t.branches || []), newBranchTrial.id],
+        };
+      } else if ("trials" in t && t.id === parentId) {
+        return {
+          ...t,
+          branches: [...(t.branches || []), newBranchTrial.id],
+        };
+      }
+      return t;
     });
-    yPos += yStep;
+
+    setTrials(updatedTrialsWithBranch);
+    setSelectedTrial(newBranchTrial);
+  };
+
+  // Handler for connecting trials manually
+  const handleConnect = (connection: Connection) => {
+    if (!connection.source || !connection.target) return;
+
+    // Extract the actual trial IDs from the node IDs
+    // Node IDs can be like "123" or "loop-456" for main sequence
+    // or "123-789" for branches
+    const extractTrialId = (nodeId: string): number | string | null => {
+      // Remove "loop-" prefix if present
+      if (nodeId.startsWith("loop-")) {
+        return nodeId.substring(5);
+      }
+      // For branch nodes, get the last segment (the actual trial ID)
+      const segments = nodeId.split("-");
+      const lastSegment = segments[segments.length - 1];
+      const parsed = parseInt(lastSegment);
+      return isNaN(parsed) ? lastSegment : parsed;
+    };
+
+    const sourceId = extractTrialId(connection.source);
+    const targetId = extractTrialId(connection.target);
+
+    if (sourceId === null || targetId === null) {
+      console.error("Invalid connection IDs");
+      return;
+    }
+
+    // Validate the connection
+    const validation = validateConnection(sourceId, targetId, trials);
+    if (!validation.isValid) {
+      alert(validation.errorMessage || "Invalid connection");
+      return;
+    }
+
+    // Add targetId to the branches array of the source trial/loop
+    const updatedTrials = trials.map((t: any) => {
+      if ("parameters" in t && t.id === sourceId) {
+        // It's a Trial
+        const branches = t.branches || [];
+        // Only add if not already present
+        if (!branches.includes(targetId)) {
+          return {
+            ...t,
+            branches: [...branches, targetId],
+          };
+        }
+      } else if ("trials" in t && t.id === sourceId) {
+        // It's a Loop
+        const branches = t.branches || [];
+        if (!branches.includes(targetId)) {
+          return {
+            ...t,
+            branches: [...branches, targetId],
+          };
+        }
+      }
+      return t;
+    });
+
+    setTrials(updatedTrials);
+  };
+
+  const { nodes, edges } = useFlowLayout({
+    trials,
+    selectedTrial,
+    selectedLoop,
+    onSelectTrial: (trial) => {
+      setSelectedTrial(trial);
+      setSelectedLoop(null);
+    },
+    onSelectLoop: (loop) => {
+      setSelectedLoop(loop);
+      setSelectedTrial(null);
+    },
+    onAddBranch,
+    openLoop,
+    setOpenLoop,
   });
 
-  let edges: any[] = [];
-  for (let i = 0; i < nodes.length - 1; i++) {
-    edges.push({
-      id: `e${nodes[i].id}-${nodes[i + 1].id}`,
-      source: nodes[i].id,
-      target: nodes[i + 1].id,
-      type: "default",
-    });
-  }
-
-  const isDark =
-    window.matchMedia &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-  const canvasBg: React.CSSProperties = {
-    background: isDark
-      ? "radial-gradient(circle at 50% 50%, #23272f 80%, #181a20 100%)"
-      : "radial-gradient(circle at 50% 50%, #f7f8fa 80%, #e9ecf3 100%)",
-    minHeight: "100vh",
-    width: "100%",
-    height: "100vh",
-    position: "relative",
-    overflow: "visible",
-  };
-
-  const patternStyle: React.CSSProperties = {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
-    pointerEvents: "none",
-    backgroundImage:
-      "radial-gradient(circle, " +
-      (isDark ? "#3a3f4b" : "#dbe2ea") +
-      " 1px, transparent 1.5px)",
-    backgroundSize: "28px 28px",
-    zIndex: 0,
-  };
-
-  const fabStyle: React.CSSProperties = {
-    width: "56px",
-    height: "56px",
-    background: isDark ? "#ffb300" : "#1976d2",
-    color: isDark ? "#23272f" : "#fff",
-    borderRadius: "50%",
-    boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-    position: "fixed",
-    bottom: "32px",
-    right: "32px",
-    zIndex: 10,
-    fontSize: "32px",
-    border: "none",
-    outline: "none",
-    transition: "background 0.2s",
-  };
+  const isDark = getIsDarkMode();
+  const canvasBg = getCanvasBackground(isDark);
+  const patternStyle = getPatternStyle(isDark);
+  const fabStyle = getFabStyle(isDark);
 
   return (
     <div style={canvasBg}>
@@ -200,118 +321,21 @@ function Canvas({}: Props) {
           zIndex: 1,
         }}
       >
-        <div
-          style={{
-            position: "absolute",
-            top: 24,
-            left: 24,
-            display: "flex",
-            gap: 16,
-            zIndex: 10,
-          }}
-        >
-          <button
-            style={{
-              ...fabStyle,
-              position: "static",
-              width: 48,
-              height: 48,
-              fontSize: 24,
-              background: "#1976d2",
-              color: "#fff",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-            }}
-            onClick={() => setShowLoopModal(true)}
-            title="Add loop"
-          >
-            <FiRefreshCw size={24} color="#fff" />
-          </button>
-          <button
-            style={{
-              ...fabStyle,
-              position: "static",
-              width: 48,
-              height: 48,
-              fontSize: 28,
-              background: "#ffb300",
-              color: "#fff",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-            }}
-            onClick={() => onAddTrial("Trial")}
-            title="Add trial"
-          >
-            <span style={{ fontWeight: "bold", color: "#fff" }}>+</span>
-          </button>
-          {selectedTrial && (
-            <button
-              style={{
-                ...fabStyle,
-                position: "static",
-                width: 48,
-                height: 48,
-                fontSize: 24,
-                background: "#4caf50",
-                color: "#fff",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-              }}
-              title="Branch"
-              onClick={() => setShowBranchedModal(true)}
-            >
-              <TbBinaryTree size={24} color="#fff" />
-            </button>
-          )}
-          {showBranchedModal && (
-            <div
-              style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                width: "100vw",
-                height: "100vh",
-                background: "rgba(0,0,0,0.32)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 9999,
-              }}
-            >
-              <div style={{ position: "relative", zIndex: 10000 }}>
-                <button
-                  style={{
-                    position: "absolute",
-                    top: 12,
-                    right: 12,
-                    width: 36,
-                    height: 36,
-                    borderRadius: "50%",
-                    background: "none",
-                    color: "#fff",
-                    border: "none",
-                    cursor: "pointer",
-                    fontWeight: "bold",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 22,
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-                  }}
-                  onClick={() => setShowBranchedModal(false)}
-                  title="Cerrar"
-                >
-                  <FiX />
-                </button>
-                <BranchedTrial selectedTrial={selectedTrial} />
-              </div>
-            </div>
-          )}
-        </div>
+        <CanvasToolbar
+          fabStyle={fabStyle}
+          onShowLoopModal={handleCreateLoop}
+          onAddTrial={() => onAddTrial("Trial")}
+        />
+
         <ReactFlow
           proOptions={{ hideAttribution: true }}
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
           style={{ background: "transparent", zIndex: 0 }}
+          onConnect={handleConnect}
         />
+
         {openLoop && openLoop.trials && (
           <LoopSubCanvas
             trials={openLoop.trials}
@@ -325,12 +349,10 @@ function Canvas({}: Props) {
             onSelectTrial={(trial) => {
               setSelectedTrial(trial);
               setSelectedLoop(null);
-              const updatedLoop = trials.find((t: any) => t.id === openLoop.id);
-              if (updatedLoop) setOpenLoop(updatedLoop);
             }}
             onUpdateTrial={(updatedTrial) => {
               const updatedLoops = trials.map((loop: any) => {
-                if (loop.id === openLoop.id) {
+                if (loop.id === openLoop.id && loop.trials) {
                   return {
                     ...loop,
                     trials: loop.trials.map((t: any) =>
@@ -341,13 +363,31 @@ function Canvas({}: Props) {
                 return loop;
               });
               setTrials(updatedLoops);
-              const refreshedLoop = updatedLoops.find(
-                (l: any) => l.id === openLoop.id
-              );
-              if (refreshedLoop) setOpenLoop(refreshedLoop);
+            }}
+            onAddBranch={(parentTrialId, newBranchTrial) => {
+              const updatedLoops = trials.map((loop: any) => {
+                if (loop.id === openLoop.id && loop.trials) {
+                  const updatedTrials = loop.trials.map((t: any) =>
+                    t.id === parentTrialId
+                      ? {
+                          ...t,
+                          branches: [...(t.branches || []), newBranchTrial.id],
+                        }
+                      : t
+                  );
+                  return {
+                    ...loop,
+                    trials: [...updatedTrials, newBranchTrial],
+                  };
+                }
+                return loop;
+              });
+              setTrials(updatedLoops);
+              setSelectedTrial(newBranchTrial);
             }}
           />
         )}
+
         {showLoopModal && (
           <div
             style={{
@@ -365,9 +405,10 @@ function Canvas({}: Props) {
           >
             <div style={{ position: "relative", zIndex: 10000 }}>
               <LoopRangeModal
-                trials={trials.filter((t) => "id" in t) as Trial[]}
+                trials={trials.filter((t: any) => "id" in t) as Trial[]}
                 onConfirm={handleAddLoop}
                 onClose={() => setShowLoopModal(false)}
+                selectedTrialId={selectedTrial?.id || null}
               />
             </div>
           </div>

@@ -1,10 +1,24 @@
 import "@xyflow/react/dist/style.css";
-import React, { useRef, useState } from "react";
-import ReactFlow from "reactflow";
+import { useMemo } from "react";
+import ReactFlow, { Connection } from "reactflow";
 import TrialNode from "./TrialNode";
+import ResizeHandle from "./components/ResizeHandle";
 import { Trial } from "../ConfigPanel/types";
+import { useDraggable } from "./hooks/useDraggable";
+import { useResizable } from "./hooks/useResizable";
+import {
+  findTrialById,
+  generateUniqueName,
+  validateConnection,
+} from "./utils/trialUtils";
+import {
+  LAYOUT_CONSTANTS,
+  calculateBranchWidth,
+  createTrialNode,
+  createEdge,
+} from "./utils/layoutUtils";
+import { getPatternStyle } from "./utils/styleUtils";
 
-// Move nodeTypes outside the component to avoid recreating it on each render
 const nodeTypes = {
   trial: TrialNode,
 };
@@ -17,6 +31,7 @@ interface LoopSubCanvasProps {
   selectedTrial: Trial | null;
   onSelectTrial: (trial: Trial) => void;
   onUpdateTrial?: (trial: Trial) => void;
+  onAddBranch?: (parentTrialId: number, newBranchTrial: Trial) => void;
 }
 
 function LoopSubCanvas({
@@ -27,136 +42,291 @@ function LoopSubCanvas({
   selectedTrial,
   onSelectTrial,
   onUpdateTrial,
+  onAddBranch,
 }: LoopSubCanvasProps) {
-  // Draggable logic
-  const ref = useRef<HTMLDivElement>(null);
-  const [dragging, setDragging] = useState(false);
-  const [pos, setPos] = useState({ x: 150, y: 250 });
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-
-  // Resizable logic
-  const [size, setSize] = useState({ width: 420, height: 320 });
-  const [resizing, setResizing] = useState(false);
-  const [resizeStart, setResizeStart] = useState({
-    x: 0,
-    y: 0,
-    width: 320,
-    height: 220,
+  const { dragging, pos, handleMouseDown } = useDraggable({ x: 150, y: 250 });
+  const { resizing, size, handleResizeMouseDown } = useResizable({
+    width: 420,
+    height: 320,
   });
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setDragging(true);
-    setOffset({
-      x: e.clientX - pos.x,
-      y: e.clientY - pos.y,
-    });
-  };
-  const handleMouseUp = () => {
-    setDragging(false);
-    setResizing(false);
-  };
-  const handleMouseMove = (e: MouseEvent) => {
-    if (dragging) {
-      setPos({
-        x: e.clientX - offset.x,
-        y: e.clientY - offset.y,
-      });
-    }
-    if (resizing) {
-      const newWidth = Math.max(
-        280,
-        resizeStart.width + (e.clientX - resizeStart.x)
-      );
-      const newHeight = Math.max(
-        180,
-        resizeStart.height + (e.clientY - resizeStart.y)
-      );
-      setSize({ width: newWidth, height: newHeight });
-    }
-  };
-  React.useEffect(() => {
-    if (dragging || resizing) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
-    } else {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    }
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
+  const { nodes, edges } = useMemo(() => {
+    const nodes: any[] = [];
+    const edges: any[] = [];
+    const renderedTrials = new Map<number | string, string>(); // Map trial.id -> nodeId
+    const { yStep, branchHorizontalSpacing, branchVerticalOffset } =
+      LAYOUT_CONSTANTS;
+    // Calculate the center X position based on the modal width
+    const xTrial = size.width / 3.1;
+
+    // Collect all trial IDs that are branches (recursively)
+    const collectAllBranchIds = (trialsList: Trial[]): Set<number> => {
+      const branchIds = new Set<number>();
+      const processItem = (trial: Trial) => {
+        if (trial.branches && Array.isArray(trial.branches)) {
+          trial.branches.forEach((branchId: number | string) => {
+            const numId =
+              typeof branchId === "string" ? parseInt(branchId) : branchId;
+            branchIds.add(numId);
+            const branchTrial = findTrialById(trials, numId);
+            if (branchTrial) {
+              processItem(branchTrial);
+            }
+          });
+        }
+      };
+      trialsList.forEach(processItem);
+      return branchIds;
     };
-  }, [dragging, resizing]);
 
-  const handleResizeMouseDown = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setResizing(true);
-    setResizeStart({
-      x: e.clientX,
-      y: e.clientY,
-      width: size.width,
-      height: size.height,
+    const branchTrialIds = collectAllBranchIds(trials);
+    const mainTrials = trials.filter((trial) => !branchTrialIds.has(trial.id));
+
+    // Recursive function to render a trial and all its branches
+    const renderTrialWithBranches = (
+      trial: Trial,
+      parentId: string,
+      x: number,
+      y: number,
+      depth: number = 0
+    ): number => {
+      const trialId = `${parentId}-${trial.id}`;
+      const isSelected = selectedTrial && selectedTrial.id === trial.id;
+
+      // Check if this trial has already been rendered
+      const existingNodeId = renderedTrials.get(trial.id);
+
+      if (existingNodeId) {
+        // Trial already rendered, just create the edge without rendering again
+        edges.push(createEdge(parentId, existingNodeId));
+        return 0; // No depth added since we're not rendering
+      }
+
+      // Mark this trial as rendered
+      renderedTrials.set(trial.id, trialId);
+
+      // Create edge from parent to this trial
+      edges.push(createEdge(parentId, trialId));
+
+      const handleAddBranchForTrial = () => {
+        if (onAddBranch) {
+          const existingNames = trials.map((t) => t.name);
+          const newName = generateUniqueName(existingNames);
+
+          const newBranchTrial: Trial = {
+            id: Date.now(),
+            type: "Trial",
+            name: newName,
+            parameters: {},
+            trialCode: "",
+          };
+
+          onAddBranch(trial.id, newBranchTrial);
+        }
+      };
+
+      nodes.push(
+        createTrialNode(
+          trialId,
+          trial.name,
+          x,
+          y,
+          !!isSelected,
+          () => onSelectTrial(trial),
+          isSelected ? handleAddBranchForTrial : undefined
+        )
+      );
+
+      let maxDepth = 0;
+
+      if (
+        trial.branches &&
+        Array.isArray(trial.branches) &&
+        trial.branches.length > 0
+      ) {
+        const branchWidths = trial.branches.map((branchId: number | string) =>
+          calculateBranchWidth(branchId, trials, branchHorizontalSpacing)
+        );
+        const totalWidth = branchWidths.reduce(
+          (sum: number, width: number) => sum + width,
+          0
+        );
+
+        let currentX = x - totalWidth / 2;
+
+        trial.branches.forEach((branchId: number | string, index: number) => {
+          const branchTrial = findTrialById(trials, branchId);
+          if (branchTrial) {
+            const branchWidth = branchWidths[index];
+            const branchX = currentX + branchWidth / 2;
+            const branchY = y + branchVerticalOffset;
+
+            const branchDepth = renderTrialWithBranches(
+              branchTrial,
+              trialId,
+              branchX,
+              branchY,
+              depth + 1
+            );
+            maxDepth = Math.max(maxDepth, branchDepth);
+
+            // Edge is created inside renderTrialWithBranches now
+
+            currentX += branchWidth;
+          }
+        });
+      }
+
+      return maxDepth + 1;
+    };
+
+    // Render main sequence trials and their branches
+    let yPos = 60;
+    mainTrials.forEach((trial) => {
+      const isSelected = selectedTrial && selectedTrial.id === trial.id;
+
+      // Mark main sequence trials as rendered
+      renderedTrials.set(trial.id, String(trial.id));
+
+      const handleAddBranchForTrial = () => {
+        if (onAddBranch) {
+          const existingNames = trials.map((t) => t.name);
+          const newName = generateUniqueName(existingNames);
+
+          const newBranchTrial: Trial = {
+            id: Date.now(),
+            type: "Trial",
+            name: newName,
+            parameters: {},
+            trialCode: "",
+          };
+
+          onAddBranch(trial.id, newBranchTrial);
+        }
+      };
+
+      nodes.push(
+        createTrialNode(
+          String(trial.id),
+          trial.name,
+          xTrial,
+          yPos,
+          !!isSelected,
+          () => onSelectTrial(trial),
+          isSelected ? handleAddBranchForTrial : undefined
+        )
+      );
+
+      // Render branches recursively and calculate max depth
+      let maxBranchDepth = 0;
+      if (
+        trial.branches &&
+        Array.isArray(trial.branches) &&
+        trial.branches.length > 0
+      ) {
+        const branchWidths = trial.branches.map((branchId: number | string) =>
+          calculateBranchWidth(branchId, trials, branchHorizontalSpacing)
+        );
+        const totalWidth = branchWidths.reduce(
+          (sum: number, width: number) => sum + width,
+          0
+        );
+        let currentX = xTrial - totalWidth / 2;
+
+        trial.branches.forEach((branchId: number | string, index: number) => {
+          const branchTrial = findTrialById(trials, branchId);
+          if (branchTrial) {
+            const branchWidth = branchWidths[index];
+            const branchX = currentX + branchWidth / 2;
+
+            const branchDepth = renderTrialWithBranches(
+              branchTrial,
+              String(trial.id),
+              branchX,
+              yPos + branchVerticalOffset,
+              0
+            );
+            maxBranchDepth = Math.max(maxBranchDepth, branchDepth);
+
+            // Edge is created inside renderTrialWithBranches now
+
+            currentX += branchWidth;
+          }
+        });
+      }
+
+      yPos += yStep + maxBranchDepth * branchVerticalOffset;
     });
+
+    // Add edges between main sequence trials (vertical connection)
+    for (let i = 0; i < mainTrials.length - 1; i++) {
+      edges.push(
+        createEdge(String(mainTrials[i].id), String(mainTrials[i + 1].id))
+      );
+    }
+
+    return { nodes, edges };
+  }, [
+    trials,
+    selectedTrial,
+    onSelectTrial,
+    onAddBranch,
+    onUpdateTrial,
+    size.width,
+  ]);
+
+  // Handler for connecting trials manually within the loop
+  const handleConnect = (connection: Connection) => {
+    if (!connection.source || !connection.target || !onUpdateTrial) return;
+
+    // Extract the actual trial IDs from the node IDs
+    const extractTrialId = (nodeId: string): number | null => {
+      const segments = nodeId.split("-");
+      const lastSegment = segments[segments.length - 1];
+      const parsed = parseInt(lastSegment);
+      return isNaN(parsed) ? null : parsed;
+    };
+
+    const sourceId = extractTrialId(connection.source);
+    const targetId = extractTrialId(connection.target);
+
+    if (sourceId === null || targetId === null) {
+      console.error("Invalid connection IDs");
+      return;
+    }
+
+    // Validate the connection
+    const validation = validateConnection(sourceId, targetId, trials);
+    if (!validation.isValid) {
+      alert(validation.errorMessage || "Invalid connection");
+      return;
+    }
+
+    // Find and update the source trial
+    const sourceTrial = findTrialById(trials, sourceId);
+    if (sourceTrial) {
+      const branches = sourceTrial.branches || [];
+      // Only add if not already present
+      if (!branches.includes(targetId)) {
+        const updatedTrial = {
+          ...sourceTrial,
+          branches: [...branches, targetId],
+        };
+        onUpdateTrial(updatedTrial);
+      }
+    }
   };
 
-  // Layout for trials
-  let nodes: any[] = [];
-  let yPos = 60;
-  const xTrial = 120;
-  const yStep = 100;
-  trials.forEach((trial) => {
-    nodes.push({
-      id: String(trial.id),
-      type: "trial",
-      data: {
-        name: trial.name,
-        selected: selectedTrial && selectedTrial.id === trial.id,
-        onClick: () => onSelectTrial(trial),
-        onUpdate: onUpdateTrial,
-      },
-      position: { x: xTrial, y: yPos },
-      draggable: false,
-    });
-    yPos += yStep;
-  });
-
-  // Add edges between trials (vertical connection)
-  let edges: any[] = [];
-  for (let i = 0; i < nodes.length - 1; i++) {
-    edges.push({
-      id: `e${nodes[i].id}-${nodes[i + 1].id}`,
-      source: nodes[i].id,
-      target: nodes[i + 1].id,
-      type: "default",
-    });
-  }
-
-  // Fondo dinámico igual que canvas principal
   const subCanvasBg = {
     background: isDark
       ? "radial-gradient(circle at 50% 50%, #23272f 80%, #181a20 100%)"
       : "radial-gradient(circle at 50% 50%, #f7f8fa 80%, #e9ecf3 100%)",
   };
 
-  // Patrón de puntitos igual que el canvas principal
-  const patternStyle: React.CSSProperties = {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
-    pointerEvents: "none",
-    backgroundImage:
-      "radial-gradient(circle, " +
-      (isDark ? "#3a3f4b" : "#dbe2ea") +
-      " 1px, transparent 1.5px)",
-    backgroundSize: "28px 28px",
-    zIndex: 0,
-  };
+  const patternStyle = getPatternStyle(isDark);
 
   return (
     <div
-      ref={ref}
       style={{
         position: "fixed",
         left: pos.x,
@@ -218,42 +388,9 @@ function LoopSubCanvas({
           edges={edges}
           nodeTypes={nodeTypes}
           style={{ background: "transparent", zIndex: 2 }}
+          onConnect={handleConnect}
         />
-        {/* Resize handle */}
-        <div
-          style={{
-            position: "absolute",
-            right: 2,
-            bottom: 2,
-            width: 18,
-            height: 18,
-            background: "rgba(61,146,180,0.7)",
-            borderRadius: 4,
-            cursor: "nwse-resize",
-            zIndex: 10,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            userSelect: "none",
-          }}
-          onMouseDown={handleResizeMouseDown}
-          title="Redimensionar"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 14 14"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M2 12H12M6 8H12M10 4H12"
-              stroke="#fff"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-        </div>
+        <ResizeHandle onMouseDown={handleResizeMouseDown} />
       </div>
     </div>
   );

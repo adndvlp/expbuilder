@@ -259,8 +259,10 @@ function TrialsConfig({ pluginName }: Props) {
       return;
     }
 
-    // Busca el trial en el array principal
-    let trialIndex = trials.findIndex((t) => t.name === trialName);
+    // Busca el trial en el array principal por ID
+    let trialIndex = trials.findIndex(
+      (t) => "id" in t && t.id === selectedTrial?.id
+    );
 
     // Si no está en el array principal, búscalo dentro de un loop
     let loopIndex = -1;
@@ -268,11 +270,12 @@ function TrialsConfig({ pluginName }: Props) {
     if (trialIndex === -1) {
       loopIndex = trials.findIndex(
         (item) =>
-          "trials" in item && item.trials.some((t) => t.name === trialName)
+          "trials" in item &&
+          item.trials.some((t) => t.id === selectedTrial?.id)
       );
       if (loopIndex !== -1) {
         trialInLoopIndex = (trials[loopIndex] as any).trials.findIndex(
-          (t: any) => t.name === trialName
+          (t: any) => t.id === selectedTrial?.id
         );
       }
     }
@@ -289,8 +292,9 @@ function TrialsConfig({ pluginName }: Props) {
     if (!("type" in prevTrial)) return;
 
     const updatedTrial = {
-      ...prevTrial, //////// Checar <
+      ...prevTrial,
       id: Number(prevTrial.id),
+      name: trialName, // Actualizar el nombre también
       plugin: pluginName,
       parameters: {
         includesExtensions: includesExtensions,

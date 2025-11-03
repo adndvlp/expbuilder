@@ -5,12 +5,24 @@ type Props = {
   trials: Trial[];
   onConfirm: (trialIds: number[]) => void;
   onClose?: () => void;
+  selectedTrialId?: number | null;
 };
 
-function LoopRangeModal({ trials, onConfirm, onClose }: Props) {
+function LoopRangeModal({
+  trials,
+  onConfirm,
+  onClose,
+  selectedTrialId,
+}: Props) {
   // Filtrar trials que no sean loops (id tipo string son loops)
   const filteredTrials = trials.filter((t) => typeof t.id !== "string");
-  const [start, setStart] = useState(0);
+
+  // Buscar el índice del trial seleccionado
+  const selectedIndex = selectedTrialId
+    ? filteredTrials.findIndex((t) => t.id === selectedTrialId)
+    : 0;
+
+  const [start, setStart] = useState(selectedIndex >= 0 ? selectedIndex : 0);
   const [end, setEnd] = useState(
     filteredTrials.length > 0 ? filteredTrials.length - 1 : 0
   );
