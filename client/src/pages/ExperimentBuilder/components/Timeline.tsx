@@ -191,6 +191,78 @@ function Component({}: TimelineProps) {
       throw new Error("participantNumber not assigned");
     }
 
+    // --- Branching logic functions (outside initJsPsych for timeline access) ---
+    window.nextTrialId = null;
+    window.skipRemaining = false;
+    window.branchingActive = false;
+
+    const evaluateCondition = (trialData, condition) => {
+      // All rules in a condition must be true (AND logic)
+      return condition.rules.every(rule => {
+        const propValue = trialData[rule.prop];
+        const compareValue = rule.value;
+        
+        // Convert values for comparison
+        const numPropValue = parseFloat(propValue);
+        const numCompareValue = parseFloat(compareValue);
+        const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
+        
+        switch (rule.op) {
+          case '==':
+            return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
+          case '!=':
+            return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
+          case '>':
+            return isNumeric && numPropValue > numCompareValue;
+          case '<':
+            return isNumeric && numPropValue < numCompareValue;
+          case '>=':
+            return isNumeric && numPropValue >= numCompareValue;
+          case '<=':
+            return isNumeric && numPropValue <= numCompareValue;
+          default:
+            return false;
+        }
+      });
+    };
+    
+    const getNextTrialId = (lastTrialData) => {
+      if (!lastTrialData || !lastTrialData.trials || !lastTrialData.trials[0]) {
+        return null;
+      }
+      
+      const trial = lastTrialData.trials[0];
+      
+      // Check if trial has branches and conditions
+      if (!Array.isArray(trial.branches) || trial.branches.length === 0) {
+        return null;
+      }
+      
+      if (!Array.isArray(trial.branchConditions) || trial.branchConditions.length === 0) {
+        return null;
+      }
+      
+      // branchConditions is an array of arrays, flatten it first
+      const conditions = trial.branchConditions.flat();
+      
+      // Evaluate each condition (OR logic between conditions)
+      for (const condition of conditions) {
+        if (!condition || !condition.rules) {
+          console.warn('Invalid condition structure:', condition);
+          continue;
+        }
+        
+        if (evaluateCondition(trial, condition)) {
+          console.log('Condition matched:', condition);
+          return condition.nextTrialId;
+        }
+      }
+      
+      // No condition matched
+      console.log('No condition matched');
+      return null;
+    };
+
     const jsPsych = initJsPsych({
 
     ${extensions}
@@ -204,6 +276,24 @@ function Component({}: TimelineProps) {
           response: data,
         }),
       });
+
+      // Solo evaluar branching si el trial tiene un trial_id válido
+      if (!data.trial_id || data.trial_id === undefined) {
+        return;
+      }
+
+      const lastTrialData = jsPsych.data.getLastTrialData();
+      console.log('Trial data:', lastTrialData);
+      
+      const nextTrialId = getNextTrialId(lastTrialData);
+      console.log('Next trial ID:', nextTrialId);
+      
+      if (nextTrialId) {
+        window.nextTrialId = nextTrialId;
+        window.skipRemaining = true;
+        window.branchingActive = true;
+        console.log('Branching activated: skip to trial', nextTrialId);
+      }
     },
 
   on_finish: function() {
@@ -358,6 +448,78 @@ jsPsych.run(timeline);
       storage: '${storage}'
     });
 
+    // --- Branching logic functions (outside initJsPsych for timeline access) ---
+    window.nextTrialId = null;
+    window.skipRemaining = false;
+    window.branchingActive = false;
+
+    const evaluateCondition = (trialData, condition) => {
+      // All rules in a condition must be true (AND logic)
+      return condition.rules.every(rule => {
+        const propValue = trialData[rule.prop];
+        const compareValue = rule.value;
+        
+        // Convert values for comparison
+        const numPropValue = parseFloat(propValue);
+        const numCompareValue = parseFloat(compareValue);
+        const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
+        
+        switch (rule.op) {
+          case '==':
+            return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
+          case '!=':
+            return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
+          case '>':
+            return isNumeric && numPropValue > numCompareValue;
+          case '<':
+            return isNumeric && numPropValue < numCompareValue;
+          case '>=':
+            return isNumeric && numPropValue >= numCompareValue;
+          case '<=':
+            return isNumeric && numPropValue <= numCompareValue;
+          default:
+            return false;
+        }
+      });
+    };
+    
+    const getNextTrialId = (lastTrialData) => {
+      if (!lastTrialData || !lastTrialData.trials || !lastTrialData.trials[0]) {
+        return null;
+      }
+      
+      const trial = lastTrialData.trials[0];
+      
+      // Check if trial has branches and conditions
+      if (!Array.isArray(trial.branches) || trial.branches.length === 0) {
+        return null;
+      }
+      
+      if (!Array.isArray(trial.branchConditions) || trial.branchConditions.length === 0) {
+        return null;
+      }
+      
+      // branchConditions is an array of arrays, flatten it first
+      const conditions = trial.branchConditions.flat();
+      
+      // Evaluate each condition (OR logic between conditions)
+      for (const condition of conditions) {
+        if (!condition || !condition.rules) {
+          console.warn('Invalid condition structure:', condition);
+          continue;
+        }
+        
+        if (evaluateCondition(trial, condition)) {
+          console.log('Condition matched:', condition);
+          return condition.nextTrialId;
+        }
+      }
+      
+      // No condition matched
+      console.log('No condition matched');
+      return null;
+    };
+
     const jsPsych = initJsPsych({
 
       on_trial_start: function(trial) {
@@ -397,6 +559,25 @@ jsPsych.run(timeline);
         .catch(error => {
           console.error('Error in on_data_update:', error);
         });
+
+        // Solo evaluar branching si el trial tiene un trial_id válido
+        if (!data.trial_id || data.trial_id === undefined) {
+          return;
+        }
+
+        // Evaluate branching conditions
+        const lastTrialData = jsPsych.data.getLastTrialData();
+        console.log('Trial data:', lastTrialData);
+        
+        const nextTrialId = getNextTrialId(lastTrialData);
+        console.log('Next trial ID:', nextTrialId);
+        
+        if (nextTrialId) {
+          window.nextTrialId = nextTrialId;
+          window.skipRemaining = true;
+          window.branchingActive = true;
+          console.log('Branching activated: skip to trial', nextTrialId);
+        }
       },
 
       on_finish: async function() {

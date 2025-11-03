@@ -6,8 +6,11 @@ import { Trial } from "../ConfigPanel/types";
 import TrialNode from "./TrialNode";
 import LoopSubCanvas from "./LoopSubCanvas";
 import LoopRangeModal from "../ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeModal";
+import BranchedTrial from "../ConfigPanel/TrialsConfig/BranchedTrial";
 import CanvasToolbar from "./components/CanvasToolbar";
 import { useFlowLayout } from "./hooks/useFlowLayout";
+import { TbBinaryTree } from "react-icons/tb";
+import { FiX } from "react-icons/fi";
 import {
   generateUniqueName,
   getAllExistingNames,
@@ -39,6 +42,7 @@ function Canvas({}: Props) {
 
   const [showLoopModal, setShowLoopModal] = useState(false);
   const [openLoop, setOpenLoop] = useState<any>(null);
+  const [showBranchedModal, setShowBranchedModal] = useState(false);
 
   const onAddTrial = (type: string) => {
     const existingNames = getAllExistingNames(trials);
@@ -326,6 +330,101 @@ function Canvas({}: Props) {
           onShowLoopModal={handleCreateLoop}
           onAddTrial={() => onAddTrial("Trial")}
         />
+
+        {/* Branches button - only show if selected trial/loop has branches and selectedTrial is NOT inside the open loop */}
+        {(() => {
+          // Check if selectedTrial is inside the openLoop
+          const isTrialInsideOpenLoop =
+            openLoop &&
+            selectedTrial &&
+            openLoop.trials &&
+            openLoop.trials.some((t: any) => t.id === selectedTrial.id);
+
+          // Show button only if:
+          // - selectedLoop has branches, OR
+          // - selectedTrial has branches AND is not inside the open loop
+          const shouldShow =
+            (selectedLoop &&
+              selectedLoop.branches &&
+              Array.isArray(selectedLoop.branches) &&
+              selectedLoop.branches.length > 0) ||
+            (selectedTrial &&
+              selectedTrial.branches &&
+              Array.isArray(selectedTrial.branches) &&
+              selectedTrial.branches.length > 0 &&
+              !isTrialInsideOpenLoop);
+
+          return (
+            shouldShow && (
+              <button
+                style={{
+                  ...fabStyle,
+                  position: "absolute",
+                  top: 24,
+                  left: 155,
+                  width: 48,
+                  height: 48,
+                  fontSize: 24,
+                  background: "#4caf50",
+                  color: "#fff",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                }}
+                title="Branches"
+                onClick={() => setShowBranchedModal(true)}
+              >
+                <TbBinaryTree size={24} color="#fff" />
+              </button>
+            )
+          );
+        })()}
+
+        {showBranchedModal && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: "100vh",
+              background: "rgba(0,0,0,0.32)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+            }}
+          >
+            <div style={{ position: "relative", zIndex: 10000 }}>
+              <button
+                style={{
+                  position: "absolute",
+                  top: 12,
+                  right: 12,
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  background: "rgba(0,0,0,0.5)",
+                  color: "#fff",
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 22,
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                }}
+                onClick={() => setShowBranchedModal(false)}
+                title="Close"
+              >
+                <FiX />
+              </button>
+              <BranchedTrial
+                selectedTrial={selectedTrial || selectedLoop}
+                onClose={() => setShowBranchedModal(false)}
+              />
+            </div>
+          </div>
+        )}
 
         <ReactFlow
           proOptions={{ hideAttribution: true }}

@@ -27,6 +27,16 @@ export interface Loop {
   branches?: Array<string | number>;
 }
 
+export type BranchCondition = {
+  id: number;
+  rules: Array<{
+    prop: string;
+    op: string;
+    value: string;
+  }>;
+  nextTrialId: number | string | null;
+};
+
 export interface Trial {
   id: number;
   type: string;
@@ -49,6 +59,7 @@ export interface Trial {
   editPluginMode?: boolean;
 
   branches?: Array<string | number>;
+  branchConditions?: BranchCondition[];
 }
 
 export type TrialOrLoop = Trial | Loop;

@@ -230,6 +230,9 @@ function TrialsConfig({ pluginName }: Props) {
   const isTrialInLoop = !!selectedTrial?.csvFromLoop;
 
   const { genTrialCode } = useTrialCode({
+    id: selectedTrial?.id,
+    branches: selectedTrial?.branches,
+    branchConditions: selectedTrial?.branchConditions,
     pluginName: pluginName,
     parameters: parameters,
     getColumnValue: getColumnValue,

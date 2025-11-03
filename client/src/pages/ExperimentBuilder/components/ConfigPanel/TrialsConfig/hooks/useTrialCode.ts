@@ -1,6 +1,13 @@
-import { ColumnMapping, ColumnMappingEntry } from "../../types";
+import {
+  BranchCondition,
+  ColumnMapping,
+  ColumnMappingEntry,
+} from "../../types";
 
 type Props = {
+  id: number | undefined;
+  branches: (string | number)[] | undefined;
+  branchConditions: BranchCondition[] | undefined;
   pluginName: string;
   parameters: any[];
   data: any[];
@@ -25,6 +32,9 @@ type Props = {
 };
 
 export function useTrialCode({
+  id,
+  branches,
+  branchConditions,
   pluginName,
   parameters,
   getColumnValue,
@@ -223,9 +233,18 @@ export function useTrialCode({
       .join("\n");
 
     return `${paramProps}
-    data: {
-      ${dataProps}
-    },`;
+      data: {
+        ${dataProps}
+        trial_id: ${id},
+        ${
+          branches
+            ? `
+        branches: [${branches}],
+        branchConditions: [${JSON.stringify(branchConditions)}] 
+        `
+            : ""
+        }
+      },`;
   };
 
   function toCamelCase(str: string): string {
@@ -366,6 +385,21 @@ export function useTrialCode({
     type: ${pluginNameImport}, ${timelineProps}
     `;
 
+    // Si el trial no tiene branches, agregar on_finish para terminar el experimento
+    const hasBranches = branches && branches.length > 0;
+
+    if (!hasBranches) {
+      code += `
+    on_finish: function(data) {
+      // Este trial no tiene branches, es un trial terminal
+      // Si llegamos aquí después de un branching, terminar el experimento
+      if (window.branchingActive) {
+        jsPsych.abortExperiment('Experiment completed', {});
+      }
+    },
+    `;
+    }
+
     if (includesExtensions && extensions !== "") {
       code += `
     extensions: ${extensions}
@@ -383,6 +417,23 @@ export function useTrialCode({
     timeline: 
     [${trialNameSanitized}_timeline],
     timeline_variables: test_stimuli_${trialNameSanitized},
+    conditional_function: function() {
+      const currentId = ${id};
+      
+      // Si skipRemaining está activo, verificar si este es el trial objetivo
+      if (window.skipRemaining) {
+        if (String(currentId) === String(window.nextTrialId)) {
+          // Encontramos el trial objetivo
+          window.skipRemaining = false;
+          window.nextTrialId = null;
+          return true;
+        }
+        // No es el objetivo, saltar
+        return false;
+      }
+      
+      return true;
+    },
     `;
 
       if (includesExtensions && extensions !== "") {

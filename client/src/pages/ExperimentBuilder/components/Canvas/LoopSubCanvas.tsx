@@ -1,11 +1,14 @@
 import "@xyflow/react/dist/style.css";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import ReactFlow, { Connection } from "reactflow";
 import TrialNode from "./TrialNode";
 import ResizeHandle from "./components/ResizeHandle";
+import BranchedTrial from "../ConfigPanel/TrialsConfig/BranchedTrial";
 import { Trial } from "../ConfigPanel/types";
 import { useDraggable } from "./hooks/useDraggable";
 import { useResizable } from "./hooks/useResizable";
+import { TbBinaryTree } from "react-icons/tb";
+import { FiX } from "react-icons/fi";
 import {
   findTrialById,
   generateUniqueName,
@@ -49,6 +52,7 @@ function LoopSubCanvas({
     width: 420,
     height: 320,
   });
+  const [showBranchedModal, setShowBranchedModal] = useState(false);
 
   const { nodes, edges } = useMemo(() => {
     const nodes: any[] = [];
@@ -382,6 +386,86 @@ function LoopSubCanvas({
         }}
       >
         <div style={patternStyle} />
+
+        {/* Branches button - only show if selected trial has branches (no loops in subcanvas) */}
+        {selectedTrial &&
+          selectedTrial.branches &&
+          Array.isArray(selectedTrial.branches) &&
+          selectedTrial.branches.length > 0 && (
+            <button
+              style={{
+                position: "absolute",
+                top: 16,
+                right: 16,
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                background: "#4caf50",
+                color: "#fff",
+                border: "none",
+                cursor: "pointer",
+                fontSize: 20,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
+                zIndex: 10,
+              }}
+              title="Branches"
+              onClick={() => setShowBranchedModal(true)}
+            >
+              <TbBinaryTree size={20} color="#fff" />
+            </button>
+          )}
+
+        {showBranchedModal && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: "100vh",
+              background: "rgba(0,0,0,0.32)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+            }}
+          >
+            <div style={{ position: "relative", zIndex: 10000 }}>
+              <button
+                style={{
+                  position: "absolute",
+                  top: 12,
+                  right: 12,
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  background: "rgba(0,0,0,0.5)",
+                  color: "#fff",
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 22,
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                }}
+                onClick={() => setShowBranchedModal(false)}
+                title="Close"
+              >
+                <FiX />
+              </button>
+              <BranchedTrial
+                selectedTrial={selectedTrial}
+                onClose={() => setShowBranchedModal(false)}
+              />
+            </div>
+          </div>
+        )}
+
         <ReactFlow
           proOptions={{ hideAttribution: true }}
           nodes={nodes}
