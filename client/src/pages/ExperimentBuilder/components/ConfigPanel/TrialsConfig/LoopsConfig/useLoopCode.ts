@@ -4,7 +4,20 @@ type Trial = {
   timelineProps: string;
 };
 
+type BranchCondition = {
+  id: number;
+  rules: Array<{
+    prop: string;
+    op: string;
+    value: string;
+  }>;
+  nextTrialId: number | string | null;
+};
+
 type Props = {
+  id: string | undefined;
+  branches: (string | number)[] | undefined;
+  branchConditions: BranchCondition[] | undefined;
   repetitions: number;
   randomize: boolean;
   orders: boolean;
@@ -16,6 +29,9 @@ type Props = {
 };
 
 export default function useLoopCode({
+  id,
+  branches,
+  branchConditions,
   repetitions,
   randomize,
   orders,
@@ -30,6 +46,9 @@ export default function useLoopCode({
   };
 
   const genLoopCode = () => {
+    // Sanitizar el ID del loop para usarlo en nombres de variables
+    const loopIdSanitized = id ? sanitizeName(id) : "Loop";
+
     // Generar el código de cada trial
     const trialDefinitions = trials
       .map((trial) => {
@@ -58,12 +77,12 @@ export default function useLoopCode({
 
     if (orders || categories) {
       code += `
-    let test_stimuli_Loop = [];
+    let test_stimuli_${loopIdSanitized} = [];
     
     if (typeof participantNumber === "number" && !isNaN(participantNumber)) {
       const stimuliOrders = ${JSON.stringify(stimuliOrders)};
       const categoryData = ${JSON.stringify(categoryData)};
-      const test_stimuli_previous_Loop = ${JSON.stringify(unifiedStimuli, null, 2)};
+      const test_stimuli_previous_${loopIdSanitized} = ${JSON.stringify(unifiedStimuli, null, 2)};
       
       
       if (categoryData.length > 0) {
@@ -84,7 +103,7 @@ export default function useLoopCode({
         
         // Filtrar los estímulos por categoría
         const categoryFilteredStimuli = categoryIndices.map(index => 
-          test_stimuli_previous_Loop[index]
+          test_stimuli_previous_${loopIdSanitized}[index]
         );
 
         // Aplicar el orden si existe
@@ -103,32 +122,32 @@ export default function useLoopCode({
             .filter(i => indexMapping.hasOwnProperty(i))
             .map(i => indexMapping[i]);
           
-          test_stimuli_Loop = orderedIndices
+          test_stimuli_${loopIdSanitized} = orderedIndices
             .filter(i => i >= 0 && i < categoryFilteredStimuli.length)
             .map(i => categoryFilteredStimuli[i]);
         } else {
-          test_stimuli_Loop = categoryFilteredStimuli;
+          test_stimuli_${loopIdSanitized} = categoryFilteredStimuli;
         }
         
         console.log("Participant:", participantNumber, "Category:", participantCategory);
         console.log("Category indices:", categoryIndices);
-        console.log("Filtered stimuli:", test_stimuli_Loop);
+        console.log("Filtered stimuli:", test_stimuli_${loopIdSanitized});
         } else {
         // Lógica original sin categorías
         const orderIndex = (participantNumber - 1) % stimuliOrders.length;
         const index_order = stimuliOrders[orderIndex];
         
-        test_stimuli_Loop = index_order
-          .filter((i) => i !== -1 && i >= 0 && i < test_stimuli_previous_Loop.length)
-          .map((i) => test_stimuli_previous_Loop[i]);
+        test_stimuli_${loopIdSanitized} = index_order
+          .filter((i) => i !== -1 && i >= 0 && i < test_stimuli_previous_${loopIdSanitized}.length)
+          .map((i) => test_stimuli_previous_${loopIdSanitized}[i]);
           
-        console.log(test_stimuli_Loop);
+        console.log(test_stimuli_${loopIdSanitized});
       }
     }`;
     } else {
       code = `
 
-    const test_stimuli_Loop = ${JSON.stringify(unifiedStimuli, null, 2)};`;
+    const test_stimuli_${loopIdSanitized} = ${JSON.stringify(unifiedStimuli, null, 2)};`;
     }
 
     code += `
@@ -137,13 +156,41 @@ export default function useLoopCode({
 
 
 
-const loop_procedure = {
+const ${loopIdSanitized}_procedure = {
   timeline: [${timelineRefs}],
-  timeline_variables: test_stimuli_Loop,
+  timeline_variables: test_stimuli_${loopIdSanitized},
   repetitions: ${repetitions},
   randomize_order: ${randomize},
+  conditional_function: function() {
+    const currentId = "${id}";
+    
+    // Si skipRemaining está activo, verificar si este es el loop objetivo
+    if (window.skipRemaining) {
+      if (String(currentId) === String(window.nextTrialId)) {
+        // Encontramos el loop objetivo
+        window.skipRemaining = false;
+        window.nextTrialId = null;
+        return true;
+      }
+      // No es el objetivo, saltar
+      return false;
+    }
+    
+    return true;
+  },
+  data: {
+    loop_id: "${id}",
+    ${
+      branches
+        ? `
+    branches: [${branches.map((b) => (typeof b === "string" ? `"${b}"` : b))}],
+    branchConditions: ${JSON.stringify(branchConditions)} 
+    `
+        : ""
+    }
+  },
 };
-timeline.push(loop_procedure);
+timeline.push(${loopIdSanitized}_procedure);
 `;
 
     return code;

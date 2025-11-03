@@ -197,6 +197,9 @@ function LoopsConfig({ loop }: Props) {
         );
 
         const { genTrialCode, mappedJson } = useTrialCode({
+          id: trial.id,
+          branches: trial.branches,
+          branchConditions: trial.branchConditions,
           pluginName: trial.plugin,
           parameters: parameters,
           data: data,
@@ -242,6 +245,9 @@ function LoopsConfig({ loop }: Props) {
 
   // Usar useLoopCode con los datos generados
   const generateLoopCode = useLoopCode({
+    id: loop?.id,
+    branches: loop?.branches,
+    branchConditions: loop?.branchConditions,
     repetitions,
     randomize,
     orders,

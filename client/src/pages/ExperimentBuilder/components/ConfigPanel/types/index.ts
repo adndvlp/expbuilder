@@ -25,6 +25,7 @@ export interface Loop {
   csvJson?: any[];
   csvColumns?: string[];
   branches?: Array<string | number>;
+  branchConditions?: BranchCondition[];
 }
 
 export type BranchCondition = {

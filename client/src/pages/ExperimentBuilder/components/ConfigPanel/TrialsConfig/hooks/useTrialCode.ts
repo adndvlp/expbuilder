@@ -239,7 +239,7 @@ export function useTrialCode({
         ${
           branches
             ? `
-        branches: [${branches}],
+        branches: [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}],
         branchConditions: [${JSON.stringify(branchConditions)}] 
         `
             : ""
@@ -397,7 +397,7 @@ export function useTrialCode({
         code += `
     on_finish: function(data) {
       // Branching automático al primer branch
-      const branches = [${branches}];
+      const branches = [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}];
       if (branches.length > 0) {
         window.nextTrialId = branches[0];
         window.skipRemaining = true;

@@ -233,7 +233,7 @@ function Component({}: TimelineProps) {
       
       const trial = lastTrialData.trials[0];
       
-      // Check if trial has branches
+      // Check if trial/loop has branches
       if (!Array.isArray(trial.branches) || trial.branches.length === 0) {
         return null;
       }
@@ -283,22 +283,29 @@ function Component({}: TimelineProps) {
         }),
       });
 
-      // Solo evaluar branching si el trial tiene un trial_id válido
-      if (!data.trial_id || data.trial_id === undefined) {
+      // Solo evaluar branching si el trial/loop tiene un trial_id o loop_id válido
+      if ((!data.trial_id || data.trial_id === undefined) && (!data.loop_id || data.loop_id === undefined)) {
         return;
       }
-
+      
       const lastTrialData = jsPsych.data.getLastTrialData();
-      console.log('Trial data:', lastTrialData);
+      const trial = lastTrialData.trials ? lastTrialData.trials[0] : null;
+      
+      // Verificar si este trial/loop tiene branches
+      if (!trial || !trial.branches || trial.branches.length === 0) {
+        return; // No tiene branches, no hay nada que hacer
+      }
+      
+      console.log('Trial/Loop data:', lastTrialData);
       
       const nextTrialId = getNextTrialId(lastTrialData);
-      console.log('Next trial ID:', nextTrialId);
+      console.log('Next trial/loop ID:', nextTrialId);
       
       if (nextTrialId) {
         window.nextTrialId = nextTrialId;
         window.skipRemaining = true;
         window.branchingActive = true;
-        console.log('Branching activated: skip to trial', nextTrialId);
+        console.log('Branching activated: skip to trial/loop', nextTrialId);
       }
     },
 
@@ -496,7 +503,7 @@ jsPsych.run(timeline);
       
       const trial = lastTrialData.trials[0];
       
-      // Check if trial has branches
+      // Check if trial/loop has branches
       if (!Array.isArray(trial.branches) || trial.branches.length === 0) {
         return null;
       }
@@ -572,23 +579,29 @@ jsPsych.run(timeline);
           console.error('Error in on_data_update:', error);
         });
 
-        // Solo evaluar branching si el trial tiene un trial_id válido
-        if (!data.trial_id || data.trial_id === undefined) {
+        // Solo evaluar branching si el trial/loop tiene un trial_id o loop_id válido
+        if ((!data.trial_id || data.trial_id === undefined) && (!data.loop_id || data.loop_id === undefined)) {
           return;
         }
-
-        // Evaluate branching conditions
+        
         const lastTrialData = jsPsych.data.getLastTrialData();
-        console.log('Trial data:', lastTrialData);
+        const trial = lastTrialData.trials ? lastTrialData.trials[0] : null;
+        
+        // Verificar si este trial/loop tiene branches
+        if (!trial || !trial.branches || trial.branches.length === 0) {
+          return; // No tiene branches, no hay nada que hacer
+        }
+        
+        console.log('Trial/Loop data:', lastTrialData);
         
         const nextTrialId = getNextTrialId(lastTrialData);
-        console.log('Next trial ID:', nextTrialId);
+        console.log('Next trial/loop ID:', nextTrialId);
         
         if (nextTrialId) {
           window.nextTrialId = nextTrialId;
           window.skipRemaining = true;
           window.branchingActive = true;
-          console.log('Branching activated: skip to trial', nextTrialId);
+          console.log('Branching activated: skip to trial/loop', nextTrialId);
         }
       },
 
