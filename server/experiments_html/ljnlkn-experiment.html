@@ -160,15 +160,21 @@
       
       const trial = lastTrialData.trials[0];
       
-      // Check if trial has branches and conditions
+      // Check if trial has branches
       if (!Array.isArray(trial.branches) || trial.branches.length === 0) {
         return null;
       }
       
-      if (!Array.isArray(trial.branchConditions) || trial.branchConditions.length === 0) {
-        return null;
+      // Si solo hay un branch O no hay condiciones, seguir al primer branch automáticamente
+      const hasMultipleBranches = trial.branches.length > 1;
+      const hasBranchConditions = Array.isArray(trial.branchConditions) && trial.branchConditions.length > 0;
+      
+      if (!hasMultipleBranches || !hasBranchConditions) {
+        console.log('Auto-branching to first branch:', trial.branches[0]);
+        return trial.branches[0];
       }
       
+      // Si hay múltiples branches Y condiciones, evaluar las condiciones
       // branchConditions is an array of arrays, flatten it first
       const conditions = trial.branchConditions.flat();
       
@@ -185,9 +191,9 @@
         }
       }
       
-      // No condition matched
-      console.log('No condition matched');
-      return null;
+      // No condition matched - seguir al primer branch por defecto
+      console.log('No condition matched, defaulting to first branch:', trial.branches[0]);
+      return trial.branches[0];
     };
 
     const jsPsych = initJsPsych({
@@ -239,15 +245,15 @@ const welcome = {
 timeline.push(welcome);
 
 
-    const preloadmkd = {
+    const preloadconsent = {
         type: jsPsychPreload,
        files: [],
     }
-    timeline.push(preloadmkd);
+    timeline.push(preloadconsent);
     
-    const test_stimuli_mkd = [{stimulus: "<div id=\"iyxo\" style=\"box-sizing: border-box;\">Cola?</div><h2 id=\"izcl\" style=\"box-sizing: border-box; font-size: 1.5em; font-weight: 600; margin: 0 0 8px;\">Subtitle</h2>",
-choices: ["Si","no"]}];
-    const mkd_timeline = {
+    const test_stimuli_consent = [{stimulus: "<h2 id=\"izcl\" style=\"box-sizing: border-box; font-size: 1.5em; font-weight: 600; margin: 0 0 8px; text-align: center;\">¿Consientes participar?</h2>",
+choices: ["Si","no","quien sabe"]}];
+    const consent_timeline = {
     type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable("stimulus"),
 choices: jsPsych.timelineVariable("choices"),
       data: {
@@ -256,15 +262,15 @@ response: "response",
 stimulus: "stimulus",
         trial_id: 1762147760544,
         
-        branches: [1762147764194,1762147767662],
-        branchConditions: [[{"id":1762155422345,"rules":[{"prop":"response","op":"==","value":"1"}],"nextTrialId":"1762147764194"},{"id":1762155988015,"rules":[{"prop":"response","op":"==","value":"0"}],"nextTrialId":"1762147767662"}]] 
+        branches: [1762147764194,1762147767662,1762164608999],
+        branchConditions: [[{"id":1762155422345,"rules":[{"prop":"response","op":"==","value":"1"}],"nextTrialId":"1762147764194"},{"id":1762155988015,"rules":[{"prop":"response","op":"==","value":"0"}],"nextTrialId":"1762147767662"},{"id":1762164623866,"rules":[{"prop":"response","op":"==","value":"2"}],"nextTrialId":"1762164608999"}]] 
         
       },
     };
-    const mkd_procedure = {
+    const consent_procedure = {
     timeline: 
-    [mkd_timeline],
-    timeline_variables: test_stimuli_mkd,
+    [consent_timeline],
+    timeline_variables: test_stimuli_consent,
     conditional_function: function() {
       const currentId = 1762147760544;
       
@@ -284,18 +290,18 @@ stimulus: "stimulus",
     },
     
     };
-    timeline.push(mkd_procedure);
+    timeline.push(consent_procedure);
   
 
 
-    const preloadnonsskkmd = {
+    const preloadno = {
         type: jsPsychPreload,
        files: [],
     }
-    timeline.push(preloadnonsskkmd);
+    timeline.push(preloadno);
     
-    const test_stimuli_nonsskkmd = [{stimulus: "<div id=\"iudz\" style=\"box-sizing: border-box;\">NO</div>"}];
-    const nonsskkmd_timeline = {
+    const test_stimuli_no = [{stimulus: "<div id=\"iudz\" style=\"box-sizing: border-box;\">Gracias por tu tiempo</div>"}];
+    const no_timeline = {
     type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
       data: {
         response: "response",
@@ -310,18 +316,16 @@ stimulus: "stimulus",
     
     on_finish: function(data) {
       // Este trial no tiene branches, es un trial terminal
-      console.log('Trial terminal - branchingActive:', window.branchingActive, 'branches:', data.branches);
       // Si llegamos aquí después de un branching, terminar el experimento
       if (window.branchingActive) {
-        console.log('Terminating experiment from terminal trial');
-        jsPsych.abortExperiment('Experiment completed', {});
+        jsPsych.abortExperiment('', {});
       }
     },
     };
-    const nonsskkmd_procedure = {
+    const no_procedure = {
     timeline: 
-    [nonsskkmd_timeline],
-    timeline_variables: test_stimuli_nonsskkmd,
+    [no_timeline],
+    timeline_variables: test_stimuli_no,
     conditional_function: function() {
       const currentId = 1762147764194;
       
@@ -341,18 +345,18 @@ stimulus: "stimulus",
     },
     
     };
-    timeline.push(nonsskkmd_procedure);
+    timeline.push(no_procedure);
   
 
 
-    const preloaddmsissmssknm = {
+    const preloadsi = {
         type: jsPsychPreload,
        files: [],
     }
-    timeline.push(preloaddmsissmssknm);
+    timeline.push(preloadsi);
     
-    const test_stimuli_dmsissmssknm = [{stimulus: "<div id=\"iksq\" style=\"box-sizing: border-box;\">SI</div>"}];
-    const dmsissmssknm_timeline = {
+    const test_stimuli_si = [{stimulus: "<div id=\"iksq\" style=\"box-sizing: border-box;\">BUenas</div>"}];
+    const si_timeline = {
     type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
       data: {
         response: "response",
@@ -360,15 +364,15 @@ rt: "rt",
 stimulus: "stimulus",
         trial_id: 1762147767662,
         
-        branches: [1762163057136],
+        branches: [1762164663255],
         branchConditions: [undefined] 
         
       },
     };
-    const dmsissmssknm_procedure = {
+    const si_procedure = {
     timeline: 
-    [dmsissmssknm_timeline],
-    timeline_variables: test_stimuli_dmsissmssknm,
+    [si_timeline],
+    timeline_variables: test_stimuli_si,
     conditional_function: function() {
       const currentId = 1762147767662;
       
@@ -388,43 +392,36 @@ stimulus: "stimulus",
     },
     
     };
-    timeline.push(dmsissmssknm_procedure);
+    timeline.push(si_procedure);
   
 
 
-    const preloaddmm = {
+    const preloadnose = {
         type: jsPsychPreload,
        files: [],
     }
-    timeline.push(preloaddmm);
+    timeline.push(preloadnose);
     
-    const test_stimuli_dmm = [{stimulus: "efm´lmrvl"}];
-    const dmm_timeline = {
+    const test_stimuli_nose = [{stimulus: "<div id=\"is16\" style=\"box-sizing: border-box;\">Pues tu sabrás</div>"}];
+    const nose_timeline = {
     type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
       data: {
         response: "response",
 rt: "rt",
 stimulus: "stimulus",
-        trial_id: 1762163057136,
+        trial_id: 1762164608999,
+        
+        branches: [1762164848497],
+        branchConditions: [undefined] 
         
       },
-    
-    on_finish: function(data) {
-      // Este trial no tiene branches, es un trial terminal
-      console.log('Trial terminal - branchingActive:', window.branchingActive, 'branches:', data.branches);
-      // Si llegamos aquí después de un branching, terminar el experimento
-      if (window.branchingActive) {
-        console.log('Terminating experiment from terminal trial');
-        jsPsych.abortExperiment('Experiment completed', {});
-      }
-    },
     };
-    const dmm_procedure = {
+    const nose_procedure = {
     timeline: 
-    [dmm_timeline],
-    timeline_variables: test_stimuli_dmm,
+    [nose_timeline],
+    timeline_variables: test_stimuli_nose,
     conditional_function: function() {
-      const currentId = 1762163057136;
+      const currentId = 1762164608999;
       
       // Si skipRemaining está activo, verificar si este es el trial objetivo
       if (window.skipRemaining) {
@@ -442,7 +439,111 @@ stimulus: "stimulus",
     },
     
     };
-    timeline.push(dmm_procedure);
+    timeline.push(nose_procedure);
+  
+
+
+    const preloadTardes = {
+        type: jsPsychPreload,
+       files: [],
+    }
+    timeline.push(preloadTardes);
+    
+    const test_stimuli_Tardes = [{stimulus: "<div id=\"ipju\" style=\"box-sizing: border-box; text-align: center;\">Tardes</div>"}];
+    const Tardes_timeline = {
+    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
+      data: {
+        response: "response",
+rt: "rt",
+stimulus: "stimulus",
+        trial_id: 1762164663255,
+        
+      },
+    
+    on_finish: function(data) {
+      // Este trial no tiene branches, es un trial terminal
+      // Si llegamos aquí después de un branching, terminar el experimento
+      if (window.branchingActive) {
+        jsPsych.abortExperiment('', {});
+      }
+    },
+    };
+    const Tardes_procedure = {
+    timeline: 
+    [Tardes_timeline],
+    timeline_variables: test_stimuli_Tardes,
+    conditional_function: function() {
+      const currentId = 1762164663255;
+      
+      // Si skipRemaining está activo, verificar si este es el trial objetivo
+      if (window.skipRemaining) {
+        if (String(currentId) === String(window.nextTrialId)) {
+          // Encontramos el trial objetivo
+          window.skipRemaining = false;
+          window.nextTrialId = null;
+          return true;
+        }
+        // No es el objetivo, saltar
+        return false;
+      }
+      
+      return true;
+    },
+    
+    };
+    timeline.push(Tardes_procedure);
+  
+
+
+    const preloada_verdad = {
+        type: jsPsychPreload,
+       files: [],
+    }
+    timeline.push(preloada_verdad);
+    
+    const test_stimuli_a_verdad = [{stimulus: "<div id=\"ibyh\" style=\"box-sizing: border-box;\">a verdad</div>"}];
+    const a_verdad_timeline = {
+    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus"),
+      data: {
+        response: "response",
+rt: "rt",
+stimulus: "stimulus",
+        trial_id: 1762164848497,
+        
+      },
+    
+    on_finish: function(data) {
+      // Este trial no tiene branches, es un trial terminal
+      // Si llegamos aquí después de un branching, terminar el experimento
+      if (window.branchingActive) {
+        jsPsych.abortExperiment('', {});
+      }
+    },
+    };
+    const a_verdad_procedure = {
+    timeline: 
+    [a_verdad_timeline],
+    timeline_variables: test_stimuli_a_verdad,
+    conditional_function: function() {
+      const currentId = 1762164848497;
+      
+      // Si skipRemaining está activo, verificar si este es el trial objetivo
+      if (window.skipRemaining) {
+        if (String(currentId) === String(window.nextTrialId)) {
+          // Encontramos el trial objetivo
+          window.skipRemaining = false;
+          window.nextTrialId = null;
+          return true;
+        }
+        // No es el objetivo, saltar
+        return false;
+      }
+      
+      return true;
+    },
+    
+    };
+    timeline.push(a_verdad_procedure);
   
 
 jsPsych.run(timeline);

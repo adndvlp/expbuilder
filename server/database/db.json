@@ -16,27 +16,29 @@
           {
             "id": 1762147760544,
             "type": "Trial",
-            "name": "mkd",
+            "name": "consent",
             "parameters": {
               "includesExtensions": false,
               "extensionType": ""
             },
-            "trialCode": "\n    const preloadmkd = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadmkd);\n    \n    const test_stimuli_mkd = [{stimulus: \"<div id=\\\"iyxo\\\" style=\\\"box-sizing: border-box;\\\">Cola?</div><h2 id=\\\"izcl\\\" style=\\\"box-sizing: border-box; font-size: 1.5em; font-weight: 600; margin: 0 0 8px;\\\">Subtitle</h2>\",\nchoices: [\"Si\",\"no\"]}];\n    const mkd_timeline = {\n    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\nchoices: jsPsych.timelineVariable(\"choices\"),\n      data: {\n        rt: \"rt\",\nresponse: \"response\",\nstimulus: \"stimulus\",\n        trial_id: 1762147760544,\n        \n        branches: [1762147764194,1762147767662],\n        branchConditions: [[{\"id\":1762155422345,\"rules\":[{\"prop\":\"response\",\"op\":\"==\",\"value\":\"1\"}],\"nextTrialId\":\"1762147764194\"},{\"id\":1762155988015,\"rules\":[{\"prop\":\"response\",\"op\":\"==\",\"value\":\"0\"}],\"nextTrialId\":\"1762147767662\"}]] \n        \n      },\n    };\n    const mkd_procedure = {\n    timeline: \n    [mkd_timeline],\n    timeline_variables: test_stimuli_mkd,\n    conditional_function: function() {\n      const currentId = 1762147760544;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(mkd_procedure);\n  ",
+            "trialCode": "\n    const preloadconsent = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadconsent);\n    \n    const test_stimuli_consent = [{stimulus: \"<h2 id=\\\"izcl\\\" style=\\\"box-sizing: border-box; font-size: 1.5em; font-weight: 600; margin: 0 0 8px; text-align: center;\\\">¿Consientes participar?</h2>\",\nchoices: [\"Si\",\"no\",\"quien sabe\"]}];\n    const consent_timeline = {\n    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\nchoices: jsPsych.timelineVariable(\"choices\"),\n      data: {\n        rt: \"rt\",\nresponse: \"response\",\nstimulus: \"stimulus\",\n        trial_id: 1762147760544,\n        \n        branches: [1762147764194,1762147767662,1762164608999],\n        branchConditions: [[{\"id\":1762155422345,\"rules\":[{\"prop\":\"response\",\"op\":\"==\",\"value\":\"1\"}],\"nextTrialId\":\"1762147764194\"},{\"id\":1762155988015,\"rules\":[{\"prop\":\"response\",\"op\":\"==\",\"value\":\"0\"}],\"nextTrialId\":\"1762147767662\"},{\"id\":1762164623866,\"rules\":[{\"prop\":\"response\",\"op\":\"==\",\"value\":\"2\"}],\"nextTrialId\":\"1762164608999\"}]] \n        \n      },\n    };\n    const consent_procedure = {\n    timeline: \n    [consent_timeline],\n    timeline_variables: test_stimuli_consent,\n    conditional_function: function() {\n      const currentId = 1762147760544;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(consent_procedure);\n  ",
             "plugin": "plugin-html-button-response",
             "branches": [
               1762147764194,
-              1762147767662
+              1762147767662,
+              1762164608999
             ],
             "columnMapping": {
               "stimulus": {
                 "source": "typed",
-                "value": "<div id=\"iyxo\" style=\"box-sizing: border-box;\">Cola?</div><h2 id=\"izcl\" style=\"box-sizing: border-box; font-size: 1.5em; font-weight: 600; margin: 0 0 8px;\">Subtitle</h2>"
+                "value": "<h2 id=\"izcl\" style=\"box-sizing: border-box; font-size: 1.5em; font-weight: 600; margin: 0 0 8px; text-align: center;\">¿Consientes participar?</h2>"
               },
               "choices": {
                 "source": "typed",
                 "value": [
                   "Si",
-                  "no"
+                  "no",
+                  "quien sabe"
                 ]
               },
               "prompt": {
@@ -105,23 +107,34 @@
                   }
                 ],
                 "nextTrialId": "1762147767662"
+              },
+              {
+                "id": 1762164623866,
+                "rules": [
+                  {
+                    "prop": "response",
+                    "op": "==",
+                    "value": "2"
+                  }
+                ],
+                "nextTrialId": "1762164608999"
               }
             ]
           },
           {
             "id": 1762147764194,
             "type": "Trial",
-            "name": "nonsskkmd",
+            "name": "no",
             "parameters": {
               "includesExtensions": false,
               "extensionType": ""
             },
-            "trialCode": "\n    const preloadnonsskkmd = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadnonsskkmd);\n    \n    const test_stimuli_nonsskkmd = [{stimulus: \"<div id=\\\"iudz\\\" style=\\\"box-sizing: border-box;\\\">NO</div>\"}];\n    const nonsskkmd_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n      data: {\n        response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n        trial_id: 1762147764194,\n        \n        branches: [],\n        branchConditions: [undefined] \n        \n      },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches, es un trial terminal\n      console.log('Trial terminal - branchingActive:', window.branchingActive, 'branches:', data.branches);\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        console.log('Terminating experiment from terminal trial');\n        jsPsych.abortExperiment('Experiment completed', {});\n      }\n    },\n    };\n    const nonsskkmd_procedure = {\n    timeline: \n    [nonsskkmd_timeline],\n    timeline_variables: test_stimuli_nonsskkmd,\n    conditional_function: function() {\n      const currentId = 1762147764194;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(nonsskkmd_procedure);\n  ",
+            "trialCode": "\n    const preloadno = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadno);\n    \n    const test_stimuli_no = [{stimulus: \"<div id=\\\"iudz\\\" style=\\\"box-sizing: border-box;\\\">Gracias por tu tiempo</div>\"}];\n    const no_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n      data: {\n        response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n        trial_id: 1762147764194,\n        \n        branches: [],\n        branchConditions: [undefined] \n        \n      },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },\n    };\n    const no_procedure = {\n    timeline: \n    [no_timeline],\n    timeline_variables: test_stimuli_no,\n    conditional_function: function() {\n      const currentId = 1762147764194;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(no_procedure);\n  ",
             "plugin": "plugin-html-keyboard-response",
             "columnMapping": {
               "stimulus": {
                 "source": "typed",
-                "value": "<div id=\"iudz\" style=\"box-sizing: border-box;\">NO</div>"
+                "value": "<div id=\"iudz\" style=\"box-sizing: border-box;\">Gracias por tu tiempo</div>"
               },
               "choices": {
                 "source": "none",
@@ -156,17 +169,17 @@
           {
             "id": 1762147767662,
             "type": "Trial",
-            "name": "dmsissmssknm",
+            "name": "si",
             "parameters": {
               "includesExtensions": false,
               "extensionType": ""
             },
-            "trialCode": "\n    const preloaddmsissmssknm = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloaddmsissmssknm);\n    \n    const test_stimuli_dmsissmssknm = [{stimulus: \"<div id=\\\"iksq\\\" style=\\\"box-sizing: border-box;\\\">SI</div>\"}];\n    const dmsissmssknm_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n      data: {\n        response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n        trial_id: 1762147767662,\n        \n        branches: [1762163057136],\n        branchConditions: [undefined] \n        \n      },\n    };\n    const dmsissmssknm_procedure = {\n    timeline: \n    [dmsissmssknm_timeline],\n    timeline_variables: test_stimuli_dmsissmssknm,\n    conditional_function: function() {\n      const currentId = 1762147767662;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(dmsissmssknm_procedure);\n  ",
+            "trialCode": "\n    const preloadsi = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadsi);\n    \n    const test_stimuli_si = [{stimulus: \"<div id=\\\"iksq\\\" style=\\\"box-sizing: border-box;\\\">BUenas</div>\"}];\n    const si_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n      data: {\n        response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n        trial_id: 1762147767662,\n        \n        branches: [1762164663255],\n        branchConditions: [undefined] \n        \n      },\n    };\n    const si_procedure = {\n    timeline: \n    [si_timeline],\n    timeline_variables: test_stimuli_si,\n    conditional_function: function() {\n      const currentId = 1762147767662;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(si_procedure);\n  ",
             "plugin": "plugin-html-keyboard-response",
             "columnMapping": {
               "stimulus": {
                 "source": "typed",
-                "value": "<div id=\"iksq\" style=\"box-sizing: border-box;\">SI</div>"
+                "value": "<div id=\"iksq\" style=\"box-sizing: border-box;\">BUenas</div>"
               },
               "choices": {
                 "source": "none",
@@ -225,29 +238,33 @@
             "categories": false,
             "categoryColumn": "",
             "branches": [
-              1762163057136
+              1762164663255
             ]
           },
           {
-            "id": 1762163057136,
+            "id": 1762164608999,
             "type": "Trial",
-            "name": "dmm",
+            "name": "nose",
             "parameters": {
               "includesExtensions": false,
               "extensionType": ""
             },
-            "trialCode": "\n    const preloaddmm = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloaddmm);\n    \n    const test_stimuli_dmm = [{stimulus: \"efm´lmrvl\"}];\n    const dmm_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n      data: {\n        response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n        trial_id: 1762163057136,\n        \n      },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('Experiment completed', {});\n      }\n    },\n    };\n    const dmm_procedure = {\n    timeline: \n    [dmm_timeline],\n    timeline_variables: test_stimuli_dmm,\n    conditional_function: function() {\n      const currentId = 1762163057136;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(dmm_procedure);\n  ",
+            "trialCode": "\n    const preloadnose = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadnose);\n    \n    const test_stimuli_nose = [{stimulus: \"<div id=\\\"is16\\\" style=\\\"box-sizing: border-box;\\\">Pues tu sabrás</div>\"}];\n    const nose_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n      data: {\n        response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n        trial_id: 1762164608999,\n        \n        branches: [1762164848497],\n        branchConditions: [undefined] \n        \n      },\n    };\n    const nose_procedure = {\n    timeline: \n    [nose_timeline],\n    timeline_variables: test_stimuli_nose,\n    conditional_function: function() {\n      const currentId = 1762164608999;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(nose_procedure);\n  ",
             "plugin": "plugin-html-keyboard-response",
             "columnMapping": {
               "stimulus": {
                 "source": "typed",
-                "value": "efm´lmrvl"
+                "value": "<div id=\"is16\" style=\"box-sizing: border-box;\">Pues tu sabrás</div>"
               },
               "choices": {
                 "source": "none",
                 "value": null
               },
               "prompt": {
+                "source": "none",
+                "value": null
+              },
+              "stimulus_duration": {
                 "source": "none",
                 "value": null
               },
@@ -258,16 +275,95 @@
               "response_ends_trial": {
                 "source": "none",
                 "value": null
+              }
+            },
+            "csvJson": [],
+            "csvColumns": [],
+            "orders": false,
+            "orderColumns": [],
+            "stimuliOrders": [],
+            "categories": false,
+            "categoryColumn": "",
+            "branches": [
+              1762164848497
+            ]
+          },
+          {
+            "id": 1762164663255,
+            "type": "Trial",
+            "name": "Tardes",
+            "parameters": {
+              "includesExtensions": false,
+              "extensionType": ""
+            },
+            "trialCode": "\n    const preloadTardes = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadTardes);\n    \n    const test_stimuli_Tardes = [{stimulus: \"<div id=\\\"ipju\\\" style=\\\"box-sizing: border-box; text-align: center;\\\">Tardes</div>\"}];\n    const Tardes_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n      data: {\n        response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n        trial_id: 1762164663255,\n        \n      },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },\n    };\n    const Tardes_procedure = {\n    timeline: \n    [Tardes_timeline],\n    timeline_variables: test_stimuli_Tardes,\n    conditional_function: function() {\n      const currentId = 1762164663255;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(Tardes_procedure);\n  ",
+            "plugin": "plugin-html-keyboard-response",
+            "columnMapping": {
+              "stimulus": {
+                "source": "typed",
+                "value": "<div id=\"ipju\" style=\"box-sizing: border-box; text-align: center;\">Tardes</div>"
               },
-              "trial_ends_after_audio": {
+              "choices": {
                 "source": "none",
                 "value": null
               },
-              "response_allowed_while_playing": {
+              "prompt": {
                 "source": "none",
                 "value": null
               },
               "stimulus_duration": {
+                "source": "none",
+                "value": null
+              },
+              "trial_duration": {
+                "source": "none",
+                "value": null
+              },
+              "response_ends_trial": {
+                "source": "none",
+                "value": null
+              }
+            },
+            "csvJson": [],
+            "csvColumns": [],
+            "orders": false,
+            "orderColumns": [],
+            "stimuliOrders": [],
+            "categories": false,
+            "categoryColumn": ""
+          },
+          {
+            "id": 1762164848497,
+            "type": "Trial",
+            "name": "a verdad",
+            "parameters": {
+              "includesExtensions": false,
+              "extensionType": ""
+            },
+            "trialCode": "\n    const preloada_verdad = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloada_verdad);\n    \n    const test_stimuli_a_verdad = [{stimulus: \"<div id=\\\"ibyh\\\" style=\\\"box-sizing: border-box;\\\">a verdad</div>\"}];\n    const a_verdad_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n      data: {\n        response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n        trial_id: 1762164848497,\n        \n      },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },\n    };\n    const a_verdad_procedure = {\n    timeline: \n    [a_verdad_timeline],\n    timeline_variables: test_stimuli_a_verdad,\n    conditional_function: function() {\n      const currentId = 1762164848497;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(a_verdad_procedure);\n  ",
+            "plugin": "plugin-html-keyboard-response",
+            "columnMapping": {
+              "stimulus": {
+                "source": "typed",
+                "value": "<div id=\"ibyh\" style=\"box-sizing: border-box;\">a verdad</div>"
+              },
+              "choices": {
+                "source": "none",
+                "value": null
+              },
+              "prompt": {
+                "source": "none",
+                "value": null
+              },
+              "stimulus_duration": {
+                "source": "none",
+                "value": null
+              },
+              "trial_duration": {
+                "source": "none",
+                "value": null
+              },
+              "response_ends_trial": {
                 "source": "none",
                 "value": null
               }
@@ -283,18 +379,18 @@
         ]
       },
       "createdAt": "2025-11-03T05:29:20.566Z",
-      "updatedAt": "2025-11-03T10:05:31.745Z"
+      "updatedAt": "2025-11-03T10:28:38.662Z"
     }
   ],
   "configs": [
     {
       "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
       "data": {
-        "generatedCode": "\n  // --- Firebase config ---\n  const firebaseConfig = {\n    apiKey: \"AIzaSyBEbJ-uGKzsaf2u24KPamBPVZrUmvhFk-Q\",\n    authDomain: \"test-e4cf9.firebaseapp.com\",\n    databaseURL: \"http://localhost:9000?ns=test-e4cf9\",\n    projectId: \"test-e4cf9\",\n    storageBucket: \"test-e4cf9.firebasestorage.app\",\n    messagingSenderId: \"414213417080\",\n    appId: \"1:414213417080:web:98607c621a54d07656e58d\"\n  };\n\n  // --- Cargar Firebase SDK ---\n  if (typeof window.firebase === 'undefined') {\n    const script = document.createElement('script');\n    script.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';\n    script.onload = () => {\n      const dbScript = document.createElement('script');\n      dbScript.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';\n      dbScript.onload = () => { window._firebaseReady = true; };\n      document.head.appendChild(dbScript);\n    };\n    document.head.appendChild(script);\n  } else {\n    window._firebaseReady = true;\n  }\n\n  function waitForFirebase() {\n    return new Promise(resolve => {\n      if (window._firebaseReady) return resolve();\n      const interval = setInterval(() => {\n        if (window._firebaseReady) {\n          clearInterval(interval);\n          resolve();\n        }\n      }, 50);\n    });\n  }\n\n \n  const userStr = null;\n\n  const Uid = userStr.uid\n\n  const trialSessionId =\n    (crypto.randomUUID\n      ? crypto.randomUUID()\n      : Math.random().toString(36).slice(2, 10));\n\n  let participantNumber;\n\n  async function saveSession(trialSessionId) {\n    try {\n      const res = await fetch(\"http://localhost:5001/test-e4cf9/us-central1/apidata\", {\n        method: \"POST\",\n        headers: { \"Content-Type\": \"application/json\", Accept: \"*/*\" },\n        body: JSON.stringify({\n          experimentID: \"604a9c48-7b34-45a8-b5c0-4906e655a4f4\",\n          experimentName: \"ljnlkn\", \n          sessionId: trialSessionId,\n          storage: \"drive\",\n          uid: Uid\n        }),\n      });\n      \n      console.log('Response status:', res.status);\n      \n      if (!res.ok) {\n        const errorText = await res.text();\n        console.error('Error creating session:', errorText);\n        throw new Error(`Failed to create session: ${res.status} - ${errorText}`);\n      }\n      \n      const result = await res.json();\n      console.log('Session created successfully:', result);\n      \n      if (!result.success) {\n        if (result.message?.includes(\"INVALID_GOOGLE_DRIVE_TOKEN\") || result.message?.includes(\"Invalid Google Drive token\")) {\n          alert(\"Warning: Google Drive token not found or invalid. Please reconnect your Drive account in Settings.\");\n        } else if (result.message?.includes(\"INVALID_DROPBOX_TOKEN\") || result.message?.includes(\"Invalid Dropbox token\")) {\n          alert(\"Warning: Dropbox token not found or invalid. Please reconnect your Dropbox account in Settings.\");\n        }\n        throw new Error(result.message || 'Failed to create session');\n      }\n      \n      participantNumber = result.participantNumber;\n      return participantNumber;\n    } catch (error) {\n      console.error('Error in saveSession:', error);\n      alert('Error creating session: ' + error.message);\n      throw error;\n    }\n  }\n\n  (async () => {\n    // Esperar e inicializar Firebase\n    await waitForFirebase();\n    if (!window.firebase.apps.length) {\n      window.firebase.initializeApp(firebaseConfig);\n    }\n    const db = window.firebase.database();\n\n    participantNumber = await saveSession(trialSessionId);\n\n    if (typeof participantNumber !== \"number\" || isNaN(participantNumber)) {\n      alert(\"The participant number is not assigned. Please, wait.\");\n      throw new Error(\"participantNumber not assigned\");\n    }\n\n    // --- Configurar onDisconnect para finalizar sesión automáticamente ---\n    const sessionRef = db.ref('sessions/604a9c48-7b34-45a8-b5c0-4906e655a4f4/' + trialSessionId);\n    await sessionRef.set({\n      connected: true,\n      experimentID: '604a9c48-7b34-45a8-b5c0-4906e655a4f4',\n      sessionId: trialSessionId,\n      startedAt: window.firebase.database.ServerValue.TIMESTAMP,\n      storage: 'drive'\n    });\n    \n    // Cuando se desconecte, marcar para que el backend finalice la sesión\n    // Incluir needsFinalization para que se procesen los datos en caso de desconexión\n    sessionRef.onDisconnect().update({\n      connected: false,\n      needsFinalization: true,\n      disconnectedAt: window.firebase.database.ServerValue.TIMESTAMP,\n      storage: 'drive'\n    });\n\n    // --- Branching logic functions (outside initJsPsych for timeline access) ---\n    window.nextTrialId = null;\n    window.skipRemaining = false;\n    window.branchingActive = false;\n\n    const evaluateCondition = (trialData, condition) => {\n      // All rules in a condition must be true (AND logic)\n      return condition.rules.every(rule => {\n        const propValue = trialData[rule.prop];\n        const compareValue = rule.value;\n        \n        // Convert values for comparison\n        const numPropValue = parseFloat(propValue);\n        const numCompareValue = parseFloat(compareValue);\n        const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);\n        \n        switch (rule.op) {\n          case '==':\n            return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;\n          case '!=':\n            return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;\n          case '>':\n            return isNumeric && numPropValue > numCompareValue;\n          case '<':\n            return isNumeric && numPropValue < numCompareValue;\n          case '>=':\n            return isNumeric && numPropValue >= numCompareValue;\n          case '<=':\n            return isNumeric && numPropValue <= numCompareValue;\n          default:\n            return false;\n        }\n      });\n    };\n    \n    const getNextTrialId = (lastTrialData) => {\n      if (!lastTrialData || !lastTrialData.trials || !lastTrialData.trials[0]) {\n        return null;\n      }\n      \n      const trial = lastTrialData.trials[0];\n      \n      // Check if trial has branches and conditions\n      if (!Array.isArray(trial.branches) || trial.branches.length === 0) {\n        return null;\n      }\n      \n      if (!Array.isArray(trial.branchConditions) || trial.branchConditions.length === 0) {\n        return null;\n      }\n      \n      // branchConditions is an array of arrays, flatten it first\n      const conditions = trial.branchConditions.flat();\n      \n      // Evaluate each condition (OR logic between conditions)\n      for (const condition of conditions) {\n        if (!condition || !condition.rules) {\n          console.warn('Invalid condition structure:', condition);\n          continue;\n        }\n        \n        if (evaluateCondition(trial, condition)) {\n          console.log('Condition matched:', condition);\n          return condition.nextTrialId;\n        }\n      }\n      \n      // No condition matched\n      console.log('No condition matched');\n      return null;\n    };\n\n    const jsPsych = initJsPsych({\n\n      on_trial_start: function(trial) {\n        const lastTrialData = jsPsych.data.get()\n        if (lastTrialData) {\n        trial.data.prev_response = lastTrialData.response;\n        }\n      },\n\n      \n\n      on_data_update: function (data) {\n\n        fetch(\"http://localhost:5001/test-e4cf9/us-central1/apidata\", {\n          method: \"POST\",\n          headers: { \"Content-Type\": \"application/json\", Accept: \"*/*\" },\n          body: JSON.stringify({\n            experimentID: \"604a9c48-7b34-45a8-b5c0-4906e655a4f4\",\n            sessionId: trialSessionId,\n            data: data,\n            storage: \"drive\",\n          }),\n        })\n        .then(res => {\n          if (!res.ok) {\n            return res.text().then(text => {\n              console.error('Error appending data:', text);\n            });\n          }\n          return res.json();\n        })\n        .then(result => {\n          if (result && result.success) {\n            console.log('Data appended to temporary storage');\n          }\n        })\n        .catch(error => {\n          console.error('Error in on_data_update:', error);\n        });\n\n        // Solo evaluar branching si el trial tiene un trial_id válido\n        if (!data.trial_id || data.trial_id === undefined) {\n          return;\n        }\n\n        // Evaluate branching conditions\n        const lastTrialData = jsPsych.data.getLastTrialData();\n        console.log('Trial data:', lastTrialData);\n        \n        const nextTrialId = getNextTrialId(lastTrialData);\n        console.log('Next trial ID:', nextTrialId);\n        \n        if (nextTrialId) {\n          window.nextTrialId = nextTrialId;\n          window.skipRemaining = true;\n          window.branchingActive = true;\n          console.log('Branching activated: skip to trial', nextTrialId);\n        }\n      },\n\n      on_finish: async function() {\n        \n        // Cancelar el onDisconnect para evitar conflictos\n        sessionRef.onDisconnect().cancel();\n\n        // Finalizar la sesión normalmente y marcar en Firebase que terminó correctamente\n        console.log('Experiment finished normally, sending data to Google Drive...');\n        \n        try {\n          \n          // Marcar en Firebase que terminó correctamente Y necesita finalización\n          await sessionRef.update({\n            connected: false,\n            finished: true,\n            needsFinalization: true,\n            finishedAt: window.firebase.database.ServerValue.TIMESTAMP\n          });\n          \n          // El backend procesará la finalización al detectar needsFinalization=true\n          console.log('Session marked for finalization in Firebase');\n        } catch (error) {\n          console.error('Error marking session as finished:', error);\n        }\n      },\n  // Uncomment to see the json results after finishing a session experiment\n  // jsPsych.data.displayData('csv');\n});\n\nconst timeline = [];\n\nconst welcome = {\n  type: jsPsychHtmlButtonResponse,\n  stimulus: \"Welcome to the experiment. Press 'Start' to begin.\",\n  choices: ['Start'],\n};\n\ntimeline.push(welcome);\n\n\n    const preloadmkd = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadmkd);\n    \n    const test_stimuli_mkd = [{stimulus: \"<div id=\\\"iyxo\\\" style=\\\"box-sizing: border-box;\\\">Cola?</div><h2 id=\\\"izcl\\\" style=\\\"box-sizing: border-box; font-size: 1.5em; font-weight: 600; margin: 0 0 8px;\\\">Subtitle</h2>\",\nchoices: [\"Si\",\"no\"]}];\n    const mkd_timeline = {\n    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\nchoices: jsPsych.timelineVariable(\"choices\"),\n      data: {\n        rt: \"rt\",\nresponse: \"response\",\nstimulus: \"stimulus\",\n        trial_id: 1762147760544,\n        \n        branches: [1762147764194,1762147767662],\n        branchConditions: [[{\"id\":1762155422345,\"rules\":[{\"prop\":\"response\",\"op\":\"==\",\"value\":\"1\"}],\"nextTrialId\":\"1762147764194\"},{\"id\":1762155988015,\"rules\":[{\"prop\":\"response\",\"op\":\"==\",\"value\":\"0\"}],\"nextTrialId\":\"1762147767662\"}]] \n        \n      },\n    };\n    const mkd_procedure = {\n    timeline: \n    [mkd_timeline],\n    timeline_variables: test_stimuli_mkd,\n    conditional_function: function() {\n      const currentId = 1762147760544;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(mkd_procedure);\n  \n\n\n    const preloadnonsskkmd = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadnonsskkmd);\n    \n    const test_stimuli_nonsskkmd = [{stimulus: \"<div id=\\\"iudz\\\" style=\\\"box-sizing: border-box;\\\">NO</div>\"}];\n    const nonsskkmd_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n      data: {\n        response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n        trial_id: 1762147764194,\n        \n        branches: [],\n        branchConditions: [undefined] \n        \n      },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches, es un trial terminal\n      console.log('Trial terminal - branchingActive:', window.branchingActive, 'branches:', data.branches);\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        console.log('Terminating experiment from terminal trial');\n        jsPsych.abortExperiment('Experiment completed', {});\n      }\n    },\n    };\n    const nonsskkmd_procedure = {\n    timeline: \n    [nonsskkmd_timeline],\n    timeline_variables: test_stimuli_nonsskkmd,\n    conditional_function: function() {\n      const currentId = 1762147764194;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(nonsskkmd_procedure);\n  \n\n\n    const preloaddmsissmssknm = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloaddmsissmssknm);\n    \n    const test_stimuli_dmsissmssknm = [{stimulus: \"<div id=\\\"iksq\\\" style=\\\"box-sizing: border-box;\\\">SI</div>\"}];\n    const dmsissmssknm_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n      data: {\n        response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n        trial_id: 1762147767662,\n        \n        branches: [1762163057136],\n        branchConditions: [undefined] \n        \n      },\n    };\n    const dmsissmssknm_procedure = {\n    timeline: \n    [dmsissmssknm_timeline],\n    timeline_variables: test_stimuli_dmsissmssknm,\n    conditional_function: function() {\n      const currentId = 1762147767662;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(dmsissmssknm_procedure);\n  \n\n\n    const preloaddmm = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloaddmm);\n    \n    const test_stimuli_dmm = [{stimulus: \"efm´lmrvl\"}];\n    const dmm_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n      data: {\n        response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n        trial_id: 1762163057136,\n        \n      },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches, es un trial terminal\n      console.log('Trial terminal - branchingActive:', window.branchingActive, 'branches:', data.branches);\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        console.log('Terminating experiment from terminal trial');\n        jsPsych.abortExperiment('Experiment completed', {});\n      }\n    },\n    };\n    const dmm_procedure = {\n    timeline: \n    [dmm_timeline],\n    timeline_variables: test_stimuli_dmm,\n    conditional_function: function() {\n      const currentId = 1762163057136;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(dmm_procedure);\n  \n\njsPsych.run(timeline);\n\n})();\n"
+        "generatedCode": "\n  // --- Firebase config ---\n  const firebaseConfig = {\n    apiKey: \"AIzaSyBEbJ-uGKzsaf2u24KPamBPVZrUmvhFk-Q\",\n    authDomain: \"test-e4cf9.firebaseapp.com\",\n    databaseURL: \"http://localhost:9000?ns=test-e4cf9\",\n    projectId: \"test-e4cf9\",\n    storageBucket: \"test-e4cf9.firebasestorage.app\",\n    messagingSenderId: \"414213417080\",\n    appId: \"1:414213417080:web:98607c621a54d07656e58d\"\n  };\n\n  // --- Cargar Firebase SDK ---\n  if (typeof window.firebase === 'undefined') {\n    const script = document.createElement('script');\n    script.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';\n    script.onload = () => {\n      const dbScript = document.createElement('script');\n      dbScript.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';\n      dbScript.onload = () => { window._firebaseReady = true; };\n      document.head.appendChild(dbScript);\n    };\n    document.head.appendChild(script);\n  } else {\n    window._firebaseReady = true;\n  }\n\n  function waitForFirebase() {\n    return new Promise(resolve => {\n      if (window._firebaseReady) return resolve();\n      const interval = setInterval(() => {\n        if (window._firebaseReady) {\n          clearInterval(interval);\n          resolve();\n        }\n      }, 50);\n    });\n  }\n\n \n  const userStr = null;\n\n  const Uid = userStr.uid\n\n  const trialSessionId =\n    (crypto.randomUUID\n      ? crypto.randomUUID()\n      : Math.random().toString(36).slice(2, 10));\n\n  let participantNumber;\n\n  async function saveSession(trialSessionId) {\n    try {\n      const res = await fetch(\"http://localhost:5001/test-e4cf9/us-central1/apidata\", {\n        method: \"POST\",\n        headers: { \"Content-Type\": \"application/json\", Accept: \"*/*\" },\n        body: JSON.stringify({\n          experimentID: \"604a9c48-7b34-45a8-b5c0-4906e655a4f4\",\n          experimentName: \"ljnlkn\", \n          sessionId: trialSessionId,\n          storage: \"drive\",\n          uid: Uid\n        }),\n      });\n      \n      console.log('Response status:', res.status);\n      \n      if (!res.ok) {\n        const errorText = await res.text();\n        console.error('Error creating session:', errorText);\n        throw new Error(`Failed to create session: ${res.status} - ${errorText}`);\n      }\n      \n      const result = await res.json();\n      console.log('Session created successfully:', result);\n      \n      if (!result.success) {\n        if (result.message?.includes(\"INVALID_GOOGLE_DRIVE_TOKEN\") || result.message?.includes(\"Invalid Google Drive token\")) {\n          alert(\"Warning: Google Drive token not found or invalid. Please reconnect your Drive account in Settings.\");\n        } else if (result.message?.includes(\"INVALID_DROPBOX_TOKEN\") || result.message?.includes(\"Invalid Dropbox token\")) {\n          alert(\"Warning: Dropbox token not found or invalid. Please reconnect your Dropbox account in Settings.\");\n        }\n        throw new Error(result.message || 'Failed to create session');\n      }\n      \n      participantNumber = result.participantNumber;\n      return participantNumber;\n    } catch (error) {\n      console.error('Error in saveSession:', error);\n      alert('Error creating session: ' + error.message);\n      throw error;\n    }\n  }\n\n  (async () => {\n    // Esperar e inicializar Firebase\n    await waitForFirebase();\n    if (!window.firebase.apps.length) {\n      window.firebase.initializeApp(firebaseConfig);\n    }\n    const db = window.firebase.database();\n\n    participantNumber = await saveSession(trialSessionId);\n\n    if (typeof participantNumber !== \"number\" || isNaN(participantNumber)) {\n      alert(\"The participant number is not assigned. Please, wait.\");\n      throw new Error(\"participantNumber not assigned\");\n    }\n\n    // --- Configurar onDisconnect para finalizar sesión automáticamente ---\n    const sessionRef = db.ref('sessions/604a9c48-7b34-45a8-b5c0-4906e655a4f4/' + trialSessionId);\n    await sessionRef.set({\n      connected: true,\n      experimentID: '604a9c48-7b34-45a8-b5c0-4906e655a4f4',\n      sessionId: trialSessionId,\n      startedAt: window.firebase.database.ServerValue.TIMESTAMP,\n      storage: 'drive'\n    });\n    \n    // Cuando se desconecte, marcar para que el backend finalice la sesión\n    // Incluir needsFinalization para que se procesen los datos en caso de desconexión\n    sessionRef.onDisconnect().update({\n      connected: false,\n      needsFinalization: true,\n      disconnectedAt: window.firebase.database.ServerValue.TIMESTAMP,\n      storage: 'drive'\n    });\n\n    // --- Branching logic functions (outside initJsPsych for timeline access) ---\n    window.nextTrialId = null;\n    window.skipRemaining = false;\n    window.branchingActive = false;\n\n    const evaluateCondition = (trialData, condition) => {\n      // All rules in a condition must be true (AND logic)\n      return condition.rules.every(rule => {\n        const propValue = trialData[rule.prop];\n        const compareValue = rule.value;\n        \n        // Convert values for comparison\n        const numPropValue = parseFloat(propValue);\n        const numCompareValue = parseFloat(compareValue);\n        const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);\n        \n        switch (rule.op) {\n          case '==':\n            return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;\n          case '!=':\n            return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;\n          case '>':\n            return isNumeric && numPropValue > numCompareValue;\n          case '<':\n            return isNumeric && numPropValue < numCompareValue;\n          case '>=':\n            return isNumeric && numPropValue >= numCompareValue;\n          case '<=':\n            return isNumeric && numPropValue <= numCompareValue;\n          default:\n            return false;\n        }\n      });\n    };\n    \n    const getNextTrialId = (lastTrialData) => {\n      if (!lastTrialData || !lastTrialData.trials || !lastTrialData.trials[0]) {\n        return null;\n      }\n      \n      const trial = lastTrialData.trials[0];\n      \n      // Check if trial has branches\n      if (!Array.isArray(trial.branches) || trial.branches.length === 0) {\n        return null;\n      }\n      \n      // Si solo hay un branch O no hay condiciones, seguir al primer branch automáticamente\n      const hasMultipleBranches = trial.branches.length > 1;\n      const hasBranchConditions = Array.isArray(trial.branchConditions) && trial.branchConditions.length > 0;\n      \n      if (!hasMultipleBranches || !hasBranchConditions) {\n        console.log('Auto-branching to first branch:', trial.branches[0]);\n        return trial.branches[0];\n      }\n      \n      // Si hay múltiples branches Y condiciones, evaluar las condiciones\n      // branchConditions is an array of arrays, flatten it first\n      const conditions = trial.branchConditions.flat();\n      \n      // Evaluate each condition (OR logic between conditions)\n      for (const condition of conditions) {\n        if (!condition || !condition.rules) {\n          console.warn('Invalid condition structure:', condition);\n          continue;\n        }\n        \n        if (evaluateCondition(trial, condition)) {\n          console.log('Condition matched:', condition);\n          return condition.nextTrialId;\n        }\n      }\n      \n      // No condition matched - seguir al primer branch por defecto\n      console.log('No condition matched, defaulting to first branch:', trial.branches[0]);\n      return trial.branches[0];\n    };\n\n    const jsPsych = initJsPsych({\n\n      on_trial_start: function(trial) {\n        const lastTrialData = jsPsych.data.get()\n        if (lastTrialData) {\n        trial.data.prev_response = lastTrialData.response;\n        }\n      },\n\n      \n\n      on_data_update: function (data) {\n\n        fetch(\"http://localhost:5001/test-e4cf9/us-central1/apidata\", {\n          method: \"POST\",\n          headers: { \"Content-Type\": \"application/json\", Accept: \"*/*\" },\n          body: JSON.stringify({\n            experimentID: \"604a9c48-7b34-45a8-b5c0-4906e655a4f4\",\n            sessionId: trialSessionId,\n            data: data,\n            storage: \"drive\",\n          }),\n        })\n        .then(res => {\n          if (!res.ok) {\n            return res.text().then(text => {\n              console.error('Error appending data:', text);\n            });\n          }\n          return res.json();\n        })\n        .then(result => {\n          if (result && result.success) {\n            console.log('Data appended to temporary storage');\n          }\n        })\n        .catch(error => {\n          console.error('Error in on_data_update:', error);\n        });\n\n        // Solo evaluar branching si el trial tiene un trial_id válido\n        if (!data.trial_id || data.trial_id === undefined) {\n          return;\n        }\n\n        // Evaluate branching conditions\n        const lastTrialData = jsPsych.data.getLastTrialData();\n        console.log('Trial data:', lastTrialData);\n        \n        const nextTrialId = getNextTrialId(lastTrialData);\n        console.log('Next trial ID:', nextTrialId);\n        \n        if (nextTrialId) {\n          window.nextTrialId = nextTrialId;\n          window.skipRemaining = true;\n          window.branchingActive = true;\n          console.log('Branching activated: skip to trial', nextTrialId);\n        }\n      },\n\n      on_finish: async function() {\n        \n        // Cancelar el onDisconnect para evitar conflictos\n        sessionRef.onDisconnect().cancel();\n\n        // Finalizar la sesión normalmente y marcar en Firebase que terminó correctamente\n        console.log('Experiment finished normally, sending data to Google Drive...');\n        \n        try {\n          \n          // Marcar en Firebase que terminó correctamente Y necesita finalización\n          await sessionRef.update({\n            connected: false,\n            finished: true,\n            needsFinalization: true,\n            finishedAt: window.firebase.database.ServerValue.TIMESTAMP\n          });\n          \n          // El backend procesará la finalización al detectar needsFinalization=true\n          console.log('Session marked for finalization in Firebase');\n        } catch (error) {\n          console.error('Error marking session as finished:', error);\n        }\n      },\n  // Uncomment to see the json results after finishing a session experiment\n  // jsPsych.data.displayData('csv');\n});\n\nconst timeline = [];\n\nconst welcome = {\n  type: jsPsychHtmlButtonResponse,\n  stimulus: \"Welcome to the experiment. Press 'Start' to begin.\",\n  choices: ['Start'],\n};\n\ntimeline.push(welcome);\n\n\n    const preloadconsent = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadconsent);\n    \n    const test_stimuli_consent = [{stimulus: \"<h2 id=\\\"izcl\\\" style=\\\"box-sizing: border-box; font-size: 1.5em; font-weight: 600; margin: 0 0 8px; text-align: center;\\\">¿Consientes participar?</h2>\",\nchoices: [\"Si\",\"no\",\"quien sabe\"]}];\n    const consent_timeline = {\n    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\nchoices: jsPsych.timelineVariable(\"choices\"),\n      data: {\n        rt: \"rt\",\nresponse: \"response\",\nstimulus: \"stimulus\",\n        trial_id: 1762147760544,\n        \n        branches: [1762147764194,1762147767662,1762164608999],\n        branchConditions: [[{\"id\":1762155422345,\"rules\":[{\"prop\":\"response\",\"op\":\"==\",\"value\":\"1\"}],\"nextTrialId\":\"1762147764194\"},{\"id\":1762155988015,\"rules\":[{\"prop\":\"response\",\"op\":\"==\",\"value\":\"0\"}],\"nextTrialId\":\"1762147767662\"},{\"id\":1762164623866,\"rules\":[{\"prop\":\"response\",\"op\":\"==\",\"value\":\"2\"}],\"nextTrialId\":\"1762164608999\"}]] \n        \n      },\n    };\n    const consent_procedure = {\n    timeline: \n    [consent_timeline],\n    timeline_variables: test_stimuli_consent,\n    conditional_function: function() {\n      const currentId = 1762147760544;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(consent_procedure);\n  \n\n\n    const preloadno = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadno);\n    \n    const test_stimuli_no = [{stimulus: \"<div id=\\\"iudz\\\" style=\\\"box-sizing: border-box;\\\">Gracias por tu tiempo</div>\"}];\n    const no_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n      data: {\n        response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n        trial_id: 1762147764194,\n        \n        branches: [],\n        branchConditions: [undefined] \n        \n      },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },\n    };\n    const no_procedure = {\n    timeline: \n    [no_timeline],\n    timeline_variables: test_stimuli_no,\n    conditional_function: function() {\n      const currentId = 1762147764194;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(no_procedure);\n  \n\n\n    const preloadsi = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadsi);\n    \n    const test_stimuli_si = [{stimulus: \"<div id=\\\"iksq\\\" style=\\\"box-sizing: border-box;\\\">BUenas</div>\"}];\n    const si_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n      data: {\n        response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n        trial_id: 1762147767662,\n        \n        branches: [1762164663255],\n        branchConditions: [undefined] \n        \n      },\n    };\n    const si_procedure = {\n    timeline: \n    [si_timeline],\n    timeline_variables: test_stimuli_si,\n    conditional_function: function() {\n      const currentId = 1762147767662;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(si_procedure);\n  \n\n\n    const preloadnose = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadnose);\n    \n    const test_stimuli_nose = [{stimulus: \"<div id=\\\"is16\\\" style=\\\"box-sizing: border-box;\\\">Pues tu sabrás</div>\"}];\n    const nose_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n      data: {\n        response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n        trial_id: 1762164608999,\n        \n        branches: [1762164848497],\n        branchConditions: [undefined] \n        \n      },\n    };\n    const nose_procedure = {\n    timeline: \n    [nose_timeline],\n    timeline_variables: test_stimuli_nose,\n    conditional_function: function() {\n      const currentId = 1762164608999;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(nose_procedure);\n  \n\n\n    const preloadTardes = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadTardes);\n    \n    const test_stimuli_Tardes = [{stimulus: \"<div id=\\\"ipju\\\" style=\\\"box-sizing: border-box; text-align: center;\\\">Tardes</div>\"}];\n    const Tardes_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n      data: {\n        response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n        trial_id: 1762164663255,\n        \n      },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },\n    };\n    const Tardes_procedure = {\n    timeline: \n    [Tardes_timeline],\n    timeline_variables: test_stimuli_Tardes,\n    conditional_function: function() {\n      const currentId = 1762164663255;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(Tardes_procedure);\n  \n\n\n    const preloada_verdad = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloada_verdad);\n    \n    const test_stimuli_a_verdad = [{stimulus: \"<div id=\\\"ibyh\\\" style=\\\"box-sizing: border-box;\\\">a verdad</div>\"}];\n    const a_verdad_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\n      data: {\n        response: \"response\",\nrt: \"rt\",\nstimulus: \"stimulus\",\n        trial_id: 1762164848497,\n        \n      },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },\n    };\n    const a_verdad_procedure = {\n    timeline: \n    [a_verdad_timeline],\n    timeline_variables: test_stimuli_a_verdad,\n    conditional_function: function() {\n      const currentId = 1762164848497;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(a_verdad_procedure);\n  \n\njsPsych.run(timeline);\n\n})();\n"
       },
       "isDevMode": false,
       "createdAt": "2025-11-03T05:29:20.418Z",
-      "updatedAt": "2025-11-03T10:02:13.725Z"
+      "updatedAt": "2025-11-03T10:28:42.609Z"
     }
   ],
   "pluginConfigs": [],
@@ -4227,6 +4323,958 @@
           "time_elapsed": 1993
         }
       ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "4ab12516-98e6-4557-b5eb-7356ef7ce3ae",
+      "createdAt": "2025-11-03T10:07:14.651Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 747
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2562
+        },
+        {
+          "response": "d",
+          "rt": 570,
+          "stimulus": "<div id=\"iudz\" style=\"box-sizing: border-box;\">NO</div>",
+          "trial_id": 1762147764194,
+          "branches": [],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "html-keyboard-response",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 3133
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "7575f207-bc7e-4f8b-a773-1a990d9e6143",
+      "createdAt": "2025-11-03T10:08:23.177Z",
+      "data": []
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "ffc4bc2b-b7d1-4af4-8a3e-97d3704b70c5",
+      "createdAt": "2025-11-03T10:08:26.171Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1092
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1992
+        },
+        {
+          "response": "f",
+          "rt": 746,
+          "stimulus": "<div id=\"iudz\" style=\"box-sizing: border-box;\">Gracias por tu tiempo</div>",
+          "trial_id": 1762147764194,
+          "branches": [],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "html-keyboard-response",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2740
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "34f9004f-634e-4e3b-944c-6bfb42fbaf7c",
+      "createdAt": "2025-11-03T10:08:33.916Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 679
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1531
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 7,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2082
+        },
+        {
+          "response": "f",
+          "rt": 628,
+          "stimulus": "efm´lmrvl<h1 id=\"i8nx\" style=\"box-sizing: border-box; font-size: 2.5em; font-weight: bold; margin: 0 0 10px;\">tardes</h1>",
+          "trial_id": 1762163057136,
+          "trial_type": "html-keyboard-response",
+          "trial_index": 8,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2711
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "4d5b3a7a-2fb0-4353-ae8c-d7811186791f",
+      "createdAt": "2025-11-03T10:11:24.984Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1177
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 3343
+        },
+        {
+          "response": "f",
+          "rt": 679,
+          "stimulus": "<div id=\"iudz\" style=\"box-sizing: border-box;\">Gracias por tu tiempo</div>",
+          "trial_id": 1762147764194,
+          "branches": [],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "html-keyboard-response",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 4024
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "4f82ab48-2f67-4157-90fa-ccea3c6f1062",
+      "createdAt": "2025-11-03T10:11:39.019Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 674
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1260
+        },
+        {
+          "response": "f",
+          "rt": 466,
+          "stimulus": "<div id=\"iudz\" style=\"box-sizing: border-box;\">Gracias por tu tiempo</div>",
+          "trial_id": 1762147764194,
+          "branches": [],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "html-keyboard-response",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1727
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "2df57d01-d332-47fb-9c31-43e7384b8007",
+      "createdAt": "2025-11-03T10:12:17.783Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 677
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1327
+        },
+        {
+          "response": "f",
+          "rt": 723,
+          "stimulus": "<div id=\"iudz\" style=\"box-sizing: border-box;\">Gracias por tu tiempo</div>",
+          "trial_id": 1762147764194,
+          "branches": [],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "html-keyboard-response",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2051
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "da71854c-d173-4636-9f5c-1a93e623802e",
+      "createdAt": "2025-11-03T10:12:23.501Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 932
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1632
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 7,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2267
+        },
+        {
+          "response": "f",
+          "rt": 1242,
+          "stimulus": "<div id=\"is16\" style=\"box-sizing: border-box;\">Pues tu sabrás</div>",
+          "trial_id": 1762164608999,
+          "trial_type": "html-keyboard-response",
+          "trial_index": 8,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 3511
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "239bbda5-9f4f-4879-a845-02928e6c57c0",
+      "createdAt": "2025-11-03T10:12:33.319Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 782
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 7,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2017
+        },
+        {
+          "response": "f",
+          "rt": 363,
+          "stimulus": "<div id=\"is16\" style=\"box-sizing: border-box;\">Pues tu sabrás</div>",
+          "trial_id": 1762164608999,
+          "trial_type": "html-keyboard-response",
+          "trial_index": 8,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2381
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "e4218db4-f2dc-49f4-8279-e059a9d891ad",
+      "createdAt": "2025-11-03T10:12:52.908Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 774
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "39a8b746-59dd-42ce-a4e1-36b853e74537",
+      "createdAt": "2025-11-03T10:12:56.971Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1772
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 7,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2207
+        },
+        {
+          "response": "f",
+          "rt": 412,
+          "stimulus": "<div id=\"is16\" style=\"box-sizing: border-box;\">Pues tu sabrás</div>",
+          "trial_id": 1762164608999,
+          "trial_type": "html-keyboard-response",
+          "trial_index": 8,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2620
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "9bc1b1ee-8918-4ce6-abda-e275976d37a2",
+      "createdAt": "2025-11-03T10:13:01.422Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 778
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1714
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 7,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2163
+        },
+        {
+          "response": "f",
+          "rt": 681,
+          "stimulus": "<div id=\"is16\" style=\"box-sizing: border-box;\">Pues tu sabrás</div>",
+          "trial_id": 1762164608999,
+          "trial_type": "html-keyboard-response",
+          "trial_index": 8,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2844
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "4a042051-d4fd-42da-96ef-4459e7806278",
+      "createdAt": "2025-11-03T10:13:11.251Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 765
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1617
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 7,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2450
+        },
+        {
+          "response": "d",
+          "rt": 599,
+          "stimulus": "<div id=\"is16\" style=\"box-sizing: border-box;\">Pues tu sabrás</div>",
+          "trial_id": 1762164608999,
+          "trial_type": "html-keyboard-response",
+          "trial_index": 8,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 3051
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "801e4fe3-6b87-43bb-b9ca-4f9a1ce83471",
+      "createdAt": "2025-11-03T10:14:26.348Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1894
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 7,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2962
+        },
+        {
+          "response": "c",
+          "rt": 495,
+          "stimulus": "<div id=\"is16\" style=\"box-sizing: border-box;\">Pues tu sabrás</div>",
+          "trial_id": 1762164608999,
+          "trial_type": "html-keyboard-response",
+          "trial_index": 8,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 3458
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "cece96db-e4de-4214-92ea-27e07154013c",
+      "createdAt": "2025-11-03T10:14:31.501Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 815
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1432
+        },
+        {
+          "response": "c",
+          "rt": 347,
+          "stimulus": "<div id=\"iudz\" style=\"box-sizing: border-box;\">Gracias por tu tiempo</div>",
+          "trial_id": 1762147764194,
+          "branches": [],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "html-keyboard-response",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1781
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "f109febe-af73-4983-ae60-f0b1350dd9d6",
+      "createdAt": "2025-11-03T10:14:35.951Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 798
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1684
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 7,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2101
+        },
+        {
+          "response": "c",
+          "rt": 551,
+          "stimulus": "<div id=\"is16\" style=\"box-sizing: border-box;\">Pues tu sabrás</div>",
+          "trial_id": 1762164608999,
+          "trial_type": "html-keyboard-response",
+          "trial_index": 8,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2653
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "a8a71c0a-c817-455b-adcf-7ee37af37675",
+      "createdAt": "2025-11-03T10:15:19.651Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 672
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 7,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1471
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 9,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2087
+        },
+        {
+          "response": "r",
+          "rt": 769,
+          "stimulus": "<div id=\"ipju\" style=\"box-sizing: border-box; text-align: center;\">Tardes</div>",
+          "trial_id": 1762164663255,
+          "trial_type": "html-keyboard-response",
+          "trial_index": 10,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2856
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "a7ff0cbc-6354-4305-8ee0-ed93c999e148",
+      "createdAt": "2025-11-03T10:15:28.418Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1232
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1799
+        },
+        {
+          "response": "f",
+          "rt": 479,
+          "stimulus": "<div id=\"iudz\" style=\"box-sizing: border-box;\">Gracias por tu tiempo</div>",
+          "trial_id": 1762147764194,
+          "branches": [],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "html-keyboard-response",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2279
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "284557c3-afa8-499b-a521-f77cf569e9e1",
+      "createdAt": "2025-11-03T10:15:32.183Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 851
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1316
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 7,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1790
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 9,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 5548
+        },
+        {
+          "response": "m",
+          "rt": 950,
+          "stimulus": "<div id=\"ipju\" style=\"box-sizing: border-box; text-align: center;\">Tardes</div>",
+          "trial_id": 1762164663255,
+          "trial_type": "html-keyboard-response",
+          "trial_index": 10,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 6499
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "61c59f8b-21f8-44f1-8f34-909ff40b550a",
+      "createdAt": "2025-11-03T10:28:42.093Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1889
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 7,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2772
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 11,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 3356
+        },
+        {
+          "response": "m",
+          "rt": 989,
+          "stimulus": "<div id=\"ibyh\" style=\"box-sizing: border-box;\">a verdad</div>",
+          "trial_id": 1762164848497,
+          "trial_type": "html-keyboard-response",
+          "trial_index": 12,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 4347
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "9bba34a4-9def-4f6a-8eb7-e8ba55195718",
+      "createdAt": "2025-11-03T10:28:48.124Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 783
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1283
+        },
+        {
+          "response": "f",
+          "rt": 398,
+          "stimulus": "<div id=\"iudz\" style=\"box-sizing: border-box;\">Gracias por tu tiempo</div>",
+          "trial_id": 1762147764194,
+          "branches": [],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "html-keyboard-response",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1681
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "a4528996-1bac-4f1f-830e-64985f41e4af",
+      "createdAt": "2025-11-03T10:28:51.360Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 846
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1481
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 9,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1798
+        },
+        {
+          "response": "f",
+          "rt": 405,
+          "stimulus": "<div id=\"ipju\" style=\"box-sizing: border-box; text-align: center;\">Tardes</div>",
+          "trial_id": 1762164663255,
+          "trial_type": "html-keyboard-response",
+          "trial_index": 10,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2203
+        }
+      ]
+    },
+    {
+      "experimentID": "604a9c48-7b34-45a8-b5c0-4906e655a4f4",
+      "sessionId": "af993a55-e8e2-4708-a92d-c533d3df7800",
+      "createdAt": "2025-11-03T10:28:54.726Z",
+      "data": []
     }
   ]
 }

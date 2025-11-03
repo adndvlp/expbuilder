@@ -89,7 +89,7 @@
 
 
         const trialSessionId =
-            "mkd_result_" + (crypto.randomUUID
+            "consent_result_" + (crypto.randomUUID
               ? crypto.randomUUID()
               : Math.random().toString(36).slice(2, 10));
 
@@ -144,15 +144,15 @@
       timeline.push(welcome);
 
       
-    const preloadmkd = {
+    const preloadconsent = {
         type: jsPsychPreload,
        files: [],
     }
-    timeline.push(preloadmkd);
+    timeline.push(preloadconsent);
     
-    const test_stimuli_mkd = [{stimulus: "<div id=\"iyxo\" style=\"box-sizing: border-box;\">Cola?</div><h2 id=\"izcl\" style=\"box-sizing: border-box; font-size: 1.5em; font-weight: 600; margin: 0 0 8px;\">Subtitle</h2>",
-choices: ["Si","no"]}];
-    const mkd_timeline = {
+    const test_stimuli_consent = [{stimulus: "<h2 id=\"izcl\" style=\"box-sizing: border-box; font-size: 1.5em; font-weight: 600; margin: 0 0 8px; text-align: center;\">¿Consientes participar?</h2>",
+choices: ["Si","no","quien sabe"]}];
+    const consent_timeline = {
     type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable("stimulus"),
 choices: jsPsych.timelineVariable("choices"),
       data: {
@@ -161,15 +161,15 @@ response: "response",
 stimulus: "stimulus",
         trial_id: 1762147760544,
         
-        branches: [1762147764194,1762147767662],
-        branchConditions: [[{"id":1762155422345,"rules":[{"prop":"response","op":"==","value":"1"}],"nextTrialId":"1762147764194"},{"id":1762155988015,"rules":[{"prop":"response","op":"==","value":"0"}],"nextTrialId":"1762147767662"}]] 
+        branches: [1762147764194,1762147767662,1762164608999],
+        branchConditions: [[{"id":1762155422345,"rules":[{"prop":"response","op":"==","value":"1"}],"nextTrialId":"1762147764194"},{"id":1762155988015,"rules":[{"prop":"response","op":"==","value":"0"}],"nextTrialId":"1762147767662"},{"id":1762164623866,"rules":[{"prop":"response","op":"==","value":"2"}],"nextTrialId":"1762164608999"}]] 
         
       },
     };
-    const mkd_procedure = {
+    const consent_procedure = {
     timeline: 
-    [mkd_timeline],
-    timeline_variables: test_stimuli_mkd,
+    [consent_timeline],
+    timeline_variables: test_stimuli_consent,
     conditional_function: function() {
       const currentId = 1762147760544;
       
@@ -189,7 +189,7 @@ stimulus: "stimulus",
     },
     
     };
-    timeline.push(mkd_procedure);
+    timeline.push(consent_procedure);
   
 
       jsPsych.run(timeline);

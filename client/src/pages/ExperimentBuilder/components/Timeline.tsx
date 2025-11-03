@@ -233,15 +233,21 @@ function Component({}: TimelineProps) {
       
       const trial = lastTrialData.trials[0];
       
-      // Check if trial has branches and conditions
+      // Check if trial has branches
       if (!Array.isArray(trial.branches) || trial.branches.length === 0) {
         return null;
       }
       
-      if (!Array.isArray(trial.branchConditions) || trial.branchConditions.length === 0) {
-        return null;
+      // Si solo hay un branch O no hay condiciones, seguir al primer branch automáticamente
+      const hasMultipleBranches = trial.branches.length > 1;
+      const hasBranchConditions = Array.isArray(trial.branchConditions) && trial.branchConditions.length > 0;
+      
+      if (!hasMultipleBranches || !hasBranchConditions) {
+        console.log('Auto-branching to first branch:', trial.branches[0]);
+        return trial.branches[0];
       }
       
+      // Si hay múltiples branches Y condiciones, evaluar las condiciones
       // branchConditions is an array of arrays, flatten it first
       const conditions = trial.branchConditions.flat();
       
@@ -258,9 +264,9 @@ function Component({}: TimelineProps) {
         }
       }
       
-      // No condition matched
-      console.log('No condition matched');
-      return null;
+      // No condition matched - seguir al primer branch por defecto
+      console.log('No condition matched, defaulting to first branch:', trial.branches[0]);
+      return trial.branches[0];
     };
 
     const jsPsych = initJsPsych({
@@ -490,15 +496,21 @@ jsPsych.run(timeline);
       
       const trial = lastTrialData.trials[0];
       
-      // Check if trial has branches and conditions
+      // Check if trial has branches
       if (!Array.isArray(trial.branches) || trial.branches.length === 0) {
         return null;
       }
       
-      if (!Array.isArray(trial.branchConditions) || trial.branchConditions.length === 0) {
-        return null;
+      // Si solo hay un branch O no hay condiciones, seguir al primer branch automáticamente
+      const hasMultipleBranches = trial.branches.length > 1;
+      const hasBranchConditions = Array.isArray(trial.branchConditions) && trial.branchConditions.length > 0;
+      
+      if (!hasMultipleBranches || !hasBranchConditions) {
+        console.log('Auto-branching to first branch:', trial.branches[0]);
+        return trial.branches[0];
       }
       
+      // Si hay múltiples branches Y condiciones, evaluar las condiciones
       // branchConditions is an array of arrays, flatten it first
       const conditions = trial.branchConditions.flat();
       
@@ -515,9 +527,9 @@ jsPsych.run(timeline);
         }
       }
       
-      // No condition matched
-      console.log('No condition matched');
-      return null;
+      // No condition matched - seguir al primer branch por defecto
+      console.log('No condition matched, defaulting to first branch:', trial.branches[0]);
+      return trial.branches[0];
     };
 
     const jsPsych = initJsPsych({

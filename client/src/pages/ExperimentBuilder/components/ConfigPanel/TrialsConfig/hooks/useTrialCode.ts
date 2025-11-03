@@ -385,16 +385,36 @@ export function useTrialCode({
     type: ${pluginNameImport}, ${timelineProps}
     `;
 
-    // Si el trial no tiene branches, agregar on_finish para terminar el experimento
+    // Lógica de branching en on_finish
     const hasBranches = branches && branches.length > 0;
+    const hasMultipleBranches = branches && branches.length > 1;
+    const hasBranchConditions = branchConditions && branchConditions.length > 0;
 
-    if (!hasBranches) {
+    if (hasBranches) {
+      // Si tiene branches, agregar lógica de branching
+      if (!hasMultipleBranches || !hasBranchConditions) {
+        // Si solo hay un branch O no hay condiciones, seguir automáticamente al primer branch
+        code += `
+    on_finish: function(data) {
+      // Branching automático al primer branch
+      const branches = [${branches}];
+      if (branches.length > 0) {
+        window.nextTrialId = branches[0];
+        window.skipRemaining = true;
+        window.branchingActive = true;
+      }
+    },
+    `;
+      }
+      // Si hay múltiples branches Y condiciones, la lógica se maneja en Timeline.tsx
+    } else {
+      // Trial terminal: no tiene branches
       code += `
     on_finish: function(data) {
       // Este trial no tiene branches, es un trial terminal
       // Si llegamos aquí después de un branching, terminar el experimento
       if (window.branchingActive) {
-        jsPsych.abortExperiment('Experiment completed', {});
+        jsPsych.abortExperiment('', {});
       }
     },
     `;
