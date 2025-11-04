@@ -331,7 +331,7 @@ function Canvas({}: Props) {
           onAddTrial={() => onAddTrial("Trial")}
         />
 
-        {/* Branches button - only show if selected trial/loop has branches and selectedTrial is NOT inside the open loop */}
+        {/* Branches button - only show if selected trial/loop has at least one branch and selectedTrial is NOT inside the open loop */}
         {(() => {
           // Check if selectedTrial is inside the openLoop
           const isTrialInsideOpenLoop =
@@ -341,17 +341,17 @@ function Canvas({}: Props) {
             openLoop.trials.some((t: any) => t.id === selectedTrial.id);
 
           // Show button only if:
-          // - selectedLoop has branches, OR
-          // - selectedTrial has branches AND is not inside the open loop
+          // - selectedLoop has at least one branch, OR
+          // - selectedTrial has at least one branch AND is not inside the open loop
           const shouldShow =
             (selectedLoop &&
               selectedLoop.branches &&
               Array.isArray(selectedLoop.branches) &&
-              selectedLoop.branches.length > 0) ||
+              selectedLoop.branches.length >= 1) ||
             (selectedTrial &&
               selectedTrial.branches &&
               Array.isArray(selectedTrial.branches) &&
-              selectedTrial.branches.length > 0 &&
+              selectedTrial.branches.length >= 1 &&
               !isTrialInsideOpenLoop);
 
           return (

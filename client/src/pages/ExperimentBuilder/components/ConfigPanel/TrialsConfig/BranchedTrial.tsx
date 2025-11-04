@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import useTrials from "../../../hooks/useTrials";
 import { loadPluginParameters } from "../utils/pluginParameterLoader";
-import { BranchCondition } from "../types";
+import { BranchCondition, ColumnMappingEntry } from "../types";
 
 type Rule = {
   prop: string;
@@ -13,11 +13,18 @@ type Condition = {
   id: number;
   rules: Rule[];
   nextTrialId: number | string | null;
+  customParameters?: Record<string, ColumnMappingEntry>;
 };
 
 type Props = {
   selectedTrial: any;
   onClose?: () => void;
+};
+
+type Parameter = {
+  label: string;
+  key: string;
+  type: string;
 };
 
 function BranchedTrial({ selectedTrial, onClose }: Props) {
@@ -28,6 +35,9 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [conditions, setConditions] = useState<Condition[]>([]);
   const [saveIndicator, setSaveIndicator] = useState(false);
+  const [targetTrialParameters, setTargetTrialParameters] = useState<
+    Record<string, Parameter[]>
+  >({});
 
   // Load data fields from the selected trial's plugin
   useEffect(() => {
@@ -57,11 +67,41 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
   // Load existing branch conditions when selectedTrial changes
   useEffect(() => {
     if (selectedTrial && selectedTrial.branchConditions) {
-      setConditions(selectedTrial.branchConditions);
+      const loadedConditions = selectedTrial.branchConditions.map(
+        (bc: BranchCondition) => ({
+          ...bc,
+          customParameters: bc.customParameters || {},
+        })
+      );
+      setConditions(loadedConditions);
+
+      // Load parameters for each condition with a nextTrialId
+      loadedConditions.forEach((condition: Condition) => {
+        if (condition.nextTrialId) {
+          console.log("Loading parameters for trial:", condition.nextTrialId);
+          loadTargetTrialParameters(condition.nextTrialId);
+        }
+      });
     } else {
       setConditions([]);
     }
   }, [selectedTrial]);
+
+  // Also load parameters when conditions change (e.g., when nextTrialId is set)
+  useEffect(() => {
+    conditions.forEach((condition) => {
+      if (
+        condition.nextTrialId &&
+        !targetTrialParameters[condition.nextTrialId]
+      ) {
+        console.log(
+          "Loading parameters for newly selected trial:",
+          condition.nextTrialId
+        );
+        loadTargetTrialParameters(condition.nextTrialId);
+      }
+    });
+  }, [conditions]);
 
   const addCondition = () => {
     setConditions([
@@ -70,6 +110,7 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
         id: Date.now(),
         rules: [{ prop: "", op: "==", value: "" }],
         nextTrialId: null,
+        customParameters: {},
       },
     ]);
   };
@@ -120,7 +161,206 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
 
   const updateNextTrial = (conditionId: number, nextTrialId: string) => {
     setConditions(
-      conditions.map((c) => (c.id === conditionId ? { ...c, nextTrialId } : c))
+      conditions.map((c) =>
+        c.id === conditionId ? { ...c, nextTrialId, customParameters: {} } : c
+      )
+    );
+
+    // Load parameters for the selected trial
+    if (nextTrialId) {
+      loadTargetTrialParameters(nextTrialId);
+    }
+  };
+
+  // Load parameters for target trial
+  const loadTargetTrialParameters = async (trialId: string | number) => {
+    const targetTrial = findTrialById(trialId);
+    console.log("loadTargetTrialParameters called for:", trialId, targetTrial);
+
+    if (!targetTrial) {
+      console.log("Target trial not found");
+      return;
+    }
+
+    // Check if it's a Loop - loops have different parameters
+    if ("trials" in targetTrial) {
+      console.log("Target is a Loop, setting loop-specific parameters");
+      // Define loop-specific parameters
+      const loopParameters: Parameter[] = [
+        { label: "Repetitions", key: "repetitions", type: "number" },
+        { label: "Randomize", key: "randomize", type: "boolean" },
+        { label: "Categories", key: "categories", type: "boolean" },
+        { label: "Category Column", key: "categoryColumn", type: "string" },
+        { label: "Orders", key: "orders", type: "boolean" },
+      ];
+      setTargetTrialParameters((prev) => ({
+        ...prev,
+        [trialId]: loopParameters,
+      }));
+      return;
+    }
+
+    // Type guard to ensure we have a plugin property (for regular trials)
+    console.log("Checking plugin property:", {
+      hasPlugin: "plugin" in targetTrial,
+      pluginValue: targetTrial.plugin,
+      targetTrial,
+    });
+
+    if ("plugin" in targetTrial && targetTrial.plugin) {
+      try {
+        console.log("Loading plugin parameters for:", targetTrial.plugin);
+        const result = await loadPluginParameters(targetTrial.plugin);
+        console.log("Loaded parameters:", result.parameters);
+        setTargetTrialParameters((prev) => {
+          const updated = {
+            ...prev,
+            [trialId]: result.parameters,
+          };
+          console.log("Updated targetTrialParameters:", updated);
+          return updated;
+        });
+      } catch (err) {
+        console.error("Error loading target trial parameters:", err);
+      }
+    } else {
+      console.log("Target trial has no plugin property or plugin is null", {
+        hasPlugin: "plugin" in targetTrial,
+        plugin: targetTrial.plugin,
+      });
+    }
+  };
+
+  // Find trial by ID
+  const findTrialById = (trialId: string | number): any => {
+    console.log("Finding trial:", trialId, "in trials:", trials);
+
+    // Check if trial is in main timeline
+    const mainItem = trials.find((t: any) => {
+      // Check direct ID match
+      if (t.id === trialId) return true;
+      // Check string vs number comparison
+      if (String(t.id) === String(trialId)) return true;
+      return false;
+    });
+
+    if (mainItem) {
+      console.log("Found in main timeline:", mainItem);
+      return mainItem;
+    }
+
+    // Check if trial is inside a loop
+    for (const item of trials) {
+      if ("trials" in item && Array.isArray(item.trials)) {
+        const loopTrial = item.trials.find((t: any) => {
+          // Check direct ID match
+          if (t.id === trialId) return true;
+          // Check string vs number comparison
+          if (String(t.id) === String(trialId)) return true;
+          return false;
+        });
+        if (loopTrial) {
+          console.log("Found in loop:", loopTrial);
+          return loopTrial;
+        }
+      }
+    }
+
+    console.log("Trial not found!");
+    return null;
+  };
+
+  // Get CSV columns for target trial
+  const getTargetTrialCsvColumns = (trialId: string | number): string[] => {
+    const targetTrial = findTrialById(trialId);
+    if (!targetTrial) return [];
+
+    // Check if trial has its own CSV
+    if (targetTrial.csvColumns && targetTrial.csvColumns.length > 0) {
+      return targetTrial.csvColumns;
+    }
+
+    // Check if trial is in a loop with CSV
+    const parentLoop = trials.find(
+      (item) =>
+        "trials" in item &&
+        item.trials.some((t: any) => t.id === trialId) &&
+        item.csvColumns &&
+        item.csvColumns.length > 0
+    );
+
+    if (parentLoop && "csvColumns" in parentLoop && parentLoop.csvColumns) {
+      return parentLoop.csvColumns;
+    }
+
+    return [];
+  };
+
+  // Add custom parameter to condition
+  const addCustomParameter = (conditionId: number) => {
+    setConditions(
+      conditions.map((c) => {
+        if (c.id === conditionId) {
+          const newParams = { ...(c.customParameters || {}) };
+          const existingKeys = Object.keys(newParams);
+          const availableParams =
+            c.nextTrialId && targetTrialParameters[c.nextTrialId]
+              ? targetTrialParameters[c.nextTrialId]
+              : [];
+
+          // Find first parameter not already added
+          const nextParam = availableParams.find(
+            (p) => !existingKeys.includes(p.key)
+          );
+
+          if (nextParam) {
+            newParams[nextParam.key] = {
+              source: "none",
+              value: null,
+            };
+          }
+
+          return { ...c, customParameters: newParams };
+        }
+        return c;
+      })
+    );
+  };
+
+  // Remove custom parameter from condition
+  const removeCustomParameter = (conditionId: number, paramKey: string) => {
+    setConditions(
+      conditions.map((c) => {
+        if (c.id === conditionId && c.customParameters) {
+          const newParams = { ...c.customParameters };
+          delete newParams[paramKey];
+          return { ...c, customParameters: newParams };
+        }
+        return c;
+      })
+    );
+  };
+
+  // Update custom parameter
+  const updateCustomParameter = (
+    conditionId: number,
+    paramKey: string,
+    source: "csv" | "typed" | "none",
+    value: any
+  ) => {
+    setConditions(
+      conditions.map((c) => {
+        if (c.id === conditionId) {
+          return {
+            ...c,
+            customParameters: {
+              ...(c.customParameters || {}),
+              [paramKey]: { source, value },
+            },
+          };
+        }
+        return c;
+      })
     );
   };
 
@@ -129,12 +369,33 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
     selectedTrial && selectedTrial.branches
       ? selectedTrial.branches
           .map((branchId: number | string) => {
-            // Find the trial/loop with this id
-            const branch = trials.find((t: any) => t.id === branchId);
-            return branch ? { id: branchId, name: branch.name } : null;
+            // First, check if the trial is inside a loop
+            const parentLoop = trials.find(
+              (item) =>
+                "trials" in item &&
+                item.trials.some((t) => t.id === selectedTrial.id)
+            );
+
+            if (parentLoop && "trials" in parentLoop) {
+              // If trial is inside a loop, search for branches within the same loop
+              const branch = parentLoop.trials.find(
+                (t: any) => t.id === branchId
+              );
+              return branch ? { id: branchId, name: branch.name } : null;
+            } else {
+              // If trial is in main timeline, search in main trials array
+              const branch = trials.find((t: any) => t.id === branchId);
+              return branch ? { id: branchId, name: branch.name } : null;
+            }
           })
           .filter(Boolean)
       : [];
+
+  // Check if trial has only one branch
+  const hasOnlyOneBranch =
+    selectedTrial &&
+    selectedTrial.branches &&
+    selectedTrial.branches.length === 1;
 
   // Get used properties for each condition to prevent duplicates
   const getUsedProps = (conditionId: number) => {
@@ -150,6 +411,7 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
       id: condition.id,
       rules: condition.rules,
       nextTrialId: condition.nextTrialId,
+      customParameters: condition.customParameters,
     }));
 
     // Find if the trial is in the main array or inside a loop
@@ -336,25 +598,29 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
                     >
                       {/* Header de la condición */}
                       <div
-                        className="px-4 py-3 flex justify-between items-center"
+                        className="px-4 py-3"
                         style={{
                           background:
                             "linear-gradient(135deg, var(--primary-blue), var(--light-blue))",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
                         }}
                       >
-                        <h4
-                          className="font-bold text-base flex items-center gap-2"
+                        <span
+                          className="font-bold text-base"
                           style={{ color: "var(--text-light)" }}
                         >
                           {condIdx === 0 ? "IF" : "OR IF"} (Condition{" "}
                           {condIdx + 1})
-                        </h4>
+                        </span>
                         <button
                           onClick={() => removeCondition(condition.id)}
                           className="rounded-full w-8 h-8 flex items-center justify-center transition hover:bg-red-600 font-bold"
                           style={{
                             backgroundColor: "var(--danger)",
                             color: "var(--text-light)",
+                            marginLeft: "8px",
                           }}
                           title="Remove condition"
                         >
@@ -378,254 +644,631 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
                               }}
                             >
                               <th
-                                className="px-3 py-2 text-left text-sm font-semibold"
+                                className="px-2 py-2 text-left text-sm font-semibold"
                                 style={{
                                   color: "var(--text-dark)",
                                   borderBottom: "2px solid var(--neutral-mid)",
-                                  width: "30%",
+                                  width: "18%",
                                 }}
                               >
                                 Data Field
                               </th>
                               <th
-                                className="px-3 py-2 text-left text-sm font-semibold"
+                                className="px-2 py-2 text-left text-sm font-semibold"
                                 style={{
                                   color: "var(--text-dark)",
                                   borderBottom: "2px solid var(--neutral-mid)",
-                                  width: "15%",
+                                  width: "8%",
                                 }}
                               >
-                                Operator
+                                Op
                               </th>
                               <th
-                                className="px-3 py-2 text-left text-sm font-semibold"
+                                className="px-2 py-2 text-left text-sm font-semibold"
                                 style={{
                                   color: "var(--text-dark)",
                                   borderBottom: "2px solid var(--neutral-mid)",
-                                  width: "25%",
+                                  width: "12%",
                                 }}
                               >
                                 Value
                               </th>
                               <th
-                                className="px-3 py-2 text-center text-sm font-semibold"
+                                className="px-1 py-2 text-center text-sm font-semibold"
                                 style={{
                                   color: "var(--text-dark)",
                                   borderBottom: "2px solid var(--neutral-mid)",
-                                  width: "5%",
+                                  width: "3%",
                                 }}
                               ></th>
                               <th
-                                className="px-3 py-2 text-center text-sm font-semibold"
+                                className="px-2 py-2 text-center text-sm font-semibold"
+                                style={{
+                                  color: "var(--gold)",
+                                  borderBottom: "2px solid var(--neutral-mid)",
+                                  width: "14%",
+                                }}
+                              >
+                                {hasOnlyOneBranch ? "THEN" : "THEN Go To"}
+                              </th>
+                              <th
+                                className="px-2 py-2 text-center text-sm font-semibold"
+                                style={{
+                                  color: "var(--gold)",
+                                  borderBottom: "2px solid var(--neutral-mid)",
+                                  width: "20%",
+                                }}
+                              >
+                                Override Params
+                              </th>
+                              <th
+                                className="px-2 py-2 text-center text-sm font-semibold"
                                 style={{
                                   color: "var(--gold)",
                                   borderBottom: "2px solid var(--neutral-mid)",
                                   width: "25%",
                                 }}
                               >
-                                THEN Go To
+                                Value
                               </th>
                             </tr>
                           </thead>
                           <tbody>
-                            {condition.rules.map((rule, ruleIdx) => (
-                              <tr
-                                key={ruleIdx}
-                                style={{
-                                  borderBottom:
-                                    ruleIdx < condition.rules.length - 1
-                                      ? "1px solid var(--neutral-mid)"
-                                      : "none",
-                                }}
-                              >
-                                <td className="px-3 py-2 relative">
-                                  <select
-                                    value={rule.prop}
-                                    onChange={(e) =>
-                                      updateRule(
-                                        condition.id,
-                                        ruleIdx,
-                                        "prop",
-                                        e.target.value
-                                      )
-                                    }
-                                    className="border rounded px-2 py-1.5 w-full text-sm transition focus:ring-2 focus:ring-blue-400"
-                                    style={{
-                                      color: "var(--text-dark)",
-                                      backgroundColor: "var(--neutral-light)",
-                                      borderColor: "var(--neutral-mid)",
-                                    }}
-                                  >
-                                    <option
-                                      style={{ textAlign: "center" }}
-                                      value=""
-                                    >
-                                      Select field
-                                    </option>
-                                    {data.map((field) => (
-                                      <option
-                                        key={field.key}
-                                        value={field.key}
-                                        disabled={
-                                          usedProps.includes(field.key) &&
-                                          rule.prop !== field.key
-                                        }
-                                        style={{ textAlign: "center" }}
-                                      >
-                                        {field.label || field.key}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </td>
-                                <td className="px-3 py-2">
-                                  <select
-                                    value={rule.op}
-                                    onChange={(e) =>
-                                      updateRule(
-                                        condition.id,
-                                        ruleIdx,
-                                        "op",
-                                        e.target.value
-                                      )
-                                    }
-                                    className="border rounded px-2 py-1.5 w-full text-sm transition focus:ring-2 focus:ring-blue-400"
-                                    style={{
-                                      color: "var(--text-dark)",
-                                      backgroundColor: "var(--neutral-light)",
-                                      borderColor: "var(--neutral-mid)",
-                                    }}
-                                  >
-                                    <option
-                                      style={{ textAlign: "center" }}
-                                      value="=="
-                                    >
-                                      =
-                                    </option>
-                                    <option
-                                      style={{ textAlign: "center" }}
-                                      value="!="
-                                    >
-                                      ≠
-                                    </option>
-                                    <option
-                                      style={{ textAlign: "center" }}
-                                      value=">"
-                                    >
-                                      {">"}
-                                    </option>
-                                    <option
-                                      style={{ textAlign: "center" }}
-                                      value="<"
-                                    >
-                                      {"<"}
-                                    </option>
-                                    <option
-                                      style={{ textAlign: "center" }}
-                                      value=">="
-                                    >
-                                      {">="}
-                                    </option>
-                                    <option
-                                      style={{ textAlign: "center" }}
-                                      value="<="
-                                    >
-                                      {"<="}
-                                    </option>
-                                  </select>
-                                </td>
-                                <td className="px-3 py-2">
-                                  <input
-                                    type="text"
-                                    value={rule.value}
-                                    onChange={(e) =>
-                                      updateRule(
-                                        condition.id,
-                                        ruleIdx,
-                                        "value",
-                                        e.target.value
-                                      )
-                                    }
-                                    placeholder="Value"
-                                    className="border rounded px-2 py-1.5 w-full text-sm transition focus:ring-2 focus:ring-blue-400"
-                                    style={{
-                                      color: "var(--text-dark)",
-                                      backgroundColor: "var(--neutral-light)",
-                                      borderColor: "var(--neutral-mid)",
-                                    }}
-                                  />
-                                </td>
-                                <td className="px-3 py-2 text-center">
-                                  {condition.rules.length > 1 && (
-                                    <button
-                                      onClick={() =>
-                                        removeRuleFromCondition(
+                            {condition.rules.map((rule, ruleIdx) => {
+                              return (
+                                <tr
+                                  key={ruleIdx}
+                                  style={{
+                                    borderBottom:
+                                      ruleIdx < condition.rules.length - 1
+                                        ? "1px solid var(--neutral-mid)"
+                                        : "none",
+                                  }}
+                                >
+                                  <td className="px-2 py-2 relative">
+                                    <select
+                                      value={rule.prop}
+                                      onChange={(e) =>
+                                        updateRule(
                                           condition.id,
-                                          ruleIdx
+                                          ruleIdx,
+                                          "prop",
+                                          e.target.value
                                         )
                                       }
-                                      className="rounded-full w-6 h-6 flex items-center justify-center transition hover:bg-red-600 text-xs font-bold"
+                                      className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
                                       style={{
-                                        backgroundColor: "var(--danger)",
-                                        color: "var(--text-light)",
+                                        color: "var(--text-dark)",
+                                        backgroundColor: "var(--neutral-light)",
+                                        borderColor: "var(--neutral-mid)",
                                       }}
-                                      title="Remove rule"
                                     >
-                                      ✕
-                                    </button>
-                                  )}
-                                </td>
-                                {/* Columna THEN - solo se muestra en la primera fila */}
-                                {ruleIdx === 0 && (
-                                  <td
-                                    className="px-3 py-2"
-                                    rowSpan={condition.rules.length}
-                                    style={{
-                                      verticalAlign: "middle",
-                                      backgroundColor:
-                                        "rgba(255, 209, 102, 0.05)",
-                                      borderLeft: "2px solid var(--gold)",
-                                    }}
-                                  >
-                                    <div className="flex flex-col">
-                                      <select
-                                        value={condition.nextTrialId || ""}
-                                        onChange={(e) =>
-                                          updateNextTrial(
+                                      <option
+                                        style={{ textAlign: "center" }}
+                                        value=""
+                                      >
+                                        Select field
+                                      </option>
+                                      {data.map((field) => (
+                                        <option
+                                          key={field.key}
+                                          value={field.key}
+                                          disabled={
+                                            usedProps.includes(field.key) &&
+                                            rule.prop !== field.key
+                                          }
+                                          style={{ textAlign: "center" }}
+                                        >
+                                          {field.label || field.key}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  <td className="px-2 py-2">
+                                    <select
+                                      value={rule.op}
+                                      onChange={(e) =>
+                                        updateRule(
+                                          condition.id,
+                                          ruleIdx,
+                                          "op",
+                                          e.target.value
+                                        )
+                                      }
+                                      className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
+                                      style={{
+                                        color: "var(--text-dark)",
+                                        backgroundColor: "var(--neutral-light)",
+                                        borderColor: "var(--neutral-mid)",
+                                      }}
+                                    >
+                                      <option
+                                        style={{ textAlign: "center" }}
+                                        value="=="
+                                      >
+                                        =
+                                      </option>
+                                      <option
+                                        style={{ textAlign: "center" }}
+                                        value="!="
+                                      >
+                                        ≠
+                                      </option>
+                                      <option
+                                        style={{ textAlign: "center" }}
+                                        value=">"
+                                      >
+                                        {">"}
+                                      </option>
+                                      <option
+                                        style={{ textAlign: "center" }}
+                                        value="<"
+                                      >
+                                        {"<"}
+                                      </option>
+                                      <option
+                                        style={{ textAlign: "center" }}
+                                        value=">="
+                                      >
+                                        {">="}
+                                      </option>
+                                      <option
+                                        style={{ textAlign: "center" }}
+                                        value="<="
+                                      >
+                                        {"<="}
+                                      </option>
+                                    </select>
+                                  </td>
+                                  <td className="px-2 py-2">
+                                    <input
+                                      type="text"
+                                      value={rule.value}
+                                      onChange={(e) =>
+                                        updateRule(
+                                          condition.id,
+                                          ruleIdx,
+                                          "value",
+                                          e.target.value
+                                        )
+                                      }
+                                      placeholder="Value"
+                                      className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
+                                      style={{
+                                        color: "var(--text-dark)",
+                                        backgroundColor: "var(--neutral-light)",
+                                        borderColor: "var(--neutral-mid)",
+                                      }}
+                                    />
+                                  </td>
+                                  <td className="px-1 py-2 text-center">
+                                    {condition.rules.length > 1 && (
+                                      <button
+                                        onClick={() =>
+                                          removeRuleFromCondition(
                                             condition.id,
-                                            e.target.value
+                                            ruleIdx
                                           )
                                         }
-                                        className="border-2 rounded-lg px-3 py-2 w-full text-sm font-semibold transition focus:ring-2 focus:ring-yellow-400"
+                                        className="rounded-full w-5 h-5 flex items-center justify-center transition hover:bg-red-600 text-xs font-bold"
                                         style={{
-                                          color: "var(--text-dark)",
-                                          backgroundColor:
-                                            "var(--neutral-light)",
-                                          borderColor: "var(--gold)",
+                                          backgroundColor: "var(--danger)",
+                                          color: "var(--text-light)",
                                         }}
+                                        title="Remove rule"
                                       >
-                                        <option
-                                          style={{ textAlign: "center" }}
-                                          value=""
-                                        >
-                                          Select trial
-                                        </option>
-                                        {availableBranches.map(
-                                          (branch: any) => (
-                                            <option
-                                              key={branch.id}
-                                              value={branch.id}
-                                              style={{ textAlign: "center" }}
-                                            >
-                                              {branch.name}
-                                            </option>
-                                          )
-                                        )}
-                                      </select>
-                                    </div>
+                                        ✕
+                                      </button>
+                                    )}
                                   </td>
-                                )}
-                              </tr>
-                            ))}
+                                  {/* Columna THEN - solo se muestra en la primera fila */}
+                                  {ruleIdx === 0 && (
+                                    <td
+                                      className="px-2 py-2"
+                                      rowSpan={condition.rules.length}
+                                      style={{
+                                        verticalAlign: "middle",
+                                        backgroundColor:
+                                          "rgba(255, 209, 102, 0.05)",
+                                        borderLeft: "2px solid var(--gold)",
+                                      }}
+                                    >
+                                      <div className="flex flex-col">
+                                        {hasOnlyOneBranch ? (
+                                          <div
+                                            className="border-2 rounded-lg px-2 py-1.5 w-full text-xs font-semibold text-center"
+                                            style={{
+                                              color: "var(--text-dark)",
+                                              backgroundColor:
+                                                "var(--neutral-light)",
+                                              borderColor: "var(--gold)",
+                                            }}
+                                          >
+                                            Finish Experiment
+                                          </div>
+                                        ) : (
+                                          <select
+                                            value={condition.nextTrialId || ""}
+                                            onChange={(e) =>
+                                              updateNextTrial(
+                                                condition.id,
+                                                e.target.value
+                                              )
+                                            }
+                                            className="border-2 rounded-lg px-2 py-1.5 w-full text-xs font-semibold transition focus:ring-2 focus:ring-yellow-400"
+                                            style={{
+                                              color: "var(--text-dark)",
+                                              backgroundColor:
+                                                "var(--neutral-light)",
+                                              borderColor: "var(--gold)",
+                                            }}
+                                          >
+                                            <option
+                                              style={{ textAlign: "center" }}
+                                              value=""
+                                            >
+                                              Select trial
+                                            </option>
+                                            {availableBranches.map(
+                                              (branch: any) => (
+                                                <option
+                                                  key={branch.id}
+                                                  value={branch.id}
+                                                  style={{
+                                                    textAlign: "center",
+                                                  }}
+                                                >
+                                                  {branch.name}
+                                                </option>
+                                              )
+                                            )}
+                                          </select>
+                                        )}
+                                      </div>
+                                    </td>
+                                  )}
+                                </tr>
+                              );
+                            })}
+
+                            {/* Filas de parámetros - aparecen debajo de todas las reglas */}
+                            {condition.nextTrialId &&
+                              (() => {
+                                const customParamKeys =
+                                  condition.customParameters
+                                    ? Object.keys(condition.customParameters)
+                                    : [];
+                                const availableParams =
+                                  targetTrialParameters[
+                                    condition.nextTrialId
+                                  ] || [];
+                                const canAddMoreParams =
+                                  availableParams.length > 0 &&
+                                  customParamKeys.length <
+                                    availableParams.length;
+
+                                return (
+                                  <>
+                                    {/* Fila por cada parámetro agregado */}
+                                    {customParamKeys.map((paramKey) => {
+                                      const paramValue =
+                                        condition.customParameters![paramKey];
+                                      const param = availableParams.find(
+                                        (p) => p.key === paramKey
+                                      );
+                                      const csvColumns =
+                                        getTargetTrialCsvColumns(
+                                          condition.nextTrialId!
+                                        );
+
+                                      return (
+                                        <tr key={`param-${paramKey}`}>
+                                          {/* Columnas vacías para Data Field, Op, Value, X */}
+                                          <td colSpan={4}></td>
+                                          {/* Columna THEN Go To vacía */}
+                                          <td></td>
+                                          {/* Columna Override Params */}
+                                          <td
+                                            className="px-2 py-2"
+                                            style={{
+                                              backgroundColor:
+                                                "rgba(255, 209, 102, 0.05)",
+                                              borderLeft:
+                                                "1px solid var(--neutral-mid)",
+                                            }}
+                                          >
+                                            <select
+                                              value={paramKey}
+                                              onChange={(e) => {
+                                                const newKey = e.target.value;
+                                                if (newKey === "") {
+                                                  removeCustomParameter(
+                                                    condition.id,
+                                                    paramKey
+                                                  );
+                                                } else if (
+                                                  newKey !== paramKey
+                                                ) {
+                                                  const newParams = {
+                                                    ...condition.customParameters,
+                                                  };
+                                                  delete newParams[paramKey];
+                                                  newParams[newKey] = {
+                                                    source: "none",
+                                                    value: null,
+                                                  };
+                                                  setConditions(
+                                                    conditions.map((c) =>
+                                                      c.id === condition.id
+                                                        ? {
+                                                            ...c,
+                                                            customParameters:
+                                                              newParams,
+                                                          }
+                                                        : c
+                                                    )
+                                                  );
+                                                }
+                                              }}
+                                              className="w-full border rounded px-2 py-1.5 text-sm"
+                                              style={{
+                                                color: "var(--text-dark)",
+                                                backgroundColor:
+                                                  "var(--neutral-light)",
+                                                borderColor: "var(--gold)",
+                                              }}
+                                            >
+                                              <option value="">
+                                                Remove parameter
+                                              </option>
+                                              {availableParams.map((p) => (
+                                                <option
+                                                  key={p.key}
+                                                  value={p.key}
+                                                  disabled={
+                                                    customParamKeys.includes(
+                                                      p.key
+                                                    ) && p.key !== paramKey
+                                                  }
+                                                >
+                                                  {p.label}
+                                                </option>
+                                              ))}
+                                            </select>
+                                          </td>
+                                          {/* Columna Value */}
+                                          <td
+                                            className="px-2 py-2"
+                                            style={{
+                                              backgroundColor:
+                                                "rgba(255, 209, 102, 0.05)",
+                                            }}
+                                          >
+                                            {param && paramValue ? (
+                                              <div className="flex flex-col gap-1">
+                                                <select
+                                                  value={
+                                                    paramValue.source ===
+                                                    "typed"
+                                                      ? "type_value"
+                                                      : paramValue.source ===
+                                                          "csv"
+                                                        ? String(
+                                                            paramValue.value
+                                                          )
+                                                        : ""
+                                                  }
+                                                  onChange={(e) => {
+                                                    const value =
+                                                      e.target.value;
+                                                    const source =
+                                                      value === "type_value"
+                                                        ? "typed"
+                                                        : value === ""
+                                                          ? "none"
+                                                          : "csv";
+                                                    let initialValue = null;
+                                                    if (source === "typed") {
+                                                      initialValue =
+                                                        param.type === "boolean"
+                                                          ? false
+                                                          : param.type ===
+                                                              "number"
+                                                            ? 0
+                                                            : param.type.endsWith(
+                                                                  "_array"
+                                                                )
+                                                              ? []
+                                                              : "";
+                                                    } else if (
+                                                      source === "csv"
+                                                    ) {
+                                                      initialValue = value;
+                                                    }
+                                                    updateCustomParameter(
+                                                      condition.id,
+                                                      paramKey,
+                                                      source,
+                                                      initialValue
+                                                    );
+                                                  }}
+                                                  className="w-full border rounded px-2 py-1.5 text-xs"
+                                                  style={{
+                                                    color: "var(--text-dark)",
+                                                    backgroundColor:
+                                                      "var(--neutral-light)",
+                                                    borderColor:
+                                                      "var(--neutral-mid)",
+                                                  }}
+                                                >
+                                                  <option value="">
+                                                    Default
+                                                  </option>
+                                                  <option value="type_value">
+                                                    Type value
+                                                  </option>
+                                                  {csvColumns.map((col) => (
+                                                    <option
+                                                      key={col}
+                                                      value={col}
+                                                    >
+                                                      {col}
+                                                    </option>
+                                                  ))}
+                                                </select>
+
+                                                {paramValue.source ===
+                                                  "typed" && (
+                                                  <div>
+                                                    {param.type ===
+                                                    "boolean" ? (
+                                                      <select
+                                                        className="w-full border rounded px-2 py-1.5 text-xs"
+                                                        value={
+                                                          paramValue.value ===
+                                                          true
+                                                            ? "true"
+                                                            : "false"
+                                                        }
+                                                        onChange={(e) =>
+                                                          updateCustomParameter(
+                                                            condition.id,
+                                                            paramKey,
+                                                            "typed",
+                                                            e.target.value ===
+                                                              "true"
+                                                          )
+                                                        }
+                                                        style={{
+                                                          color:
+                                                            "var(--text-dark)",
+                                                          backgroundColor:
+                                                            "var(--neutral-light)",
+                                                          borderColor:
+                                                            "var(--neutral-mid)",
+                                                        }}
+                                                      >
+                                                        <option value="true">
+                                                          true
+                                                        </option>
+                                                        <option value="false">
+                                                          false
+                                                        </option>
+                                                      </select>
+                                                    ) : param.type ===
+                                                      "number" ? (
+                                                      <input
+                                                        type="number"
+                                                        className="w-full border rounded px-2 py-1.5 text-xs"
+                                                        value={
+                                                          typeof paramValue.value ===
+                                                          "number"
+                                                            ? paramValue.value
+                                                            : 0
+                                                        }
+                                                        onChange={(e) =>
+                                                          updateCustomParameter(
+                                                            condition.id,
+                                                            paramKey,
+                                                            "typed",
+                                                            Number(
+                                                              e.target.value
+                                                            )
+                                                          )
+                                                        }
+                                                        style={{
+                                                          color:
+                                                            "var(--text-dark)",
+                                                          backgroundColor:
+                                                            "var(--neutral-light)",
+                                                          borderColor:
+                                                            "var(--neutral-mid)",
+                                                        }}
+                                                      />
+                                                    ) : (
+                                                      <input
+                                                        type="text"
+                                                        className="w-full border rounded px-2 py-1.5 text-xs"
+                                                        placeholder="Value"
+                                                        value={
+                                                          typeof paramValue.value ===
+                                                            "string" ||
+                                                          typeof paramValue.value ===
+                                                            "number"
+                                                            ? paramValue.value
+                                                            : ""
+                                                        }
+                                                        onChange={(e) =>
+                                                          updateCustomParameter(
+                                                            condition.id,
+                                                            paramKey,
+                                                            "typed",
+                                                            e.target.value
+                                                          )
+                                                        }
+                                                        style={{
+                                                          color:
+                                                            "var(--text-dark)",
+                                                          backgroundColor:
+                                                            "var(--neutral-light)",
+                                                          borderColor:
+                                                            "var(--neutral-mid)",
+                                                        }}
+                                                      />
+                                                    )}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            ) : null}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+
+                                    {/* Fila del botón "+ Add param" si se pueden agregar más */}
+                                    {canAddMoreParams && (
+                                      <tr>
+                                        {/* Columnas vacías para Data Field, Op, Value, X */}
+                                        <td colSpan={4}></td>
+                                        {/* Columna THEN Go To vacía */}
+                                        <td></td>
+                                        {/* Columna Override Params con botón */}
+                                        <td
+                                          className="px-2 py-2"
+                                          style={{
+                                            backgroundColor:
+                                              "rgba(255, 209, 102, 0.05)",
+                                            borderLeft:
+                                              "1px solid var(--neutral-mid)",
+                                          }}
+                                        >
+                                          <button
+                                            onClick={() =>
+                                              addCustomParameter(condition.id)
+                                            }
+                                            className="px-3 py-1.5 rounded text-sm font-semibold transition w-full flex items-center justify-center gap-1"
+                                            style={{
+                                              backgroundColor: "var(--gold)",
+                                              color: "white",
+                                            }}
+                                          >
+                                            <span className="text-base">+</span>{" "}
+                                            Add param
+                                          </button>
+                                        </td>
+                                        {/* Columna Value vacía */}
+                                        <td
+                                          className="px-2 py-2"
+                                          style={{
+                                            backgroundColor:
+                                              "rgba(255, 209, 102, 0.05)",
+                                          }}
+                                        ></td>
+                                      </tr>
+                                    )}
+                                  </>
+                                );
+                              })()}
                           </tbody>
                         </table>
 

@@ -232,12 +232,15 @@ export function useTrialCode({
       })
       .join("\n");
 
+    // Incluir branches tanto para trials en loop como fuera de loop
+    const hasBranches = branches && branches.length > 0;
     return `${paramProps}
       data: {
         ${dataProps}
         trial_id: ${id},
+        ${isInLoop ? `isInLoop: true,` : ""}
         ${
-          branches
+          hasBranches
             ? `
         branches: [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}],
         branchConditions: [${JSON.stringify(branchConditions)}] 
@@ -385,16 +388,127 @@ export function useTrialCode({
     type: ${pluginNameImport}, ${timelineProps}
     `;
 
-    // Lógica de branching en on_finish
-    const hasBranches = branches && branches.length > 0;
-    const hasMultipleBranches = branches && branches.length > 1;
-    const hasBranchConditions = branchConditions && branchConditions.length > 0;
+    // Lógica de branching
+    if (isInLoop) {
+      // Trial dentro de un loop: usar variables locales del loop para branching
+      const hasBranches = branches && branches.length > 0;
+      const hasMultipleBranches = branches && branches.length > 1;
+      const hasBranchConditions =
+        branchConditions && branchConditions.length > 0;
 
-    if (hasBranches) {
-      // Si tiene branches, agregar lógica de branching
-      if (!hasMultipleBranches || !hasBranchConditions) {
-        // Si solo hay un branch O no hay condiciones, seguir automáticamente al primer branch
+      if (hasBranches) {
+        // Si tiene branches, agregar lógica de branching dentro del loop
+        if (!hasMultipleBranches || !hasBranchConditions) {
+          // Si solo hay un branch O no hay condiciones, seguir automáticamente al primer branch
+          code += `
+    on_finish: function(data) {
+      // Branching automático al primer branch (dentro del loop)
+      const branches = [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}];
+      if (branches.length > 0) {
+        loopNextTrialId = branches[0];
+        loopSkipRemaining = true;
+        loopBranchingActive = true;
+      }
+    },`;
+        } else {
+          // Si hay múltiples branches Y condiciones, evaluar las condiciones
+          code += `
+    on_finish: function(data) {
+      // Evaluar condiciones del trial para branching interno del loop
+      const branches = [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}];
+      const branchConditions = ${JSON.stringify(branchConditions)}.flat();
+      
+      let nextTrialId = null;
+      
+      // Evaluate each condition (OR logic between conditions)
+      for (const condition of branchConditions) {
+        if (!condition || !condition.rules) {
+          continue;
+        }
+        
+        // All rules in a condition must be true (AND logic)
+        const allRulesMatch = condition.rules.every(rule => {
+          const propValue = data[rule.prop];
+          const compareValue = rule.value;
+          
+          // Convert values for comparison
+          const numPropValue = parseFloat(propValue);
+          const numCompareValue = parseFloat(compareValue);
+          const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
+          
+          switch (rule.op) {
+            case '==':
+              return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
+            case '!=':
+              return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
+            case '>':
+              return isNumeric && numPropValue > numCompareValue;
+            case '<':
+              return isNumeric && numPropValue < numCompareValue;
+            case '>=':
+              return isNumeric && numPropValue >= numCompareValue;
+            case '<=':
+              return isNumeric && numPropValue <= numCompareValue;
+            default:
+              return false;
+          }
+        });
+        
+        if (allRulesMatch) {
+          nextTrialId = condition.nextTrialId;
+          console.log('Loop internal: Condition matched:', condition);
+          break;
+        }
+      }
+      
+      // Si no se encontró match, usar el primer branch por defecto
+      if (!nextTrialId && branches.length > 0) {
+        nextTrialId = branches[0];
+        console.log('Loop internal: No condition matched, defaulting to first branch:', nextTrialId);
+      }
+      
+      if (nextTrialId) {
+        loopNextTrialId = nextTrialId;
+        loopSkipRemaining = true;
+        loopBranchingActive = true;
+        console.log('Loop internal branching activated: skip to trial', nextTrialId);
+      }
+    },`;
+        }
+      } else {
+        // Trial terminal dentro del loop: no tiene branches
+        // Verificar si el loop padre tiene branches
         code += `
+    on_finish: function(data) {
+      // Este trial no tiene branches, verificar si el loop padre tiene branches
+      if (loopBranchingActive) {
+        // Ya hay branching interno activo, terminar el loop
+        jsPsych.abortCurrentTimeline();
+      } else if (typeof loopHasBranches !== 'undefined' && loopHasBranches) {
+        // El loop tiene branches, activar branching del loop al terminar
+        // Esto se manejará en el on_finish del loop
+        loopShouldBranchOnFinish = true;
+      } else if (!loopHasBranches) {
+        // Ni el trial ni el loop tienen branches - trial terminal
+        // Si llegamos aquí después de un branching global, terminar el experimento
+        if (window.branchingActive) {
+          jsPsych.abortExperiment('', {});
+        }
+      }
+    },`;
+      }
+    } else {
+      // Lógica de branching para trials que NO están en loops (timeline principal)
+      const hasBranches = branches && branches.length > 0;
+      const hasMultipleBranches = branches && branches.length > 1;
+      const hasBranchConditions =
+        branchConditions && branchConditions.length > 0;
+
+      if (hasBranches) {
+        // Si tiene branches, agregar lógica de branching
+        if (!hasMultipleBranches || !hasBranchConditions) {
+          // Si solo hay un branch O no hay condiciones, seguir automáticamente al primer branch
+          code += `
     on_finish: function(data) {
       // Branching automático al primer branch
       const branches = [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}];
@@ -405,11 +519,11 @@ export function useTrialCode({
       }
     },
     `;
-      }
-      // Si hay múltiples branches Y condiciones, la lógica se maneja en Timeline.tsx
-    } else {
-      // Trial terminal: no tiene branches
-      code += `
+        }
+        // Si hay múltiples branches Y condiciones, la lógica se maneja en Timeline.tsx
+      } else {
+        // Trial terminal: no tiene branches
+        code += `
     on_finish: function(data) {
       // Este trial no tiene branches, es un trial terminal
       // Si llegamos aquí después de un branching, terminar el experimento
@@ -418,6 +532,7 @@ export function useTrialCode({
       }
     },
     `;
+      }
     }
 
     if (includesExtensions && extensions !== "") {

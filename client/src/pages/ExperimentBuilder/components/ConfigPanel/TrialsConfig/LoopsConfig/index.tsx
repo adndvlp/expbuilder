@@ -300,6 +300,7 @@ function LoopsConfig({ loop }: Props) {
       setTrials(updatedTrials);
 
       setSaveIndicator(true);
+      console.log(loopCode);
       setTimeout(() => setSaveIndicator(false), 2000);
     }, 1000);
   };

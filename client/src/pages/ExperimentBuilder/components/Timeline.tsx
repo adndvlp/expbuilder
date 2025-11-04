@@ -296,6 +296,14 @@ function Component({}: TimelineProps) {
         return; // No tiene branches, no hay nada que hacer
       }
       
+      // IMPORTANTE: Si el trial está dentro de un loop (isInLoop = true),
+      // NO activar el branching global. Los trials dentro de loops usan su propio
+      // sistema de branching con variables locales (loopNextTrialId, etc.)
+      if (trial.isInLoop === true) {
+        console.log('Trial inside loop detected, skipping global branching');
+        return;
+      }
+      
       console.log('Trial/Loop data:', lastTrialData);
       
       const nextTrialId = getNextTrialId(lastTrialData);

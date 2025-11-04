@@ -36,6 +36,7 @@ export type BranchCondition = {
     value: string;
   }>;
   nextTrialId: number | string | null;
+  customParameters?: Record<string, ColumnMappingEntry>;
 };
 
 export interface Trial {
