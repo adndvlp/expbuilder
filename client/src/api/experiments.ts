@@ -1,6 +1,15 @@
 import { db, initDb } from "./database/lowdb";
 import { v4 as uuidv4 } from "uuid";
-import { runExperiment, runExperimentPreview } from "./runExperiment";
+import fs from "fs";
+import path from "path";
+
+// Detectar si estamos en Electron y exponer función para abrir HTML
+const isElectron = typeof window !== "undefined" && window?.electronAPI;
+async function openHtmlInBrowser(htmlPath: string) {
+  if (isElectron && window.electronAPI?.invoke) {
+    await window.electronAPI.invoke("open-html-in-browser", htmlPath);
+  }
+}
 
 export interface Experiment {
   experimentID: string;
@@ -50,19 +59,29 @@ export async function addExperiment({
   db.data!.experiments.push(experiment);
   await db.write();
   // Crear HTML inicial vacío (sin código generado)
-  await runExperiment(name, "");
+  await runExperiment(experiment.experimentID, "");
   return experiment;
 }
 
+// Directorios de salida (ajustar según la estructura de tu app Electron)
+const EXPERIMENTS_OUTPUT_DIR = path.resolve(
+  __dirname,
+  "../../experiments_html"
+);
+const PREVIEWS_OUTPUT_DIR = path.resolve(
+  __dirname,
+  "../../trials_previews_html"
+);
+// Directorio de plantillas (dentro del código fuente)
+const TEMPLATES_DIR = path.resolve(__dirname, "./templates");
+
 /**
- * Regenera el HTML del experimento usando el experimentID, igual que el endpoint backend.
- * Busca el nombre y ejecuta la lógica de runExperiment.
- * @param experimentID ID del experimento
- * @param generatedCode Código JS generado
+ * Genera el HTML de un experimento a partir de un template e inserta el código generado.
+ * Si recibe experimentID, busca el nombre en la DB. Si recibe experimentName, lo usa directo.
+ * @param params experimentID o experimentName, y el código generado
  * @returns Ruta del archivo HTML generado
- * @throws Error si el experimento no existe o no tiene nombre, o si falta el código
  */
-export async function runExperimentById(
+export async function runExperiment(
   experimentID: string,
   generatedCode: string
 ): Promise<string> {
@@ -76,18 +95,32 @@ export async function runExperimentById(
   if (!generatedCode) {
     throw new Error("No generated code provided");
   }
-  return runExperiment(experiment.name, generatedCode);
+  const templatePath = path.join(TEMPLATES_DIR, "experiment_template.html");
+  const experimentHtmlPath = path.join(
+    EXPERIMENTS_OUTPUT_DIR,
+    `${experiment.name}-experiment.html`
+  );
+  if (!fs.existsSync(EXPERIMENTS_OUTPUT_DIR)) {
+    fs.mkdirSync(EXPERIMENTS_OUTPUT_DIR, { recursive: true });
+  }
+  let html = fs.readFileSync(templatePath, "utf8");
+  html = html.replace(/<script id="generated-script">[\s\S]*?<\/script>/, "");
+  html = html.replace(
+    "</body>",
+    `<script id="generated-script">\n${generatedCode}\n<\/script>\n</body>`
+  );
+  fs.writeFileSync(experimentHtmlPath, html, "utf8");
+  return experimentHtmlPath;
 }
 
 /**
- * Regenera el HTML de preview del experimento usando el experimentID, igual que el endpoint backend.
- * Busca el nombre y ejecuta la lógica de runExperimentPreview.
- * @param experimentID ID del experimento
- * @param generatedCode Código JS generado
+ * Genera el HTML de preview de un experimento.
+ * Si recibe experimentID, busca el nombre en la DB. Si recibe experimentName, lo usa directo.
+ * @param params experimentID o experimentName, y el código generado
  * @returns Ruta del archivo HTML generado
- * @throws Error si el experimento no existe o no tiene nombre, o si falta el código
  */
-export async function runExperimentPreviewById(
+
+export async function runExperimentPreview(
   experimentID: string,
   generatedCode: string
 ): Promise<string> {
@@ -101,7 +134,41 @@ export async function runExperimentPreviewById(
   if (!generatedCode) {
     throw new Error("No generated code provided");
   }
-  return runExperimentPreview(experiment.name, generatedCode);
+  const templatePath = path.join(TEMPLATES_DIR, "trials_preview_template.html");
+  const previewHtmlPath = path.join(
+    PREVIEWS_OUTPUT_DIR,
+    `${experiment.name}-preview.html`
+  );
+  if (!fs.existsSync(PREVIEWS_OUTPUT_DIR)) {
+    fs.mkdirSync(PREVIEWS_OUTPUT_DIR, { recursive: true });
+  }
+  if (!fs.existsSync(previewHtmlPath)) {
+    fs.copyFileSync(templatePath, previewHtmlPath);
+  }
+  let html = fs.readFileSync(previewHtmlPath, "utf8");
+  html = html.replace(/<script id="generated-script">[\s\S]*?<\/script>/, "");
+  html = html.replace(
+    "</body>",
+    `<script id="generated-script">\n${generatedCode}\n<\/script>\n</body>`
+  );
+  fs.writeFileSync(previewHtmlPath, html, "utf8");
+  return previewHtmlPath;
+}
+
+/**
+ * Abre el HTML de un experimento localmente en el navegador por defecto (sin cloudflared).
+ * @param htmlPath Ruta absoluta al archivo HTML del experimento
+ * @returns { success: boolean, error?: string }
+ */
+export async function shareLocalExperimentHtml(
+  htmlPath: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await openHtmlInBrowser(htmlPath);
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
 }
 
 export async function deleteExperiment(experimentID: string): Promise<boolean> {

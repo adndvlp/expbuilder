@@ -4,7 +4,9 @@ import {
   addExperiment,
   deleteExperiment,
   Experiment,
+  shareLocalExperimentHtml,
 } from "../experiments";
+import { runExperiment } from "../experiments";
 
 export function useExperiments() {
   const [experiments, setExperiments] = useState<Experiment[]>([]);
@@ -54,4 +56,33 @@ export function useExperiments() {
     remove,
     refresh: fetchExperiments,
   };
+}
+
+/**
+ * Genera el HTML y lo abre localmente, retorna la ruta local.
+ */
+export async function openLocalExperiment(
+  experimentID: string,
+  generatedCode: string
+): Promise<string | undefined> {
+  try {
+    return await runExperiment(experimentID, generatedCode);
+  } catch (err: any) {
+    return undefined;
+  }
+}
+
+/**
+ * Genera el HTML y lo abre localmente en el navegador por defecto, retorna { success, error }.
+ */
+export async function shareLocalExperiment(
+  experimentID: string,
+  generatedCode: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const htmlPath = await runExperiment(experimentID, generatedCode);
+    return await shareLocalExperimentHtml(htmlPath);
+  } catch (err: any) {
+    return { success: false, error: err.message || "Error inesperado" };
+  }
 }
