@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "name": "expbuilder",
   "version": "1.2.1",
   "description": "Experiment Builder App",
@@ -8,11 +9,25 @@
   },
   "devDependencies": {
     "electron": "^38.3.0",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "^26.0.12",
+    "file-loader": "^6.2.0",
+    "nodemon": "^3.1.10"
   },
   "dependencies": {
+    "acorn": "^8.15.0",
+    "acorn-walk": "^8.3.4",
+    "cheerio": "^1.1.2",
+    "cloudinary": "^1.41.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
     "electron-updater": "^6.6.2",
-    "jszip": "^3.10.1"
+    "express": "^5.1.0",
+    "json2csv": "^6.0.0-alpha.2",
+    "jszip": "^3.10.1",
+    "lowdb": "^7.0.1",
+    "multer": "^2.0.2",
+    "multer-storage-cloudinary": "^4.0.0",
+    "uuid": "^13.0.0"
   },
   "main": "main.js",
   "scripts": {
@@ -33,21 +48,12 @@
       "main.js",
       "oauth-handler.js",
       "preload.js",
-      "server/node_modules/**",
       "server/**"
     ],
     "extraResources": [
       {
         "from": "client/dist",
         "to": "client/dist"
-      },
-      {
-        "from": "server",
-        "to": "server"
-      },
-      {
-        "from": "server/node_modules",
-        "to": "server/node_modules"
       }
     ],
     "icon": "icon/icon.png",

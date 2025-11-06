@@ -18,6 +18,19 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Usar ruta de usuario para todos los recursos de escritura si está definida
+const userDataRoot = process.env.DB_ROOT || __dirname;
+
+// Base de datos
+let dbPath, dbDir;
+if (process.env.DB_PATH) {
+  dbPath = process.env.DB_PATH;
+  dbDir = path.dirname(dbPath);
+} else {
+  dbPath = path.join(userDataRoot, "database", "db.json");
+  dbDir = path.dirname(dbPath);
+}
+
 const app = express();
 const port = 3000;
 
@@ -30,8 +43,6 @@ app.use(
 
 app.use(express.json({ limit: "50mb" }));
 
-const dbPath = path.join(__dirname, "database", "db.json");
-const dbDir = path.dirname(dbPath);
 if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 
 const adapter = new JSONFile(dbPath);
@@ -262,7 +273,11 @@ app.delete("/api/delete-experiment/:experimentID", async (req, res) => {
     if (experiment && experiment.name) {
       experimentName = `${experiment.name}-experiment`;
     }
-    const experimentUploadsDir = path.join(__dirname, experimentName);
+    const experimentUploadsDir = path.join(
+      userDataRoot,
+      "uploads",
+      experimentName
+    );
     if (fs.existsSync(experimentUploadsDir)) {
       fs.rmSync(experimentUploadsDir, { recursive: true, force: true });
     }
@@ -353,15 +368,23 @@ app.delete("/api/delete-experiment/:experimentID", async (req, res) => {
 // Setup static file serving
 app.use(express.static(path.join(__dirname, "dist"))); // Serve dist/ at root level
 app.use(express.static(path.join(__dirname))); // Serve root directory
-app.use(express.static(path.join(__dirname, "plugins"))); // Serve app/ directory
+app.use("/plugins", express.static(path.join(userDataRoot, "plugins")));
 
 // Serve experiment files dynamically
 app.use((req, res, next) => {
-  // Match paths like /experimentName/type/filename
-  const match = req.path.match(/^\/([^\/]+)\/(img|aud|vid|others)\/(.+)$/);
+  // Match paths like /uploads/experimentName/type/filename
+  const match = req.path.match(
+    /^\/uploads\/([^\/]+)\/(img|aud|vid|others)\/(.+)$/
+  );
   if (match) {
     const [, experimentName, type, filename] = match;
-    const filePath = path.join(__dirname, experimentName, type, filename);
+    const filePath = path.join(
+      userDataRoot,
+      "uploads",
+      experimentName,
+      type,
+      filename
+    );
     if (fs.existsSync(filePath)) {
       return res.sendFile(filePath);
     }
@@ -369,10 +392,12 @@ app.use((req, res, next) => {
   next();
 });
 
-const experimentsHtmlDir = path.join(__dirname, "experiments_html");
-const trialsPreviewsHtmlDir = path.join(__dirname, "trials_previews_html");
-if (!fs.existsSync(experimentsHtmlDir)) fs.mkdirSync(experimentsHtmlDir);
-if (!fs.existsSync(trialsPreviewsHtmlDir)) fs.mkdirSync(trialsPreviewsHtmlDir);
+const experimentsHtmlDir = path.join(userDataRoot, "experiments_html");
+const trialsPreviewsHtmlDir = path.join(userDataRoot, "trials_previews_html");
+if (!fs.existsSync(experimentsHtmlDir))
+  fs.mkdirSync(experimentsHtmlDir, { recursive: true });
+if (!fs.existsSync(trialsPreviewsHtmlDir))
+  fs.mkdirSync(trialsPreviewsHtmlDir, { recursive: true });
 
 // Endpoint para servir el experimento en /:experimentID-experiment
 app.get("/:experimentID-experiment", async (req, res) => {
@@ -412,14 +437,13 @@ app.get("/:experimentID-preview", async (req, res) => {
   res.sendFile(htmlPath);
 });
 
-const metadataPath = path.resolve(__dirname, "metadata");
-
-// Serve the metadata directory at `/metadata` URL path
+const metadataPath = path.join(userDataRoot, "metadata");
+if (!fs.existsSync(metadataPath))
+  fs.mkdirSync(metadataPath, { recursive: true });
 app.use("/metadata", express.static(metadataPath));
 
 app.get("/api/plugins-list", (req, res) => {
-  const metadataDir = path.join(__dirname, "metadata");
-  fs.readdir(metadataDir, (err, files) => {
+  fs.readdir(metadataPath, (err, files) => {
     if (err) return res.status(500).json({ error: "No metadata dir" });
     // Solo archivos .json
     const plugins = files
@@ -440,11 +464,9 @@ const storage = multer.diskStorage({
       else if (/\.(mp4|webm|mov|avi)$/i.test(ext)) type = "vid";
 
       if (!type) {
-        // Rechaza el archivo si no es de los tipos permitidos
         return cb(new Error("File type not allowed"), null);
       }
 
-      // Obtener el nombre del experimento
       let experimentName = experimentID;
       await db.read();
       const experiment = db.data.experiments.find(
@@ -454,7 +476,7 @@ const storage = multer.diskStorage({
         experimentName = `${experiment.name}-experiment`;
       }
 
-      const folder = path.join(__dirname, experimentName, type);
+      const folder = path.join(userDataRoot, "uploads", experimentName, type);
       fs.mkdirSync(folder, { recursive: true });
       cb(null, folder);
     } catch (err) {
@@ -486,7 +508,7 @@ app.post(
       experimentName = `${experiment.name}-experiment`;
     }
     res.json({
-      fileUrl: `${experimentName}/${type}/${req.file.filename}`,
+      fileUrl: `uploads/${experimentName}/${type}/${req.file.filename}`,
       folder: type,
     });
   }
@@ -510,7 +532,7 @@ app.post(
     }
     const fileUrls = req.files.map((file) => {
       const type = path.basename(path.dirname(file.path));
-      return `${experimentName}/${type}/${file.filename}`;
+      return `uploads/${experimentName}/${type}/${file.filename}`;
     });
     res.json({
       fileUrls,
@@ -535,22 +557,22 @@ app.get("/api/list-files/:type/:experimentID", async (req, res) => {
     if (type === "all") {
       const types = ["img", "aud", "vid", "others"];
       types.forEach((t) => {
-        const dir = path.join(__dirname, experimentName, t);
+        const dir = path.join(userDataRoot, "uploads", experimentName, t);
         if (fs.existsSync(dir)) {
           const typeFiles = fs.readdirSync(dir).map((filename) => ({
             name: filename,
-            url: `${experimentName}/${t}/${filename}`,
+            url: `uploads/${experimentName}/${t}/${filename}`,
             type: t,
           }));
           files = files.concat(typeFiles);
         }
       });
     } else {
-      const dir = path.join(__dirname, experimentName, type);
+      const dir = path.join(userDataRoot, "uploads", experimentName, type);
       if (fs.existsSync(dir)) {
         files = fs.readdirSync(dir).map((filename) => ({
           name: filename,
-          url: `${experimentName}/${type}/${filename}`,
+          url: `uploads/${experimentName}/${type}/${filename}`,
           type,
         }));
       }
@@ -573,7 +595,13 @@ app.delete(
     if (experiment && experiment.name) {
       experimentName = `${experiment.name}-experiment`;
     }
-    const filePath = path.join(__dirname, experimentName, type, filename);
+    const filePath = path.join(
+      userDataRoot,
+      "uploads",
+      experimentName,
+      type,
+      filename
+    );
     try {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
@@ -718,15 +746,16 @@ app.post("/api/save-plugin/:id", async (req, res) => {
 
     // Guardar archivo del plugin
     if (pluginCode && scripTag) {
-      const pluginsDir = path.join(__dirname, "plugins");
-      if (!fs.existsSync(pluginsDir)) fs.mkdirSync(pluginsDir);
+      const pluginsDir = path.join(userDataRoot, "plugins");
+      if (!fs.existsSync(pluginsDir))
+        fs.mkdirSync(pluginsDir, { recursive: true });
       const fileName = path.basename(scripTag);
       const filePath = path.join(pluginsDir, fileName);
       fs.writeFileSync(filePath, pluginCode, "utf8");
     }
 
     // Eliminar metadata actual para forzar regeneración
-    const metadataPathFile = path.join(__dirname, "metadata", `${name}.json`);
+    const metadataPathFile = path.join(metadataPath, `${name}.json`);
     if (fs.existsSync(metadataPathFile)) fs.unlinkSync(metadataPathFile);
 
     // Actualizar experiment_template.html y trials_preview_template.html
@@ -734,16 +763,11 @@ app.post("/api/save-plugin/:id", async (req, res) => {
     let plugins = [];
     const pluginConfigDoc = db.data.pluginConfigs[0];
     plugins = pluginConfigDoc?.plugins || [];
-    const html1Path = path.join(
-      __dirname,
-      "templates",
-      "experiment_template.html"
-    );
-    const html2Path = path.join(
-      __dirname,
-      "templates",
-      "trials_preview_template.html"
-    );
+    const templatesDir = path.join(userDataRoot, "templates");
+    if (!fs.existsSync(templatesDir))
+      fs.mkdirSync(templatesDir, { recursive: true });
+    const html1Path = path.join(templatesDir, "experiment_template.html");
+    const html2Path = path.join(templatesDir, "trials_preview_template.html");
     let html1 = fs.readFileSync(html1Path, "utf8");
     let html2 = fs.readFileSync(html2Path, "utf8");
     const $1 = cheerio.load(html1);
@@ -770,9 +794,9 @@ app.post("/api/save-plugin/:id", async (req, res) => {
       await new Promise((resolve, reject) => {
         const extractScript = spawn(
           "node",
-          [path.join(__dirname, "extract-metadata.mjs")],
+          [path.join(userDataRoot, "extract-metadata.mjs")],
           {
-            cwd: __dirname,
+            cwd: userDataRoot,
             stdio: "inherit",
           }
         );
@@ -835,7 +859,7 @@ app.delete("/api/delete-plugin/:index", async (req, res) => {
     // Eliminar archivo físico del plugin
     if (pluginToDelete.scripTag) {
       const fileName = path.basename(pluginToDelete.scripTag);
-      const filePath = path.join(__dirname, "plugins", fileName);
+      const filePath = path.join(userDataRoot, "plugins", fileName);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
         console.log(`🗑️ Deleted plugin file: ${fileName}`);
@@ -844,21 +868,21 @@ app.delete("/api/delete-plugin/:index", async (req, res) => {
 
     // Eliminar metadata
     if (pluginToDelete.name) {
-      const metadataPath = path.join(
-        __dirname,
-        "metadata",
+      const metadataPathFile = path.join(
+        metadataPath,
         `${pluginToDelete.name}.json`
       );
-      if (fs.existsSync(metadataPath)) {
-        fs.unlinkSync(metadataPath);
+      if (fs.existsSync(metadataPathFile)) {
+        fs.unlinkSync(metadataPathFile);
         console.log(`🗑️ Deleted metadata: ${pluginToDelete.name}.json`);
       }
     }
 
     // Solo borrar la etiqueta <script id="plugin-script-{index}">
+    const templatesDir = path.join(userDataRoot, "templates");
     const htmlFiles = [
-      path.join(__dirname, "templates", "experiment_template.html"),
-      path.join(__dirname, "templates", "trials_preview_template.html"),
+      path.join(templatesDir, "experiment_template.html"),
+      path.join(templatesDir, "trials_preview_template.html"),
     ];
     htmlFiles.forEach((htmlPath) => {
       if (fs.existsSync(htmlPath)) {
@@ -1209,7 +1233,11 @@ app.post("/api/publish-experiment/:experimentID", async (req, res) => {
     if (experimentPublish && experimentPublish.name) {
       experimentNameUploads = `${experimentPublish.name}-experiment`;
     }
-    const uploadsBase = path.join(__dirname, experimentNameUploads);
+    const uploadsBase = path.join(
+      userDataRoot,
+      "uploads",
+      experimentNameUploads
+    );
     const mediaTypes = ["img", "vid", "aud"];
     let mediaFiles = [];
     for (const type of mediaTypes) {
@@ -1447,7 +1475,7 @@ app.delete(
 
 // Endpoint para exportar el archivo db.json
 app.get("/api/export-db", (req, res) => {
-  const dbFilePath = path.join(__dirname, "database", "db.json");
+  const dbFilePath = dbPath;
   if (!fs.existsSync(dbFilePath)) {
     return res.status(404).send("No database file found");
   }
@@ -1457,13 +1485,13 @@ app.get("/api/export-db", (req, res) => {
 });
 
 // Endpoint para importar el archivo db.json
-const importDbUpload = multer({ dest: path.join(__dirname, "database") });
+const importDbUpload = multer({ dest: dbDir });
 app.post("/api/import-db", importDbUpload.single("dbfile"), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, error: "No file uploaded" });
   }
   const uploadedPath = req.file.path;
-  const targetPath = path.join(__dirname, "database", "db.json");
+  const targetPath = dbPath;
   try {
     fs.renameSync(uploadedPath, targetPath);
     res.json({ success: true, message: "Database imported successfully" });
