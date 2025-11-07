@@ -1,0 +1,440 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png+xml" href="/icon/fp black.png">
+    <title>Experiment</title>
+    <script src="https://unpkg.com/jspsych@8.2.1"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-animation@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-audio-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-audio-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-audio-slider-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-browser-check@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-call-function@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-canvas-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-canvas-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-canvas-slider-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-categorize-animation@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-categorize-html@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-categorize-image@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-cloze@2.2.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-external-html@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-free-sort@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-fullscreen@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-audio-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-slider-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-video-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-iat-html@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-iat-image@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-image-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-image-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-image-slider-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-initialize-camera@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-initialize-microphone@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-instructions@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-maxdiff@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-mirror-camera@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-preload@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-reconstruction@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-resize@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-same-different-html@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-same-different-image@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-serial-reaction-time@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-serial-reaction-time-mouse@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-sketchpad@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-html-form@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-likert@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-multi-choice@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-multi-select@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-text@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-video-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-video-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-video-slider-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-virtual-chinrest@3.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-visual-search-circle@2.2.0"></script>
+
+    <script src="https://cdn.jsdelivr.net/gh/jspsych/jspsych@jspsych@7.0.0/examples/js/webgazer/webgazer.js"></script>
+
+    <script src="https://unpkg.com/@jspsych/extension-webgazer@1.2.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-webgazer-calibrate@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-webgazer-init-camera@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-webgazer-validate@2.1.0"></script>
+
+    <script src="https://unpkg.com/@jspsych/extension-record-video@1.2.0"></script>
+    <script src="https://unpkg.com/@jspsych/extension-mouse-tracking@1.0.0"></script>
+
+    <link href="https://unpkg.com/jspsych@7.3.1/css/jspsych.css" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="https://unpkg.com/@jspsych/plugin-survey@2.1.0/css/survey.css">
+
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #f0f0f0;
+      }
+      #jspsych-target {
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="jspsych-target"></div>
+
+    
+  
+
+<script id="generated-script">
+
+  const trialSessionId =
+    (crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2, 10));
+
+  let participantNumber;
+
+  async function saveSession(trialSessionId) {
+   
+   const res = await fetch("/api/append-result/09f2faf2-50b7-45ba-a6c5-3761ec48ef5a", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "*/*" },
+      body: JSON.stringify({
+        sessionId: trialSessionId,
+      }),
+    });
+  
+    const result = await res.json();
+    participantNumber = result.participantNumber;
+    return participantNumber;
+    
+  }
+
+  (async () => {
+    participantNumber = await saveSession(trialSessionId);
+
+    if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
+      alert("The participant number is not assigned. Please, wait.");
+      throw new Error("participantNumber not assigned");
+    }
+
+    // --- Branching logic functions (outside initJsPsych for timeline access) ---
+    window.nextTrialId = null;
+    window.skipRemaining = false;
+    window.branchingActive = false;
+
+    const evaluateCondition = (trialData, condition) => {
+      // All rules in a condition must be true (AND logic)
+      return condition.rules.every(rule => {
+        const propValue = trialData[rule.prop];
+        const compareValue = rule.value;
+        
+        // Convert values for comparison
+        const numPropValue = parseFloat(propValue);
+        const numCompareValue = parseFloat(compareValue);
+        const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
+        
+        switch (rule.op) {
+          case '==':
+            return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
+          case '!=':
+            return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
+          case '>':
+            return isNumeric && numPropValue > numCompareValue;
+          case '<':
+            return isNumeric && numPropValue < numCompareValue;
+          case '>=':
+            return isNumeric && numPropValue >= numCompareValue;
+          case '<=':
+            return isNumeric && numPropValue <= numCompareValue;
+          default:
+            return false;
+        }
+      });
+    };
+    
+    const getNextTrialId = (lastTrialData) => {
+      if (!lastTrialData || !lastTrialData.trials || !lastTrialData.trials[0]) {
+        return null;
+      }
+      
+      const trial = lastTrialData.trials[0];
+      
+      // Check if trial/loop has branches
+      if (!Array.isArray(trial.branches) || trial.branches.length === 0) {
+        return null;
+      }
+      
+      // Si solo hay un branch O no hay condiciones, seguir al primer branch automáticamente
+      const hasMultipleBranches = trial.branches.length > 1;
+      const hasBranchConditions = Array.isArray(trial.branchConditions) && trial.branchConditions.length > 0;
+      
+      if (!hasMultipleBranches || !hasBranchConditions) {
+        console.log('Auto-branching to first branch:', trial.branches[0]);
+        return trial.branches[0];
+      }
+      
+      // Si hay múltiples branches Y condiciones, evaluar las condiciones
+      // branchConditions is an array of arrays, flatten it first
+      const conditions = trial.branchConditions.flat();
+      
+      // Evaluate each condition (OR logic between conditions)
+      for (const condition of conditions) {
+        if (!condition || !condition.rules) {
+          console.warn('Invalid condition structure:', condition);
+          continue;
+        }
+        
+        if (evaluateCondition(trial, condition)) {
+          console.log('Condition matched:', condition);
+          return condition.nextTrialId;
+        }
+      }
+      
+      // No condition matched - seguir al primer branch por defecto
+      console.log('No condition matched, defaulting to first branch:', trial.branches[0]);
+      return trial.branches[0];
+    };
+
+    const jsPsych = initJsPsych({
+
+    
+
+    on_data_update: function (data) {
+      const res = fetch("/api/append-result/09f2faf2-50b7-45ba-a6c5-3761ec48ef5a", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Accept: "*/*" },
+        body: JSON.stringify({
+          sessionId: trialSessionId,
+          response: data,
+        }),
+      });
+
+      // Solo evaluar branching si el trial/loop tiene un trial_id o loop_id válido
+      if ((!data.trial_id || data.trial_id === undefined) && (!data.loop_id || data.loop_id === undefined)) {
+        return;
+      }
+      
+      const lastTrialData = jsPsych.data.getLastTrialData();
+      const trial = lastTrialData.trials ? lastTrialData.trials[0] : null;
+      
+      // Verificar si este trial/loop tiene branches
+      if (!trial || !trial.branches || trial.branches.length === 0) {
+        return; // No tiene branches, no hay nada que hacer
+      }
+      
+      // IMPORTANTE: Si el trial está dentro de un loop (isInLoop = true),
+      // NO activar el branching global. Los trials dentro de loops usan su propio
+      // sistema de branching con variables locales (loopNextTrialId, etc.)
+      if (trial.isInLoop === true) {
+        console.log('Trial inside loop detected, skipping global branching');
+        return;
+      }
+      
+      console.log('Trial/Loop data:', lastTrialData);
+      
+      const nextTrialId = getNextTrialId(lastTrialData);
+      console.log('Next trial/loop ID:', nextTrialId);
+      
+      if (nextTrialId) {
+        window.nextTrialId = nextTrialId;
+        window.skipRemaining = true;
+        window.branchingActive = true;
+        console.log('Branching activated: skip to trial/loop', nextTrialId);
+      }
+    },
+
+  on_finish: function() {
+    jsPsych.data.displayData
+  }
+});
+
+const timeline = [];
+
+const welcome = {
+  type: jsPsychHtmlButtonResponse,
+  stimulus: "Welcome to the experiment. Press 'Start' to begin.",
+  choices: ['Start'],
+};
+
+timeline.push(welcome);
+
+
+    const preloadQuieres_loop = {
+        type: jsPsychPreload,
+       files: [],
+    }
+    timeline.push(preloadQuieres_loop);
+    
+    const test_stimuli_Quieres_loop = [{stimulus: "<div id=\"i0g2\" style=\"box-sizing: border-box;\">Loop?</div>",
+choices: "Si, Non"}];
+    const Quieres_loop_timeline = {
+    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable("stimulus"),
+choices: jsPsych.timelineVariable("choices"),
+      data: {
+        rt: "rt",
+response: "response",
+stimulus: "stimulus",
+        trial_id: 1762456055748,
+        
+        
+        branches: [1762456106665, 1762456079664],
+        branchConditions: [[{"id":1762456198778,"rules":[{"prop":"response","op":"==","value":"0"}],"nextTrialId":"1762456079664","customParameters":{}},{"id":1762456218512,"rules":[{"prop":"response","op":"==","value":"1"}],"nextTrialId":"1762456106665","customParameters":{}}]] 
+        
+      },
+    };
+    const Quieres_loop_procedure = {
+    timeline: 
+    [Quieres_loop_timeline],
+    timeline_variables: test_stimuli_Quieres_loop,
+    conditional_function: function() {
+      const currentId = 1762456055748;
+      
+      // Si skipRemaining está activo, verificar si este es el trial objetivo
+      if (window.skipRemaining) {
+        if (String(currentId) === String(window.nextTrialId)) {
+          // Encontramos el trial objetivo
+          window.skipRemaining = false;
+          window.nextTrialId = null;
+          return true;
+        }
+        // No es el objetivo, saltar
+        return false;
+      }
+      
+      return true;
+    },
+    
+    };
+    timeline.push(Quieres_loop_procedure);
+  
+
+
+    const preloadNo_loop = {
+        type: jsPsychPreload,
+       files: [],
+    }
+    timeline.push(preloadNo_loop);
+    
+    const test_stimuli_No_loop = [{stimulus: "<div id=\"ir7l\" style=\"box-sizing: border-box;\">Pues no loop</div>",
+choices: ["Adiós"]}];
+    const No_loop_timeline = {
+    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable("stimulus"),
+choices: jsPsych.timelineVariable("choices"),
+      data: {
+        rt: "rt",
+response: "response",
+stimulus: "stimulus",
+        trial_id: 1762456106665,
+        
+        
+      },
+    
+    on_finish: function(data) {
+      // Este trial no tiene branches, es un trial terminal
+      // Si llegamos aquí después de un branching, terminar el experimento
+      if (window.branchingActive) {
+        jsPsych.abortExperiment('', {});
+      }
+    },
+    };
+    const No_loop_procedure = {
+    timeline: 
+    [No_loop_timeline],
+    timeline_variables: test_stimuli_No_loop,
+    conditional_function: function() {
+      const currentId = 1762456106665;
+      
+      // Si skipRemaining está activo, verificar si este es el trial objetivo
+      if (window.skipRemaining) {
+        if (String(currentId) === String(window.nextTrialId)) {
+          // Encontramos el trial objetivo
+          window.skipRemaining = false;
+          window.nextTrialId = null;
+          return true;
+        }
+        // No es el objetivo, saltar
+        return false;
+      }
+      
+      return true;
+    },
+    
+    };
+    timeline.push(No_loop_procedure);
+  
+
+
+    const preloadNew_Trial_1 = {
+        type: jsPsychPreload,
+       files: [],
+    }
+    timeline.push(preloadNew_Trial_1);
+    
+    const New_Trial_1_timeline = {
+    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable("stimulus_New_Trial_1"),
+choices: jsPsych.timelineVariable("choices_New_Trial_1"),
+      data: {
+        rt: "rt_New_Trial_1",
+response: "response_New_Trial_1",
+stimulus: "stimulus_New_Trial_1",
+        trial_id: 1762456079664,
+        isInLoop: true,
+        
+        branches: [1762456135313],
+        branchConditions: [undefined] 
+        
+      },
+    
+    on_finish: function(data) {
+      // Branching automático al primer branch (dentro del loop)
+      const branches = [1762456135313];
+      if (branches.length > 0) {
+        loopNextTrialId = branches[0];
+        loopSkipRemaining = true;
+        loopBranchingActive = true;
+      }
+    },};
+
+
+    const preloadNew_Trial_3 = {
+        type: jsPsychPreload,
+       files: [],
+    }
+    timeline.push(preloadNew_Trial_3);
+    
+    const New_Trial_3_timeline = {
+    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable("stimulus_New_Trial_3"),
+choices: jsPsych.timelineVariable("choices_New_Trial_3"),
+      data: {
+        rt: "rt_New_Trial_3",
+response: "response_New_Trial_3",
+stimulus: "stimulus_New_Trial_3",
+        trial_id: 1762456135313,
+        isInLoop: true,
+        
+      },
+    
+    on_finish: function(data) {
+      // Este trial no tiene branches, verificar si el loop padre tiene branches
+      if (loopBranchingActive) {
+        // Ya hay branching interno activo, terminar el loop
+        jsPsych.abortCurrentTimeline();
+      } else if (typeof loopHasBranches !== 'undefined' && loopHasBranches) {
+        // El loop tiene branches, activar branching del loop al terminar
+        // Esto se manejará en el on_finish del loop
+        loopShouldBranchOnFinish = true;
+      } else if (!loopHasBranches) {
+        // Ni el trial ni el loop tienen branches - trial terminal
+        // Si llegamos aquí después de un branching global, terminar el experimento
+        if (window.branchingActive) {
+          jsPsych.abortExperiment('', {});
+        }
+      }
+    },};
+
+jsPsych.run(timeline);
+
+})();
+
+</script></body></html>

@@ -60,8 +60,9 @@ export default function useLoopCode({
 
     // Generar wrappers con conditional_function para cada trial dentro del loop
     const trialWrappers = trials
-      .map((trial) => {
+      .map((trial, index) => {
         const trialNameSanitized = sanitizeName(trial.trialName);
+        const isLastTrial = index === trials.length - 1;
         // Obtener el trial_id del trial para usarlo en la conditional_function
         const trialId = `${trialNameSanitized}_timeline.data.trial_id`;
         return `
@@ -70,26 +71,47 @@ export default function useLoopCode({
       conditional_function: function() {
         const currentId = ${trialId};
         
+        // Si el trial objetivo ya fue ejecutado, saltar todos los trials restantes en esta iteración
+        if (loopTargetExecuted) {
+          ${
+            isLastTrial
+              ? `
+          // Último trial: resetear flags para la siguiente iteración/repetición
+          loopNextTrialId = null;
+          loopSkipRemaining = false;
+          loopTargetExecuted = false;
+          loopBranchingActive = false;
+          loopIterationComplete = false;`
+              : ""
+          }
+          return false;
+        }
+        
         // Si loopSkipRemaining está activo, verificar si este es el trial objetivo
         if (loopSkipRemaining) {
           if (String(currentId) === String(loopNextTrialId)) {
             // Encontramos el trial objetivo dentro del loop
-            // IMPORTANTE: NO resetear inmediatamente para permitir ramas de ramas
-            // loopSkipRemaining = false;
-            // loopNextTrialId = null;
+            loopTargetExecuted = true;
             return true;
           }
           // No es el objetivo, saltar
           return false;
         }
+        
+        // No hay branching activo, ejecutar normalmente
         return true;
       },
       on_timeline_finish: function() {
-        // Resetear las variables de branching después de ejecutar el trial objetivo
-        // Esto permite que si el trial tiene branches, se activen correctamente
-        if (loopSkipRemaining && String(${trialId}) === String(loopNextTrialId)) {
-          loopSkipRemaining = false;
-          loopNextTrialId = null;
+        ${
+          isLastTrial
+            ? `
+        // Último trial del timeline: resetear flags para la siguiente iteración/repetición
+        loopNextTrialId = null;
+        loopSkipRemaining = false;
+        loopTargetExecuted = false;
+        loopBranchingActive = false;
+        loopIterationComplete = false;`
+            : ""
         }
       }
     };`;
@@ -195,10 +217,12 @@ export default function useLoopCode({
     
     ${trialDefinitions}
 
-// --- Branching logic functions for internal loop trials ---
+// --- Branching logic variables for internal loop trials ---
 let loopNextTrialId = null;
 let loopSkipRemaining = false;
 let loopBranchingActive = false;
+let loopTargetExecuted = false; // Indica si el trial objetivo ya se ejecutó en esta iteración
+let loopIterationComplete = false; // Indica que la iteración actual terminó
 const loopHasBranches = ${hasBranchesLoop ? "true" : "false"};
 let loopShouldBranchOnFinish = false;
 
@@ -299,27 +323,34 @@ const ${loopIdSanitized}_procedure = {
     return true;
   },
   on_timeline_start: function() {
-    // Reset loop branching variables at the start of each loop iteration
+    // Resetear las flags al inicio de cada iteración del loop
+    // Esto permite que cada repetición del loop funcione correctamente
     loopNextTrialId = null;
     loopSkipRemaining = false;
     loopBranchingActive = false;
+    loopTargetExecuted = false;
+    loopIterationComplete = false;
     loopShouldBranchOnFinish = false;
   },
   on_timeline_finish: function() {
-    // Check if we should branch because a trial without branches completed
-    // but the loop has branches
+    // Resetear las flags al finalizar todas las repeticiones del loop
+    loopNextTrialId = null;
+    loopSkipRemaining = false;
+    loopTargetExecuted = false;
+    loopBranchingActive = false;
+    
+    // Verificar si se debe hacer branching porque un trial sin branches se completó
+    // pero el loop tiene branches
     if (loopShouldBranchOnFinish && loopHasBranches) {
-      // Trigger loop branching
       const branches = [${branches && branches.length > 0 ? branches.map((b) => (typeof b === "string" ? `"${b}"` : b)).join(", ") : ""}];
       if (branches.length > 0) {
         window.nextTrialId = branches[0];
         window.skipRemaining = true;
         window.branchingActive = true;
-        console.log('Loop finished, branching to:', branches[0]);
       }
     }
     
-    // Reset loop branching variables when the loop finishes
+    // Resetear todas las variables de branching del loop
     loopNextTrialId = null;
     loopSkipRemaining = false;
     loopBranchingActive = false;

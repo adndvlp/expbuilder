@@ -420,18 +420,18 @@ export function useTrialCode({
       
       let nextTrialId = null;
       
-      // Evaluate each condition (OR logic between conditions)
+      // Evaluar cada condición (lógica OR entre condiciones)
       for (const condition of branchConditions) {
         if (!condition || !condition.rules) {
           continue;
         }
         
-        // All rules in a condition must be true (AND logic)
+        // Todas las reglas en una condición deben ser verdaderas (lógica AND)
         const allRulesMatch = condition.rules.every(rule => {
           const propValue = data[rule.prop];
           const compareValue = rule.value;
           
-          // Convert values for comparison
+          // Convertir valores para comparación
           const numPropValue = parseFloat(propValue);
           const numCompareValue = parseFloat(compareValue);
           const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
@@ -456,7 +456,6 @@ export function useTrialCode({
         
         if (allRulesMatch) {
           nextTrialId = condition.nextTrialId;
-          console.log('Loop internal: Condition matched:', condition);
           break;
         }
       }
@@ -464,14 +463,12 @@ export function useTrialCode({
       // Si no se encontró match, usar el primer branch por defecto
       if (!nextTrialId && branches.length > 0) {
         nextTrialId = branches[0];
-        console.log('Loop internal: No condition matched, defaulting to first branch:', nextTrialId);
       }
       
       if (nextTrialId) {
         loopNextTrialId = nextTrialId;
         loopSkipRemaining = true;
         loopBranchingActive = true;
-        console.log('Loop internal branching activated: skip to trial', nextTrialId);
       }
     },`;
         }
@@ -481,10 +478,7 @@ export function useTrialCode({
         code += `
     on_finish: function(data) {
       // Este trial no tiene branches, verificar si el loop padre tiene branches
-      if (loopBranchingActive) {
-        // Ya hay branching interno activo, terminar el loop
-        jsPsych.abortCurrentTimeline();
-      } else if (typeof loopHasBranches !== 'undefined' && loopHasBranches) {
+    if (typeof loopHasBranches !== 'undefined' && loopHasBranches) {
         // El loop tiene branches, activar branching del loop al terminar
         // Esto se manejará en el on_finish del loop
         loopShouldBranchOnFinish = true;
