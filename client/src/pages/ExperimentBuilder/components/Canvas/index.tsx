@@ -336,23 +336,28 @@ function Canvas({}: Props) {
           // Check if selectedTrial is inside the openLoop
           const isTrialInsideOpenLoop =
             openLoop &&
-            selectedTrial &&
             openLoop.trials &&
+            selectedTrial &&
             openLoop.trials.some((t: any) => t.id === selectedTrial.id);
 
-          // Show button only if:
-          // - selectedLoop has at least one branch, OR
-          // - selectedTrial has at least one branch AND is not inside the open loop
+          // Count total number of trials (including those in loops)
+          const totalTrialCount = trials.reduce((count, item) => {
+            if ("trials" in item) {
+              // It's a loop, count its trials
+              return count + item.trials.length;
+            } else {
+              // It's a trial
+              return count + 1;
+            }
+          }, 0);
+
+          // Show button if:
+          // - There's more than one trial in the entire experiment, AND
+          // - A trial or loop is selected
           const shouldShow =
-            (selectedLoop &&
-              selectedLoop.branches &&
-              Array.isArray(selectedLoop.branches) &&
-              selectedLoop.branches.length >= 1) ||
-            (selectedTrial &&
-              selectedTrial.branches &&
-              Array.isArray(selectedTrial.branches) &&
-              selectedTrial.branches.length >= 1 &&
-              !isTrialInsideOpenLoop);
+            totalTrialCount > 1 &&
+            ((selectedLoop && !isTrialInsideOpenLoop) ||
+              (selectedTrial && !isTrialInsideOpenLoop));
 
           return (
             shouldShow && (

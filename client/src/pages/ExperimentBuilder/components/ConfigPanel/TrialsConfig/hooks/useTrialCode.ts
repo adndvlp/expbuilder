@@ -386,20 +386,69 @@ export function useTrialCode({
     code += `
     const ${trialNameSanitized}_timeline = {
     type: ${pluginNameImport}, ${timelineProps}
+    on_start: function(trial) {
+      // Apply custom parameters if they exist (from branching conditions)
+      ${
+        isInLoop
+          ? `
+      // For trials in loops, use loopBranchCustomParameters
+      if (typeof loopBranchCustomParameters !== 'undefined' && loopBranchCustomParameters && typeof loopBranchCustomParameters === 'object') {
+        console.log('Applying custom parameters to loop trial:', loopBranchCustomParameters);
+        Object.entries(loopBranchCustomParameters).forEach(([key, param]) => {
+          if (param && param.source !== 'none') {
+            // Handle different parameter sources
+            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
+              // For typed values, use them directly
+              trial[key] = param.value;
+              console.log(\`Set trial.\${key} = \${param.value}\`);
+            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
+              // For CSV values, use them directly
+              trial[key] = param.value;
+              console.log(\`Set trial.\${key} = \${param.value}\`);
+            }
+          }
+        });
+        // Clear the custom parameters after applying them
+        loopBranchCustomParameters = null;
+      }
+      `
+          : `
+      // For trials outside loops, use window.branchCustomParameters
+      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {
+        console.log('Applying custom parameters to trial:', window.branchCustomParameters);
+        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {
+          if (param && param.source !== 'none') {
+            // Handle different parameter sources
+            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
+              // For typed values, use them directly
+              trial[key] = param.value;
+              console.log(\`Set trial.\${key} = \${param.value}\`);
+            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
+              // For CSV values, use them directly
+              trial[key] = param.value;
+              console.log(\`Set trial.\${key} = \${param.value}\`);
+            }
+          }
+        });
+        // Clear the custom parameters after applying them
+        window.branchCustomParameters = null;
+      }
+      `
+      }
+    },
     `;
 
     // Lógica de branching
     if (isInLoop) {
       // Trial dentro de un loop: usar variables locales del loop para branching
       const hasBranches = branches && branches.length > 0;
-      const hasMultipleBranches = branches && branches.length > 1;
       const hasBranchConditions =
         branchConditions && branchConditions.length > 0;
 
       if (hasBranches) {
         // Si tiene branches, agregar lógica de branching dentro del loop
-        if (!hasMultipleBranches || !hasBranchConditions) {
-          // Si solo hay un branch O no hay condiciones, seguir automáticamente al primer branch
+        if (!hasBranchConditions) {
+          // Si NO hay condiciones, seguir automáticamente al primer branch
           code += `
     on_finish: function(data) {
       // Branching automático al primer branch (dentro del loop)
@@ -411,7 +460,7 @@ export function useTrialCode({
       }
     },`;
         } else {
-          // Si hay múltiples branches Y condiciones, evaluar las condiciones
+          // Si hay condiciones, evaluar las condiciones (siempre)
           code += `
     on_finish: function(data) {
       // Evaluar condiciones del trial para branching interno del loop
@@ -419,6 +468,7 @@ export function useTrialCode({
       const branchConditions = ${JSON.stringify(branchConditions)}.flat();
       
       let nextTrialId = null;
+      let matchedCustomParameters = null;
       
       // Evaluar cada condición (lógica OR entre condiciones)
       for (const condition of branchConditions) {
@@ -456,19 +506,24 @@ export function useTrialCode({
         
         if (allRulesMatch) {
           nextTrialId = condition.nextTrialId;
+          // Store custom parameters if they exist
+          if (condition.customParameters) {
+            matchedCustomParameters = condition.customParameters;
+            console.log('Loop branching: matched custom parameters:', matchedCustomParameters);
+          }
           break;
         }
       }
       
-      // Si no se encontró match, usar el primer branch por defecto
-      if (!nextTrialId && branches.length > 0) {
-        nextTrialId = branches[0];
-      }
-      
+      // Si se encontró match, activar branching
       if (nextTrialId) {
         loopNextTrialId = nextTrialId;
         loopSkipRemaining = true;
         loopBranchingActive = true;
+        // Store custom parameters for the next trial in the loop
+        if (matchedCustomParameters) {
+          loopBranchCustomParameters = matchedCustomParameters;
+        }
       }
     },`;
         }

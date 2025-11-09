@@ -364,38 +364,39 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
     );
   };
 
-  // Get available branches for selection
-  const availableBranches =
-    selectedTrial && selectedTrial.branches
-      ? selectedTrial.branches
-          .map((branchId: number | string) => {
-            // First, check if the trial is inside a loop
-            const parentLoop = trials.find(
-              (item) =>
-                "trials" in item &&
-                item.trials.some((t) => t.id === selectedTrial.id)
-            );
+  // Get available trials/loops for selection (all trials, not just branches)
+  const availableTrials = (() => {
+    if (!selectedTrial) return [];
 
-            if (parentLoop && "trials" in parentLoop) {
-              // If trial is inside a loop, search for branches within the same loop
-              const branch = parentLoop.trials.find(
-                (t: any) => t.id === branchId
-              );
-              return branch ? { id: branchId, name: branch.name } : null;
-            } else {
-              // If trial is in main timeline, search in main trials array
-              const branch = trials.find((t: any) => t.id === branchId);
-              return branch ? { id: branchId, name: branch.name } : null;
-            }
-          })
-          .filter(Boolean)
-      : [];
+    // Check if the trial is inside a loop
+    const parentLoop = trials.find(
+      (item) =>
+        "trials" in item && item.trials.some((t) => t.id === selectedTrial.id)
+    );
 
-  // Check if trial has only one branch
-  const hasOnlyOneBranch =
-    selectedTrial &&
-    selectedTrial.branches &&
-    selectedTrial.branches.length === 1;
+    let allAvailableTrials: any[] = [];
+
+    if (parentLoop && "trials" in parentLoop) {
+      // If trial is inside a loop, show trials within the same loop
+      allAvailableTrials = parentLoop.trials
+        .filter((t: any) => t.id !== selectedTrial.id) // Exclude current trial
+        .map((t: any) => ({ id: t.id, name: t.name }));
+    } else {
+      // If trial is in main timeline, show all trials and loops
+      allAvailableTrials = trials
+        .filter((item: any) => {
+          // Exclude current trial
+          if ("id" in item && item.id === selectedTrial.id) return false;
+          return true;
+        })
+        .map((item: any) => ({
+          id: item.id,
+          name: item.name,
+        }));
+    }
+
+    return allAvailableTrials;
+  })();
 
   // Get used properties for each condition to prevent duplicates
   const getUsedProps = (conditionId: number) => {
@@ -689,7 +690,7 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
                                   width: "14%",
                                 }}
                               >
-                                {hasOnlyOneBranch ? "THEN" : "THEN Go To"}
+                                THEN Go To
                               </th>
                               <th
                                 className="px-2 py-2 text-center text-sm font-semibold"
@@ -874,56 +875,49 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
                                       }}
                                     >
                                       <div className="flex flex-col">
-                                        {hasOnlyOneBranch ? (
-                                          <div
-                                            className="border-2 rounded-lg px-2 py-1.5 w-full text-xs font-semibold text-center"
+                                        <select
+                                          value={condition.nextTrialId || ""}
+                                          onChange={(e) =>
+                                            updateNextTrial(
+                                              condition.id,
+                                              e.target.value
+                                            )
+                                          }
+                                          className="border-2 rounded-lg px-2 py-1.5 w-full text-xs font-semibold transition focus:ring-2 focus:ring-yellow-400"
+                                          style={{
+                                            color: "var(--text-dark)",
+                                            backgroundColor:
+                                              "var(--neutral-light)",
+                                            borderColor: "var(--gold)",
+                                          }}
+                                        >
+                                          <option
+                                            style={{ textAlign: "center" }}
+                                            value=""
+                                          >
+                                            Select trial
+                                          </option>
+                                          <option
                                             style={{
-                                              color: "var(--text-dark)",
-                                              backgroundColor:
-                                                "var(--neutral-light)",
-                                              borderColor: "var(--gold)",
+                                              textAlign: "center",
+                                              fontWeight: "bold",
                                             }}
+                                            value="FINISH_EXPERIMENT"
                                           >
                                             Finish Experiment
-                                          </div>
-                                        ) : (
-                                          <select
-                                            value={condition.nextTrialId || ""}
-                                            onChange={(e) =>
-                                              updateNextTrial(
-                                                condition.id,
-                                                e.target.value
-                                              )
-                                            }
-                                            className="border-2 rounded-lg px-2 py-1.5 w-full text-xs font-semibold transition focus:ring-2 focus:ring-yellow-400"
-                                            style={{
-                                              color: "var(--text-dark)",
-                                              backgroundColor:
-                                                "var(--neutral-light)",
-                                              borderColor: "var(--gold)",
-                                            }}
-                                          >
+                                          </option>
+                                          {availableTrials.map((trial: any) => (
                                             <option
-                                              style={{ textAlign: "center" }}
-                                              value=""
+                                              key={trial.id}
+                                              value={trial.id}
+                                              style={{
+                                                textAlign: "center",
+                                              }}
                                             >
-                                              Select trial
+                                              {trial.name}
                                             </option>
-                                            {availableBranches.map(
-                                              (branch: any) => (
-                                                <option
-                                                  key={branch.id}
-                                                  value={branch.id}
-                                                  style={{
-                                                    textAlign: "center",
-                                                  }}
-                                                >
-                                                  {branch.name}
-                                                </option>
-                                              )
-                                            )}
-                                          </select>
-                                        )}
+                                          ))}
+                                        </select>
                                       </div>
                                     </td>
                                   )}

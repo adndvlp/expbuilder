@@ -195,6 +195,7 @@ function Component({}: TimelineProps) {
     window.nextTrialId = null;
     window.skipRemaining = false;
     window.branchingActive = false;
+    window.branchCustomParameters = null; // Store custom parameters for the next trial
 
     const evaluateCondition = (trialData, condition) => {
       // All rules in a condition must be true (AND logic)
@@ -238,16 +239,30 @@ function Component({}: TimelineProps) {
         return null;
       }
       
-      // Si solo hay un branch O no hay condiciones, seguir al primer branch automáticamente
-      const hasMultipleBranches = trial.branches.length > 1;
+      // Check if there are conditions to evaluate
       const hasBranchConditions = Array.isArray(trial.branchConditions) && trial.branchConditions.length > 0;
       
-      if (!hasMultipleBranches || !hasBranchConditions) {
-        console.log('Auto-branching to first branch:', trial.branches[0]);
+      // Check if any condition has customParameters
+      const hasCustomParameters = hasBranchConditions && 
+        trial.branchConditions.flat().some(condition => 
+          condition && condition.customParameters && 
+          Object.keys(condition.customParameters).length > 0
+        );
+      
+      // If there are no conditions AND no custom parameters, auto-branch to first branch
+      if (!hasBranchConditions && !hasCustomParameters) {
+        console.log('No conditions or custom parameters defined, auto-branching to first branch:', trial.branches[0]);
         return trial.branches[0];
       }
       
-      // Si hay múltiples branches Y condiciones, evaluar las condiciones
+      // If there are no conditions but there ARE custom parameters, we can't auto-branch
+      // We need to evaluate conditions to know which customParameters to use
+      if (!hasBranchConditions && hasCustomParameters) {
+        console.log('Custom parameters exist but no conditions, cannot auto-branch');
+        return null;
+      }
+      
+      // If there ARE conditions, evaluate them (regardless of how many branches there are)
       // branchConditions is an array of arrays, flatten it first
       const conditions = trial.branchConditions.flat();
       
@@ -260,13 +275,18 @@ function Component({}: TimelineProps) {
         
         if (evaluateCondition(trial, condition)) {
           console.log('Condition matched:', condition);
+          // Store custom parameters if they exist
+          if (condition.customParameters) {
+            window.branchCustomParameters = condition.customParameters;
+            console.log('Custom parameters for branch:', window.branchCustomParameters);
+          }
           return condition.nextTrialId;
         }
       }
       
-      // No condition matched - seguir al primer branch por defecto
-      console.log('No condition matched, defaulting to first branch:', trial.branches[0]);
-      return trial.branches[0];
+      // No condition matched - do NOT branch (conditions were defined but none matched)
+      console.log('No condition matched, NOT branching');
+      return null;
     };
 
     const jsPsych = initJsPsych({
@@ -310,6 +330,13 @@ function Component({}: TimelineProps) {
       console.log('Next trial/loop ID:', nextTrialId);
       
       if (nextTrialId) {
+        // Check if nextTrialId is "FINISH_EXPERIMENT"
+        if (nextTrialId === 'FINISH_EXPERIMENT') {
+          console.log('Finish experiment requested');
+          jsPsych.abortExperiment('Experiment finished by branching condition', {});
+          return;
+        }
+        
         window.nextTrialId = nextTrialId;
         window.skipRemaining = true;
         window.branchingActive = true;
@@ -473,6 +500,7 @@ jsPsych.run(timeline);
     window.nextTrialId = null;
     window.skipRemaining = false;
     window.branchingActive = false;
+    window.branchCustomParameters = null; // Store custom parameters for the next trial
 
     const evaluateCondition = (trialData, condition) => {
       // All rules in a condition must be true (AND logic)
@@ -516,16 +544,30 @@ jsPsych.run(timeline);
         return null;
       }
       
-      // Si solo hay un branch O no hay condiciones, seguir al primer branch automáticamente
-      const hasMultipleBranches = trial.branches.length > 1;
+      // Check if there are conditions to evaluate
       const hasBranchConditions = Array.isArray(trial.branchConditions) && trial.branchConditions.length > 0;
       
-      if (!hasMultipleBranches || !hasBranchConditions) {
-        console.log('Auto-branching to first branch:', trial.branches[0]);
+      // Check if any condition has customParameters
+      const hasCustomParameters = hasBranchConditions && 
+        trial.branchConditions.flat().some(condition => 
+          condition && condition.customParameters && 
+          Object.keys(condition.customParameters).length > 0
+        );
+      
+      // If there are no conditions AND no custom parameters, auto-branch to first branch
+      if (!hasBranchConditions && !hasCustomParameters) {
+        console.log('No conditions or custom parameters defined, auto-branching to first branch:', trial.branches[0]);
         return trial.branches[0];
       }
       
-      // Si hay múltiples branches Y condiciones, evaluar las condiciones
+      // If there are no conditions but there ARE custom parameters, we can't auto-branch
+      // We need to evaluate conditions to know which customParameters to use
+      if (!hasBranchConditions && hasCustomParameters) {
+        console.log('Custom parameters exist but no conditions, cannot auto-branch');
+        return null;
+      }
+      
+      // If there ARE conditions, evaluate them (regardless of how many branches there are)
       // branchConditions is an array of arrays, flatten it first
       const conditions = trial.branchConditions.flat();
       
@@ -538,13 +580,18 @@ jsPsych.run(timeline);
         
         if (evaluateCondition(trial, condition)) {
           console.log('Condition matched:', condition);
+          // Store custom parameters if they exist
+          if (condition.customParameters) {
+            window.branchCustomParameters = condition.customParameters;
+            console.log('Custom parameters for branch:', window.branchCustomParameters);
+          }
           return condition.nextTrialId;
         }
       }
       
-      // No condition matched - seguir al primer branch por defecto
-      console.log('No condition matched, defaulting to first branch:', trial.branches[0]);
-      return trial.branches[0];
+      // No condition matched - do NOT branch (conditions were defined but none matched)
+      console.log('No condition matched, NOT branching');
+      return null;
     };
 
     const jsPsych = initJsPsych({
@@ -600,12 +647,27 @@ jsPsych.run(timeline);
           return; // No tiene branches, no hay nada que hacer
         }
         
+        // IMPORTANTE: Si el trial está dentro de un loop (isInLoop = true),
+        // NO activar el branching global. Los trials dentro de loops usan su propio
+        // sistema de branching con variables locales (loopNextTrialId, etc.)
+        if (trial.isInLoop === true) {
+          console.log('Trial inside loop detected, skipping global branching');
+          return;
+        }
+        
         console.log('Trial/Loop data:', lastTrialData);
         
         const nextTrialId = getNextTrialId(lastTrialData);
         console.log('Next trial/loop ID:', nextTrialId);
         
         if (nextTrialId) {
+          // Check if nextTrialId is "FINISH_EXPERIMENT"
+          if (nextTrialId === 'FINISH_EXPERIMENT') {
+            console.log('Finish experiment requested');
+            jsPsych.abortExperiment('Experiment finished by branching condition', {});
+            return;
+          }
+          
           window.nextTrialId = nextTrialId;
           window.skipRemaining = true;
           window.branchingActive = true;

@@ -81,6 +81,7 @@ export default function useLoopCode({
           loopSkipRemaining = false;
           loopTargetExecuted = false;
           loopBranchingActive = false;
+          loopBranchCustomParameters = null;
           loopIterationComplete = false;`
               : ""
           }
@@ -110,6 +111,7 @@ export default function useLoopCode({
         loopSkipRemaining = false;
         loopTargetExecuted = false;
         loopBranchingActive = false;
+        loopBranchCustomParameters = null;
         loopIterationComplete = false;`
             : ""
         }
@@ -221,6 +223,7 @@ export default function useLoopCode({
 let loopNextTrialId = null;
 let loopSkipRemaining = false;
 let loopBranchingActive = false;
+let loopBranchCustomParameters = null; // Store custom parameters for branching within loops
 let loopTargetExecuted = false; // Indica si el trial objetivo ya se ejecutó en esta iteración
 let loopIterationComplete = false; // Indica que la iteración actual terminó
 const loopHasBranches = ${hasBranchesLoop ? "true" : "false"};
@@ -328,6 +331,7 @@ const ${loopIdSanitized}_procedure = {
     loopNextTrialId = null;
     loopSkipRemaining = false;
     loopBranchingActive = false;
+    loopBranchCustomParameters = null;
     loopTargetExecuted = false;
     loopIterationComplete = false;
     loopShouldBranchOnFinish = false;
@@ -338,6 +342,7 @@ const ${loopIdSanitized}_procedure = {
     loopSkipRemaining = false;
     loopTargetExecuted = false;
     loopBranchingActive = false;
+    loopBranchCustomParameters = null;
     
     // Verificar si se debe hacer branching porque un trial sin branches se completó
     // pero el loop tiene branches
@@ -354,6 +359,7 @@ const ${loopIdSanitized}_procedure = {
     loopNextTrialId = null;
     loopSkipRemaining = false;
     loopBranchingActive = false;
+    loopBranchCustomParameters = null;
     loopShouldBranchOnFinish = false;
   },
 `;

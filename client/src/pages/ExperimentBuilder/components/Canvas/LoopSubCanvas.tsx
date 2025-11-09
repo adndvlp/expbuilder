@@ -387,36 +387,33 @@ function LoopSubCanvas({
       >
         <div style={patternStyle} />
 
-        {/* Branches button - only show if selected trial has branches (no loops in subcanvas) */}
-        {selectedTrial &&
-          selectedTrial.branches &&
-          Array.isArray(selectedTrial.branches) &&
-          selectedTrial.branches.length > 0 && (
-            <button
-              style={{
-                position: "absolute",
-                top: 16,
-                right: 16,
-                width: 40,
-                height: 40,
-                borderRadius: "50%",
-                background: "#4caf50",
-                color: "#fff",
-                border: "none",
-                cursor: "pointer",
-                fontSize: 20,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
-                zIndex: 10,
-              }}
-              title="Branches"
-              onClick={() => setShowBranchedModal(true)}
-            >
-              <TbBinaryTree size={20} color="#fff" />
-            </button>
-          )}
+        {/* Branches button - show if there's more than one trial in the loop */}
+        {trials.length > 1 && selectedTrial && (
+          <button
+            style={{
+              position: "absolute",
+              top: 16,
+              right: 16,
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              background: "#4caf50",
+              color: "#fff",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 20,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
+              zIndex: 10,
+            }}
+            title="Branches"
+            onClick={() => setShowBranchedModal(true)}
+          >
+            <TbBinaryTree size={20} color="#fff" />
+          </button>
+        )}
 
         {showBranchedModal && (
           <div
