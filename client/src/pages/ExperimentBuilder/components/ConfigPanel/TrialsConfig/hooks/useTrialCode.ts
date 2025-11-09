@@ -1,5 +1,6 @@
 import {
   BranchCondition,
+  RepeatCondition,
   ColumnMapping,
   ColumnMappingEntry,
   ParamsOverrideCondition,
@@ -9,6 +10,7 @@ type Props = {
   id: number | undefined;
   branches: (string | number)[] | undefined;
   branchConditions: BranchCondition[] | undefined;
+  repeatConditions?: RepeatCondition[];
   paramsOverride?: ParamsOverrideCondition[];
   pluginName: string;
   parameters: any[];
@@ -37,6 +39,7 @@ export function useTrialCode({
   id,
   branches,
   branchConditions,
+  repeatConditions,
   paramsOverride,
   pluginName,
   parameters,
@@ -523,12 +526,166 @@ export function useTrialCode({
       const hasBranches = branches && branches.length > 0;
       const hasBranchConditions =
         branchConditions && branchConditions.length > 0;
+      const hasRepeatConditions =
+        repeatConditions && repeatConditions.length > 0;
 
-      if (hasBranches) {
-        // Si tiene branches, agregar lógica de branching dentro del loop
-        if (!hasBranchConditions) {
-          // Si NO hay condiciones, seguir automáticamente al primer branch
+      if (hasBranches || hasRepeatConditions) {
+        // Si tiene branches o repeat conditions, agregar lógica completa
+        if (hasRepeatConditions) {
+          // Si tiene repeat conditions, generar on_finish completo
           code += `
+    on_finish: function(data) {
+      // Evaluar repeat conditions (para reiniciar el experimento desde un trial específico)
+      const repeatConditionsArray = ${JSON.stringify(repeatConditions)};
+      
+      let shouldRepeat = false;
+      for (const condition of repeatConditionsArray) {
+        if (!condition || !condition.rules) {
+          continue;
+        }
+        
+        // Todas las reglas en una condición deben ser verdaderas (lógica AND)
+        const allRulesMatch = condition.rules.every(rule => {
+          const propValue = data[rule.prop];
+          const compareValue = rule.value;
+          
+          // Convertir valores para comparación
+          const numPropValue = parseFloat(propValue);
+          const numCompareValue = parseFloat(compareValue);
+          const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
+          
+          switch (rule.op) {
+            case '==':
+              return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
+            case '!=':
+              return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
+            case '>':
+              return isNumeric && numPropValue > numCompareValue;
+            case '<':
+              return isNumeric && numPropValue < numCompareValue;
+            case '>=':
+              return isNumeric && numPropValue >= numCompareValue;
+            case '<=':
+              return isNumeric && numPropValue <= numCompareValue;
+            default:
+              return false;
+          }
+        });
+        
+        if (allRulesMatch && condition.jumpToTrialId) {
+          console.log('Repeat condition matched in loop! Jumping to trial:', condition.jumpToTrialId);
+          // Guardar el trial objetivo en localStorage
+          localStorage.setItem('jsPsych_jumpToTrial', String(condition.jumpToTrialId));
+          shouldRepeat = true;
+          break;
+        }
+      }
+      
+      if (shouldRepeat) {
+        // Reiniciar el timeline
+        setTimeout(() => {
+          jsPsych.run(timeline);
+        }, 100);
+        return;
+      }
+      
+      ${
+        hasBranches
+          ? !hasBranchConditions
+            ? `
+      // Branching automático al primer branch (dentro del loop)
+      const branches = [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}];
+      if (branches.length > 0) {
+        loopNextTrialId = branches[0];
+        loopSkipRemaining = true;
+        loopBranchingActive = true;
+      }
+      `
+            : `
+      // Evaluar condiciones del trial para branching interno del loop
+      const branches = [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}];
+      const branchConditions = ${JSON.stringify(branchConditions)}.flat();
+      
+      let nextTrialId = null;
+      let matchedCustomParameters = null;
+      
+      // Evaluar cada condición (lógica OR entre condiciones)
+      for (const condition of branchConditions) {
+        if (!condition || !condition.rules) {
+          continue;
+        }
+        
+        // Todas las reglas en una condición deben ser verdaderas (lógica AND)
+        const allRulesMatch = condition.rules.every(rule => {
+          const propValue = data[rule.prop];
+          const compareValue = rule.value;
+          
+          // Convertir valores para comparación
+          const numPropValue = parseFloat(propValue);
+          const numCompareValue = parseFloat(compareValue);
+          const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
+          
+          switch (rule.op) {
+            case '==':
+              return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
+            case '!=':
+              return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
+            case '>':
+              return isNumeric && numPropValue > numCompareValue;
+            case '<':
+              return isNumeric && numPropValue < numCompareValue;
+            case '>=':
+              return isNumeric && numPropValue >= numCompareValue;
+            case '<=':
+              return isNumeric && numPropValue <= numCompareValue;
+            default:
+              return false;
+          }
+        });
+        
+        if (allRulesMatch) {
+          nextTrialId = condition.nextTrialId;
+          // Store custom parameters if they exist
+          if (condition.customParameters) {
+            matchedCustomParameters = condition.customParameters;
+            console.log('Loop branching: matched custom parameters:', matchedCustomParameters);
+          }
+          break;
+        }
+      }
+      
+      // Si se encontró match, activar branching
+      if (nextTrialId) {
+        loopNextTrialId = nextTrialId;
+        loopSkipRemaining = true;
+        loopBranchingActive = true;
+        // Store custom parameters for the next trial in the loop
+        if (matchedCustomParameters) {
+          loopBranchCustomParameters = matchedCustomParameters;
+        }
+      }
+      `
+          : `
+      // Este trial no tiene branches, verificar si el loop padre tiene branches
+      if (typeof loopHasBranches !== 'undefined' && loopHasBranches) {
+        // El loop tiene branches, activar branching del loop al terminar
+        // Esto se manejará en el on_finish del loop
+        loopShouldBranchOnFinish = true;
+      } else if (!loopHasBranches) {
+        // Ni el trial ni el loop tienen branches - trial terminal
+        // Si llegamos aquí después de un branching global, terminar el experimento
+        if (window.branchingActive) {
+          jsPsych.abortExperiment('', {});
+        }
+      }
+      `
+      }
+    },`;
+        } else if (hasBranches) {
+          // Si tiene branches pero NO repeat conditions
+          if (!hasBranchConditions) {
+            // Si NO hay condiciones, seguir automáticamente al primer branch
+            code += `
     on_finish: function(data) {
       // Branching automático al primer branch (dentro del loop)
       const branches = [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}];
@@ -538,9 +695,9 @@ export function useTrialCode({
         loopBranchingActive = true;
       }
     },`;
-        } else {
-          // Si hay condiciones, evaluar las condiciones (siempre)
-          code += `
+          } else {
+            // Si hay condiciones, evaluar las condiciones (siempre)
+            code += `
     on_finish: function(data) {
       // Evaluar condiciones del trial para branching interno del loop
       const branches = [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}];
@@ -605,14 +762,15 @@ export function useTrialCode({
         }
       }
     },`;
+          }
         }
       } else {
-        // Trial terminal dentro del loop: no tiene branches
+        // Trial terminal dentro del loop: no tiene branches ni repeat conditions
         // Verificar si el loop padre tiene branches
         code += `
     on_finish: function(data) {
-      // Este trial no tiene branches, verificar si el loop padre tiene branches
-    if (typeof loopHasBranches !== 'undefined' && loopHasBranches) {
+      // Este trial no tiene branches ni repeat conditions, verificar si el loop padre tiene branches
+      if (typeof loopHasBranches !== 'undefined' && loopHasBranches) {
         // El loop tiene branches, activar branching del loop al terminar
         // Esto se manejará en el on_finish del loop
         loopShouldBranchOnFinish = true;
@@ -631,13 +789,73 @@ export function useTrialCode({
       const hasMultipleBranches = branches && branches.length > 1;
       const hasBranchConditions =
         branchConditions && branchConditions.length > 0;
+      const hasRepeatConditions =
+        repeatConditions && repeatConditions.length > 0;
 
-      if (hasBranches) {
-        // Si tiene branches, agregar lógica de branching
-        if (!hasMultipleBranches || !hasBranchConditions) {
-          // Si solo hay un branch O no hay condiciones, seguir automáticamente al primer branch
-          code += `
+      if (hasBranches || hasRepeatConditions) {
+        // Si tiene branches o repeat conditions, generar on_finish completo
+        code += `
     on_finish: function(data) {
+      ${
+        hasRepeatConditions
+          ? `
+      // Evaluar repeat conditions (para reiniciar el experimento desde un trial específico)
+      const repeatConditionsArray = ${JSON.stringify(repeatConditions)};
+      
+      for (const condition of repeatConditionsArray) {
+        if (!condition || !condition.rules) {
+          continue;
+        }
+        
+        // Todas las reglas en una condición deben ser verdaderas (lógica AND)
+        const allRulesMatch = condition.rules.every(rule => {
+          const propValue = data[rule.prop];
+          const compareValue = rule.value;
+          
+          // Convertir valores para comparación
+          const numPropValue = parseFloat(propValue);
+          const numCompareValue = parseFloat(compareValue);
+          const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
+          
+          switch (rule.op) {
+            case '==':
+              return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
+            case '!=':
+              return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
+            case '>':
+              return isNumeric && numPropValue > numCompareValue;
+            case '<':
+              return isNumeric && numPropValue < numCompareValue;
+            case '>=':
+              return isNumeric && numPropValue >= numCompareValue;
+            case '<=':
+              return isNumeric && numPropValue <= numCompareValue;
+            default:
+              return false;
+          }
+        });
+        
+        if (allRulesMatch && condition.jumpToTrialId) {
+          console.log('Repeat condition matched! Jumping to trial:', condition.jumpToTrialId);
+          // Guardar el trial objetivo en localStorage
+          localStorage.setItem('jsPsych_jumpToTrial', String(condition.jumpToTrialId));
+          // Reiniciar el timeline
+          setTimeout(() => {
+            jsPsych.run(timeline);
+          }, 100);
+          return;
+        }
+      }
+      `
+          : ""
+      }
+      ${
+        hasBranches
+          ? hasMultipleBranches && hasBranchConditions
+            ? `
+      // Si hay múltiples branches Y condiciones, la lógica se maneja en Timeline.tsx
+      `
+            : `
       // Branching automático al primer branch
       const branches = [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}];
       if (branches.length > 0) {
@@ -645,15 +863,22 @@ export function useTrialCode({
         window.skipRemaining = true;
         window.branchingActive = true;
       }
+      `
+          : `
+      // Este trial no tiene branches, es un trial terminal
+      // Si llegamos aquí después de un branching, terminar el experimento
+      if (window.branchingActive) {
+        jsPsych.abortExperiment('', {});
+      }
+      `
+      }
     },
     `;
-        }
-        // Si hay múltiples branches Y condiciones, la lógica se maneja en Timeline.tsx
       } else {
-        // Trial terminal: no tiene branches
+        // Trial terminal: no tiene branches ni repeat conditions
         code += `
     on_finish: function(data) {
-      // Este trial no tiene branches, es un trial terminal
+      // Este trial no tiene branches ni repeat conditions, es un trial terminal
       // Si llegamos aquí después de un branching, terminar el experimento
       if (window.branchingActive) {
         jsPsych.abortExperiment('', {});
@@ -683,7 +908,21 @@ export function useTrialCode({
     conditional_function: function() {
       const currentId = ${id};
       
-      // Si skipRemaining está activo, verificar si este es el trial objetivo
+      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
+      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
+      if (jumpToTrial) {
+        if (String(currentId) === String(jumpToTrial)) {
+          // Encontramos el trial objetivo para repeat/jump
+          console.log('Repeat/jump: Found target trial', currentId);
+          localStorage.removeItem('jsPsych_jumpToTrial');
+          return true;
+        }
+        // No es el objetivo, saltar
+        console.log('Repeat/jump: Skipping trial', currentId);
+        return false;
+      }
+      
+      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo
       if (window.skipRemaining) {
         if (String(currentId) === String(window.nextTrialId)) {
           // Encontramos el trial objetivo

@@ -351,13 +351,13 @@ function Component({}: TimelineProps) {
 
 const timeline = [];
 
-const welcome = {
-  type: jsPsychHtmlButtonResponse,
-  stimulus: "Welcome to the experiment. Press 'Start' to begin.",
-  choices: ['Start'],
-};
+// const welcome = {
+//   type: jsPsychHtmlButtonResponse,
+//   stimulus: "Welcome to the experiment. Press 'Start' to begin.",
+//   choices: ['Start'],
+// };
 
-timeline.push(welcome);
+// timeline.push(welcome);
 
 ${allCodes}
 

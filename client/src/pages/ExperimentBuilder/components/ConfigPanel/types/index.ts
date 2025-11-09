@@ -26,6 +26,7 @@ export interface Loop {
   csvColumns?: string[];
   branches?: Array<string | number>;
   branchConditions?: BranchCondition[];
+  repeatConditions?: RepeatCondition[];
   loopConditions?: LoopCondition[];
   isConditionalLoop?: boolean;
 }
@@ -39,6 +40,16 @@ export type BranchCondition = {
   }>;
   nextTrialId: number | string | null;
   customParameters?: Record<string, ColumnMappingEntry>;
+};
+
+export type RepeatCondition = {
+  id: number;
+  rules: Array<{
+    prop: string;
+    op: string;
+    value: string;
+  }>;
+  jumpToTrialId: number | string | null;
 };
 
 export type LoopConditionRule = {
@@ -89,6 +100,9 @@ export interface Trial {
 
   branches?: Array<string | number>;
   branchConditions?: BranchCondition[];
+
+  // Repeat/Jump conditions
+  repeatConditions?: RepeatCondition[];
 
   // Params override independent of branching
   paramsOverride?: ParamsOverrideCondition[];

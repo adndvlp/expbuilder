@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import useTrials from "../../../hooks/useTrials";
 import { loadPluginParameters } from "../utils/pluginParameterLoader";
-import { BranchCondition, ColumnMappingEntry } from "../types";
+import { BranchCondition, RepeatCondition, ColumnMappingEntry } from "../types";
 
 type Rule = {
   prop: string;
@@ -16,6 +16,12 @@ type Condition = {
   customParameters?: Record<string, ColumnMappingEntry>;
 };
 
+type RepeatConditionState = {
+  id: number;
+  rules: Rule[];
+  jumpToTrialId: number | string | null;
+};
+
 type Props = {
   selectedTrial: any;
   onClose?: () => void;
@@ -27,13 +33,19 @@ type Parameter = {
   type: string;
 };
 
+type TabType = "branch" | "repeat";
+
 function BranchedTrial({ selectedTrial, onClose }: Props) {
   const { trials, setTrials } = useTrials();
 
+  const [activeTab, setActiveTab] = useState<TabType>("branch");
   const [data, setData] = useState<import("../types").DataDefinition[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [conditions, setConditions] = useState<Condition[]>([]);
+  const [repeatConditions, setRepeatConditions] = useState<
+    RepeatConditionState[]
+  >([]);
   const [saveIndicator, setSaveIndicator] = useState(false);
   const [targetTrialParameters, setTargetTrialParameters] = useState<
     Record<string, Parameter[]>
@@ -84,6 +96,18 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
       });
     } else {
       setConditions([]);
+    }
+
+    // Load existing repeat conditions
+    if (selectedTrial && selectedTrial.repeatConditions) {
+      const loadedRepeatConditions = selectedTrial.repeatConditions.map(
+        (rc: RepeatCondition) => ({
+          ...rc,
+        })
+      );
+      setRepeatConditions(loadedRepeatConditions);
+    } else {
+      setRepeatConditions([]);
     }
   }, [selectedTrial]);
 
@@ -404,6 +428,78 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
     return condition ? condition.rules.map((r) => r.prop).filter(Boolean) : [];
   };
 
+  // ========== REPEAT CONDITION FUNCTIONS ==========
+  const addRepeatCondition = () => {
+    setRepeatConditions([
+      ...repeatConditions,
+      {
+        id: Date.now(),
+        rules: [{ prop: "", op: "==", value: "" }],
+        jumpToTrialId: null,
+      },
+    ]);
+  };
+
+  const removeRepeatCondition = (conditionId: number) => {
+    setRepeatConditions(repeatConditions.filter((c) => c.id !== conditionId));
+  };
+
+  const addRuleToRepeatCondition = (conditionId: number) => {
+    setRepeatConditions(
+      repeatConditions.map((c) =>
+        c.id === conditionId
+          ? { ...c, rules: [...c.rules, { prop: "", op: "==", value: "" }] }
+          : c
+      )
+    );
+  };
+
+  const removeRuleFromRepeatCondition = (
+    conditionId: number,
+    ruleIndex: number
+  ) => {
+    setRepeatConditions(
+      repeatConditions.map((c) =>
+        c.id === conditionId
+          ? { ...c, rules: c.rules.filter((_, idx) => idx !== ruleIndex) }
+          : c
+      )
+    );
+  };
+
+  const updateRepeatRule = (
+    conditionId: number,
+    ruleIndex: number,
+    field: keyof Rule,
+    value: string
+  ) => {
+    setRepeatConditions(
+      repeatConditions.map((c) =>
+        c.id === conditionId
+          ? {
+              ...c,
+              rules: c.rules.map((r, idx) =>
+                idx === ruleIndex ? { ...r, [field]: value } : r
+              ),
+            }
+          : c
+      )
+    );
+  };
+
+  const updateJumpToTrial = (conditionId: number, jumpToTrialId: string) => {
+    setRepeatConditions(
+      repeatConditions.map((c) =>
+        c.id === conditionId ? { ...c, jumpToTrialId } : c
+      )
+    );
+  };
+
+  const getUsedPropsRepeat = (conditionId: number) => {
+    const condition = repeatConditions.find((c) => c.id === conditionId);
+    return condition ? condition.rules.map((r) => r.prop).filter(Boolean) : [];
+  };
+
   // Save conditions to the trial
   const handleSaveConditions = () => {
     if (!selectedTrial) return;
@@ -414,6 +510,14 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
       nextTrialId: condition.nextTrialId,
       customParameters: condition.customParameters,
     }));
+
+    const repeatConditionsToSave: RepeatCondition[] = repeatConditions.map(
+      (condition) => ({
+        id: condition.id,
+        rules: condition.rules,
+        jumpToTrialId: condition.jumpToTrialId,
+      })
+    );
 
     // Find if the trial is in the main array or inside a loop
     let trialIndex = trials.findIndex(
@@ -447,6 +551,7 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
       const updatedTrial = {
         ...trials[trialIndex],
         branchConditions,
+        repeatConditions: repeatConditionsToSave,
       };
       updatedTrials[trialIndex] = updatedTrial;
     } else if (loopIndex !== -1 && trialInLoopIndex !== -1) {
@@ -457,6 +562,7 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
         updatedLoop.trials[trialInLoopIndex] = {
           ...updatedLoop.trials[trialInLoopIndex],
           branchConditions,
+          repeatConditions: repeatConditionsToSave,
         };
         updatedTrials[loopIndex] = updatedLoop;
       }
@@ -512,6 +618,61 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
         ✓ Branch Conditions Saved!
       </div>
 
+      {/* Tab Navigation */}
+      <div
+        className="px-6 pt-4 pb-2"
+        style={{
+          borderBottom: "2px solid var(--neutral-mid)",
+        }}
+      >
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveTab("branch")}
+            className={`px-6 py-3 rounded-t-lg font-semibold transition-all ${
+              activeTab === "branch"
+                ? "shadow-lg"
+                : "opacity-60 hover:opacity-80"
+            }`}
+            style={{
+              backgroundColor:
+                activeTab === "branch"
+                  ? "var(--primary-blue)"
+                  : "var(--neutral-mid)",
+              color:
+                activeTab === "branch"
+                  ? "var(--text-light)"
+                  : "var(--text-dark)",
+              borderBottom:
+                activeTab === "branch" ? "3px solid var(--gold)" : "none",
+            }}
+          >
+            Branch Trials
+          </button>
+          <button
+            onClick={() => setActiveTab("repeat")}
+            className={`px-6 py-3 rounded-t-lg font-semibold transition-all ${
+              activeTab === "repeat"
+                ? "shadow-lg"
+                : "opacity-60 hover:opacity-80"
+            }`}
+            style={{
+              backgroundColor:
+                activeTab === "repeat"
+                  ? "var(--primary-blue)"
+                  : "var(--neutral-mid)",
+              color:
+                activeTab === "repeat"
+                  ? "var(--text-light)"
+                  : "var(--text-dark)",
+              borderBottom:
+                activeTab === "repeat" ? "3px solid var(--gold)" : "none",
+            }}
+          >
+            Repeat/Jump
+          </button>
+        </div>
+      </div>
+
       {/* Scrollable Content */}
       <div
         className="px-6 pb-6 pt-4"
@@ -554,7 +715,7 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
           </div>
         )}
 
-        {!loading && !error && (
+        {!loading && !error && activeTab === "branch" && (
           <>
             {/* Lista de condiciones */}
             {conditions.length === 0 ? (
@@ -1298,6 +1459,404 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
                 }}
               >
                 <span className="text-xl">+</span> Add condition (OR)
+              </button>
+            )}
+          </>
+        )}
+
+        {/* REPEAT/JUMP TAB CONTENT */}
+        {!loading && !error && activeTab === "repeat" && (
+          <>
+            {/* Description */}
+            <div
+              className="mb-4 p-4 rounded-lg border-l-4"
+              style={{
+                backgroundColor: "rgba(255, 209, 102, 0.1)",
+                borderColor: "var(--gold)",
+              }}
+            >
+              <p style={{ color: "var(--text-dark)", fontSize: "14px" }}>
+                <strong>Repeat/Jump:</strong> Define conditions to restart the
+                experiment from a specific trial. When a condition is met, the
+                experiment will jump back to the selected trial using{" "}
+                <code>jsPsych.run()</code>.
+              </p>
+            </div>
+
+            {/* Lista de repeat conditions */}
+            {repeatConditions.length === 0 ? (
+              <div
+                className="text-center py-12 rounded-xl border-2 border-dashed"
+                style={{
+                  borderColor: "var(--neutral-mid)",
+                  backgroundColor: "var(--neutral-light)",
+                }}
+              >
+                <p
+                  className="mb-6 text-lg font-medium"
+                  style={{ color: "var(--text-dark)" }}
+                >
+                  No repeat conditions configured
+                </p>
+                <button
+                  onClick={addRepeatCondition}
+                  className="px-6 py-3 rounded-lg font-semibold shadow-lg transform transition hover:scale-105"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+                    color: "var(--text-light)",
+                  }}
+                >
+                  + Add first repeat condition
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {repeatConditions.map((condition, condIdx) => {
+                  const usedProps = getUsedPropsRepeat(condition.id);
+
+                  return (
+                    <div
+                      key={condition.id}
+                      className="rounded-xl shadow-lg hover:shadow-xl transition-shadow overflow-hidden"
+                      style={{
+                        backgroundColor: "var(--neutral-light)",
+                        border: "2px solid var(--neutral-mid)",
+                      }}
+                    >
+                      {/* Header de la condición */}
+                      <div
+                        className="px-4 py-3"
+                        style={{
+                          background:
+                            "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                        }}
+                      >
+                        <span
+                          className="font-bold text-base"
+                          style={{ color: "var(--text-light)" }}
+                        >
+                          {condIdx === 0 ? "IF" : "OR IF"} (Condition{" "}
+                          {condIdx + 1})
+                        </span>
+                        <button
+                          onClick={() => removeRepeatCondition(condition.id)}
+                          className="rounded-full w-8 h-8 flex items-center justify-center transition hover:bg-red-600 font-bold"
+                          style={{
+                            backgroundColor: "var(--danger)",
+                            color: "var(--text-light)",
+                            marginLeft: "8px",
+                          }}
+                          title="Remove condition"
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      {/* Tabla de reglas */}
+                      <div className="p-4">
+                        <table
+                          className="w-full border-collapse rounded-lg overflow-hidden"
+                          style={{
+                            backgroundColor: "var(--neutral-light)",
+                            border: "1px solid var(--neutral-mid)",
+                          }}
+                        >
+                          <thead>
+                            <tr
+                              style={{
+                                backgroundColor: "rgba(255, 209, 102, 0.15)",
+                              }}
+                            >
+                              <th
+                                className="px-2 py-2 text-left text-sm font-semibold"
+                                style={{
+                                  color: "var(--text-dark)",
+                                  borderBottom: "2px solid var(--neutral-mid)",
+                                  width: "30%",
+                                }}
+                              >
+                                Data Field
+                              </th>
+                              <th
+                                className="px-2 py-2 text-left text-sm font-semibold"
+                                style={{
+                                  color: "var(--text-dark)",
+                                  borderBottom: "2px solid var(--neutral-mid)",
+                                  width: "15%",
+                                }}
+                              >
+                                Op
+                              </th>
+                              <th
+                                className="px-2 py-2 text-left text-sm font-semibold"
+                                style={{
+                                  color: "var(--text-dark)",
+                                  borderBottom: "2px solid var(--neutral-mid)",
+                                  width: "20%",
+                                }}
+                              >
+                                Value
+                              </th>
+                              <th
+                                className="px-1 py-2 text-center text-sm font-semibold"
+                                style={{
+                                  color: "var(--text-dark)",
+                                  borderBottom: "2px solid var(--neutral-mid)",
+                                  width: "5%",
+                                }}
+                              ></th>
+                              <th
+                                className="px-2 py-2 text-center text-sm font-semibold"
+                                style={{
+                                  color: "var(--gold)",
+                                  borderBottom: "2px solid var(--neutral-mid)",
+                                  width: "30%",
+                                }}
+                              >
+                                THEN Jump To
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {condition.rules.map((rule, ruleIdx) => {
+                              return (
+                                <tr
+                                  key={ruleIdx}
+                                  style={{
+                                    borderBottom:
+                                      ruleIdx < condition.rules.length - 1
+                                        ? "1px solid var(--neutral-mid)"
+                                        : "none",
+                                  }}
+                                >
+                                  <td className="px-2 py-2 relative">
+                                    <select
+                                      value={rule.prop}
+                                      onChange={(e) =>
+                                        updateRepeatRule(
+                                          condition.id,
+                                          ruleIdx,
+                                          "prop",
+                                          e.target.value
+                                        )
+                                      }
+                                      className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-yellow-400"
+                                      style={{
+                                        color: "var(--text-dark)",
+                                        backgroundColor: "var(--neutral-light)",
+                                        borderColor: "var(--neutral-mid)",
+                                      }}
+                                    >
+                                      <option
+                                        style={{ textAlign: "center" }}
+                                        value=""
+                                      >
+                                        Select field
+                                      </option>
+                                      {data.map((field) => (
+                                        <option
+                                          key={field.key}
+                                          value={field.key}
+                                          disabled={
+                                            usedProps.includes(field.key) &&
+                                            rule.prop !== field.key
+                                          }
+                                          style={{ textAlign: "center" }}
+                                        >
+                                          {field.label || field.key}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  <td className="px-2 py-2">
+                                    <select
+                                      value={rule.op}
+                                      onChange={(e) =>
+                                        updateRepeatRule(
+                                          condition.id,
+                                          ruleIdx,
+                                          "op",
+                                          e.target.value
+                                        )
+                                      }
+                                      className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-yellow-400"
+                                      style={{
+                                        color: "var(--text-dark)",
+                                        backgroundColor: "var(--neutral-light)",
+                                        borderColor: "var(--neutral-mid)",
+                                      }}
+                                    >
+                                      <option
+                                        style={{ textAlign: "center" }}
+                                        value="=="
+                                      >
+                                        =
+                                      </option>
+                                      <option
+                                        style={{ textAlign: "center" }}
+                                        value="!="
+                                      >
+                                        ≠
+                                      </option>
+                                      <option
+                                        style={{ textAlign: "center" }}
+                                        value=">"
+                                      >
+                                        {">"}
+                                      </option>
+                                      <option
+                                        style={{ textAlign: "center" }}
+                                        value="<"
+                                      >
+                                        {"<"}
+                                      </option>
+                                      <option
+                                        style={{ textAlign: "center" }}
+                                        value=">="
+                                      >
+                                        {">="}
+                                      </option>
+                                      <option
+                                        style={{ textAlign: "center" }}
+                                        value="<="
+                                      >
+                                        {"<="}
+                                      </option>
+                                    </select>
+                                  </td>
+                                  <td className="px-2 py-2">
+                                    <input
+                                      type="text"
+                                      value={rule.value}
+                                      onChange={(e) =>
+                                        updateRepeatRule(
+                                          condition.id,
+                                          ruleIdx,
+                                          "value",
+                                          e.target.value
+                                        )
+                                      }
+                                      placeholder="Value"
+                                      className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-yellow-400"
+                                      style={{
+                                        color: "var(--text-dark)",
+                                        backgroundColor: "var(--neutral-light)",
+                                        borderColor: "var(--neutral-mid)",
+                                      }}
+                                    />
+                                  </td>
+                                  <td className="px-1 py-2 text-center">
+                                    {condition.rules.length > 1 && (
+                                      <button
+                                        onClick={() =>
+                                          removeRuleFromRepeatCondition(
+                                            condition.id,
+                                            ruleIdx
+                                          )
+                                        }
+                                        className="rounded-full w-5 h-5 flex items-center justify-center transition hover:bg-red-600 text-xs font-bold"
+                                        style={{
+                                          backgroundColor: "var(--danger)",
+                                          color: "var(--text-light)",
+                                        }}
+                                        title="Remove rule"
+                                      >
+                                        ✕
+                                      </button>
+                                    )}
+                                  </td>
+                                  {/* Columna THEN Jump To - solo se muestra en la primera fila */}
+                                  {ruleIdx === 0 && (
+                                    <td
+                                      className="px-2 py-2"
+                                      rowSpan={condition.rules.length}
+                                      style={{
+                                        verticalAlign: "middle",
+                                        backgroundColor:
+                                          "rgba(255, 209, 102, 0.05)",
+                                        borderLeft: "2px solid var(--gold)",
+                                      }}
+                                    >
+                                      <div className="flex flex-col">
+                                        <select
+                                          value={condition.jumpToTrialId || ""}
+                                          onChange={(e) =>
+                                            updateJumpToTrial(
+                                              condition.id,
+                                              e.target.value
+                                            )
+                                          }
+                                          className="border-2 rounded-lg px-2 py-1.5 w-full text-xs font-semibold transition focus:ring-2 focus:ring-yellow-400"
+                                          style={{
+                                            color: "var(--text-dark)",
+                                            backgroundColor:
+                                              "var(--neutral-light)",
+                                            borderColor: "var(--gold)",
+                                          }}
+                                        >
+                                          <option
+                                            style={{ textAlign: "center" }}
+                                            value=""
+                                          >
+                                            Select trial
+                                          </option>
+                                          {availableTrials.map((trial: any) => (
+                                            <option
+                                              key={trial.id}
+                                              value={trial.id}
+                                              style={{
+                                                textAlign: "center",
+                                              }}
+                                            >
+                                              {trial.name}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    </td>
+                                  )}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+
+                        {/* Botón para añadir regla AND */}
+                        <button
+                          onClick={() => addRuleToRepeatCondition(condition.id)}
+                          className="mt-3 px-4 py-2 rounded text-sm font-semibold flex items-center gap-2 transition hover:opacity-80"
+                          style={{
+                            backgroundColor: "var(--gold)",
+                            color: "var(--text-light)",
+                          }}
+                        >
+                          <span className="text-base">+</span> Add rule (AND)
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Botón para añadir más repeat conditions (OR) */}
+            {repeatConditions.length > 0 && (
+              <button
+                onClick={addRepeatCondition}
+                className="mt-6 px-6 py-3 rounded-lg w-full font-semibold shadow-lg transform transition hover:scale-105 flex items-center justify-center gap-2"
+                style={{
+                  marginTop: 12,
+                  marginBottom: 12,
+                  background:
+                    "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+                  color: "var(--text-light)",
+                }}
+              >
+                <span className="text-xl">+</span> Add repeat condition (OR)
               </button>
             )}
           </>

@@ -233,6 +233,7 @@ function TrialsConfig({ pluginName }: Props) {
     id: selectedTrial?.id,
     branches: selectedTrial?.branches,
     branchConditions: selectedTrial?.branchConditions,
+    repeatConditions: selectedTrial?.repeatConditions,
     paramsOverride: selectedTrial?.paramsOverride,
     pluginName: pluginName,
     parameters: parameters,
