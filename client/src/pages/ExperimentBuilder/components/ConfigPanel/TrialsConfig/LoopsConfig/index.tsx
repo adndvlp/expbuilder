@@ -3,7 +3,7 @@ import TrialOrders from "../TrialOrders";
 import CsvUploader from "../CsvUploader";
 import { useCsvData } from "../hooks/useCsvData";
 import { useTrialOrders } from "../hooks/useTrialOrders";
-import { Loop } from "../../types";
+import { Loop, LoopCondition } from "../../types";
 import useTrials from "../../../../hooks/useTrials";
 import isEqual from "lodash.isequal";
 import useLoopCode from "./useLoopCode";
@@ -11,6 +11,7 @@ import { useTrialCode } from "../hooks/useTrialCode";
 import { usePluginParameters } from "../../hooks/usePluginParameters";
 import { useCsvMapper } from "../hooks/useCsvMapper";
 import { useFileUpload } from "../hooks/useFileUpload";
+import ConditionalLoop from "./ConditionalLoop";
 
 type Props = { loop?: Loop };
 
@@ -20,11 +21,18 @@ function LoopsConfig({ loop }: Props) {
   const [isLoadingLoop, setIsLoadingLoop] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [saveIndicator, setSaveIndicator] = useState(false);
+  const [showConditionalModal, setShowConditionalModal] = useState(false);
 
   const [repetitions, setRepetitions] = useState<number>(
     loop?.repetitions || 1
   );
   const [randomize, setRandomize] = useState<boolean>(loop?.randomize || false);
+  const [isConditionalLoop, setIsConditionalLoop] = useState<boolean>(
+    loop?.isConditionalLoop || false
+  );
+  const [loopConditions, setLoopConditions] = useState<LoopCondition[]>(
+    loop?.loopConditions || []
+  );
 
   const { csvJson, setCsvJson, csvColumns, setCsvColumns, handleCsvUpload } =
     useCsvData();
@@ -41,6 +49,8 @@ function LoopsConfig({ loop }: Props) {
     // Restaura los datos del loop
     setRepetitions(loop.repetitions ?? 1);
     setRandomize(loop.randomize ?? false);
+    setIsConditionalLoop(loop.isConditionalLoop ?? false);
+    setLoopConditions(loop.loopConditions ?? []);
     setCsvJson(loop.csvJson ?? []);
     setCsvColumns(loop.csvColumns ?? []);
     setOrders(loop.orders ?? false);
@@ -200,6 +210,7 @@ function LoopsConfig({ loop }: Props) {
           id: trial.id,
           branches: trial.branches,
           branchConditions: trial.branchConditions,
+          paramsOverride: trial.paramsOverride,
           pluginName: trial.plugin,
           parameters: parameters,
           data: data,
@@ -256,6 +267,8 @@ function LoopsConfig({ loop }: Props) {
     categoryData,
     trials: trialsData,
     unifiedStimuli,
+    loopConditions,
+    isConditionalLoop,
   });
 
   const loopCode = generateLoopCode();
@@ -279,6 +292,8 @@ function LoopsConfig({ loop }: Props) {
       ...prevLoop,
       repetitions,
       randomize,
+      isConditionalLoop,
+      loopConditions,
       csvJson,
       csvColumns,
       orders,
@@ -313,6 +328,8 @@ function LoopsConfig({ loop }: Props) {
   }, [
     repetitions,
     randomize,
+    isConditionalLoop,
+    loopConditions,
     csvJson,
     csvColumns,
     orders,
@@ -321,6 +338,11 @@ function LoopsConfig({ loop }: Props) {
     categoryColumn,
     isLoadingLoop,
   ]);
+
+  const handleSaveLoopConditions = (conditions: LoopCondition[]) => {
+    setLoopConditions(conditions);
+    setIsConditionalLoop(conditions.length > 0);
+  };
 
   return (
     <div id="loop-config">
@@ -406,6 +428,82 @@ function LoopsConfig({ loop }: Props) {
             />
           </div>
         </div>
+
+        {/* Loop Conditions Section */}
+        <div className="mb-2 p-4 border rounded bg-gray-50">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <div className="font-bold mb-1">Loop Conditions</div>
+              <p className="text-sm text-gray-600">
+                Make this loop repeat based on trial data
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={isConditionalLoop}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setIsConditionalLoop(checked);
+                if (!checked) {
+                  setLoopConditions([]);
+                }
+              }}
+              className="ml-2"
+            />
+          </div>
+
+          {isConditionalLoop && (
+            <div className="mt-3">
+              <button
+                onClick={() => setShowConditionalModal(true)}
+                className="w-full p-3 rounded font-medium transition"
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--primary-blue), var(--light-blue))",
+                  color: "var(--text-light)",
+                }}
+              >
+                {loopConditions.length > 0
+                  ? `Edit Loop Conditions (${loopConditions.length})`
+                  : "Configure Loop Conditions"}
+              </button>
+              {loopConditions.length > 0 && (
+                <div className="mt-2 text-sm text-gray-600">
+                  <strong>Active conditions:</strong> {loopConditions.length}{" "}
+                  condition(s) configured
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Conditional Loop Modal */}
+        {showConditionalModal && loop && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+            }}
+            onClick={() => setShowConditionalModal(false)}
+          >
+            <div onClick={(e) => e.stopPropagation()}>
+              <ConditionalLoop
+                loop={loop}
+                onClose={() => setShowConditionalModal(false)}
+                onSave={handleSaveLoopConditions}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Save and Delete Loop */}
         <button
           onClick={handleSave}

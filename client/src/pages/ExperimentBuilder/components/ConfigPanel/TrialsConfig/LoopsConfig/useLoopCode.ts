@@ -14,6 +14,18 @@ type BranchCondition = {
   nextTrialId: number | string | null;
 };
 
+type LoopConditionRule = {
+  trialId: string | number;
+  prop: string;
+  op: string;
+  value: string;
+};
+
+type LoopCondition = {
+  id: number;
+  rules: LoopConditionRule[];
+};
+
 type Props = {
   id: string | undefined;
   branches: (string | number)[] | undefined;
@@ -26,6 +38,8 @@ type Props = {
   categoryData: any[];
   trials: Trial[];
   unifiedStimuli: Record<string, any>[];
+  loopConditions?: LoopCondition[];
+  isConditionalLoop?: boolean;
 };
 
 export default function useLoopCode({
@@ -40,6 +54,8 @@ export default function useLoopCode({
   categoryData,
   trials,
   unifiedStimuli,
+  loopConditions,
+  isConditionalLoop,
 }: Props) {
   const sanitizeName = (name: string) => {
     return name.replace(/[^a-zA-Z0-9_]/g, "_");
@@ -308,6 +324,72 @@ const ${loopIdSanitized}_procedure = {
   timeline_variables: test_stimuli_${loopIdSanitized},
   repetitions: ${repetitions},
   randomize_order: ${randomize},
+  ${
+    isConditionalLoop && loopConditions && loopConditions.length > 0
+      ? `loop_function: function(data) {
+    // Evaluate loop conditions to determine if the loop should repeat
+    const loopConditionsArray = ${JSON.stringify(loopConditions)};
+    
+    // Helper function to get data from a specific trial
+    const getTrialData = (trialId) => {
+      // Get all trials data
+      const allTrials = data.values();
+      
+      // Find the last occurrence of the trial with matching trial_id
+      for (let i = allTrials.length - 1; i >= 0; i--) {
+        const trial = allTrials[i];
+        if (String(trial.trial_id) === String(trialId)) {
+          return trial;
+        }
+      }
+      return null;
+    };
+    
+    // Evaluate a single condition (AND logic between rules)
+    const evaluateCondition = (condition) => {
+      return condition.rules.every(rule => {
+        const trialData = getTrialData(rule.trialId);
+        
+        if (!trialData) {
+          console.warn('Trial data not found for:', rule.trialId);
+          return false;
+        }
+        
+        const propValue = trialData[rule.prop];
+        const compareValue = rule.value;
+        
+        // Convert values for comparison
+        const numPropValue = parseFloat(propValue);
+        const numCompareValue = parseFloat(compareValue);
+        const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
+        
+        switch (rule.op) {
+          case '==':
+            return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
+          case '!=':
+            return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
+          case '>':
+            return isNumeric && numPropValue > numCompareValue;
+          case '<':
+            return isNumeric && numPropValue < numCompareValue;
+          case '>=':
+            return isNumeric && numPropValue >= numCompareValue;
+          case '<=':
+            return isNumeric && numPropValue <= numCompareValue;
+          default:
+            return false;
+        }
+      });
+    };
+    
+    // Evaluate all conditions (OR logic between conditions)
+    const shouldRepeat = loopConditionsArray.some(condition => evaluateCondition(condition));
+    
+    console.log('Loop condition evaluation result:', shouldRepeat);
+    return shouldRepeat;
+  },`
+      : ""
+  }
   conditional_function: function() {
     const currentId = "${id}";
     

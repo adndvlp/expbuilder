@@ -7,10 +7,11 @@ import TrialNode from "./TrialNode";
 import LoopSubCanvas from "./LoopSubCanvas";
 import LoopRangeModal from "../ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeModal";
 import BranchedTrial from "../ConfigPanel/TrialsConfig/BranchedTrial";
+import ParamsOverride from "../ConfigPanel/TrialsConfig/ParamsOverride";
 import CanvasToolbar from "./components/CanvasToolbar";
 import { useFlowLayout } from "./hooks/useFlowLayout";
 import { TbBinaryTree } from "react-icons/tb";
-import { FiX } from "react-icons/fi";
+import { FiX, FiSettings } from "react-icons/fi";
 import {
   generateUniqueName,
   getAllExistingNames,
@@ -43,6 +44,7 @@ function Canvas({}: Props) {
   const [showLoopModal, setShowLoopModal] = useState(false);
   const [openLoop, setOpenLoop] = useState<any>(null);
   const [showBranchedModal, setShowBranchedModal] = useState(false);
+  const [showParamsOverrideModal, setShowParamsOverrideModal] = useState(false);
 
   const onAddTrial = (type: string) => {
     const existingNames = getAllExistingNames(trials);
@@ -383,6 +385,38 @@ function Canvas({}: Props) {
           );
         })()}
 
+        {/* Params Override Button */}
+        {(() => {
+          const isTrialInsideOpenLoop =
+            openLoop &&
+            openLoop.trials &&
+            openLoop.trials.some((t: Trial) => t.id === selectedTrial?.id);
+          const shouldShow = selectedTrial && !isTrialInsideOpenLoop;
+
+          return (
+            shouldShow && (
+              <button
+                style={{
+                  ...fabStyle,
+                  position: "absolute",
+                  top: 24,
+                  left: 210,
+                  width: 48,
+                  height: 48,
+                  fontSize: 24,
+                  background: "#FFD166",
+                  color: "#fff",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                }}
+                title="Parameters Override"
+                onClick={() => setShowParamsOverrideModal(true)}
+              >
+                <FiSettings size={24} color="#fff" />
+              </button>
+            )
+          );
+        })()}
+
         {showBranchedModal && (
           <div
             style={{
@@ -426,6 +460,54 @@ function Canvas({}: Props) {
               <BranchedTrial
                 selectedTrial={selectedTrial || selectedLoop}
                 onClose={() => setShowBranchedModal(false)}
+              />
+            </div>
+          </div>
+        )}
+
+        {showParamsOverrideModal && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: "100vh",
+              background: "rgba(0,0,0,0.32)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+            }}
+          >
+            <div style={{ position: "relative", zIndex: 10000 }}>
+              <button
+                style={{
+                  position: "absolute",
+                  top: 12,
+                  right: 12,
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  background: "rgba(0,0,0,0.5)",
+                  color: "#fff",
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 22,
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                }}
+                onClick={() => setShowParamsOverrideModal(false)}
+                title="Close"
+              >
+                <FiX />
+              </button>
+              <ParamsOverride
+                selectedTrial={selectedTrial}
+                onClose={() => setShowParamsOverrideModal(false)}
               />
             </div>
           </div>

@@ -4,11 +4,12 @@ import ReactFlow, { Connection } from "reactflow";
 import TrialNode from "./TrialNode";
 import ResizeHandle from "./components/ResizeHandle";
 import BranchedTrial from "../ConfigPanel/TrialsConfig/BranchedTrial";
+import ParamsOverride from "../ConfigPanel/TrialsConfig/ParamsOverride";
 import { Trial } from "../ConfigPanel/types";
 import { useDraggable } from "./hooks/useDraggable";
 import { useResizable } from "./hooks/useResizable";
 import { TbBinaryTree } from "react-icons/tb";
-import { FiX } from "react-icons/fi";
+import { FiX, FiSettings } from "react-icons/fi";
 import {
   findTrialById,
   generateUniqueName,
@@ -53,6 +54,7 @@ function LoopSubCanvas({
     height: 320,
   });
   const [showBranchedModal, setShowBranchedModal] = useState(false);
+  const [showParamsOverrideModal, setShowParamsOverrideModal] = useState(false);
 
   const { nodes, edges } = useMemo(() => {
     const nodes: any[] = [];
@@ -415,6 +417,34 @@ function LoopSubCanvas({
           </button>
         )}
 
+        {/* Params Override button */}
+        {selectedTrial && (
+          <button
+            style={{
+              position: "absolute",
+              top: 16,
+              right: 64,
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              background: "#FFD166",
+              color: "#fff",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 20,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
+              zIndex: 10,
+            }}
+            title="Parameters Override"
+            onClick={() => setShowParamsOverrideModal(true)}
+          >
+            <FiSettings size={20} color="#fff" />
+          </button>
+        )}
+
         {showBranchedModal && (
           <div
             style={{
@@ -458,6 +488,54 @@ function LoopSubCanvas({
               <BranchedTrial
                 selectedTrial={selectedTrial}
                 onClose={() => setShowBranchedModal(false)}
+              />
+            </div>
+          </div>
+        )}
+
+        {showParamsOverrideModal && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: "100vh",
+              background: "rgba(0,0,0,0.32)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+            }}
+          >
+            <div style={{ position: "relative", zIndex: 10000 }}>
+              <button
+                style={{
+                  position: "absolute",
+                  top: 12,
+                  right: 12,
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  background: "rgba(0,0,0,0.5)",
+                  color: "#fff",
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 22,
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                }}
+                onClick={() => setShowParamsOverrideModal(false)}
+                title="Close"
+              >
+                <FiX />
+              </button>
+              <ParamsOverride
+                selectedTrial={selectedTrial}
+                onClose={() => setShowParamsOverrideModal(false)}
               />
             </div>
           </div>

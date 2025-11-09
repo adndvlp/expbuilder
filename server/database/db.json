@@ -1,7 +1,2528 @@
 {
-  "experiments": [],
-  "trials": [],
-  "configs": [],
+  "experiments": [
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "name": "nfjslv",
+      "createdAt": "2025-11-09T05:32:55.892Z",
+      "updatedAt": "2025-11-09T05:32:55.892Z",
+      "storage": "drive"
+    }
+  ],
+  "trials": [
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "data": {
+        "trials": [
+          {
+            "id": 1762666380298,
+            "type": "Trial",
+            "name": "nbh",
+            "parameters": {
+              "includesExtensions": false,
+              "extensionType": ""
+            },
+            "trialCode": "\n    const preloadnbh = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadnbh);\n    \n    const test_stimuli_nbh = [{stimulus: \"<div id=\\\"ic69\\\" style=\\\"box-sizing: border-box;\\\">Cual quieres?</div>\",\nchoices: [\"Choco\",\"Late\"]}];\n    const nbh_timeline = {\n    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\nchoices: jsPsych.timelineVariable(\"choices\"),\n      data: {\n        rt: \"rt\",\nresponse: \"response\",\nstimulus: \"stimulus\",\n        trial_id: 1762666380298,\n        \n        \n        branches: [\"loop_1762667233442\"],\n        branchConditions: [undefined] \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        console.log('Applying custom parameters to trial:', window.branchCustomParameters);\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Handle different parameter sources\n            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n              // For typed values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n              // For CSV values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Branching automático al primer branch\n      const branches = [\"loop_1762667233442\"];\n      if (branches.length > 0) {\n        window.nextTrialId = branches[0];\n        window.skipRemaining = true;\n        window.branchingActive = true;\n      }\n    },\n    };\n    const nbh_procedure = {\n    timeline: \n    [nbh_timeline],\n    timeline_variables: test_stimuli_nbh,\n    conditional_function: function() {\n      const currentId = 1762666380298;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(nbh_procedure);\n  ",
+            "plugin": "plugin-html-button-response",
+            "columnMapping": {
+              "stimulus": {
+                "source": "typed",
+                "value": "<div id=\"ic69\" style=\"box-sizing: border-box;\">Cual quieres?</div>"
+              },
+              "choices": {
+                "source": "typed",
+                "value": [
+                  "Choco",
+                  "Late"
+                ]
+              },
+              "prompt": {
+                "source": "none",
+                "value": null
+              },
+              "stimulus_duration": {
+                "source": "none",
+                "value": null
+              },
+              "trial_duration": {
+                "source": "none",
+                "value": null
+              },
+              "response_ends_trial": {
+                "source": "none",
+                "value": null
+              },
+              "button_html": {
+                "source": "none",
+                "value": null
+              },
+              "button_layout": {
+                "source": "none",
+                "value": null
+              },
+              "grid_rows": {
+                "source": "none",
+                "value": null
+              },
+              "grid_columns": {
+                "source": "none",
+                "value": null
+              },
+              "enable_button_after": {
+                "source": "none",
+                "value": null
+              }
+            },
+            "csvJson": [],
+            "csvColumns": [],
+            "orders": false,
+            "orderColumns": [],
+            "stimuliOrders": [],
+            "categories": false,
+            "categoryColumn": "",
+            "branches": [
+              "loop_1762667233442"
+            ]
+          },
+          {
+            "id": "loop_1762667233442",
+            "name": "Loop 1",
+            "repetitions": 1,
+            "randomize": false,
+            "orders": false,
+            "stimuliOrders": [],
+            "orderColumns": [],
+            "categoryColumn": "",
+            "categories": false,
+            "categoryData": [],
+            "trials": [
+              {
+                "id": 1762666399284,
+                "type": "Trial",
+                "name": "New Trial 1",
+                "parameters": {
+                  "includesExtensions": false,
+                  "extensionType": ""
+                },
+                "trialCode": "\n    const preloadNew_Trial_1 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_1);\n    \n    const New_Trial_1_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_1\"),\n      data: {\n        response: \"response_New_Trial_1\",\nrt: \"rt_New_Trial_1\",\nstimulus: \"stimulus_New_Trial_1\",\n        trial_id: 1762666399284,\n        isInLoop: true,\n        \n        branches: [1762666439267],\n        branchConditions: [undefined] \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials in loops, use loopBranchCustomParameters\n      if (typeof loopBranchCustomParameters !== 'undefined' && loopBranchCustomParameters && typeof loopBranchCustomParameters === 'object') {\n        console.log('Applying custom parameters to loop trial:', loopBranchCustomParameters);\n        Object.entries(loopBranchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Handle different parameter sources\n            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n              // For typed values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n              // For CSV values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        loopBranchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Branching automático al primer branch (dentro del loop)\n      const branches = [1762666439267];\n      if (branches.length > 0) {\n        loopNextTrialId = branches[0];\n        loopSkipRemaining = true;\n        loopBranchingActive = true;\n      }\n    },};",
+                "plugin": "plugin-html-keyboard-response",
+                "columnMapping": {
+                  "stimulus": {
+                    "source": "typed",
+                    "value": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>"
+                  },
+                  "choices": {
+                    "source": "none",
+                    "value": ""
+                  },
+                  "prompt": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "stimulus_duration": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "trial_duration": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "response_ends_trial": {
+                    "source": "none",
+                    "value": null
+                  }
+                },
+                "csvJson": [],
+                "csvColumns": [],
+                "orders": false,
+                "orderColumns": [],
+                "stimuliOrders": [],
+                "categories": false,
+                "categoryColumn": "",
+                "branches": [
+                  1762666439267
+                ],
+                "csvFromLoop": true
+              },
+              {
+                "id": 1762666439267,
+                "type": "Trial",
+                "name": "New Trial 2nj",
+                "parameters": {
+                  "includesExtensions": false,
+                  "extensionType": ""
+                },
+                "trialCode": "\n    const preloadNew_Trial_2nj = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_2nj);\n    \n    const New_Trial_2nj_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_2nj\"),\n      data: {\n        response: \"response_New_Trial_2nj\",\nrt: \"rt_New_Trial_2nj\",\nstimulus: \"stimulus_New_Trial_2nj\",\n        trial_id: 1762666439267,\n        isInLoop: true,\n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      const paramsOverrideConditions = [{\"id\":1762666469017,\"rules\":[{\"trialId\":\"1762666380298\",\"prop\":\"response\",\"op\":\"==\",\"value\":\"1\"}],\"paramsToOverride\":{\"stimulus\":{\"source\":\"typed\",\"value\":\"Choco\"}}},{\"id\":1762666487050,\"rules\":[{\"trialId\":\"1762666380298\",\"prop\":\"response\",\"op\":\"==\",\"value\":\"0\"}],\"paramsToOverride\":{\"stimulus\":{\"source\":\"typed\",\"value\":\"Late\"}}}];\n      \n      // Evaluate params override conditions\n      for (const condition of paramsOverrideConditions) {\n        if (!condition || !condition.rules) {\n          continue;\n        }\n        \n        // Get data from all previous trials\n        const allData = jsPsych.data.get().values();\n        \n        // Check if all rules match (AND logic within condition)\n        const allRulesMatch = condition.rules.every(rule => {\n          if (!rule.trialId || !rule.prop) {\n            return false;\n          }\n          \n          // Find data from the referenced trial\n          const trialData = allData.filter(d => {\n            // Compare both as strings to handle type mismatches\n            return String(d.trial_id) === String(rule.trialId) || d.trial_id === rule.trialId;\n          });\n          if (trialData.length === 0) {\n            return false;\n          }\n          \n          // Use the most recent data if multiple exist\n          const data = trialData[trialData.length - 1];\n          const propValue = data[rule.prop];\n          const compareValue = rule.value;\n          \n          // Convert values for comparison\n          const numPropValue = parseFloat(propValue);\n          const numCompareValue = parseFloat(compareValue);\n          const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);\n          \n          switch (rule.op) {\n            case '==':\n              return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;\n            case '!=':\n              return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;\n            case '>':\n              return isNumeric && numPropValue > numCompareValue;\n            case '<':\n              return isNumeric && numPropValue < numCompareValue;\n            case '>=':\n              return isNumeric && numPropValue >= numCompareValue;\n            case '<=':\n              return isNumeric && numPropValue <= numCompareValue;\n            default:\n              return false;\n          }\n        });\n        \n        // If all rules match, apply parameter overrides\n        if (allRulesMatch && condition.paramsToOverride) {\n          Object.entries(condition.paramsToOverride).forEach(([key, param]) => {\n            if (param && param.source !== 'none') {\n              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n                trial[key] = param.value;\n              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n                trial[key] = param.value;\n              }\n            }\n          });\n          // Break after first matching condition (OR logic between conditions)\n          break;\n        }\n      }\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials in loops, use loopBranchCustomParameters\n      if (typeof loopBranchCustomParameters !== 'undefined' && loopBranchCustomParameters && typeof loopBranchCustomParameters === 'object') {\n        console.log('Applying custom parameters to loop trial:', loopBranchCustomParameters);\n        Object.entries(loopBranchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Handle different parameter sources\n            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n              // For typed values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n              // For CSV values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        loopBranchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches, verificar si el loop padre tiene branches\n    if (typeof loopHasBranches !== 'undefined' && loopHasBranches) {\n        // El loop tiene branches, activar branching del loop al terminar\n        // Esto se manejará en el on_finish del loop\n        loopShouldBranchOnFinish = true;\n      } else if (!loopHasBranches) {\n        // Ni el trial ni el loop tienen branches - trial terminal\n        // Si llegamos aquí después de un branching global, terminar el experimento\n        if (window.branchingActive) {\n          jsPsych.abortExperiment('', {});\n        }\n      }\n    },};",
+                "plugin": "plugin-html-keyboard-response",
+                "columnMapping": {
+                  "stimulus": {
+                    "source": "typed",
+                    "value": "<div id=\"it5l\" style=\"box-sizing: border-box;\">Lcnpwkeh</div>"
+                  },
+                  "choices": {
+                    "source": "none",
+                    "value": ""
+                  },
+                  "prompt": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "stimulus_duration": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "trial_duration": {
+                    "source": "none",
+                    "value": null
+                  },
+                  "response_ends_trial": {
+                    "source": "none",
+                    "value": null
+                  }
+                },
+                "csvJson": [],
+                "csvColumns": [],
+                "orders": false,
+                "orderColumns": [],
+                "stimuliOrders": [],
+                "categories": false,
+                "categoryColumn": "",
+                "paramsOverride": [
+                  {
+                    "id": 1762666469017,
+                    "rules": [
+                      {
+                        "trialId": "1762666380298",
+                        "prop": "response",
+                        "op": "==",
+                        "value": "1"
+                      }
+                    ],
+                    "paramsToOverride": {
+                      "stimulus": {
+                        "source": "typed",
+                        "value": "Choco"
+                      }
+                    }
+                  },
+                  {
+                    "id": 1762666487050,
+                    "rules": [
+                      {
+                        "trialId": "1762666380298",
+                        "prop": "response",
+                        "op": "==",
+                        "value": "0"
+                      }
+                    ],
+                    "paramsToOverride": {
+                      "stimulus": {
+                        "source": "typed",
+                        "value": "Late"
+                      }
+                    }
+                  }
+                ],
+                "csvFromLoop": true
+              }
+            ],
+            "code": "\n\n    const test_stimuli_loop_1762667233442 = [\n  {\n    \"stimulus_New_Trial_1\": \"<div id=\\\"iak4\\\" style=\\\"box-sizing: border-box;\\\">Ahí va</div>\",\n    \"stimulus_New_Trial_2nj\": \"<div id=\\\"it5l\\\" style=\\\"box-sizing: border-box;\\\">Lcnpwkeh</div>\"\n  }\n];\n    \n    \n    \n    const preloadNew_Trial_1 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_1);\n    \n    const New_Trial_1_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_1\"),\n      data: {\n        response: \"response_New_Trial_1\",\nrt: \"rt_New_Trial_1\",\nstimulus: \"stimulus_New_Trial_1\",\n        trial_id: 1762666399284,\n        isInLoop: true,\n        \n        branches: [1762666439267],\n        branchConditions: [undefined] \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials in loops, use loopBranchCustomParameters\n      if (typeof loopBranchCustomParameters !== 'undefined' && loopBranchCustomParameters && typeof loopBranchCustomParameters === 'object') {\n        console.log('Applying custom parameters to loop trial:', loopBranchCustomParameters);\n        Object.entries(loopBranchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Handle different parameter sources\n            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n              // For typed values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n              // For CSV values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        loopBranchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Branching automático al primer branch (dentro del loop)\n      const branches = [1762666439267];\n      if (branches.length > 0) {\n        loopNextTrialId = branches[0];\n        loopSkipRemaining = true;\n        loopBranchingActive = true;\n      }\n    },};\n\n\n\n    \n    const preloadNew_Trial_2nj = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_2nj);\n    \n    const New_Trial_2nj_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_2nj\"),\n      data: {\n        response: \"response_New_Trial_2nj\",\nrt: \"rt_New_Trial_2nj\",\nstimulus: \"stimulus_New_Trial_2nj\",\n        trial_id: 1762666439267,\n        isInLoop: true,\n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      const paramsOverrideConditions = [{\"id\":1762666469017,\"rules\":[{\"trialId\":\"1762666380298\",\"prop\":\"response\",\"op\":\"==\",\"value\":\"1\"}],\"paramsToOverride\":{\"stimulus\":{\"source\":\"typed\",\"value\":\"Choco\"}}},{\"id\":1762666487050,\"rules\":[{\"trialId\":\"1762666380298\",\"prop\":\"response\",\"op\":\"==\",\"value\":\"0\"}],\"paramsToOverride\":{\"stimulus\":{\"source\":\"typed\",\"value\":\"Late\"}}}];\n      \n      // Evaluate params override conditions\n      for (const condition of paramsOverrideConditions) {\n        if (!condition || !condition.rules) {\n          continue;\n        }\n        \n        // Get data from all previous trials\n        const allData = jsPsych.data.get().values();\n        \n        // Check if all rules match (AND logic within condition)\n        const allRulesMatch = condition.rules.every(rule => {\n          if (!rule.trialId || !rule.prop) {\n            return false;\n          }\n          \n          // Find data from the referenced trial\n          const trialData = allData.filter(d => {\n            // Compare both as strings to handle type mismatches\n            return String(d.trial_id) === String(rule.trialId) || d.trial_id === rule.trialId;\n          });\n          if (trialData.length === 0) {\n            return false;\n          }\n          \n          // Use the most recent data if multiple exist\n          const data = trialData[trialData.length - 1];\n          const propValue = data[rule.prop];\n          const compareValue = rule.value;\n          \n          // Convert values for comparison\n          const numPropValue = parseFloat(propValue);\n          const numCompareValue = parseFloat(compareValue);\n          const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);\n          \n          switch (rule.op) {\n            case '==':\n              return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;\n            case '!=':\n              return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;\n            case '>':\n              return isNumeric && numPropValue > numCompareValue;\n            case '<':\n              return isNumeric && numPropValue < numCompareValue;\n            case '>=':\n              return isNumeric && numPropValue >= numCompareValue;\n            case '<=':\n              return isNumeric && numPropValue <= numCompareValue;\n            default:\n              return false;\n          }\n        });\n        \n        // If all rules match, apply parameter overrides\n        if (allRulesMatch && condition.paramsToOverride) {\n          Object.entries(condition.paramsToOverride).forEach(([key, param]) => {\n            if (param && param.source !== 'none') {\n              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n                trial[key] = param.value;\n              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n                trial[key] = param.value;\n              }\n            }\n          });\n          // Break after first matching condition (OR logic between conditions)\n          break;\n        }\n      }\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials in loops, use loopBranchCustomParameters\n      if (typeof loopBranchCustomParameters !== 'undefined' && loopBranchCustomParameters && typeof loopBranchCustomParameters === 'object') {\n        console.log('Applying custom parameters to loop trial:', loopBranchCustomParameters);\n        Object.entries(loopBranchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Handle different parameter sources\n            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n              // For typed values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n              // For CSV values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        loopBranchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches, verificar si el loop padre tiene branches\n    if (typeof loopHasBranches !== 'undefined' && loopHasBranches) {\n        // El loop tiene branches, activar branching del loop al terminar\n        // Esto se manejará en el on_finish del loop\n        loopShouldBranchOnFinish = true;\n      } else if (!loopHasBranches) {\n        // Ni el trial ni el loop tienen branches - trial terminal\n        // Si llegamos aquí después de un branching global, terminar el experimento\n        if (window.branchingActive) {\n          jsPsych.abortExperiment('', {});\n        }\n      }\n    },};\n\n\n// --- Branching logic variables for internal loop trials ---\nlet loopNextTrialId = null;\nlet loopSkipRemaining = false;\nlet loopBranchingActive = false;\nlet loopBranchCustomParameters = null; // Store custom parameters for branching within loops\nlet loopTargetExecuted = false; // Indica si el trial objetivo ya se ejecutó en esta iteración\nlet loopIterationComplete = false; // Indica que la iteración actual terminó\nconst loopHasBranches = false;\nlet loopShouldBranchOnFinish = false;\n\n\n    const New_Trial_1_wrapper = {\n      timeline: [New_Trial_1_timeline],\n      conditional_function: function() {\n        const currentId = New_Trial_1_timeline.data.trial_id;\n        \n        // Si el trial objetivo ya fue ejecutado, saltar todos los trials restantes en esta iteración\n        if (loopTargetExecuted) {\n          \n          return false;\n        }\n        \n        // Si loopSkipRemaining está activo, verificar si este es el trial objetivo\n        if (loopSkipRemaining) {\n          if (String(currentId) === String(loopNextTrialId)) {\n            // Encontramos el trial objetivo dentro del loop\n            loopTargetExecuted = true;\n            return true;\n          }\n          // No es el objetivo, saltar\n          return false;\n        }\n        \n        // No hay branching activo, ejecutar normalmente\n        return true;\n      },\n      on_timeline_finish: function() {\n        \n      }\n    };\n\n\n    const New_Trial_2nj_wrapper = {\n      timeline: [New_Trial_2nj_timeline],\n      conditional_function: function() {\n        const currentId = New_Trial_2nj_timeline.data.trial_id;\n        \n        // Si el trial objetivo ya fue ejecutado, saltar todos los trials restantes en esta iteración\n        if (loopTargetExecuted) {\n          \n          // Último trial: resetear flags para la siguiente iteración/repetición\n          loopNextTrialId = null;\n          loopSkipRemaining = false;\n          loopTargetExecuted = false;\n          loopBranchingActive = false;\n          loopBranchCustomParameters = null;\n          loopIterationComplete = false;\n          return false;\n        }\n        \n        // Si loopSkipRemaining está activo, verificar si este es el trial objetivo\n        if (loopSkipRemaining) {\n          if (String(currentId) === String(loopNextTrialId)) {\n            // Encontramos el trial objetivo dentro del loop\n            loopTargetExecuted = true;\n            return true;\n          }\n          // No es el objetivo, saltar\n          return false;\n        }\n        \n        // No hay branching activo, ejecutar normalmente\n        return true;\n      },\n      on_timeline_finish: function() {\n        \n        // Último trial del timeline: resetear flags para la siguiente iteración/repetición\n        loopNextTrialId = null;\n        loopSkipRemaining = false;\n        loopTargetExecuted = false;\n        loopBranchingActive = false;\n        loopBranchCustomParameters = null;\n        loopIterationComplete = false;\n      }\n    };\n\nconst evaluateLoopCondition = (trialData, condition) => {\n  // All rules in a condition must be true (AND logic)\n  return condition.rules.every(rule => {\n    const propValue = trialData[rule.prop];\n    const compareValue = rule.value;\n    \n    // Convert values for comparison\n    const numPropValue = parseFloat(propValue);\n    const numCompareValue = parseFloat(compareValue);\n    const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);\n    \n    switch (rule.op) {\n      case '==':\n        return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;\n      case '!=':\n        return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;\n      case '>':\n        return isNumeric && numPropValue > numCompareValue;\n      case '<':\n        return isNumeric && numPropValue < numCompareValue;\n      case '>=':\n        return isNumeric && numPropValue >= numCompareValue;\n      case '<=':\n        return isNumeric && numPropValue <= numCompareValue;\n      default:\n        return false;\n    }\n  });\n};\n\nconst getNextLoopTrialId = (lastTrialData) => {\n  if (!lastTrialData || !lastTrialData.trials || !lastTrialData.trials[0]) {\n    return null;\n  }\n  \n  const trial = lastTrialData.trials[0];\n  \n  // Check if trial has branches\n  if (!Array.isArray(trial.branches) || trial.branches.length === 0) {\n    return null;\n  }\n  \n  // Si solo hay un branch O no hay condiciones, seguir al primer branch automáticamente\n  const hasMultipleBranches = trial.branches.length > 1;\n  const hasBranchConditions = Array.isArray(trial.branchConditions) && trial.branchConditions.length > 0;\n  \n  if (!hasMultipleBranches || !hasBranchConditions) {\n    console.log('Loop internal: Auto-branching to first branch:', trial.branches[0]);\n    return trial.branches[0];\n  }\n  \n  // Si hay múltiples branches Y condiciones, evaluar las condiciones\n  const conditions = trial.branchConditions.flat();\n  \n  // Evaluate each condition (OR logic between conditions)\n  for (const condition of conditions) {\n    if (!condition || !condition.rules) {\n      console.warn('Invalid condition structure:', condition);\n      continue;\n    }\n    \n    if (evaluateLoopCondition(trial, condition)) {\n      console.log('Loop internal: Condition matched:', condition);\n      return condition.nextTrialId;\n    }\n  }\n  \n  // No condition matched - seguir al primer branch por defecto\n  console.log('Loop internal: No condition matched, defaulting to first branch:', trial.branches[0]);\n  return trial.branches[0];\n};\n\nconst loop_1762667233442_procedure = {\n  timeline: [New_Trial_1_wrapper, New_Trial_2nj_wrapper],\n  timeline_variables: test_stimuli_loop_1762667233442,\n  repetitions: 1,\n  randomize_order: false,\n  \n  conditional_function: function() {\n    const currentId = \"loop_1762667233442\";\n    \n    // Si skipRemaining está activo, verificar si este es el loop objetivo\n    if (window.skipRemaining) {\n      if (String(currentId) === String(window.nextTrialId)) {\n        // Encontramos el loop objetivo\n        window.skipRemaining = false;\n        window.nextTrialId = null;\n        return true;\n      }\n      // No es el objetivo, saltar\n      return false;\n    }\n    \n    return true;\n  },\n  on_timeline_start: function() {\n    // Resetear las flags al inicio de cada iteración del loop\n    // Esto permite que cada repetición del loop funcione correctamente\n    loopNextTrialId = null;\n    loopSkipRemaining = false;\n    loopBranchingActive = false;\n    loopBranchCustomParameters = null;\n    loopTargetExecuted = false;\n    loopIterationComplete = false;\n    loopShouldBranchOnFinish = false;\n  },\n  on_timeline_finish: function() {\n    // Resetear las flags al finalizar todas las repeticiones del loop\n    loopNextTrialId = null;\n    loopSkipRemaining = false;\n    loopTargetExecuted = false;\n    loopBranchingActive = false;\n    loopBranchCustomParameters = null;\n    \n    // Verificar si se debe hacer branching porque un trial sin branches se completó\n    // pero el loop tiene branches\n    if (loopShouldBranchOnFinish && loopHasBranches) {\n      const branches = [];\n      if (branches.length > 0) {\n        window.nextTrialId = branches[0];\n        window.skipRemaining = true;\n        window.branchingActive = true;\n      }\n    }\n    \n    // Resetear todas las variables de branching del loop\n    loopNextTrialId = null;\n    loopSkipRemaining = false;\n    loopBranchingActive = false;\n    loopBranchCustomParameters = null;\n    loopShouldBranchOnFinish = false;\n  },\n\n  data: {\n    loop_id: \"loop_1762667233442\"\n  },\n  on_finish: function(data) {\n    // Este loop no tiene branches, es un loop terminal\n    // Si llegamos aquí después de un branching, terminar el experimento\n    if (window.branchingActive) {\n      jsPsych.abortExperiment('', {});\n    }\n  },\n};\ntimeline.push(loop_1762667233442_procedure);\n",
+            "isConditionalLoop": false,
+            "loopConditions": [],
+            "csvJson": [],
+            "csvColumns": []
+          }
+        ]
+      },
+      "createdAt": "2025-11-09T05:33:00.318Z",
+      "updatedAt": "2025-11-09T05:50:49.618Z"
+    }
+  ],
+  "configs": [
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "data": {
+        "generatedCode": "\n  // --- Firebase config ---\n  const firebaseConfig = {\n    apiKey: \"AIzaSyBEbJ-uGKzsaf2u24KPamBPVZrUmvhFk-Q\",\n    authDomain: \"test-e4cf9.firebaseapp.com\",\n    databaseURL: \"http://localhost:9000?ns=test-e4cf9\",\n    projectId: \"test-e4cf9\",\n    storageBucket: \"test-e4cf9.firebasestorage.app\",\n    messagingSenderId: \"414213417080\",\n    appId: \"1:414213417080:web:98607c621a54d07656e58d\"\n  };\n\n  // --- Cargar Firebase SDK ---\n  if (typeof window.firebase === 'undefined') {\n    const script = document.createElement('script');\n    script.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';\n    script.onload = () => {\n      const dbScript = document.createElement('script');\n      dbScript.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';\n      dbScript.onload = () => { window._firebaseReady = true; };\n      document.head.appendChild(dbScript);\n    };\n    document.head.appendChild(script);\n  } else {\n    window._firebaseReady = true;\n  }\n\n  function waitForFirebase() {\n    return new Promise(resolve => {\n      if (window._firebaseReady) return resolve();\n      const interval = setInterval(() => {\n        if (window._firebaseReady) {\n          clearInterval(interval);\n          resolve();\n        }\n      }, 50);\n    });\n  }\n\n \n  const userStr = null;\n\n  const Uid = userStr.uid\n\n  const trialSessionId =\n    (crypto.randomUUID\n      ? crypto.randomUUID()\n      : Math.random().toString(36).slice(2, 10));\n\n  let participantNumber;\n\n  async function saveSession(trialSessionId) {\n    try {\n      const res = await fetch(\"http://localhost:5001/test-e4cf9/us-central1/apidata\", {\n        method: \"POST\",\n        headers: { \"Content-Type\": \"application/json\", Accept: \"*/*\" },\n        body: JSON.stringify({\n          experimentID: \"1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf\",\n          experimentName: \"nfjslv\", \n          sessionId: trialSessionId,\n          storage: \"drive\",\n          uid: Uid\n        }),\n      });\n      \n      console.log('Response status:', res.status);\n      \n      if (!res.ok) {\n        const errorText = await res.text();\n        console.error('Error creating session:', errorText);\n        throw new Error(`Failed to create session: ${res.status} - ${errorText}`);\n      }\n      \n      const result = await res.json();\n      console.log('Session created successfully:', result);\n      \n      if (!result.success) {\n        if (result.message?.includes(\"INVALID_GOOGLE_DRIVE_TOKEN\") || result.message?.includes(\"Invalid Google Drive token\")) {\n          alert(\"Warning: Google Drive token not found or invalid. Please reconnect your Drive account in Settings.\");\n        } else if (result.message?.includes(\"INVALID_DROPBOX_TOKEN\") || result.message?.includes(\"Invalid Dropbox token\")) {\n          alert(\"Warning: Dropbox token not found or invalid. Please reconnect your Dropbox account in Settings.\");\n        }\n        throw new Error(result.message || 'Failed to create session');\n      }\n      \n      participantNumber = result.participantNumber;\n      return participantNumber;\n    } catch (error) {\n      console.error('Error in saveSession:', error);\n      alert('Error creating session: ' + error.message);\n      throw error;\n    }\n  }\n\n  (async () => {\n    // Esperar e inicializar Firebase\n    await waitForFirebase();\n    if (!window.firebase.apps.length) {\n      window.firebase.initializeApp(firebaseConfig);\n    }\n    const db = window.firebase.database();\n\n    participantNumber = await saveSession(trialSessionId);\n\n    if (typeof participantNumber !== \"number\" || isNaN(participantNumber)) {\n      alert(\"The participant number is not assigned. Please, wait.\");\n      throw new Error(\"participantNumber not assigned\");\n    }\n\n    // --- Configurar onDisconnect para finalizar sesión automáticamente ---\n    const sessionRef = db.ref('sessions/1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf/' + trialSessionId);\n    await sessionRef.set({\n      connected: true,\n      experimentID: '1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf',\n      sessionId: trialSessionId,\n      startedAt: window.firebase.database.ServerValue.TIMESTAMP,\n      storage: 'drive'\n    });\n    \n    // Cuando se desconecte, marcar para que el backend finalice la sesión\n    // Incluir needsFinalization para que se procesen los datos en caso de desconexión\n    sessionRef.onDisconnect().update({\n      connected: false,\n      needsFinalization: true,\n      disconnectedAt: window.firebase.database.ServerValue.TIMESTAMP,\n      storage: 'drive'\n    });\n\n    // --- Branching logic functions (outside initJsPsych for timeline access) ---\n    window.nextTrialId = null;\n    window.skipRemaining = false;\n    window.branchingActive = false;\n    window.branchCustomParameters = null; // Store custom parameters for the next trial\n\n    const evaluateCondition = (trialData, condition) => {\n      // All rules in a condition must be true (AND logic)\n      return condition.rules.every(rule => {\n        const propValue = trialData[rule.prop];\n        const compareValue = rule.value;\n        \n        // Convert values for comparison\n        const numPropValue = parseFloat(propValue);\n        const numCompareValue = parseFloat(compareValue);\n        const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);\n        \n        switch (rule.op) {\n          case '==':\n            return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;\n          case '!=':\n            return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;\n          case '>':\n            return isNumeric && numPropValue > numCompareValue;\n          case '<':\n            return isNumeric && numPropValue < numCompareValue;\n          case '>=':\n            return isNumeric && numPropValue >= numCompareValue;\n          case '<=':\n            return isNumeric && numPropValue <= numCompareValue;\n          default:\n            return false;\n        }\n      });\n    };\n    \n    const getNextTrialId = (lastTrialData) => {\n      if (!lastTrialData || !lastTrialData.trials || !lastTrialData.trials[0]) {\n        return null;\n      }\n      \n      const trial = lastTrialData.trials[0];\n      \n      // Check if trial/loop has branches\n      if (!Array.isArray(trial.branches) || trial.branches.length === 0) {\n        return null;\n      }\n      \n      // Check if there are conditions to evaluate\n      const hasBranchConditions = Array.isArray(trial.branchConditions) && trial.branchConditions.length > 0;\n      \n      // Check if any condition has customParameters\n      const hasCustomParameters = hasBranchConditions && \n        trial.branchConditions.flat().some(condition => \n          condition && condition.customParameters && \n          Object.keys(condition.customParameters).length > 0\n        );\n      \n      // If there are no conditions AND no custom parameters, auto-branch to first branch\n      if (!hasBranchConditions && !hasCustomParameters) {\n        console.log('No conditions or custom parameters defined, auto-branching to first branch:', trial.branches[0]);\n        return trial.branches[0];\n      }\n      \n      // If there are no conditions but there ARE custom parameters, we can't auto-branch\n      // We need to evaluate conditions to know which customParameters to use\n      if (!hasBranchConditions && hasCustomParameters) {\n        console.log('Custom parameters exist but no conditions, cannot auto-branch');\n        return null;\n      }\n      \n      // If there ARE conditions, evaluate them (regardless of how many branches there are)\n      // branchConditions is an array of arrays, flatten it first\n      const conditions = trial.branchConditions.flat();\n      \n      // Evaluate each condition (OR logic between conditions)\n      for (const condition of conditions) {\n        if (!condition || !condition.rules) {\n          console.warn('Invalid condition structure:', condition);\n          continue;\n        }\n        \n        if (evaluateCondition(trial, condition)) {\n          console.log('Condition matched:', condition);\n          // Store custom parameters if they exist\n          if (condition.customParameters) {\n            window.branchCustomParameters = condition.customParameters;\n            console.log('Custom parameters for branch:', window.branchCustomParameters);\n          }\n          return condition.nextTrialId;\n        }\n      }\n      \n      // No condition matched - do NOT branch (conditions were defined but none matched)\n      console.log('No condition matched, NOT branching');\n      return null;\n    };\n\n    const jsPsych = initJsPsych({\n\n      on_trial_start: function(trial) {\n        const lastTrialData = jsPsych.data.get()\n        if (lastTrialData) {\n        trial.data.prev_response = lastTrialData.response;\n        }\n      },\n\n      \n\n      on_data_update: function (data) {\n\n        fetch(\"http://localhost:5001/test-e4cf9/us-central1/apidata\", {\n          method: \"POST\",\n          headers: { \"Content-Type\": \"application/json\", Accept: \"*/*\" },\n          body: JSON.stringify({\n            experimentID: \"1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf\",\n            sessionId: trialSessionId,\n            data: data,\n            storage: \"drive\",\n          }),\n        })\n        .then(res => {\n          if (!res.ok) {\n            return res.text().then(text => {\n              console.error('Error appending data:', text);\n            });\n          }\n          return res.json();\n        })\n        .then(result => {\n          if (result && result.success) {\n            console.log('Data appended to temporary storage');\n          }\n        })\n        .catch(error => {\n          console.error('Error in on_data_update:', error);\n        });\n\n        // Solo evaluar branching si el trial/loop tiene un trial_id o loop_id válido\n        if ((!data.trial_id || data.trial_id === undefined) && (!data.loop_id || data.loop_id === undefined)) {\n          return;\n        }\n        \n        const lastTrialData = jsPsych.data.getLastTrialData();\n        const trial = lastTrialData.trials ? lastTrialData.trials[0] : null;\n        \n        // Verificar si este trial/loop tiene branches\n        if (!trial || !trial.branches || trial.branches.length === 0) {\n          return; // No tiene branches, no hay nada que hacer\n        }\n        \n        // IMPORTANTE: Si el trial está dentro de un loop (isInLoop = true),\n        // NO activar el branching global. Los trials dentro de loops usan su propio\n        // sistema de branching con variables locales (loopNextTrialId, etc.)\n        if (trial.isInLoop === true) {\n          console.log('Trial inside loop detected, skipping global branching');\n          return;\n        }\n        \n        console.log('Trial/Loop data:', lastTrialData);\n        \n        const nextTrialId = getNextTrialId(lastTrialData);\n        console.log('Next trial/loop ID:', nextTrialId);\n        \n        if (nextTrialId) {\n          // Check if nextTrialId is \"FINISH_EXPERIMENT\"\n          if (nextTrialId === 'FINISH_EXPERIMENT') {\n            console.log('Finish experiment requested');\n            jsPsych.abortExperiment('Experiment finished by branching condition', {});\n            return;\n          }\n          \n          window.nextTrialId = nextTrialId;\n          window.skipRemaining = true;\n          window.branchingActive = true;\n          console.log('Branching activated: skip to trial/loop', nextTrialId);\n        }\n      },\n\n      on_finish: async function() {\n        \n        // Cancelar el onDisconnect para evitar conflictos\n        sessionRef.onDisconnect().cancel();\n\n        // Finalizar la sesión normalmente y marcar en Firebase que terminó correctamente\n        console.log('Experiment finished normally, sending data to Google Drive...');\n        \n        try {\n          \n          // Marcar en Firebase que terminó correctamente Y necesita finalización\n          await sessionRef.update({\n            connected: false,\n            finished: true,\n            needsFinalization: true,\n            finishedAt: window.firebase.database.ServerValue.TIMESTAMP\n          });\n          \n          // El backend procesará la finalización al detectar needsFinalization=true\n          console.log('Session marked for finalization in Firebase');\n        } catch (error) {\n          console.error('Error marking session as finished:', error);\n        }\n      },\n  // Uncomment to see the json results after finishing a session experiment\n  // jsPsych.data.displayData('csv');\n});\n\nconst timeline = [];\n\nconst welcome = {\n  type: jsPsychHtmlButtonResponse,\n  stimulus: \"Welcome to the experiment. Press 'Start' to begin.\",\n  choices: ['Start'],\n};\n\ntimeline.push(welcome);\n\n\n    const preloadnbh = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadnbh);\n    \n    const test_stimuli_nbh = [{stimulus: \"<div id=\\\"ic69\\\" style=\\\"box-sizing: border-box;\\\">Cual quieres?</div>\",\nchoices: [\"Choco\",\"Late\"]}];\n    const nbh_timeline = {\n    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\nchoices: jsPsych.timelineVariable(\"choices\"),\n      data: {\n        rt: \"rt\",\nresponse: \"response\",\nstimulus: \"stimulus\",\n        trial_id: 1762666380298,\n        \n        \n        branches: [\"loop_1762667233442\"],\n        branchConditions: [undefined] \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        console.log('Applying custom parameters to trial:', window.branchCustomParameters);\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Handle different parameter sources\n            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n              // For typed values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n              // For CSV values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Branching automático al primer branch\n      const branches = [\"loop_1762667233442\"];\n      if (branches.length > 0) {\n        window.nextTrialId = branches[0];\n        window.skipRemaining = true;\n        window.branchingActive = true;\n      }\n    },\n    };\n    const nbh_procedure = {\n    timeline: \n    [nbh_timeline],\n    timeline_variables: test_stimuli_nbh,\n    conditional_function: function() {\n      const currentId = 1762666380298;\n      \n      // Si skipRemaining está activo, verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(nbh_procedure);\n  \n\n\n\n    const test_stimuli_loop_1762667233442 = [\n  {\n    \"stimulus_New_Trial_1\": \"<div id=\\\"iak4\\\" style=\\\"box-sizing: border-box;\\\">Ahí va</div>\",\n    \"stimulus_New_Trial_2nj\": \"<div id=\\\"it5l\\\" style=\\\"box-sizing: border-box;\\\">Lcnpwkeh</div>\"\n  }\n];\n    \n    \n    \n    const preloadNew_Trial_1 = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_1);\n    \n    const New_Trial_1_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_1\"),\n      data: {\n        response: \"response_New_Trial_1\",\nrt: \"rt_New_Trial_1\",\nstimulus: \"stimulus_New_Trial_1\",\n        trial_id: 1762666399284,\n        isInLoop: true,\n        \n        branches: [1762666439267],\n        branchConditions: [undefined] \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials in loops, use loopBranchCustomParameters\n      if (typeof loopBranchCustomParameters !== 'undefined' && loopBranchCustomParameters && typeof loopBranchCustomParameters === 'object') {\n        console.log('Applying custom parameters to loop trial:', loopBranchCustomParameters);\n        Object.entries(loopBranchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Handle different parameter sources\n            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n              // For typed values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n              // For CSV values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        loopBranchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Branching automático al primer branch (dentro del loop)\n      const branches = [1762666439267];\n      if (branches.length > 0) {\n        loopNextTrialId = branches[0];\n        loopSkipRemaining = true;\n        loopBranchingActive = true;\n      }\n    },};\n\n\n\n    \n    const preloadNew_Trial_2nj = {\n        type: jsPsychPreload,\n       files: [],\n    }\n    timeline.push(preloadNew_Trial_2nj);\n    \n    const New_Trial_2nj_timeline = {\n    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable(\"stimulus_New_Trial_2nj\"),\n      data: {\n        response: \"response_New_Trial_2nj\",\nrt: \"rt_New_Trial_2nj\",\nstimulus: \"stimulus_New_Trial_2nj\",\n        trial_id: 1762666439267,\n        isInLoop: true,\n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      const paramsOverrideConditions = [{\"id\":1762666469017,\"rules\":[{\"trialId\":\"1762666380298\",\"prop\":\"response\",\"op\":\"==\",\"value\":\"1\"}],\"paramsToOverride\":{\"stimulus\":{\"source\":\"typed\",\"value\":\"Choco\"}}},{\"id\":1762666487050,\"rules\":[{\"trialId\":\"1762666380298\",\"prop\":\"response\",\"op\":\"==\",\"value\":\"0\"}],\"paramsToOverride\":{\"stimulus\":{\"source\":\"typed\",\"value\":\"Late\"}}}];\n      \n      // Evaluate params override conditions\n      for (const condition of paramsOverrideConditions) {\n        if (!condition || !condition.rules) {\n          continue;\n        }\n        \n        // Get data from all previous trials\n        const allData = jsPsych.data.get().values();\n        \n        // Check if all rules match (AND logic within condition)\n        const allRulesMatch = condition.rules.every(rule => {\n          if (!rule.trialId || !rule.prop) {\n            return false;\n          }\n          \n          // Find data from the referenced trial\n          const trialData = allData.filter(d => {\n            // Compare both as strings to handle type mismatches\n            return String(d.trial_id) === String(rule.trialId) || d.trial_id === rule.trialId;\n          });\n          if (trialData.length === 0) {\n            return false;\n          }\n          \n          // Use the most recent data if multiple exist\n          const data = trialData[trialData.length - 1];\n          const propValue = data[rule.prop];\n          const compareValue = rule.value;\n          \n          // Convert values for comparison\n          const numPropValue = parseFloat(propValue);\n          const numCompareValue = parseFloat(compareValue);\n          const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);\n          \n          switch (rule.op) {\n            case '==':\n              return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;\n            case '!=':\n              return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;\n            case '>':\n              return isNumeric && numPropValue > numCompareValue;\n            case '<':\n              return isNumeric && numPropValue < numCompareValue;\n            case '>=':\n              return isNumeric && numPropValue >= numCompareValue;\n            case '<=':\n              return isNumeric && numPropValue <= numCompareValue;\n            default:\n              return false;\n          }\n        });\n        \n        // If all rules match, apply parameter overrides\n        if (allRulesMatch && condition.paramsToOverride) {\n          Object.entries(condition.paramsToOverride).forEach(([key, param]) => {\n            if (param && param.source !== 'none') {\n              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n                trial[key] = param.value;\n              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n                trial[key] = param.value;\n              }\n            }\n          });\n          // Break after first matching condition (OR logic between conditions)\n          break;\n        }\n      }\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials in loops, use loopBranchCustomParameters\n      if (typeof loopBranchCustomParameters !== 'undefined' && loopBranchCustomParameters && typeof loopBranchCustomParameters === 'object') {\n        console.log('Applying custom parameters to loop trial:', loopBranchCustomParameters);\n        Object.entries(loopBranchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Handle different parameter sources\n            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n              // For typed values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n              // For CSV values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        loopBranchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches, verificar si el loop padre tiene branches\n    if (typeof loopHasBranches !== 'undefined' && loopHasBranches) {\n        // El loop tiene branches, activar branching del loop al terminar\n        // Esto se manejará en el on_finish del loop\n        loopShouldBranchOnFinish = true;\n      } else if (!loopHasBranches) {\n        // Ni el trial ni el loop tienen branches - trial terminal\n        // Si llegamos aquí después de un branching global, terminar el experimento\n        if (window.branchingActive) {\n          jsPsych.abortExperiment('', {});\n        }\n      }\n    },};\n\n\n// --- Branching logic variables for internal loop trials ---\nlet loopNextTrialId = null;\nlet loopSkipRemaining = false;\nlet loopBranchingActive = false;\nlet loopBranchCustomParameters = null; // Store custom parameters for branching within loops\nlet loopTargetExecuted = false; // Indica si el trial objetivo ya se ejecutó en esta iteración\nlet loopIterationComplete = false; // Indica que la iteración actual terminó\nconst loopHasBranches = false;\nlet loopShouldBranchOnFinish = false;\n\n\n    const New_Trial_1_wrapper = {\n      timeline: [New_Trial_1_timeline],\n      conditional_function: function() {\n        const currentId = New_Trial_1_timeline.data.trial_id;\n        \n        // Si el trial objetivo ya fue ejecutado, saltar todos los trials restantes en esta iteración\n        if (loopTargetExecuted) {\n          \n          return false;\n        }\n        \n        // Si loopSkipRemaining está activo, verificar si este es el trial objetivo\n        if (loopSkipRemaining) {\n          if (String(currentId) === String(loopNextTrialId)) {\n            // Encontramos el trial objetivo dentro del loop\n            loopTargetExecuted = true;\n            return true;\n          }\n          // No es el objetivo, saltar\n          return false;\n        }\n        \n        // No hay branching activo, ejecutar normalmente\n        return true;\n      },\n      on_timeline_finish: function() {\n        \n      }\n    };\n\n\n    const New_Trial_2nj_wrapper = {\n      timeline: [New_Trial_2nj_timeline],\n      conditional_function: function() {\n        const currentId = New_Trial_2nj_timeline.data.trial_id;\n        \n        // Si el trial objetivo ya fue ejecutado, saltar todos los trials restantes en esta iteración\n        if (loopTargetExecuted) {\n          \n          // Último trial: resetear flags para la siguiente iteración/repetición\n          loopNextTrialId = null;\n          loopSkipRemaining = false;\n          loopTargetExecuted = false;\n          loopBranchingActive = false;\n          loopBranchCustomParameters = null;\n          loopIterationComplete = false;\n          return false;\n        }\n        \n        // Si loopSkipRemaining está activo, verificar si este es el trial objetivo\n        if (loopSkipRemaining) {\n          if (String(currentId) === String(loopNextTrialId)) {\n            // Encontramos el trial objetivo dentro del loop\n            loopTargetExecuted = true;\n            return true;\n          }\n          // No es el objetivo, saltar\n          return false;\n        }\n        \n        // No hay branching activo, ejecutar normalmente\n        return true;\n      },\n      on_timeline_finish: function() {\n        \n        // Último trial del timeline: resetear flags para la siguiente iteración/repetición\n        loopNextTrialId = null;\n        loopSkipRemaining = false;\n        loopTargetExecuted = false;\n        loopBranchingActive = false;\n        loopBranchCustomParameters = null;\n        loopIterationComplete = false;\n      }\n    };\n\nconst evaluateLoopCondition = (trialData, condition) => {\n  // All rules in a condition must be true (AND logic)\n  return condition.rules.every(rule => {\n    const propValue = trialData[rule.prop];\n    const compareValue = rule.value;\n    \n    // Convert values for comparison\n    const numPropValue = parseFloat(propValue);\n    const numCompareValue = parseFloat(compareValue);\n    const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);\n    \n    switch (rule.op) {\n      case '==':\n        return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;\n      case '!=':\n        return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;\n      case '>':\n        return isNumeric && numPropValue > numCompareValue;\n      case '<':\n        return isNumeric && numPropValue < numCompareValue;\n      case '>=':\n        return isNumeric && numPropValue >= numCompareValue;\n      case '<=':\n        return isNumeric && numPropValue <= numCompareValue;\n      default:\n        return false;\n    }\n  });\n};\n\nconst getNextLoopTrialId = (lastTrialData) => {\n  if (!lastTrialData || !lastTrialData.trials || !lastTrialData.trials[0]) {\n    return null;\n  }\n  \n  const trial = lastTrialData.trials[0];\n  \n  // Check if trial has branches\n  if (!Array.isArray(trial.branches) || trial.branches.length === 0) {\n    return null;\n  }\n  \n  // Si solo hay un branch O no hay condiciones, seguir al primer branch automáticamente\n  const hasMultipleBranches = trial.branches.length > 1;\n  const hasBranchConditions = Array.isArray(trial.branchConditions) && trial.branchConditions.length > 0;\n  \n  if (!hasMultipleBranches || !hasBranchConditions) {\n    console.log('Loop internal: Auto-branching to first branch:', trial.branches[0]);\n    return trial.branches[0];\n  }\n  \n  // Si hay múltiples branches Y condiciones, evaluar las condiciones\n  const conditions = trial.branchConditions.flat();\n  \n  // Evaluate each condition (OR logic between conditions)\n  for (const condition of conditions) {\n    if (!condition || !condition.rules) {\n      console.warn('Invalid condition structure:', condition);\n      continue;\n    }\n    \n    if (evaluateLoopCondition(trial, condition)) {\n      console.log('Loop internal: Condition matched:', condition);\n      return condition.nextTrialId;\n    }\n  }\n  \n  // No condition matched - seguir al primer branch por defecto\n  console.log('Loop internal: No condition matched, defaulting to first branch:', trial.branches[0]);\n  return trial.branches[0];\n};\n\nconst loop_1762667233442_procedure = {\n  timeline: [New_Trial_1_wrapper, New_Trial_2nj_wrapper],\n  timeline_variables: test_stimuli_loop_1762667233442,\n  repetitions: 1,\n  randomize_order: false,\n  \n  conditional_function: function() {\n    const currentId = \"loop_1762667233442\";\n    \n    // Si skipRemaining está activo, verificar si este es el loop objetivo\n    if (window.skipRemaining) {\n      if (String(currentId) === String(window.nextTrialId)) {\n        // Encontramos el loop objetivo\n        window.skipRemaining = false;\n        window.nextTrialId = null;\n        return true;\n      }\n      // No es el objetivo, saltar\n      return false;\n    }\n    \n    return true;\n  },\n  on_timeline_start: function() {\n    // Resetear las flags al inicio de cada iteración del loop\n    // Esto permite que cada repetición del loop funcione correctamente\n    loopNextTrialId = null;\n    loopSkipRemaining = false;\n    loopBranchingActive = false;\n    loopBranchCustomParameters = null;\n    loopTargetExecuted = false;\n    loopIterationComplete = false;\n    loopShouldBranchOnFinish = false;\n  },\n  on_timeline_finish: function() {\n    // Resetear las flags al finalizar todas las repeticiones del loop\n    loopNextTrialId = null;\n    loopSkipRemaining = false;\n    loopTargetExecuted = false;\n    loopBranchingActive = false;\n    loopBranchCustomParameters = null;\n    \n    // Verificar si se debe hacer branching porque un trial sin branches se completó\n    // pero el loop tiene branches\n    if (loopShouldBranchOnFinish && loopHasBranches) {\n      const branches = [];\n      if (branches.length > 0) {\n        window.nextTrialId = branches[0];\n        window.skipRemaining = true;\n        window.branchingActive = true;\n      }\n    }\n    \n    // Resetear todas las variables de branching del loop\n    loopNextTrialId = null;\n    loopSkipRemaining = false;\n    loopBranchingActive = false;\n    loopBranchCustomParameters = null;\n    loopShouldBranchOnFinish = false;\n  },\n\n  data: {\n    loop_id: \"loop_1762667233442\"\n  },\n  on_finish: function(data) {\n    // Este loop no tiene branches, es un loop terminal\n    // Si llegamos aquí después de un branching, terminar el experimento\n    if (window.branchingActive) {\n      jsPsych.abortExperiment('', {});\n    }\n  },\n};\ntimeline.push(loop_1762667233442_procedure);\n\n\njsPsych.run(timeline);\n\n})();\n"
+      },
+      "isDevMode": false,
+      "createdAt": "2025-11-09T05:33:00.543Z",
+      "updatedAt": "2025-11-09T05:50:52.116Z"
+    }
+  ],
   "pluginConfigs": [],
-  "sessionResults": []
+  "sessionResults": [
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "New Trial 2_result_5b7a360c-8a8a-417c-b122-256d4beffeac",
+      "createdAt": "2025-11-09T05:35:04.811Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 601
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "New Trial 2_result_98166b48-fd7e-42f0-842e-3a255cbfbffe",
+      "createdAt": "2025-11-09T05:35:10.851Z",
+      "data": []
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "New Trial 2_result_784afda8-4c45-4ecb-acc4-0c99aa9f4b06",
+      "createdAt": "2025-11-09T05:35:11.898Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 304
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "New Trial 1_result_b124a12c-5fd6-4d73-9376-96df347ca121",
+      "createdAt": "2025-11-09T05:35:15.552Z",
+      "data": []
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "New Trial 1_result_9a660b80-b6b7-4405-a06a-80e52e1bcfdf",
+      "createdAt": "2025-11-09T05:35:15.858Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 495
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "New Trial_result_d3646b9d-f37e-4589-b015-5ad0aeac03a5",
+      "createdAt": "2025-11-09T05:35:31.186Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 698
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "_result_40a003eb-8cb2-4eaf-900c-1cc62bca12e3",
+      "createdAt": "2025-11-09T05:35:33.903Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1280
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "n_result_ebe98021-3ce2-4c13-af42-254a1299a408",
+      "createdAt": "2025-11-09T05:35:36.897Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 971
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "n_result_cb9afdac-8adf-413c-8bbb-a682f2acd75c",
+      "createdAt": "2025-11-09T05:35:38.022Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 626
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "n_result_39462176-8407-4252-a21a-f1c2c6d9b0c0",
+      "createdAt": "2025-11-09T05:35:43.714Z",
+      "data": []
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "n_result_e49229bf-ccbb-4017-99ff-06d03e77e7c3",
+      "createdAt": "2025-11-09T05:35:44.856Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 293
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "n_result_40fa21e4-afae-4d15-9ba0-d8aa83ce9b11",
+      "createdAt": "2025-11-09T05:35:47.941Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 559
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "n_result_3eca602f-986f-450e-9ca9-9ae19c6a688f",
+      "createdAt": "2025-11-09T05:35:49.080Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 487
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "12ef7675-c320-477b-b90c-7b57084364ee",
+      "createdAt": "2025-11-09T05:35:53.210Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1002
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2454
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "New Trial 1_result_169ba169-5c91-444d-8ef9-235eda2aa60f",
+      "createdAt": "2025-11-09T05:36:06.372Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 824
+        },
+        {
+          "response": "j",
+          "rt": 587,
+          "stimulus": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+          "trial_id": 1762666399284,
+          "branches": [
+            1762666439267
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "html-keyboard-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1413
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "ccad0635-6609-47b2-9ef4-6bf6edf5a261",
+      "createdAt": "2025-11-09T05:36:09.705Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 613
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2545
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2981
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "8a9db4fe-81ce-4753-87d3-80336bc6a3ac",
+      "createdAt": "2025-11-09T05:36:15.384Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 832
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1283
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1703
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "1afc7119-21d4-4c60-912c-c341b19f70ab",
+      "createdAt": "2025-11-09T05:38:46.387Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 726
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1309
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1677
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "dbf56310-f029-4e1c-8e02-46e7d1ff2443",
+      "createdAt": "2025-11-09T05:38:49.560Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 758
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1192
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1792
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "5b562def-d5ab-4396-9647-098127451956",
+      "createdAt": "2025-11-09T05:39:13.646Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 638
+        },
+        {
+          "rt": 547,
+          "response": 1,
+          "stimulus": "<div id=\"ic69\" style=\"box-sizing: border-box;\">Cual quieres?</div>",
+          "trial_id": 1762666380298,
+          "branches": [
+            1762666399284
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "html-button-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1186
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1188
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1822
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "88955bbc-586a-4a54-ac68-e3aa93231bdd",
+      "createdAt": "2025-11-09T05:39:39.016Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 671
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1488
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1881
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "64cae3ef-3dcc-4732-adc4-619fbfe92eb6",
+      "createdAt": "2025-11-09T05:42:30.077Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1139
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "nbh_result_d4c8f621-e1da-42d6-9f90-3a5f44e0d792",
+      "createdAt": "2025-11-09T05:42:41.739Z",
+      "data": []
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "nbh_result_900e6f74-fbe5-42b2-ba5b-079476bea744",
+      "createdAt": "2025-11-09T05:42:44.963Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 392
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "nbh_result_54d984f3-3fc2-4b08-b23a-3b32fb3044a6",
+      "createdAt": "2025-11-09T05:42:46.077Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 461
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "177ed8fb-adee-449a-9318-9e5756626cc8",
+      "createdAt": "2025-11-09T05:42:48.842Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 3275
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 3975
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 4774
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "c9911fe8-89de-4a64-b2ce-01ec391da6e3",
+      "createdAt": "2025-11-09T05:43:50.285Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 601
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1150
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1706
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "24b3abce-11a3-400d-b2ad-5b08938c5c75",
+      "createdAt": "2025-11-09T05:43:53.729Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1356
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1740
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2295
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "4b7ba41d-a8aa-4829-8d0d-f15474ea04a6",
+      "createdAt": "2025-11-09T05:44:22.422Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1012
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1681
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2123
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "New Trial 2nj_result_ce3b65d5-ef25-4987-9c94-84f11dc0910f",
+      "createdAt": "2025-11-09T05:45:18.176Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 722
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "New Trial 2nj_result_edde030d-9e82-4cfd-9c14-fa605fffa693",
+      "createdAt": "2025-11-09T05:45:25.718Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 581
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "255935dc-0706-4855-b836-1ef79599affe",
+      "createdAt": "2025-11-09T05:45:30.086Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 849
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1448
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2046
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "New Trial 2nj_result_5846c1a7-b407-4f8a-9e2b-d56c2e0b0d21",
+      "createdAt": "2025-11-09T05:46:22.161Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 640
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "New Trial 2nj_result_c7b1f683-50f0-4a11-bb47-fb9a48def965",
+      "createdAt": "2025-11-09T05:46:30.511Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 906
+        },
+        {
+          "response": "n",
+          "rt": 555,
+          "stimulus": "<div id=\"it5l\" style=\"box-sizing: border-box;\">Lcnpwkeh</div>",
+          "trial_id": 1762666439267,
+          "trial_type": "html-keyboard-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1464
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "531acc9d-c22e-40c1-8dd5-8412fad5c7da",
+      "createdAt": "2025-11-09T05:46:33.388Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 782
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1282
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1805
+        },
+        {
+          "response": "n",
+          "rt": 662,
+          "stimulus": "Late",
+          "trial_id": 1762666439267,
+          "trial_type": "html-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2469
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "de813e82-b6da-41bb-83c6-4788896ac54a",
+      "createdAt": "2025-11-09T05:46:37.391Z",
+      "data": []
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "56d42ca7-afb1-49c8-9c23-9b3e757cf0b7",
+      "createdAt": "2025-11-09T05:46:37.591Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 787
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1219
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1990
+        },
+        {
+          "response": "n",
+          "rt": 546,
+          "stimulus": "Choco",
+          "trial_id": 1762666439267,
+          "trial_type": "html-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2538
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "e65e4c41-ed18-475e-a31b-88e2b725faf5",
+      "createdAt": "2025-11-09T05:47:21.382Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 970
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1517
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "New Trial 1_result_e4d351d9-ee48-4117-8bbb-786011761e0c",
+      "createdAt": "2025-11-09T05:47:31.749Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1353
+        },
+        {
+          "response": "n",
+          "rt": 722,
+          "stimulus": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+          "trial_id": 1762666399284,
+          "branches": [
+            1762666439267
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "html-keyboard-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2077
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "New Trial 2nj_result_c89d772f-05cb-4c29-9998-4b198b3710e8",
+      "createdAt": "2025-11-09T05:47:35.813Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 781
+        },
+        {
+          "response": "n",
+          "rt": 643,
+          "stimulus": "<div id=\"it5l\" style=\"box-sizing: border-box;\">Lcnpwkeh</div>",
+          "trial_id": 1762666439267,
+          "trial_type": "html-keyboard-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1426
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "cf9bc0af-895f-4593-a578-27bd43096e4c",
+      "createdAt": "2025-11-09T05:47:38.889Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 779
+        },
+        {
+          "rt": 580,
+          "response": 0,
+          "stimulus": "<div id=\"ic69\" style=\"box-sizing: border-box;\">Cual quieres?</div>",
+          "trial_id": 1762666380298,
+          "branches": [
+            1762666399284
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "html-button-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1360
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1364
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "New Trial 1_result_2544983a-eba9-4c9b-8786-97f65a9dd4a5",
+      "createdAt": "2025-11-09T05:47:49.494Z",
+      "data": []
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "New Trial 1_result_e615b175-de24-4bab-ae63-8e9f5bf1b372",
+      "createdAt": "2025-11-09T05:47:50.614Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 3576
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "New Trial 2nj_result_83d0489b-5263-4f8c-ad0f-53ac386d8250",
+      "createdAt": "2025-11-09T05:47:55.729Z",
+      "data": []
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "New Trial 2nj_result_0664b16a-467f-4825-bc77-e275af9d46f9",
+      "createdAt": "2025-11-09T05:47:56.868Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 767
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "a1d373cc-285a-4fe5-9043-65b70d5bfee0",
+      "createdAt": "2025-11-09T05:47:59.376Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 726
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1994
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "b6216266-7c16-4eee-8a4a-6b73a7ce4963",
+      "createdAt": "2025-11-09T05:48:08.191Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 729
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1263
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "67fefa11-733f-4381-a776-35f0fdad5500",
+      "createdAt": "2025-11-09T05:48:26.890Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 661
+        },
+        {
+          "rt": 546,
+          "response": 0,
+          "stimulus": "<div id=\"ic69\" style=\"box-sizing: border-box;\">Cual quieres?</div>",
+          "trial_id": 1762666380298,
+          "branches": [
+            "loop_1762667233442"
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "html-button-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1209
+        },
+        {
+          "response": "n",
+          "rt": 598,
+          "stimulus": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+          "trial_id": 1762666399284,
+          "isInLoop": true,
+          "branches": [
+            1762666439267
+          ],
+          "branchConditions": [
+            null
+          ],
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1812
+        },
+        {
+          "response": "n",
+          "rt": 680,
+          "stimulus": "Choco",
+          "trial_id": 1762666439267,
+          "isInLoop": true,
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2495
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "eb6e650b-bd89-43db-b4ea-0bc3742472c8",
+      "createdAt": "2025-11-09T05:48:30.960Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 726
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1093
+        },
+        {
+          "response": "n",
+          "rt": 340,
+          "stimulus": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+          "trial_id": 1762666399284,
+          "isInLoop": true,
+          "branches": [
+            1762666439267
+          ],
+          "branchConditions": [
+            null
+          ],
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1434
+        },
+        {
+          "response": "n",
+          "rt": 291,
+          "stimulus": "Late",
+          "trial_id": 1762666439267,
+          "isInLoop": true,
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1728
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "6f0c01c1-0cc1-4761-b190-9675cecf6471",
+      "createdAt": "2025-11-09T05:48:33.911Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 765
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1265
+        },
+        {
+          "response": "n",
+          "rt": 778,
+          "stimulus": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+          "trial_id": 1762666399284,
+          "isInLoop": true,
+          "branches": [
+            1762666439267
+          ],
+          "branchConditions": [
+            null
+          ],
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2043
+        },
+        {
+          "response": "n",
+          "rt": 336,
+          "stimulus": "Choco",
+          "trial_id": 1762666439267,
+          "isInLoop": true,
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2381
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "97758483-1a8c-4406-ae8f-b619b8766850",
+      "createdAt": "2025-11-09T05:49:42.556Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 728
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1445
+        },
+        {
+          "response": " ",
+          "rt": 445,
+          "stimulus": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+          "trial_id": 1762666399284,
+          "isInLoop": true,
+          "branches": [
+            1762666439267
+          ],
+          "branchConditions": [
+            null
+          ],
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1891
+        },
+        {
+          "response": " ",
+          "rt": 293,
+          "stimulus": "Choco",
+          "trial_id": 1762666439267,
+          "isInLoop": true,
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2187
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "8aa5e6cd-2782-4d3d-bec4-801b145d06b6",
+      "createdAt": "2025-11-09T05:49:45.828Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 814
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1280
+        },
+        {
+          "response": "n",
+          "rt": 397,
+          "stimulus": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+          "trial_id": 1762666399284,
+          "isInLoop": true,
+          "branches": [
+            1762666439267
+          ],
+          "branchConditions": [
+            null
+          ],
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1678
+        },
+        {
+          "response": "n",
+          "rt": 243,
+          "stimulus": "<div id=\"it5l\" style=\"box-sizing: border-box;\">Lcnpwkeh</div>",
+          "trial_id": 1762666439267,
+          "isInLoop": true,
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1924
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "b806550e-326c-4e08-ac36-bdcfa7e35ce0",
+      "createdAt": "2025-11-09T05:49:49.344Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 691
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1259
+        },
+        {
+          "response": "n",
+          "rt": 278,
+          "stimulus": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+          "trial_id": 1762666399284,
+          "isInLoop": true,
+          "branches": [
+            1762666439267
+          ],
+          "branchConditions": [
+            null
+          ],
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1539
+        },
+        {
+          "response": "n",
+          "rt": 369,
+          "stimulus": "<div id=\"it5l\" style=\"box-sizing: border-box;\">Lcnpwkeh</div>",
+          "trial_id": 1762666439267,
+          "isInLoop": true,
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1910
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "a28af8d6-0f56-4cea-aa2f-a5a3269f7792",
+      "createdAt": "2025-11-09T05:50:13.184Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2589
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 3273
+        },
+        {
+          "response": "n",
+          "rt": 352,
+          "stimulus": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+          "trial_id": 1762666399284,
+          "isInLoop": true,
+          "branches": [
+            1762666439267
+          ],
+          "branchConditions": [
+            null
+          ],
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 3627
+        },
+        {
+          "response": "n",
+          "rt": 444,
+          "stimulus": "Choco",
+          "trial_id": 1762666439267,
+          "isInLoop": true,
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 4072
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "08adf483-be25-4c74-bf61-a99f127c41af",
+      "createdAt": "2025-11-09T05:50:18.424Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1380
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1731
+        },
+        {
+          "response": "n",
+          "rt": 365,
+          "stimulus": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+          "trial_id": 1762666399284,
+          "isInLoop": true,
+          "branches": [
+            1762666439267
+          ],
+          "branchConditions": [
+            null
+          ],
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2097
+        },
+        {
+          "response": "n",
+          "rt": 273,
+          "stimulus": "<div id=\"it5l\" style=\"box-sizing: border-box;\">Lcnpwkeh</div>",
+          "trial_id": 1762666439267,
+          "isInLoop": true,
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2373
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "d4ec2818-9185-478e-a813-9ad327cfe358",
+      "createdAt": "2025-11-09T05:50:29.165Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2007
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2639
+        },
+        {
+          "response": "n",
+          "rt": 617,
+          "stimulus": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+          "trial_id": 1762666399284,
+          "isInLoop": true,
+          "branches": [
+            1762666439267
+          ],
+          "branchConditions": [
+            null
+          ],
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 3257
+        },
+        {
+          "response": "n",
+          "rt": 286,
+          "stimulus": "Choco",
+          "trial_id": 1762666439267,
+          "isInLoop": true,
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 3546
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "83390d37-b781-473a-8185-e6277beeb450",
+      "createdAt": "2025-11-09T05:50:33.877Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1199
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1601
+        },
+        {
+          "response": "n",
+          "rt": 433,
+          "stimulus": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+          "trial_id": 1762666399284,
+          "isInLoop": true,
+          "branches": [
+            1762666439267
+          ],
+          "branchConditions": [
+            null
+          ],
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2035
+        },
+        {
+          "response": "n",
+          "rt": 190,
+          "stimulus": "<div id=\"it5l\" style=\"box-sizing: border-box;\">Lcnpwkeh</div>",
+          "trial_id": 1762666439267,
+          "isInLoop": true,
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2228
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "d8ed14fa-0e38-46a3-9a30-cdd8f01bef5e",
+      "createdAt": "2025-11-09T05:50:50.696Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 827
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1243
+        },
+        {
+          "response": "n",
+          "rt": 463,
+          "stimulus": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+          "trial_id": 1762666399284,
+          "isInLoop": true,
+          "branches": [
+            1762666439267
+          ],
+          "branchConditions": [
+            null
+          ],
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1708
+        },
+        {
+          "response": "n",
+          "rt": 230,
+          "stimulus": "Late",
+          "trial_id": 1762666439267,
+          "isInLoop": true,
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1941
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "9c756e3a-2e70-477c-ab82-29ef40b7de36",
+      "createdAt": "2025-11-09T05:50:54.026Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1033
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1417
+        },
+        {
+          "response": "n",
+          "rt": 351,
+          "stimulus": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+          "trial_id": 1762666399284,
+          "isInLoop": true,
+          "branches": [
+            1762666439267
+          ],
+          "branchConditions": [
+            null
+          ],
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1770
+        },
+        {
+          "response": "n",
+          "rt": 376,
+          "stimulus": "Choco",
+          "trial_id": 1762666439267,
+          "isInLoop": true,
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2149
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "961aba9b-9be7-4753-b549-e840050ea3a7",
+      "createdAt": "2025-11-09T05:50:57.632Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 960
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1395
+        },
+        {
+          "response": "n",
+          "rt": 571,
+          "stimulus": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+          "trial_id": 1762666399284,
+          "isInLoop": true,
+          "branches": [
+            1762666439267
+          ],
+          "branchConditions": [
+            null
+          ],
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1967
+        },
+        {
+          "response": "n",
+          "rt": 401,
+          "stimulus": "Late",
+          "trial_id": 1762666439267,
+          "isInLoop": true,
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2370
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "1b668ecf-ab3b-458b-82ea-9b648c9da0f4",
+      "createdAt": "2025-11-09T05:51:01.112Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1085
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1470
+        },
+        {
+          "response": "n",
+          "rt": 345,
+          "stimulus": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+          "trial_id": 1762666399284,
+          "isInLoop": true,
+          "branches": [
+            1762666439267
+          ],
+          "branchConditions": [
+            null
+          ],
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1816
+        },
+        {
+          "response": "n",
+          "rt": 187,
+          "stimulus": "Choco",
+          "trial_id": 1762666439267,
+          "isInLoop": true,
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2005
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "0983046e-8c9e-4eb9-adea-7d8c2936357e",
+      "createdAt": "2025-11-09T05:51:04.095Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 736
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1134
+        },
+        {
+          "response": "n",
+          "rt": 440,
+          "stimulus": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+          "trial_id": 1762666399284,
+          "isInLoop": true,
+          "branches": [
+            1762666439267
+          ],
+          "branchConditions": [
+            null
+          ],
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1575
+        },
+        {
+          "response": "n",
+          "rt": 353,
+          "stimulus": "Late",
+          "trial_id": 1762666439267,
+          "isInLoop": true,
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1930
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "2113b1ec-4687-4347-9612-2f75dc0c18d3",
+      "createdAt": "2025-11-09T05:51:07.675Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 886
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1305
+        },
+        {
+          "response": "n",
+          "rt": 297,
+          "stimulus": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+          "trial_id": 1762666399284,
+          "isInLoop": true,
+          "branches": [
+            1762666439267
+          ],
+          "branchConditions": [
+            null
+          ],
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1603
+        },
+        {
+          "response": "n",
+          "rt": 205,
+          "stimulus": "Choco",
+          "trial_id": 1762666439267,
+          "isInLoop": true,
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1811
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "1e124af5-9902-4f56-98a1-df66beca80d9",
+      "createdAt": "2025-11-09T05:51:11.894Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 898
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1420
+        },
+        {
+          "response": "n",
+          "rt": 520,
+          "stimulus": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+          "trial_id": 1762666399284,
+          "isInLoop": true,
+          "branches": [
+            1762666439267
+          ],
+          "branchConditions": [
+            null
+          ],
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1942
+        },
+        {
+          "response": "n",
+          "rt": 361,
+          "stimulus": "Late",
+          "trial_id": 1762666439267,
+          "isInLoop": true,
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2305
+        }
+      ]
+    },
+    {
+      "experimentID": "1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf",
+      "sessionId": "a0b05bf7-a4fd-4566-b4b3-cdc595f7e035",
+      "createdAt": "2025-11-09T05:51:15.894Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 731
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1116
+        },
+        {
+          "response": "n",
+          "rt": 360,
+          "stimulus": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+          "trial_id": 1762666399284,
+          "isInLoop": true,
+          "branches": [
+            1762666439267
+          ],
+          "branchConditions": [
+            null
+          ],
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1477
+        },
+        {
+          "response": "n",
+          "rt": 251,
+          "stimulus": "Choco",
+          "trial_id": 1762666439267,
+          "isInLoop": true,
+          "loop_id": "loop_1762667233442",
+          "trial_type": "html-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1730
+        }
+      ]
+    }
+  ]
 }

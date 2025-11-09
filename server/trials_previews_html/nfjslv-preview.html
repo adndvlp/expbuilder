@@ -1,0 +1,584 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png+xml" href="/icon/fp black.png">
+    <title>Experiment</title>
+    <script src="https://unpkg.com/jspsych@8.2.1"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-animation@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-audio-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-audio-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-audio-slider-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-browser-check@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-call-function@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-canvas-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-canvas-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-canvas-slider-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-categorize-animation@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-categorize-html@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-categorize-image@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-cloze@2.2.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-external-html@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-free-sort@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-fullscreen@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-audio-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-slider-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-video-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-iat-html@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-iat-image@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-image-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-image-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-image-slider-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-initialize-camera@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-initialize-microphone@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-instructions@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-maxdiff@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-mirror-camera@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-preload@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-reconstruction@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-resize@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-same-different-html@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-same-different-image@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-serial-reaction-time@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-serial-reaction-time-mouse@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-sketchpad@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-html-form@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-likert@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-multi-choice@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-multi-select@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-text@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-video-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-video-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-video-slider-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-virtual-chinrest@3.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-visual-search-circle@2.2.0"></script>
+
+    <script src="https://cdn.jsdelivr.net/gh/jspsych/jspsych@jspsych@7.0.0/examples/js/webgazer/webgazer.js"></script>
+
+    <script src="https://unpkg.com/@jspsych/extension-webgazer@1.2.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-webgazer-calibrate@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-webgazer-init-camera@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-webgazer-validate@2.1.0"></script>
+
+    <script src="https://unpkg.com/@jspsych/extension-record-video@1.2.0"></script>
+    <script src="https://unpkg.com/@jspsych/extension-mouse-tracking@1.0.0"></script>
+
+    <link href="https://unpkg.com/jspsych@7.3.1/css/jspsych.css" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="https://unpkg.com/@jspsych/plugin-survey@2.1.0/css/survey.css">
+
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #f0f0f0;
+      }
+      #jspsych-target {
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="jspsych-target"></div>
+
+    
+  
+
+<script id="generated-script">
+
+
+        const trialSessionId =
+            "undefined_result_" + (crypto.randomUUID
+              ? crypto.randomUUID()
+              : Math.random().toString(36).slice(2, 10));
+
+        let participantNumber;
+
+          async function saveSession(trialSessionId) {
+          const res = await fetch("/api/append-result/1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "*/*" },
+            body: JSON.stringify({
+              sessionId: trialSessionId,
+            }),
+          });
+
+          const result = await res.json();
+          participantNumber = result.participantNumber;
+          return participantNumber;
+    }
+(async () => {
+  participantNumber = await saveSession(trialSessionId);
+
+  if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
+    alert("The participant number is not assigned. Please, wait.");
+    throw new Error("participantNumber not assigned");
+  }
+    const jsPsych = initJsPsych({
+          on_data_update: function (data) {
+            const res = fetch("/api/append-result/1ea1e6e0-e560-40ae-8b5a-8ea0be4f6aaf", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", Accept: "*/*" },
+              body: JSON.stringify({
+                sessionId: trialSessionId,
+                response: data,
+              }),
+            });
+        
+          },
+
+          on_finish: function() {
+              jsPsych.data.displayData();
+          },
+    });
+
+      const timeline = [];
+
+      const welcome = {
+        type: jsPsychHtmlButtonResponse,
+        stimulus: "Trial Preview",
+        choices: ['View'],
+      };
+
+      timeline.push(welcome);
+
+      
+
+    const test_stimuli_loop_1762667233442 = [
+  {
+    "stimulus_New_Trial_1": "<div id=\"iak4\" style=\"box-sizing: border-box;\">Ahí va</div>",
+    "stimulus_New_Trial_2nj": "<div id=\"it5l\" style=\"box-sizing: border-box;\">Lcnpwkeh</div>"
+  }
+];
+    
+    
+    
+    const preloadNew_Trial_1 = {
+        type: jsPsychPreload,
+       files: [],
+    }
+    timeline.push(preloadNew_Trial_1);
+    
+    const New_Trial_1_timeline = {
+    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus_New_Trial_1"),
+      data: {
+        response: "response_New_Trial_1",
+rt: "rt_New_Trial_1",
+stimulus: "stimulus_New_Trial_1",
+        trial_id: 1762666399284,
+        isInLoop: true,
+        
+        branches: [1762666439267],
+        branchConditions: [undefined] 
+        
+      },
+    on_start: function(trial) {
+      // First, evaluate and apply params override conditions (if any)
+      
+      // Then apply custom parameters from branching conditions (higher priority)
+      
+      // For trials in loops, use loopBranchCustomParameters
+      if (typeof loopBranchCustomParameters !== 'undefined' && loopBranchCustomParameters && typeof loopBranchCustomParameters === 'object') {
+        console.log('Applying custom parameters to loop trial:', loopBranchCustomParameters);
+        Object.entries(loopBranchCustomParameters).forEach(([key, param]) => {
+          if (param && param.source !== 'none') {
+            // Handle different parameter sources
+            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
+              // For typed values, use them directly
+              trial[key] = param.value;
+              console.log(`Set trial.${key} = ${param.value}`);
+            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
+              // For CSV values, use them directly
+              trial[key] = param.value;
+              console.log(`Set trial.${key} = ${param.value}`);
+            }
+          }
+        });
+        // Clear the custom parameters after applying them
+        loopBranchCustomParameters = null;
+      }
+      
+    },
+    
+    on_finish: function(data) {
+      // Branching automático al primer branch (dentro del loop)
+      const branches = [1762666439267];
+      if (branches.length > 0) {
+        loopNextTrialId = branches[0];
+        loopSkipRemaining = true;
+        loopBranchingActive = true;
+      }
+    },};
+
+
+
+    
+    const preloadNew_Trial_2nj = {
+        type: jsPsychPreload,
+       files: [],
+    }
+    timeline.push(preloadNew_Trial_2nj);
+    
+    const New_Trial_2nj_timeline = {
+    type: jsPsychHtmlKeyboardResponse, stimulus: jsPsych.timelineVariable("stimulus_New_Trial_2nj"),
+      data: {
+        response: "response_New_Trial_2nj",
+rt: "rt_New_Trial_2nj",
+stimulus: "stimulus_New_Trial_2nj",
+        trial_id: 1762666439267,
+        isInLoop: true,
+        
+      },
+    on_start: function(trial) {
+      // First, evaluate and apply params override conditions (if any)
+      
+      const paramsOverrideConditions = [{"id":1762666469017,"rules":[{"trialId":"1762666380298","prop":"response","op":"==","value":"1"}],"paramsToOverride":{"stimulus":{"source":"typed","value":"Choco"}}},{"id":1762666487050,"rules":[{"trialId":"1762666380298","prop":"response","op":"==","value":"1"}],"paramsToOverride":{"stimulus":{"source":"typed","value":"Late"}}}];
+      
+      // Evaluate params override conditions
+      for (const condition of paramsOverrideConditions) {
+        if (!condition || !condition.rules) {
+          continue;
+        }
+        
+        // Get data from all previous trials
+        const allData = jsPsych.data.get().values();
+        
+        // Check if all rules match (AND logic within condition)
+        const allRulesMatch = condition.rules.every(rule => {
+          if (!rule.trialId || !rule.prop) {
+            return false;
+          }
+          
+          // Find data from the referenced trial
+          const trialData = allData.filter(d => {
+            // Compare both as strings to handle type mismatches
+            return String(d.trial_id) === String(rule.trialId) || d.trial_id === rule.trialId;
+          });
+          if (trialData.length === 0) {
+            return false;
+          }
+          
+          // Use the most recent data if multiple exist
+          const data = trialData[trialData.length - 1];
+          const propValue = data[rule.prop];
+          const compareValue = rule.value;
+          
+          // Convert values for comparison
+          const numPropValue = parseFloat(propValue);
+          const numCompareValue = parseFloat(compareValue);
+          const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
+          
+          switch (rule.op) {
+            case '==':
+              return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
+            case '!=':
+              return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
+            case '>':
+              return isNumeric && numPropValue > numCompareValue;
+            case '<':
+              return isNumeric && numPropValue < numCompareValue;
+            case '>=':
+              return isNumeric && numPropValue >= numCompareValue;
+            case '<=':
+              return isNumeric && numPropValue <= numCompareValue;
+            default:
+              return false;
+          }
+        });
+        
+        // If all rules match, apply parameter overrides
+        if (allRulesMatch && condition.paramsToOverride) {
+          Object.entries(condition.paramsToOverride).forEach(([key, param]) => {
+            if (param && param.source !== 'none') {
+              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
+                trial[key] = param.value;
+              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
+                trial[key] = param.value;
+              }
+            }
+          });
+          // Break after first matching condition (OR logic between conditions)
+          break;
+        }
+      }
+      
+      // Then apply custom parameters from branching conditions (higher priority)
+      
+      // For trials in loops, use loopBranchCustomParameters
+      if (typeof loopBranchCustomParameters !== 'undefined' && loopBranchCustomParameters && typeof loopBranchCustomParameters === 'object') {
+        console.log('Applying custom parameters to loop trial:', loopBranchCustomParameters);
+        Object.entries(loopBranchCustomParameters).forEach(([key, param]) => {
+          if (param && param.source !== 'none') {
+            // Handle different parameter sources
+            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
+              // For typed values, use them directly
+              trial[key] = param.value;
+              console.log(`Set trial.${key} = ${param.value}`);
+            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
+              // For CSV values, use them directly
+              trial[key] = param.value;
+              console.log(`Set trial.${key} = ${param.value}`);
+            }
+          }
+        });
+        // Clear the custom parameters after applying them
+        loopBranchCustomParameters = null;
+      }
+      
+    },
+    
+    on_finish: function(data) {
+      // Este trial no tiene branches, verificar si el loop padre tiene branches
+    if (typeof loopHasBranches !== 'undefined' && loopHasBranches) {
+        // El loop tiene branches, activar branching del loop al terminar
+        // Esto se manejará en el on_finish del loop
+        loopShouldBranchOnFinish = true;
+      } else if (!loopHasBranches) {
+        // Ni el trial ni el loop tienen branches - trial terminal
+        // Si llegamos aquí después de un branching global, terminar el experimento
+        if (window.branchingActive) {
+          jsPsych.abortExperiment('', {});
+        }
+      }
+    },};
+
+
+// --- Branching logic variables for internal loop trials ---
+let loopNextTrialId = null;
+let loopSkipRemaining = false;
+let loopBranchingActive = false;
+let loopBranchCustomParameters = null; // Store custom parameters for branching within loops
+let loopTargetExecuted = false; // Indica si el trial objetivo ya se ejecutó en esta iteración
+let loopIterationComplete = false; // Indica que la iteración actual terminó
+const loopHasBranches = false;
+let loopShouldBranchOnFinish = false;
+
+
+    const New_Trial_1_wrapper = {
+      timeline: [New_Trial_1_timeline],
+      conditional_function: function() {
+        const currentId = New_Trial_1_timeline.data.trial_id;
+        
+        // Si el trial objetivo ya fue ejecutado, saltar todos los trials restantes en esta iteración
+        if (loopTargetExecuted) {
+          
+          return false;
+        }
+        
+        // Si loopSkipRemaining está activo, verificar si este es el trial objetivo
+        if (loopSkipRemaining) {
+          if (String(currentId) === String(loopNextTrialId)) {
+            // Encontramos el trial objetivo dentro del loop
+            loopTargetExecuted = true;
+            return true;
+          }
+          // No es el objetivo, saltar
+          return false;
+        }
+        
+        // No hay branching activo, ejecutar normalmente
+        return true;
+      },
+      on_timeline_finish: function() {
+        
+      }
+    };
+
+
+    const New_Trial_2nj_wrapper = {
+      timeline: [New_Trial_2nj_timeline],
+      conditional_function: function() {
+        const currentId = New_Trial_2nj_timeline.data.trial_id;
+        
+        // Si el trial objetivo ya fue ejecutado, saltar todos los trials restantes en esta iteración
+        if (loopTargetExecuted) {
+          
+          // Último trial: resetear flags para la siguiente iteración/repetición
+          loopNextTrialId = null;
+          loopSkipRemaining = false;
+          loopTargetExecuted = false;
+          loopBranchingActive = false;
+          loopBranchCustomParameters = null;
+          loopIterationComplete = false;
+          return false;
+        }
+        
+        // Si loopSkipRemaining está activo, verificar si este es el trial objetivo
+        if (loopSkipRemaining) {
+          if (String(currentId) === String(loopNextTrialId)) {
+            // Encontramos el trial objetivo dentro del loop
+            loopTargetExecuted = true;
+            return true;
+          }
+          // No es el objetivo, saltar
+          return false;
+        }
+        
+        // No hay branching activo, ejecutar normalmente
+        return true;
+      },
+      on_timeline_finish: function() {
+        
+        // Último trial del timeline: resetear flags para la siguiente iteración/repetición
+        loopNextTrialId = null;
+        loopSkipRemaining = false;
+        loopTargetExecuted = false;
+        loopBranchingActive = false;
+        loopBranchCustomParameters = null;
+        loopIterationComplete = false;
+      }
+    };
+
+const evaluateLoopCondition = (trialData, condition) => {
+  // All rules in a condition must be true (AND logic)
+  return condition.rules.every(rule => {
+    const propValue = trialData[rule.prop];
+    const compareValue = rule.value;
+    
+    // Convert values for comparison
+    const numPropValue = parseFloat(propValue);
+    const numCompareValue = parseFloat(compareValue);
+    const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
+    
+    switch (rule.op) {
+      case '==':
+        return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
+      case '!=':
+        return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
+      case '>':
+        return isNumeric && numPropValue > numCompareValue;
+      case '<':
+        return isNumeric && numPropValue < numCompareValue;
+      case '>=':
+        return isNumeric && numPropValue >= numCompareValue;
+      case '<=':
+        return isNumeric && numPropValue <= numCompareValue;
+      default:
+        return false;
+    }
+  });
+};
+
+const getNextLoopTrialId = (lastTrialData) => {
+  if (!lastTrialData || !lastTrialData.trials || !lastTrialData.trials[0]) {
+    return null;
+  }
+  
+  const trial = lastTrialData.trials[0];
+  
+  // Check if trial has branches
+  if (!Array.isArray(trial.branches) || trial.branches.length === 0) {
+    return null;
+  }
+  
+  // Si solo hay un branch O no hay condiciones, seguir al primer branch automáticamente
+  const hasMultipleBranches = trial.branches.length > 1;
+  const hasBranchConditions = Array.isArray(trial.branchConditions) && trial.branchConditions.length > 0;
+  
+  if (!hasMultipleBranches || !hasBranchConditions) {
+    console.log('Loop internal: Auto-branching to first branch:', trial.branches[0]);
+    return trial.branches[0];
+  }
+  
+  // Si hay múltiples branches Y condiciones, evaluar las condiciones
+  const conditions = trial.branchConditions.flat();
+  
+  // Evaluate each condition (OR logic between conditions)
+  for (const condition of conditions) {
+    if (!condition || !condition.rules) {
+      console.warn('Invalid condition structure:', condition);
+      continue;
+    }
+    
+    if (evaluateLoopCondition(trial, condition)) {
+      console.log('Loop internal: Condition matched:', condition);
+      return condition.nextTrialId;
+    }
+  }
+  
+  // No condition matched - seguir al primer branch por defecto
+  console.log('Loop internal: No condition matched, defaulting to first branch:', trial.branches[0]);
+  return trial.branches[0];
+};
+
+const loop_1762667233442_procedure = {
+  timeline: [New_Trial_1_wrapper, New_Trial_2nj_wrapper],
+  timeline_variables: test_stimuli_loop_1762667233442,
+  repetitions: 1,
+  randomize_order: false,
+  
+  conditional_function: function() {
+    const currentId = "loop_1762667233442";
+    
+    // Si skipRemaining está activo, verificar si este es el loop objetivo
+    if (window.skipRemaining) {
+      if (String(currentId) === String(window.nextTrialId)) {
+        // Encontramos el loop objetivo
+        window.skipRemaining = false;
+        window.nextTrialId = null;
+        return true;
+      }
+      // No es el objetivo, saltar
+      return false;
+    }
+    
+    return true;
+  },
+  on_timeline_start: function() {
+    // Resetear las flags al inicio de cada iteración del loop
+    // Esto permite que cada repetición del loop funcione correctamente
+    loopNextTrialId = null;
+    loopSkipRemaining = false;
+    loopBranchingActive = false;
+    loopBranchCustomParameters = null;
+    loopTargetExecuted = false;
+    loopIterationComplete = false;
+    loopShouldBranchOnFinish = false;
+  },
+  on_timeline_finish: function() {
+    // Resetear las flags al finalizar todas las repeticiones del loop
+    loopNextTrialId = null;
+    loopSkipRemaining = false;
+    loopTargetExecuted = false;
+    loopBranchingActive = false;
+    loopBranchCustomParameters = null;
+    
+    // Verificar si se debe hacer branching porque un trial sin branches se completó
+    // pero el loop tiene branches
+    if (loopShouldBranchOnFinish && loopHasBranches) {
+      const branches = [];
+      if (branches.length > 0) {
+        window.nextTrialId = branches[0];
+        window.skipRemaining = true;
+        window.branchingActive = true;
+      }
+    }
+    
+    // Resetear todas las variables de branching del loop
+    loopNextTrialId = null;
+    loopSkipRemaining = false;
+    loopBranchingActive = false;
+    loopBranchCustomParameters = null;
+    loopShouldBranchOnFinish = false;
+  },
+
+  data: {
+    loop_id: "loop_1762667233442"
+  },
+  on_finish: function(data) {
+    // Este loop no tiene branches, es un loop terminal
+    // Si llegamos aquí después de un branching, terminar el experimento
+    if (window.branchingActive) {
+      jsPsych.abortExperiment('', {});
+    }
+  },
+};
+timeline.push(loop_1762667233442_procedure);
+
+
+      jsPsych.run(timeline);
+      
+      })()
+      
+</script></body></html>

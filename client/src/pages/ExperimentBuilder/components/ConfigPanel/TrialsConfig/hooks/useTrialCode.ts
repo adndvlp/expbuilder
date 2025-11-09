@@ -2,12 +2,14 @@ import {
   BranchCondition,
   ColumnMapping,
   ColumnMappingEntry,
+  ParamsOverrideCondition,
 } from "../../types";
 
 type Props = {
   id: number | undefined;
   branches: (string | number)[] | undefined;
   branchConditions: BranchCondition[] | undefined;
+  paramsOverride?: ParamsOverrideCondition[];
   pluginName: string;
   parameters: any[];
   data: any[];
@@ -35,6 +37,7 @@ export function useTrialCode({
   id,
   branches,
   branchConditions,
+  paramsOverride,
   pluginName,
   parameters,
   getColumnValue,
@@ -387,7 +390,83 @@ export function useTrialCode({
     const ${trialNameSanitized}_timeline = {
     type: ${pluginNameImport}, ${timelineProps}
     on_start: function(trial) {
-      // Apply custom parameters if they exist (from branching conditions)
+      // First, evaluate and apply params override conditions (if any)
+      ${
+        paramsOverride && paramsOverride.length > 0
+          ? `
+      const paramsOverrideConditions = ${JSON.stringify(paramsOverride)};
+      
+      // Evaluate params override conditions
+      for (const condition of paramsOverrideConditions) {
+        if (!condition || !condition.rules) {
+          continue;
+        }
+        
+        // Get data from all previous trials
+        const allData = jsPsych.data.get().values();
+        
+        // Check if all rules match (AND logic within condition)
+        const allRulesMatch = condition.rules.every(rule => {
+          if (!rule.trialId || !rule.prop) {
+            return false;
+          }
+          
+          // Find data from the referenced trial
+          const trialData = allData.filter(d => {
+            // Compare both as strings to handle type mismatches
+            return String(d.trial_id) === String(rule.trialId) || d.trial_id === rule.trialId;
+          });
+          if (trialData.length === 0) {
+            return false;
+          }
+          
+          // Use the most recent data if multiple exist
+          const data = trialData[trialData.length - 1];
+          const propValue = data[rule.prop];
+          const compareValue = rule.value;
+          
+          // Convert values for comparison
+          const numPropValue = parseFloat(propValue);
+          const numCompareValue = parseFloat(compareValue);
+          const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
+          
+          switch (rule.op) {
+            case '==':
+              return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
+            case '!=':
+              return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
+            case '>':
+              return isNumeric && numPropValue > numCompareValue;
+            case '<':
+              return isNumeric && numPropValue < numCompareValue;
+            case '>=':
+              return isNumeric && numPropValue >= numCompareValue;
+            case '<=':
+              return isNumeric && numPropValue <= numCompareValue;
+            default:
+              return false;
+          }
+        });
+        
+        // If all rules match, apply parameter overrides
+        if (allRulesMatch && condition.paramsToOverride) {
+          Object.entries(condition.paramsToOverride).forEach(([key, param]) => {
+            if (param && param.source !== 'none') {
+              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
+                trial[key] = param.value;
+              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
+                trial[key] = param.value;
+              }
+            }
+          });
+          // Break after first matching condition (OR logic between conditions)
+          break;
+        }
+      }
+      `
+          : ""
+      }
+      // Then apply custom parameters from branching conditions (higher priority)
       ${
         isInLoop
           ? `
