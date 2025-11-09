@@ -290,6 +290,8 @@ function Component({}: TimelineProps) {
     };
 
     const jsPsych = initJsPsych({
+          display_element: document.getElementById('jspsych-container'),
+
 
     ${extensions}
 
@@ -595,6 +597,7 @@ jsPsych.run(timeline);
     };
 
     const jsPsych = initJsPsych({
+      display_element: document.getElementById('jspsych-target'),
 
       on_trial_start: function(trial) {
         const lastTrialData = jsPsych.data.get()

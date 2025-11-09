@@ -582,6 +582,12 @@ export function useTrialCode({
       }
       
       if (shouldRepeat) {
+        // Limpiar todos los wrappers de jsPsych dentro del target
+        const target = document.getElementById('jspsych-target');
+        if (target) {
+          // Limpiar todo el contenido del target (incluyendo todos los wrappers)
+          target.innerHTML = '';
+        }
         // Reiniciar el timeline
         setTimeout(() => {
           jsPsych.run(timeline);
@@ -839,6 +845,12 @@ export function useTrialCode({
           console.log('Repeat condition matched! Jumping to trial:', condition.jumpToTrialId);
           // Guardar el trial objetivo en localStorage
           localStorage.setItem('jsPsych_jumpToTrial', String(condition.jumpToTrialId));
+          // Limpiar todos los wrappers de jsPsych dentro del target
+          const target = document.getElementById('jspsych-target');
+          if (target) {
+            // Limpiar todo el contenido del target (incluyendo todos los wrappers)
+            target.innerHTML = '';
+          }
           // Reiniciar el timeline
           setTimeout(() => {
             jsPsych.run(timeline);
