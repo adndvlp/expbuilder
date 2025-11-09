@@ -20,7 +20,7 @@ export interface Loop {
   categories: boolean;
   categoryColumn: string;
   categoryData: any[];
-  trials: Trial[];
+  trials: TrialOrLoop[]; // 🔥 Ahora acepta Trial o Loop (loops anidados)
   code: string;
   csvJson?: any[];
   csvColumns?: string[];
@@ -29,6 +29,8 @@ export interface Loop {
   repeatConditions?: RepeatCondition[];
   loopConditions?: LoopCondition[];
   isConditionalLoop?: boolean;
+  parentLoopId?: string; // 🆕 ID del loop padre
+  depth?: number; // 🆕 Nivel de anidamiento (0 = raíz)
 }
 
 export type BranchCondition = {

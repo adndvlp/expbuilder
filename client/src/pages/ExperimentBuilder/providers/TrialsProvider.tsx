@@ -2,6 +2,7 @@ import { ReactNode, useState, useEffect } from "react";
 import TrialsContext from "../contexts/TrialsContext";
 import { Loop, Trial, TrialOrLoop } from "../components/ConfigPanel/types";
 import { useExperimentID } from "../hooks/useExperimentID";
+import { isTrial, isLoop } from "../components/Canvas/utils/nestedLoopUtils";
 const API_URL = import.meta.env.VITE_API_URL;
 
 type Props = {
@@ -41,7 +42,7 @@ export default function TrialsProvider({ children }: Props) {
         csvColumns: undefined,
         csvFromLoop: true,
         // Preserve branches if they exist
-        branches: (trial as Trial).branches || undefined,
+        branches: ("branches" in trial && trial.branches) || undefined,
       }));
 
     // Create the loop
@@ -56,8 +57,10 @@ export default function TrialsProvider({ children }: Props) {
       categoryColumn: loopProps?.categoryColumn ?? "",
       categories: loopProps?.categories ?? false,
       categoryData: loopProps?.categoryData ?? [],
-      trials: trialsToGroup as Trial[],
+      trials: trialsToGroup as TrialOrLoop[], // 🔥 Ahora acepta Trial o Loop
       code: "",
+      parentLoopId: undefined,
+      depth: 0,
     };
 
     // Calculate where to insert the loop BEFORE removing trials
@@ -152,24 +155,34 @@ export default function TrialsProvider({ children }: Props) {
         const loopIndex = newTrials.findIndex(
           (item) =>
             "trials" in item &&
-            (item as Loop).trials.some((t) => t.id === dragged.id)
+            (item as Loop).trials.some(
+              (t) =>
+                (isTrial(t) && t.id === dragged.id) ||
+                (isLoop(t) && t.id === dragged.id)
+            )
         );
         if (loopIndex !== -1) {
           const loop = newTrials[loopIndex] as Loop;
-          const trialIdx = loop.trials.findIndex((t) => t.id === dragged.id);
-          let trial = loop.trials[trialIdx];
+          const trialIdx = loop.trials.findIndex(
+            (t) =>
+              (isTrial(t) && t.id === dragged.id) ||
+              (isLoop(t) && t.id === dragged.id)
+          );
+          let item = loop.trials[trialIdx];
           loop.trials.splice(trialIdx, 1);
           // Si el loop queda vacío, elimínalo
           if (loop.trials.length === 0) {
             newTrials.splice(loopIndex, 1);
           }
-          // Al sacar el trial del loop, NO restaurar ningún CSV previo
-          trial = {
-            ...trial,
-            csvJson: undefined,
-            csvColumns: undefined,
-          };
-          draggedItem = trial;
+          // Al sacar el item del loop, limpiar CSV solo si es trial
+          if (isTrial(item)) {
+            item = {
+              ...item,
+              csvJson: undefined,
+              csvColumns: undefined,
+            };
+          }
+          draggedItem = item;
         }
       }
 
@@ -185,23 +198,35 @@ export default function TrialsProvider({ children }: Props) {
         );
         if (loopIndex !== -1) {
           const loop = newTrials[loopIndex] as Loop;
-          // Al meter el trial al loop, elimina cualquier CSV individual y marca csvFromLoop
-          const trialWithLoopCsv = {
-            ...draggedItem,
-            csvJson: loop.csvJson,
-            csvColumns: loop.csvColumns,
-            csvFromLoop: true,
-          };
-          loop.trials.push(trialWithLoopCsv as Trial);
 
-          // Propaga el CSV del loop a todos los trials dentro del loop
-          if (loop.csvJson && loop.csvColumns) {
-            loop.trials = loop.trials.map((trial) => ({
-              ...trial,
+          // Solo propagar CSV si el item es un Trial, NO si es un Loop
+          if (isTrial(draggedItem)) {
+            const trialWithLoopCsv = {
+              ...draggedItem,
               csvJson: loop.csvJson,
               csvColumns: loop.csvColumns,
               csvFromLoop: true,
-            }));
+            };
+            loop.trials.push(trialWithLoopCsv as Trial);
+          } else {
+            // Es un Loop, no propagar CSV
+            loop.trials.push(draggedItem);
+          }
+
+          // Propaga el CSV del loop solo a trials, NO a loops anidados
+          if (loop.csvJson && loop.csvColumns) {
+            loop.trials = loop.trials.map((item) => {
+              if (isTrial(item)) {
+                return {
+                  ...item,
+                  csvJson: loop.csvJson,
+                  csvColumns: loop.csvColumns,
+                  csvFromLoop: true,
+                };
+              }
+              // Es loop, no propagar
+              return item;
+            });
           }
         }
         return [...newTrials];
@@ -222,16 +247,22 @@ export default function TrialsProvider({ children }: Props) {
         newTrials.splice(targetIndex + 1, 0, draggedItem);
       }
 
-      // Propaga el CSV del loop a todos los trials dentro de cada loop
+      // Propaga el CSV del loop solo a trials, NO a loops anidados
       newTrials = newTrials.map((item) => {
         if (item && "trials" in item && item.csvJson && item.csvColumns) {
           const loop = item as Loop;
-          loop.trials = loop.trials.map((trial) => ({
-            ...trial,
-            csvJson: loop.csvJson,
-            csvColumns: loop.csvColumns,
-            csvFromLoop: true,
-          }));
+          loop.trials = loop.trials.map((child) => {
+            if (isTrial(child)) {
+              return {
+                ...child,
+                csvJson: loop.csvJson,
+                csvColumns: loop.csvColumns,
+                csvFromLoop: true,
+              };
+            }
+            // Es loop anidado, no propagar
+            return child;
+          });
           return loop;
         }
         return item;
@@ -275,33 +306,35 @@ export default function TrialsProvider({ children }: Props) {
         // Add the loop's trials to the main array
         newTrials = [...newTrials, ...loop.trials];
 
-        // Find which trials inside the loop are "root" trials (not branches of other trials in the loop)
+        // Find which items inside the loop are "root" items (not branches of other items in the loop)
         const branchIdsInLoop = new Set<number | string>();
-        loop.trials.forEach((trial) => {
-          if (trial.branches && Array.isArray(trial.branches)) {
-            trial.branches.forEach((branchId) => branchIdsInLoop.add(branchId));
+        loop.trials.forEach((item) => {
+          if (item.branches && Array.isArray(item.branches)) {
+            item.branches.forEach((branchId) => branchIdsInLoop.add(branchId));
           }
         });
 
-        // Only root trials (those not in branchIdsInLoop) should be added as branches of the parent
-        const rootTrialIds = loop.trials
-          .filter((trial) => !branchIdsInLoop.has(trial.id))
-          .map((trial) => trial.id);
+        // Only root items (those not in branchIdsInLoop) should be added as branches of the parent
+        const rootItemIds = loop.trials
+          .filter((item) => {
+            const id = isTrial(item) ? (item as Trial).id : item.id;
+            return !branchIdsInLoop.has(id);
+          })
+          .map((item) => (isTrial(item) ? (item as Trial).id : item.id));
 
-        // Update the parent's branches: replace loop ID with the root trial IDs
+        // Update the parent's branches: replace loop ID with the root item IDs
         newTrials = newTrials.map((item) => {
-          const itemId = "parameters" in item ? (item as Trial).id : item.id;
-          const parentId =
-            "parameters" in parentItem
-              ? (parentItem as Trial).id
-              : parentItem.id;
+          const itemId = isTrial(item) ? (item as Trial).id : item.id;
+          const parentId = isTrial(parentItem)
+            ? (parentItem as Trial).id
+            : parentItem.id;
 
           if (itemId === parentId && "branches" in item && item.branches) {
-            // Replace the loop ID with only the root trial IDs from the loop
+            // Replace the loop ID with only the root item IDs from the loop
             const updatedBranches = item.branches.flatMap((branchId) => {
               if (branchId === loopId) {
-                // Replace loop ID with only root trial IDs
-                return rootTrialIds;
+                // Replace loop ID with only root item IDs
+                return rootItemIds;
               }
               return branchId;
             });
@@ -311,7 +344,7 @@ export default function TrialsProvider({ children }: Props) {
           return item;
         });
       } else {
-        // If the loop was NOT a branch, insert trials in the position of the loop
+        // If the loop was NOT a branch, insert items in the position of the loop
         newTrials = [
           ...prevTrials.slice(0, idx),
           ...loop.trials,

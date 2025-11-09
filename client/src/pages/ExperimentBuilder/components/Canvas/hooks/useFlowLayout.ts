@@ -12,6 +12,7 @@ import {
   LayoutEdge,
   calculateBranchWidth,
   createTrialNode,
+  createLoopNode,
   createEdge,
 } from "../utils/layoutUtils";
 
@@ -182,8 +183,9 @@ export function useFlowLayout({
       // Create edge from parent to this loop
       edges.push(createEdge(parentId, loopId));
 
+      // 🆕 Usar createLoopNode en lugar de createTrialNode para loops
       nodes.push(
-        createTrialNode(
+        createLoopNode(
           loopId,
           loop.name,
           x,
@@ -193,7 +195,13 @@ export function useFlowLayout({
             onSelectLoop(loop);
             if (setOpenLoop) setOpenLoop(loop);
           },
-          isSelected ? () => onAddBranch(loop.id) : undefined
+          () => {
+            // Double-click handler: navegar dentro del loop
+            onSelectLoop(loop);
+            if (setOpenLoop) setOpenLoop(loop);
+          },
+          loop.depth,
+          loop.trials?.length || 0
         )
       );
 
@@ -265,15 +273,16 @@ export function useFlowLayout({
       // Mark main sequence items as rendered
       renderedTrials.set(item.id, itemId);
 
-      nodes.push(
-        createTrialNode(
-          itemId,
-          item.name,
-          xTrial,
-          yPos,
-          !!isSelected,
-          () => {
-            if (isTrial(item)) {
+      // 🆕 Usar el tipo de nodo correcto según el item
+      if (isTrial(item)) {
+        nodes.push(
+          createTrialNode(
+            itemId,
+            item.name,
+            xTrial,
+            yPos,
+            !!isSelected,
+            () => {
               onSelectTrial(item);
               // Check if this trial belongs to a loop
               const parentLoop = trials.find(
@@ -289,14 +298,34 @@ export function useFlowLayout({
                 // This trial is not in any loop, so close any open loop
                 setOpenLoop(null);
               }
-            } else {
-              onSelectLoop(item);
-              if (setOpenLoop) setOpenLoop(item);
-            }
-          },
-          isSelected ? () => onAddBranch(item.id) : undefined
-        )
-      );
+            },
+            isSelected ? () => onAddBranch(item.id) : undefined
+          )
+        );
+      } else {
+        // Es un Loop
+        const loop = item as Loop;
+        nodes.push(
+          createLoopNode(
+            itemId,
+            loop.name,
+            xTrial,
+            yPos,
+            !!isSelected,
+            () => {
+              onSelectLoop(loop);
+              if (setOpenLoop) setOpenLoop(loop);
+            },
+            () => {
+              // Double-click: navegar dentro del loop
+              onSelectLoop(loop);
+              if (setOpenLoop) setOpenLoop(loop);
+            },
+            loop.depth,
+            loop.trials?.length || 0
+          )
+        );
+      }
 
       // Render branches recursively and calculate max depth
       let maxBranchDepth = 0;

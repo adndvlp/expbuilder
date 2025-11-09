@@ -2,13 +2,15 @@ import "@xyflow/react/dist/style.css";
 import { useState, useEffect } from "react";
 import ReactFlow, { Connection } from "reactflow";
 import useTrials from "../../hooks/useTrials";
-import { Trial } from "../ConfigPanel/types";
+import { Trial, Loop, TrialOrLoop } from "../ConfigPanel/types";
 import TrialNode from "./TrialNode";
+import LoopNode from "./LoopNode";
 import LoopSubCanvas from "./LoopSubCanvas";
 import LoopRangeModal from "../ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeModal";
 import BranchedTrial from "../ConfigPanel/TrialsConfig/BranchedTrial";
 import ParamsOverride from "../ConfigPanel/TrialsConfig/ParamsOverride";
 import CanvasToolbar from "./components/CanvasToolbar";
+import LoopBreadcrumb from "./components/LoopBreadcrumb";
 import { useFlowLayout } from "./hooks/useFlowLayout";
 import { TbBinaryTree } from "react-icons/tb";
 import { FiX, FiSettings } from "react-icons/fi";
@@ -23,9 +25,11 @@ import {
   getPatternStyle,
   getFabStyle,
 } from "./utils/styleUtils";
+import { isTrial, getLoopPath } from "./utils/nestedLoopUtils";
 
 const nodeTypes = {
   trial: TrialNode,
+  loop: LoopNode, // 🆕 Nuevo tipo de nodo para loops
 };
 
 type Props = {};
@@ -42,9 +46,36 @@ function Canvas({}: Props) {
   } = useTrials();
 
   const [showLoopModal, setShowLoopModal] = useState(false);
-  const [openLoop, setOpenLoop] = useState<any>(null);
+  const [openLoop, setOpenLoop] = useState<Loop | null>(null);
+  const [loopStack, setLoopStack] = useState<Loop[]>([]); // 🆕 Stack de navegación
   const [showBranchedModal, setShowBranchedModal] = useState(false);
   const [showParamsOverrideModal, setShowParamsOverrideModal] = useState(false);
+
+  // 🆕 Funciones de navegación de loops
+  const navigateToLoop = (loop: Loop) => {
+    const path = getLoopPath(trials, loop.id);
+    if (path) {
+      setLoopStack(path);
+      setOpenLoop(loop);
+      setSelectedLoop(loop);
+    }
+  };
+
+  const navigateToLoopByIndex = (index: number) => {
+    if (index >= 0 && index < loopStack.length) {
+      const targetLoop = loopStack[index];
+      const newStack = loopStack.slice(0, index + 1);
+      setLoopStack(newStack);
+      setOpenLoop(targetLoop);
+      setSelectedLoop(targetLoop);
+    }
+  };
+
+  const navigateToRoot = () => {
+    setLoopStack([]);
+    setOpenLoop(null);
+    setSelectedLoop(null);
+  };
 
   const onAddTrial = (type: string) => {
     const existingNames = getAllExistingNames(trials);
@@ -305,6 +336,8 @@ function Canvas({}: Props) {
     onSelectLoop: (loop) => {
       setSelectedLoop(loop);
       setSelectedTrial(null);
+      // 🆕 Navegar automáticamente al loop cuando se selecciona
+      navigateToLoop(loop);
     },
     onAddBranch,
     openLoop,
@@ -327,6 +360,17 @@ function Canvas({}: Props) {
           zIndex: 1,
         }}
       >
+        {/* 🆕 Breadcrumb de navegación */}
+        {loopStack.length > 0 && (
+          <div style={{ padding: "16px 24px 0 24px" }}>
+            <LoopBreadcrumb
+              loopStack={loopStack}
+              onNavigate={navigateToLoopByIndex}
+              onNavigateToRoot={navigateToRoot}
+            />
+          </div>
+        )}
+
         <CanvasToolbar
           fabStyle={fabStyle}
           onShowLoopModal={handleCreateLoop}
@@ -390,7 +434,12 @@ function Canvas({}: Props) {
           const isTrialInsideOpenLoop =
             openLoop &&
             openLoop.trials &&
-            openLoop.trials.some((t: Trial) => t.id === selectedTrial?.id);
+            openLoop.trials.some((t: TrialOrLoop) => {
+              if (isTrial(t)) {
+                return t.id === selectedTrial?.id;
+              }
+              return false;
+            });
           const shouldShow = selectedTrial && !isTrialInsideOpenLoop;
 
           return (

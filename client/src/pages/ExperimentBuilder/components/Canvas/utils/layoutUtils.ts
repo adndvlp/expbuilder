@@ -81,6 +81,33 @@ export function createTrialNode(
   };
 }
 
+export function createLoopNode(
+  id: string,
+  label: string,
+  x: number,
+  y: number,
+  isSelected: boolean,
+  onClick: () => void,
+  onDoubleClick?: () => void,
+  depth?: number,
+  itemCount?: number
+): LayoutNode {
+  return {
+    id,
+    type: "loop",
+    data: {
+      label,
+      isSelected,
+      onClick,
+      onDoubleClick,
+      depth,
+      itemCount,
+    },
+    position: { x, y },
+    draggable: false,
+  };
+}
+
 export function createEdge(
   source: string,
   target: string,

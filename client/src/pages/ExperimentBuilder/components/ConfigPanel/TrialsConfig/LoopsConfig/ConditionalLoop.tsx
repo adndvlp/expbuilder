@@ -45,7 +45,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
     const trial = loop.trials.find(
       (t) => t.id === trialId || String(t.id) === String(trialId)
     );
-    if (!trial || !trial.plugin) {
+    if (!trial || !("plugin" in trial) || !trial.plugin) {
       console.log("Trial not found or has no plugin:", trialId);
       return;
     }

@@ -5,7 +5,7 @@ import TrialNode from "./TrialNode";
 import ResizeHandle from "./components/ResizeHandle";
 import BranchedTrial from "../ConfigPanel/TrialsConfig/BranchedTrial";
 import ParamsOverride from "../ConfigPanel/TrialsConfig/ParamsOverride";
-import { Trial } from "../ConfigPanel/types";
+import { Trial, TrialOrLoop } from "../ConfigPanel/types";
 import { useDraggable } from "./hooks/useDraggable";
 import { useResizable } from "./hooks/useResizable";
 import { TbBinaryTree } from "react-icons/tb";
@@ -15,6 +15,7 @@ import {
   generateUniqueName,
   validateConnection,
 } from "./utils/trialUtils";
+import { isTrial } from "./utils/nestedLoopUtils";
 import {
   LAYOUT_CONSTANTS,
   calculateBranchWidth,
@@ -28,7 +29,7 @@ const nodeTypes = {
 };
 
 interface LoopSubCanvasProps {
-  trials: Trial[];
+  trials: TrialOrLoop[]; // 🔥 Ahora acepta Trial o Loop
   loopName: string;
   onClose: () => void;
   isDark: boolean;
@@ -66,27 +67,36 @@ function LoopSubCanvas({
     const xTrial = size.width / 3.1;
 
     // Collect all trial IDs that are branches (recursively)
-    const collectAllBranchIds = (trialsList: Trial[]): Set<number> => {
-      const branchIds = new Set<number>();
-      const processItem = (trial: Trial) => {
-        if (trial.branches && Array.isArray(trial.branches)) {
-          trial.branches.forEach((branchId: number | string) => {
-            const numId =
-              typeof branchId === "string" ? parseInt(branchId) : branchId;
-            branchIds.add(numId);
-            const branchTrial = findTrialById(trials, numId);
-            if (branchTrial) {
-              processItem(branchTrial);
+    const collectAllBranchIds = (
+      itemsList: TrialOrLoop[]
+    ): Set<number | string> => {
+      const branchIds = new Set<number | string>();
+      const processItem = (item: TrialOrLoop) => {
+        if (item.branches && Array.isArray(item.branches)) {
+          item.branches.forEach((branchId: number | string) => {
+            branchIds.add(branchId);
+            // Buscar en la lista completa
+            const branchItem = itemsList.find((t) => {
+              const id = isTrial(t) ? t.id : t.id;
+              return id === branchId;
+            });
+            if (branchItem) {
+              processItem(branchItem);
             }
           });
         }
       };
-      trialsList.forEach(processItem);
+      itemsList.forEach(processItem);
       return branchIds;
     };
 
     const branchTrialIds = collectAllBranchIds(trials);
-    const mainTrials = trials.filter((trial) => !branchTrialIds.has(trial.id));
+    const mainTrials = trials.filter((item) => {
+      // Solo procesar trials (no loops) y que no sean branches
+      if (!isTrial(item)) return false;
+      const id = item.id;
+      return !branchTrialIds.has(id);
+    }) as Trial[]; // Ya sabemos que son trials
 
     // Recursive function to render a trial and all its branches
     const renderTrialWithBranches = (
@@ -188,14 +198,14 @@ function LoopSubCanvas({
 
     // Render main sequence trials and their branches
     let yPos = 60;
-    mainTrials.forEach((trial) => {
+    mainTrials.forEach((trial: Trial) => {
       const isSelected = selectedTrial && selectedTrial.id === trial.id;
 
       // Mark main sequence trials as rendered
       renderedTrials.set(trial.id, String(trial.id));
 
       const handleAddBranchForTrial = () => {
-        if (onAddBranch) {
+        if (onAddBranch && typeof trial.id === "number") {
           const existingNames = trials.map((t) => t.name);
           const newName = generateUniqueName(existingNames);
 
