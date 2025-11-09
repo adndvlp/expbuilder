@@ -238,3 +238,125 @@ export function getLoopPath(
   }
   return null;
 }
+
+/**
+ * Agrega una branch a un trial o loop de forma recursiva
+ */
+export function addBranchToItemInHierarchy(
+  items: TrialOrLoop[],
+  parentId: number | string,
+  newBranchTrial: Trial
+): TrialOrLoop[] {
+  const updated = items.map((item) => {
+    const itemId = isTrial(item) ? item.id : item.id;
+
+    if (itemId === parentId) {
+      return {
+        ...item,
+        branches: [...(item.branches || []), newBranchTrial.id],
+      };
+    }
+
+    if (isLoop(item)) {
+      return {
+        ...item,
+        trials: addBranchToItemInHierarchy(
+          item.trials,
+          parentId,
+          newBranchTrial
+        ),
+      };
+    }
+
+    return item;
+  });
+
+  // Agregar el nuevo trial al mismo nivel del padre
+  return [...updated, newBranchTrial];
+}
+
+/**
+ * Crea un loop anidado dentro de un loop padre específico
+ */
+export function createNestedLoop(
+  items: TrialOrLoop[],
+  parentLoopId: string,
+  trialIndicesInParent: number[],
+  loopProps?: Partial<Omit<Loop, "trials" | "id">>
+): TrialOrLoop[] {
+  return items.map((item) => {
+    if (isLoop(item) && item.id === parentLoopId) {
+      // Encontramos el loop padre, crear el loop anidado
+      const parentTrials = item.trials;
+
+      if (trialIndicesInParent.length < 2) return item;
+
+      const loopCount = parentTrials.filter((t) => isLoop(t)).length;
+      const loopName = `Loop ${loopCount + 1}`;
+
+      // Obtener los trials que se van a agrupar
+      const trialsToGroup = trialIndicesInParent
+        .map((i) => parentTrials[i])
+        .filter((t) => t && isTrial(t))
+        .map((trial) => ({
+          ...trial,
+          csvJson: undefined,
+          csvColumns: undefined,
+          csvFromLoop: true,
+          branches: ("branches" in trial && trial.branches) || undefined,
+        }));
+
+      // Crear el nuevo loop anidado
+      const newLoop: Loop = {
+        id: "loop_" + Date.now(),
+        name: loopProps?.name || loopName,
+        repetitions: loopProps?.repetitions ?? 1,
+        randomize: loopProps?.randomize ?? false,
+        orders: loopProps?.orders ?? false,
+        stimuliOrders: loopProps?.stimuliOrders ?? [],
+        orderColumns: loopProps?.orderColumns ?? [],
+        categoryColumn: loopProps?.categoryColumn ?? "",
+        categories: loopProps?.categories ?? false,
+        categoryData: loopProps?.categoryData ?? [],
+        trials: trialsToGroup as TrialOrLoop[],
+        code: "",
+        parentLoopId: parentLoopId,
+        depth: (item.depth || 0) + 1,
+      };
+
+      // Calcular dónde insertar el loop
+      const insertIndex = Math.min(...trialIndicesInParent);
+
+      // Remover los trials agrupados e insertar el loop
+      const newTrials: TrialOrLoop[] = [];
+      for (let i = 0; i < parentTrials.length; i++) {
+        if (i === insertIndex) {
+          newTrials.push(newLoop);
+        }
+        if (!trialIndicesInParent.includes(i)) {
+          newTrials.push(parentTrials[i]);
+        }
+      }
+
+      return {
+        ...item,
+        trials: newTrials,
+      };
+    }
+
+    // Buscar recursivamente en loops anidados
+    if (isLoop(item)) {
+      return {
+        ...item,
+        trials: createNestedLoop(
+          item.trials,
+          parentLoopId,
+          trialIndicesInParent,
+          loopProps
+        ),
+      };
+    }
+
+    return item;
+  });
+}

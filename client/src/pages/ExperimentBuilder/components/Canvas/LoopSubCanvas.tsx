@@ -3,13 +3,15 @@ import { useMemo, useState } from "react";
 import ReactFlow, { Connection } from "reactflow";
 import TrialNode from "./TrialNode";
 import ResizeHandle from "./components/ResizeHandle";
+import LoopBreadcrumb from "./components/LoopBreadcrumb";
+import LoopRangeModal from "../ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeModal";
 import BranchedTrial from "../ConfigPanel/TrialsConfig/BranchedTrial";
 import ParamsOverride from "../ConfigPanel/TrialsConfig/ParamsOverride";
-import { Trial, TrialOrLoop } from "../ConfigPanel/types";
+import { Trial, TrialOrLoop, Loop } from "../ConfigPanel/types";
 import { useDraggable } from "./hooks/useDraggable";
 import { useResizable } from "./hooks/useResizable";
 import { TbBinaryTree } from "react-icons/tb";
-import { FiX, FiSettings } from "react-icons/fi";
+import { FiX, FiSettings, FiRefreshCw } from "react-icons/fi";
 import {
   findTrialById,
   generateUniqueName,
@@ -29,25 +31,35 @@ const nodeTypes = {
 };
 
 interface LoopSubCanvasProps {
-  trials: TrialOrLoop[]; // 🔥 Ahora acepta Trial o Loop
+  trials: TrialOrLoop[];
   loopName: string;
+  loopStack?: Loop[]; // 🆕 Path de navegación
+  currentLoop?: Loop; // 🆕 Loop actual
   onClose: () => void;
+  onNavigateToLoop?: (index: number) => void; // 🆕 Navegación por breadcrumb
+  onNavigateToRoot?: () => void; // 🆕 Volver al root
   isDark: boolean;
   selectedTrial: Trial | null;
   onSelectTrial: (trial: Trial) => void;
   onUpdateTrial?: (trial: Trial) => void;
   onAddBranch?: (parentTrialId: number, newBranchTrial: Trial) => void;
+  onCreateNestedLoop?: (trialIndices: number[]) => void; // 🆕 Callback para crear loop anidado con índices
 }
 
 function LoopSubCanvas({
   trials,
   loopName,
+  loopStack = [],
+  currentLoop,
   onClose,
+  onNavigateToLoop,
+  onNavigateToRoot,
   isDark,
   selectedTrial,
   onSelectTrial,
   onUpdateTrial,
   onAddBranch,
+  onCreateNestedLoop,
 }: LoopSubCanvasProps) {
   const { dragging, pos, handleMouseDown } = useDraggable({ x: 150, y: 250 });
   const { resizing, size, handleResizeMouseDown } = useResizable({
@@ -56,6 +68,31 @@ function LoopSubCanvas({
   });
   const [showBranchedModal, setShowBranchedModal] = useState(false);
   const [showParamsOverrideModal, setShowParamsOverrideModal] = useState(false);
+  const [showLoopModal, setShowLoopModal] = useState(false);
+
+  // Handler para crear loops anidados
+  const handleCreateNestedLoop = () => {
+    // Mostrar el modal para seleccionar trials
+    setShowLoopModal(true);
+  };
+
+  const handleConfirmLoop = (trialIds: number[]) => {
+    if (!onCreateNestedLoop) return;
+
+    // Convertir los IDs de trials a índices en el array actual
+    const indices = trialIds
+      .map((id) => trials.findIndex((t: any) => isTrial(t) && t.id === id))
+      .filter((idx) => idx !== -1);
+
+    if (indices.length < 2) {
+      alert("You must select at least 2 trials to create a loop.");
+      setShowLoopModal(false);
+      return;
+    }
+
+    onCreateNestedLoop(indices);
+    setShowLoopModal(false);
+  };
 
   const { nodes, edges } = useMemo(() => {
     const nodes: any[] = [];
@@ -370,10 +407,24 @@ function LoopSubCanvas({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "8px",
         }}
         onMouseDown={handleMouseDown}
       >
-        {loopName}
+        <div
+          style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1 }}
+        >
+          <span>{loopName}</span>
+          {loopStack.length > 0 && onNavigateToLoop && onNavigateToRoot && (
+            <LoopBreadcrumb
+              loopStack={loopStack}
+              onNavigate={onNavigateToLoop}
+              onNavigateToRoot={onNavigateToRoot}
+              compact={true}
+            />
+          )}
+        </div>
         <button
           style={{
             background: "none",
@@ -381,7 +432,6 @@ function LoopSubCanvas({
             color: "#fff",
             fontSize: 18,
             cursor: "pointer",
-            marginLeft: 8,
           }}
           onClick={onClose}
           title="Close"
@@ -399,13 +449,41 @@ function LoopSubCanvas({
       >
         <div style={patternStyle} />
 
+        {/* Create Loop button - show if there's more than one trial in the loop */}
+        {trials.filter((t) => isTrial(t)).length > 1 && onCreateNestedLoop && (
+          <button
+            style={{
+              position: "absolute",
+              top: 16,
+              right: 16,
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              background: "#3d92b4",
+              color: "#fff",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 20,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
+              zIndex: 10,
+            }}
+            title="Create Loop"
+            onClick={handleCreateNestedLoop}
+          >
+            <FiRefreshCw size={20} color="#fff" />
+          </button>
+        )}
+
         {/* Branches button - show if there's more than one trial in the loop */}
         {trials.length > 1 && selectedTrial && (
           <button
             style={{
               position: "absolute",
               top: 16,
-              right: 16,
+              right: 64,
               width: 40,
               height: 40,
               borderRadius: "50%",
@@ -433,7 +511,7 @@ function LoopSubCanvas({
             style={{
               position: "absolute",
               top: 16,
-              right: 64,
+              right: 112,
               width: 40,
               height: 40,
               borderRadius: "50%",
@@ -546,6 +624,32 @@ function LoopSubCanvas({
               <ParamsOverride
                 selectedTrial={selectedTrial}
                 onClose={() => setShowParamsOverrideModal(false)}
+              />
+            </div>
+          </div>
+        )}
+
+        {showLoopModal && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: "100vh",
+              background: "rgba(0,0,0,0.32)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+            }}
+          >
+            <div style={{ position: "relative", zIndex: 10000 }}>
+              <LoopRangeModal
+                trials={trials.filter((t: any) => isTrial(t)) as Trial[]}
+                onConfirm={handleConfirmLoop}
+                onClose={() => setShowLoopModal(false)}
+                selectedTrialId={selectedTrial?.id || null}
               />
             </div>
           </div>

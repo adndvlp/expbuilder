@@ -10,7 +10,6 @@ import LoopRangeModal from "../ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeMod
 import BranchedTrial from "../ConfigPanel/TrialsConfig/BranchedTrial";
 import ParamsOverride from "../ConfigPanel/TrialsConfig/ParamsOverride";
 import CanvasToolbar from "./components/CanvasToolbar";
-import LoopBreadcrumb from "./components/LoopBreadcrumb";
 import { useFlowLayout } from "./hooks/useFlowLayout";
 import { TbBinaryTree } from "react-icons/tb";
 import { FiX, FiSettings } from "react-icons/fi";
@@ -25,7 +24,14 @@ import {
   getPatternStyle,
   getFabStyle,
 } from "./utils/styleUtils";
-import { isTrial, getLoopPath } from "./utils/nestedLoopUtils";
+import {
+  isTrial,
+  getLoopPath,
+  updateTrialInHierarchy,
+  addBranchToItemInHierarchy,
+  findLoopByIdRecursive,
+  createNestedLoop,
+} from "./utils/nestedLoopUtils";
 
 const nodeTypes = {
   trial: TrialNode,
@@ -122,77 +128,6 @@ function Canvas({}: Props) {
   };
 
   const handleCreateLoop = () => {
-    // Si hay un trial seleccionado, verificar si tiene branches
-    if (selectedTrial) {
-      const trialWithBranches = trials.find(
-        (t: any) => "id" in t && t.id === selectedTrial.id
-      ) as Trial | undefined;
-
-      if (
-        trialWithBranches &&
-        trialWithBranches.branches &&
-        trialWithBranches.branches.length > 0
-      ) {
-        // El trial tiene branches, crear el loop inmediatamente
-        const trialIndex = trials.findIndex(
-          (t: any) => "id" in t && t.id === selectedTrial.id
-        );
-
-        if (trialIndex !== -1) {
-          // Función recursiva para obtener todos los trial IDs (incluyendo branches anidados)
-          const getAllNestedTrialIds = (
-            trialId: number | string,
-            visited = new Set<number | string>()
-          ): Set<number | string> => {
-            const allIds = new Set<number | string>();
-
-            // Evitar ciclos infinitos
-            if (visited.has(trialId)) {
-              return allIds;
-            }
-            visited.add(trialId);
-
-            // Agregar el ID actual
-            allIds.add(trialId);
-
-            // Encontrar el trial actual
-            const currentTrial = trials.find(
-              (t: any) => "id" in t && t.id === trialId
-            ) as Trial | undefined;
-
-            if (
-              currentTrial &&
-              currentTrial.branches &&
-              currentTrial.branches.length > 0
-            ) {
-              // Recursivamente agregar branches y sus sub-branches
-              currentTrial.branches.forEach((branchId) => {
-                const nestedIds = getAllNestedTrialIds(branchId, visited);
-                nestedIds.forEach((nestedId) => allIds.add(nestedId));
-              });
-            }
-
-            return allIds;
-          };
-
-          // Obtener todos los trial IDs (el principal y todos sus branches anidados)
-          const allTrialIds = getAllNestedTrialIds(selectedTrial.id);
-
-          // Convertir los IDs a índices
-          const allIndices = Array.from(allTrialIds)
-            .map((trialId) =>
-              trials.findIndex((t: any) => "id" in t && t.id === trialId)
-            )
-            .filter((idx) => idx !== -1);
-
-          if (groupTrialsAsLoop) {
-            groupTrialsAsLoop(allIndices);
-          }
-        }
-        return;
-      }
-    }
-
     // Si no hay trial seleccionado o no tiene branches, mostrar el modal
     setShowLoopModal(true);
   };
@@ -217,11 +152,12 @@ function Canvas({}: Props) {
   // Keep openLoop synchronized with trials updates
   useEffect(() => {
     if (openLoop) {
-      const updatedLoop = trials.find((t: any) => t.id === openLoop.id);
+      // Buscar el loop recursivamente en toda la jerarquía
+      const updatedLoop = findLoopByIdRecursive(trials, openLoop.id);
       if (!updatedLoop) {
         // Loop was deleted
         setOpenLoop(null);
-      } else if ("trials" in updatedLoop) {
+      } else {
         // Loop exists, update it to reflect changes in trials
         setOpenLoop(updatedLoop);
       }
@@ -360,16 +296,7 @@ function Canvas({}: Props) {
           zIndex: 1,
         }}
       >
-        {/* 🆕 Breadcrumb de navegación */}
-        {loopStack.length > 0 && (
-          <div style={{ padding: "16px 24px 0 24px" }}>
-            <LoopBreadcrumb
-              loopStack={loopStack}
-              onNavigate={navigateToLoopByIndex}
-              onNavigateToRoot={navigateToRoot}
-            />
-          </div>
-        )}
+        {/* Breadcrumb ahora está dentro del LoopSubCanvas */}
 
         <CanvasToolbar
           fabStyle={fabStyle}
@@ -575,50 +502,49 @@ function Canvas({}: Props) {
           <LoopSubCanvas
             trials={openLoop.trials}
             loopName={openLoop.name}
+            loopStack={loopStack}
+            currentLoop={openLoop}
             isDark={isDark}
             selectedTrial={selectedTrial}
             onClose={() => {
               setOpenLoop(null);
               setSelectedLoop(null);
             }}
+            onNavigateToLoop={navigateToLoopByIndex}
+            onNavigateToRoot={navigateToRoot}
             onSelectTrial={(trial) => {
               setSelectedTrial(trial);
               setSelectedLoop(null);
             }}
             onUpdateTrial={(updatedTrial) => {
-              const updatedLoops = trials.map((loop: any) => {
-                if (loop.id === openLoop.id && loop.trials) {
-                  return {
-                    ...loop,
-                    trials: loop.trials.map((t: any) =>
-                      t.id === updatedTrial.id ? updatedTrial : t
-                    ),
-                  };
-                }
-                return loop;
-              });
-              setTrials(updatedLoops);
+              // Actualizar el trial recursivamente en toda la jerarquía
+              const updatedTrials = updateTrialInHierarchy(
+                trials,
+                updatedTrial.id,
+                () => updatedTrial
+              );
+              setTrials(updatedTrials);
             }}
             onAddBranch={(parentTrialId, newBranchTrial) => {
-              const updatedLoops = trials.map((loop: any) => {
-                if (loop.id === openLoop.id && loop.trials) {
-                  const updatedTrials = loop.trials.map((t: any) =>
-                    t.id === parentTrialId
-                      ? {
-                          ...t,
-                          branches: [...(t.branches || []), newBranchTrial.id],
-                        }
-                      : t
-                  );
-                  return {
-                    ...loop,
-                    trials: [...updatedTrials, newBranchTrial],
-                  };
-                }
-                return loop;
-              });
-              setTrials(updatedLoops);
+              // Agregar la branch recursivamente en toda la jerarquía
+              const updatedTrials = addBranchToItemInHierarchy(
+                trials,
+                parentTrialId,
+                newBranchTrial
+              );
+              setTrials(updatedTrials);
               setSelectedTrial(newBranchTrial);
+            }}
+            onCreateNestedLoop={(trialIndices) => {
+              if (openLoop) {
+                // Crear loop anidado dentro del loop actual
+                const updatedTrials = createNestedLoop(
+                  trials,
+                  openLoop.id,
+                  trialIndices
+                );
+                setTrials(updatedTrials);
+              }
             }}
           />
         )}

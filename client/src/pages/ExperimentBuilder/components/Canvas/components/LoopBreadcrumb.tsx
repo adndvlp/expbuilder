@@ -5,16 +5,28 @@ interface LoopBreadcrumbProps {
   loopStack: Loop[];
   onNavigate: (index: number) => void;
   onNavigateToRoot: () => void;
+  compact?: boolean; // 🆕 Modo compacto para usar en headers
 }
 
 function LoopBreadcrumb({
   loopStack,
   onNavigate,
   onNavigateToRoot,
+  compact = false,
 }: LoopBreadcrumbProps) {
-  return (
-    <div
-      style={{
+  const containerStyle = compact
+    ? {
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        padding: "4px 8px",
+        background: "rgba(255, 255, 255, 0.1)",
+        borderRadius: "6px",
+        fontSize: "12px",
+        fontWeight: "500",
+        flexWrap: "wrap" as const,
+      }
+    : {
         display: "flex",
         alignItems: "center",
         gap: "8px",
@@ -24,9 +36,15 @@ function LoopBreadcrumb({
         fontSize: "14px",
         fontWeight: "500",
         marginBottom: "16px",
-        flexWrap: "wrap",
-      }}
-    >
+        flexWrap: "wrap" as const,
+      };
+
+  const buttonPadding = compact ? "4px 8px" : "6px 12px";
+  const fontSize = compact ? "12px" : "14px";
+  const iconSize = compact ? 14 : 16;
+
+  return (
+    <div style={containerStyle}>
       {/* Root button */}
       <button
         onClick={onNavigateToRoot}
@@ -34,22 +52,22 @@ function LoopBreadcrumb({
           display: "flex",
           alignItems: "center",
           gap: "4px",
-          padding: "6px 12px",
+          padding: buttonPadding,
           background:
-            loopStack.length === 0 ? "rgba(25, 118, 210, 0.2)" : "transparent",
+            loopStack.length === 0 ? "rgba(255, 255, 255, 0.2)" : "transparent",
           border:
             loopStack.length === 0
-              ? "1px solid rgba(25, 118, 210, 0.5)"
+              ? "1px solid rgba(255, 255, 255, 0.3)"
               : "1px solid transparent",
-          borderRadius: "6px",
-          color: loopStack.length === 0 ? "#1976d2" : "inherit",
+          borderRadius: "4px",
+          color: "#fff",
           cursor: "pointer",
-          fontSize: "14px",
+          fontSize: fontSize,
           transition: "all 0.2s",
         }}
         onMouseEnter={(e) => {
           if (loopStack.length > 0) {
-            e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
+            e.currentTarget.style.background = "rgba(255, 255, 255, 0.15)";
           }
         }}
         onMouseLeave={(e) => {
@@ -58,8 +76,8 @@ function LoopBreadcrumb({
           }
         }}
       >
-        <FiHome size={16} />
-        <span>Root</span>
+        <FiHome size={iconSize} />
+        {!compact && <span>Root</span>}
       </button>
 
       {/* Loop path */}
@@ -69,34 +87,34 @@ function LoopBreadcrumb({
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "8px",
+            gap: compact ? "4px" : "8px",
           }}
         >
-          <FiChevronRight size={16} color="#666" />
+          <FiChevronRight size={iconSize} color="rgba(255, 255, 255, 0.6)" />
           <button
             onClick={() => onNavigate(index)}
             style={{
               display: "flex",
               alignItems: "center",
               gap: "4px",
-              padding: "6px 12px",
+              padding: buttonPadding,
               background:
                 index === loopStack.length - 1
-                  ? "rgba(25, 118, 210, 0.2)"
+                  ? "rgba(255, 255, 255, 0.2)"
                   : "transparent",
               border:
                 index === loopStack.length - 1
-                  ? "1px solid rgba(25, 118, 210, 0.5)"
+                  ? "1px solid rgba(255, 255, 255, 0.3)"
                   : "1px solid transparent",
-              borderRadius: "6px",
-              color: index === loopStack.length - 1 ? "#1976d2" : "inherit",
+              borderRadius: "4px",
+              color: "#fff",
               cursor: "pointer",
-              fontSize: "14px",
+              fontSize: fontSize,
               transition: "all 0.2s",
             }}
             onMouseEnter={(e) => {
               if (index !== loopStack.length - 1) {
-                e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
+                e.currentTarget.style.background = "rgba(255, 255, 255, 0.15)";
               }
             }}
             onMouseLeave={(e) => {
@@ -106,7 +124,7 @@ function LoopBreadcrumb({
             }}
           >
             {loop.name}
-            {loop.depth !== undefined && (
+            {loop.depth !== undefined && !compact && (
               <span
                 style={{
                   fontSize: "11px",
