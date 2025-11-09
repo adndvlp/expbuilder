@@ -244,18 +244,20 @@ app.delete("/api/delete-experiment/:experimentID", async (req, res) => {
 
     await db.write();
 
-    // Opcional: borrar archivos HTML
-    const experimentHtmlPath = path.join(
-      experimentsHtmlDir,
-      `experiment_${experimentID}.html`
-    );
-    if (fs.existsSync(experimentHtmlPath)) fs.unlinkSync(experimentHtmlPath);
+    // Borrar archivos HTML usando el nombre del experimento
+    if (experiment && experiment.name) {
+      const experimentHtmlPath = path.join(
+        experimentsHtmlDir,
+        `${experiment.name}-experiment.html`
+      );
+      if (fs.existsSync(experimentHtmlPath)) fs.unlinkSync(experimentHtmlPath);
 
-    const previewHtmlPath = path.join(
-      trialsPreviewsHtmlDir,
-      `trials_preview_${experimentID}.html`
-    );
-    if (fs.existsSync(previewHtmlPath)) fs.unlinkSync(previewHtmlPath);
+      const previewHtmlPath = path.join(
+        trialsPreviewsHtmlDir,
+        `${experiment.name}-preview.html`
+      );
+      if (fs.existsSync(previewHtmlPath)) fs.unlinkSync(previewHtmlPath);
+    }
 
     // Borrar todos los archivos subidos del experimento
     let experimentName = experimentID;
