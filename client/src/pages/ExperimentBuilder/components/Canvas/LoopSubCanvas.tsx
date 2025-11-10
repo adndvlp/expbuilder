@@ -415,7 +415,6 @@ function LoopSubCanvas({
         <div
           style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1 }}
         >
-          <span>{loopName}</span>
           {loopStack.length > 0 && onNavigateToLoop && onNavigateToRoot && (
             <LoopBreadcrumb
               loopStack={loopStack}

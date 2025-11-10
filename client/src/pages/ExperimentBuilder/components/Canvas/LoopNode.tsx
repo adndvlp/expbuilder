@@ -114,21 +114,6 @@ function LoopNode({ data }: LoopNodeProps) {
         )}
       </div>
 
-      {onDoubleClick && (
-        <div
-          style={{
-            fontSize: "11px",
-            opacity: 0.8,
-            textAlign: "center",
-            borderTop: "1px solid rgba(255, 255, 255, 0.2)",
-            paddingTop: "6px",
-            marginTop: "2px",
-          }}
-        >
-          Double-click to enter loop
-        </div>
-      )}
-
       <Handle
         type="source"
         position={Position.Bottom}
