@@ -149,9 +149,29 @@ function TrialsConfig({ pluginName }: Props) {
         csvJson: trial?.csvJson || [],
         csvColumns: trial?.csvColumns || [],
       };
-    const parentLoop = trials.find(
-      (item) => "trials" in item && item.trials.some((t) => t.id === trial.id)
-    );
+
+    // Recursive function to find parent loop containing the trial
+    const findParentLoop = (items: any[], targetId: string | number): any => {
+      for (const item of items) {
+        if ("trials" in item && Array.isArray(item.trials)) {
+          // Check if this loop contains the target trial
+          if (
+            item.trials.some(
+              (t: any) => t.id === targetId || String(t.id) === String(targetId)
+            )
+          ) {
+            return item;
+          }
+          // Check recursively in nested loops
+          const found = findParentLoop(item.trials, targetId);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const parentLoop = findParentLoop(trials, trial.id);
+
     if (parentLoop) {
       return {
         csvJson: parentLoop.csvJson || [],
@@ -211,6 +231,7 @@ function TrialsConfig({ pluginName }: Props) {
 
       setTimeout(() => {
         setIsLoadingTrial(false);
+        isInitialFileLoad.current = false; // Permitir guardado después de cargar el trial
       }, 100); // 500 en producción
     }
 
@@ -256,50 +277,85 @@ function TrialsConfig({ pluginName }: Props) {
   const canSave = !!trialName && !isLoadingTrial;
   // guardar y actualizar el estado global del ensayo
   const handleSave = () => {
-    // if (!trialName || isLoadingTrial) return;
     if (!canSave) return;
 
-    if (isInitialFileLoad.current) {
-      isInitialFileLoad.current = false;
-      return;
-    }
+    // Helper recursivo para actualizar trial en cualquier nivel de anidamiento
+    const updateTrialRecursive = (
+      items: any[]
+    ): { updated: any[]; found: boolean } => {
+      let found = false;
+      const updated = items.map((item: any) => {
+        // Si es el trial que buscamos (tiene plugin O type y coincide el ID)
+        if (
+          ("plugin" in item || "type" in item) &&
+          item.id == selectedTrial?.id
+        ) {
+          found = true;
+          return {
+            ...item,
+            id: Number(item.id),
+            name: trialName,
+            plugin: pluginName,
+            parameters: {
+              includesExtensions: includesExtensions,
+              extensionType: extensionType,
+            },
+            trialCode: genTrialCode(),
+            columnMapping: { ...columnMapping },
+            csvJson: [...csvJson],
+            csvColumns: [...csvColumns],
+            orders,
+            orderColumns,
+            stimuliOrders,
+            categories,
+            categoryColumn,
+          };
+        }
 
-    // Busca el trial en el array principal por ID
-    let trialIndex = trials.findIndex(
-      (t) => "id" in t && t.id === selectedTrial?.id
-    );
+        // Si es un loop, buscar recursivamente en sus trials
+        if ("trials" in item && Array.isArray(item.trials)) {
+          const result = updateTrialRecursive(item.trials);
+          if (result.found) {
+            found = true;
+            return {
+              ...item,
+              trials: result.updated,
+            };
+          }
+        }
 
-    // Si no está en el array principal, búscalo dentro de un loop
-    let loopIndex = -1;
-    let trialInLoopIndex = -1;
-    if (trialIndex === -1) {
-      loopIndex = trials.findIndex(
-        (item) =>
-          "trials" in item &&
-          item.trials.some((t) => t.id === selectedTrial?.id)
-      );
-      if (loopIndex !== -1) {
-        trialInLoopIndex = (trials[loopIndex] as any).trials.findIndex(
-          (t: any) => t.id === selectedTrial?.id
-        );
+        return item;
+      });
+
+      return { updated, found };
+    };
+
+    // Obtener el trial original para comparar
+    const findTrialRecursive = (items: any[]): any => {
+      for (const item of items) {
+        // Un trial puede tener "plugin" O "type" (para compatibilidad)
+        if (
+          ("plugin" in item || "type" in item) &&
+          item.id == selectedTrial?.id
+        ) {
+          return item;
+        }
+        if ("trials" in item && Array.isArray(item.trials)) {
+          const found = findTrialRecursive(item.trials);
+          if (found) return found;
+        }
       }
-    }
+      return null;
+    };
 
-    // Si no se encuentra el trial, salir
-    if (trialIndex === -1 && trialInLoopIndex === -1) return;
+    const prevTrial = findTrialRecursive(trials);
 
-    // Construye el trial actualizado
-    const prevTrial =
-      trialIndex !== -1
-        ? trials[trialIndex]
-        : (trials[loopIndex] as any).trials[trialInLoopIndex];
-
-    if (!("type" in prevTrial)) return;
+    if (!prevTrial) return;
 
     const updatedTrial = {
       ...prevTrial,
       id: Number(prevTrial.id),
-      name: trialName, // Actualizar el nombre también
+      name: trialName,
       plugin: pluginName,
       parameters: {
         includesExtensions: includesExtensions,
@@ -314,7 +370,6 @@ function TrialsConfig({ pluginName }: Props) {
       stimuliOrders,
       categories,
       categoryColumn,
-      // type: prevTrial.type,
     };
 
     if (isEqual(updatedTrial, prevTrial)) return;
@@ -322,28 +377,12 @@ function TrialsConfig({ pluginName }: Props) {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
     timeoutRef.current = setTimeout(() => {
-      let updatedTrials = [...trials];
+      const result = updateTrialRecursive(trials);
 
-      if (trialIndex !== -1) {
-        // Actualiza el trial en el array principal
-        updatedTrials[trialIndex] = updatedTrial;
-        setTrials(updatedTrials);
-        setSelectedTrial(updatedTrial);
-      } else if (loopIndex !== -1 && trialInLoopIndex !== -1) {
-        // Actualiza el trial dentro del loop
-        const updatedLoop = { ...updatedTrials[loopIndex] };
-        if ("trials" in updatedLoop) {
-          updatedLoop.trials = [...updatedLoop.trials];
-          updatedLoop.trials[trialInLoopIndex] = updatedTrial;
-          updatedTrials[loopIndex] = updatedLoop;
-        }
-        setTrials(updatedTrials);
+      if (result.found) {
+        setTrials(result.updated);
         setSelectedTrial(updatedTrial);
       }
-
-      // window.alert("Ensayo guardado exitosamente.");
-      // console.log(csvJson);
-      console.log(genTrialCode());
 
       // less intrusve indicator
       setSaveIndicator(true);

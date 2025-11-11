@@ -39,44 +39,36 @@ export function useTrialPersistence({
   const handleDeleteTrial = () => {
     if (!selectedTrial) return;
     const trialIdToDelete = selectedTrial.id;
-    // Elimina el trial del array principal
-    let updatedTrials = trials.filter((t) => t.id !== trialIdToDelete);
 
-    // Elimina referencias en branches de todos los trials y loops
-    updatedTrials = updatedTrials.map((t: any) => {
-      // Si es un trial con branches
-      if (t.branches && Array.isArray(t.branches)) {
-        return {
-          ...t,
-          branches: t.branches.filter(
-            (id: number | string) =>
-              id !== trialIdToDelete && id !== String(trialIdToDelete)
-          ),
-        };
-      }
-      // Si es un loop con trials
-      if (t.trials && Array.isArray(t.trials)) {
-        return {
-          ...t,
-          trials: t.trials
-            .map((trial: any) => {
-              if (trial.branches && Array.isArray(trial.branches)) {
-                return {
-                  ...trial,
-                  branches: trial.branches.filter(
-                    (id: number | string) =>
-                      id !== trialIdToDelete && id !== String(trialIdToDelete)
-                  ),
-                };
-              }
-              return trial;
-            })
-            .filter((trial: any) => trial.id !== trialIdToDelete),
-        };
-      }
-      return t;
-    });
+    // Helper recursivo para eliminar trial y sus referencias
+    const removeTrialRecursive = (items: any[]): any[] => {
+      return items
+        .filter((item: any) => item.id !== trialIdToDelete) // Eliminar el trial si es este item
+        .map((item: any) => {
+          // Limpiar referencias en branches
+          if (item.branches && Array.isArray(item.branches)) {
+            item = {
+              ...item,
+              branches: item.branches.filter(
+                (id: number | string) =>
+                  id !== trialIdToDelete && id !== String(trialIdToDelete)
+              ),
+            };
+          }
 
+          // Si es un loop, buscar recursivamente en sus trials
+          if ("trials" in item && Array.isArray(item.trials)) {
+            return {
+              ...item,
+              trials: removeTrialRecursive(item.trials),
+            };
+          }
+
+          return item;
+        });
+    };
+
+    const updatedTrials = removeTrialRecursive(trials);
     setTrials(updatedTrials);
     setSelectedTrial(null);
     deleteTrial(trialIdToDelete);

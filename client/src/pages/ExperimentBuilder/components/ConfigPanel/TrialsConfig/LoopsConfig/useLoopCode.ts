@@ -2,7 +2,31 @@ type Trial = {
   trialName: string;
   pluginName: string;
   timelineProps: string;
+  mappedJson?: Record<string, any>[];
 };
+
+// LoopData: Similar a Loop pero con 'items' en lugar de 'trials' (para datos procesados)
+// y solo las propiedades necesarias para generación de código
+type LoopData = {
+  loopName: string; // Equivalente a Loop.name
+  loopId: string; // Equivalente a Loop.id
+  repetitions: number;
+  randomize: boolean;
+  orders: boolean;
+  stimuliOrders: any[];
+  categories: boolean;
+  categoryData: any[];
+  branches?: (string | number)[];
+  branchConditions?: BranchCondition[];
+  repeatConditions?: RepeatCondition[];
+  loopConditions?: LoopCondition[];
+  isConditionalLoop?: boolean;
+  items: TimelineItem[]; // Recursivo: contiene Trial[] o LoopData[] procesados
+  unifiedStimuli: Record<string, any>[];
+  isLoop: true; // Discriminador para type guard
+};
+
+type TimelineItem = Trial | LoopData;
 
 type BranchCondition = {
   id: number;
@@ -47,7 +71,7 @@ type Props = {
   stimuliOrders: any[];
   categories: boolean;
   categoryData: any[];
-  trials: Trial[];
+  trials: TimelineItem[]; // Puede contener trials o loops
   unifiedStimuli: Record<string, any>[];
   loopConditions?: LoopCondition[];
   isConditionalLoop?: boolean;
@@ -73,38 +97,75 @@ export default function useLoopCode({
     return name.replace(/[^a-zA-Z0-9_]/g, "_");
   };
 
-  const genLoopCode = () => {
-    // Sanitizar el ID del loop para usarlo en nombres de variables
-    const loopIdSanitized = id ? sanitizeName(id) : "Loop";
+  // Helper para verificar si es un nested loop
+  const isLoopData = (item: TimelineItem): item is LoopData => {
+    return "isLoop" in item && item.isLoop === true;
+  };
 
-    // Generar el código de cada trial
-    const trialDefinitions = trials
-      .map((trial) => {
-        return `
-    ${trial.timelineProps}
+  // Función recursiva para generar código de loops anidados
+  const generateNestedLoopCode = (loopData: LoopData): string => {
+    const loopIdSanitized = sanitizeName(loopData.loopId);
+
+    // Si el loop anidado no tiene items procesados, generar solo una referencia
+    // Esto sucede cuando el loop se procesa en su propio LoopsConfig
+    if (loopData.items.length === 0) {
+      return `
+    // Nested loop: ${loopData.loopName}
+    // This loop will be processed when opened in the editor
+    const ${loopIdSanitized}_procedure = {
+      timeline: [],
+      data: {
+        loop_id: "${loopData.loopId}",
+        loop_name: "${loopData.loopName}",
+        nested_loop: true
+      }
+    };`;
+    }
+
+    // Procesar recursivamente cada item
+    const processedItemDefinitions = loopData.items
+      .map((item) => {
+        if (isLoopData(item)) {
+          // RECURSIÓN: Generar código del loop anidado
+          return generateNestedLoopCode(item);
+        } else {
+          // Es un trial - generar código normal
+          return `
+    ${item.timelineProps}
 `;
+        }
       })
       .join("\n\n");
 
-    // Generar wrappers con conditional_function para cada trial dentro del loop
-    const trialWrappers = trials
-      .map((trial, index) => {
-        const trialNameSanitized = sanitizeName(trial.trialName);
-        const isLastTrial = index === trials.length - 1;
-        // Obtener el trial_id del trial para usarlo en la conditional_function
-        const trialId = `${trialNameSanitized}_timeline.data.trial_id`;
+    // Generar wrappers con conditional_function para cada trial/loop
+    const processedItemWrappers = loopData.items
+      .map((item, index) => {
+        const itemName = isLoopData(item) ? item.loopName : item.trialName;
+        const itemNameSanitized = sanitizeName(itemName);
+        const isLastItem = index === loopData.items.length - 1;
+
+        // Para loops, usar el ID sanitizado del loop en lugar del nombre
+        // Esto debe coincidir con cómo se define el procedure del loop
+        const timelineRef = isLoopData(item)
+          ? `${sanitizeName(item.loopId)}_procedure`
+          : `${itemNameSanitized}_timeline`;
+
+        const itemId = isLoopData(item)
+          ? `"${sanitizeName(item.loopId)}"`
+          : `${timelineRef}.data.trial_id`;
+
         return `
-    const ${trialNameSanitized}_wrapper = {
-      timeline: [${trialNameSanitized}_timeline],
+    const ${itemNameSanitized}_wrapper = {
+      timeline: [${timelineRef}],
       conditional_function: function() {
-        const currentId = ${trialId};
+        const currentId = ${itemId};
         
-        // Si el trial objetivo ya fue ejecutado, saltar todos los trials restantes en esta iteración
+        // Si el item objetivo ya fue ejecutado, saltar todos los items restantes en esta iteración
         if (loopTargetExecuted) {
           ${
-            isLastTrial
+            isLastItem
               ? `
-          // Último trial: resetear flags para la siguiente iteración/repetición
+          // Último item: resetear flags para la siguiente iteración/repetición
           loopNextTrialId = null;
           loopSkipRemaining = false;
           loopTargetExecuted = false;
@@ -116,10 +177,10 @@ export default function useLoopCode({
           return false;
         }
         
-        // Si loopSkipRemaining está activo, verificar si este es el trial objetivo
+        // Si loopSkipRemaining está activo, verificar si este es el item objetivo
         if (loopSkipRemaining) {
           if (String(currentId) === String(loopNextTrialId)) {
-            // Encontramos el trial objetivo dentro del loop
+            // Encontramos el item objetivo dentro del loop
             loopTargetExecuted = true;
             return true;
           }
@@ -132,9 +193,270 @@ export default function useLoopCode({
       },
       on_timeline_finish: function() {
         ${
-          isLastTrial
+          isLastItem
             ? `
-        // Último trial del timeline: resetear flags para la siguiente iteración/repetición
+        // Último item del timeline: resetear flags para la siguiente iteración/repetición
+        loopNextTrialId = null;
+        loopSkipRemaining = false;
+        loopTargetExecuted = false;
+        loopBranchingActive = false;
+        loopBranchCustomParameters = null;
+        loopIterationComplete = false;`
+            : ""
+        }
+      }
+    };`;
+      })
+      .join("\n\n");
+
+    // Generar la lista de nombres de wrappers para el timeline
+    const timelineRefs = loopData.items
+      .map((item) => {
+        const itemName = isLoopData(item) ? item.loopName : item.trialName;
+        const itemNameSanitized = sanitizeName(itemName);
+        return `${itemNameSanitized}_wrapper`;
+      })
+      .join(", ");
+
+    // Generar código de timeline_variables si hay stimuli
+    let stimuliCode = "";
+    if (loopData.unifiedStimuli && loopData.unifiedStimuli.length > 0) {
+      stimuliCode = `
+    const test_stimuli_${loopIdSanitized} = ${JSON.stringify(loopData.unifiedStimuli, null, 2)};`;
+    }
+
+    // Branches del loop anidado
+    const hasBranchesLoop = loopData.branches && loopData.branches.length > 0;
+    const hasLoopConditions =
+      loopData.isConditionalLoop &&
+      loopData.loopConditions &&
+      loopData.loopConditions.length > 0;
+
+    // Construir el código completo del loop anidado
+    return `
+    ${stimuliCode}
+    
+    ${processedItemDefinitions}
+
+// --- Branching logic variables for nested loop ${loopData.loopName} ---
+let loopNextTrialId = null;
+let loopSkipRemaining = false;
+let loopBranchingActive = false;
+let loopBranchCustomParameters = null;
+let loopTargetExecuted = false;
+let loopIterationComplete = false;
+const loopHasBranches = ${hasBranchesLoop ? "true" : "false"};
+let loopShouldBranchOnFinish = false;
+
+${processedItemWrappers}
+
+const ${loopIdSanitized}_procedure = {
+  timeline: [${timelineRefs}],
+  ${loopData.unifiedStimuli && loopData.unifiedStimuli.length > 0 ? `timeline_variables: test_stimuli_${loopIdSanitized},` : ""}
+  ${loopData.randomize ? "sample: { type: 'fixed-repetitions', size: " + loopData.repetitions + " }," : "repetitions: " + loopData.repetitions + ","}
+  ${
+    hasLoopConditions
+      ? `loop_function: function(data) {
+    // Evaluate loop conditions to determine if the nested loop should repeat
+    const loopConditionsArray = ${JSON.stringify(loopData.loopConditions)};
+    
+    // Helper function to get data from a specific trial
+    const getTrialData = (trialId) => {
+      // Get all trials data
+      const allTrials = data.values();
+      
+      // Find the last occurrence of the trial with matching trial_id
+      for (let i = allTrials.length - 1; i >= 0; i--) {
+        const trial = allTrials[i];
+        if (String(trial.trial_id) === String(trialId)) {
+          return trial;
+        }
+      }
+      return null;
+    };
+    
+    // Evaluate a single condition (AND logic between rules)
+    const evaluateCondition = (condition) => {
+      return condition.rules.every(rule => {
+        const trialData = getTrialData(rule.trialId);
+        
+        if (!trialData) {
+          console.warn('Nested loop: Trial data not found for:', rule.trialId);
+          return false;
+        }
+        
+        const propValue = trialData[rule.prop];
+        const compareValue = rule.value;
+        
+        // Convert values for comparison
+        const numPropValue = parseFloat(propValue);
+        const numCompareValue = parseFloat(compareValue);
+        const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
+        
+        switch (rule.op) {
+          case '==':
+            return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
+          case '!=':
+            return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
+          case '>':
+            return isNumeric && numPropValue > numCompareValue;
+          case '<':
+            return isNumeric && numPropValue < numCompareValue;
+          case '>=':
+            return isNumeric && numPropValue >= numCompareValue;
+          case '<=':
+            return isNumeric && numPropValue <= numCompareValue;
+          default:
+            return false;
+        }
+      });
+    };
+    
+    // Evaluate all conditions (OR logic between conditions)
+    const shouldRepeat = loopConditionsArray.some(condition => evaluateCondition(condition));
+    
+    console.log('Nested loop condition evaluation result for ${loopData.loopName}:', shouldRepeat);
+    
+    // Si no debe repetir Y el loop tiene branches, activar branching
+    ${
+      hasBranchesLoop
+        ? `
+    if (!shouldRepeat) {
+      // El nested loop terminó según las condiciones, activar branching si tiene branches
+      const loopBranches = [${loopData.branches?.map((b) => (typeof b === "string" ? `"${b}"` : b)).join(", ") || ""}];
+      if (loopBranches.length > 0) {
+        loopNextTrialId = loopBranches[0];
+        loopSkipRemaining = true;
+        loopBranchingActive = true;
+        console.log('Nested conditional loop finished, branching to:', loopBranches[0]);
+      }
+    }
+    `
+        : ""
+    }
+    
+    return shouldRepeat;
+  },`
+      : ""
+  }
+  on_timeline_start: function() {
+    // Resetear las flags al inicio de cada iteración del nested loop
+    loopNextTrialId = null;
+    loopSkipRemaining = false;
+    loopBranchingActive = false;
+    loopBranchCustomParameters = null;
+    loopTargetExecuted = false;
+    loopIterationComplete = false;
+    loopShouldBranchOnFinish = false;
+    
+    // IMPORTANTE: Si el nested loop es condicional, resetear también el branching LOCAL
+    // para que se regenere durante esta iteración
+    ${
+      hasLoopConditions
+        ? `
+    loopNextTrialId = null;
+    loopSkipRemaining = false;
+    loopBranchingActive = false;
+    console.log('Conditional nested loop iteration starting, reset local branching flags');
+    `
+        : ""
+    }
+  },
+  on_timeline_finish: function() {
+    // Resetear las flags al finalizar el nested loop
+    loopNextTrialId = null;
+    loopSkipRemaining = false;
+    loopTargetExecuted = false;
+    loopBranchingActive = false;
+    loopBranchCustomParameters = null;
+    loopIterationComplete = false;
+    loopShouldBranchOnFinish = false;
+  },
+  data: {
+    loop_id: "${loopData.loopId}",
+    loop_name: "${loopData.loopName}"
+  }
+};`;
+  };
+
+  const genLoopCode = () => {
+    // Sanitizar el ID del loop para usarlo en nombres de variables
+    const loopIdSanitized = id ? sanitizeName(id) : "Loop";
+
+    // Generar el código de cada trial o loop
+    const itemDefinitions = trials
+      .map((item) => {
+        if (isLoopData(item)) {
+          // Es un nested loop - generar código recursivamente
+          return generateNestedLoopCode(item);
+        } else {
+          // Es un trial - generar código normal
+          return `
+    ${item.timelineProps}
+`;
+        }
+      })
+      .join("\n\n");
+
+    // Generar wrappers con conditional_function para cada trial/loop dentro del loop
+    const itemWrappers = trials
+      .map((item, index) => {
+        const itemName = isLoopData(item) ? item.loopName : item.trialName;
+        const itemNameSanitized = sanitizeName(itemName);
+        const isLastItem = index === trials.length - 1;
+
+        // Para loops, usar el ID sanitizado del loop en lugar del nombre
+        // Esto debe coincidir con cómo se define el procedure del loop
+        const timelineRef = isLoopData(item)
+          ? `${sanitizeName(item.loopId)}_procedure`
+          : `${itemNameSanitized}_timeline`;
+
+        const itemId = isLoopData(item)
+          ? `"${sanitizeName(item.loopId)}"`
+          : `${timelineRef}.data.trial_id`;
+
+        return `
+    const ${itemNameSanitized}_wrapper = {
+      timeline: [${timelineRef}],
+      conditional_function: function() {
+        const currentId = ${itemId};
+        
+        // Si el item objetivo ya fue ejecutado, saltar todos los items restantes en esta iteración
+        if (loopTargetExecuted) {
+          ${
+            isLastItem
+              ? `
+          // Último item: resetear flags para la siguiente iteración/repetición
+          loopNextTrialId = null;
+          loopSkipRemaining = false;
+          loopTargetExecuted = false;
+          loopBranchingActive = false;
+          loopBranchCustomParameters = null;
+          loopIterationComplete = false;`
+              : ""
+          }
+          return false;
+        }
+        
+        // Si loopSkipRemaining está activo, verificar si este es el item objetivo
+        if (loopSkipRemaining) {
+          if (String(currentId) === String(loopNextTrialId)) {
+            // Encontramos el item objetivo dentro del loop
+            loopTargetExecuted = true;
+            return true;
+          }
+          // No es el objetivo, saltar
+          return false;
+        }
+        
+        // No hay branching activo, ejecutar normalmente
+        return true;
+      },
+      on_timeline_finish: function() {
+        ${
+          isLastItem
+            ? `
+        // Último item del timeline: resetear flags para la siguiente iteración/repetición
         loopNextTrialId = null;
         loopSkipRemaining = false;
         loopTargetExecuted = false;
@@ -150,9 +472,10 @@ export default function useLoopCode({
 
     // Generar la lista de nombres de wrappers para el timeline del loop
     const timelineRefs = trials
-      .map((trial) => {
-        const trialNameSanitized = sanitizeName(trial.trialName);
-        return `${trialNameSanitized}_wrapper`;
+      .map((item) => {
+        const itemName = isLoopData(item) ? item.loopName : item.trialName;
+        const itemNameSanitized = sanitizeName(itemName);
+        return `${itemNameSanitized}_wrapper`;
       })
       .join(", ");
 
@@ -245,7 +568,7 @@ export default function useLoopCode({
 
     code += `
     
-    ${trialDefinitions}
+    ${itemDefinitions}
 
 // --- Branching logic variables for internal loop trials ---
 let loopNextTrialId = null;
@@ -257,7 +580,7 @@ let loopIterationComplete = false; // Indica que la iteración actual terminó
 const loopHasBranches = ${hasBranchesLoop ? "true" : "false"};
 let loopShouldBranchOnFinish = false;
 
-${trialWrappers}
+${itemWrappers}
 
 const evaluateLoopCondition = (trialData, condition) => {
   // All rules in a condition must be true (AND logic)
@@ -443,6 +766,20 @@ const ${loopIdSanitized}_procedure = {
     loopTargetExecuted = false;
     loopIterationComplete = false;
     loopShouldBranchOnFinish = false;
+    
+    // IMPORTANTE: Si el loop es condicional, resetear también el branching GLOBAL
+    // para que se regenere durante esta iteración del loop
+    ${
+      isConditionalLoop && loopConditions && loopConditions.length > 0
+        ? `
+    window.nextTrialId = null;
+    window.skipRemaining = false;
+    window.branchingActive = false;
+    window.branchCustomParameters = null;
+    console.log('Conditional loop iteration starting, reset global branching flags');
+    `
+        : ""
+    }
   },
   on_timeline_finish: function() {
     // Resetear las flags al finalizar todas las repeticiones del loop
@@ -460,6 +797,7 @@ const ${loopIdSanitized}_procedure = {
         window.nextTrialId = branches[0];
         window.skipRemaining = true;
         window.branchingActive = true;
+        console.log('Loop finished (from internal trial), branching to:', branches[0]);
       }
     }
     
@@ -543,11 +881,11 @@ const ${loopIdSanitized}_procedure = {
     }
     
     if (shouldRepeat) {
-      // Limpiar todos los wrappers de jsPsych dentro del target
-      const target = document.getElementById('jspsych-target');
-      if (target) {
-        // Limpiar todo el contenido del target (incluyendo todos los wrappers)
-        target.innerHTML = '';
+      // Limpiar el contenedor de jsPsych (jspsych-container es el display_element)
+      const container = document.getElementById('jspsych-container');
+      if (container) {
+        // Limpiar todo el contenido del container
+        container.innerHTML = '';
       }
       // Reiniciar el timeline
       setTimeout(() => {

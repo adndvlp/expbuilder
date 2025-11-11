@@ -73,7 +73,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
   if (selectedLoop) {
     return (
       <div className="config-panel">
-        <TrialLoops loop={selectedLoop} />
+        <TrialLoops key={selectedLoop.id} loop={selectedLoop} />
       </div>
     );
   }

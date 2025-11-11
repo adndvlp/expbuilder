@@ -256,42 +256,31 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
   };
 
   // Find trial by ID
+  // Find trial by ID recursively at any depth
   const findTrialById = (trialId: string | number): any => {
     console.log("Finding trial:", trialId, "in trials:", trials);
 
-    // Check if trial is in main timeline
-    const mainItem = trials.find((t: any) => {
-      // Check direct ID match
-      if (t.id === trialId) return true;
-      // Check string vs number comparison
-      if (String(t.id) === String(trialId)) return true;
-      return false;
-    });
-
-    if (mainItem) {
-      console.log("Found in main timeline:", mainItem);
-      return mainItem;
-    }
-
-    // Check if trial is inside a loop
-    for (const item of trials) {
-      if ("trials" in item && Array.isArray(item.trials)) {
-        const loopTrial = item.trials.find((t: any) => {
-          // Check direct ID match
-          if (t.id === trialId) return true;
-          // Check string vs number comparison
-          if (String(t.id) === String(trialId)) return true;
-          return false;
-        });
-        if (loopTrial) {
-          console.log("Found in loop:", loopTrial);
-          return loopTrial;
+    const findRecursive = (items: any[]): any => {
+      for (const item of items) {
+        // Check direct ID match
+        if (item.id === trialId || String(item.id) === String(trialId)) {
+          console.log("Found trial:", item);
+          return item;
+        }
+        // If it's a loop, search recursively in its trials
+        if ("trials" in item && Array.isArray(item.trials)) {
+          const found = findRecursive(item.trials);
+          if (found) return found;
         }
       }
-    }
+      return null;
+    };
 
-    console.log("Trial not found!");
-    return null;
+    const result = findRecursive(trials);
+    if (!result) {
+      console.log("Trial not found!");
+    }
+    return result;
   };
 
   // Get CSV columns for target trial
@@ -304,14 +293,33 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
       return targetTrial.csvColumns;
     }
 
-    // Check if trial is in a loop with CSV
-    const parentLoop = trials.find(
-      (item) =>
-        "trials" in item &&
-        item.trials.some((t: any) => t.id === trialId) &&
-        item.csvColumns &&
-        item.csvColumns.length > 0
-    );
+    // Recursive function to find parent loop with csvColumns
+    const findParentLoopWithCsv = (
+      items: any[],
+      targetId: string | number
+    ): any => {
+      for (const item of items) {
+        if ("trials" in item && Array.isArray(item.trials)) {
+          // Check if this loop contains the target trial
+          if (
+            item.trials.some(
+              (t: any) => t.id === targetId || String(t.id) === String(targetId)
+            )
+          ) {
+            // Return this loop if it has csvColumns
+            if (item.csvColumns && item.csvColumns.length > 0) {
+              return item;
+            }
+          }
+          // Check recursively in nested loops
+          const found = findParentLoopWithCsv(item.trials, targetId);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const parentLoop = findParentLoopWithCsv(trials, trialId);
 
     if (parentLoop && "csvColumns" in parentLoop && parentLoop.csvColumns) {
       return parentLoop.csvColumns;
@@ -392,25 +400,49 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
   const availableTrials = (() => {
     if (!selectedTrial) return [];
 
-    // Check if the trial is inside a loop
-    const parentLoop = trials.find(
-      (item) =>
-        "trials" in item && item.trials.some((t) => t.id === selectedTrial.id)
-    );
+    // Recursive function to find parent loop containing the selected trial
+    const findParentLoop = (items: any[], targetId: string | number): any => {
+      for (const item of items) {
+        if ("trials" in item && Array.isArray(item.trials)) {
+          // Check if this loop contains the target trial directly
+          if (
+            item.trials.some(
+              (t: any) => t.id === targetId || String(t.id) === String(targetId)
+            )
+          ) {
+            return item;
+          }
+          // Check recursively in nested loops
+          const found = findParentLoop(item.trials, targetId);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const parentLoop = findParentLoop(trials, selectedTrial.id);
 
     let allAvailableTrials: any[] = [];
 
     if (parentLoop && "trials" in parentLoop) {
       // If trial is inside a loop, show trials within the same loop
       allAvailableTrials = parentLoop.trials
-        .filter((t: any) => t.id !== selectedTrial.id) // Exclude current trial
+        .filter(
+          (t: any) =>
+            t.id !== selectedTrial.id &&
+            String(t.id) !== String(selectedTrial.id)
+        ) // Exclude current trial
         .map((t: any) => ({ id: t.id, name: t.name }));
     } else {
       // If trial is in main timeline, show all trials and loops
       allAvailableTrials = trials
         .filter((item: any) => {
           // Exclude current trial
-          if ("id" in item && item.id === selectedTrial.id) return false;
+          if (
+            item.id === selectedTrial.id ||
+            String(item.id) === String(selectedTrial.id)
+          )
+            return false;
           return true;
         })
         .map((item: any) => ({
@@ -519,54 +551,34 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
       })
     );
 
-    // Find if the trial is in the main array or inside a loop
-    let trialIndex = trials.findIndex(
-      (t) => "id" in t && t.id === selectedTrial?.id
-    );
+    // Recursive function to find and update the trial
+    const updateTrialRecursive = (items: any[]): any[] => {
+      return items.map((item) => {
+        // Check if this is the trial we're looking for
+        if (
+          item.id === selectedTrial.id ||
+          String(item.id) === String(selectedTrial.id)
+        ) {
+          return {
+            ...item,
+            branchConditions,
+            repeatConditions: repeatConditionsToSave,
+          };
+        }
 
-    let loopIndex = -1;
-    let trialInLoopIndex = -1;
+        // If it's a loop, recursively update its trials
+        if ("trials" in item && Array.isArray(item.trials)) {
+          return {
+            ...item,
+            trials: updateTrialRecursive(item.trials),
+          };
+        }
 
-    // If not in main array, search inside loops
-    if (trialIndex === -1) {
-      loopIndex = trials.findIndex(
-        (item) =>
-          "trials" in item &&
-          item.trials.some((t) => t.id === selectedTrial?.id)
-      );
-      if (loopIndex !== -1) {
-        trialInLoopIndex = (trials[loopIndex] as any).trials.findIndex(
-          (t: any) => t.id === selectedTrial?.id
-        );
-      }
-    }
+        return item;
+      });
+    };
 
-    // If trial not found, return
-    if (trialIndex === -1 && trialInLoopIndex === -1) return;
-
-    const updatedTrials = [...trials];
-
-    if (trialIndex !== -1) {
-      // Update trial in main array
-      const updatedTrial = {
-        ...trials[trialIndex],
-        branchConditions,
-        repeatConditions: repeatConditionsToSave,
-      };
-      updatedTrials[trialIndex] = updatedTrial;
-    } else if (loopIndex !== -1 && trialInLoopIndex !== -1) {
-      // Update trial inside loop
-      const updatedLoop = { ...updatedTrials[loopIndex] };
-      if ("trials" in updatedLoop) {
-        updatedLoop.trials = [...updatedLoop.trials];
-        updatedLoop.trials[trialInLoopIndex] = {
-          ...updatedLoop.trials[trialInLoopIndex],
-          branchConditions,
-          repeatConditions: repeatConditionsToSave,
-        };
-        updatedTrials[loopIndex] = updatedLoop;
-      }
-    }
+    const updatedTrials = updateTrialRecursive(trials);
 
     setTrials(updatedTrials);
     console.log("Branch conditions saved:", branchConditions);

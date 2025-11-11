@@ -15,7 +15,7 @@ export default function TrialsProvider({ children }: Props) {
 
   const experimentID = useExperimentID();
 
-  // Agrupa trials en un loop
+  // Agrupa trials/loops en un loop (soporta nested loops)
   const groupTrialsAsLoop = (
     trialIndices: number[],
     loopProps?: Partial<Omit<Loop, "trials" | "id">>
@@ -25,24 +25,35 @@ export default function TrialsProvider({ children }: Props) {
     const loopCount = trials.filter((t) => "trials" in t).length;
     const loopName = `Loop ${loopCount + 1}`;
 
-    // Get the trial IDs that will be grouped
-    const trialIdsToGroup = trialIndices
+    // Get the IDs that will be grouped (can be trials or loops)
+    const idsToGroup = trialIndices
       .map((i) => trials[i])
       .filter((t) => t && "id" in t)
-      .map((t) => (t as Trial).id);
+      .map((t) => t.id);
 
-    // Extract the trials to group, preserving their structure (including branches property)
-    const trialsToGroup = trialIndices
+    // Extract the items to group, preserving their structure
+    const itemsToGroup = trialIndices
       .map((i) => trials[i])
       .filter((t) => t && "id" in t)
-      .map((trial) => ({
-        ...trial,
-        csvJson: undefined,
-        csvColumns: undefined,
-        csvFromLoop: true,
-        // Preserve branches if they exist
-        branches: (trial as Trial).branches || undefined,
-      }));
+      .map((item) => {
+        if ("trials" in item) {
+          // Es un Loop - preservar toda su estructura
+          return {
+            ...item,
+            // Los loops mantienen su CSV propio si lo tienen
+          };
+        } else {
+          // Es un Trial
+          return {
+            ...item,
+            csvJson: undefined,
+            csvColumns: undefined,
+            csvFromLoop: true,
+            // Preserve branches if they exist
+            branches: item.branches || undefined,
+          };
+        }
+      });
 
     // Create the loop
     const newLoop: Loop = {
@@ -56,21 +67,19 @@ export default function TrialsProvider({ children }: Props) {
       categoryColumn: loopProps?.categoryColumn ?? "",
       categories: loopProps?.categories ?? false,
       categoryData: loopProps?.categoryData ?? [],
-      trials: trialsToGroup as Trial[],
+      trials: itemsToGroup as TrialOrLoop[],
       code: "",
     };
 
     // Calculate where to insert the loop BEFORE removing trials
     const insertIndex = Math.min(...trialIndices);
 
-    // Check if the trials being grouped are branches of another trial or loop
+    // Check if the items being grouped are branches of another trial or loop
     let parentId: number | string | null = null;
     for (const item of trials) {
       if ("branches" in item && item.branches && Array.isArray(item.branches)) {
         const hasBranchToGroup = item.branches.some((branchId) => {
-          const numBranchId =
-            typeof branchId === "string" ? parseInt(branchId) : branchId;
-          return trialIdsToGroup.includes(numBranchId);
+          return idsToGroup.includes(branchId);
         });
 
         if (hasBranchToGroup) {
@@ -80,7 +89,7 @@ export default function TrialsProvider({ children }: Props) {
       }
     }
 
-    // Remove the grouped trials from the main array
+    // Remove the grouped items from the main array
     const newTrials: TrialOrLoop[] = [];
 
     for (let i = 0; i < trials.length; i++) {
@@ -89,7 +98,7 @@ export default function TrialsProvider({ children }: Props) {
         newTrials.push(newLoop);
       }
 
-      // If this trial is NOT being grouped, add it
+      // If this item is NOT being grouped, add it
       if (!trialIndices.includes(i)) {
         const item = trials[i];
 
@@ -100,9 +109,7 @@ export default function TrialsProvider({ children }: Props) {
           Array.isArray(item.branches)
         ) {
           const updatedBranches = item.branches.filter((branchId) => {
-            const numBranchId =
-              typeof branchId === "string" ? parseInt(branchId) : branchId;
-            return !trialIdsToGroup.includes(numBranchId);
+            return !idsToGroup.includes(branchId);
           });
 
           // If this is the parent (trial or loop) and some branches were grouped, add the loop ID
@@ -243,90 +250,121 @@ export default function TrialsProvider({ children }: Props) {
 
   const removeLoop = (loopId: string) => {
     setTrials((prevTrials) => {
-      const idx = prevTrials.findIndex(
-        (item) => "trials" in item && item.id === loopId
-      );
-      if (idx === -1) return prevTrials;
+      // Helper recursivo para encontrar y eliminar el loop
+      const removeLoopRecursive = (
+        items: TrialOrLoop[]
+      ): { newItems: TrialOrLoop[]; found: boolean; loop?: Loop } => {
+        for (let idx = 0; idx < items.length; idx++) {
+          const item = items[idx];
 
-      const loop = prevTrials[idx] as Loop;
+          // Si encontramos el loop a eliminar
+          if ("trials" in item && item.id === loopId) {
+            const loop = item as Loop;
 
-      // Check if the loop is a branch of another trial or loop
-      let parentItem: TrialOrLoop | null = null;
-      for (const item of prevTrials) {
-        if (
-          "branches" in item &&
-          item.branches &&
-          Array.isArray(item.branches)
-        ) {
-          if (item.branches.includes(loopId)) {
-            parentItem = item;
-            break;
+            // Verificar si es un branch de otro item en este nivel
+            let parentItem: TrialOrLoop | null = null;
+            for (const potentialParent of items) {
+              if (
+                "branches" in potentialParent &&
+                potentialParent.branches?.includes(loopId)
+              ) {
+                parentItem = potentialParent;
+                break;
+              }
+            }
+
+            let newItems: TrialOrLoop[];
+
+            if (parentItem) {
+              // Es un branch - restaurar trials como branches del parent
+              newItems = [...items.slice(0, idx), ...items.slice(idx + 1)];
+              newItems = [...newItems, ...loop.trials];
+
+              // Encontrar root trials
+              const branchIdsInLoop = new Set<number | string>();
+              loop.trials.forEach((trial) => {
+                if (trial.branches) {
+                  trial.branches.forEach((branchId) =>
+                    branchIdsInLoop.add(branchId)
+                  );
+                }
+              });
+
+              const rootTrialIds = loop.trials
+                .filter((trial) => !branchIdsInLoop.has(trial.id))
+                .map((trial) => trial.id);
+
+              // Actualizar branches del parent
+              newItems = newItems.map((item) => {
+                const itemId =
+                  "parameters" in item ? (item as Trial).id : item.id;
+                const parentId =
+                  "parameters" in parentItem
+                    ? (parentItem as Trial).id
+                    : parentItem.id;
+
+                if (
+                  itemId === parentId &&
+                  "branches" in item &&
+                  item.branches
+                ) {
+                  const updatedBranches = item.branches.flatMap((branchId) => {
+                    if (branchId === loopId) {
+                      return rootTrialIds;
+                    }
+                    return branchId;
+                  });
+                  return { ...item, branches: updatedBranches };
+                }
+                return item;
+              });
+            } else {
+              // No es un branch - insertar trials en la posición del loop
+              newItems = [
+                ...items.slice(0, idx),
+                ...loop.trials,
+                ...items.slice(idx + 1),
+              ];
+            }
+
+            return { newItems, found: true, loop };
+          }
+
+          // Si es un loop, buscar recursivamente
+          if ("trials" in item) {
+            const result = removeLoopRecursive(item.trials);
+            if (result.found) {
+              const updatedItem = {
+                ...item,
+                trials: result.newItems,
+              };
+              const newItems = [
+                ...items.slice(0, idx),
+                updatedItem,
+                ...items.slice(idx + 1),
+              ];
+              return { newItems, found: true, loop: result.loop };
+            }
           }
         }
-      }
 
-      let newTrials: TrialOrLoop[];
+        return { newItems: items, found: false };
+      };
 
-      // If the loop was a branch, restore the trials as branches of the parent
-      if (parentItem) {
-        // Remove the loop from the main array without inserting the trials
-        newTrials = [...prevTrials.slice(0, idx), ...prevTrials.slice(idx + 1)];
+      const result = removeLoopRecursive(prevTrials);
 
-        // Add the loop's trials to the main array
-        newTrials = [...newTrials, ...loop.trials];
-
-        // Find which trials inside the loop are "root" trials (not branches of other trials in the loop)
-        const branchIdsInLoop = new Set<number | string>();
-        loop.trials.forEach((trial) => {
-          if (trial.branches && Array.isArray(trial.branches)) {
-            trial.branches.forEach((branchId) => branchIdsInLoop.add(branchId));
-          }
+      if (result.found) {
+        // Actualiza en el backend
+        fetch(`${API_URL}/api/save-trials/${experimentID}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ trials: result.newItems }),
         });
 
-        // Only root trials (those not in branchIdsInLoop) should be added as branches of the parent
-        const rootTrialIds = loop.trials
-          .filter((trial) => !branchIdsInLoop.has(trial.id))
-          .map((trial) => trial.id);
-
-        // Update the parent's branches: replace loop ID with the root trial IDs
-        newTrials = newTrials.map((item) => {
-          const itemId = "parameters" in item ? (item as Trial).id : item.id;
-          const parentId =
-            "parameters" in parentItem
-              ? (parentItem as Trial).id
-              : parentItem.id;
-
-          if (itemId === parentId && "branches" in item && item.branches) {
-            // Replace the loop ID with only the root trial IDs from the loop
-            const updatedBranches = item.branches.flatMap((branchId) => {
-              if (branchId === loopId) {
-                // Replace loop ID with only root trial IDs
-                return rootTrialIds;
-              }
-              return branchId;
-            });
-
-            return { ...item, branches: updatedBranches };
-          }
-          return item;
-        });
-      } else {
-        // If the loop was NOT a branch, insert trials in the position of the loop
-        newTrials = [
-          ...prevTrials.slice(0, idx),
-          ...loop.trials,
-          ...prevTrials.slice(idx + 1),
-        ];
+        return result.newItems;
       }
 
-      // Actualiza en el backend
-      fetch(`${API_URL}/api/save-trials/${experimentID}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ trials: newTrials }),
-      });
-
-      return newTrials;
+      return prevTrials;
     });
     setSelectedLoop(null);
   };

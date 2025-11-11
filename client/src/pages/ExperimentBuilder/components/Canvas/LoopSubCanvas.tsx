@@ -2,13 +2,16 @@ import "@xyflow/react/dist/style.css";
 import { useMemo, useState } from "react";
 import ReactFlow, { Connection } from "reactflow";
 import TrialNode from "./TrialNode";
+import LoopNode from "./LoopNode";
 import ResizeHandle from "./components/ResizeHandle";
+import LoopBreadcrumb from "./components/LoopBreadcrumb";
 import BranchedTrial from "../ConfigPanel/TrialsConfig/BranchedTrial";
 import ParamsOverride from "../ConfigPanel/TrialsConfig/ParamsOverride";
-import { Trial } from "../ConfigPanel/types";
+import LoopRangeModal from "../ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeModal";
+import { Trial, Loop, TrialOrLoop } from "../ConfigPanel/types";
 import { useDraggable } from "./hooks/useDraggable";
 import { useResizable } from "./hooks/useResizable";
-import { TbBinaryTree } from "react-icons/tb";
+import { TbBinaryTree, TbRepeat } from "react-icons/tb";
 import { FiX, FiSettings } from "react-icons/fi";
 import {
   findTrialById,
@@ -19,34 +22,51 @@ import {
   LAYOUT_CONSTANTS,
   calculateBranchWidth,
   createTrialNode,
+  createLoopNode,
   createEdge,
 } from "./utils/layoutUtils";
 import { getPatternStyle } from "./utils/styleUtils";
 
 const nodeTypes = {
   trial: TrialNode,
+  loop: LoopNode,
 };
 
 interface LoopSubCanvasProps {
-  trials: Trial[];
+  trials: TrialOrLoop[];
   loopName: string;
+  loopId?: string;
   onClose: () => void;
   isDark: boolean;
   selectedTrial: Trial | null;
+  selectedLoop: Loop | null;
   onSelectTrial: (trial: Trial) => void;
-  onUpdateTrial?: (trial: Trial) => void;
-  onAddBranch?: (parentTrialId: number, newBranchTrial: Trial) => void;
+  onSelectLoop: (loop: Loop) => void;
+  onOpenNestedLoop?: (loop: Loop) => void;
+  loopStack?: Array<{ id: string; name: string }>;
+  onNavigateToLoop?: (index: number) => void;
+  onNavigateToRoot?: () => void;
+  // Nueva prop para actualizar directamente toda la estructura
+  allTrials?: any[];
+  setAllTrials?: (trials: any[]) => void;
 }
 
 function LoopSubCanvas({
   trials,
   loopName,
+  loopId,
   onClose,
   isDark,
   selectedTrial,
+  selectedLoop,
   onSelectTrial,
-  onUpdateTrial,
-  onAddBranch,
+  onSelectLoop,
+  onOpenNestedLoop,
+  loopStack = [],
+  onNavigateToLoop,
+  onNavigateToRoot,
+  allTrials,
+  setAllTrials,
 }: LoopSubCanvasProps) {
   const { dragging, pos, handleMouseDown } = useDraggable({ x: 150, y: 250 });
   const { resizing, size, handleResizeMouseDown } = useResizable({
@@ -55,66 +75,338 @@ function LoopSubCanvas({
   });
   const [showBranchedModal, setShowBranchedModal] = useState(false);
   const [showParamsOverrideModal, setShowParamsOverrideModal] = useState(false);
+  const [showLoopModal, setShowLoopModal] = useState(false);
+
+  // Construir el breadcrumb completo (stack + loop actual)
+  // Solo agregar el loop actual si no está ya en el stack
+  const fullBreadcrumb =
+    loopId && !loopStack.some((l) => l.id === loopId)
+      ? [...loopStack, { id: loopId, name: loopName }]
+      : loopStack;
+
+  // Helper para navegar a través del loopStack y actualizar
+  const updateInNestedStructure = (
+    items: any[],
+    stackIndex: number,
+    updateFn: (items: any[]) => any[]
+  ): any[] => {
+    if (stackIndex >= loopStack.length) {
+      // Ya llegamos al loop actual, aplicar la actualización
+      return updateFn(items);
+    }
+
+    const targetLoopId = loopStack[stackIndex].id;
+    return items.map((item: any) => {
+      if ("trials" in item && item.id === targetLoopId) {
+        return {
+          ...item,
+          trials: updateInNestedStructure(
+            item.trials,
+            stackIndex + 1,
+            updateFn
+          ),
+        };
+      }
+      return item;
+    });
+  };
+
+  // Funciones para actualizar la estructura
+  const onAddBranch = (parentId: number | string, newBranchTrial: Trial) => {
+    if (!allTrials || !setAllTrials) return;
+
+    const addBranchInLoop = (loopTrials: any[]): any[] => {
+      let found = false;
+      const updatedTrials = loopTrials.map((item: any) => {
+        if (item.id === parentId) {
+          found = true;
+          return {
+            ...item,
+            branches: [...(item.branches || []), newBranchTrial.id],
+          };
+        } else if ("trials" in item) {
+          return {
+            ...item,
+            trials: addBranchInLoop(item.trials),
+          };
+        }
+        return item;
+      });
+
+      // Solo agregar el trial si encontramos el parent en este nivel
+      if (found) {
+        return [...updatedTrials, newBranchTrial];
+      }
+      return updatedTrials;
+    };
+
+    const updatedTrials =
+      loopStack.length > 0
+        ? updateInNestedStructure(allTrials, 0, addBranchInLoop)
+        : allTrials.map((item: any) => {
+            if ("trials" in item && item.id === loopId) {
+              return {
+                ...item,
+                trials: addBranchInLoop(item.trials),
+              };
+            }
+            return item;
+          });
+
+    setAllTrials(updatedTrials);
+  };
+
+  const onUpdateTrial = (updatedTrial: Trial) => {
+    if (!allTrials || !setAllTrials) return;
+
+    const updateTrialInLoop = (loopTrials: any[]): any[] => {
+      return loopTrials.map((item: any) => {
+        if ("parameters" in item && item.id === updatedTrial.id) {
+          return updatedTrial;
+        } else if ("trials" in item) {
+          return {
+            ...item,
+            trials: updateTrialInLoop(item.trials),
+          };
+        }
+        return item;
+      });
+    };
+
+    const updatedTrials =
+      loopStack.length > 0
+        ? updateInNestedStructure(allTrials, 0, updateTrialInLoop)
+        : allTrials.map((item: any) => {
+            if ("trials" in item && item.id === loopId) {
+              return {
+                ...item,
+                trials: updateTrialInLoop(item.trials),
+              };
+            }
+            return item;
+          });
+
+    setAllTrials(updatedTrials);
+  };
+
+  const onUpdateLoop = (updatedLoop: Loop) => {
+    if (!allTrials || !setAllTrials) return;
+
+    const updateLoopInLoop = (loopTrials: any[]): any[] => {
+      return loopTrials.map((item: any) => {
+        if ("trials" in item && item.id === updatedLoop.id) {
+          return updatedLoop;
+        } else if ("trials" in item) {
+          return {
+            ...item,
+            trials: updateLoopInLoop(item.trials),
+          };
+        }
+        return item;
+      });
+    };
+
+    const updatedTrials =
+      loopStack.length > 0
+        ? updateInNestedStructure(allTrials, 0, updateLoopInLoop)
+        : allTrials.map((item: any) => {
+            if ("trials" in item && item.id === loopId) {
+              return {
+                ...item,
+                trials: updateLoopInLoop(item.trials),
+              };
+            }
+            return item;
+          });
+
+    setAllTrials(updatedTrials);
+  };
+
+  const onCreateNestedLoop = (itemIds: (number | string)[]) => {
+    if (!allTrials || !setAllTrials) return;
+
+    // Helper para obtener todos los nombres existentes recursivamente
+    const getAllExistingNames = (items: any[]): string[] => {
+      const names: string[] = [];
+      items.forEach((item: any) => {
+        if (item.name) names.push(item.name);
+        if ("trials" in item && Array.isArray(item.trials)) {
+          names.push(...getAllExistingNames(item.trials));
+        }
+      });
+      return names;
+    };
+
+    // Helper para generar un nombre único
+    const generateUniqueLoopName = (
+      baseName: string,
+      existingNames: string[]
+    ): string => {
+      let counter = 1;
+      let name = baseName;
+      while (existingNames.includes(name)) {
+        counter++;
+        name = `${baseName.replace(/ \d+$/, "")} ${counter}`;
+      }
+      return name;
+    };
+
+    const createLoopInLoop = (loopTrials: any[]): any[] => {
+      const indices: number[] = [];
+      itemIds.forEach((id) => {
+        const idx = loopTrials.findIndex((t) => t.id == id);
+        if (idx !== -1) indices.push(idx);
+      });
+
+      if (indices.length < 2) return loopTrials;
+
+      const itemsToGroup = indices.map((i) => loopTrials[i]);
+
+      // Obtener todos los nombres existentes en todo el experimento
+      const existingNames = getAllExistingNames(allTrials);
+
+      // Generar un nombre único basado en "Nested Loop"
+      const uniqueName = generateUniqueLoopName("Nested Loop 1", existingNames);
+
+      const newNestedLoop: Loop = {
+        id: "loop_" + Date.now(),
+        name: uniqueName,
+        repetitions: 1,
+        randomize: false,
+        orders: false,
+        stimuliOrders: [],
+        orderColumns: [],
+        categoryColumn: "",
+        categories: false,
+        categoryData: [],
+        trials: itemsToGroup,
+        code: "",
+      };
+
+      const newLoopTrials: any[] = [];
+      const insertIndex = Math.min(...indices);
+
+      for (let i = 0; i < loopTrials.length; i++) {
+        if (i === insertIndex) {
+          newLoopTrials.push(newNestedLoop);
+        }
+        if (!indices.includes(i)) {
+          newLoopTrials.push(loopTrials[i]);
+        }
+      }
+
+      return newLoopTrials;
+    };
+
+    // Construir el stack completo incluyendo el loop actual
+    const fullStack =
+      loopId && !loopStack.some((l) => l.id === loopId)
+        ? [...loopStack, { id: loopId, name: loopName, trials: trials }]
+        : loopStack;
+
+    // Helper local que usa el fullStack
+    const updateWithFullStack = (items: any[], stackIndex: number): any[] => {
+      if (stackIndex >= fullStack.length) {
+        // Ya llegamos al loop actual, aplicar la actualización
+        return createLoopInLoop(items);
+      }
+
+      const targetLoopId = fullStack[stackIndex].id;
+      return items.map((item: any) => {
+        if ("trials" in item && item.id === targetLoopId) {
+          return {
+            ...item,
+            trials: updateWithFullStack(item.trials, stackIndex + 1),
+          };
+        }
+        return item;
+      });
+    };
+
+    const updatedTrials =
+      fullStack.length > 0
+        ? updateWithFullStack(allTrials, 0)
+        : allTrials.map((item: any) => {
+            if ("trials" in item && item.id === loopId) {
+              return {
+                ...item,
+                trials: createLoopInLoop(item.trials),
+              };
+            }
+            return item;
+          });
+
+    setAllTrials(updatedTrials);
+  };
 
   const { nodes, edges } = useMemo(() => {
     const nodes: any[] = [];
     const edges: any[] = [];
-    const renderedTrials = new Map<number | string, string>(); // Map trial.id -> nodeId
+    const renderedItems = new Map<number | string, string>(); // Map item.id -> nodeId
     const { yStep, branchHorizontalSpacing, branchVerticalOffset } =
       LAYOUT_CONSTANTS;
     // Calculate the center X position based on the modal width
     const xTrial = size.width / 3.1;
 
-    // Collect all trial IDs that are branches (recursively)
-    const collectAllBranchIds = (trialsList: Trial[]): Set<number> => {
-      const branchIds = new Set<number>();
-      const processItem = (trial: Trial) => {
-        if (trial.branches && Array.isArray(trial.branches)) {
-          trial.branches.forEach((branchId: number | string) => {
-            const numId =
-              typeof branchId === "string" ? parseInt(branchId) : branchId;
-            branchIds.add(numId);
-            const branchTrial = findTrialById(trials, numId);
-            if (branchTrial) {
-              processItem(branchTrial);
+    // Helper to check if item is Trial or Loop
+    const isTrial = (item: TrialOrLoop): item is Trial => {
+      return "parameters" in item;
+    };
+
+    // Collect all item IDs that are branches (recursively)
+    const collectAllBranchIds = (
+      itemsList: TrialOrLoop[]
+    ): Set<number | string> => {
+      const branchIds = new Set<number | string>();
+      const processItem = (item: TrialOrLoop) => {
+        if (item.branches && Array.isArray(item.branches)) {
+          item.branches.forEach((branchId: number | string) => {
+            branchIds.add(branchId);
+            const branchItem = findTrialById(itemsList, branchId);
+            if (branchItem) {
+              processItem(branchItem);
             }
           });
         }
       };
-      trialsList.forEach(processItem);
+      itemsList.forEach(processItem);
       return branchIds;
     };
 
-    const branchTrialIds = collectAllBranchIds(trials);
-    const mainTrials = trials.filter((trial) => !branchTrialIds.has(trial.id));
+    const branchItemIds = collectAllBranchIds(trials);
+    const mainItems = trials.filter((item) => !branchItemIds.has(item.id));
 
-    // Recursive function to render a trial and all its branches
-    const renderTrialWithBranches = (
-      trial: Trial,
+    // Recursive function to render an item (trial or loop) and all its branches
+    const renderItemWithBranches = (
+      item: TrialOrLoop,
       parentId: string,
       x: number,
       y: number,
       depth: number = 0
     ): number => {
-      const trialId = `${parentId}-${trial.id}`;
-      const isSelected = selectedTrial && selectedTrial.id === trial.id;
+      const itemId = `${parentId}-${item.id}`;
+      const isItemTrial = isTrial(item);
+      const isSelectedTrial =
+        isItemTrial && selectedTrial && selectedTrial.id === item.id;
+      const isSelectedLoop =
+        !isItemTrial && selectedLoop && selectedLoop.id === item.id;
 
-      // Check if this trial has already been rendered
-      const existingNodeId = renderedTrials.get(trial.id);
+      // Check if this item has already been rendered
+      const existingNodeId = renderedItems.get(item.id);
 
       if (existingNodeId) {
-        // Trial already rendered, just create the edge without rendering again
+        // Item already rendered, just create the edge without rendering again
         edges.push(createEdge(parentId, existingNodeId));
         return 0; // No depth added since we're not rendering
       }
 
-      // Mark this trial as rendered
-      renderedTrials.set(trial.id, trialId);
+      // Mark this item as rendered
+      renderedItems.set(item.id, itemId);
 
-      // Create edge from parent to this trial
-      edges.push(createEdge(parentId, trialId));
+      // Create edge from parent to this item
+      edges.push(createEdge(parentId, itemId));
 
-      const handleAddBranchForTrial = () => {
+      const handleAddBranchForItem = () => {
         if (onAddBranch) {
           const existingNames = trials.map((t) => t.name);
           const newName = generateUniqueName(existingNames);
@@ -127,30 +419,47 @@ function LoopSubCanvas({
             trialCode: "",
           };
 
-          onAddBranch(trial.id, newBranchTrial);
+          onAddBranch(item.id, newBranchTrial);
         }
       };
 
-      nodes.push(
-        createTrialNode(
-          trialId,
-          trial.name,
-          x,
-          y,
-          !!isSelected,
-          () => onSelectTrial(trial),
-          isSelected ? handleAddBranchForTrial : undefined
-        )
-      );
+      // Create node based on type
+      if (isItemTrial) {
+        nodes.push(
+          createTrialNode(
+            itemId,
+            item.name,
+            x,
+            y,
+            !!isSelectedTrial,
+            () => onSelectTrial(item as Trial),
+            isSelectedTrial ? handleAddBranchForItem : undefined
+          )
+        );
+      } else {
+        const loopItem = item as Loop;
+        nodes.push(
+          createLoopNode(
+            itemId,
+            item.name,
+            x,
+            y,
+            !!isSelectedLoop,
+            () => onSelectLoop(loopItem),
+            isSelectedLoop ? handleAddBranchForItem : undefined,
+            onOpenNestedLoop ? () => onOpenNestedLoop(loopItem) : undefined
+          )
+        );
+      }
 
       let maxDepth = 0;
 
       if (
-        trial.branches &&
-        Array.isArray(trial.branches) &&
-        trial.branches.length > 0
+        item.branches &&
+        Array.isArray(item.branches) &&
+        item.branches.length > 0
       ) {
-        const branchWidths = trial.branches.map((branchId: number | string) =>
+        const branchWidths = item.branches.map((branchId: number | string) =>
           calculateBranchWidth(branchId, trials, branchHorizontalSpacing)
         );
         const totalWidth = branchWidths.reduce(
@@ -160,23 +469,21 @@ function LoopSubCanvas({
 
         let currentX = x - totalWidth / 2;
 
-        trial.branches.forEach((branchId: number | string, index: number) => {
-          const branchTrial = findTrialById(trials, branchId);
-          if (branchTrial) {
+        item.branches.forEach((branchId: number | string, index: number) => {
+          const branchItem = findTrialById(trials, branchId);
+          if (branchItem) {
             const branchWidth = branchWidths[index];
             const branchX = currentX + branchWidth / 2;
             const branchY = y + branchVerticalOffset;
 
-            const branchDepth = renderTrialWithBranches(
-              branchTrial,
-              trialId,
+            const branchDepth = renderItemWithBranches(
+              branchItem,
+              itemId,
               branchX,
               branchY,
               depth + 1
             );
             maxDepth = Math.max(maxDepth, branchDepth);
-
-            // Edge is created inside renderTrialWithBranches now
 
             currentX += branchWidth;
           }
@@ -186,15 +493,19 @@ function LoopSubCanvas({
       return maxDepth + 1;
     };
 
-    // Render main sequence trials and their branches
+    // Render main sequence items and their branches
     let yPos = 60;
-    mainTrials.forEach((trial) => {
-      const isSelected = selectedTrial && selectedTrial.id === trial.id;
+    mainItems.forEach((item) => {
+      const isItemTrial = isTrial(item);
+      const isSelectedTrial =
+        isItemTrial && selectedTrial && selectedTrial.id === item.id;
+      const isSelectedLoop =
+        !isItemTrial && selectedLoop && selectedLoop.id === item.id;
 
-      // Mark main sequence trials as rendered
-      renderedTrials.set(trial.id, String(trial.id));
+      // Mark main sequence items as rendered
+      renderedItems.set(item.id, String(item.id));
 
-      const handleAddBranchForTrial = () => {
+      const handleAddBranchForItem = () => {
         if (onAddBranch) {
           const existingNames = trials.map((t) => t.name);
           const newName = generateUniqueName(existingNames);
@@ -207,30 +518,47 @@ function LoopSubCanvas({
             trialCode: "",
           };
 
-          onAddBranch(trial.id, newBranchTrial);
+          onAddBranch(item.id, newBranchTrial);
         }
       };
 
-      nodes.push(
-        createTrialNode(
-          String(trial.id),
-          trial.name,
-          xTrial,
-          yPos,
-          !!isSelected,
-          () => onSelectTrial(trial),
-          isSelected ? handleAddBranchForTrial : undefined
-        )
-      );
+      // Create node based on type
+      if (isItemTrial) {
+        nodes.push(
+          createTrialNode(
+            String(item.id),
+            item.name,
+            xTrial,
+            yPos,
+            !!isSelectedTrial,
+            () => onSelectTrial(item as Trial),
+            isSelectedTrial ? handleAddBranchForItem : undefined
+          )
+        );
+      } else {
+        const loopItem = item as Loop;
+        nodes.push(
+          createLoopNode(
+            String(item.id),
+            item.name,
+            xTrial,
+            yPos,
+            !!isSelectedLoop,
+            () => onSelectLoop(loopItem),
+            isSelectedLoop ? handleAddBranchForItem : undefined,
+            onOpenNestedLoop ? () => onOpenNestedLoop(loopItem) : undefined
+          )
+        );
+      }
 
       // Render branches recursively and calculate max depth
       let maxBranchDepth = 0;
       if (
-        trial.branches &&
-        Array.isArray(trial.branches) &&
-        trial.branches.length > 0
+        item.branches &&
+        Array.isArray(item.branches) &&
+        item.branches.length > 0
       ) {
-        const branchWidths = trial.branches.map((branchId: number | string) =>
+        const branchWidths = item.branches.map((branchId: number | string) =>
           calculateBranchWidth(branchId, trials, branchHorizontalSpacing)
         );
         const totalWidth = branchWidths.reduce(
@@ -239,22 +567,20 @@ function LoopSubCanvas({
         );
         let currentX = xTrial - totalWidth / 2;
 
-        trial.branches.forEach((branchId: number | string, index: number) => {
-          const branchTrial = findTrialById(trials, branchId);
-          if (branchTrial) {
+        item.branches.forEach((branchId: number | string, index: number) => {
+          const branchItem = findTrialById(trials, branchId);
+          if (branchItem) {
             const branchWidth = branchWidths[index];
             const branchX = currentX + branchWidth / 2;
 
-            const branchDepth = renderTrialWithBranches(
-              branchTrial,
-              String(trial.id),
+            const branchDepth = renderItemWithBranches(
+              branchItem,
+              String(item.id),
               branchX,
               yPos + branchVerticalOffset,
               0
             );
             maxBranchDepth = Math.max(maxBranchDepth, branchDepth);
-
-            // Edge is created inside renderTrialWithBranches now
 
             currentX += branchWidth;
           }
@@ -264,10 +590,10 @@ function LoopSubCanvas({
       yPos += yStep + maxBranchDepth * branchVerticalOffset;
     });
 
-    // Add edges between main sequence trials (vertical connection)
-    for (let i = 0; i < mainTrials.length - 1; i++) {
+    // Add edges between main sequence items (vertical connection)
+    for (let i = 0; i < mainItems.length - 1; i++) {
       edges.push(
-        createEdge(String(mainTrials[i].id), String(mainTrials[i + 1].id))
+        createEdge(String(mainItems[i].id), String(mainItems[i + 1].id))
       );
     }
 
@@ -275,9 +601,13 @@ function LoopSubCanvas({
   }, [
     trials,
     selectedTrial,
+    selectedLoop,
     onSelectTrial,
+    onSelectLoop,
     onAddBranch,
     onUpdateTrial,
+    onUpdateLoop,
+    onOpenNestedLoop,
     size.width,
   ]);
 
@@ -360,10 +690,30 @@ function LoopSubCanvas({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "8px",
         }}
         onMouseDown={handleMouseDown}
       >
-        {loopName}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            flex: 1,
+          }}
+        >
+          {fullBreadcrumb.length > 0 && onNavigateToLoop && onNavigateToRoot ? (
+            <LoopBreadcrumb
+              loopStack={fullBreadcrumb}
+              onNavigate={onNavigateToLoop}
+              onNavigateToRoot={onNavigateToRoot}
+              compact={true}
+            />
+          ) : (
+            <span>{loopName}</span>
+          )}
+        </div>
         <button
           style={{
             background: "none",
@@ -371,7 +721,6 @@ function LoopSubCanvas({
             color: "#fff",
             fontSize: 18,
             cursor: "pointer",
-            marginLeft: 8,
           }}
           onClick={onClose}
           title="Close"
@@ -442,6 +791,34 @@ function LoopSubCanvas({
             onClick={() => setShowParamsOverrideModal(true)}
           >
             <FiSettings size={20} color="#fff" />
+          </button>
+        )}
+
+        {/* Create Loop button - show if there are at least 2 items */}
+        {trials.length >= 2 && (
+          <button
+            style={{
+              position: "absolute",
+              top: 16,
+              right: selectedTrial ? 112 : 16,
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              background: "#8e44ad",
+              color: "#fff",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 20,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
+              zIndex: 10,
+            }}
+            title="Create Nested Loop"
+            onClick={() => setShowLoopModal(true)}
+          >
+            <TbRepeat size={20} color="#fff" />
           </button>
         )}
 
@@ -536,6 +913,37 @@ function LoopSubCanvas({
               <ParamsOverride
                 selectedTrial={selectedTrial}
                 onClose={() => setShowParamsOverrideModal(false)}
+              />
+            </div>
+          </div>
+        )}
+
+        {showLoopModal && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: "100vh",
+              background: "rgba(0,0,0,0.32)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+            }}
+          >
+            <div style={{ position: "relative", zIndex: 10000 }}>
+              <LoopRangeModal
+                trials={trials}
+                onConfirm={(itemIds) => {
+                  if (onCreateNestedLoop) {
+                    onCreateNestedLoop(itemIds);
+                  }
+                  setShowLoopModal(false);
+                }}
+                onClose={() => setShowLoopModal(false)}
+                selectedTrialId={selectedTrial?.id || selectedLoop?.id || null}
               />
             </div>
           </div>

@@ -81,6 +81,31 @@ export function createTrialNode(
   };
 }
 
+export function createLoopNode(
+  id: string,
+  name: string,
+  x: number,
+  y: number,
+  isSelected: boolean,
+  onClick: () => void,
+  onAddBranch?: () => void,
+  onOpenLoop?: () => void
+): LayoutNode {
+  return {
+    id,
+    type: "loop",
+    data: {
+      name,
+      selected: isSelected,
+      onAddBranch: isSelected ? onAddBranch : undefined,
+      onOpenLoop,
+      onClick,
+    },
+    position: { x, y },
+    draggable: false,
+  };
+}
+
 export function createEdge(
   source: string,
   target: string,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import useUrl from "../hooks/useUrl";
 import { useExperimentState } from "../hooks/useExpetimentState";
 import useTrials from "../hooks/useTrials";
@@ -30,6 +30,33 @@ function ExperimentPreview() {
 
   const { selectedTrial, selectedLoop, trials } = useTrials();
 
+  // Helper function to recursively find all trials at any depth
+  const getAllTrialsRecursively = (items: any[]): any[] => {
+    const allTrials: any[] = [];
+
+    const traverse = (itemsList: any[]) => {
+      itemsList.forEach((item: any) => {
+        // If it's a trial (has parameters), add it
+        if ("parameters" in item) {
+          allTrials.push(item);
+        }
+        // If it's a loop (has trials array), traverse its trials
+        if ("trials" in item && Array.isArray(item.trials)) {
+          traverse(item.trials);
+        }
+      });
+    };
+
+    traverse(items);
+    return allTrials;
+  };
+
+  // Memoize all trials to prevent infinite loops in useEffect
+  const allTrialsFlattened = useMemo(
+    () => getAllTrialsRecursively(trials),
+    [trials]
+  );
+
   // trials preview
   useEffect(() => {
     if (
@@ -59,6 +86,7 @@ function ExperimentPreview() {
           return participantNumber;
     }
 (async () => {
+localStorage.removeItem('jsPsych_jumpToTrial');
   participantNumber = await saveSession(trialSessionId);
 
   if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
@@ -66,6 +94,7 @@ function ExperimentPreview() {
     throw new Error("participantNumber not assigned");
   }
     const jsPsych = initJsPsych({
+    display_element: document.getElementById('jspsych-container'),
           on_data_update: function (data) {
             const res = fetch("/api/append-result/${experimentID}", {
               method: "PUT",
@@ -111,7 +140,7 @@ function ExperimentPreview() {
         incrementVersion();
       })();
     }
-  }, [selectedTrial, trials]);
+  }, [selectedTrial, selectedLoop, allTrialsFlattened]);
 
   // Crear URL con parámetros únicos para evitar caché
 

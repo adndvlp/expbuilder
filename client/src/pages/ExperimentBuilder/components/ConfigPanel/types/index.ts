@@ -20,7 +20,7 @@ export interface Loop {
   categories: boolean;
   categoryColumn: string;
   categoryData: any[];
-  trials: Trial[];
+  trials: TrialOrLoop[];
   code: string;
   csvJson?: any[];
   csvColumns?: string[];
@@ -101,10 +101,8 @@ export interface Trial {
   branches?: Array<string | number>;
   branchConditions?: BranchCondition[];
 
-  // Repeat/Jump conditions
   repeatConditions?: RepeatCondition[];
 
-  // Params override independent of branching
   paramsOverride?: ParamsOverrideCondition[];
 }
 

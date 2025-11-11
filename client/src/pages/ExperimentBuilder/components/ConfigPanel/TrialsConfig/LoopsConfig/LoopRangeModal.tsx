@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Trial } from "../../types";
+import { TrialOrLoop } from "../../types";
 
 type Props = {
-  trials: Trial[];
-  onConfirm: (trialIds: number[]) => void;
+  trials: TrialOrLoop[];
+  onConfirm: (trialIds: (number | string)[]) => void;
   onClose?: () => void;
-  selectedTrialId?: number | null;
+  selectedTrialId?: number | string | null;
 };
 
 function LoopRangeModal({
@@ -14,18 +14,19 @@ function LoopRangeModal({
   onClose,
   selectedTrialId,
 }: Props) {
-  // Filtrar trials que no sean loops (id tipo string son loops)
-  const filteredTrials = trials.filter((t) => typeof t.id !== "string");
-
-  // Buscar el índice del trial seleccionado
+  // Buscar el índice del trial/loop seleccionado
   const selectedIndex = selectedTrialId
-    ? filteredTrials.findIndex((t) => t.id === selectedTrialId)
+    ? trials.findIndex((t) => t.id === selectedTrialId)
     : 0;
 
   const [start, setStart] = useState(selectedIndex >= 0 ? selectedIndex : 0);
-  const [end, setEnd] = useState(
-    filteredTrials.length > 0 ? filteredTrials.length - 1 : 0
-  );
+  const [end, setEnd] = useState(trials.length > 0 ? trials.length - 1 : 0);
+
+  // Helper para mostrar el nombre con indicador de tipo
+  const getItemLabel = (item: TrialOrLoop) => {
+    const isLoop = "trials" in item;
+    return isLoop ? `🔁 ${item.name}` : item.name;
+  };
 
   return (
     <div
@@ -51,7 +52,7 @@ function LoopRangeModal({
           fontSize: 18,
         }}
       >
-        Select trials range
+        Select trials/loops range
       </h5>
       <div
         style={{
@@ -86,9 +87,9 @@ function LoopRangeModal({
               fontSize: 15,
             }}
           >
-            {filteredTrials.map((t, idx) => (
+            {trials.map((t, idx) => (
               <option key={t.id} value={idx}>
-                {t.name}
+                {getItemLabel(t)}
               </option>
             ))}
           </select>
@@ -117,9 +118,9 @@ function LoopRangeModal({
               fontSize: 15,
             }}
           >
-            {filteredTrials.map((t, idx) => (
+            {trials.map((t, idx) => (
               <option key={t.id} value={idx}>
-                {t.name}
+                {getItemLabel(t)}
               </option>
             ))}
           </select>
@@ -155,7 +156,7 @@ function LoopRangeModal({
         )}
         <button
           onClick={() => {
-            const ids = filteredTrials
+            const ids = trials
               .slice(Math.min(start, end), Math.max(start, end) + 1)
               .map((t) => t.id);
             onConfirm(ids);

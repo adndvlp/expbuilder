@@ -35,17 +35,32 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
     }
   }, [loop]);
 
-  // Load data fields for a specific trial (similar to BranchedTrial)
+  // Load data fields for a specific trial (recursive search in nested loops)
   const loadTrialDataFields = async (trialId: string | number) => {
     // Check if already loaded or loading
     if (trialDataFields[trialId] || loadingData[trialId]) {
       return;
     }
 
-    const trial = loop.trials.find(
-      (t) => t.id === trialId || String(t.id) === String(trialId)
-    );
-    if (!trial || !trial.plugin) {
+    // Recursive function to find trial at any depth
+    const findTrialRecursive = (items: any[]): any => {
+      for (const item of items) {
+        // Check if this is the trial we're looking for
+        if (item.id === trialId || String(item.id) === String(trialId)) {
+          return item;
+        }
+        // If it's a loop, search recursively in its trials
+        if ("trials" in item && Array.isArray(item.trials)) {
+          const found = findTrialRecursive(item.trials);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const trial = findTrialRecursive(loop.trials);
+
+    if (!trial || !("plugin" in trial) || !trial.plugin) {
       console.log("Trial not found or has no plugin:", trialId);
       return;
     }
@@ -151,10 +166,29 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
       : [];
   };
 
-  // Get available trials for selection (trials not yet used in this condition)
+  // Get available trials for selection (recursive search, excluding used trials)
   const getAvailableTrials = (conditionId: number) => {
     const usedIds = getUsedTrialIds(conditionId);
-    return loop.trials.filter(
+
+    // Recursive function to collect all trials from nested structure
+    const collectAllTrials = (items: any[]): any[] => {
+      const result: any[] = [];
+      for (const item of items) {
+        // If it's a trial (not a loop), add it
+        if ("plugin" in item || "type" in item) {
+          result.push(item);
+        }
+        // If it's a loop, recursively collect trials from it
+        if ("trials" in item && Array.isArray(item.trials)) {
+          result.push(...collectAllTrials(item.trials));
+        }
+      }
+      return result;
+    };
+
+    const allTrials = collectAllTrials(loop.trials);
+
+    return allTrials.filter(
       (t) => !usedIds.includes(t.id) && !usedIds.includes(String(t.id))
     );
   };
@@ -371,11 +405,27 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                       </thead>
                       <tbody>
                         {condition.rules.map((rule, ruleIdx) => {
-                          const selectedTrial = loop.trials.find(
-                            (t) =>
-                              t.id === rule.trialId ||
-                              String(t.id) === String(rule.trialId)
-                          );
+                          // Recursive function to find trial at any depth
+                          const findTrialRecursive = (items: any[]): any => {
+                            for (const item of items) {
+                              if (
+                                item.id === rule.trialId ||
+                                String(item.id) === String(rule.trialId)
+                              ) {
+                                return item;
+                              }
+                              if (
+                                "trials" in item &&
+                                Array.isArray(item.trials)
+                              ) {
+                                const found = findTrialRecursive(item.trials);
+                                if (found) return found;
+                              }
+                            }
+                            return null;
+                          };
+
+                          const selectedTrial = findTrialRecursive(loop.trials);
                           const dataFields = rule.trialId
                             ? trialDataFields[rule.trialId] || []
                             : [];

@@ -116,128 +116,6 @@ function LoopsConfig({ loop }: Props) {
       .join("");
   }
 
-  const trialsData =
-    loop?.trials
-      .filter((trial: any) => trial.plugin) // Filter out trials without plugin
-      .map((trial: any) => {
-        // debugger;
-        const { parameters, data } = usePluginParameters(trial.plugin);
-        const fieldGroups = {
-          pluginParameters: parameters,
-        };
-        const { getColumnValue } = useCsvMapper({
-          fieldGroups: fieldGroups,
-        });
-
-        const hasMediaParameters = (params: any[]) => {
-          return params.some((param) => {
-            const keyLower = param.key.toLowerCase();
-            return (
-              keyLower.includes("img") ||
-              keyLower.includes("image") ||
-              keyLower.includes("stimulus") ||
-              keyLower.includes("audio") ||
-              keyLower.includes("video") ||
-              keyLower.includes("sound") ||
-              keyLower.includes("media")
-            );
-          });
-        };
-
-        const needsFileUpload =
-          /plugin-audio|plugin-video|plugin-image|multi-image|custom-image|plugin-preload/i.test(
-            trial.plugin
-          ) || hasMediaParameters(parameters);
-
-        const getFileTypeAndFolder = () => {
-          if (/plugin-audio/i.test(trial.plugin)) {
-            return { accept: "audio/*", folder: "aud" };
-          }
-          if (/plugin-video/i.test(trial.plugin)) {
-            return { accept: "video/*", folder: "vid" };
-          }
-
-          if (/plugin-preload/i.test(trial.plugin)) {
-            return { accept: "audio/*,video/*,image/*", folder: "all" };
-          }
-
-          // For custom plugins, determine file type based on parameters
-          if (hasMediaParameters(parameters)) {
-            const hasAudio = parameters.some((p) => {
-              const keyLower = p.key.toLowerCase();
-              return keyLower.includes("audio") || keyLower.includes("sound");
-            });
-            const hasVideo = parameters.some((p) => {
-              const keyLower = p.key.toLowerCase();
-              return keyLower.includes("video");
-            });
-            const hasImage = parameters.some((p) => {
-              const keyLower = p.key.toLowerCase();
-              return (
-                keyLower.includes("img") ||
-                keyLower.includes("image") ||
-                keyLower.includes("stimulus")
-              );
-            });
-
-            // If multiple types, accept all
-            if ([hasAudio, hasVideo, hasImage].filter(Boolean).length > 1) {
-              return { accept: "audio/*,video/*,image/*", folder: "all" };
-            }
-
-            if (hasAudio) return { accept: "audio/*", folder: "aud" };
-            if (hasVideo) return { accept: "video/*", folder: "vid" };
-            if (hasImage) return { accept: "image/*", folder: "img" };
-          }
-
-          // Por defecto imagen
-          return { accept: "image/*", folder: "img" };
-        };
-
-        const { folder } = getFileTypeAndFolder();
-
-        const { uploadedFiles } = useFileUpload({ folder });
-
-        const filteredFiles = uploadedFiles.filter(
-          (file) =>
-            file &&
-            typeof file === "object" &&
-            typeof file.name === "string" &&
-            (folder === "all" || file.type === folder)
-        );
-
-        const { genTrialCode, mappedJson } = useTrialCode({
-          id: trial.id,
-          branches: trial.branches,
-          branchConditions: trial.branchConditions,
-          repeatConditions: trial.repeatConditions,
-          paramsOverride: trial.paramsOverride,
-          pluginName: trial.plugin,
-          parameters: parameters,
-          data: data,
-          getColumnValue: getColumnValue,
-          needsFileUpload: needsFileUpload || false,
-          columnMapping: trial.columnMapping || {},
-          filteredFiles: filteredFiles || [],
-          csvJson: trial.csvJson ?? [],
-          trialName: trial.name,
-          includesExtensions: trial.includesExtensions || false,
-          extensions: trial.extensions || "",
-          orders: orders,
-          stimuliOrders: stimuliOrders,
-          categories: categories,
-          categoryData: categoryData,
-          isInLoop: true,
-        });
-
-        return {
-          trialName: trial.name,
-          pluginName: toCamelCase(trial.plugin),
-          timelineProps: genTrialCode(),
-          mappedJson,
-        };
-      }) || [];
-
   function mergeStimuliArrays(arrays: Record<string, any>[][]) {
     const maxLength = Math.max(...arrays.map((arr) => arr.length));
     const merged: Record<string, any>[] = [];
@@ -251,11 +129,176 @@ function LoopsConfig({ loop }: Props) {
     return merged;
   }
 
+  // Procesar SOLO los trials directos del loop (sin entrar en loops anidados)
+  // Los loops anidados se procesarán cuando se abra su propio LoopsConfig
+  const directTrials = loop?.trials.filter((item: any) => item.plugin) || [];
+
+  // Procesar trials directos con hooks
+  const trialsData = directTrials.map((trial: any) => {
+    const { parameters, data } = usePluginParameters(trial.plugin);
+    const fieldGroups = {
+      pluginParameters: parameters,
+    };
+    const { getColumnValue } = useCsvMapper({
+      fieldGroups: fieldGroups,
+    });
+
+    const hasMediaParameters = (params: any[]) => {
+      return params.some((param) => {
+        const keyLower = param.key.toLowerCase();
+        return (
+          keyLower.includes("img") ||
+          keyLower.includes("image") ||
+          keyLower.includes("stimulus") ||
+          keyLower.includes("audio") ||
+          keyLower.includes("video") ||
+          keyLower.includes("sound") ||
+          keyLower.includes("media")
+        );
+      });
+    };
+
+    const needsFileUpload =
+      /plugin-audio|plugin-video|plugin-image|multi-image|custom-image|plugin-preload/i.test(
+        trial.plugin
+      ) || hasMediaParameters(parameters);
+
+    const getFileTypeAndFolder = () => {
+      if (/plugin-audio/i.test(trial.plugin)) {
+        return { accept: "audio/*", folder: "aud" };
+      }
+      if (/plugin-video/i.test(trial.plugin)) {
+        return { accept: "video/*", folder: "vid" };
+      }
+
+      if (/plugin-preload/i.test(trial.plugin)) {
+        return { accept: "audio/*,video/*,image/*", folder: "all" };
+      }
+
+      // For custom plugins, determine file type based on parameters
+      if (hasMediaParameters(parameters)) {
+        const hasAudio = parameters.some((p) => {
+          const keyLower = p.key.toLowerCase();
+          return keyLower.includes("audio") || keyLower.includes("sound");
+        });
+        const hasVideo = parameters.some((p) => {
+          const keyLower = p.key.toLowerCase();
+          return keyLower.includes("video");
+        });
+        const hasImage = parameters.some((p) => {
+          const keyLower = p.key.toLowerCase();
+          return (
+            keyLower.includes("img") ||
+            keyLower.includes("image") ||
+            keyLower.includes("stimulus")
+          );
+        });
+
+        // If multiple types, accept all
+        if ([hasAudio, hasVideo, hasImage].filter(Boolean).length > 1) {
+          return { accept: "audio/*,video/*,image/*", folder: "all" };
+        }
+
+        if (hasAudio) return { accept: "audio/*", folder: "aud" };
+        if (hasVideo) return { accept: "video/*", folder: "vid" };
+        if (hasImage) return { accept: "image/*", folder: "img" };
+      }
+
+      // Por defecto imagen
+      return { accept: "image/*", folder: "img" };
+    };
+
+    const { folder } = getFileTypeAndFolder();
+
+    const { uploadedFiles } = useFileUpload({ folder });
+
+    const filteredFiles = uploadedFiles.filter(
+      (file) =>
+        file &&
+        typeof file === "object" &&
+        typeof file.name === "string" &&
+        (folder === "all" || file.type === folder)
+    );
+
+    const { genTrialCode, mappedJson } = useTrialCode({
+      id: trial.id,
+      branches: trial.branches,
+      branchConditions: trial.branchConditions,
+      repeatConditions: trial.repeatConditions,
+      paramsOverride: trial.paramsOverride,
+      pluginName: trial.plugin,
+      parameters: parameters,
+      data: data,
+      getColumnValue: getColumnValue,
+      needsFileUpload: needsFileUpload || false,
+      columnMapping: trial.columnMapping || {},
+      filteredFiles: filteredFiles || [],
+      csvJson: trial.csvJson ?? [],
+      trialName: trial.name,
+      includesExtensions: trial.includesExtensions || false,
+      extensions: trial.extensions || "",
+      orders: orders,
+      stimuliOrders: stimuliOrders,
+      categories: categories,
+      categoryData: categoryData,
+      isInLoop: true,
+    });
+
+    return {
+      trialName: trial.name,
+      pluginName: toCamelCase(trial.plugin),
+      timelineProps: genTrialCode(),
+      mappedJson,
+    };
+  });
+
+  // Función para construir la estructura con loops anidados (SIN hooks, SIN procesar trials anidados)
+  const buildNestedStructure = (items: any[]): any[] => {
+    return items
+      .map((item: any) => {
+        // Si es un loop anidado
+        if ("trials" in item && !item.plugin) {
+          // Para loops anidados, crear estructura de placeholder
+          // El código real se generará cuando se abra ese loop específico
+          return {
+            loopName: item.name,
+            loopId: item.id,
+            repetitions: item.repetitions || 1,
+            randomize: item.randomize || false,
+            orders: item.orders || false,
+            stimuliOrders: item.stimuliOrders || [],
+            categories: item.categories || false,
+            categoryData: item.categoryData || [],
+            branches: item.branches,
+            branchConditions: item.branchConditions,
+            repeatConditions: item.repeatConditions,
+            loopConditions: item.loopConditions || [],
+            isConditionalLoop: item.isConditionalLoop || false,
+            items: [], // Vacío por ahora - se procesará cuando se abra el loop
+            unifiedStimuli: [], // Vacío por ahora
+            isLoop: true as const,
+          };
+        }
+
+        // Si es un trial, buscar sus datos procesados
+        const trialData = trialsData.find(
+          (t: any) => t.trialName === item.name
+        );
+        return trialData || null;
+      })
+      .filter(Boolean);
+  };
+
+  // Construir la estructura completa con loops anidados
+  const structuredData = loop?.trials
+    ? buildNestedStructure(loop.trials)
+    : trialsData;
+
   const unifiedStimuli = mergeStimuliArrays(
-    trialsData.map((t) => t.mappedJson)
+    trialsData.map((t) => t.mappedJson || [])
   );
 
-  // Usar useLoopCode con los datos generados
+  // Usar useLoopCode con los datos estructurados (incluye loops anidados)
   const generateLoopCode = useLoopCode({
     id: loop?.id,
     branches: loop?.branches,
@@ -267,7 +310,7 @@ function LoopsConfig({ loop }: Props) {
     stimuliOrders,
     categories,
     categoryData,
-    trials: trialsData,
+    trials: structuredData, // Usar la estructura con loops anidados
     unifiedStimuli,
     loopConditions,
     isConditionalLoop,
@@ -277,21 +320,54 @@ function LoopsConfig({ loop }: Props) {
 
   const canSave = !!loop && !isLoadingLoop;
 
+  // Función recursiva para actualizar un loop en cualquier nivel de anidación
+  const updateLoopRecursive = (
+    items: any[],
+    targetLoopId: string | number
+  ): any[] => {
+    return items.map((item) => {
+      // Si es el loop que buscamos, actualizarlo
+      if ("trials" in item && item.id === targetLoopId) {
+        return {
+          ...item,
+          repetitions,
+          randomize,
+          isConditionalLoop,
+          loopConditions,
+          csvJson,
+          csvColumns,
+          orders,
+          orderColumns,
+          categories,
+          categoryColumn,
+          stimuliOrders,
+          categoryData,
+          code: loopCode,
+        };
+      }
+      // Si es un loop pero no es el que buscamos, buscar recursivamente en sus trials
+      if ("trials" in item && Array.isArray(item.trials)) {
+        return {
+          ...item,
+          trials: updateLoopRecursive(item.trials, targetLoopId),
+        };
+      }
+      // Si es un trial, devolverlo sin cambios
+      return item;
+    });
+  };
+
   const handleSave = () => {
     // if (!loop || isLoadingLoop) return;
     if (!canSave) return;
 
+    // Buscar el loop en el primer nivel
     const loopIndex = trials.findIndex(
       (item) => "trials" in item && item.id === loop.id
     );
-    if (loopIndex === -1) return;
 
-    const prevLoop = trials[loopIndex];
-
-    // console.log(loopCode);
-
-    const updatedLoop = {
-      ...prevLoop,
+    // Crear el objeto actualizado del loop
+    const updatedLoopData = {
       repetitions,
       randomize,
       isConditionalLoop,
@@ -307,13 +383,28 @@ function LoopsConfig({ loop }: Props) {
       code: loopCode,
     };
 
-    if (isEqual(updatedLoop, prevLoop)) return;
-
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
     timeoutRef.current = setTimeout(() => {
-      const updatedTrials = [...trials];
-      updatedTrials[loopIndex] = updatedLoop;
+      let updatedTrials: any[];
+
+      if (loopIndex !== -1) {
+        // Loop está en el primer nivel
+        const prevLoop = trials[loopIndex];
+        const updatedLoop = {
+          ...prevLoop,
+          ...updatedLoopData,
+        };
+
+        if (isEqual(updatedLoop, prevLoop)) return;
+
+        updatedTrials = [...trials];
+        updatedTrials[loopIndex] = updatedLoop;
+      } else {
+        // Loop está anidado - buscar recursivamente
+        updatedTrials = updateLoopRecursive(trials, loop.id);
+      }
+
       setTrials(updatedTrials);
 
       setSaveIndicator(true);

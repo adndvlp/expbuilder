@@ -184,6 +184,9 @@ function Component({}: TimelineProps) {
   }
 
   (async () => {
+
+    localStorage.removeItem('jsPsych_jumpToTrial');
+    
     participantNumber = await saveSession(trialSessionId);
 
     if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
@@ -465,6 +468,9 @@ jsPsych.run(timeline);
   }
 
   (async () => {
+    // Limpiar el localStorage de valores de sesiones anteriores
+    localStorage.removeItem('jsPsych_jumpToTrial');
+    
     // Esperar e inicializar Firebase
     await waitForFirebase();
     if (!window.firebase.apps.length) {
@@ -597,7 +603,7 @@ jsPsych.run(timeline);
     };
 
     const jsPsych = initJsPsych({
-      display_element: document.getElementById('jspsych-target'),
+      display_element: document.getElementById('jspsych-container'),
 
       on_trial_start: function(trial) {
         const lastTrialData = jsPsych.data.get()
