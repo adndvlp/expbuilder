@@ -22,7 +22,6 @@ function ParamsOverride({ selectedTrial, onClose }: Props) {
   const { trials, setTrials } = useTrials();
 
   const [conditions, setConditions] = useState<ParamsOverrideCondition[]>([]);
-  const [saveIndicator, setSaveIndicator] = useState(false);
   const [trialDataFields, setTrialDataFields] = useState<
     Record<string, DataDefinition[]>
   >({});
@@ -30,6 +29,7 @@ function ParamsOverride({ selectedTrial, onClose }: Props) {
   const [currentTrialParameters, setCurrentTrialParameters] = useState<
     Parameter[]
   >([]);
+  const [saveIndicator, setSaveIndicator] = useState(false);
 
   // Load data fields for the current trial's parameters
   useEffect(() => {
@@ -412,9 +412,11 @@ function ParamsOverride({ selectedTrial, onClose }: Props) {
     setTrials(updatedTrials);
     console.log("Params override conditions saved:", conditions);
 
+    // Show save indicator
     setSaveIndicator(true);
     setTimeout(() => {
       setSaveIndicator(false);
+      // Close modal after showing indicator
       if (onClose) {
         onClose();
       }
@@ -424,17 +426,7 @@ function ParamsOverride({ selectedTrial, onClose }: Props) {
   const availableTrials = getAvailableTrials();
 
   return (
-    <div
-      className="rounded-lg shadow-2xl"
-      style={{
-        color: "var(--text-dark)",
-        minWidth: "900px",
-        maxWidth: "1100px",
-        maxHeight: "85vh",
-        backgroundColor: "var(--neutral-light)",
-        overflow: "hidden",
-      }}
-    >
+    <>
       {/* Save Indicator */}
       <div
         style={{
@@ -459,27 +451,11 @@ function ParamsOverride({ selectedTrial, onClose }: Props) {
         ✓ Params Override Saved!
       </div>
 
-      {/* Header */}
-      <div
-        className="px-6 py-4"
-        style={{
-          background: "linear-gradient(135deg, var(--gold), var(--dark-gold))",
-          color: "var(--text-light)",
-        }}
-      >
-        <h3 className="text-xl font-bold">
-          Parameters Override: {selectedTrial?.name}
-        </h3>
-        <p className="text-sm opacity-90 mt-1">
-          Override parameters based on previous trial responses
-        </p>
-      </div>
-
       {/* Scrollable Content */}
       <div
         className="px-6 pb-6 pt-4"
         style={{
-          maxHeight: "calc(85vh - 220px)",
+          maxHeight: "calc(85vh - 180px)",
           overflowY: "auto",
           overflowX: "hidden",
         }}
@@ -970,7 +946,7 @@ function ParamsOverride({ selectedTrial, onClose }: Props) {
                                     </option>
                                     {csvColumns.map((col) => (
                                       <option key={col} value={col}>
-                                        CSV: {col}
+                                        {col}
                                       </option>
                                     ))}
                                   </select>
@@ -1101,10 +1077,10 @@ function ParamsOverride({ selectedTrial, onClose }: Props) {
             color: "var(--text-light)",
           }}
         >
-          Save Parameters Override
+          Save Params Override
         </button>
       </div>
-    </div>
+    </>
   );
 }
 

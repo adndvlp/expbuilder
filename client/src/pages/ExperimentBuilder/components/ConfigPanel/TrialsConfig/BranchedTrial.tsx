@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import useTrials from "../../../hooks/useTrials";
 import { loadPluginParameters } from "../utils/pluginParameterLoader";
 import { BranchCondition, RepeatCondition, ColumnMappingEntry } from "../types";
+import ParamsOverride from "./ParamsOverride";
 
 type Rule = {
   prop: string;
@@ -33,7 +34,7 @@ type Parameter = {
   type: string;
 };
 
-type TabType = "branch" | "repeat";
+type TabType = "branch" | "repeat" | "params";
 
 function BranchedTrial({ selectedTrial, onClose }: Props) {
   const { trials, setTrials } = useTrials();
@@ -397,6 +398,7 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
   };
 
   // Get available trials/loops for selection (all trials, not just branches)
+  // For Branch conditions: limited to same scope (parent loop or main timeline)
   const availableTrials = (() => {
     if (!selectedTrial) return [];
 
@@ -452,6 +454,48 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
     }
 
     return allAvailableTrials;
+  })();
+
+  // Get ALL available trials/loops recursively for Repeat/Jump functionality
+  // This allows jumping to any trial in the entire experiment, regardless of hierarchy
+  const allAvailableTrialsForJump = (() => {
+    if (!selectedTrial) return [];
+
+    // Recursive function to collect all trials and loops at any depth
+    const collectAllTrials = (items: any[], path: string = ""): any[] => {
+      const result: any[] = [];
+
+      for (const item of items) {
+        // Skip the current trial
+        if (
+          item.id === selectedTrial.id ||
+          String(item.id) === String(selectedTrial.id)
+        ) {
+          continue;
+        }
+
+        // Determine the display path
+        const itemPath = path ? `${path} > ${item.name}` : item.name;
+
+        // Add this trial/loop
+        result.push({
+          id: item.id,
+          name: item.name,
+          displayName: itemPath,
+          isLoop: "trials" in item,
+        });
+
+        // If it's a loop, recursively collect trials inside it
+        if ("trials" in item && Array.isArray(item.trials)) {
+          const nestedTrials = collectAllTrials(item.trials, itemPath);
+          result.push(...nestedTrials);
+        }
+      }
+
+      return result;
+    };
+
+    return collectAllTrials(trials);
   })();
 
   // Get used properties for each condition to prevent duplicates
@@ -681,6 +725,28 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
             }}
           >
             Repeat/Jump
+          </button>
+          <button
+            onClick={() => setActiveTab("params")}
+            className={`px-6 py-3 rounded-t-lg font-semibold transition-all ${
+              activeTab === "params"
+                ? "shadow-lg"
+                : "opacity-60 hover:opacity-80"
+            }`}
+            style={{
+              backgroundColor:
+                activeTab === "params"
+                  ? "var(--primary-blue)"
+                  : "var(--neutral-mid)",
+              color:
+                activeTab === "params"
+                  ? "var(--text-light)"
+                  : "var(--text-dark)",
+              borderBottom:
+                activeTab === "params" ? "3px solid var(--gold)" : "none",
+            }}
+          >
+            Params Override
           </button>
         </div>
       </div>
@@ -1488,10 +1554,11 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
               }}
             >
               <p style={{ color: "var(--text-dark)", fontSize: "14px" }}>
-                <strong>Repeat/Jump:</strong> Define conditions to restart the
-                experiment from a specific trial. When a condition is met, the
-                experiment will jump back to the selected trial using{" "}
-                <code>jsPsych.run()</code>.
+                <strong>Repeat/Jump:</strong> Define conditions to jump to any
+                trial in the entire experiment, regardless of hierarchy. When a
+                condition is met, the experiment will jump to the selected trial
+                using <code>jsPsych.run()</code>. This allows jumping up, down,
+                or across different loops and nested structures.
               </p>
             </div>
 
@@ -1816,17 +1883,20 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
                                           >
                                             Select trial
                                           </option>
-                                          {availableTrials.map((trial: any) => (
-                                            <option
-                                              key={trial.id}
-                                              value={trial.id}
-                                              style={{
-                                                textAlign: "center",
-                                              }}
-                                            >
-                                              {trial.name}
-                                            </option>
-                                          ))}
+                                          {allAvailableTrialsForJump.map(
+                                            (trial: any) => (
+                                              <option
+                                                key={trial.id}
+                                                value={trial.id}
+                                                style={{
+                                                  textAlign: "center",
+                                                }}
+                                              >
+                                                {trial.displayName}
+                                                {trial.isLoop ? " (Loop)" : ""}
+                                              </option>
+                                            )
+                                          )}
                                         </select>
                                       </div>
                                     </td>
@@ -1873,22 +1943,30 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
             )}
           </>
         )}
+
+        {/* PARAMS OVERRIDE TAB CONTENT */}
+        {activeTab === "params" && (
+          <ParamsOverride selectedTrial={selectedTrial} onClose={onClose} />
+        )}
       </div>
 
       {/* Footer con botón de guardar - Fixed position */}
-      <div>
-        <button
-          onClick={handleSaveConditions}
-          className="px-8 py-3 rounded-lg font-bold w-full shadow-lg transform transition hover:scale-105"
-          style={{
-            background:
-              "linear-gradient(135deg, var(--gold), var(--dark-gold))",
-            color: "var(--text-light)",
-          }}
-        >
-          Save configuration
-        </button>
-      </div>
+      {/* Only show save button for branch and repeat tabs, params has its own */}
+      {activeTab !== "params" && (
+        <div>
+          <button
+            onClick={handleSaveConditions}
+            className="px-8 py-3 rounded-lg font-bold w-full shadow-lg transform transition hover:scale-105"
+            style={{
+              background:
+                "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+              color: "var(--text-light)",
+            }}
+          >
+            Save configuration
+          </button>
+        </div>
+      )}
     </div>
   );
 }

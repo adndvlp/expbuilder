@@ -458,7 +458,8 @@ export function useTrialCode({
               if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
                 trial[key] = param.value;
               } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
-                trial[key] = param.value;
+                // For CSV source, param.value contains the column name, get the actual value from trial
+                trial[key] = trial[param.value];
               }
             }
           });
@@ -484,9 +485,9 @@ export function useTrialCode({
               trial[key] = param.value;
               console.log(\`Set trial.\${key} = \${param.value}\`);
             } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
-              // For CSV values, use them directly
-              trial[key] = param.value;
-              console.log(\`Set trial.\${key} = \${param.value}\`);
+              // For CSV values, param.value contains the column name, get the actual value from trial
+              trial[key] = trial[param.value];
+              console.log(\`Set trial.\${key} = \${trial[param.value]} (from CSV column: \${param.value})\`);
             }
           }
         });
@@ -506,9 +507,9 @@ export function useTrialCode({
               trial[key] = param.value;
               console.log(\`Set trial.\${key} = \${param.value}\`);
             } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
-              // For CSV values, use them directly
-              trial[key] = param.value;
-              console.log(\`Set trial.\${key} = \${param.value}\`);
+              // For CSV values, param.value contains the column name, get the actual value from trial
+              trial[key] = trial[param.value];
+              console.log(\`Set trial.\${key} = \${trial[param.value]} (from CSV column: \${param.value})\`);
             }
           }
         });

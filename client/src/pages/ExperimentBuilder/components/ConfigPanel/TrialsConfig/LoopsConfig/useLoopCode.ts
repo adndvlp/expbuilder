@@ -160,6 +160,20 @@ export default function useLoopCode({
       conditional_function: function() {
         const currentId = ${itemId};
         
+        // Verificar si hay un trial/loop objetivo guardado en localStorage (para repeat/jump global)
+        const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
+        if (jumpToTrial) {
+          if (String(currentId) === String(jumpToTrial)) {
+            // Encontramos el trial/loop objetivo para repeat/jump
+            console.log('Repeat/jump: Found target trial/loop inside nested loop', currentId);
+            localStorage.removeItem('jsPsych_jumpToTrial');
+            return true;
+          }
+          // No es el objetivo, saltar
+          console.log('Repeat/jump: Skipping trial/loop inside nested loop', currentId);
+          return false;
+        }
+        
         // Si el item objetivo ya fue ejecutado, saltar todos los items restantes en esta iteración
         if (loopTargetExecuted) {
           ${
@@ -420,6 +434,20 @@ const ${loopIdSanitized}_procedure = {
       timeline: [${timelineRef}],
       conditional_function: function() {
         const currentId = ${itemId};
+        
+        // Verificar si hay un trial/loop objetivo guardado en localStorage (para repeat/jump global)
+        const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
+        if (jumpToTrial) {
+          if (String(currentId) === String(jumpToTrial)) {
+            // Encontramos el trial/loop objetivo para repeat/jump
+            console.log('Repeat/jump: Found target trial/loop inside loop', currentId);
+            localStorage.removeItem('jsPsych_jumpToTrial');
+            return true;
+          }
+          // No es el objetivo, saltar
+          console.log('Repeat/jump: Skipping trial/loop inside loop', currentId);
+          return false;
+        }
         
         // Si el item objetivo ya fue ejecutado, saltar todos los items restantes en esta iteración
         if (loopTargetExecuted) {
