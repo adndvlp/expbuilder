@@ -10,7 +10,8 @@ import LoopRangeModal from "../ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeMod
 import { Trial, Loop, TrialOrLoop } from "../ConfigPanel/types";
 import { useDraggable } from "./hooks/useDraggable";
 import { useResizable } from "./hooks/useResizable";
-import { TbBinaryTree, TbRepeat } from "react-icons/tb";
+import { TbBinaryTree } from "react-icons/tb";
+import { FiRefreshCw } from "react-icons/fi";
 import { FiX } from "react-icons/fi";
 import {
   findTrialById,
@@ -776,7 +777,7 @@ function LoopSubCanvas({
               width: 40,
               height: 40,
               borderRadius: "50%",
-              background: "#8e44ad",
+              background: "#1976d2",
               color: "#fff",
               border: "none",
               cursor: "pointer",
@@ -790,7 +791,7 @@ function LoopSubCanvas({
             title="Create Nested Loop"
             onClick={() => setShowLoopModal(true)}
           >
-            <TbRepeat size={20} color="#fff" />
+            <FiRefreshCw size={20} color="#fff" />
           </button>
         )}
 

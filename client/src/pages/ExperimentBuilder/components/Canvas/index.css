@@ -99,18 +99,18 @@
   justify-content: center;
   position: relative;
   box-sizing: border-box;
-  background: #8e44ad;
-  border: 2px solid #9b59b6;
+  background: #1976d2;
+  border: 2px solid #1e88e5;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   font-weight: 600;
 }
 
 .loop-node:hover {
-  box-shadow: 0 8px 24px rgba(155, 89, 182, 0.35);
+  box-shadow: 0 8px 24px rgba(241, 196, 15, 0.25);
   transform: translateY(-3px) scale(1.05);
-  background: linear-gradient(90deg, #9b59b6 0%, #8e44ad 100%);
-  border: 2px solid #9b59b6;
+  background: linear-gradient(90deg, #f9e79f 0%, #f1c40f 100%);
+  border: 2px solid #f1c40f;
   transition:
     box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     background 0.3s cubic-bezier(0.4, 0, 0.2, 1),
@@ -120,9 +120,8 @@
 }
 
 .loop-node--selected {
-  background: linear-gradient(90deg, #a569bd 0%, #8e44ad 100%);
-  border: 2px solid #7d3c98;
-  box-shadow: 0 4px 16px rgba(125, 60, 152, 0.4);
+  background: linear-gradient(90deg, #ffe082 0%, #d4af37 100%);
+  border: 2px solid #d4af37;
   transition:
     box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     background 0.3s cubic-bezier(0.4, 0, 0.2, 1),
