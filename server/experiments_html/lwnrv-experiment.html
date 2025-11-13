@@ -592,10 +592,10 @@ stimulus: "stimulus_nested",
       
       // Then apply custom parameters from branching conditions (higher priority)
       
-      // For trials in loops, use loopBranchCustomParameters
-      if (typeof loopBranchCustomParameters !== 'undefined' && loopBranchCustomParameters && typeof loopBranchCustomParameters === 'object') {
-        console.log('Applying custom parameters to loop trial:', loopBranchCustomParameters);
-        Object.entries(loopBranchCustomParameters).forEach(([key, param]) => {
+      // For trials in loops, use loop-specific BranchCustomParameters
+      if (typeof loop_loop_1762902533581_BranchCustomParameters !== 'undefined' && loop_loop_1762902533581_BranchCustomParameters && typeof loop_loop_1762902533581_BranchCustomParameters === 'object') {
+        console.log('Applying custom parameters to loop trial:', loop_loop_1762902533581_BranchCustomParameters);
+        Object.entries(loop_loop_1762902533581_BranchCustomParameters).forEach(([key, param]) => {
           if (param && param.source !== 'none') {
             // Handle different parameter sources
             if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
@@ -610,7 +610,7 @@ stimulus: "stimulus_nested",
           }
         });
         // Clear the custom parameters after applying them
-        loopBranchCustomParameters = null;
+        loop_loop_1762902533581_BranchCustomParameters = null;
       }
       
     },
@@ -670,12 +670,12 @@ stimulus: "stimulus_nested",
       
       // Si se encontró match, activar branching
       if (nextTrialId) {
-        loopNextTrialId = nextTrialId;
-        loopSkipRemaining = true;
-        loopBranchingActive = true;
+        loop_loop_1762902533581_NextTrialId = nextTrialId;
+        loop_loop_1762902533581_SkipRemaining = true;
+        loop_loop_1762902533581_BranchingActive = true;
         // Store custom parameters for the next trial in the loop
         if (matchedCustomParameters) {
-          loopBranchCustomParameters = matchedCustomParameters;
+          loop_loop_1762902533581_BranchCustomParameters = matchedCustomParameters;
         }
       }
     },};
@@ -705,10 +705,10 @@ stimulus: "stimulus_Seguir",
       
       // Then apply custom parameters from branching conditions (higher priority)
       
-      // For trials in loops, use loopBranchCustomParameters
-      if (typeof loopBranchCustomParameters !== 'undefined' && loopBranchCustomParameters && typeof loopBranchCustomParameters === 'object') {
-        console.log('Applying custom parameters to loop trial:', loopBranchCustomParameters);
-        Object.entries(loopBranchCustomParameters).forEach(([key, param]) => {
+      // For trials in loops, use loop-specific BranchCustomParameters
+      if (typeof loop_loop_1762902533581_BranchCustomParameters !== 'undefined' && loop_loop_1762902533581_BranchCustomParameters && typeof loop_loop_1762902533581_BranchCustomParameters === 'object') {
+        console.log('Applying custom parameters to loop trial:', loop_loop_1762902533581_BranchCustomParameters);
+        Object.entries(loop_loop_1762902533581_BranchCustomParameters).forEach(([key, param]) => {
           if (param && param.source !== 'none') {
             // Handle different parameter sources
             if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
@@ -723,7 +723,7 @@ stimulus: "stimulus_Seguir",
           }
         });
         // Clear the custom parameters after applying them
-        loopBranchCustomParameters = null;
+        loop_loop_1762902533581_BranchCustomParameters = null;
       }
       
     },
@@ -791,11 +791,11 @@ stimulus: "stimulus_Seguir",
       
       
       // Este trial no tiene branches, verificar si el loop padre tiene branches
-      if (typeof loopHasBranches !== 'undefined' && loopHasBranches) {
+      if (typeof loop_loop_1762902533581_HasBranches !== 'undefined' && loop_loop_1762902533581_HasBranches) {
         // El loop tiene branches, activar branching del loop al terminar
         // Esto se manejará en el on_finish del loop
-        loopShouldBranchOnFinish = true;
-      } else if (!loopHasBranches) {
+        loop_loop_1762902533581_ShouldBranchOnFinish = true;
+      } else if (!loop_loop_1762902533581_HasBranches) {
         // Ni el trial ni el loop tienen branches - trial terminal
         // Si llegamos aquí después de un branching global, terminar el experimento
         if (window.branchingActive) {
@@ -807,7 +807,7 @@ stimulus: "stimulus_Seguir",
 
 
 
-    
+
     const test_stimuli_loop_1762907705296 = [
   {
     "stimulus_Inicia_nested": "<div id=\"ip91\" style=\"box-sizing: border-box;\">inicia nested</div>",
@@ -854,10 +854,10 @@ stimulus: "stimulus_Inicia_nested",
       
       // Then apply custom parameters from branching conditions (higher priority)
       
-      // For trials in loops, use loopBranchCustomParameters
-      if (typeof loopBranchCustomParameters !== 'undefined' && loopBranchCustomParameters && typeof loopBranchCustomParameters === 'object') {
-        console.log('Applying custom parameters to loop trial:', loopBranchCustomParameters);
-        Object.entries(loopBranchCustomParameters).forEach(([key, param]) => {
+      // For trials in loops, use loop-specific BranchCustomParameters
+      if (typeof loop_loop_1762907705296_BranchCustomParameters !== 'undefined' && loop_loop_1762907705296_BranchCustomParameters && typeof loop_loop_1762907705296_BranchCustomParameters === 'object') {
+        console.log('Applying custom parameters to loop trial:', loop_loop_1762907705296_BranchCustomParameters);
+        Object.entries(loop_loop_1762907705296_BranchCustomParameters).forEach(([key, param]) => {
           if (param && param.source !== 'none') {
             // Handle different parameter sources
             if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
@@ -872,7 +872,7 @@ stimulus: "stimulus_Inicia_nested",
           }
         });
         // Clear the custom parameters after applying them
-        loopBranchCustomParameters = null;
+        loop_loop_1762907705296_BranchCustomParameters = null;
       }
       
     },
@@ -932,12 +932,12 @@ stimulus: "stimulus_Inicia_nested",
       
       // Si se encontró match, activar branching
       if (nextTrialId) {
-        loopNextTrialId = nextTrialId;
-        loopSkipRemaining = true;
-        loopBranchingActive = true;
+        loop_loop_1762907705296_NextTrialId = nextTrialId;
+        loop_loop_1762907705296_SkipRemaining = true;
+        loop_loop_1762907705296_BranchingActive = true;
         // Store custom parameters for the next trial in the loop
         if (matchedCustomParameters) {
-          loopBranchCustomParameters = matchedCustomParameters;
+          loop_loop_1762907705296_BranchCustomParameters = matchedCustomParameters;
         }
       }
     },};
@@ -967,10 +967,10 @@ stimulus: "stimulus_Final_nested",
       
       // Then apply custom parameters from branching conditions (higher priority)
       
-      // For trials in loops, use loopBranchCustomParameters
-      if (typeof loopBranchCustomParameters !== 'undefined' && loopBranchCustomParameters && typeof loopBranchCustomParameters === 'object') {
-        console.log('Applying custom parameters to loop trial:', loopBranchCustomParameters);
-        Object.entries(loopBranchCustomParameters).forEach(([key, param]) => {
+      // For trials in loops, use loop-specific BranchCustomParameters
+      if (typeof loop_loop_1762907705296_BranchCustomParameters !== 'undefined' && loop_loop_1762907705296_BranchCustomParameters && typeof loop_loop_1762907705296_BranchCustomParameters === 'object') {
+        console.log('Applying custom parameters to loop trial:', loop_loop_1762907705296_BranchCustomParameters);
+        Object.entries(loop_loop_1762907705296_BranchCustomParameters).forEach(([key, param]) => {
           if (param && param.source !== 'none') {
             // Handle different parameter sources
             if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
@@ -985,18 +985,18 @@ stimulus: "stimulus_Final_nested",
           }
         });
         // Clear the custom parameters after applying them
-        loopBranchCustomParameters = null;
+        loop_loop_1762907705296_BranchCustomParameters = null;
       }
       
     },
     
     on_finish: function(data) {
       // Este trial no tiene branches ni repeat conditions, verificar si el loop padre tiene branches
-      if (typeof loopHasBranches !== 'undefined' && loopHasBranches) {
+      if (typeof loop_loop_1762907705296_HasBranches !== 'undefined' && loop_loop_1762907705296_HasBranches) {
         // El loop tiene branches, activar branching del loop al terminar
         // Esto se manejará en el on_finish del loop
-        loopShouldBranchOnFinish = true;
-      } else if (!loopHasBranches) {
+        loop_loop_1762907705296_ShouldBranchOnFinish = true;
+      } else if (!loop_loop_1762907705296_HasBranches) {
         // Ni el trial ni el loop tienen branches - trial terminal
         // Si llegamos aquí después de un branching global, terminar el experimento
         if (window.branchingActive) {
@@ -1030,10 +1030,10 @@ stimulus: "stimulus_otravez",
       
       // Then apply custom parameters from branching conditions (higher priority)
       
-      // For trials in loops, use loopBranchCustomParameters
-      if (typeof loopBranchCustomParameters !== 'undefined' && loopBranchCustomParameters && typeof loopBranchCustomParameters === 'object') {
-        console.log('Applying custom parameters to loop trial:', loopBranchCustomParameters);
-        Object.entries(loopBranchCustomParameters).forEach(([key, param]) => {
+      // For trials in loops, use loop-specific BranchCustomParameters
+      if (typeof loop_loop_1762907705296_BranchCustomParameters !== 'undefined' && loop_loop_1762907705296_BranchCustomParameters && typeof loop_loop_1762907705296_BranchCustomParameters === 'object') {
+        console.log('Applying custom parameters to loop trial:', loop_loop_1762907705296_BranchCustomParameters);
+        Object.entries(loop_loop_1762907705296_BranchCustomParameters).forEach(([key, param]) => {
           if (param && param.source !== 'none') {
             // Handle different parameter sources
             if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
@@ -1048,18 +1048,18 @@ stimulus: "stimulus_otravez",
           }
         });
         // Clear the custom parameters after applying them
-        loopBranchCustomParameters = null;
+        loop_loop_1762907705296_BranchCustomParameters = null;
       }
       
     },
     
     on_finish: function(data) {
       // Este trial no tiene branches ni repeat conditions, verificar si el loop padre tiene branches
-      if (typeof loopHasBranches !== 'undefined' && loopHasBranches) {
+      if (typeof loop_loop_1762907705296_HasBranches !== 'undefined' && loop_loop_1762907705296_HasBranches) {
         // El loop tiene branches, activar branching del loop al terminar
         // Esto se manejará en el on_finish del loop
-        loopShouldBranchOnFinish = true;
-      } else if (!loopHasBranches) {
+        loop_loop_1762907705296_ShouldBranchOnFinish = true;
+      } else if (!loop_loop_1762907705296_HasBranches) {
         // Ni el trial ni el loop tienen branches - trial terminal
         // Si llegamos aquí después de un branching global, terminar el experimento
         if (window.branchingActive) {
@@ -1069,45 +1069,15 @@ stimulus: "stimulus_otravez",
     },};
 
 
-// --- Branching logic variables for nested loop Nested Loop 1 ---
+// --- Branching logic variables for loop loop_1762907705296 ---
 let loop_loop_1762907705296_NextTrialId = null;
 let loop_loop_1762907705296_SkipRemaining = false;
 let loop_loop_1762907705296_BranchingActive = false;
-let loop_loop_1762907705296_BranchCustomParameters = null;
-let loop_loop_1762907705296_TargetExecuted = false;
-let loop_loop_1762907705296_IterationComplete = false;
+let loop_loop_1762907705296_BranchCustomParameters = null; // Store custom parameters for branching within loops
+let loop_loop_1762907705296_TargetExecuted = false; // Indica si el trial objetivo ya se ejecutó en esta iteración
+let loop_loop_1762907705296_IterationComplete = false; // Indica que la iteración actual terminó
 const loop_loop_1762907705296_HasBranches = false;
 let loop_loop_1762907705296_ShouldBranchOnFinish = false;
-
-// IMPORTANTE: Guardar el scope del loop padre si existe (runtime check)
-// Usamos una función inmediata para evitar problemas con el TDZ
-const parent_loopNextTrialId = (() => { try { return loopNextTrialId; } catch(e) { return undefined; } })();
-const parent_loopSkipRemaining = (() => { try { return loopSkipRemaining; } catch(e) { return undefined; } })();
-const parent_loopBranchingActive = (() => { try { return loopBranchingActive; } catch(e) { return undefined; } })();
-const parent_loopBranchCustomParameters = (() => { try { return loopBranchCustomParameters; } catch(e) { return undefined; } })();
-const parent_loopTargetExecuted = (() => { try { return loopTargetExecuted; } catch(e) { return undefined; } })();
-const parent_loopIterationComplete = (() => { try { return loopIterationComplete; } catch(e) { return undefined; } })();
-const parent_loopHasBranches = (() => { try { return loopHasBranches; } catch(e) { return undefined; } })();
-const parent_loopShouldBranchOnFinish = (() => { try { return loopShouldBranchOnFinish; } catch(e) { return undefined; } })();
-
-// Reasignar o declarar las variables del loop para que apunten a los valores del nested loop
-// Usamos una IIFE para manejar tanto el caso donde las variables existen como donde no
-(() => {
-  try {
-    // Intentar reasignar (caso: hay un loop padre)
-    loopNextTrialId = loop_loop_1762907705296_NextTrialId;
-    loopSkipRemaining = loop_loop_1762907705296_SkipRemaining;
-    loopBranchingActive = loop_loop_1762907705296_BranchingActive;
-    loopBranchCustomParameters = loop_loop_1762907705296_BranchCustomParameters;
-    loopTargetExecuted = loop_loop_1762907705296_TargetExecuted;
-    loopIterationComplete = loop_loop_1762907705296_IterationComplete;
-    loopHasBranches = loop_loop_1762907705296_HasBranches;
-    loopShouldBranchOnFinish = loop_loop_1762907705296_ShouldBranchOnFinish;
-  } catch(e) {
-    // Las variables no existen, se declararán por el loop padre más adelante
-    // o estamos en el scope incorrecto
-  }
-})();
 
 
     const Inicia_nested_wrapper = {
@@ -1120,12 +1090,12 @@ const parent_loopShouldBranchOnFinish = (() => { try { return loopShouldBranchOn
         if (jumpToTrial) {
           if (String(currentId) === String(jumpToTrial)) {
             // Encontramos el trial/loop objetivo para repeat/jump
-            console.log('Repeat/jump: Found target trial/loop inside nested loop', currentId);
+            console.log('Repeat/jump: Found target trial/loop inside loop', currentId);
             localStorage.removeItem('jsPsych_jumpToTrial');
             return true;
           }
           // No es el objetivo, saltar
-          console.log('Repeat/jump: Skipping trial/loop inside nested loop', currentId);
+          console.log('Repeat/jump: Skipping trial/loop inside loop', currentId);
           return false;
         }
         
@@ -1165,12 +1135,12 @@ const parent_loopShouldBranchOnFinish = (() => { try { return loopShouldBranchOn
         if (jumpToTrial) {
           if (String(currentId) === String(jumpToTrial)) {
             // Encontramos el trial/loop objetivo para repeat/jump
-            console.log('Repeat/jump: Found target trial/loop inside nested loop', currentId);
+            console.log('Repeat/jump: Found target trial/loop inside loop', currentId);
             localStorage.removeItem('jsPsych_jumpToTrial');
             return true;
           }
           // No es el objetivo, saltar
-          console.log('Repeat/jump: Skipping trial/loop inside nested loop', currentId);
+          console.log('Repeat/jump: Skipping trial/loop inside loop', currentId);
           return false;
         }
         
@@ -1210,12 +1180,12 @@ const parent_loopShouldBranchOnFinish = (() => { try { return loopShouldBranchOn
         if (jumpToTrial) {
           if (String(currentId) === String(jumpToTrial)) {
             // Encontramos el trial/loop objetivo para repeat/jump
-            console.log('Repeat/jump: Found target trial/loop inside nested loop', currentId);
+            console.log('Repeat/jump: Found target trial/loop inside loop', currentId);
             localStorage.removeItem('jsPsych_jumpToTrial');
             return true;
           }
           // No es el objetivo, saltar
-          console.log('Repeat/jump: Skipping trial/loop inside nested loop', currentId);
+          console.log('Repeat/jump: Skipping trial/loop inside loop', currentId);
           return false;
         }
         
@@ -1258,13 +1228,85 @@ const parent_loopShouldBranchOnFinish = (() => { try { return loopShouldBranchOn
       }
     };
 
+const evaluateLoopCondition_loop_1762907705296 = (trialData, condition) => {
+  // All rules in a condition must be true (AND logic)
+  return condition.rules.every(rule => {
+    const propValue = trialData[rule.prop];
+    const compareValue = rule.value;
+    
+    // Convert values for comparison
+    const numPropValue = parseFloat(propValue);
+    const numCompareValue = parseFloat(compareValue);
+    const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
+    
+    switch (rule.op) {
+      case '==':
+        return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
+      case '!=':
+        return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
+      case '>':
+        return isNumeric && numPropValue > numCompareValue;
+      case '<':
+        return isNumeric && numPropValue < numCompareValue;
+      case '>=':
+        return isNumeric && numPropValue >= numCompareValue;
+      case '<=':
+        return isNumeric && numPropValue <= numCompareValue;
+      default:
+        return false;
+    }
+  });
+};
+
+const getNextLoopTrialId_loop_1762907705296 = (lastTrialData) => {
+  if (!lastTrialData || !lastTrialData.trials || !lastTrialData.trials[0]) {
+    return null;
+  }
+  
+  const trial = lastTrialData.trials[0];
+  
+  // Check if trial has branches
+  if (!Array.isArray(trial.branches) || trial.branches.length === 0) {
+    return null;
+  }
+  
+  // Si solo hay un branch O no hay condiciones, seguir al primer branch automáticamente
+  const hasMultipleBranches = trial.branches.length > 1;
+  const hasBranchConditions = Array.isArray(trial.branchConditions) && trial.branchConditions.length > 0;
+  
+  if (!hasMultipleBranches || !hasBranchConditions) {
+    console.log('Loop internal: Auto-branching to first branch:', trial.branches[0]);
+    return trial.branches[0];
+  }
+  
+  // Si hay múltiples branches Y condiciones, evaluar las condiciones
+  const conditions = trial.branchConditions.flat();
+  
+  // Evaluate each condition (OR logic between conditions)
+  for (const condition of conditions) {
+    if (!condition || !condition.rules) {
+      console.warn('Invalid condition structure:', condition);
+      continue;
+    }
+    
+    if (evaluateLoopCondition_loop_1762907705296(trial, condition)) {
+      console.log('Loop internal: Condition matched:', condition);
+      return condition.nextTrialId;
+    }
+  }
+  
+  // No condition matched - seguir al primer branch por defecto
+  console.log('Loop internal: No condition matched, defaulting to first branch:', trial.branches[0]);
+  return trial.branches[0];
+};
+
 const loop_1762907705296_procedure = {
   timeline: [Inicia_nested_wrapper, Final_nested_wrapper, otravez_wrapper],
   timeline_variables: test_stimuli_loop_1762907705296,
   repetitions: 1,
   randomize_order: false,
   loop_function: function(data) {
-    // Evaluate loop conditions to determine if the nested loop should repeat
+    // Evaluate loop conditions to determine if the loop should repeat
     const loopConditionsArray = [{"id":1762912141687,"rules":[{"trialId":"1762912004181","prop":"response","op":"==","value":"0"}]}];
     
     // Helper function to get data from a specific trial
@@ -1288,7 +1330,7 @@ const loop_1762907705296_procedure = {
         const trialData = getTrialData(rule.trialId);
         
         if (!trialData) {
-          console.warn('Nested loop: Trial data not found for:', rule.trialId);
+          console.warn('Trial data not found for:', rule.trialId);
           return false;
         }
         
@@ -1322,15 +1364,43 @@ const loop_1762907705296_procedure = {
     // Evaluate all conditions (OR logic between conditions)
     const shouldRepeat = loopConditionsArray.some(condition => evaluateCondition(condition));
     
-    console.log('Nested loop condition evaluation result for Nested Loop 1:', shouldRepeat);
-    
-    // Si no debe repetir Y el loop tiene branches, activar branching
-    
-    
+    console.log('Loop condition evaluation result:', shouldRepeat);
     return shouldRepeat;
   },
+  conditional_function: function() {
+    const currentId = "loop_1762907705296";
+    
+    // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
+    const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
+    if (jumpToTrial) {
+      if (String(currentId) === String(jumpToTrial)) {
+        // Encontramos el loop objetivo para repeat/jump
+        console.log('Repeat/jump: Found target loop', currentId);
+        localStorage.removeItem('jsPsych_jumpToTrial');
+        return true;
+      }
+      // No es el objetivo, saltar
+      console.log('Repeat/jump: Skipping loop', currentId);
+      return false;
+    }
+    
+    // Si skipRemaining está activo (branching normal), verificar si este es el loop objetivo
+    if (window.skipRemaining) {
+      if (String(currentId) === String(window.nextTrialId)) {
+        // Encontramos el loop objetivo
+        window.skipRemaining = false;
+        window.nextTrialId = null;
+        return true;
+      }
+      // No es el objetivo, saltar
+      return false;
+    }
+    
+    return true;
+  },
   on_timeline_start: function() {
-    // Resetear las flags al inicio de cada iteración del nested loop
+    // Resetear las flags al inicio de cada iteración del loop
+    // Esto permite que cada repetición del loop funcione correctamente
     loop_loop_1762907705296_NextTrialId = null;
     loop_loop_1762907705296_SkipRemaining = false;
     loop_loop_1762907705296_BranchingActive = false;
@@ -1339,89 +1409,69 @@ const loop_1762907705296_procedure = {
     loop_loop_1762907705296_IterationComplete = false;
     loop_loop_1762907705296_ShouldBranchOnFinish = false;
     
-    // Sincronizar los alias sin prefijo
-    loopNextTrialId = null;
-    loopSkipRemaining = false;
-    loopBranchingActive = false;
-    loopBranchCustomParameters = null;
-    loopTargetExecuted = false;
-    loopIterationComplete = false;
-    loopShouldBranchOnFinish = false;
+    // IMPORTANTE: Si el loop es condicional, resetear también el branching GLOBAL
+    // para que se regenere durante esta iteración del loop
     
-    // IMPORTANTE: Si el nested loop es condicional, resetear también el branching LOCAL
-    // para que se regenere durante esta iteración
-    
-    loop_loop_1762907705296_NextTrialId = null;
-    loop_loop_1762907705296_SkipRemaining = false;
-    loop_loop_1762907705296_BranchingActive = false;
-    loopNextTrialId = null;
-    loopSkipRemaining = false;
-    loopBranchingActive = false;
-    console.log('Conditional nested loop iteration starting, reset local branching flags');
+    window.nextTrialId = null;
+    window.skipRemaining = false;
+    window.branchingActive = false;
+    window.branchCustomParameters = null;
+    console.log('Conditional loop iteration starting, reset global branching flags');
     
   },
   on_timeline_finish: function() {
-    // Sincronizar los cambios de los alias a las variables con prefijo antes de terminar
-    loop_loop_1762907705296_NextTrialId = loopNextTrialId;
-    loop_loop_1762907705296_SkipRemaining = loopSkipRemaining;
-    loop_loop_1762907705296_TargetExecuted = loopTargetExecuted;
-    loop_loop_1762907705296_BranchingActive = loopBranchingActive;
-    loop_loop_1762907705296_BranchCustomParameters = loopBranchCustomParameters;
-    loop_loop_1762907705296_IterationComplete = loopIterationComplete;
-    loop_loop_1762907705296_ShouldBranchOnFinish = loopShouldBranchOnFinish;
-    
-    // IMPORTANTE: Si el nested loop activó branching desde un trial interno (loopShouldBranchOnFinish)
-    // propagar este flag al loop padre
-    const nestedLoopActivatedBranching = loop_loop_1762907705296_ShouldBranchOnFinish;
-    
-    // Restaurar las variables del loop padre solo si existen (estamos en un nested context)
-    if (typeof parent_loopNextTrialId !== 'undefined') {
-      loopNextTrialId = parent_loopNextTrialId;
-      loopSkipRemaining = parent_loopSkipRemaining;
-      loopBranchingActive = parent_loopBranchingActive;
-      loopBranchCustomParameters = parent_loopBranchCustomParameters;
-      loopTargetExecuted = parent_loopTargetExecuted;
-      loopIterationComplete = parent_loopIterationComplete;
-      loopHasBranches = parent_loopHasBranches;
-      loopShouldBranchOnFinish = parent_loopShouldBranchOnFinish;
-      
-      // Si el nested loop activó branching, propagar al loop padre
-      if (nestedLoopActivatedBranching) {
-        loopShouldBranchOnFinish = true;
-        console.log('Nested loop propagating branch flag to parent loop');
-      }
-    } else {
-      // No hay loop padre - si el nested loop activó branching, propagar al contexto global
-      if (nestedLoopActivatedBranching && typeof window !== 'undefined') {
-        window.branchingActive = true;
-        console.log('Nested loop propagating branch flag to global context');
-      }
-    }
-    
-    // Resetear las flags del nested loop
+    // Resetear las flags al finalizar todas las repeticiones del loop
     loop_loop_1762907705296_NextTrialId = null;
     loop_loop_1762907705296_SkipRemaining = false;
     loop_loop_1762907705296_TargetExecuted = false;
     loop_loop_1762907705296_BranchingActive = false;
     loop_loop_1762907705296_BranchCustomParameters = null;
-    loop_loop_1762907705296_IterationComplete = false;
+    
+    // Verificar si se debe hacer branching porque un trial sin branches se completó
+    // pero el loop tiene branches
+    if (loop_loop_1762907705296_ShouldBranchOnFinish && loop_loop_1762907705296_HasBranches) {
+      const branches = [];
+      if (branches.length > 0) {
+        
+        // Este es un nested loop - activar branching del loop padre
+        loop_loop_1762902533581_NextTrialId = branches[0];
+        loop_loop_1762902533581_SkipRemaining = true;
+        loop_loop_1762902533581_BranchingActive = true;
+        console.log('Nested loop finished (from internal trial), activating parent loop branching to:', branches[0]);
+      }
+    }
+    
+    // Resetear todas las variables de branching del loop
+    loop_loop_1762907705296_NextTrialId = null;
+    loop_loop_1762907705296_SkipRemaining = false;
+    loop_loop_1762907705296_BranchingActive = false;
+    loop_loop_1762907705296_BranchCustomParameters = null;
     loop_loop_1762907705296_ShouldBranchOnFinish = false;
   },
-  data: {
-    loop_id: "loop_1762907705296",
-    loop_name: "Nested Loop 1"
-  }
-};
 
-// --- Branching logic variables for internal loop trials ---
-let loopNextTrialId = null;
-let loopSkipRemaining = false;
-let loopBranchingActive = false;
-let loopBranchCustomParameters = null; // Store custom parameters for branching within loops
-let loopTargetExecuted = false; // Indica si el trial objetivo ya se ejecutó en esta iteración
-let loopIterationComplete = false; // Indica que la iteración actual terminó
-const loopHasBranches = true;
-let loopShouldBranchOnFinish = false;
+  data: {
+    loop_id: "loop_1762907705296"
+  },
+  on_finish: function(data) {
+    // Este loop no tiene branches ni repeat conditions, es un loop terminal
+    // Si llegamos aquí después de un branching, terminar el experimento
+    if (window.branchingActive) {
+      jsPsych.abortExperiment('', {});
+    }
+  },
+};
+timeline.push(loop_1762907705296_procedure);
+
+
+// --- Branching logic variables for loop loop_1762902533581 ---
+let loop_loop_1762902533581_NextTrialId = null;
+let loop_loop_1762902533581_SkipRemaining = false;
+let loop_loop_1762902533581_BranchingActive = false;
+let loop_loop_1762902533581_BranchCustomParameters = null; // Store custom parameters for branching within loops
+let loop_loop_1762902533581_TargetExecuted = false; // Indica si el trial objetivo ya se ejecutó en esta iteración
+let loop_loop_1762902533581_IterationComplete = false; // Indica que la iteración actual terminó
+const loop_loop_1762902533581_HasBranches = true;
+let loop_loop_1762902533581_ShouldBranchOnFinish = false;
 
 
     const nested_wrapper = {
@@ -1444,16 +1494,16 @@ let loopShouldBranchOnFinish = false;
         }
         
         // Si el item objetivo ya fue ejecutado, saltar todos los items restantes en esta iteración
-        if (loopTargetExecuted) {
+        if (loop_loop_1762902533581_TargetExecuted) {
           
           return false;
         }
         
         // Si loopSkipRemaining está activo, verificar si este es el item objetivo
-        if (loopSkipRemaining) {
-          if (String(currentId) === String(loopNextTrialId)) {
+        if (loop_loop_1762902533581_SkipRemaining) {
+          if (String(currentId) === String(loop_loop_1762902533581_NextTrialId)) {
             // Encontramos el item objetivo dentro del loop
-            loopTargetExecuted = true;
+            loop_loop_1762902533581_TargetExecuted = true;
             return true;
           }
           // No es el objetivo, saltar
@@ -1489,16 +1539,16 @@ let loopShouldBranchOnFinish = false;
         }
         
         // Si el item objetivo ya fue ejecutado, saltar todos los items restantes en esta iteración
-        if (loopTargetExecuted) {
+        if (loop_loop_1762902533581_TargetExecuted) {
           
           return false;
         }
         
         // Si loopSkipRemaining está activo, verificar si este es el item objetivo
-        if (loopSkipRemaining) {
-          if (String(currentId) === String(loopNextTrialId)) {
+        if (loop_loop_1762902533581_SkipRemaining) {
+          if (String(currentId) === String(loop_loop_1762902533581_NextTrialId)) {
             // Encontramos el item objetivo dentro del loop
-            loopTargetExecuted = true;
+            loop_loop_1762902533581_TargetExecuted = true;
             return true;
           }
           // No es el objetivo, saltar
@@ -1534,23 +1584,23 @@ let loopShouldBranchOnFinish = false;
         }
         
         // Si el item objetivo ya fue ejecutado, saltar todos los items restantes en esta iteración
-        if (loopTargetExecuted) {
+        if (loop_loop_1762902533581_TargetExecuted) {
           
           // Último item: resetear flags para la siguiente iteración/repetición
-          loopNextTrialId = null;
-          loopSkipRemaining = false;
-          loopTargetExecuted = false;
-          loopBranchingActive = false;
-          loopBranchCustomParameters = null;
-          loopIterationComplete = false;
+          loop_loop_1762902533581_NextTrialId = null;
+          loop_loop_1762902533581_SkipRemaining = false;
+          loop_loop_1762902533581_TargetExecuted = false;
+          loop_loop_1762902533581_BranchingActive = false;
+          loop_loop_1762902533581_BranchCustomParameters = null;
+          loop_loop_1762902533581_IterationComplete = false;
           return false;
         }
         
         // Si loopSkipRemaining está activo, verificar si este es el item objetivo
-        if (loopSkipRemaining) {
-          if (String(currentId) === String(loopNextTrialId)) {
+        if (loop_loop_1762902533581_SkipRemaining) {
+          if (String(currentId) === String(loop_loop_1762902533581_NextTrialId)) {
             // Encontramos el item objetivo dentro del loop
-            loopTargetExecuted = true;
+            loop_loop_1762902533581_TargetExecuted = true;
             return true;
           }
           // No es el objetivo, saltar
@@ -1563,16 +1613,16 @@ let loopShouldBranchOnFinish = false;
       on_timeline_finish: function() {
         
         // Último item del timeline: resetear flags para la siguiente iteración/repetición
-        loopNextTrialId = null;
-        loopSkipRemaining = false;
-        loopTargetExecuted = false;
-        loopBranchingActive = false;
-        loopBranchCustomParameters = null;
-        loopIterationComplete = false;
+        loop_loop_1762902533581_NextTrialId = null;
+        loop_loop_1762902533581_SkipRemaining = false;
+        loop_loop_1762902533581_TargetExecuted = false;
+        loop_loop_1762902533581_BranchingActive = false;
+        loop_loop_1762902533581_BranchCustomParameters = null;
+        loop_loop_1762902533581_IterationComplete = false;
       }
     };
 
-const evaluateLoopCondition = (trialData, condition) => {
+const evaluateLoopCondition_loop_1762902533581 = (trialData, condition) => {
   // All rules in a condition must be true (AND logic)
   return condition.rules.every(rule => {
     const propValue = trialData[rule.prop];
@@ -1602,7 +1652,7 @@ const evaluateLoopCondition = (trialData, condition) => {
   });
 };
 
-const getNextLoopTrialId = (lastTrialData) => {
+const getNextLoopTrialId_loop_1762902533581 = (lastTrialData) => {
   if (!lastTrialData || !lastTrialData.trials || !lastTrialData.trials[0]) {
     return null;
   }
@@ -1633,7 +1683,7 @@ const getNextLoopTrialId = (lastTrialData) => {
       continue;
     }
     
-    if (evaluateLoopCondition(trial, condition)) {
+    if (evaluateLoopCondition_loop_1762902533581(trial, condition)) {
       console.log('Loop internal: Condition matched:', condition);
       return condition.nextTrialId;
     }
@@ -1647,7 +1697,7 @@ const getNextLoopTrialId = (lastTrialData) => {
 const loop_1762902533581_procedure = {
   timeline: [nested_wrapper, Seguir_wrapper, Nested_Loop_1_wrapper],
   timeline_variables: test_stimuli_loop_1762902533581,
-  repetitions: 1,
+  repetitions: 2,
   randomize_order: false,
   
   conditional_function: function() {
@@ -1684,13 +1734,13 @@ const loop_1762902533581_procedure = {
   on_timeline_start: function() {
     // Resetear las flags al inicio de cada iteración del loop
     // Esto permite que cada repetición del loop funcione correctamente
-    loopNextTrialId = null;
-    loopSkipRemaining = false;
-    loopBranchingActive = false;
-    loopBranchCustomParameters = null;
-    loopTargetExecuted = false;
-    loopIterationComplete = false;
-    loopShouldBranchOnFinish = false;
+    loop_loop_1762902533581_NextTrialId = null;
+    loop_loop_1762902533581_SkipRemaining = false;
+    loop_loop_1762902533581_BranchingActive = false;
+    loop_loop_1762902533581_BranchCustomParameters = null;
+    loop_loop_1762902533581_TargetExecuted = false;
+    loop_loop_1762902533581_IterationComplete = false;
+    loop_loop_1762902533581_ShouldBranchOnFinish = false;
     
     // IMPORTANTE: Si el loop es condicional, resetear también el branching GLOBAL
     // para que se regenere durante esta iteración del loop
@@ -1698,30 +1748,32 @@ const loop_1762902533581_procedure = {
   },
   on_timeline_finish: function() {
     // Resetear las flags al finalizar todas las repeticiones del loop
-    loopNextTrialId = null;
-    loopSkipRemaining = false;
-    loopTargetExecuted = false;
-    loopBranchingActive = false;
-    loopBranchCustomParameters = null;
+    loop_loop_1762902533581_NextTrialId = null;
+    loop_loop_1762902533581_SkipRemaining = false;
+    loop_loop_1762902533581_TargetExecuted = false;
+    loop_loop_1762902533581_BranchingActive = false;
+    loop_loop_1762902533581_BranchCustomParameters = null;
     
     // Verificar si se debe hacer branching porque un trial sin branches se completó
     // pero el loop tiene branches
-    if (loopShouldBranchOnFinish && loopHasBranches) {
+    if (loop_loop_1762902533581_ShouldBranchOnFinish && loop_loop_1762902533581_HasBranches) {
       const branches = [1762902536432];
       if (branches.length > 0) {
+        
+        // Este es un loop raíz - activar branching global
         window.nextTrialId = branches[0];
         window.skipRemaining = true;
         window.branchingActive = true;
-        console.log('Loop finished (from internal trial), branching to:', branches[0]);
+        console.log('Root loop finished (from internal trial), branching to:', branches[0]);
       }
     }
     
     // Resetear todas las variables de branching del loop
-    loopNextTrialId = null;
-    loopSkipRemaining = false;
-    loopBranchingActive = false;
-    loopBranchCustomParameters = null;
-    loopShouldBranchOnFinish = false;
+    loop_loop_1762902533581_NextTrialId = null;
+    loop_loop_1762902533581_SkipRemaining = false;
+    loop_loop_1762902533581_BranchingActive = false;
+    loop_loop_1762902533581_BranchCustomParameters = null;
+    loop_loop_1762902533581_ShouldBranchOnFinish = false;
   },
 
   data: {
@@ -1729,8 +1781,8 @@ const loop_1762902533581_procedure = {
   },
   on_finish: function(data) {
     // Branching automático al primer branch del loop
-    // Solo si NO se activó desde trial interno (loopShouldBranchOnFinish o loopBranchingActive)
-    if (!loopShouldBranchOnFinish && !loopBranchingActive) {
+    // Solo si NO se activó desde trial interno (ShouldBranchOnFinish o BranchingActive)
+    if (!loop_loop_1762902533581_ShouldBranchOnFinish && !loop_loop_1762902533581_BranchingActive) {
       const branches = [1762902536432];
       if (branches.length > 0) {
         window.nextTrialId = branches[0];

@@ -242,6 +242,7 @@ function LoopsConfig({ loop }: Props) {
       categories: categories,
       categoryData: categoryData,
       isInLoop: true,
+      parentLoopId: loop?.id, // Pasar el ID del loop padre
     });
 
     return {
@@ -253,13 +254,16 @@ function LoopsConfig({ loop }: Props) {
   });
 
   // Función RECURSIVA para procesar trials dentro de loops anidados
-  const processNestedTrials = (items: any[]): any[] => {
+  const processNestedTrials = (items: any[], parentLoopId?: string): any[] => {
     return items
       .map((item: any) => {
         // Si es un loop anidado
         if ("trials" in item && !item.plugin) {
           // Procesar recursivamente los trials dentro del loop anidado
-          const nestedProcessedItems = processNestedTrials(item.trials);
+          const nestedProcessedItems = processNestedTrials(
+            item.trials,
+            item.id
+          ); // Pasar el ID del nested loop
 
           // Calcular unifiedStimuli para el loop anidado
           const nestedUnifiedStimuli = mergeStimuliArrays(
@@ -391,6 +395,7 @@ function LoopsConfig({ loop }: Props) {
           categories: categories,
           categoryData: categoryData,
           isInLoop: true,
+          parentLoopId: parentLoopId, // Pasar el ID del loop padre
         });
 
         return {
@@ -405,7 +410,7 @@ function LoopsConfig({ loop }: Props) {
 
   // Construir la estructura completa con loops anidados procesados recursivamente
   const structuredData = loop?.trials
-    ? processNestedTrials(loop.trials)
+    ? processNestedTrials(loop.trials, loop.id) // Pasar el ID del loop principal
     : trialsData;
 
   const unifiedStimuli = mergeStimuliArrays(
@@ -428,6 +433,7 @@ function LoopsConfig({ loop }: Props) {
     unifiedStimuli,
     loopConditions,
     isConditionalLoop,
+    parentLoopId: null, // Este es un loop raíz, no tiene padre
   });
 
   const loopCode = generateLoopCode();

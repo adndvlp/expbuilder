@@ -33,6 +33,7 @@ type Props = {
   categories: boolean;
   categoryData: any[];
   isInLoop?: boolean;
+  parentLoopId?: string | null; // ID del loop padre para generar nombres de variables dinámicos
 };
 
 export function useTrialCode({
@@ -57,11 +58,28 @@ export function useTrialCode({
   categories,
   categoryData,
   isInLoop,
+  parentLoopId,
 }: Props) {
   const activeParameters = parameters.filter(
     (p) => columnMapping[p.key]?.source !== "none"
   );
   const trialNameSanitized = trialName.replace(/\s+/g, "_");
+
+  // Helper para sanitizar nombres de IDs
+  const sanitizeName = (name: string) => {
+    return name.replace(/[^a-zA-Z0-9_]/g, "_");
+  };
+
+  // Helper para generar nombres de variables dinámicos basados en el parentLoopId
+  const getVarName = (baseName: string): string => {
+    if (!isInLoop || !parentLoopId) {
+      // Trial fuera de loop - no debería llegar aquí si isInLoop es true
+      return baseName;
+    }
+    // Trial dentro de un loop - usar prefijo del loop padre
+    const sanitizedParentId = sanitizeName(parentLoopId);
+    return `loop_${sanitizedParentId}_${baseName}`;
+  };
 
   const mappedJson = (() => {
     const mapRow = (row?: Record<string, any>, idx?: number) => {
@@ -474,10 +492,10 @@ export function useTrialCode({
       ${
         isInLoop
           ? `
-      // For trials in loops, use loopBranchCustomParameters
-      if (typeof loopBranchCustomParameters !== 'undefined' && loopBranchCustomParameters && typeof loopBranchCustomParameters === 'object') {
-        console.log('Applying custom parameters to loop trial:', loopBranchCustomParameters);
-        Object.entries(loopBranchCustomParameters).forEach(([key, param]) => {
+      // For trials in loops, use loop-specific BranchCustomParameters
+      if (typeof ${getVarName("BranchCustomParameters")} !== 'undefined' && ${getVarName("BranchCustomParameters")} && typeof ${getVarName("BranchCustomParameters")} === 'object') {
+        console.log('Applying custom parameters to loop trial:', ${getVarName("BranchCustomParameters")});
+        Object.entries(${getVarName("BranchCustomParameters")}).forEach(([key, param]) => {
           if (param && param.source !== 'none') {
             // Handle different parameter sources
             if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
@@ -492,7 +510,7 @@ export function useTrialCode({
           }
         });
         // Clear the custom parameters after applying them
-        loopBranchCustomParameters = null;
+        ${getVarName("BranchCustomParameters")} = null;
       }
       `
           : `
@@ -603,9 +621,9 @@ export function useTrialCode({
       // Branching automático al primer branch (dentro del loop)
       const branches = [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}];
       if (branches.length > 0) {
-        loopNextTrialId = branches[0];
-        loopSkipRemaining = true;
-        loopBranchingActive = true;
+        ${getVarName("NextTrialId")} = branches[0];
+        ${getVarName("SkipRemaining")} = true;
+        ${getVarName("BranchingActive")} = true;
       }
       `
             : `
@@ -663,22 +681,22 @@ export function useTrialCode({
       
       // Si se encontró match, activar branching
       if (nextTrialId) {
-        loopNextTrialId = nextTrialId;
-        loopSkipRemaining = true;
-        loopBranchingActive = true;
+        ${getVarName("NextTrialId")} = nextTrialId;
+        ${getVarName("SkipRemaining")} = true;
+        ${getVarName("BranchingActive")} = true;
         // Store custom parameters for the next trial in the loop
         if (matchedCustomParameters) {
-          loopBranchCustomParameters = matchedCustomParameters;
+          ${getVarName("BranchCustomParameters")} = matchedCustomParameters;
         }
       }
       `
           : `
       // Este trial no tiene branches, verificar si el loop padre tiene branches
-      if (typeof loopHasBranches !== 'undefined' && loopHasBranches) {
+      if (typeof ${getVarName("HasBranches")} !== 'undefined' && ${getVarName("HasBranches")}) {
         // El loop tiene branches, activar branching del loop al terminar
         // Esto se manejará en el on_finish del loop
-        loopShouldBranchOnFinish = true;
-      } else if (!loopHasBranches) {
+        ${getVarName("ShouldBranchOnFinish")} = true;
+      } else if (!${getVarName("HasBranches")}) {
         // Ni el trial ni el loop tienen branches - trial terminal
         // Si llegamos aquí después de un branching global, terminar el experimento
         if (window.branchingActive) {
@@ -697,9 +715,9 @@ export function useTrialCode({
       // Branching automático al primer branch (dentro del loop)
       const branches = [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}];
       if (branches.length > 0) {
-        loopNextTrialId = branches[0];
-        loopSkipRemaining = true;
-        loopBranchingActive = true;
+        ${getVarName("NextTrialId")} = branches[0];
+        ${getVarName("SkipRemaining")} = true;
+        ${getVarName("BranchingActive")} = true;
       }
     },`;
           } else {
@@ -760,12 +778,12 @@ export function useTrialCode({
       
       // Si se encontró match, activar branching
       if (nextTrialId) {
-        loopNextTrialId = nextTrialId;
-        loopSkipRemaining = true;
-        loopBranchingActive = true;
+        ${getVarName("NextTrialId")} = nextTrialId;
+        ${getVarName("SkipRemaining")} = true;
+        ${getVarName("BranchingActive")} = true;
         // Store custom parameters for the next trial in the loop
         if (matchedCustomParameters) {
-          loopBranchCustomParameters = matchedCustomParameters;
+          ${getVarName("BranchCustomParameters")} = matchedCustomParameters;
         }
       }
     },`;
@@ -777,11 +795,11 @@ export function useTrialCode({
         code += `
     on_finish: function(data) {
       // Este trial no tiene branches ni repeat conditions, verificar si el loop padre tiene branches
-      if (typeof loopHasBranches !== 'undefined' && loopHasBranches) {
+      if (typeof ${getVarName("HasBranches")} !== 'undefined' && ${getVarName("HasBranches")}) {
         // El loop tiene branches, activar branching del loop al terminar
         // Esto se manejará en el on_finish del loop
-        loopShouldBranchOnFinish = true;
-      } else if (!loopHasBranches) {
+        ${getVarName("ShouldBranchOnFinish")} = true;
+      } else if (!${getVarName("HasBranches")}) {
         // Ni el trial ni el loop tienen branches - trial terminal
         // Si llegamos aquí después de un branching global, terminar el experimento
         if (window.branchingActive) {
