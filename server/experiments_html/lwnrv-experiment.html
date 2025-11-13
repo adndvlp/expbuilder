@@ -431,9 +431,9 @@ stimulus: "stimulus",
               trial[key] = param.value;
               console.log(`Set trial.${key} = ${param.value}`);
             } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
-              // For CSV values, use them directly
-              trial[key] = param.value;
-              console.log(`Set trial.${key} = ${param.value}`);
+              // For CSV values, param.value contains the column name, get the actual value from trial
+              trial[key] = trial[param.value];
+              console.log(`Set trial.${key} = ${trial[param.value]} (from CSV column: ${param.value})`);
             }
           }
         });
@@ -552,19 +552,14 @@ stimulus: "stimulus",
 
     const test_stimuli_loop_1762902533581 = [
   {
-    "stimulus_Seguir_o_Salir": "<div id=\"ig2k\" style=\"box-sizing: border-box;\">Seguir o Salir</div>",
-    "choices_Seguir_o_Salir": [
+    "stimulus_nested": "<div id=\"ig2k\" style=\"box-sizing: border-box;\">Nested ?</div>",
+    "choices_nested": [
       "Seguir",
-      "Salir"
+      "Salirn"
     ],
     "stimulus_Seguir": "<div id=\"ip4y\" style=\"box-sizing: border-box;\">Seguir</div>",
     "choices_Seguir": [
       "SI",
-      "No"
-    ],
-    "stimulus_Salir": "<div id=\"ip91\" style=\"box-sizing: border-box;\">SAlir</div>",
-    "choices_Salir": [
-      "Si",
       "No"
     ]
   }
@@ -572,24 +567,24 @@ stimulus: "stimulus",
     
     
     
-    const preloadSeguir_o_Salir = {
+    const preloadnested = {
         type: jsPsychPreload,
        files: [],
     }
-    timeline.push(preloadSeguir_o_Salir);
+    timeline.push(preloadnested);
     
-    const Seguir_o_Salir_timeline = {
-    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable("stimulus_Seguir_o_Salir"),
-choices: jsPsych.timelineVariable("choices_Seguir_o_Salir"),
+    const nested_timeline = {
+    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable("stimulus_nested"),
+choices: jsPsych.timelineVariable("choices_nested"),
       data: {
-        rt: "rt_Seguir_o_Salir",
-response: "response_Seguir_o_Salir",
-stimulus: "stimulus_Seguir_o_Salir",
+        rt: "rt_nested",
+response: "response_nested",
+stimulus: "stimulus_nested",
         trial_id: 1762902524841,
         isInLoop: true,
         
         branches: [1762902528773, 1762902912364],
-        branchConditions: [[{"id":1762902986815,"rules":[{"prop":"response","op":"==","value":"0"}],"nextTrialId":"1762902528773","customParameters":{}},{"id":1762902993518,"rules":[{"prop":"response","op":"==","value":"1"}],"nextTrialId":"1762902912364","customParameters":{}}]] 
+        branchConditions: [[{"id":1762902986815,"rules":[{"prop":"response","op":"==","value":"0"}],"nextTrialId":"1762902528773","customParameters":{}},{"id":1762902993518,"rules":[{"prop":"response","op":"==","value":"1"}],"nextTrialId":"loop_1762907705296","customParameters":{}}]] 
         
       },
     on_start: function(trial) {
@@ -623,7 +618,7 @@ stimulus: "stimulus_Seguir_o_Salir",
     on_finish: function(data) {
       // Evaluar condiciones del trial para branching interno del loop
       const branches = [1762902528773, 1762902912364];
-      const branchConditions = [{"id":1762902986815,"rules":[{"prop":"response","op":"==","value":"0"}],"nextTrialId":"1762902528773","customParameters":{}},{"id":1762902993518,"rules":[{"prop":"response","op":"==","value":"1"}],"nextTrialId":"1762902912364","customParameters":{}}].flat();
+      const branchConditions = [{"id":1762902986815,"rules":[{"prop":"response","op":"==","value":"0"}],"nextTrialId":"1762902528773","customParameters":{}},{"id":1762902993518,"rules":[{"prop":"response","op":"==","value":"1"}],"nextTrialId":"loop_1762907705296","customParameters":{}}].flat();
       
       let nextTrialId = null;
       let matchedCustomParameters = null;
@@ -813,58 +808,95 @@ stimulus: "stimulus_Seguir",
 
 
     
-    const preloadSalir = {
+    const test_stimuli_loop_1762907705296 = [
+  {
+    "stimulus_Inicia_nested": "<div id=\"ip91\" style=\"box-sizing: border-box;\">inicia nested</div>",
+    "choices_Inicia_nested": [
+      "Si",
+      "Nos"
+    ],
+    "stimulus_Final_nested": "<div id=\"isjo\" style=\"box-sizing: border-box;\">final nested</div>",
+    "choices_Final_nested": [
+      "Repetir",
+      "Salirs"
+    ],
+    "stimulus_otravez": "<div id=\"imna\" style=\"box-sizing: border-box;\">otra vez</div>",
+    "choices_otravez": [
+      "Dije que no"
+    ]
+  }
+];
+    
+    
+    
+    const preloadInicia_nested = {
         type: jsPsychPreload,
        files: [],
     }
-    timeline.push(preloadSalir);
+    timeline.push(preloadInicia_nested);
     
-    const Salir_timeline = {
-    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable("stimulus_Salir"),
-choices: jsPsych.timelineVariable("choices_Salir"),
+    const Inicia_nested_timeline = {
+    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable("stimulus_Inicia_nested"),
+choices: jsPsych.timelineVariable("choices_Inicia_nested"),
       data: {
-        rt: "rt_Salir",
-response: "response_Salir",
-stimulus: "stimulus_Salir",
+        rt: "rt_Inicia_nested",
+response: "response_Inicia_nested",
+stimulus: "stimulus_Inicia_nested",
         trial_id: 1762902912364,
         isInLoop: true,
+        
+        branches: [1762907671377, 1762912004181],
+        branchConditions: [[{"id":1762912351921,"rules":[{"prop":"response","op":"==","value":"0"}],"nextTrialId":"1762907671377","customParameters":{}},{"id":1762912364305,"rules":[{"prop":"response","op":"==","value":"1"}],"nextTrialId":"1762912004181","customParameters":{}}]] 
         
       },
     on_start: function(trial) {
       // First, evaluate and apply params override conditions (if any)
       
-      const paramsOverrideConditions = [{"id":1762906012406,"rules":[{"trialId":"1762902524841","prop":"response","op":"==","value":"1"}],"paramsToOverride":{"stimulus":{"source":"typed","value":"cola"}}}];
+      // Then apply custom parameters from branching conditions (higher priority)
       
-      // Evaluate params override conditions
-      for (const condition of paramsOverrideConditions) {
+      // For trials in loops, use loopBranchCustomParameters
+      if (typeof loopBranchCustomParameters !== 'undefined' && loopBranchCustomParameters && typeof loopBranchCustomParameters === 'object') {
+        console.log('Applying custom parameters to loop trial:', loopBranchCustomParameters);
+        Object.entries(loopBranchCustomParameters).forEach(([key, param]) => {
+          if (param && param.source !== 'none') {
+            // Handle different parameter sources
+            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
+              // For typed values, use them directly
+              trial[key] = param.value;
+              console.log(`Set trial.${key} = ${param.value}`);
+            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
+              // For CSV values, param.value contains the column name, get the actual value from trial
+              trial[key] = trial[param.value];
+              console.log(`Set trial.${key} = ${trial[param.value]} (from CSV column: ${param.value})`);
+            }
+          }
+        });
+        // Clear the custom parameters after applying them
+        loopBranchCustomParameters = null;
+      }
+      
+    },
+    
+    on_finish: function(data) {
+      // Evaluar condiciones del trial para branching interno del loop
+      const branches = [1762907671377, 1762912004181];
+      const branchConditions = [{"id":1762912351921,"rules":[{"prop":"response","op":"==","value":"0"}],"nextTrialId":"1762907671377","customParameters":{}},{"id":1762912364305,"rules":[{"prop":"response","op":"==","value":"1"}],"nextTrialId":"1762912004181","customParameters":{}}].flat();
+      
+      let nextTrialId = null;
+      let matchedCustomParameters = null;
+      
+      // Evaluar cada condición (lógica OR entre condiciones)
+      for (const condition of branchConditions) {
         if (!condition || !condition.rules) {
           continue;
         }
         
-        // Get data from all previous trials
-        const allData = jsPsych.data.get().values();
-        
-        // Check if all rules match (AND logic within condition)
+        // Todas las reglas en una condición deben ser verdaderas (lógica AND)
         const allRulesMatch = condition.rules.every(rule => {
-          if (!rule.trialId || !rule.prop) {
-            return false;
-          }
-          
-          // Find data from the referenced trial
-          const trialData = allData.filter(d => {
-            // Compare both as strings to handle type mismatches
-            return String(d.trial_id) === String(rule.trialId) || d.trial_id === rule.trialId;
-          });
-          if (trialData.length === 0) {
-            return false;
-          }
-          
-          // Use the most recent data if multiple exist
-          const data = trialData[trialData.length - 1];
           const propValue = data[rule.prop];
           const compareValue = rule.value;
           
-          // Convert values for comparison
+          // Convertir valores para comparación
           const numPropValue = parseFloat(propValue);
           const numCompareValue = parseFloat(compareValue);
           const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
@@ -887,22 +919,51 @@ stimulus: "stimulus_Salir",
           }
         });
         
-        // If all rules match, apply parameter overrides
-        if (allRulesMatch && condition.paramsToOverride) {
-          Object.entries(condition.paramsToOverride).forEach(([key, param]) => {
-            if (param && param.source !== 'none') {
-              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
-                trial[key] = param.value;
-              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
-                // For CSV source, param.value contains the column name, get the actual value from trial
-                trial[key] = trial[param.value];
-              }
-            }
-          });
-          // Break after first matching condition (OR logic between conditions)
+        if (allRulesMatch) {
+          nextTrialId = condition.nextTrialId;
+          // Store custom parameters if they exist
+          if (condition.customParameters) {
+            matchedCustomParameters = condition.customParameters;
+            console.log('Loop branching: matched custom parameters:', matchedCustomParameters);
+          }
           break;
         }
       }
+      
+      // Si se encontró match, activar branching
+      if (nextTrialId) {
+        loopNextTrialId = nextTrialId;
+        loopSkipRemaining = true;
+        loopBranchingActive = true;
+        // Store custom parameters for the next trial in the loop
+        if (matchedCustomParameters) {
+          loopBranchCustomParameters = matchedCustomParameters;
+        }
+      }
+    },};
+
+
+
+    
+    const preloadFinal_nested = {
+        type: jsPsychPreload,
+       files: [],
+    }
+    timeline.push(preloadFinal_nested);
+    
+    const Final_nested_timeline = {
+    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable("stimulus_Final_nested"),
+choices: jsPsych.timelineVariable("choices_Final_nested"),
+      data: {
+        rt: "rt_Final_nested",
+response: "response_Final_nested",
+stimulus: "stimulus_Final_nested",
+        trial_id: 1762907671377,
+        isInLoop: true,
+        
+      },
+    on_start: function(trial) {
+      // First, evaluate and apply params override conditions (if any)
       
       // Then apply custom parameters from branching conditions (higher priority)
       
@@ -945,6 +1006,413 @@ stimulus: "stimulus_Salir",
     },};
 
 
+
+    
+    const preloadotravez = {
+        type: jsPsychPreload,
+       files: [],
+    }
+    timeline.push(preloadotravez);
+    
+    const otravez_timeline = {
+    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable("stimulus_otravez"),
+choices: jsPsych.timelineVariable("choices_otravez"),
+      data: {
+        rt: "rt_otravez",
+response: "response_otravez",
+stimulus: "stimulus_otravez",
+        trial_id: 1762912004181,
+        isInLoop: true,
+        
+      },
+    on_start: function(trial) {
+      // First, evaluate and apply params override conditions (if any)
+      
+      // Then apply custom parameters from branching conditions (higher priority)
+      
+      // For trials in loops, use loopBranchCustomParameters
+      if (typeof loopBranchCustomParameters !== 'undefined' && loopBranchCustomParameters && typeof loopBranchCustomParameters === 'object') {
+        console.log('Applying custom parameters to loop trial:', loopBranchCustomParameters);
+        Object.entries(loopBranchCustomParameters).forEach(([key, param]) => {
+          if (param && param.source !== 'none') {
+            // Handle different parameter sources
+            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
+              // For typed values, use them directly
+              trial[key] = param.value;
+              console.log(`Set trial.${key} = ${param.value}`);
+            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
+              // For CSV values, param.value contains the column name, get the actual value from trial
+              trial[key] = trial[param.value];
+              console.log(`Set trial.${key} = ${trial[param.value]} (from CSV column: ${param.value})`);
+            }
+          }
+        });
+        // Clear the custom parameters after applying them
+        loopBranchCustomParameters = null;
+      }
+      
+    },
+    
+    on_finish: function(data) {
+      // Este trial no tiene branches ni repeat conditions, verificar si el loop padre tiene branches
+      if (typeof loopHasBranches !== 'undefined' && loopHasBranches) {
+        // El loop tiene branches, activar branching del loop al terminar
+        // Esto se manejará en el on_finish del loop
+        loopShouldBranchOnFinish = true;
+      } else if (!loopHasBranches) {
+        // Ni el trial ni el loop tienen branches - trial terminal
+        // Si llegamos aquí después de un branching global, terminar el experimento
+        if (window.branchingActive) {
+          jsPsych.abortExperiment('', {});
+        }
+      }
+    },};
+
+
+// --- Branching logic variables for nested loop Nested Loop 1 ---
+let loop_loop_1762907705296_NextTrialId = null;
+let loop_loop_1762907705296_SkipRemaining = false;
+let loop_loop_1762907705296_BranchingActive = false;
+let loop_loop_1762907705296_BranchCustomParameters = null;
+let loop_loop_1762907705296_TargetExecuted = false;
+let loop_loop_1762907705296_IterationComplete = false;
+const loop_loop_1762907705296_HasBranches = false;
+let loop_loop_1762907705296_ShouldBranchOnFinish = false;
+
+// IMPORTANTE: Guardar el scope del loop padre si existe (runtime check)
+// Usamos una función inmediata para evitar problemas con el TDZ
+const parent_loopNextTrialId = (() => { try { return loopNextTrialId; } catch(e) { return undefined; } })();
+const parent_loopSkipRemaining = (() => { try { return loopSkipRemaining; } catch(e) { return undefined; } })();
+const parent_loopBranchingActive = (() => { try { return loopBranchingActive; } catch(e) { return undefined; } })();
+const parent_loopBranchCustomParameters = (() => { try { return loopBranchCustomParameters; } catch(e) { return undefined; } })();
+const parent_loopTargetExecuted = (() => { try { return loopTargetExecuted; } catch(e) { return undefined; } })();
+const parent_loopIterationComplete = (() => { try { return loopIterationComplete; } catch(e) { return undefined; } })();
+const parent_loopHasBranches = (() => { try { return loopHasBranches; } catch(e) { return undefined; } })();
+const parent_loopShouldBranchOnFinish = (() => { try { return loopShouldBranchOnFinish; } catch(e) { return undefined; } })();
+
+// Reasignar o declarar las variables del loop para que apunten a los valores del nested loop
+// Usamos una IIFE para manejar tanto el caso donde las variables existen como donde no
+(() => {
+  try {
+    // Intentar reasignar (caso: hay un loop padre)
+    loopNextTrialId = loop_loop_1762907705296_NextTrialId;
+    loopSkipRemaining = loop_loop_1762907705296_SkipRemaining;
+    loopBranchingActive = loop_loop_1762907705296_BranchingActive;
+    loopBranchCustomParameters = loop_loop_1762907705296_BranchCustomParameters;
+    loopTargetExecuted = loop_loop_1762907705296_TargetExecuted;
+    loopIterationComplete = loop_loop_1762907705296_IterationComplete;
+    loopHasBranches = loop_loop_1762907705296_HasBranches;
+    loopShouldBranchOnFinish = loop_loop_1762907705296_ShouldBranchOnFinish;
+  } catch(e) {
+    // Las variables no existen, se declararán por el loop padre más adelante
+    // o estamos en el scope incorrecto
+  }
+})();
+
+
+    const Inicia_nested_wrapper = {
+      timeline: [Inicia_nested_timeline],
+      conditional_function: function() {
+        const currentId = Inicia_nested_timeline.data.trial_id;
+        
+        // Verificar si hay un trial/loop objetivo guardado en localStorage (para repeat/jump global)
+        const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
+        if (jumpToTrial) {
+          if (String(currentId) === String(jumpToTrial)) {
+            // Encontramos el trial/loop objetivo para repeat/jump
+            console.log('Repeat/jump: Found target trial/loop inside nested loop', currentId);
+            localStorage.removeItem('jsPsych_jumpToTrial');
+            return true;
+          }
+          // No es el objetivo, saltar
+          console.log('Repeat/jump: Skipping trial/loop inside nested loop', currentId);
+          return false;
+        }
+        
+        // Si el item objetivo ya fue ejecutado, saltar todos los items restantes en esta iteración
+        if (loop_loop_1762907705296_TargetExecuted) {
+          
+          return false;
+        }
+        
+        // Si loopSkipRemaining está activo, verificar si este es el item objetivo
+        if (loop_loop_1762907705296_SkipRemaining) {
+          if (String(currentId) === String(loop_loop_1762907705296_NextTrialId)) {
+            // Encontramos el item objetivo dentro del loop
+            loop_loop_1762907705296_TargetExecuted = true;
+            return true;
+          }
+          // No es el objetivo, saltar
+          return false;
+        }
+        
+        // No hay branching activo, ejecutar normalmente
+        return true;
+      },
+      on_timeline_finish: function() {
+        
+      }
+    };
+
+
+    const Final_nested_wrapper = {
+      timeline: [Final_nested_timeline],
+      conditional_function: function() {
+        const currentId = Final_nested_timeline.data.trial_id;
+        
+        // Verificar si hay un trial/loop objetivo guardado en localStorage (para repeat/jump global)
+        const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
+        if (jumpToTrial) {
+          if (String(currentId) === String(jumpToTrial)) {
+            // Encontramos el trial/loop objetivo para repeat/jump
+            console.log('Repeat/jump: Found target trial/loop inside nested loop', currentId);
+            localStorage.removeItem('jsPsych_jumpToTrial');
+            return true;
+          }
+          // No es el objetivo, saltar
+          console.log('Repeat/jump: Skipping trial/loop inside nested loop', currentId);
+          return false;
+        }
+        
+        // Si el item objetivo ya fue ejecutado, saltar todos los items restantes en esta iteración
+        if (loop_loop_1762907705296_TargetExecuted) {
+          
+          return false;
+        }
+        
+        // Si loopSkipRemaining está activo, verificar si este es el item objetivo
+        if (loop_loop_1762907705296_SkipRemaining) {
+          if (String(currentId) === String(loop_loop_1762907705296_NextTrialId)) {
+            // Encontramos el item objetivo dentro del loop
+            loop_loop_1762907705296_TargetExecuted = true;
+            return true;
+          }
+          // No es el objetivo, saltar
+          return false;
+        }
+        
+        // No hay branching activo, ejecutar normalmente
+        return true;
+      },
+      on_timeline_finish: function() {
+        
+      }
+    };
+
+
+    const otravez_wrapper = {
+      timeline: [otravez_timeline],
+      conditional_function: function() {
+        const currentId = otravez_timeline.data.trial_id;
+        
+        // Verificar si hay un trial/loop objetivo guardado en localStorage (para repeat/jump global)
+        const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
+        if (jumpToTrial) {
+          if (String(currentId) === String(jumpToTrial)) {
+            // Encontramos el trial/loop objetivo para repeat/jump
+            console.log('Repeat/jump: Found target trial/loop inside nested loop', currentId);
+            localStorage.removeItem('jsPsych_jumpToTrial');
+            return true;
+          }
+          // No es el objetivo, saltar
+          console.log('Repeat/jump: Skipping trial/loop inside nested loop', currentId);
+          return false;
+        }
+        
+        // Si el item objetivo ya fue ejecutado, saltar todos los items restantes en esta iteración
+        if (loop_loop_1762907705296_TargetExecuted) {
+          
+          // Último item: resetear flags para la siguiente iteración/repetición
+          loop_loop_1762907705296_NextTrialId = null;
+          loop_loop_1762907705296_SkipRemaining = false;
+          loop_loop_1762907705296_TargetExecuted = false;
+          loop_loop_1762907705296_BranchingActive = false;
+          loop_loop_1762907705296_BranchCustomParameters = null;
+          loop_loop_1762907705296_IterationComplete = false;
+          return false;
+        }
+        
+        // Si loopSkipRemaining está activo, verificar si este es el item objetivo
+        if (loop_loop_1762907705296_SkipRemaining) {
+          if (String(currentId) === String(loop_loop_1762907705296_NextTrialId)) {
+            // Encontramos el item objetivo dentro del loop
+            loop_loop_1762907705296_TargetExecuted = true;
+            return true;
+          }
+          // No es el objetivo, saltar
+          return false;
+        }
+        
+        // No hay branching activo, ejecutar normalmente
+        return true;
+      },
+      on_timeline_finish: function() {
+        
+        // Último item del timeline: resetear flags para la siguiente iteración/repetición
+        loop_loop_1762907705296_NextTrialId = null;
+        loop_loop_1762907705296_SkipRemaining = false;
+        loop_loop_1762907705296_TargetExecuted = false;
+        loop_loop_1762907705296_BranchingActive = false;
+        loop_loop_1762907705296_BranchCustomParameters = null;
+        loop_loop_1762907705296_IterationComplete = false;
+      }
+    };
+
+const loop_1762907705296_procedure = {
+  timeline: [Inicia_nested_wrapper, Final_nested_wrapper, otravez_wrapper],
+  timeline_variables: test_stimuli_loop_1762907705296,
+  repetitions: 1,
+  randomize_order: false,
+  loop_function: function(data) {
+    // Evaluate loop conditions to determine if the nested loop should repeat
+    const loopConditionsArray = [{"id":1762912141687,"rules":[{"trialId":"1762912004181","prop":"response","op":"==","value":"0"}]}];
+    
+    // Helper function to get data from a specific trial
+    const getTrialData = (trialId) => {
+      // Get all trials data
+      const allTrials = data.values();
+      
+      // Find the last occurrence of the trial with matching trial_id
+      for (let i = allTrials.length - 1; i >= 0; i--) {
+        const trial = allTrials[i];
+        if (String(trial.trial_id) === String(trialId)) {
+          return trial;
+        }
+      }
+      return null;
+    };
+    
+    // Evaluate a single condition (AND logic between rules)
+    const evaluateCondition = (condition) => {
+      return condition.rules.every(rule => {
+        const trialData = getTrialData(rule.trialId);
+        
+        if (!trialData) {
+          console.warn('Nested loop: Trial data not found for:', rule.trialId);
+          return false;
+        }
+        
+        const propValue = trialData[rule.prop];
+        const compareValue = rule.value;
+        
+        // Convert values for comparison
+        const numPropValue = parseFloat(propValue);
+        const numCompareValue = parseFloat(compareValue);
+        const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
+        
+        switch (rule.op) {
+          case '==':
+            return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
+          case '!=':
+            return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
+          case '>':
+            return isNumeric && numPropValue > numCompareValue;
+          case '<':
+            return isNumeric && numPropValue < numCompareValue;
+          case '>=':
+            return isNumeric && numPropValue >= numCompareValue;
+          case '<=':
+            return isNumeric && numPropValue <= numCompareValue;
+          default:
+            return false;
+        }
+      });
+    };
+    
+    // Evaluate all conditions (OR logic between conditions)
+    const shouldRepeat = loopConditionsArray.some(condition => evaluateCondition(condition));
+    
+    console.log('Nested loop condition evaluation result for Nested Loop 1:', shouldRepeat);
+    
+    // Si no debe repetir Y el loop tiene branches, activar branching
+    
+    
+    return shouldRepeat;
+  },
+  on_timeline_start: function() {
+    // Resetear las flags al inicio de cada iteración del nested loop
+    loop_loop_1762907705296_NextTrialId = null;
+    loop_loop_1762907705296_SkipRemaining = false;
+    loop_loop_1762907705296_BranchingActive = false;
+    loop_loop_1762907705296_BranchCustomParameters = null;
+    loop_loop_1762907705296_TargetExecuted = false;
+    loop_loop_1762907705296_IterationComplete = false;
+    loop_loop_1762907705296_ShouldBranchOnFinish = false;
+    
+    // Sincronizar los alias sin prefijo
+    loopNextTrialId = null;
+    loopSkipRemaining = false;
+    loopBranchingActive = false;
+    loopBranchCustomParameters = null;
+    loopTargetExecuted = false;
+    loopIterationComplete = false;
+    loopShouldBranchOnFinish = false;
+    
+    // IMPORTANTE: Si el nested loop es condicional, resetear también el branching LOCAL
+    // para que se regenere durante esta iteración
+    
+    loop_loop_1762907705296_NextTrialId = null;
+    loop_loop_1762907705296_SkipRemaining = false;
+    loop_loop_1762907705296_BranchingActive = false;
+    loopNextTrialId = null;
+    loopSkipRemaining = false;
+    loopBranchingActive = false;
+    console.log('Conditional nested loop iteration starting, reset local branching flags');
+    
+  },
+  on_timeline_finish: function() {
+    // Sincronizar los cambios de los alias a las variables con prefijo antes de terminar
+    loop_loop_1762907705296_NextTrialId = loopNextTrialId;
+    loop_loop_1762907705296_SkipRemaining = loopSkipRemaining;
+    loop_loop_1762907705296_TargetExecuted = loopTargetExecuted;
+    loop_loop_1762907705296_BranchingActive = loopBranchingActive;
+    loop_loop_1762907705296_BranchCustomParameters = loopBranchCustomParameters;
+    loop_loop_1762907705296_IterationComplete = loopIterationComplete;
+    loop_loop_1762907705296_ShouldBranchOnFinish = loopShouldBranchOnFinish;
+    
+    // IMPORTANTE: Si el nested loop activó branching desde un trial interno (loopShouldBranchOnFinish)
+    // propagar este flag al loop padre
+    const nestedLoopActivatedBranching = loop_loop_1762907705296_ShouldBranchOnFinish;
+    
+    // Restaurar las variables del loop padre solo si existen (estamos en un nested context)
+    if (typeof parent_loopNextTrialId !== 'undefined') {
+      loopNextTrialId = parent_loopNextTrialId;
+      loopSkipRemaining = parent_loopSkipRemaining;
+      loopBranchingActive = parent_loopBranchingActive;
+      loopBranchCustomParameters = parent_loopBranchCustomParameters;
+      loopTargetExecuted = parent_loopTargetExecuted;
+      loopIterationComplete = parent_loopIterationComplete;
+      loopHasBranches = parent_loopHasBranches;
+      loopShouldBranchOnFinish = parent_loopShouldBranchOnFinish;
+      
+      // Si el nested loop activó branching, propagar al loop padre
+      if (nestedLoopActivatedBranching) {
+        loopShouldBranchOnFinish = true;
+        console.log('Nested loop propagating branch flag to parent loop');
+      }
+    } else {
+      // No hay loop padre - si el nested loop activó branching, propagar al contexto global
+      if (nestedLoopActivatedBranching && typeof window !== 'undefined') {
+        window.branchingActive = true;
+        console.log('Nested loop propagating branch flag to global context');
+      }
+    }
+    
+    // Resetear las flags del nested loop
+    loop_loop_1762907705296_NextTrialId = null;
+    loop_loop_1762907705296_SkipRemaining = false;
+    loop_loop_1762907705296_TargetExecuted = false;
+    loop_loop_1762907705296_BranchingActive = false;
+    loop_loop_1762907705296_BranchCustomParameters = null;
+    loop_loop_1762907705296_IterationComplete = false;
+    loop_loop_1762907705296_ShouldBranchOnFinish = false;
+  },
+  data: {
+    loop_id: "loop_1762907705296",
+    loop_name: "Nested Loop 1"
+  }
+};
+
 // --- Branching logic variables for internal loop trials ---
 let loopNextTrialId = null;
 let loopSkipRemaining = false;
@@ -956,10 +1424,10 @@ const loopHasBranches = true;
 let loopShouldBranchOnFinish = false;
 
 
-    const Seguir_o_Salir_wrapper = {
-      timeline: [Seguir_o_Salir_timeline],
+    const nested_wrapper = {
+      timeline: [nested_timeline],
       conditional_function: function() {
-        const currentId = Seguir_o_Salir_timeline.data.trial_id;
+        const currentId = nested_timeline.data.trial_id;
         
         // Verificar si hay un trial/loop objetivo guardado en localStorage (para repeat/jump global)
         const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
@@ -1046,10 +1514,10 @@ let loopShouldBranchOnFinish = false;
     };
 
 
-    const Salir_wrapper = {
-      timeline: [Salir_timeline],
+    const Nested_Loop_1_wrapper = {
+      timeline: [loop_1762907705296_procedure],
       conditional_function: function() {
-        const currentId = Salir_timeline.data.trial_id;
+        const currentId = "loop_1762907705296";
         
         // Verificar si hay un trial/loop objetivo guardado en localStorage (para repeat/jump global)
         const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
@@ -1177,72 +1645,11 @@ const getNextLoopTrialId = (lastTrialData) => {
 };
 
 const loop_1762902533581_procedure = {
-  timeline: [Seguir_o_Salir_wrapper, Seguir_wrapper, Salir_wrapper],
+  timeline: [nested_wrapper, Seguir_wrapper, Nested_Loop_1_wrapper],
   timeline_variables: test_stimuli_loop_1762902533581,
   repetitions: 1,
   randomize_order: false,
-  loop_function: function(data) {
-    // Evaluate loop conditions to determine if the loop should repeat
-    const loopConditionsArray = [{"id":1762903295981,"rules":[{"trialId":"1762902912364","prop":"response","op":"==","value":"1"}]}];
-    
-    // Helper function to get data from a specific trial
-    const getTrialData = (trialId) => {
-      // Get all trials data
-      const allTrials = data.values();
-      
-      // Find the last occurrence of the trial with matching trial_id
-      for (let i = allTrials.length - 1; i >= 0; i--) {
-        const trial = allTrials[i];
-        if (String(trial.trial_id) === String(trialId)) {
-          return trial;
-        }
-      }
-      return null;
-    };
-    
-    // Evaluate a single condition (AND logic between rules)
-    const evaluateCondition = (condition) => {
-      return condition.rules.every(rule => {
-        const trialData = getTrialData(rule.trialId);
-        
-        if (!trialData) {
-          console.warn('Trial data not found for:', rule.trialId);
-          return false;
-        }
-        
-        const propValue = trialData[rule.prop];
-        const compareValue = rule.value;
-        
-        // Convert values for comparison
-        const numPropValue = parseFloat(propValue);
-        const numCompareValue = parseFloat(compareValue);
-        const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
-        
-        switch (rule.op) {
-          case '==':
-            return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
-          case '!=':
-            return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
-          case '>':
-            return isNumeric && numPropValue > numCompareValue;
-          case '<':
-            return isNumeric && numPropValue < numCompareValue;
-          case '>=':
-            return isNumeric && numPropValue >= numCompareValue;
-          case '<=':
-            return isNumeric && numPropValue <= numCompareValue;
-          default:
-            return false;
-        }
-      });
-    };
-    
-    // Evaluate all conditions (OR logic between conditions)
-    const shouldRepeat = loopConditionsArray.some(condition => evaluateCondition(condition));
-    
-    console.log('Loop condition evaluation result:', shouldRepeat);
-    return shouldRepeat;
-  },
+  
   conditional_function: function() {
     const currentId = "loop_1762902533581";
     
@@ -1287,12 +1694,6 @@ const loop_1762902533581_procedure = {
     
     // IMPORTANTE: Si el loop es condicional, resetear también el branching GLOBAL
     // para que se regenere durante esta iteración del loop
-    
-    window.nextTrialId = null;
-    window.skipRemaining = false;
-    window.branchingActive = false;
-    window.branchCustomParameters = null;
-    console.log('Conditional loop iteration starting, reset global branching flags');
     
   },
   on_timeline_finish: function() {
@@ -1351,35 +1752,6 @@ timeline.push(loop_1762902533581_procedure);
     timeline.push(preloadDEspues_del_loop);
     
     const test_stimuli_DEspues_del_loop = [{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
-choices: ["BUnas"]},{stimulus: "<div id=\"iern\" style=\"box-sizing: border-box;\">DEspupes del loop</div>",
 choices: ["BUnas"]}];
     const DEspues_del_loop_timeline = {
     type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable("stimulus"),

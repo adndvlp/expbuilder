@@ -252,14 +252,22 @@ function LoopsConfig({ loop }: Props) {
     };
   });
 
-  // Función para construir la estructura con loops anidados (SIN hooks, SIN procesar trials anidados)
-  const buildNestedStructure = (items: any[]): any[] => {
+  // Función RECURSIVA para procesar trials dentro de loops anidados
+  const processNestedTrials = (items: any[]): any[] => {
     return items
       .map((item: any) => {
         // Si es un loop anidado
         if ("trials" in item && !item.plugin) {
-          // Para loops anidados, crear estructura de placeholder
-          // El código real se generará cuando se abra ese loop específico
+          // Procesar recursivamente los trials dentro del loop anidado
+          const nestedProcessedItems = processNestedTrials(item.trials);
+
+          // Calcular unifiedStimuli para el loop anidado
+          const nestedUnifiedStimuli = mergeStimuliArrays(
+            nestedProcessedItems
+              .filter((i: any) => !i.isLoop && i.mappedJson)
+              .map((i: any) => i.mappedJson || [])
+          );
+
           return {
             loopName: item.name,
             loopId: item.id,
@@ -274,24 +282,130 @@ function LoopsConfig({ loop }: Props) {
             repeatConditions: item.repeatConditions,
             loopConditions: item.loopConditions || [],
             isConditionalLoop: item.isConditionalLoop || false,
-            items: [], // Vacío por ahora - se procesará cuando se abra el loop
-            unifiedStimuli: [], // Vacío por ahora
+            items: nestedProcessedItems, // Ahora contiene los trials/loops procesados recursivamente
+            unifiedStimuli: nestedUnifiedStimuli,
             isLoop: true as const,
           };
         }
 
-        // Si es un trial, buscar sus datos procesados
-        const trialData = trialsData.find(
-          (t: any) => t.trialName === item.name
+        // Si es un trial, procesarlo con hooks
+        const { parameters, data } = usePluginParameters(item.plugin);
+        const fieldGroups = {
+          pluginParameters: parameters,
+        };
+        const { getColumnValue } = useCsvMapper({
+          fieldGroups: fieldGroups,
+        });
+
+        const hasMediaParameters = (params: any[]) => {
+          return params.some((param) => {
+            const keyLower = param.key.toLowerCase();
+            return (
+              keyLower.includes("img") ||
+              keyLower.includes("image") ||
+              keyLower.includes("stimulus") ||
+              keyLower.includes("audio") ||
+              keyLower.includes("video") ||
+              keyLower.includes("sound") ||
+              keyLower.includes("media")
+            );
+          });
+        };
+
+        const needsFileUpload =
+          /plugin-audio|plugin-video|plugin-image|multi-image|custom-image|plugin-preload/i.test(
+            item.plugin
+          ) || hasMediaParameters(parameters);
+
+        const getFileTypeAndFolder = () => {
+          if (/plugin-audio/i.test(item.plugin)) {
+            return { accept: "audio/*", folder: "aud" };
+          }
+          if (/plugin-video/i.test(item.plugin)) {
+            return { accept: "video/*", folder: "vid" };
+          }
+          if (/plugin-preload/i.test(item.plugin)) {
+            return { accept: "audio/*,video/*,image/*", folder: "all" };
+          }
+
+          if (hasMediaParameters(parameters)) {
+            const hasAudio = parameters.some((p) => {
+              const keyLower = p.key.toLowerCase();
+              return keyLower.includes("audio") || keyLower.includes("sound");
+            });
+            const hasVideo = parameters.some((p) => {
+              const keyLower = p.key.toLowerCase();
+              return keyLower.includes("video");
+            });
+            const hasImage = parameters.some((p) => {
+              const keyLower = p.key.toLowerCase();
+              return (
+                keyLower.includes("img") ||
+                keyLower.includes("image") ||
+                keyLower.includes("stimulus")
+              );
+            });
+
+            if ([hasAudio, hasVideo, hasImage].filter(Boolean).length > 1) {
+              return { accept: "audio/*,video/*,image/*", folder: "all" };
+            }
+
+            if (hasAudio) return { accept: "audio/*", folder: "aud" };
+            if (hasVideo) return { accept: "video/*", folder: "vid" };
+            if (hasImage) return { accept: "image/*", folder: "img" };
+          }
+
+          return { accept: "image/*", folder: "img" };
+        };
+
+        const { folder } = getFileTypeAndFolder();
+        const { uploadedFiles } = useFileUpload({ folder });
+
+        const filteredFiles = uploadedFiles.filter(
+          (file) =>
+            file &&
+            typeof file === "object" &&
+            typeof file.name === "string" &&
+            (folder === "all" || file.type === folder)
         );
-        return trialData || null;
+
+        const { genTrialCode, mappedJson } = useTrialCode({
+          id: item.id,
+          branches: item.branches,
+          branchConditions: item.branchConditions,
+          repeatConditions: item.repeatConditions,
+          paramsOverride: item.paramsOverride,
+          pluginName: item.plugin,
+          parameters: parameters,
+          data: data,
+          getColumnValue: getColumnValue,
+          needsFileUpload: needsFileUpload || false,
+          columnMapping: item.columnMapping || {},
+          filteredFiles: filteredFiles || [],
+          csvJson: item.csvJson ?? [],
+          trialName: item.name,
+          includesExtensions: item.includesExtensions || false,
+          extensions: item.extensions || "",
+          orders: orders,
+          stimuliOrders: stimuliOrders,
+          categories: categories,
+          categoryData: categoryData,
+          isInLoop: true,
+        });
+
+        return {
+          trialName: item.name,
+          pluginName: toCamelCase(item.plugin),
+          timelineProps: genTrialCode(),
+          mappedJson,
+        };
       })
       .filter(Boolean);
   };
 
-  // Construir la estructura completa con loops anidados
+  // Construir la estructura completa con loops anidados procesados recursivamente
   const structuredData = loop?.trials
-    ? buildNestedStructure(loop.trials)
+    ? processNestedTrials(loop.trials)
     : trialsData;
 
   const unifiedStimuli = mergeStimuliArrays(

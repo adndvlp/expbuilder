@@ -175,27 +175,27 @@ export default function useLoopCode({
         }
         
         // Si el item objetivo ya fue ejecutado, saltar todos los items restantes en esta iteración
-        if (loopTargetExecuted) {
+        if (loop_${loopIdSanitized}_TargetExecuted) {
           ${
             isLastItem
               ? `
           // Último item: resetear flags para la siguiente iteración/repetición
-          loopNextTrialId = null;
-          loopSkipRemaining = false;
-          loopTargetExecuted = false;
-          loopBranchingActive = false;
-          loopBranchCustomParameters = null;
-          loopIterationComplete = false;`
+          loop_${loopIdSanitized}_NextTrialId = null;
+          loop_${loopIdSanitized}_SkipRemaining = false;
+          loop_${loopIdSanitized}_TargetExecuted = false;
+          loop_${loopIdSanitized}_BranchingActive = false;
+          loop_${loopIdSanitized}_BranchCustomParameters = null;
+          loop_${loopIdSanitized}_IterationComplete = false;`
               : ""
           }
           return false;
         }
         
         // Si loopSkipRemaining está activo, verificar si este es el item objetivo
-        if (loopSkipRemaining) {
-          if (String(currentId) === String(loopNextTrialId)) {
+        if (loop_${loopIdSanitized}_SkipRemaining) {
+          if (String(currentId) === String(loop_${loopIdSanitized}_NextTrialId)) {
             // Encontramos el item objetivo dentro del loop
-            loopTargetExecuted = true;
+            loop_${loopIdSanitized}_TargetExecuted = true;
             return true;
           }
           // No es el objetivo, saltar
@@ -210,12 +210,12 @@ export default function useLoopCode({
           isLastItem
             ? `
         // Último item del timeline: resetear flags para la siguiente iteración/repetición
-        loopNextTrialId = null;
-        loopSkipRemaining = false;
-        loopTargetExecuted = false;
-        loopBranchingActive = false;
-        loopBranchCustomParameters = null;
-        loopIterationComplete = false;`
+        loop_${loopIdSanitized}_NextTrialId = null;
+        loop_${loopIdSanitized}_SkipRemaining = false;
+        loop_${loopIdSanitized}_TargetExecuted = false;
+        loop_${loopIdSanitized}_BranchingActive = false;
+        loop_${loopIdSanitized}_BranchCustomParameters = null;
+        loop_${loopIdSanitized}_IterationComplete = false;`
             : ""
         }
       }
@@ -253,21 +253,22 @@ export default function useLoopCode({
     ${processedItemDefinitions}
 
 // --- Branching logic variables for nested loop ${loopData.loopName} ---
-let loopNextTrialId = null;
-let loopSkipRemaining = false;
-let loopBranchingActive = false;
-let loopBranchCustomParameters = null;
-let loopTargetExecuted = false;
-let loopIterationComplete = false;
-const loopHasBranches = ${hasBranchesLoop ? "true" : "false"};
-let loopShouldBranchOnFinish = false;
+let loop_${loopIdSanitized}_NextTrialId = null;
+let loop_${loopIdSanitized}_SkipRemaining = false;
+let loop_${loopIdSanitized}_BranchingActive = false;
+let loop_${loopIdSanitized}_BranchCustomParameters = null;
+let loop_${loopIdSanitized}_TargetExecuted = false;
+let loop_${loopIdSanitized}_IterationComplete = false;
+const loop_${loopIdSanitized}_HasBranches = ${hasBranchesLoop ? "true" : "false"};
+let loop_${loopIdSanitized}_ShouldBranchOnFinish = false;
 
 ${processedItemWrappers}
 
 const ${loopIdSanitized}_procedure = {
   timeline: [${timelineRefs}],
   ${loopData.unifiedStimuli && loopData.unifiedStimuli.length > 0 ? `timeline_variables: test_stimuli_${loopIdSanitized},` : ""}
-  ${loopData.randomize ? "sample: { type: 'fixed-repetitions', size: " + loopData.repetitions + " }," : "repetitions: " + loopData.repetitions + ","}
+  repetitions: ${loopData.repetitions},
+  randomize_order: ${loopData.randomize},
   ${
     hasLoopConditions
       ? `loop_function: function(data) {
@@ -339,9 +340,9 @@ const ${loopIdSanitized}_procedure = {
       // El nested loop terminó según las condiciones, activar branching si tiene branches
       const loopBranches = [${loopData.branches?.map((b) => (typeof b === "string" ? `"${b}"` : b)).join(", ") || ""}];
       if (loopBranches.length > 0) {
-        loopNextTrialId = loopBranches[0];
-        loopSkipRemaining = true;
-        loopBranchingActive = true;
+        loop_${loopIdSanitized}_NextTrialId = loopBranches[0];
+        loop_${loopIdSanitized}_SkipRemaining = true;
+        loop_${loopIdSanitized}_BranchingActive = true;
         console.log('Nested conditional loop finished, branching to:', loopBranches[0]);
       }
     }
@@ -355,36 +356,36 @@ const ${loopIdSanitized}_procedure = {
   }
   on_timeline_start: function() {
     // Resetear las flags al inicio de cada iteración del nested loop
-    loopNextTrialId = null;
-    loopSkipRemaining = false;
-    loopBranchingActive = false;
-    loopBranchCustomParameters = null;
-    loopTargetExecuted = false;
-    loopIterationComplete = false;
-    loopShouldBranchOnFinish = false;
+    loop_${loopIdSanitized}_NextTrialId = null;
+    loop_${loopIdSanitized}_SkipRemaining = false;
+    loop_${loopIdSanitized}_BranchingActive = false;
+    loop_${loopIdSanitized}_BranchCustomParameters = null;
+    loop_${loopIdSanitized}_TargetExecuted = false;
+    loop_${loopIdSanitized}_IterationComplete = false;
+    loop_${loopIdSanitized}_ShouldBranchOnFinish = false;
     
     // IMPORTANTE: Si el nested loop es condicional, resetear también el branching LOCAL
     // para que se regenere durante esta iteración
     ${
       hasLoopConditions
         ? `
-    loopNextTrialId = null;
-    loopSkipRemaining = false;
-    loopBranchingActive = false;
+    loop_${loopIdSanitized}_NextTrialId = null;
+    loop_${loopIdSanitized}_SkipRemaining = false;
+    loop_${loopIdSanitized}_BranchingActive = false;
     console.log('Conditional nested loop iteration starting, reset local branching flags');
     `
         : ""
     }
   },
   on_timeline_finish: function() {
-    // Resetear las flags al finalizar el nested loop
-    loopNextTrialId = null;
-    loopSkipRemaining = false;
-    loopTargetExecuted = false;
-    loopBranchingActive = false;
-    loopBranchCustomParameters = null;
-    loopIterationComplete = false;
-    loopShouldBranchOnFinish = false;
+    // Resetear las flags al finalizar el nested loopa
+    loop_${loopIdSanitized}_NextTrialId = null;
+    loop_${loopIdSanitized}_SkipRemaining = false;
+    loop_${loopIdSanitized}_TargetExecuted = false;
+    loop_${loopIdSanitized}_BranchingActive = false;
+    loop_${loopIdSanitized}_BranchCustomParameters = null;
+    loop_${loopIdSanitized}_IterationComplete = false;
+    loop_${loopIdSanitized}_ShouldBranchOnFinish = false;
   },
   data: {
     loop_id: "${loopData.loopId}",
