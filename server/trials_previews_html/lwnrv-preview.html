@@ -95,7 +95,7 @@
 
 
         const trialSessionId =
-            "Loopsiono_result_" + (crypto.randomUUID
+            "New Trial_result_" + (crypto.randomUUID
               ? crypto.randomUUID()
               : Math.random().toString(36).slice(2, 10));
 
@@ -152,26 +152,20 @@ localStorage.removeItem('jsPsych_jumpToTrial');
       timeline.push(welcome);
 
       
-    const preloadLoopsiono = {
+    const preloadNew_Trial = {
         type: jsPsychPreload,
        files: [],
     }
-    timeline.push(preloadLoopsiono);
+    timeline.push(preloadNew_Trial);
     
-    const test_stimuli_Loopsiono = [{stimulus: "<div id=\"if8h\" style=\"box-sizing: border-box;\">loop?</div>",
-choices: ["SI","NO"]}];
-    const Loopsiono_timeline = {
-    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable("stimulus"),
-choices: jsPsych.timelineVariable("choices"),
+    const test_stimuli_New_Trial = [{}];
+    const New_Trial_timeline = {
+    type: jsPsychCanvasButtonResponse, 
       data: {
-        rt: "rt",
-response: "response",
-stimulus: "stimulus",
-        trial_id: 1762902515317,
+        response: "response",
+rt: "rt",
+        trial_id: 1763162096957,
         
-        
-        branches: [1762902521115, "loop_1762902533581"],
-        branchConditions: [[{"id":1762903077448,"rules":[{"prop":"response","op":"==","value":"0"}],"nextTrialId":"loop_1762902533581","customParameters":{}},{"id":1762903083147,"rules":[{"prop":"response","op":"==","value":"1"}],"nextTrialId":"1762902521115","customParameters":{}}]] 
         
       },
     on_start: function(trial) {
@@ -203,18 +197,19 @@ stimulus: "stimulus",
     },
     
     on_finish: function(data) {
-      
-      
-      // Si hay múltiples branches Y condiciones, la lógica se maneja en Timeline.tsx
-      
+      // Este trial no tiene branches ni repeat conditions, es un trial terminal
+      // Si llegamos aquí después de un branching, terminar el experimento
+      if (window.branchingActive) {
+        jsPsych.abortExperiment('', {});
+      }
     },
     };
-    const Loopsiono_procedure = {
+    const New_Trial_procedure = {
     timeline: 
-    [Loopsiono_timeline],
-    timeline_variables: test_stimuli_Loopsiono,
+    [New_Trial_timeline],
+    timeline_variables: test_stimuli_New_Trial,
     conditional_function: function() {
-      const currentId = 1762902515317;
+      const currentId = 1763162096957;
       
       // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
       const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
@@ -246,7 +241,7 @@ stimulus: "stimulus",
     },
     
     };
-    timeline.push(Loopsiono_procedure);
+    timeline.push(New_Trial_procedure);
   
 
       jsPsych.run(timeline);

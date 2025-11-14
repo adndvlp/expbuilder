@@ -14,7 +14,7 @@ import { TbBinaryTree } from "react-icons/tb";
 import { FiRefreshCw } from "react-icons/fi";
 import { FiX } from "react-icons/fi";
 import {
-  findTrialById,
+  findItemById,
   generateUniqueName,
   validateConnection,
 } from "./utils/trialUtils";
@@ -260,6 +260,7 @@ function LoopSubCanvas({
       if (indices.length < 2) return loopTrials;
 
       const itemsToGroup = indices.map((i) => loopTrials[i]);
+      const idsToGroup = itemsToGroup.map((item) => item.id);
 
       // Obtener todos los nombres existentes en todo el experimento
       const existingNames = getAllExistingNames(allTrials);
@@ -282,15 +283,72 @@ function LoopSubCanvas({
         code: "",
       };
 
-      const newLoopTrials: any[] = [];
       const insertIndex = Math.min(...indices);
 
+      // Check if the items being grouped are branches of another trial or loop
+      let parentId: number | string | null = null;
+      for (const item of loopTrials) {
+        if (
+          "branches" in item &&
+          item.branches &&
+          Array.isArray(item.branches)
+        ) {
+          const hasBranchToGroup = item.branches.some(
+            (branchId: number | string) => {
+              return idsToGroup.includes(branchId);
+            }
+          );
+
+          if (hasBranchToGroup) {
+            // Usar la misma lógica que el canvas principal para obtener el ID
+            parentId = "parameters" in item ? item.id : item.id;
+            break;
+          }
+        }
+      }
+
+      const newLoopTrials: any[] = [];
+
       for (let i = 0; i < loopTrials.length; i++) {
+        // If this is where the loop should be inserted
         if (i === insertIndex) {
           newLoopTrials.push(newNestedLoop);
         }
+
+        // If this item is NOT being grouped, add it
         if (!indices.includes(i)) {
-          newLoopTrials.push(loopTrials[i]);
+          const item = loopTrials[i];
+
+          // If this item has branches, remove any that are being grouped and add the loop
+          if (
+            "branches" in item &&
+            item.branches &&
+            Array.isArray(item.branches)
+          ) {
+            const updatedBranches = item.branches.filter(
+              (branchId: number | string) => {
+                return !idsToGroup.includes(branchId);
+              }
+            );
+
+            // If this is the parent and some branches were grouped, add the loop ID
+            // Usar la misma lógica que el canvas principal para obtener el ID
+            const itemId = "parameters" in item ? item.id : item.id;
+            if (
+              updatedBranches.length !== item.branches.length &&
+              parentId &&
+              itemId === parentId
+            ) {
+              updatedBranches.push(newNestedLoop.id);
+              newLoopTrials.push({ ...item, branches: updatedBranches });
+            } else if (updatedBranches.length !== item.branches.length) {
+              newLoopTrials.push({ ...item, branches: updatedBranches });
+            } else {
+              newLoopTrials.push(item);
+            }
+          } else {
+            newLoopTrials.push(item);
+          }
         }
       }
 
@@ -361,7 +419,7 @@ function LoopSubCanvas({
         if (item.branches && Array.isArray(item.branches)) {
           item.branches.forEach((branchId: number | string) => {
             branchIds.add(branchId);
-            const branchItem = findTrialById(itemsList, branchId);
+            const branchItem = findItemById(itemsList, branchId);
             if (branchItem) {
               processItem(branchItem);
             }
@@ -469,7 +527,7 @@ function LoopSubCanvas({
         let currentX = x - totalWidth / 2;
 
         item.branches.forEach((branchId: number | string, index: number) => {
-          const branchItem = findTrialById(trials, branchId);
+          const branchItem = findItemById(trials, branchId);
           if (branchItem) {
             const branchWidth = branchWidths[index];
             const branchX = currentX + branchWidth / 2;
@@ -567,7 +625,7 @@ function LoopSubCanvas({
         let currentX = xTrial - totalWidth / 2;
 
         item.branches.forEach((branchId: number | string, index: number) => {
-          const branchItem = findTrialById(trials, branchId);
+          const branchItem = findItemById(trials, branchId);
           if (branchItem) {
             const branchWidth = branchWidths[index];
             const branchX = currentX + branchWidth / 2;
@@ -637,17 +695,27 @@ function LoopSubCanvas({
       return;
     }
 
-    // Find and update the source trial
-    const sourceTrial = findTrialById(trials, sourceId);
-    if (sourceTrial) {
-      const branches = sourceTrial.branches || [];
+    // Find and update the source trial or loop
+    const sourceItem = findItemById(trials, sourceId);
+    if (sourceItem) {
+      const branches = sourceItem.branches || [];
       // Only add if not already present
       if (!branches.includes(targetId)) {
-        const updatedTrial = {
-          ...sourceTrial,
-          branches: [...branches, targetId],
-        };
-        onUpdateTrial(updatedTrial);
+        if ("parameters" in sourceItem) {
+          // It's a Trial
+          const updatedTrial = {
+            ...sourceItem,
+            branches: [...branches, targetId],
+          };
+          onUpdateTrial(updatedTrial);
+        } else {
+          // It's a Loop
+          const updatedLoop = {
+            ...sourceItem,
+            branches: [...branches, targetId],
+          };
+          onUpdateLoop(updatedLoop);
+        }
       }
     }
   };
