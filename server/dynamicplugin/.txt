@@ -1,0 +1,30 @@
+var test_stimuli_trial1 = [
+    { components: ["image", "audio", "video"],  stimulus: [ "img/blue.png", "aud/elaudio", "vid/uno"],  responses: ['All_keys', 0, 1]},
+    { components: ["image", "video"], stimulus: ["img/orange.png", "vid/uno"],  responses: ['j', 0]}
+];
+   
+var test_trial1 = {
+    type: DynamicPlugin,
+
+    // Base plugin (DynamicPlugin) parameters
+    components: jsPsych.timelineVariable('components'),
+    responses: jsPsych.timelineVariable('responses'),
+    //
+
+    data: {
+        responses: 'response'
+    },
+
+    // All plugins props
+    on_finish: function(data) {
+    data.correct = jsPsych.pluginAPI.compareKeys(data.response);
+    }
+    //
+};
+
+var test_procedure = {
+    timeline: [test_trial1],
+    timeline_variables: test_stimuli_trial1,
+    repetitions: 5,
+    randomize_order: true
+};
