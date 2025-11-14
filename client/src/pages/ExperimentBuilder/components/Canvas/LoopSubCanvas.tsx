@@ -701,6 +701,7 @@ function LoopSubCanvas({
       const branches = sourceItem.branches || [];
       // Only add if not already present
       if (!branches.includes(targetId)) {
+        ////////////// Maybe in the future both could have parameters, change to id type number for trials, string for loops
         if ("parameters" in sourceItem) {
           // It's a Trial
           const updatedTrial = {
@@ -805,63 +806,99 @@ function LoopSubCanvas({
       >
         <div style={patternStyle} />
 
-        {/* Branches button - show if there's more than one trial in the loop */}
-        {trials.length > 1 && selectedTrial && (
-          <button
-            style={{
-              position: "absolute",
-              top: 16,
-              right: 16,
-              width: 40,
-              height: 40,
-              borderRadius: "50%",
-              background: "#4caf50",
-              color: "#fff",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 20,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
-              zIndex: 10,
-            }}
-            title="Branches"
-            onClick={() => setShowBranchedModal(true)}
-          >
-            <TbBinaryTree size={20} color="#fff" />
-          </button>
-        )}
+        {/* Create Loop button - show if there's more than one trial and either a trial or loop is selected */}
+        {(() => {
+          // Count total number of trials (including those in nested loops)
+          const totalTrialCount = trials.reduce((count, item) => {
+            if ("trials" in item) {
+              // It's a loop, count its trials
+              return count + item.trials.length;
+            } else {
+              // It's a trial
+              return count + 1;
+            }
+          }, 0);
 
-        {/* ParamsOverride button removed - now integrated in BranchedTrial modal */}
+          // Show button if there's more than one trial and either a trial or loop is selected
+          const shouldShow =
+            totalTrialCount > 1 && (selectedTrial || selectedLoop);
 
-        {/* Create Loop button - show if there are at least 2 items */}
-        {trials.length >= 2 && (
-          <button
-            style={{
-              position: "absolute",
-              top: 16,
-              right: selectedTrial ? 112 : 16,
-              width: 40,
-              height: 40,
-              borderRadius: "50%",
-              background: "#1976d2",
-              color: "#fff",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 20,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
-              zIndex: 10,
-            }}
-            title="Create Nested Loop"
-            onClick={() => setShowLoopModal(true)}
-          >
-            <FiRefreshCw size={20} color="#fff" />
-          </button>
-        )}
+          return (
+            shouldShow && (
+              <button
+                style={{
+                  position: "absolute",
+                  top: 16,
+                  left: 16,
+                  width: 40,
+                  height: 40,
+                  borderRadius: "50%",
+                  background: "#1976d2",
+                  color: "#fff",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 20,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
+                  zIndex: 10,
+                }}
+                title="Create Nested Loop"
+                onClick={() => setShowLoopModal(true)}
+              >
+                <FiRefreshCw size={20} color="#fff" />
+              </button>
+            )
+          );
+        })()}
+
+        {/* Branches button - show if there's more than one trial in the loop and a trial or loop is selected */}
+        {(() => {
+          // Count total number of trials (including those in nested loops)
+          const totalTrialCount = trials.reduce((count, item) => {
+            if ("trials" in item) {
+              // It's a loop, count its trials
+              return count + item.trials.length;
+            } else {
+              // It's a trial
+              return count + 1;
+            }
+          }, 0);
+
+          // Show button if there's more than one trial and either a trial or loop is selected
+          const shouldShow =
+            totalTrialCount > 1 && (selectedTrial || selectedLoop);
+
+          return (
+            shouldShow && (
+              <button
+                style={{
+                  position: "absolute",
+                  top: 16,
+                  left: shouldShow ? 64 : 16,
+                  width: 40,
+                  height: 40,
+                  borderRadius: "50%",
+                  background: "#4caf50",
+                  color: "#fff",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 20,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
+                  zIndex: 10,
+                }}
+                title="Branches"
+                onClick={() => setShowBranchedModal(true)}
+              >
+                <TbBinaryTree size={20} color="#fff" />
+              </button>
+            )
+          );
+        })()}
 
         {showBranchedModal && (
           <div
