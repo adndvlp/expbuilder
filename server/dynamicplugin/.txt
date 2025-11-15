@@ -28,3 +28,18 @@ var test_procedure = {
     repetitions: 5,
     randomize_order: true
 };
+
+
+uso actual
+{
+  type: DynamicPlugin,
+  components: [
+    { type: 'ImageComponent', stimulus_image: 'img.jpg', coordinates: {x: 0.5, y: 0} },
+    { type: 'HtmlComponent', stimulus: '<p>Text</p>', coordinates: {x: -0.5, y: 0} }
+  ],
+  response_components: [
+    { type: 'ButtonResponseComponent', choices: ['Yes', 'No'] }
+  ],
+  stimuli_duration: 1000,
+  response_ends_trial: true
+}

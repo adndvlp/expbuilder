@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My experiment</title>
+    <script src="https://unpkg.com/jspsych@8.2.2"></script>
+    <script src="./index.ts"></script>
+
+    <link
+      href="https://unpkg.com/jspsych@8.2.2/css/jspsych.css"
+      rel="stylesheet"
+      type="text/css"
+    />
+  </head>
+  <body></body>
+  <script>
+    /* initialize jsPsych */
+    var jsPsych = initJsPsych({
+      on_finish: function () {
+        jsPsych.data.displayData();
+      },
+    });
+
+    /* create timeline */
+    var timeline = [];
+    const procedure = {
+      type: DynamicPlugin,
+      components: [
+        {
+          type: "ImageComponent",
+          stimulus_image: "cofre.png",
+          coordinates: { x: 0.5, y: 0 },
+        },
+        {
+          type: "HtmlComponent",
+          stimulus: "<p>Cola</p>",
+          coordinates: { x: -0.5, y: 0 },
+        },
+      ],
+      response_components: [
+        { type: "ButtonResponseComponent", choices: ["Yes", "No"] },
+      ],
+      stimuli_duration: 1000,
+      response_ends_trial: true,
+    };
+
+    timeline.push(procedure);
+
+    /* start the experiment */
+    jsPsych.run(timeline);
+  </script>
+</html>
