@@ -53,9 +53,69 @@
           coordinates: { x: 0.0, y: 0 },
         },
         {
+          type: "ImageComponent",
+          stimulus_image: "armadillo.png",
+          coordinates: { x: 0.0, y: 1 },
+        },
+        {
           type: "HtmlComponent",
           stimulus_html: "<p>Cola</p>",
           coordinates: { x: 0, y: 0 },
+        },
+        // {
+        //   type: "VideoComponent",
+        //   stimulus_video: ["Dembow.mp4"],
+        //   coordinates: { x: 1, y: 1 },
+        // },
+      ],
+      response_components: [
+        {
+          type: "ButtonResponseComponent",
+          choices: ["Yes", "No"],
+          coordinates: { x: 0, y: 0 },
+        },
+        {
+          type: "KeyboardResponseComponent",
+          choices: "ALL_KEYS",
+          coordinates: { x: 0, y: 0 },
+        },
+        {
+          type: "ButtonResponseComponent",
+          choices: ["Yes2", "No2"],
+          coordinates: { x: 0.1, y: 0 },
+        },
+      ],
+    };
+
+    timeline.push(procedure);
+    const procedure2 = {
+      type: DynamicPlugin,
+      components: [
+        {
+          type: "ImageComponent",
+          stimulus_image: "cofre.png",
+          coordinates: { x: 0.0, y: 0 },
+        },
+        {
+          type: "ImageComponent",
+          stimulus_image: "armadillo.png",
+          coordinates: { x: 0.0, y: 1 },
+        },
+        {
+          type: "HtmlComponent",
+          stimulus_html: "<p>Cola</p>",
+          coordinates: { x: 0, y: 0 },
+        },
+        {
+          type: "VideoComponent",
+          stimulus_video: ["Dembow.mp4"],
+          coordinates: { x: 1, y: 1 },
+        },
+        {
+          type: "AudioComponent",
+          stimulus_audio: "Alexa.mp3",
+          pan: -1,
+          coordinates: { x: 1, y: 1 },
         },
       ],
       response_components: [
@@ -69,11 +129,15 @@
           choices: "ALL_KEYS",
           coordinates: { x: 0, y: 0 },
         },
+        {
+          type: "ButtonResponseComponent",
+          choices: ["Yes2", "No2"],
+          coordinates: { x: 0.1, y: 0 },
+        },
       ],
     };
 
-    timeline.push(procedure);
-
+    timeline.push(procedure2);
     /* start the experiment */
     jsPsych.run(timeline);
   </script>

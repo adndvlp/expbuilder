@@ -79,10 +79,8 @@ class ImageComponent {
       return value * 50;
     };
 
-    // Check if positioning is needed
-    const usePositioning =
-      config.coordinates &&
-      (config.coordinates.x !== 0 || config.coordinates.y !== 0);
+    // Always use absolute positioning for proper overlapping
+    const usePositioning = config.coordinates !== undefined;
 
     // Create positioning container
     let imageContainer: HTMLElement;
@@ -93,10 +91,14 @@ class ImageComponent {
       if (config.coordinates.x !== undefined) {
         const xValue = mapValue(config.coordinates.x);
         imageContainer.style.left = `calc(50% + ${xValue}vw)`;
+      } else {
+        imageContainer.style.left = "50%";
       }
       if (config.coordinates.y !== undefined) {
         const yValue = mapValue(config.coordinates.y);
         imageContainer.style.top = `calc(50% + ${yValue}vh)`;
+      } else {
+        imageContainer.style.top = "50%";
       }
       imageContainer.style.transform = "translate(-50%, -50%)";
 

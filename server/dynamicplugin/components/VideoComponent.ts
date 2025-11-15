@@ -122,7 +122,10 @@ class VideoComponent {
     videoElement.id = "jspsych-dynamic-video-component";
     videoElement.className = "dynamic-video-component";
 
-    // Set video dimensions
+    // Required attributes for autoplay to work reliably
+    videoElement.setAttribute("playsinline", ""); // Required for iOS
+
+    // Set video dimensions - if not specified, video will use natural dimensions
     if (config.width_video) {
       videoElement.width = config.width_video;
     }
@@ -131,11 +134,19 @@ class VideoComponent {
     }
 
     // Set video controls
-    videoElement.controls = config.controls_video || false;
-    videoElement.autoplay = config.autoplay_video && config.start_video == null;
+    videoElement.controls =
+      config.controls_video !== undefined ? config.controls_video : false;
 
-    // Hide video initially if start time is specified
-    if (config.start_video !== null) {
+    // Set autoplay - default to true if not specified
+    const shouldAutoplay =
+      config.autoplay_video !== undefined ? config.autoplay_video : true;
+
+    // Hide video initially if start time is specified and valid
+    if (
+      config.start_video != null &&
+      typeof config.start_video === "number" &&
+      !isNaN(config.start_video)
+    ) {
       videoElement.style.visibility = "hidden";
     }
 
@@ -172,8 +183,49 @@ class VideoComponent {
     // Set playback rate
     videoElement.playbackRate = config.rate_video || 1;
 
-    // Handle start time
-    if (config.start_video !== null) {
+    // Attempt to play if autoplay is enabled and no start_video
+    if (shouldAutoplay && config.start_video == null) {
+      // Use loadeddata event to ensure video is ready before playing
+      videoElement.addEventListener(
+        "loadeddata",
+        () => {
+          // Try with audio first
+          const playPromise = videoElement.play();
+          if (playPromise !== undefined) {
+            playPromise.catch((error) => {
+              console.warn("Autoplay with audio failed, trying muted:", error);
+              // If autoplay with audio fails, try muted
+              videoElement.muted = true;
+              videoElement
+                .play()
+                .then(() => {
+                  console.log("Playing muted - click video to unmute");
+                  // Add click listener to unmute
+                  videoElement.addEventListener(
+                    "click",
+                    () => {
+                      videoElement.muted = false;
+                    },
+                    { once: true }
+                  );
+                })
+                .catch((err) => {
+                  console.error("Autoplay failed completely:", err);
+                  videoElement.controls = true;
+                });
+            });
+          }
+        },
+        { once: true }
+      );
+    }
+
+    // Handle start time - only if explicitly set to a valid number
+    if (
+      config.start_video != null &&
+      typeof config.start_video === "number" &&
+      !isNaN(config.start_video)
+    ) {
       videoElement.pause();
       videoElement.onseeked = () => {
         videoElement.style.visibility = "visible";
@@ -193,8 +245,12 @@ class VideoComponent {
       videoElement.play();
     }
 
-    // Handle stop time
-    if (config.stop_video !== null) {
+    // Handle stop time - only if explicitly set to a valid number
+    if (
+      config.stop_video != null &&
+      typeof config.stop_video === "number" &&
+      !isNaN(config.stop_video)
+    ) {
       videoElement.addEventListener("timeupdate", () => {
         if (videoElement.currentTime >= config.stop_video && !this.stopped) {
           this.stopped = true;

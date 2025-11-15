@@ -79,9 +79,30 @@ class AudioComponent {
       this.element = audioElement;
     }
 
-    // Start playback if autoplay is enabled
-    if (config.autoplay_audio) {
-      this.play();
+    // Start playback if autoplay is enabled - default to true
+    const shouldAutoplay =
+      config.autoplay_audio !== undefined ? config.autoplay_audio : true;
+    if (shouldAutoplay && this.audio) {
+      try {
+        await this.audio.play();
+      } catch (error) {
+        console.warn("Audio autoplay failed:", error);
+        // If autoplay fails, could show controls or notify user
+        if (this.element) {
+          this.element.innerHTML = `
+            <div class="audio-controls">
+              <button onclick="this.parentElement.parentElement.click()">Click to play audio</button>
+            </div>
+          `;
+          this.element.addEventListener(
+            "click",
+            () => {
+              this.play();
+            },
+            { once: true }
+          );
+        }
+      }
     }
 
     return this.element;
