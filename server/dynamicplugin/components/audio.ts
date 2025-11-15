@@ -1,61 +1,38 @@
-import { JsPsych, JsPsychPlugin, ParameterType, TrialType } from "jspsych";
+import autoBind from "auto-bind";
+import { ParameterType } from "jspsych";
 
-import { version } from "../../package.json";
+var version = "2.1.0";
 
-const info = <const>{
-  name: "{AudioComponent}",
-  version: version,
+const info = {
+  name: "audio-button-response",
+  version,
   parameters: {
-    /** Provide a clear description of the parameter_name that could be used as documentation. We will eventually use these comments to automatically build documentation and produce metadata. */
-    parameter_name: {
-      type: ParameterType.INT, // BOOL, STRING, INT, FLOAT, FUNCTION, KEY, KEYS, SELECT, HTML_STRING, IMAGE, AUDIO, VIDEO, OBJECT, COMPLEX
-      default: undefined,
+    /** Path to audio file to be played. */
+    stimulus_audio: {
+      type: ParameterType.AUDIO,
+      default: void 0,
     },
-    /** Provide a clear description of the parameter_name2 that could be used as documentation. We will eventually use these comments to automatically build documentation and produce metadata. */
-    parameter_name2: {
-      type: ParameterType.IMAGE,
-      default: undefined,
+
+    /** If true, then the trial will end as soon as the audio file finishes playing.  */
+    trial_ends_after_audio: {
+      type: ParameterType.BOOL,
+      default: false,
+    },
+    /**
+     * If true, then responses are allowed while the audio is playing. If false, then the audio must finish
+     * playing before the button choices are enabled and a response is accepted. Once the audio has played
+     * all the way through, the buttons are enabled and a response is allowed (including while the audio is
+     * being re-played via on-screen playback controls).
+     */
+    response_allowed_while_playing_audio: {
+      type: ParameterType.BOOL,
+      default: true,
     },
   },
-  data: {
-    /** Provide a clear description of the data1 that could be used as documentation. We will eventually use these comments to automatically build documentation and produce metadata. */
-    data1: {
-      type: ParameterType.INT,
-    },
-    /** Provide a clear description of the data2 that could be used as documentation. We will eventually use these comments to automatically build documentation and produce metadata. */
-    data2: {
-      type: ParameterType.STRING,
-    },
-  },
+
   // prettier-ignore
-  citations: '__CITATIONS__',
+  citations: {
+    "apa": "de Leeuw, J. R., Gilbert, R. A., & Luchterhandt, B. (2023). jsPsych: Enabling an Open-Source Collaborative Ecosystem of Behavioral Experiments. Journal of Open Source Software, 8(85), 5351. https://doi.org/10.21105/joss.05351 ",
+    "bibtex": '@article{Leeuw2023jsPsych, 	author = {de Leeuw, Joshua R. and Gilbert, Rebecca A. and Luchterhandt, Bj{\\" o}rn}, 	journal = {Journal of Open Source Software}, 	doi = {10.21105/joss.05351}, 	issn = {2475-9066}, 	number = {85}, 	year = {2023}, 	month = {may 11}, 	pages = {5351}, 	publisher = {Open Journals}, 	title = {jsPsych: Enabling an {Open}-{Source} {Collaborative} {Ecosystem} of {Behavioral} {Experiments}}, 	url = {https://joss.theoj.org/papers/10.21105/joss.05351}, 	volume = {8}, }  '
+  },
 };
-
-type Info = typeof info;
-
-/**
- * **{name}**
- *
- * {description}
- *
- * @author {author}
- * @see {@link {documentation-url}}}
- */
-class AudioComponent implements JsPsychPlugin<Info> {
-  static info = info;
-
-  constructor(private jsPsych: JsPsych) {}
-
-  trial(display_element: HTMLElement, trial: TrialType<Info>) {
-    // data saving
-    var trial_data = {
-      data1: 99, // Make sure this type and name matches the information for data1 in the data object contained within the info const.
-      data2: "hello world!", // Make sure this type and name matches the information for data2 in the data object contained within the info const.
-    };
-
-    // end trial
-    this.jsPsych.finishTrial(trial_data);
-  }
-}
-
-export default AudioComponent;

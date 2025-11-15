@@ -1,65 +1,81 @@
-import { JsPsych, JsPsychPlugin, ParameterType, TrialType } from "jspsych";
+import { ParameterType } from "jspsych";
 
-import { version } from "../../package.json";
+var version = "2.2.0";
 
-const info = <const>{
-  name: "{VideoComponent}",
-  version: version,
+const info = {
+  name: "VideoComponent",
+  version,
   parameters: {
-    /** Provide a clear description of the parameter_name that could be used as documentation. We will eventually use these comments to automatically build documentation and produce metadata. */
-    stimulus: {
-      type: ParameterType.VIDEO, // BOOL, STRING, INT, FLOAT, FUNCTION, KEY, KEYS, SELECT, HTML_STRING, IMAGE, AUDIO, VIDEO, OBJECT, COMPLEX
-      default: undefined,
+    /**
+     * An array of file paths to the video. You can specify multiple formats of the same video (e.g., .mp4, .ogg, .webm)
+     * to maximize the [cross-browser compatibility](https://developer.mozilla.org/en-US/docs/Web/HTML/Supported_media_formats).
+     * Usually .mp4 is a safe cross-browser option. The plugin does not reliably support .mov files. The player will use the
+     * first source file in the array that is compatible with the browser, so specify the files in order of preference.
+     */
+    stimulus_video: {
+      type: ParameterType.VIDEO,
+      default: void 0,
+      array: true,
     },
-    /** Provide a clear description of the parameter_name2 that could be used as documentation. We will eventually use these comments to automatically build documentation and produce metadata. */
-    stimulus_height: {
+
+    /** The width of the video display in pixels. If `null`, the video will take the original video's dimensions,
+     * or properly scaled with the aspect ratio if the height is also specified.
+     */
+    width_video: {
       type: ParameterType.INT,
       default: null,
     },
-    stimulus_width: {
+    /** The height of the video display in pixels. If `null`, the video will take the original video's dimensions,
+     * or properly scaled with the aspect ratio if the width is also specified.
+     */
+    height_video: {
       type: ParameterType.INT,
       default: null,
     },
-  },
-  data: {
-    /** Provide a clear description of the data1 that could be used as documentation. We will eventually use these comments to automatically build documentation and produce metadata. */
-    data1: {
-      type: ParameterType.INT,
+    /** If true, the video will begin playing as soon as it has loaded. */
+    autoplay_video: {
+      type: ParameterType.BOOL,
+      pretty_name: "Autoplay",
+      default: true,
     },
-    /** Provide a clear description of the data2 that could be used as documentation. We will eventually use these comments to automatically build documentation and produce metadata. */
-    data2: {
-      type: ParameterType.STRING,
+    /** If true, controls for the video player will be available to the participant. They will be able to pause
+     * the video or move the playback to any point in the video.
+     */
+    controls_video: {
+      type: ParameterType.BOOL,
+      default: false,
+    },
+    /** Time to start the clip. If `null` (default), video will start at the beginning of the file. */
+    start_video: {
+      type: ParameterType.FLOAT,
+      default: null,
+    },
+    /** Time to stop the clip. If `null` (default), video will stop at the end of the file. */
+    stop_video: {
+      type: ParameterType.FLOAT,
+      default: null,
+    },
+    /** The playback rate of the video. 1 is normal, <1 is slower, >1 is faster. */
+    rate_video: {
+      type: ParameterType.FLOAT,
+      default: 1,
+    },
+
+    /** If true, the trial will end immediately after the video finishes playing. */
+    trial_ends_after_video: {
+      type: ParameterType.BOOL,
+      default: false,
+    },
+    /** If true, then responses are allowed while the video is playing. If false, then the video must finish
+     * playing before the button choices are enabled and a response is accepted. Once the video has played
+     * all the way through, the buttons are enabled and a response is allowed (including while the video is
+     * being re-played via on-screen playback controls).
+     */
+    response_allowed_while_playing_video: {
+      type: ParameterType.BOOL,
+      default: true,
     },
   },
   // prettier-ignore
   citations: '__CITATIONS__',
 };
-
-type Info = typeof info;
-
-/**
- * **{name}**
- *
- * {description}
- *
- * @author {author}
- * @see {@link {documentation-url}}}
- */
-class VideoComponent implements JsPsychPlugin<Info> {
-  static info = info;
-
-  constructor(private jsPsych: JsPsych) {}
-
-  trial(display_element: HTMLElement, trial: TrialType<Info>) {
-    // data saving
-    var trial_data = {
-      data1: 99, // Make sure this type and name matches the information for data1 in the data object contained within the info const.
-      data2: "hello world!", // Make sure this type and name matches the information for data2 in the data object contained within the info const.
-    };
-
-    // end trial
-    this.jsPsych.finishTrial(trial_data);
-  }
-}
-
-export default VideoComponent;

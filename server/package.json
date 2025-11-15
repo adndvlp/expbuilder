@@ -13,12 +13,6 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@jspsych/plugin-audio-button-response": "^2.1.0",
-    "@jspsych/plugin-audio-keyboard-response": "^2.1.0",
-    "@jspsych/plugin-html-button-response": "^2.1.0",
-    "@jspsych/plugin-image-button-response": "^2.2.0",
-    "@jspsych/plugin-image-keyboard-response": "^2.1.0",
-    "@jspsych/plugin-image-slider-response": "^2.1.0",
     "acorn": "^8.15.0",
     "acorn-walk": "^8.3.4",
     "cheerio": "^1.1.0",
