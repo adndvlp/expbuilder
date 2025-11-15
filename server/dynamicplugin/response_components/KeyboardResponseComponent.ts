@@ -63,11 +63,20 @@ class KeyboardResponseComponent {
   /**
    * Activate keyboard listening for responses
    */
-  render(display_element: HTMLElement, trial: any): void {
+  render(
+    display_element: HTMLElement,
+    trial: any,
+    onResponse?: () => void
+  ): void {
     // Only setup keyboard listener if choices are allowed
     if (trial.choices !== "NO_KEYS") {
       this.keyboardListener = this.jsPsych.pluginAPI.getKeyboardResponse({
-        callback_function: this.recordResponse.bind(this),
+        callback_function: (info: any) => {
+          this.recordResponse(info);
+          if (onResponse) {
+            onResponse();
+          }
+        },
         valid_responses: trial.choices,
         rt_method: "performance",
         persist: false,

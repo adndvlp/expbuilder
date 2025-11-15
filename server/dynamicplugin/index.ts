@@ -131,42 +131,44 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     const responseComponents: any[] = [];
     let hasResponded = false;
 
-    // Instantiate and render stimulus components
+    // Instantiate all components first
     if (trial.components && trial.components.length > 0) {
       trial.components.forEach((config: any) => {
         const ComponentClass = COMPONENT_MAP[config.type];
         if (ComponentClass) {
           const instance = new ComponentClass(this.jsPsych);
           stimulusComponents.push({ instance, config });
-
-          // Render component
-          instance.render(mainContainer, config);
         } else {
           console.warn(`Unknown component type: ${config.type}`);
         }
       });
     }
 
-    // Instantiate and render response components
     if (trial.response_components && trial.response_components.length > 0) {
       trial.response_components.forEach((config: any) => {
         const ComponentClass = RESPONSE_COMPONENT_MAP[config.type];
         if (ComponentClass) {
           const instance = new ComponentClass(this.jsPsych);
           responseComponents.push({ instance, config });
-
-          // Render component with response callback
-          instance.render(mainContainer, config, () => {
-            if (!hasResponded && trial.response_ends_trial) {
-              hasResponded = true;
-              endTrial();
-            }
-          });
         } else {
           console.warn(`Unknown response component type: ${config.type}`);
         }
       });
     }
+
+    // Render ALL components in parallel (stimulus and response together)
+    stimulusComponents.forEach(({ instance, config }) => {
+      instance.render(mainContainer, config);
+    });
+
+    responseComponents.forEach(({ instance, config }) => {
+      instance.render(mainContainer, config, () => {
+        if (!hasResponded && trial.response_ends_trial) {
+          hasResponded = true;
+          endTrial();
+        }
+      });
+    });
 
     // Function to end the trial and collect data
     const endTrial = () => {
@@ -232,7 +234,10 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     };
 
     // Handle stimuli duration (hide stimuli after duration)
-    if (trial.stimuli_duration !== null) {
+    if (
+      trial.stimuli_duration !== null &&
+      trial.stimuli_duration !== undefined
+    ) {
       this.jsPsych.pluginAPI.setTimeout(() => {
         stimulusComponents.forEach(({ instance }) => {
           if (instance.hide) {
@@ -243,7 +248,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     }
 
     // Handle trial duration (end trial after duration)
-    if (trial.trial_duration !== null) {
+    if (trial.trial_duration !== null && trial.trial_duration !== undefined) {
       this.jsPsych.pluginAPI.setTimeout(() => {
         endTrial();
       }, trial.trial_duration);

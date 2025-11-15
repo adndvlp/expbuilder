@@ -84,27 +84,23 @@ class ImageComponent {
       config.coordinates &&
       (config.coordinates.x !== 0 || config.coordinates.y !== 0);
 
-    // Create positioning container if needed
+    // Create positioning container
     let imageContainer: HTMLElement;
     if (usePositioning) {
-      const mainContainer = document.createElement("div");
-      mainContainer.style.position = "relative";
-      mainContainer.style.margin = "0 auto";
-
       imageContainer = document.createElement("div");
-      imageContainer.style.position = "relative";
+      imageContainer.style.position = "absolute";
 
       if (config.coordinates.x !== undefined) {
         const xValue = mapValue(config.coordinates.x);
-        imageContainer.style.left = `${xValue}vw`;
+        imageContainer.style.left = `calc(50% + ${xValue}vw)`;
       }
       if (config.coordinates.y !== undefined) {
         const yValue = mapValue(config.coordinates.y);
-        imageContainer.style.top = `${yValue}vh`;
+        imageContainer.style.top = `calc(50% + ${yValue}vh)`;
       }
+      imageContainer.style.transform = "translate(-50%, -50%)";
 
-      mainContainer.appendChild(imageContainer);
-      container.appendChild(mainContainer);
+      container.appendChild(imageContainer);
     } else {
       imageContainer = container;
     }

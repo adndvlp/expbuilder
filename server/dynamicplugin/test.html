@@ -3,13 +3,35 @@
   <head>
     <title>My experiment</title>
     <script src="https://unpkg.com/jspsych@8.2.2"></script>
-    <script src="./index.ts"></script>
+    <script src="./dist/index.iife.js"></script>
 
     <link
       href="https://unpkg.com/jspsych@8.2.2/css/jspsych.css"
       rel="stylesheet"
       type="text/css"
     />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      #jspsych-dynamic-plugin-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+      }
+      .dynamic-image-component,
+      #jspsych-html-component-main,
+      #jspsych-button-response-main {
+        visibility: visible !important;
+      }
+      img,
+      canvas {
+        display: block;
+      }
+    </style>
   </head>
   <body></body>
   <script>
@@ -28,19 +50,26 @@
         {
           type: "ImageComponent",
           stimulus_image: "cofre.png",
-          coordinates: { x: 0.5, y: 0 },
+          coordinates: { x: 0.0, y: 0 },
         },
         {
           type: "HtmlComponent",
-          stimulus: "<p>Cola</p>",
-          coordinates: { x: -0.5, y: 0 },
+          stimulus_html: "<p>Cola</p>",
+          coordinates: { x: 0, y: 0 },
         },
       ],
       response_components: [
-        { type: "ButtonResponseComponent", choices: ["Yes", "No"] },
+        {
+          type: "ButtonResponseComponent",
+          choices: ["Yes", "No"],
+          coordinates: { x: 0, y: 0 },
+        },
+        {
+          type: "KeyboardResponseComponent",
+          choices: "ALL_KEYS",
+          coordinates: { x: 0, y: 0 },
+        },
       ],
-      stimuli_duration: 1000,
-      response_ends_trial: true,
     };
 
     timeline.push(procedure);

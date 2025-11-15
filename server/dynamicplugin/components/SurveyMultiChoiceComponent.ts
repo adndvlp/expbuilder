@@ -123,7 +123,7 @@ class SurveyMultiChoiceComponent {
 
   static info = info;
 
-  render(display_element: HTMLElement, trial: any) {
+  render(display_element: HTMLElement, trial: any, onResponse?: () => void) {
     // Helper to map coordinate values
     const mapValue = (value: number): number => {
       if (value < -1) return -50;
@@ -132,22 +132,18 @@ class SurveyMultiChoiceComponent {
     };
 
     // Create main container
-    const mainContainer = document.createElement("div");
-    mainContainer.id = "jspsych-survey-multi-choice-main";
-    mainContainer.style.position = "relative";
-    display_element.appendChild(mainContainer);
-
     // Create survey container with coordinates
     const surveyContainer = document.createElement("div");
     surveyContainer.id = "jspsych-survey-multi-choice-container";
-    surveyContainer.style.position = "relative";
+    surveyContainer.style.position = "absolute";
 
     const xVw = mapValue(trial.coordinates.x);
     const yVh = mapValue(trial.coordinates.y);
-    surveyContainer.style.left = `${xVw}vw`;
-    surveyContainer.style.top = `${yVh}vh`;
+    surveyContainer.style.left = `calc(50% + ${xVw}vw)`;
+    surveyContainer.style.top = `calc(50% + ${yVh}vh)`;
+    surveyContainer.style.transform = "translate(-50%, -50%)";
 
-    mainContainer.appendChild(surveyContainer);
+    display_element.appendChild(surveyContainer);
 
     const trial_form_id = `${plugin_id_name}_form`;
     var html = "";
@@ -245,6 +241,9 @@ class SurveyMultiChoiceComponent {
         Object.assign(question_data, obje);
       }
       this.response = question_data;
+      if (onResponse) {
+        onResponse();
+      }
     });
     this.startTime = performance.now();
   }

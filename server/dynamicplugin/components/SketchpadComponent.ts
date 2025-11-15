@@ -250,23 +250,18 @@ class SketchpadComponent {
       return value * 50;
     };
 
-    // Create main container
-    const mainContainer = document.createElement("div");
-    mainContainer.id = "jspsych-sketchpad-main";
-    mainContainer.style.position = "relative";
-    container.appendChild(mainContainer);
-
     // Create sketchpad container with coordinates
     const sketchpadContainer = document.createElement("div");
     sketchpadContainer.id = "jspsych-sketchpad-container";
-    sketchpadContainer.style.position = "relative";
+    sketchpadContainer.style.position = "absolute";
 
     const xVw = mapValue(config.coordinates.x);
     const yVh = mapValue(config.coordinates.y);
-    sketchpadContainer.style.left = `${xVw}vw`;
-    sketchpadContainer.style.top = `${yVh}vh`;
+    sketchpadContainer.style.left = `calc(50% + ${xVw}vw)`;
+    sketchpadContainer.style.top = `calc(50% + ${yVh}vh)`;
+    sketchpadContainer.style.transform = "translate(-50%, -50%)";
 
-    mainContainer.appendChild(sketchpadContainer);
+    container.appendChild(sketchpadContainer);
 
     this.display = sketchpadContainer;
     this.current_stroke_color = config.stroke_color;

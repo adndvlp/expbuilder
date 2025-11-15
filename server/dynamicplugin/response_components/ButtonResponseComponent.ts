@@ -22,7 +22,7 @@ const info = {
      */
     button_html: {
       type: ParameterType.FUNCTION,
-      default: function (choice, choice_index) {
+      default: function (choice: string, choice_index: number) {
         return `<button class="jspsych-btn">${choice}</button>`;
       },
     },
@@ -110,7 +110,11 @@ class ButtonResponseComponent {
   /**
    * Render the button group into the display element
    */
-  render(display_element: HTMLElement, trial: any): void {
+  render(
+    display_element: HTMLElement,
+    trial: any,
+    onResponse?: () => void
+  ): void {
     // Helper to map coordinate values
     const mapValue = (value: number): number => {
       if (value < -1) return -50;
@@ -118,21 +122,20 @@ class ButtonResponseComponent {
       return value * 50;
     };
 
-    // Create main container
-    const mainContainer = document.createElement("div");
-    mainContainer.id = "jspsych-button-response-main";
-    mainContainer.style.position = "relative";
-    display_element.appendChild(mainContainer);
-
     // Create button group container with coordinates
     this.buttonGroupElement = document.createElement("div");
     this.buttonGroupElement.id = "jspsych-button-response-component-btngroup";
-    this.buttonGroupElement.style.position = "relative";
+    this.buttonGroupElement.style.position = "absolute";
 
-    const xVw = mapValue(trial.coordinates.x);
-    const yVh = mapValue(trial.coordinates.y);
-    this.buttonGroupElement.style.left = `${xVw}vw`;
-    this.buttonGroupElement.style.top = `${yVh}vh`;
+    // Use default coordinates if not provided
+    const coordinates = trial.coordinates || { x: 0, y: 0 };
+    const xVw = mapValue(coordinates.x);
+    const yVh = mapValue(coordinates.y);
+    this.buttonGroupElement.style.left = `calc(50% + ${xVw}vw)`;
+    this.buttonGroupElement.style.top = `calc(50% + ${yVh}vh)`;
+    this.buttonGroupElement.style.transform = "translate(-50%, -50%)";
+
+    display_element.appendChild(this.buttonGroupElement);
 
     // Configure layout (grid vs flex)
     if (trial.button_layout === "grid") {
@@ -160,19 +163,26 @@ class ButtonResponseComponent {
     }
 
     // Create buttons
+    const buttonHtml =
+      trial.button_html ||
+      function (choice: string, choice_index: number) {
+        return `<button class="jspsych-btn">${choice}</button>`;
+      };
+
     for (const [choiceIndex, choice] of trial.choices.entries()) {
       this.buttonGroupElement.insertAdjacentHTML(
         "beforeend",
-        trial.button_html(choice, choiceIndex)
+        buttonHtml(choice, choiceIndex)
       );
       const buttonElement = this.buttonGroupElement.lastChild as HTMLElement;
       buttonElement.dataset.choice = choiceIndex.toString();
       buttonElement.addEventListener("click", () => {
         this.recordResponse(choiceIndex);
+        if (onResponse) {
+          onResponse();
+        }
       });
     }
-
-    mainContainer.appendChild(this.buttonGroupElement);
 
     // Start timing
     this.start_time = performance.now();

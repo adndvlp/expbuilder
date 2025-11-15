@@ -75,7 +75,7 @@ class SurveyHtmlFormComponent {
 
   static info = info;
 
-  render(display_element: HTMLElement, trial: any) {
+  render(display_element: HTMLElement, trial: any, onResponse?: () => void) {
     // Helper to map coordinate values
     const mapValue = (value: number): number => {
       if (value < -1) return -50;
@@ -83,23 +83,18 @@ class SurveyHtmlFormComponent {
       return value * 50;
     };
 
-    // Create main container with positioning
-    const mainContainer = document.createElement("div");
-    mainContainer.id = "jspsych-survey-html-form-main";
-    mainContainer.style.position = "relative";
-    display_element.appendChild(mainContainer);
-
     // Create form container with coordinates
     const formContainer = document.createElement("div");
     formContainer.id = "jspsych-survey-html-form-container";
-    formContainer.style.position = "relative";
+    formContainer.style.position = "absolute";
 
     const xVw = mapValue(trial.coordinates.x);
     const yVh = mapValue(trial.coordinates.y);
-    formContainer.style.left = `${xVw}vw`;
-    formContainer.style.top = `${yVh}vh`;
+    formContainer.style.left = `calc(50% + ${xVw}vw)`;
+    formContainer.style.top = `calc(50% + ${yVh}vh)`;
+    formContainer.style.transform = "translate(-50%, -50%)";
 
-    mainContainer.appendChild(formContainer);
+    display_element.appendChild(formContainer);
 
     var html = "";
     if (trial.preamble !== null) {
@@ -150,6 +145,9 @@ class SurveyHtmlFormComponent {
           question_data = this.objectifyForm(question_data);
         }
         this.response = question_data;
+        if (onResponse) {
+          onResponse();
+        }
       });
     this.startTime = performance.now();
   }

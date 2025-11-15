@@ -113,7 +113,11 @@ class SliderResponseComponent {
   /**
    * Render the slider and submit button into the display element
    */
-  render(display_element: HTMLElement, trial: any): void {
+  render(
+    display_element: HTMLElement,
+    trial: any,
+    onResponse?: () => void
+  ): void {
     // Helper to map coordinate values
     const mapValue = (value: number): number => {
       if (value < -1) return -50;
@@ -126,22 +130,21 @@ class SliderResponseComponent {
     // Store slider_start for data collection
     this.slider_start = trial.slider_start;
 
-    // Create main container
-    const mainContainer = document.createElement("div");
-    mainContainer.id = "jspsych-slider-response-main";
-    mainContainer.style.position = "relative";
-    display_element.appendChild(mainContainer);
-
     // Create slider container with coordinates
     this.sliderContainer = document.createElement("div");
     this.sliderContainer.classList.add("jspsych-slider-response-container");
-    this.sliderContainer.style.position = "relative";
+    this.sliderContainer.style.position = "absolute";
     this.sliderContainer.style.margin = "0 auto 3em auto";
 
-    const xVw = mapValue(trial.coordinates.x);
-    const yVh = mapValue(trial.coordinates.y);
-    this.sliderContainer.style.left = `${xVw}vw`;
-    this.sliderContainer.style.top = `${yVh}vh`;
+    // Use default coordinates if not provided
+    const coordinates = trial.coordinates || { x: 0, y: 0 };
+    const xVw = mapValue(coordinates.x);
+    const yVh = mapValue(coordinates.y);
+    this.sliderContainer.style.left = `calc(50% + ${xVw}vw)`;
+    this.sliderContainer.style.top = `calc(50% + ${yVh}vh)`;
+    this.sliderContainer.style.transform = "translate(-50%, -50%)";
+
+    display_element.appendChild(this.sliderContainer);
 
     if (trial.slider_width !== null) {
       this.sliderContainer.style.width = trial.slider_width.toString() + "px";
@@ -165,10 +168,9 @@ class SliderResponseComponent {
     html += "</div>";
 
     this.sliderContainer.innerHTML = html;
-    mainContainer.appendChild(this.sliderContainer);
 
     // Get slider element reference
-    this.sliderElement = mainContainer.querySelector(
+    this.sliderElement = this.sliderContainer.querySelector(
       "#jspsych-slider-response-component"
     ) as HTMLInputElement;
 
@@ -179,7 +181,7 @@ class SliderResponseComponent {
     this.submitButton.innerHTML = trial.button_label;
     this.submitButton.disabled = trial.require_movement ? true : false;
 
-    mainContainer.appendChild(this.submitButton);
+    this.sliderContainer.appendChild(this.submitButton);
 
     // Setup require_movement behavior
     if (trial.require_movement) {
@@ -197,6 +199,9 @@ class SliderResponseComponent {
     // Setup submit button click handler
     this.submitButton.addEventListener("click", () => {
       this.recordResponse();
+      if (onResponse) {
+        onResponse();
+      }
     });
 
     // Start timing

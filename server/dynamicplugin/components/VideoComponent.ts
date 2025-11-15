@@ -103,24 +103,19 @@ class VideoComponent {
       return value * 50;
     };
 
-    // Create main container
-    const mainContainer = document.createElement("div");
-    mainContainer.id = "jspsych-video-component-main";
-    mainContainer.style.position = "relative";
-    container.appendChild(mainContainer);
-
     // Create wrapper with coordinates
     const stimulusWrapper = document.createElement("div");
     stimulusWrapper.id = "jspsych-dynamic-video-component-wrapper";
     stimulusWrapper.className = "dynamic-video-component-wrapper";
-    stimulusWrapper.style.position = "relative";
+    stimulusWrapper.style.position = "absolute";
 
     const xVw = mapValue(config.coordinates.x);
     const yVh = mapValue(config.coordinates.y);
-    stimulusWrapper.style.left = `${xVw}vw`;
-    stimulusWrapper.style.top = `${yVh}vh`;
+    stimulusWrapper.style.left = `calc(50% + ${xVw}vw)`;
+    stimulusWrapper.style.top = `calc(50% + ${yVh}vh)`;
+    stimulusWrapper.style.transform = "translate(-50%, -50%)";
 
-    mainContainer.appendChild(stimulusWrapper);
+    container.appendChild(stimulusWrapper);
 
     const videoElement = document.createElement("video");
     stimulusWrapper.appendChild(videoElement);

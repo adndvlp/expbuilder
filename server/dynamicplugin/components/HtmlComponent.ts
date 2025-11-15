@@ -52,25 +52,20 @@ class HtmlComponent {
       return value * 50;
     };
 
-    // Create main container
-    const mainContainer = document.createElement("div");
-    mainContainer.id = "jspsych-html-component-main";
-    mainContainer.style.position = "relative";
-    container.appendChild(mainContainer);
-
-    // Create stimulus container with coordinates
+    // Create stimulus element with coordinates
     const stimulusElement = document.createElement("div");
     stimulusElement.id = "jspsych-dynamic-html-component-stimulus";
     stimulusElement.className = "dynamic-html-component-stimulus";
-    stimulusElement.style.position = "relative";
+    stimulusElement.style.position = "absolute";
 
     const xVw = mapValue(config.coordinates.x);
     const yVh = mapValue(config.coordinates.y);
-    stimulusElement.style.left = `${xVw}vw`;
-    stimulusElement.style.top = `${yVh}vh`;
+    stimulusElement.style.left = `calc(50% + ${xVw}vw)`;
+    stimulusElement.style.top = `calc(50% + ${yVh}vh)`;
+    stimulusElement.style.transform = "translate(-50%, -50%)";
 
     stimulusElement.innerHTML = config.stimulus_html;
-    mainContainer.appendChild(stimulusElement);
+    container.appendChild(stimulusElement);
     this.stimulusElement = stimulusElement;
 
     return stimulusElement;
