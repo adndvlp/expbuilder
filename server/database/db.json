@@ -21,7 +21,7 @@
               "includesExtensions": false,
               "extensionType": ""
             },
-            "trialCode": "\n    const test_stimuli_jnjildcksdsbjs = [{components: [{\"type\":\"ImageComponent\",\"coordinates\":{\"x\":-0.876953125,\"y\":-0.9192708333333334},\"width\":300,\"height\":300,\"stimulus\":\"lwnrv-experiment/img/boat.png\"},{\"type\":\"ImageComponent\",\"coordinates\":{\"x\":-0.974609375,\"y\":0.7838541666666666},\"width\":300,\"height\":300,\"stimulus\":\"lwnrv-experiment/img/boat.png\"},{\"type\":\"ImageComponent\",\"coordinates\":{\"x\":1,\"y\":-0.9895833333333334},\"width\":300,\"height\":300,\"stimulus\":\"lwnrv-experiment/img/boat.png\"},{\"type\":\"ImageComponent\",\"coordinates\":{\"x\":0.009765625,\"y\":-0.07552083333333333},\"width\":300,\"height\":300,\"stimulus\":\"lwnrv-experiment/img/boat.png\"},{\"type\":\"ImageComponent\",\"coordinates\":{\"x\":1,\"y\":0.8776041666666666},\"width\":300,\"height\":300,\"stimulus\":\"lwnrv-experiment/img/boat.png\"}],\nresponse_components: [],\nstimuli_duration: null,\ntrial_duration: null,\nresponse_ends_trial: true}];\n    const jnjildcksdsbjs_timeline = {\n    type: DynamicPlugin, components: jsPsych.timelineVariable(\"components\"),\nresponse_components: jsPsych.timelineVariable(\"response_components\"),\nstimuli_duration: jsPsych.timelineVariable(\"stimuli_duration\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial\"),\n      data: {\n        stimulus: \"stimulus\",\nresponse: \"response\",\nrt: \"rt\",\n        trial_id: 1763276792259,\n        \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        console.log('Applying custom parameters to trial:', window.branchCustomParameters);\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Handle different parameter sources\n            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n              // For typed values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n              // For CSV values, param.value contains the column name, get the actual value from trial\n              trial[key] = trial[param.value];\n              console.log(`Set trial.${key} = ${trial[param.value]} (from CSV column: ${param.value})`);\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches ni repeat conditions, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },\n    };\n    const jnjildcksdsbjs_procedure = {\n    timeline: \n    [jnjildcksdsbjs_timeline],\n    timeline_variables: test_stimuli_jnjildcksdsbjs,\n    conditional_function: function() {\n      const currentId = 1763276792259;\n      \n      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n      if (jumpToTrial) {\n        if (String(currentId) === String(jumpToTrial)) {\n          // Encontramos el trial objetivo para repeat/jump\n          console.log('Repeat/jump: Found target trial', currentId);\n          localStorage.removeItem('jsPsych_jumpToTrial');\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('Repeat/jump: Skipping trial', currentId);\n        return false;\n      }\n      \n      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(jnjildcksdsbjs_procedure);\n  ",
+            "trialCode": "\n    const test_stimuli_jnjildcksdsbjs = [{components: [{\"type\":\"ImageComponent\",\"coordinates\":{\"x\":-0.255859375,\"y\":-0.4947916666666667},\"width\":300,\"height\":300,\"stimulus\":\"lwnrv-experiment/img/boat.png\"},{\"type\":\"HtmlComponent\",\"coordinates\":{\"x\":0.380859375,\"y\":-0.421875},\"width\":200,\"height\":50,\"stimulus\":\"<div id=\\\"itqe\\\" style=\\\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\\\">Hola buenas tardes</div>\"}],\nresponse_components: [{\"type\":\"ButtonResponseComponent\",\"coordinates\":{\"x\":0.01953125,\"y\":0.23697916666666666},\"width\":200,\"height\":50,\"button_html\":\"(choice, choice_index) => {\\n  const templates = [\\\"<button id=\\\\\\\"igpr\\\\\\\" style=\\\\\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #3b82f6; color: white; border: none; font-weight: 600; cursor: pointer;\\\\\\\">Option 1</button>\\\",\\\"<button id=\\\\\\\"ijxd\\\\\\\" style=\\\\\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #10b981; color: white; border: none; font-weight: 600; cursor: pointer;\\\\\\\">Option 2</button>\\\",\\\"<button id=\\\\\\\"itwi\\\\\\\" style=\\\\\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #f59e0b; color: white; border: none; font-weight: 600; cursor: pointer;\\\\\\\">Option 3</button>\\\"];\\n  return templates[choice_index] || templates[0];\\n}\",\"choices\":[\"Option 1\",\"Option 2\",\"Option 3\"]},{\"type\":\"KeyboardResponseComponent\",\"coordinates\":{\"x\":0.298828125,\"y\":0},\"width\":200,\"height\":50},{\"type\":\"SliderResponseComponent\",\"coordinates\":{\"x\":-0.302734375,\"y\":-0.0026041666666666665},\"width\":200,\"height\":50}],\nstimuli_duration: null,\ntrial_duration: null,\nresponse_ends_trial: true}];\n    const jnjildcksdsbjs_timeline = {\n    type: DynamicPlugin, components: jsPsych.timelineVariable(\"components\"),\nresponse_components: jsPsych.timelineVariable(\"response_components\"),\nstimuli_duration: jsPsych.timelineVariable(\"stimuli_duration\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial\"),\n      data: {\n        stimulus: \"stimulus\",\nresponse: \"response\",\nrt: \"rt\",\n        trial_id: 1763276792259,\n        \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        console.log('Applying custom parameters to trial:', window.branchCustomParameters);\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Handle different parameter sources\n            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n              // For typed values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n              // For CSV values, param.value contains the column name, get the actual value from trial\n              trial[key] = trial[param.value];\n              console.log(`Set trial.${key} = ${trial[param.value]} (from CSV column: ${param.value})`);\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches ni repeat conditions, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },\n    };\n    const jnjildcksdsbjs_procedure = {\n    timeline: \n    [jnjildcksdsbjs_timeline],\n    timeline_variables: test_stimuli_jnjildcksdsbjs,\n    conditional_function: function() {\n      const currentId = 1763276792259;\n      \n      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n      if (jumpToTrial) {\n        if (String(currentId) === String(jumpToTrial)) {\n          // Encontramos el trial objetivo para repeat/jump\n          console.log('Repeat/jump: Found target trial', currentId);\n          localStorage.removeItem('jsPsych_jumpToTrial');\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('Repeat/jump: Skipping trial', currentId);\n        return false;\n      }\n      \n      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(jnjildcksdsbjs_procedure);\n  ",
             "plugin": "plugin-dynamic",
             "columnMapping": {
               "components": {
@@ -30,52 +30,60 @@
                   {
                     "type": "ImageComponent",
                     "coordinates": {
-                      "x": -0.876953125,
-                      "y": -0.9192708333333334
+                      "x": -0.255859375,
+                      "y": -0.4947916666666667
                     },
                     "width": 300,
                     "height": 300,
                     "stimulus": "lwnrv-experiment/img/boat.png"
                   },
                   {
-                    "type": "ImageComponent",
+                    "type": "HtmlComponent",
                     "coordinates": {
-                      "x": -0.974609375,
-                      "y": 0.7838541666666666
+                      "x": 0.380859375,
+                      "y": -0.421875
                     },
-                    "width": 300,
-                    "height": 300,
-                    "stimulus": "lwnrv-experiment/img/boat.png"
+                    "width": 200,
+                    "height": 50,
+                    "stimulus": "<div id=\"itqe\" style=\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\">Hola buenas tardes</div>"
+                  }
+                ]
+              },
+              "response_components": {
+                "source": "typed",
+                "value": [
+                  {
+                    "type": "ButtonResponseComponent",
+                    "coordinates": {
+                      "x": 0.01953125,
+                      "y": 0.23697916666666666
+                    },
+                    "width": 200,
+                    "height": 50,
+                    "button_html": "(choice, choice_index) => {\n  const templates = [\"<button id=\\\"igpr\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #3b82f6; color: white; border: none; font-weight: 600; cursor: pointer;\\\">Option 1</button>\",\"<button id=\\\"ijxd\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #10b981; color: white; border: none; font-weight: 600; cursor: pointer;\\\">Option 2</button>\",\"<button id=\\\"itwi\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #f59e0b; color: white; border: none; font-weight: 600; cursor: pointer;\\\">Option 3</button>\"];\n  return templates[choice_index] || templates[0];\n}",
+                    "choices": [
+                      "Option 1",
+                      "Option 2",
+                      "Option 3"
+                    ]
                   },
                   {
-                    "type": "ImageComponent",
+                    "type": "KeyboardResponseComponent",
                     "coordinates": {
-                      "x": 1,
-                      "y": -0.9895833333333334
+                      "x": 0.298828125,
+                      "y": 0
                     },
-                    "width": 300,
-                    "height": 300,
-                    "stimulus": "lwnrv-experiment/img/boat.png"
+                    "width": 200,
+                    "height": 50
                   },
                   {
-                    "type": "ImageComponent",
+                    "type": "SliderResponseComponent",
                     "coordinates": {
-                      "x": 0.009765625,
-                      "y": -0.07552083333333333
+                      "x": -0.302734375,
+                      "y": -0.0026041666666666665
                     },
-                    "width": 300,
-                    "height": 300,
-                    "stimulus": "lwnrv-experiment/img/boat.png"
-                  },
-                  {
-                    "type": "ImageComponent",
-                    "coordinates": {
-                      "x": 1,
-                      "y": 0.8776041666666666
-                    },
-                    "width": 300,
-                    "height": 300,
-                    "stimulus": "lwnrv-experiment/img/boat.png"
+                    "width": 200,
+                    "height": 50
                   }
                 ]
               }
@@ -86,740 +94,26 @@
             "orderColumns": [],
             "stimuliOrders": [],
             "categories": false,
-            "categoryColumn": ""
+            "categoryColumn": "",
+            "branches": []
           }
         ]
       },
       "createdAt": "2025-11-11T23:08:35.359Z",
-      "updatedAt": "2025-11-16T07:27:32.348Z"
+      "updatedAt": "2025-11-16T08:37:33.923Z"
     }
   ],
   "configs": [
     {
       "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
       "data": {
-        "generatedCode": "\n  // --- Firebase config ---\n  const firebaseConfig = {\n    apiKey: \"AIzaSyBEbJ-uGKzsaf2u24KPamBPVZrUmvhFk-Q\",\n    authDomain: \"test-e4cf9.firebaseapp.com\",\n    databaseURL: \"http://localhost:9000?ns=test-e4cf9\",\n    projectId: \"test-e4cf9\",\n    storageBucket: \"test-e4cf9.firebasestorage.app\",\n    messagingSenderId: \"414213417080\",\n    appId: \"1:414213417080:web:98607c621a54d07656e58d\"\n  };\n\n  // --- Cargar Firebase SDK ---\n  if (typeof window.firebase === 'undefined') {\n    const script = document.createElement('script');\n    script.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';\n    script.onload = () => {\n      const dbScript = document.createElement('script');\n      dbScript.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';\n      dbScript.onload = () => { window._firebaseReady = true; };\n      document.head.appendChild(dbScript);\n    };\n    document.head.appendChild(script);\n  } else {\n    window._firebaseReady = true;\n  }\n\n  function waitForFirebase() {\n    return new Promise(resolve => {\n      if (window._firebaseReady) return resolve();\n      const interval = setInterval(() => {\n        if (window._firebaseReady) {\n          clearInterval(interval);\n          resolve();\n        }\n      }, 50);\n    });\n  }\n\n \n  const userStr = null;\n\n  const Uid = userStr.uid\n\n  const trialSessionId =\n    (crypto.randomUUID\n      ? crypto.randomUUID()\n      : Math.random().toString(36).slice(2, 10));\n\n  let participantNumber;\n\n  async function saveSession(trialSessionId) {\n    try {\n      const res = await fetch(\"http://localhost:5001/test-e4cf9/us-central1/apidata\", {\n        method: \"POST\",\n        headers: { \"Content-Type\": \"application/json\", Accept: \"*/*\" },\n        body: JSON.stringify({\n          experimentID: \"c3ac9abb-486f-4f43-a093-fd1173acea6a\",\n          experimentName: \"lwnrv\", \n          sessionId: trialSessionId,\n          storage: \"drive\",\n          uid: Uid\n        }),\n      });\n      \n      console.log('Response status:', res.status);\n      \n      if (!res.ok) {\n        const errorText = await res.text();\n        console.error('Error creating session:', errorText);\n        throw new Error(`Failed to create session: ${res.status} - ${errorText}`);\n      }\n      \n      const result = await res.json();\n      console.log('Session created successfully:', result);\n      \n      if (!result.success) {\n        if (result.message?.includes(\"INVALID_GOOGLE_DRIVE_TOKEN\") || result.message?.includes(\"Invalid Google Drive token\")) {\n          alert(\"Warning: Google Drive token not found or invalid. Please reconnect your Drive account in Settings.\");\n        } else if (result.message?.includes(\"INVALID_DROPBOX_TOKEN\") || result.message?.includes(\"Invalid Dropbox token\")) {\n          alert(\"Warning: Dropbox token not found or invalid. Please reconnect your Dropbox account in Settings.\");\n        }\n        throw new Error(result.message || 'Failed to create session');\n      }\n      \n      participantNumber = result.participantNumber;\n      return participantNumber;\n    } catch (error) {\n      console.error('Error in saveSession:', error);\n      alert('Error creating session: ' + error.message);\n      throw error;\n    }\n  }\n\n  (async () => {\n    // Limpiar el localStorage de valores de sesiones anteriores\n    localStorage.removeItem('jsPsych_jumpToTrial');\n    \n    // Esperar e inicializar Firebase\n    await waitForFirebase();\n    if (!window.firebase.apps.length) {\n      window.firebase.initializeApp(firebaseConfig);\n    }\n    const db = window.firebase.database();\n\n    participantNumber = await saveSession(trialSessionId);\n\n    if (typeof participantNumber !== \"number\" || isNaN(participantNumber)) {\n      alert(\"The participant number is not assigned. Please, wait.\");\n      throw new Error(\"participantNumber not assigned\");\n    }\n\n    // --- Configurar onDisconnect para finalizar sesión automáticamente ---\n    const sessionRef = db.ref('sessions/c3ac9abb-486f-4f43-a093-fd1173acea6a/' + trialSessionId);\n    await sessionRef.set({\n      connected: true,\n      experimentID: 'c3ac9abb-486f-4f43-a093-fd1173acea6a',\n      sessionId: trialSessionId,\n      startedAt: window.firebase.database.ServerValue.TIMESTAMP,\n      storage: 'drive'\n    });\n    \n    // Cuando se desconecte, marcar para que el backend finalice la sesión\n    // Incluir needsFinalization para que se procesen los datos en caso de desconexión\n    sessionRef.onDisconnect().update({\n      connected: false,\n      needsFinalization: true,\n      disconnectedAt: window.firebase.database.ServerValue.TIMESTAMP,\n      storage: 'drive'\n    });\n\n    // --- Branching logic functions (outside initJsPsych for timeline access) ---\n    window.nextTrialId = null;\n    window.skipRemaining = false;\n    window.branchingActive = false;\n    window.branchCustomParameters = null; // Store custom parameters for the next trial\n\n    const evaluateCondition = (trialData, condition) => {\n      // All rules in a condition must be true (AND logic)\n      return condition.rules.every(rule => {\n        const propValue = trialData[rule.prop];\n        const compareValue = rule.value;\n        \n        // Convert values for comparison\n        const numPropValue = parseFloat(propValue);\n        const numCompareValue = parseFloat(compareValue);\n        const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);\n        \n        switch (rule.op) {\n          case '==':\n            return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;\n          case '!=':\n            return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;\n          case '>':\n            return isNumeric && numPropValue > numCompareValue;\n          case '<':\n            return isNumeric && numPropValue < numCompareValue;\n          case '>=':\n            return isNumeric && numPropValue >= numCompareValue;\n          case '<=':\n            return isNumeric && numPropValue <= numCompareValue;\n          default:\n            return false;\n        }\n      });\n    };\n    \n    const getNextTrialId = (lastTrialData) => {\n      if (!lastTrialData || !lastTrialData.trials || !lastTrialData.trials[0]) {\n        return null;\n      }\n      \n      const trial = lastTrialData.trials[0];\n      \n      // Check if trial/loop has branches\n      if (!Array.isArray(trial.branches) || trial.branches.length === 0) {\n        return null;\n      }\n      \n      // Check if there are conditions to evaluate\n      const hasBranchConditions = Array.isArray(trial.branchConditions) && trial.branchConditions.length > 0;\n      \n      // Check if any condition has customParameters\n      const hasCustomParameters = hasBranchConditions && \n        trial.branchConditions.flat().some(condition => \n          condition && condition.customParameters && \n          Object.keys(condition.customParameters).length > 0\n        );\n      \n      // If there are no conditions AND no custom parameters, auto-branch to first branch\n      if (!hasBranchConditions && !hasCustomParameters) {\n        console.log('No conditions or custom parameters defined, auto-branching to first branch:', trial.branches[0]);\n        return trial.branches[0];\n      }\n      \n      // If there are no conditions but there ARE custom parameters, we can't auto-branch\n      // We need to evaluate conditions to know which customParameters to use\n      if (!hasBranchConditions && hasCustomParameters) {\n        console.log('Custom parameters exist but no conditions, cannot auto-branch');\n        return null;\n      }\n      \n      // If there ARE conditions, evaluate them (regardless of how many branches there are)\n      // branchConditions is an array of arrays, flatten it first\n      const conditions = trial.branchConditions.flat();\n      \n      // Evaluate each condition (OR logic between conditions)\n      for (const condition of conditions) {\n        if (!condition || !condition.rules) {\n          console.warn('Invalid condition structure:', condition);\n          continue;\n        }\n        \n        if (evaluateCondition(trial, condition)) {\n          console.log('Condition matched:', condition);\n          // Store custom parameters if they exist\n          if (condition.customParameters) {\n            window.branchCustomParameters = condition.customParameters;\n            console.log('Custom parameters for branch:', window.branchCustomParameters);\n          }\n          return condition.nextTrialId;\n        }\n      }\n      \n      // No condition matched - do NOT branch (conditions were defined but none matched)\n      console.log('No condition matched, NOT branching');\n      return null;\n    };\n\n    const jsPsych = initJsPsych({\n      display_element: document.getElementById('jspsych-container'),\n\n      on_trial_start: function(trial) {\n        const lastTrialData = jsPsych.data.get()\n        if (lastTrialData) {\n        trial.data.prev_response = lastTrialData.response;\n        }\n      },\n\n      \n\n      on_data_update: function (data) {\n\n        fetch(\"http://localhost:5001/test-e4cf9/us-central1/apidata\", {\n          method: \"POST\",\n          headers: { \"Content-Type\": \"application/json\", Accept: \"*/*\" },\n          body: JSON.stringify({\n            experimentID: \"c3ac9abb-486f-4f43-a093-fd1173acea6a\",\n            sessionId: trialSessionId,\n            data: data,\n            storage: \"drive\",\n          }),\n        })\n        .then(res => {\n          if (!res.ok) {\n            return res.text().then(text => {\n              console.error('Error appending data:', text);\n            });\n          }\n          return res.json();\n        })\n        .then(result => {\n          if (result && result.success) {\n            console.log('Data appended to temporary storage');\n          }\n        })\n        .catch(error => {\n          console.error('Error in on_data_update:', error);\n        });\n\n        // Solo evaluar branching si el trial/loop tiene un trial_id o loop_id válido\n        if ((!data.trial_id || data.trial_id === undefined) && (!data.loop_id || data.loop_id === undefined)) {\n          return;\n        }\n        \n        const lastTrialData = jsPsych.data.getLastTrialData();\n        const trial = lastTrialData.trials ? lastTrialData.trials[0] : null;\n        \n        // Verificar si este trial/loop tiene branches\n        if (!trial || !trial.branches || trial.branches.length === 0) {\n          return; // No tiene branches, no hay nada que hacer\n        }\n        \n        // IMPORTANTE: Si el trial está dentro de un loop (isInLoop = true),\n        // NO activar el branching global. Los trials dentro de loops usan su propio\n        // sistema de branching con variables locales (loopNextTrialId, etc.)\n        if (trial.isInLoop === true) {\n          console.log('Trial inside loop detected, skipping global branching');\n          return;\n        }\n        \n        console.log('Trial/Loop data:', lastTrialData);\n        \n        const nextTrialId = getNextTrialId(lastTrialData);\n        console.log('Next trial/loop ID:', nextTrialId);\n        \n        if (nextTrialId) {\n          // Check if nextTrialId is \"FINISH_EXPERIMENT\"\n          if (nextTrialId === 'FINISH_EXPERIMENT') {\n            console.log('Finish experiment requested');\n            jsPsych.abortExperiment('Experiment finished by branching condition', {});\n            return;\n          }\n          \n          window.nextTrialId = nextTrialId;\n          window.skipRemaining = true;\n          window.branchingActive = true;\n          console.log('Branching activated: skip to trial/loop', nextTrialId);\n        }\n      },\n\n      on_finish: async function() {\n        \n        // Cancelar el onDisconnect para evitar conflictos\n        sessionRef.onDisconnect().cancel();\n\n        // Finalizar la sesión normalmente y marcar en Firebase que terminó correctamente\n        console.log('Experiment finished normally, sending data to Google Drive...');\n        \n        try {\n          \n          // Marcar en Firebase que terminó correctamente Y necesita finalización\n          await sessionRef.update({\n            connected: false,\n            finished: true,\n            needsFinalization: true,\n            finishedAt: window.firebase.database.ServerValue.TIMESTAMP\n          });\n          \n          // El backend procesará la finalización al detectar needsFinalization=true\n          console.log('Session marked for finalization in Firebase');\n        } catch (error) {\n          console.error('Error marking session as finished:', error);\n        }\n      },\n  // Uncomment to see the json results after finishing a session experiment\n  // jsPsych.data.displayData('csv');\n});\n\nconst timeline = [];\n\nconst welcome = {\n  type: jsPsychHtmlButtonResponse,\n  stimulus: \"Welcome to the experiment. Press 'Start' to begin.\",\n  choices: ['Start'],\n};\n\ntimeline.push(welcome);\n\n\n    const test_stimuli_jnjildcksdsbjs = [{components: [{\"type\":\"ImageComponent\",\"coordinates\":{\"x\":-0.876953125,\"y\":-0.9192708333333334},\"width\":300,\"height\":300,\"stimulus\":\"lwnrv-experiment/img/boat.png\"},{\"type\":\"ImageComponent\",\"coordinates\":{\"x\":-0.974609375,\"y\":0.7838541666666666},\"width\":300,\"height\":300,\"stimulus\":\"lwnrv-experiment/img/boat.png\"},{\"type\":\"ImageComponent\",\"coordinates\":{\"x\":1,\"y\":-0.9895833333333334},\"width\":300,\"height\":300,\"stimulus\":\"lwnrv-experiment/img/boat.png\"},{\"type\":\"ImageComponent\",\"coordinates\":{\"x\":0.009765625,\"y\":-0.07552083333333333},\"width\":300,\"height\":300,\"stimulus\":\"lwnrv-experiment/img/boat.png\",\"rotation\":0},{\"type\":\"ImageComponent\",\"coordinates\":{\"x\":1,\"y\":0.8776041666666666},\"width\":300,\"height\":300,\"stimulus\":\"lwnrv-experiment/img/boat.png\"}],\nresponse_components: [],\nstimuli_duration: null,\ntrial_duration: null,\nresponse_ends_trial: true}];\n    const jnjildcksdsbjs_timeline = {\n    type: DynamicPlugin, components: jsPsych.timelineVariable(\"components\"),\nresponse_components: jsPsych.timelineVariable(\"response_components\"),\nstimuli_duration: jsPsych.timelineVariable(\"stimuli_duration\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial\"),\n      data: {\n        stimulus: \"stimulus\",\nresponse: \"response\",\nrt: \"rt\",\n        trial_id: 1763276792259,\n        \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        console.log('Applying custom parameters to trial:', window.branchCustomParameters);\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Handle different parameter sources\n            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n              // For typed values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n              // For CSV values, param.value contains the column name, get the actual value from trial\n              trial[key] = trial[param.value];\n              console.log(`Set trial.${key} = ${trial[param.value]} (from CSV column: ${param.value})`);\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches ni repeat conditions, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },\n    };\n    const jnjildcksdsbjs_procedure = {\n    timeline: \n    [jnjildcksdsbjs_timeline],\n    timeline_variables: test_stimuli_jnjildcksdsbjs,\n    conditional_function: function() {\n      const currentId = 1763276792259;\n      \n      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n      if (jumpToTrial) {\n        if (String(currentId) === String(jumpToTrial)) {\n          // Encontramos el trial objetivo para repeat/jump\n          console.log('Repeat/jump: Found target trial', currentId);\n          localStorage.removeItem('jsPsych_jumpToTrial');\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('Repeat/jump: Skipping trial', currentId);\n        return false;\n      }\n      \n      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(jnjildcksdsbjs_procedure);\n  \n\njsPsych.run(timeline);\n\n})();\n"
+        "generatedCode": "\n  // --- Firebase config ---\n  const firebaseConfig = {\n    apiKey: \"AIzaSyBEbJ-uGKzsaf2u24KPamBPVZrUmvhFk-Q\",\n    authDomain: \"test-e4cf9.firebaseapp.com\",\n    databaseURL: \"http://localhost:9000?ns=test-e4cf9\",\n    projectId: \"test-e4cf9\",\n    storageBucket: \"test-e4cf9.firebasestorage.app\",\n    messagingSenderId: \"414213417080\",\n    appId: \"1:414213417080:web:98607c621a54d07656e58d\"\n  };\n\n  // --- Cargar Firebase SDK ---\n  if (typeof window.firebase === 'undefined') {\n    const script = document.createElement('script');\n    script.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';\n    script.onload = () => {\n      const dbScript = document.createElement('script');\n      dbScript.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';\n      dbScript.onload = () => { window._firebaseReady = true; };\n      document.head.appendChild(dbScript);\n    };\n    document.head.appendChild(script);\n  } else {\n    window._firebaseReady = true;\n  }\n\n  function waitForFirebase() {\n    return new Promise(resolve => {\n      if (window._firebaseReady) return resolve();\n      const interval = setInterval(() => {\n        if (window._firebaseReady) {\n          clearInterval(interval);\n          resolve();\n        }\n      }, 50);\n    });\n  }\n\n \n  const userStr = null;\n\n  const Uid = userStr.uid\n\n  const trialSessionId =\n    (crypto.randomUUID\n      ? crypto.randomUUID()\n      : Math.random().toString(36).slice(2, 10));\n\n  let participantNumber;\n\n  async function saveSession(trialSessionId) {\n    try {\n      const res = await fetch(\"http://localhost:5001/test-e4cf9/us-central1/apidata\", {\n        method: \"POST\",\n        headers: { \"Content-Type\": \"application/json\", Accept: \"*/*\" },\n        body: JSON.stringify({\n          experimentID: \"c3ac9abb-486f-4f43-a093-fd1173acea6a\",\n          experimentName: \"lwnrv\", \n          sessionId: trialSessionId,\n          storage: \"drive\",\n          uid: Uid\n        }),\n      });\n      \n      console.log('Response status:', res.status);\n      \n      if (!res.ok) {\n        const errorText = await res.text();\n        console.error('Error creating session:', errorText);\n        throw new Error(`Failed to create session: ${res.status} - ${errorText}`);\n      }\n      \n      const result = await res.json();\n      console.log('Session created successfully:', result);\n      \n      if (!result.success) {\n        if (result.message?.includes(\"INVALID_GOOGLE_DRIVE_TOKEN\") || result.message?.includes(\"Invalid Google Drive token\")) {\n          alert(\"Warning: Google Drive token not found or invalid. Please reconnect your Drive account in Settings.\");\n        } else if (result.message?.includes(\"INVALID_DROPBOX_TOKEN\") || result.message?.includes(\"Invalid Dropbox token\")) {\n          alert(\"Warning: Dropbox token not found or invalid. Please reconnect your Dropbox account in Settings.\");\n        }\n        throw new Error(result.message || 'Failed to create session');\n      }\n      \n      participantNumber = result.participantNumber;\n      return participantNumber;\n    } catch (error) {\n      console.error('Error in saveSession:', error);\n      alert('Error creating session: ' + error.message);\n      throw error;\n    }\n  }\n\n  (async () => {\n    // Limpiar el localStorage de valores de sesiones anteriores\n    localStorage.removeItem('jsPsych_jumpToTrial');\n    \n    // Esperar e inicializar Firebase\n    await waitForFirebase();\n    if (!window.firebase.apps.length) {\n      window.firebase.initializeApp(firebaseConfig);\n    }\n    const db = window.firebase.database();\n\n    participantNumber = await saveSession(trialSessionId);\n\n    if (typeof participantNumber !== \"number\" || isNaN(participantNumber)) {\n      alert(\"The participant number is not assigned. Please, wait.\");\n      throw new Error(\"participantNumber not assigned\");\n    }\n\n    // --- Configurar onDisconnect para finalizar sesión automáticamente ---\n    const sessionRef = db.ref('sessions/c3ac9abb-486f-4f43-a093-fd1173acea6a/' + trialSessionId);\n    await sessionRef.set({\n      connected: true,\n      experimentID: 'c3ac9abb-486f-4f43-a093-fd1173acea6a',\n      sessionId: trialSessionId,\n      startedAt: window.firebase.database.ServerValue.TIMESTAMP,\n      storage: 'drive'\n    });\n    \n    // Cuando se desconecte, marcar para que el backend finalice la sesión\n    // Incluir needsFinalization para que se procesen los datos en caso de desconexión\n    sessionRef.onDisconnect().update({\n      connected: false,\n      needsFinalization: true,\n      disconnectedAt: window.firebase.database.ServerValue.TIMESTAMP,\n      storage: 'drive'\n    });\n\n    // --- Branching logic functions (outside initJsPsych for timeline access) ---\n    window.nextTrialId = null;\n    window.skipRemaining = false;\n    window.branchingActive = false;\n    window.branchCustomParameters = null; // Store custom parameters for the next trial\n\n    const evaluateCondition = (trialData, condition) => {\n      // All rules in a condition must be true (AND logic)\n      return condition.rules.every(rule => {\n        const propValue = trialData[rule.prop];\n        const compareValue = rule.value;\n        \n        // Convert values for comparison\n        const numPropValue = parseFloat(propValue);\n        const numCompareValue = parseFloat(compareValue);\n        const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);\n        \n        switch (rule.op) {\n          case '==':\n            return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;\n          case '!=':\n            return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;\n          case '>':\n            return isNumeric && numPropValue > numCompareValue;\n          case '<':\n            return isNumeric && numPropValue < numCompareValue;\n          case '>=':\n            return isNumeric && numPropValue >= numCompareValue;\n          case '<=':\n            return isNumeric && numPropValue <= numCompareValue;\n          default:\n            return false;\n        }\n      });\n    };\n    \n    const getNextTrialId = (lastTrialData) => {\n      if (!lastTrialData || !lastTrialData.trials || !lastTrialData.trials[0]) {\n        return null;\n      }\n      \n      const trial = lastTrialData.trials[0];\n      \n      // Check if trial/loop has branches\n      if (!Array.isArray(trial.branches) || trial.branches.length === 0) {\n        return null;\n      }\n      \n      // Check if there are conditions to evaluate\n      const hasBranchConditions = Array.isArray(trial.branchConditions) && trial.branchConditions.length > 0;\n      \n      // Check if any condition has customParameters\n      const hasCustomParameters = hasBranchConditions && \n        trial.branchConditions.flat().some(condition => \n          condition && condition.customParameters && \n          Object.keys(condition.customParameters).length > 0\n        );\n      \n      // If there are no conditions AND no custom parameters, auto-branch to first branch\n      if (!hasBranchConditions && !hasCustomParameters) {\n        console.log('No conditions or custom parameters defined, auto-branching to first branch:', trial.branches[0]);\n        return trial.branches[0];\n      }\n      \n      // If there are no conditions but there ARE custom parameters, we can't auto-branch\n      // We need to evaluate conditions to know which customParameters to use\n      if (!hasBranchConditions && hasCustomParameters) {\n        console.log('Custom parameters exist but no conditions, cannot auto-branch');\n        return null;\n      }\n      \n      // If there ARE conditions, evaluate them (regardless of how many branches there are)\n      // branchConditions is an array of arrays, flatten it first\n      const conditions = trial.branchConditions.flat();\n      \n      // Evaluate each condition (OR logic between conditions)\n      for (const condition of conditions) {\n        if (!condition || !condition.rules) {\n          console.warn('Invalid condition structure:', condition);\n          continue;\n        }\n        \n        if (evaluateCondition(trial, condition)) {\n          console.log('Condition matched:', condition);\n          // Store custom parameters if they exist\n          if (condition.customParameters) {\n            window.branchCustomParameters = condition.customParameters;\n            console.log('Custom parameters for branch:', window.branchCustomParameters);\n          }\n          return condition.nextTrialId;\n        }\n      }\n      \n      // No condition matched - do NOT branch (conditions were defined but none matched)\n      console.log('No condition matched, NOT branching');\n      return null;\n    };\n\n    const jsPsych = initJsPsych({\n      display_element: document.getElementById('jspsych-container'),\n\n      on_trial_start: function(trial) {\n        const lastTrialData = jsPsych.data.get()\n        if (lastTrialData) {\n        trial.data.prev_response = lastTrialData.response;\n        }\n      },\n\n      \n\n      on_data_update: function (data) {\n\n        fetch(\"http://localhost:5001/test-e4cf9/us-central1/apidata\", {\n          method: \"POST\",\n          headers: { \"Content-Type\": \"application/json\", Accept: \"*/*\" },\n          body: JSON.stringify({\n            experimentID: \"c3ac9abb-486f-4f43-a093-fd1173acea6a\",\n            sessionId: trialSessionId,\n            data: data,\n            storage: \"drive\",\n          }),\n        })\n        .then(res => {\n          if (!res.ok) {\n            return res.text().then(text => {\n              console.error('Error appending data:', text);\n            });\n          }\n          return res.json();\n        })\n        .then(result => {\n          if (result && result.success) {\n            console.log('Data appended to temporary storage');\n          }\n        })\n        .catch(error => {\n          console.error('Error in on_data_update:', error);\n        });\n\n        // Solo evaluar branching si el trial/loop tiene un trial_id o loop_id válido\n        if ((!data.trial_id || data.trial_id === undefined) && (!data.loop_id || data.loop_id === undefined)) {\n          return;\n        }\n        \n        const lastTrialData = jsPsych.data.getLastTrialData();\n        const trial = lastTrialData.trials ? lastTrialData.trials[0] : null;\n        \n        // Verificar si este trial/loop tiene branches\n        if (!trial || !trial.branches || trial.branches.length === 0) {\n          return; // No tiene branches, no hay nada que hacer\n        }\n        \n        // IMPORTANTE: Si el trial está dentro de un loop (isInLoop = true),\n        // NO activar el branching global. Los trials dentro de loops usan su propio\n        // sistema de branching con variables locales (loopNextTrialId, etc.)\n        if (trial.isInLoop === true) {\n          console.log('Trial inside loop detected, skipping global branching');\n          return;\n        }\n        \n        console.log('Trial/Loop data:', lastTrialData);\n        \n        const nextTrialId = getNextTrialId(lastTrialData);\n        console.log('Next trial/loop ID:', nextTrialId);\n        \n        if (nextTrialId) {\n          // Check if nextTrialId is \"FINISH_EXPERIMENT\"\n          if (nextTrialId === 'FINISH_EXPERIMENT') {\n            console.log('Finish experiment requested');\n            jsPsych.abortExperiment('Experiment finished by branching condition', {});\n            return;\n          }\n          \n          window.nextTrialId = nextTrialId;\n          window.skipRemaining = true;\n          window.branchingActive = true;\n          console.log('Branching activated: skip to trial/loop', nextTrialId);\n        }\n      },\n\n      on_finish: async function() {\n        \n        // Cancelar el onDisconnect para evitar conflictos\n        sessionRef.onDisconnect().cancel();\n\n        // Finalizar la sesión normalmente y marcar en Firebase que terminó correctamente\n        console.log('Experiment finished normally, sending data to Google Drive...');\n        \n        try {\n          \n          // Marcar en Firebase que terminó correctamente Y necesita finalización\n          await sessionRef.update({\n            connected: false,\n            finished: true,\n            needsFinalization: true,\n            finishedAt: window.firebase.database.ServerValue.TIMESTAMP\n          });\n          \n          // El backend procesará la finalización al detectar needsFinalization=true\n          console.log('Session marked for finalization in Firebase');\n        } catch (error) {\n          console.error('Error marking session as finished:', error);\n        }\n      },\n  // Uncomment to see the json results after finishing a session experiment\n  // jsPsych.data.displayData('csv');\n});\n\nconst timeline = [];\n\nconst welcome = {\n  type: jsPsychHtmlButtonResponse,\n  stimulus: \"Welcome to the experiment. Press 'Start' to begin.\",\n  choices: ['Start'],\n};\n\ntimeline.push(welcome);\n\n\n    const test_stimuli_jnjildcksdsbjs = [{components: [{\"type\":\"ImageComponent\",\"coordinates\":{\"x\":-0.255859375,\"y\":-0.4947916666666667},\"width\":300,\"height\":300,\"stimulus\":\"lwnrv-experiment/img/boat.png\"},{\"type\":\"HtmlComponent\",\"coordinates\":{\"x\":0.380859375,\"y\":-0.421875},\"width\":200,\"height\":50,\"stimulus\":\"<div id=\\\"itqe\\\" style=\\\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\\\">Hola buenas tardes</div>\"}],\nresponse_components: [{\"type\":\"ButtonResponseComponent\",\"coordinates\":{\"x\":0.01953125,\"y\":0.23697916666666666},\"width\":200,\"height\":50,\"button_html\":\"(choice, choice_index) => {\\n  const templates = [\\\"<button id=\\\\\\\"igpr\\\\\\\" style=\\\\\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #3b82f6; color: white; border: none; font-weight: 600; cursor: pointer;\\\\\\\">Option 1</button>\\\",\\\"<button id=\\\\\\\"ijxd\\\\\\\" style=\\\\\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #10b981; color: white; border: none; font-weight: 600; cursor: pointer;\\\\\\\">Option 2</button>\\\",\\\"<button id=\\\\\\\"itwi\\\\\\\" style=\\\\\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #f59e0b; color: white; border: none; font-weight: 600; cursor: pointer;\\\\\\\">Option 3</button>\\\"];\\n  return templates[choice_index] || templates[0];\\n}\",\"choices\":[\"Option 1\",\"Option 2\",\"Option 3\"]},{\"type\":\"KeyboardResponseComponent\",\"coordinates\":{\"x\":0.298828125,\"y\":0},\"width\":200,\"height\":50},{\"type\":\"SliderResponseComponent\",\"coordinates\":{\"x\":-0.302734375,\"y\":-0.0026041666666666665},\"width\":200,\"height\":50}],\nstimuli_duration: null,\ntrial_duration: null,\nresponse_ends_trial: true}];\n    const jnjildcksdsbjs_timeline = {\n    type: DynamicPlugin, components: jsPsych.timelineVariable(\"components\"),\nresponse_components: jsPsych.timelineVariable(\"response_components\"),\nstimuli_duration: jsPsych.timelineVariable(\"stimuli_duration\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial\"),\n      data: {\n        stimulus: \"stimulus\",\nresponse: \"response\",\nrt: \"rt\",\n        trial_id: 1763276792259,\n        \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        console.log('Applying custom parameters to trial:', window.branchCustomParameters);\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Handle different parameter sources\n            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n              // For typed values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n              // For CSV values, param.value contains the column name, get the actual value from trial\n              trial[key] = trial[param.value];\n              console.log(`Set trial.${key} = ${trial[param.value]} (from CSV column: ${param.value})`);\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches ni repeat conditions, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },\n    };\n    const jnjildcksdsbjs_procedure = {\n    timeline: \n    [jnjildcksdsbjs_timeline],\n    timeline_variables: test_stimuli_jnjildcksdsbjs,\n    conditional_function: function() {\n      const currentId = 1763276792259;\n      \n      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n      if (jumpToTrial) {\n        if (String(currentId) === String(jumpToTrial)) {\n          // Encontramos el trial objetivo para repeat/jump\n          console.log('Repeat/jump: Found target trial', currentId);\n          localStorage.removeItem('jsPsych_jumpToTrial');\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('Repeat/jump: Skipping trial', currentId);\n        return false;\n      }\n      \n      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(jnjildcksdsbjs_procedure);\n  \n\njsPsych.run(timeline);\n\n})();\n"
       },
       "isDevMode": false,
       "createdAt": "2025-11-11T23:08:07.443Z",
-      "updatedAt": "2025-11-16T07:27:26.587Z"
+      "updatedAt": "2025-11-16T08:37:37.197Z"
     }
   ],
   "pluginConfigs": [],
-  "sessionResults": [
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "90e8abc2-4071-4e6a-a058-7633593e1257",
-      "createdAt": "2025-11-16T06:42:28.696Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "102a6169-c502-4aa5-96cd-6a4264505639",
-      "createdAt": "2025-11-16T06:43:59.490Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "3b1c79d2-6d54-470d-9823-b3a4df765194",
-      "createdAt": "2025-11-16T06:44:14.972Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "8fed7b59-0467-4b05-a4c0-01f87c2213a1",
-      "createdAt": "2025-11-16T06:44:30.859Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "09c8d404-b57e-4fcf-8749-b8211cc392b3",
-      "createdAt": "2025-11-16T06:46:34.250Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "4d51b18e-9526-44e6-adcb-753fd38a4cce",
-      "createdAt": "2025-11-16T06:46:51.523Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "255a3abb-b7f0-4c70-a312-828874431e7a",
-      "createdAt": "2025-11-16T06:49:31.539Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "a96f0c53-93e0-4bb5-8102-a60762556b86",
-      "createdAt": "2025-11-16T06:51:25.667Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "d1ef34e9-7983-405f-bc93-1d39da42b9fb",
-      "createdAt": "2025-11-16T06:52:22.902Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "f97997b4-9fdd-4e7f-b378-02cb7c229a56",
-      "createdAt": "2025-11-16T06:52:55.420Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "867f9b80-7d39-4f6a-b134-24c31cc6a2ec",
-      "createdAt": "2025-11-16T06:53:08.599Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "af1773e1-00fa-4942-96fc-20c4046eeef6",
-      "createdAt": "2025-11-16T06:56:14.699Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 0,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1
-        },
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 2,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 2409
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "7b718561-ca90-4d43-882f-08f2dce66ac8",
-      "createdAt": "2025-11-16T06:56:18.399Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 0,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 0
-        },
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 2,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 749
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "qoiceds_result_3c3d0a27-7d5e-4029-8ac1-572ffe9c2a5a",
-      "createdAt": "2025-11-16T06:57:03.582Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "qoicedss_result_b83545e3-c968-466a-a853-2a8ebe01b5fb",
-      "createdAt": "2025-11-16T06:57:30.935Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "qoicedss_result_034233b7-a2c5-4a6d-9f64-cd748cdfc6b2",
-      "createdAt": "2025-11-16T06:57:32.008Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "qoicedssm_result_a1eb9476-7784-4671-aa35-1fe85d8236e4",
-      "createdAt": "2025-11-16T06:57:49.161Z",
-      "data": [
-        {
-          "rt": 801,
-          "stimulus": "Trial Preview",
-          "response": 0,
-          "trial_type": "html-button-response",
-          "trial_index": 0,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 803
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "qoicedssm_result_39a55fbf-655d-4121-9d40-f8bde240e44a",
-      "createdAt": "2025-11-16T06:57:50.275Z",
-      "data": [
-        {
-          "rt": 496,
-          "stimulus": "Trial Preview",
-          "response": 0,
-          "trial_type": "html-button-response",
-          "trial_index": 0,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 498
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "036e3b03-b97d-418c-ae0c-037ddbe879af",
-      "createdAt": "2025-11-16T06:58:51.830Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 0,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "47d52d28-3923-43a7-aaa5-3267c8515d4a",
-      "createdAt": "2025-11-16T06:58:56.977Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 0,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "Puesnos_result_6dfc0697-627c-4b69-bbe9-668b0f9c05fa",
-      "createdAt": "2025-11-16T06:59:04.326Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 541
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "Puesnos_result_c694e13c-d126-4f4e-b51d-4639bd105112",
-      "createdAt": "2025-11-16T06:59:13.477Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 864
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "Puesnos_result_d505aaca-bfb6-43a5-80d6-0f48c5e1ada4",
-      "createdAt": "2025-11-16T06:59:18.137Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "Puesnos_result_8745c1d0-6054-46af-ac37-f33e0c8481f6",
-      "createdAt": "2025-11-16T06:59:19.338Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 855
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "Puesnos_result_27a11d6d-c890-40cb-b5c0-7cbab904dc59",
-      "createdAt": "2025-11-16T06:59:28.539Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "Puesnos_result_b7f727ba-c894-42e3-8150-47021e391f99",
-      "createdAt": "2025-11-16T06:59:33.281Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 461
-        },
-        {
-          "rt": 545,
-          "response": 0,
-          "stimulus": "<div id=\"inek\" style=\"box-sizing: border-box;\">lolca</div>",
-          "trial_id": 1762902521115,
-          "branches": [
-            1763269519814
-          ],
-          "branchConditions": [
-            []
-          ],
-          "trial_type": "html-button-response",
-          "trial_index": 2,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1007
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "063059fd-bb6a-45c8-ba8e-a7a4d0be86fa",
-      "createdAt": "2025-11-16T06:59:35.739Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 0,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1
-        },
-        {
-          "rt": 1979,
-          "response": 0,
-          "stimulus": "<div id=\"inek\" style=\"box-sizing: border-box;\">lolca</div>",
-          "trial_id": 1762902521115,
-          "branches": [
-            1763269519814
-          ],
-          "branchConditions": [
-            []
-          ],
-          "trial_type": "html-button-response",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1981
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "1da4799c-20d7-4159-bcf5-8dc1480c8cc6",
-      "createdAt": "2025-11-16T07:00:03.128Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 0,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1
-        },
-        {
-          "rt": 2487,
-          "response": 0,
-          "stimulus": "<div id=\"inek\" style=\"box-sizing: border-box;\">lolca</div>",
-          "trial_id": 1762902521115,
-          "branches": [
-            1763269519814
-          ],
-          "branchConditions": [
-            []
-          ],
-          "trial_type": "html-button-response",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 2490
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "be99e193-62aa-40d0-8cc9-2f1cc0d64ce1",
-      "createdAt": "2025-11-16T07:01:11.087Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 0,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 2
-        },
-        {
-          "rt": 909,
-          "response": 0,
-          "stimulus": "<div id=\"inek\" style=\"box-sizing: border-box;\">lolca</div>",
-          "trial_id": 1762902521115,
-          "branches": [
-            1763269519814
-          ],
-          "branchConditions": [
-            []
-          ],
-          "trial_type": "html-button-response",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 913
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "528c0c62-afd6-496b-bcd1-be90885f8100",
-      "createdAt": "2025-11-16T07:06:47.344Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 0,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1
-        },
-        {
-          "rt": 1529,
-          "response": 0,
-          "stimulus": "<div id=\"inek\" style=\"box-sizing: border-box;\">lolca</div>",
-          "trial_id": 1762902521115,
-          "branches": [
-            1763269519814
-          ],
-          "branchConditions": [
-            []
-          ],
-          "trial_type": "html-button-response",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1531
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "c4e36260-cc6f-40e9-8895-0191ae2a4e92",
-      "createdAt": "2025-11-16T07:07:33.398Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 0,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1
-        },
-        {
-          "rt": 677,
-          "response": 0,
-          "stimulus": "<div id=\"inek\" style=\"box-sizing: border-box;\">lolca</div>",
-          "trial_id": 1762902521115,
-          "branches": [
-            1763269519814
-          ],
-          "branchConditions": [
-            []
-          ],
-          "trial_type": "html-button-response",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 680
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "1e2db311-31bb-41c7-9145-bdc85b5b5029",
-      "createdAt": "2025-11-16T07:07:44.981Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 0,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 2
-        },
-        {
-          "rt": 1475,
-          "response": 0,
-          "stimulus": "<div id=\"inek\" style=\"box-sizing: border-box;\">lolca</div>",
-          "trial_id": 1762902521115,
-          "branches": [
-            1763269519814
-          ],
-          "branchConditions": [
-            []
-          ],
-          "trial_type": "html-button-response",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1478
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "njil_result_67273a1e-be54-42f5-bb4d-f8cbaa219d1d",
-      "createdAt": "2025-11-16T07:16:57.256Z",
-      "data": [
-        {
-          "rt": 455,
-          "stimulus": "Trial Preview",
-          "response": 0,
-          "trial_type": "html-button-response",
-          "trial_index": 0,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 457
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "njildck_result_0e9860a9-a888-4ba8-b36f-9c53bfce7d57",
-      "createdAt": "2025-11-16T07:17:00.232Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "njildck_result_d6980f81-b9eb-4037-b2d8-6e7c05da7b02",
-      "createdAt": "2025-11-16T07:17:01.314Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "594490ba-8a31-4d41-91b8-8d5a22bc7bd8",
-      "createdAt": "2025-11-16T07:17:02.430Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 0,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1
-        },
-        {
-          "rt": 1651,
-          "response": 0,
-          "stimulus": "<div id=\"inek\" style=\"box-sizing: border-box;\">lolca</div>",
-          "trial_id": 1762902521115,
-          "branches": [
-            1763269519814
-          ],
-          "branchConditions": [
-            []
-          ],
-          "trial_type": "html-button-response",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1654
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "njildcks_result_266d4365-d576-4bd7-9f5e-8bd1c796c936",
-      "createdAt": "2025-11-16T07:17:58.040Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "njildcks_result_d51db115-02e9-430a-81ff-8700a5fd6f84",
-      "createdAt": "2025-11-16T07:17:59.075Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "40101754-94de-4121-b9d5-252554ef8fb4",
-      "createdAt": "2025-11-16T07:18:00.186Z",
-      "data": [
-        {
-          "success": true,
-          "timeout": false,
-          "failed_images": [],
-          "failed_audio": [],
-          "failed_video": [],
-          "trial_type": "preload",
-          "trial_index": 0,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 2
-        },
-        {
-          "rt": 1944,
-          "response": 0,
-          "stimulus": "<div id=\"inek\" style=\"box-sizing: border-box;\">lolca</div>",
-          "trial_id": 1762902521115,
-          "branches": [
-            1763269519814
-          ],
-          "branchConditions": [
-            []
-          ],
-          "trial_type": "html-button-response",
-          "trial_index": 1,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 1947
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "8731c74e-b8b3-403a-9c6b-14f0f305f633",
-      "createdAt": "2025-11-16T07:18:25.067Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "19bca6f6-f34c-44f8-a481-c9397d35dc07",
-      "createdAt": "2025-11-16T07:18:49.696Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "d62220b2-3e55-4efe-97aa-19cb41b65ad1",
-      "createdAt": "2025-11-16T07:19:03.170Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "9237e584-67a7-4962-ac3c-6eef6fbfa1e7",
-      "createdAt": "2025-11-16T07:19:29.817Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "a7f300c3-6982-4d1c-8ea5-bac4b3348fe4",
-      "createdAt": "2025-11-16T07:21:48.978Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "2c2e2e4d-37ff-4b18-a6a8-1ca3efa7287b",
-      "createdAt": "2025-11-16T07:24:27.447Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "5e24cba4-21c5-47bb-8ef3-29f221c01e0d",
-      "createdAt": "2025-11-16T07:25:22.715Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "jnjildcksdsbj_result_fccd43b9-16a6-4ab8-a24c-0ea8c8d6f08c",
-      "createdAt": "2025-11-16T07:26:17.691Z",
-      "data": [
-        {
-          "rt": 492,
-          "stimulus": "Trial Preview",
-          "response": 0,
-          "trial_type": "html-button-response",
-          "trial_index": 0,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 494
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "jnjildcksdsbjs_result_77776826-5526-422a-97d8-f4c3b6728365",
-      "createdAt": "2025-11-16T07:26:34.430Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "jnjildcksdsbjs_result_94cd521a-85a8-44ca-a329-2cc971e7716f",
-      "createdAt": "2025-11-16T07:26:35.461Z",
-      "data": [
-        {
-          "rt": 386,
-          "stimulus": "Trial Preview",
-          "response": 0,
-          "trial_type": "html-button-response",
-          "trial_index": 0,
-          "plugin_version": "2.1.0",
-          "time_elapsed": 388
-        }
-      ]
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "a001443c-d9f9-41a4-9179-cfaa7e370477",
-      "createdAt": "2025-11-16T07:27:10.291Z",
-      "data": []
-    },
-    {
-      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
-      "sessionId": "da4091af-caf6-4dca-a57c-ebab968489c1",
-      "createdAt": "2025-11-16T07:27:25.319Z",
-      "data": []
-    }
-  ]
+  "sessionResults": []
 }

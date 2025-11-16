@@ -430,6 +430,31 @@ app.use(
   express.static(componentsMetadataPath)
 );
 
+// Component metadata endpoint
+app.get("/api/component-metadata/:componentType", (req, res) => {
+  try {
+    const { componentType } = req.params;
+    const metadataPath = path.join(
+      __dirname,
+      "dynamicplugin",
+      "components-metadata",
+      `${componentType}-component.json`
+    );
+
+    if (!fs.existsSync(metadataPath)) {
+      return res.status(404).json({
+        error: `Metadata not found for component: ${componentType}`,
+      });
+    }
+
+    const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf-8"));
+    res.json(metadata);
+  } catch (error) {
+    console.error("Error loading component metadata:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get("/api/plugins-list", (req, res) => {
   const metadataDir = path.join(__dirname, "metadata");
   fs.readdir(metadataDir, (err, files) => {
@@ -1482,31 +1507,6 @@ app.post("/api/import-db", importDbUpload.single("dbfile"), (req, res) => {
     res.json({ success: true, message: "Database imported successfully" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Component metadata endpoint
-app.get("/api/component-metadata/:componentType", (req, res) => {
-  try {
-    const { componentType } = req.params;
-    const metadataPath = path.join(
-      __dirname,
-      "dynamicplugin",
-      "components-metadata",
-      `${componentType}-component.json`
-    );
-
-    if (!fs.existsSync(metadataPath)) {
-      return res.status(404).json({
-        error: `Metadata not found for component: ${componentType}`,
-      });
-    }
-
-    const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf-8"));
-    res.json(metadata);
-  } catch (error) {
-    console.error("Error loading component metadata:", error);
-    res.status(500).json({ error: error.message });
   }
 });
 

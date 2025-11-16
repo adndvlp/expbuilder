@@ -4,6 +4,7 @@ import { openExternal } from "../../../../../../lib/openExternal";
 import { IoIosHelpCircle } from "react-icons/io";
 import { BiEdit } from "react-icons/bi";
 import GrapesHtmlEditor from "./GrapesHtmlEditor";
+import GrapesButtonEditor from "./GrapesButtonEditor";
 import isEqual from "lodash.isequal";
 
 type Parameter = {
@@ -61,6 +62,10 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
   const [isHtmlModalOpen, setIsHtmlModalOpen] = useState(false);
   const [currentHtmlKey, setCurrentHtmlKey] = useState<string>("");
 
+  // Modal state for Button editor
+  const [isButtonModalOpen, setIsButtonModalOpen] = useState(false);
+  const [currentButtonKey, setCurrentButtonKey] = useState<string>("");
+
   const openHtmlModal = (key: string) => {
     setCurrentHtmlKey(key);
     setIsHtmlModalOpen(true);
@@ -69,6 +74,16 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
   const closeHtmlModal = () => {
     setIsHtmlModalOpen(false);
     setCurrentHtmlKey("");
+  };
+
+  const openButtonModal = (key: string) => {
+    setCurrentButtonKey(key);
+    setIsButtonModalOpen(true);
+  };
+
+  const closeButtonModal = () => {
+    setIsButtonModalOpen(false);
+    setCurrentButtonKey("");
   };
 
   const handleHtmlChange = (htmlValue: string) => {
@@ -82,6 +97,52 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
           source: "typed",
           value: isHtmlArray ? [htmlValue] : htmlValue,
         },
+      }));
+    }
+  };
+
+  const handleButtonHtmlChange = (htmlTemplate: string) => {
+    if (currentButtonKey) {
+      // Parse HTML to extract all button elements
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlTemplate, "text/html");
+      const buttons = Array.from(doc.querySelectorAll("button"));
+
+      if (buttons.length === 0) {
+        alert(
+          "No buttons found in the template. Please add at least one button."
+        );
+        return;
+      }
+
+      // Extract choices from button text content
+      const extractedChoices = buttons.map(
+        (btn) => btn.textContent?.trim() || "Button"
+      );
+
+      // Store the button elements as templates indexed by their position
+      const buttonTemplates = buttons.map((btn) => btn.outerHTML);
+
+      // Create button_html function that returns the template for each choice_index
+      const functionString = `(choice, choice_index) => {
+  const templates = ${JSON.stringify(buttonTemplates)};
+  return templates[choice_index] || templates[0];
+}`;
+
+      // Update both button_html and choices
+      setColumnMapping((prev) => ({
+        ...prev,
+        [currentButtonKey]: {
+          source: "typed",
+          value: functionString,
+        },
+        // Also update choices if they exist in the parameters
+        ...(parameters.some((p) => p.key === "choices") && {
+          choices: {
+            source: "typed",
+            value: extractedChoices,
+          },
+        }),
       }));
     }
   };
@@ -560,13 +621,42 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                       }}
                     />
                   ) : type === "function" ? (
-                    <textarea
-                      className="w-full p-2 border rounded mt-2 font-mono"
-                      rows={4}
-                      placeholder={`Type a function for ${label.toLowerCase()}`}
-                      value={typeof entry.value === "string" ? entry.value : ""}
-                      onChange={(e) => handleTypedValueChange(e.target.value)}
-                    />
+                    key === "button_html" ? (
+                      <>
+                        <div className="mt-2 flex items-center gap-2">
+                          <input
+                            type="text"
+                            className="flex-1 p-2 border rounded bg-gray-100"
+                            value={
+                              typeof entry.value === "string"
+                                ? entry.value.substring(0, 50) +
+                                  (entry.value.length > 50 ? "..." : "")
+                                : ""
+                            }
+                            readOnly
+                            placeholder="Click edit to design button template"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => openButtonModal(key)}
+                            className="px-3 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 flex items-center gap-1 transition-colors"
+                          >
+                            <BiEdit size={16} />
+                            Design Button
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <textarea
+                        className="w-full p-2 border rounded mt-2 font-mono"
+                        rows={4}
+                        placeholder={`Type a function for ${label.toLowerCase()}`}
+                        value={
+                          typeof entry.value === "string" ? entry.value : ""
+                        }
+                        onChange={(e) => handleTypedValueChange(e.target.value)}
+                      />
+                    )
                   ) : type === "object" && key === "coordinates" ? (
                     <>
                       <label className="block mt-2">x:</label>
@@ -674,6 +764,32 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
           return typeof currentValue === "string" ? currentValue : "";
         })()}
         onChange={handleHtmlChange}
+      />
+
+      {/* Button HTML Modal */}
+      <GrapesButtonEditor
+        isOpen={isButtonModalOpen}
+        onClose={closeButtonModal}
+        title={`Design Button Template - ${parameters.find((p) => p.key === currentButtonKey)?.label || ""}`}
+        value={(() => {
+          const currentValue = columnMapping[currentButtonKey]?.value;
+          if (typeof currentValue === "string") {
+            // Extract the button templates from the function string
+            // Expected format: (choice, choice_index) => { const templates = [...]; return templates[choice_index] || templates[0]; }
+            const match = currentValue.match(/const templates = (\[.*?\]);/);
+            if (match && match[1]) {
+              try {
+                const templates = JSON.parse(match[1]);
+                // Wrap buttons in a container div
+                return `<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">${templates.join("")}</div>`;
+              } catch (e) {
+                console.error("Error parsing button templates:", e);
+              }
+            }
+          }
+          return '<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;"><button style="padding:10px 20px;border-radius:6px;background:#3b82f6;color:white;border:none;font-weight:600;cursor:pointer;">Option 1</button><button style="padding:10px 20px;border-radius:6px;background:#10b981;color:white;border:none;font-weight:600;cursor:pointer;">Option 2</button><button style="padding:10px 20px;border-radius:6px;background:#f59e0b;color:white;border:none;font-weight:600;cursor:pointer;">Option 3</button></div>';
+        })()}
+        onChange={handleButtonHtmlChange}
       />
     </div>
   );

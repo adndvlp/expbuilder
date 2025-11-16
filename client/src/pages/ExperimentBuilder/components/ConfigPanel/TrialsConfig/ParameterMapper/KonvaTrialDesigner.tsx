@@ -5,7 +5,7 @@ import React, {
   useMemo,
   useCallback,
 } from "react";
-import { Stage, Layer, Rect, Text } from "react-konva";
+import { Stage, Layer, Rect } from "react-konva";
 import Konva from "konva";
 import Modal from "./Modal";
 import { useExperimentID } from "../../../../hooks/useExperimentID";
@@ -14,6 +14,9 @@ import {
   VideoComponent,
   AudioComponent,
   HtmlComponent,
+  ButtonResponseComponent,
+  KeyboardResponseComponent,
+  SliderResponseComponent,
 } from "./VisualComponents";
 import ParameterMapper from "./index";
 import { useComponentMetadata } from "../hooks/useComponentMetadata";
@@ -732,37 +735,13 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
 
       case "ButtonResponseComponent":
         return (
-          <React.Fragment key={comp.id}>
-            <Rect
-              id={comp.id}
-              x={comp.x}
-              y={comp.y}
-              width={comp.width}
-              height={comp.height}
-              fill="#3b82f6"
-              stroke={isSelected ? "#1d4ed8" : "#60a5fa"}
-              strokeWidth={isSelected ? 3 : 1}
-              cornerRadius={8}
-              draggable
-              onClick={() => handleSelect(comp.id)}
-              onDragEnd={(e) => handleDragEnd(comp.id, e)}
-              offsetX={comp.width / 2}
-              offsetY={comp.height / 2}
-            />
-            <Text
-              text="Button Response"
-              x={comp.x}
-              y={comp.y}
-              width={comp.width}
-              align="center"
-              verticalAlign="middle"
-              fontSize={14}
-              fill="#ffffff"
-              offsetX={comp.width / 2}
-              offsetY={comp.height / 2}
-              listening={false}
-            />
-          </React.Fragment>
+          <ButtonResponseComponent
+            key={comp.id}
+            shapeProps={comp}
+            isSelected={isSelected}
+            onSelect={() => handleSelect(comp.id)}
+            onChange={handleComponentChange}
+          />
         );
 
       case "HtmlComponent":
@@ -800,72 +779,24 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
 
       case "KeyboardResponseComponent":
         return (
-          <React.Fragment key={comp.id}>
-            <Rect
-              id={comp.id}
-              x={comp.x}
-              y={comp.y}
-              width={comp.width}
-              height={comp.height}
-              fill="#dbeafe"
-              stroke={isSelected ? "#2563eb" : "#93c5fd"}
-              strokeWidth={isSelected ? 3 : 1}
-              cornerRadius={6}
-              draggable
-              onClick={() => handleSelect(comp.id)}
-              onDragEnd={(e) => handleDragEnd(comp.id, e)}
-              offsetX={comp.width / 2}
-              offsetY={comp.height / 2}
-            />
-            <Text
-              text="⌨ Keyboard Response"
-              x={comp.x}
-              y={comp.y}
-              width={comp.width}
-              align="center"
-              verticalAlign="middle"
-              fontSize={14}
-              fill="#1e40af"
-              offsetX={comp.width / 2}
-              offsetY={comp.height / 2}
-              listening={false}
-            />
-          </React.Fragment>
+          <KeyboardResponseComponent
+            key={comp.id}
+            shapeProps={comp}
+            isSelected={isSelected}
+            onSelect={() => handleSelect(comp.id)}
+            onChange={handleComponentChange}
+          />
         );
 
       case "SliderResponseComponent":
         return (
-          <React.Fragment key={comp.id}>
-            <Rect
-              id={comp.id}
-              x={comp.x}
-              y={comp.y}
-              width={comp.width}
-              height={comp.height}
-              fill="#f3e8ff"
-              stroke={isSelected ? "#9333ea" : "#c4b5fd"}
-              strokeWidth={isSelected ? 3 : 1}
-              cornerRadius={4}
-              draggable
-              onClick={() => handleSelect(comp.id)}
-              onDragEnd={(e) => handleDragEnd(comp.id, e)}
-              offsetX={comp.width / 2}
-              offsetY={comp.height / 2}
-            />
-            <Text
-              text="━━━●━━━ Slider"
-              x={comp.x}
-              y={comp.y}
-              width={comp.width}
-              align="center"
-              verticalAlign="middle"
-              fontSize={14}
-              fill="#6b21a8"
-              offsetX={comp.width / 2}
-              offsetY={comp.height / 2}
-              listening={false}
-            />
-          </React.Fragment>
+          <SliderResponseComponent
+            key={comp.id}
+            shapeProps={comp}
+            isSelected={isSelected}
+            onSelect={() => handleSelect(comp.id)}
+            onChange={handleComponentChange}
+          />
         );
 
       default:
