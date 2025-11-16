@@ -7,7 +7,7 @@ const info = {
   version,
   parameters: {
     /** The HTML content to be displayed. */
-    stimulus_html: {
+    stimulus: {
       type: ParameterType.HTML_STRING,
       default: void 0,
     },
@@ -64,7 +64,7 @@ class HtmlComponent {
     stimulusElement.style.top = `calc(50% + ${yVh}vh)`;
     stimulusElement.style.transform = "translate(-50%, -50%)";
 
-    stimulusElement.innerHTML = config.stimulus_html;
+    stimulusElement.innerHTML = config.stimulus;
     container.appendChild(stimulusElement);
     this.stimulusElement = stimulusElement;
 

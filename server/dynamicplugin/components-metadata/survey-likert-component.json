@@ -1,0 +1,44 @@
+{
+  "name": "SurveyLikertComponent",
+  "version": "2.1.0",
+  "parameters": {
+    "questions": {
+      "type": "object_array"
+    },
+    "randomize_question_order": {
+      "type": "boolean",
+      "default": false
+    },
+    "preamble": {
+      "type": "html_string",
+      "default": null
+    },
+    "scale_width": {
+      "type": "number",
+      "default": null
+    },
+    "button_label": {
+      "type": "string",
+      "default": "Continue"
+    },
+    "autocomplete": {
+      "type": "boolean",
+      "default": false
+    },
+    "coordinates": {
+      "type": "object",
+      "default": "{ x: 0, y: 0 }"
+    }
+  },
+  "data": {
+    "response": {
+      "type": "object"
+    },
+    "rt": {
+      "type": "number"
+    },
+    "question_order": {
+      "type": "number_array"
+    }
+  }
+}

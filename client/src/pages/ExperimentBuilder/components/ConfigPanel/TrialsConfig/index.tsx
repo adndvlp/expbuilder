@@ -1,7 +1,7 @@
-// src/components/Plugin.tsx
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import useTrials from "../../../hooks/useTrials";
 import { usePluginParameters } from "../hooks/usePluginParameters";
+import Switch from "react-switch";
 import FileUploader from "./FileUploader";
 import TrialMetaConfig from "./TrialMetaConfig";
 import CsvUploader from "./CsvUploader";
@@ -19,6 +19,8 @@ import isEqual from "lodash.isequal";
 import { Trial } from "../types";
 import { useTrialOrders } from "./hooks/useTrialOrders";
 import TrialOrders from "./TrialOrders";
+import KonvaTrialDesigner from "./ParameterMapper/KonvaTrialDesigner";
+import { MdEdit } from "react-icons/md";
 
 type Props = { pluginName: string };
 
@@ -38,6 +40,16 @@ function TrialsConfig({ pluginName }: Props) {
 
   const { columnMapping, setColumnMapping } = useColumnMapping({});
   const { parameters, data } = usePluginParameters(pluginName);
+
+  // Memoize filtered parameters to avoid infinite re-renders
+  const filteredDynamicPluginParameters = useMemo(
+    () =>
+      parameters.filter(
+        (p) => !["components", "response_components"].includes(p.key)
+      ),
+    [parameters]
+  );
+
   const {
     extensions,
     includesExtensions,
@@ -250,6 +262,12 @@ function TrialsConfig({ pluginName }: Props) {
 
   const isTrialInLoop = !!selectedTrial?.csvFromLoop;
 
+  // Detect if this is the dynamic plugin
+  const isDynamicPlugin = pluginName === "plugin-dynamic";
+  const [showKonvaDesigner, setShowKonvaDesigner] = useState(false);
+  const [dynamicPluginTab, setDynamicPluginTab] = useState<
+    "components" | "general"
+  >("components");
   const { genTrialCode } = useTrialCode({
     id: selectedTrial?.id,
     branches: selectedTrial?.branches,
@@ -382,6 +400,7 @@ function TrialsConfig({ pluginName }: Props) {
       if (result.found) {
         setTrials(result.updated);
         setSelectedTrial(updatedTrial);
+        console.log(updatedTrial);
       }
 
       // less intrusve indicator
@@ -422,8 +441,9 @@ function TrialsConfig({ pluginName }: Props) {
   return (
     <div id="plugin-config">
       <div className="mb-1 input-section p-4 border rounded">
-        <h4 className="text-lg font-bold mb-3"> {pluginName} </h4>
-
+        {!isDynamicPlugin && (
+          <h4 className="text-lg font-bold mb-3"> {pluginName} </h4>
+        )}
         {/* Indicador de guardado */}
         <div
           style={{
@@ -445,7 +465,6 @@ function TrialsConfig({ pluginName }: Props) {
         >
           ✓ Saved Trial
         </div>
-
         {/* Trial name */}
         <TrialMetaConfig
           trialName={trialName}
@@ -455,17 +474,37 @@ function TrialsConfig({ pluginName }: Props) {
           setTrials={setTrials}
           setSelectedTrial={setSelectedTrial}
         />
-
         {/* CSV and XLSX section */}
         {selectedTrial?.csvFromLoop ? (
-          <div>
-            <label>
-              <input
-                type="checkbox"
-                checked={selectedTrial.csvFromLoop}
-                disabled
-                style={{ marginRight: 8 }}
-              />
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              marginBottom: "16px",
+              padding: "12px 16px",
+              backgroundColor: "var(--neutral-light)",
+              borderRadius: "8px",
+              border: "1px solid var(--neutral-mid)",
+            }}
+          >
+            <Switch
+              checked={selectedTrial.csvFromLoop}
+              onChange={() => {}}
+              disabled={true}
+              onColor="#3d92b4"
+              offColor="#cccccc"
+              onHandleColor="#ffffff"
+              offHandleColor="#ffffff"
+              handleDiameter={24}
+              uncheckedIcon={false}
+              checkedIcon={false}
+              height={20}
+              width={44}
+            />
+            <label
+              style={{ margin: 0, fontWeight: 500, color: "var(--text-dark)" }}
+            >
               Using CSV from loop
             </label>
           </div>
@@ -476,7 +515,6 @@ function TrialsConfig({ pluginName }: Props) {
             onDeleteCSV={deleteCsv}
           />
         )}
-
         {/* File section */}
         {needsFileUpload && (
           <div className="mb-4">
@@ -491,18 +529,85 @@ function TrialsConfig({ pluginName }: Props) {
             />
           </div>
         )}
-
         {/* Branched Trial moved to Canvas modal */}
-
         {/* Parameter section */}
-        <ParameterMapper
-          pluginName={pluginName}
-          parameters={parameters}
-          columnMapping={columnMapping}
-          setColumnMapping={setColumnMapping}
-          csvColumns={csvColumns}
-        />
+        {isDynamicPlugin ? (
+          <div className="mb-4">
+            {/* Tab Navigation */}
+            <div className="flex gap-1 mb-3">
+              <button
+                type="button"
+                onClick={() => setDynamicPluginTab("components")}
+                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                  dynamicPluginTab === "components"
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+              >
+                Components
+              </button>
+              <button
+                type="button"
+                onClick={() => setDynamicPluginTab("general")}
+                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                  dynamicPluginTab === "general"
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+              >
+                General Settings
+              </button>
+            </div>
 
+            {/* Tab Content */}
+            {dynamicPluginTab === "components" ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowKonvaDesigner(true)}
+                  className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs font-medium transition-colors inline-flex items-center gap-1.5"
+                >
+                  <MdEdit className="text-sm" />
+                  Open Visual Designer
+                </button>
+
+                <KonvaTrialDesigner
+                  isOpen={showKonvaDesigner}
+                  onClose={() => setShowKonvaDesigner(false)}
+                  onSave={(config) => {
+                    // Update columnMapping with the configuration from Konva designer
+                    setColumnMapping((prev) => ({
+                      ...prev,
+                      ...config,
+                    }));
+                    setShowKonvaDesigner(false);
+                  }}
+                  parameters={parameters}
+                  columnMapping={columnMapping}
+                  setColumnMapping={setColumnMapping}
+                  csvColumns={csvColumns}
+                  pluginName={pluginName}
+                />
+              </>
+            ) : (
+              <ParameterMapper
+                pluginName={pluginName}
+                parameters={filteredDynamicPluginParameters}
+                columnMapping={columnMapping}
+                setColumnMapping={setColumnMapping}
+                csvColumns={csvColumns}
+              />
+            )}
+          </div>
+        ) : (
+          <ParameterMapper
+            pluginName={pluginName}
+            parameters={parameters}
+            columnMapping={columnMapping}
+            setColumnMapping={setColumnMapping}
+            csvColumns={csvColumns}
+          />
+        )}{" "}
         <TrialOrders
           orders={orders}
           setOrders={setOrders}
@@ -517,7 +622,6 @@ function TrialsConfig({ pluginName }: Props) {
           categoryColumn={categoryColumn}
           mapCategoriesFromCsv={mapCategoriesFromCsv}
         ></TrialOrders>
-
         {/* Extensions */}
         <ExtensionsConfig
           parameters={parameters}

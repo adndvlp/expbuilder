@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { Rect, Text, Group } from "react-konva";
 import Konva from "konva";
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface TrialComponent {
   id: string;
@@ -28,8 +29,18 @@ const AudioComponent: React.FC<AudioComponentProps> = ({
 }) => {
   const groupRef = useRef<Konva.Group>(null);
 
+  // Extract the actual value from the config structure
+  const getConfigValue = (key: string) => {
+    const config = shapeProps.config[key];
+    if (!config) return null;
+    if (config.source === "typed" || config.source === "csv") {
+      return config.value;
+    }
+    return config; // fallback for direct values
+  };
+
   // Extract filename from URL
-  const audioUrl = shapeProps.config.stimulus_audio || "";
+  const audioUrl = getConfigValue("stimulus") || "";
   const filename = audioUrl.split("/").pop() || "Audio";
 
   return (

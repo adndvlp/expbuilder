@@ -12,7 +12,7 @@ const info = {
      * Usually .mp4 is a safe cross-browser option. The plugin does not reliably support .mov files. The player will use the
      * first source file in the array that is compatible with the browser, so specify the files in order of preference.
      */
-    stimulus_video: {
+    stimulus: {
       type: ParameterType.VIDEO,
       default: void 0,
       array: true,
@@ -21,19 +21,19 @@ const info = {
     /** The width of the video display in pixels. If `null`, the video will take the original video's dimensions,
      * or properly scaled with the aspect ratio if the height is also specified.
      */
-    width_video: {
+    width: {
       type: ParameterType.INT,
       default: null,
     },
     /** The height of the video display in pixels. If `null`, the video will take the original video's dimensions,
      * or properly scaled with the aspect ratio if the width is also specified.
      */
-    height_video: {
+    height: {
       type: ParameterType.INT,
       default: null,
     },
     /** If true, the video will begin playing as soon as it has loaded. */
-    autoplay_video: {
+    autoplay: {
       type: ParameterType.BOOL,
       pretty_name: "Autoplay",
       default: true,
@@ -41,22 +41,22 @@ const info = {
     /** If true, controls for the video player will be available to the participant. They will be able to pause
      * the video or move the playback to any point in the video.
      */
-    controls_video: {
+    controls: {
       type: ParameterType.BOOL,
       default: false,
     },
     /** Time to start the clip. If `null` (default), video will start at the beginning of the file. */
-    start_video: {
+    start: {
       type: ParameterType.FLOAT,
       default: null,
     },
     /** Time to stop the clip. If `null` (default), video will stop at the end of the file. */
-    stop_video: {
+    stop: {
       type: ParameterType.FLOAT,
       default: null,
     },
     /** The playback rate of the video. 1 is normal, <1 is slower, >1 is faster. */
-    rate_video: {
+    rate: {
       type: ParameterType.FLOAT,
       default: 1,
     },
@@ -126,38 +126,38 @@ class VideoComponent {
     videoElement.setAttribute("playsinline", ""); // Required for iOS
 
     // Set video dimensions - if not specified, video will use natural dimensions
-    if (config.width_video) {
-      videoElement.width = config.width_video;
+    if (config.width) {
+      videoElement.width = config.width;
     }
-    if (config.height_video) {
-      videoElement.height = config.height_video;
+    if (config.height) {
+      videoElement.height = config.height;
     }
 
     // Set video controls
     videoElement.controls =
-      config.controls_video !== undefined ? config.controls_video : false;
+      config.controls !== undefined ? config.controls : false;
 
     // Set autoplay - default to true if not specified
     const shouldAutoplay =
-      config.autoplay_video !== undefined ? config.autoplay_video : true;
+      config.autoplay !== undefined ? config.autoplay : true;
 
     // Hide video initially if start time is specified and valid
     if (
-      config.start_video != null &&
-      typeof config.start_video === "number" &&
-      !isNaN(config.start_video)
+      config.start != null &&
+      typeof config.start === "number" &&
+      !isNaN(config.start)
     ) {
       videoElement.style.visibility = "hidden";
     }
 
     // Check for preloaded video buffer
     const videoPreloadBlob = this.jsPsych.pluginAPI.getVideoBuffer(
-      config.stimulus_video[0]
+      config.stimulus[0]
     );
 
     if (!videoPreloadBlob) {
       // Add video sources
-      for (let filename of config.stimulus_video) {
+      for (let filename of config.stimulus) {
         if (filename.indexOf("?") > -1) {
           filename = filename.substring(0, filename.indexOf("?"));
         }
@@ -181,10 +181,10 @@ class VideoComponent {
     }
 
     // Set playback rate
-    videoElement.playbackRate = config.rate_video || 1;
+    videoElement.playbackRate = config.rate || 1;
 
-    // Attempt to play if autoplay is enabled and no start_video
-    if (shouldAutoplay && config.start_video == null) {
+    // Attempt to play if autoplay is enabled and no start
+    if (shouldAutoplay && config.start == null) {
       // Use loadeddata event to ensure video is ready before playing
       videoElement.addEventListener(
         "loadeddata",
@@ -222,15 +222,15 @@ class VideoComponent {
 
     // Handle start time - only if explicitly set to a valid number
     if (
-      config.start_video != null &&
-      typeof config.start_video === "number" &&
-      !isNaN(config.start_video)
+      config.start != null &&
+      typeof config.start === "number" &&
+      !isNaN(config.start)
     ) {
       videoElement.pause();
       videoElement.onseeked = () => {
         videoElement.style.visibility = "visible";
         videoElement.muted = false;
-        if (config.autoplay_video) {
+        if (config.autoplay) {
           videoElement.play();
         } else {
           videoElement.pause();
@@ -238,7 +238,7 @@ class VideoComponent {
         videoElement.onseeked = () => {};
       };
       videoElement.onplaying = () => {
-        videoElement.currentTime = config.start_video;
+        videoElement.currentTime = config.start;
         videoElement.onplaying = () => {};
       };
       videoElement.muted = true;
@@ -247,12 +247,12 @@ class VideoComponent {
 
     // Handle stop time - only if explicitly set to a valid number
     if (
-      config.stop_video != null &&
-      typeof config.stop_video === "number" &&
-      !isNaN(config.stop_video)
+      config.stop != null &&
+      typeof config.stop === "number" &&
+      !isNaN(config.stop)
     ) {
       videoElement.addEventListener("timeupdate", () => {
-        if (videoElement.currentTime >= config.stop_video && !this.stopped) {
+        if (videoElement.currentTime >= config.stop && !this.stopped) {
           this.stopped = true;
           videoElement.pause();
         }

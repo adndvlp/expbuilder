@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import Switch from "react-switch";
 import TrialOrders from "../TrialOrders";
 import CsvUploader from "../CsvUploader";
 import { useCsvData } from "../hooks/useCsvData";
@@ -631,14 +632,19 @@ function LoopsConfig({ loop }: Props) {
               style={{ width: "100%" }}
             />
           </div>
-          <div className="flex items-center">
-            <div className="font-bold mr-2">Randomize</div>
-            <input
-              type="checkbox"
+          <div className="flex items-center" style={{ gap: "12px" }}>
+            <Switch
               checked={randomize}
-              onChange={(e) => setRandomize(e.target.checked)}
-              className="ml-2"
+              onChange={(checked) => setRandomize(checked)}
+              onColor="#3d92b4"
+              onHandleColor="#ffffff"
+              handleDiameter={24}
+              uncheckedIcon={false}
+              checkedIcon={false}
+              height={20}
+              width={44}
             />
+            <div className="font-bold">Randomize</div>
           </div>
         </div>
 
@@ -651,17 +657,21 @@ function LoopsConfig({ loop }: Props) {
                 Make this loop repeat based on trial data
               </p>
             </div>
-            <input
-              type="checkbox"
+            <Switch
               checked={isConditionalLoop}
-              onChange={(e) => {
-                const checked = e.target.checked;
+              onChange={(checked) => {
                 setIsConditionalLoop(checked);
                 if (!checked) {
                   setLoopConditions([]);
                 }
               }}
-              className="ml-2"
+              onColor="#3d92b4"
+              onHandleColor="#ffffff"
+              handleDiameter={24}
+              uncheckedIcon={false}
+              checkedIcon={false}
+              height={20}
+              width={44}
             />
           </div>
 

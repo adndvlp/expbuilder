@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Image as KonvaImage, Transformer } from "react-konva";
 import Konva from "konva";
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface TrialComponent {
   id: string;
@@ -31,10 +32,19 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
   const [videoImage, setVideoImage] = useState<HTMLImageElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
+  // Extract the actual value from the config structure
+  const getConfigValue = (key: string) => {
+    const config = shapeProps.config[key];
+    if (!config) return null;
+    if (config.source === "typed" || config.source === "csv") {
+      return config.value;
+    }
+    return config; // fallback for direct values
+  };
+
   useEffect(() => {
-    const videoUrl = Array.isArray(shapeProps.config.stimulus_video)
-      ? shapeProps.config.stimulus_video[0]
-      : shapeProps.config.stimulus_video;
+    const videoValue = getConfigValue("stimulus");
+    const videoUrl = Array.isArray(videoValue) ? videoValue[0] : videoValue;
 
     if (!videoUrl) return;
 
@@ -42,7 +52,7 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
     video.crossOrigin = "anonymous";
     video.src = videoUrl.startsWith("http")
       ? videoUrl
-      : `http://localhost:3000/${videoUrl}`;
+      : `${API_URL}/${videoUrl}`;
     videoRef.current = video;
 
     video.addEventListener("loadeddata", () => {
@@ -68,7 +78,7 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
         videoRef.current.src = "";
       }
     };
-  }, [shapeProps.config.stimulus_video]);
+  }, [shapeProps.config.stimulus]);
 
   useEffect(() => {
     if (isSelected && trRef.current && shapeRef.current) {

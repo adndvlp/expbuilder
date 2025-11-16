@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { Image as KonvaImage, Transformer } from "react-konva";
 import Konva from "konva";
 import useImage from "use-image";
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface TrialComponent {
   id: string;
@@ -29,9 +30,24 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
 }) => {
   const shapeRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
-  const [image] = useImage(
-    shapeProps.config.stimulus_image || "https://via.placeholder.com/300x200"
-  );
+
+  // Extract the actual value from the config structure
+  const getConfigValue = (key: string) => {
+    const config = shapeProps.config[key];
+    if (!config) return null;
+    if (config.source === "typed" || config.source === "csv") {
+      return config.value;
+    }
+    return config; // fallback for direct values
+  };
+
+  let imageUrl =
+    getConfigValue("stimulus") || "https://via.placeholder.com/300x200";
+  // Add http://localhost:3000/ prefix if not already present
+  if (imageUrl && !imageUrl.startsWith("http")) {
+    imageUrl = `${API_URL}/${imageUrl}`;
+  }
+  const [image] = useImage(imageUrl);
 
   useEffect(() => {
     if (isSelected && trRef.current && shapeRef.current) {

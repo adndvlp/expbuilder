@@ -1,0 +1,17 @@
+{
+  "name": "AudioComponent",
+  "version": "2.1.0",
+  "parameters": {
+    "stimulus": {
+      "type": "string"
+    },
+    "show_controls": {
+      "type": "boolean",
+      "default": false
+    },
+    "autoplay": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

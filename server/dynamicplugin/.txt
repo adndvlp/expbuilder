@@ -1,3 +1,4 @@
+uso deseado
 var test_stimuli_trial1 = [
     { components: ["image", "audio", "video"],  stimulus: [ "img/blue.png", "aud/elaudio", "vid/uno"],  responses: ['All_keys', 0, 1]},
     { components: ["image", "video"], stimulus: ["img/orange.png", "vid/uno"],  responses: ['j', 0]}

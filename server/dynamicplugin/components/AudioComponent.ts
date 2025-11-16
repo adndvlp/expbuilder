@@ -7,17 +7,17 @@ const info = {
   version,
   parameters: {
     /** Path to audio file to be played. */
-    stimulus_audio: {
+    stimulus: {
       type: ParameterType.AUDIO,
       default: void 0,
     },
     /** If true, show audio controls (play/pause/volume). */
-    show_controls_audio: {
+    show_controls: {
       type: ParameterType.BOOL,
       default: false,
     },
     /** If true, audio will start playing as soon as it loads. */
-    autoplay_audio: {
+    autoplay: {
       type: ParameterType.BOOL,
       default: true,
     },
@@ -58,12 +58,10 @@ class AudioComponent {
     config: any
   ): Promise<HTMLElement | null> {
     // Get audio player from jsPsych
-    this.audio = await this.jsPsych.pluginAPI.getAudioPlayer(
-      config.stimulus_audio
-    );
+    this.audio = await this.jsPsych.pluginAPI.getAudioPlayer(config.stimulus);
 
     // Only create visible element if controls are requested
-    if (config.show_controls_audio) {
+    if (config.show_controls) {
       const audioElement = document.createElement("div");
       audioElement.id = "jspsych-dynamic-audio-component";
       audioElement.className = "dynamic-audio-component";
@@ -81,7 +79,7 @@ class AudioComponent {
 
     // Start playback if autoplay is enabled - default to true
     const shouldAutoplay =
-      config.autoplay_audio !== undefined ? config.autoplay_audio : true;
+      config.autoplay !== undefined ? config.autoplay : true;
     if (shouldAutoplay && this.audio) {
       try {
         await this.audio.play();

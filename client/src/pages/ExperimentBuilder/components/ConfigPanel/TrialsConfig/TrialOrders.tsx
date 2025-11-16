@@ -1,4 +1,5 @@
 import React from "react";
+import Switch from "react-switch";
 
 type Props = {
   orders: boolean;
@@ -44,13 +45,19 @@ function TrialOrders({
   return (
     <div className="mb-4 p-4 border rounded bg-gray-50">
       <div className="flex items-center">
-        <div>
-          <h6>Set orders</h6>
-          <input
-            type="checkbox"
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <Switch
             checked={orders}
-            onChange={(e) => setOrders(e.target.checked)}
+            onChange={(checked) => setOrders(checked)}
+            onColor="#3d92b4"
+            onHandleColor="#ffffff"
+            handleDiameter={24}
+            uncheckedIcon={false}
+            checkedIcon={false}
+            height={20}
+            width={44}
           />
+          <h6 style={{ margin: 0 }}>Set orders</h6>
         </div>
         {orders && (
           <div className="ml-4">
@@ -70,13 +77,22 @@ function TrialOrders({
             </select>
           </div>
         )}
-        <div className="ml-8">
-          <h6>Set category column</h6>
-          <input
-            type="checkbox"
+        <div
+          className="ml-8"
+          style={{ display: "flex", alignItems: "center", gap: "12px" }}
+        >
+          <Switch
             checked={categories}
-            onChange={(e) => setCategories(e.target.checked)}
+            onChange={(checked) => setCategories(checked)}
+            onColor="#3d92b4"
+            onHandleColor="#ffffff"
+            handleDiameter={24}
+            uncheckedIcon={false}
+            checkedIcon={false}
+            height={20}
+            width={44}
           />
+          <h6 style={{ margin: 0 }}>Set category column</h6>
         </div>
         {categories && (
           <div className="ml-4">

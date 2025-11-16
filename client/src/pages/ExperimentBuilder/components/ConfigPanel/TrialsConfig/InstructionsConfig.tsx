@@ -1,4 +1,5 @@
 import React from "react";
+import Switch from "react-switch";
 
 type InstructionField = {
   label: string;
@@ -31,15 +32,31 @@ const InstructionsConfig: React.FC<InstructionsConfigProps> = ({
   csvColumns,
 }) => (
   <div className="mb-4 p-4 border rounded bg-gray-50">
-    <div className="flex items-center">
-      <input
-        type="checkbox"
-        id="includeInstructions"
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        marginBottom: "12px",
+      }}
+    >
+      <Switch
         checked={includeInstructions}
-        onChange={(e) => setIncludeInstructions(e.target.checked)}
-        className="mr-2"
+        onChange={(checked) => setIncludeInstructions(checked)}
+        onColor="#3d92b4"
+        onHandleColor="#ffffff"
+        handleDiameter={24}
+        uncheckedIcon={false}
+        checkedIcon={false}
+        height={20}
+        width={44}
+        id="includeInstructions"
       />
-      <label htmlFor="includeInstructions" className="font-bold">
+      <label
+        htmlFor="includeInstructions"
+        className="font-bold"
+        style={{ margin: 0 }}
+      >
         Include instructions
       </label>
     </div>
@@ -73,10 +90,10 @@ const InstructionsConfig: React.FC<InstructionsConfigProps> = ({
                       entry.source === "typed"
                         ? "type_value"
                         : entry.source === "csv" &&
-                          (typeof entry.value === "string" ||
-                            typeof entry.value === "number")
-                        ? entry.value
-                        : ""
+                            (typeof entry.value === "string" ||
+                              typeof entry.value === "number")
+                          ? entry.value
+                          : ""
                     }
                     onChange={(e) => {
                       const value = e.target.value;
@@ -84,8 +101,8 @@ const InstructionsConfig: React.FC<InstructionsConfigProps> = ({
                         value === "type_value"
                           ? "typed"
                           : value === ""
-                          ? "none"
-                          : "csv";
+                            ? "none"
+                            : "csv";
 
                       setColumnMapping((prev) => ({
                         ...prev,
@@ -110,14 +127,18 @@ const InstructionsConfig: React.FC<InstructionsConfigProps> = ({
                     <>
                       {type === "boolean" ? (
                         <div className="mt-2 flex items-center gap-2">
-                          <input
-                            type="checkbox"
+                          <Switch
                             checked={entry.value === "true"}
-                            onChange={(e) =>
-                              handleTypedValueChange(
-                                e.target.checked.toString()
-                              )
+                            onChange={(checked) =>
+                              handleTypedValueChange(checked.toString())
                             }
+                            onColor="#3d92b4"
+                            onHandleColor="#ffffff"
+                            handleDiameter={24}
+                            uncheckedIcon={false}
+                            checkedIcon={false}
+                            height={20}
+                            width={44}
                           />
                           <span>True / False</span>
                         </div>

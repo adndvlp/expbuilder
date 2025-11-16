@@ -1,0 +1,106 @@
+{
+  "name": "SketchpadComponent",
+  "version": "2.1.0",
+  "parameters": {
+    "canvas_shape": {
+      "type": "string",
+      "default": "rectangle"
+    },
+    "canvas_width": {
+      "type": "number",
+      "default": 500
+    },
+    "canvas_height": {
+      "type": "number",
+      "default": 500
+    },
+    "canvas_diameter": {
+      "type": "number",
+      "default": 500
+    },
+    "canvas_border_width": {
+      "type": "number",
+      "default": 0
+    },
+    "canvas_border_color": {
+      "type": "string",
+      "default": "#000"
+    },
+    "background_image": {
+      "type": "string",
+      "default": null
+    },
+    "background_color": {
+      "type": "string",
+      "default": "#ffffff"
+    },
+    "stroke_width": {
+      "type": "number",
+      "default": 2
+    },
+    "stroke_color": {
+      "type": "string",
+      "default": "#000000"
+    },
+    "stroke_color_palette": {
+      "type": "string_array",
+      "default": []
+    },
+    "prompt": {
+      "type": "html_string",
+      "default": null
+    },
+    "prompt_location": {
+      "type": "string",
+      "default": "abovecanvas"
+    },
+    "save_final_image": {
+      "type": "boolean",
+      "default": true
+    },
+    "save_strokes": {
+      "type": "boolean",
+      "default": true
+    },
+    "key_to_draw": {
+      "type": "key",
+      "default": null
+    },
+    "show_clear_button": {
+      "type": "boolean",
+      "default": true
+    },
+    "clear_button_label": {
+      "type": "string",
+      "default": "Clear"
+    },
+    "show_undo_button": {
+      "type": "boolean",
+      "default": true
+    },
+    "undo_button_label": {
+      "type": "string",
+      "default": "Undo"
+    },
+    "show_redo_button": {
+      "type": "boolean",
+      "default": true
+    },
+    "redo_button_label": {
+      "type": "string",
+      "default": "Redo"
+    },
+    "coordinates": {
+      "type": "object",
+      "default": "{ x: 0, y: 0 }"
+    }
+  },
+  "data": {
+    "png": {
+      "type": "string"
+    },
+    "strokes": {
+      "type": "object_array"
+    }
+  }
+}

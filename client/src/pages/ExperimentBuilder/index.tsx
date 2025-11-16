@@ -6,6 +6,7 @@ import TrialsProvider from "./providers/TrialsProvider";
 import UrlProvider from "./providers/UrlProvider";
 import ExperimentPreview from "./components/ExperimentPreview";
 import { useEffect, useRef, useState } from "react";
+import Switch from "react-switch";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { FaTimeline } from "react-icons/fa6";
 import { PiGearSixBold } from "react-icons/pi";
@@ -171,12 +172,17 @@ function ExperimentBuilder() {
                 >
                   <FaHammer style={{ marginRight: "2px" }} />
 
-                  <input
+                  <Switch
                     id="devMode"
-                    type="checkbox"
                     checked={isDevMode}
-                    onChange={(e) => setDevMode(e.target.checked)}
-                    className="ml-2 h-4 w-4 cursor-pointer"
+                    onChange={(checked) => setDevMode(checked)}
+                    onColor="#3d92b4"
+                    onHandleColor="#ffffff"
+                    handleDiameter={20}
+                    uncheckedIcon={false}
+                    checkedIcon={false}
+                    height={18}
+                    width={38}
                   />
                 </label>
                 {!isDevMode && <ExperimentPreview />}

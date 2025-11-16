@@ -1,0 +1,42 @@
+{
+  "name": "SurveyHtmlFormComponent",
+  "version": "2.1.0",
+  "parameters": {
+    "html": {
+      "type": "html_string",
+      "default": null
+    },
+    "preamble": {
+      "type": "html_string",
+      "default": null
+    },
+    "button_label": {
+      "type": "string",
+      "default": "Continue"
+    },
+    "autofocus": {
+      "type": "string",
+      "default": ""
+    },
+    "dataAsArray": {
+      "type": "boolean",
+      "default": false
+    },
+    "autocomplete": {
+      "type": "boolean",
+      "default": false
+    },
+    "coordinates": {
+      "type": "object",
+      "default": "{ x: 0, y: 0 }"
+    }
+  },
+  "data": {
+    "response": {
+      "type": "object"
+    },
+    "rt": {
+      "type": "number"
+    }
+  }
+}

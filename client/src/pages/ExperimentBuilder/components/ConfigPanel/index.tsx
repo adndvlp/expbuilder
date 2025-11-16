@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import useTrials from "../../hooks/useTrials";
 import Select from "react-select";
+import Switch from "react-switch";
 import TrialsConfig from "./TrialsConfig";
 import WebGazer from "./TrialsConfig/WebGazer";
 import PluginEditor from "../PluginEditor";
@@ -13,7 +14,7 @@ interface ConfigPanelProps {}
 const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
   const { trials, setTrials, selectedTrial, setSelectedTrial, selectedLoop } =
     useTrials();
-  const [selectedId, setSelectedId] = useState<string>("");
+  const [selectedId, setSelectedId] = useState<string>("plugin-dynamic");
   const [pluginList, setPluginList] = useState<string[]>([]);
   const [pluginEditor, setPluginEditor] = useState<boolean>(false);
   const { isSaving, plugins, metadataError, setPlugins, setMetadataError } =
@@ -22,6 +23,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
   const isCustomPlugin = plugins.some((p) => p.name === selectedId);
   const [metadata404, setMetadata404] = useState<boolean>(false);
   const prevPluginList = useRef<string[]>([]);
+  const [useJsPsychPlugins, setUseJsPsychPlugins] = useState<boolean>(false);
 
   useEffect(() => {
     if (isSaving) return;
@@ -43,8 +45,13 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
     if (selectedTrial?.plugin) {
       if (isSaving) return;
       setSelectedId(selectedTrial.plugin);
-      // Evita el fetch si el plugin es 'webgazer'
-      if (selectedTrial.plugin === "webgazer") {
+      // Detectar si se está usando un plugin de jsPsych o el dynamic
+      setUseJsPsychPlugins(selectedTrial.plugin !== "plugin-dynamic");
+      // Evita el fetch si el plugin es 'webgazer' o 'plugin-dynamic'
+      if (
+        selectedTrial.plugin === "webgazer" ||
+        selectedTrial.plugin === "plugin-dynamic"
+      ) {
         setMetadataError("");
         setMetadata404(false);
         return;
@@ -64,7 +71,8 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
           setMetadata404(true);
         });
     } else {
-      setSelectedId("");
+      setSelectedId("plugin-dynamic");
+      setUseJsPsychPlugins(false);
       setMetadataError("");
       setMetadata404(false);
     }
@@ -95,10 +103,15 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
   );
 
   // filteredPlugins solo incluye plugins del backend, nunca los subidos por el usuario
+  // Excluimos plugin-dynamic de la lista
   const filteredPlugins = Array.from(
     new Set([
       ...pluginList
-        .filter((plugin) => !plugins.some((p) => p.name === plugin))
+        .filter(
+          (plugin) =>
+            !plugins.some((p) => p.name === plugin) &&
+            plugin !== "plugin-dynamic"
+        )
         .map((plugin) => {
           if (/plugin-webgazer/i.test(plugin)) return "webgazer";
           return plugin;
@@ -129,6 +142,22 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
     ...userPluginsOptions,
     { value: "new-plugin", label: "Create plugin" },
   ];
+
+  const handleSwitchChange = (checked: boolean) => {
+    setUseJsPsychPlugins(checked);
+
+    if (!checked) {
+      // Cambiar a plugin-dynamic
+      setSelectedId("plugin-dynamic");
+      if (selectedTrial) {
+        const updatedTrial = { ...selectedTrial, plugin: "plugin-dynamic" };
+        setTrials(
+          trials.map((t) => (t.id === selectedTrial.id ? updatedTrial : t))
+        );
+        setSelectedTrial(updatedTrial);
+      }
+    }
+  };
 
   const handleChange = (newValue: { label: string; value: string } | null) => {
     if (!newValue) return;
@@ -187,79 +216,127 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
     <div className="config-panel">
       <div className="input-section border">
         <div className="form-group">
-          <label htmlFor="pluginSelect">Select a plugin:</label>
-          <Select
-            id="pluginSelect"
-            options={options}
-            value={options.find((opt) => opt.value === selectedId) || null}
-            onChange={handleChange}
-            placeholder="Select a stimulus-response"
-            styles={{
-              control: (baseStyles, state) => ({
-                ...baseStyles,
-                backgroundColor: "var(--neutral-light)",
-                color: "var(--text-dark)",
-                borderColor: state.isFocused
-                  ? "var(--primary-blue)"
-                  : "var(--neutral-mid)",
-                boxShadow: state.isFocused
-                  ? "0 0 0 2px var(--primary-blue)"
-                  : "none",
-                "&:hover": {
-                  borderColor: "var(--primary-blue)",
-                },
-                borderRadius: "6px",
-                height: "20%",
-              }),
-              singleValue: (base) => ({
-                ...base,
-                color: "var(--text-dark)",
-                fontWeight: 500,
-              }),
-              menu: (base) => ({
-                ...base,
-                backgroundColor: "var(--primary-blue)",
-                borderRadius: "6px",
-                boxShadow: "0 2px 8px rgba(61,146,180,0.08)",
-              }),
-              option: (base, state) => ({
-                ...base,
-                backgroundColor: state.isFocused
-                  ? "var(--gold)"
-                  : "var(--light-blue)",
-                color: state.isFocused
-                  ? "var(--text-light)"
-                  : "var(--text-light)",
-                fontWeight: state.isSelected ? 600 : 400,
-                "&:hover": {
-                  backgroundColor: "var(--gold)",
-                  color: "var(--text-light)",
-                },
-              }),
-              placeholder: (base) => ({
-                ...base,
-                color: "var(--text-dark)",
-                fontStyle: "italic",
-              }),
-              input: (base) => ({
-                ...base,
-                color: "var(--text-dark)",
-              }),
-              dropdownIndicator: (base, state) => ({
-                ...base,
-                color: state.isFocused
-                  ? "var(--primary-blue)"
-                  : "var(--primary-blue)",
-                "&:hover": {
-                  color: "var(--gold)",
-                },
-              }),
-              indicatorSeparator: (base) => ({
-                ...base,
-                backgroundColor: "var(--primary-blue)",
-              }),
+          {/* Switch para alternar entre plugin dinámico y plugins de jsPsych */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: "20px",
+              padding: "12px 16px",
+              backgroundColor: "var(--neutral-light)",
+              borderRadius: "8px",
+              border: "1px solid var(--neutral-mid)",
             }}
-          ></Select>
+          >
+            <label
+              htmlFor="jspsych-switch"
+              style={{
+                fontSize: "15px",
+                fontWeight: 600,
+                color: "var(--text-dark)",
+                cursor: "pointer",
+                userSelect: "none",
+              }}
+            >
+              Use jsPsych plugins
+            </label>
+            <Switch
+              onChange={handleSwitchChange}
+              checked={useJsPsychPlugins}
+              onColor="#3d92b4"
+              onHandleColor="#ffffff"
+              handleDiameter={24}
+              uncheckedIcon={false}
+              checkedIcon={false}
+              boxShadow="0px 1px 3px rgba(0, 0, 0, 0.2)"
+              activeBoxShadow="0px 0px 1px 8px rgba(61, 146, 180, 0.2)"
+              height={20}
+              width={44}
+              id="jspsych-switch"
+              aria-label="Toggle jsPsych plugins"
+            />
+          </div>
+
+          {/* Solo mostrar el dropdown si useJsPsychPlugins está activado */}
+          {useJsPsychPlugins && (
+            <>
+              <label htmlFor="pluginSelect">Select a plugin:</label>
+              <Select
+                id="pluginSelect"
+                options={options}
+                value={options.find((opt) => opt.value === selectedId) || null}
+                onChange={handleChange}
+                placeholder="Select a stimulus-response"
+                styles={{
+                  control: (baseStyles, state) => ({
+                    ...baseStyles,
+                    backgroundColor: "var(--neutral-light)",
+                    color: "var(--text-dark)",
+                    borderColor: state.isFocused
+                      ? "var(--primary-blue)"
+                      : "var(--neutral-mid)",
+                    boxShadow: state.isFocused
+                      ? "0 0 0 2px var(--primary-blue)"
+                      : "none",
+                    "&:hover": {
+                      borderColor: "var(--primary-blue)",
+                    },
+                    borderRadius: "6px",
+                    height: "20%",
+                  }),
+                  singleValue: (base) => ({
+                    ...base,
+                    color: "var(--text-dark)",
+                    fontWeight: 500,
+                  }),
+                  menu: (base) => ({
+                    ...base,
+                    backgroundColor: "var(--primary-blue)",
+                    borderRadius: "6px",
+                    boxShadow: "0 2px 8px rgba(61,146,180,0.08)",
+                  }),
+                  option: (base, state) => ({
+                    ...base,
+                    backgroundColor: state.isFocused
+                      ? "var(--gold)"
+                      : "var(--light-blue)",
+                    color: state.isFocused
+                      ? "var(--text-light)"
+                      : "var(--text-light)",
+                    fontWeight: state.isSelected ? 600 : 400,
+                    "&:hover": {
+                      backgroundColor: "var(--gold)",
+                      color: "var(--text-light)",
+                    },
+                  }),
+                  placeholder: (base) => ({
+                    ...base,
+                    color: "var(--text-dark)",
+                    fontStyle: "italic",
+                  }),
+                  input: (base) => ({
+                    ...base,
+                    color: "var(--text-dark)",
+                  }),
+                  dropdownIndicator: (base, state) => ({
+                    ...base,
+                    color: state.isFocused
+                      ? "var(--primary-blue)"
+                      : "var(--primary-blue)",
+                    "&:hover": {
+                      color: "var(--gold)",
+                    },
+                  }),
+                  indicatorSeparator: (base) => ({
+                    ...base,
+                    backgroundColor: "var(--primary-blue)",
+                  }),
+                }}
+              ></Select>
+            </>
+          )}
+
           <div>
             {/* Si selecciona "Nuevo plugin", solo renderiza PluginEditor */}
             {selectedId === "new-plugin" ? (
@@ -269,15 +346,37 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
                 {/* Siempre muestra el checkbox y editor para plugins subidos por el usuario */}
                 {isCustomPlugin && (
                   <div>
-                    <label>
-                      Edit Plugin
-                      <input
-                        type="checkbox"
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        marginTop: "16px",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      <Switch
                         checked={pluginEditor}
-                        onChange={(e) => setPluginEditor(e.target.checked)}
+                        onChange={(checked) => setPluginEditor(checked)}
                         disabled={metadata404}
+                        onColor="#3d92b4"
+                        onHandleColor="#ffffff"
+                        handleDiameter={24}
+                        uncheckedIcon={false}
+                        checkedIcon={false}
+                        height={20}
+                        width={44}
                       />
-                    </label>
+                      <label
+                        style={{
+                          margin: 0,
+                          fontWeight: 500,
+                          color: metadata404 ? "#999" : "var(--text-dark)",
+                        }}
+                      >
+                        Edit Plugin
+                      </label>
+                    </div>
                     {metadataError && (
                       <span
                         style={{
@@ -306,8 +405,14 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
               <div>
                 <hr />
                 <div>
+                  {/* Mostrar TrialsConfig para plugin-dynamic */}
+                  {selectedId === "plugin-dynamic" && (
+                    <TrialsConfig pluginName={selectedId} />
+                  )}
+                  {/* Mostrar TrialsConfig para otros plugins */}
                   {selectedId &&
                     selectedId !== "webgazer" &&
+                    selectedId !== "plugin-dynamic" &&
                     !isCustomPlugin &&
                     selectedId !== "Select a stimulus-response" && (
                       <TrialsConfig pluginName={selectedId} />

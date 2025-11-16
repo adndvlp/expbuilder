@@ -1,0 +1,41 @@
+{
+  "name": "ButtonResponseComponent",
+  "version": "2.1.1",
+  "parameters": {
+    "choices": {
+      "type": "string_array"
+    },
+    "button_html": {
+      "type": "function",
+      "default": "function (choice: string, choice_index: number) {\n        return `<button class=\"jspsych-btn\">${choice}</button>`;\n      }"
+    },
+    "button_layout": {
+      "type": "string",
+      "default": "grid"
+    },
+    "grid_rows": {
+      "type": "number",
+      "default": 1
+    },
+    "grid_columns": {
+      "type": "number",
+      "default": null
+    },
+    "enable_button_after": {
+      "type": "number",
+      "default": 0
+    },
+    "coordinates": {
+      "type": "object",
+      "default": "{ x: 0, y: 0 }"
+    }
+  },
+  "data": {
+    "response": {
+      "type": "number"
+    },
+    "rt": {
+      "type": "number"
+    }
+  }
+}

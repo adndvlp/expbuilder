@@ -7,30 +7,30 @@ const info = {
   version,
   parameters: {
     /** The path of the image file to be displayed. */
-    stimulus_image: {
+    stimulus: {
       type: ParameterType.IMAGE,
       default: void 0,
     },
     /** Set the height of the image in pixels. If left null (no value specified), then the image will display at its natural height. */
-    height_image: {
+    height: {
       type: ParameterType.INT,
       default: null,
     },
     /** Set the width of the image in pixels. If left null (no value specified), then the image will display at its natural width. */
-    width_image: {
+    width: {
       type: ParameterType.INT,
       default: null,
     },
     /** If setting *only* the width or *only* the height and this parameter is true, then the other dimension will be
      * scaled to maintain the image's aspect ratio.  */
-    maintain_aspect_ratio_image: {
+    maintain_aspect_ratio: {
       type: ParameterType.BOOL,
       default: true,
     },
 
     /** How long to show the stimulus for in milliseconds. If the value is null, then the stimulus will be shown until
      * the participant makes a response. */
-    stimulus_duration_image: {
+    stimulus_duration: {
       type: ParameterType.INT,
       default: null,
     },
@@ -113,11 +113,10 @@ class ImageComponent {
       let width: number;
       let height: number;
 
-      if (config.height_image !== null) {
-        height = config.height_image;
-        if (config.width_image == null && config.maintain_aspect_ratio_image) {
-          width =
-            image.naturalWidth * (config.height_image / image.naturalHeight);
+      if (config.height !== null) {
+        height = config.height;
+        if (config.width == null && config.maintain_aspect_ratio) {
+          width = image.naturalWidth * (config.height / image.naturalHeight);
         } else {
           width = image.naturalWidth;
         }
@@ -126,11 +125,10 @@ class ImageComponent {
         width = image.naturalWidth;
       }
 
-      if (config.width_image !== null) {
-        width = config.width_image;
-        if (config.height_image == null && config.maintain_aspect_ratio_image) {
-          height =
-            image.naturalHeight * (config.width_image / image.naturalWidth);
+      if (config.width !== null) {
+        width = config.width;
+        if (config.height == null && config.maintain_aspect_ratio) {
+          height = image.naturalHeight * (config.width / image.naturalWidth);
         }
       }
 
@@ -139,11 +137,11 @@ class ImageComponent {
 
     let stimulusElement: HTMLElement;
     let canvas: HTMLCanvasElement | null = null;
-    const image = config.render_on_canvas_image
+    const image = config.render_on_canvas
       ? new Image()
       : document.createElement("img");
 
-    if (config.render_on_canvas_image) {
+    if (config.render_on_canvas) {
       canvas = document.createElement("canvas");
       canvas.style.margin = "0";
       canvas.style.padding = "0";
@@ -157,7 +155,7 @@ class ImageComponent {
         image as HTMLImageElement
       );
 
-      if (config.render_on_canvas_image && canvas) {
+      if (config.render_on_canvas && canvas) {
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext("2d");
@@ -178,7 +176,7 @@ class ImageComponent {
       }
     };
 
-    (image as HTMLImageElement).src = config.stimulus_image;
+    (image as HTMLImageElement).src = config.stimulus;
 
     if (
       (image as HTMLImageElement).complete &&
@@ -193,10 +191,10 @@ class ImageComponent {
     imageContainer.appendChild(stimulusElement);
 
     // Handle stimulus duration
-    if (config.stimulus_duration_image !== null) {
+    if (config.stimulus_duration !== null) {
       this.hideTimeout = this.jsPsych.pluginAPI.setTimeout(() => {
         this.hide();
-      }, config.stimulus_duration_image);
+      }, config.stimulus_duration);
     }
 
     this.element = stimulusElement;

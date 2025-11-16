@@ -1,4 +1,10 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  useCallback,
+} from "react";
 import { Stage, Layer, Rect, Text } from "react-konva";
 import Konva from "konva";
 import Modal from "./Modal";
@@ -7,7 +13,11 @@ import {
   ImageComponent,
   VideoComponent,
   AudioComponent,
+  HtmlComponent,
 } from "./VisualComponents";
+import ParameterMapper from "./index";
+import { useComponentMetadata } from "../hooks/useComponentMetadata";
+const API_URL = import.meta.env.VITE_API_URL;
 
 // Component types matching backend
 type ComponentType =
@@ -62,6 +72,12 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   const [videos, setVideos] = useState<string[]>([]);
   const [audios, setAudios] = useState<string[]>([]);
   const stageRef = useRef<Konva.Stage>(null);
+  const hasLoadedComponents = useRef(false);
+
+  // Get metadata for selected component
+  const selectedComponent = components.find((c) => c.id === selectedId);
+  const { metadata: componentMetadata, loading: metadataLoading } =
+    useComponentMetadata(selectedComponent?.type || null);
 
   // Resizable panels
   const [leftPanelWidth, setLeftPanelWidth] = useState(280);
@@ -73,6 +89,301 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
 
   const CANVAS_WIDTH = 1024;
   const CANVAS_HEIGHT = 768;
+
+  // Convert jsPsych coordinates (-1 to 1) to canvas coordinates (px)
+  const fromJsPsychCoords = (coords: { x: number; y: number }) => {
+    const centerX = CANVAS_WIDTH / 2;
+    const centerY = CANVAS_HEIGHT / 2;
+
+    return {
+      x: centerX + coords.x * (CANVAS_WIDTH / 2),
+      y: centerY + coords.y * (CANVAS_HEIGHT / 2),
+    };
+  };
+
+  // Load components from columnMapping when modal opens
+  useEffect(() => {
+    if (!isOpen) {
+      hasLoadedComponents.current = false;
+      return;
+    }
+
+    if (hasLoadedComponents.current) return;
+    hasLoadedComponents.current = true;
+
+    const loadedComponents: TrialComponent[] = [];
+    let idCounter = Date.now();
+
+    // Load stimulus components
+    if (columnMapping.components?.value) {
+      const componentsArray = Array.isArray(columnMapping.components.value)
+        ? columnMapping.components.value
+        : [columnMapping.components.value];
+
+      componentsArray.forEach((comp: any) => {
+        const canvasCoords = comp.coordinates
+          ? fromJsPsychCoords(comp.coordinates)
+          : { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 };
+
+        // Reconstruct config from component data
+        const config: Record<string, any> = {};
+        Object.entries(comp).forEach(([key, value]) => {
+          if (
+            key !== "type" &&
+            key !== "coordinates" &&
+            key !== "width" &&
+            key !== "height" &&
+            key !== "rotation"
+          ) {
+            config[key] = {
+              source: "typed",
+              value: value,
+            };
+          }
+        });
+
+        // Add coordinates, width, height, and rotation to config
+        if (comp.coordinates) {
+          config.coordinates = {
+            source: "typed",
+            value: comp.coordinates,
+          };
+        }
+
+        if (comp.width) {
+          config.width = {
+            source: "typed",
+            value: comp.width,
+          };
+        }
+
+        if (comp.height) {
+          config.height = {
+            source: "typed",
+            value: comp.height,
+          };
+        }
+
+        if (comp.rotation !== undefined && comp.rotation !== 0) {
+          config.rotation = {
+            source: "typed",
+            value: comp.rotation,
+          };
+        }
+
+        loadedComponents.push({
+          id: `${comp.type}-${idCounter++}`,
+          type: comp.type as ComponentType,
+          x: canvasCoords.x,
+          y: canvasCoords.y,
+          width: comp.width || 300,
+          height: comp.height || 300,
+          rotation: comp.rotation || 0,
+          config: config,
+        });
+      });
+    }
+
+    // Load response components
+    if (columnMapping.response_components?.value) {
+      const responseArray = Array.isArray(
+        columnMapping.response_components.value
+      )
+        ? columnMapping.response_components.value
+        : [columnMapping.response_components.value];
+
+      responseArray.forEach((comp: any) => {
+        const canvasCoords = comp.coordinates
+          ? fromJsPsychCoords(comp.coordinates)
+          : { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 };
+
+        // Reconstruct config from component data
+        const config: Record<string, any> = {};
+        Object.entries(comp).forEach(([key, value]) => {
+          if (
+            key !== "type" &&
+            key !== "coordinates" &&
+            key !== "width" &&
+            key !== "height" &&
+            key !== "rotation"
+          ) {
+            config[key] = {
+              source: "typed",
+              value: value,
+            };
+          }
+        });
+
+        // Add coordinates, width, height, and rotation to config
+        if (comp.coordinates) {
+          config.coordinates = {
+            source: "typed",
+            value: comp.coordinates,
+          };
+        }
+
+        if (comp.width) {
+          config.width = {
+            source: "typed",
+            value: comp.width,
+          };
+        }
+
+        if (comp.height) {
+          config.height = {
+            source: "typed",
+            value: comp.height,
+          };
+        }
+
+        if (comp.rotation !== undefined && comp.rotation !== 0) {
+          config.rotation = {
+            source: "typed",
+            value: comp.rotation,
+          };
+        }
+
+        loadedComponents.push({
+          id: `${comp.type}-${idCounter++}`,
+          type: comp.type as ComponentType,
+          x: canvasCoords.x,
+          y: canvasCoords.y,
+          width: comp.width || 200,
+          height: comp.height || 50,
+          rotation: comp.rotation || 0,
+          config: config,
+        });
+      });
+    }
+
+    if (loadedComponents.length > 0) {
+      setComponents(loadedComponents);
+    }
+  }, [isOpen]);
+
+  // Memoize component-specific columnMapping from component's config
+  const componentColumnMapping = useMemo(() => {
+    if (!selectedId) return {};
+    const component = components.find((c) => c.id === selectedId);
+    if (!component) return {};
+    // Convert component.config to columnMapping format
+    return component.config || {};
+  }, [selectedId, components]);
+
+  // Handle component parameter changes
+  const handleComponentColumnMappingChange = useCallback(
+    (updateFn: any) => {
+      if (!selectedId) return;
+
+      // Update the component's config
+      setComponents((prevComponents) => {
+        const updatedComponents = prevComponents.map((comp) => {
+          if (comp.id === selectedId) {
+            const newConfig =
+              typeof updateFn === "function"
+                ? updateFn(comp.config || {})
+                : updateFn;
+
+            // Sync canvas properties from config changes
+            const updated = { ...comp, config: newConfig };
+
+            // Update coordinates if changed in config
+            if (newConfig.coordinates?.value) {
+              const canvasCoords = fromJsPsychCoords(
+                newConfig.coordinates.value
+              );
+              updated.x = canvasCoords.x;
+              updated.y = canvasCoords.y;
+            }
+
+            // Update width if changed in config
+            if (newConfig.width?.value !== undefined) {
+              updated.width = newConfig.width.value;
+            }
+
+            // Update height if changed in config
+            if (newConfig.height?.value !== undefined) {
+              updated.height = newConfig.height.value;
+            }
+
+            // Update rotation if changed in config
+            if (newConfig.rotation?.value !== undefined) {
+              updated.rotation = newConfig.rotation.value;
+            }
+
+            return updated;
+          }
+          return comp;
+        });
+
+        return updatedComponents;
+      });
+    },
+    [selectedId]
+  );
+
+  // Update columnMapping whenever components change
+  useEffect(() => {
+    const stimulusComponents: any[] = [];
+    const responseComponents: any[] = [];
+
+    components.forEach((comp) => {
+      const coords = toJsPsychCoords(comp.x, comp.y);
+      const componentData: Record<string, any> = {
+        type: comp.type,
+        coordinates: coords,
+        width: comp.width,
+        height: comp.height,
+      };
+
+      // Add rotation if present
+      if (comp.rotation !== undefined && comp.rotation !== 0) {
+        componentData.rotation = comp.rotation;
+      }
+
+      // Apply parameters from component's config
+      if (comp.config) {
+        Object.entries(comp.config).forEach(([key, entry]: [string, any]) => {
+          if (entry.source === "typed") {
+            componentData[key] = entry.value;
+          } else if (entry.source === "csv") {
+            componentData[key] = entry.value;
+          }
+        });
+      }
+
+      // Categorize
+      const isResponseComponent =
+        comp.type === "ButtonResponseComponent" ||
+        comp.type === "KeyboardResponseComponent" ||
+        comp.type === "SliderResponseComponent";
+
+      if (isResponseComponent) {
+        responseComponents.push(componentData);
+      } else {
+        stimulusComponents.push(componentData);
+      }
+    });
+
+    // Update columnMapping
+    const newMapping: Record<string, any> = {};
+
+    if (stimulusComponents.length > 0) {
+      newMapping.components = {
+        source: "typed",
+        value: stimulusComponents,
+      };
+    }
+
+    if (responseComponents.length > 0) {
+      newMapping.response_components = {
+        source: "typed",
+        value: responseComponents,
+      };
+    }
+
+    setColumnMapping(newMapping);
+  }, [components, setColumnMapping]);
 
   // Handle resize
   useEffect(() => {
@@ -153,19 +464,19 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   useEffect(() => {
     if (isOpen && experimentID) {
       // Fetch images
-      fetch(`http://localhost:3000/api/list-files/img/${experimentID}`)
+      fetch(`${API_URL}/api/list-files/img/${experimentID}`)
         .then((res) => res.json())
         .then((data) => setImages(data.files?.map((f: any) => f.url) || []))
         .catch((err) => console.error("Error loading images:", err));
 
       // Fetch videos
-      fetch(`http://localhost:3000/api/list-files/vid/${experimentID}`)
+      fetch(`${API_URL}/api/list-files/vid/${experimentID}`)
         .then((res) => res.json())
         .then((data) => setVideos(data.files?.map((f: any) => f.url) || []))
         .catch((err) => console.error("Error loading videos:", err));
 
       // Fetch audios
-      fetch(`http://localhost:3000/api/list-files/aud/${experimentID}`)
+      fetch(`${API_URL}/api/list-files/aud/${experimentID}`)
         .then((res) => res.json())
         .then((data) => setAudios(data.files?.map((f: any) => f.url) || []))
         .catch((err) => console.error("Error loading audios:", err));
@@ -211,6 +522,9 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     const x = e.clientX - containerRect.left;
     const y = e.clientY - containerRect.top;
 
+    // Convert to jsPsych coordinates
+    const coords = toJsPsychCoords(x, y);
+
     const newComponent: TrialComponent = {
       id: `${type}-${Date.now()}`,
       type,
@@ -220,91 +534,92 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       height: 0,
       config: {
         ...getDefaultConfig(type),
+        coordinates: {
+          source: "typed",
+          value: coords,
+        },
         ...(type === "ImageComponent" && {
-          stimulus_image: `http://localhost:3000/${fileUrl}`,
+          stimulus: {
+            source: "typed",
+            value: `${fileUrl}`,
+          },
         }),
         ...(type === "VideoComponent" && {
-          stimulus_video: [`http://localhost:3000/${fileUrl}`],
+          stimulus: {
+            source: "typed",
+            value: [`${fileUrl}`],
+          },
         }),
         ...(type === "AudioComponent" && {
-          stimulus_audio: `http://localhost:3000/${fileUrl}`,
+          stimulus: {
+            source: "typed",
+            value: `${fileUrl}`,
+          },
         }),
       },
     };
 
-    setComponents([...components, newComponent]);
+    setComponents((prev) => [...prev, newComponent]);
     setSelectedId(newComponent.id);
   };
 
   // Add component to canvas
   const addComponent = (type: ComponentType) => {
+    const x = CANVAS_WIDTH / 2;
+    const y = CANVAS_HEIGHT / 2;
+
+    // Convert to jsPsych coordinates
+    const coords = toJsPsychCoords(x, y);
+
     const newComponent: TrialComponent = {
       id: `${type}-${Date.now()}`,
       type,
-      x: CANVAS_WIDTH / 2,
-      y: CANVAS_HEIGHT / 2,
+      x,
+      y,
       width: type === "ImageComponent" || type === "VideoComponent" ? 300 : 200,
       height: type === "ImageComponent" || type === "VideoComponent" ? 300 : 50,
-      config: getDefaultConfig(type),
+      config: {
+        ...getDefaultConfig(type),
+        coordinates: {
+          source: "typed",
+          value: coords,
+        },
+      },
     };
 
-    setComponents([...components, newComponent]);
+    setComponents((prev) => [...prev, newComponent]);
     setSelectedId(newComponent.id);
   };
 
   // Get default config for component type
-  const getDefaultConfig = (type: ComponentType): Record<string, any> => {
-    switch (type) {
-      case "ImageComponent":
-        return {
-          stimulus_image: "https://via.placeholder.com/300x200",
-          maintain_aspect_ratio_image: true,
-        };
-      case "VideoComponent":
-        return {
-          stimulus_video: ["video.mp4"],
-          autoplay_video: true,
-          controls_video: false,
-        };
-      case "AudioComponent":
-        return {
-          stimulus_audio: "audio.mp3",
-          autoplay_audio: true,
-          show_controls_audio: false,
-        };
-      case "HtmlComponent":
-        return {
-          stimulus_html: "<p>HTML Content</p>",
-        };
-      case "ButtonResponseComponent":
-        return {
-          choices: ["Continue"],
-          button_layout: "grid",
-          grid_rows: 1,
-        };
-      case "KeyboardResponseComponent":
-        return {
-          choices: "ALL_KEYS",
-        };
-      case "SliderResponseComponent":
-        return {
-          min: 0,
-          max: 100,
-          slider_start: 50,
-          step: 1,
-          button_label: "Continue",
-        };
-      default:
-        return {};
-    }
+  // Return empty object - let jsPsych handle defaults
+  const getDefaultConfig = (_type: ComponentType): Record<string, any> => {
+    return {};
   };
 
   // Handle drag end
   const handleDragEnd = (id: string, e: any) => {
-    const updatedComponents = components.map((comp) =>
-      comp.id === id ? { ...comp, x: e.target.x(), y: e.target.y() } : comp
+    setComponents(
+      components.map((comp) => {
+        if (comp.id === id) {
+          const newX = e.target.x();
+          const newY = e.target.y();
+          const coords = toJsPsychCoords(newX, newY);
+
+          // Update config with new coordinates
+          const newConfig = {
+            ...comp.config,
+            coordinates: {
+              source: "typed",
+              value: coords,
+            },
+          };
+
+          return { ...comp, x: newX, y: newY, config: newConfig };
+        }
+        return comp;
+      })
     );
-    setComponents(updatedComponents);
   };
 
   // Handle selection
@@ -322,20 +637,20 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
 
   // Export configuration
   const handleExport = () => {
-    const config = {
-      components: components.map((comp) => {
-        const coords = toJsPsychCoords(comp.x, comp.y);
-        return {
-          type: comp.type,
-          config: {
-            ...comp.config,
-            coordinates: coords,
-          },
-        };
-      }),
-    };
+    // Simply save the current columnMapping which already has
+    // components and response_components properly updated
+    const dynamicPluginConfig: Record<string, any> = {};
 
-    onSave(config);
+    if (columnMapping.components) {
+      dynamicPluginConfig.components = columnMapping.components;
+    }
+
+    if (columnMapping.response_components) {
+      dynamicPluginConfig.response_components =
+        columnMapping.response_components;
+    }
+
+    onSave(dynamicPluginConfig);
     onClose();
   };
 
@@ -344,9 +659,65 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     const isSelected = comp.id === selectedId;
 
     const handleComponentChange = (newAttrs: any) => {
-      setComponents(components.map((c) => (c.id === comp.id ? newAttrs : c)));
-    };
+      setComponents((prevComponents) =>
+        prevComponents.map((c) => {
+          if (c.id === comp.id) {
+            const updated = { ...c, ...newAttrs };
 
+            // Sync coordinates to config if x/y changed
+            if (newAttrs.x !== undefined || newAttrs.y !== undefined) {
+              const coords = toJsPsychCoords(
+                newAttrs.x ?? updated.x,
+                newAttrs.y ?? updated.y
+              );
+              updated.config = {
+                ...updated.config,
+                coordinates: {
+                  source: "typed",
+                  value: coords,
+                },
+              };
+            }
+
+            // Sync width to config if changed and has valid value
+            if (newAttrs.width !== undefined && newAttrs.width > 0) {
+              updated.config = {
+                ...updated.config,
+                width: {
+                  source: "typed",
+                  value: newAttrs.width,
+                },
+              };
+            }
+
+            // Sync height to config if changed and has valid value
+            if (newAttrs.height !== undefined && newAttrs.height > 0) {
+              updated.config = {
+                ...updated.config,
+                height: {
+                  source: "typed",
+                  value: newAttrs.height,
+                },
+              };
+            }
+
+            // Sync rotation to config if changed
+            if (newAttrs.rotation !== undefined) {
+              updated.config = {
+                ...updated.config,
+                rotation: {
+                  source: "typed",
+                  value: newAttrs.rotation,
+                },
+              };
+            }
+
+            return updated;
+          }
+          return c;
+        })
+      );
+    };
     switch (comp.type) {
       case "ImageComponent":
         return (
@@ -396,36 +767,13 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
 
       case "HtmlComponent":
         return (
-          <React.Fragment key={comp.id}>
-            <Rect
-              id={comp.id}
-              x={comp.x}
-              y={comp.y}
-              width={comp.width}
-              height={comp.height}
-              fill="#f3f4f6"
-              stroke={isSelected ? "#6b7280" : "#d1d5db"}
-              strokeWidth={isSelected ? 3 : 1}
-              draggable
-              onClick={() => handleSelect(comp.id)}
-              onDragEnd={(e) => handleDragEnd(comp.id, e)}
-              offsetX={comp.width / 2}
-              offsetY={comp.height / 2}
-            />
-            <Text
-              text="HTML Content"
-              x={comp.x}
-              y={comp.y}
-              width={comp.width}
-              align="center"
-              verticalAlign="middle"
-              fontSize={14}
-              fill="#374151"
-              offsetX={comp.width / 2}
-              offsetY={comp.height / 2}
-              listening={false}
-            />
-          </React.Fragment>
+          <HtmlComponent
+            key={comp.id}
+            shapeProps={comp}
+            isSelected={isSelected}
+            onSelect={() => handleSelect(comp.id)}
+            onChange={handleComponentChange}
+          />
         );
 
       case "VideoComponent":
@@ -700,7 +1048,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
                                 }}
                               >
                                 <img
-                                  src={`http://localhost:3000/${imgUrl}`}
+                                  src={`${API_URL}/${imgUrl}`}
                                   alt="thumbnail"
                                   style={{
                                     width: "100%",
@@ -762,7 +1110,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
                                 }}
                               >
                                 <video
-                                  src={`http://localhost:3000/${vidUrl}`}
+                                  src={`${API_URL}/${vidUrl}`}
                                   style={{
                                     width: "100%",
                                     height: "100%",
@@ -1060,15 +1408,104 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
                 </h3>
               </div>
 
-              <div style={{ flex: 1, padding: "16px" }}>
-                {/* Render ParameterMapper without the wrapper div */}
-                <div style={{ marginTop: "-20px" }}>
-                  {/* We'll need to extract the parameter form content here */}
-                  <p style={{ color: "#6b7280", fontSize: "14px" }}>
-                    Configure trial parameters here. The parameter mapper will
-                    be integrated in the next step.
-                  </p>
-                </div>
+              <div style={{ flex: 1, padding: "16px", overflowY: "auto" }}>
+                {/* Show component parameters if a component is selected */}
+                {selectedId && selectedComponent ? (
+                  <div>
+                    <div
+                      style={{
+                        marginBottom: "16px",
+                        paddingBottom: "12px",
+                        borderBottom: "1px solid #e5e7eb",
+                      }}
+                    >
+                      <h4
+                        style={{
+                          margin: 0,
+                          fontSize: "14px",
+                          fontWeight: 600,
+                          color: "#6b7280",
+                        }}
+                      >
+                        Selected Component
+                      </h4>
+                      <p
+                        style={{
+                          margin: "4px 0 0",
+                          fontSize: "16px",
+                          fontWeight: 700,
+                          color: "#1f2937",
+                        }}
+                      >
+                        {selectedComponent.type.replace(/Component$/, "")}
+                      </p>
+                    </div>
+
+                    {metadataLoading ? (
+                      <div
+                        style={{
+                          textAlign: "center",
+                          padding: "20px",
+                          color: "#6b7280",
+                        }}
+                      >
+                        Loading component parameters...
+                      </div>
+                    ) : componentMetadata ? (
+                      <ParameterMapper
+                        parameters={Object.entries(
+                          componentMetadata.parameters
+                        ).map(([key, param]) => ({
+                          key,
+                          label:
+                            (param as any).pretty_name ||
+                            key
+                              .replace(/_/g, " ")
+                              .replace(/\b\w/g, (l: string) => l.toUpperCase()),
+                          type: (param as any).type,
+                        }))}
+                        columnMapping={componentColumnMapping}
+                        setColumnMapping={handleComponentColumnMappingChange}
+                        csvColumns={csvColumns}
+                        pluginName={selectedComponent.type}
+                        componentMode={true}
+                        selectedComponentId={selectedId}
+                        onComponentConfigChange={(compId, config) => {
+                          setComponents((prev) =>
+                            prev.map((c) =>
+                              c.id === compId ? { ...c, config } : c
+                            )
+                          );
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          textAlign: "center",
+                          padding: "20px",
+                          color: "#ef4444",
+                        }}
+                      >
+                        Error loading component metadata
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "40px 20px",
+                      color: "#9ca3af",
+                    }}
+                  >
+                    <div style={{ fontSize: "48px", marginBottom: "12px" }}>
+                      ⚙️
+                    </div>
+                    <p style={{ margin: 0, fontSize: "14px" }}>
+                      Select a component from the canvas to edit its parameters
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Resize handle */}

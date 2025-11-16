@@ -1,0 +1,13 @@
+{
+  "name": "HtmlComponent",
+  "version": "2.1.0",
+  "parameters": {
+    "stimulus": {
+      "type": "html_string"
+    },
+    "coordinates": {
+      "type": "object",
+      "default": "{ x: 0, y: 0 }"
+    }
+  }
+}

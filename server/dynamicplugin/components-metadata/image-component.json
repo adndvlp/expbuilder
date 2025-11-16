@@ -1,0 +1,31 @@
+{
+  "name": "ImageComponent",
+  "version": "2.2.0",
+  "parameters": {
+    "stimulus": {
+      "type": "string"
+    },
+    "height": {
+      "type": "number",
+      "default": null
+    },
+    "width": {
+      "type": "number",
+      "default": null
+    },
+    "maintain_aspect_ratio": {
+      "type": "boolean",
+      "default": true
+    },
+    "stimulus_duration": {
+      "type": "number",
+      "default": null
+    },
+    "coordinates": {
+      "type": "object",
+      "default": "{ x: 0, y: 0 }",
+      "pretty_name": "Coordinates",
+      "description": "Object with x and y properties for absolute positioning"
+    }
+  }
+}

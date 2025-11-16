@@ -1,0 +1,37 @@
+{
+  "name": "DynamicPlugin",
+  "version": "imported",
+  "parameters": {
+    "components": {
+      "type": "object_array",
+      "default": []
+    },
+    "response_components": {
+      "type": "object_array",
+      "default": []
+    },
+    "stimuli_duration": {
+      "type": "number",
+      "default": null
+    },
+    "trial_duration": {
+      "type": "number",
+      "default": null
+    },
+    "response_ends_trial": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "data": {
+    "stimulus": {
+      "type": "object_array"
+    },
+    "response": {
+      "type": "object"
+    },
+    "rt": {
+      "type": "number"
+    }
+  }
+}

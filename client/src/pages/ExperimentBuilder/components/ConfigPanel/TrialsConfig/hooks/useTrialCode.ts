@@ -85,6 +85,36 @@ export function useTrialCode({
     const mapRow = (row?: Record<string, any>, idx?: number) => {
       const result: Record<string, any> = {};
 
+      // Lógica especial para DynamicPlugin
+      if (pluginName === "DynamicPlugin") {
+        // Para DynamicPlugin, extraer components y responses desde columnMapping
+        const componentsValue = getColumnValue(
+          columnMapping["components"],
+          row,
+          undefined,
+          "components"
+        );
+        const responsesValue = getColumnValue(
+          columnMapping["responses"],
+          row,
+          undefined,
+          "responses"
+        );
+
+        const prefixedComponents = isInLoop
+          ? `components_${trialNameSanitized}`
+          : "components";
+        const prefixedResponses = isInLoop
+          ? `responses_${trialNameSanitized}`
+          : "responses";
+
+        result[prefixedComponents] = componentsValue || [];
+        result[prefixedResponses] = responsesValue || [];
+
+        return result;
+      }
+
+      // Lógica normal para otros plugins
       activeParameters.forEach((param) => {
         const { key } = param;
         const prefixedkey = isInLoop ? `${key}_${trialNameSanitized}` : key;
@@ -242,6 +272,41 @@ export function useTrialCode({
 
   // Generación del template del trial/ensayo
   const generateTrialProps = (params: any[], data: any): string => {
+    // Lógica especial para DynamicPlugin
+    if (pluginName === "DynamicPlugin") {
+      const componentsKey = isInLoop
+        ? `components_${trialNameSanitized}`
+        : "components";
+      const responsesKey = isInLoop
+        ? `responses_${trialNameSanitized}`
+        : "responses";
+
+      const dataProps = data
+        .map(({ key }: { key: string }) => {
+          const propKey = isInLoop ? `${key}_${trialNameSanitized}` : key;
+          return `${key}: "${propKey}",`;
+        })
+        .join("\n");
+
+      const hasBranches = branches && branches.length > 0;
+      return `components: jsPsych.timelineVariable("${componentsKey}"),
+      responses: jsPsych.timelineVariable("${responsesKey}"),
+      data: {
+        ${dataProps}
+        trial_id: ${id},
+        ${isInLoop ? `isInLoop: true,` : ""}
+        ${
+          hasBranches
+            ? `
+        branches: [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}],
+        branchConditions: [${JSON.stringify(branchConditions)}] 
+        `
+            : ""
+        }
+      },`;
+    }
+
+    // Lógica normal para otros plugins
     const paramProps = params
       .map(({ key }: { key: string }) => {
         const propKey = isInLoop ? `${key}_${trialNameSanitized}` : key;
@@ -407,9 +472,14 @@ export function useTrialCode({
     const test_stimuli_${trialNameSanitized} = [${testStimuliCode.join(",")}];`;
       }
     }
+
+    // Para DynamicPlugin, usar directamente "DynamicPlugin" sin convertir
+    const pluginTypeForCode =
+      pluginName === "plugin-dynamic" ? "DynamicPlugin" : pluginNameImport;
+
     code += `
     const ${trialNameSanitized}_timeline = {
-    type: ${pluginNameImport}, ${timelineProps}
+    type: ${pluginTypeForCode}, ${timelineProps}
     on_start: function(trial) {
       // First, evaluate and apply params override conditions (if any)
       ${

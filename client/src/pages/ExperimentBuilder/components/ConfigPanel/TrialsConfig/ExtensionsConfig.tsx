@@ -1,3 +1,5 @@
+import Switch from "react-switch";
+
 type Props = {
   includesExtensions: boolean;
   setIncludeExtensions: (value: boolean) => void;
@@ -21,16 +23,34 @@ function ExtensionsConfig({
   });
   return (
     <div className="mt-4 mb-2 p-4 border rounded bg-gray-50">
-      <label htmlFor="includeExtensions" className="font-bold">
-        Include extensions
-      </label>
-      <input
-        type="checkbox"
-        id="includeExtension"
-        checked={includesExtensions}
-        onChange={(e) => setIncludeExtensions(e.target.checked)}
-        className="mr-2"
-      />
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          marginBottom: "12px",
+        }}
+      >
+        <Switch
+          checked={includesExtensions}
+          onChange={(checked) => setIncludeExtensions(checked)}
+          onColor="#3d92b4"
+          onHandleColor="#ffffff"
+          handleDiameter={24}
+          uncheckedIcon={false}
+          checkedIcon={false}
+          height={20}
+          width={44}
+          id="includeExtension"
+        />
+        <label
+          htmlFor="includeExtensions"
+          className="font-bold"
+          style={{ margin: 0 }}
+        >
+          Include extensions
+        </label>
+      </div>
       {includesExtensions && (
         <div className="flex items-center">
           <label className="font-bold">Type</label>

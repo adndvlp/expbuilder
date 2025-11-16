@@ -115,12 +115,36 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
   constructor(private jsPsych: JsPsych) {}
 
   trial(display_element: HTMLElement, trial: TrialType<Info>) {
+    // Inject plugin styles if not already present
+    if (!document.getElementById("jspsych-dynamic-plugin-styles")) {
+      const styleElement = document.createElement("style");
+      styleElement.id = "jspsych-dynamic-plugin-styles";
+      styleElement.textContent = `
+        #jspsych-dynamic-plugin-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+          position: relative;
+          width: 100%;
+        }
+        .dynamic-image-component,
+        #jspsych-html-component-main,
+        #jspsych-button-response-main {
+          visibility: visible !important;
+        }
+        #jspsych-dynamic-plugin-container img,
+        #jspsych-dynamic-plugin-container canvas {
+          display: block;
+        }
+      `;
+      document.head.appendChild(styleElement);
+    }
+
     // Create main container for all components
     const mainContainer = document.createElement("div");
     mainContainer.id = "jspsych-dynamic-plugin-container";
-    mainContainer.style.position = "relative";
-    mainContainer.style.width = "100%";
-    mainContainer.style.minHeight = "100vh";
     display_element.appendChild(mainContainer);
 
     // Track start time
@@ -202,9 +226,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           type: config.type,
         };
 
-        // Add relevant stimulus information based on type
-        if (config.stimulus_image) stimInfo.stimulus = config.stimulus_image;
-        if (config.stimulus_video) stimInfo.stimulus = config.stimulus_video;
+        // Add relevant stimulus information
         if (config.stimulus) stimInfo.stimulus = config.stimulus;
         if (config.coordinates) stimInfo.coordinates = config.coordinates;
 

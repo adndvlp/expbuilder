@@ -1,0 +1,18 @@
+{
+  "name": "KeyboardResponseComponent",
+  "version": "2.1.0",
+  "parameters": {
+    "choices": {
+      "type": "string_array",
+      "default": "ALL_KEYS"
+    }
+  },
+  "data": {
+    "response": {
+      "type": "string"
+    },
+    "rt": {
+      "type": "number"
+    }
+  }
+}

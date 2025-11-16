@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Switch from "react-switch";
 import ExperimentPreview from "./ExperimentPreview";
 import { useExperimentID } from "../hooks/useExperimentID";
 // No usar Firebase, usar endpoints REST locales
@@ -201,24 +202,19 @@ export default function ResultsList() {
                 {/* Select column only in selectMode */}
                 {selectMode && (
                   <th style={{ width: 40 }}>
-                    <input
-                      type="checkbox"
+                    <Switch
                       checked={
                         selected.length === sessions.length &&
                         sessions.length > 0
                       }
                       onChange={toggleSelectAll}
-                      style={{
-                        width: 22,
-                        height: 22,
-                        accentColor: "#FFD600",
-                        cursor: "pointer",
-                        filter:
-                          selected.length === sessions.length &&
-                          sessions.length > 0
-                            ? "invert(1) brightness(2) saturate(2)"
-                            : undefined,
-                      }}
+                      onColor="#FFD600"
+                      onHandleColor="#ffffff"
+                      handleDiameter={20}
+                      uncheckedIcon={false}
+                      checkedIcon={false}
+                      height={18}
+                      width={38}
                     />
                   </th>
                 )}
@@ -256,19 +252,16 @@ export default function ResultsList() {
                 <tr key={s._id}>
                   {selectMode && (
                     <td>
-                      <input
-                        type="checkbox"
+                      <Switch
                         checked={selected.includes(s.sessionId)}
                         onChange={() => toggleSelect(s.sessionId)}
-                        style={{
-                          width: 22,
-                          height: 22,
-                          accentColor: "#FFD600",
-                          cursor: "pointer",
-                          filter: selected.includes(s.sessionId)
-                            ? "invert(1) brightness(2) saturate(2)"
-                            : undefined,
-                        }}
+                        onColor="#FFD600"
+                        onHandleColor="#ffffff"
+                        handleDiameter={20}
+                        uncheckedIcon={false}
+                        checkedIcon={false}
+                        height={18}
+                        width={38}
                       />
                     </td>
                   )}

@@ -1,0 +1,34 @@
+{
+  "name": "SurveyComponent",
+  "version": "4.0.0",
+  "parameters": {
+    "survey_json": {
+      "type": "object",
+      "default": {}
+    },
+    "survey_function": {
+      "type": "function",
+      "default": null
+    },
+    "validation_function": {
+      "type": "function",
+      "default": null
+    },
+    "min_width": {
+      "type": "string",
+      "default": "min(100vw, 800px)"
+    },
+    "coordinates": {
+      "type": "object",
+      "default": "{ x: 0, y: 0 }"
+    }
+  },
+  "data": {
+    "response": {
+      "type": "object"
+    },
+    "rt": {
+      "type": "number"
+    }
+  }
+}

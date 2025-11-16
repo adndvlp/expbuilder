@@ -1,0 +1,42 @@
+{
+  "name": "VideoComponent",
+  "version": "2.2.0",
+  "parameters": {
+    "stimulus": {
+      "type": "string_array"
+    },
+    "width": {
+      "type": "number",
+      "default": null
+    },
+    "height": {
+      "type": "number",
+      "default": null
+    },
+    "autoplay": {
+      "type": "boolean",
+      "default": true,
+      "pretty_name": "Autoplay"
+    },
+    "controls": {
+      "type": "boolean",
+      "default": false
+    },
+    "start": {
+      "type": "number",
+      "default": null
+    },
+    "stop": {
+      "type": "number",
+      "default": null
+    },
+    "rate": {
+      "type": "number",
+      "default": 1
+    },
+    "coordinates": {
+      "type": "object",
+      "default": "{ x: 0, y: 0 }"
+    }
+  }
+}

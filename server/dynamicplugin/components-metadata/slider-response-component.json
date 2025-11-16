@@ -1,0 +1,53 @@
+{
+  "name": "SliderResponseComponent",
+  "version": "2.1.1",
+  "parameters": {
+    "min": {
+      "type": "number",
+      "default": 0
+    },
+    "max": {
+      "type": "number",
+      "default": 100
+    },
+    "slider_start": {
+      "type": "number",
+      "default": 50
+    },
+    "step": {
+      "type": "number",
+      "default": 1
+    },
+    "labels": {
+      "type": "string_array",
+      "default": []
+    },
+    "slider_width": {
+      "type": "number",
+      "default": null
+    },
+    "button_label": {
+      "type": "string",
+      "default": "Continue"
+    },
+    "require_movement": {
+      "type": "boolean",
+      "default": false
+    },
+    "coordinates": {
+      "type": "object",
+      "default": "{ x: 0, y: 0 }"
+    }
+  },
+  "data": {
+    "response": {
+      "type": "number"
+    },
+    "rt": {
+      "type": "number"
+    },
+    "slider_start": {
+      "type": "number"
+    }
+  }
+}
