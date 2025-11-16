@@ -1,0 +1,3 @@
+export { default as ImageComponent } from "./ImageComponent";
+export { default as VideoComponent } from "./VideoComponent";
+export { default as AudioComponent } from "./AudioComponent";
