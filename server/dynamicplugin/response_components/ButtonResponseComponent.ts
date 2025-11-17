@@ -126,6 +126,7 @@ class ButtonResponseComponent {
     this.buttonGroupElement = document.createElement("div");
     this.buttonGroupElement.id = "jspsych-button-response-component-btngroup";
     this.buttonGroupElement.style.position = "absolute";
+    this.buttonGroupElement.style.width = "max-content";
 
     // Use default coordinates if not provided
     const coordinates = trial.coordinates || { x: 0, y: 0 };

@@ -101,6 +101,30 @@ export function useTrialCode({
           "responses"
         );
 
+        // Helper para procesar componentes - solo remover valores undefined/null
+        const processComponentFunctions = (components: any[]) => {
+          if (!Array.isArray(components)) return components;
+
+          return components.map((comp: any) => {
+            if (!comp || typeof comp !== "object") return comp;
+
+            const processedComp = { ...comp };
+
+            // Eliminar button_html si es undefined o null para no contaminar el objeto
+            if ("button_html" in processedComp) {
+              if (
+                processedComp.button_html === undefined ||
+                processedComp.button_html === null
+              ) {
+                delete processedComp.button_html;
+              }
+              // Si es función o string, dejarla como está - stringifyWithFunctions la manejará
+            }
+
+            return processedComp;
+          });
+        };
+
         const prefixedComponents = isInLoop
           ? `components_${trialNameSanitized}`
           : "components";
@@ -108,8 +132,12 @@ export function useTrialCode({
           ? `responses_${trialNameSanitized}`
           : "responses";
 
-        result[prefixedComponents] = componentsValue || [];
-        result[prefixedResponses] = responsesValue || [];
+        result[prefixedComponents] = processComponentFunctions(
+          componentsValue || []
+        );
+        result[prefixedResponses] = processComponentFunctions(
+          responsesValue || []
+        );
 
         return result;
       }
@@ -360,20 +388,81 @@ export function useTrialCode({
       ...params.map((p) => p.key),
       ...Object.keys(values).filter((k) => !params.some((p) => p.key === k)),
     ];
+
+    // Helper para stringify recursivo que preserva funciones
+    const stringifyValue = (val: any, key?: string): string => {
+      // Check if this is a function parameter or if value looks like a function
+      const paramType = key
+        ? params.find((p) => p.key === key)?.type
+        : undefined;
+      const isFunction = paramType === "function" || paramType === "FUNCTION";
+      const looksLikeFunction =
+        typeof val === "string" &&
+        val.trim() &&
+        (val.trim().startsWith("(") ||
+          val.trim().startsWith("function") ||
+          val.trim().match(/^[a-zA-Z_$][a-zA-Z0-9_$]*\s*=>/));
+
+      // If it's a function type or looks like a function, output it without quotes
+      if (
+        (isFunction || looksLikeFunction) &&
+        typeof val === "string" &&
+        val.trim()
+      ) {
+        return val;
+      }
+
+      // Handle arrays (like components in DynamicPlugin)
+      if (Array.isArray(val)) {
+        const items = val
+          .map((item) => {
+            if (typeof item === "object" && item !== null) {
+              // Process objects within arrays (like component configs)
+              const objKeys = Object.keys(item);
+              const objProps = objKeys
+                .map((objKey) => {
+                  const objVal = item[objKey];
+
+                  // Special handling for button_html in components
+                  if (objKey === "button_html") {
+                    // If it's a function, convert to string
+                    if (typeof objVal === "function") {
+                      return `${objKey}: ${objVal.toString()}`;
+                    }
+                    // If it's a string that looks like a function
+                    if (typeof objVal === "string" && objVal.trim()) {
+                      const trimmed = objVal.trim();
+                      if (
+                        trimmed.startsWith("(") ||
+                        trimmed.startsWith("function") ||
+                        trimmed.match(/^[a-zA-Z_$][a-zA-Z0-9_$]*\s*=>/)
+                      ) {
+                        return `${objKey}: ${objVal}`;
+                      }
+                    }
+                  }
+
+                  return `${objKey}: ${stringifyValue(objVal)}`;
+                })
+                .join(", ");
+              return `{ ${objProps} }`;
+            }
+            return stringifyValue(item);
+          })
+          .join(", ");
+        return `[${items}]`;
+      }
+
+      // Default JSON stringify
+      return JSON.stringify(val);
+    };
+
     return (
       "{" +
       allKeys
         .map((key) => {
           const val = values[key];
-          // Si es función, no poner comillas
-          if (
-            params.find((p) => p.key === key)?.type === "function" &&
-            typeof val === "string" &&
-            val.trim()
-          ) {
-            return `${key}: ${val}`;
-          }
-          return `${key}: ${JSON.stringify(val)}`;
+          return `${key}: ${stringifyValue(val, key)}`;
         })
         .join(",\n") +
       "}"

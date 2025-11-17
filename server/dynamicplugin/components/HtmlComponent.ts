@@ -57,6 +57,7 @@ class HtmlComponent {
     stimulusElement.id = "jspsych-dynamic-html-component-stimulus";
     stimulusElement.className = "dynamic-html-component-stimulus";
     stimulusElement.style.position = "absolute";
+    stimulusElement.style.width = "max-content";
 
     const xVw = mapValue(config.coordinates.x);
     const yVh = mapValue(config.coordinates.y);

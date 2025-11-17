@@ -300,12 +300,15 @@ const timeline = [];
 // timeline.push(welcome);
 
 
-    const test_stimuli_jnjildcksdsbjs = [{components: [{"type":"ImageComponent","coordinates":{"x":-0.255859375,"y":-0.4947916666666667},"width":300,"height":300,"stimulus":"lwnrv-experiment/img/boat.png"},{"type":"HtmlComponent","coordinates":{"x":0.380859375,"y":-0.421875},"width":200,"height":50,"stimulus":"<div id=\"itqe\" style=\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\">Hola buenas tardes</div>"}],
-response_components: [{"type":"ButtonResponseComponent","coordinates":{"x":0.01953125,"y":0.23697916666666666},"width":200,"height":50,"button_html":"(choice, choice_index) => {\n  const templates = [\"<button id=\\\"igpr\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #3b82f6; color: white; border: none; font-weight: 600; cursor: pointer;\\\">Option 1</button>\",\"<button id=\\\"ijxd\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #10b981; color: white; border: none; font-weight: 600; cursor: pointer;\\\">Option 2</button>\",\"<button id=\\\"itwi\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #f59e0b; color: white; border: none; font-weight: 600; cursor: pointer;\\\">Option 3</button>\"];\n  return templates[choice_index] || templates[0];\n}","choices":["Option 1","Option 2","Option 3"]},{"type":"KeyboardResponseComponent","coordinates":{"x":0.298828125,"y":0},"width":200,"height":50},{"type":"SliderResponseComponent","coordinates":{"x":-0.302734375,"y":-0.0026041666666666665},"width":200,"height":50}],
+    const test_stimuli_trials = [{components: [{ type: "ImageComponent", coordinates: {"x":-0.2421875,"y":-0.515625}, width: 300, height: 300, stimulus: "lwnrv-experiment/img/boat.png" }, { type: "HtmlComponent", coordinates: {"x":0.33203125,"y":-0.5989583333333334}, width: 200, height: 50, stimulus: "<div id=\"itqe\" style=\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\">Hola buenas tardbess</div>" }],
+response_components: [{ type: "KeyboardResponseComponent", coordinates: {"x":0.298828125,"y":-0.2421875}, width: 200, height: 50 }, { type: "ButtonResponseComponent", coordinates: {"x":0.3984375,"y":0.0234375}, width: 200, height: 50, choices: ["Option 1", "Option 2", "Option 3"], button_html: (choice, choice_index) => {
+  const templates = ["<button id=\"ih2p\" style=\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #3b82f6; color: white; border: none; font-weight: 600; cursor: pointer;\">Option 1</button>","<button id=\"ikr9\" style=\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #10b981; color: white; border: none; font-weight: 600; cursor: pointer;\">Option 2</button>","<button id=\"ituj\" style=\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #f59e0b; color: white; border: none; font-weight: 600; cursor: pointer; text-align: center;\">Option 3</button>"];
+  return templates[choice_index] || templates[0];
+} }],
 stimuli_duration: null,
 trial_duration: null,
 response_ends_trial: true}];
-    const jnjildcksdsbjs_timeline = {
+    const trials_timeline = {
     type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
 response_components: jsPsych.timelineVariable("response_components"),
 stimuli_duration: jsPsych.timelineVariable("stimuli_duration"),
@@ -316,6 +319,115 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
 response: "response",
 rt: "rt",
         trial_id: 1763276792259,
+        
+        
+        branches: [1763332886872],
+        branchConditions: [undefined] 
+        
+      },
+    on_start: function(trial) {
+      // First, evaluate and apply params override conditions (if any)
+      
+      // Then apply custom parameters from branching conditions (higher priority)
+      
+      // For trials outside loops, use window.branchCustomParameters
+      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {
+        console.log('Applying custom parameters to trial:', window.branchCustomParameters);
+        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {
+          if (param && param.source !== 'none') {
+            // Handle different parameter sources
+            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
+              // For typed values, use them directly
+              trial[key] = param.value;
+              console.log(`Set trial.${key} = ${param.value}`);
+            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
+              // For CSV values, param.value contains the column name, get the actual value from trial
+              trial[key] = trial[param.value];
+              console.log(`Set trial.${key} = ${trial[param.value]} (from CSV column: ${param.value})`);
+            }
+          }
+        });
+        // Clear the custom parameters after applying them
+        window.branchCustomParameters = null;
+      }
+      
+    },
+    
+    on_finish: function(data) {
+      
+      
+      // Branching automático al primer branch
+      const branches = [1763332886872];
+      if (branches.length > 0) {
+        window.nextTrialId = branches[0];
+        window.skipRemaining = true;
+        window.branchingActive = true;
+      }
+      
+    },
+    };
+    const trials_procedure = {
+    timeline: 
+    [trials_timeline],
+    timeline_variables: test_stimuli_trials,
+    conditional_function: function() {
+      const currentId = 1763276792259;
+      
+      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
+      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
+      if (jumpToTrial) {
+        if (String(currentId) === String(jumpToTrial)) {
+          // Encontramos el trial objetivo para repeat/jump
+          console.log('Repeat/jump: Found target trial', currentId);
+          localStorage.removeItem('jsPsych_jumpToTrial');
+          return true;
+        }
+        // No es el objetivo, saltar
+        console.log('Repeat/jump: Skipping trial', currentId);
+        return false;
+      }
+      
+      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo
+      if (window.skipRemaining) {
+        if (String(currentId) === String(window.nextTrialId)) {
+          // Encontramos el trial objetivo
+          window.skipRemaining = false;
+          window.nextTrialId = null;
+          return true;
+        }
+        // No es el objetivo, saltar
+        return false;
+      }
+      
+      return true;
+    },
+    
+    };
+    timeline.push(trials_procedure);
+  
+
+
+    const preloadNew_Trial = {
+        type: jsPsychPreload,
+       files: ["lwnrv-experiment/img/boat.png"],
+    }
+    timeline.push(preloadNew_Trial);
+    
+    const test_stimuli_New_Trial = [{stimulus: "<div id=\"if3i\" style=\"box-sizing: border-box;\"><span id=\"iwvy\" style=\"box-sizing: border-box; color: rgb(255, 0, 0); font-size: 67px; text-align: center;\">Hola buenas tardess</span></div>",
+choices: ["Option 1", "Option 2", "Option 3"],
+button_html: (choice, choice_index) => {
+  const templates = ["<button id=\"ixrr\" style=\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #3b82f6; color: white; border: none; font-weight: 600; cursor: pointer;\">Option 1</button>","<button id=\"is1c\" style=\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #10b981; color: red; border: none; font-weight: 600; cursor: pointer;\">Option 2</button>","<button id=\"i944\" style=\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #f59e0b; color: white; border: none; font-weight: 600; cursor: pointer;\">Option 3</button>"];
+  return templates[choice_index] || templates[0];
+}}];
+    const New_Trial_timeline = {
+    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable("stimulus"),
+choices: jsPsych.timelineVariable("choices"),
+button_html: jsPsych.timelineVariable("button_html"),
+      data: {
+        rt: "rt",
+response: "response",
+stimulus: "stimulus",
+        trial_id: 1763332886872,
         
         
       },
@@ -355,12 +467,12 @@ rt: "rt",
       }
     },
     };
-    const jnjildcksdsbjs_procedure = {
+    const New_Trial_procedure = {
     timeline: 
-    [jnjildcksdsbjs_timeline],
-    timeline_variables: test_stimuli_jnjildcksdsbjs,
+    [New_Trial_timeline],
+    timeline_variables: test_stimuli_New_Trial,
     conditional_function: function() {
-      const currentId = 1763276792259;
+      const currentId = 1763332886872;
       
       // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
       const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
@@ -392,7 +504,7 @@ rt: "rt",
     },
     
     };
-    timeline.push(jnjildcksdsbjs_procedure);
+    timeline.push(New_Trial_procedure);
   
 
 jsPsych.run(timeline);

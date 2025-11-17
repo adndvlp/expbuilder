@@ -37,15 +37,30 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
     // Handle nested config structure with source/value
     if (typeof config === "object" && config !== null && "source" in config) {
       if (config.source === "typed" || config.source === "csv") {
-        return config.value !== undefined && config.value !== null
-          ? config.value
-          : defaultValue;
+        let value =
+          config.value !== undefined && config.value !== null
+            ? config.value
+            : defaultValue;
+
+        // Special handling for choices: ensure it's always an array
+        if (key === "choices" && value !== null && !Array.isArray(value)) {
+          value = [String(value)];
+        }
+
+        return value;
       }
       return defaultValue;
     }
 
     // Direct value
-    return config !== undefined && config !== null ? config : defaultValue;
+    let value = config !== undefined && config !== null ? config : defaultValue;
+
+    // Special handling for choices: ensure it's always an array
+    if (key === "choices" && value !== null && !Array.isArray(value)) {
+      value = [String(value)];
+    }
+
+    return value;
   };
 
   const choices = getConfigValue("choices", ["Button"]);

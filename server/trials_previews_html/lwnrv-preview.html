@@ -97,7 +97,7 @@
 
 
         const trialSessionId =
-            "jnjildcksdsbjs_result_" + (crypto.randomUUID
+            "trials_result_" + (crypto.randomUUID
               ? crypto.randomUUID()
               : Math.random().toString(36).slice(2, 10));
 
@@ -154,12 +154,15 @@ localStorage.removeItem('jsPsych_jumpToTrial');
       timeline.push(welcome);
 
       
-    const test_stimuli_jnjildcksdsbjs = [{components: [{"type":"ImageComponent","coordinates":{"x":-0.255859375,"y":-0.4947916666666667},"width":300,"height":300,"stimulus":"lwnrv-experiment/img/boat.png"},{"type":"HtmlComponent","coordinates":{"x":0.380859375,"y":-0.421875},"width":200,"height":50,"stimulus":"<div id=\"itqe\" style=\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\">Hola buenas tardes</div>"}],
-response_components: [{"type":"ButtonResponseComponent","coordinates":{"x":0.01953125,"y":0.23697916666666666},"width":200,"height":50,"button_html":"(choice, choice_index) => {\n  const templates = [\"<button id=\\\"igpr\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #3b82f6; color: white; border: none; font-weight: 600; cursor: pointer;\\\">Option 1</button>\",\"<button id=\\\"ijxd\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #10b981; color: white; border: none; font-weight: 600; cursor: pointer;\\\">Option 2</button>\",\"<button id=\\\"itwi\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #f59e0b; color: white; border: none; font-weight: 600; cursor: pointer;\\\">Option 3</button>\"];\n  return templates[choice_index] || templates[0];\n}","choices":["Option 1","Option 2","Option 3"]},{"type":"KeyboardResponseComponent","coordinates":{"x":0.298828125,"y":0},"width":200,"height":50},{"type":"SliderResponseComponent","coordinates":{"x":-0.302734375,"y":-0.0026041666666666665},"width":200,"height":50}],
+    const test_stimuli_trials = [{components: [{ type: "ImageComponent", coordinates: {"x":-0.2421875,"y":-0.515625}, width: 300, height: 300, stimulus: "lwnrv-experiment/img/boat.png" }, { type: "HtmlComponent", coordinates: {"x":0.33203125,"y":-0.5989583333333334}, width: 200, height: 50, stimulus: "<div id=\"itqe\" style=\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\">Hola buenas tardbess</div>" }],
+response_components: [{ type: "KeyboardResponseComponent", coordinates: {"x":0.298828125,"y":-0.2421875}, width: 200, height: 50 }, { type: "ButtonResponseComponent", coordinates: {"x":0.3984375,"y":0.0234375}, width: 200, height: 50, choices: ["Option 1", "Option 2", "Option 3"], button_html: (choice, choice_index) => {
+  const templates = ["<button id=\"ih2p\" style=\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #3b82f6; color: white; border: none; font-weight: 600; cursor: pointer;\">Option 1</button>","<button id=\"ikr9\" style=\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #10b981; color: white; border: none; font-weight: 600; cursor: pointer;\">Option 2</button>","<button id=\"ituj\" style=\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #f59e0b; color: white; border: none; font-weight: 600; cursor: pointer; text-align: center;\">Option 3</button>"];
+  return templates[choice_index] || templates[0];
+} }],
 stimuli_duration: null,
 trial_duration: null,
 response_ends_trial: true}];
-    const jnjildcksdsbjs_timeline = {
+    const trials_timeline = {
     type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
 response_components: jsPsych.timelineVariable("response_components"),
 stimuli_duration: jsPsych.timelineVariable("stimuli_duration"),
@@ -171,6 +174,9 @@ response: "response",
 rt: "rt",
         trial_id: 1763276792259,
         
+        
+        branches: [1763332886872],
+        branchConditions: [undefined] 
         
       },
     on_start: function(trial) {
@@ -202,17 +208,22 @@ rt: "rt",
     },
     
     on_finish: function(data) {
-      // Este trial no tiene branches ni repeat conditions, es un trial terminal
-      // Si llegamos aquí después de un branching, terminar el experimento
-      if (window.branchingActive) {
-        jsPsych.abortExperiment('', {});
+      
+      
+      // Branching automático al primer branch
+      const branches = [1763332886872];
+      if (branches.length > 0) {
+        window.nextTrialId = branches[0];
+        window.skipRemaining = true;
+        window.branchingActive = true;
       }
+      
     },
     };
-    const jnjildcksdsbjs_procedure = {
+    const trials_procedure = {
     timeline: 
-    [jnjildcksdsbjs_timeline],
-    timeline_variables: test_stimuli_jnjildcksdsbjs,
+    [trials_timeline],
+    timeline_variables: test_stimuli_trials,
     conditional_function: function() {
       const currentId = 1763276792259;
       
@@ -246,7 +257,7 @@ rt: "rt",
     },
     
     };
-    timeline.push(jnjildcksdsbjs_procedure);
+    timeline.push(trials_procedure);
   
 
       jsPsych.run(timeline);

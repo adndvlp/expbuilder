@@ -149,9 +149,20 @@ export const usePhase = ({
       allKeys
         .map((key) => {
           const val = values[key];
-          // Si es función, no poner comillas
+          // Check if this is a function parameter or if value looks like a function
+          const paramType = params.find((p) => p.key === key)?.type;
+          const isFunction =
+            paramType === "function" || paramType === "FUNCTION";
+          const looksLikeFunction =
+            typeof val === "string" &&
+            val.trim() &&
+            (val.trim().startsWith("(") ||
+              val.trim().startsWith("function") ||
+              val.trim().match(/^[a-zA-Z_$][a-zA-Z0-9_$]*\s*=>/));
+
+          // If it's a function type or looks like a function, output it without quotes
           if (
-            params.find((p) => p.key === key)?.type === "function" &&
+            (isFunction || looksLikeFunction) &&
             typeof val === "string" &&
             val.trim()
           ) {

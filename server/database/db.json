@@ -16,12 +16,12 @@
           {
             "id": 1763276792259,
             "type": "Trial",
-            "name": "jnjildcksdsbjs",
+            "name": "trials",
             "parameters": {
               "includesExtensions": false,
               "extensionType": ""
             },
-            "trialCode": "\n    const test_stimuli_jnjildcksdsbjs = [{components: [{\"type\":\"ImageComponent\",\"coordinates\":{\"x\":-0.255859375,\"y\":-0.4947916666666667},\"width\":300,\"height\":300,\"stimulus\":\"lwnrv-experiment/img/boat.png\"},{\"type\":\"HtmlComponent\",\"coordinates\":{\"x\":0.380859375,\"y\":-0.421875},\"width\":200,\"height\":50,\"stimulus\":\"<div id=\\\"itqe\\\" style=\\\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\\\">Hola buenas tardes</div>\"}],\nresponse_components: [{\"type\":\"ButtonResponseComponent\",\"coordinates\":{\"x\":0.01953125,\"y\":0.23697916666666666},\"width\":200,\"height\":50,\"button_html\":\"(choice, choice_index) => {\\n  const templates = [\\\"<button id=\\\\\\\"igpr\\\\\\\" style=\\\\\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #3b82f6; color: white; border: none; font-weight: 600; cursor: pointer;\\\\\\\">Option 1</button>\\\",\\\"<button id=\\\\\\\"ijxd\\\\\\\" style=\\\\\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #10b981; color: white; border: none; font-weight: 600; cursor: pointer;\\\\\\\">Option 2</button>\\\",\\\"<button id=\\\\\\\"itwi\\\\\\\" style=\\\\\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #f59e0b; color: white; border: none; font-weight: 600; cursor: pointer;\\\\\\\">Option 3</button>\\\"];\\n  return templates[choice_index] || templates[0];\\n}\",\"choices\":[\"Option 1\",\"Option 2\",\"Option 3\"]},{\"type\":\"KeyboardResponseComponent\",\"coordinates\":{\"x\":0.298828125,\"y\":0},\"width\":200,\"height\":50},{\"type\":\"SliderResponseComponent\",\"coordinates\":{\"x\":-0.302734375,\"y\":-0.0026041666666666665},\"width\":200,\"height\":50}],\nstimuli_duration: null,\ntrial_duration: null,\nresponse_ends_trial: true}];\n    const jnjildcksdsbjs_timeline = {\n    type: DynamicPlugin, components: jsPsych.timelineVariable(\"components\"),\nresponse_components: jsPsych.timelineVariable(\"response_components\"),\nstimuli_duration: jsPsych.timelineVariable(\"stimuli_duration\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial\"),\n      data: {\n        stimulus: \"stimulus\",\nresponse: \"response\",\nrt: \"rt\",\n        trial_id: 1763276792259,\n        \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        console.log('Applying custom parameters to trial:', window.branchCustomParameters);\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Handle different parameter sources\n            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n              // For typed values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n              // For CSV values, param.value contains the column name, get the actual value from trial\n              trial[key] = trial[param.value];\n              console.log(`Set trial.${key} = ${trial[param.value]} (from CSV column: ${param.value})`);\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches ni repeat conditions, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },\n    };\n    const jnjildcksdsbjs_procedure = {\n    timeline: \n    [jnjildcksdsbjs_timeline],\n    timeline_variables: test_stimuli_jnjildcksdsbjs,\n    conditional_function: function() {\n      const currentId = 1763276792259;\n      \n      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n      if (jumpToTrial) {\n        if (String(currentId) === String(jumpToTrial)) {\n          // Encontramos el trial objetivo para repeat/jump\n          console.log('Repeat/jump: Found target trial', currentId);\n          localStorage.removeItem('jsPsych_jumpToTrial');\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('Repeat/jump: Skipping trial', currentId);\n        return false;\n      }\n      \n      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(jnjildcksdsbjs_procedure);\n  ",
+            "trialCode": "\n    const test_stimuli_trials = [{components: [{ type: \"ImageComponent\", coordinates: {\"x\":-0.2421875,\"y\":-0.515625}, width: 300, height: 300, stimulus: \"lwnrv-experiment/img/boat.png\" }, { type: \"HtmlComponent\", coordinates: {\"x\":0.33203125,\"y\":-0.5989583333333334}, width: 200, height: 50, stimulus: \"<div id=\\\"itqe\\\" style=\\\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\\\">Hola buenas tardbess</div>\" }],\nresponse_components: [{ type: \"KeyboardResponseComponent\", coordinates: {\"x\":0.298828125,\"y\":-0.2421875}, width: 200, height: 50 }, { type: \"ButtonResponseComponent\", coordinates: {\"x\":0.3984375,\"y\":0.0234375}, width: 200, height: 50, choices: [\"Option 1\", \"Option 2\", \"Option 3\"], button_html: (choice, choice_index) => {\n  const templates = [\"<button id=\\\"ih2p\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #3b82f6; color: white; border: none; font-weight: 600; cursor: pointer;\\\">Option 1</button>\",\"<button id=\\\"ikr9\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #10b981; color: white; border: none; font-weight: 600; cursor: pointer;\\\">Option 2</button>\",\"<button id=\\\"ituj\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #f59e0b; color: white; border: none; font-weight: 600; cursor: pointer; text-align: center;\\\">Option 3</button>\"];\n  return templates[choice_index] || templates[0];\n} }],\nstimuli_duration: null,\ntrial_duration: null,\nresponse_ends_trial: true}];\n    const trials_timeline = {\n    type: DynamicPlugin, components: jsPsych.timelineVariable(\"components\"),\nresponse_components: jsPsych.timelineVariable(\"response_components\"),\nstimuli_duration: jsPsych.timelineVariable(\"stimuli_duration\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial\"),\n      data: {\n        stimulus: \"stimulus\",\nresponse: \"response\",\nrt: \"rt\",\n        trial_id: 1763276792259,\n        \n        \n        branches: [1763332886872],\n        branchConditions: [undefined] \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        console.log('Applying custom parameters to trial:', window.branchCustomParameters);\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Handle different parameter sources\n            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n              // For typed values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n              // For CSV values, param.value contains the column name, get the actual value from trial\n              trial[key] = trial[param.value];\n              console.log(`Set trial.${key} = ${trial[param.value]} (from CSV column: ${param.value})`);\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      \n      \n      // Branching automático al primer branch\n      const branches = [1763332886872];\n      if (branches.length > 0) {\n        window.nextTrialId = branches[0];\n        window.skipRemaining = true;\n        window.branchingActive = true;\n      }\n      \n    },\n    };\n    const trials_procedure = {\n    timeline: \n    [trials_timeline],\n    timeline_variables: test_stimuli_trials,\n    conditional_function: function() {\n      const currentId = 1763276792259;\n      \n      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n      if (jumpToTrial) {\n        if (String(currentId) === String(jumpToTrial)) {\n          // Encontramos el trial objetivo para repeat/jump\n          console.log('Repeat/jump: Found target trial', currentId);\n          localStorage.removeItem('jsPsych_jumpToTrial');\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('Repeat/jump: Skipping trial', currentId);\n        return false;\n      }\n      \n      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(trials_procedure);\n  ",
             "plugin": "plugin-dynamic",
             "columnMapping": {
               "components": {
@@ -30,8 +30,8 @@
                   {
                     "type": "ImageComponent",
                     "coordinates": {
-                      "x": -0.255859375,
-                      "y": -0.4947916666666667
+                      "x": -0.2421875,
+                      "y": -0.515625
                     },
                     "width": 300,
                     "height": 300,
@@ -40,12 +40,12 @@
                   {
                     "type": "HtmlComponent",
                     "coordinates": {
-                      "x": 0.380859375,
-                      "y": -0.421875
+                      "x": 0.33203125,
+                      "y": -0.5989583333333334
                     },
                     "width": 200,
                     "height": 50,
-                    "stimulus": "<div id=\"itqe\" style=\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\">Hola buenas tardes</div>"
+                    "stimulus": "<div id=\"itqe\" style=\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\">Hola buenas tardbess</div>"
                   }
                 ]
               },
@@ -53,37 +53,27 @@
                 "source": "typed",
                 "value": [
                   {
+                    "type": "KeyboardResponseComponent",
+                    "coordinates": {
+                      "x": 0.298828125,
+                      "y": -0.2421875
+                    },
+                    "width": 200,
+                    "height": 50
+                  },
+                  {
                     "type": "ButtonResponseComponent",
                     "coordinates": {
-                      "x": 0.01953125,
-                      "y": 0.23697916666666666
+                      "x": 0.3984375,
+                      "y": 0.0234375
                     },
                     "width": 200,
                     "height": 50,
-                    "button_html": "(choice, choice_index) => {\n  const templates = [\"<button id=\\\"igpr\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #3b82f6; color: white; border: none; font-weight: 600; cursor: pointer;\\\">Option 1</button>\",\"<button id=\\\"ijxd\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #10b981; color: white; border: none; font-weight: 600; cursor: pointer;\\\">Option 2</button>\",\"<button id=\\\"itwi\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #f59e0b; color: white; border: none; font-weight: 600; cursor: pointer;\\\">Option 3</button>\"];\n  return templates[choice_index] || templates[0];\n}",
                     "choices": [
                       "Option 1",
                       "Option 2",
                       "Option 3"
                     ]
-                  },
-                  {
-                    "type": "KeyboardResponseComponent",
-                    "coordinates": {
-                      "x": 0.298828125,
-                      "y": 0
-                    },
-                    "width": 200,
-                    "height": 50
-                  },
-                  {
-                    "type": "SliderResponseComponent",
-                    "coordinates": {
-                      "x": -0.302734375,
-                      "y": -0.0026041666666666665
-                    },
-                    "width": 200,
-                    "height": 50
                   }
                 ]
               }
@@ -95,25 +85,1907 @@
             "stimuliOrders": [],
             "categories": false,
             "categoryColumn": "",
-            "branches": []
+            "branches": [
+              1763332886872
+            ]
+          },
+          {
+            "id": 1763332886872,
+            "type": "Trial",
+            "name": "New Trial",
+            "parameters": {
+              "includesExtensions": false,
+              "extensionType": ""
+            },
+            "trialCode": "\n    const preloadNew_Trial = {\n        type: jsPsychPreload,\n       files: [\"lwnrv-experiment/img/boat.png\"],\n    }\n    timeline.push(preloadNew_Trial);\n    \n    const test_stimuli_New_Trial = [{stimulus: \"<div id=\\\"if3i\\\" style=\\\"box-sizing: border-box;\\\"><span id=\\\"iwvy\\\" style=\\\"box-sizing: border-box; color: rgb(255, 0, 0); font-size: 67px; text-align: center;\\\">Hola buenas tardess</span></div>\",\nchoices: [\"Option 1\", \"Option 2\", \"Option 3\"],\nbutton_html: (choice, choice_index) => {\n  const templates = [\"<button id=\\\"ixrr\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #3b82f6; color: white; border: none; font-weight: 600; cursor: pointer;\\\">Option 1</button>\",\"<button id=\\\"is1c\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #10b981; color: red; border: none; font-weight: 600; cursor: pointer;\\\">Option 2</button>\",\"<button id=\\\"i944\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #f59e0b; color: white; border: none; font-weight: 600; cursor: pointer;\\\">Option 3</button>\"];\n  return templates[choice_index] || templates[0];\n}}];\n    const New_Trial_timeline = {\n    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable(\"stimulus\"),\nchoices: jsPsych.timelineVariable(\"choices\"),\nbutton_html: jsPsych.timelineVariable(\"button_html\"),\n      data: {\n        rt: \"rt\",\nresponse: \"response\",\nstimulus: \"stimulus\",\n        trial_id: 1763332886872,\n        \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        console.log('Applying custom parameters to trial:', window.branchCustomParameters);\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Handle different parameter sources\n            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n              // For typed values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n              // For CSV values, param.value contains the column name, get the actual value from trial\n              trial[key] = trial[param.value];\n              console.log(`Set trial.${key} = ${trial[param.value]} (from CSV column: ${param.value})`);\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches ni repeat conditions, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },\n    };\n    const New_Trial_procedure = {\n    timeline: \n    [New_Trial_timeline],\n    timeline_variables: test_stimuli_New_Trial,\n    conditional_function: function() {\n      const currentId = 1763332886872;\n      \n      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n      if (jumpToTrial) {\n        if (String(currentId) === String(jumpToTrial)) {\n          // Encontramos el trial objetivo para repeat/jump\n          console.log('Repeat/jump: Found target trial', currentId);\n          localStorage.removeItem('jsPsych_jumpToTrial');\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('Repeat/jump: Skipping trial', currentId);\n        return false;\n      }\n      \n      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(New_Trial_procedure);\n  ",
+            "plugin": "plugin-html-button-response",
+            "columnMapping": {
+              "stimulus": {
+                "source": "typed",
+                "value": "<div id=\"if3i\" style=\"box-sizing: border-box;\"><span id=\"iwvy\" style=\"box-sizing: border-box; color: rgb(255, 0, 0); font-size: 67px; text-align: center;\">Hola buenas tardess</span></div>"
+              },
+              "choices": {
+                "source": "typed",
+                "value": [
+                  "Option 1",
+                  "Option 2",
+                  "Option 3"
+                ]
+              },
+              "button_html": {
+                "source": "typed",
+                "value": "(choice, choice_index) => {\n  const templates = [\"<button id=\\\"ixrr\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #3b82f6; color: white; border: none; font-weight: 600; cursor: pointer;\\\">Option 1</button>\",\"<button id=\\\"is1c\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #10b981; color: red; border: none; font-weight: 600; cursor: pointer;\\\">Option 2</button>\",\"<button id=\\\"i944\\\" style=\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #f59e0b; color: white; border: none; font-weight: 600; cursor: pointer;\\\">Option 3</button>\"];\n  return templates[choice_index] || templates[0];\n}"
+              },
+              "prompt": {
+                "source": "none",
+                "value": null
+              },
+              "stimulus_duration": {
+                "source": "none",
+                "value": null
+              },
+              "trial_duration": {
+                "source": "none",
+                "value": null
+              },
+              "button_layout": {
+                "source": "none",
+                "value": null
+              },
+              "grid_rows": {
+                "source": "none",
+                "value": null
+              },
+              "grid_columns": {
+                "source": "none",
+                "value": null
+              },
+              "response_ends_trial": {
+                "source": "none",
+                "value": null
+              },
+              "enable_button_after": {
+                "source": "none",
+                "value": null
+              }
+            },
+            "csvJson": [],
+            "csvColumns": [],
+            "orders": false,
+            "orderColumns": [],
+            "stimuliOrders": [],
+            "categories": false,
+            "categoryColumn": ""
           }
         ]
       },
       "createdAt": "2025-11-11T23:08:35.359Z",
-      "updatedAt": "2025-11-16T08:37:33.923Z"
+      "updatedAt": "2025-11-17T00:15:50.101Z"
     }
   ],
   "configs": [
     {
       "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
       "data": {
-        "generatedCode": "\n  // --- Firebase config ---\n  const firebaseConfig = {\n    apiKey: \"AIzaSyBEbJ-uGKzsaf2u24KPamBPVZrUmvhFk-Q\",\n    authDomain: \"test-e4cf9.firebaseapp.com\",\n    databaseURL: \"http://localhost:9000?ns=test-e4cf9\",\n    projectId: \"test-e4cf9\",\n    storageBucket: \"test-e4cf9.firebasestorage.app\",\n    messagingSenderId: \"414213417080\",\n    appId: \"1:414213417080:web:98607c621a54d07656e58d\"\n  };\n\n  // --- Cargar Firebase SDK ---\n  if (typeof window.firebase === 'undefined') {\n    const script = document.createElement('script');\n    script.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';\n    script.onload = () => {\n      const dbScript = document.createElement('script');\n      dbScript.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';\n      dbScript.onload = () => { window._firebaseReady = true; };\n      document.head.appendChild(dbScript);\n    };\n    document.head.appendChild(script);\n  } else {\n    window._firebaseReady = true;\n  }\n\n  function waitForFirebase() {\n    return new Promise(resolve => {\n      if (window._firebaseReady) return resolve();\n      const interval = setInterval(() => {\n        if (window._firebaseReady) {\n          clearInterval(interval);\n          resolve();\n        }\n      }, 50);\n    });\n  }\n\n \n  const userStr = null;\n\n  const Uid = userStr.uid\n\n  const trialSessionId =\n    (crypto.randomUUID\n      ? crypto.randomUUID()\n      : Math.random().toString(36).slice(2, 10));\n\n  let participantNumber;\n\n  async function saveSession(trialSessionId) {\n    try {\n      const res = await fetch(\"http://localhost:5001/test-e4cf9/us-central1/apidata\", {\n        method: \"POST\",\n        headers: { \"Content-Type\": \"application/json\", Accept: \"*/*\" },\n        body: JSON.stringify({\n          experimentID: \"c3ac9abb-486f-4f43-a093-fd1173acea6a\",\n          experimentName: \"lwnrv\", \n          sessionId: trialSessionId,\n          storage: \"drive\",\n          uid: Uid\n        }),\n      });\n      \n      console.log('Response status:', res.status);\n      \n      if (!res.ok) {\n        const errorText = await res.text();\n        console.error('Error creating session:', errorText);\n        throw new Error(`Failed to create session: ${res.status} - ${errorText}`);\n      }\n      \n      const result = await res.json();\n      console.log('Session created successfully:', result);\n      \n      if (!result.success) {\n        if (result.message?.includes(\"INVALID_GOOGLE_DRIVE_TOKEN\") || result.message?.includes(\"Invalid Google Drive token\")) {\n          alert(\"Warning: Google Drive token not found or invalid. Please reconnect your Drive account in Settings.\");\n        } else if (result.message?.includes(\"INVALID_DROPBOX_TOKEN\") || result.message?.includes(\"Invalid Dropbox token\")) {\n          alert(\"Warning: Dropbox token not found or invalid. Please reconnect your Dropbox account in Settings.\");\n        }\n        throw new Error(result.message || 'Failed to create session');\n      }\n      \n      participantNumber = result.participantNumber;\n      return participantNumber;\n    } catch (error) {\n      console.error('Error in saveSession:', error);\n      alert('Error creating session: ' + error.message);\n      throw error;\n    }\n  }\n\n  (async () => {\n    // Limpiar el localStorage de valores de sesiones anteriores\n    localStorage.removeItem('jsPsych_jumpToTrial');\n    \n    // Esperar e inicializar Firebase\n    await waitForFirebase();\n    if (!window.firebase.apps.length) {\n      window.firebase.initializeApp(firebaseConfig);\n    }\n    const db = window.firebase.database();\n\n    participantNumber = await saveSession(trialSessionId);\n\n    if (typeof participantNumber !== \"number\" || isNaN(participantNumber)) {\n      alert(\"The participant number is not assigned. Please, wait.\");\n      throw new Error(\"participantNumber not assigned\");\n    }\n\n    // --- Configurar onDisconnect para finalizar sesión automáticamente ---\n    const sessionRef = db.ref('sessions/c3ac9abb-486f-4f43-a093-fd1173acea6a/' + trialSessionId);\n    await sessionRef.set({\n      connected: true,\n      experimentID: 'c3ac9abb-486f-4f43-a093-fd1173acea6a',\n      sessionId: trialSessionId,\n      startedAt: window.firebase.database.ServerValue.TIMESTAMP,\n      storage: 'drive'\n    });\n    \n    // Cuando se desconecte, marcar para que el backend finalice la sesión\n    // Incluir needsFinalization para que se procesen los datos en caso de desconexión\n    sessionRef.onDisconnect().update({\n      connected: false,\n      needsFinalization: true,\n      disconnectedAt: window.firebase.database.ServerValue.TIMESTAMP,\n      storage: 'drive'\n    });\n\n    // --- Branching logic functions (outside initJsPsych for timeline access) ---\n    window.nextTrialId = null;\n    window.skipRemaining = false;\n    window.branchingActive = false;\n    window.branchCustomParameters = null; // Store custom parameters for the next trial\n\n    const evaluateCondition = (trialData, condition) => {\n      // All rules in a condition must be true (AND logic)\n      return condition.rules.every(rule => {\n        const propValue = trialData[rule.prop];\n        const compareValue = rule.value;\n        \n        // Convert values for comparison\n        const numPropValue = parseFloat(propValue);\n        const numCompareValue = parseFloat(compareValue);\n        const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);\n        \n        switch (rule.op) {\n          case '==':\n            return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;\n          case '!=':\n            return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;\n          case '>':\n            return isNumeric && numPropValue > numCompareValue;\n          case '<':\n            return isNumeric && numPropValue < numCompareValue;\n          case '>=':\n            return isNumeric && numPropValue >= numCompareValue;\n          case '<=':\n            return isNumeric && numPropValue <= numCompareValue;\n          default:\n            return false;\n        }\n      });\n    };\n    \n    const getNextTrialId = (lastTrialData) => {\n      if (!lastTrialData || !lastTrialData.trials || !lastTrialData.trials[0]) {\n        return null;\n      }\n      \n      const trial = lastTrialData.trials[0];\n      \n      // Check if trial/loop has branches\n      if (!Array.isArray(trial.branches) || trial.branches.length === 0) {\n        return null;\n      }\n      \n      // Check if there are conditions to evaluate\n      const hasBranchConditions = Array.isArray(trial.branchConditions) && trial.branchConditions.length > 0;\n      \n      // Check if any condition has customParameters\n      const hasCustomParameters = hasBranchConditions && \n        trial.branchConditions.flat().some(condition => \n          condition && condition.customParameters && \n          Object.keys(condition.customParameters).length > 0\n        );\n      \n      // If there are no conditions AND no custom parameters, auto-branch to first branch\n      if (!hasBranchConditions && !hasCustomParameters) {\n        console.log('No conditions or custom parameters defined, auto-branching to first branch:', trial.branches[0]);\n        return trial.branches[0];\n      }\n      \n      // If there are no conditions but there ARE custom parameters, we can't auto-branch\n      // We need to evaluate conditions to know which customParameters to use\n      if (!hasBranchConditions && hasCustomParameters) {\n        console.log('Custom parameters exist but no conditions, cannot auto-branch');\n        return null;\n      }\n      \n      // If there ARE conditions, evaluate them (regardless of how many branches there are)\n      // branchConditions is an array of arrays, flatten it first\n      const conditions = trial.branchConditions.flat();\n      \n      // Evaluate each condition (OR logic between conditions)\n      for (const condition of conditions) {\n        if (!condition || !condition.rules) {\n          console.warn('Invalid condition structure:', condition);\n          continue;\n        }\n        \n        if (evaluateCondition(trial, condition)) {\n          console.log('Condition matched:', condition);\n          // Store custom parameters if they exist\n          if (condition.customParameters) {\n            window.branchCustomParameters = condition.customParameters;\n            console.log('Custom parameters for branch:', window.branchCustomParameters);\n          }\n          return condition.nextTrialId;\n        }\n      }\n      \n      // No condition matched - do NOT branch (conditions were defined but none matched)\n      console.log('No condition matched, NOT branching');\n      return null;\n    };\n\n    const jsPsych = initJsPsych({\n      display_element: document.getElementById('jspsych-container'),\n\n      on_trial_start: function(trial) {\n        const lastTrialData = jsPsych.data.get()\n        if (lastTrialData) {\n        trial.data.prev_response = lastTrialData.response;\n        }\n      },\n\n      \n\n      on_data_update: function (data) {\n\n        fetch(\"http://localhost:5001/test-e4cf9/us-central1/apidata\", {\n          method: \"POST\",\n          headers: { \"Content-Type\": \"application/json\", Accept: \"*/*\" },\n          body: JSON.stringify({\n            experimentID: \"c3ac9abb-486f-4f43-a093-fd1173acea6a\",\n            sessionId: trialSessionId,\n            data: data,\n            storage: \"drive\",\n          }),\n        })\n        .then(res => {\n          if (!res.ok) {\n            return res.text().then(text => {\n              console.error('Error appending data:', text);\n            });\n          }\n          return res.json();\n        })\n        .then(result => {\n          if (result && result.success) {\n            console.log('Data appended to temporary storage');\n          }\n        })\n        .catch(error => {\n          console.error('Error in on_data_update:', error);\n        });\n\n        // Solo evaluar branching si el trial/loop tiene un trial_id o loop_id válido\n        if ((!data.trial_id || data.trial_id === undefined) && (!data.loop_id || data.loop_id === undefined)) {\n          return;\n        }\n        \n        const lastTrialData = jsPsych.data.getLastTrialData();\n        const trial = lastTrialData.trials ? lastTrialData.trials[0] : null;\n        \n        // Verificar si este trial/loop tiene branches\n        if (!trial || !trial.branches || trial.branches.length === 0) {\n          return; // No tiene branches, no hay nada que hacer\n        }\n        \n        // IMPORTANTE: Si el trial está dentro de un loop (isInLoop = true),\n        // NO activar el branching global. Los trials dentro de loops usan su propio\n        // sistema de branching con variables locales (loopNextTrialId, etc.)\n        if (trial.isInLoop === true) {\n          console.log('Trial inside loop detected, skipping global branching');\n          return;\n        }\n        \n        console.log('Trial/Loop data:', lastTrialData);\n        \n        const nextTrialId = getNextTrialId(lastTrialData);\n        console.log('Next trial/loop ID:', nextTrialId);\n        \n        if (nextTrialId) {\n          // Check if nextTrialId is \"FINISH_EXPERIMENT\"\n          if (nextTrialId === 'FINISH_EXPERIMENT') {\n            console.log('Finish experiment requested');\n            jsPsych.abortExperiment('Experiment finished by branching condition', {});\n            return;\n          }\n          \n          window.nextTrialId = nextTrialId;\n          window.skipRemaining = true;\n          window.branchingActive = true;\n          console.log('Branching activated: skip to trial/loop', nextTrialId);\n        }\n      },\n\n      on_finish: async function() {\n        \n        // Cancelar el onDisconnect para evitar conflictos\n        sessionRef.onDisconnect().cancel();\n\n        // Finalizar la sesión normalmente y marcar en Firebase que terminó correctamente\n        console.log('Experiment finished normally, sending data to Google Drive...');\n        \n        try {\n          \n          // Marcar en Firebase que terminó correctamente Y necesita finalización\n          await sessionRef.update({\n            connected: false,\n            finished: true,\n            needsFinalization: true,\n            finishedAt: window.firebase.database.ServerValue.TIMESTAMP\n          });\n          \n          // El backend procesará la finalización al detectar needsFinalization=true\n          console.log('Session marked for finalization in Firebase');\n        } catch (error) {\n          console.error('Error marking session as finished:', error);\n        }\n      },\n  // Uncomment to see the json results after finishing a session experiment\n  // jsPsych.data.displayData('csv');\n});\n\nconst timeline = [];\n\nconst welcome = {\n  type: jsPsychHtmlButtonResponse,\n  stimulus: \"Welcome to the experiment. Press 'Start' to begin.\",\n  choices: ['Start'],\n};\n\ntimeline.push(welcome);\n\n\n    const test_stimuli_jnjildcksdsbjs = [{components: [{\"type\":\"ImageComponent\",\"coordinates\":{\"x\":-0.255859375,\"y\":-0.4947916666666667},\"width\":300,\"height\":300,\"stimulus\":\"lwnrv-experiment/img/boat.png\"},{\"type\":\"HtmlComponent\",\"coordinates\":{\"x\":0.380859375,\"y\":-0.421875},\"width\":200,\"height\":50,\"stimulus\":\"<div id=\\\"itqe\\\" style=\\\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\\\">Hola buenas tardes</div>\"}],\nresponse_components: [{\"type\":\"ButtonResponseComponent\",\"coordinates\":{\"x\":0.01953125,\"y\":0.23697916666666666},\"width\":200,\"height\":50,\"button_html\":\"(choice, choice_index) => {\\n  const templates = [\\\"<button id=\\\\\\\"igpr\\\\\\\" style=\\\\\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #3b82f6; color: white; border: none; font-weight: 600; cursor: pointer;\\\\\\\">Option 1</button>\\\",\\\"<button id=\\\\\\\"ijxd\\\\\\\" style=\\\\\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #10b981; color: white; border: none; font-weight: 600; cursor: pointer;\\\\\\\">Option 2</button>\\\",\\\"<button id=\\\\\\\"itwi\\\\\\\" style=\\\\\\\"box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #f59e0b; color: white; border: none; font-weight: 600; cursor: pointer;\\\\\\\">Option 3</button>\\\"];\\n  return templates[choice_index] || templates[0];\\n}\",\"choices\":[\"Option 1\",\"Option 2\",\"Option 3\"]},{\"type\":\"KeyboardResponseComponent\",\"coordinates\":{\"x\":0.298828125,\"y\":0},\"width\":200,\"height\":50},{\"type\":\"SliderResponseComponent\",\"coordinates\":{\"x\":-0.302734375,\"y\":-0.0026041666666666665},\"width\":200,\"height\":50}],\nstimuli_duration: null,\ntrial_duration: null,\nresponse_ends_trial: true}];\n    const jnjildcksdsbjs_timeline = {\n    type: DynamicPlugin, components: jsPsych.timelineVariable(\"components\"),\nresponse_components: jsPsych.timelineVariable(\"response_components\"),\nstimuli_duration: jsPsych.timelineVariable(\"stimuli_duration\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial\"),\n      data: {\n        stimulus: \"stimulus\",\nresponse: \"response\",\nrt: \"rt\",\n        trial_id: 1763276792259,\n        \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        console.log('Applying custom parameters to trial:', window.branchCustomParameters);\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Handle different parameter sources\n            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n              // For typed values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n              // For CSV values, param.value contains the column name, get the actual value from trial\n              trial[key] = trial[param.value];\n              console.log(`Set trial.${key} = ${trial[param.value]} (from CSV column: ${param.value})`);\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches ni repeat conditions, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },\n    };\n    const jnjildcksdsbjs_procedure = {\n    timeline: \n    [jnjildcksdsbjs_timeline],\n    timeline_variables: test_stimuli_jnjildcksdsbjs,\n    conditional_function: function() {\n      const currentId = 1763276792259;\n      \n      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n      if (jumpToTrial) {\n        if (String(currentId) === String(jumpToTrial)) {\n          // Encontramos el trial objetivo para repeat/jump\n          console.log('Repeat/jump: Found target trial', currentId);\n          localStorage.removeItem('jsPsych_jumpToTrial');\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('Repeat/jump: Skipping trial', currentId);\n        return false;\n      }\n      \n      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(jnjildcksdsbjs_procedure);\n  \n\njsPsych.run(timeline);\n\n})();\n"
+        "generatedCode": ""
       },
       "isDevMode": false,
       "createdAt": "2025-11-11T23:08:07.443Z",
-      "updatedAt": "2025-11-16T08:37:37.197Z"
+      "updatedAt": "2025-11-17T00:15:51.378Z"
     }
   ],
   "pluginConfigs": [],
-  "sessionResults": []
+  "sessionResults": [
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "d76f8e81-c0af-4652-8dc6-6e33e9883f22",
+      "createdAt": "2025-11-16T19:13:16.499Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "e3ff963a-c3de-41fa-841b-8162a0156f18",
+      "createdAt": "2025-11-16T19:13:37.674Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "b952d01f-19cf-4c02-a1b5-5c3c0601fc62",
+      "createdAt": "2025-11-16T19:14:10.423Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "16f67a77-d346-435a-b908-447adb1c7fb1",
+      "createdAt": "2025-11-16T19:14:30.982Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "5882f8e3-34c3-4a41-b779-f06475612265",
+      "createdAt": "2025-11-16T19:14:47.386Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "98bf80cb-8ed8-4088-a9ed-179ce843d946",
+      "createdAt": "2025-11-16T20:08:09.972Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "9a01e164-74d5-4320-999d-0e44956d519c",
+      "createdAt": "2025-11-16T20:08:47.484Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "757aa1be-fb68-4b9d-a8b7-bbb3257075fe",
+      "createdAt": "2025-11-16T20:09:13.259Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "fdc6d06f-9c6e-4846-9a30-e75f40ead816",
+      "createdAt": "2025-11-16T20:09:30.417Z",
+      "data": [
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "lwnrv-experiment/img/boat.png",
+              "coordinates": {
+                "x": -0.255859375,
+                "y": -0.4947916666666667
+              }
+            },
+            {
+              "type": "HtmlComponent",
+              "stimulus": "<div id=\"itqe\" style=\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\">Hola buenas tardes</div>",
+              "coordinates": {
+                "x": 0.359375,
+                "y": -0.6953125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "KeyboardResponseComponent",
+              "response": " ",
+              "rt": 737
+            }
+          },
+          "rt": 737,
+          "trial_id": 1763276792259,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 0,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 740
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "e319f47f-a991-4735-964d-16d22f49137d",
+      "createdAt": "2025-11-16T20:09:32.929Z",
+      "data": [
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "lwnrv-experiment/img/boat.png",
+              "coordinates": {
+                "x": -0.255859375,
+                "y": -0.4947916666666667
+              }
+            },
+            {
+              "type": "HtmlComponent",
+              "stimulus": "<div id=\"itqe\" style=\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\">Hola buenas tardes</div>",
+              "coordinates": {
+                "x": 0.359375,
+                "y": -0.6953125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "KeyboardResponseComponent",
+              "response": "r",
+              "rt": 493
+            }
+          },
+          "rt": 493,
+          "trial_id": 1763276792259,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 0,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 493
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "63b608b6-2d1c-4b76-a4a3-eda1a1731c1e",
+      "createdAt": "2025-11-16T20:09:34.612Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "29ca6b90-277c-4a96-aaa1-f046acaa7e38",
+      "createdAt": "2025-11-16T20:09:49.640Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "ba51c795-d28b-4ae4-bd00-5f392f5fb587",
+      "createdAt": "2025-11-16T20:10:03.333Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "967b22cc-52d2-4b7e-a50b-719907deb434",
+      "createdAt": "2025-11-16T20:10:33.323Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "66b33d99-06ff-435b-b869-b410da29ed83",
+      "createdAt": "2025-11-16T20:10:41.431Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "a5b18ace-e451-4674-ad81-f7e07281f66e",
+      "createdAt": "2025-11-16T20:10:52.722Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "6aa4b3d7-5093-401f-893b-b206a9f18fca",
+      "createdAt": "2025-11-16T20:12:25.927Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "1d34fe85-4031-41c0-84e3-f3f5b0901c30",
+      "createdAt": "2025-11-16T20:16:31.150Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "f34903a6-8f7e-442b-8121-33a2f7113d6c",
+      "createdAt": "2025-11-16T20:18:02.230Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "b3f2544c-0254-4771-bd42-71bbede1f61a",
+      "createdAt": "2025-11-16T20:20:07.848Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "00cb4d82-a095-4d75-8a55-364711dfcb44",
+      "createdAt": "2025-11-16T20:20:43.725Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "52ea76c8-e7f4-4e97-affd-e5fdba647e51",
+      "createdAt": "2025-11-16T20:28:43.757Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "6015f929-b77f-42af-be6c-056b1bc456f1",
+      "createdAt": "2025-11-16T20:30:44.529Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "cba7ccc6-da65-4f16-891c-5f0a907ea46e",
+      "createdAt": "2025-11-16T20:35:48.406Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "b1fefabb-b8f6-4a7b-a8d3-1403b3012cfd",
+      "createdAt": "2025-11-16T20:44:06.385Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 984
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "b17793af-0ee3-46ff-a9cd-bbb56d4dcafe",
+      "createdAt": "2025-11-16T20:44:08.626Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 572
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "31d3ff15-1400-4f66-8611-00d07657f9a1",
+      "createdAt": "2025-11-16T20:44:10.581Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 49695
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "4cf36d56-c1c5-4fea-956d-9abd18a3676e",
+      "createdAt": "2025-11-16T20:45:02.435Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 339
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "d353f9f9-a5f7-41df-8832-98f53a9d6a7e",
+      "createdAt": "2025-11-16T20:45:06.919Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 720
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "998a2d99-b756-4059-9854-7f700714feef",
+      "createdAt": "2025-11-16T20:45:09.184Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "dcb17588-fb58-4aa8-a6e6-079cabc6481b",
+      "createdAt": "2025-11-16T20:50:44.232Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 984668
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "e85c9ca6-cdc7-48bb-b4d4-c96c0c2bee9f",
+      "createdAt": "2025-11-16T21:07:13.245Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 557
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "9688880b-f1f6-4c46-b977-ec339cafbe2a",
+      "createdAt": "2025-11-16T21:07:15.461Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "7984f107-f3d4-4ffc-9cb8-b38dac349fdd",
+      "createdAt": "2025-11-16T21:08:09.651Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 68720
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "75d3469e-eb40-4547-8088-50b1682f837b",
+      "createdAt": "2025-11-16T21:09:19.372Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "fa3793ff-bdd2-4164-a137-ab2d1d85a5bd",
+      "createdAt": "2025-11-16T21:13:02.661Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1377
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "d5819191-1b65-4be4-bdd5-1d43fe15cf0e",
+      "createdAt": "2025-11-16T21:13:07.969Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 4393
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "e282782f-fded-4b5b-a43c-d15af809691c",
+      "createdAt": "2025-11-16T21:13:17.652Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "bf976fe5-a037-4824-b07e-a77b5b856c76",
+      "createdAt": "2025-11-16T21:16:00.510Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1736
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "19c9fd88-62d2-4a8d-98af-e2ce02c3c8d7",
+      "createdAt": "2025-11-16T21:16:03.773Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 541
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "e73b3966-88e2-4366-a32a-e2d3b0af99cc",
+      "createdAt": "2025-11-16T21:16:05.413Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "59050c13-1552-44b9-8127-ed76a65fa66b",
+      "createdAt": "2025-11-16T21:16:36.123Z",
+      "data": [
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "lwnrv-experiment/img/boat.png",
+              "coordinates": {
+                "x": -0.255859375,
+                "y": -0.4947916666666667
+              }
+            },
+            {
+              "type": "HtmlComponent",
+              "stimulus": "<div id=\"itqe\" style=\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\">Hola buenas tardess</div>",
+              "coordinates": {
+                "x": 0.333984375,
+                "y": -0.4296875
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "KeyboardResponseComponent",
+              "response": "n",
+              "rt": 8507
+            },
+            "response_1": {
+              "type": "ButtonResponseComponent",
+              "response": null,
+              "rt": null
+            }
+          },
+          "rt": 8508,
+          "trial_id": 1763276792259,
+          "branches": [
+            1763325393709
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "DynamicPlugin",
+          "trial_index": 0,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 8507
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 8512
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "db4f3fa5-6b11-4497-b1d8-c907003f7114",
+      "createdAt": "2025-11-16T21:16:46.125Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 920
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "40977093-8939-4a60-b3d9-aae4cd6eaa6e",
+      "createdAt": "2025-11-16T21:32:34.763Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "264e11b0-1eab-4caf-b5b0-aa0e9ede7234",
+      "createdAt": "2025-11-16T21:35:56.578Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1569
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "cc70f51c-900c-4614-a3d9-2d3ee363a610",
+      "createdAt": "2025-11-16T21:36:02.512Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 436
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "ac433ba1-c71f-460e-a66f-e910f01970e1",
+      "createdAt": "2025-11-16T21:36:04.258Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "4c3873e6-c540-4135-8239-af17e87985c9",
+      "createdAt": "2025-11-16T21:38:15.205Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "20471cf4-44a5-416e-a356-b5e411a0852b",
+      "createdAt": "2025-11-16T21:38:26.946Z",
+      "data": [
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "lwnrv-experiment/img/boat.png",
+              "coordinates": {
+                "x": -0.255859375,
+                "y": -0.4947916666666667
+              }
+            },
+            {
+              "type": "HtmlComponent",
+              "stimulus": "<div id=\"itqe\" style=\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\">Hola buenas tardess</div>",
+              "coordinates": {
+                "x": 0.333984375,
+                "y": -0.4296875
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "KeyboardResponseComponent",
+              "response": null,
+              "rt": null
+            },
+            "response_1": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 813
+            }
+          },
+          "rt": 813,
+          "trial_id": 1763276792259,
+          "branches": [
+            1763325393709
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "DynamicPlugin",
+          "trial_index": 0,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 815
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 819
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "272ece2d-32d5-41f3-bc0a-3590689e8afa",
+      "createdAt": "2025-11-16T22:18:20.924Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1351
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "203e9b10-bec1-479a-bf31-7047880f0531",
+      "createdAt": "2025-11-16T22:18:25.376Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2822
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "394bf7ed-2a69-4623-b4dd-3039d65a5d71",
+      "createdAt": "2025-11-16T22:18:29.719Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "22349109-9111-4588-a78f-a60a825beb5e",
+      "createdAt": "2025-11-16T22:21:11.801Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 6639
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "604deac7-57c4-481a-bac2-140ca6dbc3b8",
+      "createdAt": "2025-11-16T22:21:22.486Z",
+      "data": [
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "lwnrv-experiment/img/boat.png",
+              "coordinates": {
+                "x": -0.255859375,
+                "y": -0.4947916666666667
+              }
+            },
+            {
+              "type": "HtmlComponent",
+              "stimulus": "<div id=\"itqe\" style=\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\">Hola buenas tardess</div>",
+              "coordinates": {
+                "x": 0.333984375,
+                "y": -0.4296875
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "KeyboardResponseComponent",
+              "response": "Meta",
+              "rt": 486
+            },
+            "response_1": {
+              "type": "ButtonResponseComponent",
+              "response": null,
+              "rt": null
+            }
+          },
+          "rt": 486,
+          "trial_id": 1763276792259,
+          "branches": [
+            1763325393709
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "DynamicPlugin",
+          "trial_index": 0,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 488
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "bc57a750-9ab9-4b98-be77-4e5ae1a6c5e0",
+      "createdAt": "2025-11-16T22:21:25.426Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "f3fbcad2-b0bf-425c-9533-2a2494535026",
+      "createdAt": "2025-11-16T22:40:37.399Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "890cae37-a817-42d2-90ff-f348df0187ad",
+      "createdAt": "2025-11-16T22:42:23.767Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 65582
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "537ddbd4-0b42-4912-8a95-c39f961a3c88",
+      "createdAt": "2025-11-16T22:43:49.970Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1477
+        },
+        {
+          "rt": 1784,
+          "response": 1,
+          "stimulus": "<div style=\"box-sizing: border-box;\">Type or design here</div>",
+          "trial_id": 1763332886872,
+          "trial_type": "html-button-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 3263
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "ca2b699d-26bc-4f29-954f-f4d7ca229ab2",
+      "createdAt": "2025-11-16T22:47:10.705Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1041
+        },
+        {
+          "rt": 1027,
+          "response": 1,
+          "stimulus": "<div style=\"box-sizing: border-box;\">Type or design here</div>",
+          "trial_id": 1763332886872,
+          "trial_type": "html-button-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2070
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "8e674d31-a769-4b4e-830a-5b6599e6bf68",
+      "createdAt": "2025-11-16T22:47:14.428Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "544a74d6-ae6c-4c61-9659-cbd89478857b",
+      "createdAt": "2025-11-16T22:47:34.531Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "ea1b700b-1b6d-405d-86d4-5a54aced43ba",
+      "createdAt": "2025-11-16T22:47:49.822Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "69c19d60-6bb7-4628-b704-d5b596cb2a8e",
+      "createdAt": "2025-11-16T22:52:36.001Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "84143d9b-67f4-4d57-86e5-3e9aeb8da694",
+      "createdAt": "2025-11-16T22:52:48.571Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "2d6984a3-83f1-4486-bb75-23f1e2e63ba4",
+      "createdAt": "2025-11-16T22:58:03.742Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1216
+        },
+        {
+          "rt": 976,
+          "response": 1,
+          "stimulus": "<div style=\"box-sizing: border-box;\">Type or design here</div>",
+          "trial_id": 1763332886872,
+          "trial_type": "html-button-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2193
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "c51d2d80-632f-4fae-bd4d-337cdf597d8f",
+      "createdAt": "2025-11-16T22:58:07.218Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1473
+        },
+        {
+          "rt": 545,
+          "response": 2,
+          "stimulus": "<div style=\"box-sizing: border-box;\">Type or design here</div>",
+          "trial_id": 1763332886872,
+          "trial_type": "html-button-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2020
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "2722e6b5-9fb7-4549-8a5a-fc7c048ba860",
+      "createdAt": "2025-11-16T23:08:04.570Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 9072
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "b0f254dc-9dca-4b7c-acae-789cd291594e",
+      "createdAt": "2025-11-16T23:09:43.965Z",
+      "data": [
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "lwnrv-experiment/img/boat.png",
+              "coordinates": {
+                "x": -0.255859375,
+                "y": -0.4947916666666667
+              }
+            },
+            {
+              "type": "HtmlComponent",
+              "stimulus": "<div id=\"itqe\" style=\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\">Hola buenas tardess</div>",
+              "coordinates": {
+                "x": 0.333984375,
+                "y": -0.4296875
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "KeyboardResponseComponent",
+              "response": null,
+              "rt": null
+            },
+            "response_1": {
+              "type": "ButtonResponseComponent",
+              "response": 1,
+              "rt": 812
+            }
+          },
+          "rt": 813,
+          "trial_id": 1763276792259,
+          "branches": [
+            1763332886872
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "DynamicPlugin",
+          "trial_index": 0,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 815
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 818
+        },
+        {
+          "rt": 1077,
+          "response": 1,
+          "stimulus": "<div style=\"box-sizing: border-box;\">Type or design here</div>",
+          "trial_id": 1763332886872,
+          "trial_type": "html-button-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1897
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "5d978c56-1621-4d12-900d-addd1a132814",
+      "createdAt": "2025-11-16T23:10:32.000Z",
+      "data": [
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "lwnrv-experiment/img/boat.png",
+              "coordinates": {
+                "x": -0.255859375,
+                "y": -0.4947916666666667
+              }
+            },
+            {
+              "type": "HtmlComponent",
+              "stimulus": "<div id=\"itqe\" style=\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\">Hola buenas tardess</div>",
+              "coordinates": {
+                "x": 0.333984375,
+                "y": -0.4296875
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "KeyboardResponseComponent",
+              "response": null,
+              "rt": null
+            },
+            "response_1": {
+              "type": "ButtonResponseComponent",
+              "response": 1,
+              "rt": 1079
+            }
+          },
+          "rt": 1079,
+          "trial_id": 1763276792259,
+          "branches": [
+            1763332886872
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "DynamicPlugin",
+          "trial_index": 0,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1081
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1085
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "012836f3-7c25-4957-bbaa-1e2e31f3091a",
+      "createdAt": "2025-11-16T23:10:34.715Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "d633cab0-e750-46f3-8d64-42c0a461dfec",
+      "createdAt": "2025-11-16T23:10:59.308Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "3cbb66ab-31b4-4af0-b611-818131fc1be0",
+      "createdAt": "2025-11-16T23:13:15.637Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1027
+        },
+        {
+          "rt": 827,
+          "response": 1,
+          "stimulus": "<div style=\"box-sizing: border-box;\">Type or design here</div>",
+          "trial_id": 1763332886872,
+          "trial_type": "html-button-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1857
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "12ecbcb3-918a-4a1e-aeda-af99d493142a",
+      "createdAt": "2025-11-16T23:13:18.509Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 42342
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "8565dca4-7a52-443c-a34a-9c0f62a32bb0",
+      "createdAt": "2025-11-16T23:14:15.896Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 983
+        },
+        {
+          "rt": 776,
+          "response": 1,
+          "stimulus": "<div style=\"box-sizing: border-box;\">Type or design here</div>",
+          "trial_id": 1763332886872,
+          "trial_type": "html-button-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1761
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "523df80c-c6aa-4552-a44f-26cf7508d987",
+      "createdAt": "2025-11-16T23:14:56.395Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 3816
+        },
+        {
+          "rt": 33011,
+          "response": 1,
+          "stimulus": "<div id=\"if3i\" style=\"box-sizing: border-box;\">Type or design here</div>",
+          "trial_id": 1763332886872,
+          "trial_type": "html-button-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 36827
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "f5377272-a31b-4441-b3cb-5cb8edc4aada",
+      "createdAt": "2025-11-16T23:23:31.219Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1178
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "a234f7a9-10f4-472b-8eab-bc4efd07ce55",
+      "createdAt": "2025-11-16T23:23:33.926Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 746
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "b4655575-2ae5-441f-8317-48c233cb4aa4",
+      "createdAt": "2025-11-16T23:23:39.699Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 723
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "6f177260-20eb-4307-80c3-9be83260c130",
+      "createdAt": "2025-11-16T23:23:42.085Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 12703
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "aa9028cb-c86d-419a-8a77-4407ce3addf8",
+      "createdAt": "2025-11-16T23:25:13.034Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "trials_result_bf083f43-3c9c-451d-8178-3425773ac19d",
+      "createdAt": "2025-11-16T23:25:24.076Z",
+      "data": [
+        {
+          "rt": 653,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 654
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "lwnrv-experiment/img/boat.png",
+              "coordinates": {
+                "x": -0.255859375,
+                "y": -0.4947916666666667
+              }
+            },
+            {
+              "type": "HtmlComponent",
+              "stimulus": "<div id=\"itqe\" style=\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\">Hola buenas tardess</div>",
+              "coordinates": {
+                "x": 0.333984375,
+                "y": -0.4296875
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "KeyboardResponseComponent",
+              "response": null,
+              "rt": null
+            },
+            "response_1": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 961
+            }
+          },
+          "rt": 964,
+          "trial_id": 1763276792259,
+          "branches": [
+            1763332886872
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1621
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "7688e429-20ff-42de-ab5d-43eeedfa7190",
+      "createdAt": "2025-11-16T23:25:27.009Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 852
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "trials_result_5c2ec94d-3338-4dfa-a0ae-6cade0917f36",
+      "createdAt": "2025-11-16T23:29:53.557Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "trials_result_883a467e-9ac9-46c2-af05-5cb65af298f8",
+      "createdAt": "2025-11-16T23:29:55.519Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "trials_result_b69a1796-e6cb-451b-a2e0-11ac744107fd",
+      "createdAt": "2025-11-16T23:29:57.540Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "trials_result_51021d44-6a5d-46e3-a413-594ed1fac675",
+      "createdAt": "2025-11-16T23:29:58.832Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "trials_result_c4862d1c-7326-4294-85dd-e97b086b42a2",
+      "createdAt": "2025-11-16T23:30:00.868Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "trials_result_98e88029-647b-4945-b54c-9a31a04d96cc",
+      "createdAt": "2025-11-16T23:30:02.682Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "trials_result_405d2b9b-ab45-495e-81f8-d5692fce2f27",
+      "createdAt": "2025-11-16T23:30:04.117Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "trials_result_3d6b1092-77d7-4c01-95f9-143ec3e0e6d1",
+      "createdAt": "2025-11-16T23:30:05.500Z",
+      "data": [
+        {
+          "rt": 1625,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1628
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "lwnrv-experiment/img/boat.png",
+              "coordinates": {
+                "x": -0.255859375,
+                "y": -0.4947916666666667
+              }
+            },
+            {
+              "type": "HtmlComponent",
+              "stimulus": "<div id=\"itqe\" style=\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\">Hola buenas tardess</div>",
+              "coordinates": {
+                "x": 0.333984375,
+                "y": -0.4296875
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "KeyboardResponseComponent",
+              "response": null,
+              "rt": null
+            },
+            "response_1": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 942
+            }
+          },
+          "rt": 944,
+          "trial_id": 1763276792259,
+          "branches": [
+            1763332886872
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2575
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "trials_result_5a4d5cec-c105-4499-9325-01cbe5e540fb",
+      "createdAt": "2025-11-16T23:30:10.701Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "trials_result_13d70546-1c09-4f97-9660-62933edf0bbd",
+      "createdAt": "2025-11-16T23:30:12.572Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "trials_result_f8fd9480-9815-4890-aae6-6f64cb26e47f",
+      "createdAt": "2025-11-16T23:30:29.348Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "32f0fd79-a361-4ef4-942f-20e4afbbe5f2",
+      "createdAt": "2025-11-16T23:30:57.295Z",
+      "data": [
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "lwnrv-experiment/img/boat.png",
+              "coordinates": {
+                "x": -0.255859375,
+                "y": -0.4947916666666667
+              }
+            },
+            {
+              "type": "HtmlComponent",
+              "stimulus": "<div id=\"itqe\" style=\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\">Hola buenas tardess</div>",
+              "coordinates": {
+                "x": 0.333984375,
+                "y": -0.4296875
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "KeyboardResponseComponent",
+              "response": null,
+              "rt": null
+            },
+            "response_1": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 4192
+            }
+          },
+          "rt": 4193,
+          "trial_id": 1763276792259,
+          "branches": [
+            1763332886872
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "DynamicPlugin",
+          "trial_index": 0,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 4195
+        },
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 4199
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "bdec6ba1-75db-4431-a244-e3f27eca2e87",
+      "createdAt": "2025-11-16T23:33:48.478Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "5aaabc12-d559-43d1-90c2-b3930002b10a",
+      "createdAt": "2025-11-16T23:34:32.112Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 928
+        },
+        {
+          "rt": 975,
+          "response": 1,
+          "stimulus": "<div id=\"if3i\" style=\"box-sizing: border-box;\"><span id=\"iwvy\" style=\"box-sizing: border-box; color: rgb(255, 0, 0); font-size: 67px; text-align: center;\">Hola buenas tardess</span></div>",
+          "trial_id": 1763332886872,
+          "trial_type": "html-button-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1905
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "fce83b99-5b21-4d5f-a7b5-a5de271d05d4",
+      "createdAt": "2025-11-16T23:34:36.257Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "58fade39-398c-4820-994a-65ca6f1beaac",
+      "createdAt": "2025-11-16T23:35:55.349Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "bf2dee99-efb9-495f-b7f5-c2d10af58a8a",
+      "createdAt": "2025-11-16T23:44:36.252Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1220
+        },
+        {
+          "rt": 845,
+          "response": 1,
+          "stimulus": "<div id=\"if3i\" style=\"box-sizing: border-box;\"><span id=\"iwvy\" style=\"box-sizing: border-box; color: rgb(255, 0, 0); font-size: 67px; text-align: center;\">Hola buenas tardess</span></div>",
+          "trial_id": 1763332886872,
+          "trial_type": "html-button-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2068
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "trials_result_146686d1-e82a-4e4e-8d06-36158b3d11b7",
+      "createdAt": "2025-11-16T23:45:17.400Z",
+      "data": [
+        {
+          "rt": 596,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 601
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "lwnrv-experiment/img/boat.png",
+              "coordinates": {
+                "x": -0.2421875,
+                "y": -0.515625
+              }
+            },
+            {
+              "type": "HtmlComponent",
+              "stimulus": "<div id=\"itqe\" style=\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\">Hola buenas tardbess</div>",
+              "coordinates": {
+                "x": 0.33203125,
+                "y": -0.5989583333333334
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "KeyboardResponseComponent",
+              "response": null,
+              "rt": null
+            },
+            "response_1": {
+              "type": "ButtonResponseComponent",
+              "response": 1,
+              "rt": 794
+            }
+          },
+          "rt": 798,
+          "trial_id": 1763276792259,
+          "branches": [
+            1763332886872
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1401
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "c4d68c9f-3ad0-4cb4-81e1-a853223ba1aa",
+      "createdAt": "2025-11-16T23:45:43.360Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1371
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "71f09fe2-343c-4225-b990-df960c013f82",
+      "createdAt": "2025-11-16T23:45:47.205Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "trials_result_dc00166f-67f1-4ddc-b71b-a4f2efa29743",
+      "createdAt": "2025-11-16T23:49:19.056Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "trials_result_2487b600-f585-48fa-88a7-4a6488018ffd",
+      "createdAt": "2025-11-16T23:49:22.894Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "trials_result_70b05a4f-b4fc-4c10-8d2d-a877d697f1d3",
+      "createdAt": "2025-11-16T23:49:25.220Z",
+      "data": [
+        {
+          "rt": 1207,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1208
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "trials_result_be24dfe6-f892-46ee-b55d-89be5f593f02",
+      "createdAt": "2025-11-16T23:50:31.139Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "trials_result_afd94817-c8a9-4ad7-95cb-53fab18a19ee",
+      "createdAt": "2025-11-16T23:50:33.298Z",
+      "data": [
+        {
+          "rt": 483,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 484
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "lwnrv-experiment/img/boat.png",
+              "coordinates": {
+                "x": -0.2421875,
+                "y": -0.515625
+              }
+            },
+            {
+              "type": "HtmlComponent",
+              "stimulus": "<div id=\"itqe\" style=\"box-sizing: border-box; text-align: center; color: red; font-size: 67px;\">Hola buenas tardbess</div>",
+              "coordinates": {
+                "x": 0.33203125,
+                "y": -0.5989583333333334
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "KeyboardResponseComponent",
+              "response": null,
+              "rt": null
+            },
+            "response_1": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 1045
+            }
+          },
+          "rt": 1048,
+          "trial_id": 1763276792259,
+          "branches": [
+            1763332886872
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1536
+        }
+      ]
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "ef1144bb-34a7-4d33-8356-52f81d34b4a8",
+      "createdAt": "2025-11-16T23:50:36.079Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "trials_result_1b90626a-2bfb-4843-b05d-8d279ea4885b",
+      "createdAt": "2025-11-16T23:53:01.556Z",
+      "data": []
+    },
+    {
+      "experimentID": "c3ac9abb-486f-4f43-a093-fd1173acea6a",
+      "sessionId": "trials_result_80e4ae66-ac65-4ac4-9bca-4d8bcfb6928f",
+      "createdAt": "2025-11-16T23:53:06.352Z",
+      "data": []
+    }
+  ]
 }

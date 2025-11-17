@@ -138,9 +138,23 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             key !== "height" &&
             key !== "rotation"
           ) {
+            // Special handling for button_html: keep as string for editing
+            // It will be converted to function when exporting
+            let configValue = value;
+
+            // Special handling for button_html functions
+            if (key === "button_html" && typeof value === "function") {
+              configValue = value.toString();
+            }
+
+            // Special handling for choices: ensure it's always an array
+            if (key === "choices" && !Array.isArray(value)) {
+              configValue = [String(value)];
+            }
+
             config[key] = {
               source: "typed",
-              value: value,
+              value: configValue,
             };
           }
         });
@@ -210,9 +224,23 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             key !== "height" &&
             key !== "rotation"
           ) {
+            // Special handling for button_html: keep as string for editing
+            // It will be converted to function when exporting
+            let configValue = value;
+
+            // Special handling for button_html functions
+            if (key === "button_html" && typeof value === "function") {
+              configValue = value.toString();
+            }
+
+            // Special handling for choices: ensure it's always an array
+            if (key === "choices" && !Array.isArray(value)) {
+              configValue = [String(value)];
+            }
+
             config[key] = {
               source: "typed",
-              value: value,
+              value: configValue,
             };
           }
         });
@@ -348,7 +376,24 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       if (comp.config) {
         Object.entries(comp.config).forEach(([key, entry]: [string, any]) => {
           if (entry.source === "typed") {
-            componentData[key] = entry.value;
+            let value = entry.value;
+
+            // Special handling for button_html: convert string to function
+            if (key === "button_html" && typeof value === "string") {
+              try {
+                // Evaluate the function string to get the actual function
+                value = eval(`(${value})`);
+              } catch (e) {
+                console.error("Error evaluating button_html function:", e);
+              }
+            }
+
+            // Special handling for choices: ensure it's always an array
+            if (key === "choices" && !Array.isArray(value)) {
+              value = [String(value)];
+            }
+
+            componentData[key] = value;
           } else if (entry.source === "csv") {
             componentData[key] = entry.value;
           }
