@@ -48,19 +48,9 @@
       type: DynamicPlugin,
       components: [
         {
-          type: "ImageComponent",
-          stimulus: "cofre.png",
-          coordinates: { x: 0.0, y: 0 },
-        },
-        {
-          type: "ImageComponent",
-          stimulus: "armadillo.png",
-          coordinates: { x: 0.0, y: 1 },
-        },
-        {
           type: "HtmlComponent",
           stimulus: "<p>Cola</p>",
-          coordinates: { x: 0, y: 0 },
+          coordinates: { x: 1, y: 0 },
         },
         // {
         //   type: "VideoComponent",
@@ -70,27 +60,15 @@
       ],
       response_components: [
         {
-          type: "ButtonResponseComponent",
-          choices: ["Yes", "No"],
-          coordinates: { x: 0, y: 0 },
-          button_html: (choice, choice_index) => {
-            const templates = [
-              '<button id="ih2p" style="box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #3b82f6; color: white; border: none; font-weight: 600; cursor: pointer;">Option 1</button>',
-              '<button id="ikr9" style="box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #10b981; color: white; border: none; font-weight: 600; cursor: pointer;">Option 2</button>',
-              '<button id="ituj" style="box-sizing: border-box; padding: 10px 20px; border-radius: 6px; background: #f59e0b; color: white; border: none; font-weight: 600; cursor: pointer;">Option 3</button>',
-            ];
-            return templates[choice_index] || templates[0];
-          },
-        },
-        {
-          type: "KeyboardResponseComponent",
-          choices: "ALL_KEYS",
-          coordinates: { x: 0, y: 0 },
-        },
-        {
-          type: "ButtonResponseComponent",
-          choices: ["Yes2", "No2"],
-          coordinates: { x: 0.1, y: 0 },
+          type: "SliderResponseComponent",
+          min: 0,
+          max: 100,
+          slider_start: 50,
+          step: 1,
+          labels: ["Nada", "Mucho"],
+          button_label: "Continuar",
+          require_movement: true,
+          coordinates: { x: 0.2, y: 0 },
         },
       ],
     };

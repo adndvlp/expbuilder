@@ -30,24 +30,30 @@ const KeyboardResponseComponent: React.FC<KeyboardResponseComponentProps> = ({
   const trRef = useRef<Konva.Transformer>(null);
 
   // Extract the actual value from the config structure
-  const getConfigValue = (key: string) => {
+  const getConfigValue = (key: string, fallback?: any) => {
     const config = shapeProps.config[key];
-    if (!config) return null;
+    if (!config) return fallback ?? null;
     if (config.source === "typed" || config.source === "csv") {
+      if (typeof config.value === "object") return fallback ?? null;
       return config.value;
     }
+    if (typeof config === "object") return fallback ?? null;
     return config;
   };
 
-  const choices = getConfigValue("choices") || "ALL_KEYS";
-  const displayText =
-    choices === "ALL_KEYS"
-      ? "⌨️ Keyboard Response (All Keys)"
-      : choices === "NO_KEYS"
-        ? "⌨️ Keyboard Response (Disabled)"
-        : Array.isArray(choices)
-          ? `⌨️ Keys: ${choices.join(", ")}`
-          : `⌨️ Key: ${choices}`;
+  const choices = getConfigValue("choices", "ALL_KEYS");
+  let displayText = "";
+  if (choices === "ALL_KEYS") {
+    displayText = "⌨️ Keyboard Response (All Keys)";
+  } else if (choices === "NO_KEYS") {
+    displayText = "⌨️ Keyboard Response (Disabled)";
+  } else if (Array.isArray(choices)) {
+    displayText = `⌨️ Keys: ${choices.map((c) => (typeof c === "string" || typeof c === "number" ? c : "?")).join(", ")}`;
+  } else if (typeof choices === "string" || typeof choices === "number") {
+    displayText = `⌨️ Key: ${choices}`;
+  } else {
+    displayText = "⌨️ Keyboard Response";
+  }
 
   useEffect(() => {
     if (isSelected && trRef.current && groupRef.current) {

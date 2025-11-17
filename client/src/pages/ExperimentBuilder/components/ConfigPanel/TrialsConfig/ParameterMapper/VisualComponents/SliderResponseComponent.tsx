@@ -30,20 +30,26 @@ const SliderResponseComponent: React.FC<SliderResponseComponentProps> = ({
   const trRef = useRef<Konva.Transformer>(null);
 
   // Extract the actual value from the config structure
-  const getConfigValue = (key: string) => {
+  const getConfigValue = (key: string, fallback?: any) => {
     const config = shapeProps.config[key];
-    if (!config) return null;
+    if (!config) return fallback ?? null;
     if (config.source === "typed" || config.source === "csv") {
+      if (typeof config.value === "object") return fallback ?? null;
+      // Special handling for labels: convert string to array
+      if (key === "labels" && typeof config.value === "string") {
+        return config.value.split(",").map((label: string) => label.trim());
+      }
       return config.value;
     }
+    if (typeof config === "object") return fallback ?? null;
     return config;
   };
 
-  const min = getConfigValue("min") ?? 0;
-  const max = getConfigValue("max") ?? 100;
-  const sliderStart = getConfigValue("slider_start") ?? 50;
-  const labels = getConfigValue("labels") || [];
-  const buttonLabel = getConfigValue("button_label") || "Continue";
+  const min = getConfigValue("min", 0);
+  const max = getConfigValue("max", 100);
+  const sliderStart = getConfigValue("slider_start", 50);
+  const labels = getConfigValue("labels", []);
+  const buttonLabel = getConfigValue("button_label", "Continue");
 
   useEffect(() => {
     if (isSelected && trRef.current && groupRef.current) {

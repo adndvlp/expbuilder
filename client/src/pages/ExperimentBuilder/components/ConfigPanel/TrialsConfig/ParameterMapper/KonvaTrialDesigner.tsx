@@ -138,56 +138,43 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             key !== "height" &&
             key !== "rotation"
           ) {
-            // Special handling for button_html: keep as string for editing
-            // It will be converted to function when exporting
             let configValue = value;
-
-            // Special handling for button_html functions
             if (key === "button_html" && typeof value === "function") {
               configValue = value.toString();
             }
-
-            // Special handling for choices: ensure it's always an array
             if (key === "choices" && !Array.isArray(value)) {
               configValue = [String(value)];
             }
-
             config[key] = {
               source: "typed",
               value: configValue,
             };
           }
         });
-
-        // Add coordinates, width, height, and rotation to config
         if (comp.coordinates) {
           config.coordinates = {
             source: "typed",
             value: comp.coordinates,
           };
         }
-
         if (comp.width) {
           config.width = {
             source: "typed",
             value: comp.width,
           };
         }
-
         if (comp.height) {
           config.height = {
             source: "typed",
             value: comp.height,
           };
         }
-
         if (comp.rotation !== undefined && comp.rotation !== 0) {
           config.rotation = {
             source: "typed",
             value: comp.rotation,
           };
         }
-
         loadedComponents.push({
           id: `${comp.type}-${idCounter++}`,
           type: comp.type as ComponentType,
@@ -213,8 +200,6 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
         const canvasCoords = comp.coordinates
           ? fromJsPsychCoords(comp.coordinates)
           : { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 };
-
-        // Reconstruct config from component data
         const config: Record<string, any> = {};
         Object.entries(comp).forEach(([key, value]) => {
           if (
@@ -224,56 +209,43 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             key !== "height" &&
             key !== "rotation"
           ) {
-            // Special handling for button_html: keep as string for editing
-            // It will be converted to function when exporting
             let configValue = value;
-
-            // Special handling for button_html functions
             if (key === "button_html" && typeof value === "function") {
               configValue = value.toString();
             }
-
-            // Special handling for choices: ensure it's always an array
             if (key === "choices" && !Array.isArray(value)) {
               configValue = [String(value)];
             }
-
             config[key] = {
               source: "typed",
               value: configValue,
             };
           }
         });
-
-        // Add coordinates, width, height, and rotation to config
         if (comp.coordinates) {
           config.coordinates = {
             source: "typed",
             value: comp.coordinates,
           };
         }
-
         if (comp.width) {
           config.width = {
             source: "typed",
             value: comp.width,
           };
         }
-
         if (comp.height) {
           config.height = {
             source: "typed",
             value: comp.height,
           };
         }
-
         if (comp.rotation !== undefined && comp.rotation !== 0) {
           config.rotation = {
             source: "typed",
             value: comp.rotation,
           };
         }
-
         loadedComponents.push({
           id: `${comp.type}-${idCounter++}`,
           type: comp.type as ComponentType,
@@ -287,10 +259,14 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       });
     }
 
+    // Si el trial está vacío, limpiar los componentes
     if (loadedComponents.length > 0) {
       setComponents(loadedComponents);
+    } else {
+      setComponents([]);
+      setSelectedId(null);
     }
-  }, [isOpen]);
+  }, [isOpen, columnMapping]);
 
   // Memoize component-specific columnMapping from component's config
   const componentColumnMapping = useMemo(() => {
@@ -391,6 +367,11 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             // Special handling for choices: ensure it's always an array
             if (key === "choices" && !Array.isArray(value)) {
               value = [String(value)];
+            }
+
+            // Special handling for labels: convert string to array
+            if (key === "labels" && typeof value === "string") {
+              value = value.split(",").map((label: string) => label.trim());
             }
 
             componentData[key] = value;
@@ -619,13 +600,25 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     // Convert to jsPsych coordinates
     const coords = toJsPsychCoords(x, y);
 
+    // Determine default dimensions based on component type
+    let width = 200;
+    let height = 50;
+
+    if (type === "ImageComponent" || type === "VideoComponent") {
+      width = 300;
+      height = 300;
+    } else if (type === "SliderResponseComponent") {
+      width = 250;
+      height = 100;
+    }
+
     const newComponent: TrialComponent = {
       id: `${type}-${Date.now()}`,
       type,
       x,
       y,
-      width: type === "ImageComponent" || type === "VideoComponent" ? 300 : 200,
-      height: type === "ImageComponent" || type === "VideoComponent" ? 300 : 50,
+      width,
+      height,
       config: {
         ...getDefaultConfig(type),
         coordinates: {

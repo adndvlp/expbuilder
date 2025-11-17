@@ -146,8 +146,8 @@ class SliderResponseComponent {
 
     display_element.appendChild(this.sliderContainer);
 
-    if (trial.slider_width !== null) {
-      this.sliderContainer.style.width = trial.slider_width.toString() + "px";
+    if (trial.slider_width !== null && trial.slider_width !== undefined) {
+      this.sliderContainer.style.width = trial.slider_width + "px";
     }
 
     // Build slider HTML

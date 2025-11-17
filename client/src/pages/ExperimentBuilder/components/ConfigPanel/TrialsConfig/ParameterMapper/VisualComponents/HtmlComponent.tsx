@@ -30,13 +30,15 @@ const HtmlComponent: React.FC<HtmlComponentProps> = ({
   const trRef = useRef<Konva.Transformer>(null);
 
   // Extract the actual value from the config structure
-  const getConfigValue = (key: string) => {
+  const getConfigValue = (key: string, fallback?: any) => {
     const config = shapeProps.config[key];
-    if (!config) return null;
+    if (!config) return fallback ?? null;
     if (config.source === "typed" || config.source === "csv") {
+      if (typeof config.value === "object") return fallback ?? null;
       return config.value;
     }
-    return config; // fallback for direct values
+    if (typeof config === "object") return fallback ?? null;
+    return config;
   };
 
   useEffect(() => {
@@ -53,9 +55,7 @@ const HtmlComponent: React.FC<HtmlComponentProps> = ({
     return tmp.textContent || tmp.innerText || "";
   };
 
-  const htmlContent = stripHtml(
-    getConfigValue("stimulus") || "<p>HTML Content</p>"
-  );
+  const htmlContent = stripHtml(getConfigValue("stimulus", "HTML Content"));
   const displayText =
     htmlContent.length > 100
       ? htmlContent.substring(0, 97) + "..."
