@@ -73,7 +73,41 @@
       ],
     };
 
-    timeline.push(procedure);
+    // Sketchpad example
+    const sketchpadTrial = {
+      type: DynamicPlugin,
+      components: [
+        {
+          type: "SketchpadComponent",
+          canvas_shape: "circle",
+          canvas_width: 400,
+          canvas_height: 300,
+          canvas_border_width: 2,
+          canvas_border_color: "#000",
+          background_color: "#ffffff",
+          stroke_width: 3,
+          stroke_color: "#0000ff",
+          prompt: "<p>Draw something!</p>",
+          prompt_location: "abovecanvas",
+          show_clear_button: true,
+          clear_button_label: "Clear",
+          show_undo_button: true,
+          undo_button_label: "Undo",
+          show_redo_button: true,
+          redo_button_label: "Redo",
+          coordinates: { x: 0, y: 0 },
+        },
+      ],
+      response_components: [
+        {
+          type: "ButtonResponseComponent",
+          choices: ["Continue"],
+          coordinates: { x: 0, y: 0.7 },
+        },
+      ],
+    };
+
+    timeline.push(sketchpadTrial);
     const procedure2 = {
       type: DynamicPlugin,
       components: [

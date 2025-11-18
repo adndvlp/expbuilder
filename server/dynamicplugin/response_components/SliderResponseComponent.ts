@@ -134,7 +134,7 @@ class SliderResponseComponent {
     this.sliderContainer = document.createElement("div");
     this.sliderContainer.classList.add("jspsych-slider-response-container");
     this.sliderContainer.style.position = "absolute";
-    this.sliderContainer.style.margin = "0 auto 3em auto";
+    this.sliderContainer.style.margin = "0 auto 0 auto";
 
     // Use default coordinates if not provided
     const coordinates = trial.coordinates || { x: 0, y: 0 };
@@ -154,7 +154,7 @@ class SliderResponseComponent {
     let html = `<input type="range" class="jspsych-slider" value="${trial.slider_start}" min="${trial.min}" max="${trial.max}" step="${trial.step}" id="jspsych-slider-response-component"></input>`;
 
     // Add labels if provided
-    html += "<div>";
+    html += `<div style="margin-bottom: 2em">`;
     for (let j = 0; j < trial.labels.length; j++) {
       const label_width_perc = 100 / (trial.labels.length - 1);
       const percent_of_range = j * (100 / (trial.labels.length - 1));

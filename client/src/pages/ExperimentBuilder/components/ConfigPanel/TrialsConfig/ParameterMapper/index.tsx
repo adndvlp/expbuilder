@@ -42,8 +42,6 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
   csvColumns,
   pluginName,
   componentMode = false,
-  selectedComponentId = null,
-  onComponentConfigChange,
 }) => {
   const pluginLink = () => {
     let pluginUrl = pluginName
@@ -155,37 +153,13 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
 
     parametersRef.current = parameters;
 
-    // Esta función se asegura de que el estado de mapeo esté completamente poblado.
-    setColumnMapping((prevMapping) => {
-      const updatedMapping = { ...prevMapping };
-      let needsUpdate = false;
+    // Don't automatically add parameters to columnMapping with source:'none'
+    // This allows jsPsych to use its default values when parameters aren't explicitly set
+    // Parameters are only added when user selects a CSV column or types a value
+    // This matches the behavior of other plugins and prevents polluting columnMapping
 
-      // Itera sobre todos los parámetros que debería mostrar el componente.
-      parameters.forEach((param) => {
-        // Si un parámetro NO tiene una entrada en el estado de mapeo...
-        if (!updatedMapping[param.key]) {
-          // ...lo inicializamos con la configuración por defecto 'none'.
-          updatedMapping[param.key] = { source: "none", value: null };
-          needsUpdate = true;
-        }
-      });
-
-      // Si hicimos cambios, devolvemos el nuevo objeto para actualizar el estado.
-      // Si no, devolvemos el objeto original para evitar un re-render innecesario.
-      return needsUpdate ? updatedMapping : prevMapping;
-    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parameters]);
-
-  // Handler for component-specific config changes
-  const handleComponentParamChange = (key: string, value: any) => {
-    if (componentMode && selectedComponentId && onComponentConfigChange) {
-      onComponentConfigChange(selectedComponentId, {
-        ...columnMapping,
-        [key]: value,
-      });
-    }
-  };
 
   return (
     <div className={componentMode ? "" : "mb-4 p-4 border rounded bg-gray-50"}>
@@ -312,24 +286,34 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                         ? "none"
                         : "csv";
 
-                  setColumnMapping((prev) => ({
-                    ...prev,
-                    [key]: {
-                      source,
-                      value:
-                        source === "typed"
-                          ? type === "boolean"
-                            ? false
-                            : type === "number"
-                              ? 0
-                              : type.endsWith("_array")
-                                ? []
-                                : type === "object" && key === "coordinates"
-                                  ? { x: 0, y: 0 }
-                                  : ""
-                          : value,
-                    },
-                  }));
+                  setColumnMapping((prev) => {
+                    // If source is 'none', remove the parameter from columnMapping
+                    if (source === "none") {
+                      const newMapping = { ...prev };
+                      delete newMapping[key];
+                      return newMapping;
+                    }
+
+                    // Otherwise, add/update the parameter
+                    return {
+                      ...prev,
+                      [key]: {
+                        source,
+                        value:
+                          source === "typed"
+                            ? type === "boolean"
+                              ? false
+                              : type === "number"
+                                ? 0
+                                : type.endsWith("_array")
+                                  ? []
+                                  : type === "object" && key === "coordinates"
+                                    ? { x: 0, y: 0 }
+                                    : ""
+                            : value,
+                      },
+                    };
+                  });
                 }}
                 className="w-full p-2 border rounded"
               >

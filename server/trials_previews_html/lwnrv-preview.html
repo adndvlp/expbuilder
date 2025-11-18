@@ -97,7 +97,7 @@
 
 
         const trialSessionId =
-            "trials_result_" + (crypto.randomUUID
+            "loca_result_" + (crypto.randomUUID
               ? crypto.randomUUID()
               : Math.random().toString(36).slice(2, 10));
 
@@ -154,12 +154,12 @@ localStorage.removeItem('jsPsych_jumpToTrial');
       timeline.push(welcome);
 
       
-    const test_stimuli_trials = [{components: [{ type: "ImageComponent", coordinates: {"x":0.01953125,"y":-0.6067708333333334}, stimulus: "lwnrv-experiment/img/boat.png", width: 300, height: 300 }],
-response_components: [{ type: "SliderResponseComponent", coordinates: {"x":0,"y":0}, labels: ["wd", "cw"] }],
+    const test_stimuli_loca = [{components: [{ type: "ImageComponent", coordinates: {"x":-0.318359375,"y":-0.6119791666666666}, width: 300, height: 300, stimulus: "lwnrv-experiment/img/boat.png" }, { type: "SketchpadComponent", coordinates: {"x":0.4123746536617794,"y":-0.7183962951176271}, width: 150.86417732516875, height: 150.86417732516873, canvas_shape: "circle", canvas_border_color: "#000", canvas_border_width: 10, save_final_image: true }],
+response_components: [{ type: "SliderResponseComponent", coordinates: {"x":0.0234375,"y":0.2552083333333333}, width: 250, height: 100, button_label: "wlkn", labels: ["wr", "wrs"] }],
 stimuli_duration: null,
 trial_duration: null,
 response_ends_trial: true}];
-    const trials_timeline = {
+    const loca_timeline = {
     type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
 response_components: jsPsych.timelineVariable("response_components"),
 stimuli_duration: jsPsych.timelineVariable("stimuli_duration"),
@@ -169,8 +169,11 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
         stimulus: "stimulus",
 response: "response",
 rt: "rt",
-        trial_id: 1763276792259,
+        trial_id: 1763500307249,
         
+        
+        branches: [1763503564912],
+        branchConditions: [undefined] 
         
       },
     on_start: function(trial) {
@@ -202,19 +205,24 @@ rt: "rt",
     },
     
     on_finish: function(data) {
-      // Este trial no tiene branches ni repeat conditions, es un trial terminal
-      // Si llegamos aquí después de un branching, terminar el experimento
-      if (window.branchingActive) {
-        jsPsych.abortExperiment('', {});
+      
+      
+      // Branching automático al primer branch
+      const branches = [1763503564912];
+      if (branches.length > 0) {
+        window.nextTrialId = branches[0];
+        window.skipRemaining = true;
+        window.branchingActive = true;
       }
+      
     },
     };
-    const trials_procedure = {
+    const loca_procedure = {
     timeline: 
-    [trials_timeline],
-    timeline_variables: test_stimuli_trials,
+    [loca_timeline],
+    timeline_variables: test_stimuli_loca,
     conditional_function: function() {
-      const currentId = 1763276792259;
+      const currentId = 1763500307249;
       
       // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
       const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
@@ -246,7 +254,7 @@ rt: "rt",
     },
     
     };
-    timeline.push(trials_procedure);
+    timeline.push(loca_procedure);
   
 
       jsPsych.run(timeline);

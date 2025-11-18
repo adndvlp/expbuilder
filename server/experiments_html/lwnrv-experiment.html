@@ -300,12 +300,12 @@ const timeline = [];
 // timeline.push(welcome);
 
 
-    const test_stimuli_trials = [{components: [{ type: "ImageComponent", coordinates: {"x":0.01953125,"y":-0.6067708333333334}, stimulus: "lwnrv-experiment/img/boat.png", width: 300, height: 300 }],
-response_components: [{ type: "SliderResponseComponent", coordinates: {"x":0,"y":0}, labels: ["wd", "cw"] }],
+    const test_stimuli_loca = [{components: [{ type: "ImageComponent", coordinates: {"x":-0.318359375,"y":-0.6119791666666666}, width: 300, height: 300, stimulus: "lwnrv-experiment/img/boat.png" }, { type: "SketchpadComponent", coordinates: {"x":0.4123746536617794,"y":-0.7183962951176271}, width: 150.86417732516875, height: 150.86417732516873, canvas_shape: "circle", canvas_border_color: "#000", canvas_border_width: 10, save_final_image: true }],
+response_components: [{ type: "SliderResponseComponent", coordinates: {"x":0.0234375,"y":0.2552083333333333}, width: 250, height: 100, button_label: "wlkn", labels: ["wr", "wrs"] }],
 stimuli_duration: null,
 trial_duration: null,
 response_ends_trial: true}];
-    const trials_timeline = {
+    const loca_timeline = {
     type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
 response_components: jsPsych.timelineVariable("response_components"),
 stimuli_duration: jsPsych.timelineVariable("stimuli_duration"),
@@ -315,7 +315,111 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
         stimulus: "stimulus",
 response: "response",
 rt: "rt",
-        trial_id: 1763276792259,
+        trial_id: 1763500307249,
+        
+        
+        branches: [1763503564912],
+        branchConditions: [undefined] 
+        
+      },
+    on_start: function(trial) {
+      // First, evaluate and apply params override conditions (if any)
+      
+      // Then apply custom parameters from branching conditions (higher priority)
+      
+      // For trials outside loops, use window.branchCustomParameters
+      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {
+        console.log('Applying custom parameters to trial:', window.branchCustomParameters);
+        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {
+          if (param && param.source !== 'none') {
+            // Handle different parameter sources
+            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
+              // For typed values, use them directly
+              trial[key] = param.value;
+              console.log(`Set trial.${key} = ${param.value}`);
+            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
+              // For CSV values, param.value contains the column name, get the actual value from trial
+              trial[key] = trial[param.value];
+              console.log(`Set trial.${key} = ${trial[param.value]} (from CSV column: ${param.value})`);
+            }
+          }
+        });
+        // Clear the custom parameters after applying them
+        window.branchCustomParameters = null;
+      }
+      
+    },
+    
+    on_finish: function(data) {
+      
+      
+      // Branching automático al primer branch
+      const branches = [1763503564912];
+      if (branches.length > 0) {
+        window.nextTrialId = branches[0];
+        window.skipRemaining = true;
+        window.branchingActive = true;
+      }
+      
+    },
+    };
+    const loca_procedure = {
+    timeline: 
+    [loca_timeline],
+    timeline_variables: test_stimuli_loca,
+    conditional_function: function() {
+      const currentId = 1763500307249;
+      
+      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
+      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
+      if (jumpToTrial) {
+        if (String(currentId) === String(jumpToTrial)) {
+          // Encontramos el trial objetivo para repeat/jump
+          console.log('Repeat/jump: Found target trial', currentId);
+          localStorage.removeItem('jsPsych_jumpToTrial');
+          return true;
+        }
+        // No es el objetivo, saltar
+        console.log('Repeat/jump: Skipping trial', currentId);
+        return false;
+      }
+      
+      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo
+      if (window.skipRemaining) {
+        if (String(currentId) === String(window.nextTrialId)) {
+          // Encontramos el trial objetivo
+          window.skipRemaining = false;
+          window.nextTrialId = null;
+          return true;
+        }
+        // No es el objetivo, saltar
+        return false;
+      }
+      
+      return true;
+    },
+    
+    };
+    timeline.push(loca_procedure);
+  
+
+
+    const test_stimuli_New_Trial = [{components: [{ type: "SketchpadComponent", coordinates: {"x":0.10372036275071572,"y":-0.0023311829990427433}, width: 197.89517427163298, height: 197.89517427163304, rotation: 0, canvas_shape: "circle" }],
+response_components: [],
+stimuli_duration: null,
+trial_duration: null,
+response_ends_trial: true}];
+    const New_Trial_timeline = {
+    type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
+response_components: jsPsych.timelineVariable("response_components"),
+stimuli_duration: jsPsych.timelineVariable("stimuli_duration"),
+trial_duration: jsPsych.timelineVariable("trial_duration"),
+response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
+      data: {
+        stimulus: "stimulus",
+response: "response",
+rt: "rt",
+        trial_id: 1763503564912,
         
         
       },
@@ -355,12 +459,12 @@ rt: "rt",
       }
     },
     };
-    const trials_procedure = {
+    const New_Trial_procedure = {
     timeline: 
-    [trials_timeline],
-    timeline_variables: test_stimuli_trials,
+    [New_Trial_timeline],
+    timeline_variables: test_stimuli_New_Trial,
     conditional_function: function() {
-      const currentId = 1763276792259;
+      const currentId = 1763503564912;
       
       // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
       const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
@@ -392,7 +496,7 @@ rt: "rt",
     },
     
     };
-    timeline.push(trials_procedure);
+    timeline.push(New_Trial_procedure);
   
 
 jsPsych.run(timeline);

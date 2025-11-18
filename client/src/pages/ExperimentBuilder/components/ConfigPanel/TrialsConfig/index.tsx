@@ -575,16 +575,13 @@ function TrialsConfig({ pluginName }: Props) {
                   isOpen={showKonvaDesigner}
                   onClose={() => setShowKonvaDesigner(false)}
                   onSave={(config) => {
-                    // Update columnMapping with the configuration from Konva designer
-                    setColumnMapping((prev) => ({
-                      ...prev,
-                      ...config,
-                    }));
+                    // Replace columnMapping with the complete config from Konva designer
+                    // This includes both components and General Settings parameters
+                    setColumnMapping(config);
                     setShowKonvaDesigner(false);
                   }}
                   parameters={parameters}
                   columnMapping={columnMapping}
-                  setColumnMapping={setColumnMapping}
                   csvColumns={csvColumns}
                   pluginName={pluginName}
                 />

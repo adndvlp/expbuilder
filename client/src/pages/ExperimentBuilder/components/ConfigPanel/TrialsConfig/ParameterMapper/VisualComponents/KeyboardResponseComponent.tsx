@@ -105,8 +105,8 @@ const KeyboardResponseComponent: React.FC<KeyboardResponseComponentProps> = ({
           y={0}
           width={shapeProps.width}
           height={shapeProps.height}
-          fill={isSelected ? "#dbeafe" : "#eff6ff"}
-          stroke={isSelected ? "#2563eb" : "#93c5fd"}
+          fill={isSelected ? "#f3e8ff" : "#faf5ff"}
+          stroke={isSelected ? "#9333ea" : "#c084fc"}
           strokeWidth={isSelected ? 2 : 1}
           cornerRadius={6}
         />
@@ -121,7 +121,7 @@ const KeyboardResponseComponent: React.FC<KeyboardResponseComponentProps> = ({
           align="center"
           verticalAlign="middle"
           fontSize={Math.min(shapeProps.height * 0.5, 14)}
-          fill="#1e40af"
+          fill="#6b21a8"
           fontStyle="bold"
         />
       </Group>

@@ -17,6 +17,9 @@ import {
   ButtonResponseComponent,
   KeyboardResponseComponent,
   SliderResponseComponent,
+  SketchpadComponent,
+  SurveyTextComponent,
+  SurveyComponent,
 } from "./VisualComponents";
 import ParameterMapper from "./index";
 import { useComponentMetadata } from "../hooks/useComponentMetadata";
@@ -30,7 +33,10 @@ type ComponentType =
   | "HtmlComponent"
   | "ButtonResponseComponent"
   | "KeyboardResponseComponent"
-  | "SliderResponseComponent";
+  | "SliderResponseComponent"
+  | "SketchpadComponent"
+  | "SurveyTextComponent"
+  | "SurveyComponent";
 
 interface TrialComponent {
   id: string;
@@ -50,7 +56,6 @@ interface KonvaTrialDesignerProps {
   initialConfig?: any;
   parameters: any[];
   columnMapping: Record<string, any>;
-  setColumnMapping: React.Dispatch<React.SetStateAction<Record<string, any>>>;
   csvColumns: string[];
   pluginName: string;
 }
@@ -59,12 +64,8 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   isOpen,
   onClose,
   onSave,
-  initialConfig,
-  parameters,
   columnMapping,
-  setColumnMapping,
   csvColumns,
-  pluginName,
 }) => {
   const experimentID = useExperimentID();
   const [components, setComponents] = useState<TrialComponent[]>([]);
@@ -89,6 +90,9 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   const [showRightPanel, setShowRightPanel] = useState(true);
   const isResizingLeft = useRef(false);
   const isResizingRight = useRef(false);
+  const [stimulusExpanded, setStimulusExpanded] = useState(true);
+  const [responseExpanded, setResponseExpanded] = useState(true);
+  const [surveyExpanded, setSurveyExpanded] = useState(true);
 
   const CANVAS_WIDTH = 1024;
   const CANVAS_HEIGHT = 768;
@@ -266,7 +270,8 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       setComponents([]);
       setSelectedId(null);
     }
-  }, [isOpen, columnMapping]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Memoize component-specific columnMapping from component's config
   const componentColumnMapping = useMemo(() => {
@@ -329,8 +334,9 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     [selectedId]
   );
 
-  // Update columnMapping whenever components change
-  useEffect(() => {
+  // Helper function to build components config from current state
+  // This is called only when saving, not continuously
+  const buildComponentsConfig = () => {
     const stimulusComponents: any[] = [];
     const responseComponents: any[] = [];
 
@@ -387,32 +393,22 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
         comp.type === "KeyboardResponseComponent" ||
         comp.type === "SliderResponseComponent";
 
+      const isSurveyComponent =
+        comp.type === "SurveyTextComponent" || comp.type === "SurveyComponent";
+
       if (isResponseComponent) {
         responseComponents.push(componentData);
+      } else if (isSurveyComponent) {
+        // Survey components go into stimulus for now
+        // Could be changed to separate survey_components if backend supports it
+        stimulusComponents.push(componentData);
       } else {
         stimulusComponents.push(componentData);
       }
     });
 
-    // Update columnMapping
-    const newMapping: Record<string, any> = {};
-
-    if (stimulusComponents.length > 0) {
-      newMapping.components = {
-        source: "typed",
-        value: stimulusComponents,
-      };
-    }
-
-    if (responseComponents.length > 0) {
-      newMapping.response_components = {
-        source: "typed",
-        value: responseComponents,
-      };
-    }
-
-    setColumnMapping(newMapping);
-  }, [components, setColumnMapping]);
+    return { stimulusComponents, responseComponents };
+  };
 
   // Handle resize
   useEffect(() => {
@@ -610,6 +606,9 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     } else if (type === "SliderResponseComponent") {
       width = 250;
       height = 100;
+    } else if (type === "SketchpadComponent") {
+      width = 200;
+      height = 200;
     }
 
     const newComponent: TrialComponent = {
@@ -678,17 +677,37 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
 
   // Export configuration
   const handleExport = () => {
-    // Simply save the current columnMapping which already has
-    // components and response_components properly updated
-    const dynamicPluginConfig: Record<string, any> = {};
+    // Build components config from current component state
+    const { stimulusComponents, responseComponents } = buildComponentsConfig();
 
-    if (columnMapping.components) {
-      dynamicPluginConfig.components = columnMapping.components;
+    // Start with existing columnMapping to preserve General Settings and other parameters
+    const dynamicPluginConfig: Record<string, any> = { ...columnMapping };
+
+    // Clean up any parameters with source:'none' that shouldn't be in columnMapping
+    Object.keys(dynamicPluginConfig).forEach((key) => {
+      if (dynamicPluginConfig[key]?.source === "none") {
+        delete dynamicPluginConfig[key];
+      }
+    });
+
+    // Update or remove components
+    if (stimulusComponents.length > 0) {
+      dynamicPluginConfig.components = {
+        source: "typed",
+        value: stimulusComponents,
+      };
+    } else {
+      delete dynamicPluginConfig.components;
     }
 
-    if (columnMapping.response_components) {
-      dynamicPluginConfig.response_components =
-        columnMapping.response_components;
+    // Update or remove response_components
+    if (responseComponents.length > 0) {
+      dynamicPluginConfig.response_components = {
+        source: "typed",
+        value: responseComponents,
+      };
+    } else {
+      delete dynamicPluginConfig.response_components;
     }
 
     onSave(dynamicPluginConfig);
@@ -837,6 +856,39 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
           />
         );
 
+      case "SketchpadComponent":
+        return (
+          <SketchpadComponent
+            key={comp.id}
+            shapeProps={comp}
+            isSelected={isSelected}
+            onSelect={() => handleSelect(comp.id)}
+            onChange={handleComponentChange}
+          />
+        );
+
+      case "SurveyTextComponent":
+        return (
+          <SurveyTextComponent
+            key={comp.id}
+            shapeProps={comp}
+            isSelected={isSelected}
+            onSelect={() => handleSelect(comp.id)}
+            onChange={handleComponentChange}
+          />
+        );
+
+      case "SurveyComponent":
+        return (
+          <SurveyComponent
+            key={comp.id}
+            shapeProps={comp}
+            isSelected={isSelected}
+            onSelect={() => handleSelect(comp.id)}
+            onChange={handleComponentChange}
+          />
+        );
+
       default:
         return (
           <Rect
@@ -864,9 +916,12 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     { type: "VideoComponent", label: "Video" },
     { type: "AudioComponent", label: "Audio" },
     { type: "HtmlComponent", label: "HTML" },
+    { type: "SketchpadComponent", label: "Sketchpad" },
     { type: "ButtonResponseComponent", label: "Button" },
     { type: "KeyboardResponseComponent", label: "Keyboard" },
     { type: "SliderResponseComponent", label: "Slider" },
+    { type: "SurveyTextComponent", label: "Survey Text" },
+    { type: "SurveyComponent", label: "SurveyJS" },
   ];
 
   return (
@@ -886,10 +941,10 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             <div
               style={{
                 width: `${leftPanelWidth}px`,
-                borderRight: "2px solid #e5e7eb",
+                borderRight: "2px solid var(--neutral-mid)",
                 display: "flex",
                 flexDirection: "column",
-                background: "#f9fafb",
+                background: "var(--neutral-light)",
                 position: "relative",
                 height: "100%",
               }}
@@ -900,9 +955,9 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
                   padding: "12px 16px",
                   fontSize: "16px",
                   fontWeight: 700,
-                  background: "#fff",
-                  borderBottom: "2px solid #e5e7eb",
-                  color: "#1f2937",
+                  background: "var(--light-blue)",
+                  borderBottom: "2px solid var(--neutral-mid)",
+                  color: "var(--text-light)",
                 }}
               >
                 Components
@@ -910,269 +965,459 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
 
               {/* Components list with inline media */}
               <div style={{ flex: 1, overflowY: "auto", padding: "12px" }}>
-                {componentTypes.map(({ type, label }) => (
-                  <div key={type}>
-                    <button
-                      onClick={() => {
-                        if (
-                          type === "ImageComponent" ||
-                          type === "VideoComponent" ||
-                          type === "AudioComponent"
-                        ) {
-                          setSelectedComponentType(
-                            selectedComponentType === type ? null : type
-                          );
-                        } else {
-                          addComponent(type);
-                        }
-                      }}
-                      style={{
-                        width: "100%",
-                        padding: "12px 16px",
-                        border: "2px solid",
-                        borderColor:
-                          selectedComponentType === type
-                            ? "#3b82f6"
-                            : "#d1d5db",
-                        borderRadius: "8px",
-                        background:
-                          selectedComponentType === type ? "#dbeafe" : "white",
-                        cursor: "pointer",
-                        textAlign: "left",
-                        fontSize: "15px",
-                        fontWeight: 600,
-                        color:
-                          selectedComponentType === type
-                            ? "#1e40af"
-                            : "#374151",
-                        transition: "all 0.2s",
-                        marginBottom: "10px",
-                        boxShadow:
-                          selectedComponentType === type
-                            ? "0 2px 8px rgba(59, 130, 246, 0.2)"
-                            : "0 1px 3px rgba(0,0,0,0.1)",
-                      }}
-                      onMouseOver={(e) => {
-                        if (selectedComponentType !== type) {
-                          e.currentTarget.style.background = "#f3f4f6";
-                          e.currentTarget.style.borderColor = "#9ca3af";
-                        }
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.background =
-                          selectedComponentType === type ? "#dbeafe" : "white";
-                        e.currentTarget.style.borderColor =
-                          selectedComponentType === type
-                            ? "#3b82f6"
-                            : "#d1d5db";
-                      }}
-                    >
-                      {label}
-                    </button>
-
-                    {/* Show thumbnails inline below the button */}
-                    {selectedComponentType === type &&
-                      type === "ImageComponent" && (
-                        <div
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr",
-                            gap: "6px",
-                            marginBottom: "12px",
-                            padding: "8px",
-                            background: "#f9fafb",
-                            borderRadius: "4px",
-                          }}
-                        >
-                          {images.length === 0 ? (
-                            <p
+                {/* Stimulus Components Section */}
+                <div style={{ marginBottom: "12px" }}>
+                  <button
+                    onClick={() => setStimulusExpanded(!stimulusExpanded)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      background: "#3b82f6",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      fontWeight: 600,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <span>Stimulus</span>
+                    <span>{stimulusExpanded ? "▼" : "▶"}</span>
+                  </button>
+                  {stimulusExpanded && (
+                    <div style={{ paddingLeft: "4px" }}>
+                      {componentTypes
+                        .filter(({ type }) =>
+                          [
+                            "ImageComponent",
+                            "VideoComponent",
+                            "AudioComponent",
+                            "HtmlComponent",
+                            "SketchpadComponent",
+                          ].includes(type)
+                        )
+                        .map(({ type, label }) => (
+                          <div key={type}>
+                            <button
+                              onClick={() => {
+                                if (
+                                  type === "ImageComponent" ||
+                                  type === "VideoComponent" ||
+                                  type === "AudioComponent"
+                                ) {
+                                  setSelectedComponentType(
+                                    selectedComponentType === type ? null : type
+                                  );
+                                } else {
+                                  addComponent(type);
+                                }
+                              }}
                               style={{
-                                gridColumn: "1 / -1",
-                                textAlign: "center",
-                                color: "#9ca3af",
-                                fontSize: "11px",
-                                margin: 0,
+                                width: "100%",
+                                padding: "12px 16px",
+                                border: "2px solid",
+                                borderColor:
+                                  selectedComponentType === type
+                                    ? "#3b82f6"
+                                    : "#d1d5db",
+                                borderRadius: "8px",
+                                background:
+                                  selectedComponentType === type
+                                    ? "#dbeafe"
+                                    : "white",
+                                cursor: "pointer",
+                                textAlign: "left",
+                                fontSize: "15px",
+                                fontWeight: 600,
+                                color:
+                                  selectedComponentType === type
+                                    ? "#1e40af"
+                                    : "#374151",
+                                transition: "all 0.2s",
+                                marginBottom: "10px",
+                                boxShadow:
+                                  selectedComponentType === type
+                                    ? "0 2px 8px rgba(59, 130, 246, 0.2)"
+                                    : "0 1px 3px rgba(0,0,0,0.1)",
+                              }}
+                              onMouseOver={(e) => {
+                                if (selectedComponentType !== type) {
+                                  e.currentTarget.style.background = "#f3f4f6";
+                                  e.currentTarget.style.borderColor = "#9ca3af";
+                                }
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.background =
+                                  selectedComponentType === type
+                                    ? "#dbeafe"
+                                    : "white";
+                                e.currentTarget.style.borderColor =
+                                  selectedComponentType === type
+                                    ? "#3b82f6"
+                                    : "#d1d5db";
                               }}
                             >
-                              No images
-                            </p>
-                          ) : (
-                            images.map((imgUrl, idx) => (
-                              <div
-                                key={idx}
-                                draggable
-                                onDragStart={(e) => {
-                                  e.dataTransfer.setData("fileUrl", imgUrl);
-                                  e.dataTransfer.setData(
-                                    "type",
-                                    "ImageComponent"
-                                  );
-                                }}
-                                style={{
-                                  cursor: "grab",
-                                  border: "1px solid #ddd",
-                                  borderRadius: "4px",
-                                  overflow: "hidden",
-                                  aspectRatio: "1",
-                                }}
-                              >
-                                <img
-                                  src={`${API_URL}/${imgUrl}`}
-                                  alt="thumbnail"
-                                  style={{
-                                    width: "100%",
-                                    height: "100%",
-                                    objectFit: "cover",
-                                  }}
-                                />
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      )}
+                              {label}
+                            </button>
 
-                    {selectedComponentType === type &&
-                      type === "VideoComponent" && (
-                        <div
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr",
-                            gap: "6px",
-                            marginBottom: "12px",
-                            padding: "8px",
-                            background: "#f9fafb",
-                            borderRadius: "4px",
-                          }}
-                        >
-                          {videos.length === 0 ? (
-                            <p
-                              style={{
-                                gridColumn: "1 / -1",
-                                textAlign: "center",
-                                color: "#9ca3af",
-                                fontSize: "11px",
-                                margin: 0,
-                              }}
-                            >
-                              No videos
-                            </p>
-                          ) : (
-                            videos.map((vidUrl, idx) => (
-                              <div
-                                key={idx}
-                                draggable
-                                onDragStart={(e) => {
-                                  e.dataTransfer.setData("fileUrl", vidUrl);
-                                  e.dataTransfer.setData(
-                                    "type",
-                                    "VideoComponent"
-                                  );
-                                }}
-                                style={{
-                                  cursor: "grab",
-                                  border: "1px solid #ddd",
-                                  borderRadius: "4px",
-                                  overflow: "hidden",
-                                  aspectRatio: "16/9",
-                                  background: "#000",
-                                  position: "relative",
-                                }}
-                              >
-                                <video
-                                  src={`${API_URL}/${vidUrl}`}
-                                  style={{
-                                    width: "100%",
-                                    height: "100%",
-                                    objectFit: "cover",
-                                  }}
-                                />
+                            {/* Show thumbnails inline below the button */}
+                            {selectedComponentType === type &&
+                              type === "ImageComponent" && (
                                 <div
                                   style={{
-                                    position: "absolute",
-                                    bottom: 0,
-                                    left: 0,
-                                    right: 0,
-                                    background: "rgba(0,0,0,0.7)",
-                                    color: "white",
-                                    fontSize: "9px",
-                                    padding: "2px 4px",
-                                    whiteSpace: "nowrap",
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
+                                    display: "grid",
+                                    gridTemplateColumns: "1fr 1fr",
+                                    gap: "6px",
+                                    marginBottom: "12px",
+                                    padding: "8px",
+                                    background: "var(--neutral-light)",
+                                    borderRadius: "4px",
                                   }}
                                 >
-                                  {vidUrl.split("/").pop()}
+                                  {images.length === 0 ? (
+                                    <p
+                                      style={{
+                                        gridColumn: "1 / -1",
+                                        textAlign: "center",
+                                        color: "#9ca3af",
+                                        fontSize: "11px",
+                                        margin: 0,
+                                      }}
+                                    >
+                                      No images
+                                    </p>
+                                  ) : (
+                                    images.map((imgUrl, idx) => (
+                                      <div
+                                        key={idx}
+                                        draggable
+                                        onDragStart={(e) => {
+                                          e.dataTransfer.setData(
+                                            "fileUrl",
+                                            imgUrl
+                                          );
+                                          e.dataTransfer.setData(
+                                            "type",
+                                            "ImageComponent"
+                                          );
+                                        }}
+                                        style={{
+                                          cursor: "grab",
+                                          border: "1px solid #ddd",
+                                          borderRadius: "4px",
+                                          overflow: "hidden",
+                                          aspectRatio: "1",
+                                        }}
+                                      >
+                                        <img
+                                          src={`${API_URL}/${imgUrl}`}
+                                          alt="thumbnail"
+                                          style={{
+                                            width: "100%",
+                                            height: "100%",
+                                            objectFit: "cover",
+                                          }}
+                                        />
+                                      </div>
+                                    ))
+                                  )}
                                 </div>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      )}
+                              )}
 
-                    {selectedComponentType === type &&
-                      type === "AudioComponent" && (
-                        <div
-                          style={{
-                            marginBottom: "12px",
-                            padding: "8px",
-                            background: "#f9fafb",
-                            borderRadius: "4px",
-                          }}
-                        >
-                          {audios.length === 0 ? (
-                            <p
+                            {selectedComponentType === type &&
+                              type === "VideoComponent" && (
+                                <div
+                                  style={{
+                                    display: "grid",
+                                    gridTemplateColumns: "1fr 1fr",
+                                    gap: "6px",
+                                    marginBottom: "12px",
+                                    padding: "8px",
+                                    background: "var(--neutral-light)",
+                                    borderRadius: "4px",
+                                  }}
+                                >
+                                  {videos.length === 0 ? (
+                                    <p
+                                      style={{
+                                        gridColumn: "1 / -1",
+                                        textAlign: "center",
+                                        color: "#9ca3af",
+                                        fontSize: "11px",
+                                        margin: 0,
+                                      }}
+                                    >
+                                      No videos
+                                    </p>
+                                  ) : (
+                                    videos.map((vidUrl, idx) => (
+                                      <div
+                                        key={idx}
+                                        draggable
+                                        onDragStart={(e) => {
+                                          e.dataTransfer.setData(
+                                            "fileUrl",
+                                            vidUrl
+                                          );
+                                          e.dataTransfer.setData(
+                                            "type",
+                                            "VideoComponent"
+                                          );
+                                        }}
+                                        style={{
+                                          cursor: "grab",
+                                          border: "1px solid #ddd",
+                                          borderRadius: "4px",
+                                          overflow: "hidden",
+                                          aspectRatio: "16/9",
+                                          background: "#000",
+                                          position: "relative",
+                                        }}
+                                      >
+                                        <video
+                                          src={`${API_URL}/${vidUrl}`}
+                                          style={{
+                                            width: "100%",
+                                            height: "100%",
+                                            objectFit: "cover",
+                                          }}
+                                        />
+                                        <div
+                                          style={{
+                                            position: "absolute",
+                                            bottom: 0,
+                                            left: 0,
+                                            right: 0,
+                                            background: "rgba(0,0,0,0.7)",
+                                            color: "white",
+                                            fontSize: "9px",
+                                            padding: "2px 4px",
+                                            whiteSpace: "nowrap",
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                          }}
+                                        >
+                                          {vidUrl.split("/").pop()}
+                                        </div>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              )}
+
+                            {selectedComponentType === type &&
+                              type === "AudioComponent" && (
+                                <div
+                                  style={{
+                                    marginBottom: "12px",
+                                    padding: "8px",
+                                    background: "var(--neutral-light)",
+                                    borderRadius: "4px",
+                                  }}
+                                >
+                                  {audios.length === 0 ? (
+                                    <p
+                                      style={{
+                                        textAlign: "center",
+                                        color: "#9ca3af",
+                                        fontSize: "11px",
+                                        margin: 0,
+                                      }}
+                                    >
+                                      No audio
+                                    </p>
+                                  ) : (
+                                    audios.map((audUrl, idx) => (
+                                      <div
+                                        key={idx}
+                                        draggable
+                                        onDragStart={(e) => {
+                                          e.dataTransfer.setData(
+                                            "fileUrl",
+                                            audUrl
+                                          );
+                                          e.dataTransfer.setData(
+                                            "type",
+                                            "AudioComponent"
+                                          );
+                                        }}
+                                        style={{
+                                          padding: "8px",
+                                          border:
+                                            "1px solid var(--neutral-mid)",
+                                          borderRadius: "4px",
+                                          cursor: "grab",
+                                          background: "var(--neutral-light)",
+                                          fontSize: "11px",
+                                          marginBottom: "4px",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "6px",
+                                        }}
+                                      >
+                                        <span style={{ fontSize: "16px" }}>
+                                          🎵
+                                        </span>
+                                        <span
+                                          style={{
+                                            flex: 1,
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                            whiteSpace: "nowrap",
+                                          }}
+                                        >
+                                          {audUrl.split("/").pop()}
+                                        </span>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              )}
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Response Components Section */}
+                <div style={{ marginBottom: "12px" }}>
+                  <button
+                    onClick={() => setResponseExpanded(!responseExpanded)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      background: "#9333ea",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      fontWeight: 600,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <span>Response</span>
+                    <span>{responseExpanded ? "▼" : "▶"}</span>
+                  </button>
+                  {responseExpanded && (
+                    <div style={{ paddingLeft: "4px" }}>
+                      {componentTypes
+                        .filter(({ type }) =>
+                          [
+                            "ButtonResponseComponent",
+                            "KeyboardResponseComponent",
+                            "SliderResponseComponent",
+                          ].includes(type)
+                        )
+                        .map(({ type, label }) => (
+                          <div key={type}>
+                            <button
+                              onClick={() => addComponent(type)}
                               style={{
-                                textAlign: "center",
-                                color: "#9ca3af",
-                                fontSize: "11px",
-                                margin: 0,
+                                width: "100%",
+                                padding: "12px 16px",
+                                border: "2px solid #d1d5db",
+                                borderRadius: "8px",
+                                background: "white",
+                                cursor: "pointer",
+                                textAlign: "left",
+                                fontSize: "15px",
+                                fontWeight: 600,
+                                color: "#374151",
+                                transition: "all 0.2s",
+                                marginBottom: "10px",
+                                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                              }}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.background = "#f3f4f6";
+                                e.currentTarget.style.borderColor = "#9ca3af";
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.background = "white";
+                                e.currentTarget.style.borderColor = "#d1d5db";
                               }}
                             >
-                              No audio
-                            </p>
-                          ) : (
-                            audios.map((audUrl, idx) => (
-                              <div
-                                key={idx}
-                                draggable
-                                onDragStart={(e) => {
-                                  e.dataTransfer.setData("fileUrl", audUrl);
-                                  e.dataTransfer.setData(
-                                    "type",
-                                    "AudioComponent"
-                                  );
-                                }}
-                                style={{
-                                  padding: "8px",
-                                  border: "1px solid #ddd",
-                                  borderRadius: "4px",
-                                  cursor: "grab",
-                                  background: "white",
-                                  fontSize: "11px",
-                                  marginBottom: "4px",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "6px",
-                                }}
-                              >
-                                <span style={{ fontSize: "16px" }}>🎵</span>
-                                <span
-                                  style={{
-                                    flex: 1,
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                    whiteSpace: "nowrap",
-                                  }}
-                                >
-                                  {audUrl.split("/").pop()}
-                                </span>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      )}
-                  </div>
-                ))}
+                              {label}
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Survey Components Section */}
+                <div style={{ marginBottom: "12px" }}>
+                  <button
+                    onClick={() => setSurveyExpanded(!surveyExpanded)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      background: "#f59e0b",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      fontWeight: 600,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <span>Survey</span>
+                    <span>{surveyExpanded ? "▼" : "▶"}</span>
+                  </button>
+                  {surveyExpanded && (
+                    <div style={{ paddingLeft: "4px" }}>
+                      {componentTypes
+                        .filter(({ type }) =>
+                          ["SurveyTextComponent", "SurveyComponent"].includes(
+                            type
+                          )
+                        )
+                        .map(({ type, label }) => (
+                          <div key={type}>
+                            <button
+                              onClick={() => addComponent(type)}
+                              style={{
+                                width: "100%",
+                                padding: "12px 16px",
+                                border: "2px solid #d1d5db",
+                                borderRadius: "8px",
+                                background: "white",
+                                cursor: "pointer",
+                                textAlign: "left",
+                                fontSize: "15px",
+                                fontWeight: 600,
+                                color: "#374151",
+                                transition: "all 0.2s",
+                                marginBottom: "10px",
+                                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                              }}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.background = "#f3f4f6";
+                                e.currentTarget.style.borderColor = "#9ca3af";
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.background = "white";
+                                e.currentTarget.style.borderColor = "#d1d5db";
+                              }}
+                            >
+                              {label}
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Delete button at bottom */}
@@ -1209,9 +1454,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
                   background: "transparent",
                   zIndex: 10,
                 }}
-                onMouseOver={(e) =>
-                  (e.currentTarget.style.background = "#3b82f6")
-                }
+                onMouseOver={(e) => (e.currentTarget.style.background = "#000")}
                 onMouseOut={(e) =>
                   (e.currentTarget.style.background = "transparent")
                 }
@@ -1228,8 +1471,8 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
                 left: 0,
                 top: "50%",
                 transform: "translateY(-50%)",
-                background: "#3b82f6",
-                color: "white",
+                background: "var(--primary-blue)",
+                color: "var(--text-light)",
                 border: "none",
                 borderRadius: "0 8px 8px 0",
                 padding: "16px 8px",
@@ -1253,16 +1496,16 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
               justifyContent: "center",
               padding: "16px",
               overflow: "auto",
-              background: "#f5f5f5",
+              background: "var(--neutral-light)",
               position: "relative",
             }}
           >
             <div
               style={{
-                border: "2px solid #ddd",
+                border: "2px solid var(--neutral-mid)",
                 borderRadius: "8px",
                 overflow: "hidden",
-                background: "white",
+                background: "var(--neutral-light)",
                 position: "relative",
                 boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
               }}
@@ -1282,8 +1525,8 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
                   width: CANVAS_WIDTH,
                   height: CANVAS_HEIGHT,
                   backgroundImage: `
-                  linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
-                  linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px)
+                  linear-gradient(var(--neutral-mid) 1px, transparent 1px),
+                  linear-gradient(90deg, var(--neutral-mid) 1px, transparent 1px)
                 `,
                   backgroundSize: "20px 20px",
                   pointerEvents: "none",
@@ -1347,37 +1590,36 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             <div
               style={{
                 width: `${rightPanelWidth}px`,
-                borderLeft: "2px solid #e5e7eb",
+                borderLeft: "2px solid var(--neutral-mid)",
                 display: "flex",
                 flexDirection: "column",
-                background: "#ffffff",
+                background: "var(--neutral-light)",
                 position: "relative",
                 overflowY: "auto",
               }}
             >
-              <div
+              <h3
                 style={{
+                  margin: "0",
                   padding: "12px 16px",
-                  borderBottom: "2px solid #e5e7eb",
-                  background: "#f9fafb",
-                  position: "sticky",
-                  top: 0,
-                  zIndex: 5,
+                  fontSize: "16px",
+                  fontWeight: 700,
+                  background: "var(--light-blue)",
+                  borderBottom: "2px solid var(--neutral-mid)",
+                  color: "var(--text-light)",
                 }}
               >
-                <h3
-                  style={{
-                    margin: 0,
-                    fontSize: "16px",
-                    fontWeight: 700,
-                    color: "#1f2937",
-                  }}
-                >
-                  Parameters
-                </h3>
-              </div>
+                Parameters
+              </h3>
 
-              <div style={{ flex: 1, padding: "16px", overflowY: "auto" }}>
+              <div
+                style={{
+                  flex: 1,
+                  padding: "16px",
+                  overflowY: "auto",
+                  color: "var(--text-light)",
+                }}
+              >
                 {/* Show component parameters if a component is selected */}
                 {selectedId && selectedComponent ? (
                   <div>
@@ -1393,7 +1635,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
                           margin: 0,
                           fontSize: "14px",
                           fontWeight: 600,
-                          color: "#6b7280",
+                          color: "var(--text-light)",
                         }}
                       >
                         Selected Component
@@ -1403,7 +1645,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
                           margin: "4px 0 0",
                           fontSize: "16px",
                           fontWeight: 700,
-                          color: "#1f2937",
+                          color: "var(--text-light)",
                         }}
                       >
                         {selectedComponent.type.replace(/Component$/, "")}
@@ -1415,7 +1657,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
                         style={{
                           textAlign: "center",
                           padding: "20px",
-                          color: "#6b7280",
+                          color: "var(--text-light)",
                         }}
                       >
                         Loading component parameters...
@@ -1464,13 +1706,19 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
                     style={{
                       textAlign: "center",
                       padding: "40px 20px",
-                      color: "#9ca3af",
+                      color: "var(--text-light)",
                     }}
                   >
-                    <div style={{ fontSize: "48px", marginBottom: "12px" }}>
-                      ⚙️
-                    </div>
-                    <p style={{ margin: 0, fontSize: "14px" }}>
+                    <div
+                      style={{ fontSize: "48px", marginBottom: "12px" }}
+                    ></div>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: "14px",
+                        color: "var(--text-light)",
+                      }}
+                    >
                       Select a component from the canvas to edit its parameters
                     </p>
                   </div>
@@ -1509,8 +1757,8 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
                 right: 0,
                 top: "50%",
                 transform: "translateY(-50%)",
-                background: "#3b82f6",
-                color: "white",
+                background: "var(--primary-blue)",
+                color: "var(--text-light)",
                 border: "none",
                 borderRadius: "8px 0 0 8px",
                 padding: "16px 8px",
@@ -1532,17 +1780,18 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             display: "flex",
             justifyContent: "flex-end",
             gap: "10px",
-            borderTop: "2px solid #e5e7eb",
-            background: "white",
+            borderTop: "2px solid var(--neutral-mid)",
+            background: "var(--neutral-light)",
           }}
         >
           <button
             onClick={onClose}
             style={{
               padding: "10px 20px",
-              border: "1px solid #dc2626",
+              border: "1px solid var(--danger)",
               borderRadius: "6px",
-              background: "#dc2626",
+              background: "var(--danger)",
+              color: "var(--text-light)",
               cursor: "pointer",
               fontWeight: 600,
             }}
@@ -1555,8 +1804,9 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
               padding: "10px 20px",
               border: "none",
               borderRadius: "6px",
-              background: "#2196f3",
-              color: "white",
+              background:
+                "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+              color: "var(--text-light)",
               fontWeight: 600,
               cursor: "pointer",
             }}

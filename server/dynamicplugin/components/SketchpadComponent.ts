@@ -297,7 +297,10 @@ class SketchpadComponent {
     }
     let sketchpad_controls = `<div id="sketchpad-controls">`;
     sketchpad_controls += `<div id="sketchpad-color-palette">`;
-    for (const color of config.stroke_color_palette) {
+    const palette = Array.isArray(config.stroke_color_palette)
+      ? config.stroke_color_palette
+      : [];
+    for (const color of palette) {
       sketchpad_controls += `<button class="sketchpad-color-select" data-color="${color}" style="background-color:${color};"></button>`;
     }
     sketchpad_controls += `</div>`;

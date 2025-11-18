@@ -34,11 +34,21 @@ const SliderResponseComponent: React.FC<SliderResponseComponentProps> = ({
     const config = shapeProps.config[key];
     if (!config) return fallback ?? null;
     if (config.source === "typed" || config.source === "csv") {
-      if (typeof config.value === "object") return fallback ?? null;
-      // Special handling for labels: convert string to array
-      if (key === "labels" && typeof config.value === "string") {
-        return config.value.split(",").map((label: string) => label.trim());
+      // Special handling for labels: convert string to array or return array directly
+      if (key === "labels") {
+        if (typeof config.value === "string") {
+          return config.value.split(",").map((label: string) => label.trim());
+        }
+        if (Array.isArray(config.value)) {
+          return config.value;
+        }
+        return fallback ?? [];
       }
+      // Allow arrays for other parameters too
+      if (Array.isArray(config.value)) {
+        return config.value;
+      }
+      if (typeof config.value === "object") return fallback ?? null;
       return config.value;
     }
     if (typeof config === "object") return fallback ?? null;
