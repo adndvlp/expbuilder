@@ -1,6 +1,6 @@
 import { JsPsych, JsPsychPlugin, ParameterType, TrialType } from "jspsych";
 
-import { version } from "../package.json";
+const version = "1.0.0";
 
 // Import all component types
 import ImageComponent from "./components/ImageComponent";

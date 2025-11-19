@@ -6,8 +6,8 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, "index.ts"),
       name: "DynamicPlugin",
-      fileName: "index",
-      formats: ["iife"],
+      fileName: (format) => `index.${format}.js`,
+      formats: ["es", "iife"],
     },
     rollupOptions: {
       external: ["jspsych"],
