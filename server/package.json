@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node api.js",
-    "dev": "nodemon api.js"
+    "dev": "nodemon api.js",
+      "lint": "eslint ."
   },
   "keywords": [],
   "author": "",
@@ -27,6 +28,8 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "eslint": "^9.39.1",
+    "eslint-plugin-import": "^2.32.0",
     "file-loader": "^6.2.0",
     "nodemon": "^3.1.10"
   }
