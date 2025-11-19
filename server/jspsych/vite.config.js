@@ -4,12 +4,15 @@ import { resolve } from "path";
 export default defineConfig({
   build: {
     rollupOptions: {
-      input: resolve(__dirname, "./main.js"),
+      input: resolve(__dirname, "./wrapper.js"),
       output: {
         format: "iife",
+        name: "jsPsychExports",
         entryFileNames: "index.js",
+        assetFileNames: "index.[ext]",
       },
     },
+    cssCodeSplit: false,
     outDir: "dist",
     emptyOutDir: true,
   },

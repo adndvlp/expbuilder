@@ -1,73 +1,128 @@
-// Importar JsPsych principal
+// Importar JsPsych principal y exportar todo
 import { initJsPsych } from "jspsych";
+export { initJsPsych };
 
-// Importar todos los plugins descargados
-import "@jspsych/plugin-animation";
-import "@jspsych/plugin-audio-button-response";
-import "@jspsych/plugin-audio-keyboard-response";
-import "@jspsych/plugin-audio-slider-response";
-import "@jspsych/plugin-browser-check";
-import "@jspsych/plugin-call-function";
-import "@jspsych/plugin-canvas-button-response";
-import "@jspsych/plugin-canvas-keyboard-response";
-import "@jspsych/plugin-canvas-slider-response";
-import "@jspsych/plugin-categorize-animation";
-import "@jspsych/plugin-categorize-html";
-import "@jspsych/plugin-categorize-image";
-import "@jspsych/plugin-cloze";
-import "@jspsych/plugin-external-html";
-import "@jspsych/plugin-free-sort";
-import "@jspsych/plugin-fullscreen";
-import "@jspsych/plugin-html-audio-response";
-import "@jspsych/plugin-html-button-response";
-import "@jspsych/plugin-html-keyboard-response";
-import "@jspsych/plugin-html-slider-response";
-import "@jspsych/plugin-html-video-response";
-import "@jspsych/plugin-iat-html";
-import "@jspsych/plugin-iat-image";
-import "@jspsych/plugin-image-button-response";
-import "@jspsych/plugin-image-keyboard-response";
-import "@jspsych/plugin-image-slider-response";
-import "@jspsych/plugin-initialize-camera";
-import "@jspsych/plugin-initialize-microphone";
-import "@jspsych/plugin-instructions";
-import "@jspsych/plugin-maxdiff";
-import "@jspsych/plugin-mirror-camera";
-import "@jspsych/plugin-preload";
-import "@jspsych/plugin-reconstruction";
-import "@jspsych/plugin-resize";
-import "@jspsych/plugin-same-different-html";
-import "@jspsych/plugin-same-different-image";
-import "@jspsych/plugin-serial-reaction-time";
-import "@jspsych/plugin-serial-reaction-time-mouse";
-import "@jspsych/plugin-sketchpad";
-import "@jspsych/plugin-survey";
-import "@jspsych/plugin-survey-html-form";
-import "@jspsych/plugin-survey-likert";
-import "@jspsych/plugin-survey-multi-choice";
-import "@jspsych/plugin-survey-multi-select";
-import "@jspsych/plugin-survey-text";
-import "@jspsych/plugin-video-button-response";
-import "@jspsych/plugin-video-keyboard-response";
-import "@jspsych/plugin-video-slider-response";
-import "@jspsych/plugin-virtual-chinrest";
-import "@jspsych/plugin-visual-search-circle";
-import "@jspsych/extension-webgazer";
-import "@jspsych/plugin-webgazer-calibrate";
-import "@jspsych/plugin-webgazer-init-camera";
-import "@jspsych/plugin-webgazer-validate";
-import "@jspsych/extension-record-video";
-import "@jspsych/extension-mouse-tracking";
+// Importar todos los plugins y exportarlos
+import jsPsychAnimation from "@jspsych/plugin-animation";
+import jsPsychAudioButtonResponse from "@jspsych/plugin-audio-button-response";
+import jsPsychAudioKeyboardResponse from "@jspsych/plugin-audio-keyboard-response";
+import jsPsychAudioSliderResponse from "@jspsych/plugin-audio-slider-response";
+import jsPsychBrowserCheck from "@jspsych/plugin-browser-check";
+import jsPsychCallFunction from "@jspsych/plugin-call-function";
+import jsPsychCanvasButtonResponse from "@jspsych/plugin-canvas-button-response";
+import jsPsychCanvasKeyboardResponse from "@jspsych/plugin-canvas-keyboard-response";
+import jsPsychCanvasSliderResponse from "@jspsych/plugin-canvas-slider-response";
+import jsPsychCategorizeAnimation from "@jspsych/plugin-categorize-animation";
+import jsPsychCategorizeHtml from "@jspsych/plugin-categorize-html";
+import jsPsychCategorizeImage from "@jspsych/plugin-categorize-image";
+import jsPsychCloze from "@jspsych/plugin-cloze";
+import jsPsychExternalHtml from "@jspsych/plugin-external-html";
+import jsPsychFreeSort from "@jspsych/plugin-free-sort";
+import jsPsychFullscreen from "@jspsych/plugin-fullscreen";
+import jsPsychHtmlAudioResponse from "@jspsych/plugin-html-audio-response";
+import jsPsychHtmlButtonResponse from "@jspsych/plugin-html-button-response";
+import jsPsychHtmlKeyboardResponse from "@jspsych/plugin-html-keyboard-response";
+import jsPsychHtmlSliderResponse from "@jspsych/plugin-html-slider-response";
+import jsPsychHtmlVideoResponse from "@jspsych/plugin-html-video-response";
+import jsPsychIatHtml from "@jspsych/plugin-iat-html";
+import jsPsychIatImage from "@jspsych/plugin-iat-image";
+import jsPsychImageButtonResponse from "@jspsych/plugin-image-button-response";
+import jsPsychImageKeyboardResponse from "@jspsych/plugin-image-keyboard-response";
+import jsPsychImageSliderResponse from "@jspsych/plugin-image-slider-response";
+import jsPsychInitializeCamera from "@jspsych/plugin-initialize-camera";
+import jsPsychInitializeMicrophone from "@jspsych/plugin-initialize-microphone";
+import jsPsychInstructions from "@jspsych/plugin-instructions";
+import jsPsychMaxdiff from "@jspsych/plugin-maxdiff";
+import jsPsychMirrorCamera from "@jspsych/plugin-mirror-camera";
+import jsPsychPreload from "@jspsych/plugin-preload";
+import jsPsychReconstruction from "@jspsych/plugin-reconstruction";
+import jsPsychResize from "@jspsych/plugin-resize";
+import jsPsychSameDifferentHtml from "@jspsych/plugin-same-different-html";
+import jsPsychSameDifferentImage from "@jspsych/plugin-same-different-image";
+import jsPsychSerialReactionTime from "@jspsych/plugin-serial-reaction-time";
+import jsPsychSerialReactionTimeMouse from "@jspsych/plugin-serial-reaction-time-mouse";
+import jsPsychSketchpad from "@jspsych/plugin-sketchpad";
+import jsPsychSurvey from "@jspsych/plugin-survey";
+import jsPsychSurveyHtmlForm from "@jspsych/plugin-survey-html-form";
+import jsPsychSurveyLikert from "@jspsych/plugin-survey-likert";
+import jsPsychSurveyMultiChoice from "@jspsych/plugin-survey-multi-choice";
+import jsPsychSurveyMultiSelect from "@jspsych/plugin-survey-multi-select";
+import jsPsychSurveyText from "@jspsych/plugin-survey-text";
+import jsPsychVideoButtonResponse from "@jspsych/plugin-video-button-response";
+import jsPsychVideoKeyboardResponse from "@jspsych/plugin-video-keyboard-response";
+import jsPsychVideoSliderResponse from "@jspsych/plugin-video-slider-response";
+import jsPsychVirtualChinrest from "@jspsych/plugin-virtual-chinrest";
+import jsPsychVisualSearchCircle from "@jspsych/plugin-visual-search-circle";
+import jsPsychExtensionWebgazer from "@jspsych/extension-webgazer";
+import jsPsychWebgazerCalibrate from "@jspsych/plugin-webgazer-calibrate";
+import jsPsychWebgazerInitCamera from "@jspsych/plugin-webgazer-init-camera";
+import jsPsychWebgazerValidate from "@jspsych/plugin-webgazer-validate";
+import jsPsychExtensionRecordVideo from "@jspsych/extension-record-video";
+import jsPsychExtensionMouseTracking from "@jspsych/extension-mouse-tracking";
+
+export {
+  jsPsychAnimation,
+  jsPsychAudioButtonResponse,
+  jsPsychAudioKeyboardResponse,
+  jsPsychAudioSliderResponse,
+  jsPsychBrowserCheck,
+  jsPsychCallFunction,
+  jsPsychCanvasButtonResponse,
+  jsPsychCanvasKeyboardResponse,
+  jsPsychCanvasSliderResponse,
+  jsPsychCategorizeAnimation,
+  jsPsychCategorizeHtml,
+  jsPsychCategorizeImage,
+  jsPsychCloze,
+  jsPsychExternalHtml,
+  jsPsychFreeSort,
+  jsPsychFullscreen,
+  jsPsychHtmlAudioResponse,
+  jsPsychHtmlButtonResponse,
+  jsPsychHtmlKeyboardResponse,
+  jsPsychHtmlSliderResponse,
+  jsPsychHtmlVideoResponse,
+  jsPsychIatHtml,
+  jsPsychIatImage,
+  jsPsychImageButtonResponse,
+  jsPsychImageKeyboardResponse,
+  jsPsychImageSliderResponse,
+  jsPsychInitializeCamera,
+  jsPsychInitializeMicrophone,
+  jsPsychInstructions,
+  jsPsychMaxdiff,
+  jsPsychMirrorCamera,
+  jsPsychPreload,
+  jsPsychReconstruction,
+  jsPsychResize,
+  jsPsychSameDifferentHtml,
+  jsPsychSameDifferentImage,
+  jsPsychSerialReactionTime,
+  jsPsychSerialReactionTimeMouse,
+  jsPsychSketchpad,
+  jsPsychSurvey,
+  jsPsychSurveyHtmlForm,
+  jsPsychSurveyLikert,
+  jsPsychSurveyMultiChoice,
+  jsPsychSurveyMultiSelect,
+  jsPsychSurveyText,
+  jsPsychVideoButtonResponse,
+  jsPsychVideoKeyboardResponse,
+  jsPsychVideoSliderResponse,
+  jsPsychVirtualChinrest,
+  jsPsychVisualSearchCircle,
+  jsPsychExtensionWebgazer,
+  jsPsychWebgazerCalibrate,
+  jsPsychWebgazerInitCamera,
+  jsPsychWebgazerValidate,
+  jsPsychExtensionRecordVideo,
+  jsPsychExtensionMouseTracking,
+};
 
 // Importar CSS de jspsych y survey
 import "jspsych/css/jspsych.css";
 import "@jspsych/plugin-survey/css/survey.css";
 
-// Cargar e incluir el dynamic plugin
-import "../dynamicplugin/dist/index.iife.js";
-
-// Exponer todo globalmente para uso en el HTML
-if (typeof window !== "undefined") {
-  window.initJsPsych = initJsPsych;
-  // DynamicPlugin se expone automáticamente desde su propio build IIFE
-}
+// Importar el dynamic plugin
+import DynamicPlugin from "../dynamicplugin/index.ts";
+export { DynamicPlugin };
