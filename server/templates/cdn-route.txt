@@ -1,0 +1,31 @@
+
+ 
+
+
+     <script src="https://adndvlp.github.io/jspsych-cdn-for-expbuilder/index-DT7jwvAR.js"></script>
+
+    <link
+      href="https://adndvlp.github.io/jspsych-cdn-for-expbuilder/index-BRNsjspL.css"
+      rel="stylesheet"
+      type="text/css"
+    />
+
+
+
+
+    function createWindow() {
+  if (process.env.IS_ELECTRON_BACKEND === "1") {
+    // Modo Electron backend: crear ventana Electron normalmente
+    const win = new BrowserWindow({
+      width: 1200,
+      height: 800,
+      webPreferences: {
+        preload: path.join(__dirname, "preload.js"),
+      },
+    });
+    win.loadFile(path.join(process.resourcesPath, "client/dist/index.html"));
+  } else {
+    // Modo desarrollo navegador: abrir la app en el navegador predeterminado
+    shell.openExternal("http://localhost:3000");
+  }
+}

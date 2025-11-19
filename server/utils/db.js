@@ -4,8 +4,18 @@ import { __dirname, __filename } from "../utils/paths.js";
 import path from "path";
 import fs from "fs";
 
-const dbPath = path.join(__dirname, "database", "db.json");
-const dbDir = path.dirname(dbPath);
+// Usar ruta de usuario para todos los recursos de escritura si está definida
+const userDataRoot = process.env.DB_ROOT || __dirname;
+
+// Base de datos
+let dbPath, dbDir;
+if (process.env.DB_PATH) {
+  dbPath = process.env.DB_PATH;
+  dbDir = path.dirname(dbPath);
+} else {
+  dbPath = path.join(userDataRoot, "database", "db.json");
+  dbDir = path.dirname(dbPath);
+}
 if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 
 const adapter = new JSONFile(dbPath);
@@ -19,3 +29,6 @@ export function ensureDbData() {
   db.data.pluginConfigs ||= [];
   db.data.sessionResults ||= [];
 }
+
+// Exportar userDataRoot, dbPath y dbDir para usar en otros módulos
+export { userDataRoot, dbPath, dbDir };

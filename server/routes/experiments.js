@@ -3,15 +3,17 @@ import path from "path";
 import fs from "fs";
 import { __dirname } from "../utils/paths.js";
 import { v4 as uuidv4 } from "uuid";
-import { db, ensureDbData } from "../utils/db.js";
+import { db, ensureDbData, userDataRoot } from "../utils/db.js";
 import * as cheerio from "cheerio";
 
 const router = Router();
 
-const experimentsHtmlDir = path.join(__dirname, "experiments_html");
-const trialsPreviewsHtmlDir = path.join(__dirname, "trials_previews_html");
-if (!fs.existsSync(experimentsHtmlDir)) fs.mkdirSync(experimentsHtmlDir);
-if (!fs.existsSync(trialsPreviewsHtmlDir)) fs.mkdirSync(trialsPreviewsHtmlDir);
+const experimentsHtmlDir = path.join(userDataRoot, "experiments_html");
+const trialsPreviewsHtmlDir = path.join(userDataRoot, "trials_previews_html");
+if (!fs.existsSync(experimentsHtmlDir))
+  fs.mkdirSync(experimentsHtmlDir, { recursive: true });
+if (!fs.existsSync(trialsPreviewsHtmlDir))
+  fs.mkdirSync(trialsPreviewsHtmlDir, { recursive: true });
 
 router.get("/api/load-experiments", async (req, res) => {
   try {
@@ -227,7 +229,11 @@ router.delete("/api/delete-experiment/:experimentID", async (req, res) => {
     if (experiment && experiment.name) {
       experimentName = `${experiment.name}-experiment`;
     }
-    const experimentUploadsDir = path.join(__dirname, experimentName);
+    const experimentUploadsDir = path.join(
+      userDataRoot,
+      "uploads",
+      experimentName
+    );
     if (fs.existsSync(experimentUploadsDir)) {
       fs.rmSync(experimentUploadsDir, { recursive: true, force: true });
     }
@@ -316,11 +322,19 @@ router.delete("/api/delete-experiment/:experimentID", async (req, res) => {
 });
 
 router.use((req, res, next) => {
-  // Match paths like /experimentName/type/filename
-  const match = req.path.match(/^\/([^\/]+)\/(img|aud|vid|others)\/(.+)$/);
+  // Match paths like /uploads/experimentName/type/filename
+  const match = req.path.match(
+    /^\/uploads\/([^\/]+)\/(img|aud|vid|others)\/(.+)$/
+  );
   if (match) {
     const [, experimentName, type, filename] = match;
-    const filePath = path.join(__dirname, experimentName, type, filename);
+    const filePath = path.join(
+      userDataRoot,
+      "uploads",
+      experimentName,
+      type,
+      filename
+    );
     if (fs.existsSync(filePath)) {
       return res.sendFile(filePath);
     }
@@ -345,11 +359,10 @@ router.post("/api/run-experiment/:experimentID", async (req, res) => {
     }
     const experimentName = experiment.name;
     // Ruta de template y destino
-    const templatePath = path.join(
-      __dirname,
-      "templates",
-      "experiment_template.html"
-    );
+    const templatesDir = path.join(userDataRoot, "templates");
+    if (!fs.existsSync(templatesDir))
+      fs.mkdirSync(templatesDir, { recursive: true });
+    const templatePath = path.join(templatesDir, "experiment_template.html");
     const experimentHtmlPath = path.join(
       experimentsHtmlDir,
       `${experimentName}-experiment.html`
@@ -433,9 +446,11 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
         .json({ success: false, error: "Experiment not found" });
     }
     const experimentName = experiment.name;
+    const templatesDir = path.join(userDataRoot, "templates");
+    if (!fs.existsSync(templatesDir))
+      fs.mkdirSync(templatesDir, { recursive: true });
     const templatePath = path.join(
-      __dirname,
-      "templates",
+      templatesDir,
       "trials_preview_template.html"
     );
     const previewHtmlPath = path.join(
@@ -536,7 +551,11 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     if (experimentPublish && experimentPublish.name) {
       experimentNameUploads = `${experimentPublish.name}-experiment`;
     }
-    const uploadsBase = path.join(__dirname, experimentNameUploads);
+    const uploadsBase = path.join(
+      userDataRoot,
+      "uploads",
+      experimentNameUploads
+    );
     const mediaTypes = ["img", "vid", "aud"];
     let mediaFiles = [];
     for (const type of mediaTypes) {

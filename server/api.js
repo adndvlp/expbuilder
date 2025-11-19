@@ -3,7 +3,7 @@ import path from "path";
 import cors from "cors";
 import dotenv from "dotenv";
 
-import { db, ensureDbData } from "./utils/db.js";
+import { db, ensureDbData, userDataRoot } from "./utils/db.js";
 import { __dirname } from "./utils/paths.js";
 
 import experimentsRouter from "./routes/experiments.js";
@@ -15,7 +15,7 @@ import tunnelRouter from "./routes/tunnel.js";
 import configsRouter from "./routes/configs.js";
 import dbRouter from "./routes/db.js";
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 const app = express();
 const port = 3000;
@@ -36,7 +36,7 @@ await db.write();
 // Setup static file serving
 app.use(express.static(path.join(__dirname, "dist"))); // Serve dist/ at root level
 app.use(express.static(path.join(__dirname))); // Serve root directory
-app.use(express.static(path.join(__dirname, "plugins"))); // Serve app/ directory
+app.use("/plugins", express.static(path.join(userDataRoot, "plugins")));
 
 app.use("/", experimentsRouter);
 app.use("/", pluginsRouter);

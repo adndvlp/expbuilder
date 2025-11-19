@@ -3,17 +3,21 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import { __dirname } from "../utils/paths.js";
-import { db } from "../utils/db.js";
+import { db, userDataRoot } from "../utils/db.js";
 import * as cheerio from "cheerio";
 import { spawn } from "child_process";
 
 const router = Router();
-const metadataPath = path.resolve(__dirname, "metadata");
-const componentsMetadataPath = path.resolve(
-  __dirname,
+const metadataPath = path.join(userDataRoot, "metadata");
+if (!fs.existsSync(metadataPath))
+  fs.mkdirSync(metadataPath, { recursive: true });
+const componentsMetadataPath = path.join(
+  userDataRoot,
   "dynamicplugin",
   "components-metadata"
 );
+if (!fs.existsSync(componentsMetadataPath))
+  fs.mkdirSync(componentsMetadataPath, { recursive: true });
 
 // Serve the metadata directory at `/metadata` URL path
 router.use("/metadata", express.static(metadataPath));
@@ -28,20 +32,18 @@ router.use(
 router.get("/api/component-metadata/:componentType", (req, res) => {
   try {
     const { componentType } = req.params;
-    const metadataPath = path.join(
-      __dirname,
-      "dynamicplugin",
-      "components-metadata",
+    const metadataPathFile = path.join(
+      componentsMetadataPath,
       `${componentType}-component.json`
     );
 
-    if (!fs.existsSync(metadataPath)) {
+    if (!fs.existsSync(metadataPathFile)) {
       return res.status(404).json({
         error: `Metadata not found for component: ${componentType}`,
       });
     }
 
-    const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf-8"));
+    const metadata = JSON.parse(fs.readFileSync(metadataPathFile, "utf-8"));
     res.json(metadata);
   } catch (error) {
     console.error("Error loading component metadata:", error);
@@ -50,8 +52,7 @@ router.get("/api/component-metadata/:componentType", (req, res) => {
 });
 
 router.get("/api/plugins-list", (req, res) => {
-  const metadataDir = path.join(__dirname, "metadata");
-  fs.readdir(metadataDir, (err, files) => {
+  fs.readdir(metadataPath, (err, files) => {
     if (err) return res.status(500).json({ error: "No metadata dir" });
     // Solo archivos .json
     const plugins = files
@@ -90,23 +91,18 @@ router.post("/api/save-plugin/:id", async (req, res) => {
         if (nameChanged || scripTagChanged || codeChanged) {
           if (oldPlugin.scripTag) {
             const oldFileName = path.basename(oldPlugin.scripTag);
-            const oldFilePath = path.join(__dirname, "plugins", oldFileName);
+            const oldFilePath = path.join(userDataRoot, "plugins", oldFileName);
             if (fs.existsSync(oldFilePath)) fs.unlinkSync(oldFilePath);
           }
           if (oldPlugin.name) {
             const oldMetadataPath = path.join(
-              __dirname,
-              "metadata",
+              metadataPath,
               `${oldPlugin.name}.json`
             );
             if (fs.existsSync(oldMetadataPath)) fs.unlinkSync(oldMetadataPath);
           }
           if (nameChanged && name !== oldPlugin.name) {
-            const newMetadataPath = path.join(
-              __dirname,
-              "metadata",
-              `${name}.json`
-            );
+            const newMetadataPath = path.join(metadataPath, `${name}.json`);
             if (fs.existsSync(newMetadataPath)) fs.unlinkSync(newMetadataPath);
           }
         }
@@ -119,15 +115,16 @@ router.post("/api/save-plugin/:id", async (req, res) => {
 
     // Guardar archivo del plugin
     if (pluginCode && scripTag) {
-      const pluginsDir = path.join(__dirname, "plugins");
-      if (!fs.existsSync(pluginsDir)) fs.mkdirSync(pluginsDir);
+      const pluginsDir = path.join(userDataRoot, "plugins");
+      if (!fs.existsSync(pluginsDir))
+        fs.mkdirSync(pluginsDir, { recursive: true });
       const fileName = path.basename(scripTag);
       const filePath = path.join(pluginsDir, fileName);
       fs.writeFileSync(filePath, pluginCode, "utf8");
     }
 
     // Eliminar metadata actual para forzar regeneración
-    const metadataPathFile = path.join(__dirname, "metadata", `${name}.json`);
+    const metadataPathFile = path.join(metadataPath, `${name}.json`);
     if (fs.existsSync(metadataPathFile)) fs.unlinkSync(metadataPathFile);
 
     // Actualizar experiment_template.html y trials_preview_template.html
@@ -135,16 +132,11 @@ router.post("/api/save-plugin/:id", async (req, res) => {
     let plugins = [];
     const pluginConfigDoc = db.data.pluginConfigs[0];
     plugins = pluginConfigDoc?.plugins || [];
-    const html1Path = path.join(
-      __dirname,
-      "templates",
-      "experiment_template.html"
-    );
-    const html2Path = path.join(
-      __dirname,
-      "templates",
-      "trials_preview_template.html"
-    );
+    const templatesDir = path.join(userDataRoot, "templates");
+    if (!fs.existsSync(templatesDir))
+      fs.mkdirSync(templatesDir, { recursive: true });
+    const html1Path = path.join(templatesDir, "experiment_template.html");
+    const html2Path = path.join(templatesDir, "trials_preview_template.html");
     let html1 = fs.readFileSync(html1Path, "utf8");
     let html2 = fs.readFileSync(html2Path, "utf8");
     const $1 = cheerio.load(html1);
@@ -171,9 +163,9 @@ router.post("/api/save-plugin/:id", async (req, res) => {
       await new Promise((resolve, reject) => {
         const extractScript = spawn(
           "node",
-          [path.join(__dirname, "extract-metadata.mjs")],
+          [path.join(userDataRoot, "extract-metadata.mjs")],
           {
-            cwd: __dirname,
+            cwd: userDataRoot,
             stdio: "inherit",
           }
         );
@@ -236,7 +228,7 @@ router.delete("/api/delete-plugin/:index", async (req, res) => {
     // Eliminar archivo físico del plugin
     if (pluginToDelete.scripTag) {
       const fileName = path.basename(pluginToDelete.scripTag);
-      const filePath = path.join(__dirname, "plugins", fileName);
+      const filePath = path.join(userDataRoot, "plugins", fileName);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
         console.log(`🗑️ Deleted plugin file: ${fileName}`);
@@ -245,21 +237,21 @@ router.delete("/api/delete-plugin/:index", async (req, res) => {
 
     // Eliminar metadata
     if (pluginToDelete.name) {
-      const metadataPath = path.join(
-        __dirname,
-        "metadata",
+      const metadataPathFile = path.join(
+        metadataPath,
         `${pluginToDelete.name}.json`
       );
-      if (fs.existsSync(metadataPath)) {
-        fs.unlinkSync(metadataPath);
+      if (fs.existsSync(metadataPathFile)) {
+        fs.unlinkSync(metadataPathFile);
         console.log(`🗑️ Deleted metadata: ${pluginToDelete.name}.json`);
       }
     }
 
     // Solo borrar la etiqueta <script id="plugin-script-{index}">
+    const templatesDir = path.join(userDataRoot, "templates");
     const htmlFiles = [
-      path.join(__dirname, "templates", "experiment_template.html"),
-      path.join(__dirname, "templates", "trials_preview_template.html"),
+      path.join(templatesDir, "experiment_template.html"),
+      path.join(templatesDir, "trials_preview_template.html"),
     ];
     htmlFiles.forEach((htmlPath) => {
       if (fs.existsSync(htmlPath)) {
