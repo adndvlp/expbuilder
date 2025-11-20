@@ -49,8 +49,7 @@ To run the application in development mode:
 
 2. Start the server:
    ```bash
-   cd server
-   node api.js
+   npm run electron
    ```
 
 Make sure both processes are running for full functionality.
