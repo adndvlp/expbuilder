@@ -44,7 +44,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
   componentMode = false,
 }) => {
   const pluginLink = () => {
-    let pluginUrl = pluginName
+    const pluginUrl = pluginName
       .replace(/^plugin-/, "")
       .replace(/$/, "#parameters");
     return `https://www.jspsych.org/latest/plugins/${pluginUrl}`;
