@@ -389,6 +389,28 @@ export default function TrialsProvider({ children }: Props) {
     });
   }, [trials]);
 
+  useEffect(() => {
+    if (trials.length === 0) {
+      const newTrial: Trial = {
+        id: Date.now(),
+        plugin: "plugin-html-button-response",
+        name: "New Trial",
+        parameters: {},
+        trialCode: "",
+        columnMapping: {
+          stimulus: {
+            source: "typed",
+            value: `<div id="i7q2" style="box-sizing: border-box;">Welcome to the experiment. Press 'Start' to begin.</div>`,
+          },
+          choices: { source: "typed", value: ["Start"] },
+        },
+        type: "Trial",
+      };
+
+      setTrials([newTrial]);
+    }
+  }, []);
+
   return (
     <TrialsContext.Provider
       value={{

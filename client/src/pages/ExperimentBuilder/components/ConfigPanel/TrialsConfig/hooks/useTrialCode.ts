@@ -21,9 +21,9 @@ type Props = {
     defaultValue?: any,
     key?: string
   ) => any;
-  needsFileUpload: boolean;
+
   columnMapping: ColumnMapping;
-  filteredFiles: any[];
+
   csvJson: any[];
   trialName: string;
   includesExtensions: boolean;

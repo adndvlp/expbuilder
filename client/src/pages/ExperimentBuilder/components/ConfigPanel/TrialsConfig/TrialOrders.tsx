@@ -45,11 +45,18 @@ function TrialOrders({
   return (
     <div className="mb-4 p-4 border rounded bg-gray-50">
       <div className="flex items-center">
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            marginBottom: 10,
+          }}
+        >
           <Switch
             checked={orders}
             onChange={(checked) => setOrders(checked)}
-            onColor="#3d92b4"
+            onColor="#f1c40f"
             onHandleColor="#ffffff"
             handleDiameter={24}
             uncheckedIcon={false}
@@ -84,7 +91,7 @@ function TrialOrders({
           <Switch
             checked={categories}
             onChange={(checked) => setCategories(checked)}
-            onColor="#3d92b4"
+            onColor="#f1c40f"
             onHandleColor="#ffffff"
             handleDiameter={24}
             uncheckedIcon={false}

@@ -34,7 +34,7 @@ function ExtensionsConfig({
         <Switch
           checked={includesExtensions}
           onChange={(checked) => setIncludeExtensions(checked)}
-          onColor="#3d92b4"
+          onColor="#f1c40f"
           onHandleColor="#ffffff"
           handleDiameter={24}
           uncheckedIcon={false}

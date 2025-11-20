@@ -11,7 +11,7 @@ import useLoopCode from "./useLoopCode";
 import { useTrialCode } from "../hooks/useTrialCode";
 import { usePluginParameters } from "../../hooks/usePluginParameters";
 import { useCsvMapper } from "../hooks/useCsvMapper";
-import { useFileUpload } from "../hooks/useFileUpload";
+import { useFileUpload } from "../../../Timeline/useFileUpload";
 import ConditionalLoop from "./ConditionalLoop";
 
 type Props = { loop?: Loop };
@@ -636,7 +636,7 @@ function LoopsConfig({ loop }: Props) {
             <Switch
               checked={randomize}
               onChange={(checked) => setRandomize(checked)}
-              onColor="#3d92b4"
+              onColor="#f1c40f"
               onHandleColor="#ffffff"
               handleDiameter={24}
               uncheckedIcon={false}
@@ -665,7 +665,7 @@ function LoopsConfig({ loop }: Props) {
                   setLoopConditions([]);
                 }
               }}
-              onColor="#3d92b4"
+              onColor="#f1c40f"
               onHandleColor="#ffffff"
               handleDiameter={24}
               uncheckedIcon={false}

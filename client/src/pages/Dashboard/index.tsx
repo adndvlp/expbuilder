@@ -115,6 +115,7 @@ function Dashboard() {
       return;
     }
     if (data.success) setExperiments((prev) => [...prev, data.experiment]);
+
     setLoading(false);
   };
 

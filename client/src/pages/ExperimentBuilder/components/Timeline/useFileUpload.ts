@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from "react";
-import { useExperimentID } from "../../../../hooks/useExperimentID";
+import { useExperimentID } from "../../hooks/useExperimentID";
 const API_URL = import.meta.env.VITE_API_URL;
 
 type UseFileUploadProps = {

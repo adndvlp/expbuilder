@@ -42,7 +42,7 @@
 
   async function saveSession(trialSessionId) {
    
-   const res = await fetch("/api/append-result/a2749734-c140-4f5b-8a04-e5274d058ffd", {
+   const res = await fetch("/api/append-result/42619d0e-ee8d-43dd-91da-0f577698f465", {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "*/*" },
       body: JSON.stringify({
@@ -172,7 +172,7 @@
     
 
     on_data_update: function (data) {
-      const res = fetch("/api/append-result/a2749734-c140-4f5b-8a04-e5274d058ffd", {
+      const res = fetch("/api/append-result/42619d0e-ee8d-43dd-91da-0f577698f465", {
         method: "PUT",
         headers: { "Content-Type": "application/json", Accept: "*/*" },
         body: JSON.stringify({
@@ -180,7 +180,6 @@
           response: data,
         }),
       });
-
       // Solo evaluar branching si el trial/loop tiene un trial_id o loop_id válido
       if ((!data.trial_id || data.trial_id === undefined) && (!data.loop_id || data.loop_id === undefined)) {
         return;
@@ -229,31 +228,35 @@
 
 const timeline = [];
 
-// const welcome = {
-//   type: jsPsychHtmlButtonResponse,
-//   stimulus: "Welcome to the experiment. Press 'Start' to begin.",
-//   choices: ['Start'],
-// };
 
-// timeline.push(welcome);
-
-
-    const test_stimuli_test = [{components: [{ type: "HtmlComponent", coordinates: {"x":-0.087890625,"y":-0.515625}, width: 200, height: 50, stimulus: "<div id=\"i06w\" style=\"box-sizing: border-box;\">HOLb</div>" }],
-response_components: [],
-stimuli_duration: null,
+    const test_stimuli_New_Trial = [{stimulus: "<div id=\"i7q2\" style=\"box-sizing: border-box;\">Welcome to the experiment. Press 'Start' to begin.</div>",
+choices: ["Start"],
+button_html: function(m,t){return`<button class="jspsych-btn">${m}</button>`},
+prompt: null,
+stimulus_duration: null,
 trial_duration: null,
-response_ends_trial: true}];
-    const test_timeline = {
-    type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
-response_components: jsPsych.timelineVariable("response_components"),
-stimuli_duration: jsPsych.timelineVariable("stimuli_duration"),
+button_layout: "grid",
+grid_rows: 1,
+grid_columns: null,
+response_ends_trial: true,
+enable_button_after: 0}];
+    const New_Trial_timeline = {
+    type: jsPsychHtmlButtonResponse, stimulus: jsPsych.timelineVariable("stimulus"),
+choices: jsPsych.timelineVariable("choices"),
+button_html: jsPsych.timelineVariable("button_html"),
+prompt: jsPsych.timelineVariable("prompt"),
+stimulus_duration: jsPsych.timelineVariable("stimulus_duration"),
 trial_duration: jsPsych.timelineVariable("trial_duration"),
+button_layout: jsPsych.timelineVariable("button_layout"),
+grid_rows: jsPsych.timelineVariable("grid_rows"),
+grid_columns: jsPsych.timelineVariable("grid_columns"),
 response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
+enable_button_after: jsPsych.timelineVariable("enable_button_after"),
       data: {
-        stimulus: "stimulus",
+        rt: "rt",
 response: "response",
-rt: "rt",
-        trial_id: 1763515688428,
+stimulus: "stimulus",
+        trial_id: 1763603914431,
         
         
       },
@@ -293,12 +296,12 @@ rt: "rt",
       }
     },
     };
-    const test_procedure = {
+    const New_Trial_procedure = {
     timeline: 
-    [test_timeline],
-    timeline_variables: test_stimuli_test,
+    [New_Trial_timeline],
+    timeline_variables: test_stimuli_New_Trial,
     conditional_function: function() {
-      const currentId = 1763515688428;
+      const currentId = 1763603914431;
       
       // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
       const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
@@ -330,7 +333,7 @@ rt: "rt",
     },
     
     };
-    timeline.push(test_procedure);
+    timeline.push(New_Trial_procedure);
   
 
 jsPsych.run(timeline);

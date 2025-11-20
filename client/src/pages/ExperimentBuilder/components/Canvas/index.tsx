@@ -10,7 +10,7 @@ import LoopRangeModal from "../ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeMod
 import BranchedTrial from "../ConfigPanel/TrialsConfig/BranchedTrial";
 import CanvasToolbar from "./components/CanvasToolbar";
 import { useFlowLayout } from "./hooks/useFlowLayout";
-import { TbBinaryTree } from "react-icons/tb";
+
 import { FiX } from "react-icons/fi";
 import {
   generateUniqueName,
@@ -348,59 +348,9 @@ function Canvas({}: Props) {
           fabStyle={fabStyle}
           onShowLoopModal={handleCreateLoop}
           onAddTrial={() => onAddTrial("Trial")}
+          openLoop={openLoop}
+          setShowBranchedModal={setShowBranchedModal}
         />
-
-        {/* Branches button - only show if selected trial/loop has at least one branch and selectedTrial is NOT inside the open loop */}
-        {(() => {
-          // Check if selectedTrial is inside the openLoop
-          const isTrialInsideOpenLoop =
-            openLoop &&
-            openLoop.trials &&
-            selectedTrial &&
-            openLoop.trials.some((t: any) => t.id === selectedTrial.id);
-
-          // Count total number of trials (including those in loops)
-          const totalTrialCount = trials.reduce((count, item) => {
-            if ("trials" in item) {
-              // It's a loop, count its trials
-              return count + item.trials.length;
-            } else {
-              // It's a trial
-              return count + 1;
-            }
-          }, 0);
-
-          // Show button if:
-          // - There's more than one trial in the entire experiment, AND
-          // - A trial or loop is selected
-          const shouldShow =
-            totalTrialCount > 1 &&
-            ((selectedLoop && !isTrialInsideOpenLoop) ||
-              (selectedTrial && !isTrialInsideOpenLoop));
-
-          return (
-            shouldShow && (
-              <button
-                style={{
-                  ...fabStyle,
-                  position: "absolute",
-                  top: 24,
-                  left: 155,
-                  width: 48,
-                  height: 48,
-                  fontSize: 24,
-                  background: "#4caf50",
-                  color: "#fff",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-                }}
-                title="Branches"
-                onClick={() => setShowBranchedModal(true)}
-              >
-                <TbBinaryTree size={24} color="#fff" />
-              </button>
-            )
-          );
-        })()}
 
         {/* Params Override Button - Now integrated in BranchedTrial modal */}
         {/* Removed standalone button - accessible via Branches modal > Params Override tab */}

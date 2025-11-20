@@ -169,21 +169,43 @@ function ExperimentBuilder() {
                 <label
                   htmlFor="devMode"
                   className="flex items-center cursor-pointer gap-2"
+                  style={{ position: "relative", margin: 0 }}
                 >
-                  <FaHammer style={{ marginRight: "2px" }} />
-
-                  <Switch
-                    id="devMode"
-                    checked={isDevMode}
-                    onChange={(checked) => setDevMode(checked)}
-                    onColor="#3d92b4"
-                    onHandleColor="#ffffff"
-                    handleDiameter={20}
-                    uncheckedIcon={false}
-                    checkedIcon={false}
-                    height={18}
-                    width={38}
-                  />
+                  <div style={{ position: "relative", width: 38, height: 18 }}>
+                    <Switch
+                      id="devMode"
+                      checked={isDevMode}
+                      onChange={(checked) => setDevMode(checked)}
+                      onColor="#f1c40f"
+                      onHandleColor="#ffffff"
+                      handleDiameter={20}
+                      uncheckedIcon={false}
+                      checkedIcon={false}
+                      height={18}
+                      width={38}
+                    />
+                    <span
+                      style={{
+                        position: "absolute",
+                        left: isDevMode ? 20 : 0,
+                        top: 2,
+                        width: 20,
+                        height: 20,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        pointerEvents: "none",
+                        transition: "left 0.2s",
+                      }}
+                    >
+                      <FaHammer
+                        style={{
+                          color: isDevMode ? "#f1c40f" : "#888",
+                          fontSize: "14px",
+                        }}
+                      />
+                    </span>
+                  </div>
                 </label>
                 {!isDevMode && <ExperimentPreview />}
                 {!showConfig && (
@@ -205,13 +227,6 @@ function ExperimentBuilder() {
                     <PiGearSixBold />
                   </div>
                 )}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}
-                ></div>
               </div>
               {isDevMode && <CodeEditor />}
               {!isDevMode && (

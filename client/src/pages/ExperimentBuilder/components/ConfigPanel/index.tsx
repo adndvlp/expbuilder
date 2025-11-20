@@ -244,7 +244,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
             <Switch
               onChange={handleSwitchChange}
               checked={useJsPsychPlugins}
-              onColor="#3d92b4"
+              onColor="#f1c40f"
               onHandleColor="#ffffff"
               handleDiameter={24}
               uncheckedIcon={false}
@@ -359,7 +359,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
                         checked={pluginEditor}
                         onChange={(checked) => setPluginEditor(checked)}
                         disabled={metadata404}
-                        onColor="#3d92b4"
+                        onColor="#f1c40f"
                         onHandleColor="#ffffff"
                         handleDiameter={24}
                         uncheckedIcon={false}

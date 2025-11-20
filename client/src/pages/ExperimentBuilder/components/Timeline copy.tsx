@@ -5,8 +5,8 @@ import { Loop, Trial } from "./ConfigPanel/types";
 import useTrials from "../hooks/useTrials";
 import useUrl from "../hooks/useUrl";
 import useDevMode from "../hooks/useDevMode";
-import FileUploader from "./ConfigPanel/TrialsConfig/FileUploader";
-import { useFileUpload } from "./ConfigPanel/TrialsConfig/hooks/useFileUpload";
+import FileUploader from "./Timeline/FileUploader";
+import { useFileUpload } from "./Timeline/useFileUpload";
 import { FiRefreshCw } from "react-icons/fi";
 import LoopRangeModal from "./ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeModal";
 import {
