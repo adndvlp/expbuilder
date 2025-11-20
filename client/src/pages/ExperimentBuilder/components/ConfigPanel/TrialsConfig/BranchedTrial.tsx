@@ -504,7 +504,6 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
     return condition ? condition.rules.map((r) => r.prop).filter(Boolean) : [];
   };
 
-  // ========== REPEAT CONDITION FUNCTIONS ==========
   const addRepeatCondition = () => {
     setRepeatConditions([
       ...repeatConditions,
@@ -1556,9 +1555,9 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
               <p style={{ color: "var(--text-dark)", fontSize: "14px" }}>
                 <strong>Repeat/Jump:</strong> Define conditions to jump to any
                 trial in the entire experiment, regardless of hierarchy. When a
-                condition is met, the experiment will jump to the selected trial
-                using <code>jsPsych.run()</code>. This allows jumping up, down,
-                or across different loops and nested structures.
+                condition is met, the experiment will jump to the selected
+                trial. This allows jumping up, down, or across different loops
+                and nested structures.
               </p>
             </div>
 

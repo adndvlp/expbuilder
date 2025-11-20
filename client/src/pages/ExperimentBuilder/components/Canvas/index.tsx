@@ -94,6 +94,12 @@ function Canvas({}: Props) {
   };
 
   const handleCreateLoop = () => {
+    const confirmed = window.confirm(
+      "Are you sure you want to group these trials/loops into a loop?"
+    );
+    if (!confirmed) {
+      return;
+    }
     // Si hay un trial seleccionado, verificar si tiene branches
     if (selectedTrial) {
       const trialWithBranches = trials.find(

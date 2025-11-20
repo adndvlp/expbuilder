@@ -278,7 +278,15 @@ export default function TrialsProvider({ children }: Props) {
             if (parentItem) {
               // Es un branch - restaurar trials como branches del parent
               newItems = [...items.slice(0, idx), ...items.slice(idx + 1)];
-              newItems = [...newItems, ...loop.trials];
+              newItems = [
+                ...newItems,
+                ...loop.trials.map((trial) => ({
+                  ...trial,
+                  csvJson: undefined,
+                  csvColumns: undefined,
+                  csvFromLoop: undefined,
+                })),
+              ];
 
               // Encontrar root trials
               const branchIdsInLoop = new Set<number | string>();
@@ -322,7 +330,12 @@ export default function TrialsProvider({ children }: Props) {
               // No es un branch - insertar trials en la posición del loop
               newItems = [
                 ...items.slice(0, idx),
-                ...loop.trials,
+                ...loop.trials.map((trial) => ({
+                  ...trial,
+                  csvJson: undefined,
+                  csvColumns: undefined,
+                  csvFromLoop: undefined,
+                })),
                 ...items.slice(idx + 1),
               ];
             }

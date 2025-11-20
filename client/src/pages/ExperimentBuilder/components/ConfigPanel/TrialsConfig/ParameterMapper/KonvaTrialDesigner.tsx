@@ -1257,6 +1257,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
                                           display: "flex",
                                           alignItems: "center",
                                           gap: "6px",
+                                          color: "var(--text-dark)",
                                         }}
                                       >
                                         <span style={{ fontSize: "16px" }}>
@@ -1715,7 +1716,6 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
                     <p
                       style={{
                         margin: 0,
-                        fontSize: "14px",
                         color: "var(--text-light)",
                       }}
                     >
@@ -1738,9 +1738,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
                   background: "transparent",
                   zIndex: 10,
                 }}
-                onMouseOver={(e) =>
-                  (e.currentTarget.style.background = "#3b82f6")
-                }
+                onMouseOver={(e) => (e.currentTarget.style.background = "#000")}
                 onMouseOut={(e) =>
                   (e.currentTarget.style.background = "transparent")
                 }

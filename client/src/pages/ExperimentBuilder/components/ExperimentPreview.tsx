@@ -3,6 +3,7 @@ import useUrl from "../hooks/useUrl";
 import { useExperimentState } from "../hooks/useExpetimentState";
 import useTrials from "../hooks/useTrials";
 import { useExperimentID } from "../hooks/useExperimentID";
+import useDevMode from "../hooks/useDevMode";
 const API_URL = import.meta.env.VITE_API_URL;
 
 function ExperimentPreview() {
@@ -12,6 +13,7 @@ function ExperimentPreview() {
   const [key, setKey] = useState(0);
 
   const experimentID = useExperimentID();
+  const { isDevMode, code } = useDevMode();
 
   useEffect(() => {
     if (started && version) {
@@ -56,6 +58,15 @@ function ExperimentPreview() {
     () => getAllTrialsRecursively(trials),
     [trials]
   );
+
+  const allCodes = trials
+    .map((item) => {
+      if ("parameters" in item) return item.trialCode;
+      if ("trials" in item) return item.code;
+      return "";
+    })
+    .filter(Boolean)
+    .join("\n\n");
 
   // trials preview
   useEffect(() => {
@@ -122,7 +133,10 @@ localStorage.removeItem('jsPsych_jumpToTrial');
 
       timeline.push(welcome);
 
-      ${selectedTrial?.trialCode ? selectedTrial?.trialCode : selectedLoop?.code}
+      
+      ${!isDevMode && selectedTrial?.trialCode ? selectedTrial?.trialCode : selectedLoop?.code}
+
+    ${isDevMode && allCodes}
 
       jsPsych.run(timeline);
       
@@ -140,7 +154,7 @@ localStorage.removeItem('jsPsych_jumpToTrial');
         incrementVersion();
       })();
     }
-  }, [selectedTrial, selectedLoop, allTrialsFlattened]);
+  }, [selectedTrial, selectedLoop, allTrialsFlattened, isDevMode]);
 
   // Crear URL con parámetros únicos para evitar caché
 

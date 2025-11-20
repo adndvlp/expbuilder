@@ -21,9 +21,8 @@ type Props = {
     defaultValue?: any,
     key?: string
   ) => any;
-
   columnMapping: ColumnMapping;
-
+  uploadedFiles: any[]; // Archivos del Timeline para mapear nombres a URLs
   csvJson: any[];
   trialName: string;
   includesExtensions: boolean;
@@ -45,9 +44,8 @@ export function useTrialCode({
   pluginName,
   parameters,
   getColumnValue,
-  needsFileUpload,
   columnMapping,
-  filteredFiles,
+  uploadedFiles,
   csvJson,
   trialName,
   data,
@@ -82,7 +80,7 @@ export function useTrialCode({
   };
 
   const mappedJson = (() => {
-    const mapRow = (row?: Record<string, any>, idx?: number) => {
+    const mapRow = (row?: Record<string, any>) => {
       const result: Record<string, any> = {};
 
       // Lógica especial para DynamicPlugin
@@ -146,7 +144,8 @@ export function useTrialCode({
       activeParameters.forEach((param) => {
         const { key } = param;
         const prefixedkey = isInLoop ? `${key}_${trialNameSanitized}` : key;
-        // const mediaKeys = ["stimulus", "images", "audio", "video"];
+
+        // Detectar si es un parámetro de archivos multimedia
         const isMediaParameter = (key: string | undefined) => {
           if (typeof key !== "string") return false;
           const keyLower = key.toLowerCase();
@@ -161,13 +160,8 @@ export function useTrialCode({
           );
         };
 
-        if (
-          // mediaKeys.includes(key)
-          isMediaParameter(key) &&
-          needsFileUpload
-        ) {
-          // Si row tiene el valor específico para este parámetro (viene de mockRow), usarlo
-          // Si no, obtener el valor original del columnMapping
+        if (isMediaParameter(key) && uploadedFiles.length > 0) {
+          // Obtener el valor del columnMapping
           const value =
             row && row[key] !== undefined
               ? row[key]
@@ -176,29 +170,33 @@ export function useTrialCode({
           let stimulusValue;
 
           if (Array.isArray(value)) {
-            // Si ya es un array, procesar cada valor individualmente
+            // Si es un array, mapear cada valor
             stimulusValue = value.map((v) => {
               if (v && !/^https?:\/\//.test(v)) {
-                const found = filteredFiles.find((f) => f.name.endsWith(v));
-                return found ? found.url : v;
-              } else {
-                return v ?? "";
+                // No es una URL, buscar en uploadedFiles
+                const found = uploadedFiles.find(
+                  (f) => f.name && f.name.endsWith(v)
+                );
+                return found && found.url ? found.url : v;
               }
+              return v ?? "";
             });
           } else {
-            // Valor único (ya procesado por la lógica de múltiples inputs)
+            // Valor único
             if (value && !/^https?:\/\//.test(value)) {
-              const found = filteredFiles.find((f) => f.name.endsWith(value));
-              stimulusValue = found ? found.url : value;
+              // No es una URL, buscar en uploadedFiles
+              const found = uploadedFiles.find(
+                (f) => f.name && f.name.endsWith(value)
+              );
+              stimulusValue = found && found.url ? found.url : value;
             } else {
-              stimulusValue = value ?? filteredFiles[idx ?? 0]?.url ?? "";
+              stimulusValue = value ?? "";
             }
           }
 
-          // result[key] = stimulusValue;
           result[prefixedkey] = stimulusValue;
         } else {
-          // result[key] = getColumnValue(columnMapping[key], row, undefined, key);
+          // Parámetro normal, sin procesamiento de archivos
           result[prefixedkey] = getColumnValue(
             columnMapping[key],
             row,
@@ -212,47 +210,33 @@ export function useTrialCode({
     };
 
     if (csvJson.length > 0) {
-      return csvJson.map((row, idx) => mapRow(row, idx));
+      return csvJson.map((row) => mapRow(row));
     } else {
       // Verificar si hay múltiples archivos separados por comas en algún parámetro
       const multipleInputsParams: { [key: string]: string[] } = {};
       let hasMultipleInputs = false;
 
       activeParameters.forEach((param) => {
-        // const mediaKeys = ["stimulus", "images", "audio", "video"];
-        const isMediaParameter = (key: string) => {
-          const keyLower = key.toLowerCase();
-          return (
-            keyLower.includes("img") ||
-            keyLower.includes("image") ||
-            keyLower.includes("stimulus") ||
-            keyLower.includes("audio") ||
-            keyLower.includes("video") ||
-            keyLower.includes("sound") ||
-            keyLower.includes("media")
-          );
-        };
-        if (isMediaParameter(param.key) && needsFileUpload) {
-          const value = getColumnValue(
-            columnMapping[param.key],
-            undefined,
-            undefined,
-            param.key
-          );
-          // Solo dividir si NO es html_string
-          const paramType = parameters.find((p) => p.key === param.key)?.type;
-          if (
-            typeof value === "string" &&
-            value.includes(",") &&
-            paramType !== "html_string"
-          ) {
-            const values = value
-              .split(",")
-              .map((v) => v.trim())
-              .filter((v) => v.length > 0);
-            multipleInputsParams[param.key] = values;
-            hasMultipleInputs = true;
-          }
+        // Para valores con comas (múltiples archivos)
+        const value = getColumnValue(
+          columnMapping[param.key],
+          undefined,
+          undefined,
+          param.key
+        );
+        // Solo dividir si NO es html_string
+        const paramType = parameters.find((p) => p.key === param.key)?.type;
+        if (
+          typeof value === "string" &&
+          value.includes(",") &&
+          paramType !== "html_string"
+        ) {
+          const values = value
+            .split(",")
+            .map((v) => v.trim())
+            .filter((v) => v.length > 0);
+          multipleInputsParams[param.key] = values;
+          hasMultipleInputs = true;
         }
       });
 
@@ -289,7 +273,7 @@ export function useTrialCode({
             }
           });
 
-          return mapRow(mockRow, idx);
+          return mapRow(mockRow);
         });
       } else {
         // Si no hay múltiples inputs, generar un solo trial
@@ -472,15 +456,8 @@ export function useTrialCode({
   const genTrialCode = () => {
     let code = "";
 
-    if (needsFileUpload && pluginName != "plugin-preload") {
-      code += `
-    const preload${trialNameSanitized} = {
-        type: jsPsychPreload,
-       files: ${JSON.stringify(filteredFiles.map((f) => f.url))},
-    }
-    timeline.push(preload${trialNameSanitized});
-    `;
-    }
+    // Preload is now handled globally from Timeline, not per trial
+    // Individual trial preloads have been removed
 
     const testStimuliCode = mappedJson.map((row) =>
       stringifyWithFunctions(activeParameters, row)

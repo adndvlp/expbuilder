@@ -1,5 +1,5 @@
 import { Editor } from "@monaco-editor/react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import useTrials from "../hooks/useTrials";
 import usePlugins from "../hooks/usePlugins";
 const API_URL = import.meta.env.VITE_API_URL;
@@ -22,6 +22,18 @@ const PluginEditor: React.FC<PluginEditorProps> = ({ selectedPluginName }) => {
   const [localPlugin, setLocalPlugin] = useState<Plugin | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const autosaveTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const [isLightMode, setIsLightMode] = useState(
+    window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: light)").matches
+  );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: light)");
+    const handler = (e: MediaQueryListEvent) => setIsLightMode(e.matches);
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, []);
 
   // Busca el plugin seleccionado por nombre
   const plugin =
@@ -238,7 +250,7 @@ const PluginEditor: React.FC<PluginEditorProps> = ({ selectedPluginName }) => {
               <Editor
                 defaultLanguage="javascript"
                 value={(localPlugin || plugin).pluginCode}
-                theme="vs-dark"
+                theme={isLightMode ? "vs-light" : "vs-dark"}
                 onChange={(value) => handleChange("pluginCode", value || "")}
                 options={{
                   automaticLayout: true,

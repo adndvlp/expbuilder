@@ -177,6 +177,10 @@ function TrialsConfig({ pluginName }: Props) {
   const [dynamicPluginTab, setDynamicPluginTab] = useState<
     "components" | "general"
   >("components");
+  // Get uploaded files from Timeline
+  const folder = "all";
+  const { uploadedFiles } = useFileUpload({ folder });
+
   const { genTrialCode } = useTrialCode({
     id: selectedTrial?.id,
     branches: selectedTrial?.branches,
@@ -188,6 +192,7 @@ function TrialsConfig({ pluginName }: Props) {
     getColumnValue: getColumnValue,
 
     columnMapping: columnMapping,
+    uploadedFiles: uploadedFiles,
 
     csvJson: csvJson,
     trialName: trialName,
@@ -429,26 +434,96 @@ function TrialsConfig({ pluginName }: Props) {
         {isDynamicPlugin ? (
           <div className="mb-4">
             {/* Tab Navigation */}
-            <div className="flex gap-1 mb-3">
+            <div
+              style={{
+                display: "flex",
+                gap: "6px",
+                marginBottom: "20px",
+                padding: "4px",
+                backgroundColor: "var(--neutral-light)",
+                borderRadius: "12px",
+                border: "1px solid var(--neutral-mid)",
+              }}
+            >
               <button
                 type="button"
                 onClick={() => setDynamicPluginTab("components")}
-                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                  dynamicPluginTab === "components"
-                    ? "bg-blue-500 text-white"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                }`}
+                style={{
+                  flex: 1,
+                  padding: "10px 16px",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.3s ease",
+                  background:
+                    dynamicPluginTab === "components"
+                      ? "linear-gradient(135deg, var(--primary-blue), #2c7a96)"
+                      : "transparent",
+                  color:
+                    dynamicPluginTab === "components"
+                      ? "white"
+                      : "var(--text-dark)",
+                  boxShadow:
+                    dynamicPluginTab === "components"
+                      ? "0 4px 12px rgba(61, 146, 180, 0.3)"
+                      : "none",
+                  transform:
+                    dynamicPluginTab === "components" ? "scale(1.02)" : "none",
+                }}
+                onMouseOver={(e) => {
+                  if (dynamicPluginTab !== "components") {
+                    e.currentTarget.style.backgroundColor =
+                      "rgba(61, 146, 180, 0.1)";
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (dynamicPluginTab !== "components") {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                  }
+                }}
               >
                 Components
               </button>
               <button
                 type="button"
                 onClick={() => setDynamicPluginTab("general")}
-                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                  dynamicPluginTab === "general"
-                    ? "bg-blue-500 text-white"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                }`}
+                style={{
+                  flex: 1,
+                  padding: "10px 16px",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.3s ease",
+                  background:
+                    dynamicPluginTab === "general"
+                      ? "linear-gradient(135deg, var(--primary-blue), #2c7a96)"
+                      : "transparent",
+                  color:
+                    dynamicPluginTab === "general"
+                      ? "white"
+                      : "var(--text-dark)",
+                  boxShadow:
+                    dynamicPluginTab === "general"
+                      ? "0 4px 12px rgba(61, 146, 180, 0.3)"
+                      : "none",
+                  transform:
+                    dynamicPluginTab === "general" ? "scale(1.02)" : "none",
+                }}
+                onMouseOver={(e) => {
+                  if (dynamicPluginTab !== "general") {
+                    e.currentTarget.style.backgroundColor =
+                      "rgba(61, 146, 180, 0.1)";
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (dynamicPluginTab !== "general") {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                  }
+                }}
               >
                 General Settings
               </button>
@@ -456,13 +531,47 @@ function TrialsConfig({ pluginName }: Props) {
 
             {/* Tab Content */}
             {dynamicPluginTab === "components" ? (
-              <>
+              <div
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  justifyContent: "center",
+                  margin: "24px 0",
+                }}
+              >
                 <button
                   type="button"
                   onClick={() => setShowKonvaDesigner(true)}
-                  className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs font-medium transition-colors inline-flex items-center gap-1.5"
+                  style={{
+                    padding: "12px 24px",
+                    border: "none",
+                    borderRadius: "10px",
+                    background:
+                      "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+                    color: "white",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.3s ease",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    boxShadow: "0 4px 12px rgba(212, 175, 55, 0.3)",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                    e.currentTarget.style.boxShadow =
+                      "0 6px 16px rgba(212, 175, 55, 0.4)";
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow =
+                      "0 4px 12px rgba(212, 175, 55, 0.3)";
+                  }}
                 >
-                  <MdEdit className="text-sm" />
+                  <MdEdit style={{ fontSize: "18px" }} />
                   Open Visual Designer
                 </button>
 
@@ -480,7 +589,7 @@ function TrialsConfig({ pluginName }: Props) {
                   csvColumns={csvColumns}
                   pluginName={pluginName}
                 />
-              </>
+              </div>
             ) : (
               <ParameterMapper
                 pluginName={pluginName}

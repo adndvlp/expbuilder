@@ -159,11 +159,6 @@ function LoopsConfig({ loop }: Props) {
       });
     };
 
-    const needsFileUpload =
-      /plugin-audio|plugin-video|plugin-image|multi-image|custom-image|plugin-preload/i.test(
-        trial.plugin
-      ) || hasMediaParameters(parameters);
-
     const getFileTypeAndFolder = () => {
       if (/plugin-audio/i.test(trial.plugin)) {
         return { accept: "audio/*", folder: "aud" };
@@ -213,14 +208,6 @@ function LoopsConfig({ loop }: Props) {
 
     const { uploadedFiles } = useFileUpload({ folder });
 
-    const filteredFiles = uploadedFiles.filter(
-      (file) =>
-        file &&
-        typeof file === "object" &&
-        typeof file.name === "string" &&
-        (folder === "all" || file.type === folder)
-    );
-
     const { genTrialCode, mappedJson } = useTrialCode({
       id: trial.id,
       branches: trial.branches,
@@ -231,9 +218,8 @@ function LoopsConfig({ loop }: Props) {
       parameters: parameters,
       data: data,
       getColumnValue: getColumnValue,
-      needsFileUpload: needsFileUpload || false,
       columnMapping: trial.columnMapping || {},
-      filteredFiles: filteredFiles || [],
+      uploadedFiles: uploadedFiles || [],
       csvJson: trial.csvJson ?? [],
       trialName: trial.name,
       includesExtensions: trial.includesExtensions || false,
@@ -317,11 +303,6 @@ function LoopsConfig({ loop }: Props) {
           });
         };
 
-        const needsFileUpload =
-          /plugin-audio|plugin-video|plugin-image|multi-image|custom-image|plugin-preload/i.test(
-            item.plugin
-          ) || hasMediaParameters(parameters);
-
         const getFileTypeAndFolder = () => {
           if (/plugin-audio/i.test(item.plugin)) {
             return { accept: "audio/*", folder: "aud" };
@@ -366,14 +347,6 @@ function LoopsConfig({ loop }: Props) {
         const { folder } = getFileTypeAndFolder();
         const { uploadedFiles } = useFileUpload({ folder });
 
-        const filteredFiles = uploadedFiles.filter(
-          (file) =>
-            file &&
-            typeof file === "object" &&
-            typeof file.name === "string" &&
-            (folder === "all" || file.type === folder)
-        );
-
         const { genTrialCode, mappedJson } = useTrialCode({
           id: item.id,
           branches: item.branches,
@@ -384,9 +357,8 @@ function LoopsConfig({ loop }: Props) {
           parameters: parameters,
           data: data,
           getColumnValue: getColumnValue,
-          needsFileUpload: needsFileUpload || false,
           columnMapping: item.columnMapping || {},
-          filteredFiles: filteredFiles || [],
+          uploadedFiles: uploadedFiles || [],
           csvJson: item.csvJson ?? [],
           trialName: item.name,
           includesExtensions: item.includesExtensions || false,
@@ -556,6 +528,18 @@ function LoopsConfig({ loop }: Props) {
   const handleSaveLoopConditions = (conditions: LoopCondition[]) => {
     setLoopConditions(conditions);
     setIsConditionalLoop(conditions.length > 0);
+  };
+
+  const handleRemoveLoop = () => {
+    if (
+      window.confirm(
+        "Are you sure you want to delete this loop? This action cannot be undone."
+      ) &&
+      removeLoop &&
+      loop
+    ) {
+      removeLoop(loop.id);
+    }
   };
 
   return (
@@ -738,8 +722,8 @@ function LoopsConfig({ loop }: Props) {
 
         <br />
         <button
-          className="remove-button"
-          onClick={() => removeLoop && loop && removeLoop(loop.id)}
+          className="w-full p-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded remove-button"
+          onClick={handleRemoveLoop}
         >
           Delete loop
         </button>

@@ -100,7 +100,8 @@ function Component() {
   } = useFileUpload({ folder });
 
   // Experiments hook
-  const { generateLocalExperiment, generateExperiment } = useExperimentCode();
+  const { generateLocalExperiment, generateExperiment } =
+    useExperimentCode(uploadedFiles);
 
   const handleRunExperiment = async () => {
     setIsSubmitting(true);

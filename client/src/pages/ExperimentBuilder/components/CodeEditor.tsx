@@ -9,6 +9,18 @@ const CodeEditor: React.FC = () => {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [isLightMode, setIsLightMode] = useState(
+    window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: light)").matches
+  );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: light)");
+    const handler = (e: MediaQueryListEvent) => setIsLightMode(e.matches);
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, []);
+
   const handleEditorDidMount: OnMount = (editor, _monaco) => {
     editorRef.current = editor;
 
@@ -70,7 +82,7 @@ const CodeEditor: React.FC = () => {
         value={code}
         height="100vh"
         defaultLanguage="javascript"
-        theme="vs-dark"
+        theme={isLightMode ? "vs-light" : "vs-dark"}
         onMount={handleEditorDidMount}
         options={{
           automaticLayout: true,

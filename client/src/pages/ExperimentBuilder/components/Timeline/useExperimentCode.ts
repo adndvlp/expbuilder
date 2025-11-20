@@ -9,7 +9,13 @@ import { useExperimentStorage } from "../../hooks/useStorage";
 
 const DATA_API_URL = import.meta.env.VITE_DATA_API_URL;
 
-export function useExperimentCode() {
+interface UploadedFile {
+  url?: string;
+  name?: string;
+  type?: string;
+}
+
+export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
   const [experimentName, setExperimentName] = useState("Experiment");
 
   const experimentID = useExperimentID();
@@ -271,6 +277,19 @@ export function useExperimentCode() {
 
 const timeline = [];
 
+// Global preload for all uploaded files from Timeline
+${
+  uploadedFiles.length > 0
+    ? `
+const globalPreload = {
+  type: jsPsychPreload,
+  files: ${JSON.stringify(uploadedFiles.filter((f) => f && f.url).map((f) => f.url))}
+};
+timeline.push(globalPreload);
+`
+    : ""
+}
+
 ${allCodes}
 
 jsPsych.run(timeline);
@@ -487,7 +506,18 @@ jsPsych.run(timeline);
 
 const timeline = [];
 
-
+// Global preload for all uploaded files from Timeline
+${
+  uploadedFiles.length > 0
+    ? `
+const globalPreload = {
+  type: jsPsychPreload,
+  files: ${JSON.stringify(uploadedFiles.filter((f) => f && f.url).map((f) => f.url))}
+};
+timeline.push(globalPreload);
+`
+    : ""
+}
 
 ${allCodes}
 
