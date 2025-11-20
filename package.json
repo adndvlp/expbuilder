@@ -50,7 +50,9 @@
       "main.js",
       "oauth-handler.js",
       "preload.js",
-      "server/**"
+      "server/**",
+      "!server/dynamicplugin/**",
+      "!server/jspsych-bundler/**"
     ],
     "extraResources": [
       {

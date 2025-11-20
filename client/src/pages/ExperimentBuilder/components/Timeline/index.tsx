@@ -13,7 +13,7 @@ import { useExperimentCode } from "./useExperimentCode";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-function Component() {
+function Timeline() {
   // Estado para tokens del usuario
   const [userTokens, setUserTokens] = useState<{
     drive: boolean;
@@ -209,7 +209,7 @@ function Component() {
         // Persist tunnel state in localStorage (global, not per experiment)
         localStorage.setItem("tunnelActive", "true");
         localStorage.setItem("tunnelUrl", data.url);
-        let url = `${data.url}/${experimentID}-experiment`;
+        const url = `${data.url}/${experimentID}-experiment`;
         try {
           await navigator.clipboard.writeText(url);
           setTunnelStatus("Public link copied to clipboard");
@@ -623,4 +623,4 @@ function Component() {
   );
 }
 
-export default Component;
+export default Timeline;
