@@ -6,14 +6,23 @@ import JSZip from "jszip";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-
 import pkg from "electron-updater";
 import { createOAuthCallbackServer, isPortAvailable } from "./oauth-handler.js";
-dotenv.config();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Check if running from asar (production) or not (development)
+const isProduction = __dirname.includes("app.asar");
+
+// Set NODE_ENV before loading dotenv
+if (isProduction) {
+  process.env.NODE_ENV = "production";
+}
 
 const envFile =
   process.env.NODE_ENV === "production" ? ".env.production" : ".env";
-dotenv.config({ path: envFile });
+const envPath = path.join(__dirname, envFile);
+
+dotenv.config({ path: envPath });
 
 // Importar el backend dinámicamente después de definir DB_PATH
 let backendLoaded = false;
@@ -21,6 +30,12 @@ app.whenReady().then(async () => {
   // Usar la ruta definida en el archivo .env
   // En desarrollo: server/database/db.json
   // En producción: database/db.json (en la carpeta de usuario)
+
+  if (isProduction) {
+    const userDataPath = app.getPath("userData");
+    process.env.DB_ROOT = userDataPath;
+  }
+
   await import("./server/api.js");
   backendLoaded = true;
   createWindow();
@@ -42,8 +57,6 @@ app.whenReady().then(async () => {
 });
 
 const { autoUpdater } = pkg;
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Importa y ejecuta el servidor Express directamente
 
@@ -105,7 +118,6 @@ ipcMain.handle(
 
 function createWindow() {
   if (process.env.IS_ELECTRON_BACKEND === "1") {
-    // Modo Electron backend: crear ventana Electron normalmente
     const win = new BrowserWindow({
       width: 1200,
       height: 800,

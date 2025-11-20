@@ -13,7 +13,7 @@ function ExperimentPreview() {
   const [key, setKey] = useState(0);
 
   const experimentID = useExperimentID();
-  const { isDevMode, code } = useDevMode();
+  const { isDevMode } = useDevMode();
 
   useEffect(() => {
     if (started && version) {

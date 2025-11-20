@@ -5,7 +5,7 @@ import TrialNode from "./TrialNode";
 import LoopNode from "./LoopNode";
 import ResizeHandle from "./components/ResizeHandle";
 import LoopBreadcrumb from "./components/LoopBreadcrumb";
-import BranchedTrial from "../ConfigPanel/TrialsConfig/BranchedTrial/BranchedTrial";
+import BranchedTrial from "../ConfigPanel/TrialsConfig/BranchedTrial";
 import LoopRangeModal from "../ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeModal";
 import { Trial, Loop, TrialOrLoop } from "../ConfigPanel/types";
 import { useDraggable } from "./hooks/useDraggable";

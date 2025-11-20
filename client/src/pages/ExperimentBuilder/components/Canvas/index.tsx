@@ -7,7 +7,7 @@ import TrialNode from "./TrialNode";
 import LoopNode from "./LoopNode";
 import LoopSubCanvas from "./LoopSubCanvas";
 import LoopRangeModal from "../ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeModal";
-import BranchedTrial from "../ConfigPanel/TrialsConfig/BranchedTrial/BranchedTrial";
+import BranchedTrial from "../ConfigPanel/TrialsConfig/BranchedTrial";
 import CanvasToolbar from "./components/CanvasToolbar";
 import { useFlowLayout } from "./hooks/useFlowLayout";
 

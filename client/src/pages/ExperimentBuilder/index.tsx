@@ -16,6 +16,7 @@ import useDevMode from "./hooks/useDevMode";
 import { useNavigate, useParams } from "react-router-dom";
 
 function ExperimentBuilder() {
+  const API_URL = import.meta.env.VITE_API_URL;
   const [showTimeline, setShowTimeline] = useState(true);
   const [showConfig, setShowConfig] = useState(true);
   const [timelineWidth, setTimelineWidth] = useState(
@@ -33,12 +34,11 @@ function ExperimentBuilder() {
 
   useEffect(() => {
     async function fetchExperiment() {
-      const res = await fetch(`/api/experiment/${id}`);
+      const res = await fetch(`${API_URL}/api/experiment/${id}`);
       const data = await res.json();
       if (!res.ok || !data.experiment) {
         navigate("/home");
       }
-      // Si quieres guardar el experimento, hazlo aquí
     }
     fetchExperiment();
   }, [id, navigate]);

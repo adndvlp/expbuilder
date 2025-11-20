@@ -4,10 +4,12 @@ import path from "path";
 import fs from "fs";
 import { __dirname } from "../utils/paths.js";
 import { db, userDataRoot } from "../utils/db.js";
+import { ensureTemplate } from "../utils/templates.js";
 import * as cheerio from "cheerio";
 import { spawn } from "child_process";
 
 const router = Router();
+
 const metadataPath = path.join(userDataRoot, "metadata");
 if (!fs.existsSync(metadataPath))
   fs.mkdirSync(metadataPath, { recursive: true });
@@ -19,12 +21,12 @@ const componentsMetadataPath = path.join(
 if (!fs.existsSync(componentsMetadataPath))
   fs.mkdirSync(componentsMetadataPath, { recursive: true });
 
-// Serve the metadata directory at `/metadata` URL path
-router.use("/metadata", express.static(metadataPath));
+// Serve the metadata directory at `/api/metadata` URL path
+router.use("/api/metadata", express.static(metadataPath));
 
 // Serve the components metadata directory
 router.use(
-  "/dynamicplugin/components-metadata",
+  "/api/dynamicplugin/components-metadata",
   express.static(componentsMetadataPath)
 );
 
@@ -132,11 +134,10 @@ router.post("/api/save-plugin/:id", async (req, res) => {
     let plugins = [];
     const pluginConfigDoc = db.data.pluginConfigs[0];
     plugins = pluginConfigDoc?.plugins || [];
-    const templatesDir = path.join(userDataRoot, "templates");
-    if (!fs.existsSync(templatesDir))
-      fs.mkdirSync(templatesDir, { recursive: true });
-    const html1Path = path.join(templatesDir, "experiment_template.html");
-    const html2Path = path.join(templatesDir, "trials_preview_template.html");
+
+    const html1Path = ensureTemplate("experiment_template.html");
+    const html2Path = ensureTemplate("trials_preview_template.html");
+
     let html1 = fs.readFileSync(html1Path, "utf8");
     let html2 = fs.readFileSync(html2Path, "utf8");
     const $1 = cheerio.load(html1);
@@ -248,10 +249,9 @@ router.delete("/api/delete-plugin/:index", async (req, res) => {
     }
 
     // Solo borrar la etiqueta <script id="plugin-script-{index}">
-    const templatesDir = path.join(userDataRoot, "templates");
     const htmlFiles = [
-      path.join(templatesDir, "experiment_template.html"),
-      path.join(templatesDir, "trials_preview_template.html"),
+      ensureTemplate("experiment_template.html"),
+      ensureTemplate("trials_preview_template.html"),
     ];
     htmlFiles.forEach((htmlPath) => {
       if (fs.existsSync(htmlPath)) {

@@ -1,7 +1,6 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef } from "react";
 import { Rect, Text, Group } from "react-konva";
 import Konva from "konva";
-const API_URL = import.meta.env.VITE_API_URL;
 
 interface TrialComponent {
   id: string;

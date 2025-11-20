@@ -146,7 +146,7 @@ export default function TrialsProvider({ children }: Props) {
       let newTrials = [...prev];
 
       // Encuentra el trial/loop arrastrado
-      let draggedIndex = newTrials.findIndex((item) =>
+      const draggedIndex = newTrials.findIndex((item) =>
         dragged.type === "trial"
           ? "parameters" in item && item.id === dragged.id
           : "trials" in item && item.id === dragged.id
@@ -215,7 +215,7 @@ export default function TrialsProvider({ children }: Props) {
       }
 
       // Si el destino es antes/después de un trial/loop
-      let targetIndex = target.id
+      const targetIndex = target.id
         ? newTrials.findIndex((item) =>
             target.type === "trial"
               ? "parameters" in item && item.id === target.id

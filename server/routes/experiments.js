@@ -4,6 +4,7 @@ import fs from "fs";
 import { __dirname } from "../utils/paths.js";
 import { v4 as uuidv4 } from "uuid";
 import { db, ensureDbData, userDataRoot } from "../utils/db.js";
+import { ensureTemplate } from "../utils/templates.js";
 import * as cheerio from "cheerio";
 
 const router = Router();
@@ -359,10 +360,7 @@ router.post("/api/run-experiment/:experimentID", async (req, res) => {
     }
     const experimentName = experiment.name;
     // Ruta de template y destino
-    const templatesDir = path.join(userDataRoot, "templates");
-    if (!fs.existsSync(templatesDir))
-      fs.mkdirSync(templatesDir, { recursive: true });
-    const templatePath = path.join(templatesDir, "experiment_template.html");
+    const templatePath = ensureTemplate("experiment_template.html");
     const experimentHtmlPath = path.join(
       experimentsHtmlDir,
       `${experimentName}-experiment.html`
@@ -446,13 +444,7 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
         .json({ success: false, error: "Experiment not found" });
     }
     const experimentName = experiment.name;
-    const templatesDir = path.join(userDataRoot, "templates");
-    if (!fs.existsSync(templatesDir))
-      fs.mkdirSync(templatesDir, { recursive: true });
-    const templatePath = path.join(
-      templatesDir,
-      "trials_preview_template.html"
-    );
+    const templatePath = ensureTemplate("trials_preview_template.html");
     const previewHtmlPath = path.join(
       trialsPreviewsHtmlDir,
       `${experimentName}-preview.html`

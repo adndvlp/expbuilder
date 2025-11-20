@@ -11,6 +11,9 @@ const userDataRoot = process.env.DB_ROOT || __dirname;
 let dbPath, dbDir;
 if (process.env.DB_PATH) {
   dbPath = process.env.DB_PATH;
+  if (!path.isAbsolute(dbPath)) {
+    dbPath = path.join(userDataRoot, dbPath);
+  }
   dbDir = path.dirname(dbPath);
 } else {
   dbPath = path.join(userDataRoot, "database", "db.json");

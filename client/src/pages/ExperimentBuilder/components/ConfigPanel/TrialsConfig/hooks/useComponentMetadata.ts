@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface ComponentParameter {
   type: string;
@@ -36,7 +37,7 @@ export const useComponentMetadata = (componentType: string | null) => {
       .toLowerCase()
       .replace(/^-/, "");
 
-    fetch(`http://localhost:3000/api/component-metadata/${fileName}`)
+    fetch(`${API_URL}/api/component-metadata/${fileName}`)
       .then((res) => {
         if (!res.ok) {
           throw new Error(`Failed to load metadata for ${componentType}`);

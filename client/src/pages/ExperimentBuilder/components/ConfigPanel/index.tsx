@@ -56,7 +56,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
         setMetadata404(false);
         return;
       }
-      fetch(`${API_URL}/metadata/${selectedTrial.plugin}.json`)
+      fetch(`${API_URL}/api/metadata/${selectedTrial.plugin}.json`)
         .then((res) => {
           if (res.status === 404) {
             setMetadataError(`No valid info object in ${selectedTrial.plugin}`);
