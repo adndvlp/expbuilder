@@ -90,14 +90,8 @@ function Timeline() {
   const folder = "all";
   const accept = "audio/*,video/*,image/*";
 
-  const {
-    fileInputRef,
-    folderInputRef,
-    uploadedFiles,
-    handleSingleFileUpload,
-    handleFolderUpload,
-    handleDeleteFile,
-  } = useFileUpload({ folder });
+  const { fileInputRef, uploadedFiles, handleFileUpload, handleDeleteFile } =
+    useFileUpload({ folder });
 
   // Experiments hook
   const { generateLocalExperiment, generateExperiment } =
@@ -375,27 +369,7 @@ function Timeline() {
   return (
     <div className="timeline">
       <div style={{ marginBottom: 8, marginTop: 15 }}>
-        {/* <img className="logo-img" alt="Logo" /> */}
-      </div>
-
-      <div
-        style={{
-          margin: "16px 0",
-          padding: "12px",
-          borderRadius: "8px",
-          border: "none",
-          color: "var(--text-dark)",
-        }}
-      >
-        <FileUploader
-          uploadedFiles={uploadedFiles}
-          onSingleFileUpload={handleSingleFileUpload}
-          onFolderUpload={handleFolderUpload}
-          onDeleteFile={handleDeleteFile}
-          fileInputRef={fileInputRef}
-          folderInputRef={folderInputRef}
-          accept={accept}
-        />
+        <img className="logo-img" alt="Logo" />
       </div>
 
       <div>
@@ -618,6 +592,23 @@ function Timeline() {
             </p>
           )}
         </div>
+      </div>
+      <div
+        style={{
+          margin: "16px 0",
+          padding: "12px",
+          borderRadius: "8px",
+          border: "none",
+          color: "var(--text-dark)",
+        }}
+      >
+        <FileUploader
+          uploadedFiles={uploadedFiles}
+          onFileUpload={handleFileUpload}
+          onDeleteFile={handleDeleteFile}
+          fileInputRef={fileInputRef}
+          accept={accept}
+        />
       </div>
     </div>
   );

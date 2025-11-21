@@ -50,7 +50,11 @@ app.use("/", dbRouter);
 // Middleware to handle 404 errors
 app.use((req, res) => {
   console.log(`404 Not Found: ${req.url}`);
-  res.status(404).send("This page doesn't exist.");
+  if (req.path.startsWith("/api/")) {
+    res.status(404).json({ error: "API endpoint not found" });
+  } else {
+    res.status(404).send("This page doesn't exist.");
+  }
 });
 
 // Global error handlers to prevent process exit on uncaught exceptions or unhandled rejections

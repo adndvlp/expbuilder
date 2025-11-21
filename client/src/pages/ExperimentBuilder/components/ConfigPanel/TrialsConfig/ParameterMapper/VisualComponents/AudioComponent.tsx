@@ -1,6 +1,8 @@
 import React, { useRef } from "react";
-import { Rect, Text, Group } from "react-konva";
+import { Image as KonvaImage, Transformer } from "react-konva";
 import Konva from "konva";
+import useImage from "use-image";
+import speakerPlaceholder from "../../../../../../../assets/speaker.png";
 
 interface TrialComponent {
   id: string;
@@ -26,78 +28,70 @@ const AudioComponent: React.FC<AudioComponentProps> = ({
   onSelect,
   onChange,
 }) => {
-  const groupRef = useRef<Konva.Group>(null);
+  const imgRef = useRef<any>(null);
+  const trRef = useRef<Konva.Transformer>(null);
 
-  // Extract the actual value from the config structure
-  const getConfigValue = (key: string) => {
-    const config = shapeProps.config[key];
-    if (!config) return null;
-    if (config.source === "typed" || config.source === "csv") {
-      return config.value;
-    }
-    return config; // fallback for direct values
-  };
-
-  // Extract filename from URL
-  const audioUrl = getConfigValue("stimulus") || "";
-  const filename = audioUrl.split("/").pop() || "Audio";
+  const [speakerImg] = useImage(speakerPlaceholder);
 
   return (
-    <Group
-      ref={groupRef}
-      x={shapeProps.x}
-      y={shapeProps.y}
-      draggable
-      onClick={onSelect}
-      onTap={onSelect}
-      onDragEnd={(e) => {
-        onChange({
-          ...shapeProps,
-          x: e.target.x(),
-          y: e.target.y(),
-        });
-      }}
-    >
-      {/* Background */}
-      <Rect
-        width={shapeProps.width || 200}
-        height={shapeProps.height || 80}
-        fill="#fef3c7"
-        stroke={isSelected ? "#f59e0b" : "#fcd34d"}
-        strokeWidth={isSelected ? 3 : 1}
-        cornerRadius={25}
-        offsetX={(shapeProps.width || 200) / 2}
-        offsetY={(shapeProps.height || 80) / 2}
-      />
+    <>
+      <KonvaImage
+        ref={imgRef}
+        image={speakerImg}
+        x={shapeProps.x}
+        y={shapeProps.y}
+        scaleX={
+          shapeProps.width && speakerImg
+            ? shapeProps.width / speakerImg.width
+            : 1
+        }
+        scaleY={
+          shapeProps.height && speakerImg
+            ? shapeProps.height / speakerImg.height
+            : 1
+        }
+        rotation={shapeProps.rotation || 0}
+        draggable
+        onClick={onSelect}
+        onTap={onSelect}
+        onDragEnd={(e) => {
+          onChange({
+            ...shapeProps,
+            x: e.target.x(),
+            y: e.target.y(),
+          });
+        }}
+        onTransformEnd={() => {
+          const node = imgRef.current;
+          if (!node || !speakerImg) return;
 
-      {/* Icon */}
-      <Text
-        text="♪"
-        x={0}
-        y={-10}
-        fontSize={32}
-        fill="#78350f"
-        align="center"
-        offsetX={(shapeProps.width || 200) / 2}
-        offsetY={(shapeProps.height || 80) / 2}
-        listening={false}
-      />
+          const scaleX = node.scaleX();
+          const scaleY = node.scaleY();
 
-      {/* Filename */}
-      <Text
-        text={filename}
-        x={0}
-        y={20}
-        width={shapeProps.width || 200}
-        fontSize={11}
-        fill="#78350f"
-        align="center"
-        offsetX={(shapeProps.width || 200) / 2}
-        offsetY={(shapeProps.height || 80) / 2}
-        listening={false}
-        ellipsis={true}
+          onChange({
+            ...shapeProps,
+            x: node.x(),
+            y: node.y(),
+            width: Math.max(5, speakerImg.width * scaleX),
+            height: Math.max(5, speakerImg.height * scaleY),
+            rotation: node.rotation(),
+          });
+        }}
+        offsetX={speakerImg ? speakerImg.width / 2 : 0}
+        offsetY={speakerImg ? speakerImg.height / 2 : 0}
       />
-    </Group>
+      {isSelected && (
+        <Transformer
+          ref={trRef}
+          boundBoxFunc={(oldBox, newBox) => {
+            if (newBox.width < 5 || newBox.height < 5) {
+              return oldBox;
+            }
+            return newBox;
+          }}
+        />
+      )}
+    </>
   );
 };
 

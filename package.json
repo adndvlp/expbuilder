@@ -52,8 +52,8 @@
       "preload.js",
       ".env.production",
       "server/**",
-      "!server/dynamicplugin/**",
       "server/dynamicplugin/components-metadata/**",
+      "!server/dynamicplugin/**",
       "!server/jspsych-bundler/**"
     ],
     "extraResources": [

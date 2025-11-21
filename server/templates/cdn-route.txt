@@ -1,7 +1,4 @@
-<script src="https://adndvlp.github.io/jspsych-cdn-for-expbuilder/index.js"></script>
 
-    <link
-      href="https://adndvlp.github.io/jspsych-cdn-for-expbuilder/index.css"
-      rel="stylesheet"
-      type="text/css"
-    />
+
+    <link href="../jspsych-bundle/index.css" rel="stylesheet" type="text/css">
+    <script src="../jspsych-bundle/index.js"></script>

@@ -164,13 +164,7 @@ export function useTrialCode({
             if (row) {
               Object.keys(processedComp).forEach((prop) => {
                 // Ignorar metadata y propiedades estructurales (pero NO width!)
-                if (
-                  prop === "__configMetadata" ||
-                  prop === "type" ||
-                  prop === "coordinates" ||
-                  prop === "height" ||
-                  prop === "rotation"
-                ) {
+                if (prop === "__configMetadata" || prop === "type") {
                   return;
                 }
 

@@ -43,8 +43,6 @@ function ComponentSidebar({
   components,
 }: Props) {
   const experimentID = useExperimentID();
-  const [selectedComponentType, setSelectedComponentType] =
-    useState<ComponentType | null>(null);
 
   const [images, setImages] = useState<string[]>([]);
   const [videos, setVideos] = useState<string[]>([]);
@@ -53,6 +51,9 @@ function ComponentSidebar({
   const [stimulusExpanded, setStimulusExpanded] = useState(true);
   const [responseExpanded, setResponseExpanded] = useState(true);
   const [surveyExpanded, setSurveyExpanded] = useState(true);
+  const [imageExpanded, setImageExpanded] = useState(false);
+  const [videoExpanded, setVideoExpanded] = useState(false);
+  const [audioExpanded, setAudioExpanded] = useState(false);
 
   const initResizeLeft = () => {
     isResizingLeft.current = true;
@@ -227,269 +228,329 @@ function ComponentSidebar({
                     )
                     .map(({ type, label }) => (
                       <div key={type}>
-                        <button
-                          onClick={() => {
-                            if (
-                              type === "ImageComponent" ||
-                              type === "VideoComponent" ||
-                              type === "AudioComponent"
-                            ) {
-                              setSelectedComponentType(
-                                selectedComponentType === type ? null : type
-                              );
-                            } else {
-                              addComponent(type);
-                            }
-                          }}
-                          style={{
-                            width: "100%",
-                            padding: "12px 16px",
-                            border: "2px solid",
-                            borderColor:
-                              selectedComponentType === type
-                                ? "#3b82f6"
-                                : "#d1d5db",
-                            borderRadius: "8px",
-                            background:
-                              selectedComponentType === type
-                                ? "#dbeafe"
-                                : "white",
-                            cursor: "pointer",
-                            textAlign: "left",
-                            fontSize: "15px",
-                            fontWeight: 600,
-                            color:
-                              selectedComponentType === type
-                                ? "#1e40af"
-                                : "#374151",
-                            transition: "all 0.2s",
-                            marginBottom: "10px",
-                            boxShadow:
-                              selectedComponentType === type
-                                ? "0 2px 8px rgba(59, 130, 246, 0.2)"
-                                : "0 1px 3px rgba(0,0,0,0.1)",
-                          }}
-                          onMouseOver={(e) => {
-                            if (selectedComponentType !== type) {
-                              e.currentTarget.style.background = "#f3f4f6";
-                              e.currentTarget.style.borderColor = "#9ca3af";
-                            }
-                          }}
-                          onMouseOut={(e) => {
-                            e.currentTarget.style.background =
-                              selectedComponentType === type
-                                ? "#dbeafe"
-                                : "white";
-                            e.currentTarget.style.borderColor =
-                              selectedComponentType === type
-                                ? "#3b82f6"
-                                : "#d1d5db";
-                          }}
-                        >
-                          {label}
-                        </button>
-
-                        {/* Show thumbnails inline below the button */}
-                        {selectedComponentType === type &&
-                          type === "ImageComponent" && (
-                            <div
+                        {/* Image Component with dropdown style */}
+                        {type === "ImageComponent" && (
+                          <>
+                            <button
+                              onClick={() => setImageExpanded(!imageExpanded)}
                               style={{
-                                display: "grid",
-                                gridTemplateColumns: "1fr 1fr",
-                                gap: "6px",
-                                marginBottom: "12px",
-                                padding: "8px",
-                                background: "var(--neutral-light)",
-                                borderRadius: "4px",
+                                width: "100%",
+                                padding: "10px 12px",
+                                background:
+                                  "linear-gradient(135deg, #ffffff 0%, #dbeafe 100%)",
+                                color: "#1e40af",
+                                border: "1px solid #93c5fd",
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                                fontSize: "13px",
+                                fontWeight: 600,
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: "8px",
                               }}
                             >
-                              {images.length === 0 ? (
-                                <p
-                                  style={{
-                                    gridColumn: "1 / -1",
-                                    textAlign: "center",
-                                    color: "#9ca3af",
-                                    fontSize: "11px",
-                                    margin: 0,
-                                  }}
-                                >
-                                  No images
-                                </p>
-                              ) : (
-                                images.map((imgUrl, idx) => (
-                                  <div
-                                    key={idx}
-                                    draggable
-                                    onDragStart={(e) => {
-                                      e.dataTransfer.setData("fileUrl", imgUrl);
-                                      e.dataTransfer.setData(
-                                        "type",
-                                        "ImageComponent"
-                                      );
-                                    }}
+                              <span>{label}</span>
+                              <span>{imageExpanded ? "▼" : "▶"}</span>
+                            </button>
+                            {imageExpanded && (
+                              <div
+                                style={{
+                                  display: "grid",
+                                  gridTemplateColumns: "1fr 1fr",
+                                  gap: "6px",
+                                  marginBottom: "12px",
+                                  padding: "8px",
+                                  background: "var(--neutral-light)",
+                                  borderRadius: "4px",
+                                }}
+                              >
+                                {images.length === 0 ? (
+                                  <p
                                     style={{
-                                      cursor: "grab",
-                                      border: "1px solid #ddd",
-                                      borderRadius: "4px",
-                                      overflow: "hidden",
-                                      aspectRatio: "1",
-                                    }}
-                                  >
-                                    <img
-                                      src={`${API_URL}/${imgUrl}`}
-                                      alt="thumbnail"
-                                      style={{
-                                        width: "100%",
-                                        height: "100%",
-                                        objectFit: "cover",
-                                      }}
-                                    />
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          )}
-
-                        {selectedComponentType === type &&
-                          type === "VideoComponent" && (
-                            <div
-                              style={{
-                                display: "grid",
-                                gridTemplateColumns: "1fr 1fr",
-                                gap: "6px",
-                                marginBottom: "12px",
-                                padding: "8px",
-                                background: "var(--neutral-light)",
-                                borderRadius: "4px",
-                              }}
-                            >
-                              {videos.length === 0 ? (
-                                <p
-                                  style={{
-                                    gridColumn: "1 / -1",
-                                    textAlign: "center",
-                                    color: "#9ca3af",
-                                    fontSize: "11px",
-                                    margin: 0,
-                                  }}
-                                >
-                                  No videos
-                                </p>
-                              ) : (
-                                videos.map((vidUrl, idx) => (
-                                  <div
-                                    key={idx}
-                                    draggable
-                                    onDragStart={(e) => {
-                                      e.dataTransfer.setData("fileUrl", vidUrl);
-                                      e.dataTransfer.setData(
-                                        "type",
-                                        "VideoComponent"
-                                      );
-                                    }}
-                                    style={{
-                                      cursor: "grab",
-                                      border: "1px solid #ddd",
-                                      borderRadius: "4px",
-                                      overflow: "hidden",
-                                      aspectRatio: "16/9",
-                                      background: "#000",
-                                      position: "relative",
-                                    }}
-                                  >
-                                    <video
-                                      src={`${API_URL}/${vidUrl}`}
-                                      style={{
-                                        width: "100%",
-                                        height: "100%",
-                                        objectFit: "cover",
-                                      }}
-                                    />
-                                    <div
-                                      style={{
-                                        position: "absolute",
-                                        bottom: 0,
-                                        left: 0,
-                                        right: 0,
-                                        background: "rgba(0,0,0,0.7)",
-                                        color: "white",
-                                        fontSize: "9px",
-                                        padding: "2px 4px",
-                                        whiteSpace: "nowrap",
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                      }}
-                                    >
-                                      {vidUrl.split("/").pop()}
-                                    </div>
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          )}
-
-                        {selectedComponentType === type &&
-                          type === "AudioComponent" && (
-                            <div
-                              style={{
-                                marginBottom: "12px",
-                                padding: "8px",
-                                background: "var(--neutral-light)",
-                                borderRadius: "4px",
-                              }}
-                            >
-                              {audios.length === 0 ? (
-                                <p
-                                  style={{
-                                    textAlign: "center",
-                                    color: "#9ca3af",
-                                    fontSize: "11px",
-                                    margin: 0,
-                                  }}
-                                >
-                                  No audio
-                                </p>
-                              ) : (
-                                audios.map((audUrl, idx) => (
-                                  <div
-                                    key={idx}
-                                    draggable
-                                    onDragStart={(e) => {
-                                      e.dataTransfer.setData("fileUrl", audUrl);
-                                      e.dataTransfer.setData(
-                                        "type",
-                                        "AudioComponent"
-                                      );
-                                    }}
-                                    style={{
-                                      padding: "8px",
-                                      border: "1px solid var(--neutral-mid)",
-                                      borderRadius: "4px",
-                                      cursor: "grab",
-                                      background: "var(--neutral-light)",
+                                      gridColumn: "1 / -1",
+                                      textAlign: "center",
+                                      color: "#9ca3af",
                                       fontSize: "11px",
-                                      marginBottom: "4px",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: "6px",
-                                      color: "var(--text-dark)",
+                                      margin: 0,
                                     }}
                                   >
-                                    <span style={{ fontSize: "16px" }}>🎵</span>
-                                    <span
+                                    No images
+                                  </p>
+                                ) : (
+                                  images.map((imgUrl, idx) => (
+                                    <div
+                                      key={idx}
+                                      draggable
+                                      onDragStart={(e) => {
+                                        e.dataTransfer.setData(
+                                          "fileUrl",
+                                          imgUrl
+                                        );
+                                        e.dataTransfer.setData(
+                                          "type",
+                                          "ImageComponent"
+                                        );
+                                      }}
                                       style={{
-                                        flex: 1,
+                                        cursor: "grab",
+                                        border: "1px solid #ddd",
+                                        borderRadius: "4px",
                                         overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap",
+                                        aspectRatio: "1",
                                       }}
                                     >
-                                      {audUrl.split("/").pop()}
-                                    </span>
-                                  </div>
-                                ))
-                              )}
-                            </div>
+                                      <img
+                                        src={`${API_URL}/${imgUrl}`}
+                                        alt="thumbnail"
+                                        style={{
+                                          width: "100%",
+                                          height: "100%",
+                                          objectFit: "cover",
+                                        }}
+                                      />
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )}
+
+                        {/* Video Component with dropdown style */}
+                        {type === "VideoComponent" && (
+                          <>
+                            <button
+                              onClick={() => setVideoExpanded(!videoExpanded)}
+                              style={{
+                                width: "100%",
+                                padding: "10px 12px",
+                                background:
+                                  "linear-gradient(135deg, #ffffff 0%, #dbeafe 100%)",
+                                color: "#1e40af",
+                                border: "1px solid #93c5fd",
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                                fontSize: "13px",
+                                fontWeight: 600,
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: "8px",
+                              }}
+                            >
+                              <span>{label}</span>
+                              <span>{videoExpanded ? "▼" : "▶"}</span>
+                            </button>
+                            {videoExpanded && (
+                              <div
+                                style={{
+                                  display: "grid",
+                                  gridTemplateColumns: "1fr 1fr",
+                                  gap: "6px",
+                                  marginBottom: "12px",
+                                  padding: "8px",
+                                  background: "var(--neutral-light)",
+                                  borderRadius: "4px",
+                                }}
+                              >
+                                {videos.length === 0 ? (
+                                  <p
+                                    style={{
+                                      gridColumn: "1 / -1",
+                                      textAlign: "center",
+                                      color: "#9ca3af",
+                                      fontSize: "11px",
+                                      margin: 0,
+                                    }}
+                                  >
+                                    No videos
+                                  </p>
+                                ) : (
+                                  videos.map((vidUrl, idx) => (
+                                    <div
+                                      key={idx}
+                                      draggable
+                                      onDragStart={(e) => {
+                                        e.dataTransfer.setData(
+                                          "fileUrl",
+                                          vidUrl
+                                        );
+                                        e.dataTransfer.setData(
+                                          "type",
+                                          "VideoComponent"
+                                        );
+                                      }}
+                                      style={{
+                                        cursor: "grab",
+                                        border: "1px solid #ddd",
+                                        borderRadius: "4px",
+                                        overflow: "hidden",
+                                        aspectRatio: "16/9",
+                                        background: "#000",
+                                        position: "relative",
+                                      }}
+                                    >
+                                      <video
+                                        src={`${API_URL}/${vidUrl}`}
+                                        style={{
+                                          width: "100%",
+                                          height: "100%",
+                                          objectFit: "cover",
+                                        }}
+                                      />
+                                      <div
+                                        style={{
+                                          position: "absolute",
+                                          bottom: 0,
+                                          left: 0,
+                                          right: 0,
+                                          background: "rgba(0,0,0,0.7)",
+                                          color: "white",
+                                          fontSize: "9px",
+                                          padding: "2px 4px",
+                                          whiteSpace: "nowrap",
+                                          overflow: "hidden",
+                                          textOverflow: "ellipsis",
+                                        }}
+                                      >
+                                        {vidUrl.split("/").pop()}
+                                      </div>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )}
+
+                        {/* Audio Component with dropdown style */}
+                        {type === "AudioComponent" && (
+                          <>
+                            <button
+                              onClick={() => setAudioExpanded(!audioExpanded)}
+                              style={{
+                                width: "100%",
+                                padding: "10px 12px",
+                                background:
+                                  "linear-gradient(135deg, #ffffff 0%, #dbeafe 100%)",
+                                color: "#1e40af",
+                                border: "1px solid #93c5fd",
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                                fontSize: "13px",
+                                fontWeight: 600,
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: "8px",
+                              }}
+                            >
+                              <span>{label}</span>
+                              <span>{audioExpanded ? "▼" : "▶"}</span>
+                            </button>
+                            {audioExpanded && (
+                              <div
+                                style={{
+                                  marginBottom: "12px",
+                                  padding: "8px",
+                                  background: "var(--neutral-light)",
+                                  borderRadius: "4px",
+                                }}
+                              >
+                                {audios.length === 0 ? (
+                                  <p
+                                    style={{
+                                      textAlign: "center",
+                                      color: "#9ca3af",
+                                      fontSize: "11px",
+                                      margin: 0,
+                                    }}
+                                  >
+                                    No audio
+                                  </p>
+                                ) : (
+                                  audios.map((audUrl, idx) => (
+                                    <div
+                                      key={idx}
+                                      draggable
+                                      onDragStart={(e) => {
+                                        e.dataTransfer.setData(
+                                          "fileUrl",
+                                          audUrl
+                                        );
+                                        e.dataTransfer.setData(
+                                          "type",
+                                          "AudioComponent"
+                                        );
+                                      }}
+                                      style={{
+                                        padding: "8px",
+                                        border: "1px solid var(--neutral-mid)",
+                                        borderRadius: "4px",
+                                        cursor: "grab",
+                                        background: "var(--neutral-light)",
+                                        fontSize: "11px",
+                                        marginBottom: "4px",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "6px",
+                                        color: "var(--text-dark)",
+                                      }}
+                                    >
+                                      <span style={{ fontSize: "16px" }}>
+                                        🎵
+                                      </span>
+                                      <span
+                                        style={{
+                                          flex: 1,
+                                          overflow: "hidden",
+                                          textOverflow: "ellipsis",
+                                          whiteSpace: "nowrap",
+                                        }}
+                                      >
+                                        {audUrl.split("/").pop()}
+                                      </span>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )}
+
+                        {/* Other stimulus components without dropdown */}
+                        {type !== "ImageComponent" &&
+                          type !== "VideoComponent" &&
+                          type !== "AudioComponent" && (
+                            <button
+                              onClick={() => addComponent(type)}
+                              style={{
+                                width: "100%",
+                                padding: "12px 16px",
+                                border: "2px solid #d1d5db",
+                                borderRadius: "8px",
+                                background: "white",
+                                cursor: "pointer",
+                                textAlign: "left",
+                                fontSize: "15px",
+                                fontWeight: 600,
+                                color: "#374151",
+                                transition: "all 0.2s",
+                                marginBottom: "10px",
+                                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                              }}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.background = "#f3f4f6";
+                                e.currentTarget.style.borderColor = "#9ca3af";
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.background = "white";
+                                e.currentTarget.style.borderColor = "#d1d5db";
+                              }}
+                            >
+                              {label}
+                            </button>
                           )}
                       </div>
                     ))}

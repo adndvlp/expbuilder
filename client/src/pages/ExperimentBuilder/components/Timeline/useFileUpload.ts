@@ -13,7 +13,6 @@ type FileCache = {
 
 export function useFileUpload({ folder }: UseFileUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const folderInputRef = useRef<HTMLInputElement>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
 
   const experimentID = useExperimentID();
@@ -25,8 +24,9 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
 
   // solo para navegadores modernos, hacer poder subir carpetas
   useEffect(() => {
-    if (folderInputRef.current) {
-      folderInputRef.current.setAttribute("webkitdirectory", "");
+    if (fileInputRef.current) {
+      fileInputRef.current.setAttribute("webkitdirectory", "");
+      fileInputRef.current.setAttribute("directory", "");
     }
   }, []);
 
@@ -61,35 +61,7 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
     delete lastFetchTime.current[folder];
   }, [folder]);
 
-  const handleSingleFileUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const formData = new FormData();
-      formData.append("file", file);
-
-      try {
-        const response = await fetch(
-          `${API_URL}/api/upload-file/${experimentID}`,
-          {
-            method: "POST",
-            body: formData,
-          }
-        );
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Error at file upload");
-
-        invalidateCache();
-        refreshUploadedFiles();
-      } catch (err) {
-        alert("Error at file upload");
-        console.error(err);
-      }
-    }
-  };
-
-  const handleFolderUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -100,20 +72,19 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
 
     try {
       const response = await fetch(
-        `${API_URL}/api/upload-files-folder/${experimentID}`,
+        `${API_URL}/api/upload-files/${experimentID}`,
         {
           method: "POST",
           body: formData,
         }
       );
       const data = await response.json();
-      if (!response.ok)
-        throw new Error(data.error || "Error at uploading files");
+      if (!response.ok) throw new Error(data.error || "Error uploading files");
 
       invalidateCache();
       refreshUploadedFiles();
     } catch (err) {
-      alert("Error at uploading files");
+      alert("Error uploading files");
       console.error(err);
     }
   };
@@ -132,11 +103,9 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
 
   return {
     fileInputRef,
-    folderInputRef,
     uploadedFiles,
     setUploadedFiles,
-    handleSingleFileUpload,
-    handleFolderUpload,
+    handleFileUpload,
     handleDeleteFile,
     refreshUploadedFiles,
   };

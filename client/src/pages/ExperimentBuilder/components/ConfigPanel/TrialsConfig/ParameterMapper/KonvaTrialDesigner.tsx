@@ -156,13 +156,20 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             value: comp.rotation,
           };
         }
+
+        // Use numeric width/height if available, otherwise use defaults
+        // (handles case where width/height might be CSV column names)
+        const numericWidth = typeof comp.width === "number" ? comp.width : 300;
+        const numericHeight =
+          typeof comp.height === "number" ? comp.height : 300;
+
         loadedComponents.push({
           id: `${comp.type}-${idCounter++}`,
           type: comp.type as ComponentType,
           x: canvasCoords.x,
           y: canvasCoords.y,
-          width: comp.width || 300,
-          height: comp.height || 300,
+          width: numericWidth,
+          height: numericHeight,
           rotation: comp.rotation || 0,
           config: config,
         });
@@ -240,13 +247,20 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             value: comp.rotation,
           };
         }
+
+        // Use numeric width/height if available, otherwise use defaults
+        // (handles case where width/height might be CSV column names)
+        const numericWidth = typeof comp.width === "number" ? comp.width : 200;
+        const numericHeight =
+          typeof comp.height === "number" ? comp.height : 50;
+
         loadedComponents.push({
           id: `${comp.type}-${idCounter++}`,
           type: comp.type as ComponentType,
           x: canvasCoords.x,
           y: canvasCoords.y,
-          width: comp.width || 200,
-          height: comp.height || 50,
+          width: numericWidth,
+          height: numericHeight,
           rotation: comp.rotation || 0,
           config: config,
         });

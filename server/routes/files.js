@@ -13,9 +13,10 @@ const storage = multer.diskStorage({
       const experimentID = req.body.experimentID || req.params.experimentID;
       const ext = path.extname(file.originalname).toLowerCase();
       let type = null;
-      if (/\.(png|jpg|jpeg|gif)$/i.test(ext)) type = "img";
-      else if (/\.(mp3|wav|ogg|m4a)$/i.test(ext)) type = "aud";
-      else if (/\.(mp4|webm|mov|avi)$/i.test(ext)) type = "vid";
+      if (/\.(png|jpg|jpeg|gif|svg|webp|bmp)$/i.test(ext)) type = "img";
+      else if (/\.(mp3|wav|ogg|m4a|flac|aac)$/i.test(ext)) type = "aud";
+      else if (/\.(mp4|webm|mov|avi|mkv)$/i.test(ext)) type = "vid";
+      else type = "others";
 
       if (!type) {
         // Rechaza el archivo si no es de los tipos permitidos
@@ -47,53 +48,34 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 router.post(
-  "/api/upload-file/:experimentID",
-  upload.single("file"),
-  async (req, res) => {
-    if (!req.file || !req.file.path) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
-    const experimentID = req.params.experimentID;
-    const type = path.basename(path.dirname(req.file.path));
-    let experimentName = experimentID;
-    await db.read();
-    const experiment = db.data.experiments.find(
-      (e) => e.experimentID === experimentID
-    );
-    if (experiment && experiment.name) {
-      experimentName = `${experiment.name}-experiment`;
-    }
-    res.json({
-      fileUrl: `uploads/${experimentName}/${type}/${req.file.filename}`,
-      folder: type,
-    });
-  }
-);
-
-router.post(
-  "/api/upload-files-folder/:experimentID",
+  "/api/upload-files/:experimentID",
   upload.array("files"),
   async (req, res) => {
-    const experimentID = req.params.experimentID;
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ error: "No files uploaded" });
+    try {
+      const experimentID = req.params.experimentID;
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ error: "No files uploaded" });
+      }
+      let experimentName = experimentID;
+      await db.read();
+      const experiment = db.data.experiments.find(
+        (e) => e.experimentID === experimentID
+      );
+      if (experiment && experiment.name) {
+        experimentName = `${experiment.name}-experiment`;
+      }
+      const fileUrls = req.files.map((file) => {
+        const type = path.basename(path.dirname(file.path));
+        return `uploads/${experimentName}/${type}/${file.filename}`;
+      });
+      res.json({
+        fileUrls,
+        count: req.files.length,
+      });
+    } catch (err) {
+      console.error("Error uploading files:", err);
+      res.status(500).json({ error: err.message || "Error uploading files" });
     }
-    let experimentName = experimentID;
-    await db.read();
-    const experiment = db.data.experiments.find(
-      (e) => e.experimentID === experimentID
-    );
-    if (experiment && experiment.name) {
-      experimentName = `${experiment.name}-experiment`;
-    }
-    const fileUrls = req.files.map((file) => {
-      const type = path.basename(path.dirname(file.path));
-      return `uploads/${experimentName}/${type}/${file.filename}`;
-    });
-    res.json({
-      fileUrls,
-      info: "Archivos subidos localmente.",
-    });
   }
 );
 
