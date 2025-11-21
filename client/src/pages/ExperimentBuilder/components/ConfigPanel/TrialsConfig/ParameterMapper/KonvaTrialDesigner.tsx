@@ -16,6 +16,7 @@ import {
   ButtonResponseComponent,
   KeyboardResponseComponent,
   SliderResponseComponent,
+  InputResponseComponent,
   SketchpadComponent,
   SurveyTextComponent,
   SurveyComponent,
@@ -97,27 +98,40 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
 
         // Reconstruct config from component data
         const config: Record<string, any> = {};
-        Object.entries(comp).forEach(([key, value]) => {
-          if (
-            key !== "type" &&
-            key !== "coordinates" &&
-            key !== "width" &&
-            key !== "height" &&
-            key !== "rotation"
-          ) {
-            let configValue = value;
-            if (key === "button_html" && typeof value === "function") {
-              configValue = value.toString();
+
+        // Si el componente tiene metadata guardada, usarla
+        if (comp.__configMetadata) {
+          // Usar la metadata guardada para preservar la configuración de source
+          Object.entries(comp.__configMetadata).forEach(
+            ([key, metadata]: [string, any]) => {
+              config[key] = metadata;
             }
-            if (key === "choices" && !Array.isArray(value)) {
-              configValue = [String(value)];
+          );
+        } else {
+          // Fallback: reconstruir config como antes (para componentes antiguos sin metadata)
+          Object.entries(comp).forEach(([key, value]) => {
+            if (
+              key !== "type" &&
+              key !== "coordinates" &&
+              key !== "width" &&
+              key !== "height" &&
+              key !== "rotation" &&
+              key !== "__configMetadata"
+            ) {
+              let configValue = value;
+              if (key === "button_html" && typeof value === "function") {
+                configValue = value.toString();
+              }
+              if (key === "choices" && !Array.isArray(value)) {
+                configValue = [String(value)];
+              }
+              config[key] = {
+                source: "typed",
+                value: configValue,
+              };
             }
-            config[key] = {
-              source: "typed",
-              value: configValue,
-            };
-          }
-        });
+          });
+        }
         if (comp.coordinates) {
           config.coordinates = {
             source: "typed",
@@ -168,27 +182,40 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
           ? fromJsPsychCoords(comp.coordinates)
           : { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 };
         const config: Record<string, any> = {};
-        Object.entries(comp).forEach(([key, value]) => {
-          if (
-            key !== "type" &&
-            key !== "coordinates" &&
-            key !== "width" &&
-            key !== "height" &&
-            key !== "rotation"
-          ) {
-            let configValue = value;
-            if (key === "button_html" && typeof value === "function") {
-              configValue = value.toString();
+
+        // Si el componente tiene metadata guardada, usarla
+        if (comp.__configMetadata) {
+          // Usar la metadata guardada para preservar la configuración de source
+          Object.entries(comp.__configMetadata).forEach(
+            ([key, metadata]: [string, any]) => {
+              config[key] = metadata;
             }
-            if (key === "choices" && !Array.isArray(value)) {
-              configValue = [String(value)];
+          );
+        } else {
+          // Fallback: reconstruir config como antes (para componentes antiguos sin metadata)
+          Object.entries(comp).forEach(([key, value]) => {
+            if (
+              key !== "type" &&
+              key !== "coordinates" &&
+              key !== "width" &&
+              key !== "height" &&
+              key !== "rotation" &&
+              key !== "__configMetadata"
+            ) {
+              let configValue = value;
+              if (key === "button_html" && typeof value === "function") {
+                configValue = value.toString();
+              }
+              if (key === "choices" && !Array.isArray(value)) {
+                configValue = [String(value)];
+              }
+              config[key] = {
+                source: "typed",
+                value: configValue,
+              };
             }
-            config[key] = {
-              source: "typed",
-              value: configValue,
-            };
-          }
-        });
+          });
+        }
         if (comp.coordinates) {
           config.coordinates = {
             source: "typed",
@@ -318,15 +345,31 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       }
 
       // Apply parameters from component's config
+      // IMPORTANTE: Guardar la metadata de configuración para preservar qué parámetros vienen del CSV
       if (comp.config) {
+        const configMetadata: Record<string, any> = {};
+
         Object.entries(comp.config).forEach(([key, entry]: [string, any]) => {
+          // Guardar metadata para TODOS los parámetros excepto las propiedades estructurales
+          if (
+            key !== "coordinates" &&
+            key !== "width" &&
+            key !== "height" &&
+            key !== "rotation"
+          ) {
+            configMetadata[key] = {
+              source: entry.source,
+              value: entry.value,
+            };
+          }
+
+          // Procesar el valor para guardarlo en componentData (solo si es typed)
           if (entry.source === "typed") {
             let value = entry.value;
 
             // Special handling for button_html: convert string to function
             if (key === "button_html" && typeof value === "string") {
               try {
-                // Evaluate the function string to get the actual function
                 value = eval(`(${value})`);
               } catch (e) {
                 console.error("Error evaluating button_html function:", e);
@@ -345,16 +388,21 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
 
             componentData[key] = value;
           } else if (entry.source === "csv") {
+            // Para CSV, guardar el nombre de la columna
             componentData[key] = entry.value;
           }
         });
+
+        // Guardar metadata como propiedad especial del componente
+        componentData.__configMetadata = configMetadata;
       }
 
       // Categorize
       const isResponseComponent =
         comp.type === "ButtonResponseComponent" ||
         comp.type === "KeyboardResponseComponent" ||
-        comp.type === "SliderResponseComponent";
+        comp.type === "SliderResponseComponent" ||
+        comp.type === "InputResponseComponent";
 
       const isSurveyComponent =
         comp.type === "SurveyTextComponent" || comp.type === "SurveyComponent";
@@ -719,6 +767,17 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       case "SliderResponseComponent":
         return (
           <SliderResponseComponent
+            key={comp.id}
+            shapeProps={comp}
+            isSelected={isSelected}
+            onSelect={() => handleSelect(comp.id)}
+            onChange={handleComponentChange}
+          />
+        );
+
+      case "InputResponseComponent":
+        return (
+          <InputResponseComponent
             key={comp.id}
             shapeProps={comp}
             isSelected={isSelected}

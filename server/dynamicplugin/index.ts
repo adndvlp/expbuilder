@@ -21,6 +21,7 @@ import SurveyMultiSelectComponent from "./components/SurveyMultiSelectComponent"
 import ButtonResponseComponent from "./response_components/ButtonResponseComponent";
 import SliderResponseComponent from "./response_components/SliderResponseComponent";
 import KeyboardResponseComponent from "./response_components/KeyboardResponseComponent";
+import InputResponseComponent from "./response_components/InputResponseComponent";
 
 const info = <const>{
   name: "DynamicPlugin",
@@ -99,6 +100,7 @@ const RESPONSE_COMPONENT_MAP: Record<string, any> = {
   ButtonResponseComponent,
   SliderResponseComponent,
   KeyboardResponseComponent,
+  InputResponseComponent,
 };
 
 /**
@@ -196,6 +198,20 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
 
     // Function to end the trial and collect data
     const endTrial = () => {
+      // Before ending, try to record responses from all components that have recordResponse method
+      responseComponents.forEach(({ instance, config }) => {
+        if (
+          instance.recordResponse &&
+          typeof instance.recordResponse === "function"
+        ) {
+          try {
+            instance.recordResponse(config);
+          } catch (e) {
+            console.warn(`Failed to record response for ${config.type}:`, e);
+          }
+        }
+      });
+
       // Calculate response time
       const rt = Math.round(performance.now() - startTime);
 

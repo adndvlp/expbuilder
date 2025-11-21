@@ -1,6 +1,5 @@
 {
   "name": "DynamicPlugin",
-  "version": "imported",
   "parameters": {
     "components": {
       "type": "object_array",

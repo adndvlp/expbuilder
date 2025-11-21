@@ -59,7 +59,7 @@ const SliderResponseComponent: React.FC<SliderResponseComponentProps> = ({
   const max = getConfigValue("max", 100);
   const sliderStart = getConfigValue("slider_start", 50);
   const labels = getConfigValue("labels", []);
-  const buttonLabel = getConfigValue("button_label", "Continue");
+  const requireMovement = getConfigValue("require_movement", false);
 
   useEffect(() => {
     if (isSelected && trRef.current && groupRef.current) {
@@ -183,27 +183,19 @@ const SliderResponseComponent: React.FC<SliderResponseComponentProps> = ({
           </>
         )}
 
-        {/* Submit button */}
-        <Rect
-          x={shapeProps.width / 2 - 50}
-          y={shapeProps.height - 35}
-          width={100}
-          height={25}
-          fill="#9333ea"
-          cornerRadius={4}
-        />
-        <Text
-          text={buttonLabel}
-          x={shapeProps.width / 2 - 50}
-          y={shapeProps.height - 35}
-          width={100}
-          height={25}
-          align="center"
-          verticalAlign="middle"
-          fontSize={11}
-          fill="#ffffff"
-          fontStyle="bold"
-        />
+        {/* Require movement indicator */}
+        {requireMovement && (
+          <Text
+            text="(movement required)"
+            x={0}
+            y={shapeProps.height - 25}
+            width={shapeProps.width}
+            align="center"
+            fontSize={9}
+            fill="#9333ea"
+            fontStyle="italic"
+          />
+        )}
       </Group>
 
       {isSelected && (

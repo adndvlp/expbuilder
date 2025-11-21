@@ -39,13 +39,7 @@ const info = {
       type: ParameterType.INT,
       default: null,
     },
-    /** Label of the button to advance/submit. */
-    button_label: {
-      type: ParameterType.STRING,
-      default: "Continue",
-      array: false,
-    },
-    /** If true, the participant must move the slider before clicking the continue button. */
+    /** If true, the participant must move the slider before response is considered valid. */
     require_movement: {
       type: ParameterType.BOOL,
       default: false,
@@ -95,7 +89,7 @@ class SliderResponseComponent {
   private start_time: number | null;
   private sliderContainer: HTMLElement | null;
   private sliderElement: HTMLInputElement | null;
-  private submitButton: HTMLButtonElement | null;
+  private hasMoved: boolean;
 
   static info = info;
 
@@ -107,7 +101,7 @@ class SliderResponseComponent {
     this.start_time = null;
     this.sliderContainer = null;
     this.sliderElement = null;
-    this.submitButton = null;
+    this.hasMoved = false;
   }
 
   /**
@@ -174,56 +168,42 @@ class SliderResponseComponent {
       "#jspsych-slider-response-component"
     ) as HTMLInputElement;
 
-    // Create submit button
-    this.submitButton = document.createElement("button");
-    this.submitButton.id = "jspsych-slider-response-component-next";
-    this.submitButton.classList.add("jspsych-btn");
-    this.submitButton.innerHTML = trial.button_label;
-    this.submitButton.disabled = trial.require_movement ? true : false;
-
-    this.sliderContainer.appendChild(this.submitButton);
-
-    // Setup require_movement behavior
+    // Track movement if required
     if (trial.require_movement) {
-      const enableButton = () => {
-        if (this.submitButton) {
-          this.submitButton.disabled = false;
-        }
+      const trackMovement = () => {
+        this.hasMoved = true;
       };
 
-      this.sliderElement.addEventListener("mousedown", enableButton);
-      this.sliderElement.addEventListener("touchstart", enableButton);
-      this.sliderElement.addEventListener("change", enableButton);
+      this.sliderElement.addEventListener("mousedown", trackMovement);
+      this.sliderElement.addEventListener("touchstart", trackMovement);
+      this.sliderElement.addEventListener("change", trackMovement);
+      this.sliderElement.addEventListener("input", trackMovement);
+    } else {
+      this.hasMoved = true; // Not required, so always valid
     }
-
-    // Setup submit button click handler
-    this.submitButton.addEventListener("click", () => {
-      this.recordResponse();
-      if (onResponse) {
-        onResponse();
-      }
-    });
 
     // Start timing
     this.start_time = performance.now();
   }
 
   /**
-   * Record the slider response and RT
+   * Record the slider response and RT (called externally, e.g., by a button)
    */
-  private recordResponse(): void {
+  recordResponse(trial: any): boolean {
     if (this.response !== null) {
-      return; // Already responded
+      return false; // Already responded
+    }
+
+    // Check if movement is required but hasn't happened
+    if (trial.require_movement && !this.hasMoved) {
+      return false; // Can't record yet
     }
 
     const end_time = performance.now();
     this.rt = Math.round(end_time - this.start_time!);
     this.response = this.sliderElement!.valueAsNumber;
 
-    // Disable button after response
-    if (this.submitButton) {
-      this.submitButton.disabled = true;
-    }
+    return true; // Successfully recorded
   }
 
   /**
@@ -231,6 +211,25 @@ class SliderResponseComponent {
    */
   getResponse(): number | null {
     return this.response;
+  }
+
+  /**
+   * Get current slider value without recording response
+   */
+  getCurrentValue(): number {
+    return this.sliderElement
+      ? this.sliderElement.valueAsNumber
+      : this.slider_start;
+  }
+
+  /**
+   * Check if response is currently valid (without recording it)
+   */
+  isValid(trial: any): boolean {
+    if (trial.require_movement && !this.hasMoved) {
+      return false;
+    }
+    return true;
   }
 
   /**
@@ -253,10 +252,6 @@ class SliderResponseComponent {
   destroy(): void {
     if (this.sliderContainer) {
       this.sliderContainer.remove();
-    }
-
-    if (this.submitButton) {
-      this.submitButton.remove();
     }
   }
 }

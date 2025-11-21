@@ -44,19 +44,15 @@
 
     /* create timeline */
     var timeline = [];
-    const procedure = {
+    // Example 1: Slider without internal button - using external ButtonResponseComponent
+    const sliderWithButtonTrial = {
       type: DynamicPlugin,
       components: [
         {
           type: "HtmlComponent",
-          stimulus: "<p>Cola</p>",
-          coordinates: { x: 1, y: 0 },
+          stimulus: "<h2>How much do you like this?</h2>",
+          coordinates: { x: 0, y: -0.5 },
         },
-        // {
-        //   type: "VideoComponent",
-        //   stimulus_video: ["Dembow.mp4"],
-        //   coordinates: { x: 1, y: 1 },
-        // },
       ],
       response_components: [
         {
@@ -65,10 +61,96 @@
           max: 100,
           slider_start: 50,
           step: 1,
-          labels: ["Nada", "Mucho"],
-          button_label: "Continuar",
+          labels: ["Not at all", "Very much"],
           require_movement: true,
-          coordinates: { x: 0.2, y: 0 },
+          coordinates: { x: 0, y: 0 },
+        },
+        {
+          type: "ButtonResponseComponent",
+          choices: ["Continue"],
+          coordinates: { x: 0, y: 0.5 },
+        },
+      ],
+    };
+
+    // Example 2: Input (Cloze) component with external button
+    const inputResponseTrial = {
+      type: DynamicPlugin,
+      components: [
+        {
+          type: "HtmlComponent",
+          stimulus: "<h2>Fill in the blanks:</h2>",
+          coordinates: { x: 0, y: -0.6 },
+        },
+      ],
+      response_components: [
+        {
+          type: "InputResponseComponent",
+          text: "The capital of France is %Paris%. The largest planet is %Jupiter%.",
+          check_answers: true,
+          allow_blanks: false,
+          coordinates: { x: 0, y: -0.2 },
+        },
+
+        {
+          type: "ButtonResponseComponent",
+          choices: ["Submit Answers"],
+          coordinates: { x: 0, y: 0.5 },
+        },
+      ],
+    };
+
+    // Example 3: Multiple input fields without answer checking
+    const freeInputTrial = {
+      type: DynamicPlugin,
+      components: [
+        {
+          type: "HtmlComponent",
+          stimulus: "<h2>Tell us about yourself:</h2>",
+          coordinates: { x: 0, y: -0.6 },
+        },
+      ],
+      response_components: [
+        {
+          type: "InputResponseComponent",
+          text: "Name: %% <br> Age: %% <br> Favorite color: %%",
+          check_answers: false,
+          allow_blanks: true,
+          coordinates: { x: 0, y: 0 },
+        },
+        {
+          type: "ButtonResponseComponent",
+          choices: ["Next"],
+          coordinates: { x: 0, y: 0.5 },
+        },
+      ],
+    };
+
+    // Example 4: Combined slider and keyboard response
+    const multiResponseTrial = {
+      type: DynamicPlugin,
+      components: [
+        {
+          type: "HtmlComponent",
+          stimulus:
+            "<h2>Rate and respond</h2><p>Use the slider or press a key (1-5)</p>",
+          coordinates: { x: 0, y: -0.5 },
+        },
+      ],
+      response_components: [
+        {
+          type: "SliderResponseComponent",
+          min: 1,
+          max: 5,
+          slider_start: 3,
+          step: 1,
+          labels: ["1", "2", "3", "4", "5"],
+          require_movement: false,
+          coordinates: { x: 0, y: 0 },
+        },
+        {
+          type: "KeyboardResponseComponent",
+          choices: ["1", "2", "3", "4", "5"],
         },
       ],
     };
@@ -107,6 +189,11 @@
       ],
     };
 
+    // Add trials to timeline
+    timeline.push(sliderWithButtonTrial);
+    timeline.push(inputResponseTrial);
+    timeline.push(freeInputTrial);
+    timeline.push(multiResponseTrial);
     timeline.push(sketchpadTrial);
     const procedure2 = {
       type: DynamicPlugin,

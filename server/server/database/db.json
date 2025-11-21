@@ -1,7 +1,3721 @@
 {
-  "experiments": [],
-  "trials": [],
-  "configs": [],
+  "experiments": [
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "name": "bqkjlm",
+      "createdAt": "2025-11-20T21:04:10.711Z",
+      "updatedAt": "2025-11-20T21:04:10.711Z",
+      "storage": "drive"
+    }
+  ],
+  "trials": [
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "data": {
+        "trials": [
+          {
+            "id": 1763704862399,
+            "type": "Trial",
+            "name": "New Trial 2",
+            "parameters": {
+              "includesExtensions": false,
+              "extensionType": ""
+            },
+            "trialCode": "\n    const test_stimuli_New_Trial_2 = [{components: [{ type: \"ImageComponent\", coordinates: {\"x\":0.115234375,\"y\":-0.5703125}, width: \"50\", height: 300, stimulus: \"uploads/bqkjlm-experiment/img/boat.png\" }],\nresponse_components: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.572265625,\"y\":-0.5078125}, width: 200, height: 50, choices: [\"hola\"], rotation: 0 }],\nstimuli_duration: undefined,\ntrial_duration: undefined,\nresponse_ends_trial: undefined,\nresponses: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.572265625,\"y\":-0.5078125}, width: 200, height: 50, choices: [\"hola\"], rotation: 0 }]},{components: [{ type: \"ImageComponent\", coordinates: {\"x\":0.115234375,\"y\":-0.5703125}, width: \"60\", height: 300, stimulus: \"uploads/bqkjlm-experiment/img/boat2.png\" }],\nresponse_components: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.572265625,\"y\":-0.5078125}, width: 200, height: 50, choices: [\"como\"], rotation: 0 }],\nstimuli_duration: undefined,\ntrial_duration: undefined,\nresponse_ends_trial: undefined,\nresponses: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.572265625,\"y\":-0.5078125}, width: 200, height: 50, choices: [\"como\"], rotation: 0 }]},{components: [{ type: \"ImageComponent\", coordinates: {\"x\":0.115234375,\"y\":-0.5703125}, width: \"70\", height: 300, stimulus: \"uploads/bqkjlm-experiment/img/cube.png\" }],\nresponse_components: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.572265625,\"y\":-0.5078125}, width: 200, height: 50, choices: [\"est\"], rotation: 0 }],\nstimuli_duration: undefined,\ntrial_duration: undefined,\nresponse_ends_trial: undefined,\nresponses: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.572265625,\"y\":-0.5078125}, width: 200, height: 50, choices: [\"est\"], rotation: 0 }]},{components: [{ type: \"ImageComponent\", coordinates: {\"x\":0.115234375,\"y\":-0.5703125}, width: \"50\", height: 300, stimulus: \"uploads/bqkjlm-experiment/img/floor.png\" }],\nresponse_components: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.572265625,\"y\":-0.5078125}, width: 200, height: 50, choices: [\"as\"], rotation: 0 }],\nstimuli_duration: undefined,\ntrial_duration: undefined,\nresponse_ends_trial: undefined,\nresponses: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.572265625,\"y\":-0.5078125}, width: 200, height: 50, choices: [\"as\"], rotation: 0 }]},{components: [{ type: \"ImageComponent\", coordinates: {\"x\":0.115234375,\"y\":-0.5703125}, width: \"40\", height: 300, stimulus: \"uploads/bqkjlm-experiment/img/obstacle.png\" }],\nresponse_components: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.572265625,\"y\":-0.5078125}, width: 200, height: 50, choices: [\"?\"], rotation: 0 }],\nstimuli_duration: undefined,\ntrial_duration: undefined,\nresponse_ends_trial: undefined,\nresponses: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.572265625,\"y\":-0.5078125}, width: 200, height: 50, choices: [\"?\"], rotation: 0 }]}];\n    const New_Trial_2_timeline = {\n    type: DynamicPlugin, components: jsPsych.timelineVariable(\"components\"),\nresponse_components: jsPsych.timelineVariable(\"response_components\"),\nstimuli_duration: jsPsych.timelineVariable(\"stimuli_duration\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial\"),\n      data: {\n        stimulus: \"stimulus\",\nresponse: \"response\",\nrt: \"rt\",\n        trial_id: 1763704862399,\n        \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        console.log('Applying custom parameters to trial:', window.branchCustomParameters);\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Handle different parameter sources\n            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n              // For typed values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n              // For CSV values, param.value contains the column name, get the actual value from trial\n              trial[key] = trial[param.value];\n              console.log(`Set trial.${key} = ${trial[param.value]} (from CSV column: ${param.value})`);\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches ni repeat conditions, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },\n    };\n    const New_Trial_2_procedure = {\n    timeline: \n    [New_Trial_2_timeline],\n    timeline_variables: test_stimuli_New_Trial_2,\n    conditional_function: function() {\n      const currentId = 1763704862399;\n      \n      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n      if (jumpToTrial) {\n        if (String(currentId) === String(jumpToTrial)) {\n          // Encontramos el trial objetivo para repeat/jump\n          console.log('Repeat/jump: Found target trial', currentId);\n          localStorage.removeItem('jsPsych_jumpToTrial');\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('Repeat/jump: Skipping trial', currentId);\n        return false;\n      }\n      \n      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(New_Trial_2_procedure);\n  ",
+            "plugin": "plugin-dynamic",
+            "columnMapping": {
+              "components": {
+                "source": "typed",
+                "value": [
+                  {
+                    "type": "ImageComponent",
+                    "coordinates": {
+                      "x": 0.115234375,
+                      "y": -0.5703125
+                    },
+                    "width": "image width",
+                    "height": 300,
+                    "stimulus": "image",
+                    "__configMetadata": {
+                      "stimulus": {
+                        "source": "csv",
+                        "value": "image"
+                      }
+                    }
+                  }
+                ]
+              },
+              "response_components": {
+                "source": "typed",
+                "value": [
+                  {
+                    "type": "ButtonResponseComponent",
+                    "coordinates": {
+                      "x": 0.572265625,
+                      "y": -0.5078125
+                    },
+                    "width": 200,
+                    "height": 50,
+                    "choices": "button",
+                    "rotation": 0,
+                    "__configMetadata": {
+                      "choices": {
+                        "source": "csv",
+                        "value": "button"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "csvJson": [
+              {
+                "image": "boat.png",
+                "image width": "50",
+                "image cord": "0,1",
+                "button": "hola",
+                "video": "perro1.mp4",
+                "video cord": "0,1",
+                "audio": "perro.mp3",
+                "categories": "perro",
+                "order1": "3",
+                "order2": "6"
+              },
+              {
+                "image": "boat2.png",
+                "image width": "60",
+                "image cord": "1,0",
+                "button": "como",
+                "video": "perro2.mp4",
+                "video cord": "0,1",
+                "audio": "perro.mp3",
+                "categories": "perro",
+                "order1": "2",
+                "order2": "5"
+              },
+              {
+                "image": "cube.png",
+                "image width": "70",
+                "image cord": "0,1",
+                "button": "est",
+                "video": "perro3.mp4",
+                "video cord": "0,1",
+                "audio": "perro.mp3",
+                "categories": "perro",
+                "order1": "1",
+                "order2": "4"
+              },
+              {
+                "image": "floor.png",
+                "image width": "50",
+                "image cord": "1,0",
+                "button": "as",
+                "video": "gato1.mp4",
+                "video cord": "0,1",
+                "audio": "gato.mp3",
+                "categories": "gato"
+              },
+              {
+                "image": "obstacle.png",
+                "image width": "40",
+                "image cord": "0,0",
+                "button": "?",
+                "video": "gato2.mp4",
+                "video cord": "0,1",
+                "audio": "gato.mp3",
+                "categories": "gato"
+              }
+            ],
+            "csvColumns": [
+              "image",
+              "image width",
+              "image cord",
+              "button",
+              "video",
+              "video cord",
+              "audio",
+              "categories",
+              "order1",
+              "order2"
+            ],
+            "orders": false,
+            "orderColumns": [],
+            "stimuliOrders": [],
+            "categories": false,
+            "categoryColumn": ""
+          }
+        ]
+      },
+      "createdAt": "2025-11-20T21:04:15.558Z",
+      "updatedAt": "2025-11-21T06:11:49.147Z"
+    }
+  ],
+  "configs": [
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "data": {
+        "generatedCode": "\n  // --- Firebase config ---\n  const firebaseConfig = {\n    apiKey: \"AIzaSyBEbJ-uGKzsaf2u24KPamBPVZrUmvhFk-Q\",\n    authDomain: \"test-e4cf9.firebaseapp.com\",\n    databaseURL: \"http://localhost:9000?ns=test-e4cf9\",\n    projectId: \"test-e4cf9\",\n    storageBucket: \"test-e4cf9.firebasestorage.app\",\n    messagingSenderId: \"414213417080\",\n    appId: \"1:414213417080:web:98607c621a54d07656e58d\"\n  };\n\n  // --- Cargar Firebase SDK ---\n  if (typeof window.firebase === 'undefined') {\n    const script = document.createElement('script');\n    script.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';\n    script.onload = () => {\n      const dbScript = document.createElement('script');\n      dbScript.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';\n      dbScript.onload = () => { window._firebaseReady = true; };\n      document.head.appendChild(dbScript);\n    };\n    document.head.appendChild(script);\n  } else {\n    window._firebaseReady = true;\n  }\n\n  function waitForFirebase() {\n    return new Promise(resolve => {\n      if (window._firebaseReady) return resolve();\n      const interval = setInterval(() => {\n        if (window._firebaseReady) {\n          clearInterval(interval);\n          resolve();\n        }\n      }, 50);\n    });\n  }\n\n \n  const userStr = null;\n\n  const Uid = userStr.uid\n\n  const trialSessionId =\n    (crypto.randomUUID\n      ? crypto.randomUUID()\n      : Math.random().toString(36).slice(2, 10));\n\n  let participantNumber;\n\n  async function saveSession(trialSessionId) {\n    try {\n      const res = await fetch(\"http://localhost:5001/test-e4cf9/us-central1/apidata\", {\n        method: \"POST\",\n        headers: { \"Content-Type\": \"application/json\", Accept: \"*/*\" },\n        body: JSON.stringify({\n          experimentID: \"a4ee1f3a-af44-4a81-992e-2ca1d2b4734b\",\n          experimentName: \"bqkjlm\", \n          sessionId: trialSessionId,\n          storage: \"drive\",\n          uid: Uid\n        }),\n      });\n      \n      console.log('Response status:', res.status);\n      \n      if (!res.ok) {\n        const errorText = await res.text();\n        console.error('Error creating session:', errorText);\n        throw new Error(`Failed to create session: ${res.status} - ${errorText}`);\n      }\n      \n      const result = await res.json();\n      console.log('Session created successfully:', result);\n      \n      if (!result.success) {\n        if (result.message?.includes(\"INVALID_GOOGLE_DRIVE_TOKEN\") || result.message?.includes(\"Invalid Google Drive token\")) {\n          alert(\"Warning: Google Drive token not found or invalid. Please reconnect your Drive account in Settings.\");\n        } else if (result.message?.includes(\"INVALID_DROPBOX_TOKEN\") || result.message?.includes(\"Invalid Dropbox token\")) {\n          alert(\"Warning: Dropbox token not found or invalid. Please reconnect your Dropbox account in Settings.\");\n        }\n        throw new Error(result.message || 'Failed to create session');\n      }\n      \n      participantNumber = result.participantNumber;\n      return participantNumber;\n    } catch (error) {\n      console.error('Error in saveSession:', error);\n      alert('Error creating session: ' + error.message);\n      throw error;\n    }\n  }\n\n  (async () => {\n    // Limpiar el localStorage de valores de sesiones anteriores\n    localStorage.removeItem('jsPsych_jumpToTrial');\n    \n    // Esperar e inicializar Firebase\n    await waitForFirebase();\n    if (!window.firebase.apps.length) {\n      window.firebase.initializeApp(firebaseConfig);\n    }\n    const db = window.firebase.database();\n\n    participantNumber = await saveSession(trialSessionId);\n\n    if (typeof participantNumber !== \"number\" || isNaN(participantNumber)) {\n      alert(\"The participant number is not assigned. Please, wait.\");\n      throw new Error(\"participantNumber not assigned\");\n    }\n\n    // --- Configurar onDisconnect para finalizar sesión automáticamente ---\n    const sessionRef = db.ref('sessions/a4ee1f3a-af44-4a81-992e-2ca1d2b4734b/' + trialSessionId);\n    await sessionRef.set({\n      connected: true,\n      experimentID: 'a4ee1f3a-af44-4a81-992e-2ca1d2b4734b',\n      sessionId: trialSessionId,\n      startedAt: window.firebase.database.ServerValue.TIMESTAMP,\n      storage: 'drive'\n    });\n    \n    // Cuando se desconecte, marcar para que el backend finalice la sesión\n    // Incluir needsFinalization para que se procesen los datos en caso de desconexión\n    sessionRef.onDisconnect().update({\n      connected: false,\n      needsFinalization: true,\n      disconnectedAt: window.firebase.database.ServerValue.TIMESTAMP,\n      storage: 'drive'\n    });\n\n    // --- Branching logic functions (outside initJsPsych for timeline access) ---\n    window.nextTrialId = null;\n    window.skipRemaining = false;\n    window.branchingActive = false;\n    window.branchCustomParameters = null; // Store custom parameters for the next trial\n\n    const evaluateCondition = (trialData, condition) => {\n      // All rules in a condition must be true (AND logic)\n      return condition.rules.every(rule => {\n        const propValue = trialData[rule.prop];\n        const compareValue = rule.value;\n        \n        // Convert values for comparison\n        const numPropValue = parseFloat(propValue);\n        const numCompareValue = parseFloat(compareValue);\n        const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);\n        \n        switch (rule.op) {\n          case '==':\n            return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;\n          case '!=':\n            return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;\n          case '>':\n            return isNumeric && numPropValue > numCompareValue;\n          case '<':\n            return isNumeric && numPropValue < numCompareValue;\n          case '>=':\n            return isNumeric && numPropValue >= numCompareValue;\n          case '<=':\n            return isNumeric && numPropValue <= numCompareValue;\n          default:\n            return false;\n        }\n      });\n    };\n    \n    const getNextTrialId = (lastTrialData) => {\n      if (!lastTrialData || !lastTrialData.trials || !lastTrialData.trials[0]) {\n        return null;\n      }\n      \n      const trial = lastTrialData.trials[0];\n      \n      // Check if trial/loop has branches\n      if (!Array.isArray(trial.branches) || trial.branches.length === 0) {\n        return null;\n      }\n      \n      // Check if there are conditions to evaluate\n      const hasBranchConditions = Array.isArray(trial.branchConditions) && trial.branchConditions.length > 0;\n      \n      // Check if any condition has customParameters\n      const hasCustomParameters = hasBranchConditions && \n        trial.branchConditions.flat().some(condition => \n          condition && condition.customParameters && \n          Object.keys(condition.customParameters).length > 0\n        );\n      \n      // If there are no conditions AND no custom parameters, auto-branch to first branch\n      if (!hasBranchConditions && !hasCustomParameters) {\n        console.log('No conditions or custom parameters defined, auto-branching to first branch:', trial.branches[0]);\n        return trial.branches[0];\n      }\n      \n      // If there are no conditions but there ARE custom parameters, we can't auto-branch\n      // We need to evaluate conditions to know which customParameters to use\n      if (!hasBranchConditions && hasCustomParameters) {\n        console.log('Custom parameters exist but no conditions, cannot auto-branch');\n        return null;\n      }\n      \n      // If there ARE conditions, evaluate them (regardless of how many branches there are)\n      // branchConditions is an array of arrays, flatten it first\n      const conditions = trial.branchConditions.flat();\n      \n      // Evaluate each condition (OR logic between conditions)\n      for (const condition of conditions) {\n        if (!condition || !condition.rules) {\n          console.warn('Invalid condition structure:', condition);\n          continue;\n        }\n        \n        if (evaluateCondition(trial, condition)) {\n          console.log('Condition matched:', condition);\n          // Store custom parameters if they exist\n          if (condition.customParameters) {\n            window.branchCustomParameters = condition.customParameters;\n            console.log('Custom parameters for branch:', window.branchCustomParameters);\n          }\n          return condition.nextTrialId;\n        }\n      }\n      \n      // No condition matched - do NOT branch (conditions were defined but none matched)\n      console.log('No condition matched, NOT branching');\n      return null;\n    };\n\n    const jsPsych = initJsPsych({\n      display_element: document.getElementById('jspsych-container'),\n\n      on_trial_start: function(trial) {\n        const lastTrialData = jsPsych.data.get()\n        if (lastTrialData) {\n        trial.data.prev_response = lastTrialData.response;\n        }\n      },\n\n      \n\n      on_data_update: function (data) {\n\n        fetch(\"http://localhost:5001/test-e4cf9/us-central1/apidata\", {\n          method: \"POST\",\n          headers: { \"Content-Type\": \"application/json\", Accept: \"*/*\" },\n          body: JSON.stringify({\n            experimentID: \"a4ee1f3a-af44-4a81-992e-2ca1d2b4734b\",\n            sessionId: trialSessionId,\n            data: data,\n            storage: \"drive\",\n          }),\n        })\n        .then(res => {\n          if (!res.ok) {\n            return res.text().then(text => {\n              console.error('Error appending data:', text);\n            });\n          }\n          return res.json();\n        })\n        .then(result => {\n          if (result && result.success) {\n            console.log('Data appended to temporary storage');\n          }\n        })\n        .catch(error => {\n          console.error('Error in on_data_update:', error);\n        });\n\n        // Solo evaluar branching si el trial/loop tiene un trial_id o loop_id válido\n      if ((!data.trial_id || data.trial_id === undefined) && (!data.loop_id || data.loop_id === undefined)) {\n        return;\n      }\n      \n      const lastTrialData = jsPsych.data.getLastTrialData();\n      const trial = lastTrialData.trials ? lastTrialData.trials[0] : null;\n      \n      // Verificar si este trial/loop tiene branches\n      if (!trial || !trial.branches || trial.branches.length === 0) {\n        return; // No tiene branches, no hay nada que hacer\n      }\n      \n      // IMPORTANTE: Si el trial está dentro de un loop (isInLoop = true),\n      // NO activar el branching global. Los trials dentro de loops usan su propio\n      // sistema de branching con variables locales (loopNextTrialId, etc.)\n      if (trial.isInLoop === true) {\n        console.log('Trial inside loop detected, skipping global branching');\n        return;\n      }\n      \n      console.log('Trial/Loop data:', lastTrialData);\n      \n      const nextTrialId = getNextTrialId(lastTrialData);\n      console.log('Next trial/loop ID:', nextTrialId);\n      \n      if (nextTrialId) {\n        // Check if nextTrialId is \"FINISH_EXPERIMENT\"\n        if (nextTrialId === 'FINISH_EXPERIMENT') {\n          console.log('Finish experiment requested');\n          jsPsych.abortExperiment('Experiment finished by branching condition', {});\n          return;\n        }\n        \n        window.nextTrialId = nextTrialId;\n        window.skipRemaining = true;\n        window.branchingActive = true;\n        console.log('Branching activated: skip to trial/loop', nextTrialId);\n      }\n      },\n\n      on_finish: async function() {\n        \n        // Cancelar el onDisconnect para evitar conflictos\n        sessionRef.onDisconnect().cancel();\n\n        // Finalizar la sesión normalmente y marcar en Firebase que terminó correctamente\n        console.log('Experiment finished normally, sending data to Google Drive...');\n        \n        try {\n          \n          // Marcar en Firebase que terminó correctamente Y necesita finalización\n          await sessionRef.update({\n            connected: false,\n            finished: true,\n            needsFinalization: true,\n            finishedAt: window.firebase.database.ServerValue.TIMESTAMP\n          });\n          \n          // El backend procesará la finalización al detectar needsFinalization=true\n          console.log('Session marked for finalization in Firebase');\n        } catch (error) {\n          console.error('Error marking session as finished:', error);\n        }\n      },\n  // Uncomment to see the json results after finishing a session experiment\n  // jsPsych.data.displayData('csv');\n});\n\nconst timeline = [];\n\n// Global preload for all uploaded files from Timeline\n\nconst globalPreload = {\n  type: jsPsychPreload,\n  files: [\"uploads/bqkjlm-experiment/img/boat.png\",\"uploads/bqkjlm-experiment/img/boat2.png\",\"uploads/bqkjlm-experiment/img/cube.png\",\"uploads/bqkjlm-experiment/img/floor.png\",\"uploads/bqkjlm-experiment/img/obstacle.png\"]\n};\ntimeline.push(globalPreload);\n\n\n\n    const test_stimuli_New_Trial_2 = [{components: [{ type: \"ImageComponent\", coordinates: {\"x\":0.115234375,\"y\":-0.5703125}, width: \"50\", height: 300, stimulus: \"uploads/bqkjlm-experiment/img/boat.png\" }],\nresponse_components: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.298828125,\"y\":0.22395833333333334}, width: 200, height: 50, choices: \"button\", rotation: 0 }],\nstimuli_duration: undefined,\ntrial_duration: undefined,\nresponse_ends_trial: undefined,\nresponses: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.298828125,\"y\":0.22395833333333334}, width: 200, height: 50, choices: [\"hola\"], rotation: 0 }]},{components: [{ type: \"ImageComponent\", coordinates: {\"x\":0.115234375,\"y\":-0.5703125}, width: \"60\", height: 300, stimulus: \"uploads/bqkjlm-experiment/img/boat2.png\" }],\nresponse_components: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.298828125,\"y\":0.22395833333333334}, width: 200, height: 50, choices: \"button\", rotation: 0 }],\nstimuli_duration: undefined,\ntrial_duration: undefined,\nresponse_ends_trial: undefined,\nresponses: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.298828125,\"y\":0.22395833333333334}, width: 200, height: 50, choices: [\"como\"], rotation: 0 }]},{components: [{ type: \"ImageComponent\", coordinates: {\"x\":0.115234375,\"y\":-0.5703125}, width: \"70\", height: 300, stimulus: \"uploads/bqkjlm-experiment/img/cube.png\" }],\nresponse_components: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.298828125,\"y\":0.22395833333333334}, width: 200, height: 50, choices: \"button\", rotation: 0 }],\nstimuli_duration: undefined,\ntrial_duration: undefined,\nresponse_ends_trial: undefined,\nresponses: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.298828125,\"y\":0.22395833333333334}, width: 200, height: 50, choices: [\"est\"], rotation: 0 }]},{components: [{ type: \"ImageComponent\", coordinates: {\"x\":0.115234375,\"y\":-0.5703125}, width: \"50\", height: 300, stimulus: \"uploads/bqkjlm-experiment/img/floor.png\" }],\nresponse_components: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.298828125,\"y\":0.22395833333333334}, width: 200, height: 50, choices: \"button\", rotation: 0 }],\nstimuli_duration: undefined,\ntrial_duration: undefined,\nresponse_ends_trial: undefined,\nresponses: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.298828125,\"y\":0.22395833333333334}, width: 200, height: 50, choices: [\"as\"], rotation: 0 }]},{components: [{ type: \"ImageComponent\", coordinates: {\"x\":0.115234375,\"y\":-0.5703125}, width: \"40\", height: 300, stimulus: \"uploads/bqkjlm-experiment/img/obstacle.png\" }],\nresponse_components: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.298828125,\"y\":0.22395833333333334}, width: 200, height: 50, choices: \"button\", rotation: 0 }],\nstimuli_duration: undefined,\ntrial_duration: undefined,\nresponse_ends_trial: undefined,\nresponses: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.298828125,\"y\":0.22395833333333334}, width: 200, height: 50, choices: [\"?\"], rotation: 0 }]}];\n    const New_Trial_2_timeline = {\n    type: DynamicPlugin, components: jsPsych.timelineVariable(\"components\"),\nresponse_components: jsPsych.timelineVariable(\"response_components\"),\nstimuli_duration: jsPsych.timelineVariable(\"stimuli_duration\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial\"),\n      data: {\n        stimulus: \"stimulus\",\nresponse: \"response\",\nrt: \"rt\",\n        trial_id: 1763704862399,\n        \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        console.log('Applying custom parameters to trial:', window.branchCustomParameters);\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Handle different parameter sources\n            if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n              // For typed values, use them directly\n              trial[key] = param.value;\n              console.log(`Set trial.${key} = ${param.value}`);\n            } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n              // For CSV values, param.value contains the column name, get the actual value from trial\n              trial[key] = trial[param.value];\n              console.log(`Set trial.${key} = ${trial[param.value]} (from CSV column: ${param.value})`);\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches ni repeat conditions, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },\n    };\n    const New_Trial_2_procedure = {\n    timeline: \n    [New_Trial_2_timeline],\n    timeline_variables: test_stimuli_New_Trial_2,\n    conditional_function: function() {\n      const currentId = 1763704862399;\n      \n      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n      if (jumpToTrial) {\n        if (String(currentId) === String(jumpToTrial)) {\n          // Encontramos el trial objetivo para repeat/jump\n          console.log('Repeat/jump: Found target trial', currentId);\n          localStorage.removeItem('jsPsych_jumpToTrial');\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('Repeat/jump: Skipping trial', currentId);\n        return false;\n      }\n      \n      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(New_Trial_2_procedure);\n  \n\njsPsych.run(timeline);\n\n})();\n"
+      },
+      "isDevMode": false,
+      "createdAt": "2025-11-20T21:04:16.574Z",
+      "updatedAt": "2025-11-21T06:09:24.591Z"
+    }
+  ],
   "pluginConfigs": [],
-  "sessionResults": []
+  "sessionResults": [
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "85fa47d7-f5e5-471c-9897-20d978c8bb49",
+      "createdAt": "2025-11-20T23:55:38.039Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "21b2f0e4-5cf5-47b2-a98b-ac7fe82859b5",
+      "createdAt": "2025-11-20T23:55:50.228Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 0
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "95801d5d-7b9b-4d58-b77c-74e48049cfc2",
+      "createdAt": "2025-11-20T23:57:10.357Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 0
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": "image cord"
+            },
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": {
+                "x": -0.08984375,
+                "y": -0.4869791666666667
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 1027
+            }
+          },
+          "rt": 1028,
+          "trial_id": 1763681018889,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1029
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": "image cord"
+            },
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": {
+                "x": -0.08984375,
+                "y": -0.4869791666666667
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 244
+            }
+          },
+          "rt": 244,
+          "trial_id": 1763681018889,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1274
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": "image cord"
+            },
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": {
+                "x": -0.08984375,
+                "y": -0.4869791666666667
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 349
+            }
+          },
+          "rt": 349,
+          "trial_id": 1763681018889,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 3,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1624
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": "image cord"
+            },
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": {
+                "x": -0.08984375,
+                "y": -0.4869791666666667
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 164
+            }
+          },
+          "rt": 164,
+          "trial_id": 1763681018889,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 4,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1789
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": "image cord"
+            },
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": {
+                "x": -0.08984375,
+                "y": -0.4869791666666667
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 232
+            }
+          },
+          "rt": 233,
+          "trial_id": 1763681018889,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 5,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2023
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/boat.png",
+          "response": "j",
+          "rt": 675,
+          "trial_id": 1763683012774,
+          "trial_type": "image-keyboard-response",
+          "trial_index": 6,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2701
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/boat2.png",
+          "response": "j",
+          "rt": 241,
+          "trial_id": 1763683012774,
+          "trial_type": "image-keyboard-response",
+          "trial_index": 7,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2943
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/cube.png",
+          "response": "j",
+          "rt": 281,
+          "trial_id": 1763683012774,
+          "trial_type": "image-keyboard-response",
+          "trial_index": 8,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 3225
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/floor.png",
+          "response": "j",
+          "rt": 265,
+          "trial_id": 1763683012774,
+          "trial_type": "image-keyboard-response",
+          "trial_index": 9,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 3491
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/obstacle.png",
+          "response": "j",
+          "rt": 604,
+          "trial_id": 1763683012774,
+          "trial_type": "image-keyboard-response",
+          "trial_index": 10,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 4097
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "77850f2f-8f2b-4bc7-b44b-03a0156e094b",
+      "createdAt": "2025-11-20T23:57:27.831Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 0
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": "image cord"
+            },
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": {
+                "x": -0.08984375,
+                "y": -0.4869791666666667
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 1331
+            }
+          },
+          "rt": 1332,
+          "trial_id": 1763681018889,
+          "branches": [
+            1763683012774
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1333
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": "image cord"
+            },
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": {
+                "x": -0.08984375,
+                "y": -0.4869791666666667
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 202
+            }
+          },
+          "rt": 203,
+          "trial_id": 1763681018889,
+          "branches": [
+            1763683012774
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1548
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": "image cord"
+            },
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": {
+                "x": -0.08984375,
+                "y": -0.4869791666666667
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 380
+            }
+          },
+          "rt": 381,
+          "trial_id": 1763681018889,
+          "branches": [
+            1763683012774
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "DynamicPlugin",
+          "trial_index": 3,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1931
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": "image cord"
+            },
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": {
+                "x": -0.08984375,
+                "y": -0.4869791666666667
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 581
+            }
+          },
+          "rt": 582,
+          "trial_id": 1763681018889,
+          "branches": [
+            1763683012774
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "DynamicPlugin",
+          "trial_index": 4,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2515
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": "image cord"
+            },
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": {
+                "x": -0.08984375,
+                "y": -0.4869791666666667
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 480
+            }
+          },
+          "rt": 481,
+          "trial_id": 1763681018889,
+          "branches": [
+            1763683012774
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "DynamicPlugin",
+          "trial_index": 5,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2998
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "e84c8991-e391-4ee9-839e-66fb5f296ed1",
+      "createdAt": "2025-11-20T23:57:44.785Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "0b8befb1-50f4-4241-9e8f-7032bd516dd7",
+      "createdAt": "2025-11-20T23:57:52.664Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "1b32e8d2-6cfb-4895-acad-32dfc2beda34",
+      "createdAt": "2025-11-20T23:59:39.536Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "e95d21b4-aeba-4eb7-a3d9-addaebff28ba",
+      "createdAt": "2025-11-20T23:59:49.343Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 0
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "8b026411-1a35-4623-87f6-ee2e9729d700",
+      "createdAt": "2025-11-20T23:59:59.093Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 0
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "6a50cb20-de82-40d8-8cdb-49f4eb570214",
+      "createdAt": "2025-11-21T00:05:27.924Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "269b9696-b8c8-48fe-b9c8-409331853930",
+      "createdAt": "2025-11-21T00:06:49.121Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 0
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/boat.png",
+          "response": "n",
+          "rt": 506,
+          "trial_id": 1763683012774,
+          "trial_type": "image-keyboard-response",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 507
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/boat2.png",
+          "response": "n",
+          "rt": 255,
+          "trial_id": 1763683012774,
+          "trial_type": "image-keyboard-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 764
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/cube.png",
+          "response": "n",
+          "rt": 207,
+          "trial_id": 1763683012774,
+          "trial_type": "image-keyboard-response",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 972
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/floor.png",
+          "response": "n",
+          "rt": 194,
+          "trial_id": 1763683012774,
+          "trial_type": "image-keyboard-response",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1168
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/obstacle.png",
+          "response": "n",
+          "rt": 150,
+          "trial_id": 1763683012774,
+          "trial_type": "image-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1320
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "4e8aa18e-9011-4e53-a5db-dd51ab67095f",
+      "createdAt": "2025-11-21T00:06:58.559Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 0
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/boat.png",
+          "response": "d",
+          "rt": 1908,
+          "trial_id": 1763683012774,
+          "trial_type": "image-keyboard-response",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1909
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/boat2.png",
+          "response": "d",
+          "rt": 235,
+          "trial_id": 1763683012774,
+          "trial_type": "image-keyboard-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2148
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/cube.png",
+          "response": "d",
+          "rt": 368,
+          "trial_id": 1763683012774,
+          "trial_type": "image-keyboard-response",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2518
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/floor.png",
+          "response": "d",
+          "rt": 362,
+          "trial_id": 1763683012774,
+          "trial_type": "image-keyboard-response",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2882
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/obstacle.png",
+          "response": "d",
+          "rt": 393,
+          "trial_id": 1763683012774,
+          "trial_type": "image-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 3277
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "388183e6-8426-4e6d-a171-22ddc4d87b54",
+      "createdAt": "2025-11-21T00:23:28.396Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1
+        },
+        {
+          "stimulus": [],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 1,
+              "rt": 4158
+            },
+            "response_1": {
+              "type": "InputResponseComponent",
+              "response": [
+                "k n kn kn kn"
+              ],
+              "rt": 4159
+            }
+          },
+          "rt": 4160,
+          "trial_id": 1763683012774,
+          "branches": [
+            1763683588131
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 4162
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "b6a1a683-1f76-43ad-ab4c-066abf2d6d5a",
+      "createdAt": "2025-11-21T00:24:27.762Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 0
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_5c8d9c5f-0c8e-4650-becf-c622a197e3e3",
+      "createdAt": "2025-11-21T00:25:30.209Z",
+      "data": [
+        {
+          "rt": 682,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 684
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_e9bf5bb8-5d36-4be2-bd28-966deeabff95",
+      "createdAt": "2025-11-21T00:25:36.583Z",
+      "data": [
+        {
+          "rt": 646,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 647
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_ba7788d0-740a-4811-ad69-ec22648f192d",
+      "createdAt": "2025-11-21T00:25:48.096Z",
+      "data": []
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_02553cdc-a32c-4220-8071-3f7fae39e26c",
+      "createdAt": "2025-11-21T00:25:49.338Z",
+      "data": []
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_3dd65d01-2f95-4899-bf43-049bbfd3558d",
+      "createdAt": "2025-11-21T00:25:50.290Z",
+      "data": []
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_4371ce45-9120-43e2-be27-d6184289335e",
+      "createdAt": "2025-11-21T00:25:51.568Z",
+      "data": [
+        {
+          "rt": 1128,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1129
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "image",
+              "coordinates": {
+                "x": -0.005859375,
+                "y": -0.5052083333333334
+              }
+            },
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat.png",
+              "coordinates": {
+                "x": 0.01171875,
+                "y": -0.4869791666666667
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 1315
+            }
+          },
+          "rt": 1316,
+          "trial_id": 1763683588131,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2447
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 1_result_8771090e-87cb-476e-b0a3-529339112956",
+      "createdAt": "2025-11-21T00:29:22.531Z",
+      "data": [
+        {
+          "rt": 551,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 552
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 1_result_5702700d-8b8a-4f42-8532-c672692031de",
+      "createdAt": "2025-11-21T00:29:36.267Z",
+      "data": [
+        {
+          "rt": 556,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 557
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 1_result_91eb4f74-e959-4f02-90c1-333a250d90ed",
+      "createdAt": "2025-11-21T00:29:43.792Z",
+      "data": [
+        {
+          "rt": 485,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 486
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 1_result_d1dc3cdf-2d7e-4820-a9cb-efc1f11af657",
+      "createdAt": "2025-11-21T00:29:51.122Z",
+      "data": [
+        {
+          "rt": 569,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 569
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "6fa6c6fa-7012-4547-a2da-5a415a925e64",
+      "createdAt": "2025-11-21T00:29:53.495Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 1_result_8ec14bf1-fc8b-4f8f-93b2-9728cca6e338",
+      "createdAt": "2025-11-21T00:30:48.021Z",
+      "data": [
+        {
+          "rt": 794,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 795
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "038d2806-c6af-4712-9d75-664c92608432",
+      "createdAt": "2025-11-21T03:59:32.612Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "9d207f22-876a-43e7-b7ef-b7f77562957a",
+      "createdAt": "2025-11-21T04:00:17.848Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "e1e73b21-16ef-4474-8042-a31e267c74b9",
+      "createdAt": "2025-11-21T04:24:49.834Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "26957b6f-6892-4129-912f-5da9a7fc3508",
+      "createdAt": "2025-11-21T04:25:17.964Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 0
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_9624968d-e74b-417c-a5ed-3462d0c4328b",
+      "createdAt": "2025-11-21T04:37:40.313Z",
+      "data": [
+        {
+          "rt": 585,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 586
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_82cd7cd4-07de-4dc2-992a-faf1317ef8b3",
+      "createdAt": "2025-11-21T04:40:53.658Z",
+      "data": [
+        {
+          "rt": 1911,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1913
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "7f483b71-7d0f-4dff-9db0-e5c30dbe4bcb",
+      "createdAt": "2025-11-21T04:40:56.973Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "6ae9d8fe-c609-4d07-b21d-111feb1821f4",
+      "createdAt": "2025-11-21T04:49:17.039Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 0
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/boat.png",
+          "response": "n",
+          "rt": 629,
+          "trial_id": 1763700276253,
+          "trial_type": "image-keyboard-response",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 631
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/boat2.png",
+          "response": "n",
+          "rt": 248,
+          "trial_id": 1763700276253,
+          "trial_type": "image-keyboard-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 882
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/cube.png",
+          "response": "n",
+          "rt": 221,
+          "trial_id": 1763700276253,
+          "trial_type": "image-keyboard-response",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1105
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/floor.png",
+          "response": "n",
+          "rt": 215,
+          "trial_id": 1763700276253,
+          "trial_type": "image-keyboard-response",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1322
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 1_result_1ce5a7fb-f2e8-42d9-9d15-e52f738e304e",
+      "createdAt": "2025-11-21T04:49:45.445Z",
+      "data": [
+        {
+          "rt": 560,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 562
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_6498fb25-dd15-434d-b6e0-cb4b5e2b6f79",
+      "createdAt": "2025-11-21T04:49:48.382Z",
+      "data": []
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_3dd2a882-670f-407b-8d42-2d909cbae427",
+      "createdAt": "2025-11-21T04:49:49.113Z",
+      "data": [
+        {
+          "rt": 646,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 648
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 1_result_1f2cd8bb-324e-4fd5-961d-8047d9abbfa0",
+      "createdAt": "2025-11-21T04:55:13.092Z",
+      "data": [
+        {
+          "rt": 636,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 638
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 1_result_a9644a87-0c1a-42aa-b1b4-780224745f53",
+      "createdAt": "2025-11-21T04:55:41.240Z",
+      "data": [
+        {
+          "rt": 615,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 617
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 1_result_da47e057-8dcf-4873-8da0-757cdc167360",
+      "createdAt": "2025-11-21T04:56:37.009Z",
+      "data": [
+        {
+          "rt": 691,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 692
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "414c01a2-b94e-4c99-8334-9e44e2adf367",
+      "createdAt": "2025-11-21T04:57:14.667Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/boat.png",
+          "response": "b",
+          "rt": 1125,
+          "trial_id": 1763700276253,
+          "branches": [
+            1763700564697
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "image-keyboard-response",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1127
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/boat2.png",
+          "response": "b",
+          "rt": 244,
+          "trial_id": 1763700276253,
+          "branches": [
+            1763700564697
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "image-keyboard-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1383
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/cube.png",
+          "response": "b",
+          "rt": 203,
+          "trial_id": 1763700276253,
+          "branches": [
+            1763700564697
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "image-keyboard-response",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1588
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/floor.png",
+          "response": "b",
+          "rt": 158,
+          "trial_id": 1763700276253,
+          "branches": [
+            1763700564697
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "image-keyboard-response",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1749
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/obstacle.png",
+          "response": "b",
+          "rt": 153,
+          "trial_id": 1763700276253,
+          "branches": [
+            1763700564697
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "image-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1905
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 1_result_5d9ae5ca-c3fa-4dab-b616-4e56910dfb43",
+      "createdAt": "2025-11-21T04:57:48.773Z",
+      "data": [
+        {
+          "rt": 612,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 613
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 1_result_77ecc4e4-92ae-4852-9984-a1fffaedb7db",
+      "createdAt": "2025-11-21T04:59:42.364Z",
+      "data": [
+        {
+          "rt": 1439,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1441
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 1_result_e120f70f-b1ec-4092-a56c-486aed0cee9d",
+      "createdAt": "2025-11-21T05:01:21.585Z",
+      "data": [
+        {
+          "rt": 1240,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1241
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "3681ae86-908d-444c-9184-13a72878d528",
+      "createdAt": "2025-11-21T05:01:24.593Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/boat.png",
+          "response": "n",
+          "rt": 1031,
+          "trial_id": 1763700276253,
+          "branches": [
+            1763700564697
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "image-keyboard-response",
+          "trial_index": 1,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1034
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/boat2.png",
+          "response": "j",
+          "rt": 144,
+          "trial_id": 1763700276253,
+          "branches": [
+            1763700564697
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "image-keyboard-response",
+          "trial_index": 2,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1187
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/cube.png",
+          "response": "n",
+          "rt": 403,
+          "trial_id": 1763700276253,
+          "branches": [
+            1763700564697
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "image-keyboard-response",
+          "trial_index": 3,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1593
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/floor.png",
+          "response": "j",
+          "rt": 360,
+          "trial_id": 1763700276253,
+          "branches": [
+            1763700564697
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "image-keyboard-response",
+          "trial_index": 4,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1956
+        },
+        {
+          "stimulus": "uploads/bqkjlm-experiment/img/obstacle.png",
+          "response": "j",
+          "rt": 438,
+          "trial_id": 1763700276253,
+          "branches": [
+            1763700564697
+          ],
+          "branchConditions": [
+            null
+          ],
+          "trial_type": "image-keyboard-response",
+          "trial_index": 5,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2396
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_4c897f6f-8d76-4ec3-918d-3bf0dc64b7fe",
+      "createdAt": "2025-11-21T05:02:07.838Z",
+      "data": [
+        {
+          "rt": 987,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 989
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_7df8d34c-01a5-4dab-b99f-0015c5ee7e0b",
+      "createdAt": "2025-11-21T05:02:27.659Z",
+      "data": [
+        {
+          "rt": 539,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 540
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_36981a62-c365-4e97-8ae9-ddd52c5d399f",
+      "createdAt": "2025-11-21T05:02:38.322Z",
+      "data": []
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_16523325-8793-4e93-b695-44a28c0b666a",
+      "createdAt": "2025-11-21T05:02:44.745Z",
+      "data": [
+        {
+          "rt": 527,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 527
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "0ac52a36-4ca1-4f44-921c-5f8fe030c939",
+      "createdAt": "2025-11-21T05:06:07.047Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_6e338b9a-93e3-446a-8806-7f3bee116b43",
+      "createdAt": "2025-11-21T05:07:57.901Z",
+      "data": [
+        {
+          "rt": 603,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 605
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "de7aa64f-28c3-417b-a241-d2e546298f89",
+      "createdAt": "2025-11-21T05:08:01.700Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_3f085520-434e-4610-a866-444a12d06751",
+      "createdAt": "2025-11-21T05:10:19.234Z",
+      "data": []
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "d_result_bea904cf-6638-4d3c-84ae-5367aa2e41ca",
+      "createdAt": "2025-11-21T05:15:19.964Z",
+      "data": [
+        {
+          "rt": 541,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 543
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "d_result_66f47da8-4e2a-452b-9688-42a268f114d9",
+      "createdAt": "2025-11-21T05:15:22.068Z",
+      "data": [
+        {
+          "rt": 907,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 909
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "d_result_af13316a-b734-403b-b157-bcc8a9990295",
+      "createdAt": "2025-11-21T05:21:28.310Z",
+      "data": [
+        {
+          "rt": 542,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 543
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "d_result_8066cb7e-21ae-4ce3-a420-91296817ec17",
+      "createdAt": "2025-11-21T05:21:40.752Z",
+      "data": [
+        {
+          "rt": 650,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 652
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "d_result_bfd94853-2334-418f-a884-d584aad8e5c6",
+      "createdAt": "2025-11-21T05:21:53.453Z",
+      "data": [
+        {
+          "rt": 535,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 536
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "d_result_b6ceb63d-eaa7-47c8-ad8c-e9d0e8d29214",
+      "createdAt": "2025-11-21T05:21:58.708Z",
+      "data": [
+        {
+          "rt": 1396,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1397
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "28f995e1-bf21-48de-b6aa-43131893c80e",
+      "createdAt": "2025-11-21T05:24:16.159Z",
+      "data": [
+        {
+          "success": true,
+          "timeout": false,
+          "failed_images": [],
+          "failed_audio": [],
+          "failed_video": [],
+          "trial_type": "preload",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "d_result_755ead04-59df-405f-a3a6-48da469b702c",
+      "createdAt": "2025-11-21T05:28:22.954Z",
+      "data": [
+        {
+          "rt": 522,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 524
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "d_result_daf5a9f1-ac85-492b-adcf-ff1e723f6deb",
+      "createdAt": "2025-11-21T05:29:39.037Z",
+      "data": [
+        {
+          "rt": 591,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 592
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "d_result_a2bd9fb4-a538-4d0a-ac29-b3f535a20ad0",
+      "createdAt": "2025-11-21T05:31:28.352Z",
+      "data": []
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "d_result_76197aef-7a29-4982-9078-5cf5750e0d8b",
+      "createdAt": "2025-11-21T05:31:49.859Z",
+      "data": [
+        {
+          "rt": 553,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 554
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "d_result_1f5e958c-db9c-4f9c-897e-fc9b2ba6a019",
+      "createdAt": "2025-11-21T05:31:59.250Z",
+      "data": [
+        {
+          "rt": 479,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 480
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "d_result_bfdf1b94-fb6f-485a-a511-600fd21af38e",
+      "createdAt": "2025-11-21T05:32:59.447Z",
+      "data": [
+        {
+          "rt": 965,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 966
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_d900aa38-1aa6-42aa-82d9-1b9027902a84",
+      "createdAt": "2025-11-21T05:33:57.822Z",
+      "data": [
+        {
+          "rt": 569,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 570
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_e2ee865b-4569-4c97-bb79-6bc103baddb6",
+      "createdAt": "2025-11-21T05:34:36.054Z",
+      "data": [
+        {
+          "rt": 482,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 483
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_201596fb-e77b-43a9-8068-6e3113401a38",
+      "createdAt": "2025-11-21T05:35:07.102Z",
+      "data": [
+        {
+          "rt": 1530,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1531
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_2be02e58-8665-4327-946a-62f382ccefd9",
+      "createdAt": "2025-11-21T05:37:55.331Z",
+      "data": [
+        {
+          "rt": 2394,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2397
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat.png",
+              "coordinates": {
+                "x": -0.05859375,
+                "y": -0.3020833333333333
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 1,
+              "rt": 826
+            }
+          },
+          "rt": 828,
+          "trial_id": 1763703202013,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 3228
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat2.png",
+              "coordinates": {
+                "x": -0.05859375,
+                "y": -0.3020833333333333
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 1,
+              "rt": 697
+            }
+          },
+          "rt": 698,
+          "trial_id": 1763703202013,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 3927
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/cube.png",
+              "coordinates": {
+                "x": -0.05859375,
+                "y": -0.3020833333333333
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 2,
+              "rt": 499
+            }
+          },
+          "rt": 500,
+          "trial_id": 1763703202013,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 3,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 4429
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/floor.png",
+              "coordinates": {
+                "x": -0.05859375,
+                "y": -0.3020833333333333
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 446
+            }
+          },
+          "rt": 447,
+          "trial_id": 1763703202013,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 4,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 4878
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/obstacle.png",
+              "coordinates": {
+                "x": -0.05859375,
+                "y": -0.3020833333333333
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 1,
+              "rt": 462
+            }
+          },
+          "rt": 463,
+          "trial_id": 1763703202013,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 5,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 5344
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_5f54ac36-7cb7-45dc-8d58-46d05ce37ed6",
+      "createdAt": "2025-11-21T05:38:30.992Z",
+      "data": [
+        {
+          "rt": 795,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 796
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_b0104392-7b82-4c03-8b99-f185ebee121d",
+      "createdAt": "2025-11-21T05:38:42.902Z",
+      "data": [
+        {
+          "rt": 692,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 693
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat.png",
+              "coordinates": {
+                "x": -0.05859375,
+                "y": -0.3020833333333333
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 545
+            }
+          },
+          "rt": 546,
+          "trial_id": 1763703202013,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1241
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat2.png",
+              "coordinates": {
+                "x": -0.05859375,
+                "y": -0.3020833333333333
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 447
+            }
+          },
+          "rt": 447,
+          "trial_id": 1763703202013,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1690
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/cube.png",
+              "coordinates": {
+                "x": -0.05859375,
+                "y": -0.3020833333333333
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 448
+            }
+          },
+          "rt": 448,
+          "trial_id": 1763703202013,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 3,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2140
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/floor.png",
+              "coordinates": {
+                "x": -0.05859375,
+                "y": -0.3020833333333333
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 214
+            }
+          },
+          "rt": 215,
+          "trial_id": 1763703202013,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 4,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2357
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/obstacle.png",
+              "coordinates": {
+                "x": -0.05859375,
+                "y": -0.3020833333333333
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 164
+            }
+          },
+          "rt": 165,
+          "trial_id": 1763703202013,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 5,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2524
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_f634da92-9519-4101-9ada-b1506756c5a4",
+      "createdAt": "2025-11-21T05:38:58.737Z",
+      "data": [
+        {
+          "rt": 590,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 591
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat.png",
+              "coordinates": {
+                "x": -0.05859375,
+                "y": -0.3020833333333333
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 650
+            }
+          },
+          "rt": 651,
+          "trial_id": 1763703202013,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1243
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_22811065-8482-470f-ae3f-00dfa99d2bb7",
+      "createdAt": "2025-11-21T05:42:12.694Z",
+      "data": [
+        {
+          "rt": 574,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 576
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat.png",
+              "coordinates": {
+                "x": -0.05859375,
+                "y": -0.3020833333333333
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 563
+            }
+          },
+          "rt": 565,
+          "trial_id": 1763703202013,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1143
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat2.png",
+              "coordinates": {
+                "x": -0.05859375,
+                "y": -0.3020833333333333
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 596
+            }
+          },
+          "rt": 597,
+          "trial_id": 1763703202013,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1742
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/cube.png",
+              "coordinates": {
+                "x": -0.05859375,
+                "y": -0.3020833333333333
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 167
+            }
+          },
+          "rt": 168,
+          "trial_id": 1763703202013,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 3,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1910
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/floor.png",
+              "coordinates": {
+                "x": -0.05859375,
+                "y": -0.3020833333333333
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 248
+            }
+          },
+          "rt": 248,
+          "trial_id": 1763703202013,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 4,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2160
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_62b83eab-966e-483a-b011-cfa9f6f4d57b",
+      "createdAt": "2025-11-21T05:42:38.364Z",
+      "data": [
+        {
+          "rt": 712,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 713
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat.png",
+              "coordinates": {
+                "x": -0.05859375,
+                "y": -0.3020833333333333
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 462
+            }
+          },
+          "rt": 463,
+          "trial_id": 1763703202013,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1179
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat2.png",
+              "coordinates": {
+                "x": -0.05859375,
+                "y": -0.3020833333333333
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 449
+            }
+          },
+          "rt": 449,
+          "trial_id": 1763703202013,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1630
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/cube.png",
+              "coordinates": {
+                "x": -0.05859375,
+                "y": -0.3020833333333333
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 163
+            }
+          },
+          "rt": 163,
+          "trial_id": 1763703202013,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 3,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1794
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/floor.png",
+              "coordinates": {
+                "x": -0.05859375,
+                "y": -0.3020833333333333
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 150
+            }
+          },
+          "rt": 150,
+          "trial_id": 1763703202013,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 4,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1945
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_9732a4b9-27b7-41c1-b091-bc057734ba00",
+      "createdAt": "2025-11-21T05:42:49.007Z",
+      "data": [
+        {
+          "rt": 1077,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1078
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_0ed4f658-a30e-4a91-8f9b-371c74c2cb20",
+      "createdAt": "2025-11-21T05:47:12.797Z",
+      "data": [
+        {
+          "rt": 596,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 598
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_19efa6c2-8212-481b-b8ad-10ba76ffa4b1",
+      "createdAt": "2025-11-21T05:47:21.711Z",
+      "data": [
+        {
+          "rt": 1122,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1124
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_19e23128-22f5-4bc9-9aab-a48cfe483ff7",
+      "createdAt": "2025-11-21T05:50:04.701Z",
+      "data": []
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_ff258cdd-a87b-4dc0-b331-d09f6c0e475a",
+      "createdAt": "2025-11-21T05:50:11.162Z",
+      "data": [
+        {
+          "rt": 394,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 396
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_67b98504-bc94-460f-b7ad-36f67295642c",
+      "createdAt": "2025-11-21T05:50:32.704Z",
+      "data": [
+        {
+          "rt": 562,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 563
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_ca996963-1f58-46eb-92d4-a223f26d33cb",
+      "createdAt": "2025-11-21T05:50:39.514Z",
+      "data": [
+        {
+          "rt": 597,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 598
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_e25db7dc-9989-4b85-9a2e-971ae8a690d8",
+      "createdAt": "2025-11-21T05:50:48.974Z",
+      "data": [
+        {
+          "rt": 1466,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1468
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_e11f3bee-ad1c-466d-96a5-3091e108d7e8",
+      "createdAt": "2025-11-21T05:52:55.655Z",
+      "data": [
+        {
+          "rt": 538,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 539
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_f75b339a-e40a-4ab0-b1c8-4878d0a19d1a",
+      "createdAt": "2025-11-21T05:55:16.680Z",
+      "data": [
+        {
+          "rt": 504,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 505
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_a250f539-0053-4736-8330-42012bfd78c8",
+      "createdAt": "2025-11-21T05:55:25.849Z",
+      "data": [
+        {
+          "rt": 498,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 499
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_c39734ab-2497-4330-8bd6-ef3bf67f366e",
+      "createdAt": "2025-11-21T05:55:43.452Z",
+      "data": [
+        {
+          "rt": 992,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 994
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat.png",
+              "coordinates": {
+                "x": -0.130859375,
+                "y": -0.3828125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 1,
+              "rt": 646
+            }
+          },
+          "rt": 647,
+          "trial_id": 1763704489399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1644
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat2.png",
+              "coordinates": {
+                "x": -0.130859375,
+                "y": -0.3828125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 2,
+              "rt": 630
+            }
+          },
+          "rt": 631,
+          "trial_id": 1763704489399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2277
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/cube.png",
+              "coordinates": {
+                "x": -0.130859375,
+                "y": -0.3828125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 364
+            }
+          },
+          "rt": 365,
+          "trial_id": 1763704489399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 3,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2645
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/floor.png",
+              "coordinates": {
+                "x": -0.130859375,
+                "y": -0.3828125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 1,
+              "rt": 478
+            }
+          },
+          "rt": 479,
+          "trial_id": 1763704489399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 4,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 3127
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/obstacle.png",
+              "coordinates": {
+                "x": -0.130859375,
+                "y": -0.3828125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 2,
+              "rt": 379
+            }
+          },
+          "rt": 380,
+          "trial_id": 1763704489399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 5,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 3510
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_b8b743e9-261d-42bc-ac08-e8a1eed7d4f9",
+      "createdAt": "2025-11-21T05:55:55.075Z",
+      "data": [
+        {
+          "rt": 544,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 545
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_4b6a3ec7-5d6e-4bfd-b10d-687f73b3d401",
+      "createdAt": "2025-11-21T05:56:35.213Z",
+      "data": [
+        {
+          "rt": 575,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 577
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_64c76845-72a9-4eee-8da1-f13277d1ef2d",
+      "createdAt": "2025-11-21T05:57:30.379Z",
+      "data": [
+        {
+          "rt": 417,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 419
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_6ed97c5f-2683-4abf-a579-cc38f2d85cc6",
+      "createdAt": "2025-11-21T05:57:43.171Z",
+      "data": [
+        {
+          "rt": 420,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 422
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat.png",
+              "coordinates": {
+                "x": -0.130859375,
+                "y": -0.3828125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 599
+            }
+          },
+          "rt": 600,
+          "trial_id": 1763704489399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1023
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat2.png",
+              "coordinates": {
+                "x": -0.130859375,
+                "y": -0.3828125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 165
+            }
+          },
+          "rt": 165,
+          "trial_id": 1763704489399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1190
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/cube.png",
+              "coordinates": {
+                "x": -0.130859375,
+                "y": -0.3828125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 180
+            }
+          },
+          "rt": 180,
+          "trial_id": 1763704489399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 3,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1373
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/floor.png",
+              "coordinates": {
+                "x": -0.130859375,
+                "y": -0.3828125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 147
+            }
+          },
+          "rt": 147,
+          "trial_id": 1763704489399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 4,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1522
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_6fc073f7-4d91-4d52-a489-40501ce0e520",
+      "createdAt": "2025-11-21T05:57:49.799Z",
+      "data": [
+        {
+          "rt": 983,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 984
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_e0073dd1-fe19-4fcc-a3d1-2ded30cf84a7",
+      "createdAt": "2025-11-21T05:57:59.026Z",
+      "data": [
+        {
+          "rt": 532,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 533
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_9a0ee617-d950-4c53-af74-65bde3df8c1c",
+      "createdAt": "2025-11-21T05:58:53.869Z",
+      "data": [
+        {
+          "rt": 599,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 600
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat.png",
+              "coordinates": {
+                "x": -0.130859375,
+                "y": -0.3828125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 544
+            }
+          },
+          "rt": 545,
+          "trial_id": 1763704489399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1149
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_2f715c1d-d94b-44d8-9c4a-c7d6326b0cd6",
+      "createdAt": "2025-11-21T05:59:04.007Z",
+      "data": []
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_a143a8eb-7fef-4297-bec5-5952dd744163",
+      "createdAt": "2025-11-21T05:59:05.081Z",
+      "data": [
+        {
+          "rt": 556,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 557
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_7ce6a6ec-07ec-4499-ab3b-1bcec228d5a2",
+      "createdAt": "2025-11-21T05:59:52.458Z",
+      "data": [
+        {
+          "rt": 619,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 620
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial_result_6f276a4f-b88c-4e04-a493-b96dbe622fb8",
+      "createdAt": "2025-11-21T06:00:09.440Z",
+      "data": [
+        {
+          "rt": 912,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 913
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 1_result_67af6004-76c8-4c10-8652-07685bc80b02",
+      "createdAt": "2025-11-21T06:01:34.269Z",
+      "data": [
+        {
+          "rt": 609,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 610
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 1_result_154e0029-713e-400a-b361-d2a6e1356b80",
+      "createdAt": "2025-11-21T06:02:07.125Z",
+      "data": [
+        {
+          "rt": 496,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 497
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 1_result_af3ccdc9-dfe2-4291-9a37-937b8c30eb90",
+      "createdAt": "2025-11-21T06:04:26.041Z",
+      "data": [
+        {
+          "rt": 580,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 581
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 1_result_fda5def9-b76a-4901-8386-24a38a12cf28",
+      "createdAt": "2025-11-21T06:04:31.818Z",
+      "data": [
+        {
+          "rt": 643,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 644
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 1_result_56dc49f2-ec58-4ec3-a64d-ca3b56d506e1",
+      "createdAt": "2025-11-21T06:04:41.793Z",
+      "data": [
+        {
+          "rt": 585,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 586
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat.png",
+              "coordinates": {
+                "x": 0.115234375,
+                "y": -0.5703125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 765
+            }
+          },
+          "rt": 766,
+          "trial_id": 1763704862399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1354
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat2.png",
+              "coordinates": {
+                "x": 0.115234375,
+                "y": -0.5703125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 496
+            }
+          },
+          "rt": 497,
+          "trial_id": 1763704862399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1853
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/cube.png",
+              "coordinates": {
+                "x": 0.115234375,
+                "y": -0.5703125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 549
+            }
+          },
+          "rt": 550,
+          "trial_id": 1763704862399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 3,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2404
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/floor.png",
+              "coordinates": {
+                "x": 0.115234375,
+                "y": -0.5703125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 496
+            }
+          },
+          "rt": 497,
+          "trial_id": 1763704862399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 4,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2903
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/obstacle.png",
+              "coordinates": {
+                "x": 0.115234375,
+                "y": -0.5703125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 531
+            }
+          },
+          "rt": 532,
+          "trial_id": 1763704862399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 5,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 3437
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 1_result_8fa09987-3171-4237-9690-655b9a3cac22",
+      "createdAt": "2025-11-21T06:04:58.399Z",
+      "data": [
+        {
+          "rt": 486,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 488
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 1_result_598b0f84-e286-4fef-bfff-5013e518108f",
+      "createdAt": "2025-11-21T06:08:08.016Z",
+      "data": [
+        {
+          "rt": 649,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 651
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 1_result_018e5050-e4de-41da-9ab1-f45083917508",
+      "createdAt": "2025-11-21T06:08:24.688Z",
+      "data": [
+        {
+          "rt": 1510,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1511
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 2_result_87b298e3-8ad9-4095-bc31-88dcfd00b5fd",
+      "createdAt": "2025-11-21T06:09:19.293Z",
+      "data": []
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 2_result_ac9996d6-0bca-409e-a463-4ed577ece0a2",
+      "createdAt": "2025-11-21T06:09:20.331Z",
+      "data": [
+        {
+          "rt": 471,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 472
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 2_result_ed28743f-e5e3-4550-b506-051b0b04c5fc",
+      "createdAt": "2025-11-21T06:11:41.495Z",
+      "data": [
+        {
+          "rt": 466,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 467
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat.png",
+              "coordinates": {
+                "x": 0.115234375,
+                "y": -0.5703125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 729
+            }
+          },
+          "rt": 730,
+          "trial_id": 1763704862399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1200
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat2.png",
+              "coordinates": {
+                "x": 0.115234375,
+                "y": -0.5703125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 448
+            }
+          },
+          "rt": 449,
+          "trial_id": 1763704862399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1651
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/cube.png",
+              "coordinates": {
+                "x": 0.115234375,
+                "y": -0.5703125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 430
+            }
+          },
+          "rt": 430,
+          "trial_id": 1763704862399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 3,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2083
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/floor.png",
+              "coordinates": {
+                "x": 0.115234375,
+                "y": -0.5703125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 464
+            }
+          },
+          "rt": 465,
+          "trial_id": 1763704862399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 4,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2549
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/obstacle.png",
+              "coordinates": {
+                "x": 0.115234375,
+                "y": -0.5703125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 449
+            }
+          },
+          "rt": 450,
+          "trial_id": 1763704862399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 5,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 3002
+        }
+      ]
+    },
+    {
+      "experimentID": "a4ee1f3a-af44-4a81-992e-2ca1d2b4734b",
+      "sessionId": "New Trial 2_result_0a72dcd7-8cd4-40bd-a8bb-b054ab1397ac",
+      "createdAt": "2025-11-21T06:11:49.308Z",
+      "data": [
+        {
+          "rt": 629,
+          "stimulus": "Trial Preview",
+          "response": 0,
+          "trial_type": "html-button-response",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 631
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat.png",
+              "coordinates": {
+                "x": 0.115234375,
+                "y": -0.5703125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 613
+            }
+          },
+          "rt": 614,
+          "trial_id": 1763704862399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1248
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/boat2.png",
+              "coordinates": {
+                "x": 0.115234375,
+                "y": -0.5703125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 328
+            }
+          },
+          "rt": 328,
+          "trial_id": 1763704862399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1578
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/cube.png",
+              "coordinates": {
+                "x": 0.115234375,
+                "y": -0.5703125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 364
+            }
+          },
+          "rt": 364,
+          "trial_id": 1763704862399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 3,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 1945
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/floor.png",
+              "coordinates": {
+                "x": 0.115234375,
+                "y": -0.5703125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 447
+            }
+          },
+          "rt": 448,
+          "trial_id": 1763704862399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 4,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2395
+        },
+        {
+          "stimulus": [
+            {
+              "type": "ImageComponent",
+              "stimulus": "uploads/bqkjlm-experiment/img/obstacle.png",
+              "coordinates": {
+                "x": 0.115234375,
+                "y": -0.5703125
+              }
+            }
+          ],
+          "response": {
+            "response_0": {
+              "type": "ButtonResponseComponent",
+              "response": 0,
+              "rt": 564
+            }
+          },
+          "rt": 565,
+          "trial_id": 1763704862399,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 5,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2962
+        }
+      ]
+    }
+  ]
 }

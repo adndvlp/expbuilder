@@ -155,6 +155,7 @@ function ComponentSidebar({
     { type: "ButtonResponseComponent", label: "Button" },
     { type: "KeyboardResponseComponent", label: "Keyboard" },
     { type: "SliderResponseComponent", label: "Slider" },
+    { type: "InputResponseComponent", label: "Input" },
     { type: "SurveyTextComponent", label: "Survey Text" },
     { type: "SurveyComponent", label: "SurveyJS" },
   ];
@@ -527,6 +528,7 @@ function ComponentSidebar({
                         "ButtonResponseComponent",
                         "KeyboardResponseComponent",
                         "SliderResponseComponent",
+                        "InputResponseComponent",
                       ].includes(type)
                     )
                     .map(({ type, label }) => (

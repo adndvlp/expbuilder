@@ -1,0 +1,37 @@
+{
+  "name": "InputResponseComponent",
+  "version": "2.2.0",
+  "parameters": {
+    "text": {
+      "type": "html_string"
+    },
+    "check_answers": {
+      "type": "boolean",
+      "default": false
+    },
+    "allow_blanks": {
+      "type": "boolean",
+      "default": true
+    },
+    "case_sensitivity": {
+      "type": "boolean",
+      "default": true
+    },
+    "autofocus": {
+      "type": "boolean",
+      "default": true
+    },
+    "coordinates": {
+      "type": "object",
+      "default": "{ x: 0, y: 0 }"
+    }
+  },
+  "data": {
+    "response": {
+      "type": "string_array"
+    },
+    "rt": {
+      "type": "number"
+    }
+  }
+}

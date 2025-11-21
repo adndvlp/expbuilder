@@ -6,6 +6,7 @@ export type ComponentType =
   | "ButtonResponseComponent"
   | "KeyboardResponseComponent"
   | "SliderResponseComponent"
+  | "InputResponseComponent"
   | "SketchpadComponent"
   | "SurveyTextComponent"
   | "SurveyComponent";

@@ -80,26 +80,63 @@ export function useTrialCode({
   };
 
   const mappedJson = (() => {
+    // Helper para mapear nombres de archivos a URLs
+    const mapFileToUrl = (value: any): any => {
+      if (!value) return value;
+
+      // Si es un array, procesar cada elemento
+      if (Array.isArray(value)) {
+        return value.map((v) => mapFileToUrl(v));
+      }
+
+      // Si es un string que no es URL, buscar en uploadedFiles
+      if (
+        typeof value === "string" &&
+        value.trim() &&
+        !/^https?:\/\//.test(value)
+      ) {
+        const found = uploadedFiles.find(
+          (f) => f.name && (f.name === value || f.name.endsWith(value))
+        );
+        return found && found.url ? found.url : value;
+      }
+
+      return value;
+    };
+
     const mapRow = (row?: Record<string, any>) => {
       const result: Record<string, any> = {};
 
       // Lógica especial para DynamicPlugin
-      if (pluginName === "DynamicPlugin") {
+      if (pluginName === "plugin-dynamic") {
         // Para DynamicPlugin, extraer components y responses desde columnMapping
-        const componentsValue = getColumnValue(
-          columnMapping["components"],
+        // Cuando hay CSV y el source es "typed", necesitamos replicar los valores typed en todas las filas
+        const componentsMapping = columnMapping["components"];
+        const responsesMapping = columnMapping["response_components"]; // ¡Corregido! Era "responses" pero el key correcto es "response_components"
+
+        // Obtener valores base (typed o csv)
+        let componentsValue = getColumnValue(
+          componentsMapping,
           row,
           undefined,
           "components"
         );
-        const responsesValue = getColumnValue(
-          columnMapping["responses"],
+        let responsesValue = getColumnValue(
+          responsesMapping,
           row,
           undefined,
-          "responses"
+          "response_components"
         );
 
-        // Helper para procesar componentes - solo remover valores undefined/null
+        // Si hay CSV pero el mapping es typed, usar directamente el valor typed
+        if (row && componentsMapping?.source === "typed") {
+          componentsValue = componentsMapping.value;
+        }
+        if (row && responsesMapping?.source === "typed") {
+          responsesValue = responsesMapping.value;
+        }
+
+        // Helper para procesar componentes - remover valores undefined/null y mapear archivos
         const processComponentFunctions = (components: any[]) => {
           if (!Array.isArray(components)) return components;
 
@@ -119,6 +156,127 @@ export function useTrialCode({
               // Si es función o string, dejarla como está - stringifyWithFunctions la manejará
             }
 
+            // Si el componente tiene metadata de configuración, usarla para determinar qué resolver
+            const metadata = processedComp.__configMetadata || {};
+
+            // Primero, resolver TODAS las propiedades si hay CSV
+            // Si el valor es un nombre de columna del CSV, reemplazarlo con el valor de esa columna
+            if (row) {
+              Object.keys(processedComp).forEach((prop) => {
+                // Ignorar metadata y propiedades estructurales (pero NO width!)
+                if (
+                  prop === "__configMetadata" ||
+                  prop === "type" ||
+                  prop === "coordinates" ||
+                  prop === "height" ||
+                  prop === "rotation"
+                ) {
+                  return;
+                }
+
+                const value = processedComp[prop];
+                const paramMetadata = metadata[prop];
+
+                // Si hay metadata y el source es csv, resolver la columna
+                if (paramMetadata && paramMetadata.source === "csv") {
+                  if (Array.isArray(value)) {
+                    // Si el valor es un array, mapear cada elemento
+                    const resolved = value.map((item) => {
+                      if (typeof item === "string" && row[item] !== undefined) {
+                        return row[item];
+                      }
+                      return item;
+                    });
+                    processedComp[prop] = resolved;
+                  } else if (
+                    typeof value === "string" &&
+                    row[value] !== undefined
+                  ) {
+                    // Si el valor es string y existe como columna en el CSV, resolverlo
+                    // Para choices, mantenerlo como array (requerido por jsPsych)
+                    const resolvedValue = row[value];
+                    if (prop === "choices") {
+                      processedComp[prop] = [resolvedValue];
+                    } else {
+                      processedComp[prop] = resolvedValue;
+                    }
+                  } else if (typeof value === "string") {
+                    // Si el valor es string pero no existe en row
+                    console.warn(
+                      `CSV source for ${prop} but column "${value}" not found in row`
+                    );
+                    if (prop === "choices") {
+                      processedComp[prop] = [value];
+                    }
+                  }
+                }
+                // Si no hay metadata, usar la lógica heurística anterior
+                else if (!paramMetadata) {
+                  // Resolver strings directos que son nombres de columnas
+                  if (typeof value === "string" && row[value] !== undefined) {
+                    processedComp[prop] = row[value];
+                  }
+                  // Resolver arrays que contienen nombres de columnas
+                  else if (Array.isArray(value)) {
+                    processedComp[prop] = value.map((item) => {
+                      // Si el item es un string que corresponde a una columna, resolverlo
+                      if (typeof item === "string" && row[item] !== undefined) {
+                        return row[item];
+                      }
+                      return item;
+                    });
+                  }
+                }
+                // Si source es "typed" pero el valor parece ser un nombre de columna, resolverlo
+                else if (paramMetadata.source === "typed") {
+                  // Si el valor es un string y existe como columna en el CSV, probablemente sea un mapeo CSV
+                  if (typeof value === "string" && row[value] !== undefined) {
+                    // Verificar si este parámetro fue marcado como CSV en algún momento
+                    // (esto puede pasar si el usuario asignó una columna pero se guardó como typed)
+                    processedComp[prop] = row[value];
+                  }
+                }
+              });
+            }
+
+            // SIEMPRE eliminar la metadata del objeto final (independientemente de si hay row o no)
+            if (processedComp.__configMetadata) {
+              delete processedComp.__configMetadata;
+            }
+
+            // Luego, mapear archivos multimedia en componentes (stimulus, src, etc.)
+            // IMPORTANTE: Esto debe ejecutarse DESPUÉS de resolver columnas CSV
+            // Detectar propiedades que pueden contener rutas de archivos
+            const mediaProperties = [
+              "stimulus",
+              "src",
+              "source",
+              "audio",
+              "video",
+              "image",
+            ];
+
+            if (uploadedFiles.length > 0) {
+              mediaProperties.forEach((prop) => {
+                if (prop in processedComp) {
+                  const value = processedComp[prop];
+                  const mappedValue = mapFileToUrl(value);
+
+                  // VideoComponent requiere que stimulus sea un array
+                  // Si el componente es VideoComponent y stimulus es string, convertir a array
+                  if (
+                    comp.type === "VideoComponent" &&
+                    prop === "stimulus" &&
+                    typeof mappedValue === "string"
+                  ) {
+                    processedComp[prop] = [mappedValue];
+                  } else {
+                    processedComp[prop] = mappedValue;
+                  }
+                }
+              });
+            }
+
             return processedComp;
           });
         };
@@ -136,6 +294,65 @@ export function useTrialCode({
         result[prefixedResponses] = processComponentFunctions(
           responsesValue || []
         );
+
+        // Procesar response_components (also needs component processing)
+        const responseComponentsMapping = columnMapping["response_components"];
+        if (responseComponentsMapping) {
+          const prefixedResponseComponents = isInLoop
+            ? `response_components_${trialNameSanitized}`
+            : "response_components";
+
+          // Get the raw value
+          let responseComponentsValue;
+          if (row && responseComponentsMapping.source === "typed") {
+            responseComponentsValue = responseComponentsMapping.value;
+          } else {
+            responseComponentsValue = getColumnValue(
+              responseComponentsMapping,
+              row,
+              undefined,
+              "response_components"
+            );
+          }
+
+          // Process through processComponentFunctions if it's an array of components
+          if (Array.isArray(responseComponentsValue)) {
+            result[prefixedResponseComponents] = processComponentFunctions(
+              responseComponentsValue
+            );
+          } else {
+            result[prefixedResponseComponents] = responseComponentsValue;
+          }
+        }
+
+        // Procesar otros parámetros del DynamicPlugin (excluding response_components)
+        const additionalDynamicParams = [
+          "stimuli_duration",
+          "trial_duration",
+          "response_ends_trial",
+        ];
+
+        additionalDynamicParams.forEach((paramKey) => {
+          const paramMapping = columnMapping[paramKey];
+          if (paramMapping) {
+            const prefixedKey = isInLoop
+              ? `${paramKey}_${trialNameSanitized}`
+              : paramKey;
+
+            // Si hay CSV pero el mapping es typed, usar directamente el valor typed
+            if (row && paramMapping.source === "typed") {
+              result[prefixedKey] = paramMapping.value;
+            } else {
+              // Obtener el valor normalmente (de CSV o typed)
+              result[prefixedKey] = getColumnValue(
+                paramMapping,
+                row,
+                undefined,
+                paramKey
+              );
+            }
+          }
+        });
 
         return result;
       }
@@ -167,34 +384,24 @@ export function useTrialCode({
               ? row[key]
               : getColumnValue(columnMapping[key], row, undefined, key);
 
-          let stimulusValue;
+          // Usar el helper mapFileToUrl para mapear archivos
+          let mappedValue = mapFileToUrl(value);
 
-          if (Array.isArray(value)) {
-            // Si es un array, mapear cada valor
-            stimulusValue = value.map((v) => {
-              if (v && !/^https?:\/\//.test(v)) {
-                // No es una URL, buscar en uploadedFiles
-                const found = uploadedFiles.find(
-                  (f) => f.name && f.name.endsWith(v)
-                );
-                return found && found.url ? found.url : v;
-              }
-              return v ?? "";
-            });
-          } else {
-            // Valor único
-            if (value && !/^https?:\/\//.test(value)) {
-              // No es una URL, buscar en uploadedFiles
-              const found = uploadedFiles.find(
-                (f) => f.name && f.name.endsWith(value)
-              );
-              stimulusValue = found && found.url ? found.url : value;
-            } else {
-              stimulusValue = value ?? "";
-            }
+          // Los plugins de video de jsPsych requieren que stimulus sea un array
+          // Detectar si es un plugin de video y convertir string a array si es necesario
+          const isVideoPlugin =
+            pluginName.toLowerCase().includes("video") ||
+            key.toLowerCase().includes("video");
+
+          if (
+            isVideoPlugin &&
+            key === "stimulus" &&
+            typeof mappedValue === "string"
+          ) {
+            mappedValue = [mappedValue];
           }
 
-          result[prefixedkey] = stimulusValue;
+          result[prefixedkey] = mappedValue;
         } else {
           // Parámetro normal, sin procesamiento de archivos
           result[prefixedkey] = getColumnValue(
@@ -402,7 +609,10 @@ export function useTrialCode({
           .map((item) => {
             if (typeof item === "object" && item !== null) {
               // Process objects within arrays (like component configs)
-              const objKeys = Object.keys(item);
+              // Filter out __configMetadata from serialization
+              const objKeys = Object.keys(item).filter(
+                (k) => k !== "__configMetadata"
+              );
               const objProps = objKeys
                 .map((objKey) => {
                   const objVal = item[objKey];

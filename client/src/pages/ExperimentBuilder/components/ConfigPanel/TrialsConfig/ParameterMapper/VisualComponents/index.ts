@@ -6,5 +6,6 @@ export { default as SketchpadComponent } from "./SketchpadComponent";
 export { default as ButtonResponseComponent } from "./ButtonResponseComponent";
 export { default as KeyboardResponseComponent } from "./KeyboardResponseComponent";
 export { default as SliderResponseComponent } from "./SliderResponseComponent";
+export { default as InputResponseComponent } from "./InputResponseComponent";
 export { default as SurveyTextComponent } from "./SurveyTextComponent";
 export { default as SurveyComponent } from "./SurveyComponent";
