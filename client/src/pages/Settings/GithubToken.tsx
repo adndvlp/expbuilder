@@ -71,14 +71,15 @@ export default function GithubToken() {
 
         if (result.success) {
           // Llamar a tu Cloud Function para intercambiar el código por tokens
-          // IMPORTANTE: Pasar el redirect_uri que se usó originalmente
+          // IMPORTANTE: Pasar el redirect_uri que se usó originalmente (localhost:8888 para Electron)
+          const electronRedirectUri = "http://localhost:8888/callback";
           const functionUrl = import.meta.env.DEV
             ? `http://127.0.0.1:5001/test-e4cf9/us-central1/githubOAuthCallback?code=${encodeURIComponent(
                 result.code
-              )}&state=${encodeURIComponent(result.state)}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`
+              )}&state=${encodeURIComponent(result.state)}&redirect_uri=${encodeURIComponent(electronRedirectUri)}`
             : `https://us-central1-test-e4cf9.cloudfunctions.net/githubOAuthCallback?code=${encodeURIComponent(
                 result.code
-              )}&state=${encodeURIComponent(result.state)}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+              )}&state=${encodeURIComponent(result.state)}&redirect_uri=${encodeURIComponent(electronRedirectUri)}`;
 
           const response = await fetch(functionUrl);
 

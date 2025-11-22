@@ -30,10 +30,10 @@ const storage = multer.diskStorage({
         (e) => e.experimentID === experimentID
       );
       if (experiment && experiment.name) {
-        experimentName = `${experiment.name}-experiment`;
+        experimentName = experiment.name;
       }
 
-      const folder = path.join(userDataRoot, "uploads", experimentName, type);
+      const folder = path.join(userDataRoot, experimentName, type);
       fs.mkdirSync(folder, { recursive: true });
       cb(null, folder);
     } catch (err) {
@@ -62,11 +62,11 @@ router.post(
         (e) => e.experimentID === experimentID
       );
       if (experiment && experiment.name) {
-        experimentName = `${experiment.name}-experiment`;
+        experimentName = experiment.name;
       }
       const fileUrls = req.files.map((file) => {
         const type = path.basename(path.dirname(file.path));
-        return `uploads/${experimentName}/${type}/${file.filename}`;
+        return `${type}/${file.filename}`;
       });
       res.json({
         fileUrls,
@@ -90,27 +90,27 @@ router.get("/api/list-files/:type/:experimentID", async (req, res) => {
       (e) => e.experimentID === experimentID
     );
     if (experiment && experiment.name) {
-      experimentName = `${experiment.name}-experiment`;
+      experimentName = experiment.name;
     }
     if (type === "all") {
       const types = ["img", "aud", "vid", "others"];
       types.forEach((t) => {
-        const dir = path.join(userDataRoot, "uploads", experimentName, t);
+        const dir = path.join(userDataRoot, experimentName, t);
         if (fs.existsSync(dir)) {
           const typeFiles = fs.readdirSync(dir).map((filename) => ({
             name: filename,
-            url: `uploads/${experimentName}/${t}/${filename}`,
+            url: `${t}/${filename}`,
             type: t,
           }));
           files = files.concat(typeFiles);
         }
       });
     } else {
-      const dir = path.join(userDataRoot, "uploads", experimentName, type);
+      const dir = path.join(userDataRoot, experimentName, type);
       if (fs.existsSync(dir)) {
         files = fs.readdirSync(dir).map((filename) => ({
           name: filename,
-          url: `uploads/${experimentName}/${type}/${filename}`,
+          url: `${type}/${filename}`,
           type,
         }));
       }
@@ -131,15 +131,9 @@ router.delete(
       (e) => e.experimentID === experimentID
     );
     if (experiment && experiment.name) {
-      experimentName = `${experiment.name}-experiment`;
+      experimentName = experiment.name;
     }
-    const filePath = path.join(
-      userDataRoot,
-      "uploads",
-      experimentName,
-      type,
-      filename
-    );
+    const filePath = path.join(userDataRoot, experimentName, type, filename);
     try {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);

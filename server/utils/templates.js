@@ -12,18 +12,14 @@ export function ensureTemplate(templateName) {
   }
 
   const targetPath = path.join(templatesDir, templateName);
+  const sourcePath = path.join(sourceTemplatesDir, templateName);
 
-  if (!fs.existsSync(targetPath)) {
-    const sourcePath = path.join(sourceTemplatesDir, templateName);
-    if (fs.existsSync(sourcePath)) {
-      console.log(
-        `Copying template ${templateName} from ${sourcePath} to ${targetPath}`
-      );
-      fs.copyFileSync(sourcePath, targetPath);
-    } else {
-      console.error(`Source template not found: ${sourcePath}`);
-      throw new Error(`Source template not found: ${templateName}`);
-    }
+  // Siempre copiar el template para asegurar que esté actualizado
+  if (fs.existsSync(sourcePath)) {
+    fs.copyFileSync(sourcePath, targetPath);
+  } else {
+    console.error(`Source template not found: ${sourcePath}`);
+    throw new Error(`Source template not found: ${templateName}`);
   }
 
   return targetPath;

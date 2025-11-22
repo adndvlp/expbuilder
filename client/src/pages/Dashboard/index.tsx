@@ -1,8 +1,6 @@
 import "./index.css";
 import { useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../../lib/firebase";
 import { PromptModal } from "./PromptModal";
 const VITE_API = import.meta.env.VITE_API_URL;
 
@@ -17,7 +15,6 @@ function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showPromptModal, setShowPromptModal] = useState(false);
-  const [availableStorages, setAvailableStorages] = useState<string[]>([]);
 
   const navigate = useNavigate();
 
@@ -28,92 +25,23 @@ function Dashboard() {
       .then((data) => setExperiments(data.experiments || []));
   }, []);
 
-  // console.log(localStorage.getItem("user"));
-
-  // Hook para saber qué tokens tiene el usuario
-  async function getUserTokens(
-    uid: string
-  ): Promise<{ drive: boolean; dropbox: boolean; github: boolean }> {
-    const docRef = doc(db, "users", uid);
-    const docSnap = await getDoc(docRef);
-    if (!docSnap.exists())
-      return { drive: false, dropbox: false, github: false };
-    const data = docSnap.data();
-    return {
-      drive: !!data.googleDriveTokens,
-      dropbox: !!data.dropboxTokens,
-      github: !!data.githubTokens,
-    };
-  }
-
   // Crear experimento
-  const handleCreate = async () => {
-    // Obtener el uid del usuario autenticado si está disponible
-    let uid = null;
-    try {
-      const userStr = localStorage.getItem("user");
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        if (user && user.uid) {
-          uid = user.uid;
-        }
-      }
-    } catch (e) {
-      // Ignorar errores de parseo
-    }
-    // Determinar opciones disponibles para el modal
-    if (uid) {
-      const tokens = await getUserTokens(uid);
-      const storages: string[] = [];
-      if (tokens.drive) storages.push("drive");
-      if (tokens.dropbox) storages.push("dropbox");
-      setAvailableStorages(storages);
-    } else {
-      // Si no hay uid, permite ambos por defecto
-      setAvailableStorages(["drive", "dropbox"]);
-    }
+  const handleCreate = () => {
     setShowPromptModal(true);
   };
 
   // Confirmar creación del experimento con el nombre ingresado
-  const handleConfirmCreate = async (name: string, selectedStorage: string) => {
+  const handleConfirmCreate = async (name: string) => {
     setShowPromptModal(false);
     setLoading(true);
 
-    let uid = null;
-    try {
-      const userStr = localStorage.getItem("user");
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        if (user && user.uid) {
-          uid = user.uid;
-        }
-      }
-    } catch (e) {
-      // Ignorar errores de parseo
-    }
-
-    // Enviar storage solo al crear experimento
-    const body = uid
-      ? { name, uid, storage: selectedStorage }
-      : { name, storage: selectedStorage };
     const res = await fetch(`${VITE_API}/api/create-experiment`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ name }),
     });
     const data = await res.json();
-    if (
-      !data.success &&
-      data.message?.includes("GitHub token not found or invalid")
-    ) {
-      alert(
-        "Warning: GitHub repository creation failed. Please reconnect your GitHub account in Settings."
-      );
-      setLoading(false);
-      navigate("/settings");
-      return;
-    }
+
     if (data.success) setExperiments((prev) => [...prev, data.experiment]);
 
     setLoading(false);
@@ -134,34 +62,20 @@ function Dashboard() {
           uid = user.uid;
         }
       }
-    } catch (e) {
+    } catch {
       // Ignorar errores de parseo
     }
-
-    // Ya no se envía storage, solo uid si está presente
     const body = uid ? { uid } : {};
     const res = await fetch(`${VITE_API}/api/delete-experiment/${id}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    const data = await res.json();
-    if (
-      !data.success &&
-      data.message?.includes("GitHub token not found or invalid")
-    ) {
-      alert(
-        "Warning: GitHub repository deletion failed. Please reconnect your GitHub account in Settings."
-      );
-      setLoading(false);
-      navigate("/settings");
-      return;
+
+    if (res.ok) {
+      setExperiments((prev) => prev.filter((exp) => exp.experimentID !== id));
     }
-    setExperiments((prev) => prev.filter((exp) => exp.experimentID !== id));
-    // Eliminar storage local asociado al experimento
-    try {
-      localStorage.removeItem(`experiment_storage_${id}`);
-    } catch (e) {}
+
     setLoading(false);
   };
 
@@ -236,7 +150,6 @@ function Dashboard() {
         placeholder="Enter experiment name"
         onConfirm={handleConfirmCreate}
         onCancel={() => setShowPromptModal(false)}
-        availableStorages={availableStorages}
       />
     </div>
   );

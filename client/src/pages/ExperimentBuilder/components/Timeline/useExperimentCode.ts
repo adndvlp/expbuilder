@@ -437,7 +437,7 @@ jsPsych.run(timeline);
 
       on_trial_start: function(trial) {
         const lastTrialData = jsPsych.data.get()
-        if (lastTrialData) {
+        if (lastTrialData && trial.data) {
         trial.data.prev_response = lastTrialData.response;
         }
       },

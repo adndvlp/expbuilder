@@ -7,6 +7,7 @@ import useUrl from "../../hooks/useUrl";
 import useDevMode from "../../hooks/useDevMode";
 import FileUploader from "./FileUploader";
 import { useFileUpload } from "./useFileUpload";
+import { StorageSelectModal } from "./StorageSelectModal";
 
 import { useExperimentID } from "../../hooks/useExperimentID";
 import { useExperimentCode } from "./useExperimentCode";
@@ -73,6 +74,8 @@ function Timeline() {
   const [lastPagesUrl, setLastPagesUrl] = useState<string>("");
   const [publishStatus, setPublishStatus] = useState<string>("");
   const [isPublishing, setIsPublishing] = useState(false);
+  const [showStorageModal, setShowStorageModal] = useState(false);
+  const [availableStorages, setAvailableStorages] = useState<string[]>([]);
 
   const experimentID = useExperimentID();
 
@@ -199,11 +202,11 @@ function Timeline() {
 
       const data = await res.json();
       if (data.success) {
-        setExperimentUrl(`${data.url}/${experimentID}-experiment`);
+        setExperimentUrl(`${data.url}/${experimentID}`);
         // Persist tunnel state in localStorage (global, not per experiment)
         localStorage.setItem("tunnelActive", "true");
         localStorage.setItem("tunnelUrl", data.url);
-        const url = `${data.url}/${experimentID}-experiment`;
+        const url = `${data.url}/${experimentID}`;
         try {
           await navigator.clipboard.writeText(url);
           setTunnelStatus("Public link copied to clipboard");
@@ -232,7 +235,7 @@ function Timeline() {
       });
       const data = await res.json();
 
-      setExperimentUrl(`${API_URL}/${experimentID}-experiment`);
+      setExperimentUrl(`${API_URL}/${experimentID}`);
       setTunnelActive(false);
       localStorage.removeItem("tunnelActive");
       localStorage.removeItem("tunnelUrl");
@@ -253,7 +256,7 @@ function Timeline() {
     const tunnelUrl = localStorage.getItem("tunnelUrl");
     if (tunnelActive && tunnelUrl) {
       setTunnelActive(true);
-      setExperimentUrl(`${tunnelUrl}/${experimentID}-experiment`);
+      setExperimentUrl(`${tunnelUrl}/${experimentID}`);
     }
   }, [experimentID, setExperimentUrl]);
 
@@ -265,7 +268,7 @@ function Timeline() {
     } else if (isTunnelActive && experimentID) {
       const tunnelUrl = localStorage.getItem("tunnelUrl");
       if (tunnelUrl) {
-        linkToCopy = `${tunnelUrl}/${experimentID}-experiment`;
+        linkToCopy = `${tunnelUrl}/${experimentID}`;
       }
     }
     if (linkToCopy) {
@@ -284,25 +287,60 @@ function Timeline() {
   };
 
   const handlePublishToGitHub = async () => {
-    setIsPublishing(true);
-    setPublishStatus("Publishing to GitHub...");
-
     try {
       const userStr = window.localStorage.getItem("user");
       if (!userStr) {
         setPublishStatus("Error: User not logged in");
-        setIsPublishing(false);
         return;
       }
       const user = JSON.parse(userStr);
       const uid = user.uid;
 
+      // Obtener tokens del usuario
+      const tokens = await getUserTokens(uid);
+
+      // Determinar storage disponibles
+      const storages: string[] = [];
+      if (tokens.drive) storages.push("googledrive");
+      if (tokens.dropbox) storages.push("dropbox");
+
+      // Si no hay ningún storage conectado, mostrar error
+      if (storages.length === 0) {
+        setPublishStatus(
+          "Error: Please connect Google Drive or Dropbox in Settings"
+        );
+        return;
+      }
+
+      setAvailableStorages(storages);
+
+      // Si hay ambos storages, mostrar modal para seleccionar
+      if (storages.length > 1) {
+        setShowStorageModal(true);
+      } else {
+        // Si solo hay uno, publicar directamente
+        await publishWithStorage(uid, storages[0]);
+      }
+    } catch (error) {
+      console.error("Error preparing to publish:", error);
+      setPublishStatus(
+        `Error: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    }
+  };
+
+  const publishWithStorage = async (uid: string, selectedStorage: string) => {
+    setShowStorageModal(false);
+    setIsPublishing(true);
+    setPublishStatus("Publishing to GitHub...");
+
+    try {
       const response = await fetch(
         `${API_URL}/api/publish-experiment/${experimentID}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ uid }),
+          body: JSON.stringify({ uid, storage: selectedStorage }),
           credentials: "include",
           mode: "cors",
         }
@@ -443,7 +481,7 @@ function Timeline() {
             disabled={!(localStorage.getItem("tunnelUrl") || experimentUrl)}
             onClick={() => {
               const url = localStorage.getItem("tunnelUrl")
-                ? `${localStorage.getItem("tunnelUrl")}/${experimentID}-experiment`
+                ? `${localStorage.getItem("tunnelUrl")}/${experimentID}`
                 : experimentUrl;
               if (url) openExternal(url);
             }}
@@ -610,6 +648,21 @@ function Timeline() {
           accept={accept}
         />
       </div>
+      <StorageSelectModal
+        isOpen={showStorageModal}
+        availableStorages={availableStorages}
+        onConfirm={async (storage) => {
+          const userStr = window.localStorage.getItem("user");
+          if (userStr) {
+            const user = JSON.parse(userStr);
+            await publishWithStorage(user.uid, storage);
+          }
+        }}
+        onCancel={() => {
+          setShowStorageModal(false);
+          setIsPublishing(false);
+        }}
+      />
     </div>
   );
 }

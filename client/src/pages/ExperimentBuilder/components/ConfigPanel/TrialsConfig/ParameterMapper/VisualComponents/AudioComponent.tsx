@@ -2,7 +2,7 @@ import React, { useRef } from "react";
 import { Image as KonvaImage, Transformer } from "react-konva";
 import Konva from "konva";
 import useImage from "use-image";
-import speakerPlaceholder from "../../../../../../../assets/speaker.png";
+import speakerPlaceholder from "../../../../../../../assets/audio.png";
 
 interface TrialComponent {
   id: string;

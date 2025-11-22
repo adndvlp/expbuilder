@@ -117,15 +117,20 @@ ipcMain.handle(
 );
 
 function createWindow() {
-  if (process.env.IS_ELECTRON_BACKEND === "1") {
-    const win = new BrowserWindow({
-      width: 1200,
-      height: 800,
-      webPreferences: {
-        preload: path.join(__dirname, "preload.js"),
-      },
-    });
+  const win = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+    },
+  });
+
+  // En desarrollo, cargar desde Vite; en producción, cargar archivos compilados
+  if (isProduction) {
     win.loadFile(path.join(process.resourcesPath, "client/dist/index.html"));
+  } else {
+    // Modo desarrollo: cargar desde el servidor de Vite
+    win.loadURL("http://localhost:5173");
   }
 }
 
