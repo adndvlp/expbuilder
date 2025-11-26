@@ -8,14 +8,7 @@ import VideoComponent from "./components/VideoComponent";
 import HtmlComponent from "./components/HtmlComponent";
 import AudioComponent from "./components/AudioComponent";
 import SketchpadComponent from "./components/SketchpadComponent";
-
-// Import all survey components
 import SurveyComponent from "./components/SurveyComponent";
-import SurveyHtmlComponent from "./components/SurveyHtmlComponent";
-import SurveyLikertComponent from "./components/SurveyLikertComponent";
-import SurveyTextComponent from "./components/SurveyTextComponent";
-import SurveyMultiChoiceComponent from "./components/SurveyMultiChoiceComponent";
-import SurveyMultiSelectComponent from "./components/SurveyMultiSelectComponent";
 
 // Import all response components
 import ButtonResponseComponent from "./response_components/ButtonResponseComponent";
@@ -89,11 +82,6 @@ const COMPONENT_MAP: Record<string, any> = {
   AudioComponent,
   SketchpadComponent,
   SurveyComponent,
-  SurveyHtmlComponent,
-  SurveyLikertComponent,
-  SurveyTextComponent,
-  SurveyMultiChoiceComponent,
-  SurveyMultiSelectComponent,
 };
 
 const RESPONSE_COMPONENT_MAP: Record<string, any> = {
@@ -183,8 +171,14 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     }
 
     // Render ALL components in parallel (stimulus and response together)
+    // Pass onResponse callback to ALL components so they can end the trial if needed
     stimulusComponents.forEach(({ instance, config }) => {
-      instance.render(mainContainer, config);
+      instance.render(mainContainer, config, () => {
+        if (!hasResponded && trial.response_ends_trial) {
+          hasResponded = true;
+          endTrial();
+        }
+      });
     });
 
     responseComponents.forEach(({ instance, config }) => {
@@ -237,7 +231,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
 
       // Collect stimulus information
       const stimulusData: any[] = [];
-      stimulusComponents.forEach(({ config }) => {
+      stimulusComponents.forEach(({ instance, config }) => {
         const stimInfo: any = {
           type: config.type,
         };
@@ -245,6 +239,34 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         // Add relevant stimulus information
         if (config.stimulus) stimInfo.stimulus = config.stimulus;
         if (config.coordinates) stimInfo.coordinates = config.coordinates;
+
+        // Collect response data from stimulus components that provide responses
+        // (SurveyComponent, SketchpadComponent, etc.)
+        if (
+          instance.getResponse &&
+          typeof instance.getResponse === "function"
+        ) {
+          stimInfo.response = instance.getResponse();
+          if (instance.getRT && typeof instance.getRT === "function") {
+            stimInfo.rt = instance.getRT();
+          }
+        }
+
+        // Collect specific data for SketchpadComponent
+        if (config.type === "SketchpadComponent") {
+          if (
+            instance.getStrokes &&
+            typeof instance.getStrokes === "function"
+          ) {
+            stimInfo.strokes = instance.getStrokes();
+          }
+          if (
+            instance.getImageData &&
+            typeof instance.getImageData === "function"
+          ) {
+            stimInfo.png = instance.getImageData();
+          }
+        }
 
         stimulusData.push(stimInfo);
       });

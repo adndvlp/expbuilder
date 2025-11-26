@@ -1,5 +1,5 @@
 {
-  "name": "SurveyComponent",
+  "name": "SurveyjsComponent",
   "version": "4.0.0",
   "parameters": {
     "survey_json": {

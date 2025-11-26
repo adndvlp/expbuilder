@@ -50,7 +50,6 @@ function ComponentSidebar({
   // resize
   const [stimulusExpanded, setStimulusExpanded] = useState(true);
   const [responseExpanded, setResponseExpanded] = useState(true);
-  const [surveyExpanded, setSurveyExpanded] = useState(true);
   const [imageExpanded, setImageExpanded] = useState(false);
   const [videoExpanded, setVideoExpanded] = useState(false);
   const [audioExpanded, setAudioExpanded] = useState(false);
@@ -153,12 +152,11 @@ function ComponentSidebar({
     { type: "AudioComponent", label: "Audio" },
     { type: "HtmlComponent", label: "HTML" },
     { type: "SketchpadComponent", label: "Sketchpad" },
+    { type: "SurveyComponent", label: "Survey" },
     { type: "ButtonResponseComponent", label: "Button" },
     { type: "KeyboardResponseComponent", label: "Keyboard" },
     { type: "SliderResponseComponent", label: "Slider" },
     { type: "InputResponseComponent", label: "Input" },
-    { type: "SurveyTextComponent", label: "Survey Text" },
-    { type: "SurveyComponent", label: "SurveyJS" },
   ];
   return (
     <>
@@ -554,6 +552,38 @@ function ComponentSidebar({
                           )}
                       </div>
                     ))}
+
+                  {/* Survey Component */}
+                  <div>
+                    <button
+                      onClick={() => addComponent("SurveyComponent")}
+                      style={{
+                        width: "100%",
+                        padding: "12px 16px",
+                        border: "2px solid #d1d5db",
+                        borderRadius: "8px",
+                        background: "white",
+                        cursor: "pointer",
+                        textAlign: "left",
+                        fontSize: "15px",
+                        fontWeight: 600,
+                        color: "#374151",
+                        transition: "all 0.2s",
+                        marginBottom: "10px",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.background = "#f3f4f6";
+                        e.currentTarget.style.borderColor = "#9ca3af";
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.background = "white";
+                        e.currentTarget.style.borderColor = "#d1d5db";
+                      }}
+                    >
+                      Survey
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -591,71 +621,6 @@ function ComponentSidebar({
                         "SliderResponseComponent",
                         "InputResponseComponent",
                       ].includes(type)
-                    )
-                    .map(({ type, label }) => (
-                      <div key={type}>
-                        <button
-                          onClick={() => addComponent(type)}
-                          style={{
-                            width: "100%",
-                            padding: "12px 16px",
-                            border: "2px solid #d1d5db",
-                            borderRadius: "8px",
-                            background: "white",
-                            cursor: "pointer",
-                            textAlign: "left",
-                            fontSize: "15px",
-                            fontWeight: 600,
-                            color: "#374151",
-                            transition: "all 0.2s",
-                            marginBottom: "10px",
-                            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                          }}
-                          onMouseOver={(e) => {
-                            e.currentTarget.style.background = "#f3f4f6";
-                            e.currentTarget.style.borderColor = "#9ca3af";
-                          }}
-                          onMouseOut={(e) => {
-                            e.currentTarget.style.background = "white";
-                            e.currentTarget.style.borderColor = "#d1d5db";
-                          }}
-                        >
-                          {label}
-                        </button>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
-
-            {/* Survey Components Section */}
-            <div style={{ marginBottom: "12px" }}>
-              <button
-                onClick={() => setSurveyExpanded(!surveyExpanded)}
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  background: "#f59e0b",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "8px",
-                }}
-              >
-                <span>Survey</span>
-                <span>{surveyExpanded ? "▼" : "▶"}</span>
-              </button>
-              {surveyExpanded && (
-                <div style={{ paddingLeft: "4px" }}>
-                  {componentTypes
-                    .filter(({ type }) =>
-                      ["SurveyTextComponent", "SurveyComponent"].includes(type)
                     )
                     .map(({ type, label }) => (
                       <div key={type}>

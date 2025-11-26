@@ -18,7 +18,6 @@ import {
   SliderResponseComponent,
   InputResponseComponent,
   SketchpadComponent,
-  SurveyTextComponent,
   SurveyComponent,
 } from "./VisualComponents";
 import ParameterMapper from "./index";
@@ -418,8 +417,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
         comp.type === "SliderResponseComponent" ||
         comp.type === "InputResponseComponent";
 
-      const isSurveyComponent =
-        comp.type === "SurveyTextComponent" || comp.type === "SurveyComponent";
+      const isSurveyComponent = comp.type === "SurveyComponent";
 
       if (isResponseComponent) {
         responseComponents.push(componentData);
@@ -803,17 +801,6 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       case "SketchpadComponent":
         return (
           <SketchpadComponent
-            key={comp.id}
-            shapeProps={comp}
-            isSelected={isSelected}
-            onSelect={() => handleSelect(comp.id)}
-            onChange={handleComponentChange}
-          />
-        );
-
-      case "SurveyTextComponent":
-        return (
-          <SurveyTextComponent
             key={comp.id}
             shapeProps={comp}
             isSelected={isSelected}

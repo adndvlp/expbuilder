@@ -5,7 +5,7 @@ import { Model } from "survey-core";
 var version = "4.0.0";
 
 const info = {
-  name: "SurveyComponent",
+  name: "SurveyjsComponent",
   version,
   parameters: {
     /**
@@ -77,7 +77,7 @@ const info = {
  * SurveyComponent - handles SurveyJS integration
  * Stores response data internally, exposes via getters
  */
-class SurveyComponent {
+class SurveyjsComponent {
   private jsPsych: any;
   private survey: any = null;
   private response: any = {};
@@ -89,42 +89,6 @@ class SurveyComponent {
   }
 
   static info = info;
-
-  private applyStyles(survey: any) {
-    survey.applyTheme({
-      cssVariables: {
-        "--sjs-general-backcolor": "rgba(255, 255, 255, 1)",
-        "--sjs-general-backcolor-dim": "rgba(255, 255, 255, 1)",
-        // panel background color
-        "--sjs-general-backcolor-dim-light": "rgba(249, 249, 249, 1)",
-        // input element background, including single next or previous buttons
-        "--sjs-general-forecolor": "rgba(0, 0, 0, 0.91)",
-        "--sjs-general-forecolor-light": "rgba(0, 0, 0, 0.45)",
-        "--sjs-general-dim-forecolor": "rgba(0, 0, 0, 0.91)",
-        "--sjs-general-dim-forecolor-light": "rgba(0, 0, 0, 0.45)",
-        "--sjs-primary-backcolor": "#474747",
-        // title, selected input border, next/submit button background, previous button text color
-        "--sjs-primary-backcolor-light": "rgba(0, 0, 0, 0.1)",
-        "--sjs-primary-backcolor-dark": "#000000",
-        // next/submit button hover backgound
-        "--sjs-primary-forecolor": "rgba(255, 255, 255, 1)",
-        // next/submit button text color
-        "--sjs-primary-forecolor-light": "rgba(255, 255, 255, 0.25)",
-        // all shadow and border variables below affect the question/panel borders
-        "--sjs-shadow-small": "0px 0px 0px 1px rgba(0, 0, 0, 0.15)",
-        "--sjs-shadow-small-reset": "0px 0px 0px 0px rgba(0, 0, 0, 0.15)",
-        "--sjs-shadow-medium": "0px 0px 0px 1px rgba(0, 0, 0, 0.1)",
-        "--sjs-shadow-large": "0px 8px 16px 0px rgba(0, 0, 0, 0.05)",
-        "--sjs-shadow-inner-reset": "0px 0px 0px 0px rgba(0, 0, 0, 0.15)",
-        "--sjs-border-light": "rgba(0, 0, 0, 0.15)",
-        "--sjs-border-default": "rgba(0, 0, 0, 0.15)",
-        "--sjs-border-inside": " rgba(0, 0, 0, 0.16)",
-      },
-      themeName: "plain",
-      colorPalette: "light",
-      isPanelless: false,
-    });
-  }
 
   private createSurveyContainer(parent: HTMLElement, minWidth: string) {
     const container = document.createElement("div");
@@ -164,12 +128,32 @@ class SurveyComponent {
         "Survey plugin warning: you must define the survey using a non-empty JSON object and/or a survey function."
       );
     }
+
+    // Save themeVariables BEFORE creating the model (Model doesn't preserve custom properties)
+    const themeVariables = trial.survey_json.themeVariables || {};
+
     this.survey = new Model(trial.survey_json);
-    if (trial.survey_function !== null) {
+    if (
+      trial.survey_function !== null &&
+      typeof trial.survey_function === "function"
+    ) {
       trial.survey_function(this.survey);
     }
-    this.applyStyles(this.survey);
-    if (trial.validation_function) {
+
+    // Apply theme using the saved themeVariables
+    if (Object.keys(themeVariables).length > 0) {
+      console.log("Applying theme with variables:", themeVariables);
+      this.survey.applyTheme({
+        cssVariables: themeVariables,
+        themeName: "plain",
+        colorPalette: "light",
+        isPanelless: false,
+      });
+    }
+    if (
+      trial.validation_function &&
+      typeof trial.validation_function === "function"
+    ) {
       this.survey.onValidateQuestion.add(trial.validation_function);
     }
     this.survey.onComplete.add((sender: any, options: any) => {
@@ -182,10 +166,15 @@ class SurveyComponent {
       }
       this.rt = Math.round(performance.now() - this.startTime);
       this.response = sender.data;
+
+      // Call onResponse callback to finish the trial
+      if (onResponse && typeof onResponse === "function") {
+        onResponse();
+      }
     });
     const survey_container = this.createSurveyContainer(
       surveyContainer,
-      trial.min_width
+      trial.min_width || "min(100vw, 800px)"
     );
     this.survey.render(survey_container);
     this.startTime = performance.now();
@@ -208,4 +197,4 @@ class SurveyComponent {
   }
 }
 
-export { SurveyComponent as default };
+export { SurveyjsComponent as default };

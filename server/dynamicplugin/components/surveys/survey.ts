@@ -76,39 +76,18 @@ class SurveyPlugin {
     this.info = info;
   }
   applyStyles(survey) {
-    survey.applyTheme({
-      cssVariables: {
-        "--sjs-general-backcolor": "rgba(255, 255, 255, 1)",
-        "--sjs-general-backcolor-dim": "rgba(255, 255, 255, 1)",
-        // panel background color
-        "--sjs-general-backcolor-dim-light": "rgba(249, 249, 249, 1)",
-        // input element background, including single next or previous buttons
-        "--sjs-general-forecolor": "rgba(0, 0, 0, 0.91)",
-        "--sjs-general-forecolor-light": "rgba(0, 0, 0, 0.45)",
-        "--sjs-general-dim-forecolor": "rgba(0, 0, 0, 0.91)",
-        "--sjs-general-dim-forecolor-light": "rgba(0, 0, 0, 0.45)",
-        "--sjs-primary-backcolor": "#474747",
-        // title, selected input border, next/submit button background, previous button text color
-        "--sjs-primary-backcolor-light": "rgba(0, 0, 0, 0.1)",
-        "--sjs-primary-backcolor-dark": "#000000",
-        // next/submit button hover backgound
-        "--sjs-primary-forecolor": "rgba(255, 255, 255, 1)",
-        // next/submit button text color
-        "--sjs-primary-forecolor-light": "rgba(255, 255, 255, 0.25)",
-        // all shadow and border variables below affect the question/panel borders
-        "--sjs-shadow-small": "0px 0px 0px 1px rgba(0, 0, 0, 0.15)",
-        "--sjs-shadow-small-reset": "0px 0px 0px 0px rgba(0, 0, 0, 0.15)",
-        "--sjs-shadow-medium": "0px 0px 0px 1px rgba(0, 0, 0, 0.1)",
-        "--sjs-shadow-large": "0px 8px 16px 0px rgba(0, 0, 0, 0.05)",
-        "--sjs-shadow-inner-reset": "0px 0px 0px 0px rgba(0, 0, 0, 0.15)",
-        "--sjs-border-light": "rgba(0, 0, 0, 0.15)",
-        "--sjs-border-default": "rgba(0, 0, 0, 0.15)",
-        "--sjs-border-inside": " rgba(0, 0, 0, 0.16)",
-      },
-      themeName: "plain",
-      colorPalette: "light",
-      isPanelless: false,
-    });
+    // Get custom theme variables from survey JSON if they exist
+    const customTheme = survey.toJSON().themeVariables || {};
+
+    // Only apply theme if user has customized it
+    if (Object.keys(customTheme).length > 0) {
+      survey.applyTheme({
+        cssVariables: customTheme,
+        themeName: "plain",
+        colorPalette: "light",
+        isPanelless: false,
+      });
+    }
   }
   createSurveyContainer(parent, minWidth) {
     const container = document.createElement("div");

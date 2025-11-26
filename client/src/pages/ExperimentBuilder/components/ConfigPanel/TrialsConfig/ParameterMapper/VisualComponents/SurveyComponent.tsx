@@ -13,14 +13,14 @@ interface TrialComponent {
   config: Record<string, any>;
 }
 
-interface SurveyComponentProps {
+interface SurveyjsComponentProps {
   shapeProps: TrialComponent;
   isSelected: boolean;
   onSelect: () => void;
   onChange: (newAttrs: any) => void;
 }
 
-const SurveyComponent: React.FC<SurveyComponentProps> = ({
+const SurveyjsComponent: React.FC<SurveyjsComponentProps> = ({
   shapeProps,
   isSelected,
   onSelect,
@@ -43,13 +43,26 @@ const SurveyComponent: React.FC<SurveyComponentProps> = ({
     return config;
   };
 
-  const surveyJson = getConfigValue("survey_json", {});
+  const surveyJsonRaw = getConfigValue("survey_json", {});
   const minWidth = getConfigValue("min_width", "min(100vw, 800px)");
+
+  // Handle survey_json which might be an object or a string
+  let surveyJson: any = {};
+  if (typeof surveyJsonRaw === "string") {
+    try {
+      surveyJson = JSON.parse(surveyJsonRaw);
+    } catch {
+      surveyJson = {};
+    }
+  } else if (typeof surveyJsonRaw === "object") {
+    surveyJson = surveyJsonRaw;
+  }
 
   // Parse survey JSON to extract elements/pages
   let surveyTitle = "SurveyJS Form";
   let questionCount = 0;
   let pageCount = 0;
+  const questionTypes: string[] = [];
 
   if (surveyJson && typeof surveyJson === "object") {
     if (surveyJson.title) {
@@ -60,10 +73,20 @@ const SurveyComponent: React.FC<SurveyComponentProps> = ({
       surveyJson.pages.forEach((page: any) => {
         if (page.elements && Array.isArray(page.elements)) {
           questionCount += page.elements.length;
+          page.elements.forEach((el: any) => {
+            if (el.type && !questionTypes.includes(el.type)) {
+              questionTypes.push(el.type);
+            }
+          });
         }
       });
     } else if (surveyJson.elements && Array.isArray(surveyJson.elements)) {
       questionCount = surveyJson.elements.length;
+      surveyJson.elements.forEach((el: any) => {
+        if (el.type && !questionTypes.includes(el.type)) {
+          questionTypes.push(el.type);
+        }
+      });
     }
   }
 
@@ -168,7 +191,7 @@ const SurveyComponent: React.FC<SurveyComponentProps> = ({
 
         {/* Survey info */}
         <Text
-          text={`${questionCount} question${questionCount !== 1 ? "s" : ""}${pageCount > 1 ? ` • ${pageCount} pages` : ""}`}
+          text={`${questionCount} question${questionCount !== 1 ? "s" : ""}${pageCount > 1 ? ` • ${pageCount} pages` : ""}${questionTypes.length > 0 ? ` • ${questionTypes.slice(0, 2).join(", ")}` : ""}`}
           x={padding}
           y={titleHeight + 5}
           width={actualWidth - padding * 2}
@@ -299,4 +322,4 @@ const SurveyComponent: React.FC<SurveyComponentProps> = ({
   );
 };
 
-export default SurveyComponent;
+export default SurveyjsComponent;

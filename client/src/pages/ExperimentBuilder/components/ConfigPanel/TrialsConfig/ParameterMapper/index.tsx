@@ -3,8 +3,9 @@ import Switch from "react-switch";
 import { openExternal } from "../../../../../../lib/openExternal";
 import { IoIosHelpCircle } from "react-icons/io";
 import { BiEdit } from "react-icons/bi";
-import GrapesHtmlEditor from "./GrapesHtmlEditor";
-import GrapesButtonEditor from "./GrapesButtonEditor";
+import GrapesHtmlEditor from "./GrapesEditors/GrapesHtmlEditor";
+import GrapesButtonEditor from "./GrapesEditors/GrapesButtonEditor";
+import SurveyBuilder from "./SurveyEditor/SurveyBuilder";
 import isEqual from "lodash.isequal";
 
 type Parameter = {
@@ -64,6 +65,10 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
   const [isButtonModalOpen, setIsButtonModalOpen] = useState(false);
   const [currentButtonKey, setCurrentButtonKey] = useState<string>("");
 
+  // Modal state for Survey builder
+  const [isSurveyModalOpen, setIsSurveyModalOpen] = useState(false);
+  const [currentSurveyKey, setCurrentSurveyKey] = useState<string>("");
+
   const openHtmlModal = (key: string) => {
     setCurrentHtmlKey(key);
     setIsHtmlModalOpen(true);
@@ -82,6 +87,16 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
   const closeButtonModal = () => {
     setIsButtonModalOpen(false);
     setCurrentButtonKey("");
+  };
+
+  const openSurveyModal = (key: string) => {
+    setCurrentSurveyKey(key);
+    setIsSurveyModalOpen(true);
+  };
+
+  const closeSurveyModal = () => {
+    setIsSurveyModalOpen(false);
+    setCurrentSurveyKey("");
   };
 
   const handleHtmlChange = (htmlValue: string) => {
@@ -141,6 +156,18 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
             value: extractedChoices,
           },
         }),
+      }));
+    }
+  };
+
+  const handleSurveyChange = (surveyJson: object) => {
+    if (currentSurveyKey) {
+      setColumnMapping((prev) => ({
+        ...prev,
+        [currentSurveyKey]: {
+          source: "typed",
+          value: surveyJson,
+        },
       }));
     }
   };
@@ -418,6 +445,30 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                         >
                           <BiEdit size={16} />
                           Edit
+                        </button>
+                      </div>
+                    </>
+                  ) : type === "object" && key === "survey_json" ? (
+                    <>
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          type="text"
+                          className="flex-1 p-2 border rounded bg-gray-100"
+                          value={
+                            typeof entry.value === "object"
+                              ? `Survey: ${Object.keys(entry.value).length > 0 ? Object.keys(entry.value).join(", ").substring(0, 30) + "..." : "Empty"}`
+                              : "Click edit to design survey"
+                          }
+                          readOnly
+                          placeholder="Click edit to design survey"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => openSurveyModal(key)}
+                          className="px-3 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 flex items-center gap-1 transition-colors"
+                        >
+                          <BiEdit size={16} />
+                          Design Survey
                         </button>
                       </div>
                     </>
@@ -774,6 +825,15 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
           return '<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;"><button style="padding:10px 20px;border-radius:6px;background:#3b82f6;color:white;border:none;font-weight:600;cursor:pointer;">Option 1</button><button style="padding:10px 20px;border-radius:6px;background:#10b981;color:white;border:none;font-weight:600;cursor:pointer;">Option 2</button><button style="padding:10px 20px;border-radius:6px;background:#f59e0b;color:white;border:none;font-weight:600;cursor:pointer;">Option 3</button></div>';
         })()}
         onChange={handleButtonHtmlChange}
+      />
+
+      {/* Survey Builder Modal */}
+      <SurveyBuilder
+        isOpen={isSurveyModalOpen}
+        onClose={closeSurveyModal}
+        title={`Design Survey - ${parameters.find((p) => p.key === currentSurveyKey)?.label || ""}`}
+        value={columnMapping[currentSurveyKey]?.value || {}}
+        onChange={handleSurveyChange}
       />
     </div>
   );
