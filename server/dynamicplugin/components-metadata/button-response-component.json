@@ -32,7 +32,7 @@
   },
   "data": {
     "response": {
-      "type": "number"
+      "type": "string"
     },
     "rt": {
       "type": "number"

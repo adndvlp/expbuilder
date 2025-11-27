@@ -124,15 +124,6 @@ localStorage.removeItem('jsPsych_jumpToTrial');
     });
 
       const timeline = [];
-
-      const welcome = {
-        type: jsPsychHtmlButtonResponse,
-        stimulus: "Trial Preview",
-        choices: ['View'],
-      };
-
-      timeline.push(welcome);
-
       
       ${!isDevMode && selectedTrial?.trialCode ? selectedTrial?.trialCode : selectedLoop?.code}
 

@@ -104,10 +104,7 @@ function Timeline() {
     setIsSubmitting(true);
 
     try {
-      let generatedCode;
-      isDevMode
-        ? (generatedCode = code)
-        : (generatedCode = generateLocalExperiment());
+      const generatedCode = isDevMode ? code : generateLocalExperiment();
 
       if (!isDevMode) {
         setSubmitStatus("Saving configuration...");

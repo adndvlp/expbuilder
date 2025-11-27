@@ -208,7 +208,7 @@ function TrialsConfig({ pluginName }: Props) {
 
   const canSave = !!trialName && !isLoadingTrial;
   // guardar y actualizar el estado global del ensayo
-  const handleSave = () => {
+  const handleSave = (force = false) => {
     if (!canSave) return;
 
     // Helper recursivo para actualizar trial en cualquier nivel de anidamiento
@@ -304,7 +304,7 @@ function TrialsConfig({ pluginName }: Props) {
       categoryColumn,
     };
 
-    if (isEqual(updatedTrial, prevTrial)) return;
+    if (!force && isEqual(updatedTrial, prevTrial)) return;
 
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
@@ -314,7 +314,7 @@ function TrialsConfig({ pluginName }: Props) {
       if (result.found) {
         setTrials(result.updated);
         setSelectedTrial(updatedTrial);
-        console.log(updatedTrial);
+        // console.log(updatedTrial);
       }
 
       // less intrusve indicator
@@ -634,7 +634,7 @@ function TrialsConfig({ pluginName }: Props) {
       </div>
 
       <TrialActions
-        onSave={handleSave}
+        onSave={() => handleSave(true)}
         canSave={canSave}
         onDelete={handleDeleteTrial}
       />

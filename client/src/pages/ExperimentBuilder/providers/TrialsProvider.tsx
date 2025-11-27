@@ -386,11 +386,52 @@ export default function TrialsProvider({ children }: Props) {
     fetch(`${API_URL}/api/load-trials/${experimentID}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data.trials && data.trials.trials) {
+        if (
+          data.trials &&
+          data.trials.trials &&
+          data.trials.trials.length > 0
+        ) {
           setTrials(data.trials.trials);
+        } else {
+          const newTrial: Trial = {
+            id: Date.now(),
+            plugin: "plugin-dynamic",
+            name: "New Trial",
+            parameters: {},
+            trialCode: "",
+            columnMapping: {
+              components: {
+                source: "typed",
+                value: [
+                  {
+                    type: "HtmlComponent",
+                    stimulus:
+                      '<div id="i9zw" style="box-sizing: border-box;">Welcome to the experiment, press \'Start\' to begin</div>',
+                    coordinates: { x: 0, y: 0 },
+                    width: 200,
+                    height: 50,
+                  },
+                ],
+              },
+              response_components: {
+                source: "typed",
+                value: [
+                  {
+                    type: "ButtonResponseComponent",
+                    choices: ["Start"],
+                    coordinates: { x: 0, y: 0.15 },
+                    width: 200,
+                    height: 50,
+                  },
+                ],
+              },
+            },
+            type: "Trial",
+          };
+          setTrials([newTrial]);
         }
       });
-  }, []);
+  }, [experimentID]);
 
   useEffect(() => {
     if (trials.length === 0) return;
@@ -400,29 +441,7 @@ export default function TrialsProvider({ children }: Props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ trials }),
     });
-  }, [trials]);
-
-  useEffect(() => {
-    if (trials.length === 0) {
-      const newTrial: Trial = {
-        id: Date.now(),
-        plugin: "plugin-html-button-response",
-        name: "New Trial",
-        parameters: {},
-        trialCode: "",
-        columnMapping: {
-          stimulus: {
-            source: "typed",
-            value: `<div id="i7q2" style="box-sizing: border-box;">Welcome to the experiment. Press 'Start' to begin.</div>`,
-          },
-          choices: { source: "typed", value: ["Start"] },
-        },
-        type: "Trial",
-      };
-
-      setTrials([newTrial]);
-    }
-  }, []);
+  }, [trials, experimentID]);
 
   return (
     <TrialsContext.Provider

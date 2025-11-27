@@ -63,6 +63,7 @@ const info = <const>{
     /** Response data from response components */
     response: {
       type: ParameterType.COMPLEX,
+      array: true,
     },
     /** The response time in milliseconds for the participant to make a response. The time is measured from when the trial
      * starts until the participant's response. */
@@ -210,7 +211,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       const rt = Math.round(performance.now() - startTime);
 
       // Collect response data from response components
-      const responseData: any = {};
+      const responseData: any[] = [];
       responseComponents.forEach(({ instance, config }, index) => {
         const componentResponse: any = {
           type: config.type,
@@ -226,7 +227,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           componentResponse.slider_start = instance.getSliderStart();
         }
 
-        responseData[`response_${index}`] = componentResponse;
+        responseData.push(componentResponse);
       });
 
       // Collect stimulus information

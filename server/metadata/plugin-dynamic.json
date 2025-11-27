@@ -27,7 +27,7 @@
       "type": "object_array"
     },
     "response": {
-      "type": "object"
+      "type": "object_array"
     },
     "rt": {
       "type": "number"

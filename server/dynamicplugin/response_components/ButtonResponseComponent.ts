@@ -65,7 +65,7 @@ const info = {
   data: {
     /** Indicates which button the participant pressed. The first button in the `choices` array is 0, the second is 1, and so on.  */
     response: {
-      type: ParameterType.INT,
+      type: ParameterType.STRING,
     },
     /** The response time in milliseconds for the participant to make a response. The time is measured from when the stimulus first appears on the screen until the participant's response. */
     rt: {
@@ -90,7 +90,7 @@ const info = {
  */
 class ButtonResponseComponent {
   private jsPsych: any;
-  private response: number | null;
+  private response: string | null;
   private rt: number | null;
   private start_time: number | null;
   private buttonGroupElement: HTMLElement | null;
@@ -170,15 +170,15 @@ class ButtonResponseComponent {
         return `<button class="jspsych-btn">${choice}</button>`;
       };
 
-    for (const [choiceIndex, choice] of trial.choices.entries()) {
+    for (const choice of trial.choices) {
       this.buttonGroupElement.insertAdjacentHTML(
         "beforeend",
-        buttonHtml(choice, choiceIndex)
+        buttonHtml(choice)
       );
       const buttonElement = this.buttonGroupElement.lastChild as HTMLElement;
-      buttonElement.dataset.choice = choiceIndex.toString();
+      buttonElement.dataset.choice = choice;
       buttonElement.addEventListener("click", () => {
-        this.recordResponse(choiceIndex);
+        this.recordResponse(choice);
         if (onResponse) {
           onResponse();
         }
@@ -200,7 +200,7 @@ class ButtonResponseComponent {
   /**
    * Record the button response and RT
    */
-  private recordResponse(choice: number): void {
+  private recordResponse(choice: string): void {
     if (this.response !== null) {
       return; // Already responded
     }
@@ -240,7 +240,7 @@ class ButtonResponseComponent {
   /**
    * Get the response (button index)
    */
-  getResponse(): number | null {
+  getResponse(): string | null {
     return this.response;
   }
 

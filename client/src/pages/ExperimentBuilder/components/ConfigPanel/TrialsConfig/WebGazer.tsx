@@ -238,7 +238,7 @@ function WebGazer({ webgazerPlugins }: Props) {
   // guardar y actualizar el estado global del ensayo
 
   const canSave = !!trialName && !isLoadingTrial;
-  const handleSave = () => {
+  const handleSave = (force = true) => {
     // Evita autoguardado si no hay nombre válido o si no hay estímulo
     // if (!trialName || !canSave) return;
     if (!canSave) return;
@@ -269,7 +269,7 @@ function WebGazer({ webgazerPlugins }: Props) {
       csvColumns: [...csvColumns],
     };
 
-    if (isEqual(updatedTrial, prevTrial)) return;
+    if (!force && isEqual(updatedTrial, prevTrial)) return;
 
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
@@ -405,7 +405,7 @@ function WebGazer({ webgazerPlugins }: Props) {
 
       {/* Save button */}
       <TrialActions
-        onSave={handleSave}
+        onSave={() => handleSave(true)}
         canSave={canSave}
         onDelete={handleDeleteTrial}
       />

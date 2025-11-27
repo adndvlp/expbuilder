@@ -450,7 +450,7 @@ function LoopsConfig({ loop }: Props) {
     });
   };
 
-  const handleSave = () => {
+  const handleSave = (force = true) => {
     // if (!loop || isLoadingLoop) return;
     if (!canSave) return;
 
@@ -489,7 +489,7 @@ function LoopsConfig({ loop }: Props) {
           ...updatedLoopData,
         };
 
-        if (isEqual(updatedLoop, prevLoop)) return;
+        if (!force && isEqual(updatedLoop, prevLoop)) return;
 
         updatedTrials = [...trials];
         updatedTrials[loopIndex] = updatedLoop;
@@ -501,7 +501,7 @@ function LoopsConfig({ loop }: Props) {
       setTrials(updatedTrials);
 
       setSaveIndicator(true);
-      console.log(loopCode);
+      // console.log(loopCode);
       setTimeout(() => setSaveIndicator(false), 2000);
     }, 1000);
   };
@@ -713,7 +713,7 @@ function LoopsConfig({ loop }: Props) {
 
         {/* Save and Delete Loop */}
         <button
-          onClick={handleSave}
+          onClick={() => handleSave(true)}
           className="mt-4 save-button mb-4 w-full p-3 bg-green-600 hover:bg-green-700 font-medium rounded"
           disabled={!canSave}
         >
