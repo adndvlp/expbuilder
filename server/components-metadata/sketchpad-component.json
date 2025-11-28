@@ -2,6 +2,9 @@
   "name": "SketchpadComponent",
   "version": "2.1.0",
   "parameters": {
+    "name": {
+      "type": "string"
+    },
     "canvas_shape": {
       "type": "string",
       "default": "rectangle"

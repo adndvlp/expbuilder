@@ -2,6 +2,9 @@
   "name": "ImageComponent",
   "version": "2.2.0",
   "parameters": {
+    "name": {
+      "type": "string"
+    },
     "stimulus": {
       "type": "string"
     },

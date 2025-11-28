@@ -6,6 +6,10 @@ const info = {
   name: "AudioComponent",
   version,
   parameters: {
+    name: {
+      type: ParameterType.STRING,
+      default: undefined,
+    },
     /** Path to audio file to be played. */
     stimulus: {
       type: ParameterType.AUDIO,

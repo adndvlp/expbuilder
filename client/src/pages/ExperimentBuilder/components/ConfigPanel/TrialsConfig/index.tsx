@@ -314,7 +314,7 @@ function TrialsConfig({ pluginName }: Props) {
       if (result.found) {
         setTrials(result.updated);
         setSelectedTrial(updatedTrial);
-        // console.log(updatedTrial);
+        console.log(updatedTrial);
       }
 
       // less intrusve indicator

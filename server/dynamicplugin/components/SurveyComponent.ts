@@ -8,6 +8,10 @@ const info = {
   name: "SurveyjsComponent",
   version,
   parameters: {
+    name: {
+      type: ParameterType.STRING,
+      default: undefined,
+    },
     /**
      *
      * A SurveyJS-compatible JavaScript object that defines the survey (we refer to this as the survey 'JSON'

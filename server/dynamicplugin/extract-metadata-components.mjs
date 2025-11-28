@@ -8,8 +8,8 @@ const __dirname = path.dirname(__filename);
 const componentsDir = path.resolve(__dirname, "./components");
 const responseComponentsDir = path.resolve(__dirname, "./response_components");
 const pluginFile = path.resolve(__dirname, "./index.ts");
-const metadataDir = path.resolve(__dirname, "../metadata");
-const outputDir = path.resolve(__dirname, "./components-metadata");
+const metadataDir = path.join(__dirname, "../metadata");
+const outputDir = path.join(__dirname, "../components-metadata");
 
 // Mapeo base de tipos de ParameterType a tipos simplificados
 const typeMap = {

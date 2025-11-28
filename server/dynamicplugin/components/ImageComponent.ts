@@ -6,6 +6,10 @@ const info = {
   name: "ImageComponent",
   version,
   parameters: {
+    name: {
+      type: ParameterType.STRING,
+      default: undefined,
+    },
     /** The path of the image file to be displayed. */
     stimulus: {
       type: ParameterType.IMAGE,

@@ -77,7 +77,7 @@ export type ParamsOverrideCondition = {
   paramsToOverride: Record<string, ColumnMappingEntry>;
 };
 
-export interface Trial {
+export type Trial = {
   id: number;
   type: string;
   name: string;
@@ -104,7 +104,7 @@ export interface Trial {
   repeatConditions?: RepeatCondition[];
 
   paramsOverride?: ParamsOverrideCondition[];
-}
+};
 
 export type TrialOrLoop = Trial | Loop;
 

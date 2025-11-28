@@ -6,6 +6,10 @@ const info = {
   name: "VideoComponent",
   version,
   parameters: {
+    name: {
+      type: ParameterType.STRING,
+      default: undefined,
+    },
     /**
      * An array of file paths to the video. You can specify multiple formats of the same video (e.g., .mp4, .ogg, .webm)
      * to maximize the [cross-browser compatibility](https://developer.mozilla.org/en-US/docs/Web/HTML/Supported_media_formats).

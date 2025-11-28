@@ -81,8 +81,6 @@ const COMPONENT_MAP: Record<string, any> = {
   VideoComponent,
   HtmlComponent,
   AudioComponent,
-  SketchpadComponent,
-  SurveyComponent,
 };
 
 const RESPONSE_COMPONENT_MAP: Record<string, any> = {
@@ -90,6 +88,8 @@ const RESPONSE_COMPONENT_MAP: Record<string, any> = {
   SliderResponseComponent,
   KeyboardResponseComponent,
   InputResponseComponent,
+  SurveyComponent,
+  SketchpadComponent,
 };
 
 /**
@@ -147,10 +147,17 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     let hasResponded = false;
 
     // Instantiate all components first
+    const stimulusTypeCounts: Record<string, number> = {};
+
     if (trial.components && trial.components.length > 0) {
-      trial.components.forEach((config: any) => {
+      trial.components.forEach((config: any, idx: number) => {
         const ComponentClass = COMPONENT_MAP[config.type];
         if (ComponentClass) {
+          stimulusTypeCounts[config.type] =
+            (stimulusTypeCounts[config.type] || 0) + 1;
+          if (!config.name) {
+            config.name = `${config.type}_${stimulusTypeCounts[config.type]}`;
+          }
           const instance = new ComponentClass(this.jsPsych);
           stimulusComponents.push({ instance, config });
         } else {
@@ -159,10 +166,17 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       });
     }
 
+    const responseTypeCounts: Record<string, number> = {};
+
     if (trial.response_components && trial.response_components.length > 0) {
-      trial.response_components.forEach((config: any) => {
+      trial.response_components.forEach((config: any, idx: number) => {
         const ComponentClass = RESPONSE_COMPONENT_MAP[config.type];
         if (ComponentClass) {
+          responseTypeCounts[config.type] =
+            (responseTypeCounts[config.type] || 0) + 1;
+          if (!config.name) {
+            config.name = `${config.type}_${responseTypeCounts[config.type]}`;
+          }
           const instance = new ComponentClass(this.jsPsych);
           responseComponents.push({ instance, config });
         } else {
@@ -194,18 +208,6 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     // Function to end the trial and collect data
     const endTrial = () => {
       // Before ending, try to record responses from all components that have recordResponse method
-      responseComponents.forEach(({ instance, config }) => {
-        if (
-          instance.recordResponse &&
-          typeof instance.recordResponse === "function"
-        ) {
-          try {
-            instance.recordResponse(config);
-          } catch (e) {
-            console.warn(`Failed to record response for ${config.type}:`, e);
-          }
-        }
-      });
 
       // Calculate response time
       const rt = Math.round(performance.now() - startTime);
@@ -214,6 +216,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       const responseData: any[] = [];
       responseComponents.forEach(({ instance, config }, index) => {
         const componentResponse: any = {
+          name: config.name,
           type: config.type,
           response: instance.getResponse ? instance.getResponse() : null,
           rt: instance.getRT ? instance.getRT() : null,
@@ -227,6 +230,22 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           componentResponse.slider_start = instance.getSliderStart();
         }
 
+        // Collect specific data for SketchpadComponent
+        if (config.type === "SketchpadComponent") {
+          if (
+            instance.getStrokes &&
+            typeof instance.getStrokes === "function"
+          ) {
+            componentResponse.strokes = instance.getStrokes();
+          }
+          if (
+            instance.getImageData &&
+            typeof instance.getImageData === "function"
+          ) {
+            componentResponse.png = instance.getImageData();
+          }
+        }
+
         responseData.push(componentResponse);
       });
 
@@ -234,6 +253,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       const stimulusData: any[] = [];
       stimulusComponents.forEach(({ instance, config }) => {
         const stimInfo: any = {
+          name: config.name,
           type: config.type,
         };
 
@@ -250,22 +270,6 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           stimInfo.response = instance.getResponse();
           if (instance.getRT && typeof instance.getRT === "function") {
             stimInfo.rt = instance.getRT();
-          }
-        }
-
-        // Collect specific data for SketchpadComponent
-        if (config.type === "SketchpadComponent") {
-          if (
-            instance.getStrokes &&
-            typeof instance.getStrokes === "function"
-          ) {
-            stimInfo.strokes = instance.getStrokes();
-          }
-          if (
-            instance.getImageData &&
-            typeof instance.getImageData === "function"
-          ) {
-            stimInfo.png = instance.getImageData();
           }
         }
 

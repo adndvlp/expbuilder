@@ -6,6 +6,10 @@ const info = {
   name: "HtmlComponent",
   version,
   parameters: {
+    name: {
+      type: ParameterType.STRING,
+      default: undefined,
+    },
     /** The HTML content to be displayed. */
     stimulus: {
       type: ParameterType.HTML_STRING,

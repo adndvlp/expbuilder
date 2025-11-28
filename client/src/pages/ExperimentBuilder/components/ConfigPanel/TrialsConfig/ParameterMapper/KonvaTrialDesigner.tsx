@@ -415,16 +415,12 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
         comp.type === "ButtonResponseComponent" ||
         comp.type === "KeyboardResponseComponent" ||
         comp.type === "SliderResponseComponent" ||
-        comp.type === "InputResponseComponent";
-
-      const isSurveyComponent = comp.type === "SurveyComponent";
+        comp.type === "InputResponseComponent" ||
+        comp.type === "SketchpadComponent" ||
+        comp.type === "SurveyComponent";
 
       if (isResponseComponent) {
         responseComponents.push(componentData);
-      } else if (isSurveyComponent) {
-        // Survey components go into stimulus for now
-        // Could be changed to separate survey_components if backend supports it
-        stimulusComponents.push(componentData);
       } else {
         stimulusComponents.push(componentData);
       }

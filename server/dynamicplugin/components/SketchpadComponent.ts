@@ -6,6 +6,10 @@ const info = {
   name: "SketchpadComponent",
   version,
   parameters: {
+    name: {
+      type: ParameterType.STRING,
+      default: undefined,
+    },
     /**
      * The shape of the canvas element. Accepts `'rectangle'` or `'circle'`
      */

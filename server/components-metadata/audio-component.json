@@ -2,6 +2,9 @@
   "name": "AudioComponent",
   "version": "2.1.0",
   "parameters": {
+    "name": {
+      "type": "string"
+    },
     "stimulus": {
       "type": "string"
     },

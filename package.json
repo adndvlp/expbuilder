@@ -52,7 +52,6 @@
       "preload.js",
       ".env.production",
       "server/**",
-      "server/dynamicplugin/components-metadata/**",
       "!server/dynamicplugin/**",
       "!server/jspsych-bundler/**"
     ],
@@ -68,13 +67,13 @@
         {
           "target": "dmg",
           "arch": [
-            "arm64"
+            "x64"
           ]
         },
         {
           "target": "zip",
           "arch": [
-            "arm64"
+            "x64"
           ]
         }
       ],

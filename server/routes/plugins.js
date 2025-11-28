@@ -10,25 +10,18 @@ import { spawn } from "child_process";
 
 const router = Router();
 
-const metadataPath = path.join(userDataRoot, "metadata");
-if (!fs.existsSync(metadataPath))
-  fs.mkdirSync(metadataPath, { recursive: true });
-const componentsMetadataPath = path.join(
-  userDataRoot,
-  "dynamicplugin",
-  "components-metadata"
-);
-if (!fs.existsSync(componentsMetadataPath))
-  fs.mkdirSync(componentsMetadataPath, { recursive: true });
+const metadataPath = path.join(__dirname, "metadata");
+// if (!fs.existsSync(metadataPath))
+//   fs.mkdirSync(metadataPath, { recursive: true });
+const componentsMetadataPath = path.join(__dirname, "components-metadata");
+// if (!fs.existsSync(componentsMetadataPath))
+//   fs.mkdirSync(componentsMetadataPath, { recursive: true });
 
 // Serve the metadata directory at `/api/metadata` URL path
 router.use("/api/metadata", express.static(metadataPath));
 
 // Serve the components metadata directory
-router.use(
-  "/api/dynamicplugin/components-metadata",
-  express.static(componentsMetadataPath)
-);
+router.use("/api/components-metadata", express.static(componentsMetadataPath));
 
 // Component metadata endpoint
 router.get("/api/component-metadata/:componentType", (req, res) => {
