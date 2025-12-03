@@ -2,6 +2,9 @@
   "name": "SliderResponseComponent",
   "version": "2.1.1",
   "parameters": {
+    "name": {
+      "type": "string"
+    },
     "min": {
       "type": "number",
       "default": 0

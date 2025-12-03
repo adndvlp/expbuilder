@@ -6,6 +6,10 @@ const info = {
   name: "InputResponseComponent",
   version,
   parameters: {
+    name: {
+      type: ParameterType.STRING,
+      default: undefined,
+    },
     /**
      * The cloze text to be displayed. Blanks are indicated by %% signs and automatically replaced by
      * input fields. If there is a correct answer you want the system to check against, it must be typed

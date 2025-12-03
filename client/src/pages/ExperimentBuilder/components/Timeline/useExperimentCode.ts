@@ -85,7 +85,40 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
     const evaluateCondition = (trialData, condition) => {
       // All rules in a condition must be true (AND logic)
       return condition.rules.every(rule => {
-        const propValue = trialData[rule.prop];
+        let propValue;
+        
+        // For dynamic plugins, handle nested structure
+        if (rule.fieldType && rule.componentIdx !== undefined && rule.componentIdx !== "") {
+          // Dynamic plugin structure: fieldType -> componentIdx -> prop
+          // Note: response_components in the builder becomes "response" in the actual trial data
+          const actualFieldName = rule.fieldType === 'response_components' ? 'response' : rule.fieldType;
+          const fieldArray = trialData[actualFieldName];
+          if (!Array.isArray(fieldArray)) {
+            console.warn('Field array not found for fieldType:', rule.fieldType, 'actual field:', actualFieldName);
+            return false;
+          }
+          
+          // componentIdx is the component name, not a numeric index
+          const component = fieldArray.find(c => c.name === rule.componentIdx);
+          if (!component) {
+            console.warn('Component not found with name:', rule.componentIdx);
+            return false;
+          }
+          
+          // Get the property value from the component
+          if (rule.prop === "response" && component.response !== undefined) {
+            propValue = component.response;
+          } else if (component[rule.prop] !== undefined) {
+            propValue = component[rule.prop];
+          } else {
+            console.warn('Property not found in component:', rule.prop);
+            return false;
+          }
+        } else {
+          // Normal plugin structure
+          propValue = trialData[rule.prop];
+        }
+        
         const compareValue = rule.value;
         
         // Convert values for comparison

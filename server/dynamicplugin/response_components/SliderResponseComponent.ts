@@ -6,6 +6,10 @@ const info = {
   name: "SliderResponseComponent",
   version,
   parameters: {
+    name: {
+      type: ParameterType.STRING,
+      default: undefined,
+    },
     /** Sets the minimum value of the slider. */
     min: {
       type: ParameterType.INT,

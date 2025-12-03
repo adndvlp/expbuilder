@@ -2,6 +2,9 @@
   "name": "ButtonResponseComponent",
   "version": "2.1.1",
   "parameters": {
+    "name": {
+      "type": "string"
+    },
     "choices": {
       "type": "string_array"
     },

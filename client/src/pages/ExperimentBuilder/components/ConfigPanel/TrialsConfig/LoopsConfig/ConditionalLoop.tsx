@@ -86,7 +86,16 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
       ...conditions,
       {
         id: Date.now(),
-        rules: [{ trialId: "", prop: "", op: "==", value: "" }],
+        rules: [
+          {
+            trialId: "",
+            prop: "",
+            op: "==",
+            value: "",
+            fieldType: "",
+            componentIdx: "",
+          },
+        ],
       },
     ]);
   };
@@ -105,7 +114,14 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
               ...c,
               rules: [
                 ...c.rules,
-                { trialId: "", prop: "", op: "==", value: "" },
+                {
+                  trialId: "",
+                  prop: "",
+                  op: "==",
+                  value: "",
+                  fieldType: "",
+                  componentIdx: "",
+                },
               ],
             }
           : c
@@ -128,7 +144,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
   const updateRule = (
     conditionId: number,
     ruleIndex: number,
-    field: keyof LoopConditionRule,
+    field: string,
     value: string | number
   ) => {
     setConditions(

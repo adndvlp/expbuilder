@@ -6,6 +6,10 @@ const info = {
   name: "KeyboardResponseComponent",
   version,
   parameters: {
+    name: {
+      type: ParameterType.STRING,
+      default: undefined,
+    },
     /**
      * This array contains the key(s) that the participant is allowed to press in order to respond to the stimulus.
      * Keys should be specified as characters (e.g., `'a'`, `'q'`, `' '`, `'Enter'`, `'ArrowDown'`) - see

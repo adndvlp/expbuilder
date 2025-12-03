@@ -2,6 +2,9 @@
   "name": "KeyboardResponseComponent",
   "version": "2.1.0",
   "parameters": {
+    "name": {
+      "type": "string"
+    },
     "choices": {
       "type": "string_array",
       "default": "ALL_KEYS"

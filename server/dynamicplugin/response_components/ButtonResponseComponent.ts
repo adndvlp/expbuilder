@@ -6,6 +6,10 @@ const info = {
   name: "ButtonResponseComponent",
   version,
   parameters: {
+    name: {
+      type: ParameterType.STRING,
+      default: undefined,
+    },
     /**
      * Labels for the buttons. Each different string in the array will generate a different button.
      */

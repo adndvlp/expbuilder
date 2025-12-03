@@ -4,6 +4,8 @@ export type Rule = {
   prop: string;
   op: string;
   value: string;
+  fieldType?: string;
+  componentIdx?: string;
 };
 
 export type Condition = {

@@ -64,7 +64,9 @@ function RepeatConditions({
       ...repeatConditions,
       {
         id: Date.now(),
-        rules: [{ prop: "", op: "==", value: "" }],
+        rules: [
+          { prop: "", op: "==", value: "", fieldType: "", componentIdx: "" },
+        ],
         jumpToTrialId: null,
       },
     ]);
@@ -78,7 +80,19 @@ function RepeatConditions({
     setRepeatConditions(
       repeatConditions.map((c) =>
         c.id === conditionId
-          ? { ...c, rules: [...c.rules, { prop: "", op: "==", value: "" }] }
+          ? {
+              ...c,
+              rules: [
+                ...c.rules,
+                {
+                  prop: "",
+                  op: "==",
+                  value: "",
+                  fieldType: "",
+                  componentIdx: "",
+                },
+              ],
+            }
           : c
       )
     );
@@ -100,7 +114,7 @@ function RepeatConditions({
   const updateRepeatRule = (
     conditionId: number,
     ruleIndex: number,
-    field: keyof Rule,
+    field: string,
     value: string
   ) => {
     setRepeatConditions(
@@ -234,42 +248,99 @@ function RepeatConditions({
                           backgroundColor: "rgba(255, 209, 102, 0.15)",
                         }}
                       >
-                        <th
-                          className="px-2 py-2 text-left text-sm font-semibold"
-                          style={{
-                            color: "var(--text-dark)",
-                            borderBottom: "2px solid var(--neutral-mid)",
-                            width: "30%",
-                          }}
-                        >
-                          Data Field
-                        </th>
-                        <th
-                          className="px-2 py-2 text-left text-sm font-semibold"
-                          style={{
-                            color: "var(--text-dark)",
-                            borderBottom: "2px solid var(--neutral-mid)",
-                            width: "15%",
-                          }}
-                        >
-                          Op
-                        </th>
-                        <th
-                          className="px-2 py-2 text-left text-sm font-semibold"
-                          style={{
-                            color: "var(--text-dark)",
-                            borderBottom: "2px solid var(--neutral-mid)",
-                            width: "20%",
-                          }}
-                        >
-                          Value
-                        </th>
+                        {selectedTrial?.plugin === "plugin-dynamic" ? (
+                          <>
+                            <th
+                              className="px-2 py-2 text-left text-sm font-semibold"
+                              style={{
+                                color: "var(--text-dark)",
+                                borderBottom: "2px solid var(--neutral-mid)",
+                                width: "12%",
+                              }}
+                            >
+                              Field Type
+                            </th>
+                            <th
+                              className="px-2 py-2 text-left text-sm font-semibold"
+                              style={{
+                                color: "var(--text-dark)",
+                                borderBottom: "2px solid var(--neutral-mid)",
+                                width: "14%",
+                              }}
+                            >
+                              Component
+                            </th>
+                            <th
+                              className="px-2 py-2 text-left text-sm font-semibold"
+                              style={{
+                                color: "var(--text-dark)",
+                                borderBottom: "2px solid var(--neutral-mid)",
+                                width: "14%",
+                              }}
+                            >
+                              Property
+                            </th>
+                            <th
+                              className="px-2 py-2 text-left text-sm font-semibold"
+                              style={{
+                                color: "var(--text-dark)",
+                                borderBottom: "2px solid var(--neutral-mid)",
+                                width: "8%",
+                              }}
+                            >
+                              Op
+                            </th>
+                            <th
+                              className="px-2 py-2 text-left text-sm font-semibold"
+                              style={{
+                                color: "var(--text-dark)",
+                                borderBottom: "2px solid var(--neutral-mid)",
+                                width: "12%",
+                              }}
+                            >
+                              Value
+                            </th>
+                          </>
+                        ) : (
+                          <>
+                            <th
+                              className="px-2 py-2 text-left text-sm font-semibold"
+                              style={{
+                                color: "var(--text-dark)",
+                                borderBottom: "2px solid var(--neutral-mid)",
+                                width: "30%",
+                              }}
+                            >
+                              Data Field
+                            </th>
+                            <th
+                              className="px-2 py-2 text-left text-sm font-semibold"
+                              style={{
+                                color: "var(--text-dark)",
+                                borderBottom: "2px solid var(--neutral-mid)",
+                                width: "15%",
+                              }}
+                            >
+                              Op
+                            </th>
+                            <th
+                              className="px-2 py-2 text-left text-sm font-semibold"
+                              style={{
+                                color: "var(--text-dark)",
+                                borderBottom: "2px solid var(--neutral-mid)",
+                                width: "20%",
+                              }}
+                            >
+                              Value
+                            </th>
+                          </>
+                        )}
                         <th
                           className="px-1 py-2 text-center text-sm font-semibold"
                           style={{
                             color: "var(--text-dark)",
                             borderBottom: "2px solid var(--neutral-mid)",
-                            width: "5%",
+                            width: "3%",
                           }}
                         ></th>
                         <th
@@ -286,6 +357,18 @@ function RepeatConditions({
                     </thead>
                     <tbody>
                       {condition.rules.map((rule, ruleIdx) => {
+                        // For dynamic plugins, get component data
+                        const fieldType = rule.fieldType || "";
+                        const componentIdx = rule.componentIdx ?? "";
+                        const compArr = fieldType
+                          ? selectedTrial?.columnMapping?.[fieldType]?.value ||
+                            []
+                          : [];
+                        const comp =
+                          componentIdx !== "" && compArr.length > 0
+                            ? compArr[Number(componentIdx)]
+                            : null;
+
                         return (
                           <tr
                             key={ruleIdx}
@@ -296,45 +379,255 @@ function RepeatConditions({
                                   : "none",
                             }}
                           >
-                            <td className="px-2 py-2 relative">
-                              <select
-                                value={rule.prop}
-                                onChange={(e) =>
-                                  updateRepeatRule(
-                                    condition.id,
-                                    ruleIdx,
-                                    "prop",
-                                    e.target.value
-                                  )
-                                }
-                                className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-yellow-400"
-                                style={{
-                                  color: "var(--text-dark)",
-                                  backgroundColor: "var(--neutral-light)",
-                                  borderColor: "var(--neutral-mid)",
-                                }}
-                              >
-                                <option
-                                  style={{ textAlign: "center" }}
-                                  value=""
-                                >
-                                  Select field
-                                </option>
-                                {data.map((field) => (
-                                  <option
-                                    key={field.key}
-                                    value={field.key}
-                                    disabled={
-                                      usedProps.includes(field.key) &&
-                                      rule.prop !== field.key
-                                    }
-                                    style={{ textAlign: "center" }}
+                            {selectedTrial?.plugin === "plugin-dynamic" ? (
+                              <>
+                                {/* Field Type Column */}
+                                <td className="px-2 py-2">
+                                  <select
+                                    value={fieldType}
+                                    onChange={(e) => {
+                                      const newValue = e.target.value;
+                                      setRepeatConditions(
+                                        repeatConditions.map((c) =>
+                                          c.id === condition.id
+                                            ? {
+                                                ...c,
+                                                rules: c.rules.map((r, idx) =>
+                                                  idx === ruleIdx
+                                                    ? {
+                                                        ...r,
+                                                        fieldType: newValue,
+                                                        componentIdx: "",
+                                                        prop: "",
+                                                        value: "",
+                                                      }
+                                                    : r
+                                                ),
+                                              }
+                                            : c
+                                        )
+                                      );
+                                    }}
+                                    className="border rounded px-2 py-1 w-full text-xs"
+                                    style={{
+                                      color: "var(--text-dark)",
+                                      backgroundColor: "var(--neutral-light)",
+                                      borderColor: "var(--neutral-mid)",
+                                    }}
                                   >
-                                    {field.label || field.key}
+                                    <option value="">Select type</option>
+                                    <option value="components">Stimulus</option>
+                                    <option value="response_components">
+                                      Response
+                                    </option>
+                                  </select>
+                                </td>
+
+                                {/* Component Column */}
+                                <td className="px-2 py-2">
+                                  <select
+                                    value={componentIdx}
+                                    onChange={(e) => {
+                                      const newValue = e.target.value;
+                                      setRepeatConditions(
+                                        repeatConditions.map((c) =>
+                                          c.id === condition.id
+                                            ? {
+                                                ...c,
+                                                rules: c.rules.map((r, idx) =>
+                                                  idx === ruleIdx
+                                                    ? {
+                                                        ...r,
+                                                        componentIdx: newValue,
+                                                        prop: "",
+                                                        value: "",
+                                                      }
+                                                    : r
+                                                ),
+                                              }
+                                            : c
+                                        )
+                                      );
+                                    }}
+                                    className="border rounded px-2 py-1 w-full text-xs"
+                                    style={{
+                                      color: "var(--text-dark)",
+                                      backgroundColor: "var(--neutral-light)",
+                                      borderColor: "var(--neutral-mid)",
+                                    }}
+                                  >
+                                    <option value="">Select component</option>
+                                    {compArr.map((c: any, idx: number) => (
+                                      <option
+                                        key={c.name || idx}
+                                        value={String(idx)}
+                                      >
+                                        {c.name || c.type}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </td>
+
+                                {/* Property Column */}
+                                <td className="px-2 py-2">
+                                  {comp && comp.type === "SurveyComponent" ? (
+                                    <select
+                                      value={rule.prop}
+                                      onChange={(e) => {
+                                        const newValue = e.target.value;
+                                        setRepeatConditions(
+                                          repeatConditions.map((c) =>
+                                            c.id === condition.id
+                                              ? {
+                                                  ...c,
+                                                  rules: c.rules.map(
+                                                    (r, idx) =>
+                                                      idx === ruleIdx
+                                                        ? {
+                                                            ...r,
+                                                            prop: newValue,
+                                                            value: "",
+                                                          }
+                                                        : r
+                                                  ),
+                                                }
+                                              : c
+                                          )
+                                        );
+                                      }}
+                                      className="border rounded px-2 py-1 w-full text-xs"
+                                      style={{
+                                        color: "var(--text-dark)",
+                                        backgroundColor: "var(--neutral-light)",
+                                        borderColor: "var(--neutral-mid)",
+                                      }}
+                                    >
+                                      <option value="">Select question</option>
+                                      {(comp.survey_json?.elements || []).map(
+                                        (q: any, idx: number) => (
+                                          <option
+                                            key={q.name || idx}
+                                            value={q.name}
+                                          >
+                                            {q.title || q.name}
+                                          </option>
+                                        )
+                                      )}
+                                    </select>
+                                  ) : comp &&
+                                    comp.type === "ButtonResponseComponent" ? (
+                                    <select
+                                      value={rule.prop}
+                                      onChange={(e) => {
+                                        const newValue = e.target.value;
+                                        setRepeatConditions(
+                                          repeatConditions.map((c) =>
+                                            c.id === condition.id
+                                              ? {
+                                                  ...c,
+                                                  rules: c.rules.map(
+                                                    (r, idx) =>
+                                                      idx === ruleIdx
+                                                        ? {
+                                                            ...r,
+                                                            prop: newValue,
+                                                            value: "",
+                                                          }
+                                                        : r
+                                                  ),
+                                                }
+                                              : c
+                                          )
+                                        );
+                                      }}
+                                      className="border rounded px-2 py-1 w-full text-xs"
+                                      style={{
+                                        color: "var(--text-dark)",
+                                        backgroundColor: "var(--neutral-light)",
+                                        borderColor: "var(--neutral-mid)",
+                                      }}
+                                    >
+                                      <option value="">Select property</option>
+                                      <option value="response">response</option>
+                                    </select>
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      value={rule.prop}
+                                      onChange={(e) => {
+                                        const newValue = e.target.value;
+                                        setRepeatConditions(
+                                          repeatConditions.map((c) =>
+                                            c.id === condition.id
+                                              ? {
+                                                  ...c,
+                                                  rules: c.rules.map(
+                                                    (r, idx) =>
+                                                      idx === ruleIdx
+                                                        ? {
+                                                            ...r,
+                                                            prop: newValue,
+                                                            value: "",
+                                                          }
+                                                        : r
+                                                  ),
+                                                }
+                                              : c
+                                          )
+                                        );
+                                      }}
+                                      placeholder="Property"
+                                      className="border rounded px-2 py-1 w-full text-xs"
+                                      style={{
+                                        color: "var(--text-dark)",
+                                        backgroundColor: "var(--neutral-light)",
+                                        borderColor: "var(--neutral-mid)",
+                                      }}
+                                    />
+                                  )}
+                                </td>
+                              </>
+                            ) : (
+                              <td className="px-2 py-2 relative">
+                                <select
+                                  value={rule.prop}
+                                  onChange={(e) =>
+                                    updateRepeatRule(
+                                      condition.id,
+                                      ruleIdx,
+                                      "prop",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-yellow-400"
+                                  style={{
+                                    color: "var(--text-dark)",
+                                    backgroundColor: "var(--neutral-light)",
+                                    borderColor: "var(--neutral-mid)",
+                                  }}
+                                >
+                                  <option
+                                    style={{ textAlign: "center" }}
+                                    value=""
+                                  >
+                                    Select field
                                   </option>
-                                ))}
-                              </select>
-                            </td>
+                                  {data.map((field) => (
+                                    <option
+                                      key={field.key}
+                                      value={field.key}
+                                      disabled={
+                                        usedProps.includes(field.key) &&
+                                        rule.prop !== field.key
+                                      }
+                                      style={{ textAlign: "center" }}
+                                    >
+                                      {field.label || field.key}
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                            )}
                             <td className="px-2 py-2">
                               <select
                                 value={rule.op}
@@ -391,26 +684,212 @@ function RepeatConditions({
                                 </option>
                               </select>
                             </td>
+                            {/* Value Column */}
                             <td className="px-2 py-2">
-                              <input
-                                type="text"
-                                value={rule.value}
-                                onChange={(e) =>
-                                  updateRepeatRule(
-                                    condition.id,
-                                    ruleIdx,
-                                    "value",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="Value"
-                                className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-yellow-400"
-                                style={{
-                                  color: "var(--text-dark)",
-                                  backgroundColor: "var(--neutral-light)",
-                                  borderColor: "var(--neutral-mid)",
-                                }}
-                              />
+                              {selectedTrial?.plugin === "plugin-dynamic" ? (
+                                (() => {
+                                  // Survey component with question selected
+                                  if (
+                                    comp &&
+                                    comp.type === "SurveyComponent" &&
+                                    rule.prop
+                                  ) {
+                                    const q = (
+                                      comp.survey_json?.elements || []
+                                    ).find((q: any) => q.name === rule.prop);
+                                    if (q) {
+                                      // Has choices
+                                      if (q.choices && q.choices.length > 0) {
+                                        return (
+                                          <select
+                                            value={rule.value}
+                                            onChange={(e) =>
+                                              updateRepeatRule(
+                                                condition.id,
+                                                ruleIdx,
+                                                "value",
+                                                e.target.value
+                                              )
+                                            }
+                                            className="border rounded px-2 py-1 w-full text-xs"
+                                            style={{
+                                              color: "var(--text-dark)",
+                                              backgroundColor:
+                                                "var(--neutral-light)",
+                                              borderColor: "var(--neutral-mid)",
+                                            }}
+                                          >
+                                            <option value="">
+                                              Select value
+                                            </option>
+                                            {q.choices.map((opt: any) => (
+                                              <option
+                                                key={String(opt.value ?? opt)}
+                                                value={String(opt.value ?? opt)}
+                                              >
+                                                {opt.text || String(opt)}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        );
+                                      }
+                                      // Boolean type
+                                      if (q.type === "boolean") {
+                                        return (
+                                          <select
+                                            value={rule.value}
+                                            onChange={(e) =>
+                                              updateRepeatRule(
+                                                condition.id,
+                                                ruleIdx,
+                                                "value",
+                                                e.target.value
+                                              )
+                                            }
+                                            className="border rounded px-2 py-1 w-full text-xs"
+                                            style={{
+                                              color: "var(--text-dark)",
+                                              backgroundColor:
+                                                "var(--neutral-light)",
+                                              borderColor: "var(--neutral-mid)",
+                                            }}
+                                          >
+                                            <option value="">
+                                              Select value
+                                            </option>
+                                            <option value="true">true</option>
+                                            <option value="false">false</option>
+                                          </select>
+                                        );
+                                      }
+                                      // Rating type
+                                      if (
+                                        q.rateMin !== undefined &&
+                                        q.rateMax !== undefined
+                                      ) {
+                                        return (
+                                          <select
+                                            value={rule.value}
+                                            onChange={(e) =>
+                                              updateRepeatRule(
+                                                condition.id,
+                                                ruleIdx,
+                                                "value",
+                                                e.target.value
+                                              )
+                                            }
+                                            className="border rounded px-2 py-1 w-full text-xs"
+                                            style={{
+                                              color: "var(--text-dark)",
+                                              backgroundColor:
+                                                "var(--neutral-light)",
+                                              borderColor: "var(--neutral-mid)",
+                                            }}
+                                          >
+                                            <option value="">
+                                              Select value
+                                            </option>
+                                            {Array.from(
+                                              {
+                                                length:
+                                                  q.rateMax - q.rateMin + 1,
+                                              },
+                                              (_, i) => q.rateMin + i
+                                            ).map((val: number) => (
+                                              <option
+                                                key={val}
+                                                value={String(val)}
+                                              >
+                                                {val}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        );
+                                      }
+                                    }
+                                  }
+                                  // Button component with response property
+                                  if (
+                                    comp &&
+                                    comp.type === "ButtonResponseComponent" &&
+                                    rule.prop === "response" &&
+                                    comp.choices
+                                  ) {
+                                    return (
+                                      <select
+                                        value={rule.value}
+                                        onChange={(e) =>
+                                          updateRepeatRule(
+                                            condition.id,
+                                            ruleIdx,
+                                            "value",
+                                            e.target.value
+                                          )
+                                        }
+                                        className="border rounded px-2 py-1 w-full text-xs"
+                                        style={{
+                                          color: "var(--text-dark)",
+                                          backgroundColor:
+                                            "var(--neutral-light)",
+                                          borderColor: "var(--neutral-mid)",
+                                        }}
+                                      >
+                                        <option value="">Select value</option>
+                                        {comp.choices.map((opt: any) => (
+                                          <option
+                                            key={String(opt.value ?? opt)}
+                                            value={String(opt.value ?? opt)}
+                                          >
+                                            {opt.text || String(opt)}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    );
+                                  }
+                                  // Default: text input
+                                  return (
+                                    <input
+                                      type="text"
+                                      value={rule.value}
+                                      onChange={(e) =>
+                                        updateRepeatRule(
+                                          condition.id,
+                                          ruleIdx,
+                                          "value",
+                                          e.target.value
+                                        )
+                                      }
+                                      placeholder="Value"
+                                      className="border rounded px-2 py-1 w-full text-xs"
+                                      style={{
+                                        color: "var(--text-dark)",
+                                        backgroundColor: "var(--neutral-light)",
+                                        borderColor: "var(--neutral-mid)",
+                                      }}
+                                    />
+                                  );
+                                })()
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={rule.value}
+                                  onChange={(e) =>
+                                    updateRepeatRule(
+                                      condition.id,
+                                      ruleIdx,
+                                      "value",
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="Value"
+                                  className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-yellow-400"
+                                  style={{
+                                    color: "var(--text-dark)",
+                                    backgroundColor: "var(--neutral-light)",
+                                    borderColor: "var(--neutral-mid)",
+                                  }}
+                                />
+                              )}
                             </td>
                             <td className="px-1 py-2 text-center">
                               {condition.rules.length > 1 && (

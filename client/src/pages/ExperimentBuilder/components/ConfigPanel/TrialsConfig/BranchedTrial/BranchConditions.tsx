@@ -28,7 +28,9 @@ function BranchConditions({
       ...conditions,
       {
         id: Date.now(),
-        rules: [{ prop: "", op: "==", value: "" }],
+        rules: [
+          { prop: "", op: "==", value: "", fieldType: "", componentIdx: "" },
+        ],
         nextTrialId: null,
         customParameters: {},
       },
@@ -43,7 +45,19 @@ function BranchConditions({
     setConditions(
       conditions.map((c) =>
         c.id === conditionId
-          ? { ...c, rules: [...c.rules, { prop: "", op: "==", value: "" }] }
+          ? {
+              ...c,
+              rules: [
+                ...c.rules,
+                {
+                  prop: "",
+                  op: "==",
+                  value: "",
+                  fieldType: "",
+                  componentIdx: "",
+                },
+              ],
+            }
           : c
       )
     );
@@ -62,7 +76,7 @@ function BranchConditions({
   const updateRule = (
     conditionId: number,
     ruleIndex: number,
-    field: keyof Rule,
+    field: string,
     value: string
   ) => {
     setConditions(
@@ -345,7 +359,7 @@ function BranchConditions({
                 </div>
 
                 {/* Tabla de reglas */}
-                <div className="p-4">
+                <div className="p-4 overflow-x-auto">
                   <table
                     className="w-full border-collapse rounded-lg overflow-hidden"
                     style={{
@@ -359,42 +373,99 @@ function BranchConditions({
                           backgroundColor: "rgba(78, 205, 196, 0.15)",
                         }}
                       >
-                        <th
-                          className="px-2 py-2 text-left text-sm font-semibold"
-                          style={{
-                            color: "var(--text-dark)",
-                            borderBottom: "2px solid var(--neutral-mid)",
-                            width: "18%",
-                          }}
-                        >
-                          Data Field
-                        </th>
-                        <th
-                          className="px-2 py-2 text-left text-sm font-semibold"
-                          style={{
-                            color: "var(--text-dark)",
-                            borderBottom: "2px solid var(--neutral-mid)",
-                            width: "8%",
-                          }}
-                        >
-                          Op
-                        </th>
-                        <th
-                          className="px-2 py-2 text-left text-sm font-semibold"
-                          style={{
-                            color: "var(--text-dark)",
-                            borderBottom: "2px solid var(--neutral-mid)",
-                            width: "12%",
-                          }}
-                        >
-                          Value
-                        </th>
+                        {selectedTrial?.plugin === "plugin-dynamic" ? (
+                          <>
+                            <th
+                              className="px-2 py-2 text-left text-sm font-semibold"
+                              style={{
+                                color: "var(--text-dark)",
+                                borderBottom: "2px solid var(--neutral-mid)",
+                                minWidth: "150px",
+                              }}
+                            >
+                              Field Type
+                            </th>
+                            <th
+                              className="px-2 py-2 text-left text-sm font-semibold"
+                              style={{
+                                color: "var(--text-dark)",
+                                borderBottom: "2px solid var(--neutral-mid)",
+                                minWidth: "180px",
+                              }}
+                            >
+                              Component
+                            </th>
+                            <th
+                              className="px-2 py-2 text-left text-sm font-semibold"
+                              style={{
+                                color: "var(--text-dark)",
+                                borderBottom: "2px solid var(--neutral-mid)",
+                                minWidth: "150px",
+                              }}
+                            >
+                              Property
+                            </th>
+                            <th
+                              className="px-2 py-2 text-left text-sm font-semibold"
+                              style={{
+                                color: "var(--text-dark)",
+                                borderBottom: "2px solid var(--neutral-mid)",
+                                minWidth: "80px",
+                              }}
+                            >
+                              Op
+                            </th>
+                            <th
+                              className="px-2 py-2 text-left text-sm font-semibold"
+                              style={{
+                                color: "var(--text-dark)",
+                                borderBottom: "2px solid var(--neutral-mid)",
+                                minWidth: "150px",
+                              }}
+                            >
+                              Value
+                            </th>
+                          </>
+                        ) : (
+                          <>
+                            <th
+                              className="px-2 py-2 text-left text-sm font-semibold"
+                              style={{
+                                color: "var(--text-dark)",
+                                borderBottom: "2px solid var(--neutral-mid)",
+                                minWidth: "200px",
+                              }}
+                            >
+                              Data Field
+                            </th>
+                            <th
+                              className="px-2 py-2 text-left text-sm font-semibold"
+                              style={{
+                                color: "var(--text-dark)",
+                                borderBottom: "2px solid var(--neutral-mid)",
+                                minWidth: "80px",
+                              }}
+                            >
+                              Op
+                            </th>
+                            <th
+                              className="px-2 py-2 text-left text-sm font-semibold"
+                              style={{
+                                color: "var(--text-dark)",
+                                borderBottom: "2px solid var(--neutral-mid)",
+                                minWidth: "150px",
+                              }}
+                            >
+                              Value
+                            </th>
+                          </>
+                        )}
                         <th
                           className="px-1 py-2 text-center text-sm font-semibold"
                           style={{
                             color: "var(--text-dark)",
                             borderBottom: "2px solid var(--neutral-mid)",
-                            width: "3%",
+                            minWidth: "50px",
                           }}
                         ></th>
                         <th
@@ -402,35 +473,123 @@ function BranchConditions({
                           style={{
                             color: "var(--gold)",
                             borderBottom: "2px solid var(--neutral-mid)",
-                            width: "14%",
+                            minWidth: "180px",
                           }}
                         >
                           THEN Go To
                         </th>
-                        <th
-                          className="px-2 py-2 text-center text-sm font-semibold"
-                          style={{
-                            color: "var(--gold)",
-                            borderBottom: "2px solid var(--neutral-mid)",
-                            width: "20%",
-                          }}
-                        >
-                          Override Params
-                        </th>
-                        <th
-                          className="px-2 py-2 text-center text-sm font-semibold"
-                          style={{
-                            color: "var(--gold)",
-                            borderBottom: "2px solid var(--neutral-mid)",
-                            width: "25%",
-                          }}
-                        >
-                          Value
-                        </th>
+                        {(() => {
+                          const targetTrial = condition.nextTrialId
+                            ? findTrialById(condition.nextTrialId)
+                            : null;
+                          const isTargetDynamic =
+                            targetTrial?.plugin === "plugin-dynamic";
+
+                          if (isTargetDynamic) {
+                            return (
+                              <>
+                                <th
+                                  className="px-2 py-2 text-center text-sm font-semibold"
+                                  style={{
+                                    color: "var(--gold)",
+                                    borderBottom:
+                                      "2px solid var(--neutral-mid)",
+                                    minWidth: "150px",
+                                  }}
+                                >
+                                  Field Type
+                                </th>
+                                <th
+                                  className="px-2 py-2 text-center text-sm font-semibold"
+                                  style={{
+                                    color: "var(--gold)",
+                                    borderBottom:
+                                      "2px solid var(--neutral-mid)",
+                                    minWidth: "180px",
+                                  }}
+                                >
+                                  Component
+                                </th>
+                                <th
+                                  className="px-2 py-2 text-center text-sm font-semibold"
+                                  style={{
+                                    color: "var(--gold)",
+                                    borderBottom:
+                                      "2px solid var(--neutral-mid)",
+                                    minWidth: "150px",
+                                  }}
+                                >
+                                  Property
+                                </th>
+                                <th
+                                  className="px-2 py-2 text-center text-sm font-semibold"
+                                  style={{
+                                    color: "var(--gold)",
+                                    borderBottom:
+                                      "2px solid var(--neutral-mid)",
+                                    minWidth: "150px",
+                                  }}
+                                >
+                                  Question
+                                </th>
+                                <th
+                                  className="px-2 py-2 text-center text-sm font-semibold"
+                                  style={{
+                                    color: "var(--gold)",
+                                    borderBottom:
+                                      "2px solid var(--neutral-mid)",
+                                    minWidth: "200px",
+                                  }}
+                                >
+                                  Value
+                                </th>
+                              </>
+                            );
+                          } else {
+                            return (
+                              <>
+                                <th
+                                  className="px-2 py-2 text-center text-sm font-semibold"
+                                  style={{
+                                    color: "var(--gold)",
+                                    borderBottom:
+                                      "2px solid var(--neutral-mid)",
+                                    minWidth: "200px",
+                                  }}
+                                >
+                                  Override Params
+                                </th>
+                                <th
+                                  className="px-2 py-2 text-center text-sm font-semibold"
+                                  style={{
+                                    color: "var(--gold)",
+                                    borderBottom:
+                                      "2px solid var(--neutral-mid)",
+                                    minWidth: "250px",
+                                  }}
+                                >
+                                  Value
+                                </th>
+                              </>
+                            );
+                          }
+                        })()}
                       </tr>
                     </thead>
                     <tbody>
                       {condition.rules.map((rule, ruleIdx) => {
+                        // For dynamic plugins, get component data
+                        const fieldType = rule.fieldType || "";
+                        const componentIdx = rule.componentIdx ?? "";
+                        const compArr = fieldType
+                          ? selectedTrial?.columnMapping?.[fieldType]?.value ||
+                            []
+                          : [];
+                        const comp =
+                          componentIdx !== "" && compArr.length > 0
+                            ? compArr.find((c: any) => c.name === componentIdx)
+                            : null;
+
                         return (
                           <tr
                             key={ruleIdx}
@@ -441,122 +600,558 @@ function BranchConditions({
                                   : "none",
                             }}
                           >
-                            <td className="px-2 py-2 relative">
-                              <select
-                                value={rule.prop}
-                                onChange={(e) =>
-                                  updateRule(
-                                    condition.id,
-                                    ruleIdx,
-                                    "prop",
-                                    e.target.value
-                                  )
-                                }
-                                className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
-                                style={{
-                                  color: "var(--text-dark)",
-                                  backgroundColor: "var(--neutral-light)",
-                                  borderColor: "var(--neutral-mid)",
-                                }}
-                              >
-                                <option
-                                  style={{ textAlign: "center" }}
-                                  value=""
-                                >
-                                  Select field
-                                </option>
-                                {data.map((field) => (
-                                  <option
-                                    key={field.key}
-                                    value={field.key}
-                                    disabled={
-                                      usedProps.includes(field.key) &&
-                                      rule.prop !== field.key
-                                    }
-                                    style={{ textAlign: "center" }}
+                            {selectedTrial?.plugin === "plugin-dynamic" ? (
+                              <>
+                                {/* Field Type Column */}
+                                <td className="px-2 py-2">
+                                  <select
+                                    value={fieldType}
+                                    onChange={(e) => {
+                                      const newValue = e.target.value;
+                                      setConditions(
+                                        conditions.map((c) =>
+                                          c.id === condition.id
+                                            ? {
+                                                ...c,
+                                                rules: c.rules.map((r, idx) =>
+                                                  idx === ruleIdx
+                                                    ? {
+                                                        ...r,
+                                                        fieldType: newValue,
+                                                        componentIdx: "",
+                                                        prop: "",
+                                                        value: "",
+                                                      }
+                                                    : r
+                                                ),
+                                              }
+                                            : c
+                                        )
+                                      );
+                                    }}
+                                    className="border rounded px-2 py-1 w-full text-xs"
+                                    style={{
+                                      color: "var(--text-dark)",
+                                      backgroundColor: "var(--neutral-light)",
+                                      borderColor: "var(--neutral-mid)",
+                                    }}
                                   >
-                                    {field.label || field.key}
-                                  </option>
-                                ))}
-                              </select>
-                            </td>
-                            <td className="px-2 py-2">
-                              <select
-                                value={rule.op}
-                                onChange={(e) =>
-                                  updateRule(
-                                    condition.id,
-                                    ruleIdx,
-                                    "op",
-                                    e.target.value
-                                  )
-                                }
-                                className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
-                                style={{
-                                  color: "var(--text-dark)",
-                                  backgroundColor: "var(--neutral-light)",
-                                  borderColor: "var(--neutral-mid)",
-                                }}
-                              >
-                                <option
-                                  style={{ textAlign: "center" }}
-                                  value="=="
-                                >
-                                  =
-                                </option>
-                                <option
-                                  style={{ textAlign: "center" }}
-                                  value="!="
-                                >
-                                  ≠
-                                </option>
-                                <option
-                                  style={{ textAlign: "center" }}
-                                  value=">"
-                                >
-                                  {">"}
-                                </option>
-                                <option
-                                  style={{ textAlign: "center" }}
-                                  value="<"
-                                >
-                                  {"<"}
-                                </option>
-                                <option
-                                  style={{ textAlign: "center" }}
-                                  value=">="
-                                >
-                                  {">="}
-                                </option>
-                                <option
-                                  style={{ textAlign: "center" }}
-                                  value="<="
-                                >
-                                  {"<="}
-                                </option>
-                              </select>
-                            </td>
-                            <td className="px-2 py-2">
-                              <input
-                                type="text"
-                                value={rule.value}
-                                onChange={(e) =>
-                                  updateRule(
-                                    condition.id,
-                                    ruleIdx,
-                                    "value",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="Value"
-                                className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
-                                style={{
-                                  color: "var(--text-dark)",
-                                  backgroundColor: "var(--neutral-light)",
-                                  borderColor: "var(--neutral-mid)",
-                                }}
-                              />
-                            </td>
+                                    <option value="">Select type</option>
+                                    <option value="components">Stimulus</option>
+                                    <option value="response_components">
+                                      Response
+                                    </option>
+                                  </select>
+                                </td>
+
+                                {/* Component Column */}
+                                <td className="px-2 py-2">
+                                  <select
+                                    value={componentIdx}
+                                    onChange={(e) => {
+                                      const newValue = e.target.value;
+                                      setConditions(
+                                        conditions.map((c) =>
+                                          c.id === condition.id
+                                            ? {
+                                                ...c,
+                                                rules: c.rules.map((r, idx) =>
+                                                  idx === ruleIdx
+                                                    ? {
+                                                        ...r,
+                                                        componentIdx: newValue,
+                                                        prop: "",
+                                                        value: "",
+                                                      }
+                                                    : r
+                                                ),
+                                              }
+                                            : c
+                                        )
+                                      );
+                                    }}
+                                    className="border rounded px-2 py-1 w-full text-xs"
+                                    style={{
+                                      color: "var(--text-dark)",
+                                      backgroundColor: "var(--neutral-light)",
+                                      borderColor: "var(--neutral-mid)",
+                                    }}
+                                  >
+                                    <option value="">Select component</option>
+                                    {compArr.map((c: any) => (
+                                      <option key={c.name} value={c.name}>
+                                        {c.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </td>
+
+                                {/* Property Column */}
+                                <td className="px-2 py-2">
+                                  {comp && comp.type === "SurveyComponent" ? (
+                                    <select
+                                      value={rule.prop}
+                                      onChange={(e) => {
+                                        const newValue = e.target.value;
+                                        setConditions(
+                                          conditions.map((c) =>
+                                            c.id === condition.id
+                                              ? {
+                                                  ...c,
+                                                  rules: c.rules.map(
+                                                    (r, idx) =>
+                                                      idx === ruleIdx
+                                                        ? {
+                                                            ...r,
+                                                            prop: newValue,
+                                                            value: "",
+                                                          }
+                                                        : r
+                                                  ),
+                                                }
+                                              : c
+                                          )
+                                        );
+                                      }}
+                                      className="border rounded px-2 py-1 w-full text-xs"
+                                      style={{
+                                        color: "var(--text-dark)",
+                                        backgroundColor: "var(--neutral-light)",
+                                        borderColor: "var(--neutral-mid)",
+                                      }}
+                                    >
+                                      <option value="">Select question</option>
+                                      {(comp.survey_json?.elements || []).map(
+                                        (q: any, idx: number) => (
+                                          <option
+                                            key={q.name || idx}
+                                            value={q.name}
+                                          >
+                                            {q.title || q.name}
+                                          </option>
+                                        )
+                                      )}
+                                    </select>
+                                  ) : comp &&
+                                    comp.type === "ButtonResponseComponent" ? (
+                                    <select
+                                      value={rule.prop}
+                                      onChange={(e) => {
+                                        const newValue = e.target.value;
+                                        setConditions(
+                                          conditions.map((c) =>
+                                            c.id === condition.id
+                                              ? {
+                                                  ...c,
+                                                  rules: c.rules.map(
+                                                    (r, idx) =>
+                                                      idx === ruleIdx
+                                                        ? {
+                                                            ...r,
+                                                            prop: newValue,
+                                                            value: "",
+                                                          }
+                                                        : r
+                                                  ),
+                                                }
+                                              : c
+                                          )
+                                        );
+                                      }}
+                                      className="border rounded px-2 py-1 w-full text-xs"
+                                      style={{
+                                        color: "var(--text-dark)",
+                                        backgroundColor: "var(--neutral-light)",
+                                        borderColor: "var(--neutral-mid)",
+                                      }}
+                                    >
+                                      <option value="">Select property</option>
+                                      <option value="response">response</option>
+                                    </select>
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      value={rule.prop}
+                                      onChange={(e) => {
+                                        const newValue = e.target.value;
+                                        setConditions(
+                                          conditions.map((c) =>
+                                            c.id === condition.id
+                                              ? {
+                                                  ...c,
+                                                  rules: c.rules.map(
+                                                    (r, idx) =>
+                                                      idx === ruleIdx
+                                                        ? {
+                                                            ...r,
+                                                            prop: newValue,
+                                                            value: "",
+                                                          }
+                                                        : r
+                                                  ),
+                                                }
+                                              : c
+                                          )
+                                        );
+                                      }}
+                                      placeholder="Property"
+                                      className="border rounded px-2 py-1 w-full text-xs"
+                                      style={{
+                                        color: "var(--text-dark)",
+                                        backgroundColor: "var(--neutral-light)",
+                                        borderColor: "var(--neutral-mid)",
+                                      }}
+                                    />
+                                  )}
+                                </td>
+
+                                {/* Op Column */}
+                                <td className="px-2 py-2">
+                                  <select
+                                    value={rule.op}
+                                    onChange={(e) =>
+                                      updateRule(
+                                        condition.id,
+                                        ruleIdx,
+                                        "op",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="border rounded px-2 py-1 w-full text-xs"
+                                    style={{
+                                      color: "var(--text-dark)",
+                                      backgroundColor: "var(--neutral-light)",
+                                      borderColor: "var(--neutral-mid)",
+                                    }}
+                                  >
+                                    <option value="==">=</option>
+                                    <option value="!=">≠</option>
+                                    <option value=">">{">"}</option>
+                                    <option value="<">{"<"}</option>
+                                    <option value=">=">{">="}</option>
+                                    <option value="<=">{"<="}</option>
+                                  </select>
+                                </td>
+
+                                {/* Value Column */}
+                                <td className="px-2 py-2">
+                                  {(() => {
+                                    // Survey component with question selected
+                                    if (
+                                      comp &&
+                                      comp.type === "SurveyComponent" &&
+                                      rule.prop
+                                    ) {
+                                      const q = (
+                                        comp.survey_json?.elements || []
+                                      ).find((q: any) => q.name === rule.prop);
+                                      if (q) {
+                                        // Has choices
+                                        if (q.choices && q.choices.length > 0) {
+                                          return (
+                                            <select
+                                              value={rule.value}
+                                              onChange={(e) =>
+                                                updateRule(
+                                                  condition.id,
+                                                  ruleIdx,
+                                                  "value",
+                                                  e.target.value
+                                                )
+                                              }
+                                              className="border rounded px-2 py-1 w-full text-xs"
+                                              style={{
+                                                color: "var(--text-dark)",
+                                                backgroundColor:
+                                                  "var(--neutral-light)",
+                                                borderColor:
+                                                  "var(--neutral-mid)",
+                                              }}
+                                            >
+                                              <option value="">
+                                                Select value
+                                              </option>
+                                              {q.choices.map((opt: any) => (
+                                                <option
+                                                  key={String(opt.value ?? opt)}
+                                                  value={String(
+                                                    opt.value ?? opt
+                                                  )}
+                                                >
+                                                  {opt.text || String(opt)}
+                                                </option>
+                                              ))}
+                                            </select>
+                                          );
+                                        }
+                                        // Boolean type
+                                        if (q.type === "boolean") {
+                                          return (
+                                            <select
+                                              value={rule.value}
+                                              onChange={(e) =>
+                                                updateRule(
+                                                  condition.id,
+                                                  ruleIdx,
+                                                  "value",
+                                                  e.target.value
+                                                )
+                                              }
+                                              className="border rounded px-2 py-1 w-full text-xs"
+                                              style={{
+                                                color: "var(--text-dark)",
+                                                backgroundColor:
+                                                  "var(--neutral-light)",
+                                                borderColor:
+                                                  "var(--neutral-mid)",
+                                              }}
+                                            >
+                                              <option value="">
+                                                Select value
+                                              </option>
+                                              <option value="true">true</option>
+                                              <option value="false">
+                                                false
+                                              </option>
+                                            </select>
+                                          );
+                                        }
+                                        // Rating type
+                                        if (
+                                          q.rateMin !== undefined &&
+                                          q.rateMax !== undefined
+                                        ) {
+                                          return (
+                                            <select
+                                              value={rule.value}
+                                              onChange={(e) =>
+                                                updateRule(
+                                                  condition.id,
+                                                  ruleIdx,
+                                                  "value",
+                                                  e.target.value
+                                                )
+                                              }
+                                              className="border rounded px-2 py-1 w-full text-xs"
+                                              style={{
+                                                color: "var(--text-dark)",
+                                                backgroundColor:
+                                                  "var(--neutral-light)",
+                                                borderColor:
+                                                  "var(--neutral-mid)",
+                                              }}
+                                            >
+                                              <option value="">
+                                                Select value
+                                              </option>
+                                              {Array.from(
+                                                {
+                                                  length:
+                                                    q.rateMax - q.rateMin + 1,
+                                                },
+                                                (_, i) => q.rateMin + i
+                                              ).map((val: number) => (
+                                                <option
+                                                  key={val}
+                                                  value={String(val)}
+                                                >
+                                                  {val}
+                                                </option>
+                                              ))}
+                                            </select>
+                                          );
+                                        }
+                                      }
+                                    }
+                                    // Button component with response property
+                                    if (
+                                      comp &&
+                                      comp.type === "ButtonResponseComponent" &&
+                                      rule.prop === "response" &&
+                                      comp.choices
+                                    ) {
+                                      return (
+                                        <select
+                                          value={rule.value}
+                                          onChange={(e) =>
+                                            updateRule(
+                                              condition.id,
+                                              ruleIdx,
+                                              "value",
+                                              e.target.value
+                                            )
+                                          }
+                                          className="border rounded px-2 py-1 w-full text-xs"
+                                          style={{
+                                            color: "var(--text-dark)",
+                                            backgroundColor:
+                                              "var(--neutral-light)",
+                                            borderColor: "var(--neutral-mid)",
+                                          }}
+                                        >
+                                          <option value="">Select value</option>
+                                          {comp.choices.map((opt: any) => (
+                                            <option
+                                              key={String(opt.value ?? opt)}
+                                              value={String(opt.value ?? opt)}
+                                            >
+                                              {opt.text || String(opt)}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      );
+                                    }
+                                    // Default: text input
+                                    return (
+                                      <input
+                                        type="text"
+                                        value={rule.value}
+                                        onChange={(e) =>
+                                          updateRule(
+                                            condition.id,
+                                            ruleIdx,
+                                            "value",
+                                            e.target.value
+                                          )
+                                        }
+                                        placeholder="Value"
+                                        className="border rounded px-2 py-1 w-full text-xs"
+                                        style={{
+                                          color: "var(--text-dark)",
+                                          backgroundColor:
+                                            "var(--neutral-light)",
+                                          borderColor: "var(--neutral-mid)",
+                                        }}
+                                      />
+                                    );
+                                  })()}
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                {/* Normal plugin - Data Field Column */}
+                                <td className="px-2 py-2 relative">
+                                  <select
+                                    value={rule.prop}
+                                    onChange={(e) =>
+                                      updateRule(
+                                        condition.id,
+                                        ruleIdx,
+                                        "prop",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
+                                    style={{
+                                      color: "var(--text-dark)",
+                                      backgroundColor: "var(--neutral-light)",
+                                      borderColor: "var(--neutral-mid)",
+                                    }}
+                                  >
+                                    <option
+                                      style={{ textAlign: "center" }}
+                                      value=""
+                                    >
+                                      Select field
+                                    </option>
+                                    {data.map((field) => (
+                                      <option
+                                        key={field.key}
+                                        value={field.key}
+                                        disabled={
+                                          usedProps.includes(field.key) &&
+                                          rule.prop !== field.key
+                                        }
+                                        style={{ textAlign: "center" }}
+                                      >
+                                        {field.label || field.key}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </td>
+
+                                {/* Op Column */}
+                                <td className="px-2 py-2">
+                                  <select
+                                    value={rule.op}
+                                    onChange={(e) =>
+                                      updateRule(
+                                        condition.id,
+                                        ruleIdx,
+                                        "op",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
+                                    style={{
+                                      color: "var(--text-dark)",
+                                      backgroundColor: "var(--neutral-light)",
+                                      borderColor: "var(--neutral-mid)",
+                                    }}
+                                  >
+                                    <option
+                                      style={{ textAlign: "center" }}
+                                      value="=="
+                                    >
+                                      =
+                                    </option>
+                                    <option
+                                      style={{ textAlign: "center" }}
+                                      value="!="
+                                    >
+                                      ≠
+                                    </option>
+                                    <option
+                                      style={{ textAlign: "center" }}
+                                      value=">"
+                                    >
+                                      {">"}
+                                    </option>
+                                    <option
+                                      style={{ textAlign: "center" }}
+                                      value="<"
+                                    >
+                                      {"<"}
+                                    </option>
+                                    <option
+                                      style={{ textAlign: "center" }}
+                                      value=">="
+                                    >
+                                      {">="}
+                                    </option>
+                                    <option
+                                      style={{ textAlign: "center" }}
+                                      value="<="
+                                    >
+                                      {"<="}
+                                    </option>
+                                  </select>
+                                </td>
+
+                                {/* Value Column */}
+                                <td className="px-2 py-2">
+                                  <input
+                                    type="text"
+                                    value={rule.value}
+                                    onChange={(e) =>
+                                      updateRule(
+                                        condition.id,
+                                        ruleIdx,
+                                        "value",
+                                        e.target.value
+                                      )
+                                    }
+                                    placeholder="Value"
+                                    className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
+                                    style={{
+                                      color: "var(--text-dark)",
+                                      backgroundColor: "var(--neutral-light)",
+                                      borderColor: "var(--neutral-mid)",
+                                    }}
+                                  />
+                                </td>
+                              </>
+                            )}
                             <td className="px-1 py-2 text-center">
                               {condition.rules.length > 1 && (
                                 <button
@@ -641,6 +1236,12 @@ function BranchConditions({
                       {/* Filas de parámetros - aparecen debajo de todas las reglas */}
                       {condition.nextTrialId &&
                         (() => {
+                          const targetTrial = findTrialById(
+                            condition.nextTrialId
+                          );
+                          const isTargetDynamic =
+                            targetTrial?.plugin === "plugin-dynamic";
+
                           const customParamKeys = condition.customParameters
                             ? Object.keys(condition.customParameters)
                             : [];
@@ -663,36 +1264,138 @@ function BranchConditions({
                                   condition.nextTrialId!
                                 );
 
+                                // For dynamic plugins, parse the paramKey to get field structure
+                                let fieldType = "";
+                                let componentIdx = "";
+                                let propName = "";
+                                let questionName = "";
+                                if (
+                                  isTargetDynamic &&
+                                  paramKey.includes("::")
+                                ) {
+                                  const parts = paramKey.split("::");
+                                  if (parts.length === 3) {
+                                    [fieldType, componentIdx, propName] = parts;
+                                  } else if (parts.length === 4) {
+                                    [
+                                      fieldType,
+                                      componentIdx,
+                                      propName,
+                                      questionName,
+                                    ] = parts;
+                                  }
+                                }
+
+                                // Get component array and specific component for dynamic plugins
+                                const compArr =
+                                  isTargetDynamic && fieldType
+                                    ? targetTrial?.columnMapping?.[fieldType]
+                                        ?.value || []
+                                    : [];
+                                const comp =
+                                  isTargetDynamic &&
+                                  componentIdx !== "" &&
+                                  compArr.length > 0
+                                    ? compArr.find(
+                                        (c: any) => c.name === componentIdx
+                                      )
+                                    : null;
+
                                 return (
                                   <tr key={`param-${paramKey}`}>
-                                    {/* Columnas vacías para Data Field, Op, Value, X */}
-                                    <td colSpan={4}></td>
+                                    {/* Columnas vacías para las columnas de reglas + botón X */}
+                                    <td
+                                      colSpan={
+                                        selectedTrial?.plugin ===
+                                        "plugin-dynamic"
+                                          ? 5
+                                          : 3
+                                      }
+                                    ></td>
+                                    {/* Columna X vacía */}
+                                    <td></td>
                                     {/* Columna THEN Go To vacía */}
                                     <td></td>
-                                    {/* Columna Override Params */}
-                                    <td
-                                      className="px-2 py-2"
-                                      style={{
-                                        backgroundColor:
-                                          "rgba(255, 209, 102, 0.05)",
-                                        borderLeft:
-                                          "1px solid var(--neutral-mid)",
-                                      }}
-                                    >
-                                      <select
-                                        value={paramKey}
-                                        onChange={(e) => {
-                                          const newKey = e.target.value;
-                                          if (newKey === "") {
-                                            removeCustomParameter(
-                                              condition.id,
-                                              paramKey
-                                            );
-                                          } else if (newKey !== paramKey) {
+                                    {/* Columna Override Params - Field Type */}
+                                    {isTargetDynamic && (
+                                      <td
+                                        className="px-2 py-2"
+                                        style={{
+                                          backgroundColor:
+                                            "rgba(255, 209, 102, 0.05)",
+                                          borderLeft:
+                                            "1px solid var(--neutral-mid)",
+                                        }}
+                                      >
+                                        <select
+                                          value={fieldType}
+                                          onChange={(e) => {
+                                            const newFieldType = e.target.value;
+                                            if (newFieldType === "") {
+                                              removeCustomParameter(
+                                                condition.id,
+                                                paramKey
+                                              );
+                                            } else {
+                                              const newParams = {
+                                                ...condition.customParameters,
+                                              };
+                                              delete newParams[paramKey];
+                                              const newKey = `${newFieldType}::::`;
+                                              newParams[newKey] = {
+                                                source: "none",
+                                                value: null,
+                                              };
+                                              setConditions(
+                                                conditions.map((c) =>
+                                                  c.id === condition.id
+                                                    ? {
+                                                        ...c,
+                                                        customParameters:
+                                                          newParams,
+                                                      }
+                                                    : c
+                                                )
+                                              );
+                                            }
+                                          }}
+                                          className="w-full border rounded px-2 py-1.5 text-xs"
+                                          style={{
+                                            color: "var(--text-dark)",
+                                            backgroundColor:
+                                              "var(--neutral-light)",
+                                            borderColor: "var(--gold)",
+                                          }}
+                                        >
+                                          <option value="">Remove</option>
+                                          <option value="components">
+                                            Stimulus
+                                          </option>
+                                          <option value="response_components">
+                                            Response
+                                          </option>
+                                        </select>
+                                      </td>
+                                    )}
+
+                                    {/* Columna Override Params - Component */}
+                                    {isTargetDynamic && (
+                                      <td
+                                        className="px-2 py-2"
+                                        style={{
+                                          backgroundColor:
+                                            "rgba(255, 209, 102, 0.05)",
+                                        }}
+                                      >
+                                        <select
+                                          value={componentIdx}
+                                          onChange={(e) => {
+                                            const newCompName = e.target.value;
                                             const newParams = {
                                               ...condition.customParameters,
                                             };
                                             delete newParams[paramKey];
+                                            const newKey = `${fieldType}::${newCompName}::`;
                                             newParams[newKey] = {
                                               source: "none",
                                               value: null,
@@ -708,33 +1411,281 @@ function BranchConditions({
                                                   : c
                                               )
                                             );
-                                          }
-                                        }}
-                                        className="w-full border rounded px-2 py-1.5 text-sm"
+                                          }}
+                                          className="w-full border rounded px-2 py-1.5 text-xs"
+                                          style={{
+                                            color: "var(--text-dark)",
+                                            backgroundColor:
+                                              "var(--neutral-light)",
+                                            borderColor: "var(--gold)",
+                                          }}
+                                          disabled={!fieldType}
+                                        >
+                                          <option value="">
+                                            Select component
+                                          </option>
+                                          {compArr.map((c: any) => (
+                                            <option key={c.name} value={c.name}>
+                                              {c.name}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </td>
+                                    )}
+
+                                    {/* Columna Override Params - Property */}
+                                    {isTargetDynamic && (
+                                      <td
+                                        className="px-2 py-2"
                                         style={{
-                                          color: "var(--text-dark)",
                                           backgroundColor:
-                                            "var(--neutral-light)",
-                                          borderColor: "var(--gold)",
+                                            "rgba(255, 209, 102, 0.05)",
                                         }}
                                       >
-                                        <option value="">
-                                          Remove parameter
-                                        </option>
-                                        {availableParams.map((p) => (
-                                          <option
-                                            key={p.key}
-                                            value={p.key}
-                                            disabled={
-                                              customParamKeys.includes(p.key) &&
-                                              p.key !== paramKey
-                                            }
-                                          >
-                                            {p.label}
+                                        <select
+                                          value={propName}
+                                          onChange={(e) => {
+                                            const newProp = e.target.value;
+                                            const newParams = {
+                                              ...condition.customParameters,
+                                            };
+                                            delete newParams[paramKey];
+                                            const newKey = `${fieldType}::${componentIdx}::${newProp}`;
+                                            newParams[newKey] = {
+                                              source: "none",
+                                              value: null,
+                                            };
+                                            setConditions(
+                                              conditions.map((c) =>
+                                                c.id === condition.id
+                                                  ? {
+                                                      ...c,
+                                                      customParameters:
+                                                        newParams,
+                                                    }
+                                                  : c
+                                              )
+                                            );
+                                          }}
+                                          className="w-full border rounded px-2 py-1.5 text-xs"
+                                          style={{
+                                            color: "var(--text-dark)",
+                                            backgroundColor:
+                                              "var(--neutral-light)",
+                                            borderColor: "var(--gold)",
+                                          }}
+                                          disabled={
+                                            !fieldType || !componentIdx || !comp
+                                          }
+                                        >
+                                          <option value="">
+                                            Select property
                                           </option>
-                                        ))}
-                                      </select>
-                                    </td>
+                                          {comp &&
+                                            comp.type === "SurveyComponent" && (
+                                              <>
+                                                <option value="survey_json">
+                                                  survey_json
+                                                </option>
+                                                <option value="preamble">
+                                                  preamble
+                                                </option>
+                                              </>
+                                            )}
+                                          {comp &&
+                                            comp.type ===
+                                              "ButtonResponseComponent" && (
+                                              <>
+                                                <option value="choices">
+                                                  choices
+                                                </option>
+                                                <option value="button_html">
+                                                  button_html
+                                                </option>
+                                              </>
+                                            )}
+                                          {comp &&
+                                            comp.type === "HtmlComponent" && (
+                                              <option value="stimulus">
+                                                stimulus
+                                              </option>
+                                            )}
+                                          {comp &&
+                                            comp.type === "ImageComponent" && (
+                                              <>
+                                                <option value="stimulus">
+                                                  stimulus
+                                                </option>
+                                                <option value="stimulus_width">
+                                                  stimulus_width
+                                                </option>
+                                                <option value="stimulus_height">
+                                                  stimulus_height
+                                                </option>
+                                              </>
+                                            )}
+                                          {comp &&
+                                            comp.type === "VideoComponent" && (
+                                              <>
+                                                <option value="stimulus">
+                                                  stimulus
+                                                </option>
+                                                <option value="width">
+                                                  width
+                                                </option>
+                                                <option value="height">
+                                                  height
+                                                </option>
+                                              </>
+                                            )}
+                                          {comp &&
+                                            comp.type === "AudioComponent" && (
+                                              <option value="stimulus">
+                                                stimulus
+                                              </option>
+                                            )}
+                                        </select>
+                                      </td>
+                                    )}
+
+                                    {/* Columna Override Params - Question (solo para SurveyComponent) */}
+                                    {isTargetDynamic && (
+                                      <td
+                                        className="px-2 py-2"
+                                        style={{
+                                          backgroundColor:
+                                            "rgba(255, 209, 102, 0.05)",
+                                        }}
+                                      >
+                                        {comp?.type === "SurveyComponent" &&
+                                        propName === "survey_json" ? (
+                                          <select
+                                            value={questionName}
+                                            onChange={(e) => {
+                                              const newQuestion =
+                                                e.target.value;
+                                              const newParams = {
+                                                ...condition.customParameters,
+                                              };
+                                              delete newParams[paramKey];
+                                              const newKey = `${fieldType}::${componentIdx}::${propName}::${newQuestion}`;
+                                              newParams[newKey] = {
+                                                source: "none",
+                                                value: null,
+                                              };
+                                              setConditions(
+                                                conditions.map((c) =>
+                                                  c.id === condition.id
+                                                    ? {
+                                                        ...c,
+                                                        customParameters:
+                                                          newParams,
+                                                      }
+                                                    : c
+                                                )
+                                              );
+                                            }}
+                                            className="w-full border rounded px-2 py-1.5 text-xs"
+                                            style={{
+                                              color: "var(--text-dark)",
+                                              backgroundColor:
+                                                "var(--neutral-light)",
+                                              borderColor: "var(--gold)",
+                                            }}
+                                            disabled={!propName}
+                                          >
+                                            <option value="">
+                                              Select question
+                                            </option>
+                                            {(
+                                              comp.survey_json?.elements || []
+                                            ).map((q: any) => (
+                                              <option
+                                                key={q.name}
+                                                value={q.name}
+                                              >
+                                                {q.title || q.name}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        ) : (
+                                          <span className="text-xs text-gray-400 px-2">
+                                            -
+                                          </span>
+                                        )}
+                                      </td>
+                                    )}
+
+                                    {/* Columna Override Params - Normal plugins */}
+                                    {!isTargetDynamic && (
+                                      <td
+                                        className="px-2 py-2"
+                                        style={{
+                                          backgroundColor:
+                                            "rgba(255, 209, 102, 0.05)",
+                                          borderLeft:
+                                            "1px solid var(--neutral-mid)",
+                                        }}
+                                      >
+                                        <select
+                                          value={paramKey}
+                                          onChange={(e) => {
+                                            const newKey = e.target.value;
+                                            if (newKey === "") {
+                                              removeCustomParameter(
+                                                condition.id,
+                                                paramKey
+                                              );
+                                            } else if (newKey !== paramKey) {
+                                              const newParams = {
+                                                ...condition.customParameters,
+                                              };
+                                              delete newParams[paramKey];
+                                              newParams[newKey] = {
+                                                source: "none",
+                                                value: null,
+                                              };
+                                              setConditions(
+                                                conditions.map((c) =>
+                                                  c.id === condition.id
+                                                    ? {
+                                                        ...c,
+                                                        customParameters:
+                                                          newParams,
+                                                      }
+                                                    : c
+                                                )
+                                              );
+                                            }
+                                          }}
+                                          className="w-full border rounded px-2 py-1.5 text-sm"
+                                          style={{
+                                            color: "var(--text-dark)",
+                                            backgroundColor:
+                                              "var(--neutral-light)",
+                                            borderColor: "var(--gold)",
+                                          }}
+                                        >
+                                          <option value="">
+                                            Remove parameter
+                                          </option>
+                                          {availableParams.map((p) => (
+                                            <option
+                                              key={p.key}
+                                              value={p.key}
+                                              disabled={
+                                                customParamKeys.includes(
+                                                  p.key
+                                                ) && p.key !== paramKey
+                                              }
+                                            >
+                                              {p.label}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </td>
+                                    )}
+
                                     {/* Columna Value */}
                                     <td
                                       className="px-2 py-2"
@@ -743,7 +1694,197 @@ function BranchConditions({
                                           "rgba(255, 209, 102, 0.05)",
                                       }}
                                     >
-                                      {param && paramValue ? (
+                                      {isTargetDynamic &&
+                                      fieldType &&
+                                      componentIdx !== "" &&
+                                      propName &&
+                                      (comp?.type !== "SurveyComponent" ||
+                                        (propName === "survey_json" &&
+                                          questionName)) ? (
+                                        <div className="flex flex-col gap-1">
+                                          <select
+                                            value={
+                                              paramValue.source === "typed"
+                                                ? "type_value"
+                                                : paramValue.source === "csv"
+                                                  ? String(paramValue.value)
+                                                  : ""
+                                            }
+                                            onChange={(e) => {
+                                              const value = e.target.value;
+                                              const source =
+                                                value === "type_value"
+                                                  ? "typed"
+                                                  : value === ""
+                                                    ? "none"
+                                                    : "csv";
+                                              let initialValue = null;
+                                              if (source === "typed") {
+                                                initialValue = "";
+                                              } else if (source === "csv") {
+                                                initialValue = value;
+                                              }
+                                              updateCustomParameter(
+                                                condition.id,
+                                                paramKey,
+                                                source,
+                                                initialValue
+                                              );
+                                            }}
+                                            className="w-full border rounded px-2 py-1.5 text-xs"
+                                            style={{
+                                              color: "var(--text-dark)",
+                                              backgroundColor:
+                                                "var(--neutral-light)",
+                                              borderColor: "var(--neutral-mid)",
+                                            }}
+                                          >
+                                            <option value="">Default</option>
+                                            <option value="type_value">
+                                              Type value
+                                            </option>
+                                            {csvColumns.map((col) => (
+                                              <option key={col} value={col}>
+                                                {col}
+                                              </option>
+                                            ))}
+                                          </select>
+
+                                          {paramValue.source === "typed" && (
+                                            <div>
+                                              {/* Survey component with question - show text input to type the new value */}
+                                              {comp?.type ===
+                                                "SurveyComponent" &&
+                                              propName === "survey_json" &&
+                                              questionName ? (
+                                                <input
+                                                  type="text"
+                                                  className="w-full border rounded px-2 py-1.5 text-xs"
+                                                  placeholder="Enter value to set"
+                                                  value={
+                                                    typeof paramValue.value ===
+                                                      "string" ||
+                                                    typeof paramValue.value ===
+                                                      "number"
+                                                      ? paramValue.value
+                                                      : ""
+                                                  }
+                                                  onChange={(e) =>
+                                                    updateCustomParameter(
+                                                      condition.id,
+                                                      paramKey,
+                                                      "typed",
+                                                      e.target.value
+                                                    )
+                                                  }
+                                                  style={{
+                                                    color: "var(--text-dark)",
+                                                    backgroundColor:
+                                                      "var(--neutral-light)",
+                                                    borderColor:
+                                                      "var(--neutral-mid)",
+                                                  }}
+                                                />
+                                              ) : comp?.type ===
+                                                  "ButtonResponseComponent" &&
+                                                propName === "choices" &&
+                                                comp.choices ? (
+                                                <textarea
+                                                  className="w-full border rounded px-2 py-1.5 text-xs"
+                                                  placeholder="JSON array"
+                                                  rows={3}
+                                                  value={
+                                                    typeof paramValue.value ===
+                                                    "string"
+                                                      ? paramValue.value
+                                                      : JSON.stringify(
+                                                          paramValue.value || []
+                                                        )
+                                                  }
+                                                  onChange={(e) =>
+                                                    updateCustomParameter(
+                                                      condition.id,
+                                                      paramKey,
+                                                      "typed",
+                                                      e.target.value
+                                                    )
+                                                  }
+                                                  style={{
+                                                    color: "var(--text-dark)",
+                                                    backgroundColor:
+                                                      "var(--neutral-light)",
+                                                    borderColor:
+                                                      "var(--neutral-mid)",
+                                                  }}
+                                                />
+                                              ) : propName ===
+                                                  "stimulus_width" ||
+                                                propName ===
+                                                  "stimulus_height" ||
+                                                propName === "width" ||
+                                                propName === "height" ? (
+                                                <input
+                                                  type="number"
+                                                  className="w-full border rounded px-2 py-1.5 text-xs"
+                                                  placeholder="Number"
+                                                  value={
+                                                    typeof paramValue.value ===
+                                                    "number"
+                                                      ? paramValue.value
+                                                      : ""
+                                                  }
+                                                  onChange={(e) =>
+                                                    updateCustomParameter(
+                                                      condition.id,
+                                                      paramKey,
+                                                      "typed",
+                                                      Number(e.target.value)
+                                                    )
+                                                  }
+                                                  style={{
+                                                    color: "var(--text-dark)",
+                                                    backgroundColor:
+                                                      "var(--neutral-light)",
+                                                    borderColor:
+                                                      "var(--neutral-mid)",
+                                                  }}
+                                                />
+                                              ) : (
+                                                <input
+                                                  type="text"
+                                                  className="w-full border rounded px-2 py-1.5 text-xs"
+                                                  placeholder="Value"
+                                                  value={
+                                                    typeof paramValue.value ===
+                                                      "string" ||
+                                                    typeof paramValue.value ===
+                                                      "number"
+                                                      ? paramValue.value
+                                                      : ""
+                                                  }
+                                                  onChange={(e) =>
+                                                    updateCustomParameter(
+                                                      condition.id,
+                                                      paramKey,
+                                                      "typed",
+                                                      e.target.value
+                                                    )
+                                                  }
+                                                  style={{
+                                                    color: "var(--text-dark)",
+                                                    backgroundColor:
+                                                      "var(--neutral-light)",
+                                                    borderColor:
+                                                      "var(--neutral-mid)",
+                                                  }}
+                                                />
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      ) : !isTargetDynamic &&
+                                        param &&
+                                        paramValue ? (
                                         <div className="flex flex-col gap-1">
                                           <select
                                             value={
@@ -900,15 +2041,24 @@ function BranchConditions({
                                 );
                               })}
 
-                              {/* Fila del botón "+ Add param" si se pueden agregar más */}
-                              {canAddMoreParams && (
+                              {/* Fila del botón "+ Add param" */}
+                              {(isTargetDynamic || canAddMoreParams) && (
                                 <tr>
-                                  {/* Columnas vacías para Data Field, Op, Value, X */}
-                                  <td colSpan={4}></td>
+                                  {/* Columnas vacías para las columnas de reglas + botón X */}
+                                  <td
+                                    colSpan={
+                                      selectedTrial?.plugin === "plugin-dynamic"
+                                        ? 5
+                                        : 3
+                                    }
+                                  ></td>
+                                  {/* Columna X vacía */}
+                                  <td></td>
                                   {/* Columna THEN Go To vacía */}
                                   <td></td>
                                   {/* Columna Override Params con botón */}
                                   <td
+                                    colSpan={isTargetDynamic ? 3 : 1}
                                     className="px-2 py-2"
                                     style={{
                                       backgroundColor:
@@ -918,9 +2068,31 @@ function BranchConditions({
                                     }}
                                   >
                                     <button
-                                      onClick={() =>
-                                        addCustomParameter(condition.id)
-                                      }
+                                      onClick={() => {
+                                        if (isTargetDynamic) {
+                                          // For dynamic plugins, add empty structure
+                                          const newParams = {
+                                            ...condition.customParameters,
+                                          };
+                                          const newKey = `::::`;
+                                          newParams[newKey] = {
+                                            source: "none",
+                                            value: null,
+                                          };
+                                          setConditions(
+                                            conditions.map((c) =>
+                                              c.id === condition.id
+                                                ? {
+                                                    ...c,
+                                                    customParameters: newParams,
+                                                  }
+                                                : c
+                                            )
+                                          );
+                                        } else {
+                                          addCustomParameter(condition.id);
+                                        }
+                                      }}
                                       className="px-3 py-1.5 rounded text-sm font-semibold transition w-full flex items-center justify-center gap-1"
                                       style={{
                                         backgroundColor: "var(--gold)",
