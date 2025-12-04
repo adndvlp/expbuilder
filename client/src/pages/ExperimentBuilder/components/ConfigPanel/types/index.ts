@@ -37,6 +37,8 @@ export type BranchCondition = {
     prop: string;
     op: string;
     value: string;
+    fieldType?: string;
+    componentIdx?: string;
   }>;
   nextTrialId: number | string | null;
   customParameters?: Record<string, ColumnMappingEntry>;
@@ -48,6 +50,8 @@ export type RepeatCondition = {
     prop: string;
     op: string;
     value: string;
+    fieldType?: string;
+    componentIdx?: string;
   }>;
   jumpToTrialId: number | string | null;
 };

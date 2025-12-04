@@ -55,70 +55,72 @@ const FileUploader = ({
             <>
               <h4 className="mb-4 text-center">Uploaded files</h4>
               <ul style={{ padding: 0, margin: 0 }}>
-                {uploadedFiles.map((file) => (
-                  <li
-                    key={file.name}
-                    style={{
-                      listStyle: "none",
-                      display: "flex",
-                      alignItems: "center",
-                      background: "var(--neutral-light)",
-                      border: "1px solid var(--text-dark)",
-                      borderRadius: "6px",
-                      padding: "8px 12px",
-                      marginBottom: "8px",
-                      fontSize: "15px",
-                      fontWeight: 500,
-                      color: "#fff",
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.18)",
-                    }}
-                  >
-                    <span
+                {uploadedFiles
+                  .filter((file) => file.name.split("/").pop() !== ".DS_Store")
+                  .map((file) => (
+                    <li
+                      key={file.name}
                       style={{
-                        flex: 1,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        color: "var(--text-dark)",
-                        cursor: "pointer",
-                      }}
-                      // title={file.name.split("/").pop()}
-                      title={
-                        copiedFile === file.name
-                          ? "Copied to clipboard!"
-                          : `Click to copy URL: ${file.name.split("/").pop()}`
-                      }
-                      onClick={() => copyToClipboard(file)}
-                    >
-                      {/* {file.name.split("/").pop()} */}
-                      {copiedFile === file.name
-                        ? "Copied to clipboard!"
-                        : file.name.split("/").pop()}
-                    </span>
-                    <button
-                      style={{
-                        marginLeft: "12px",
-                        background: "transparent",
-                        color: "var(--text-dark)",
-                        border: "none",
-                        borderRadius: "50%",
-                        width: "26px",
-                        height: "26px",
-                        cursor: "pointer",
-                        fontWeight: "bold",
-                        fontSize: "20px",
+                        listStyle: "none",
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "center",
-                        transition: "background 0.2s",
+                        background: "var(--neutral-light)",
+                        border: "1px solid var(--text-dark)",
+                        borderRadius: "6px",
+                        padding: "8px 12px",
+                        marginBottom: "8px",
+                        fontSize: "15px",
+                        fontWeight: 500,
+                        color: "#fff",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.18)",
                       }}
-                      title="Delete file"
-                      onClick={() => onDeleteFile(file.name)}
                     >
-                      ×
-                    </button>
-                  </li>
-                ))}
+                      <span
+                        style={{
+                          flex: 1,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          color: "var(--text-dark)",
+                          cursor: "pointer",
+                        }}
+                        // title={file.name.split("/").pop()}
+                        title={
+                          copiedFile === file.name
+                            ? "Copied to clipboard!"
+                            : `Click to copy URL: ${file.name.split("/").pop()}`
+                        }
+                        onClick={() => copyToClipboard(file)}
+                      >
+                        {/* {file.name.split("/").pop()} */}
+                        {copiedFile === file.name
+                          ? "Copied to clipboard!"
+                          : file.name.split("/").pop()}
+                      </span>
+                      <button
+                        style={{
+                          marginLeft: "12px",
+                          background: "transparent",
+                          color: "var(--text-dark)",
+                          border: "none",
+                          borderRadius: "50%",
+                          width: "26px",
+                          height: "26px",
+                          cursor: "pointer",
+                          fontWeight: "bold",
+                          fontSize: "20px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          transition: "background 0.2s",
+                        }}
+                        title="Delete file"
+                        onClick={() => onDeleteFile(file.name)}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
               </ul>
             </>
           )}

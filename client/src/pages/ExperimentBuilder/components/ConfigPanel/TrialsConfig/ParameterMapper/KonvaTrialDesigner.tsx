@@ -60,6 +60,10 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   const CANVAS_WIDTH = 1024;
   const CANVAS_HEIGHT = 768;
 
+  // Stage scale for responsive canvas
+  const [stageScale, setStageScale] = useState(1);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+
   // Convert jsPsych coordinates (-1 to 1) to canvas coordinates (px)
   const fromJsPsychCoords = (coords: { x: number; y: number }) => {
     const centerX = CANVAS_WIDTH / 2;
@@ -69,6 +73,55 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       x: centerX + coords.x * (CANVAS_WIDTH / 2),
       y: centerY + coords.y * (CANVAS_HEIGHT / 2),
     };
+  };
+
+  // Calculate stage scale based on available space
+  useEffect(() => {
+    const updateScale = () => {
+      if (!canvasContainerRef.current) return;
+
+      const container = canvasContainerRef.current;
+      const availableWidth = container.clientWidth - 32; // padding
+      const availableHeight = container.clientHeight - 32;
+
+      // Calculate scale to fit canvas in available space
+      const scaleX = availableWidth / CANVAS_WIDTH;
+      const scaleY = availableHeight / CANVAS_HEIGHT;
+      const scale = Math.min(scaleX, scaleY, 1); // Never scale up, only down
+
+      setStageScale(scale);
+    };
+
+    updateScale();
+    window.addEventListener("resize", updateScale);
+
+    // Update scale when panels resize
+    const intervalId = setInterval(updateScale, 100);
+
+    return () => {
+      window.removeEventListener("resize", updateScale);
+      clearInterval(intervalId);
+    };
+  }, [
+    CANVAS_WIDTH,
+    CANVAS_HEIGHT,
+    leftPanelWidth,
+    rightPanelWidth,
+    showLeftPanel,
+    showRightPanel,
+  ]);
+
+  // Helper functions for default dimensions
+  const getDefaultWidth = (type: string) => {
+    if (type === "SurveyjsComponent") return 400;
+    if (type === "SketchpadComponent") return 500;
+    return 300;
+  };
+
+  const getDefaultHeight = (type: string) => {
+    if (type === "SurveyjsComponent") return 400;
+    if (type === "SketchpadComponent") return 400;
+    return 200;
   };
 
   // Load components from columnMapping when modal opens
@@ -156,11 +209,16 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
           };
         }
 
-        // Use numeric width/height if available, otherwise use defaults
+        // Use numeric width/height if available, otherwise use component-specific defaults
         // (handles case where width/height might be CSV column names)
-        const numericWidth = typeof comp.width === "number" ? comp.width : 300;
+        const numericWidth =
+          typeof comp.width === "number"
+            ? comp.width
+            : getDefaultWidth(comp.type);
         const numericHeight =
-          typeof comp.height === "number" ? comp.height : 300;
+          typeof comp.height === "number"
+            ? comp.height
+            : getDefaultHeight(comp.type);
 
         loadedComponents.push({
           id: `${comp.type}-${idCounter++}`,
@@ -247,11 +305,16 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
           };
         }
 
-        // Use numeric width/height if available, otherwise use defaults
+        // Use numeric width/height if available, otherwise use component-specific defaults
         // (handles case where width/height might be CSV column names)
-        const numericWidth = typeof comp.width === "number" ? comp.width : 200;
+        const numericWidth =
+          typeof comp.width === "number"
+            ? comp.width
+            : getDefaultWidth(comp.type);
         const numericHeight =
-          typeof comp.height === "number" ? comp.height : 50;
+          typeof comp.height === "number"
+            ? comp.height
+            : getDefaultHeight(comp.type);
 
         loadedComponents.push({
           id: `${comp.type}-${idCounter++}`,
@@ -348,9 +411,17 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       const componentData: Record<string, any> = {
         type: comp.type,
         coordinates: coords,
-        width: comp.width,
-        height: comp.height,
       };
+
+      // Only add width if it was explicitly set (exists in config and is > 0)
+      if (comp.config.width?.value !== undefined && comp.width > 0) {
+        componentData.width = comp.width;
+      }
+
+      // Only add height if it was explicitly set (exists in config and is > 0)
+      if (comp.config.height?.value !== undefined && comp.height > 0) {
+        componentData.height = comp.height;
+      }
 
       // Add rotation if present
       if (comp.rotation !== undefined && comp.rotation !== 0) {
@@ -868,6 +939,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
           />
           {/* Canvas */}
           <div
+            ref={canvasContainerRef}
             style={{
               flex: 1,
               display: "flex",
@@ -888,6 +960,8 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
                 background: "var(--neutral-light)",
                 position: "relative",
                 boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                width: `${CANVAS_WIDTH * stageScale}px`,
+                height: `${CANVAS_HEIGHT * stageScale}px`,
               }}
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => {
@@ -902,13 +976,13 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
               <div
                 style={{
                   position: "absolute",
-                  width: CANVAS_WIDTH,
-                  height: CANVAS_HEIGHT,
+                  width: "100%",
+                  height: "100%",
                   backgroundImage: `
                   linear-gradient(var(--neutral-mid) 1px, transparent 1px),
                   linear-gradient(90deg, var(--neutral-mid) 1px, transparent 1px)
                 `,
-                  backgroundSize: "20px 20px",
+                  backgroundSize: `${20 * stageScale}px ${20 * stageScale}px`,
                   pointerEvents: "none",
                 }}
               />
@@ -953,6 +1027,8 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
                 ref={stageRef}
                 width={CANVAS_WIDTH}
                 height={CANVAS_HEIGHT}
+                scaleX={stageScale}
+                scaleY={stageScale}
                 onClick={(e) => {
                   // Deselect when clicking on empty space
                   if (e.target === e.target.getStage()) {

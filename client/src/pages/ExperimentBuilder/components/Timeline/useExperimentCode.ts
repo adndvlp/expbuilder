@@ -106,13 +106,24 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
           }
           
           // Get the property value from the component
-          if (rule.prop === "response" && component.response !== undefined) {
-            propValue = component.response;
-          } else if (component[rule.prop] !== undefined) {
-            propValue = component[rule.prop];
+          // For SurveyComponent, the response structure is different
+          // The prop is actually a question name inside component.response
+          if (component.type === "SurveyComponent" && component.response && typeof component.response === 'object') {
+            // The prop (e.g., "question1") is a key inside component.response
+            if (component.response[rule.prop] !== undefined) {
+              propValue = component.response[rule.prop];
+            } else {
+              return false;
+            }
           } else {
-            console.warn('Property not found in component:', rule.prop);
-            return false;
+            // For other components, check direct properties
+            if (rule.prop === "response" && component.response !== undefined) {
+              propValue = component.response;
+            } else if (component[rule.prop] !== undefined) {
+              propValue = component[rule.prop];
+            } else {
+              return false;
+            }
           }
         } else {
           // Normal plugin structure
@@ -121,7 +132,20 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
         
         const compareValue = rule.value;
         
-        // Convert values for comparison
+        // Handle array responses (multi-select or single-select returned as array)
+        if (Array.isArray(propValue)) {
+          const matches = propValue.includes(compareValue) || propValue.includes(String(compareValue));
+          switch (rule.op) {
+            case '==':
+              return matches;
+            case '!=':
+              return !matches;
+            default:
+              return false;
+          }
+        }
+        
+        // Convert values for comparison (for non-array values)
         const numPropValue = parseFloat(propValue);
         const numCompareValue = parseFloat(compareValue);
         const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
@@ -192,18 +216,15 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
         }
         
         if (evaluateCondition(trial, condition)) {
-          console.log('Condition matched:', condition);
           // Store custom parameters if they exist
           if (condition.customParameters) {
             window.branchCustomParameters = condition.customParameters;
-            console.log('Custom parameters for branch:', window.branchCustomParameters);
           }
           return condition.nextTrialId;
         }
       }
       
       // No condition matched - do NOT branch (conditions were defined but none matched)
-      console.log('No condition matched, NOT branching');
       return null;
     };`;
 
@@ -224,19 +245,14 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
       // NO activar el branching global. Los trials dentro de loops usan su propio
       // sistema de branching con variables locales (loopNextTrialId, etc.)
       if (trial.isInLoop === true) {
-        console.log('Trial inside loop detected, skipping global branching');
         return;
       }
       
-      console.log('Trial/Loop data:', lastTrialData);
-      
       const nextTrialId = getNextTrialId(lastTrialData);
-      console.log('Next trial/loop ID:', nextTrialId);
       
       if (nextTrialId) {
         // Check if nextTrialId is "FINISH_EXPERIMENT"
         if (nextTrialId === 'FINISH_EXPERIMENT') {
-          console.log('Finish experiment requested');
           jsPsych.abortExperiment('Experiment finished by branching condition', {});
           return;
         }
@@ -244,7 +260,6 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
         window.nextTrialId = nextTrialId;
         window.skipRemaining = true;
         window.branchingActive = true;
-        console.log('Branching activated: skip to trial/loop', nextTrialId);
       }`;
 
   const generateLocalExperiment = () => {

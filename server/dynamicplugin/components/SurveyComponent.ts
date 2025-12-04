@@ -99,6 +99,8 @@ class SurveyjsComponent {
     container.classList.add("jspsych-survey-container");
     container.style.textAlign = "initial";
     container.style.minWidth = minWidth;
+    container.style.overflowY = "auto";
+    container.style.overflowX = "auto";
     parent.appendChild(container);
     return container;
   }
@@ -115,6 +117,9 @@ class SurveyjsComponent {
     const surveyContainer = document.createElement("div");
     surveyContainer.id = "jspsych-survey-surveyjs-container";
     surveyContainer.style.position = "absolute";
+    surveyContainer.style.maxHeight = "90vh";
+    surveyContainer.style.overflowY = "auto";
+    surveyContainer.style.overflowX = "hidden";
 
     const xVw = mapValue(trial.coordinates.x);
     const yVh = mapValue(trial.coordinates.y);

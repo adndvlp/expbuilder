@@ -815,7 +815,20 @@ export function useTrialCode({
           
           const compareValue = rule.value;
           
-          // Convert values for comparison
+          // Handle array responses (multi-select questions)
+          if (Array.isArray(propValue)) {
+            // For array values, check if compareValue is included in the array
+            switch (rule.op) {
+              case '==':
+                return propValue.includes(compareValue);
+              case '!=':
+                return !propValue.includes(compareValue);
+              default:
+                return false; // Comparison operators don't make sense for arrays
+            }
+          }
+          
+          // Convert values for comparison (for non-array values)
           const numPropValue = parseFloat(propValue);
           const numCompareValue = parseFloat(compareValue);
           const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
@@ -899,7 +912,6 @@ export function useTrialCode({
           ? `
       // For trials in loops, use loop-specific BranchCustomParameters
       if (typeof ${getVarName("BranchCustomParameters")} !== 'undefined' && ${getVarName("BranchCustomParameters")} && typeof ${getVarName("BranchCustomParameters")} === 'object') {
-        console.log('Applying custom parameters to loop trial:', ${getVarName("BranchCustomParameters")});
         Object.entries(${getVarName("BranchCustomParameters")}).forEach(([key, param]) => {
           if (param && param.source !== 'none') {
             // Parse key to check if it's a nested survey question
@@ -930,7 +942,6 @@ export function useTrialCode({
                       
                       if (valueToSet !== undefined && valueToSet !== null) {
                         fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;
-                        console.log(\`Set \${fieldType}[\${compIndex}].survey_json.elements[\${questionIndex}].defaultValue = \${valueToSet}\`);
                       }
                     }
                   }
@@ -940,10 +951,8 @@ export function useTrialCode({
               // Normal parameter (not nested survey question)
               if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
                 trial[key] = param.value;
-                console.log(\`Set trial.\${key} = \${param.value}\`);
               } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
                 trial[key] = trial[param.value];
-                console.log(\`Set trial.\${key} = \${trial[param.value]} (from CSV column: \${param.value})\`);
               }
             }
           }
@@ -955,7 +964,6 @@ export function useTrialCode({
           : `
       // For trials outside loops, use window.branchCustomParameters
       if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {
-        console.log('Applying custom parameters to trial:', window.branchCustomParameters);
         Object.entries(window.branchCustomParameters).forEach(([key, param]) => {
           if (param && param.source !== 'none') {
             // Parse key to check if it's a nested survey question
@@ -986,7 +994,6 @@ export function useTrialCode({
                       
                       if (valueToSet !== undefined && valueToSet !== null) {
                         fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;
-                        console.log(\`Set \${fieldType}[\${compIndex}].survey_json.elements[\${questionIndex}].defaultValue = \${valueToSet}\`);
                       }
                     }
                   }
@@ -996,10 +1003,8 @@ export function useTrialCode({
               // Normal parameter (not nested survey question)
               if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
                 trial[key] = param.value;
-                console.log(\`Set trial.\${key} = \${param.value}\`);
               } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
                 trial[key] = trial[param.value];
-                console.log(\`Set trial.\${key} = \${trial[param.value]} (from CSV column: \${param.value})\`);
               }
             }
           }
@@ -1051,14 +1056,26 @@ export function useTrialCode({
             const component = fieldArray.find(c => c.name === rule.componentIdx);
             if (!component) {
               return false;
-            } return false;
             }
-            if (rule.prop === "response" && component.response !== undefined) {
-              propValue = component.response;
-            } else if (component[rule.prop] !== undefined) {
-              propValue = component[rule.prop];
+            
+            // For SurveyComponent, the response structure is different
+            // The prop is actually a question name inside component.response
+            if (component.type === "SurveyComponent" && component.response && typeof component.response === 'object') {
+              // The prop (e.g., "question1") is a key inside component.response
+              if (component.response[rule.prop] !== undefined) {
+                propValue = component.response[rule.prop];
+              } else {
+                return false;
+              }
             } else {
-              return false;
+              // For other components, check direct properties
+              if (rule.prop === "response" && component.response !== undefined) {
+                propValue = component.response;
+              } else if (component[rule.prop] !== undefined) {
+                propValue = component[rule.prop];
+              } else {
+                return false;
+              }
             }
           } else {
             // Normal plugin structure
@@ -1070,7 +1087,20 @@ export function useTrialCode({
           
           const compareValue = rule.value;
           
-          // Convertir valores para comparación
+          // Handle array responses (multi-select questions)
+          if (Array.isArray(propValue)) {
+            // For array values, check if compareValue is included in the array
+            switch (rule.op) {
+              case '==':
+                return propValue.includes(compareValue);
+              case '!=':
+                return !propValue.includes(compareValue);
+              default:
+                return false; // Comparison operators don't make sense for arrays
+            }
+          }
+          
+          // Convertir valores para comparación (for non-array values)
           const numPropValue = parseFloat(propValue);
           const numCompareValue = parseFloat(compareValue);
           const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
@@ -1144,8 +1174,63 @@ export function useTrialCode({
         
         // Todas las reglas en una condición deben ser verdaderas (lógica AND)
         const allRulesMatch = condition.rules.every(rule => {
-          const propValue = data[rule.prop];
+          let propValue;
+          
+          // Check if this is a dynamic plugin with fieldType
+          if (rule.fieldType && rule.componentIdx !== undefined && rule.componentIdx !== "") {
+            // Dynamic plugin structure
+            const actualFieldName = rule.fieldType === 'response_components' ? 'response' : rule.fieldType;
+            const fieldArray = data[actualFieldName];
+            if (!Array.isArray(fieldArray)) {
+              console.log('Branch eval (loop): fieldArray is not an array', actualFieldName, data);
+              return false;
+            }
+            const component = fieldArray.find(c => c.name === rule.componentIdx);
+            if (!component) {
+              console.log('Branch eval (loop): component not found', rule.componentIdx);
+              return false;
+            }
+            
+            // For SurveyComponent, check inside component.response
+            if (component.type === "SurveyComponent" && component.response && typeof component.response === 'object') {
+              if (component.response[rule.prop] !== undefined) {
+                propValue = component.response[rule.prop];
+                console.log('Branch eval (loop): Found question response', rule.prop, propValue);
+              } else {
+                console.log('Branch eval (loop): Question not found', rule.prop);
+                return false;
+              }
+            } else {
+              // Other component types
+              if (rule.prop === "response" && component.response !== undefined) {
+                propValue = component.response;
+              } else if (component[rule.prop] !== undefined) {
+                propValue = component[rule.prop];
+              } else {
+                return false;
+              }
+            }
+          } else {
+            // Normal plugin structure
+            propValue = data[rule.prop];
+          }
+          
           const compareValue = rule.value;
+          console.log('Branch eval (loop): Comparing', propValue, rule.op, compareValue);
+          
+          // Handle array responses (multi-select or single-select returned as array)
+          if (Array.isArray(propValue)) {
+            const matches = propValue.includes(compareValue) || propValue.includes(String(compareValue));
+            console.log('Branch eval (loop): Array comparison result', matches);
+            switch (rule.op) {
+              case '==':
+                return matches;
+              case '!=':
+                return !matches;
+              default:
+                return false;
+            }
+          }
           
           // Convertir valores para comparación
           const numPropValue = parseFloat(propValue);
@@ -1171,6 +1256,7 @@ export function useTrialCode({
         });
         
         if (allRulesMatch) {
+          console.log('Branch condition matched (loop)! Next trial:', condition.nextTrialId);
           nextTrialId = condition.nextTrialId;
           // Store custom parameters if they exist
           if (condition.customParameters) {
@@ -1183,6 +1269,7 @@ export function useTrialCode({
       
       // Si se encontró match, activar branching
       if (nextTrialId) {
+        console.log('Activating branching in loop to:', nextTrialId);
         ${getVarName("NextTrialId")} = nextTrialId;
         ${getVarName("SkipRemaining")} = true;
         ${getVarName("BranchingActive")} = true;
@@ -1350,12 +1437,25 @@ export function useTrialCode({
             if (!component) {
               return false;
             }
-            if (rule.prop === "response" && component.response !== undefined) {
-              propValue = component.response;
-            } else if (component[rule.prop] !== undefined) {
-              propValue = component[rule.prop];
+            
+            // For SurveyComponent, the response structure is different
+            // The prop is actually a question name inside component.response
+            if (component.type === "SurveyComponent" && component.response && typeof component.response === 'object') {
+              // The prop (e.g., "question1") is a key inside component.response
+              if (component.response[rule.prop] !== undefined) {
+                propValue = component.response[rule.prop];
+              } else {
+                return false;
+              }
             } else {
-              return false;
+              // For other components, check direct properties
+              if (rule.prop === "response" && component.response !== undefined) {
+                propValue = component.response;
+              } else if (component[rule.prop] !== undefined) {
+                propValue = component[rule.prop];
+              } else {
+                return false;
+              }
             }
           } else {
             // Normal plugin structure
@@ -1367,7 +1467,20 @@ export function useTrialCode({
           
           const compareValue = rule.value;
           
-          // Convertir valores para comparación
+          // Handle array responses (multi-select questions)
+          if (Array.isArray(propValue)) {
+            // For array values, check if compareValue is included in the array
+            switch (rule.op) {
+              case '==':
+                return propValue.includes(compareValue);
+              case '!=':
+                return !propValue.includes(compareValue);
+              default:
+                return false; // Comparison operators don't make sense for arrays
+            }
+          }
+          
+          // Convertir valores para comparación (for non-array values)
           const numPropValue = parseFloat(propValue);
           const numCompareValue = parseFloat(compareValue);
           const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);

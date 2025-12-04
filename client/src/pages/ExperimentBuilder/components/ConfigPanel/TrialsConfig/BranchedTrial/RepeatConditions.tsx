@@ -366,7 +366,7 @@ function RepeatConditions({
                           : [];
                         const comp =
                           componentIdx !== "" && compArr.length > 0
-                            ? compArr[Number(componentIdx)]
+                            ? compArr.find((c: any) => c.name === componentIdx)
                             : null;
 
                         return (
@@ -457,12 +457,9 @@ function RepeatConditions({
                                     }}
                                   >
                                     <option value="">Select component</option>
-                                    {compArr.map((c: any, idx: number) => (
-                                      <option
-                                        key={c.name || idx}
-                                        value={String(idx)}
-                                      >
-                                        {c.name || c.type}
+                                    {compArr.map((c: any) => (
+                                      <option key={c.name} value={c.name}>
+                                        {c.name}
                                       </option>
                                     ))}
                                   </select>

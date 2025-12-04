@@ -14,7 +14,7 @@ import BranchConditions from "./BranchConditions";
 import RepeatConditions from "./RepeatConditions";
 
 function BranchedTrial({ selectedTrial, onClose }: Props) {
-  const { trials, setTrials } = useTrials();
+  const { trials, setTrials, setSelectedTrial } = useTrials();
 
   const [activeTab, setActiveTab] = useState<TabType>("branch");
   const [data, setData] = useState<import("../../types").DataDefinition[]>([]);
@@ -243,14 +243,20 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
     setTrials(updatedTrials);
     console.log("Branch conditions saved:", branchConditions);
 
+    // Update selectedTrial with the new data so changes reflect immediately
+    const updatedSelectedTrial = findTrialById(selectedTrial.id);
+    if (updatedSelectedTrial) {
+      setSelectedTrial({
+        ...updatedSelectedTrial,
+        branchConditions,
+        repeatConditions: repeatConditionsToSave,
+      });
+    }
+
     // Show save indicator
     setSaveIndicator(true);
     setTimeout(() => {
       setSaveIndicator(false);
-      // Close modal after showing indicator
-      if (onClose) {
-        onClose();
-      }
     }, 1500);
   };
 

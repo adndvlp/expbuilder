@@ -217,10 +217,10 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
     setSaveIndicator(true);
     setTimeout(() => {
       setSaveIndicator(false);
-      if (onClose) {
-        onClose();
-      }
     }, 1500);
+
+    // Note: The parent component (LoopsConfig) handles updating selectedLoop
+    // via the onSave callback which updates the loop and triggers useEffect
   };
 
   return (
@@ -374,27 +374,107 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                             style={{
                               color: "var(--text-dark)",
                               borderBottom: "2px solid var(--neutral-mid)",
-                              width: "25%",
+                              width: "20%",
                             }}
                           >
                             Trial
                           </th>
+                          {(() => {
+                            // Check if any rule references a dynamic plugin trial
+                            const hasDynamicTrial = condition.rules.some(
+                              (rule) => {
+                                // Recursive function to find trial at any depth
+                                const findTrialRecursive = (
+                                  items: any[]
+                                ): any => {
+                                  for (const item of items) {
+                                    if (
+                                      item.id === rule.trialId ||
+                                      String(item.id) === String(rule.trialId)
+                                    ) {
+                                      return item;
+                                    }
+                                    if (
+                                      "trials" in item &&
+                                      Array.isArray(item.trials)
+                                    ) {
+                                      const found = findTrialRecursive(
+                                        item.trials
+                                      );
+                                      if (found) return found;
+                                    }
+                                  }
+                                  return null;
+                                };
+                                const referencedTrial = findTrialRecursive(
+                                  loop.trials
+                                );
+                                return (
+                                  referencedTrial?.plugin === "plugin-dynamic"
+                                );
+                              }
+                            );
+
+                            if (hasDynamicTrial) {
+                              return (
+                                <>
+                                  <th
+                                    className="px-2 py-2 text-left text-sm font-semibold"
+                                    style={{
+                                      color: "var(--text-dark)",
+                                      borderBottom:
+                                        "2px solid var(--neutral-mid)",
+                                      width: "14%",
+                                    }}
+                                  >
+                                    Field Type
+                                  </th>
+                                  <th
+                                    className="px-2 py-2 text-left text-sm font-semibold"
+                                    style={{
+                                      color: "var(--text-dark)",
+                                      borderBottom:
+                                        "2px solid var(--neutral-mid)",
+                                      width: "16%",
+                                    }}
+                                  >
+                                    Component
+                                  </th>
+                                  <th
+                                    className="px-2 py-2 text-left text-sm font-semibold"
+                                    style={{
+                                      color: "var(--text-dark)",
+                                      borderBottom:
+                                        "2px solid var(--neutral-mid)",
+                                      width: "14%",
+                                    }}
+                                  >
+                                    Property
+                                  </th>
+                                </>
+                              );
+                            } else {
+                              return (
+                                <th
+                                  className="px-2 py-2 text-left text-sm font-semibold"
+                                  style={{
+                                    color: "var(--text-dark)",
+                                    borderBottom:
+                                      "2px solid var(--neutral-mid)",
+                                    width: "22%",
+                                  }}
+                                >
+                                  Data Field
+                                </th>
+                              );
+                            }
+                          })()}
                           <th
                             className="px-2 py-2 text-left text-sm font-semibold"
                             style={{
                               color: "var(--text-dark)",
                               borderBottom: "2px solid var(--neutral-mid)",
-                              width: "25%",
-                            }}
-                          >
-                            Data Field
-                          </th>
-                          <th
-                            className="px-2 py-2 text-left text-sm font-semibold"
-                            style={{
-                              color: "var(--text-dark)",
-                              borderBottom: "2px solid var(--neutral-mid)",
-                              width: "15%",
+                              width: "12%",
                             }}
                           >
                             Operator
@@ -404,7 +484,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                             style={{
                               color: "var(--text-dark)",
                               borderBottom: "2px solid var(--neutral-mid)",
-                              width: "25%",
+                              width: "18%",
                             }}
                           >
                             Value
@@ -414,7 +494,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                             style={{
                               color: "var(--text-dark)",
                               borderBottom: "2px solid var(--neutral-mid)",
-                              width: "10%",
+                              width: "8%",
                             }}
                           ></th>
                         </tr>
@@ -448,6 +528,23 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                           const isLoadingField = rule.trialId
                             ? loadingData[rule.trialId]
                             : false;
+
+                          // For dynamic plugins, get component data
+                          const isDynamicPlugin =
+                            selectedTrial?.plugin === "plugin-dynamic";
+                          const fieldType = rule.fieldType || "";
+                          const componentIdx = rule.componentIdx ?? "";
+                          const compArr =
+                            isDynamicPlugin && fieldType
+                              ? selectedTrial?.columnMapping?.[fieldType]
+                                  ?.value || []
+                              : [];
+                          const comp =
+                            componentIdx !== "" && compArr.length > 0
+                              ? compArr.find(
+                                  (c: any) => c.name === componentIdx
+                                )
+                              : null;
 
                           return (
                             <tr
@@ -500,44 +597,253 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                 </select>
                               </td>
 
-                              {/* Data Field Selection */}
-                              <td className="px-2 py-2">
-                                {isLoadingField ? (
-                                  <div className="text-xs text-gray-500">
-                                    Loading...
-                                  </div>
-                                ) : (
-                                  <select
-                                    value={rule.prop}
-                                    onChange={(e) =>
-                                      updateRule(
-                                        condition.id,
-                                        ruleIdx,
-                                        "prop",
-                                        e.target.value
-                                      )
-                                    }
-                                    disabled={!rule.trialId}
-                                    className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
-                                    style={{
-                                      color: "var(--text-dark)",
-                                      backgroundColor: "var(--neutral-light)",
-                                      borderColor: "var(--neutral-mid)",
-                                    }}
-                                  >
-                                    <option value="">
-                                      {rule.trialId
-                                        ? "Select field..."
-                                        : "Select trial first"}
-                                    </option>
-                                    {dataFields.map((field) => (
-                                      <option key={field.key} value={field.key}>
-                                        {field.label || field.key}
+                              {isDynamicPlugin ? (
+                                <>
+                                  {/* Field Type Column */}
+                                  <td className="px-2 py-2">
+                                    <select
+                                      value={fieldType}
+                                      onChange={(e) => {
+                                        const newValue = e.target.value;
+                                        updateRule(
+                                          condition.id,
+                                          ruleIdx,
+                                          "fieldType",
+                                          newValue
+                                        );
+                                        updateRule(
+                                          condition.id,
+                                          ruleIdx,
+                                          "componentIdx",
+                                          ""
+                                        );
+                                        updateRule(
+                                          condition.id,
+                                          ruleIdx,
+                                          "prop",
+                                          ""
+                                        );
+                                        updateRule(
+                                          condition.id,
+                                          ruleIdx,
+                                          "value",
+                                          ""
+                                        );
+                                      }}
+                                      disabled={!rule.trialId}
+                                      className="border rounded px-2 py-1 w-full text-xs"
+                                      style={{
+                                        color: "var(--text-dark)",
+                                        backgroundColor: "var(--neutral-light)",
+                                        borderColor: "var(--neutral-mid)",
+                                      }}
+                                    >
+                                      <option value="">Select type</option>
+                                      <option value="components">
+                                        Stimulus
                                       </option>
-                                    ))}
-                                  </select>
-                                )}
-                              </td>
+                                      <option value="response_components">
+                                        Response
+                                      </option>
+                                    </select>
+                                  </td>
+
+                                  {/* Component Column */}
+                                  <td className="px-2 py-2">
+                                    <select
+                                      value={componentIdx}
+                                      onChange={(e) => {
+                                        const newValue = e.target.value;
+                                        updateRule(
+                                          condition.id,
+                                          ruleIdx,
+                                          "componentIdx",
+                                          newValue
+                                        );
+                                        updateRule(
+                                          condition.id,
+                                          ruleIdx,
+                                          "prop",
+                                          ""
+                                        );
+                                        updateRule(
+                                          condition.id,
+                                          ruleIdx,
+                                          "value",
+                                          ""
+                                        );
+                                      }}
+                                      disabled={!fieldType}
+                                      className="border rounded px-2 py-1 w-full text-xs"
+                                      style={{
+                                        color: "var(--text-dark)",
+                                        backgroundColor: "var(--neutral-light)",
+                                        borderColor: "var(--neutral-mid)",
+                                      }}
+                                    >
+                                      <option value="">Select component</option>
+                                      {compArr.map((c: any) => (
+                                        <option key={c.name} value={c.name}>
+                                          {c.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </td>
+
+                                  {/* Property Column */}
+                                  <td className="px-2 py-2">
+                                    {comp && comp.type === "SurveyComponent" ? (
+                                      <select
+                                        value={rule.prop}
+                                        onChange={(e) => {
+                                          const newValue = e.target.value;
+                                          updateRule(
+                                            condition.id,
+                                            ruleIdx,
+                                            "prop",
+                                            newValue
+                                          );
+                                          updateRule(
+                                            condition.id,
+                                            ruleIdx,
+                                            "value",
+                                            ""
+                                          );
+                                        }}
+                                        disabled={!componentIdx}
+                                        className="border rounded px-2 py-1 w-full text-xs"
+                                        style={{
+                                          color: "var(--text-dark)",
+                                          backgroundColor:
+                                            "var(--neutral-light)",
+                                          borderColor: "var(--neutral-mid)",
+                                        }}
+                                      >
+                                        <option value="">
+                                          Select question
+                                        </option>
+                                        {(comp.survey_json?.elements || []).map(
+                                          (q: any) => (
+                                            <option key={q.name} value={q.name}>
+                                              {q.title || q.name}
+                                            </option>
+                                          )
+                                        )}
+                                      </select>
+                                    ) : comp &&
+                                      comp.type ===
+                                        "ButtonResponseComponent" ? (
+                                      <select
+                                        value={rule.prop}
+                                        onChange={(e) => {
+                                          const newValue = e.target.value;
+                                          updateRule(
+                                            condition.id,
+                                            ruleIdx,
+                                            "prop",
+                                            newValue
+                                          );
+                                          updateRule(
+                                            condition.id,
+                                            ruleIdx,
+                                            "value",
+                                            ""
+                                          );
+                                        }}
+                                        disabled={!componentIdx}
+                                        className="border rounded px-2 py-1 w-full text-xs"
+                                        style={{
+                                          color: "var(--text-dark)",
+                                          backgroundColor:
+                                            "var(--neutral-light)",
+                                          borderColor: "var(--neutral-mid)",
+                                        }}
+                                      >
+                                        <option value="">
+                                          Select property
+                                        </option>
+                                        <option value="response">
+                                          response
+                                        </option>
+                                      </select>
+                                    ) : (
+                                      <input
+                                        type="text"
+                                        value={rule.prop}
+                                        onChange={(e) => {
+                                          const newValue = e.target.value;
+                                          updateRule(
+                                            condition.id,
+                                            ruleIdx,
+                                            "prop",
+                                            newValue
+                                          );
+                                          updateRule(
+                                            condition.id,
+                                            ruleIdx,
+                                            "value",
+                                            ""
+                                          );
+                                        }}
+                                        disabled={!componentIdx}
+                                        placeholder="Property"
+                                        className="border rounded px-2 py-1 w-full text-xs"
+                                        style={{
+                                          color: "var(--text-dark)",
+                                          backgroundColor:
+                                            "var(--neutral-light)",
+                                          borderColor: "var(--neutral-mid)",
+                                        }}
+                                      />
+                                    )}
+                                  </td>
+                                </>
+                              ) : (
+                                <>
+                                  {/* Data Field Selection (normal plugin) */}
+                                  <td className="px-2 py-2">
+                                    {isLoadingField ? (
+                                      <div className="text-xs text-gray-500">
+                                        Loading...
+                                      </div>
+                                    ) : (
+                                      <select
+                                        value={rule.prop}
+                                        onChange={(e) =>
+                                          updateRule(
+                                            condition.id,
+                                            ruleIdx,
+                                            "prop",
+                                            e.target.value
+                                          )
+                                        }
+                                        disabled={!rule.trialId}
+                                        className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
+                                        style={{
+                                          color: "var(--text-dark)",
+                                          backgroundColor:
+                                            "var(--neutral-light)",
+                                          borderColor: "var(--neutral-mid)",
+                                        }}
+                                      >
+                                        <option value="">
+                                          {rule.trialId
+                                            ? "Select field..."
+                                            : "Select trial first"}
+                                        </option>
+                                        {dataFields.map((field) => (
+                                          <option
+                                            key={field.key}
+                                            value={field.key}
+                                          >
+                                            {field.label || field.key}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    )}
+                                  </td>
+                                </>
+                              )}
 
                               {/* Operator Selection */}
                               <td className="px-2 py-2">
@@ -599,25 +905,145 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
 
                               {/* Value Input */}
                               <td className="px-2 py-2">
-                                <input
-                                  type="text"
-                                  value={rule.value}
-                                  onChange={(e) =>
-                                    updateRule(
-                                      condition.id,
-                                      ruleIdx,
-                                      "value",
-                                      e.target.value
-                                    )
-                                  }
-                                  placeholder="Value"
-                                  className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
-                                  style={{
-                                    color: "var(--text-dark)",
-                                    backgroundColor: "var(--neutral-light)",
-                                    borderColor: "var(--neutral-mid)",
-                                  }}
-                                />
+                                {isDynamicPlugin &&
+                                comp &&
+                                comp.type === "SurveyComponent" &&
+                                rule.prop ? (
+                                  (() => {
+                                    const question = (
+                                      comp.survey_json?.elements || []
+                                    ).find((q: any) => q.name === rule.prop);
+                                    if (
+                                      question &&
+                                      question.type === "radiogroup" &&
+                                      question.choices
+                                    ) {
+                                      return (
+                                        <select
+                                          value={rule.value}
+                                          onChange={(e) =>
+                                            updateRule(
+                                              condition.id,
+                                              ruleIdx,
+                                              "value",
+                                              e.target.value
+                                            )
+                                          }
+                                          className="border rounded px-2 py-1 w-full text-xs"
+                                          style={{
+                                            color: "var(--text-dark)",
+                                            backgroundColor:
+                                              "var(--neutral-light)",
+                                            borderColor: "var(--neutral-mid)",
+                                          }}
+                                        >
+                                          <option value="">Select value</option>
+                                          {question.choices.map((opt: any) => (
+                                            <option
+                                              key={
+                                                typeof opt === "string"
+                                                  ? opt
+                                                  : opt.value
+                                              }
+                                              value={
+                                                typeof opt === "string"
+                                                  ? opt
+                                                  : opt.value
+                                              }
+                                            >
+                                              {typeof opt === "string"
+                                                ? opt
+                                                : opt.text || opt.value}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      );
+                                    }
+                                    return (
+                                      <input
+                                        type="text"
+                                        value={rule.value}
+                                        onChange={(e) =>
+                                          updateRule(
+                                            condition.id,
+                                            ruleIdx,
+                                            "value",
+                                            e.target.value
+                                          )
+                                        }
+                                        placeholder="Value"
+                                        className="border rounded px-2 py-1 w-full text-xs"
+                                        style={{
+                                          color: "var(--text-dark)",
+                                          backgroundColor:
+                                            "var(--neutral-light)",
+                                          borderColor: "var(--neutral-mid)",
+                                        }}
+                                      />
+                                    );
+                                  })()
+                                ) : isDynamicPlugin &&
+                                  comp &&
+                                  comp.type === "ButtonResponseComponent" &&
+                                  rule.prop === "response" ? (
+                                  <select
+                                    value={rule.value}
+                                    onChange={(e) =>
+                                      updateRule(
+                                        condition.id,
+                                        ruleIdx,
+                                        "value",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="border rounded px-2 py-1 w-full text-xs"
+                                    style={{
+                                      color: "var(--text-dark)",
+                                      backgroundColor: "var(--neutral-light)",
+                                      borderColor: "var(--neutral-mid)",
+                                    }}
+                                  >
+                                    <option value="">Select value</option>
+                                    {comp.choices.map((opt: any) => (
+                                      <option
+                                        key={
+                                          typeof opt === "string"
+                                            ? opt
+                                            : opt.value
+                                        }
+                                        value={
+                                          typeof opt === "string"
+                                            ? opt
+                                            : opt.value
+                                        }
+                                      >
+                                        {typeof opt === "string"
+                                          ? opt
+                                          : opt.text || opt.value}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={rule.value}
+                                    onChange={(e) =>
+                                      updateRule(
+                                        condition.id,
+                                        ruleIdx,
+                                        "value",
+                                        e.target.value
+                                      )
+                                    }
+                                    placeholder="Value"
+                                    className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
+                                    style={{
+                                      color: "var(--text-dark)",
+                                      backgroundColor: "var(--neutral-light)",
+                                      borderColor: "var(--neutral-mid)",
+                                    }}
+                                  />
+                                )}
                               </td>
 
                               {/* Remove Rule Button */}

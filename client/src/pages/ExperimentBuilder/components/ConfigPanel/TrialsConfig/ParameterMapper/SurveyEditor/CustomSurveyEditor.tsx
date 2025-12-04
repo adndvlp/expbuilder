@@ -2,17 +2,30 @@
 import React, { useState } from "react";
 import { FiPlus, FiChevronDown, FiChevronUp } from "react-icons/fi";
 
+interface ChoiceItem {
+  value: string;
+  text: string;
+  imageLink?: string;
+}
+
+interface RateValue {
+  value: string;
+  text: string;
+}
+
 interface Question {
   type: string;
   name: string;
   title: string;
-  choices?: string[];
+  choices?: (string | ChoiceItem)[];
+  rateValues?: RateValue[];
   isRequired?: boolean;
   rateMin?: number;
   rateMax?: number;
   minRateDescription?: string;
   maxRateDescription?: string;
   rows?: number;
+  displayMode?: "auto" | "buttons";
 }
 
 interface CustomSurveyEditorProps {
@@ -26,6 +39,7 @@ const QUESTION_TYPES = [
   { value: "radiogroup", label: "Single Choice" },
   { value: "checkbox", label: "Multiple Choice" },
   { value: "dropdown", label: "Dropdown" },
+  { value: "imagepicker", label: "Image Picker" },
   { value: "rating", label: "Rating Scale" },
   { value: "boolean", label: "Yes/No" },
 ];
@@ -87,16 +101,40 @@ const CustomSurveyEditor: React.FC<CustomSurveyEditorProps> = ({
 
   const addChoice = (index: number) => {
     const currentChoices = questions[index].choices || [];
-    updateQuestion(index, { choices: [...currentChoices, ""] });
+    const newChoice: ChoiceItem = {
+      value: "", // El value será el mismo que el text
+      text: "",
+      imageLink: "",
+    };
+    updateQuestion(index, { choices: [...currentChoices, newChoice] });
   };
 
   const updateChoice = (
     questionIndex: number,
     choiceIndex: number,
+    field: "text" | "imageLink",
     value: string
   ) => {
     const currentChoices = [...(questions[questionIndex].choices || [])];
-    currentChoices[choiceIndex] = value;
+    const choice = currentChoices[choiceIndex];
+
+    // Convertir string a objeto si es necesario
+    if (typeof choice === "string") {
+      const newText = field === "text" ? value : choice;
+      currentChoices[choiceIndex] = {
+        value: newText, // value es igual al text
+        text: newText,
+        imageLink: field === "imageLink" ? value : "",
+      };
+    } else {
+      // Si estamos actualizando el text, también actualizar el value
+      const newText = field === "text" ? value : choice.text;
+      currentChoices[choiceIndex] = {
+        ...choice,
+        [field]: value,
+        value: newText, // Sincronizar value con text
+      };
+    }
     updateQuestion(questionIndex, { choices: currentChoices });
   };
 
@@ -104,6 +142,35 @@ const CustomSurveyEditor: React.FC<CustomSurveyEditorProps> = ({
     const currentChoices = [...(questions[questionIndex].choices || [])];
     currentChoices.splice(choiceIndex, 1);
     updateQuestion(questionIndex, { choices: currentChoices });
+  };
+
+  const addRateValue = (index: number) => {
+    const currentRateValues = questions[index].rateValues || [];
+    const newRateValue: RateValue = {
+      value: "", // El value será el mismo que el text
+      text: "",
+    };
+    updateQuestion(index, { rateValues: [...currentRateValues, newRateValue] });
+  };
+
+  const updateRateValue = (
+    questionIndex: number,
+    rateIndex: number,
+    value: string
+  ) => {
+    const currentRateValues = [...(questions[questionIndex].rateValues || [])];
+    currentRateValues[rateIndex] = {
+      ...currentRateValues[rateIndex],
+      text: value,
+      value: value, // Sincronizar value con text
+    };
+    updateQuestion(questionIndex, { rateValues: currentRateValues });
+  };
+
+  const removeRateValue = (questionIndex: number, rateIndex: number) => {
+    const currentRateValues = [...(questions[questionIndex].rateValues || [])];
+    currentRateValues.splice(rateIndex, 1);
+    updateQuestion(questionIndex, { rateValues: currentRateValues });
   };
 
   return (
@@ -415,11 +482,18 @@ const CustomSurveyEditor: React.FC<CustomSurveyEditorProps> = ({
                 onDelete={() => deleteQuestion(index)}
                 onMove={(direction) => moveQuestion(index, direction)}
                 onAddChoice={() => addChoice(index)}
-                onUpdateChoice={(choiceIndex, value) =>
-                  updateChoice(index, choiceIndex, value)
+                onUpdateChoice={(choiceIndex, field, value) =>
+                  updateChoice(index, choiceIndex, field, value)
                 }
                 onRemoveChoice={(choiceIndex) =>
                   removeChoice(index, choiceIndex)
+                }
+                onAddRateValue={() => addRateValue(index)}
+                onUpdateRateValue={(rateIndex, value) =>
+                  updateRateValue(index, rateIndex, value)
+                }
+                onRemoveRateValue={(rateIndex) =>
+                  removeRateValue(index, rateIndex)
                 }
                 canMoveUp={index > 0}
                 canMoveDown={index < questions.length - 1}
@@ -441,8 +515,15 @@ interface QuestionEditorProps {
   onDelete: () => void;
   onMove: (direction: "up" | "down") => void;
   onAddChoice: () => void;
-  onUpdateChoice: (choiceIndex: number, value: string) => void;
+  onUpdateChoice: (
+    choiceIndex: number,
+    field: "text" | "imageLink",
+    value: string
+  ) => void;
   onRemoveChoice: (choiceIndex: number) => void;
+  onAddRateValue: () => void;
+  onUpdateRateValue: (rateIndex: number, value: string) => void;
+  onRemoveRateValue: (rateIndex: number) => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
 }
@@ -458,13 +539,27 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   onAddChoice,
   onUpdateChoice,
   onRemoveChoice,
+  onAddRateValue,
+  onUpdateRateValue,
+  onRemoveRateValue,
   canMoveUp,
   canMoveDown,
 }) => {
-  const needsChoices = ["radiogroup", "checkbox", "dropdown"].includes(
-    question.type
-  );
+  const needsChoices = [
+    "radiogroup",
+    "checkbox",
+    "dropdown",
+    "imagepicker",
+  ].includes(question.type);
   const isRating = question.type === "rating";
+
+  // Normalizar choices a objetos
+  const normalizedChoices = (question.choices || []).map((choice) => {
+    if (typeof choice === "string") {
+      return { value: choice, text: choice, imageLink: "" }; // value es igual al text
+    }
+    return choice;
+  });
 
   return (
     <div
@@ -607,7 +702,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
             />
           </div>
 
-          {/* Choices (for radiogroup, checkbox, dropdown) */}
+          {/* Choices (for radiogroup, checkbox, dropdown, imagepicker) */}
           {needsChoices && (
             <div style={{ marginBottom: "12px" }}>
               <div
@@ -626,6 +721,17 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                   }}
                 >
                   Choices
+                  {question.type !== "imagepicker" && (
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        opacity: 0.6,
+                        marginLeft: "8px",
+                      }}
+                    >
+                      (Images only work with Image Picker type)
+                    </span>
+                  )}
                 </label>
                 <button
                   onClick={(e) => {
@@ -651,7 +757,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                   Add Option
                 </button>
               </div>
-              {(question.choices || []).length === 0 ? (
+              {normalizedChoices.length === 0 ? (
                 <div
                   style={{
                     padding: "16px",
@@ -674,52 +780,108 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                     gap: "8px",
                   }}
                 >
-                  {(question.choices || []).map(
-                    (choice: string, choiceIndex: number) => (
+                  {normalizedChoices.map(
+                    (choice: ChoiceItem, choiceIndex: number) => (
                       <div
                         key={choiceIndex}
                         style={{
                           display: "flex",
+                          flexDirection: "column",
                           gap: "8px",
-                          alignItems: "center",
+                          padding: "12px",
+                          border: "1px solid #e5e7eb",
+                          borderRadius: "6px",
+                          background: "var(--neutral-light)",
                         }}
                       >
-                        <input
-                          type="text"
-                          value={choice}
-                          onChange={(e) =>
-                            onUpdateChoice(choiceIndex, e.target.value)
-                          }
-                          placeholder={`Option ${choiceIndex + 1}`}
+                        <div
                           style={{
-                            flex: 1,
-                            padding: "8px 12px",
-                            border: "1px solid #d1d5db",
-                            borderRadius: "6px",
-                            fontSize: "14px",
-                            backgroundColor: "var(--neutral-light)",
-                            color: "var(--text-dark)",
-                          }}
-                        />
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onRemoveChoice(choiceIndex);
-                          }}
-                          style={{
-                            padding: "8px",
-                            background: "#ef4444",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "4px",
-                            cursor: "pointer",
                             display: "flex",
+                            gap: "8px",
                             alignItems: "center",
                           }}
-                          title="Remove option"
                         >
-                          ×
-                        </button>
+                          <input
+                            type="text"
+                            value={choice.text}
+                            onChange={(e) =>
+                              onUpdateChoice(
+                                choiceIndex,
+                                "text",
+                                e.target.value
+                              )
+                            }
+                            placeholder={`Option ${choiceIndex + 1}`}
+                            style={{
+                              flex: 1,
+                              padding: "8px 12px",
+                              border: "1px solid #d1d5db",
+                              borderRadius: "6px",
+                              fontSize: "14px",
+                              backgroundColor: "var(--neutral-light)",
+                              color: "var(--text-dark)",
+                            }}
+                          />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRemoveChoice(choiceIndex);
+                            }}
+                            style={{
+                              padding: "8px",
+                              background: "#ef4444",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "4px",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                            }}
+                            title="Remove option"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        {question.type === "imagepicker" && (
+                          <>
+                            <input
+                              type="text"
+                              value={choice.imageLink || ""}
+                              onBlur={(e) =>
+                                onUpdateChoice(
+                                  choiceIndex,
+                                  "imageLink",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="Image URL (optional)"
+                              style={{
+                                padding: "8px 12px",
+                                border: "1px solid #d1d5db",
+                                borderRadius: "6px",
+                                fontSize: "13px",
+                                backgroundColor: "var(--neutral-light)",
+                                color: "var(--text-dark)",
+                              }}
+                            />
+                            {choice.imageLink && (
+                              <img
+                                src={choice.imageLink}
+                                alt="Preview"
+                                style={{
+                                  maxWidth: "100px",
+                                  maxHeight: "100px",
+                                  objectFit: "contain",
+                                  borderRadius: "4px",
+                                }}
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display =
+                                    "none";
+                                }}
+                              />
+                            )}
+                          </>
+                        )}
                       </div>
                     )
                   )}
@@ -731,73 +893,234 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
           {/* Rating Scale Settings */}
           {isRating && (
             <>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "12px",
-                  marginBottom: "12px",
-                }}
-              >
-                <div>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "6px",
-                      fontWeight: 500,
-                      fontSize: "13px",
-                      color: "var(--text-dark)",
-                    }}
-                  >
-                    Min Value
-                  </label>
-                  <input
-                    type="number"
-                    value={question.rateMin || 1}
-                    onChange={(e) =>
-                      onUpdate({ rateMin: parseInt(e.target.value) })
-                    }
-                    style={{
-                      width: "100%",
-                      padding: "8px 12px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                      backgroundColor: "var(--neutral-light)",
-                      color: "var(--text-dark)",
-                    }}
-                  />
-                </div>
-                <div>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "6px",
-                      fontWeight: 500,
-                      fontSize: "13px",
-                      color: "var(--text-dark)",
-                    }}
-                  >
-                    Max Value
-                  </label>
-                  <input
-                    type="number"
-                    value={question.rateMax || 5}
-                    onChange={(e) =>
-                      onUpdate({ rateMax: parseInt(e.target.value) })
-                    }
-                    style={{
-                      width: "100%",
-                      padding: "8px 12px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                      backgroundColor: "var(--neutral-light)",
-                      color: "var(--text-dark)",
-                    }}
-                  />
-                </div>
+              <div style={{ marginBottom: "12px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "6px",
+                    fontWeight: 500,
+                    fontSize: "13px",
+                    color: "var(--text-dark)",
+                  }}
+                >
+                  Display Mode
+                </label>
+                <select
+                  value={question.displayMode || "auto"}
+                  onChange={(e) =>
+                    onUpdate({
+                      displayMode: e.target.value as "auto" | "buttons",
+                    })
+                  }
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                    backgroundColor: "var(--neutral-light)",
+                    color: "var(--text-dark)",
+                  }}
+                >
+                  <option value="auto">
+                    Responsive (dropdown on small screens)
+                  </option>
+                  <option value="buttons">Always Likert scale</option>
+                </select>
               </div>
+
+              <div style={{ marginBottom: "12px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "8px",
+                  }}
+                >
+                  <label
+                    style={{
+                      fontWeight: 500,
+                      fontSize: "13px",
+                      color: "var(--text-dark)",
+                    }}
+                  >
+                    Custom Rate Values (optional)
+                  </label>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddRateValue();
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      padding: "4px 8px",
+                      background:
+                        "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+                      color: "var(--text-light)",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                      fontWeight: 500,
+                    }}
+                  >
+                    <FiPlus size={14} />
+                    Add Value
+                  </button>
+                </div>
+                {(question.rateValues || []).length === 0 ? (
+                  <div
+                    style={{
+                      padding: "12px",
+                      textAlign: "center",
+                      background: "var(--neutral-light)",
+                      border: "2px dashed #d1d5db",
+                      borderRadius: "6px",
+                      color: "var(--text-dark)",
+                      fontSize: "12px",
+                      opacity: 0.6,
+                    }}
+                  >
+                    No custom values. Using numeric range (rateMin to rateMax).
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "8px",
+                    }}
+                  >
+                    {(question.rateValues || []).map(
+                      (rateValue: RateValue, rateIndex: number) => (
+                        <div
+                          key={rateIndex}
+                          style={{
+                            display: "flex",
+                            gap: "8px",
+                            alignItems: "center",
+                            padding: "12px",
+                            border: "1px solid #e5e7eb",
+                            borderRadius: "6px",
+                            background: "var(--neutral-light)",
+                          }}
+                        >
+                          <input
+                            type="text"
+                            value={rateValue.text}
+                            onChange={(e) =>
+                              onUpdateRateValue(rateIndex, e.target.value)
+                            }
+                            placeholder={`Value ${rateIndex + 1} label`}
+                            style={{
+                              flex: 1,
+                              padding: "8px 12px",
+                              border: "1px solid #d1d5db",
+                              borderRadius: "6px",
+                              fontSize: "14px",
+                              backgroundColor: "var(--neutral-light)",
+                              color: "var(--text-dark)",
+                            }}
+                          />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRemoveRateValue(rateIndex);
+                            }}
+                            style={{
+                              padding: "8px",
+                              background: "#ef4444",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "4px",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                            }}
+                            title="Remove value"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Solo mostrar rateMin/rateMax si NO hay rateValues personalizados */}
+              {(question.rateValues || []).length === 0 && (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "12px",
+                    marginBottom: "12px",
+                  }}
+                >
+                  <div>
+                    <label
+                      style={{
+                        display: "block",
+                        marginBottom: "6px",
+                        fontWeight: 500,
+                        fontSize: "13px",
+                        color: "var(--text-dark)",
+                      }}
+                    >
+                      Min Value
+                    </label>
+                    <input
+                      type="number"
+                      value={question.rateMin || 1}
+                      onChange={(e) =>
+                        onUpdate({ rateMin: parseInt(e.target.value) })
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "8px 12px",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "6px",
+                        fontSize: "14px",
+                        backgroundColor: "var(--neutral-light)",
+                        color: "var(--text-dark)",
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      style={{
+                        display: "block",
+                        marginBottom: "6px",
+                        fontWeight: 500,
+                        fontSize: "13px",
+                        color: "var(--text-dark)",
+                      }}
+                    >
+                      Max Value
+                    </label>
+                    <input
+                      type="number"
+                      value={question.rateMax || 5}
+                      onChange={(e) =>
+                        onUpdate({ rateMax: parseInt(e.target.value) })
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "8px 12px",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "6px",
+                        fontSize: "14px",
+                        backgroundColor: "var(--neutral-light)",
+                        color: "var(--text-dark)",
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
               <div style={{ marginBottom: "12px" }}>
                 <label
                   style={{
