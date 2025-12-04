@@ -17,7 +17,7 @@ import ConditionalLoop from "./ConditionalLoop";
 type Props = { loop?: Loop };
 
 function LoopsConfig({ loop }: Props) {
-  const { trials, setTrials, removeLoop, setSelectedLoop } = useTrials();
+  const { trials, setTrials, removeLoop } = useTrials();
 
   const [isLoadingLoop, setIsLoadingLoop] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -493,33 +493,9 @@ function LoopsConfig({ loop }: Props) {
 
         updatedTrials = [...trials];
         updatedTrials[loopIndex] = updatedLoop;
-
-        // Update selectedLoop with the complete saved data to ensure state sync
-        if (setSelectedLoop) {
-          setSelectedLoop(updatedTrials[loopIndex]);
-        }
       } else {
         // Loop está anidado - buscar recursivamente
         updatedTrials = updateLoopRecursive(trials, loop.id);
-
-        // Find the updated loop in the new structure to ensure state sync
-        const findLoopRecursive = (items: any[]): any => {
-          for (const item of items) {
-            if ("trials" in item && item.id === loop.id) {
-              return item;
-            }
-            if ("trials" in item && Array.isArray(item.trials)) {
-              const found = findLoopRecursive(item.trials);
-              if (found) return found;
-            }
-          }
-          return null;
-        };
-
-        const updatedLoop = findLoopRecursive(updatedTrials);
-        if (updatedLoop && setSelectedLoop) {
-          setSelectedLoop(updatedLoop);
-        }
       }
 
       setTrials(updatedTrials);
@@ -552,15 +528,6 @@ function LoopsConfig({ loop }: Props) {
   const handleSaveLoopConditions = (conditions: LoopCondition[]) => {
     setLoopConditions(conditions);
     setIsConditionalLoop(conditions.length > 0);
-
-    // Update selectedLoop with the new conditions so changes reflect immediately
-    if (loop && setSelectedLoop) {
-      setSelectedLoop({
-        ...loop,
-        loopConditions: conditions,
-        isConditionalLoop: conditions.length > 0,
-      });
-    }
   };
 
   const handleRemoveLoop = () => {

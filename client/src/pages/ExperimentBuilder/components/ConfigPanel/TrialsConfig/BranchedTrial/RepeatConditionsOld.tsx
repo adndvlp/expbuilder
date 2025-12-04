@@ -1,5 +1,5 @@
 import { Dispatch, SetStateAction } from "react";
-import { Rule, RepeatConditionState } from "./types";
+import { RepeatConditionState } from "./types";
 import useTrials from "../../../../hooks/useTrials";
 import { DataDefinition } from "../../types";
 

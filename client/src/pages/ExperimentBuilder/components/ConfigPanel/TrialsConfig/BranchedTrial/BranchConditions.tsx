@@ -1,3 +1,18 @@
+/**
+ * BranchConditions Component
+ *
+ * This component handles both Branch and Jump conditions in a unified interface:
+ *
+ * - BRANCH: Navigate to trials within the same scope (defined in the branches[] array).
+ *   Allows parameter overriding for the target trial.
+ *
+ * - JUMP: Navigate to ANY trial in the entire experiment, regardless of hierarchy.
+ *   Does NOT allow parameter overriding (parameters are disabled for jumps).
+ *
+ * The component automatically detects if a selected trial is a branch or jump
+ * based on whether its ID is in the selectedTrial.branches[] array.
+ */
+
 import { Dispatch, SetStateAction } from "react";
 import { Rule, Condition, Parameter } from "./types";
 import useTrials from "../../../../hooks/useTrials";
@@ -219,9 +234,21 @@ function BranchConditions({
     );
   };
 
-  // Get available trials/loops for selection (all trials, not just branches)
-  // For Branch conditions: limited to same scope (parent loop or main timeline)
-  const availableTrials = (() => {
+  // Helper function to check if a trialId is in the branches array
+  const isInBranches = (trialId: string | number | null): boolean => {
+    if (!trialId || !selectedTrial?.branches) return false;
+    return selectedTrial.branches.some(
+      (branchId: string | number) => String(branchId) === String(trialId)
+    );
+  };
+
+  // Helper function to determine if condition is a jump (not in branches)
+  const isJumpCondition = (condition: Condition): boolean => {
+    return !isInBranches(condition.nextTrialId);
+  };
+
+  // Get available trials for branches (same scope)
+  const getBranchTrials = () => {
     if (!selectedTrial) return [];
 
     // Recursive function to find parent loop containing the selected trial
@@ -246,22 +273,21 @@ function BranchConditions({
 
     const parentLoop = findParentLoop(trials, selectedTrial.id);
 
-    let allAvailableTrials: any[] = [];
+    let branchTrials: any[] = [];
 
     if (parentLoop && "trials" in parentLoop) {
       // If trial is inside a loop, show trials within the same loop
-      allAvailableTrials = parentLoop.trials
+      branchTrials = parentLoop.trials
         .filter(
           (t: any) =>
             t.id !== selectedTrial.id &&
             String(t.id) !== String(selectedTrial.id)
-        ) // Exclude current trial
-        .map((t: any) => ({ id: t.id, name: t.name }));
+        )
+        .map((t: any) => ({ id: t.id, name: t.name, isLoop: "trials" in t }));
     } else {
-      // If trial is in main timeline, show all trials and loops
-      allAvailableTrials = trials
+      // If trial is in main timeline, show all trials and loops at the same level
+      branchTrials = trials
         .filter((item: any) => {
-          // Exclude current trial
           if (
             item.id === selectedTrial.id ||
             String(item.id) === String(selectedTrial.id)
@@ -272,11 +298,57 @@ function BranchConditions({
         .map((item: any) => ({
           id: item.id,
           name: item.name,
+          isLoop: "trials" in item,
         }));
     }
 
-    return allAvailableTrials;
-  })();
+    return branchTrials;
+  };
+
+  // Get ALL available trials/loops recursively for Jump functionality
+  const getAllTrialsForJump = () => {
+    if (!selectedTrial) return [];
+
+    // Recursive function to collect all trials and loops at any depth
+    const collectAllTrials = (items: any[], path: string = ""): any[] => {
+      const result: any[] = [];
+
+      for (const item of items) {
+        // Skip the current trial
+        if (
+          item.id === selectedTrial.id ||
+          String(item.id) === String(selectedTrial.id)
+        ) {
+          continue;
+        }
+
+        // Determine the display path
+        const itemPath = path ? `${path} > ${item.name}` : item.name;
+
+        // Add this trial/loop
+        result.push({
+          id: item.id,
+          name: item.name,
+          displayName: itemPath,
+          isLoop: "trials" in item,
+        });
+
+        // If it's a loop, recursively collect trials inside it
+        if ("trials" in item && Array.isArray(item.trials)) {
+          const nestedTrials = collectAllTrials(item.trials, itemPath);
+          result.push(...nestedTrials);
+        }
+      }
+
+      return result;
+    };
+
+    return collectAllTrials(trials);
+  };
+
+  // Combined available trials (branches + all for jump)
+  const branchTrials = getBranchTrials();
+  const allJumpTrials = getAllTrialsForJump();
 
   // Get used properties for each condition to prevent duplicates
   const getUsedProps = (conditionId: number) => {
@@ -286,6 +358,37 @@ function BranchConditions({
 
   return (
     <>
+      {/* Description */}
+      <div
+        className="mb-4 p-4 rounded-lg border-l-4"
+        style={{
+          backgroundColor: "rgba(78, 205, 196, 0.1)",
+          borderColor: "var(--primary-blue)",
+        }}
+      >
+        <p style={{ color: "var(--text-dark)", fontSize: "14px" }}>
+          <strong>Branch Conditions:</strong> Configure conditions to navigate
+          between trials.
+        </p>
+        <ul
+          style={{
+            marginTop: "8px",
+            marginLeft: "20px",
+            fontSize: "14px",
+            color: "var(--text-dark)",
+          }}
+        >
+          <li>
+            <strong>Branch:</strong> Select a trial from your current scope
+            (branches). You can override parameters for these trials.
+          </li>
+          <li>
+            <strong>Jump:</strong> Select any trial from the entire experiment,
+            regardless of hierarchy. Jumps cannot override parameters.
+          </li>
+        </ul>
+      </div>
+
       {/* Lista de condiciones */}
       {conditions.length === 0 ? (
         <div
@@ -1186,17 +1289,34 @@ function BranchConditions({
                                 <div className="flex flex-col">
                                   <select
                                     value={condition.nextTrialId || ""}
-                                    onChange={(e) =>
+                                    onChange={(e) => {
                                       updateNextTrial(
                                         condition.id,
                                         e.target.value
-                                      )
-                                    }
-                                    className="border-2 rounded-lg px-2 py-1.5 w-full text-xs font-semibold transition focus:ring-2 focus:ring-yellow-400"
+                                      );
+                                      // Clear custom parameters if switching to a jump
+                                      if (
+                                        e.target.value &&
+                                        !isInBranches(e.target.value)
+                                      ) {
+                                        setConditions(
+                                          conditions.map((c) =>
+                                            c.id === condition.id
+                                              ? { ...c, customParameters: {} }
+                                              : c
+                                          )
+                                        );
+                                      }
+                                    }}
+                                    className="border-2 rounded-lg px-2 py-1.5 w-full text-xs font-semibold transition focus:ring-2 focus:ring-blue-400"
                                     style={{
                                       color: "var(--text-dark)",
                                       backgroundColor: "var(--neutral-light)",
-                                      borderColor: "var(--gold)",
+                                      borderColor:
+                                        condition.nextTrialId &&
+                                        isJumpCondition(condition)
+                                          ? "var(--gold)"
+                                          : "var(--primary-blue)",
                                     }}
                                   >
                                     <option
@@ -1205,27 +1325,43 @@ function BranchConditions({
                                     >
                                       Select trial
                                     </option>
-                                    <option
-                                      style={{
-                                        textAlign: "center",
-                                        fontWeight: "bold",
-                                      }}
-                                      value="FINISH_EXPERIMENT"
-                                    >
-                                      Finish Experiment
-                                    </option>
-                                    {availableTrials.map((trial: any) => (
-                                      <option
-                                        key={trial.id}
-                                        value={trial.id}
-                                        style={{
-                                          textAlign: "center",
-                                        }}
-                                      >
-                                        {trial.name}
-                                      </option>
-                                    ))}
+                                    {branchTrials.length > 0 && (
+                                      <optgroup label="📍 Branches (Same Scope)">
+                                        {branchTrials.map((trial) => (
+                                          <option
+                                            key={trial.id}
+                                            value={trial.id}
+                                          >
+                                            {trial.name}{" "}
+                                            {trial.isLoop ? "(Loop)" : ""}
+                                          </option>
+                                        ))}
+                                      </optgroup>
+                                    )}
+                                    {allJumpTrials.length > 0 && (
+                                      <optgroup label="🔗 Jump (Any Trial)">
+                                        {allJumpTrials.map((trial) => (
+                                          <option
+                                            key={trial.id}
+                                            value={trial.id}
+                                          >
+                                            {trial.displayName}{" "}
+                                            {trial.isLoop ? "(Loop)" : ""}
+                                          </option>
+                                        ))}
+                                      </optgroup>
+                                    )}
                                   </select>
+                                  {condition.nextTrialId &&
+                                    isJumpCondition(condition) && (
+                                      <span
+                                        className="text-xs mt-1 font-semibold"
+                                        style={{ color: "var(--gold)" }}
+                                      >
+                                        🔗 Jump mode: Parameter override
+                                        disabled
+                                      </span>
+                                    )}
                                 </div>
                               </td>
                             )}
@@ -1234,7 +1370,9 @@ function BranchConditions({
                       })}
 
                       {/* Filas de parámetros - aparecen debajo de todas las reglas */}
+                      {/* Only show parameter override for branch conditions, not jumps */}
                       {condition.nextTrialId &&
+                        !isJumpCondition(condition) &&
                         (() => {
                           const targetTrial = findTrialById(
                             condition.nextTrialId

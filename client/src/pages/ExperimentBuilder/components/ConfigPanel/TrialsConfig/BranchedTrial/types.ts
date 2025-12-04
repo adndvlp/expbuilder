@@ -31,5 +31,3 @@ export type Parameter = {
   key: string;
   type: string;
 };
-
-export type TabType = "branch" | "repeat" | "params";

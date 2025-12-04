@@ -3,20 +3,13 @@ import useTrials from "../../../../hooks/useTrials";
 import { loadPluginParameters } from "../../utils/pluginParameterLoader";
 import { BranchCondition, RepeatCondition } from "../../types";
 import ParamsOverride from "../ParamsOverride";
-import {
-  Condition,
-  RepeatConditionState,
-  Props,
-  Parameter,
-  TabType,
-} from "./types";
+import { Condition, RepeatConditionState, Props, Parameter } from "./types";
 import BranchConditions from "./BranchConditions";
-import RepeatConditions from "./RepeatConditions";
 
 function BranchedTrial({ selectedTrial, onClose }: Props) {
   const { trials, setTrials, setSelectedTrial } = useTrials();
 
-  const [activeTab, setActiveTab] = useState<TabType>("branch");
+  const [activeTab, setActiveTab] = useState<"branch" | "params">("branch");
   const [data, setData] = useState<import("../../types").DataDefinition[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,29 +47,45 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
       });
   }, [selectedTrial]);
 
-  // Load existing branch conditions when selectedTrial changes
+  // Load existing branch conditions and repeat conditions when selectedTrial changes
   useEffect(() => {
+    const allConditions: Condition[] = [];
+
+    // Load branch conditions (within scope)
     if (selectedTrial && selectedTrial.branchConditions) {
-      const loadedConditions = selectedTrial.branchConditions.map(
+      const loadedBranchConditions = selectedTrial.branchConditions.map(
         (bc: BranchCondition) => ({
           ...bc,
           customParameters: bc.customParameters || {},
         })
       );
-      setConditions(loadedConditions);
+      allConditions.push(...loadedBranchConditions);
 
       // Load parameters for each condition with a nextTrialId
-      loadedConditions.forEach((condition: Condition) => {
+      loadedBranchConditions.forEach((condition: Condition) => {
         if (condition.nextTrialId) {
           console.log("Loading parameters for trial:", condition.nextTrialId);
           loadTargetTrialParameters(condition.nextTrialId);
         }
       });
-    } else {
-      setConditions([]);
     }
 
-    // Load existing repeat conditions
+    // Load repeat conditions (jump to any trial) and convert them to Condition format
+    if (selectedTrial && selectedTrial.repeatConditions) {
+      const loadedRepeatConditions = selectedTrial.repeatConditions.map(
+        (rc: RepeatCondition) => ({
+          id: rc.id,
+          rules: rc.rules,
+          nextTrialId: rc.jumpToTrialId, // Map jumpToTrialId to nextTrialId
+          customParameters: {}, // Jump conditions don't have custom parameters
+        })
+      );
+      allConditions.push(...loadedRepeatConditions);
+    }
+
+    setConditions(allConditions);
+
+    // Keep separate repeat conditions for the old Repeat tab (will be removed later)
     if (selectedTrial && selectedTrial.repeatConditions) {
       const loadedRepeatConditions = selectedTrial.repeatConditions.map(
         (rc: RepeatCondition) => ({
@@ -192,24 +201,58 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
     return result;
   };
 
-  // Save conditions to the trial
+  /**
+   * Helper function to check if a trialId is in the branches array
+   * Branches are trials within the same scope that can have their parameters overridden
+   */
+  const isInBranches = (trialId: string | number | null): boolean => {
+    if (!trialId || !selectedTrial?.branches) return false;
+    return selectedTrial.branches.some(
+      (branchId: string | number) => String(branchId) === String(trialId)
+    );
+  };
+
+  /**
+   * Save conditions to the trial
+   *
+   * This function separates conditions into two categories:
+   * 1. branchConditions: Conditions where nextTrialId is in branches[] (same scope, can override params)
+   * 2. repeatConditions: Conditions where nextTrialId is NOT in branches[] (jump to any trial, no param override)
+   */
   const handleSaveConditions = () => {
     if (!selectedTrial) return;
 
-    const branchConditions: BranchCondition[] = conditions.map((condition) => ({
-      id: condition.id,
-      rules: condition.rules,
-      nextTrialId: condition.nextTrialId,
-      customParameters: condition.customParameters,
-    }));
+    // Separate conditions into branch conditions and repeat conditions
+    const branchConditions: BranchCondition[] = [];
+    const repeatConditionsToSave: RepeatCondition[] = [];
 
-    const repeatConditionsToSave: RepeatCondition[] = repeatConditions.map(
-      (condition) => ({
+    conditions.forEach((condition) => {
+      if (condition.nextTrialId && isInBranches(condition.nextTrialId)) {
+        // It's a branch condition (within scope)
+        branchConditions.push({
+          id: condition.id,
+          rules: condition.rules,
+          nextTrialId: condition.nextTrialId,
+          customParameters: condition.customParameters,
+        });
+      } else if (condition.nextTrialId) {
+        // It's a jump/repeat condition (outside scope)
+        repeatConditionsToSave.push({
+          id: condition.id,
+          rules: condition.rules,
+          jumpToTrialId: condition.nextTrialId,
+        });
+      }
+    });
+
+    // Add existing repeat conditions from the separate tab (if any)
+    repeatConditions.forEach((condition) => {
+      repeatConditionsToSave.push({
         id: condition.id,
         rules: condition.rules,
         jumpToTrialId: condition.jumpToTrialId,
-      })
-    );
+      });
+    });
 
     // Recursive function to find and update the trial
     const updateTrialRecursive = (items: any[]): any[] => {
@@ -293,7 +336,7 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
           pointerEvents: "none",
         }}
       >
-        ✓ Branch Conditions Saved!
+        ✓ Conditions Saved!
       </div>
 
       {/* Tab Navigation */}
@@ -324,29 +367,7 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
                 activeTab === "branch" ? "3px solid var(--gold)" : "none",
             }}
           >
-            Branch Trials
-          </button>
-          <button
-            onClick={() => setActiveTab("repeat")}
-            className={`px-6 py-3 rounded-t-lg font-semibold transition-all ${
-              activeTab === "repeat"
-                ? "shadow-lg"
-                : "opacity-60 hover:opacity-80"
-            }`}
-            style={{
-              backgroundColor:
-                activeTab === "repeat"
-                  ? "var(--primary-blue)"
-                  : "var(--neutral-mid)",
-              color:
-                activeTab === "repeat"
-                  ? "var(--text-light)"
-                  : "var(--text-dark)",
-              borderBottom:
-                activeTab === "repeat" ? "3px solid var(--gold)" : "none",
-            }}
-          >
-            Repeat/Jump
+            Branch & Jump Conditions
           </button>
           <button
             onClick={() => setActiveTab("params")}
@@ -423,16 +444,6 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
             findTrialById={findTrialById}
             targetTrialParameters={targetTrialParameters}
             selectedTrial={selectedTrial}
-            data={data}
-          />
-        )}
-
-        {/* REPEAT/JUMP TAB CONTENT */}
-        {!loading && !error && activeTab === "repeat" && (
-          <RepeatConditions
-            selectedTrial={selectedTrial}
-            repeatConditions={repeatConditions}
-            setRepeatConditions={setRepeatConditions}
             data={data}
           />
         )}

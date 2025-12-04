@@ -13,101 +13,161 @@
       "data": {
         "trials": [
           {
-            "id": 1764806051967,
-            "type": "Trial",
-            "name": "Si",
-            "parameters": {
-              "includesExtensions": false,
-              "extensionType": ""
-            },
-            "trialCode": "\n    const test_stimuli_Si = [{components: [{ type: \"HtmlComponent\", coordinates: {\"x\":0,\"y\":0}, stimulus: \"<div id=\\\"ieyt\\\" style=\\\"box-sizing: border-box;\\\">Te gustan los loops?</div>\" }],\nresponse_components: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":-0.20054945054945061,\"y\":0.2454212454212453}, width: 200, height: 50, choices: [\"Si\"], name: \"si\" }, { type: \"ButtonResponseComponent\", coordinates: {\"x\":0.2582417582417582,\"y\":0.24908424908424895}, width: 200, height: 50, choices: [\"NO\"], name: \"adiós\" }],\nstimuli_duration: undefined,\ntrial_duration: undefined,\nresponse_ends_trial: undefined,\nresponses: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":-0.20054945054945061,\"y\":0.2454212454212453}, width: 200, height: 50, choices: [\"Si\"], name: \"si\" }, { type: \"ButtonResponseComponent\", coordinates: {\"x\":0.2582417582417582,\"y\":0.24908424908424895}, width: 200, height: 50, choices: [\"NO\"], name: \"adiós\" }]}];\n    const Si_timeline = {\n    type: DynamicPlugin, components: jsPsych.timelineVariable(\"components\"),\nresponse_components: jsPsych.timelineVariable(\"response_components\"),\nstimuli_duration: jsPsych.timelineVariable(\"stimuli_duration\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial\"),\n      data: {\n        stimulus: \"stimulus\",\nresponse: \"response\",\nrt: \"rt\",\n        trial_id: 1764806051967,\n        \n        \n        branches: [1764810254175],\n        branchConditions: [undefined] \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Parse key to check if it's a nested survey question\n            const parts = key.split('::');\n            \n            if (parts.length === 4) {\n              // Format: fieldType::componentName::survey_json::questionName\n              const [fieldType, componentName, propName, questionName] = parts;\n              \n              if (fieldType && componentName && propName === 'survey_json' && questionName) {\n                // Find the component by name in the field array\n                const fieldArray = trial[fieldType];\n                if (Array.isArray(fieldArray)) {\n                  const compIndex = fieldArray.findIndex(c => c.name === componentName);\n                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {\n                    // Find the question in survey_json.elements\n                    const elements = fieldArray[compIndex].survey_json.elements || [];\n                    const questionIndex = elements.findIndex(q => q.name === questionName);\n                    \n                    if (questionIndex !== -1) {\n                      // Apply the override value (from typed or csv)\n                      let valueToSet;\n                      if (param.source === 'typed') {\n                        valueToSet = String(param.value); // Convert to string for SurveyJS\n                      } else if (param.source === 'csv') {\n                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string\n                      }\n                      \n                      if (valueToSet !== undefined && valueToSet !== null) {\n                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;\n                      }\n                    }\n                  }\n                }\n              }\n            } else {\n              // Normal parameter (not nested survey question)\n              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n                trial[key] = param.value;\n              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n                trial[key] = trial[param.value];\n              }\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      \n      \n      // Branching automático al primer branch\n      const branches = [1764810254175];\n      if (branches.length > 0) {\n        window.nextTrialId = branches[0];\n        window.skipRemaining = true;\n        window.branchingActive = true;\n      }\n      \n    },\n    };\n    const Si_procedure = {\n    timeline: \n    [Si_timeline],\n    timeline_variables: test_stimuli_Si,\n    conditional_function: function() {\n      const currentId = 1764806051967;\n      \n      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n      if (jumpToTrial) {\n        if (String(currentId) === String(jumpToTrial)) {\n          // Encontramos el trial objetivo para repeat/jump\n          console.log('Repeat/jump: Found target trial', currentId);\n          localStorage.removeItem('jsPsych_jumpToTrial');\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('Repeat/jump: Skipping trial', currentId);\n        return false;\n      }\n      \n      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(Si_procedure);\n  ",
-            "plugin": "plugin-dynamic",
-            "columnMapping": {
-              "components": {
-                "source": "typed",
-                "value": [
-                  {
-                    "type": "HtmlComponent",
-                    "coordinates": {
-                      "x": 0,
-                      "y": 0
-                    },
-                    "stimulus": "<div id=\"ieyt\" style=\"box-sizing: border-box;\">Te gustan los loops?</div>",
-                    "__configMetadata": {
-                      "stimulus": {
-                        "source": "typed",
-                        "value": "<div id=\"ieyt\" style=\"box-sizing: border-box;\">Te gustan los loops?</div>"
-                      }
-                    }
-                  }
-                ]
-              },
-              "response_components": {
-                "source": "typed",
-                "value": [
-                  {
-                    "type": "ButtonResponseComponent",
-                    "coordinates": {
-                      "x": -0.20054945054945061,
-                      "y": 0.2454212454212453
-                    },
-                    "width": 200,
-                    "height": 50,
-                    "choices": [
-                      "Si"
-                    ],
-                    "name": "si",
-                    "__configMetadata": {
-                      "choices": {
-                        "source": "typed",
-                        "value": [
-                          "Si"
-                        ]
-                      },
-                      "name": {
-                        "source": "typed",
-                        "value": "si"
-                      }
-                    }
-                  },
-                  {
-                    "type": "ButtonResponseComponent",
-                    "coordinates": {
-                      "x": 0.2582417582417582,
-                      "y": 0.24908424908424895
-                    },
-                    "width": 200,
-                    "height": 50,
-                    "choices": [
-                      "NO"
-                    ],
-                    "name": "adiós",
-                    "__configMetadata": {
-                      "choices": {
-                        "source": "typed",
-                        "value": [
-                          "NO"
-                        ]
-                      },
-                      "name": {
-                        "source": "typed",
-                        "value": "adiós"
-                      }
-                    }
-                  }
-                ]
-              }
-            },
-            "csvJson": [],
-            "csvColumns": [],
+            "id": "loop_1764814557140",
+            "name": "Loop 1",
+            "repetitions": 1,
+            "randomize": false,
             "orders": false,
-            "orderColumns": [],
             "stimuliOrders": [],
-            "categories": false,
+            "orderColumns": [],
             "categoryColumn": "",
-            "branches": [
-              1764810254175
-            ]
+            "categories": false,
+            "categoryData": [],
+            "trials": [
+              {
+                "id": 1764806051967,
+                "type": "Trial",
+                "name": "Si",
+                "parameters": {
+                  "includesExtensions": false,
+                  "extensionType": ""
+                },
+                "trialCode": "\n    const Si_timeline = {\n    type: DynamicPlugin, components: jsPsych.timelineVariable(\"components_Si\"),\nresponse_components: jsPsych.timelineVariable(\"response_components_Si\"),\nstimuli_duration: jsPsych.timelineVariable(\"stimuli_duration_Si\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration_Si\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial_Si\"),\n      data: {\n        stimulus: \"stimulus_Si\",\nresponse: \"response_Si\",\nrt: \"rt_Si\",\n        trial_id: 1764806051967,\n        isInLoop: true,\n        \n        branches: [1764810254175],\n        branchConditions: [undefined] \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials in loops, use loop-specific BranchCustomParameters\n      if (typeof BranchCustomParameters !== 'undefined' && BranchCustomParameters && typeof BranchCustomParameters === 'object') {\n        Object.entries(BranchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Parse key to check if it's a nested survey question\n            const parts = key.split('::');\n            \n            if (parts.length === 4) {\n              // Format: fieldType::componentName::survey_json::questionName\n              const [fieldType, componentName, propName, questionName] = parts;\n              \n              if (fieldType && componentName && propName === 'survey_json' && questionName) {\n                // Find the component by name in the field array\n                const fieldArray = trial[fieldType];\n                if (Array.isArray(fieldArray)) {\n                  const compIndex = fieldArray.findIndex(c => c.name === componentName);\n                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {\n                    // Find the question in survey_json.elements\n                    const elements = fieldArray[compIndex].survey_json.elements || [];\n                    const questionIndex = elements.findIndex(q => q.name === questionName);\n                    \n                    if (questionIndex !== -1) {\n                      // Apply the override value (from typed or csv)\n                      let valueToSet;\n                      if (param.source === 'typed') {\n                        valueToSet = String(param.value); // Convert to string for SurveyJS\n                      } else if (param.source === 'csv') {\n                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string\n                      }\n                      \n                      if (valueToSet !== undefined && valueToSet !== null) {\n                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;\n                      }\n                    }\n                  }\n                }\n              }\n            } else {\n              // Normal parameter (not nested survey question)\n              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n                trial[key] = param.value;\n              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n                trial[key] = trial[param.value];\n              }\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        BranchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Branching automático al primer branch (dentro del loop)\n      const branches = [1764810254175];\n      if (branches.length > 0) {\n        NextTrialId = branches[0];\n        SkipRemaining = true;\n        BranchingActive = true;\n      }\n    },};",
+                "plugin": "plugin-dynamic",
+                "columnMapping": {
+                  "components": {
+                    "source": "typed",
+                    "value": [
+                      {
+                        "type": "HtmlComponent",
+                        "coordinates": {
+                          "x": 0,
+                          "y": 0
+                        },
+                        "stimulus": "<div id=\"ieyt\" style=\"box-sizing: border-box;\">Te gustan los loops?</div>",
+                        "__configMetadata": {
+                          "stimulus": {
+                            "source": "typed",
+                            "value": "<div id=\"ieyt\" style=\"box-sizing: border-box;\">Te gustan los loops?</div>"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "response_components": {
+                    "source": "typed",
+                    "value": [
+                      {
+                        "type": "ButtonResponseComponent",
+                        "coordinates": {
+                          "x": -0.20054945054945061,
+                          "y": 0.2454212454212453
+                        },
+                        "width": 200,
+                        "height": 50,
+                        "choices": [
+                          "Si"
+                        ],
+                        "name": "si",
+                        "__configMetadata": {
+                          "choices": {
+                            "source": "typed",
+                            "value": [
+                              "Si"
+                            ]
+                          },
+                          "name": {
+                            "source": "typed",
+                            "value": "si"
+                          }
+                        }
+                      },
+                      {
+                        "type": "ButtonResponseComponent",
+                        "coordinates": {
+                          "x": 0.2582417582417582,
+                          "y": 0.24908424908424895
+                        },
+                        "width": 200,
+                        "height": 50,
+                        "choices": [
+                          "NO"
+                        ],
+                        "name": "adiós",
+                        "__configMetadata": {
+                          "choices": {
+                            "source": "typed",
+                            "value": [
+                              "NO"
+                            ]
+                          },
+                          "name": {
+                            "source": "typed",
+                            "value": "adiós"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                "csvJson": [],
+                "csvColumns": [],
+                "orders": false,
+                "orderColumns": [],
+                "stimuliOrders": [],
+                "categories": false,
+                "categoryColumn": "",
+                "branches": [
+                  1764810254175
+                ],
+                "csvFromLoop": true
+              },
+              {
+                "id": 1764810254175,
+                "type": "Trial",
+                "name": "New Trial 1",
+                "parameters": {
+                  "includesExtensions": false,
+                  "extensionType": ""
+                },
+                "trialCode": "\n    const New_Trial_1_timeline = {\n    type: DynamicPlugin, components: jsPsych.timelineVariable(\"components_New_Trial_1\"),\nresponse_components: jsPsych.timelineVariable(\"response_components_New_Trial_1\"),\nstimuli_duration: jsPsych.timelineVariable(\"stimuli_duration_New_Trial_1\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration_New_Trial_1\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial_New_Trial_1\"),\n      data: {\n        stimulus: \"stimulus_New_Trial_1\",\nresponse: \"response_New_Trial_1\",\nrt: \"rt_New_Trial_1\",\n        trial_id: 1764810254175,\n        isInLoop: true,\n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials in loops, use loop-specific BranchCustomParameters\n      if (typeof BranchCustomParameters !== 'undefined' && BranchCustomParameters && typeof BranchCustomParameters === 'object') {\n        Object.entries(BranchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Parse key to check if it's a nested survey question\n            const parts = key.split('::');\n            \n            if (parts.length === 4) {\n              // Format: fieldType::componentName::survey_json::questionName\n              const [fieldType, componentName, propName, questionName] = parts;\n              \n              if (fieldType && componentName && propName === 'survey_json' && questionName) {\n                // Find the component by name in the field array\n                const fieldArray = trial[fieldType];\n                if (Array.isArray(fieldArray)) {\n                  const compIndex = fieldArray.findIndex(c => c.name === componentName);\n                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {\n                    // Find the question in survey_json.elements\n                    const elements = fieldArray[compIndex].survey_json.elements || [];\n                    const questionIndex = elements.findIndex(q => q.name === questionName);\n                    \n                    if (questionIndex !== -1) {\n                      // Apply the override value (from typed or csv)\n                      let valueToSet;\n                      if (param.source === 'typed') {\n                        valueToSet = String(param.value); // Convert to string for SurveyJS\n                      } else if (param.source === 'csv') {\n                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string\n                      }\n                      \n                      if (valueToSet !== undefined && valueToSet !== null) {\n                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;\n                      }\n                    }\n                  }\n                }\n              }\n            } else {\n              // Normal parameter (not nested survey question)\n              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n                trial[key] = param.value;\n              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n                trial[key] = trial[param.value];\n              }\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        BranchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches ni repeat conditions, verificar si el loop padre tiene branches\n      if (typeof HasBranches !== 'undefined' && HasBranches) {\n        // El loop tiene branches, activar branching del loop al terminar\n        // Esto se manejará en el on_finish del loop\n        ShouldBranchOnFinish = true;\n      } else if (!HasBranches) {\n        // Ni el trial ni el loop tienen branches - trial terminal\n        // Si llegamos aquí después de un branching global, terminar el experimento\n        if (window.branchingActive) {\n          jsPsych.abortExperiment('', {});\n        }\n      }\n    },};",
+                "plugin": "plugin-dynamic",
+                "columnMapping": {
+                  "components": {
+                    "source": "typed",
+                    "value": [
+                      {
+                        "type": "HtmlComponent",
+                        "coordinates": {
+                          "x": 0,
+                          "y": 0
+                        },
+                        "stimulus": "<div id=\"ixq7\" style=\"box-sizing: border-box;\">LOCO?</div>",
+                        "__configMetadata": {
+                          "stimulus": {
+                            "source": "typed",
+                            "value": "<div id=\"ixq7\" style=\"box-sizing: border-box;\">LOCO?</div>"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                "csvJson": [],
+                "csvColumns": [],
+                "orders": false,
+                "orderColumns": [],
+                "stimuliOrders": [],
+                "categories": false,
+                "categoryColumn": "",
+                "csvFromLoop": true
+              }
+            ],
+            "code": "\n\n    const test_stimuli_loop_1764814557140 = [\n  {\n    \"components_Si\": [\n      {\n        \"type\": \"HtmlComponent\",\n        \"coordinates\": {\n          \"x\": 0,\n          \"y\": 0\n        },\n        \"stimulus\": \"<div id=\\\"ieyt\\\" style=\\\"box-sizing: border-box;\\\">Te gustan los loops?</div>\"\n      }\n    ],\n    \"responses_Si\": [\n      {\n        \"type\": \"ButtonResponseComponent\",\n        \"coordinates\": {\n          \"x\": -0.20054945054945061,\n          \"y\": 0.2454212454212453\n        },\n        \"width\": 200,\n        \"height\": 50,\n        \"choices\": [\n          \"Si\"\n        ],\n        \"name\": \"si\"\n      },\n      {\n        \"type\": \"ButtonResponseComponent\",\n        \"coordinates\": {\n          \"x\": 0.2582417582417582,\n          \"y\": 0.24908424908424895\n        },\n        \"width\": 200,\n        \"height\": 50,\n        \"choices\": [\n          \"NO\"\n        ],\n        \"name\": \"adiós\"\n      }\n    ],\n    \"response_components_Si\": [\n      {\n        \"type\": \"ButtonResponseComponent\",\n        \"coordinates\": {\n          \"x\": -0.20054945054945061,\n          \"y\": 0.2454212454212453\n        },\n        \"width\": 200,\n        \"height\": 50,\n        \"choices\": [\n          \"Si\"\n        ],\n        \"name\": \"si\"\n      },\n      {\n        \"type\": \"ButtonResponseComponent\",\n        \"coordinates\": {\n          \"x\": 0.2582417582417582,\n          \"y\": 0.24908424908424895\n        },\n        \"width\": 200,\n        \"height\": 50,\n        \"choices\": [\n          \"NO\"\n        ],\n        \"name\": \"adiós\"\n      }\n    ],\n    \"components_New_Trial_1\": [\n      {\n        \"type\": \"HtmlComponent\",\n        \"coordinates\": {\n          \"x\": 0,\n          \"y\": 0\n        },\n        \"stimulus\": \"<div id=\\\"ixq7\\\" style=\\\"box-sizing: border-box;\\\">LOCO?</div>\"\n      }\n    ],\n    \"responses_New_Trial_1\": []\n  }\n];\n    \n    \n    \n    const Si_timeline = {\n    type: DynamicPlugin, components: jsPsych.timelineVariable(\"components_Si\"),\nresponse_components: jsPsych.timelineVariable(\"response_components_Si\"),\nstimuli_duration: jsPsych.timelineVariable(\"stimuli_duration_Si\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration_Si\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial_Si\"),\n      data: {\n        stimulus: \"stimulus_Si\",\nresponse: \"response_Si\",\nrt: \"rt_Si\",\n        trial_id: 1764806051967,\n        isInLoop: true,\n        \n        branches: [1764810254175],\n        branchConditions: [undefined] \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials in loops, use loop-specific BranchCustomParameters\n      if (typeof loop_loop_1764814557140_BranchCustomParameters !== 'undefined' && loop_loop_1764814557140_BranchCustomParameters && typeof loop_loop_1764814557140_BranchCustomParameters === 'object') {\n        Object.entries(loop_loop_1764814557140_BranchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Parse key to check if it's a nested survey question\n            const parts = key.split('::');\n            \n            if (parts.length === 4) {\n              // Format: fieldType::componentName::survey_json::questionName\n              const [fieldType, componentName, propName, questionName] = parts;\n              \n              if (fieldType && componentName && propName === 'survey_json' && questionName) {\n                // Find the component by name in the field array\n                const fieldArray = trial[fieldType];\n                if (Array.isArray(fieldArray)) {\n                  const compIndex = fieldArray.findIndex(c => c.name === componentName);\n                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {\n                    // Find the question in survey_json.elements\n                    const elements = fieldArray[compIndex].survey_json.elements || [];\n                    const questionIndex = elements.findIndex(q => q.name === questionName);\n                    \n                    if (questionIndex !== -1) {\n                      // Apply the override value (from typed or csv)\n                      let valueToSet;\n                      if (param.source === 'typed') {\n                        valueToSet = String(param.value); // Convert to string for SurveyJS\n                      } else if (param.source === 'csv') {\n                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string\n                      }\n                      \n                      if (valueToSet !== undefined && valueToSet !== null) {\n                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;\n                      }\n                    }\n                  }\n                }\n              }\n            } else {\n              // Normal parameter (not nested survey question)\n              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n                trial[key] = param.value;\n              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n                trial[key] = trial[param.value];\n              }\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        loop_loop_1764814557140_BranchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Branching automático al primer branch (dentro del loop)\n      const branches = [1764810254175];\n      if (branches.length > 0) {\n        loop_loop_1764814557140_NextTrialId = branches[0];\n        loop_loop_1764814557140_SkipRemaining = true;\n        loop_loop_1764814557140_BranchingActive = true;\n      }\n    },};\n\n\n\n    \n    const New_Trial_1_timeline = {\n    type: DynamicPlugin, components: jsPsych.timelineVariable(\"components_New_Trial_1\"),\nresponse_components: jsPsych.timelineVariable(\"response_components_New_Trial_1\"),\nstimuli_duration: jsPsych.timelineVariable(\"stimuli_duration_New_Trial_1\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration_New_Trial_1\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial_New_Trial_1\"),\n      data: {\n        stimulus: \"stimulus_New_Trial_1\",\nresponse: \"response_New_Trial_1\",\nrt: \"rt_New_Trial_1\",\n        trial_id: 1764810254175,\n        isInLoop: true,\n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials in loops, use loop-specific BranchCustomParameters\n      if (typeof loop_loop_1764814557140_BranchCustomParameters !== 'undefined' && loop_loop_1764814557140_BranchCustomParameters && typeof loop_loop_1764814557140_BranchCustomParameters === 'object') {\n        Object.entries(loop_loop_1764814557140_BranchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Parse key to check if it's a nested survey question\n            const parts = key.split('::');\n            \n            if (parts.length === 4) {\n              // Format: fieldType::componentName::survey_json::questionName\n              const [fieldType, componentName, propName, questionName] = parts;\n              \n              if (fieldType && componentName && propName === 'survey_json' && questionName) {\n                // Find the component by name in the field array\n                const fieldArray = trial[fieldType];\n                if (Array.isArray(fieldArray)) {\n                  const compIndex = fieldArray.findIndex(c => c.name === componentName);\n                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {\n                    // Find the question in survey_json.elements\n                    const elements = fieldArray[compIndex].survey_json.elements || [];\n                    const questionIndex = elements.findIndex(q => q.name === questionName);\n                    \n                    if (questionIndex !== -1) {\n                      // Apply the override value (from typed or csv)\n                      let valueToSet;\n                      if (param.source === 'typed') {\n                        valueToSet = String(param.value); // Convert to string for SurveyJS\n                      } else if (param.source === 'csv') {\n                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string\n                      }\n                      \n                      if (valueToSet !== undefined && valueToSet !== null) {\n                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;\n                      }\n                    }\n                  }\n                }\n              }\n            } else {\n              // Normal parameter (not nested survey question)\n              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n                trial[key] = param.value;\n              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n                trial[key] = trial[param.value];\n              }\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        loop_loop_1764814557140_BranchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches ni repeat conditions, verificar si el loop padre tiene branches\n      if (typeof loop_loop_1764814557140_HasBranches !== 'undefined' && loop_loop_1764814557140_HasBranches) {\n        // El loop tiene branches, activar branching del loop al terminar\n        // Esto se manejará en el on_finish del loop\n        loop_loop_1764814557140_ShouldBranchOnFinish = true;\n      } else if (!loop_loop_1764814557140_HasBranches) {\n        // Ni el trial ni el loop tienen branches - trial terminal\n        // Si llegamos aquí después de un branching global, terminar el experimento\n        if (window.branchingActive) {\n          jsPsych.abortExperiment('', {});\n        }\n      }\n    },};\n\n\n// --- Branching logic variables for loop loop_1764814557140 ---\nlet loop_loop_1764814557140_NextTrialId = null;\nlet loop_loop_1764814557140_SkipRemaining = false;\nlet loop_loop_1764814557140_BranchingActive = false;\nlet loop_loop_1764814557140_BranchCustomParameters = null; // Store custom parameters for branching within loops\nlet loop_loop_1764814557140_TargetExecuted = false; // Indica si el trial objetivo ya se ejecutó en esta iteración\nlet loop_loop_1764814557140_IterationComplete = false; // Indica que la iteración actual terminó\nconst loop_loop_1764814557140_HasBranches = false;\nlet loop_loop_1764814557140_ShouldBranchOnFinish = false;\n\n\n    const Si_wrapper = {\n      timeline: [Si_timeline],\n      conditional_function: function() {\n        const currentId = Si_timeline.data.trial_id;\n        \n        // Verificar si hay un trial/loop objetivo guardado en localStorage (para repeat/jump global)\n        const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n        if (jumpToTrial) {\n          if (String(currentId) === String(jumpToTrial)) {\n            // Encontramos el trial/loop objetivo para repeat/jump\n            console.log('Repeat/jump: Found target trial/loop inside loop', currentId);\n            localStorage.removeItem('jsPsych_jumpToTrial');\n            return true;\n          }\n          // No es el objetivo, saltar\n          console.log('Repeat/jump: Skipping trial/loop inside loop', currentId);\n          return false;\n        }\n        \n        // Si el item objetivo ya fue ejecutado, saltar todos los items restantes en esta iteración\n        if (loop_loop_1764814557140_TargetExecuted) {\n          \n          return false;\n        }\n        \n        // Si loopSkipRemaining está activo, verificar si este es el item objetivo\n        if (loop_loop_1764814557140_SkipRemaining) {\n          if (String(currentId) === String(loop_loop_1764814557140_NextTrialId)) {\n            // Encontramos el item objetivo dentro del loop\n            loop_loop_1764814557140_TargetExecuted = true;\n            return true;\n          }\n          // No es el objetivo, saltar\n          return false;\n        }\n        \n        // No hay branching activo, ejecutar normalmente\n        return true;\n      },\n      on_timeline_finish: function() {\n        \n      }\n    };\n\n\n    const New_Trial_1_wrapper = {\n      timeline: [New_Trial_1_timeline],\n      conditional_function: function() {\n        const currentId = New_Trial_1_timeline.data.trial_id;\n        \n        // Verificar si hay un trial/loop objetivo guardado en localStorage (para repeat/jump global)\n        const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n        if (jumpToTrial) {\n          if (String(currentId) === String(jumpToTrial)) {\n            // Encontramos el trial/loop objetivo para repeat/jump\n            console.log('Repeat/jump: Found target trial/loop inside loop', currentId);\n            localStorage.removeItem('jsPsych_jumpToTrial');\n            return true;\n          }\n          // No es el objetivo, saltar\n          console.log('Repeat/jump: Skipping trial/loop inside loop', currentId);\n          return false;\n        }\n        \n        // Si el item objetivo ya fue ejecutado, saltar todos los items restantes en esta iteración\n        if (loop_loop_1764814557140_TargetExecuted) {\n          \n          // Último item: resetear flags para la siguiente iteración/repetición\n          loop_loop_1764814557140_NextTrialId = null;\n          loop_loop_1764814557140_SkipRemaining = false;\n          loop_loop_1764814557140_TargetExecuted = false;\n          loop_loop_1764814557140_BranchingActive = false;\n          loop_loop_1764814557140_BranchCustomParameters = null;\n          loop_loop_1764814557140_IterationComplete = false;\n          return false;\n        }\n        \n        // Si loopSkipRemaining está activo, verificar si este es el item objetivo\n        if (loop_loop_1764814557140_SkipRemaining) {\n          if (String(currentId) === String(loop_loop_1764814557140_NextTrialId)) {\n            // Encontramos el item objetivo dentro del loop\n            loop_loop_1764814557140_TargetExecuted = true;\n            return true;\n          }\n          // No es el objetivo, saltar\n          return false;\n        }\n        \n        // No hay branching activo, ejecutar normalmente\n        return true;\n      },\n      on_timeline_finish: function() {\n        \n        // Último item del timeline: resetear flags para la siguiente iteración/repetición\n        loop_loop_1764814557140_NextTrialId = null;\n        loop_loop_1764814557140_SkipRemaining = false;\n        loop_loop_1764814557140_TargetExecuted = false;\n        loop_loop_1764814557140_BranchingActive = false;\n        loop_loop_1764814557140_BranchCustomParameters = null;\n        loop_loop_1764814557140_IterationComplete = false;\n      }\n    };\n\nconst evaluateLoopCondition_loop_1764814557140 = (trialData, condition) => {\n  // All rules in a condition must be true (AND logic)\n  return condition.rules.every(rule => {\n    const propValue = trialData[rule.prop];\n    const compareValue = rule.value;\n    \n    // Convert values for comparison\n    const numPropValue = parseFloat(propValue);\n    const numCompareValue = parseFloat(compareValue);\n    const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);\n    \n    switch (rule.op) {\n      case '==':\n        return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;\n      case '!=':\n        return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;\n      case '>':\n        return isNumeric && numPropValue > numCompareValue;\n      case '<':\n        return isNumeric && numPropValue < numCompareValue;\n      case '>=':\n        return isNumeric && numPropValue >= numCompareValue;\n      case '<=':\n        return isNumeric && numPropValue <= numCompareValue;\n      default:\n        return false;\n    }\n  });\n};\n\nconst getNextLoopTrialId_loop_1764814557140 = (lastTrialData) => {\n  if (!lastTrialData || !lastTrialData.trials || !lastTrialData.trials[0]) {\n    return null;\n  }\n  \n  const trial = lastTrialData.trials[0];\n  \n  // Check if trial has branches\n  if (!Array.isArray(trial.branches) || trial.branches.length === 0) {\n    return null;\n  }\n  \n  // Si solo hay un branch O no hay condiciones, seguir al primer branch automáticamente\n  const hasMultipleBranches = trial.branches.length > 1;\n  const hasBranchConditions = Array.isArray(trial.branchConditions) && trial.branchConditions.length > 0;\n  \n  if (!hasMultipleBranches || !hasBranchConditions) {\n    console.log('Loop internal: Auto-branching to first branch:', trial.branches[0]);\n    return trial.branches[0];\n  }\n  \n  // Si hay múltiples branches Y condiciones, evaluar las condiciones\n  const conditions = trial.branchConditions.flat();\n  \n  // Evaluate each condition (OR logic between conditions)\n  for (const condition of conditions) {\n    if (!condition || !condition.rules) {\n      console.warn('Invalid condition structure:', condition);\n      continue;\n    }\n    \n    if (evaluateLoopCondition_loop_1764814557140(trial, condition)) {\n      console.log('Loop internal: Condition matched:', condition);\n      return condition.nextTrialId;\n    }\n  }\n  \n  // No condition matched - seguir al primer branch por defecto\n  console.log('Loop internal: No condition matched, defaulting to first branch:', trial.branches[0]);\n  return trial.branches[0];\n};\n\nconst loop_1764814557140_procedure = {\n  timeline: [Si_wrapper, New_Trial_1_wrapper],\n  timeline_variables: test_stimuli_loop_1764814557140,\n  repetitions: 1,\n  randomize_order: false,\n  \n  conditional_function: function() {\n    const currentId = \"loop_1764814557140\";\n    \n    // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n    const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n    if (jumpToTrial) {\n      if (String(currentId) === String(jumpToTrial)) {\n        // Encontramos el loop objetivo para repeat/jump\n        console.log('Repeat/jump: Found target loop', currentId);\n        localStorage.removeItem('jsPsych_jumpToTrial');\n        return true;\n      }\n      // No es el objetivo, saltar\n      console.log('Repeat/jump: Skipping loop', currentId);\n      return false;\n    }\n    \n    // Si skipRemaining está activo (branching normal), verificar si este es el loop objetivo\n    if (window.skipRemaining) {\n      if (String(currentId) === String(window.nextTrialId)) {\n        // Encontramos el loop objetivo\n        window.skipRemaining = false;\n        window.nextTrialId = null;\n        return true;\n      }\n      // No es el objetivo, saltar\n      return false;\n    }\n    \n    return true;\n  },\n  on_timeline_start: function() {\n    // Resetear las flags al inicio de cada iteración del loop\n    // Esto permite que cada repetición del loop funcione correctamente\n    loop_loop_1764814557140_NextTrialId = null;\n    loop_loop_1764814557140_SkipRemaining = false;\n    loop_loop_1764814557140_BranchingActive = false;\n    loop_loop_1764814557140_BranchCustomParameters = null;\n    loop_loop_1764814557140_TargetExecuted = false;\n    loop_loop_1764814557140_IterationComplete = false;\n    loop_loop_1764814557140_ShouldBranchOnFinish = false;\n    \n    // IMPORTANTE: Si el loop es condicional, resetear también el branching GLOBAL\n    // para que se regenere durante esta iteración del loop\n    \n  },\n  on_timeline_finish: function() {\n    // Resetear las flags al finalizar todas las repeticiones del loop\n    loop_loop_1764814557140_NextTrialId = null;\n    loop_loop_1764814557140_SkipRemaining = false;\n    loop_loop_1764814557140_TargetExecuted = false;\n    loop_loop_1764814557140_BranchingActive = false;\n    loop_loop_1764814557140_BranchCustomParameters = null;\n    \n    // Verificar si se debe hacer branching porque un trial sin branches se completó\n    // pero el loop tiene branches\n    if (loop_loop_1764814557140_ShouldBranchOnFinish && loop_loop_1764814557140_HasBranches) {\n      const branches = [];\n      if (branches.length > 0) {\n        \n        // Este es un loop raíz - activar branching global\n        window.nextTrialId = branches[0];\n        window.skipRemaining = true;\n        window.branchingActive = true;\n        console.log('Root loop finished (from internal trial), branching to:', branches[0]);\n      }\n    }\n    \n    // Resetear todas las variables de branching del loop\n    loop_loop_1764814557140_NextTrialId = null;\n    loop_loop_1764814557140_SkipRemaining = false;\n    loop_loop_1764814557140_BranchingActive = false;\n    loop_loop_1764814557140_BranchCustomParameters = null;\n    loop_loop_1764814557140_ShouldBranchOnFinish = false;\n  },\n\n  data: {\n    loop_id: \"loop_1764814557140\"\n  },\n  on_finish: function(data) {\n    // Este loop no tiene branches ni repeat conditions, es un loop terminal\n    // Si llegamos aquí después de un branching, terminar el experimento\n    if (window.branchingActive) {\n      jsPsych.abortExperiment('', {});\n    }\n  },\n};\ntimeline.push(loop_1764814557140_procedure);\n",
+            "isConditionalLoop": true,
+            "loopConditions": [],
+            "csvJson": [],
+            "csvColumns": []
           },
           {
             "id": 1764806582411,
@@ -177,92 +237,12 @@
             "stimuliOrders": [],
             "categories": false,
             "categoryColumn": "",
-            "branches": [
-              1764810238076
-            ]
-          },
-          {
-            "id": 1764810238076,
-            "type": "Trial",
-            "name": "New Trial",
-            "parameters": {
-              "includesExtensions": false,
-              "extensionType": ""
-            },
-            "trialCode": "\n    const test_stimuli_New_Trial = [{components: [{ type: \"HtmlComponent\", coordinates: {\"x\":0,\"y\":0}, stimulus: \"<div id=\\\"ig02\\\" style=\\\"box-sizing: border-box;\\\">QUe la cierres</div>\" }],\nresponse_components: undefined,\nstimuli_duration: undefined,\ntrial_duration: undefined,\nresponse_ends_trial: undefined,\nresponses: []}];\n    const New_Trial_timeline = {\n    type: DynamicPlugin, components: jsPsych.timelineVariable(\"components\"),\nresponse_components: jsPsych.timelineVariable(\"response_components\"),\nstimuli_duration: jsPsych.timelineVariable(\"stimuli_duration\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial\"),\n      data: {\n        stimulus: \"stimulus\",\nresponse: \"response\",\nrt: \"rt\",\n        trial_id: 1764810238076,\n        \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Parse key to check if it's a nested survey question\n            const parts = key.split('::');\n            \n            if (parts.length === 4) {\n              // Format: fieldType::componentName::survey_json::questionName\n              const [fieldType, componentName, propName, questionName] = parts;\n              \n              if (fieldType && componentName && propName === 'survey_json' && questionName) {\n                // Find the component by name in the field array\n                const fieldArray = trial[fieldType];\n                if (Array.isArray(fieldArray)) {\n                  const compIndex = fieldArray.findIndex(c => c.name === componentName);\n                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {\n                    // Find the question in survey_json.elements\n                    const elements = fieldArray[compIndex].survey_json.elements || [];\n                    const questionIndex = elements.findIndex(q => q.name === questionName);\n                    \n                    if (questionIndex !== -1) {\n                      // Apply the override value (from typed or csv)\n                      let valueToSet;\n                      if (param.source === 'typed') {\n                        valueToSet = String(param.value); // Convert to string for SurveyJS\n                      } else if (param.source === 'csv') {\n                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string\n                      }\n                      \n                      if (valueToSet !== undefined && valueToSet !== null) {\n                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;\n                      }\n                    }\n                  }\n                }\n              }\n            } else {\n              // Normal parameter (not nested survey question)\n              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n                trial[key] = param.value;\n              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n                trial[key] = trial[param.value];\n              }\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches ni repeat conditions, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },\n    };\n    const New_Trial_procedure = {\n    timeline: \n    [New_Trial_timeline],\n    timeline_variables: test_stimuli_New_Trial,\n    conditional_function: function() {\n      const currentId = 1764810238076;\n      \n      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n      if (jumpToTrial) {\n        if (String(currentId) === String(jumpToTrial)) {\n          // Encontramos el trial objetivo para repeat/jump\n          console.log('Repeat/jump: Found target trial', currentId);\n          localStorage.removeItem('jsPsych_jumpToTrial');\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('Repeat/jump: Skipping trial', currentId);\n        return false;\n      }\n      \n      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(New_Trial_procedure);\n  ",
-            "plugin": "plugin-dynamic",
-            "columnMapping": {
-              "components": {
-                "source": "typed",
-                "value": [
-                  {
-                    "type": "HtmlComponent",
-                    "coordinates": {
-                      "x": 0,
-                      "y": 0
-                    },
-                    "stimulus": "<div id=\"ig02\" style=\"box-sizing: border-box;\">QUe la cierres</div>",
-                    "__configMetadata": {
-                      "stimulus": {
-                        "source": "typed",
-                        "value": "<div id=\"ig02\" style=\"box-sizing: border-box;\">QUe la cierres</div>"
-                      }
-                    }
-                  }
-                ]
-              }
-            },
-            "csvJson": [],
-            "csvColumns": [],
-            "orders": false,
-            "orderColumns": [],
-            "stimuliOrders": [],
-            "categories": false,
-            "categoryColumn": ""
-          },
-          {
-            "id": 1764810254175,
-            "type": "Trial",
-            "name": "New Trial 1",
-            "parameters": {
-              "includesExtensions": false,
-              "extensionType": ""
-            },
-            "trialCode": "\n    const test_stimuli_New_Trial_1 = [{components: [{ type: \"HtmlComponent\", coordinates: {\"x\":0,\"y\":0}, stimulus: \"<div id=\\\"ixq7\\\" style=\\\"box-sizing: border-box;\\\">LOCO?</div>\" }],\nresponse_components: undefined,\nstimuli_duration: undefined,\ntrial_duration: undefined,\nresponse_ends_trial: undefined,\nresponses: []}];\n    const New_Trial_1_timeline = {\n    type: DynamicPlugin, components: jsPsych.timelineVariable(\"components\"),\nresponse_components: jsPsych.timelineVariable(\"response_components\"),\nstimuli_duration: jsPsych.timelineVariable(\"stimuli_duration\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial\"),\n      data: {\n        stimulus: \"stimulus\",\nresponse: \"response\",\nrt: \"rt\",\n        trial_id: 1764810254175,\n        \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Parse key to check if it's a nested survey question\n            const parts = key.split('::');\n            \n            if (parts.length === 4) {\n              // Format: fieldType::componentName::survey_json::questionName\n              const [fieldType, componentName, propName, questionName] = parts;\n              \n              if (fieldType && componentName && propName === 'survey_json' && questionName) {\n                // Find the component by name in the field array\n                const fieldArray = trial[fieldType];\n                if (Array.isArray(fieldArray)) {\n                  const compIndex = fieldArray.findIndex(c => c.name === componentName);\n                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {\n                    // Find the question in survey_json.elements\n                    const elements = fieldArray[compIndex].survey_json.elements || [];\n                    const questionIndex = elements.findIndex(q => q.name === questionName);\n                    \n                    if (questionIndex !== -1) {\n                      // Apply the override value (from typed or csv)\n                      let valueToSet;\n                      if (param.source === 'typed') {\n                        valueToSet = String(param.value); // Convert to string for SurveyJS\n                      } else if (param.source === 'csv') {\n                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string\n                      }\n                      \n                      if (valueToSet !== undefined && valueToSet !== null) {\n                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;\n                      }\n                    }\n                  }\n                }\n              }\n            } else {\n              // Normal parameter (not nested survey question)\n              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n                trial[key] = param.value;\n              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n                trial[key] = trial[param.value];\n              }\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches ni repeat conditions, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },\n    };\n    const New_Trial_1_procedure = {\n    timeline: \n    [New_Trial_1_timeline],\n    timeline_variables: test_stimuli_New_Trial_1,\n    conditional_function: function() {\n      const currentId = 1764810254175;\n      \n      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n      if (jumpToTrial) {\n        if (String(currentId) === String(jumpToTrial)) {\n          // Encontramos el trial objetivo para repeat/jump\n          console.log('Repeat/jump: Found target trial', currentId);\n          localStorage.removeItem('jsPsych_jumpToTrial');\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('Repeat/jump: Skipping trial', currentId);\n        return false;\n      }\n      \n      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(New_Trial_1_procedure);\n  ",
-            "plugin": "plugin-dynamic",
-            "columnMapping": {
-              "components": {
-                "source": "typed",
-                "value": [
-                  {
-                    "type": "HtmlComponent",
-                    "coordinates": {
-                      "x": 0,
-                      "y": 0
-                    },
-                    "stimulus": "<div id=\"ixq7\" style=\"box-sizing: border-box;\">LOCO?</div>",
-                    "__configMetadata": {
-                      "stimulus": {
-                        "source": "typed",
-                        "value": "<div id=\"ixq7\" style=\"box-sizing: border-box;\">LOCO?</div>"
-                      }
-                    }
-                  }
-                ]
-              }
-            },
-            "csvJson": [],
-            "csvColumns": [],
-            "orders": false,
-            "orderColumns": [],
-            "stimuliOrders": [],
-            "categories": false,
-            "categoryColumn": ""
+            "branches": []
           }
         ]
       },
       "createdAt": "2025-12-03T23:54:00.330Z",
-      "updatedAt": "2025-12-04T01:59:43.108Z"
+      "updatedAt": "2025-12-04T02:29:31.967Z"
     }
   ],
   "configs": [
@@ -273,7 +253,7 @@
       },
       "isDevMode": false,
       "createdAt": "2025-12-03T23:54:01.339Z",
-      "updatedAt": "2025-12-04T01:59:45.472Z"
+      "updatedAt": "2025-12-04T02:29:30.736Z"
     }
   ],
   "pluginConfigs": [],
