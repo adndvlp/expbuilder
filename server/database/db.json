@@ -177,52 +177,29 @@
               "includesExtensions": false,
               "extensionType": ""
             },
-            "trialCode": "\n    const test_stimuli_Nom = [{components: [{ type: \"HtmlComponent\", coordinates: {\"x\":0,\"y\":0}, stimulus: \"<div id=\\\"ivmf\\\" style=\\\"box-sizing: border-box;\\\">Ya puedes cerrar esta ventana</div>\", name: \"NO\" }],\nresponse_components: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.0027472527472527375,\"y\":0.19413919413919403}, width: 200, height: 50, choices: [\"OK\"] }],\nstimuli_duration: undefined,\ntrial_duration: undefined,\nresponse_ends_trial: undefined,\nresponses: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.0027472527472527375,\"y\":0.19413919413919403}, width: 200, height: 50, choices: [\"OK\"] }]}];\n    const Nom_timeline = {\n    type: DynamicPlugin, components: jsPsych.timelineVariable(\"components\"),\nresponse_components: jsPsych.timelineVariable(\"response_components\"),\nstimuli_duration: jsPsych.timelineVariable(\"stimuli_duration\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial\"),\n      data: {\n        stimulus: \"stimulus\",\nresponse: \"response\",\nrt: \"rt\",\n        trial_id: 1764806582411,\n        \n        \n        branches: [1764810238076],\n        branchConditions: [undefined] \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Parse key to check if it's a nested survey question\n            const parts = key.split('::');\n            \n            if (parts.length === 4) {\n              // Format: fieldType::componentName::survey_json::questionName\n              const [fieldType, componentName, propName, questionName] = parts;\n              \n              if (fieldType && componentName && propName === 'survey_json' && questionName) {\n                // Find the component by name in the field array\n                const fieldArray = trial[fieldType];\n                if (Array.isArray(fieldArray)) {\n                  const compIndex = fieldArray.findIndex(c => c.name === componentName);\n                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {\n                    // Find the question in survey_json.elements\n                    const elements = fieldArray[compIndex].survey_json.elements || [];\n                    const questionIndex = elements.findIndex(q => q.name === questionName);\n                    \n                    if (questionIndex !== -1) {\n                      // Apply the override value (from typed or csv)\n                      let valueToSet;\n                      if (param.source === 'typed') {\n                        valueToSet = String(param.value); // Convert to string for SurveyJS\n                      } else if (param.source === 'csv') {\n                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string\n                      }\n                      \n                      if (valueToSet !== undefined && valueToSet !== null) {\n                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;\n                      }\n                    }\n                  }\n                }\n              }\n            } else {\n              // Normal parameter (not nested survey question)\n              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n                trial[key] = param.value;\n              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n                trial[key] = trial[param.value];\n              }\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      \n      \n      // Branching automático al primer branch\n      const branches = [1764810238076];\n      if (branches.length > 0) {\n        window.nextTrialId = branches[0];\n        window.skipRemaining = true;\n        window.branchingActive = true;\n      }\n      \n    },\n    };\n    const Nom_procedure = {\n    timeline: \n    [Nom_timeline],\n    timeline_variables: test_stimuli_Nom,\n    conditional_function: function() {\n      const currentId = 1764806582411;\n      \n      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n      if (jumpToTrial) {\n        if (String(currentId) === String(jumpToTrial)) {\n          // Encontramos el trial objetivo para repeat/jump\n          console.log('Repeat/jump: Found target trial', currentId);\n          localStorage.removeItem('jsPsych_jumpToTrial');\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('Repeat/jump: Skipping trial', currentId);\n        return false;\n      }\n      \n      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(Nom_procedure);\n  ",
+            "trialCode": "\n    const test_stimuli_Nom = [{components: [],\nresponse_components: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":-0.5505314357773374,\"y\":-0.5544946856422269}, width: 200, height: 50, choices: [\"img/obstacle.png\"], rotation: 0 }],\nstimuli_duration: undefined,\ntrial_duration: undefined,\nresponse_ends_trial: undefined,\nresponses: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":-0.5505314357773374,\"y\":-0.5544946856422269}, width: 200, height: 50, choices: [\"img/obstacle.png\"], rotation: 0 }]}];\n    const Nom_timeline = {\n    type: DynamicPlugin, components: jsPsych.timelineVariable(\"components\"),\nresponse_components: jsPsych.timelineVariable(\"response_components\"),\nstimuli_duration: jsPsych.timelineVariable(\"stimuli_duration\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial\"),\n      data: {\n        stimulus: \"stimulus\",\nresponse: \"response\",\nrt: \"rt\",\n        trial_id: 1764806582411,\n        \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Parse key to check if it's a nested survey question\n            const parts = key.split('::');\n            \n            if (parts.length === 4) {\n              // Format: fieldType::componentName::survey_json::questionName\n              const [fieldType, componentName, propName, questionName] = parts;\n              \n              if (fieldType && componentName && propName === 'survey_json' && questionName) {\n                // Find the component by name in the field array\n                const fieldArray = trial[fieldType];\n                if (Array.isArray(fieldArray)) {\n                  const compIndex = fieldArray.findIndex(c => c.name === componentName);\n                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {\n                    // Find the question in survey_json.elements\n                    const elements = fieldArray[compIndex].survey_json.elements || [];\n                    const questionIndex = elements.findIndex(q => q.name === questionName);\n                    \n                    if (questionIndex !== -1) {\n                      // Apply the override value (from typed or csv)\n                      let valueToSet;\n                      if (param.source === 'typed') {\n                        valueToSet = String(param.value); // Convert to string for SurveyJS\n                      } else if (param.source === 'csv') {\n                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string\n                      }\n                      \n                      if (valueToSet !== undefined && valueToSet !== null) {\n                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;\n                      }\n                    }\n                  }\n                }\n              }\n            } else {\n              // Normal parameter (not nested survey question)\n              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n                trial[key] = param.value;\n              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n                trial[key] = trial[param.value];\n              }\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches ni repeat conditions, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },\n    };\n    const Nom_procedure = {\n    timeline: \n    [Nom_timeline],\n    timeline_variables: test_stimuli_Nom,\n    conditional_function: function() {\n      const currentId = 1764806582411;\n      \n      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n      if (jumpToTrial) {\n        if (String(currentId) === String(jumpToTrial)) {\n          // Encontramos el trial objetivo para repeat/jump\n          console.log('Repeat/jump: Found target trial', currentId);\n          localStorage.removeItem('jsPsych_jumpToTrial');\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('Repeat/jump: Skipping trial', currentId);\n        return false;\n      }\n      \n      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(Nom_procedure);\n  ",
             "plugin": "plugin-dynamic",
             "columnMapping": {
-              "components": {
-                "source": "typed",
-                "value": [
-                  {
-                    "type": "HtmlComponent",
-                    "coordinates": {
-                      "x": 0,
-                      "y": 0
-                    },
-                    "stimulus": "<div id=\"ivmf\" style=\"box-sizing: border-box;\">Ya puedes cerrar esta ventana</div>",
-                    "name": "NO",
-                    "__configMetadata": {
-                      "stimulus": {
-                        "source": "typed",
-                        "value": "<div id=\"ivmf\" style=\"box-sizing: border-box;\">Ya puedes cerrar esta ventana</div>"
-                      },
-                      "name": {
-                        "source": "typed",
-                        "value": "NO"
-                      }
-                    }
-                  }
-                ]
-              },
               "response_components": {
                 "source": "typed",
                 "value": [
                   {
                     "type": "ButtonResponseComponent",
                     "coordinates": {
-                      "x": 0.0027472527472527375,
-                      "y": 0.19413919413919403
+                      "x": -0.5505314357773374,
+                      "y": -0.5544946856422269
                     },
                     "width": 200,
                     "height": 50,
                     "choices": [
-                      "OK"
+                      "img/obstacle.png"
                     ],
+                    "rotation": 0,
                     "__configMetadata": {
                       "choices": {
                         "source": "typed",
                         "value": [
-                          "OK"
+                          "img/obstacle.png"
                         ]
                       }
                     }
@@ -242,7 +219,7 @@
         ]
       },
       "createdAt": "2025-12-03T23:54:00.330Z",
-      "updatedAt": "2025-12-04T02:29:31.967Z"
+      "updatedAt": "2025-12-04T02:38:56.221Z"
     }
   ],
   "configs": [
@@ -253,7 +230,7 @@
       },
       "isDevMode": false,
       "createdAt": "2025-12-03T23:54:01.339Z",
-      "updatedAt": "2025-12-04T02:29:30.736Z"
+      "updatedAt": "2025-12-04T02:31:14.829Z"
     }
   ],
   "pluginConfigs": [],
@@ -5006,6 +4983,114 @@
       "sessionId": "cf6e6d03-6ff9-48d5-a775-5cd3ee17aa87",
       "createdAt": "2025-12-04T01:59:04.750Z",
       "data": []
+    },
+    {
+      "experimentID": "341155b1-b62b-4147-8d77-f2e0deb3d624",
+      "sessionId": "Nom_result_367faf03-1f63-4830-957f-67ed606ded88",
+      "createdAt": "2025-12-04T02:31:16.485Z",
+      "data": []
+    },
+    {
+      "experimentID": "341155b1-b62b-4147-8d77-f2e0deb3d624",
+      "sessionId": "Nom_result_13e9902f-6fba-45f2-bf3e-0dffde690776",
+      "createdAt": "2025-12-04T02:38:21.184Z",
+      "data": [
+        {
+          "stimulus": [],
+          "response": [
+            {
+              "name": "ButtonResponseComponent_1",
+              "type": "ButtonResponseComponent",
+              "response": "img/armadillo.png",
+              "rt": 618
+            }
+          ],
+          "rt": 621,
+          "trial_id": 1764806582411,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 0,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 623
+        }
+      ]
+    },
+    {
+      "experimentID": "341155b1-b62b-4147-8d77-f2e0deb3d624",
+      "sessionId": "Nom_result_b045d27f-a631-4760-9d75-b42e636f4781",
+      "createdAt": "2025-12-04T02:38:24.107Z",
+      "data": []
+    },
+    {
+      "experimentID": "341155b1-b62b-4147-8d77-f2e0deb3d624",
+      "sessionId": "Nom_result_5bf147ab-f919-4e58-a023-38e6d4aef3cf",
+      "createdAt": "2025-12-04T02:38:48.098Z",
+      "data": [
+        {
+          "stimulus": [],
+          "response": [
+            {
+              "name": "ButtonResponseComponent_1",
+              "type": "ButtonResponseComponent",
+              "response": "img/obstacle.png",
+              "rt": 690
+            }
+          ],
+          "rt": 691,
+          "trial_id": 1764806582411,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 0,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 692
+        }
+      ]
+    },
+    {
+      "experimentID": "341155b1-b62b-4147-8d77-f2e0deb3d624",
+      "sessionId": "Nom_result_a846be87-4180-49b2-9d40-abfa0d119b1d",
+      "createdAt": "2025-12-04T02:38:51.162Z",
+      "data": [
+        {
+          "stimulus": [],
+          "response": [
+            {
+              "name": "ButtonResponseComponent_1",
+              "type": "ButtonResponseComponent",
+              "response": "img/obstacle.png",
+              "rt": 761
+            }
+          ],
+          "rt": 762,
+          "trial_id": 1764806582411,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 0,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 763
+        }
+      ]
+    },
+    {
+      "experimentID": "341155b1-b62b-4147-8d77-f2e0deb3d624",
+      "sessionId": "Nom_result_75b22e61-901a-4ff3-aee5-08f22f896d84",
+      "createdAt": "2025-12-04T02:38:56.264Z",
+      "data": [
+        {
+          "stimulus": [],
+          "response": [
+            {
+              "name": "ButtonResponseComponent_1",
+              "type": "ButtonResponseComponent",
+              "response": "img/obstacle.png",
+              "rt": 595
+            }
+          ],
+          "rt": 596,
+          "trial_id": 1764806582411,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 0,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 597
+        }
+      ]
     }
   ]
 }

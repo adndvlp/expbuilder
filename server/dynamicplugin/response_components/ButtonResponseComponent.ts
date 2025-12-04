@@ -1,6 +1,6 @@
 import { ParameterType } from "jspsych";
 
-var version = "2.1.1";
+var version = "2.2.0";
 
 const info = {
   name: "ButtonResponseComponent",
@@ -12,6 +12,7 @@ const info = {
     },
     /**
      * Labels for the buttons. Each different string in the array will generate a different button.
+     * If a choice is a URL to an image (detected by common image extensions), it will be rendered as an image button.
      */
     choices: {
       type: ParameterType.STRING,
@@ -22,13 +23,23 @@ const info = {
      *  A function that generates the HTML for each button in the `choices` array. The function gets the string and index
      * of the item in the `choices` array and should return valid HTML. If you want to use different markup for each
      * button, you can do that by using a conditional on either parameter. The default parameter returns a button element
-     * with the text label of the choice.
+     * with the text label of the choice, or an image if the choice is a URL to an image.
      */
     button_html: {
       type: ParameterType.FUNCTION,
       default: function (choice: string, choice_index: number) {
         return `<button class="jspsych-btn">${choice}</button>`;
       },
+    },
+    /** Width of image buttons in pixels. Only applies when choices contain image URLs. */
+    image_button_width: {
+      type: ParameterType.INT,
+      default: 150,
+    },
+    /** Height of image buttons in pixels. Only applies when choices contain image URLs. */
+    image_button_height: {
+      type: ParameterType.INT,
+      default: 150,
     },
 
     /** Setting to `'grid'` will make the container element have the CSS property `display: grid` and enable the
@@ -112,6 +123,45 @@ class ButtonResponseComponent {
   }
 
   /**
+   * Check if a string is an image URL
+   */
+  private isImageUrl(str: string): boolean {
+    if (!str) return false;
+
+    // Check if it's a URL
+    try {
+      const url = new URL(str);
+      const path = url.pathname.toLowerCase();
+      // Check for common image extensions
+      return /\.(jpg|jpeg|png|gif|bmp|svg|webp)(\?.*)?$/i.test(path);
+    } catch {
+      // If not a valid URL, check if it's a relative path with image extension
+      return /\.(jpg|jpeg|png|gif|bmp|svg|webp)$/i.test(str.toLowerCase());
+    }
+  }
+
+  /**
+   * Generate HTML for a button, handling both text and image choices
+   */
+  private generateButtonHtml(
+    choice: string,
+    index: number,
+    trial: any
+  ): string {
+    if (this.isImageUrl(choice)) {
+      // Generate image button
+      const width = trial.image_button_width || 150;
+      const height = trial.image_button_height || 150;
+      return `<button class="jspsych-btn jspsych-btn-image" style="padding: 5px; border: 2px solid #ccc; background: white;">
+        <img src="${choice}" style="width: ${width}px; height: ${height}px; object-fit: cover; display: block; pointer-events: none;" />
+      </button>`;
+    } else {
+      // Generate text button (default behavior)
+      return `<button class="jspsych-btn">${choice}</button>`;
+    }
+  }
+
+  /**
    * Render the button group into the display element
    */
   render(
@@ -168,17 +218,17 @@ class ButtonResponseComponent {
     }
 
     // Create buttons
-    const buttonHtml =
-      trial.button_html ||
-      function (choice: string, choice_index: number) {
-        return `<button class="jspsych-btn">${choice}</button>`;
-      };
+    // Use custom button_html if provided, otherwise use the smart default
+    const buttonHtml = trial.button_html
+      ? trial.button_html
+      : (choice: string, choice_index: number) =>
+          this.generateButtonHtml(choice, choice_index, trial);
 
-    for (const choice of trial.choices) {
-      this.buttonGroupElement.insertAdjacentHTML(
-        "beforeend",
-        buttonHtml(choice)
-      );
+    for (let i = 0; i < trial.choices.length; i++) {
+      const choice = trial.choices[i];
+      const html = buttonHtml(choice, i);
+
+      this.buttonGroupElement.insertAdjacentHTML("beforeend", html);
       const buttonElement = this.buttonGroupElement.lastChild as HTMLElement;
       buttonElement.dataset.choice = choice;
       buttonElement.addEventListener("click", () => {

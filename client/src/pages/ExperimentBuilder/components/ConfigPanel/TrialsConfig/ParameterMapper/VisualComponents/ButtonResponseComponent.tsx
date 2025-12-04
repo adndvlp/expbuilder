@@ -1,6 +1,15 @@
 import React, { useRef, useEffect } from "react";
-import { Rect, Text, Transformer, Group } from "react-konva";
+import {
+  Rect,
+  Text,
+  Transformer,
+  Group,
+  Image as KonvaImage,
+} from "react-konva";
 import Konva from "konva";
+import useImage from "use-image";
+import imagePlaceholder from "../../../../../../../assets/image.png";
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface TrialComponent {
   id: string;
@@ -66,6 +75,29 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
   const choices = getConfigValue("choices", ["Button"]);
   const gridRows = getConfigValue("grid_rows", 1);
   const gridColumns = getConfigValue("grid_columns", null);
+  const imageButtonWidth = getConfigValue("image_button_width", 150);
+  const imageButtonHeight = getConfigValue("image_button_height", 150);
+
+  // Load placeholder image
+  const [placeholderImg] = useImage(imagePlaceholder);
+
+  // Helper to check if a string is an image URL
+  const isImageUrl = (str: string): boolean => {
+    if (!str) return false;
+    try {
+      const url = new URL(str);
+      const path = url.pathname.toLowerCase();
+      return /\.(jpg|jpeg|png|gif|bmp|svg|webp)(\?.*)?$/i.test(path);
+    } catch {
+      return /\.(jpg|jpeg|png|gif|bmp|svg|webp)$/i.test(str.toLowerCase());
+    }
+  };
+
+  // Helper to check if choice is from CSV (placeholder needed)
+  const isChoiceFromCSV = (): boolean => {
+    const choicesConfig = shapeProps.config["choices"];
+    return choicesConfig?.source === "csv";
+  };
 
   useEffect(() => {
     if (isSelected && trRef.current && groupRef.current) {
@@ -88,6 +120,96 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
   const buttonWidth = shapeProps.width / parsedGridColumns;
   const buttonHeight = shapeProps.height / parsedGridRows;
 
+  // Component to render a single button (text or image)
+  const ButtonContent: React.FC<{
+    choice: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    index: number;
+  }> = ({ choice, x, y, width, height, index }) => {
+    const isFromCSV = isChoiceFromCSV();
+    const isImage = isImageUrl(choice);
+
+    // Prepare image URL
+    let imageUrl = choice;
+    if (isImage && !imageUrl.startsWith("http")) {
+      imageUrl = `${API_URL}/${imageUrl}`;
+    }
+
+    const [image] = useImage(isImage && imageUrl ? imageUrl : "");
+
+    // Show image or placeholder
+    if (isImage || isFromCSV) {
+      const imgToShow = image || placeholderImg;
+      const imgWidth = Math.min(width - 12, imageButtonWidth);
+      const imgHeight = Math.min(height - 12, imageButtonHeight);
+
+      return (
+        <>
+          <Rect
+            key={`button-${index}-rect`}
+            x={x}
+            y={y}
+            width={width - 4}
+            height={height - 4}
+            fill="#ffffff"
+            stroke="#7e22ce"
+            strokeWidth={2}
+            cornerRadius={6}
+            shadowBlur={2}
+            shadowOpacity={0.3}
+          />
+          {imgToShow && (
+            <KonvaImage
+              key={`button-${index}-img`}
+              image={imgToShow}
+              x={x + (width - 4) / 2}
+              y={y + (height - 4) / 2}
+              width={imgWidth}
+              height={imgHeight}
+              offsetX={imgWidth / 2}
+              offsetY={imgHeight / 2}
+            />
+          )}
+        </>
+      );
+    }
+
+    // Text button
+    return (
+      <>
+        <Rect
+          key={`button-${index}-rect`}
+          x={x}
+          y={y}
+          width={width - 4}
+          height={height - 4}
+          fill="#9333ea"
+          stroke="#7e22ce"
+          strokeWidth={1}
+          cornerRadius={6}
+          shadowBlur={2}
+          shadowOpacity={0.3}
+        />
+        <Text
+          key={`button-${index}-text`}
+          text={String(choice)}
+          x={x}
+          y={y}
+          width={width - 4}
+          height={height - 4}
+          align="center"
+          verticalAlign="middle"
+          fontSize={Math.min(height * 0.4, 14)}
+          fill="#ffffff"
+          fontStyle="bold"
+        />
+      </>
+    );
+  };
+
   // Render buttons in grid
   const renderButtons = () => {
     const buttons: React.ReactElement[] = [];
@@ -99,37 +221,15 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
       const x = col * buttonWidth;
       const y = row * buttonHeight;
 
-      const buttonKey = `button-${index}`;
-
       buttons.push(
-        <Rect
-          key={`${buttonKey}-rect`}
+        <ButtonContent
+          key={`button-${index}`}
+          choice={String(choice)}
           x={x}
           y={y}
-          width={buttonWidth - 4}
-          height={buttonHeight - 4}
-          fill="#9333ea"
-          stroke="#7e22ce"
-          strokeWidth={1}
-          cornerRadius={6}
-          shadowBlur={2}
-          shadowOpacity={0.3}
-        />
-      );
-
-      buttons.push(
-        <Text
-          key={`${buttonKey}-text`}
-          text={String(choice)}
-          x={x}
-          y={y}
-          width={buttonWidth - 4}
-          height={buttonHeight - 4}
-          align="center"
-          verticalAlign="middle"
-          fontSize={Math.min(buttonHeight * 0.4, 14)}
-          fill="#ffffff"
-          fontStyle="bold"
+          width={buttonWidth}
+          height={buttonHeight}
+          index={index}
         />
       );
     });
