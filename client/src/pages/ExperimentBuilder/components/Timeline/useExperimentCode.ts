@@ -264,12 +264,77 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
 
   const generateLocalExperiment = () => {
     return `
+  // --- Recolectar metadata del sistema ---
+  const getMetadata = () => {
+    const ua = navigator.userAgent;
+    let browserName = 'Unknown';
+    let browserVersion = 'Unknown';
+    
+    if (ua.indexOf('Firefox') > -1) {
+      browserName = 'Firefox';
+      browserVersion = ua.match(/Firefox\\/(\\d+\\.\\d+)/)?.[1] || 'Unknown';
+    } else if (ua.indexOf('Chrome') > -1) {
+      browserName = 'Chrome';
+      browserVersion = ua.match(/Chrome\\/(\\d+\\.\\d+)/)?.[1] || 'Unknown';
+    } else if (ua.indexOf('Safari') > -1) {
+      browserName = 'Safari';
+      browserVersion = ua.match(/Version\\/(\\d+\\.\\d+)/)?.[1] || 'Unknown';
+    } else if (ua.indexOf('Edg') > -1) {
+      browserName = 'Edge';
+      browserVersion = ua.match(/Edg\\/(\\d+\\.\\d+)/)?.[1] || 'Unknown';
+    }
+    
+    let osName = 'Unknown';
+    if (ua.indexOf('Win') > -1) osName = 'Windows';
+    else if (ua.indexOf('Mac') > -1) osName = 'macOS';
+    else if (ua.indexOf('Linux') > -1) osName = 'Linux';
+    else if (ua.indexOf('Android') > -1) osName = 'Android';
+    else if (ua.indexOf('iOS') > -1) osName = 'iOS';
+    
+    return {
+      browser: browserName,
+      browserVersion: browserVersion,
+      os: osName,
+      screenWidth: window.screen.width,
+      screenHeight: window.screen.height,
+      screenResolution: \`\${window.screen.width}x\${window.screen.height}\`,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      language: navigator.language,
+      userAgent: ua,
+      startedAt: new Date().toISOString()
+    };
+  };
+  
+  const metadata = getMetadata();
+
+  // --- Socket.IO para tracking en tiempo real ---
+  const socketScript = document.createElement('script');
+  socketScript.src = '/socket.io/socket.io.js';
+  socketScript.onload = () => {
+    window._socketReady = true;
+  };
+  document.head.appendChild(socketScript);
+
+  function waitForSocket() {
+    return new Promise(resolve => {
+      if (window._socketReady) return resolve();
+      const interval = setInterval(() => {
+        if (window._socketReady) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 50);
+    });
+  }
+
   const trialSessionId =
     (crypto.randomUUID
       ? crypto.randomUUID()
       : Math.random().toString(36).slice(2, 10));
 
   let participantNumber;
+  let socket;
 
   async function saveSession(trialSessionId) {
    
@@ -278,6 +343,7 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
       headers: { "Content-Type": "application/json", Accept: "*/*" },
       body: JSON.stringify({
         sessionId: trialSessionId,
+        metadata: metadata
       }),
     });
   
@@ -291,12 +357,24 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
 
     localStorage.removeItem('jsPsych_jumpToTrial');
     
+    // Esperar a que Socket.IO esté listo
+    await waitForSocket();
+    socket = io();
+    
     participantNumber = await saveSession(trialSessionId);
 
     if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
       alert("The participant number is not assigned. Please, wait.");
       throw new Error("participantNumber not assigned");
     }
+
+    // Conectar sesión con el servidor via WebSocket
+    socket.emit('join-experiment', {
+      experimentID: '${experimentID}',
+      sessionId: trialSessionId,
+      state: 'initiated',
+      metadata: metadata
+    });
 
     ${evaluateCondition}
 
@@ -315,11 +393,37 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
           response: data,
         }),
       });
+      
+      // Actualizar estado a 'in-progress' en la primera actualización
+      if (data.trial_index === 0 && socket) {
+        socket.emit('update-session-state', {
+          experimentID: '${experimentID}',
+          sessionId: trialSessionId,
+          state: 'in-progress'
+        });
+      }
+      
       ${branchingEvaluation}
     },
 
-  on_finish: function() {
-    jsPsych.data.displayData
+  on_finish: async function() {
+    // Marcar como completado
+    if (socket) {
+      socket.emit('update-session-state', {
+        experimentID: '${experimentID}',
+        sessionId: trialSessionId,
+        state: 'completed'
+      });
+    }
+    
+    await fetch("/api/complete-session/${experimentID}", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "*/*" },
+      body: JSON.stringify({
+        sessionId: trialSessionId,
+      }),
+    });
+    // jsPsych.data.displayData();
   }
 });
 
@@ -348,6 +452,50 @@ jsPsych.run(timeline);
 
   const generateExperiment = () => {
     return `
+  // --- Recolectar metadata del sistema ---
+  const getMetadata = () => {
+    const ua = navigator.userAgent;
+    let browserName = 'Unknown';
+    let browserVersion = 'Unknown';
+    
+    if (ua.indexOf('Firefox') > -1) {
+      browserName = 'Firefox';
+      browserVersion = ua.match(/Firefox\\/(\\d+\\.\\d+)/)?.[1] || 'Unknown';
+    } else if (ua.indexOf('Chrome') > -1) {
+      browserName = 'Chrome';
+      browserVersion = ua.match(/Chrome\\/(\\d+\\.\\d+)/)?.[1] || 'Unknown';
+    } else if (ua.indexOf('Safari') > -1) {
+      browserName = 'Safari';
+      browserVersion = ua.match(/Version\\/(\\d+\\.\\d+)/)?.[1] || 'Unknown';
+    } else if (ua.indexOf('Edg') > -1) {
+      browserName = 'Edge';
+      browserVersion = ua.match(/Edg\\/(\\d+\\.\\d+)/)?.[1] || 'Unknown';
+    }
+    
+    let osName = 'Unknown';
+    if (ua.indexOf('Win') > -1) osName = 'Windows';
+    else if (ua.indexOf('Mac') > -1) osName = 'macOS';
+    else if (ua.indexOf('Linux') > -1) osName = 'Linux';
+    else if (ua.indexOf('Android') > -1) osName = 'Android';
+    else if (ua.indexOf('iOS') > -1) osName = 'iOS';
+    
+    return {
+      browser: browserName,
+      browserVersion: browserVersion,
+      os: osName,
+      screenWidth: window.screen.width,
+      screenHeight: window.screen.height,
+      screenResolution: \`\${window.screen.width}x\${window.screen.height}\`,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      language: navigator.language,
+      userAgent: ua,
+      startedAt: new Date().toISOString()
+    };
+  };
+  
+  const metadata = getMetadata();
+
   // --- Firebase config ---
   const firebaseConfig = {
     apiKey: "${import.meta.env.VITE_FIREBASE_API_KEY}",
@@ -392,7 +540,7 @@ jsPsych.run(timeline);
   const Uid = userStr.uid
 
   const trialSessionId =
-    (crypto.randomUUID
+    "online_" + (crypto.randomUUID
       ? crypto.randomUUID()
       : Math.random().toString(36).slice(2, 10));
 
@@ -466,14 +614,29 @@ jsPsych.run(timeline);
       experimentID: '${experimentID}',
       sessionId: trialSessionId,
       startedAt: window.firebase.database.ServerValue.TIMESTAMP,
-      storage: '${storage}'
+      storage: '${storage}',
+      state: 'initiated',
+      lastUpdate: window.firebase.database.ServerValue.TIMESTAMP,
+      metadata: metadata
     });
     
-    // Cuando se desconecte, marcar para que el backend finalice la sesión
+    // Guardar metadata en db.json local también (para persistencia)
+    fetch('/api/save-online-session-metadata/${experimentID}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: trialSessionId,
+        metadata: metadata,
+        state: 'initiated'
+      })
+    }).catch(err => console.warn('Could not save metadata to local db:', err));
+    
+    // Cuando se desconecte sin completar, marcar como abandoned
     // Incluir needsFinalization para que se procesen los datos en caso de desconexión
     sessionRef.onDisconnect().update({
       connected: false,
       needsFinalization: true,
+      state: 'abandoned',
       disconnectedAt: window.firebase.database.ServerValue.TIMESTAMP,
       storage: '${storage}'
     });
@@ -493,6 +656,24 @@ jsPsych.run(timeline);
       ${extensions}
 
       on_data_update: function (data) {
+
+        // Actualizar estado a 'in-progress' en la primera actualización
+        if (data.trial_index === 0) {
+          sessionRef.update({
+            state: 'in-progress',
+            lastUpdate: window.firebase.database.ServerValue.TIMESTAMP
+          }).catch(err => console.error('Error updating state:', err));
+          
+          // Actualizar también en db.json local
+          fetch('/api/save-online-session-metadata/${experimentID}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sessionId: trialSessionId,
+              state: 'in-progress'
+            })
+          }).catch(err => console.warn('Could not update state in local db:', err));
+        }
 
         fetch("${DATA_API_URL}", {
           method: "POST",
@@ -526,11 +707,11 @@ jsPsych.run(timeline);
 
       on_finish: async function() {
         
-        // Cancelar el onDisconnect para evitar conflictos
+        // Cancelar el onDisconnect para evitar que marque como abandoned
         sessionRef.onDisconnect().cancel();
 
         // Finalizar la sesión normalmente y marcar en Firebase que terminó correctamente
-        console.log('Experiment finished normally, sending data to Google Drive...');
+        console.log('Experiment finished normally, sending data to storage...');
         
         try {
           
@@ -539,8 +720,20 @@ jsPsych.run(timeline);
             connected: false,
             finished: true,
             needsFinalization: true,
-            finishedAt: window.firebase.database.ServerValue.TIMESTAMP
+            state: 'completed',
+            finishedAt: window.firebase.database.ServerValue.TIMESTAMP,
+            lastUpdate: window.firebase.database.ServerValue.TIMESTAMP
           });
+          
+          // Guardar estado completado en db.json local (persistencia)
+          await fetch('/api/save-online-session-metadata/${experimentID}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sessionId: trialSessionId,
+              state: 'completed'
+            })
+          }).catch(err => console.warn('Could not update completed state in local db:', err));
           
           // El backend procesará la finalización al detectar needsFinalization=true
           console.log('Session marked for finalization in Firebase');

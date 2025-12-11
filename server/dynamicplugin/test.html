@@ -44,332 +44,13 @@
 
     /* create timeline */
     var timeline = [];
+    var trial = {
+      type: jsPsychInitializeMicrophone,
+    };
+
+    timeline.push(trial);
+
     // ============================================
-    // SURVEY COMPONENT EXAMPLES
-    // ============================================
-
-    // Example 1: Simple satisfaction survey with mixed question types
-    const satisfactionSurvey = {
-      type: DynamicPlugin,
-      components: [
-        {
-          type: "SurveyComponent",
-          questions: [
-            {
-              type: "likert",
-              name: "overall_satisfaction",
-              prompt: "How satisfied are you with this experiment?",
-              labels: [
-                "Very Dissatisfied",
-                "Dissatisfied",
-                "Neutral",
-                "Satisfied",
-                "Very Satisfied",
-              ],
-              required: true,
-            },
-            {
-              type: "multi-choice",
-              name: "experience_level",
-              prompt: "How would you describe your experience level?",
-              options: ["Beginner", "Intermediate", "Advanced", "Expert"],
-              horizontal: true,
-              required: true,
-            },
-            {
-              type: "text",
-              name: "feedback",
-              prompt: "Do you have any additional comments?",
-              placeholder: "Type your feedback here...",
-              rows: 3,
-              columns: 60,
-              required: false,
-            },
-          ],
-          preamble:
-            "<h2>Quick Feedback Survey</h2><p>Please take a moment to answer these questions.</p>",
-          coordinates: { x: 0, y: -0.1 },
-        },
-      ],
-      response_components: [
-        {
-          type: "ButtonResponseComponent",
-          choices: ["Submit Survey"],
-          coordinates: { x: 0, y: 0.5 },
-        },
-      ],
-    };
-
-    // Example 2: Research survey with multiple question types
-    const researchSurvey = {
-      type: DynamicPlugin,
-      components: [
-        {
-          type: "SurveyComponent",
-          questions: [
-            {
-              type: "multi-select",
-              name: "preferred_features",
-              prompt: "Which features did you use? (Select all that apply)",
-              options: [
-                "Slider",
-                "Input Fields",
-                "Sketchpad",
-                "Keyboard Response",
-                "Button Response",
-              ],
-              horizontal: false,
-              required: true,
-            },
-            {
-              type: "likert",
-              name: "ease_of_use",
-              prompt: "The interface was easy to use",
-              labels: ["1", "2", "3", "4", "5"],
-              required: true,
-            },
-            {
-              type: "likert",
-              name: "would_recommend",
-              prompt: "I would recommend this to others",
-              labels: ["1", "2", "3", "4", "5"],
-              required: true,
-            },
-            {
-              type: "text",
-              name: "improvements",
-              prompt: "What improvements would you suggest?",
-              placeholder: "Your suggestions...",
-              rows: 4,
-              columns: 70,
-              required: false,
-            },
-          ],
-          preamble: `
-            <div style="text-align: center; margin-bottom: 20px;">
-              <h2>User Experience Survey</h2>
-              <p>Your feedback helps us improve!</p>
-            </div>
-          `,
-          scale_width: 500,
-          randomize_question_order: false,
-          coordinates: { x: 0, y: 0 },
-        },
-      ],
-      response_components: [
-        {
-          type: "ButtonResponseComponent",
-          choices: ["Complete Survey"],
-          coordinates: { x: 0, y: 0.5 },
-        },
-      ],
-    };
-
-    // Example 3: Custom HTML form with contact info
-    const contactFormSurvey = {
-      type: DynamicPlugin,
-      components: [
-        {
-          type: "SurveyComponent",
-          questions: [
-            {
-              type: "html-form",
-              name: "contact_info",
-              prompt: "Please provide your contact information:",
-              html: `
-                <div style="max-width: 500px;">
-                  <div style="margin-bottom: 15px;">
-                    <label for="name">Name *</label><br>
-                    <input type="text" id="name" name="name" required 
-                           style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px;">
-                  </div>
-                  <div style="margin-bottom: 15px;">
-                    <label for="email">Email *</label><br>
-                    <input type="email" id="email" name="email" required 
-                           style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px;">
-                  </div>
-                  <div style="margin-bottom: 15px;">
-                    <label for="age">Age</label><br>
-                    <input type="number" id="age" name="age" min="18" max="120"
-                           style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px;">
-                  </div>
-                </div>
-              `,
-              autofocus: "name",
-              required: true,
-            },
-            {
-              type: "multi-choice",
-              name: "participate_again",
-              prompt:
-                "Would you be interested in participating in future studies?",
-              options: ["Yes", "No", "Maybe"],
-              horizontal: true,
-              required: true,
-            },
-          ],
-          preamble: "<h2>Contact Information</h2>",
-          coordinates: { x: 0, y: 0 },
-        },
-      ],
-      response_components: [
-        {
-          type: "ButtonResponseComponent",
-          choices: ["Submit"],
-          coordinates: { x: 0, y: 0.5 },
-        },
-      ],
-    };
-
-    // Example 4: Quick rating survey (compact)
-    const quickRatingSurvey = {
-      type: DynamicPlugin,
-      components: [
-        {
-          type: "SurveyComponent",
-          questions: [
-            {
-              type: "multi-choice",
-              name: "overall_rating",
-              prompt: "How would you rate this experiment?",
-              options: ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"],
-              horizontal: true,
-              required: true,
-            },
-            {
-              type: "multi-choice",
-              name: "difficulty",
-              prompt: "How difficult was it?",
-              options: ["Too Easy", "Just Right", "Too Hard"],
-              horizontal: true,
-              required: true,
-            },
-          ],
-          preamble: "<h3>Quick Rating</h3>",
-          coordinates: { x: 0, y: 0 },
-        },
-      ],
-      response_components: [
-        {
-          type: "ButtonResponseComponent",
-          choices: ["Done"],
-          coordinates: { x: 0, y: 0.4 },
-        },
-      ],
-    };
-
-    // Example 5: Randomized order survey
-    const randomizedSurvey = {
-      type: DynamicPlugin,
-      components: [
-        {
-          type: "SurveyComponent",
-          questions: [
-            {
-              type: "likert",
-              name: "statement_a",
-              prompt: "Statement A: I found the instructions clear",
-              labels: [
-                "Strongly Disagree",
-                "Disagree",
-                "Neutral",
-                "Agree",
-                "Strongly Agree",
-              ],
-              required: true,
-            },
-            {
-              type: "likert",
-              name: "statement_b",
-              prompt: "Statement B: The experiment was engaging",
-              labels: [
-                "Strongly Disagree",
-                "Disagree",
-                "Neutral",
-                "Agree",
-                "Strongly Agree",
-              ],
-              required: true,
-            },
-            {
-              type: "likert",
-              name: "statement_c",
-              prompt: "Statement C: I would participate again",
-              labels: [
-                "Strongly Disagree",
-                "Disagree",
-                "Neutral",
-                "Agree",
-                "Strongly Agree",
-              ],
-              required: true,
-            },
-            {
-              type: "likert",
-              name: "statement_d",
-              prompt: "Statement D: The interface was intuitive",
-              labels: [
-                "Strongly Disagree",
-                "Disagree",
-                "Neutral",
-                "Agree",
-                "Strongly Agree",
-              ],
-              required: true,
-            },
-          ],
-          preamble:
-            "<p><strong>Note:</strong> Questions will appear in random order</p>",
-          randomize_question_order: true,
-          scale_width: 600,
-          coordinates: { x: 0, y: 0 },
-        },
-      ],
-      response_components: [
-        {
-          type: "ButtonResponseComponent",
-          choices: ["Continue"],
-          coordinates: { x: 0, y: 0.5 },
-        },
-      ],
-    };
-
-    // Add survey examples to timeline
-    timeline.push(satisfactionSurvey);
-    timeline.push(researchSurvey);
-    timeline.push(contactFormSurvey);
-    timeline.push(quickRatingSurvey);
-    timeline.push(randomizedSurvey);
-    // Example 1: Slider without internal button - using external ButtonResponseComponent
-    const sliderWithButtonTrial = {
-      type: DynamicPlugin,
-      components: [
-        {
-          type: "HtmlComponent",
-          stimulus: "<h2>How much do you like this?</h2>",
-          coordinates: { x: 0, y: -0.5 },
-        },
-      ],
-      response_components: [
-        {
-          type: "SliderResponseComponent",
-          min: 0,
-          max: 100,
-          slider_start: 50,
-          step: 1,
-          labels: ["Not at all", "Very much"],
-          require_movement: true,
-          coordinates: { x: 0, y: 0 },
-        },
-        {
-          type: "ButtonResponseComponent",
-          choices: ["Continue"],
-          coordinates: { x: 0, y: 0.5 },
-        },
-      ],
-    };
-
-    // Example 2: Input (Cloze) component with external button
     const inputResponseTrial = {
       type: DynamicPlugin,
       components: [
@@ -392,6 +73,14 @@
           type: "ButtonResponseComponent",
           choices: ["Submit Answers"],
           coordinates: { x: 0, y: 0.5 },
+        },
+        {
+          type: "AudioResponseComponent",
+          recording_duration: 3500,
+          show_done_button: true,
+          done_button_label: "Continue",
+          allow_playback: false,
+          coordinates: { x: 0, y: 0 },
         },
       ],
     };
@@ -486,11 +175,11 @@
     };
 
     // Add trials to timeline
-    timeline.push(sliderWithButtonTrial);
     timeline.push(inputResponseTrial);
     timeline.push(freeInputTrial);
     timeline.push(multiResponseTrial);
     timeline.push(sketchpadTrial);
+
     const procedure2 = {
       type: DynamicPlugin,
       components: [

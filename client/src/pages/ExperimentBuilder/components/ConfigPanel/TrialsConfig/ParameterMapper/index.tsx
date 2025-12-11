@@ -525,17 +525,21 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                         className="w-full p-2 border rounded mt-2"
                         placeholder={`Comma-separated values for ${label.toLowerCase()}`}
                         value={
-                          typeof entry.value === "string"
+                          localInputValues[key] ??
+                          (typeof entry.value === "string"
                             ? entry.value
                             : Array.isArray(entry.value)
                               ? entry.value.join(", ")
-                              : ""
+                              : "")
                         }
                         onChange={(e) => {
-                          handleTypedValueChange(e.target.value);
+                          setLocalInputValues((prev) => ({
+                            ...prev,
+                            [key]: e.target.value,
+                          }));
                         }}
                         onBlur={(e) => {
-                          const input = e.target.value;
+                          const input = localInputValues[key] ?? e.target.value;
 
                           const rawItems = input
                             .split(",")
@@ -555,17 +559,24 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                                 }
                                 return Number(item);
                               case "boolean":
-                              case "bool":
+                              case "bool": {
                                 const lower = item.toLowerCase();
                                 if (lower === "true") return true;
                                 if (lower === "false") return false;
                                 return item;
+                              }
                               default:
                                 return item;
                             }
                           });
 
                           handleTypedValueChange(castedArray);
+
+                          setLocalInputValues((prev) => {
+                            const newState = { ...prev };
+                            delete newState[key];
+                            return newState;
+                          });
                         }}
                       />
                     )

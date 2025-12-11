@@ -8,3 +8,4 @@ export { default as KeyboardResponseComponent } from "./KeyboardResponseComponen
 export { default as SliderResponseComponent } from "./SliderResponseComponent";
 export { default as InputResponseComponent } from "./InputResponseComponent";
 export { default as SurveyComponent } from "./SurveyComponent";
+export { default as AudioResponseComponent } from "./AudioResponseComponent";

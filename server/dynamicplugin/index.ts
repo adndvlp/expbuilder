@@ -7,14 +7,15 @@ import ImageComponent from "./components/ImageComponent";
 import VideoComponent from "./components/VideoComponent";
 import HtmlComponent from "./components/HtmlComponent";
 import AudioComponent from "./components/AudioComponent";
-import SketchpadComponent from "./components/SketchpadComponent";
-import SurveyComponent from "./components/SurveyComponent";
 
 // Import all response components
 import ButtonResponseComponent from "./response_components/ButtonResponseComponent";
 import SliderResponseComponent from "./response_components/SliderResponseComponent";
 import KeyboardResponseComponent from "./response_components/KeyboardResponseComponent";
 import InputResponseComponent from "./response_components/InputResponseComponent";
+import SurveyComponent from "./components/SurveyComponent";
+import SketchpadComponent from "./components/SketchpadComponent";
+import AudioResponseComponent from "./response_components/AudioResponseComponent";
 
 const info = <const>{
   name: "DynamicPlugin",
@@ -90,6 +91,7 @@ const RESPONSE_COMPONENT_MAP: Record<string, any> = {
   InputResponseComponent,
   SurveyComponent,
   SketchpadComponent,
+  AudioResponseComponent,
 };
 
 /**
@@ -243,6 +245,20 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             typeof instance.getImageData === "function"
           ) {
             componentResponse.png = instance.getImageData();
+          }
+        }
+
+        // Collect specific data for AudioResponseComponent
+        if (config.type === "AudioResponseComponent") {
+          const audioResponse = instance.getResponse
+            ? instance.getResponse()
+            : null;
+          if (audioResponse) {
+            // Flatten the response object for AudioResponseComponent
+            componentResponse.response = audioResponse.response;
+            componentResponse.audio_url = audioResponse.audio_url;
+            componentResponse.estimated_stimulus_onset =
+              audioResponse.estimated_stimulus_onset;
           }
         }
 

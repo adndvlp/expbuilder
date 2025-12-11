@@ -21,8 +21,104 @@ const SurveyPreview: React.FC<SurveyPreviewProps> = ({ surveyJson }) => {
         return;
       }
 
+      // Sanitizar el JSON antes de crear el modelo para evitar valores nulos
+      // (por ejemplo rateValues === null causa errores en survey-core)
+      const sanitizeSurveyJson = (input: Record<string, unknown>) => {
+        const copy = JSON.parse(JSON.stringify(input));
+
+        if (Array.isArray(copy.elements)) {
+          copy.elements = copy.elements.map((el: Record<string, unknown>) => {
+            // Normalizar rateValues para preguntas de tipo 'rating'
+            if (el && el.type === "rating") {
+              if (el.rateValues == null) {
+                // si es null o undefined -> dejar como arreglo vacío
+                el.rateValues = [];
+              } else if (!Array.isArray(el.rateValues)) {
+                el.rateValues = [];
+              } else {
+                // asegurar que cada rateValue tenga value y text y filtrar vacíos
+                el.rateValues = el.rateValues
+                  .map((rv: Record<string, unknown> | null) => {
+                    if (rv == null) return null;
+                    const rvRecord = rv as Record<string, unknown>;
+                    const text =
+                      rvRecord["text"] != null
+                        ? String(rvRecord["text"])
+                        : String(rvRecord["value"] ?? "");
+                    const value =
+                      rvRecord["value"] != null
+                        ? String(rvRecord["value"])
+                        : text;
+                    // Filtrar entradas con text vacío
+                    if (!text.trim()) return null;
+                    return { value, text };
+                  })
+                  .filter((rv) => rv !== null);
+              }
+
+              // Si hay rateValues personalizados, remover rateMin/rateMax para evitar conflictos
+              if (Array.isArray(el.rateValues) && el.rateValues.length > 0) {
+                delete el.rateMin;
+                delete el.rateMax;
+              } else {
+                // Si no hay rateValues, asegurar que rateMin y rateMax existan
+                if (el.rateMin == null) el.rateMin = 1;
+                if (el.rateMax == null) el.rateMax = 5;
+              }
+            }
+
+            // Asegurar choices es un arreglo cuando existe
+            if (
+              el &&
+              (el.type === "radiogroup" ||
+                el.type === "checkbox" ||
+                el.type === "dropdown" ||
+                el.type === "imagepicker")
+            ) {
+              if (el.choices == null) {
+                el.choices = [];
+              } else if (!Array.isArray(el.choices)) {
+                el.choices = [];
+              } else {
+                // normalizar choices que sean strings -> objetos con value/text
+                el.choices = el.choices.map(
+                  (c: string | Record<string, unknown>) => {
+                    if (typeof c === "string") return { value: c, text: c };
+                    // si es objeto, al menos garantizar text y value
+                    const cRecord = c as Record<string, unknown>;
+                    const text =
+                      cRecord["text"] != null
+                        ? String(cRecord["text"])
+                        : String(cRecord["value"] ?? "");
+                    const value =
+                      cRecord["value"] != null
+                        ? String(cRecord["value"])
+                        : text;
+                    if (cRecord["imageLink"] != null)
+                      return {
+                        value,
+                        text,
+                        imageLink: String(cRecord["imageLink"]),
+                      };
+                    return { value, text };
+                  }
+                );
+              }
+            }
+
+            return el;
+          });
+        }
+
+        return copy;
+      };
+
+      const sanitized = sanitizeSurveyJson(
+        surveyJson as Record<string, unknown>
+      );
+
       // Crear el modelo de la encuesta (forzar recreación para aplicar nuevos temas)
-      const model = new Model(surveyJson);
+      const model = new Model(sanitized);
 
       // Modo de visualización (no guarda respuestas)
       model.mode = "display";

@@ -23,11 +23,16 @@ router.post("/api/append-result/:experimentID", async (req, res) => {
         .json({ success: false, error: "Session already exists" });
     }
 
+    const { metadata } = req.body;
+
     const created = {
       experimentID: req.params.experimentID,
       sessionId,
       createdAt: new Date().toISOString(),
       data: [],
+      state: "initiated",
+      lastUpdate: new Date().toISOString(),
+      metadata: metadata || {},
     };
     db.data.sessionResults.push(created);
     await db.write();
@@ -68,6 +73,8 @@ router.put("/api/append-result/:experimentID", async (req, res) => {
     }
 
     existing.data.push(response);
+    existing.state = "in-progress";
+    existing.lastUpdate = new Date().toISOString();
     await db.write();
 
     // Obtener participantNumber
@@ -138,6 +145,83 @@ router.get(
     } catch (err) {
       console.error("Error exporting CSV:", err);
       res.status(500).send("Error generating CSV");
+    }
+  }
+);
+
+router.post("/api/complete-session/:experimentID", async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+    if (!sessionId)
+      return res
+        .status(400)
+        .json({ success: false, error: "sessionId required" });
+
+    await db.read();
+    const existing = db.data.sessionResults.find(
+      (s) =>
+        s.experimentID === req.params.experimentID && s.sessionId === sessionId
+    );
+
+    if (!existing) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Session not found" });
+    }
+
+    existing.state = "completed";
+    existing.lastUpdate = new Date().toISOString();
+    await db.write();
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Endpoint para guardar metadata de sesiones online (Firebase)
+router.post(
+  "/api/save-online-session-metadata/:experimentID",
+  async (req, res) => {
+    try {
+      const { sessionId, metadata, state } = req.body;
+      if (!sessionId)
+        return res
+          .status(400)
+          .json({ success: false, error: "sessionId required" });
+
+      await db.read();
+
+      // Verificar si ya existe
+      const existing = db.data.sessionResults.find(
+        (s) =>
+          s.experimentID === req.params.experimentID &&
+          s.sessionId === sessionId
+      );
+
+      if (existing) {
+        // Actualizar metadata y estado
+        if (metadata) existing.metadata = { ...existing.metadata, ...metadata };
+        if (state) existing.state = state;
+        existing.lastUpdate = new Date().toISOString();
+      } else {
+        // Crear nueva entrada de metadata
+        db.data.sessionResults.push({
+          experimentID: req.params.experimentID,
+          sessionId,
+          createdAt: new Date().toISOString(),
+          data: [], // No guardamos data, solo metadata
+          state: state || "initiated",
+          lastUpdate: new Date().toISOString(),
+          metadata: metadata || {},
+          isOnline: true, // Marcar como sesión online
+        });
+      }
+
+      await db.write();
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
     }
   }
 );

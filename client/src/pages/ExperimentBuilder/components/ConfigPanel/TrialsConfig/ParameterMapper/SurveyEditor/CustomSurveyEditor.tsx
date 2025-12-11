@@ -545,6 +545,9 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   canMoveUp,
   canMoveDown,
 }) => {
+  const [imageLinkDrafts, setImageLinkDrafts] = useState<
+    Record<string, string>
+  >({});
   const needsChoices = [
     "radiogroup",
     "checkbox",
@@ -846,14 +849,32 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                           <>
                             <input
                               type="text"
-                              value={choice.imageLink || ""}
-                              onBlur={(e) =>
+                              // use a local draft so we don't call parent on every keystroke
+                              value={
+                                imageLinkDrafts[`${index}-${choiceIndex}`] ??
+                                (choice.imageLink || "")
+                              }
+                              onChange={(e) =>
+                                setImageLinkDrafts((prev) => ({
+                                  ...prev,
+                                  [`${index}-${choiceIndex}`]: e.target.value,
+                                }))
+                              }
+                              onBlur={(e) => {
+                                const key = `${index}-${choiceIndex}`;
+                                const valueToCommit =
+                                  imageLinkDrafts[key] ?? e.target.value;
                                 onUpdateChoice(
                                   choiceIndex,
                                   "imageLink",
-                                  e.target.value
-                                )
-                              }
+                                  valueToCommit
+                                );
+                                setImageLinkDrafts((prev) => {
+                                  const np = { ...prev };
+                                  delete np[key];
+                                  return np;
+                                });
+                              }}
                               placeholder="Image URL (optional)"
                               style={{
                                 padding: "8px 12px",

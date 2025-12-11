@@ -19,6 +19,7 @@ import {
   InputResponseComponent,
   SketchpadComponent,
   SurveyComponent,
+  AudioResponseComponent,
 } from "./VisualComponents";
 import ParameterMapper from "./index";
 import { useComponentMetadata } from "../hooks/useComponentMetadata";
@@ -111,19 +112,6 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     showRightPanel,
   ]);
 
-  // Helper functions for default dimensions
-  const getDefaultWidth = (type: string) => {
-    if (type === "SurveyjsComponent") return 400;
-    if (type === "SketchpadComponent") return 500;
-    return 300;
-  };
-
-  const getDefaultHeight = (type: string) => {
-    if (type === "SurveyjsComponent") return 400;
-    if (type === "SketchpadComponent") return 400;
-    return 200;
-  };
-
   // Load components from columnMapping when modal opens
   useEffect(() => {
     if (!isOpen) {
@@ -209,16 +197,9 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
           };
         }
 
-        // Use numeric width/height if available, otherwise use component-specific defaults
-        // (handles case where width/height might be CSV column names)
-        const numericWidth =
-          typeof comp.width === "number"
-            ? comp.width
-            : getDefaultWidth(comp.type);
-        const numericHeight =
-          typeof comp.height === "number"
-            ? comp.height
-            : getDefaultHeight(comp.type);
+        // Use explicit width/height if saved, otherwise 0 (let component decide its size)
+        const numericWidth = typeof comp.width === "number" ? comp.width : 0;
+        const numericHeight = typeof comp.height === "number" ? comp.height : 0;
 
         loadedComponents.push({
           id: `${comp.type}-${idCounter++}`,
@@ -305,16 +286,9 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
           };
         }
 
-        // Use numeric width/height if available, otherwise use component-specific defaults
-        // (handles case where width/height might be CSV column names)
-        const numericWidth =
-          typeof comp.width === "number"
-            ? comp.width
-            : getDefaultWidth(comp.type);
-        const numericHeight =
-          typeof comp.height === "number"
-            ? comp.height
-            : getDefaultHeight(comp.type);
+        // Use explicit width/height if saved, otherwise 0 (let component decide its size)
+        const numericWidth = typeof comp.width === "number" ? comp.width : 0;
+        const numericHeight = typeof comp.height === "number" ? comp.height : 0;
 
         loadedComponents.push({
           id: `${comp.type}-${idCounter++}`,
@@ -413,13 +387,13 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
         coordinates: coords,
       };
 
-      // Only add width if it was explicitly set (exists in config and is > 0)
-      if (comp.config.width?.value !== undefined && comp.width > 0) {
+      // Only save width/height if > 0 (meaning it was explicitly resized)
+      // 0 means "use component's calculated/default size"
+      if (comp.width > 0) {
         componentData.width = comp.width;
       }
 
-      // Only add height if it was explicitly set (exists in config and is > 0)
-      if (comp.config.height?.value !== undefined && comp.height > 0) {
+      if (comp.height > 0) {
         componentData.height = comp.height;
       }
 
@@ -488,7 +462,8 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
         comp.type === "SliderResponseComponent" ||
         comp.type === "InputResponseComponent" ||
         comp.type === "SketchpadComponent" ||
-        comp.type === "SurveyComponent";
+        comp.type === "SurveyComponent" ||
+        comp.type === "AudioResponseComponent";
 
       if (isResponseComponent) {
         responseComponents.push(componentData);
@@ -879,6 +854,17 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       case "SurveyComponent":
         return (
           <SurveyComponent
+            key={comp.id}
+            shapeProps={comp}
+            isSelected={isSelected}
+            onSelect={() => handleSelect(comp.id)}
+            onChange={handleComponentChange}
+          />
+        );
+
+      case "AudioResponseComponent":
+        return (
+          <AudioResponseComponent
             key={comp.id}
             shapeProps={comp}
             isSelected={isSelected}

@@ -8,7 +8,8 @@ export type ComponentType =
   | "SliderResponseComponent"
   | "InputResponseComponent"
   | "SketchpadComponent"
-  | "SurveyComponent";
+  | "SurveyComponent"
+  | "AudioResponseComponent";
 
 export type TrialComponent = {
   id: string;

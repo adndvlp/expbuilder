@@ -3,10 +3,13 @@ import { useEffect, useState } from "react";
 import ResultsList from "./ExperimentBuilder/components/ResultsList";
 import { fetchExperimentNameByID } from "./ExperimentBuilder/hooks/useExperimentID";
 
+type TabType = "preview" | "local" | "online";
+
 function ExperimentPanel() {
   const navigate = useNavigate();
   const { id } = useParams();
   const [experimentName, setExperimentName] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<TabType>("local");
 
   useEffect(() => {
     if (id) {
@@ -65,7 +68,77 @@ function ExperimentPanel() {
       >
         Go to Home
       </button>
-      <ResultsList />
+
+      {/* Tabs */}
+      <div
+        style={{
+          marginTop: 32,
+          display: "flex",
+          gap: 8,
+          borderBottom: "2px solid var(--gold)",
+        }}
+      >
+        <button
+          onClick={() => setActiveTab("preview")}
+          style={{
+            padding: "12px 24px",
+            border: "none",
+            background:
+              activeTab === "preview"
+                ? "linear-gradient(135deg, var(--gold), var(--dark-gold))"
+                : "var(--neutral-medium)",
+            color: activeTab === "preview" ? "white" : "var(--text-dark)",
+            fontWeight: activeTab === "preview" ? "bold" : "normal",
+            cursor: "pointer",
+            borderRadius: "8px 8px 0 0",
+            fontSize: 16,
+            transition: "all 0.2s",
+          }}
+        >
+          Preview Results
+        </button>
+        <button
+          onClick={() => setActiveTab("local")}
+          style={{
+            padding: "12px 24px",
+            border: "none",
+            background:
+              activeTab === "local"
+                ? "linear-gradient(135deg, var(--gold), var(--dark-gold))"
+                : "var(--neutral-medium)",
+            color: activeTab === "local" ? "white" : "var(--text-dark)",
+            fontWeight: activeTab === "local" ? "bold" : "normal",
+            cursor: "pointer",
+            borderRadius: "8px 8px 0 0",
+            fontSize: 16,
+            transition: "all 0.2s",
+          }}
+        >
+          Local Experiments
+        </button>
+        <button
+          onClick={() => setActiveTab("online")}
+          style={{
+            padding: "12px 24px",
+            border: "none",
+            background:
+              activeTab === "online"
+                ? "linear-gradient(135deg, var(--gold), var(--dark-gold))"
+                : "var(--neutral-medium)",
+            color: activeTab === "online" ? "white" : "var(--text-dark)",
+            fontWeight: activeTab === "online" ? "bold" : "normal",
+            cursor: "pointer",
+            borderRadius: "8px 8px 0 0",
+            fontSize: 16,
+            transition: "all 0.2s",
+          }}
+        >
+          Online Experiments
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      <ResultsList activeTab={activeTab} />
     </div>
   );
 }

@@ -1,0 +1,50 @@
+{
+  "name": "AudioResponseComponent",
+  "parameters": {
+    "name": {
+      "type": "string"
+    },
+    "recording_duration": {
+      "type": "number",
+      "default": 2000
+    },
+    "show_done_button": {
+      "type": "boolean",
+      "default": true
+    },
+    "done_button_label": {
+      "type": "string",
+      "default": "Continue"
+    },
+    "record_again_button_label": {
+      "type": "string",
+      "default": "Record again"
+    },
+    "accept_button_label": {
+      "type": "string",
+      "default": "Continue"
+    },
+    "allow_playback": {
+      "type": "boolean",
+      "default": false
+    },
+    "save_audio_url": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "data": {
+    "response": {
+      "type": "string"
+    },
+    "rt": {
+      "type": "number"
+    },
+    "estimated_stimulus_onset": {
+      "type": "number"
+    },
+    "audio_url": {
+      "type": "string"
+    }
+  }
+}
