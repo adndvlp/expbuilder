@@ -6,7 +6,6 @@ import useTrials from "../../hooks/useTrials";
 import useUrl from "../../hooks/useUrl";
 import useDevMode from "../../hooks/useDevMode";
 import FileUploader from "./FileUploader";
-import { useFileUpload } from "./useFileUpload";
 import { StorageSelectModal } from "./StorageSelectModal";
 
 import { useExperimentID } from "../../hooks/useExperimentID";
@@ -14,7 +13,19 @@ import { useExperimentCode } from "./useExperimentCode";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-function Timeline() {
+type TimelineProps = {
+  uploadedFiles: { name: string; url: string; type: string }[];
+  fileInputRef: React.RefObject<HTMLInputElement>;
+  handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+  handleDeleteFile: (fileName: string, fileType: string) => Promise<void>;
+};
+
+function Timeline({
+  uploadedFiles,
+  fileInputRef,
+  handleFileUpload,
+  handleDeleteFile,
+}: TimelineProps) {
   // Estado para tokens del usuario
   const [userTokens, setUserTokens] = useState<{
     drive: boolean;
@@ -90,11 +101,7 @@ function Timeline() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // For files in devmode
-  const folder = "all";
   const accept = "audio/*,video/*,image/*";
-
-  const { fileInputRef, uploadedFiles, handleFileUpload, handleDeleteFile } =
-    useFileUpload({ folder });
 
   // Experiments hook
   const { generateLocalExperiment, generateExperiment } =

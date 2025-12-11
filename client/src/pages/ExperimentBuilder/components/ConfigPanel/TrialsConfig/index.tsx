@@ -626,6 +626,7 @@ function TrialsConfig({ pluginName }: Props) {
                 columnMapping={columnMapping}
                 setColumnMapping={setColumnMapping}
                 csvColumns={csvColumns}
+                uploadedFiles={uploadedFiles}
               />
             )}
           </div>
@@ -636,6 +637,7 @@ function TrialsConfig({ pluginName }: Props) {
             columnMapping={columnMapping}
             setColumnMapping={setColumnMapping}
             csvColumns={csvColumns}
+            uploadedFiles={uploadedFiles}
           />
         )}{" "}
         <TrialOrders

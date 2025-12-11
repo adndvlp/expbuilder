@@ -4,12 +4,15 @@ import Modal from "../Modal";
 import CustomSurveyEditor from "./CustomSurveyEditor";
 import SurveyPreview from "./SurveyPreview";
 
+type UploadedFile = { name: string; url: string; type: string };
+
 interface SurveyBuilderProps {
   isOpen: boolean;
   onClose: () => void;
   value?: string | Record<string, unknown>;
   onChange: (surveyJson: Record<string, unknown>) => void;
   title?: string;
+  uploadedFiles?: UploadedFile[];
 }
 
 const SurveyBuilder: React.FC<SurveyBuilderProps> = ({
@@ -18,6 +21,7 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({
   value = {},
   onChange,
   title = "Survey Builder",
+  uploadedFiles = [],
 }) => {
   const [surveyJson, setSurveyJson] = useState<Record<string, unknown>>({
     title: "My Survey",
@@ -132,6 +136,7 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({
             <CustomSurveyEditor
               surveyJson={surveyJson}
               onChange={setSurveyJson}
+              uploadedFiles={uploadedFiles}
             />
           </div>
 

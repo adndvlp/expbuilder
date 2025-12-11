@@ -20,49 +20,83 @@
               "includesExtensions": true,
               "extensionType": ""
             },
-            "trialCode": "\n    const test_stimuli_New_Trial = [{components: [{ type: \"ImageComponent\", coordinates: {\"x\":-0.14750896516393452,\"y\":-0.7063268442622951}, stimulus: \"img/armadillo.png\", rotation: 0 }],\nresponse_components: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.25,\"y\":0.8579234972677595}, width: 200, height: 50, choices: [\"qec\"] }],\nstimuli_duration: undefined,\ntrial_duration: undefined,\nresponse_ends_trial: undefined,\nresponses: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0.25,\"y\":0.8579234972677595}, width: 200, height: 50, choices: [\"qec\"] }]}];\n    const New_Trial_timeline = {\n    type: DynamicPlugin, components: jsPsych.timelineVariable(\"components\"),\nresponse_components: jsPsych.timelineVariable(\"response_components\"),\nstimuli_duration: jsPsych.timelineVariable(\"stimuli_duration\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial\"),\n      data: {\n        stimulus: \"stimulus\",\nresponse: \"response\",\nrt: \"rt\",\n        trial_id: 1765473193557,\n        \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Parse key to check if it's a nested survey question\n            const parts = key.split('::');\n            \n            if (parts.length === 4) {\n              // Format: fieldType::componentName::survey_json::questionName\n              const [fieldType, componentName, propName, questionName] = parts;\n              \n              if (fieldType && componentName && propName === 'survey_json' && questionName) {\n                // Find the component by name in the field array\n                const fieldArray = trial[fieldType];\n                if (Array.isArray(fieldArray)) {\n                  const compIndex = fieldArray.findIndex(c => c.name === componentName);\n                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {\n                    // Find the question in survey_json.elements\n                    const elements = fieldArray[compIndex].survey_json.elements || [];\n                    const questionIndex = elements.findIndex(q => q.name === questionName);\n                    \n                    if (questionIndex !== -1) {\n                      // Apply the override value (from typed or csv)\n                      let valueToSet;\n                      if (param.source === 'typed') {\n                        valueToSet = String(param.value); // Convert to string for SurveyJS\n                      } else if (param.source === 'csv') {\n                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string\n                      }\n                      \n                      if (valueToSet !== undefined && valueToSet !== null) {\n                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;\n                      }\n                    }\n                  }\n                }\n              }\n            } else {\n              // Normal parameter (not nested survey question)\n              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n                trial[key] = param.value;\n              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n                trial[key] = trial[param.value];\n              }\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches ni repeat conditions, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },\n    };\n    const New_Trial_procedure = {\n    timeline: \n    [New_Trial_timeline],\n    timeline_variables: test_stimuli_New_Trial,\n    conditional_function: function() {\n      const currentId = 1765473193557;\n      \n      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n      if (jumpToTrial) {\n        if (String(currentId) === String(jumpToTrial)) {\n          // Encontramos el trial objetivo para repeat/jump\n          console.log('Repeat/jump: Found target trial', currentId);\n          localStorage.removeItem('jsPsych_jumpToTrial');\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('Repeat/jump: Skipping trial', currentId);\n        return false;\n      }\n      \n      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(New_Trial_procedure);\n  ",
+            "trialCode": "\n    const test_stimuli_New_Trial = [{components: [],\nresponse_components: [{ type: \"SurveyComponent\", coordinates: {\"x\":0,\"y\":0}, width: 200, height: 50, survey_json: {\"title\":\"My Survey\",\"elements\":[{\"type\":\"imagepicker\",\"name\":\"question1\",\"title\":\"Question 1\",\"isRequired\":false,\"imageLink\":\"img/armadillo.png\",\"altText\":\"kmklml,lm\",\"description\":\"lkmñkmñk\",\"imageFit\":\"cover\",\"contentMode\":\"auto\",\"choices\":[{\"value\":\"\",\"text\":\"\",\"imageLink\":\"\"}]},{\"type\":\"image\",\"name\":\"\",\"title\":\"\",\"isRequired\":false,\"imageLink\":\"img/armadillo.png\"}]} }],\nstimuli_duration: undefined,\ntrial_duration: undefined,\nresponse_ends_trial: undefined,\nresponses: [{ type: \"SurveyComponent\", coordinates: {\"x\":0,\"y\":0}, width: 200, height: 50, survey_json: {\"title\":\"My Survey\",\"elements\":[{\"type\":\"imagepicker\",\"name\":\"question1\",\"title\":\"Question 1\",\"isRequired\":false,\"imageLink\":\"img/armadillo.png\",\"altText\":\"kmklml,lm\",\"description\":\"lkmñkmñk\",\"imageFit\":\"cover\",\"contentMode\":\"auto\",\"choices\":[{\"value\":\"\",\"text\":\"\",\"imageLink\":\"\"}]},{\"type\":\"image\",\"name\":\"\",\"title\":\"\",\"isRequired\":false,\"imageLink\":\"img/armadillo.png\"}]} }]}];\n    const New_Trial_timeline = {\n    type: DynamicPlugin, components: jsPsych.timelineVariable(\"components\"),\nresponse_components: jsPsych.timelineVariable(\"response_components\"),\nstimuli_duration: jsPsych.timelineVariable(\"stimuli_duration\"),\ntrial_duration: jsPsych.timelineVariable(\"trial_duration\"),\nresponse_ends_trial: jsPsych.timelineVariable(\"response_ends_trial\"),\n      data: {\n        stimulus: \"stimulus\",\nresponse: \"response\",\nrt: \"rt\",\n        trial_id: 1765473193557,\n        \n        \n      },\n    on_start: function(trial) {\n      // First, evaluate and apply params override conditions (if any)\n      \n      // Then apply custom parameters from branching conditions (higher priority)\n      \n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Parse key to check if it's a nested survey question\n            const parts = key.split('::');\n            \n            if (parts.length === 4) {\n              // Format: fieldType::componentName::survey_json::questionName\n              const [fieldType, componentName, propName, questionName] = parts;\n              \n              if (fieldType && componentName && propName === 'survey_json' && questionName) {\n                // Find the component by name in the field array\n                const fieldArray = trial[fieldType];\n                if (Array.isArray(fieldArray)) {\n                  const compIndex = fieldArray.findIndex(c => c.name === componentName);\n                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {\n                    // Find the question in survey_json.elements\n                    const elements = fieldArray[compIndex].survey_json.elements || [];\n                    const questionIndex = elements.findIndex(q => q.name === questionName);\n                    \n                    if (questionIndex !== -1) {\n                      // Apply the override value (from typed or csv)\n                      let valueToSet;\n                      if (param.source === 'typed') {\n                        valueToSet = String(param.value); // Convert to string for SurveyJS\n                      } else if (param.source === 'csv') {\n                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string\n                      }\n                      \n                      if (valueToSet !== undefined && valueToSet !== null) {\n                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;\n                      }\n                    }\n                  }\n                }\n              }\n            } else {\n              // Normal parameter (not nested survey question)\n              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n                trial[key] = param.value;\n              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n                trial[key] = trial[param.value];\n              }\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Este trial no tiene branches ni repeat conditions, es un trial terminal\n      // Si llegamos aquí después de un branching, terminar el experimento\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },\n    };\n    const New_Trial_procedure = {\n    timeline: \n    [New_Trial_timeline],\n    timeline_variables: test_stimuli_New_Trial,\n    conditional_function: function() {\n      const currentId = 1765473193557;\n      \n      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n      if (jumpToTrial) {\n        if (String(currentId) === String(jumpToTrial)) {\n          // Encontramos el trial objetivo para repeat/jump\n          console.log('Repeat/jump: Found target trial', currentId);\n          localStorage.removeItem('jsPsych_jumpToTrial');\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('Repeat/jump: Skipping trial', currentId);\n        return false;\n      }\n      \n      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        return false;\n      }\n      \n      return true;\n    },\n    \n    };\n    timeline.push(New_Trial_procedure);\n  ",
             "plugin": "plugin-dynamic",
             "columnMapping": {
-              "components": {
-                "source": "typed",
-                "value": [
-                  {
-                    "type": "ImageComponent",
-                    "coordinates": {
-                      "x": -0.14750896516393452,
-                      "y": -0.7063268442622951
-                    },
-                    "stimulus": "img/armadillo.png",
-                    "rotation": 0,
-                    "__configMetadata": {
-                      "stimulus": {
-                        "source": "typed",
-                        "value": "img/armadillo.png"
-                      }
-                    }
-                  }
-                ]
-              },
               "response_components": {
                 "source": "typed",
                 "value": [
                   {
-                    "type": "ButtonResponseComponent",
+                    "type": "SurveyComponent",
                     "coordinates": {
-                      "x": 0.25,
-                      "y": 0.8579234972677595
+                      "x": 0,
+                      "y": 0
                     },
                     "width": 200,
                     "height": 50,
-                    "choices": [
-                      "qec"
-                    ],
+                    "survey_json": {
+                      "title": "My Survey",
+                      "elements": [
+                        {
+                          "type": "imagepicker",
+                          "name": "question1",
+                          "title": "Question 1",
+                          "isRequired": false,
+                          "imageLink": "img/armadillo.png",
+                          "altText": "kmklml,lm",
+                          "description": "lkmñkmñk",
+                          "imageFit": "cover",
+                          "contentMode": "auto",
+                          "choices": [
+                            {
+                              "value": "",
+                              "text": "",
+                              "imageLink": ""
+                            }
+                          ]
+                        },
+                        {
+                          "type": "image",
+                          "name": "",
+                          "title": "",
+                          "isRequired": false,
+                          "imageLink": "img/armadillo.png"
+                        }
+                      ]
+                    },
                     "__configMetadata": {
-                      "choices": {
+                      "survey_json": {
                         "source": "typed",
-                        "value": [
-                          "qec"
-                        ]
+                        "value": {
+                          "title": "My Survey",
+                          "elements": [
+                            {
+                              "type": "imagepicker",
+                              "name": "question1",
+                              "title": "Question 1",
+                              "isRequired": false,
+                              "imageLink": "img/armadillo.png",
+                              "altText": "kmklml,lm",
+                              "description": "lkmñkmñk",
+                              "imageFit": "cover",
+                              "contentMode": "auto",
+                              "choices": [
+                                {
+                                  "value": "",
+                                  "text": "",
+                                  "imageLink": ""
+                                }
+                              ]
+                            },
+                            {
+                              "type": "image",
+                              "name": "",
+                              "title": "",
+                              "isRequired": false,
+                              "imageLink": "img/armadillo.png"
+                            }
+                          ]
+                        }
                       }
                     }
                   }
@@ -80,7 +114,7 @@
         ]
       },
       "createdAt": "2025-12-04T20:41:49.093Z",
-      "updatedAt": "2025-12-11T18:26:14.681Z"
+      "updatedAt": "2025-12-11T19:01:36.457Z"
     }
   ],
   "configs": [
@@ -91,7 +125,7 @@
       },
       "isDevMode": false,
       "createdAt": "2025-12-04T20:41:50.095Z",
-      "updatedAt": "2025-12-11T18:26:07.562Z"
+      "updatedAt": "2025-12-11T19:01:37.498Z"
     }
   ],
   "pluginConfigs": [],
@@ -274,6 +308,51 @@
         "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
         "startedAt": "2025-12-11T18:17:12.646Z"
       }
+    },
+    {
+      "experimentID": "e91d3b90-bfa6-4f83-9f69-72a1723948d2",
+      "sessionId": "New Trial_result_a1766fcf-611e-4ad7-97d8-4d950669adac",
+      "createdAt": "2025-12-11T18:38:54.561Z",
+      "data": [],
+      "state": "initiated",
+      "lastUpdate": "2025-12-11T18:38:54.561Z",
+      "metadata": {}
+    },
+    {
+      "experimentID": "e91d3b90-bfa6-4f83-9f69-72a1723948d2",
+      "sessionId": "New Trial_result_c5ffe840-048d-4f00-9abf-885ad081be06",
+      "createdAt": "2025-12-11T18:39:09.769Z",
+      "data": [],
+      "state": "initiated",
+      "lastUpdate": "2025-12-11T18:39:09.769Z",
+      "metadata": {}
+    },
+    {
+      "experimentID": "e91d3b90-bfa6-4f83-9f69-72a1723948d2",
+      "sessionId": "New Trial_result_ee5b0a1d-7a25-4082-8932-22c0d22cd772",
+      "createdAt": "2025-12-11T18:39:18.592Z",
+      "data": [],
+      "state": "initiated",
+      "lastUpdate": "2025-12-11T18:39:18.592Z",
+      "metadata": {}
+    },
+    {
+      "experimentID": "e91d3b90-bfa6-4f83-9f69-72a1723948d2",
+      "sessionId": "New Trial_result_6d836f89-da83-40cb-a8eb-d6f6538b160a",
+      "createdAt": "2025-12-11T18:46:54.845Z",
+      "data": [],
+      "state": "initiated",
+      "lastUpdate": "2025-12-11T18:46:54.846Z",
+      "metadata": {}
+    },
+    {
+      "experimentID": "e91d3b90-bfa6-4f83-9f69-72a1723948d2",
+      "sessionId": "New Trial_result_706a756f-1bcf-4a54-91e5-365614585d37",
+      "createdAt": "2025-12-11T18:51:16.362Z",
+      "data": [],
+      "state": "initiated",
+      "lastUpdate": "2025-12-11T18:51:16.362Z",
+      "metadata": {}
     }
   ]
 }

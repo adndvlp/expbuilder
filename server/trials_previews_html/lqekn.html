@@ -83,12 +83,12 @@ localStorage.removeItem('jsPsych_jumpToTrial');
       const timeline = [];
       
       
-    const test_stimuli_New_Trial = [{components: [{ type: "ImageComponent", coordinates: {"x":-0.14750896516393452,"y":-0.7063268442622951}, stimulus: "img/armadillo.png", rotation: 0 }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":0.25,"y":0.8579234972677595}, width: 200, height: 50, choices: ["qec"] }],
+    const test_stimuli_New_Trial = [{components: [],
+response_components: [{ type: "SurveyComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, survey_json: {"title":"My Survey","elements":[{"type":"imagepicker","name":"question1","title":"Question 1","isRequired":false,"imageLink":"img/armadillo.png","altText":"kmklml,lm","description":"lkmñkmñk","imageFit":"cover","contentMode":"auto","choices":[{"value":"","text":"","imageLink":""}]},{"type":"image","name":"","title":"","isRequired":false,"imageLink":"img/armadillo.png"}]} }],
 stimuli_duration: undefined,
 trial_duration: undefined,
 response_ends_trial: undefined,
-responses: [{ type: "ButtonResponseComponent", coordinates: {"x":0.25,"y":0.8579234972677595}, width: 200, height: 50, choices: ["qec"] }]}];
+responses: [{ type: "SurveyComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, survey_json: {"title":"My Survey","elements":[{"type":"imagepicker","name":"question1","title":"Question 1","isRequired":false,"imageLink":"img/armadillo.png","altText":"kmklml,lm","description":"lkmñkmñk","imageFit":"cover","contentMode":"auto","choices":[{"value":"","text":"","imageLink":""}]},{"type":"image","name":"","title":"","isRequired":false,"imageLink":"img/armadillo.png"}]} }]}];
     const New_Trial_timeline = {
     type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
 response_components: jsPsych.timelineVariable("response_components"),

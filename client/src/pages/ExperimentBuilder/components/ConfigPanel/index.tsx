@@ -9,9 +9,13 @@ import usePlugins from "../../hooks/usePlugins";
 import TrialLoops from "./TrialsConfig/LoopsConfig";
 const API_URL = import.meta.env.VITE_API_URL;
 
-interface ConfigPanelProps {}
+type UploadedFile = { name: string; url: string; type: string };
 
-const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
+interface ConfigPanelProps {
+  uploadedFiles: UploadedFile[];
+}
+
+const ConfigPanel: React.FC<ConfigPanelProps> = ({ uploadedFiles }) => {
   const { trials, setTrials, selectedTrial, setSelectedTrial, selectedLoop } =
     useTrials();
   const [selectedId, setSelectedId] = useState<string>("plugin-dynamic");
@@ -407,7 +411,10 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
                 <div>
                   {/* Mostrar TrialsConfig para plugin-dynamic */}
                   {selectedId === "plugin-dynamic" && (
-                    <TrialsConfig pluginName={selectedId} />
+                    <TrialsConfig
+                      pluginName={selectedId}
+                      uploadedFiles={uploadedFiles}
+                    />
                   )}
                   {/* Mostrar TrialsConfig para otros plugins */}
                   {selectedId &&
@@ -415,14 +422,20 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({}) => {
                     selectedId !== "plugin-dynamic" &&
                     !isCustomPlugin &&
                     selectedId !== "Select a stimulus-response" && (
-                      <TrialsConfig pluginName={selectedId} />
+                      <TrialsConfig
+                        pluginName={selectedId}
+                        uploadedFiles={uploadedFiles}
+                      />
                     )}
                   {selectedId === "webgazer" && (
                     <WebGazer webgazerPlugins={webgazerPlugins} />
                   )}
                   {/* Si es custom/subido y hay parámetros, muestra TrialsConfig */}
                   {isCustomPlugin && !metadata404 && (
-                    <TrialsConfig pluginName={selectedId} />
+                    <TrialsConfig
+                      pluginName={selectedId}
+                      uploadedFiles={uploadedFiles}
+                    />
                   )}
                 </div>
               </div>

@@ -8,6 +8,8 @@ import GrapesButtonEditor from "./GrapesEditors/GrapesButtonEditor";
 import SurveyBuilder from "./SurveyEditor/SurveyBuilder";
 import isEqual from "lodash.isequal";
 
+type UploadedFile = { name: string; url: string; type: string };
+
 type Parameter = {
   label: string;
   key: string;
@@ -27,6 +29,7 @@ type ParameterMapperProps = {
   >;
   csvColumns: string[];
   pluginName: string;
+  uploadedFiles?: UploadedFile[];
   // New props for component mode
   componentMode?: boolean; // If true, renders only component parameters without mode toggle
   selectedComponentId?: string | null; // ID of selected component in Konva
@@ -43,6 +46,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
   csvColumns,
   pluginName,
   componentMode = false,
+  uploadedFiles = [],
 }) => {
   const pluginLink = () => {
     const pluginUrl = pluginName
@@ -845,6 +849,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
         title={`Design Survey - ${parameters.find((p) => p.key === currentSurveyKey)?.label || ""}`}
         value={columnMapping[currentSurveyKey]?.value || {}}
         onChange={handleSurveyChange}
+        uploadedFiles={uploadedFiles}
       />
     </div>
   );

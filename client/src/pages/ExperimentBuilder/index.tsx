@@ -14,6 +14,7 @@ import { FaHammer } from "react-icons/fa";
 import CodeEditor from "./components/CodeEditor";
 import useDevMode from "./hooks/useDevMode";
 import { useNavigate, useParams } from "react-router-dom";
+import { useFileUpload } from "./components/Timeline/useFileUpload";
 
 function ExperimentBuilder() {
   const API_URL = import.meta.env.VITE_API_URL;
@@ -28,6 +29,10 @@ function ExperimentBuilder() {
   const isResizingConfig = useRef(false);
 
   const { isDevMode, setDevMode } = useDevMode();
+
+  // Shared file upload state between Timeline and TrialsConfig
+  const { uploadedFiles, fileInputRef, handleFileUpload, handleDeleteFile } =
+    useFileUpload({ folder: "all" });
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -125,7 +130,12 @@ function ExperimentBuilder() {
                 }}
               >
                 <div className="timeline-header">Timeline</div>
-                <Timeline />
+                <Timeline
+                  uploadedFiles={uploadedFiles}
+                  fileInputRef={fileInputRef}
+                  handleFileUpload={handleFileUpload}
+                  handleDeleteFile={handleDeleteFile}
+                />
 
                 {/* Barra de redimensionamiento derecha */}
                 <div
@@ -254,7 +264,7 @@ function ExperimentBuilder() {
                     height: "100vh",
                   }}
                 >
-                  <ConfigPanel />
+                  <ConfigPanel uploadedFiles={uploadedFiles} />
                 </div>
 
                 {/* Barra de redimensionamiento izquierda */}
