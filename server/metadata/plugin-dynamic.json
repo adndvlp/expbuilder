@@ -23,12 +23,6 @@
     }
   },
   "data": {
-    "stimulus": {
-      "type": "object_array"
-    },
-    "response": {
-      "type": "object_array"
-    },
     "rt": {
       "type": "number"
     }

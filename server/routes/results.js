@@ -126,16 +126,32 @@ router.get(
       if (!filteredData.length)
         return res.status(400).send("No valid data to export");
 
-      // 3. Extraer todos los campos únicos
+      // 3. Agregar metadata a cada fila
+      const metadata = doc.metadata || {};
+      const dataWithMetadata = filteredData.map((row) => ({
+        ...row,
+        // Agregar campos de metadata
+        session_browser: metadata.browser || "",
+        session_browser_version: metadata.browserVersion || "",
+        session_os: metadata.os || "",
+        session_screen_resolution: metadata.screenResolution || "",
+        session_language: metadata.language || "",
+        session_started_at: metadata.startedAt || "",
+        session_id: sessionId,
+        session_created_at: doc.createdAt || "",
+        session_state: doc.state || "",
+      }));
+
+      // 4. Extraer todos los campos únicos (ahora incluye metadata)
       const allFields = Array.from(
-        new Set(filteredData.flatMap((row) => Object.keys(row)))
+        new Set(dataWithMetadata.flatMap((row) => Object.keys(row)))
       );
 
-      // 4. Convertir a CSV con json2csv
+      // 5. Convertir a CSV con json2csv
       const parser = new Parser({ fields: allFields });
-      const csv = parser.parse(filteredData);
+      const csv = parser.parse(dataWithMetadata);
 
-      // 5. Enviar como descarga
+      // 6. Enviar como descarga
       res.setHeader("Content-Type", "text/csv");
       res.setHeader(
         "Content-Disposition",

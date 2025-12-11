@@ -56,16 +56,6 @@ const info = <const>{
     },
   },
   data: {
-    /** Array of stimulus information from components */
-    stimulus: {
-      type: ParameterType.COMPLEX,
-      array: true,
-    },
-    /** Response data from response components */
-    response: {
-      type: ParameterType.COMPLEX,
-      array: true,
-    },
     /** The response time in milliseconds for the participant to make a response. The time is measured from when the trial
      * starts until the participant's response. */
     rt: {
@@ -209,87 +199,119 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
 
     // Function to end the trial and collect data
     const endTrial = () => {
-      // Before ending, try to record responses from all components that have recordResponse method
-
       // Calculate response time
       const rt = Math.round(performance.now() - startTime);
 
-      // Collect response data from response components
-      const responseData: any[] = [];
-      responseComponents.forEach(({ instance, config }, index) => {
-        const componentResponse: any = {
-          name: config.name,
-          type: config.type,
-          response: instance.getResponse ? instance.getResponse() : null,
-          rt: instance.getRT ? instance.getRT() : null,
-        };
+      // Create flat data structure (like PsychoPy) instead of nested arrays
+      const trialData: any = {
+        rt: rt,
+      };
 
-        // Add additional data for specific components
+      // Add stimulus components data as individual columns
+      stimulusComponents.forEach(({ instance, config }) => {
+        const prefix = config.name; // Component name (e.g., "ImageComponent_1")
+
+        // Add type
+        trialData[`${prefix}_type`] = config.type;
+
+        // Add stimulus if exists
+        if (config.stimulus !== undefined) {
+          trialData[`${prefix}_stimulus`] = config.stimulus;
+        }
+
+        // Add coordinates if exists (stringify for CSV compatibility)
+        if (config.coordinates !== undefined) {
+          trialData[`${prefix}_coordinates`] = JSON.stringify(
+            config.coordinates
+          );
+        }
+
+        // If component has response (like SurveyComponent)
+        if (
+          instance.getResponse &&
+          typeof instance.getResponse === "function"
+        ) {
+          const response = instance.getResponse();
+
+          // For SurveyComponent, flatten the response object
+          if (
+            config.type === "SurveyComponent" &&
+            typeof response === "object" &&
+            response !== null
+          ) {
+            // Each question becomes its own column: {componentName}_{questionName}
+            Object.keys(response).forEach((questionName) => {
+              trialData[`${prefix}_${questionName}`] = response[questionName];
+            });
+          } else {
+            trialData[`${prefix}_response`] = response;
+          }
+
+          if (instance.getRT && typeof instance.getRT === "function") {
+            trialData[`${prefix}_rt`] = instance.getRT();
+          }
+        }
+      });
+
+      // Add response components data as individual columns
+      responseComponents.forEach(({ instance, config }) => {
+        const prefix = config.name; // Component name (e.g., "ButtonResponseComponent_1")
+
+        // Add type
+        trialData[`${prefix}_type`] = config.type;
+
+        // Add response
+        if (
+          instance.getResponse &&
+          typeof instance.getResponse === "function"
+        ) {
+          const response = instance.getResponse();
+          trialData[`${prefix}_response`] = response;
+        }
+
+        // Add RT
+        if (instance.getRT && typeof instance.getRT === "function") {
+          trialData[`${prefix}_rt`] = instance.getRT();
+        }
+
+        // SliderResponseComponent - slider_start
         if (
           config.type === "SliderResponseComponent" &&
           instance.getSliderStart
         ) {
-          componentResponse.slider_start = instance.getSliderStart();
+          trialData[`${prefix}_slider_start`] = instance.getSliderStart();
         }
 
-        // Collect specific data for SketchpadComponent
+        // SketchpadComponent - strokes and png
         if (config.type === "SketchpadComponent") {
           if (
             instance.getStrokes &&
             typeof instance.getStrokes === "function"
           ) {
-            componentResponse.strokes = instance.getStrokes();
+            trialData[`${prefix}_strokes`] = JSON.stringify(
+              instance.getStrokes()
+            );
           }
           if (
             instance.getImageData &&
             typeof instance.getImageData === "function"
           ) {
-            componentResponse.png = instance.getImageData();
+            trialData[`${prefix}_png`] = instance.getImageData();
           }
         }
 
-        // Collect specific data for AudioResponseComponent
+        // AudioResponseComponent - special fields
         if (config.type === "AudioResponseComponent") {
           const audioResponse = instance.getResponse
             ? instance.getResponse()
             : null;
-          if (audioResponse) {
-            // Flatten the response object for AudioResponseComponent
-            componentResponse.response = audioResponse.response;
-            componentResponse.audio_url = audioResponse.audio_url;
-            componentResponse.estimated_stimulus_onset =
+          if (audioResponse && typeof audioResponse === "object") {
+            trialData[`${prefix}_response`] = audioResponse.response;
+            trialData[`${prefix}_audio_url`] = audioResponse.audio_url;
+            trialData[`${prefix}_estimated_stimulus_onset`] =
               audioResponse.estimated_stimulus_onset;
           }
         }
-
-        responseData.push(componentResponse);
-      });
-
-      // Collect stimulus information
-      const stimulusData: any[] = [];
-      stimulusComponents.forEach(({ instance, config }) => {
-        const stimInfo: any = {
-          name: config.name,
-          type: config.type,
-        };
-
-        // Add relevant stimulus information
-        if (config.stimulus) stimInfo.stimulus = config.stimulus;
-        if (config.coordinates) stimInfo.coordinates = config.coordinates;
-
-        // Collect response data from stimulus components that provide responses
-        // (SurveyComponent, SketchpadComponent, etc.)
-        if (
-          instance.getResponse &&
-          typeof instance.getResponse === "function"
-        ) {
-          stimInfo.response = instance.getResponse();
-          if (instance.getRT && typeof instance.getRT === "function") {
-            stimInfo.rt = instance.getRT();
-          }
-        }
-
-        stimulusData.push(stimInfo);
       });
 
       // Clean up components
@@ -305,12 +327,6 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       display_element.innerHTML = "";
 
       // Save trial data
-      const trialData = {
-        stimulus: stimulusData,
-        response: responseData,
-        rt: rt,
-      };
-
       this.jsPsych.finishTrial(trialData);
     };
 

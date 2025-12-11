@@ -34,9 +34,11 @@ export interface Loop {
 export type BranchCondition = {
   id: number;
   rules: Array<{
-    prop: string;
+    column: string; // Direct column name (e.g., "ButtonResponseComponent_1_response" or "response")
     op: string;
     value: string;
+    // Legacy fields for backward compatibility
+    prop?: string;
     fieldType?: string;
     componentIdx?: string;
   }>;
@@ -47,9 +49,11 @@ export type BranchCondition = {
 export type RepeatCondition = {
   id: number;
   rules: Array<{
-    prop: string;
+    column: string; // Direct column name
     op: string;
     value: string;
+    // Legacy fields for backward compatibility
+    prop?: string;
     fieldType?: string;
     componentIdx?: string;
   }>;
@@ -58,9 +62,11 @@ export type RepeatCondition = {
 
 export type LoopConditionRule = {
   trialId: string | number;
-  prop: string;
+  column: string; // Direct column name
   op: string;
   value: string;
+  // Legacy fields for backward compatibility
+  prop?: string;
   fieldType?: string;
   componentIdx?: string;
 };
@@ -72,9 +78,11 @@ export type LoopCondition = {
 
 export type ParamsOverrideRule = {
   trialId: string | number;
-  prop: string;
+  column: string; // Direct column name
   op: string;
   value: string;
+  // Legacy fields for backward compatibility
+  prop?: string;
   fieldType?: string;
   componentIdx?: string;
 };

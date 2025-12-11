@@ -85,49 +85,21 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
     const evaluateCondition = (trialData, condition) => {
       // All rules in a condition must be true (AND logic)
       return condition.rules.every(rule => {
-        let propValue;
+        // New flat structure: rule.column contains the direct column name
+        // e.g., "ButtonResponseComponent_1_response" or "response" for normal plugins
+        const columnName = rule.column || rule.prop; // Fallback to rule.prop for backward compatibility
         
-        // For dynamic plugins, handle nested structure
-        if (rule.fieldType && rule.componentIdx !== undefined && rule.componentIdx !== "") {
-          // Dynamic plugin structure: fieldType -> componentIdx -> prop
-          // Note: response_components in the builder becomes "response" in the actual trial data
-          const actualFieldName = rule.fieldType === 'response_components' ? 'response' : rule.fieldType;
-          const fieldArray = trialData[actualFieldName];
-          if (!Array.isArray(fieldArray)) {
-            console.warn('Field array not found for fieldType:', rule.fieldType, 'actual field:', actualFieldName);
-            return false;
-          }
-          
-          // componentIdx is the component name, not a numeric index
-          const component = fieldArray.find(c => c.name === rule.componentIdx);
-          if (!component) {
-            console.warn('Component not found with name:', rule.componentIdx);
-            return false;
-          }
-          
-          // Get the property value from the component
-          // For SurveyComponent, the response structure is different
-          // The prop is actually a question name inside component.response
-          if (component.type === "SurveyComponent" && component.response && typeof component.response === 'object') {
-            // The prop (e.g., "question1") is a key inside component.response
-            if (component.response[rule.prop] !== undefined) {
-              propValue = component.response[rule.prop];
-            } else {
-              return false;
-            }
-          } else {
-            // For other components, check direct properties
-            if (rule.prop === "response" && component.response !== undefined) {
-              propValue = component.response;
-            } else if (component[rule.prop] !== undefined) {
-              propValue = component[rule.prop];
-            } else {
-              return false;
-            }
-          }
-        } else {
-          // Normal plugin structure
-          propValue = trialData[rule.prop];
+        if (!columnName) {
+          console.warn('No column name specified in rule:', rule);
+          return false;
+        }
+        
+        // Get value directly from the column
+        const propValue = trialData[columnName];
+        
+        if (propValue === undefined) {
+          console.warn('Column not found in trial data:', columnName);
+          return false;
         }
         
         const compareValue = rule.value;
@@ -452,7 +424,7 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
         sessionId: trialSessionId,
       }),
     });
-    jsPsych.data.displayData();
+    // jsPsych.data.displayData();
   }
 });
 

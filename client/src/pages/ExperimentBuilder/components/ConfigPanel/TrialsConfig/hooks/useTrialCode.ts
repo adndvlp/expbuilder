@@ -278,14 +278,14 @@ export function useTrialCode({
         const prefixedComponents = isInLoop
           ? `components_${trialNameSanitized}`
           : "components";
-        const prefixedResponses = isInLoop
-          ? `responses_${trialNameSanitized}`
-          : "responses";
+        const prefixedResponseComponents = isInLoop
+          ? `response_components_${trialNameSanitized}`
+          : "response_components";
 
         result[prefixedComponents] = processComponentFunctions(
           componentsValue || []
         );
-        result[prefixedResponses] = processComponentFunctions(
+        result[prefixedResponseComponents] = processComponentFunctions(
           responsesValue || []
         );
 
@@ -490,9 +490,9 @@ export function useTrialCode({
       const componentsKey = isInLoop
         ? `components_${trialNameSanitized}`
         : "components";
-      const responsesKey = isInLoop
-        ? `responses_${trialNameSanitized}`
-        : "responses";
+      const responseComponentsKey = isInLoop
+        ? `response_components_${trialNameSanitized}`
+        : "response_components";
 
       const dataProps = data
         .map(({ key }: { key: string }) => {
@@ -503,7 +503,7 @@ export function useTrialCode({
 
       const hasBranches = branches && branches.length > 0;
       return `components: jsPsych.timelineVariable("${componentsKey}"),
-      responses: jsPsych.timelineVariable("${responsesKey}"),
+      response_components: jsPsych.timelineVariable("${responseComponentsKey}"),
       data: {
         ${dataProps}
         trial_id: ${id},

@@ -43,9 +43,7 @@ function BranchConditions({
       ...conditions,
       {
         id: Date.now(),
-        rules: [
-          { prop: "", op: "==", value: "", fieldType: "", componentIdx: "" },
-        ],
+        rules: [{ column: "", op: "==", value: "" }],
         nextTrialId: null,
         customParameters: {},
       },
@@ -65,11 +63,9 @@ function BranchConditions({
               rules: [
                 ...c.rules,
                 {
-                  prop: "",
+                  column: "",
                   op: "==",
                   value: "",
-                  fieldType: "",
-                  componentIdx: "",
                 },
               ],
             }
@@ -119,6 +115,162 @@ function BranchConditions({
     if (nextTrialId) {
       loadTargetTrialParameters(nextTrialId);
     }
+  };
+
+  // Get all available columns for the current trial (for branching conditions)
+  const getAvailableColumns = (): Array<{
+    value: string;
+    label: string;
+    group?: string;
+  }> => {
+    if (!selectedTrial) return [];
+
+    const columns: Array<{ value: string; label: string; group?: string }> = [];
+
+    // For DynamicPlugin, generate columns from components
+    if (selectedTrial.plugin === "plugin-dynamic") {
+      const columnMapping = selectedTrial.columnMapping || {};
+
+      // Process stimulus components
+      const components = columnMapping.components?.value || [];
+      components.forEach((comp: any) => {
+        const prefix = comp.name;
+        if (!prefix) return;
+
+        // Add type column
+        columns.push({
+          value: `${prefix}_type`,
+          label: `${prefix} › Type`,
+          group: "Stimulus Components",
+        });
+
+        // Add stimulus column if exists
+        if (comp.stimulus !== undefined) {
+          columns.push({
+            value: `${prefix}_stimulus`,
+            label: `${prefix} › Stimulus`,
+            group: "Stimulus Components",
+          });
+        }
+
+        // Add coordinates if exists
+        if (comp.coordinates !== undefined) {
+          columns.push({
+            value: `${prefix}_coordinates`,
+            label: `${prefix} › Coordinates`,
+            group: "Stimulus Components",
+          });
+        }
+
+        // For SurveyComponent, add question columns
+        if (comp.type === "SurveyComponent" && comp.survey_json?.elements) {
+          comp.survey_json.elements.forEach((q: any) => {
+            columns.push({
+              value: `${prefix}_${q.name}`,
+              label: `${prefix} › ${q.name || q.title || "Question"}`,
+              group: "Stimulus Components",
+            });
+          });
+        }
+
+        // Add response if component can respond
+        if (
+          comp.type === "SurveyComponent" ||
+          comp.type === "SketchpadComponent"
+        ) {
+          columns.push({
+            value: `${prefix}_response`,
+            label: `${prefix} › Response`,
+            group: "Stimulus Components",
+          });
+          columns.push({
+            value: `${prefix}_rt`,
+            label: `${prefix} › RT`,
+            group: "Stimulus Components",
+          });
+        }
+      });
+
+      // Process response components
+      const responseComponents = columnMapping.response_components?.value || [];
+      responseComponents.forEach((comp: any) => {
+        const prefix = comp.name;
+        if (!prefix) return;
+
+        columns.push({
+          value: `${prefix}_type`,
+          label: `${prefix} › Type`,
+          group: "Response Components",
+        });
+
+        columns.push({
+          value: `${prefix}_response`,
+          label: `${prefix} › Response`,
+          group: "Response Components",
+        });
+
+        columns.push({
+          value: `${prefix}_rt`,
+          label: `${prefix} › RT`,
+          group: "Response Components",
+        });
+
+        // SliderResponseComponent - slider_start
+        if (comp.type === "SliderResponseComponent") {
+          columns.push({
+            value: `${prefix}_slider_start`,
+            label: `${prefix} › Slider Start`,
+            group: "Response Components",
+          });
+        }
+
+        // SketchpadComponent - strokes and png
+        if (comp.type === "SketchpadComponent") {
+          columns.push({
+            value: `${prefix}_strokes`,
+            label: `${prefix} › Strokes`,
+            group: "Response Components",
+          });
+          columns.push({
+            value: `${prefix}_png`,
+            label: `${prefix} › PNG`,
+            group: "Response Components",
+          });
+        }
+
+        // AudioResponseComponent - special fields
+        if (comp.type === "AudioResponseComponent") {
+          columns.push({
+            value: `${prefix}_audio_url`,
+            label: `${prefix} › Audio URL`,
+            group: "Response Components",
+          });
+          columns.push({
+            value: `${prefix}_estimated_stimulus_onset`,
+            label: `${prefix} › Stimulus Onset`,
+            group: "Response Components",
+          });
+        }
+      });
+
+      // Add general trial columns
+      columns.push({
+        value: "rt",
+        label: "Trial RT",
+        group: "Trial Data",
+      });
+    } else {
+      // For normal plugins, use data fields
+      data.forEach((field) => {
+        columns.push({
+          value: field.key,
+          label: field.name || field.key,
+          group: "Trial Data",
+        });
+      });
+    }
+
+    return columns;
   };
 
   // Get CSV columns for target trial
@@ -476,93 +628,36 @@ function BranchConditions({
                           backgroundColor: "rgba(78, 205, 196, 0.15)",
                         }}
                       >
-                        {selectedTrial?.plugin === "plugin-dynamic" ? (
-                          <>
-                            <th
-                              className="px-2 py-2 text-left text-sm font-semibold"
-                              style={{
-                                color: "var(--text-dark)",
-                                borderBottom: "2px solid var(--neutral-mid)",
-                                minWidth: "150px",
-                              }}
-                            >
-                              Field Type
-                            </th>
-                            <th
-                              className="px-2 py-2 text-left text-sm font-semibold"
-                              style={{
-                                color: "var(--text-dark)",
-                                borderBottom: "2px solid var(--neutral-mid)",
-                                minWidth: "180px",
-                              }}
-                            >
-                              Component
-                            </th>
-                            <th
-                              className="px-2 py-2 text-left text-sm font-semibold"
-                              style={{
-                                color: "var(--text-dark)",
-                                borderBottom: "2px solid var(--neutral-mid)",
-                                minWidth: "150px",
-                              }}
-                            >
-                              Property
-                            </th>
-                            <th
-                              className="px-2 py-2 text-left text-sm font-semibold"
-                              style={{
-                                color: "var(--text-dark)",
-                                borderBottom: "2px solid var(--neutral-mid)",
-                                minWidth: "80px",
-                              }}
-                            >
-                              Op
-                            </th>
-                            <th
-                              className="px-2 py-2 text-left text-sm font-semibold"
-                              style={{
-                                color: "var(--text-dark)",
-                                borderBottom: "2px solid var(--neutral-mid)",
-                                minWidth: "150px",
-                              }}
-                            >
-                              Value
-                            </th>
-                          </>
-                        ) : (
-                          <>
-                            <th
-                              className="px-2 py-2 text-left text-sm font-semibold"
-                              style={{
-                                color: "var(--text-dark)",
-                                borderBottom: "2px solid var(--neutral-mid)",
-                                minWidth: "200px",
-                              }}
-                            >
-                              Data Field
-                            </th>
-                            <th
-                              className="px-2 py-2 text-left text-sm font-semibold"
-                              style={{
-                                color: "var(--text-dark)",
-                                borderBottom: "2px solid var(--neutral-mid)",
-                                minWidth: "80px",
-                              }}
-                            >
-                              Op
-                            </th>
-                            <th
-                              className="px-2 py-2 text-left text-sm font-semibold"
-                              style={{
-                                color: "var(--text-dark)",
-                                borderBottom: "2px solid var(--neutral-mid)",
-                                minWidth: "150px",
-                              }}
-                            >
-                              Value
-                            </th>
-                          </>
-                        )}
+                        <th
+                          className="px-2 py-2 text-left text-sm font-semibold"
+                          style={{
+                            color: "var(--text-dark)",
+                            borderBottom: "2px solid var(--neutral-mid)",
+                            minWidth: "300px",
+                          }}
+                        >
+                          Column
+                        </th>
+                        <th
+                          className="px-2 py-2 text-left text-sm font-semibold"
+                          style={{
+                            color: "var(--text-dark)",
+                            borderBottom: "2px solid var(--neutral-mid)",
+                            minWidth: "80px",
+                          }}
+                        >
+                          Op
+                        </th>
+                        <th
+                          className="px-2 py-2 text-left text-sm font-semibold"
+                          style={{
+                            color: "var(--text-dark)",
+                            borderBottom: "2px solid var(--neutral-mid)",
+                            minWidth: "150px",
+                          }}
+                        >
+                          Value
+                        </th>
                         <th
                           className="px-1 py-2 text-center text-sm font-semibold"
                           style={{
@@ -681,17 +776,42 @@ function BranchConditions({
                     </thead>
                     <tbody>
                       {condition.rules.map((rule, ruleIdx) => {
-                        // For dynamic plugins, get component data
-                        const fieldType = rule.fieldType || "";
-                        const componentIdx = rule.componentIdx ?? "";
-                        const compArr = fieldType
-                          ? selectedTrial?.columnMapping?.[fieldType]?.value ||
-                            []
-                          : [];
-                        const comp =
-                          componentIdx !== "" && compArr.length > 0
-                            ? compArr.find((c: any) => c.name === componentIdx)
-                            : null;
+                        const availableColumns = getAvailableColumns();
+
+                        // Get selected column info to determine value input type
+                        const selectedColumn = availableColumns.find(
+                          (col) => col.value === rule.column
+                        );
+
+                        // For DynamicPlugin, parse column name to determine component type for value input
+                        let componentName = "";
+                        let propertyName = "";
+                        let component = null;
+
+                        if (
+                          selectedTrial?.plugin === "plugin-dynamic" &&
+                          rule.column
+                        ) {
+                          const parts = rule.column.split("_");
+                          if (parts.length >= 2) {
+                            // Last part is the property (e.g., "response", "rt", "type")
+                            propertyName = parts[parts.length - 1];
+                            // Everything before the last part is the component name
+                            componentName = parts.slice(0, -1).join("_");
+
+                            // Try to find the component in columnMapping
+                            const components =
+                              selectedTrial.columnMapping?.components?.value ||
+                              [];
+                            const responseComponents =
+                              selectedTrial.columnMapping?.response_components
+                                ?.value || [];
+                            component = [
+                              ...components,
+                              ...responseComponents,
+                            ].find((c: any) => c.name === componentName);
+                          }
+                        }
 
                         return (
                           <tr
@@ -703,375 +823,123 @@ function BranchConditions({
                                   : "none",
                             }}
                           >
-                            {selectedTrial?.plugin === "plugin-dynamic" ? (
-                              <>
-                                {/* Field Type Column */}
-                                <td className="px-2 py-2">
-                                  <select
-                                    value={fieldType}
-                                    onChange={(e) => {
-                                      const newValue = e.target.value;
-                                      setConditions(
-                                        conditions.map((c) =>
-                                          c.id === condition.id
-                                            ? {
-                                                ...c,
-                                                rules: c.rules.map((r, idx) =>
-                                                  idx === ruleIdx
-                                                    ? {
-                                                        ...r,
-                                                        fieldType: newValue,
-                                                        componentIdx: "",
-                                                        prop: "",
-                                                        value: "",
-                                                      }
-                                                    : r
-                                                ),
-                                              }
-                                            : c
-                                        )
-                                      );
-                                    }}
-                                    className="border rounded px-2 py-1 w-full text-xs"
-                                    style={{
-                                      color: "var(--text-dark)",
-                                      backgroundColor: "var(--neutral-light)",
-                                      borderColor: "var(--neutral-mid)",
-                                    }}
-                                  >
-                                    <option value="">Select type</option>
-                                    <option value="components">Stimulus</option>
-                                    <option value="response_components">
-                                      Response
-                                    </option>
-                                  </select>
-                                </td>
-
-                                {/* Component Column */}
-                                <td className="px-2 py-2">
-                                  <select
-                                    value={componentIdx}
-                                    onChange={(e) => {
-                                      const newValue = e.target.value;
-                                      setConditions(
-                                        conditions.map((c) =>
-                                          c.id === condition.id
-                                            ? {
-                                                ...c,
-                                                rules: c.rules.map((r, idx) =>
-                                                  idx === ruleIdx
-                                                    ? {
-                                                        ...r,
-                                                        componentIdx: newValue,
-                                                        prop: "",
-                                                        value: "",
-                                                      }
-                                                    : r
-                                                ),
-                                              }
-                                            : c
-                                        )
-                                      );
-                                    }}
-                                    className="border rounded px-2 py-1 w-full text-xs"
-                                    style={{
-                                      color: "var(--text-dark)",
-                                      backgroundColor: "var(--neutral-light)",
-                                      borderColor: "var(--neutral-mid)",
-                                    }}
-                                  >
-                                    <option value="">Select component</option>
-                                    {compArr.map((c: any) => (
-                                      <option key={c.name} value={c.name}>
-                                        {c.name}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </td>
-
-                                {/* Property Column */}
-                                <td className="px-2 py-2">
-                                  {comp && comp.type === "SurveyComponent" ? (
-                                    <select
-                                      value={rule.prop}
-                                      onChange={(e) => {
-                                        const newValue = e.target.value;
-                                        setConditions(
-                                          conditions.map((c) =>
-                                            c.id === condition.id
-                                              ? {
-                                                  ...c,
-                                                  rules: c.rules.map(
-                                                    (r, idx) =>
-                                                      idx === ruleIdx
-                                                        ? {
-                                                            ...r,
-                                                            prop: newValue,
-                                                            value: "",
-                                                          }
-                                                        : r
-                                                  ),
-                                                }
-                                              : c
-                                          )
-                                        );
-                                      }}
-                                      className="border rounded px-2 py-1 w-full text-xs"
-                                      style={{
-                                        color: "var(--text-dark)",
-                                        backgroundColor: "var(--neutral-light)",
-                                        borderColor: "var(--neutral-mid)",
-                                      }}
-                                    >
-                                      <option value="">Select question</option>
-                                      {(comp.survey_json?.elements || []).map(
-                                        (q: any, idx: number) => (
-                                          <option
-                                            key={q.name || idx}
-                                            value={q.name}
-                                          >
-                                            {q.title || q.name}
-                                          </option>
-                                        )
-                                      )}
-                                    </select>
-                                  ) : comp &&
-                                    comp.type === "ButtonResponseComponent" ? (
-                                    <select
-                                      value={rule.prop}
-                                      onChange={(e) => {
-                                        const newValue = e.target.value;
-                                        setConditions(
-                                          conditions.map((c) =>
-                                            c.id === condition.id
-                                              ? {
-                                                  ...c,
-                                                  rules: c.rules.map(
-                                                    (r, idx) =>
-                                                      idx === ruleIdx
-                                                        ? {
-                                                            ...r,
-                                                            prop: newValue,
-                                                            value: "",
-                                                          }
-                                                        : r
-                                                  ),
-                                                }
-                                              : c
-                                          )
-                                        );
-                                      }}
-                                      className="border rounded px-2 py-1 w-full text-xs"
-                                      style={{
-                                        color: "var(--text-dark)",
-                                        backgroundColor: "var(--neutral-light)",
-                                        borderColor: "var(--neutral-mid)",
-                                      }}
-                                    >
-                                      <option value="">Select property</option>
-                                      <option value="response">response</option>
-                                    </select>
-                                  ) : (
-                                    <input
-                                      type="text"
-                                      value={rule.prop}
-                                      onChange={(e) => {
-                                        const newValue = e.target.value;
-                                        setConditions(
-                                          conditions.map((c) =>
-                                            c.id === condition.id
-                                              ? {
-                                                  ...c,
-                                                  rules: c.rules.map(
-                                                    (r, idx) =>
-                                                      idx === ruleIdx
-                                                        ? {
-                                                            ...r,
-                                                            prop: newValue,
-                                                            value: "",
-                                                          }
-                                                        : r
-                                                  ),
-                                                }
-                                              : c
-                                          )
-                                        );
-                                      }}
-                                      placeholder="Property"
-                                      className="border rounded px-2 py-1 w-full text-xs"
-                                      style={{
-                                        color: "var(--text-dark)",
-                                        backgroundColor: "var(--neutral-light)",
-                                        borderColor: "var(--neutral-mid)",
-                                      }}
-                                    />
-                                  )}
-                                </td>
-
-                                {/* Op Column */}
-                                <td className="px-2 py-2">
-                                  <select
-                                    value={rule.op}
-                                    onChange={(e) =>
-                                      updateRule(
-                                        condition.id,
-                                        ruleIdx,
-                                        "op",
-                                        e.target.value
-                                      )
+                            {/* Column selector - unified for both DynamicPlugin and normal plugins */}
+                            <td className="px-2 py-2">
+                              <select
+                                value={rule.column || rule.prop || ""} // Backward compatibility
+                                onChange={(e) => {
+                                  const newValue = e.target.value;
+                                  setConditions(
+                                    conditions.map((c) =>
+                                      c.id === condition.id
+                                        ? {
+                                            ...c,
+                                            rules: c.rules.map((r, idx) =>
+                                              idx === ruleIdx
+                                                ? {
+                                                    ...r,
+                                                    column: newValue,
+                                                    value: "", // Reset value when column changes
+                                                  }
+                                                : r
+                                            ),
+                                          }
+                                        : c
+                                    )
+                                  );
+                                }}
+                                className="border rounded px-2 py-1 w-full text-xs"
+                                style={{
+                                  color: "var(--text-dark)",
+                                  backgroundColor: "var(--neutral-light)",
+                                  borderColor: "var(--neutral-mid)",
+                                }}
+                              >
+                                <option value="">Select column</option>
+                                {/* Group columns by category */}
+                                {availableColumns
+                                  .reduce((acc: any[], col) => {
+                                    // Find or create group
+                                    let group = acc.find(
+                                      (g) => g.name === col.group
+                                    );
+                                    if (!group) {
+                                      group = { name: col.group, columns: [] };
+                                      acc.push(group);
                                     }
-                                    className="border rounded px-2 py-1 w-full text-xs"
-                                    style={{
-                                      color: "var(--text-dark)",
-                                      backgroundColor: "var(--neutral-light)",
-                                      borderColor: "var(--neutral-mid)",
-                                    }}
-                                  >
-                                    <option value="==">=</option>
-                                    <option value="!=">≠</option>
-                                    <option value=">">{">"}</option>
-                                    <option value="<">{"<"}</option>
-                                    <option value=">=">{">="}</option>
-                                    <option value="<=">{"<="}</option>
-                                  </select>
-                                </td>
+                                    group.columns.push(col);
+                                    return acc;
+                                  }, [])
+                                  .map((group: any) => (
+                                    <optgroup
+                                      key={group.name}
+                                      label={group.name || "Other"}
+                                    >
+                                      {group.columns.map((col: any) => (
+                                        <option
+                                          key={col.value}
+                                          value={col.value}
+                                        >
+                                          {col.label}
+                                        </option>
+                                      ))}
+                                    </optgroup>
+                                  ))}
+                              </select>
+                            </td>
 
-                                {/* Value Column */}
-                                <td className="px-2 py-2">
-                                  {(() => {
-                                    // Survey component with question selected
+                            {/* Op Column */}
+                            <td className="px-2 py-2">
+                              <select
+                                value={rule.op}
+                                onChange={(e) =>
+                                  updateRule(
+                                    condition.id,
+                                    ruleIdx,
+                                    "op",
+                                    e.target.value
+                                  )
+                                }
+                                className="border rounded px-2 py-1 w-full text-xs"
+                                style={{
+                                  color: "var(--text-dark)",
+                                  backgroundColor: "var(--neutral-light)",
+                                  borderColor: "var(--neutral-mid)",
+                                }}
+                              >
+                                <option value="==">=</option>
+                                <option value="!=">≠</option>
+                                <option value=">">{">"}</option>
+                                <option value="<">{"<"}</option>
+                                <option value=">=">{">="}</option>
+                                <option value="<=">{"<="}</option>
+                              </select>
+                            </td>
+
+                            {/* Value Column - smart input based on component type */}
+                            <td className="px-2 py-2">
+                              {(() => {
+                                // For DynamicPlugin Survey components with questions
+                                if (
+                                  component &&
+                                  component.type === "SurveyComponent" &&
+                                  component.survey_json?.elements
+                                ) {
+                                  // Extract question name from column (format: ComponentName_questionName)
+                                  const questionName = rule.column
+                                    ?.split("_")
+                                    .slice(2)
+                                    .join("_");
+                                  const question =
+                                    component.survey_json.elements.find(
+                                      (q: any) => q.name === questionName
+                                    );
+
+                                  if (question) {
+                                    // Has choices - dropdown
                                     if (
-                                      comp &&
-                                      comp.type === "SurveyComponent" &&
-                                      rule.prop
-                                    ) {
-                                      const q = (
-                                        comp.survey_json?.elements || []
-                                      ).find((q: any) => q.name === rule.prop);
-                                      if (q) {
-                                        // Has choices
-                                        if (q.choices && q.choices.length > 0) {
-                                          return (
-                                            <select
-                                              value={rule.value}
-                                              onChange={(e) =>
-                                                updateRule(
-                                                  condition.id,
-                                                  ruleIdx,
-                                                  "value",
-                                                  e.target.value
-                                                )
-                                              }
-                                              className="border rounded px-2 py-1 w-full text-xs"
-                                              style={{
-                                                color: "var(--text-dark)",
-                                                backgroundColor:
-                                                  "var(--neutral-light)",
-                                                borderColor:
-                                                  "var(--neutral-mid)",
-                                              }}
-                                            >
-                                              <option value="">
-                                                Select value
-                                              </option>
-                                              {q.choices.map((opt: any) => (
-                                                <option
-                                                  key={String(opt.value ?? opt)}
-                                                  value={String(
-                                                    opt.value ?? opt
-                                                  )}
-                                                >
-                                                  {opt.text || String(opt)}
-                                                </option>
-                                              ))}
-                                            </select>
-                                          );
-                                        }
-                                        // Boolean type
-                                        if (q.type === "boolean") {
-                                          return (
-                                            <select
-                                              value={rule.value}
-                                              onChange={(e) =>
-                                                updateRule(
-                                                  condition.id,
-                                                  ruleIdx,
-                                                  "value",
-                                                  e.target.value
-                                                )
-                                              }
-                                              className="border rounded px-2 py-1 w-full text-xs"
-                                              style={{
-                                                color: "var(--text-dark)",
-                                                backgroundColor:
-                                                  "var(--neutral-light)",
-                                                borderColor:
-                                                  "var(--neutral-mid)",
-                                              }}
-                                            >
-                                              <option value="">
-                                                Select value
-                                              </option>
-                                              <option value="true">true</option>
-                                              <option value="false">
-                                                false
-                                              </option>
-                                            </select>
-                                          );
-                                        }
-                                        // Rating type
-                                        if (
-                                          q.rateMin !== undefined &&
-                                          q.rateMax !== undefined
-                                        ) {
-                                          return (
-                                            <select
-                                              value={rule.value}
-                                              onChange={(e) =>
-                                                updateRule(
-                                                  condition.id,
-                                                  ruleIdx,
-                                                  "value",
-                                                  e.target.value
-                                                )
-                                              }
-                                              className="border rounded px-2 py-1 w-full text-xs"
-                                              style={{
-                                                color: "var(--text-dark)",
-                                                backgroundColor:
-                                                  "var(--neutral-light)",
-                                                borderColor:
-                                                  "var(--neutral-mid)",
-                                              }}
-                                            >
-                                              <option value="">
-                                                Select value
-                                              </option>
-                                              {Array.from(
-                                                {
-                                                  length:
-                                                    q.rateMax - q.rateMin + 1,
-                                                },
-                                                (_, i) => q.rateMin + i
-                                              ).map((val: number) => (
-                                                <option
-                                                  key={val}
-                                                  value={String(val)}
-                                                >
-                                                  {val}
-                                                </option>
-                                              ))}
-                                            </select>
-                                          );
-                                        }
-                                      }
-                                    }
-                                    // Button component with response property
-                                    if (
-                                      comp &&
-                                      comp.type === "ButtonResponseComponent" &&
-                                      rule.prop === "response" &&
-                                      comp.choices
+                                      question.choices &&
+                                      question.choices.length > 0
                                     ) {
                                       return (
                                         <select
@@ -1093,7 +961,7 @@ function BranchConditions({
                                           }}
                                         >
                                           <option value="">Select value</option>
-                                          {comp.choices.map((opt: any) => (
+                                          {question.choices.map((opt: any) => (
                                             <option
                                               key={String(opt.value ?? opt)}
                                               value={String(opt.value ?? opt)}
@@ -1104,135 +972,123 @@ function BranchConditions({
                                         </select>
                                       );
                                     }
-                                    // Default: text input
-                                    return (
-                                      <input
-                                        type="text"
-                                        value={rule.value}
-                                        onChange={(e) =>
-                                          updateRule(
-                                            condition.id,
-                                            ruleIdx,
-                                            "value",
-                                            e.target.value
-                                          )
-                                        }
-                                        placeholder="Value"
-                                        className="border rounded px-2 py-1 w-full text-xs"
-                                        style={{
-                                          color: "var(--text-dark)",
-                                          backgroundColor:
-                                            "var(--neutral-light)",
-                                          borderColor: "var(--neutral-mid)",
-                                        }}
-                                      />
-                                    );
-                                  })()}
-                                </td>
-                              </>
-                            ) : (
-                              <>
-                                {/* Normal plugin - Data Field Column */}
-                                <td className="px-2 py-2 relative">
-                                  <select
-                                    value={rule.prop}
-                                    onChange={(e) =>
-                                      updateRule(
-                                        condition.id,
-                                        ruleIdx,
-                                        "prop",
-                                        e.target.value
-                                      )
-                                    }
-                                    className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
-                                    style={{
-                                      color: "var(--text-dark)",
-                                      backgroundColor: "var(--neutral-light)",
-                                      borderColor: "var(--neutral-mid)",
-                                    }}
-                                  >
-                                    <option
-                                      style={{ textAlign: "center" }}
-                                      value=""
-                                    >
-                                      Select field
-                                    </option>
-                                    {data.map((field) => (
-                                      <option
-                                        key={field.key}
-                                        value={field.key}
-                                        disabled={
-                                          usedProps.includes(field.key) &&
-                                          rule.prop !== field.key
-                                        }
-                                        style={{ textAlign: "center" }}
-                                      >
-                                        {field.label || field.key}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </td>
 
-                                {/* Op Column */}
-                                <td className="px-2 py-2">
-                                  <select
-                                    value={rule.op}
-                                    onChange={(e) =>
-                                      updateRule(
-                                        condition.id,
-                                        ruleIdx,
-                                        "op",
-                                        e.target.value
-                                      )
+                                    // Boolean type
+                                    if (question.type === "boolean") {
+                                      return (
+                                        <select
+                                          value={rule.value}
+                                          onChange={(e) =>
+                                            updateRule(
+                                              condition.id,
+                                              ruleIdx,
+                                              "value",
+                                              e.target.value
+                                            )
+                                          }
+                                          className="border rounded px-2 py-1 w-full text-xs"
+                                          style={{
+                                            color: "var(--text-dark)",
+                                            backgroundColor:
+                                              "var(--neutral-light)",
+                                            borderColor: "var(--neutral-mid)",
+                                          }}
+                                        >
+                                          <option value="">Select value</option>
+                                          <option value="true">true</option>
+                                          <option value="false">false</option>
+                                        </select>
+                                      );
                                     }
-                                    className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
-                                    style={{
-                                      color: "var(--text-dark)",
-                                      backgroundColor: "var(--neutral-light)",
-                                      borderColor: "var(--neutral-mid)",
-                                    }}
-                                  >
-                                    <option
-                                      style={{ textAlign: "center" }}
-                                      value="=="
-                                    >
-                                      =
-                                    </option>
-                                    <option
-                                      style={{ textAlign: "center" }}
-                                      value="!="
-                                    >
-                                      ≠
-                                    </option>
-                                    <option
-                                      style={{ textAlign: "center" }}
-                                      value=">"
-                                    >
-                                      {">"}
-                                    </option>
-                                    <option
-                                      style={{ textAlign: "center" }}
-                                      value="<"
-                                    >
-                                      {"<"}
-                                    </option>
-                                    <option
-                                      style={{ textAlign: "center" }}
-                                      value=">="
-                                    >
-                                      {">="}
-                                    </option>
-                                    <option
-                                      style={{ textAlign: "center" }}
-                                      value="<="
-                                    >
-                                      {"<="}
-                                    </option>
-                                  </select>
-                                </td>
 
-                                {/* Value Column */}
-                                <td className="px-2 py-2">
+                                    // Rating type
+                                    if (
+                                      question.rateMin !== undefined &&
+                                      question.rateMax !== undefined
+                                    ) {
+                                      return (
+                                        <select
+                                          value={rule.value}
+                                          onChange={(e) =>
+                                            updateRule(
+                                              condition.id,
+                                              ruleIdx,
+                                              "value",
+                                              e.target.value
+                                            )
+                                          }
+                                          className="border rounded px-2 py-1 w-full text-xs"
+                                          style={{
+                                            color: "var(--text-dark)",
+                                            backgroundColor:
+                                              "var(--neutral-light)",
+                                            borderColor: "var(--neutral-mid)",
+                                          }}
+                                        >
+                                          <option value="">Select value</option>
+                                          {Array.from(
+                                            {
+                                              length:
+                                                question.rateMax -
+                                                question.rateMin +
+                                                1,
+                                            },
+                                            (_, i) => question.rateMin + i
+                                          ).map((val: number) => (
+                                            <option
+                                              key={val}
+                                              value={String(val)}
+                                            >
+                                              {val}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      );
+                                    }
+                                  }
+                                }
+
+                                // For ButtonResponseComponent with choices
+                                if (
+                                  component &&
+                                  component.type ===
+                                    "ButtonResponseComponent" &&
+                                  propertyName === "response" &&
+                                  component.choices
+                                ) {
+                                  return (
+                                    <select
+                                      value={rule.value}
+                                      onChange={(e) =>
+                                        updateRule(
+                                          condition.id,
+                                          ruleIdx,
+                                          "value",
+                                          e.target.value
+                                        )
+                                      }
+                                      className="border rounded px-2 py-1 w-full text-xs"
+                                      style={{
+                                        color: "var(--text-dark)",
+                                        backgroundColor: "var(--neutral-light)",
+                                        borderColor: "var(--neutral-mid)",
+                                      }}
+                                    >
+                                      <option value="">Select value</option>
+                                      {component.choices.map((opt: any) => (
+                                        <option
+                                          key={String(opt.value ?? opt)}
+                                          value={String(opt.value ?? opt)}
+                                        >
+                                          {opt.text || String(opt)}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  );
+                                }
+
+                                // Default: text input
+                                return (
                                   <input
                                     type="text"
                                     value={rule.value}
@@ -1245,16 +1101,16 @@ function BranchConditions({
                                       )
                                     }
                                     placeholder="Value"
-                                    className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
+                                    className="border rounded px-2 py-1 w-full text-xs"
                                     style={{
                                       color: "var(--text-dark)",
                                       backgroundColor: "var(--neutral-light)",
                                       borderColor: "var(--neutral-mid)",
                                     }}
                                   />
-                                </td>
-                              </>
-                            )}
+                                );
+                              })()}
+                            </td>
                             <td className="px-1 py-2 text-center">
                               {condition.rules.length > 1 && (
                                 <button

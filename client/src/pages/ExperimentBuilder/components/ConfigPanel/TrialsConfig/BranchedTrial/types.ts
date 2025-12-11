@@ -1,9 +1,11 @@
 import { ColumnMappingEntry } from "../../types";
 
 export type Rule = {
-  prop: string;
+  column: string; // Direct column name (e.g., "ButtonResponseComponent_1_response")
   op: string;
   value: string;
+  // Legacy fields for backward compatibility
+  prop?: string;
   fieldType?: string;
   componentIdx?: string;
 };
