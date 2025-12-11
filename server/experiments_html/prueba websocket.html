@@ -106,7 +106,7 @@
 
   async function saveSession(trialSessionId) {
    
-   const res = await fetch("/api/append-result/e91d3b90-bfa6-4f83-9f69-72a1723948d2", {
+   const res = await fetch("/api/append-result/2dcb0684-fbb0-449e-a191-d370f522b7d3", {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "*/*" },
       body: JSON.stringify({
@@ -138,7 +138,7 @@
 
     // Conectar sesión con el servidor via WebSocket
     socket.emit('join-experiment', {
-      experimentID: 'e91d3b90-bfa6-4f83-9f69-72a1723948d2',
+      experimentID: '2dcb0684-fbb0-449e-a191-d370f522b7d3',
       sessionId: trialSessionId,
       state: 'initiated',
       metadata: metadata
@@ -296,26 +296,66 @@
       return null;
     };
 
+    // Track pending data saves to ensure all complete before finishing
+    const pendingDataSaves = [];
+
     const jsPsych = initJsPsych({
           display_element: document.getElementById('jspsych-container'),
 
 
     
 
+    on_trial_start: function(trial) {
+      // Add metadata to all trials on first trial
+      if (trial.trial_index === 0) {
+        jsPsych.data.addProperties({
+          participant_number: participantNumber,
+          session_id: trialSessionId,
+          experiment_id: '2dcb0684-fbb0-449e-a191-d370f522b7d3',
+          browser: metadata.browser,
+          browser_version: metadata.browserVersion,
+          os: metadata.os,
+          screen_resolution: metadata.screenResolution,
+          viewport_size: metadata.viewportWidth + 'x' + metadata.viewportHeight,
+          language: metadata.language,
+          started_at: metadata.startedAt
+        });
+      }
+    },
+
     on_data_update: function (data) {
-      const res = fetch("/api/append-result/e91d3b90-bfa6-4f83-9f69-72a1723948d2", {
+      // Create and track the promise for this data save
+      const savePromise = fetch("/api/append-result/2dcb0684-fbb0-449e-a191-d370f522b7d3", {
         method: "PUT",
         headers: { "Content-Type": "application/json", Accept: "*/*" },
         body: JSON.stringify({
           sessionId: trialSessionId,
           response: data,
         }),
+      })
+      .then(res => {
+        if (!res.ok) {
+          console.error('Error saving trial data:', res.statusText);
+        }
+        return res;
+      })
+      .catch(error => {
+        console.error('Error in on_data_update:', error);
+      })
+      .finally(() => {
+        // Remove from pending once complete
+        const index = pendingDataSaves.indexOf(savePromise);
+        if (index > -1) {
+          pendingDataSaves.splice(index, 1);
+        }
       });
+      
+      pendingDataSaves.push(savePromise);
       
       // Actualizar estado a 'in-progress' en la primera actualización
       if (data.trial_index === 0 && socket) {
         socket.emit('update-session-state', {
-          experimentID: 'e91d3b90-bfa6-4f83-9f69-72a1723948d2',
+          experimentID: '2dcb0684-fbb0-449e-a191-d370f522b7d3',
           sessionId: trialSessionId,
           state: 'in-progress'
         });
@@ -357,16 +397,23 @@
     },
 
   on_finish: async function() {
+    // Wait for all pending data saves to complete
+    if (pendingDataSaves.length > 0) {
+      console.log('Waiting for', pendingDataSaves.length, 'pending data saves to complete...');
+      await Promise.allSettled(pendingDataSaves);
+      console.log('All data saves completed');
+    }
+    
     // Marcar como completado
     if (socket) {
       socket.emit('update-session-state', {
-        experimentID: 'e91d3b90-bfa6-4f83-9f69-72a1723948d2',
+        experimentID: '2dcb0684-fbb0-449e-a191-d370f522b7d3',
         sessionId: trialSessionId,
         state: 'completed'
       });
     }
     
-    await fetch("/api/complete-session/e91d3b90-bfa6-4f83-9f69-72a1723948d2", {
+    await fetch("/api/complete-session/2dcb0684-fbb0-449e-a191-d370f522b7d3", {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "*/*" },
       body: JSON.stringify({
@@ -389,17 +436,17 @@ timeline.push(globalPreload);
 
 
 
-    const test_stimuli_Ensayo = [{device_select_message: "<p>Please select the microphone you would like to use.</p>",
+    const test_stimuli_New_Trial = [{device_select_message: "<p>Please select the microphone you would like to use.</p>",
 button_label: "Use this microphone"}];
-    const Ensayo_timeline = {
+    const New_Trial_timeline = {
     type: jsPsychInitializeMicrophone, device_select_message: jsPsych.timelineVariable("device_select_message"),
 button_label: jsPsych.timelineVariable("button_label"),
       data: {
         device_id: "device_id",
-        trial_id: 1765473193557,
+        trial_id: 1765491313788,
         
         
-        branches: [1765488105702],
+        branches: [1765491360740],
         branchConditions: [undefined] 
         
       },
@@ -465,7 +512,7 @@ button_label: jsPsych.timelineVariable("button_label"),
       
       
       // Branching automático al primer branch
-      const branches = [1765488105702];
+      const branches = [1765491360740];
       if (branches.length > 0) {
         window.nextTrialId = branches[0];
         window.skipRemaining = true;
@@ -474,12 +521,12 @@ button_label: jsPsych.timelineVariable("button_label"),
       
     },
     };
-    const Ensayo_procedure = {
+    const New_Trial_procedure = {
     timeline: 
-    [Ensayo_timeline],
-    timeline_variables: test_stimuli_Ensayo,
+    [New_Trial_timeline],
+    timeline_variables: test_stimuli_New_Trial,
     conditional_function: function() {
-      const currentId = 1765473193557;
+      const currentId = 1765491313788;
       
       // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
       const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
@@ -511,17 +558,17 @@ button_label: jsPsych.timelineVariable("button_label"),
     },
     
     };
-    timeline.push(Ensayo_procedure);
+    timeline.push(New_Trial_procedure);
   
 
 
-    const test_stimuli_New_Trial_1j = [{components: [{ type: "ImageComponent", coordinates: {"x":-0.009571066123963079,"y":-0.38993867559697426}, width: 260.4943102562778, height: 260.4943102562778, stimulus: "img/armadillo.png", rotation: 0 }],
-response_components: [{ type: "AudioResponseComponent", coordinates: {"x":-1.1102230246251565e-16,"y":0.25683060109289624}, width: 200, height: 50 }],
+    const test_stimuli_audio_responses = [{components: [{ type: "ImageComponent", coordinates: {"x":0.5862711059927639,"y":-0.27479557662503273}, width: 331.35260154757896, height: 331.35260154757896, stimulus: "img/armadillo.png", rotation: 0 }],
+response_components: [{ type: "AudioResponseComponent", coordinates: {"x":0.17032967032967017,"y":0.7655677655677655}, width: 200, height: 50 }],
 stimuli_duration: undefined,
 trial_duration: undefined,
 response_ends_trial: undefined,
-responses: [{ type: "AudioResponseComponent", coordinates: {"x":-1.1102230246251565e-16,"y":0.25683060109289624}, width: 200, height: 50 }]}];
-    const New_Trial_1j_timeline = {
+responses: [{ type: "AudioResponseComponent", coordinates: {"x":0.17032967032967017,"y":0.7655677655677655}, width: 200, height: 50 }]}];
+    const audio_responses_timeline = {
     type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
 response_components: jsPsych.timelineVariable("response_components"),
 stimuli_duration: jsPsych.timelineVariable("stimuli_duration"),
@@ -531,7 +578,7 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
         stimulus: "stimulus",
 response: "response",
 rt: "rt",
-        trial_id: 1765488105702,
+        trial_id: 1765491360740,
         
         
       },
@@ -601,12 +648,12 @@ rt: "rt",
       }
     },
     };
-    const New_Trial_1j_procedure = {
+    const audio_responses_procedure = {
     timeline: 
-    [New_Trial_1j_timeline],
-    timeline_variables: test_stimuli_New_Trial_1j,
+    [audio_responses_timeline],
+    timeline_variables: test_stimuli_audio_responses,
     conditional_function: function() {
-      const currentId = 1765488105702;
+      const currentId = 1765491360740;
       
       // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
       const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
@@ -638,7 +685,7 @@ rt: "rt",
     },
     
     };
-    timeline.push(New_Trial_1j_procedure);
+    timeline.push(audio_responses_procedure);
   
 
 jsPsych.run(timeline);

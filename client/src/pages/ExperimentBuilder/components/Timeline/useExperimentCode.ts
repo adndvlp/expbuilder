@@ -378,6 +378,9 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
 
     ${evaluateCondition}
 
+    // Track pending data saves to ensure all complete before finishing
+    const pendingDataSaves = [];
+
     const jsPsych = initJsPsych({
           display_element: document.getElementById('jspsych-container'),
 
@@ -385,14 +388,33 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
     ${extensions}
 
     on_data_update: function (data) {
-      const res = fetch("/api/append-result/${experimentID}", {
+      // Create and track the promise for this data save
+      const savePromise = fetch("/api/append-result/${experimentID}", {
         method: "PUT",
         headers: { "Content-Type": "application/json", Accept: "*/*" },
         body: JSON.stringify({
           sessionId: trialSessionId,
           response: data,
         }),
+      })
+      .then(res => {
+        if (!res.ok) {
+          console.error('Error saving trial data:', res.statusText);
+        }
+        return res;
+      })
+      .catch(error => {
+        console.error('Error in on_data_update:', error);
+      })
+      .finally(() => {
+        // Remove from pending once complete
+        const index = pendingDataSaves.indexOf(savePromise);
+        if (index > -1) {
+          pendingDataSaves.splice(index, 1);
+        }
       });
+      
+      pendingDataSaves.push(savePromise);
       
       // Actualizar estado a 'in-progress' en la primera actualización
       if (data.trial_index === 0 && socket) {
@@ -407,6 +429,13 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
     },
 
   on_finish: async function() {
+    // Wait for all pending data saves to complete
+    if (pendingDataSaves.length > 0) {
+      console.log('Waiting for', pendingDataSaves.length, 'pending data saves to complete...');
+      await Promise.allSettled(pendingDataSaves);
+      console.log('All data saves completed');
+    }
+    
     // Marcar como completado
     if (socket) {
       socket.emit('update-session-state', {
@@ -423,7 +452,7 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
         sessionId: trialSessionId,
       }),
     });
-    // jsPsych.data.displayData();
+    jsPsych.data.displayData();
   }
 });
 
@@ -643,6 +672,9 @@ jsPsych.run(timeline);
 
     ${evaluateCondition}
 
+    // Track pending data saves to ensure all complete before finishing
+    const pendingDataSaves = [];
+
     const jsPsych = initJsPsych({
       display_element: document.getElementById('jspsych-container'),
 
@@ -675,7 +707,8 @@ jsPsych.run(timeline);
           }).catch(err => console.warn('Could not update state in local db:', err));
         }
 
-        fetch("${DATA_API_URL}", {
+        // Create and track the promise for this data save
+        const savePromise = fetch("${DATA_API_URL}", {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "*/*" },
           body: JSON.stringify({
@@ -700,12 +733,28 @@ jsPsych.run(timeline);
         })
         .catch(error => {
           console.error('Error in on_data_update:', error);
+        })
+        .finally(() => {
+          // Remove from pending once complete
+          const index = pendingDataSaves.indexOf(savePromise);
+          if (index > -1) {
+            pendingDataSaves.splice(index, 1);
+          }
         });
+        
+        pendingDataSaves.push(savePromise);
 
         ${branchingEvaluation}
       },
 
       on_finish: async function() {
+        
+        // Wait for all pending data saves to complete
+        if (pendingDataSaves.length > 0) {
+          console.log('Waiting for', pendingDataSaves.length, 'pending data saves to complete...');
+          await Promise.allSettled(pendingDataSaves);
+          console.log('All data saves completed');
+        }
         
         // Cancelar el onDisconnect para evitar que marque como abandoned
         sessionRef.onDisconnect().cancel();

@@ -34,14 +34,14 @@
 
 
         const trialSessionId =
-            "New Trial 1j_result_" + (crypto.randomUUID
+            "audio responses_result_" + (crypto.randomUUID
               ? crypto.randomUUID()
               : Math.random().toString(36).slice(2, 10));
 
         let participantNumber;
 
           async function saveSession(trialSessionId) {
-          const res = await fetch("/api/append-result/e91d3b90-bfa6-4f83-9f69-72a1723948d2", {
+          const res = await fetch("/api/append-result/2dcb0684-fbb0-449e-a191-d370f522b7d3", {
             method: "POST",
             headers: { "Content-Type": "application/json", Accept: "*/*" },
             body: JSON.stringify({
@@ -64,7 +64,7 @@ localStorage.removeItem('jsPsych_jumpToTrial');
     const jsPsych = initJsPsych({
     display_element: document.getElementById('jspsych-container'),
           on_data_update: function (data) {
-            const res = fetch("/api/append-result/e91d3b90-bfa6-4f83-9f69-72a1723948d2", {
+            const res = fetch("/api/append-result/2dcb0684-fbb0-449e-a191-d370f522b7d3", {
               method: "PUT",
               headers: { "Content-Type": "application/json", Accept: "*/*" },
               body: JSON.stringify({
@@ -83,13 +83,13 @@ localStorage.removeItem('jsPsych_jumpToTrial');
       const timeline = [];
       
       
-    const test_stimuli_New_Trial_1j = [{components: [{ type: "ImageComponent", coordinates: {"x":-0.009571066123963079,"y":-0.38993867559697426}, width: 260.4943102562778, height: 260.4943102562778, stimulus: "img/armadillo.png", rotation: 0 }],
-response_components: [{ type: "AudioResponseComponent", coordinates: {"x":-1.1102230246251565e-16,"y":0.25683060109289624}, width: 200, height: 50 }],
+    const test_stimuli_audio_responses = [{components: [{ type: "ImageComponent", coordinates: {"x":0.5862711059927639,"y":-0.27479557662503273}, width: 331.35260154757896, height: 331.35260154757896, stimulus: "img/armadillo.png", rotation: 0 }],
+response_components: [{ type: "AudioResponseComponent", coordinates: {"x":0.17032967032967017,"y":0.7655677655677655}, width: 200, height: 50 }],
 stimuli_duration: undefined,
 trial_duration: undefined,
 response_ends_trial: undefined,
-responses: [{ type: "AudioResponseComponent", coordinates: {"x":-1.1102230246251565e-16,"y":0.25683060109289624}, width: 200, height: 50 }]}];
-    const New_Trial_1j_timeline = {
+responses: [{ type: "AudioResponseComponent", coordinates: {"x":0.17032967032967017,"y":0.7655677655677655}, width: 200, height: 50 }]}];
+    const audio_responses_timeline = {
     type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
 response_components: jsPsych.timelineVariable("response_components"),
 stimuli_duration: jsPsych.timelineVariable("stimuli_duration"),
@@ -99,7 +99,7 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
         stimulus: "stimulus",
 response: "response",
 rt: "rt",
-        trial_id: 1765488105702,
+        trial_id: 1765491360740,
         
         
       },
@@ -169,12 +169,12 @@ rt: "rt",
       }
     },
     };
-    const New_Trial_1j_procedure = {
+    const audio_responses_procedure = {
     timeline: 
-    [New_Trial_1j_timeline],
-    timeline_variables: test_stimuli_New_Trial_1j,
+    [audio_responses_timeline],
+    timeline_variables: test_stimuli_audio_responses,
     conditional_function: function() {
-      const currentId = 1765488105702;
+      const currentId = 1765491360740;
       
       // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
       const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
@@ -206,7 +206,7 @@ rt: "rt",
     },
     
     };
-    timeline.push(New_Trial_1j_procedure);
+    timeline.push(audio_responses_procedure);
   
 
     false
