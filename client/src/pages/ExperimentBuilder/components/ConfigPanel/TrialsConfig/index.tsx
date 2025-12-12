@@ -661,6 +661,8 @@ function TrialsConfig({ pluginName }: Props) {
           setIncludeExtensions={setIncludeExtensions}
           extensionType={extensionType}
           setExtensionType={setExtensionType}
+          pluginName={pluginName}
+          columnMapping={columnMapping}
         ></ExtensionsConfig>
       </div>
 

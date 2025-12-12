@@ -1,4 +1,5 @@
 import Switch from "react-switch";
+import { ColumnMapping } from "../types";
 
 type Props = {
   includesExtensions: boolean;
@@ -6,6 +7,8 @@ type Props = {
   extensionType: string;
   setExtensionType: (value: string) => void;
   parameters: any[];
+  pluginName?: string;
+  columnMapping?: ColumnMapping;
 };
 
 function ExtensionsConfig({
@@ -14,13 +17,35 @@ function ExtensionsConfig({
   setIncludeExtensions,
   extensionType,
   setExtensionType,
+  pluginName,
+  columnMapping = {},
 }: Props) {
   let isWebgazer = false;
-  parameters.forEach((param) => {
-    if (param.key === "stimulus" || param.key === "stimuli") {
-      isWebgazer = true;
+
+  // Check if using DynamicPlugin with stimulus components
+  if (pluginName === "plugin-dynamic") {
+    // For DynamicPlugin, check the columnMapping for components
+    const componentsConfig = columnMapping.components;
+    if (componentsConfig && Array.isArray(componentsConfig.value)) {
+      // Check if there's any ImageComponent, VideoComponent, or HtmlComponent
+      interface ComponentType {
+        type?: string;
+      }
+      isWebgazer = componentsConfig.value.some(
+        (comp: ComponentType) =>
+          comp.type === "ImageComponent" ||
+          comp.type === "VideoComponent" ||
+          comp.type === "HtmlComponent"
+      );
     }
-  });
+  } else {
+    // Original logic for standard plugins
+    parameters.forEach((param) => {
+      if (param.key === "stimulus" || param.key === "stimuli") {
+        isWebgazer = true;
+      }
+    });
+  }
   return (
     <div className="mt-4 mb-2 p-4 border rounded bg-gray-50">
       <div

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useCsvData } from "./hooks/useCsvData";
 import useTrials from "../../../hooks/useTrials";
 import { useTrialPersistence } from "./hooks/useTrialPersistence";
@@ -225,83 +225,121 @@ function WebGazer({ webgazerPlugins }: Props) {
     [pluginName: string]: boolean;
   };
 
-  let trialCode = "";
-  let include_instructions: InstructionsConfig = {};
-  let mappedColumns = {};
+  const include_instructions: InstructionsConfig = useMemo(() => {
+    return {
+      [initCamera]: initCameraPhase.includeInstructions,
+      [calibrateWebgazer]: calibratePhase.includeInstructions,
+      [validateWebgazer]: validatePhase.includeInstructions,
+      [recalibrateWebGazer]: recalibratePhase.includeInstructions,
+    };
+  }, [
+    initCameraPhase.includeInstructions,
+    calibratePhase.includeInstructions,
+    validatePhase.includeInstructions,
+    recalibratePhase.includeInstructions,
+    initCamera,
+    calibrateWebgazer,
+    validateWebgazer,
+    recalibrateWebGazer,
+  ]);
 
-  webGazerPhases.forEach((phase) => {
-    trialCode += phase.trialCode;
-    include_instructions[phase.pluginName] = phase.includeInstructions;
-    Object.assign(mappedColumns, phase.columnMapping);
-  });
+  const mappedColumns = useMemo(() => {
+    return {
+      ...initCameraPhase.columnMapping,
+      ...calibratePhase.columnMapping,
+      ...validatePhase.columnMapping,
+      ...recalibratePhase.columnMapping,
+    };
+  }, [
+    initCameraPhase.columnMapping,
+    calibratePhase.columnMapping,
+    validatePhase.columnMapping,
+    recalibratePhase.columnMapping,
+  ]);
+
+  const trialCode = useMemo(() => {
+    return (
+      initCameraPhase.trialCode +
+      calibratePhase.trialCode +
+      validatePhase.trialCode +
+      recalibratePhase.trialCode
+    );
+  }, [
+    initCameraPhase.trialCode,
+    calibratePhase.trialCode,
+    validatePhase.trialCode,
+    recalibratePhase.trialCode,
+  ]);
 
   // guardar y actualizar el estado global del ensayo
 
   const canSave = !!trialName && !isLoadingTrial;
-  const handleSave = (force = true) => {
-    // Evita autoguardado si no hay nombre válido o si no hay estímulo
-    // if (!trialName || !canSave) return;
-    if (!canSave) return;
+  const handleSave = useCallback(
+    (force = false) => {
+      if (!canSave) return;
 
-    if (isInitialFileLoad.current) {
-      isInitialFileLoad.current = false;
-      return;
-    }
+      if (isInitialFileLoad.current) {
+        isInitialFileLoad.current = false;
+        return;
+      }
 
-    const trialIndex = trials.findIndex((t) => t.name === trialName);
-    if (trialIndex === -1) return;
+      const trialIndex = trials.findIndex((t) => t.name === trialName);
+      if (trialIndex === -1) return;
 
-    const prevTrial = trials[trialIndex];
+      const prevTrial = trials[trialIndex];
 
-    if (!("type" in prevTrial)) return;
+      if (!("type" in prevTrial)) return;
 
-    const updatedTrial = {
-      ...prevTrial,
-      plugin: "webgazer",
-      parameters: {
-        include_instructions: include_instructions,
-        minimum_percent: minimumPercentAcceptable,
-      },
+      const updatedTrial = {
+        ...prevTrial,
+        plugin: "webgazer",
+        parameters: {
+          include_instructions: include_instructions,
+          minimum_percent: minimumPercentAcceptable,
+        },
+        trialCode: trialCode,
+        columnMapping: mappedColumns,
+        csvJson: [...csvJson],
+        csvColumns: [...csvColumns],
+      };
 
-      trialCode: trialCode,
-      columnMapping: mappedColumns,
-      csvJson: [...csvJson],
-      csvColumns: [...csvColumns],
-    };
+      if (!force && isEqual(updatedTrial, prevTrial)) return;
 
-    if (!force && isEqual(updatedTrial, prevTrial)) return;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        const updatedTrials = [...trials];
+        updatedTrials[trialIndex] = updatedTrial;
+        setTrials(updatedTrials);
+        setSelectedTrial(updatedTrial);
 
-    timeoutRef.current = setTimeout(() => {
-      const updatedTrials = [...trials];
-      updatedTrials[trialIndex] = updatedTrial;
-      setTrials(updatedTrials);
-      setSelectedTrial(updatedTrial);
+        setSaveIndicator(true);
+        setTimeout(() => {
+          setSaveIndicator(false);
+        }, 2000);
+      }, 1000);
+    },
+    [
+      canSave,
+      trialName,
+      include_instructions,
+      minimumPercentAcceptable,
+      trialCode,
+      mappedColumns,
+      csvJson,
+      csvColumns,
+      trials,
+      setTrials,
+      setSelectedTrial,
+    ]
+  );
 
-      // window.alert("Ensayo guardado exitosamente.");
-      // console.log(columnMapping);
-      // // console.log(csvJson);
-      // console.log(trialCode);
-      setSaveIndicator(true);
-      setTimeout(() => {
-        setSaveIndicator(false);
-      }, 2000);
-    }, 1000);
-  };
   useEffect(() => {
     handleSave();
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [
-    trialName,
-    include_instructions,
-    columnMapping,
-    csvJson,
-    csvColumns,
-    isLoadingTrial,
-  ]);
+  }, [handleSave]);
 
   const deleteCsv = () => {
     if (csvJson.length === 0) return;

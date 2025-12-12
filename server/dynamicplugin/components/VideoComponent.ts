@@ -123,7 +123,9 @@ class VideoComponent {
 
     const videoElement = document.createElement("video");
     stimulusWrapper.appendChild(videoElement);
-    videoElement.id = "jspsych-dynamic-video-component";
+    videoElement.id = config.name
+      ? `jspsych-dynamic-${config.name}-stimulus`
+      : "jspsych-dynamic-video-stimulus";
     videoElement.className = "dynamic-video-component";
 
     // Required attributes for autoplay to work reliably

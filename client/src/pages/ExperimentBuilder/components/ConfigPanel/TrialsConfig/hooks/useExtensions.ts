@@ -9,27 +9,61 @@ export function useExtensions(pluginName: string, parameters: any[]) {
     if (extensionType === "jsPsychExtensionMouseTracking") {
       setTargetedPlugin("#target");
     } else if (extensionType === "jsPsychExtensionWebgazer") {
-      parameters.forEach((param) => {
-        if (param.key === "stimulus" || param.key === "stimuli") {
-          let suffix = "";
-          if (param.key === "stimulus") {
-            suffix = "-stimulus";
-          } else if (param.key === "stimuli") {
-            suffix = "-stimuli";
+      // For DynamicPlugin, we need to target the first stimulus component
+      if (pluginName === "DynamicPlugin") {
+        // Find the first component with stimulus or stimuli
+        const stimulusParam = parameters.find(
+          (param) => param.key === "components" && Array.isArray(param.value)
+        );
+
+        if (stimulusParam && stimulusParam.value.length > 0) {
+          // Get the first component that has a stimulus (Image, Video, Html)
+          interface ComponentType {
+            type?: string;
+            name?: string;
           }
-          const targetedPlugin = () => {
-            const plugin = pluginName
-              .replace(/^plugin-/, "#jspsych-")
-              .replace(/$/, suffix);
-            return plugin;
-          };
-          setTargetedPlugin(targetedPlugin());
+          const firstComponent = stimulusParam.value.find(
+            (comp: ComponentType) =>
+              comp.type === "ImageComponent" ||
+              comp.type === "VideoComponent" ||
+              comp.type === "HtmlComponent"
+          );
+
+          if (firstComponent && firstComponent.name) {
+            setTargetedPlugin(
+              `#jspsych-dynamic-${firstComponent.name}-stimulus`
+            );
+          } else {
+            // Fallback to default selector if no name is found
+            setTargetedPlugin("#jspsych-dynamic-image-stimulus");
+          }
+        } else {
+          setTargetedPlugin("");
         }
-      });
+      } else {
+        // Original logic for standard plugins
+        parameters.forEach((param) => {
+          if (param.key === "stimulus" || param.key === "stimuli") {
+            let suffix = "";
+            if (param.key === "stimulus") {
+              suffix = "-stimulus";
+            } else if (param.key === "stimuli") {
+              suffix = "-stimuli";
+            }
+            const targetedPlugin = () => {
+              const plugin = pluginName
+                .replace(/^plugin-/, "#jspsych-")
+                .replace(/$/, suffix);
+              return plugin;
+            };
+            setTargetedPlugin(targetedPlugin());
+          }
+        });
+      }
     } else {
       setTargetedPlugin("");
     }
-  }, [extensionType, pluginName, parameters]);
+  }, [extensionType, pluginName, parameters, setTargetedPlugin]);
 
   const extensionsParams = [
     {

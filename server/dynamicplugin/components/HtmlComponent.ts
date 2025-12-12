@@ -58,7 +58,9 @@ class HtmlComponent {
 
     // Create stimulus element with coordinates
     const stimulusElement = document.createElement("div");
-    stimulusElement.id = "jspsych-dynamic-html-component-stimulus";
+    stimulusElement.id = config.name
+      ? `jspsych-dynamic-${config.name}-stimulus`
+      : "jspsych-dynamic-html-stimulus";
     stimulusElement.className = "dynamic-html-component-stimulus";
     stimulusElement.style.position = "absolute";
     stimulusElement.style.width = "max-content";

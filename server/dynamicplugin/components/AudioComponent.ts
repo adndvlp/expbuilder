@@ -67,7 +67,9 @@ class AudioComponent {
     // Only create visible element if controls are requested
     if (config.show_controls) {
       const audioElement = document.createElement("div");
-      audioElement.id = "jspsych-dynamic-audio-component";
+      audioElement.id = config.name
+        ? `jspsych-dynamic-${config.name}-stimulus`
+        : "jspsych-dynamic-audio-stimulus";
       audioElement.className = "dynamic-audio-component";
 
       // Add basic audio controls display

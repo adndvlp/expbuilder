@@ -145,8 +145,20 @@ class ImageComponent {
       ? new Image()
       : document.createElement("img");
 
+    // Add ID to image element for WebGazer tracking
+    if (!config.render_on_canvas) {
+      (image as HTMLImageElement).id = config.name
+        ? `jspsych-dynamic-${config.name}-stimulus`
+        : "jspsych-dynamic-image-stimulus";
+      (image as HTMLImageElement).className = "dynamic-image-component";
+    }
+
     if (config.render_on_canvas) {
       canvas = document.createElement("canvas");
+      canvas.id = config.name
+        ? `jspsych-dynamic-${config.name}-stimulus`
+        : "jspsych-dynamic-image-stimulus";
+      canvas.className = "dynamic-image-component";
       canvas.style.margin = "0";
       canvas.style.padding = "0";
       stimulusElement = canvas;
@@ -190,8 +202,6 @@ class ImageComponent {
       hasImageBeenDrawn = true;
     }
 
-    stimulusElement.id = "jspsych-dynamic-image-component";
-    stimulusElement.className = "dynamic-image-component";
     imageContainer.appendChild(stimulusElement);
 
     // Handle stimulus duration

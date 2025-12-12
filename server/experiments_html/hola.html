@@ -5,6 +5,8 @@
     <title>Experiment</title>
 
     <link href="../jspsych-bundle/index.css" rel="stylesheet" type="text/css">
+    <script src="https://cdn.jsdelivr.net/gh/jspsych/jspsych@jspsych@7.0.0/examples/js/webgazer/webgazer.js"></script>
+
     <script src="../jspsych-bundle/index.js"></script>
 
     <style>
@@ -275,7 +277,7 @@
           display_element: document.getElementById('jspsych-container'),
 
 
-    
+    extensions: [{type: jsPsychExtensionWebgazer}],
 
     on_data_update: function (data) {
       // Create and track the promise for this data save
@@ -384,8 +386,8 @@ const timeline = [];
 
 
 
-    const test_stimuli_New_Trial = [{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":-0.12568306010928984}, width: 200, height: 50, stimulus: "<div id=\"i9zw\" style=\"box-sizing: border-box;\">Welcome to the experiment, press 'Start' to begin</div>", name: "locao" }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":-0.0737704918032791,"y":0.13907103825136602}, width: 200, height: 50, choices: ["Start"], name: "loca", rotation: 0 }],
+    const test_stimuli_New_Trial = [{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":-0.12568306010928984}, width: 200, height: 50, stimulus: "<div id=\"i9zw\" style=\"box-sizing: border-box;\">Welcome to the experiment, press 'Start' to begin</div>", name: "texto" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":-0.24180327868852503,"y":0.13907103825136602}, width: 200, height: 50, choices: ["Start"], name: "boton 1" }, { type: "ButtonResponseComponent", coordinates: {"x":0.2622950819672132,"y":0.13114754098360656}, width: 200, height: 50, choices: ["salir"], name: "boton 2" }],
 stimuli_duration: undefined,
 trial_duration: undefined,
 response_ends_trial: undefined}];
@@ -400,7 +402,133 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
         trial_id: 1765493817021,
         
         
-        branches: [1765494204915],
+        branches: [1765494204915, 1765496958102],
+        branchConditions: [[{"id":1765497014804,"rules":[{"column":"boton 2_response","op":"==","value":"salir"}],"nextTrialId":"1765496958102","customParameters":{}},{"id":1765497030904,"rules":[{"column":"boton 1_response","op":"==","value":"Start"}],"nextTrialId":"1765494204915","customParameters":{}}]] 
+        
+      },
+    on_start: function(trial) {
+      // First, evaluate and apply params override conditions (if any)
+      
+      // Then apply custom parameters from branching conditions (higher priority)
+      
+      // For trials outside loops, use window.branchCustomParameters
+      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {
+        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {
+          if (param && param.source !== 'none') {
+            // Parse key to check if it's a nested survey question
+            const parts = key.split('::');
+            
+            if (parts.length === 4) {
+              // Format: fieldType::componentName::survey_json::questionName
+              const [fieldType, componentName, propName, questionName] = parts;
+              
+              if (fieldType && componentName && propName === 'survey_json' && questionName) {
+                // Find the component by name in the field array
+                const fieldArray = trial[fieldType];
+                if (Array.isArray(fieldArray)) {
+                  const compIndex = fieldArray.findIndex(c => c.name === componentName);
+                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {
+                    // Find the question in survey_json.elements
+                    const elements = fieldArray[compIndex].survey_json.elements || [];
+                    const questionIndex = elements.findIndex(q => q.name === questionName);
+                    
+                    if (questionIndex !== -1) {
+                      // Apply the override value (from typed or csv)
+                      let valueToSet;
+                      if (param.source === 'typed') {
+                        valueToSet = String(param.value); // Convert to string for SurveyJS
+                      } else if (param.source === 'csv') {
+                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string
+                      }
+                      
+                      if (valueToSet !== undefined && valueToSet !== null) {
+                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;
+                      }
+                    }
+                  }
+                }
+              }
+            } else {
+              // Normal parameter (not nested survey question)
+              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
+                trial[key] = param.value;
+              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
+                trial[key] = trial[param.value];
+              }
+            }
+          }
+        });
+        // Clear the custom parameters after applying them
+        window.branchCustomParameters = null;
+      }
+      
+    },
+    
+    on_finish: function(data) {
+      
+      
+      // Si hay múltiples branches Y condiciones, la lógica se maneja en Timeline.tsx
+      
+    },
+    };
+    const New_Trial_procedure = {
+    timeline: 
+    [New_Trial_timeline],
+    timeline_variables: test_stimuli_New_Trial,
+    conditional_function: function() {
+      const currentId = 1765493817021;
+      
+      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
+      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
+      if (jumpToTrial) {
+        if (String(currentId) === String(jumpToTrial)) {
+          // Encontramos el trial objetivo para repeat/jump
+          console.log('Repeat/jump: Found target trial', currentId);
+          localStorage.removeItem('jsPsych_jumpToTrial');
+          return true;
+        }
+        // No es el objetivo, saltar
+        console.log('Repeat/jump: Skipping trial', currentId);
+        return false;
+      }
+      
+      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo
+      if (window.skipRemaining) {
+        if (String(currentId) === String(window.nextTrialId)) {
+          // Encontramos el trial objetivo
+          window.skipRemaining = false;
+          window.nextTrialId = null;
+          return true;
+        }
+        // No es el objetivo, saltar
+        return false;
+      }
+      
+      return true;
+    },
+    
+    };
+    timeline.push(New_Trial_procedure);
+  
+
+
+    const test_stimuli_New_Trial_1 = [{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, stimulus: "<div id=\"i4g4\" style=\"box-sizing: border-box;\">Empezar</div>" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":0.36475409836065564,"y":0.4043715846994533}, width: 200, height: 50, choices: ["hola?"] }],
+stimuli_duration: undefined,
+trial_duration: undefined,
+response_ends_trial: undefined}];
+    const New_Trial_1_timeline = {
+    type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
+response_components: jsPsych.timelineVariable("response_components"),
+stimuli_duration: jsPsych.timelineVariable("stimuli_duration"),
+trial_duration: jsPsych.timelineVariable("trial_duration"),
+response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
+      data: {
+        rt: "rt",
+        trial_id: 1765494204915,
+        
+        
+        branches: [1765498674994],
         branchConditions: [undefined] 
         
       },
@@ -466,7 +594,7 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
       
       
       // Branching automático al primer branch
-      const branches = [1765494204915];
+      const branches = [1765498674994];
       if (branches.length > 0) {
         window.nextTrialId = branches[0];
         window.skipRemaining = true;
@@ -475,12 +603,12 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
       
     },
     };
-    const New_Trial_procedure = {
+    const New_Trial_1_procedure = {
     timeline: 
-    [New_Trial_timeline],
-    timeline_variables: test_stimuli_New_Trial,
+    [New_Trial_1_timeline],
+    timeline_variables: test_stimuli_New_Trial_1,
     conditional_function: function() {
-      const currentId = 1765493817021;
+      const currentId = 1765494204915;
       
       // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
       const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
@@ -512,16 +640,142 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
     },
     
     };
-    timeline.push(New_Trial_procedure);
+    timeline.push(New_Trial_1_procedure);
   
 
 
-    const test_stimuli_New_Trial_1 = [{components: [],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":0.36475409836065564,"y":0.4043715846994533}, width: 200, height: 50, choices: ["hola?"], rotation: 0 }],
+    const test_stimuli_New_Trial_2 = [{device_select_message: "<p>Please select the microphone you would like to use.</p>",
+button_label: "Use this microphone"}];
+    const New_Trial_2_timeline = {
+    type: jsPsychInitializeMicrophone, device_select_message: jsPsych.timelineVariable("device_select_message"),
+button_label: jsPsych.timelineVariable("button_label"),
+      data: {
+        device_id: "device_id",
+        trial_id: 1765496958102,
+        
+        
+        branches: [1765497120721],
+        branchConditions: [undefined] 
+        
+      },
+    on_start: function(trial) {
+      // First, evaluate and apply params override conditions (if any)
+      
+      // Then apply custom parameters from branching conditions (higher priority)
+      
+      // For trials outside loops, use window.branchCustomParameters
+      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {
+        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {
+          if (param && param.source !== 'none') {
+            // Parse key to check if it's a nested survey question
+            const parts = key.split('::');
+            
+            if (parts.length === 4) {
+              // Format: fieldType::componentName::survey_json::questionName
+              const [fieldType, componentName, propName, questionName] = parts;
+              
+              if (fieldType && componentName && propName === 'survey_json' && questionName) {
+                // Find the component by name in the field array
+                const fieldArray = trial[fieldType];
+                if (Array.isArray(fieldArray)) {
+                  const compIndex = fieldArray.findIndex(c => c.name === componentName);
+                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {
+                    // Find the question in survey_json.elements
+                    const elements = fieldArray[compIndex].survey_json.elements || [];
+                    const questionIndex = elements.findIndex(q => q.name === questionName);
+                    
+                    if (questionIndex !== -1) {
+                      // Apply the override value (from typed or csv)
+                      let valueToSet;
+                      if (param.source === 'typed') {
+                        valueToSet = String(param.value); // Convert to string for SurveyJS
+                      } else if (param.source === 'csv') {
+                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string
+                      }
+                      
+                      if (valueToSet !== undefined && valueToSet !== null) {
+                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;
+                      }
+                    }
+                  }
+                }
+              }
+            } else {
+              // Normal parameter (not nested survey question)
+              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
+                trial[key] = param.value;
+              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
+                trial[key] = trial[param.value];
+              }
+            }
+          }
+        });
+        // Clear the custom parameters after applying them
+        window.branchCustomParameters = null;
+      }
+      
+    },
+    
+    on_finish: function(data) {
+      
+      
+      // Branching automático al primer branch
+      const branches = [1765497120721];
+      if (branches.length > 0) {
+        window.nextTrialId = branches[0];
+        window.skipRemaining = true;
+        window.branchingActive = true;
+      }
+      
+    },
+    };
+    const New_Trial_2_procedure = {
+    timeline: 
+    [New_Trial_2_timeline],
+    timeline_variables: test_stimuli_New_Trial_2,
+    conditional_function: function() {
+      const currentId = 1765496958102;
+      
+      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
+      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
+      if (jumpToTrial) {
+        if (String(currentId) === String(jumpToTrial)) {
+          // Encontramos el trial objetivo para repeat/jump
+          console.log('Repeat/jump: Found target trial', currentId);
+          localStorage.removeItem('jsPsych_jumpToTrial');
+          return true;
+        }
+        // No es el objetivo, saltar
+        console.log('Repeat/jump: Skipping trial', currentId);
+        return false;
+      }
+      
+      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo
+      if (window.skipRemaining) {
+        if (String(currentId) === String(window.nextTrialId)) {
+          // Encontramos el trial objetivo
+          window.skipRemaining = false;
+          window.nextTrialId = null;
+          return true;
+        }
+        // No es el objetivo, saltar
+        return false;
+      }
+      
+      return true;
+    },
+    
+    };
+    timeline.push(New_Trial_2_procedure);
+  
+
+
+    const test_stimuli_New_Trial_3 = [{components: [{ type: "HtmlComponent", coordinates: {"x":0.6393442622950818,"y":-4.440892098500626e-16}, width: 200, height: 50, stimulus: "<div id=\"i783\" style=\"box-sizing: border-box;\">Habla</div>" }],
+response_components: [{ type: "AudioResponseComponent", coordinates: {"x":-0.15573770491803285,"y":0.31147540983606553}, width: 200, height: 50, rotation: 0 }],
 stimuli_duration: undefined,
 trial_duration: undefined,
 response_ends_trial: undefined}];
-    const New_Trial_1_timeline = {
+    const New_Trial_3_timeline = {
     type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
 response_components: jsPsych.timelineVariable("response_components"),
 stimuli_duration: jsPsych.timelineVariable("stimuli_duration"),
@@ -529,7 +783,7 @@ trial_duration: jsPsych.timelineVariable("trial_duration"),
 response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
       data: {
         rt: "rt",
-        trial_id: 1765494204915,
+        trial_id: 1765497120721,
         
         
       },
@@ -599,12 +853,12 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
       }
     },
     };
-    const New_Trial_1_procedure = {
+    const New_Trial_3_procedure = {
     timeline: 
-    [New_Trial_1_timeline],
-    timeline_variables: test_stimuli_New_Trial_1,
+    [New_Trial_3_timeline],
+    timeline_variables: test_stimuli_New_Trial_3,
     conditional_function: function() {
-      const currentId = 1765494204915;
+      const currentId = 1765497120721;
       
       // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
       const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
@@ -636,8 +890,297 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
     },
     
     };
-    timeline.push(New_Trial_1_procedure);
+    timeline.push(New_Trial_3_procedure);
   
+
+const plugin_webgazer_init_camera_instructions = {
+      type: jsPsychHtmlButtonResponse,
+      stimulus: jsPsych.timelineVariable("plugin_webgazer_init_camera_instructions"),
+      choices: jsPsych.timelineVariable("plugin_webgazer_init_camera_choices"),
+    };
+    const test_stimuli_plugin_webgazer_init_camera = [{instructions: "`\n            <p>Position your head so that the webcam has a good view of your eyes.</p>\n            <p>Center your face in the box and look directly towards the camera.</p>\n            <p>It is important that you try and keep your head reasonably still throughout the experiment, so please take a moment to adjust your setup to be comfortable.</p>\n            <p>When your face is centered in the box and the box is green, you can click to continue.</p>`",
+button_text: "Continue",
+plugin_webgazer_init_camera_instructions: "\n          <p>In order to participate you must allow the experiment to use your camera.</p>\n          <p>You will be prompted to do this on the next screen.</p>\n          <p>If you do not wish to allow use of your camera, you cannot participate in this experiment.<p>\n          <p>It may take up to 30 seconds for the camera to initialize after you give permission.</p>\n        ",
+plugin_webgazer_init_camera_choices: ["Got it"]}];
+
+    
+    const plugin_webgazer_init_camera_timeline = {
+    type: jsPsychWebgazerInitCamera, 
+    instructions: jsPsych.timelineVariable("instructions"),
+button_text: jsPsych.timelineVariable("button_text"),
+    data: {
+      load_time: "load_time",
+    },};;
+    
+    const plugin_webgazer_init_camera_procedure = {
+    timeline: 
+    [
+    plugin_webgazer_init_camera_instructions,
+    
+    plugin_webgazer_init_camera_timeline 
+    ],
+    timeline_variables: test_stimuli_plugin_webgazer_init_camera,
+  };
+    timeline.push(plugin_webgazer_init_camera_procedure);
+  ;const plugin_webgazer_calibrate_instructions = {
+      type: jsPsychHtmlButtonResponse,
+      stimulus: jsPsych.timelineVariable("plugin_webgazer_calibrate_instructions"),
+      choices: jsPsych.timelineVariable("plugin_webgazer_calibrate_choices"),
+    };
+    const test_stimuli_plugin_webgazer_calibrate = [{calibration_points: [[20,20],[80,20],[50,50],[20,80],[80,80]],
+calibration_mode: "click",
+point_size: 20,
+repetitions_per_point: 1,
+randomize_calibration_order: false,
+time_to_saccade: 1000,
+time_per_point: 1000,
+plugin_webgazer_calibrate_instructions: "\n          <p>Now you'll calibrate the eye tracking, so that the software can use the image of your eyes to predict where you are looking.</p>\n          <p>You'll see a series of dots appear on the screen. Look at each dot and click on it.</p>\n        ",
+plugin_webgazer_calibrate_choices: ["Got it"]}];
+
+    
+    const plugin_webgazer_calibrate_timeline = {
+    type: jsPsychWebgazerCalibrate, 
+    calibration_points: jsPsych.timelineVariable("calibration_points"),
+calibration_mode: jsPsych.timelineVariable("calibration_mode"),
+point_size: jsPsych.timelineVariable("point_size"),
+repetitions_per_point: jsPsych.timelineVariable("repetitions_per_point"),
+randomize_calibration_order: jsPsych.timelineVariable("randomize_calibration_order"),
+time_to_saccade: jsPsych.timelineVariable("time_to_saccade"),
+time_per_point: jsPsych.timelineVariable("time_per_point"),
+    data: {
+      
+    },};;
+    
+    const plugin_webgazer_calibrate_procedure = {
+    timeline: 
+    [
+    plugin_webgazer_calibrate_instructions,
+    
+    plugin_webgazer_calibrate_timeline 
+    ],
+    timeline_variables: test_stimuli_plugin_webgazer_calibrate,
+  };
+    timeline.push(plugin_webgazer_calibrate_procedure);
+  ;const plugin_webgazer_validate_instructions = {
+      type: jsPsychHtmlButtonResponse,
+      stimulus: jsPsych.timelineVariable("plugin_webgazer_validate_instructions"),
+      choices: jsPsych.timelineVariable("plugin_webgazer_validate_choices"),
+    };
+    const test_stimuli_plugin_webgazer_validate = [{validation_points: [[20,20],[80,20],[50,50],[20,80],[80,80]],
+validation_point_coordinates: "percent",
+roi_radius: 200,
+randomize_validation_order: false,
+time_to_saccade: 1000,
+validation_duration: 2000,
+point_size: 20,
+show_validation_data: false,
+plugin_webgazer_validate_instructions: "\n          <p>Now we'll measure the accuracy of the calibration.</p>\n          <p>Look at each dot as it appears on the screen.</p>\n          <p style=\"font-weight: bold;\">You do not need to click on the dots this time.</p>\n        ",
+plugin_webgazer_validate_choices: ["Got it"],
+post_trial_gap: 1000}];
+
+    
+    const plugin_webgazer_validate_timeline = {
+    type: jsPsychWebgazerValidate, validation_points: jsPsych.timelineVariable("validation_points"),
+validation_point_coordinates: jsPsych.timelineVariable("validation_point_coordinates"),
+roi_radius: jsPsych.timelineVariable("roi_radius"),
+randomize_validation_order: jsPsych.timelineVariable("randomize_validation_order"),
+time_to_saccade: jsPsych.timelineVariable("time_to_saccade"),
+validation_duration: jsPsych.timelineVariable("validation_duration"),
+point_size: jsPsych.timelineVariable("point_size"),
+show_validation_data: jsPsych.timelineVariable("show_validation_data"),
+    data: {
+      task: 'validate'
+    }};;
+    
+    const plugin_webgazer_validate_procedure = {
+    timeline: 
+    [
+    plugin_webgazer_validate_instructions,
+    
+    plugin_webgazer_validate_timeline 
+    ],
+    timeline_variables: test_stimuli_plugin_webgazer_validate,
+  };
+    timeline.push(plugin_webgazer_validate_procedure);
+  ;
+    const test_stimuli_plugin_webgazer_recalibrate = [{}];
+
+    ;
+    
+    const plugin_webgazer_recalibrate_procedure = {
+    timeline: 
+    [
+    
+    
+    
+    ],
+    timeline_variables: test_stimuli_plugin_webgazer_recalibrate,
+  };
+    timeline.push(plugin_webgazer_recalibrate_procedure);
+  ;
+    const recalibrate_timeline = {
+        timeline: [
+        plugin_webgazer_calibrate_procedure, plugin_webgazer_validate_procedure],
+        conditional_function: function(){
+          var validation_data = jsPsych.data.get().filter({task: 'validate'}).values()[0];
+          return validation_data.percent_in_roi.some(function(x){
+            var minimum_percent_acceptable = 50;
+            return x < minimum_percent_acceptable;
+          });
+        },
+        data: {
+          phase: 'recalibration'
+        }
+      } 
+ const recalibrateWebGazer_procedure = {
+    timeline: 
+    [recalibrate_timeline],
+    timeline_variables: test_stimuli_plugin_webgazer_recalibrate,
+  };
+    timeline.push(recalibrateWebGazer_procedure);
+  ;const calibration_done = {
+        type: jsPsychHtmlButtonResponse,
+        stimulus: `
+          <p>Great, we're done with calibration!</p>
+        `,
+        choices: ['OK']
+      }
+    timeline.push(calibration_done);
+
+
+
+    const test_stimuli_New_Trial_5 = [{components: [{ type: "HtmlComponent", coordinates: {"x":0.6762295081967211,"y":-0.754098360655738}, width: 200, height: 50, stimulus: "<div id=\"iu61\" style=\"box-sizing: border-box;\">loco</div>" }],
+response_components: [{ type: "KeyboardResponseComponent", coordinates: {"x":0.08606557377049184,"y":0.03278688524590153}, width: 200, height: 50 }],
+stimuli_duration: undefined,
+trial_duration: undefined,
+response_ends_trial: undefined}];
+    const New_Trial_5_timeline = {
+    type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
+response_components: jsPsych.timelineVariable("response_components"),
+stimuli_duration: jsPsych.timelineVariable("stimuli_duration"),
+trial_duration: jsPsych.timelineVariable("trial_duration"),
+response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
+      data: {
+        rt: "rt",
+        trial_id: 1765498868227,
+        
+        
+      },
+    on_start: function(trial) {
+      // First, evaluate and apply params override conditions (if any)
+      
+      // Then apply custom parameters from branching conditions (higher priority)
+      
+      // For trials outside loops, use window.branchCustomParameters
+      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {
+        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {
+          if (param && param.source !== 'none') {
+            // Parse key to check if it's a nested survey question
+            const parts = key.split('::');
+            
+            if (parts.length === 4) {
+              // Format: fieldType::componentName::survey_json::questionName
+              const [fieldType, componentName, propName, questionName] = parts;
+              
+              if (fieldType && componentName && propName === 'survey_json' && questionName) {
+                // Find the component by name in the field array
+                const fieldArray = trial[fieldType];
+                if (Array.isArray(fieldArray)) {
+                  const compIndex = fieldArray.findIndex(c => c.name === componentName);
+                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {
+                    // Find the question in survey_json.elements
+                    const elements = fieldArray[compIndex].survey_json.elements || [];
+                    const questionIndex = elements.findIndex(q => q.name === questionName);
+                    
+                    if (questionIndex !== -1) {
+                      // Apply the override value (from typed or csv)
+                      let valueToSet;
+                      if (param.source === 'typed') {
+                        valueToSet = String(param.value); // Convert to string for SurveyJS
+                      } else if (param.source === 'csv') {
+                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string
+                      }
+                      
+                      if (valueToSet !== undefined && valueToSet !== null) {
+                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;
+                      }
+                    }
+                  }
+                }
+              }
+            } else {
+              // Normal parameter (not nested survey question)
+              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
+                trial[key] = param.value;
+              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
+                trial[key] = trial[param.value];
+              }
+            }
+          }
+        });
+        // Clear the custom parameters after applying them
+        window.branchCustomParameters = null;
+      }
+      
+    },
+    
+    on_finish: function(data) {
+      // Este trial no tiene branches ni repeat conditions, es un trial terminal
+      // Si llegamos aquí después de un branching, terminar el experimento
+      if (window.branchingActive) {
+        jsPsych.abortExperiment('', {});
+      }
+    },
+    
+    extensions: 
+        [{
+          type: jsPsychExtensionWebgazer,
+        }]
+    };
+    
+    const New_Trial_5_procedure = {
+    timeline: 
+    [New_Trial_5_timeline],
+    timeline_variables: test_stimuli_New_Trial_5,
+    conditional_function: function() {
+      const currentId = 1765498868227;
+      
+      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
+      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
+      if (jumpToTrial) {
+        if (String(currentId) === String(jumpToTrial)) {
+          // Encontramos el trial objetivo para repeat/jump
+          console.log('Repeat/jump: Found target trial', currentId);
+          localStorage.removeItem('jsPsych_jumpToTrial');
+          return true;
+        }
+        // No es el objetivo, saltar
+        console.log('Repeat/jump: Skipping trial', currentId);
+        return false;
+      }
+      
+      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo
+      if (window.skipRemaining) {
+        if (String(currentId) === String(window.nextTrialId)) {
+          // Encontramos el trial objetivo
+          window.skipRemaining = false;
+          window.nextTrialId = null;
+          return true;
+        }
+        // No es el objetivo, saltar
+        return false;
+      }
+      
+      return true;
+    },
+    
+    extensions: 
+        [{
+          type: jsPsychExtensionWebgazer,
+        }]
+    };
+    timeline.push(New_Trial_5_procedure);
+    
 
 jsPsych.run(timeline);
 
