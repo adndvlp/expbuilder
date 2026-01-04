@@ -209,6 +209,165 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
     );
   };
 
+  // Get available columns for a trial (for branching conditions)
+  const getAvailableColumns = (
+    trial: any
+  ): Array<{
+    value: string;
+    label: string;
+    group?: string;
+  }> => {
+    if (!trial) return [];
+
+    const columns: Array<{ value: string; label: string; group?: string }> = [];
+
+    // For DynamicPlugin, generate columns from components
+    if (trial.plugin === "plugin-dynamic") {
+      const columnMapping = trial.columnMapping || {};
+
+      // Process stimulus components
+      const components = columnMapping.components?.value || [];
+      components.forEach((comp: any) => {
+        const prefix = comp.name;
+        if (!prefix) return;
+
+        // Add type column
+        columns.push({
+          value: `${prefix}_type`,
+          label: `${prefix} › Type`,
+          group: "Stimulus Components",
+        });
+
+        // Add stimulus column if exists
+        if (comp.stimulus !== undefined) {
+          columns.push({
+            value: `${prefix}_stimulus`,
+            label: `${prefix} › Stimulus`,
+            group: "Stimulus Components",
+          });
+        }
+
+        // Add coordinates if exists
+        if (comp.coordinates !== undefined) {
+          columns.push({
+            value: `${prefix}_coordinates`,
+            label: `${prefix} › Coordinates`,
+            group: "Stimulus Components",
+          });
+        }
+
+        // For SurveyComponent, add question columns
+        if (comp.type === "SurveyComponent" && comp.survey_json?.elements) {
+          comp.survey_json.elements.forEach((q: any) => {
+            columns.push({
+              value: `${prefix}_${q.name}`,
+              label: `${prefix} › ${q.name || q.title || "Question"}`,
+              group: "Stimulus Components",
+            });
+          });
+        }
+
+        // Add response if component can respond
+        if (
+          comp.type === "SurveyComponent" ||
+          comp.type === "SketchpadComponent"
+        ) {
+          columns.push({
+            value: `${prefix}_response`,
+            label: `${prefix} › Response`,
+            group: "Stimulus Components",
+          });
+          columns.push({
+            value: `${prefix}_rt`,
+            label: `${prefix} › RT`,
+            group: "Stimulus Components",
+          });
+        }
+      });
+
+      // Process response components
+      const responseComponents = columnMapping.response_components?.value || [];
+      responseComponents.forEach((comp: any) => {
+        const prefix = comp.name;
+        if (!prefix) return;
+
+        columns.push({
+          value: `${prefix}_type`,
+          label: `${prefix} › Type`,
+          group: "Response Components",
+        });
+
+        columns.push({
+          value: `${prefix}_response`,
+          label: `${prefix} › Response`,
+          group: "Response Components",
+        });
+
+        columns.push({
+          value: `${prefix}_rt`,
+          label: `${prefix} › RT`,
+          group: "Response Components",
+        });
+
+        // SliderResponseComponent - slider_start
+        if (comp.type === "SliderResponseComponent") {
+          columns.push({
+            value: `${prefix}_slider_start`,
+            label: `${prefix} › Slider Start`,
+            group: "Response Components",
+          });
+        }
+
+        // SketchpadComponent - strokes and png
+        if (comp.type === "SketchpadComponent") {
+          columns.push({
+            value: `${prefix}_strokes`,
+            label: `${prefix} › Strokes`,
+            group: "Response Components",
+          });
+          columns.push({
+            value: `${prefix}_png`,
+            label: `${prefix} › PNG`,
+            group: "Response Components",
+          });
+        }
+
+        // AudioResponseComponent - special fields
+        if (comp.type === "AudioResponseComponent") {
+          columns.push({
+            value: `${prefix}_audio_url`,
+            label: `${prefix} › Audio URL`,
+            group: "Response Components",
+          });
+          columns.push({
+            value: `${prefix}_estimated_stimulus_onset`,
+            label: `${prefix} › Stimulus Onset`,
+            group: "Response Components",
+          });
+        }
+      });
+
+      // Add general trial columns
+      columns.push({
+        value: "rt",
+        label: "Trial RT",
+        group: "Trial Data",
+      });
+    } else {
+      // For normal plugins, use data fields
+      const dataFields = trialDataFields[trial.id] || [];
+      dataFields.forEach((field) => {
+        columns.push({
+          value: field.key,
+          label: field.name || field.key,
+          group: "Trial Data",
+        });
+      });
+    }
+
+    return columns;
+  };
+
   // Save conditions
   const handleSaveConditions = () => {
     onSave(conditions);
@@ -379,96 +538,16 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                           >
                             Trial
                           </th>
-                          {(() => {
-                            // Check if any rule references a dynamic plugin trial
-                            const hasDynamicTrial = condition.rules.some(
-                              (rule) => {
-                                // Recursive function to find trial at any depth
-                                const findTrialRecursive = (
-                                  items: any[]
-                                ): any => {
-                                  for (const item of items) {
-                                    if (
-                                      item.id === rule.trialId ||
-                                      String(item.id) === String(rule.trialId)
-                                    ) {
-                                      return item;
-                                    }
-                                    if (
-                                      "trials" in item &&
-                                      Array.isArray(item.trials)
-                                    ) {
-                                      const found = findTrialRecursive(
-                                        item.trials
-                                      );
-                                      if (found) return found;
-                                    }
-                                  }
-                                  return null;
-                                };
-                                const referencedTrial = findTrialRecursive(
-                                  loop.trials
-                                );
-                                return (
-                                  referencedTrial?.plugin === "plugin-dynamic"
-                                );
-                              }
-                            );
-
-                            if (hasDynamicTrial) {
-                              return (
-                                <>
-                                  <th
-                                    className="px-2 py-2 text-left text-sm font-semibold"
-                                    style={{
-                                      color: "var(--text-dark)",
-                                      borderBottom:
-                                        "2px solid var(--neutral-mid)",
-                                      width: "14%",
-                                    }}
-                                  >
-                                    Field Type
-                                  </th>
-                                  <th
-                                    className="px-2 py-2 text-left text-sm font-semibold"
-                                    style={{
-                                      color: "var(--text-dark)",
-                                      borderBottom:
-                                        "2px solid var(--neutral-mid)",
-                                      width: "16%",
-                                    }}
-                                  >
-                                    Component
-                                  </th>
-                                  <th
-                                    className="px-2 py-2 text-left text-sm font-semibold"
-                                    style={{
-                                      color: "var(--text-dark)",
-                                      borderBottom:
-                                        "2px solid var(--neutral-mid)",
-                                      width: "14%",
-                                    }}
-                                  >
-                                    Property
-                                  </th>
-                                </>
-                              );
-                            } else {
-                              return (
-                                <th
-                                  className="px-2 py-2 text-left text-sm font-semibold"
-                                  style={{
-                                    color: "var(--text-dark)",
-                                    borderBottom:
-                                      "2px solid var(--neutral-mid)",
-                                    width: "22%",
-                                  }}
-                                >
-                                  Data Field
-                                </th>
-                              );
-                            }
-                          })()}
+                          <th
+                            className="px-2 py-2 text-left text-sm font-semibold"
+                            style={{
+                              color: "var(--text-dark)",
+                              borderBottom: "2px solid var(--neutral-mid)",
+                              width: "22%",
+                            }}
+                          >
+                            Column
+                          </th>
                           <th
                             className="px-2 py-2 text-left text-sm font-semibold"
                             style={{
@@ -529,22 +608,42 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                             ? loadingData[rule.trialId]
                             : false;
 
-                          // For dynamic plugins, get component data
+                          // For dynamic plugins, extract component info from column
                           const isDynamicPlugin =
                             selectedTrial?.plugin === "plugin-dynamic";
-                          const fieldType = rule.fieldType || "";
-                          const componentIdx = rule.componentIdx ?? "";
-                          const compArr =
-                            isDynamicPlugin && fieldType
-                              ? selectedTrial?.columnMapping?.[fieldType]
-                                  ?.value || []
-                              : [];
-                          const comp =
-                            componentIdx !== "" && compArr.length > 0
-                              ? compArr.find(
-                                  (c: any) => c.name === componentIdx
-                                )
-                              : null;
+                          const availableColumns = selectedTrial
+                            ? getAvailableColumns(selectedTrial)
+                            : [];
+
+                          // Extract component and property from column (format: componentName_property)
+                          let component: any = null;
+                          let componentName = "";
+                          let propertyName = "";
+
+                          if (
+                            selectedTrial?.plugin === "plugin-dynamic" &&
+                            rule.column
+                          ) {
+                            const parts = rule.column.split("_");
+                            if (parts.length >= 2) {
+                              // Last part is the property (e.g., "response", "rt", "type")
+                              propertyName = parts[parts.length - 1];
+                              // Everything before the last part is the component name
+                              componentName = parts.slice(0, -1).join("_");
+
+                              // Try to find the component in columnMapping
+                              const components =
+                                selectedTrial.columnMapping?.components
+                                  ?.value || [];
+                              const responseComponents =
+                                selectedTrial.columnMapping?.response_components
+                                  ?.value || [];
+                              component = [
+                                ...components,
+                                ...responseComponents,
+                              ].find((c: any) => c.name === componentName);
+                            }
+                          }
 
                           return (
                             <tr
@@ -597,241 +696,79 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                 </select>
                               </td>
 
-                              {isDynamicPlugin ? (
-                                <>
-                                  {/* Field Type Column */}
-                                  <td className="px-2 py-2">
-                                    <select
-                                      value={fieldType}
-                                      onChange={(e) => {
-                                        const newValue = e.target.value;
-                                        updateRule(
-                                          condition.id,
-                                          ruleIdx,
-                                          "fieldType",
-                                          newValue
-                                        );
-                                        updateRule(
-                                          condition.id,
-                                          ruleIdx,
-                                          "componentIdx",
-                                          ""
-                                        );
-                                        updateRule(
-                                          condition.id,
-                                          ruleIdx,
-                                          "prop",
-                                          ""
-                                        );
-                                        updateRule(
-                                          condition.id,
-                                          ruleIdx,
-                                          "value",
-                                          ""
-                                        );
-                                      }}
-                                      disabled={!rule.trialId}
-                                      className="border rounded px-2 py-1 w-full text-xs"
-                                      style={{
-                                        color: "var(--text-dark)",
-                                        backgroundColor: "var(--neutral-light)",
-                                        borderColor: "var(--neutral-mid)",
-                                      }}
-                                    >
-                                      <option value="">Select type</option>
-                                      <option value="components">
-                                        Stimulus
-                                      </option>
-                                      <option value="response_components">
-                                        Response
-                                      </option>
-                                    </select>
-                                  </td>
-
-                                  {/* Component Column */}
-                                  <td className="px-2 py-2">
-                                    <select
-                                      value={componentIdx}
-                                      onChange={(e) => {
-                                        const newValue = e.target.value;
-                                        updateRule(
-                                          condition.id,
-                                          ruleIdx,
-                                          "componentIdx",
-                                          newValue
-                                        );
-                                        updateRule(
-                                          condition.id,
-                                          ruleIdx,
-                                          "prop",
-                                          ""
-                                        );
-                                        updateRule(
-                                          condition.id,
-                                          ruleIdx,
-                                          "value",
-                                          ""
-                                        );
-                                      }}
-                                      disabled={!fieldType}
-                                      className="border rounded px-2 py-1 w-full text-xs"
-                                      style={{
-                                        color: "var(--text-dark)",
-                                        backgroundColor: "var(--neutral-light)",
-                                        borderColor: "var(--neutral-mid)",
-                                      }}
-                                    >
-                                      <option value="">Select component</option>
-                                      {compArr.map((c: any) => (
-                                        <option key={c.name} value={c.name}>
-                                          {c.name}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </td>
-
-                                  {/* Property Column */}
-                                  <td className="px-2 py-2">
-                                    {comp && comp.type === "SurveyComponent" ? (
-                                      <select
-                                        value={rule.prop}
-                                        onChange={(e) => {
-                                          const newValue = e.target.value;
-                                          updateRule(
-                                            condition.id,
-                                            ruleIdx,
-                                            "prop",
-                                            newValue
-                                          );
-                                          updateRule(
-                                            condition.id,
-                                            ruleIdx,
-                                            "value",
-                                            ""
-                                          );
-                                        }}
-                                        disabled={!componentIdx}
-                                        className="border rounded px-2 py-1 w-full text-xs"
-                                        style={{
-                                          color: "var(--text-dark)",
-                                          backgroundColor:
-                                            "var(--neutral-light)",
-                                          borderColor: "var(--neutral-mid)",
-                                        }}
-                                      >
-                                        <option value="">
-                                          Select question
-                                        </option>
-                                        {(comp.survey_json?.elements || []).map(
-                                          (q: any) => (
-                                            <option key={q.name} value={q.name}>
-                                              {q.title || q.name}
-                                            </option>
-                                          )
-                                        )}
-                                      </select>
-                                    ) : comp &&
-                                      comp.type ===
-                                        "ButtonResponseComponent" ? (
-                                      <select
-                                        value={rule.prop}
-                                        onChange={(e) => {
-                                          const newValue = e.target.value;
-                                          updateRule(
-                                            condition.id,
-                                            ruleIdx,
-                                            "prop",
-                                            newValue
-                                          );
-                                          updateRule(
-                                            condition.id,
-                                            ruleIdx,
-                                            "value",
-                                            ""
-                                          );
-                                        }}
-                                        disabled={!componentIdx}
-                                        className="border rounded px-2 py-1 w-full text-xs"
-                                        style={{
-                                          color: "var(--text-dark)",
-                                          backgroundColor:
-                                            "var(--neutral-light)",
-                                          borderColor: "var(--neutral-mid)",
-                                        }}
-                                      >
-                                        <option value="">
-                                          Select property
-                                        </option>
-                                        <option value="response">
-                                          response
-                                        </option>
-                                      </select>
-                                    ) : (
-                                      <input
-                                        type="text"
-                                        value={rule.prop}
-                                        onChange={(e) => {
-                                          const newValue = e.target.value;
-                                          updateRule(
-                                            condition.id,
-                                            ruleIdx,
-                                            "prop",
-                                            newValue
-                                          );
-                                          updateRule(
-                                            condition.id,
-                                            ruleIdx,
-                                            "value",
-                                            ""
-                                          );
-                                        }}
-                                        disabled={!componentIdx}
-                                        placeholder="Property"
-                                        className="border rounded px-2 py-1 w-full text-xs"
-                                        style={{
-                                          color: "var(--text-dark)",
-                                          backgroundColor:
-                                            "var(--neutral-light)",
-                                          borderColor: "var(--neutral-mid)",
-                                        }}
-                                      />
-                                    )}
-                                  </td>
-                                </>
-                              ) : (
-                                <>
-                                  {/* Data Field Selection (normal plugin) */}
-                                  <td className="px-2 py-2">
-                                    {isLoadingField ? (
-                                      <div className="text-xs text-gray-500">
-                                        Loading...
-                                      </div>
-                                    ) : (
-                                      <select
-                                        value={rule.prop}
-                                        onChange={(e) =>
-                                          updateRule(
-                                            condition.id,
-                                            ruleIdx,
-                                            "prop",
-                                            e.target.value
-                                          )
-                                        }
-                                        disabled={!rule.trialId}
-                                        className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
-                                        style={{
-                                          color: "var(--text-dark)",
-                                          backgroundColor:
-                                            "var(--neutral-light)",
-                                          borderColor: "var(--neutral-mid)",
-                                        }}
-                                      >
-                                        <option value="">
-                                          {rule.trialId
-                                            ? "Select field..."
-                                            : "Select trial first"}
-                                        </option>
-                                        {dataFields.map((field) => (
+                              {/* Column selector - unified for both DynamicPlugin and normal plugins */}
+                              <td className="px-2 py-2">
+                                {isLoadingField ? (
+                                  <div className="text-xs text-gray-500">
+                                    Loading...
+                                  </div>
+                                ) : (
+                                  <select
+                                    value={rule.column || rule.prop || ""} // Backward compatibility
+                                    onChange={(e) => {
+                                      const newValue = e.target.value;
+                                      updateRule(
+                                        condition.id,
+                                        ruleIdx,
+                                        "column",
+                                        newValue
+                                      );
+                                      // Reset value when column changes
+                                      updateRule(
+                                        condition.id,
+                                        ruleIdx,
+                                        "value",
+                                        ""
+                                      );
+                                    }}
+                                    disabled={!rule.trialId}
+                                    className="border rounded px-2 py-1 w-full text-xs"
+                                    style={{
+                                      color: "var(--text-dark)",
+                                      backgroundColor: "var(--neutral-light)",
+                                      borderColor: "var(--neutral-mid)",
+                                    }}
+                                  >
+                                    <option value="">
+                                      {rule.trialId
+                                        ? "Select column"
+                                        : "Select trial first"}
+                                    </option>
+                                    {isDynamicPlugin
+                                      ? // Group columns by category for dynamic plugin
+                                        availableColumns
+                                          .reduce((acc: any[], col) => {
+                                            // Find or create group
+                                            let group = acc.find(
+                                              (g) => g.name === col.group
+                                            );
+                                            if (!group) {
+                                              group = {
+                                                name: col.group,
+                                                columns: [],
+                                              };
+                                              acc.push(group);
+                                            }
+                                            group.columns.push(col);
+                                            return acc;
+                                          }, [])
+                                          .map((group: any) => (
+                                            <optgroup
+                                              key={group.name}
+                                              label={group.name || "Other"}
+                                            >
+                                              {group.columns.map((col: any) => (
+                                                <option
+                                                  key={col.value}
+                                                  value={col.value}
+                                                >
+                                                  {col.label}
+                                                </option>
+                                              ))}
+                                            </optgroup>
+                                          ))
+                                      : // Normal plugin - simple list
+                                        dataFields.map((field) => (
                                           <option
                                             key={field.key}
                                             value={field.key}
@@ -839,11 +776,9 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                             {field.label || field.key}
                                           </option>
                                         ))}
-                                      </select>
-                                    )}
-                                  </td>
-                                </>
-                              )}
+                                  </select>
+                                )}
+                              </td>
 
                               {/* Operator Selection */}
                               <td className="px-2 py-2">
@@ -903,147 +838,171 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                 </select>
                               </td>
 
-                              {/* Value Input */}
+                              {/* Value Input - smart input based on component type */}
                               <td className="px-2 py-2">
-                                {isDynamicPlugin &&
-                                comp &&
-                                comp.type === "SurveyComponent" &&
-                                rule.prop ? (
-                                  (() => {
-                                    const question = (
-                                      comp.survey_json?.elements || []
-                                    ).find((q: any) => q.name === rule.prop);
-                                    if (
-                                      question &&
-                                      question.type === "radiogroup" &&
-                                      question.choices
-                                    ) {
-                                      return (
-                                        <select
-                                          value={rule.value}
-                                          onChange={(e) =>
-                                            updateRule(
-                                              condition.id,
-                                              ruleIdx,
-                                              "value",
-                                              e.target.value
-                                            )
-                                          }
-                                          className="border rounded px-2 py-1 w-full text-xs"
-                                          style={{
-                                            color: "var(--text-dark)",
-                                            backgroundColor:
-                                              "var(--neutral-light)",
-                                            borderColor: "var(--neutral-mid)",
-                                          }}
-                                        >
-                                          <option value="">Select value</option>
-                                          {question.choices.map((opt: any) => (
-                                            <option
-                                              key={
-                                                typeof opt === "string"
-                                                  ? opt
-                                                  : opt.value
-                                              }
-                                              value={
-                                                typeof opt === "string"
-                                                  ? opt
-                                                  : opt.value
-                                              }
-                                            >
-                                              {typeof opt === "string"
-                                                ? opt
-                                                : opt.text || opt.value}
-                                            </option>
-                                          ))}
-                                        </select>
+                                {(() => {
+                                  // For DynamicPlugin Survey components with questions
+                                  if (
+                                    component &&
+                                    component.type === "SurveyComponent" &&
+                                    component.survey_json?.elements
+                                  ) {
+                                    // Extract question name from column (format: ComponentName_questionName)
+                                    const questionName = rule.column
+                                      ?.split("_")
+                                      .slice(1)
+                                      .join("_");
+                                    const question =
+                                      component.survey_json.elements.find(
+                                        (q: any) => q.name === questionName
                                       );
+
+                                    if (question) {
+                                      // Has choices - dropdown
+                                      if (
+                                        question.choices &&
+                                        question.choices.length > 0
+                                      ) {
+                                        return (
+                                          <select
+                                            value={rule.value}
+                                            onChange={(e) =>
+                                              updateRule(
+                                                condition.id,
+                                                ruleIdx,
+                                                "value",
+                                                e.target.value
+                                              )
+                                            }
+                                            className="border rounded px-2 py-1 w-full text-xs"
+                                            style={{
+                                              color: "var(--text-dark)",
+                                              backgroundColor:
+                                                "var(--neutral-light)",
+                                              borderColor: "var(--neutral-mid)",
+                                            }}
+                                          >
+                                            <option value="">
+                                              Select value
+                                            </option>
+                                            {question.choices.map(
+                                              (opt: any) => (
+                                                <option
+                                                  key={String(opt.value ?? opt)}
+                                                  value={String(
+                                                    opt.value ?? opt
+                                                  )}
+                                                >
+                                                  {opt.text || String(opt)}
+                                                </option>
+                                              )
+                                            )}
+                                          </select>
+                                        );
+                                      }
+
+                                      // Boolean type
+                                      if (question.type === "boolean") {
+                                        return (
+                                          <select
+                                            value={rule.value}
+                                            onChange={(e) =>
+                                              updateRule(
+                                                condition.id,
+                                                ruleIdx,
+                                                "value",
+                                                e.target.value
+                                              )
+                                            }
+                                            className="border rounded px-2 py-1 w-full text-xs"
+                                            style={{
+                                              color: "var(--text-dark)",
+                                              backgroundColor:
+                                                "var(--neutral-light)",
+                                              borderColor: "var(--neutral-mid)",
+                                            }}
+                                          >
+                                            <option value="">
+                                              Select value
+                                            </option>
+                                            <option value="true">true</option>
+                                            <option value="false">false</option>
+                                          </select>
+                                        );
+                                      }
+
+                                      // Rating type
+                                      if (
+                                        question.rateMin !== undefined &&
+                                        question.rateMax !== undefined
+                                      ) {
+                                        return (
+                                          <select
+                                            value={rule.value}
+                                            onChange={(e) =>
+                                              updateRule(
+                                                condition.id,
+                                                ruleIdx,
+                                                "value",
+                                                e.target.value
+                                              )
+                                            }
+                                            className="border rounded px-2 py-1 w-full text-xs"
+                                            style={{
+                                              color: "var(--text-dark)",
+                                              backgroundColor:
+                                                "var(--neutral-light)",
+                                              borderColor: "var(--neutral-mid)",
+                                            }}
+                                          >
+                                            <option value="">
+                                              Select value
+                                            </option>
+                                            {Array.from(
+                                              {
+                                                length:
+                                                  question.rateMax -
+                                                  question.rateMin +
+                                                  1,
+                                              },
+                                              (_, i) => question.rateMin + i
+                                            ).map((val: number) => (
+                                              <option
+                                                key={val}
+                                                value={String(val)}
+                                              >
+                                                {val}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        );
+                                      }
                                     }
-                                    return (
-                                      <input
-                                        type="text"
-                                        value={rule.value}
-                                        onChange={(e) =>
-                                          updateRule(
-                                            condition.id,
-                                            ruleIdx,
-                                            "value",
-                                            e.target.value
-                                          )
-                                        }
-                                        placeholder="Value"
-                                        className="border rounded px-2 py-1 w-full text-xs"
-                                        style={{
-                                          color: "var(--text-dark)",
-                                          backgroundColor:
-                                            "var(--neutral-light)",
-                                          borderColor: "var(--neutral-mid)",
-                                        }}
-                                      />
-                                    );
-                                  })()
-                                ) : isDynamicPlugin &&
-                                  comp &&
-                                  comp.type === "ButtonResponseComponent" &&
-                                  rule.prop === "response" ? (
-                                  <select
-                                    value={rule.value}
-                                    onChange={(e) =>
-                                      updateRule(
-                                        condition.id,
-                                        ruleIdx,
-                                        "value",
-                                        e.target.value
-                                      )
-                                    }
-                                    className="border rounded px-2 py-1 w-full text-xs"
-                                    style={{
-                                      color: "var(--text-dark)",
-                                      backgroundColor: "var(--neutral-light)",
-                                      borderColor: "var(--neutral-mid)",
-                                    }}
-                                  >
-                                    <option value="">Select value</option>
-                                    {comp.choices.map((opt: any) => (
-                                      <option
-                                        key={
-                                          typeof opt === "string"
-                                            ? opt
-                                            : opt.value
-                                        }
-                                        value={
-                                          typeof opt === "string"
-                                            ? opt
-                                            : opt.value
-                                        }
-                                      >
-                                        {typeof opt === "string"
-                                          ? opt
-                                          : opt.text || opt.value}
-                                      </option>
-                                    ))}
-                                  </select>
-                                ) : (
-                                  <input
-                                    type="text"
-                                    value={rule.value}
-                                    onChange={(e) =>
-                                      updateRule(
-                                        condition.id,
-                                        ruleIdx,
-                                        "value",
-                                        e.target.value
-                                      )
-                                    }
-                                    placeholder="Value"
-                                    className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
-                                    style={{
-                                      color: "var(--text-dark)",
-                                      backgroundColor: "var(--neutral-light)",
-                                      borderColor: "var(--neutral-mid)",
-                                    }}
-                                  />
-                                )}
+                                  }
+
+                                  // Default text input
+                                  return (
+                                    <input
+                                      type="text"
+                                      value={rule.value}
+                                      onChange={(e) =>
+                                        updateRule(
+                                          condition.id,
+                                          ruleIdx,
+                                          "value",
+                                          e.target.value
+                                        )
+                                      }
+                                      placeholder="Value"
+                                      className="border rounded px-2 py-1 w-full text-xs"
+                                      style={{
+                                        color: "var(--text-dark)",
+                                        backgroundColor: "var(--neutral-light)",
+                                        borderColor: "var(--neutral-mid)",
+                                      }}
+                                    />
+                                  );
+                                })()}
                               </td>
 
                               {/* Remove Rule Button */}

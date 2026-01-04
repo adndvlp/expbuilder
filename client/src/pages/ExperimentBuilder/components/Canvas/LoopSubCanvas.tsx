@@ -7,6 +7,7 @@ import ResizeHandle from "./components/ResizeHandle";
 import LoopBreadcrumb from "./components/LoopBreadcrumb";
 import BranchedTrial from "../ConfigPanel/TrialsConfig/BranchedTrial";
 import LoopRangeModal from "../ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeModal";
+import useTrials from "../../hooks/useTrials";
 import { Trial, Loop, TrialOrLoop } from "../ConfigPanel/types";
 import { useDraggable } from "./hooks/useDraggable";
 import { useResizable } from "./hooks/useResizable";
@@ -17,7 +18,9 @@ import {
   findItemById,
   generateUniqueName,
   validateConnection,
+  getAllExistingNames,
 } from "./utils/trialUtils";
+import { createDefaultTrial } from "../../utils/defaultTrial";
 import {
   LAYOUT_CONSTANTS,
   calculateBranchWidth,
@@ -46,9 +49,6 @@ interface LoopSubCanvasProps {
   loopStack?: Array<{ id: string; name: string }>;
   onNavigateToLoop?: (index: number) => void;
   onNavigateToRoot?: () => void;
-  // Nueva prop para actualizar directamente toda la estructura
-  allTrials?: any[];
-  setAllTrials?: (trials: any[]) => void;
 }
 
 function LoopSubCanvas({
@@ -65,9 +65,10 @@ function LoopSubCanvas({
   loopStack = [],
   onNavigateToLoop,
   onNavigateToRoot,
-  allTrials,
-  setAllTrials,
 }: LoopSubCanvasProps) {
+  // Usar el contexto global de trials
+  const { trials: allTrials, setTrials: setAllTrials } = useTrials();
+
   const { dragging, pos, handleMouseDown } = useDraggable({ x: 150, y: 250 });
   const { resizing, size, handleResizeMouseDown } = useResizable({
     width: 420,
@@ -77,180 +78,42 @@ function LoopSubCanvas({
   const [showLoopModal, setShowLoopModal] = useState(false);
 
   // Construir el breadcrumb completo (stack + loop actual)
-  // Solo agregar el loop actual si no está ya en el stack
   const fullBreadcrumb =
     loopId && !loopStack.some((l) => l.id === loopId)
       ? [...loopStack, { id: loopId, name: loopName }]
       : loopStack;
 
-  // Helper para navegar a través del loopStack y actualizar
-  const updateInNestedStructure = (
-    items: any[],
-    stackIndex: number,
-    updateFn: (items: any[]) => any[]
-  ): any[] => {
-    if (stackIndex >= loopStack.length) {
-      // Ya llegamos al loop actual, aplicar la actualización
-      return updateFn(items);
-    }
-
-    const targetLoopId = loopStack[stackIndex].id;
-    return items.map((item: any) => {
-      if ("trials" in item && item.id === targetLoopId) {
-        return {
-          ...item,
-          trials: updateInNestedStructure(
-            item.trials,
-            stackIndex + 1,
-            updateFn
-          ),
-        };
-      }
-      return item;
-    });
-  };
-
-  // Funciones para actualizar la estructura
+  // ========== FUNCIONES SIMPLIFICADAS ==========
+  // Agregar branch a un trial/loop
   const onAddBranch = (parentId: number | string, newBranchTrial: Trial) => {
-    if (!allTrials || !setAllTrials) return;
+    // Agregar el trial al array principal
+    const updatedTrials = [...allTrials, newBranchTrial];
 
-    const addBranchInLoop = (loopTrials: any[]): any[] => {
-      let found = false;
-      const updatedTrials = loopTrials.map((item: any) => {
+    // Actualizar recursivamente el parent para agregar el branch
+    const updateParentBranches = (items: TrialOrLoop[]): TrialOrLoop[] => {
+      return items.map((item) => {
         if (item.id === parentId) {
-          found = true;
           return {
             ...item,
             branches: [...(item.branches || []), newBranchTrial.id],
           };
-        } else if ("trials" in item) {
-          return {
-            ...item,
-            trials: addBranchInLoop(item.trials),
-          };
         }
-        return item;
-      });
-
-      // Solo agregar el trial si encontramos el parent en este nivel
-      if (found) {
-        return [...updatedTrials, newBranchTrial];
-      }
-      return updatedTrials;
-    };
-
-    const updatedTrials =
-      loopStack.length > 0
-        ? updateInNestedStructure(allTrials, 0, addBranchInLoop)
-        : allTrials.map((item: any) => {
-            if ("trials" in item && item.id === loopId) {
-              return {
-                ...item,
-                trials: addBranchInLoop(item.trials),
-              };
-            }
-            return item;
-          });
-
-    setAllTrials(updatedTrials);
-  };
-
-  const onUpdateTrial = (updatedTrial: Trial) => {
-    if (!allTrials || !setAllTrials) return;
-
-    const updateTrialInLoop = (loopTrials: any[]): any[] => {
-      return loopTrials.map((item: any) => {
-        if ("parameters" in item && item.id === updatedTrial.id) {
-          return updatedTrial;
-        } else if ("trials" in item) {
+        if ("trials" in item) {
           return {
             ...item,
-            trials: updateTrialInLoop(item.trials),
+            trials: updateParentBranches(item.trials),
           };
         }
         return item;
       });
     };
 
-    const updatedTrials =
-      loopStack.length > 0
-        ? updateInNestedStructure(allTrials, 0, updateTrialInLoop)
-        : allTrials.map((item: any) => {
-            if ("trials" in item && item.id === loopId) {
-              return {
-                ...item,
-                trials: updateTrialInLoop(item.trials),
-              };
-            }
-            return item;
-          });
-
-    setAllTrials(updatedTrials);
+    setAllTrials(updateParentBranches(updatedTrials));
   };
 
-  const onUpdateLoop = (updatedLoop: Loop) => {
-    if (!allTrials || !setAllTrials) return;
-
-    const updateLoopInLoop = (loopTrials: any[]): any[] => {
-      return loopTrials.map((item: any) => {
-        if ("trials" in item && item.id === updatedLoop.id) {
-          return updatedLoop;
-        } else if ("trials" in item) {
-          return {
-            ...item,
-            trials: updateLoopInLoop(item.trials),
-          };
-        }
-        return item;
-      });
-    };
-
-    const updatedTrials =
-      loopStack.length > 0
-        ? updateInNestedStructure(allTrials, 0, updateLoopInLoop)
-        : allTrials.map((item: any) => {
-            if ("trials" in item && item.id === loopId) {
-              return {
-                ...item,
-                trials: updateLoopInLoop(item.trials),
-              };
-            }
-            return item;
-          });
-
-    setAllTrials(updatedTrials);
-  };
-
+  // Crear loop anidado dentro de este loop
   const onCreateNestedLoop = (itemIds: (number | string)[]) => {
-    if (!allTrials || !setAllTrials) return;
-
-    // Helper para obtener todos los nombres existentes recursivamente
-    const getAllExistingNames = (items: any[]): string[] => {
-      const names: string[] = [];
-      items.forEach((item: any) => {
-        if (item.name) names.push(item.name);
-        if ("trials" in item && Array.isArray(item.trials)) {
-          names.push(...getAllExistingNames(item.trials));
-        }
-      });
-      return names;
-    };
-
-    // Helper para generar un nombre único
-    const generateUniqueLoopName = (
-      baseName: string,
-      existingNames: string[]
-    ): string => {
-      let counter = 1;
-      let name = baseName;
-      while (existingNames.includes(name)) {
-        counter++;
-        name = `${baseName.replace(/ \d+$/, "")} ${counter}`;
-      }
-      return name;
-    };
-
-    const createLoopInLoop = (loopTrials: any[]): any[] => {
+    const createLoopInLoop = (loopTrials: TrialOrLoop[]): TrialOrLoop[] => {
       const indices: number[] = [];
       itemIds.forEach((id) => {
         const idx = loopTrials.findIndex((t) => t.id == id);
@@ -260,13 +123,12 @@ function LoopSubCanvas({
       if (indices.length < 2) return loopTrials;
 
       const itemsToGroup = indices.map((i) => loopTrials[i]);
-      const idsToGroup = itemsToGroup.map((item) => item.id);
-
-      // Obtener todos los nombres existentes en todo el experimento
       const existingNames = getAllExistingNames(allTrials);
-
-      // Generar un nombre único basado en "Nested Loop"
-      const uniqueName = generateUniqueLoopName("Nested Loop 1", existingNames);
+      const loopCount = allTrials.filter((t) => "trials" in t).length;
+      const uniqueName = generateUniqueName(
+        existingNames,
+        `Loop ${loopCount + 1}`
+      );
 
       const newNestedLoop: Loop = {
         id: "loop_" + Date.now(),
@@ -284,116 +146,40 @@ function LoopSubCanvas({
       };
 
       const insertIndex = Math.min(...indices);
-
-      // Check if the items being grouped are branches of another trial or loop
-      let parentId: number | string | null = null;
-      for (const item of loopTrials) {
-        if (
-          "branches" in item &&
-          item.branches &&
-          Array.isArray(item.branches)
-        ) {
-          const hasBranchToGroup = item.branches.some(
-            (branchId: number | string) => {
-              return idsToGroup.includes(branchId);
-            }
-          );
-
-          if (hasBranchToGroup) {
-            // Usar la misma lógica que el canvas principal para obtener el ID
-            parentId = "parameters" in item ? item.id : item.id;
-            break;
-          }
-        }
-      }
-
-      const newLoopTrials: any[] = [];
+      const newLoopTrials: TrialOrLoop[] = [];
 
       for (let i = 0; i < loopTrials.length; i++) {
-        // If this is where the loop should be inserted
         if (i === insertIndex) {
           newLoopTrials.push(newNestedLoop);
         }
-
-        // If this item is NOT being grouped, add it
         if (!indices.includes(i)) {
-          const item = loopTrials[i];
-
-          // If this item has branches, remove any that are being grouped and add the loop
-          if (
-            "branches" in item &&
-            item.branches &&
-            Array.isArray(item.branches)
-          ) {
-            const updatedBranches = item.branches.filter(
-              (branchId: number | string) => {
-                return !idsToGroup.includes(branchId);
-              }
-            );
-
-            // If this is the parent and some branches were grouped, add the loop ID
-            // Usar la misma lógica que el canvas principal para obtener el ID
-            const itemId = "parameters" in item ? item.id : item.id;
-            if (
-              updatedBranches.length !== item.branches.length &&
-              parentId &&
-              itemId === parentId
-            ) {
-              updatedBranches.push(newNestedLoop.id);
-              newLoopTrials.push({ ...item, branches: updatedBranches });
-            } else if (updatedBranches.length !== item.branches.length) {
-              newLoopTrials.push({ ...item, branches: updatedBranches });
-            } else {
-              newLoopTrials.push(item);
-            }
-          } else {
-            newLoopTrials.push(item);
-          }
+          newLoopTrials.push(loopTrials[i]);
         }
       }
 
       return newLoopTrials;
     };
 
-    // Construir el stack completo incluyendo el loop actual
-    const fullStack =
-      loopId && !loopStack.some((l) => l.id === loopId)
-        ? [...loopStack, { id: loopId, name: loopName, trials: trials }]
-        : loopStack;
-
-    // Helper local que usa el fullStack
-    const updateWithFullStack = (items: any[], stackIndex: number): any[] => {
-      if (stackIndex >= fullStack.length) {
-        // Ya llegamos al loop actual, aplicar la actualización
-        return createLoopInLoop(items);
-      }
-
-      const targetLoopId = fullStack[stackIndex].id;
-      return items.map((item: any) => {
-        if ("trials" in item && item.id === targetLoopId) {
+    // Actualizar recursivamente para encontrar y actualizar el loop correcto
+    const updateLoopTrials = (items: TrialOrLoop[]): TrialOrLoop[] => {
+      return items.map((item) => {
+        if ("trials" in item && item.id === loopId) {
           return {
             ...item,
-            trials: updateWithFullStack(item.trials, stackIndex + 1),
+            trials: createLoopInLoop(item.trials),
+          };
+        }
+        if ("trials" in item) {
+          return {
+            ...item,
+            trials: updateLoopTrials(item.trials),
           };
         }
         return item;
       });
     };
 
-    const updatedTrials =
-      fullStack.length > 0
-        ? updateWithFullStack(allTrials, 0)
-        : allTrials.map((item: any) => {
-            if ("trials" in item && item.id === loopId) {
-              return {
-                ...item,
-                trials: createLoopInLoop(item.trials),
-              };
-            }
-            return item;
-          });
-
-    setAllTrials(updatedTrials);
+    setAllTrials(updateLoopTrials(allTrials));
   };
 
   const { nodes, edges } = useMemo(() => {
@@ -469,11 +255,10 @@ function LoopSubCanvas({
           const newName = generateUniqueName(existingNames);
 
           const newBranchTrial: Trial = {
+            ...createDefaultTrial(),
             id: Date.now(),
             type: "Trial",
             name: newName,
-            parameters: {},
-            trialCode: "",
           };
 
           onAddBranch(item.id, newBranchTrial);
@@ -568,11 +353,10 @@ function LoopSubCanvas({
           const newName = generateUniqueName(existingNames);
 
           const newBranchTrial: Trial = {
+            ...createDefaultTrial(),
             id: Date.now(),
             type: "Trial",
             name: newName,
-            parameters: {},
-            trialCode: "",
           };
 
           onAddBranch(item.id, newBranchTrial);
@@ -662,17 +446,14 @@ function LoopSubCanvas({
     onSelectTrial,
     onSelectLoop,
     onAddBranch,
-    onUpdateTrial,
-    onUpdateLoop,
     onOpenNestedLoop,
     size.width,
   ]);
 
   // Handler for connecting trials manually within the loop
   const handleConnect = (connection: Connection) => {
-    if (!connection.source || !connection.target || !onUpdateTrial) return;
+    if (!connection.source || !connection.target) return;
 
-    // Extract the actual trial IDs from the node IDs
     const extractTrialId = (nodeId: string): number | null => {
       const segments = nodeId.split("-");
       const lastSegment = segments[segments.length - 1];
@@ -688,37 +469,35 @@ function LoopSubCanvas({
       return;
     }
 
-    // Validate the connection
     const validation = validateConnection(sourceId, targetId, trials);
     if (!validation.isValid) {
       alert(validation.errorMessage || "Invalid connection");
       return;
     }
 
-    // Find and update the source trial or loop
-    const sourceItem = findItemById(trials, sourceId);
-    if (sourceItem) {
-      const branches = sourceItem.branches || [];
-      // Only add if not already present
-      if (!branches.includes(targetId)) {
-        ////////////// Maybe in the future both could have parameters, change to id type number for trials, string for loops
-        if ("parameters" in sourceItem) {
-          // It's a Trial
-          const updatedTrial = {
-            ...sourceItem,
-            branches: [...branches, targetId],
-          };
-          onUpdateTrial(updatedTrial);
-        } else {
-          // It's a Loop
-          const updatedLoop = {
-            ...sourceItem,
-            branches: [...branches, targetId],
-          };
-          onUpdateLoop(updatedLoop);
+    // Actualizar recursivamente el source para agregar el branch
+    const updateBranchesRecursive = (items: TrialOrLoop[]): TrialOrLoop[] => {
+      return items.map((item) => {
+        if (item.id === sourceId) {
+          const branches = item.branches || [];
+          if (!branches.includes(targetId)) {
+            return {
+              ...item,
+              branches: [...branches, targetId],
+            };
+          }
         }
-      }
-    }
+        if ("trials" in item) {
+          return {
+            ...item,
+            trials: updateBranchesRecursive(item.trials),
+          };
+        }
+        return item;
+      });
+    };
+
+    setAllTrials(updateBranchesRecursive(allTrials));
   };
 
   const subCanvasBg = {

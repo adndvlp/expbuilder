@@ -17,7 +17,7 @@ import ConditionalLoop from "./ConditionalLoop";
 type Props = { loop?: Loop };
 
 function LoopsConfig({ loop }: Props) {
-  const { trials, setTrials, removeLoop } = useTrials();
+  const { trials, setTrials, removeLoop, updateLoop } = useTrials();
 
   const [isLoadingLoop, setIsLoadingLoop] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -484,18 +484,28 @@ function LoopsConfig({ loop }: Props) {
       if (loopIndex !== -1) {
         // Loop está en el primer nivel
         const prevLoop = trials[loopIndex];
-        const updatedLoop = {
+        const updatedLoopProps = {
           ...prevLoop,
           ...updatedLoopData,
         };
 
-        if (!force && isEqual(updatedLoop, prevLoop)) return;
+        if (!force && isEqual(updatedLoopProps, prevLoop)) return;
+
+        // ========== OPTIMIZACIÓN: SOLO MANDAR ESTE LOOP ==========
+        if (updateLoop) {
+          updateLoop(loop.id, updatedLoopData);
+        }
 
         updatedTrials = [...trials];
-        updatedTrials[loopIndex] = updatedLoop;
+        updatedTrials[loopIndex] = updatedLoopProps;
       } else {
         // Loop está anidado - buscar recursivamente
         updatedTrials = updateLoopRecursive(trials, loop.id);
+
+        // También mandar al backend
+        if (updateLoop) {
+          updateLoop(loop.id, updatedLoopData);
+        }
       }
 
       setTrials(updatedTrials);

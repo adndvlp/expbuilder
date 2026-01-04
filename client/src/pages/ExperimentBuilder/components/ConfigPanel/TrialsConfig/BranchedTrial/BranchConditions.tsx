@@ -1182,7 +1182,7 @@ function BranchConditions({
                                       Select trial
                                     </option>
                                     {branchTrials.length > 0 && (
-                                      <optgroup label="📍 Branches (Same Scope)">
+                                      <optgroup label="Branches (Same Scope)">
                                         {branchTrials.map((trial) => (
                                           <option
                                             key={trial.id}
@@ -1195,7 +1195,7 @@ function BranchConditions({
                                       </optgroup>
                                     )}
                                     {allJumpTrials.length > 0 && (
-                                      <optgroup label="🔗 Jump (Any Trial)">
+                                      <optgroup label="Jump (Any Trial)">
                                         {allJumpTrials.map((trial) => (
                                           <option
                                             key={trial.id}
@@ -1214,8 +1214,7 @@ function BranchConditions({
                                         className="text-xs mt-1 font-semibold"
                                         style={{ color: "var(--gold)" }}
                                       >
-                                        🔗 Jump mode: Parameter override
-                                        disabled
+                                        Jump mode: Parameter override disabled
                                       </span>
                                     )}
                                 </div>

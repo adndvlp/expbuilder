@@ -25,7 +25,8 @@ type Props = { pluginName: string };
 
 function TrialsConfig({ pluginName }: Props) {
   // Basic trial configuration
-  const { trials, setTrials, selectedTrial, setSelectedTrial } = useTrials();
+  const { trials, setTrials, selectedTrial, setSelectedTrial, updateTrial } =
+    useTrials();
   const [trialName, setTrialName] = useState<string>("");
 
   // Autosave
@@ -310,6 +311,11 @@ function TrialsConfig({ pluginName }: Props) {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
       timeoutRef.current = setTimeout(() => {
+        // ========== OPTIMIZACIÓN: SOLO MANDAR ESTE TRIAL ==========
+        if (updateTrial) {
+          updateTrial(updatedTrial.id, updatedTrial);
+        }
+
         const result = updateTrialRecursive(trials);
 
         if (result.found) {

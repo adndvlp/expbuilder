@@ -40,6 +40,7 @@ function Canvas({}: Props) {
     selectedLoop,
     setSelectedLoop,
     groupTrialsAsLoop,
+    updateTrial,
   } = useTrials();
 
   const [showLoopModal, setShowLoopModal] = useState(false);
@@ -54,11 +55,10 @@ function Canvas({}: Props) {
     const newName = generateUniqueName(existingNames);
 
     const newTrial: Trial = {
+      ...createDefaultTrial(),
       id: Date.now(),
       type: type,
       name: newName,
-      parameters: {},
-      trialCode: "",
     };
 
     // If there's a selected trial or loop, insert the new trial after it
@@ -225,24 +225,18 @@ function Canvas({}: Props) {
     const newName = generateUniqueName(existingNames);
 
     const newBranchTrial: Trial = {
+      ...createDefaultTrial(),
       id: Date.now(),
       type: "Trial",
       name: newName,
-      parameters: {},
-      trialCode: "",
     };
 
-    // Add the new trial to trials list
+    // Agregar el trial a la lista
     const updatedTrials = [...trials, newBranchTrial];
 
-    // Update the parent (trial or loop) to include this branch
+    // Actualizar el parent para incluir este branch
     const updatedTrialsWithBranch = updatedTrials.map((t: any) => {
-      if ("parameters" in t && t.id === parentId) {
-        return {
-          ...t,
-          branches: [...(t.branches || []), newBranchTrial.id],
-        };
-      } else if ("trials" in t && t.id === parentId) {
+      if (t.id === parentId) {
         return {
           ...t,
           branches: [...(t.branches || []), newBranchTrial.id],
@@ -259,15 +253,10 @@ function Canvas({}: Props) {
   const handleConnect = (connection: Connection) => {
     if (!connection.source || !connection.target) return;
 
-    // Extract the actual trial IDs from the node IDs
-    // Node IDs can be like "123" or "loop-456" for main sequence
-    // or "123-789" for branches
     const extractTrialId = (nodeId: string): number | string | null => {
-      // Remove "loop-" prefix if present
       if (nodeId.startsWith("loop-")) {
         return nodeId.substring(5);
       }
-      // For branch nodes, get the last segment (the actual trial ID)
       const segments = nodeId.split("-");
       const lastSegment = segments[segments.length - 1];
       const parsed = parseInt(lastSegment);
@@ -282,27 +271,15 @@ function Canvas({}: Props) {
       return;
     }
 
-    // Validate the connection
     const validation = validateConnection(sourceId, targetId, trials);
     if (!validation.isValid) {
       alert(validation.errorMessage || "Invalid connection");
       return;
     }
 
-    // Add targetId to the branches array of the source trial/loop
+    // Actualizar el trial/loop source para agregar el branch
     const updatedTrials = trials.map((t: any) => {
-      if ("parameters" in t && t.id === sourceId) {
-        // It's a Trial
-        const branches = t.branches || [];
-        // Only add if not already present
-        if (!branches.includes(targetId)) {
-          return {
-            ...t,
-            branches: [...branches, targetId],
-          };
-        }
-      } else if ("trials" in t && t.id === sourceId) {
-        // It's a Loop
+      if (t.id === sourceId) {
         const branches = t.branches || [];
         if (!branches.includes(targetId)) {
           return {
@@ -429,10 +406,7 @@ function Canvas({}: Props) {
             selectedTrial={selectedTrial}
             selectedLoop={selectedLoop}
             loopStack={loopStack}
-            allTrials={trials}
-            setAllTrials={setTrials}
             onNavigateToLoop={(index) => {
-              // Navegar a un loop específico en el stack
               if (index < loopStack.length) {
                 const targetLoop = loopStack[index];
                 setOpenLoop(targetLoop);
@@ -440,19 +414,16 @@ function Canvas({}: Props) {
               }
             }}
             onNavigateToRoot={() => {
-              // Volver al canvas principal (cerrar todos los loops)
               setOpenLoop(null);
               setSelectedLoop(null);
               setLoopStack([]);
             }}
             onClose={() => {
               if (loopStack.length > 0) {
-                // Si hay un stack, volver al loop anterior
                 const previousLoop = loopStack[loopStack.length - 1];
                 setOpenLoop(previousLoop);
                 setLoopStack(loopStack.slice(0, -1));
               } else {
-                // Si no hay stack, cerrar completamente
                 setOpenLoop(null);
                 setSelectedLoop(null);
               }
@@ -466,7 +437,6 @@ function Canvas({}: Props) {
               setSelectedTrial(null);
             }}
             onOpenNestedLoop={(nestedLoop) => {
-              // Agregar el loop actual al stack solo si no está ya presente
               const isAlreadyInStack = loopStack.some(
                 (l) => l.id === openLoop.id
               );

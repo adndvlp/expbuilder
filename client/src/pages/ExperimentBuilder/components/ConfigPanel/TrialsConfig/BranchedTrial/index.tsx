@@ -7,7 +7,7 @@ import { Condition, RepeatConditionState, Props, Parameter } from "./types";
 import BranchConditions from "./BranchConditions";
 
 function BranchedTrial({ selectedTrial, onClose }: Props) {
-  const { trials, setTrials, setSelectedTrial } = useTrials();
+  const { trials, setTrials, setSelectedTrial, updateTrial } = useTrials();
 
   const [activeTab, setActiveTab] = useState<"branch" | "params">("branch");
   const [data, setData] = useState<import("../../types").DataDefinition[]>([]);
@@ -219,7 +219,7 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
    * 1. branchConditions: Conditions where nextTrialId is in branches[] (same scope, can override params)
    * 2. repeatConditions: Conditions where nextTrialId is NOT in branches[] (jump to any trial, no param override)
    */
-  const handleSaveConditions = () => {
+  const handleSaveConditions = async () => {
     if (!selectedTrial) return;
 
     // Separate conditions into branch conditions and repeat conditions
@@ -254,37 +254,40 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
       });
     });
 
-    // Recursive function to find and update the trial
-    const updateTrialRecursive = (items: any[]): any[] => {
-      return items.map((item) => {
-        // Check if this is the trial we're looking for
-        if (
-          item.id === selectedTrial.id ||
-          String(item.id) === String(selectedTrial.id)
-        ) {
-          return {
-            ...item,
-            branchConditions,
-            repeatConditions: repeatConditionsToSave,
-          };
-        }
-
-        // If it's a loop, recursively update its trials
-        if ("trials" in item && Array.isArray(item.trials)) {
-          return {
-            ...item,
-            trials: updateTrialRecursive(item.trials),
-          };
-        }
-
-        return item;
-      });
-    };
-
-    const updatedTrials = updateTrialRecursive(trials);
-
-    setTrials(updatedTrials);
     console.log("Branch conditions saved:", branchConditions);
+
+    // Use optimized updateTrial to send only this trial (PATCH)
+    if (updateTrial) {
+      await updateTrial(selectedTrial.id, {
+        branchConditions,
+        repeatConditions: repeatConditionsToSave,
+      });
+    } else {
+      // Fallback to full update if updateTrial not available
+      const updateTrialRecursive = (items: any[]): any[] => {
+        return items.map((item) => {
+          if (
+            item.id === selectedTrial.id ||
+            String(item.id) === String(selectedTrial.id)
+          ) {
+            return {
+              ...item,
+              branchConditions,
+              repeatConditions: repeatConditionsToSave,
+            };
+          }
+          if ("trials" in item && Array.isArray(item.trials)) {
+            return {
+              ...item,
+              trials: updateTrialRecursive(item.trials),
+            };
+          }
+          return item;
+        });
+      };
+      const updatedTrials = updateTrialRecursive(trials);
+      setTrials(updatedTrials);
+    }
 
     // Update selectedTrial with the new data so changes reflect immediately
     const updatedSelectedTrial = findTrialById(selectedTrial.id);

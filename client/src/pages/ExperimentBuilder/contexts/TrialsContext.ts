@@ -19,6 +19,12 @@ type TrialsContextType = {
   ) => void;
   moveTrialOrLoop?: (params: MoveItemParams) => void;
   removeLoop?: (loopId: string) => void;
+  // Métodos optimizados
+  updateTrial?: (
+    trialId: string | number,
+    updatedData: Partial<Trial>
+  ) => Promise<void>;
+  updateLoop?: (loopId: string, updatedData: Partial<any>) => Promise<void>;
 };
 
 const TrialsContext = createContext<TrialsContextType>({
@@ -31,6 +37,8 @@ const TrialsContext = createContext<TrialsContextType>({
   groupTrialsAsLoop: undefined,
   moveTrialOrLoop: undefined,
   removeLoop: undefined,
+  updateTrial: undefined,
+  updateLoop: undefined,
 });
 
 export default TrialsContext;
