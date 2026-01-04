@@ -112,7 +112,8 @@ function WebGazer({ webgazerPlugins }: Props) {
   const { csvJson, setCsvJson, csvColumns, setCsvColumns, handleCsvUpload } =
     useCsvData();
 
-  const { trials, setTrials, selectedTrial, setSelectedTrial } = useTrials();
+  const { trials, setTrials, selectedTrial, setSelectedTrial, updateTrial } =
+    useTrials();
 
   const [trialName, setTrialName] = useState<string>("");
   const { columnMapping, setColumnMapping } = useColumnMapping({});
@@ -128,6 +129,14 @@ function WebGazer({ webgazerPlugins }: Props) {
     columnMapping,
     setColumnMapping,
     setIsLoadingTrial,
+    // Props para branching/conditional/paramsOverride
+    id: selectedTrial?.id,
+    branches: selectedTrial?.branches,
+    branchConditions: selectedTrial?.branchConditions,
+    repeatConditions: selectedTrial?.repeatConditions,
+    paramsOverride: selectedTrial?.paramsOverride,
+    isInLoop: !!selectedTrial?.csvFromLoop,
+    parentLoopId: null, // WebGazer no está en loop por defecto
   });
   const calibratePhase = usePhase({
     pluginName: calibrateWebgazer,
@@ -140,6 +149,14 @@ function WebGazer({ webgazerPlugins }: Props) {
     columnMapping, // checar copias de los mapeos anidados en todas las fases
     setColumnMapping,
     setIsLoadingTrial,
+    // Props para branching/conditional/paramsOverride
+    id: selectedTrial?.id,
+    branches: selectedTrial?.branches,
+    branchConditions: selectedTrial?.branchConditions,
+    repeatConditions: selectedTrial?.repeatConditions,
+    paramsOverride: selectedTrial?.paramsOverride,
+    isInLoop: !!selectedTrial?.csvFromLoop,
+    parentLoopId: null,
   });
   const validatePhase = usePhase({
     pluginName: validateWebgazer,
@@ -152,6 +169,14 @@ function WebGazer({ webgazerPlugins }: Props) {
     columnMapping,
     setColumnMapping,
     setIsLoadingTrial,
+    // Props para branching/conditional/paramsOverride
+    id: selectedTrial?.id,
+    branches: selectedTrial?.branches,
+    branchConditions: selectedTrial?.branchConditions,
+    repeatConditions: selectedTrial?.repeatConditions,
+    paramsOverride: selectedTrial?.paramsOverride,
+    isInLoop: !!selectedTrial?.csvFromLoop,
+    parentLoopId: null,
   });
   const recalibratePhase = usePhase({
     pluginName: recalibrateWebGazer,
@@ -164,6 +189,14 @@ function WebGazer({ webgazerPlugins }: Props) {
     columnMapping,
     setColumnMapping,
     setIsLoadingTrial,
+    // Props para branching/conditional/paramsOverride
+    id: selectedTrial?.id,
+    branches: selectedTrial?.branches,
+    branchConditions: selectedTrial?.branchConditions,
+    repeatConditions: selectedTrial?.repeatConditions,
+    paramsOverride: selectedTrial?.paramsOverride,
+    isInLoop: !!selectedTrial?.csvFromLoop,
+    parentLoopId: null,
   });
 
   const { handleDeleteTrial } = useTrialPersistence({
@@ -308,6 +341,11 @@ function WebGazer({ webgazerPlugins }: Props) {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
       timeoutRef.current = setTimeout(() => {
+        // ========== OPTIMIZACIÓN: SOLO MANDAR ESTE TRIAL ==========
+        if (updateTrial) {
+          updateTrial(updatedTrial.id, updatedTrial);
+        }
+
         const updatedTrials = [...trials];
         updatedTrials[trialIndex] = updatedTrial;
         setTrials(updatedTrials);
@@ -331,6 +369,7 @@ function WebGazer({ webgazerPlugins }: Props) {
       trials,
       setTrials,
       setSelectedTrial,
+      updateTrial,
     ]
   );
 

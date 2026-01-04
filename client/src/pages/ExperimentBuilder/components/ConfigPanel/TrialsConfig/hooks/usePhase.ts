@@ -2,6 +2,15 @@ import { useEffect, useState } from "react";
 import { usePluginParameters } from "../../hooks/usePluginParameters"; // Make sure path is correct
 import { useCsvMapper } from "./useCsvMapper";
 import { ColumnMapping, Trial } from "../../types";
+import {
+  generateOnFinishCode,
+  generateOnStartCode,
+} from "./usePhaseCodeGenerators";
+import type {
+  BranchCondition,
+  RepeatCondition,
+  ParamsOverrideCondition,
+} from "../../types";
 
 type PhaseProps = {
   pluginName: string;
@@ -14,6 +23,14 @@ type PhaseProps = {
   columnMapping: ColumnMapping;
   setColumnMapping: React.Dispatch<React.SetStateAction<ColumnMapping>>;
   setIsLoadingTrial: React.Dispatch<React.SetStateAction<boolean>>;
+  // Props opcionales para branching/conditional/paramsOverride
+  id?: number;
+  branches?: (string | number)[];
+  branchConditions?: BranchCondition[];
+  repeatConditions?: RepeatCondition[];
+  paramsOverride?: ParamsOverrideCondition[];
+  isInLoop?: boolean;
+  parentLoopId?: string | null;
 };
 
 export const usePhase = ({
@@ -27,6 +44,14 @@ export const usePhase = ({
   columnMapping,
   setColumnMapping,
   setIsLoadingTrial,
+  // Nuevas props para branching/conditional/paramsOverride
+  id,
+  branches,
+  branchConditions,
+  repeatConditions,
+  paramsOverride,
+  isInLoop,
+  parentLoopId,
 }: PhaseProps) => {
   useEffect(() => {
     if (selectedTrial) {
@@ -207,6 +232,18 @@ export const usePhase = ({
     };
     `;
 
+    // Generar on_finish y on_start si hay branching/conditional/paramsOverride
+    const onFinishCode = generateOnFinishCode({
+      id,
+      branches,
+      branchConditions,
+      repeatConditions,
+      paramsOverride,
+      isInLoop,
+      parentLoopId,
+    });
+    const onStartCode = generateOnStartCode();
+
     code += `
     const ${pluginNameRefactor}_procedure = {
     timeline: 
@@ -215,7 +252,7 @@ export const usePhase = ({
     
     ${!pluginRecal ? `${pluginNameRefactor}_timeline ` : ""}
     ],
-    timeline_variables: test_stimuli_${pluginNameRefactor},
+    timeline_variables: test_stimuli_${pluginNameRefactor},${onStartCode}${onFinishCode}
   };
     timeline.push(${pluginNameRefactor}_procedure);
   ;`;
@@ -251,7 +288,7 @@ export const usePhase = ({
     [${
       includeInstructions ? `plugin_webgazer_recalibrate_instructions,` : ""
     }recalibrate_timeline],
-    timeline_variables: test_stimuli_plugin_webgazer_recalibrate,
+    timeline_variables: test_stimuli_plugin_webgazer_recalibrate,${onStartCode}${onFinishCode}
   };
     timeline.push(recalibrateWebGazer_procedure);
   ;`;
