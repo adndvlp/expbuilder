@@ -1,7 +1,8 @@
-import { ReactNode, useState, useEffect } from "react";
-import TrialsContext from "../contexts/TrialsContext";
-import { Loop, Trial, TrialOrLoop } from "../components/ConfigPanel/types";
+import { ReactNode, useEffect, useState, useCallback } from "react";
+import TrialsContext, { TimelineItem } from "../contexts/TrialsContext";
+import { Trial, Loop } from "../components/ConfigPanel/types";
 import { useExperimentID } from "../hooks/useExperimentID";
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 type Props = {
@@ -9,452 +10,464 @@ type Props = {
 };
 
 export default function TrialsProvider({ children }: Props) {
-  const [trials, setTrials] = useState<TrialOrLoop[]>([]);
+  const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [selectedTrial, setSelectedTrial] = useState<Trial | null>(null);
   const [selectedLoop, setSelectedLoop] = useState<Loop | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const experimentID = useExperimentID();
 
-  // Agrupa trials/loops en un loop (soporta nested loops)
-  const groupTrialsAsLoop = (
-    trialIndices: number[],
-    loopProps?: Partial<Omit<Loop, "trials" | "id">>
-  ) => {
-    if (trialIndices.length < 2) return;
+  // ==================== METADATA METHODS ====================
 
-    const loopCount = trials.filter((t) => "trials" in t).length;
-    const loopName = `Loop ${loopCount + 1}`;
-
-    // Get the IDs that will be grouped (can be trials or loops)
-    const idsToGroup = trialIndices
-      .map((i) => trials[i])
-      .filter((t) => t && "id" in t)
-      .map((t) => t.id);
-
-    // Extract the items to group, preserving their structure
-    const itemsToGroup = trialIndices
-      .map((i) => trials[i])
-      .filter((t) => t && "id" in t)
-      .map((item) => {
-        if ("trials" in item) {
-          // Es un Loop - preservar toda su estructura
-          return {
-            ...item,
-            // Los loops mantienen su CSV propio si lo tienen
-          };
-        } else {
-          // Es un Trial
-          return {
-            ...item,
-            csvJson: undefined,
-            csvColumns: undefined,
-            csvFromLoop: true,
-            // Preserve branches if they exist
-            branches: item.branches || undefined,
-          };
-        }
-      });
-
-    // Create the loop
-    const newLoop: Loop = {
-      id: "loop_" + Date.now(),
-      name: loopProps?.name || loopName,
-      repetitions: loopProps?.repetitions ?? 1,
-      randomize: loopProps?.randomize ?? false,
-      orders: loopProps?.orders ?? false,
-      stimuliOrders: loopProps?.stimuliOrders ?? [],
-      orderColumns: loopProps?.orderColumns ?? [],
-      categoryColumn: loopProps?.categoryColumn ?? "",
-      categories: loopProps?.categories ?? false,
-      categoryData: loopProps?.categoryData ?? [],
-      trials: itemsToGroup as TrialOrLoop[],
-      code: "",
-    };
-
-    // Calculate where to insert the loop BEFORE removing trials
-    const insertIndex = Math.min(...trialIndices);
-
-    // Check if the items being grouped are branches of another trial or loop
-    let parentId: number | string | null = null;
-    for (const item of trials) {
-      if ("branches" in item && item.branches && Array.isArray(item.branches)) {
-        const hasBranchToGroup = item.branches.some((branchId) => {
-          return idsToGroup.includes(branchId);
-        });
-
-        if (hasBranchToGroup) {
-          parentId = "parameters" in item ? (item as Trial).id : item.id;
-          break;
-        }
-      }
-    }
-
-    // Remove the grouped items from the main array
-    const newTrials: TrialOrLoop[] = [];
-
-    for (let i = 0; i < trials.length; i++) {
-      // If this is where the loop should be inserted
-      if (i === insertIndex) {
-        newTrials.push(newLoop);
-      }
-
-      // If this item is NOT being grouped, add it
-      if (!trialIndices.includes(i)) {
-        const item = trials[i];
-
-        // If this item has branches, remove any that are being grouped and add the loop
-        if (
-          "branches" in item &&
-          item.branches &&
-          Array.isArray(item.branches)
-        ) {
-          const updatedBranches = item.branches.filter((branchId) => {
-            return !idsToGroup.includes(branchId);
-          });
-
-          // If this is the parent (trial or loop) and some branches were grouped, add the loop ID
-          const itemId = "parameters" in item ? (item as Trial).id : item.id;
-          if (
-            updatedBranches.length !== item.branches.length &&
-            parentId &&
-            itemId === parentId
-          ) {
-            updatedBranches.push(newLoop.id);
-            newTrials.push({ ...item, branches: updatedBranches });
-          } else if (updatedBranches.length !== item.branches.length) {
-            newTrials.push({ ...item, branches: updatedBranches });
-          } else {
-            newTrials.push(item);
-          }
-        } else {
-          newTrials.push(item);
-        }
-      }
-    }
-
-    setTrials(newTrials);
-  };
-
-  type MoveItemParams = {
-    dragged: { type: "trial" | "loop"; id: string | number };
-    target: { type: "trial" | "loop"; id: string | number | null };
-    position: "before" | "after" | "inside";
-  };
-
-  function moveTrialOrLoop({ dragged, target, position }: MoveItemParams) {
-    setTrials((prev) => {
-      let newTrials = [...prev];
-
-      // Encuentra el trial/loop arrastrado
-      const draggedIndex = newTrials.findIndex((item) =>
-        dragged.type === "trial"
-          ? "parameters" in item && item.id === dragged.id
-          : "trials" in item && item.id === dragged.id
+  const loadTrialsMetadata = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(
+        `${API_URL}/api/trials-metadata/${experimentID}`
       );
 
-      let draggedItem = newTrials[draggedIndex];
-
-      // Si el dragged está dentro de un loop, sácalo primero
-      if (dragged.type === "trial") {
-        const loopIndex = newTrials.findIndex(
-          (item) =>
-            "trials" in item &&
-            (item as Loop).trials.some((t) => t.id === dragged.id)
-        );
-        if (loopIndex !== -1) {
-          const loop = newTrials[loopIndex] as Loop;
-          const trialIdx = loop.trials.findIndex((t) => t.id === dragged.id);
-          let trial = loop.trials[trialIdx];
-          loop.trials.splice(trialIdx, 1);
-          // Si el loop queda vacío, elimínalo
-          if (loop.trials.length === 0) {
-            newTrials.splice(loopIndex, 1);
-          }
-          // Al sacar el trial del loop, NO restaurar ningún CSV previo
-          trial = {
-            ...trial,
-            csvJson: undefined,
-            csvColumns: undefined,
-          };
-          draggedItem = trial;
-        }
+      if (!response.ok) {
+        throw new Error("Failed to load trials metadata");
       }
 
-      // Elimina el dragged del array principal si está ahí
-      if (draggedIndex !== -1) {
-        newTrials.splice(draggedIndex, 1);
-      }
+      const data = await response.json();
 
-      // Si el destino es dentro de un loop
-      if (position === "inside" && target.type === "loop" && target.id) {
-        const loopIndex = newTrials.findIndex(
-          (item) => "trials" in item && item.id === target.id
-        );
-        if (loopIndex !== -1) {
-          const loop = newTrials[loopIndex] as Loop;
-          // Al meter el trial al loop, elimina cualquier CSV individual y marca csvFromLoop
-          const trialWithLoopCsv = {
-            ...draggedItem,
-            csvJson: loop.csvJson,
-            csvColumns: loop.csvColumns,
-            csvFromLoop: true,
-          };
-          loop.trials.push(trialWithLoopCsv as Trial);
-
-          // Propaga el CSV del loop a todos los trials dentro del loop
-          if (loop.csvJson && loop.csvColumns) {
-            loop.trials = loop.trials.map((trial) => ({
-              ...trial,
-              csvJson: loop.csvJson,
-              csvColumns: loop.csvColumns,
-              csvFromLoop: true,
-            }));
-          }
-        }
-        return [...newTrials];
-      }
-
-      // Si el destino es antes/después de un trial/loop
-      const targetIndex = target.id
-        ? newTrials.findIndex((item) =>
-            target.type === "trial"
-              ? "parameters" in item && item.id === target.id
-              : "trials" in item && item.id === target.id
-          )
-        : newTrials.length;
-
-      if (position === "before") {
-        newTrials.splice(targetIndex, 0, draggedItem);
-      } else if (position === "after") {
-        newTrials.splice(targetIndex + 1, 0, draggedItem);
-      }
-
-      // Propaga el CSV del loop a todos los trials dentro de cada loop
-      newTrials = newTrials.map((item) => {
-        if (item && "trials" in item && item.csvJson && item.csvColumns) {
-          const loop = item as Loop;
-          loop.trials = loop.trials.map((trial) => ({
-            ...trial,
-            csvJson: loop.csvJson,
-            csvColumns: loop.csvColumns,
-            csvFromLoop: true,
-          }));
-          return loop;
-        }
-        return item;
-      });
-
-      return [...newTrials];
-    });
-  }
-
-  const removeLoop = (loopId: string) => {
-    setTrials((prevTrials) => {
-      // Helper recursivo para encontrar y eliminar el loop
-      const removeLoopRecursive = (
-        items: TrialOrLoop[]
-      ): { newItems: TrialOrLoop[]; found: boolean; loop?: Loop } => {
-        for (let idx = 0; idx < items.length; idx++) {
-          const item = items[idx];
-
-          // Si encontramos el loop a eliminar
-          if ("trials" in item && item.id === loopId) {
-            const loop = item as Loop;
-
-            // Verificar si es un branch de otro item en este nivel
-            let parentItem: TrialOrLoop | null = null;
-            for (const potentialParent of items) {
-              if (
-                "branches" in potentialParent &&
-                potentialParent.branches?.includes(loopId)
-              ) {
-                parentItem = potentialParent;
-                break;
-              }
-            }
-
-            let newItems: TrialOrLoop[];
-
-            if (parentItem) {
-              // Es un branch - restaurar trials como branches del parent
-              newItems = [...items.slice(0, idx), ...items.slice(idx + 1)];
-              newItems = [
-                ...newItems,
-                ...loop.trials.map((trial) => ({
-                  ...trial,
-                  csvJson: undefined,
-                  csvColumns: undefined,
-                  csvFromLoop: undefined,
-                })),
-              ];
-
-              // Encontrar root trials
-              const branchIdsInLoop = new Set<number | string>();
-              loop.trials.forEach((trial) => {
-                if (trial.branches) {
-                  trial.branches.forEach((branchId) =>
-                    branchIdsInLoop.add(branchId)
-                  );
-                }
-              });
-
-              const rootTrialIds = loop.trials
-                .filter((trial) => !branchIdsInLoop.has(trial.id))
-                .map((trial) => trial.id);
-
-              // Actualizar branches del parent
-              newItems = newItems.map((item) => {
-                const itemId =
-                  "parameters" in item ? (item as Trial).id : item.id;
-                const parentId =
-                  "parameters" in parentItem
-                    ? (parentItem as Trial).id
-                    : parentItem.id;
-
-                if (
-                  itemId === parentId &&
-                  "branches" in item &&
-                  item.branches
-                ) {
-                  const updatedBranches = item.branches.flatMap((branchId) => {
-                    if (branchId === loopId) {
-                      return rootTrialIds;
-                    }
-                    return branchId;
-                  });
-                  return { ...item, branches: updatedBranches };
-                }
-                return item;
-              });
-            } else {
-              // No es un branch - insertar trials en la posición del loop
-              newItems = [
-                ...items.slice(0, idx),
-                ...loop.trials.map((trial) => ({
-                  ...trial,
-                  csvJson: undefined,
-                  csvColumns: undefined,
-                  csvFromLoop: undefined,
-                })),
-                ...items.slice(idx + 1),
-              ];
-            }
-
-            return { newItems, found: true, loop };
-          }
-
-          // Si es un loop, buscar recursivamente
-          if ("trials" in item) {
-            const result = removeLoopRecursive(item.trials);
-            if (result.found) {
-              const updatedItem = {
-                ...item,
-                trials: result.newItems,
-              };
-              const newItems = [
-                ...items.slice(0, idx),
-                updatedItem,
-                ...items.slice(idx + 1),
-              ];
-              return { newItems, found: true, loop: result.loop };
-            }
-          }
-        }
-
-        return { newItems: items, found: false };
-      };
-
-      const result = removeLoopRecursive(prevTrials);
-
-      if (result.found) {
-        // Actualiza en el backend
-        fetch(`${API_URL}/api/save-trials/${experimentID}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ trials: result.newItems }),
-        });
-
-        return result.newItems;
-      }
-
-      return prevTrials;
-    });
-    setSelectedLoop(null);
-  };
-
-  useEffect(() => {
-    fetch(`${API_URL}/api/load-trials/${experimentID}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (
-          data.trials &&
-          data.trials.trials &&
-          data.trials.trials.length > 0
-        ) {
-          setTrials(data.trials.trials);
-        } else {
-          const newTrial: Trial = {
-            id: Date.now(),
-            plugin: "plugin-dynamic",
-            name: "New Trial",
-            parameters: {},
-            trialCode: "",
-            columnMapping: {
-              components: {
-                source: "typed",
-                value: [
-                  {
-                    type: "HtmlComponent",
-                    stimulus:
-                      '<div id="i9zw" style="box-sizing: border-box;">Welcome to the experiment, press \'Start\' to begin</div>',
-                    coordinates: { x: 0, y: 0 },
-                    width: 200,
-                    height: 50,
-                  },
-                ],
-              },
-              response_components: {
-                source: "typed",
-                value: [
-                  {
-                    type: "ButtonResponseComponent",
-                    choices: ["Start"],
-                    coordinates: { x: 0, y: 0.15 },
-                    width: 200,
-                    height: 50,
-                  },
-                ],
-              },
-            },
-            type: "Trial",
-          };
-          setTrials([newTrial]);
-        }
-      });
+      // Actualizar timeline (solo metadata: id, type, name, branches)
+      setTimeline(data.timeline || []);
+    } catch (error) {
+      console.error("Error loading trials metadata:", error);
+    } finally {
+      setIsLoading(false);
+    }
   }, [experimentID]);
 
+  const getLoopTrialsMetadata = useCallback(
+    async (loopId: string | number): Promise<TimelineItem[]> => {
+      try {
+        const response = await fetch(
+          `${API_URL}/api/loop-trials-metadata/${experimentID}/${loopId}`
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to load loop trials metadata");
+        }
+
+        const data = await response.json();
+        return data.trialsMetadata || [];
+      } catch (error) {
+        console.error("Error loading loop trials metadata:", error);
+        return [];
+      }
+    },
+    [experimentID]
+  );
+
+  // ==================== TRIAL METHODS ====================
+
+  const createTrial = useCallback(
+    async (trial: Omit<Trial, "id">): Promise<Trial> => {
+      try {
+        const response = await fetch(`${API_URL}/api/trial/${experimentID}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(trial),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to create trial");
+        }
+
+        const data = await response.json();
+        const newTrial = data.trial;
+
+        // Recargar timeline desde backend para tener branches
+        await loadTrialsMetadata();
+
+        return newTrial;
+      } catch (error) {
+        console.error("Error creating trial:", error);
+        throw error;
+      }
+    },
+    [experimentID, loadTrialsMetadata]
+  );
+
+  const getTrial = useCallback(
+    async (id: string | number): Promise<Trial | null> => {
+      try {
+        const response = await fetch(
+          `${API_URL}/api/trial/${experimentID}/${id}`
+        );
+
+        if (!response.ok) {
+          return null;
+        }
+
+        const data = await response.json();
+        return data.trial;
+      } catch (error) {
+        console.error("Error getting trial:", error);
+        return null;
+      }
+    },
+    [experimentID]
+  );
+
+  const updateTrial = useCallback(
+    async (
+      id: string | number,
+      trial: Partial<Trial>
+    ): Promise<Trial | null> => {
+      try {
+        const response = await fetch(
+          `${API_URL}/api/trial/${experimentID}/${id}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(trial),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to update trial");
+        }
+
+        const data = await response.json();
+        const updatedTrial = data.trial;
+
+        // Recargar timeline para sincronizar branches
+        await loadTrialsMetadata();
+
+        // Actualizar selectedTrial si es el que está seleccionado
+        if (selectedTrial?.id === id) {
+          setSelectedTrial(updatedTrial);
+        }
+
+        return updatedTrial;
+      } catch (error) {
+        console.error("Error updating trial:", error);
+        return null;
+      }
+    },
+    [experimentID, selectedTrial, loadTrialsMetadata]
+  );
+
+  const deleteTrial = useCallback(
+    async (id: string | number): Promise<boolean> => {
+      try {
+        const response = await fetch(
+          `${API_URL}/api/trial/${experimentID}/${id}`,
+          {
+            method: "DELETE",
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to delete trial");
+        }
+
+        // Recargar timeline desde backend
+        await loadTrialsMetadata();
+
+        // Limpiar selección si era el trial eliminado
+        if (selectedTrial?.id === id) {
+          setSelectedTrial(null);
+        }
+
+        return true;
+      } catch (error) {
+        console.error("Error deleting trial:", error);
+        return false;
+      }
+    },
+    [experimentID, selectedTrial, loadTrialsMetadata]
+  );
+
+  // ==================== LOOP METHODS ====================
+
+  const createLoop = useCallback(
+    async (loop: Omit<Loop, "id">): Promise<Loop> => {
+      try {
+        const response = await fetch(`${API_URL}/api/loop/${experimentID}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(loop),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to create loop");
+        }
+
+        const data = await response.json();
+        const newLoop = data.loop;
+
+        // Recargar timeline desde backend para tener branches y trials
+        await loadTrialsMetadata();
+
+        // Actualizar parentLoopId en todos los trials del loop
+        for (const trialId of loop.trials) {
+          try {
+            await fetch(`${API_URL}/api/trial/${experimentID}/${trialId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ parentLoopId: newLoop.id }),
+            });
+          } catch (error) {
+            console.error(
+              `Error updating parentLoopId for trial ${trialId}:`,
+              error
+            );
+          }
+        }
+
+        return newLoop;
+      } catch (error) {
+        console.error("Error creating loop:", error);
+        throw error;
+      }
+    },
+    [experimentID, loadTrialsMetadata]
+  );
+
+  const getLoop = useCallback(
+    async (id: string | number): Promise<Loop | null> => {
+      try {
+        const response = await fetch(
+          `${API_URL}/api/loop/${experimentID}/${id}`
+        );
+
+        if (!response.ok) {
+          return null;
+        }
+
+        const data = await response.json();
+        return data.loop;
+      } catch (error) {
+        console.error("Error getting loop:", error);
+        return null;
+      }
+    },
+    [experimentID]
+  );
+
+  const updateLoop = useCallback(
+    async (id: string | number, loop: Partial<Loop>): Promise<Loop | null> => {
+      try {
+        // Get current loop to compare trials
+        const currentLoop = await getLoop(id);
+
+        const response = await fetch(
+          `${API_URL}/api/loop/${experimentID}/${id}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(loop),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to update loop");
+        }
+
+        const data = await response.json();
+        const updatedLoop = data.loop;
+
+        // Si se actualizó el array de trials, sincronizar parentLoopId
+        if (loop.trials && currentLoop) {
+          const oldTrials = currentLoop.trials || [];
+          const newTrials = loop.trials;
+
+          // Trials removidos del loop - limpiar parentLoopId
+          const removedTrials = oldTrials.filter(
+            (trialId) => !newTrials.includes(trialId)
+          );
+          for (const trialId of removedTrials) {
+            try {
+              await fetch(`${API_URL}/api/trial/${experimentID}/${trialId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ parentLoopId: null }),
+              });
+            } catch (error) {
+              console.error(
+                `Error clearing parentLoopId for trial ${trialId}:`,
+                error
+              );
+            }
+          }
+
+          // Trials agregados al loop - asignar parentLoopId
+          const addedTrials = newTrials.filter(
+            (trialId) => !oldTrials.includes(trialId)
+          );
+          for (const trialId of addedTrials) {
+            try {
+              await fetch(`${API_URL}/api/trial/${experimentID}/${trialId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ parentLoopId: id }),
+              });
+            } catch (error) {
+              console.error(
+                `Error setting parentLoopId for trial ${trialId}:`,
+                error
+              );
+            }
+          }
+        }
+
+        // Recargar timeline para sincronizar branches y trials
+        await loadTrialsMetadata();
+
+        // Actualizar selectedLoop si es el que está seleccionado
+        if (selectedLoop?.id === id) {
+          setSelectedLoop(updatedLoop);
+        }
+
+        return updatedLoop;
+      } catch (error) {
+        console.error("Error updating loop:", error);
+        return null;
+      }
+    },
+    [experimentID, selectedLoop, loadTrialsMetadata]
+  );
+
+  const deleteLoop = useCallback(
+    async (id: string | number): Promise<boolean> => {
+      try {
+        // Get loop before deleting to clear parentLoopId from trials
+        const loopToDelete = await getLoop(id);
+
+        const response = await fetch(
+          `${API_URL}/api/loop/${experimentID}/${id}`,
+          {
+            method: "DELETE",
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to delete loop");
+        }
+
+        // Limpiar parentLoopId de los trials que estaban en el loop
+        if (loopToDelete && loopToDelete.trials) {
+          for (const trialId of loopToDelete.trials) {
+            try {
+              await fetch(`${API_URL}/api/trial/${experimentID}/${trialId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ parentLoopId: null }),
+              });
+            } catch (error) {
+              console.error(
+                `Error clearing parentLoopId for trial ${trialId}:`,
+                error
+              );
+            }
+          }
+        }
+
+        // Recargar timeline desde backend
+        await loadTrialsMetadata();
+
+        // Deseleccionar si es el seleccionado
+        if (selectedLoop?.id === id) {
+          setSelectedLoop(null);
+        }
+
+        return true;
+      } catch (error) {
+        console.error("Error deleting loop:", error);
+        return false;
+      }
+    },
+    [experimentID, selectedLoop, loadTrialsMetadata]
+  );
+
+  // ==================== TIMELINE METHODS ====================
+
+  const updateTimeline = useCallback(
+    async (newTimeline: TimelineItem[]): Promise<boolean> => {
+      try {
+        const response = await fetch(
+          `${API_URL}/api/timeline/${experimentID}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ timeline: newTimeline }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to update timeline");
+        }
+
+        // Actualizar estado local
+        setTimeline(newTimeline);
+
+        return true;
+      } catch (error) {
+        console.error("Error updating timeline:", error);
+        return false;
+      }
+    },
+    [experimentID]
+  );
+
+  // ==================== DELETE ALL ====================
+
+  const deleteAllTrials = useCallback(async (): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_URL}/api/trials/${experimentID}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete all trials");
+      }
+
+      // Limpiar estado local
+      setTimeline([]);
+      setSelectedTrial(null);
+      setSelectedLoop(null);
+
+      return true;
+    } catch (error) {
+      console.error("Error deleting all trials:", error);
+      return false;
+    }
+  }, [experimentID]);
+
+  // ==================== INITIAL LOAD ====================
+
   useEffect(() => {
-    if (trials.length === 0) return;
-    // Guardar trials en backend cuando cambian
-    fetch(`${API_URL}/api/save-trials/${experimentID}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ trials }),
-    });
-  }, [trials, experimentID]);
+    if (experimentID) {
+      loadTrialsMetadata();
+    }
+  }, [experimentID, loadTrialsMetadata]);
 
   return (
     <TrialsContext.Provider
       value={{
-        trials,
-        setTrials,
+        timeline,
         selectedTrial,
         setSelectedTrial,
         selectedLoop,
         setSelectedLoop,
-        groupTrialsAsLoop,
-        moveTrialOrLoop,
-        removeLoop,
+        createTrial,
+        getTrial,
+        updateTrial,
+        deleteTrial,
+        createLoop,
+        getLoop,
+        updateLoop,
+        deleteLoop,
+        updateTimeline,
+        loadTrialsMetadata,
+        getLoopTrialsMetadata,
+        deleteAllTrials,
+        isLoading,
       }}
     >
       {children}

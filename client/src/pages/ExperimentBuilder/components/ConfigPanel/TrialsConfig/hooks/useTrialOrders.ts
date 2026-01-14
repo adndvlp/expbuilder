@@ -38,6 +38,7 @@ export function useTrialOrders() {
     categoryColumn,
     setCategoryColumn,
     categoryData,
+    setCategoryData,
     mapCategoriesFromCsv,
   };
 }

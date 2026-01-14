@@ -1,5 +1,5 @@
 import "@xyflow/react/dist/style.css";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import ReactFlow, { Connection } from "reactflow";
 import useTrials from "../../hooks/useTrials";
 import { Trial } from "../ConfigPanel/types";
@@ -12,11 +12,7 @@ import CanvasToolbar from "./components/CanvasToolbar";
 import { useFlowLayout } from "./hooks/useFlowLayout";
 
 import { FiX } from "react-icons/fi";
-import {
-  generateUniqueName,
-  getAllExistingNames,
-  validateConnection,
-} from "./utils/trialUtils";
+import { generateUniqueName } from "./utils/trialUtils";
 import {
   getIsDarkMode,
   getCanvasBackground,
@@ -33,64 +29,47 @@ type Props = {};
 
 function Canvas({}: Props) {
   const {
-    trials,
-    setTrials,
+    timeline,
     selectedTrial,
     setSelectedTrial,
     selectedLoop,
     setSelectedLoop,
-    groupTrialsAsLoop,
+    createTrial,
+    createLoop,
+    getTrial,
+    getLoop,
+    updateTrial,
+    updateLoop,
+    updateTimeline,
+    getLoopTrialsMetadata,
   } = useTrials();
 
   const [showLoopModal, setShowLoopModal] = useState(false);
   const [openLoop, setOpenLoop] = useState<any>(null);
+  const [openLoopMetadata, setOpenLoopMetadata] = useState<any[]>([]);
   const [loopStack, setLoopStack] = useState<
-    Array<{ id: string; name: string; trials: any[] }>
+    Array<{ id: string; name: string }>
   >([]); // Stack for nested loops
   const [showBranchedModal, setShowBranchedModal] = useState(false);
 
-  const onAddTrial = (type: string) => {
-    const existingNames = getAllExistingNames(trials);
+  const onAddTrial = async (type: string) => {
+    // Generar nombre único basado en timeline
+    const existingNames = timeline.map((item) => item.name);
     const newName = generateUniqueName(existingNames);
 
-    const newTrial: Trial = {
-      id: Date.now(),
-      type: type,
-      name: newName,
-      parameters: {},
-      trialCode: "",
-    };
+    try {
+      const newTrial = await createTrial({
+        type: type,
+        name: newName,
+        parameters: {},
+        trialCode: "",
+      });
 
-    // If there's a selected trial or loop, insert the new trial after it
-    // Otherwise, add it at the end
-    if (selectedTrial) {
-      const selectedIndex = trials.findIndex(
-        (t: any) => "id" in t && t.id === selectedTrial.id
-      );
-      if (selectedIndex !== -1) {
-        const newTrials = [...trials];
-        newTrials.splice(selectedIndex + 1, 0, newTrial);
-        setTrials(newTrials);
-      } else {
-        setTrials([...trials, newTrial]);
-      }
-    } else if (selectedLoop) {
-      const selectedIndex = trials.findIndex(
-        (t: any) => "id" in t && t.id === selectedLoop.id
-      );
-      if (selectedIndex !== -1) {
-        const newTrials = [...trials];
-        newTrials.splice(selectedIndex + 1, 0, newTrial);
-        setTrials(newTrials);
-      } else {
-        setTrials([...trials, newTrial]);
-      }
-    } else {
-      setTrials([...trials, newTrial]);
+      setSelectedTrial(newTrial);
+      setSelectedLoop(null);
+    } catch (error) {
+      console.error("Error creating trial:", error);
     }
-
-    setSelectedTrial(newTrial);
-    setSelectedLoop(null);
   };
 
   const handleCreateLoop = () => {
@@ -100,174 +79,119 @@ function Canvas({}: Props) {
     if (!confirmed) {
       return;
     }
-    // Si hay un trial seleccionado, verificar si tiene branches
-    if (selectedTrial) {
-      const trialWithBranches = trials.find(
-        (t: any) => "id" in t && t.id === selectedTrial.id
-      ) as Trial | undefined;
 
-      if (
-        trialWithBranches &&
-        trialWithBranches.branches &&
-        trialWithBranches.branches.length > 0
-      ) {
-        // El trial tiene branches, crear el loop inmediatamente
-        const trialIndex = trials.findIndex(
-          (t: any) => "id" in t && t.id === selectedTrial.id
-        );
-
-        if (trialIndex !== -1) {
-          // Función recursiva para obtener todos los trial IDs (incluyendo branches anidados)
-          const getAllNestedTrialIds = (
-            trialId: number | string,
-            visited = new Set<number | string>()
-          ): Set<number | string> => {
-            const allIds = new Set<number | string>();
-
-            // Evitar ciclos infinitos
-            if (visited.has(trialId)) {
-              return allIds;
-            }
-            visited.add(trialId);
-
-            // Agregar el ID actual
-            allIds.add(trialId);
-
-            // Encontrar el trial actual
-            const currentTrial = trials.find(
-              (t: any) => "id" in t && t.id === trialId
-            ) as Trial | undefined;
-
-            if (
-              currentTrial &&
-              currentTrial.branches &&
-              currentTrial.branches.length > 0
-            ) {
-              // Recursivamente agregar branches y sus sub-branches
-              currentTrial.branches.forEach((branchId) => {
-                const nestedIds = getAllNestedTrialIds(branchId, visited);
-                nestedIds.forEach((nestedId) => allIds.add(nestedId));
-              });
-            }
-
-            return allIds;
-          };
-
-          // Obtener todos los trial IDs (el principal y todos sus branches anidados)
-          const allTrialIds = getAllNestedTrialIds(selectedTrial.id);
-
-          // Convertir los IDs a índices
-          const allIndices = Array.from(allTrialIds)
-            .map((trialId) =>
-              trials.findIndex((t: any) => "id" in t && t.id === trialId)
-            )
-            .filter((idx) => idx !== -1);
-
-          if (groupTrialsAsLoop) {
-            groupTrialsAsLoop(allIndices);
-          }
-        }
-        return;
-      }
-    }
-
-    // Si no hay trial seleccionado o no tiene branches, mostrar el modal
+    // Mostrar modal para seleccionar rango
     setShowLoopModal(true);
   };
 
-  const handleAddLoop = (itemIds: (number | string)[]) => {
-    const indices = itemIds
-      .map((id) => trials.findIndex((t: any) => t.id === id))
-      .filter((idx) => idx !== -1);
-
-    if (indices.length < 2) {
+  const handleAddLoop = async (itemIds: (number | string)[]) => {
+    if (itemIds.length < 2) {
       alert("You must select at least 2 trials/loops to create a loop.");
       setShowLoopModal(false);
       return;
     }
 
-    if (groupTrialsAsLoop) {
-      groupTrialsAsLoop(indices);
+    try {
+      // Contar loops existentes para generar nombre
+      const loopCount = timeline.filter((item) => item.type === "loop").length;
+      const loopName = `Loop ${loopCount + 1}`;
+
+      const newLoop = await createLoop({
+        name: loopName,
+        repetitions: 1,
+        randomize: false,
+        orders: false,
+        stimuliOrders: [],
+        orderColumns: [],
+        categoryColumn: "",
+        categories: false,
+        categoryData: [],
+        trials: itemIds, // Solo IDs
+        code: "",
+      });
+
+      setSelectedLoop(newLoop);
+      setSelectedTrial(null);
+      setShowLoopModal(false);
+    } catch (error) {
+      console.error("Error creating loop:", error);
+      setShowLoopModal(false);
     }
-    setShowLoopModal(false);
   };
 
-  // Keep openLoop synchronized with trials updates
-  useEffect(() => {
-    if (openLoop) {
-      // Helper recursivo para buscar el loop en cualquier nivel
-      const findLoop = (items: any[], loopId: string): any => {
-        for (const item of items) {
-          if (item.id === loopId) {
-            return item;
-          }
-          if ("trials" in item && item.trials) {
-            const found = findLoop(item.trials, loopId);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
+  // Cargar loop completo y metadata cuando se abre
+  const handleOpenLoop = async (loopId: string) => {
+    try {
+      const loopData = await getLoop(loopId);
+      const metadata = await getLoopTrialsMetadata(loopId);
 
-      const updatedLoop = findLoop(trials, openLoop.id);
-      if (!updatedLoop) {
-        // Loop was deleted
-        setOpenLoop(null);
-      } else if ("trials" in updatedLoop) {
-        // Loop exists, update it to reflect changes in trials
-        setOpenLoop(updatedLoop);
+      if (loopData) {
+        setOpenLoop(loopData);
+        setOpenLoopMetadata(metadata);
       }
+    } catch (error) {
+      console.error("Error loading loop:", error);
     }
-  }, [trials]);
+  };
 
-  const onAddBranch = (parentId: number | string) => {
-    const existingNames = getAllExistingNames(trials);
+  // Recargar metadata del loop abierto
+  const handleRefreshLoopMetadata = async () => {
+    if (!openLoop) return;
+    try {
+      const metadata = await getLoopTrialsMetadata(openLoop.id);
+      setOpenLoopMetadata(metadata);
+    } catch (error) {
+      console.error("Error refreshing loop metadata:", error);
+    }
+  };
+
+  const onAddBranch = async (parentId: number | string) => {
+    const existingNames = timeline.map((item) => item.name);
     const newName = generateUniqueName(existingNames);
 
-    const newBranchTrial: Trial = {
-      id: Date.now(),
-      type: "Trial",
-      name: newName,
-      parameters: {},
-      trialCode: "",
-    };
+    try {
+      const newBranchTrial = await createTrial({
+        type: "Trial",
+        name: newName,
+        parameters: {},
+        trialCode: "",
+      });
 
-    // Add the new trial to trials list
-    const updatedTrials = [...trials, newBranchTrial];
+      // Actualizar el parent (trial o loop) para incluir este branch
+      const parentItem = timeline.find((item) => item.id === parentId);
+      if (!parentItem) return;
 
-    // Update the parent (trial or loop) to include this branch
-    const updatedTrialsWithBranch = updatedTrials.map((t: any) => {
-      if ("parameters" in t && t.id === parentId) {
-        return {
-          ...t,
-          branches: [...(t.branches || []), newBranchTrial.id],
-        };
-      } else if ("trials" in t && t.id === parentId) {
-        return {
-          ...t,
-          branches: [...(t.branches || []), newBranchTrial.id],
-        };
+      if (parentItem.type === "trial") {
+        const parentTrial = await getTrial(parentId);
+        if (parentTrial) {
+          await updateTrial(parentId, {
+            branches: [...(parentTrial.branches || []), newBranchTrial.id],
+          });
+        }
+      } else {
+        const parentLoop = await getLoop(parentId);
+        if (parentLoop) {
+          await updateLoop(parentId, {
+            branches: [...(parentLoop.branches || []), newBranchTrial.id],
+          });
+        }
       }
-      return t;
-    });
 
-    setTrials(updatedTrialsWithBranch);
-    setSelectedTrial(newBranchTrial);
+      setSelectedTrial(newBranchTrial);
+    } catch (error) {
+      console.error("Error adding branch:", error);
+    }
   };
 
   // Handler for connecting trials manually
-  const handleConnect = (connection: Connection) => {
+  const handleConnect = async (connection: Connection) => {
     if (!connection.source || !connection.target) return;
 
     // Extract the actual trial IDs from the node IDs
-    // Node IDs can be like "123" or "loop-456" for main sequence
-    // or "123-789" for branches
     const extractTrialId = (nodeId: string): number | string | null => {
-      // Remove "loop-" prefix if present
       if (nodeId.startsWith("loop-")) {
         return nodeId.substring(5);
       }
-      // For branch nodes, get the last segment (the actual trial ID)
       const segments = nodeId.split("-");
       const lastSegment = segments[segments.length - 1];
       const parsed = parseInt(lastSegment);
@@ -282,43 +206,41 @@ function Canvas({}: Props) {
       return;
     }
 
-    // Validate the connection
-    const validation = validateConnection(sourceId, targetId, trials);
-    if (!validation.isValid) {
-      alert(validation.errorMessage || "Invalid connection");
-      return;
-    }
+    try {
+      // Buscar el source en timeline
+      const sourceItem = timeline.find((item) => item.id === sourceId);
+      if (!sourceItem) return;
 
-    // Add targetId to the branches array of the source trial/loop
-    const updatedTrials = trials.map((t: any) => {
-      if ("parameters" in t && t.id === sourceId) {
-        // It's a Trial
-        const branches = t.branches || [];
-        // Only add if not already present
+      if (sourceItem.type === "trial") {
+        const sourceTrial = await getTrial(sourceId);
+        if (!sourceTrial) return;
+
+        const branches = sourceTrial.branches || [];
         if (!branches.includes(targetId)) {
-          return {
-            ...t,
+          await updateTrial(sourceId, {
             branches: [...branches, targetId],
-          };
+          });
         }
-      } else if ("trials" in t && t.id === sourceId) {
-        // It's a Loop
-        const branches = t.branches || [];
+      } else {
+        const sourceLoop = await getLoop(sourceId);
+        if (!sourceLoop) return;
+
+        const branches = sourceLoop.branches || [];
         if (!branches.includes(targetId)) {
-          return {
-            ...t,
+          await updateLoop(sourceId, {
             branches: [...branches, targetId],
-          };
+          });
         }
       }
-      return t;
-    });
-
-    setTrials(updatedTrials);
+    } catch (error) {
+      console.error("Error connecting items:", error);
+    }
   };
 
   const { nodes, edges } = useFlowLayout({
-    trials,
+    timeline,
+    getTrial,
+    getLoop,
     selectedTrial,
     selectedLoop,
     onSelectTrial: (trial) => {
@@ -330,8 +252,7 @@ function Canvas({}: Props) {
       setSelectedTrial(null);
     },
     onAddBranch,
-    openLoop,
-    setOpenLoop,
+    onOpenLoop: handleOpenLoop,
   });
 
   const isDark = getIsDarkMode();
@@ -420,40 +341,37 @@ function Canvas({}: Props) {
           onConnect={handleConnect}
         />
 
-        {openLoop && openLoop.trials && (
+        {openLoop && (
           <LoopSubCanvas
-            trials={openLoop.trials}
-            loopName={openLoop.name}
             loopId={openLoop.id}
+            loopName={openLoop.name}
+            trialsMetadata={openLoopMetadata}
+            onRefreshMetadata={handleRefreshLoopMetadata}
             isDark={isDark}
             selectedTrial={selectedTrial}
             selectedLoop={selectedLoop}
             loopStack={loopStack}
-            allTrials={trials}
-            setAllTrials={setTrials}
             onNavigateToLoop={(index) => {
-              // Navegar a un loop específico en el stack
               if (index < loopStack.length) {
-                const targetLoop = loopStack[index];
-                setOpenLoop(targetLoop);
+                const targetLoopId = loopStack[index].id;
+                handleOpenLoop(targetLoopId);
                 setLoopStack(loopStack.slice(0, index));
               }
             }}
             onNavigateToRoot={() => {
-              // Volver al canvas principal (cerrar todos los loops)
               setOpenLoop(null);
+              setOpenLoopMetadata([]);
               setSelectedLoop(null);
               setLoopStack([]);
             }}
             onClose={() => {
               if (loopStack.length > 0) {
-                // Si hay un stack, volver al loop anterior
-                const previousLoop = loopStack[loopStack.length - 1];
-                setOpenLoop(previousLoop);
+                const previousLoopId = loopStack[loopStack.length - 1].id;
+                handleOpenLoop(previousLoopId);
                 setLoopStack(loopStack.slice(0, -1));
               } else {
-                // Si no hay stack, cerrar completamente
                 setOpenLoop(null);
+                setOpenLoopMetadata([]);
                 setSelectedLoop(null);
               }
             }}
@@ -465,8 +383,7 @@ function Canvas({}: Props) {
               setSelectedLoop(loop);
               setSelectedTrial(null);
             }}
-            onOpenNestedLoop={(nestedLoop) => {
-              // Agregar el loop actual al stack solo si no está ya presente
+            onOpenNestedLoop={async (nestedLoopId) => {
               const isAlreadyInStack = loopStack.some(
                 (l) => l.id === openLoop.id
               );
@@ -478,14 +395,16 @@ function Canvas({}: Props) {
                     {
                       id: openLoop.id,
                       name: openLoop.name,
-                      trials: openLoop.trials,
                     },
                   ];
 
               setLoopStack(newStack);
-              setOpenLoop(nestedLoop);
-              setSelectedLoop(nestedLoop);
-              setSelectedTrial(null);
+              await handleOpenLoop(String(nestedLoopId));
+              const loopData = await getLoop(nestedLoopId);
+              if (loopData) {
+                setSelectedLoop(loopData);
+                setSelectedTrial(null);
+              }
             }}
           />
         )}
@@ -507,7 +426,7 @@ function Canvas({}: Props) {
           >
             <div style={{ position: "relative", zIndex: 10000 }}>
               <LoopRangeModal
-                trials={trials}
+                timeline={timeline}
                 onConfirm={handleAddLoop}
                 onClose={() => setShowLoopModal(false)}
                 selectedTrialId={selectedTrial?.id || selectedLoop?.id || null}

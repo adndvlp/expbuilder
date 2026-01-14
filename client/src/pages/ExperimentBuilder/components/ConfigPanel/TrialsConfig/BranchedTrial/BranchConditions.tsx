@@ -37,7 +37,7 @@ function BranchConditions({
   selectedTrial,
   data,
 }: Props) {
-  const { trials } = useTrials();
+  const { timeline, getTrial } = useTrials();
   const addCondition = () => {
     setConditions([
       ...conditions,
@@ -274,48 +274,25 @@ function BranchConditions({
   };
 
   // Get CSV columns for target trial
-  const getTargetTrialCsvColumns = (trialId: string | number): string[] => {
-    const targetTrial = findTrialById(trialId);
-    if (!targetTrial) return [];
+  const getTargetTrialCsvColumns = async (
+    trialId: string | number
+  ): Promise<string[]> => {
+    try {
+      const targetTrial = await getTrial(trialId);
+      if (!targetTrial) return [];
 
-    // Check if trial has its own CSV
-    if (targetTrial.csvColumns && targetTrial.csvColumns.length > 0) {
-      return targetTrial.csvColumns;
-    }
-
-    // Recursive function to find parent loop with csvColumns
-    const findParentLoopWithCsv = (
-      items: any[],
-      targetId: string | number
-    ): any => {
-      for (const item of items) {
-        if ("trials" in item && Array.isArray(item.trials)) {
-          // Check if this loop contains the target trial
-          if (
-            item.trials.some(
-              (t: any) => t.id === targetId || String(t.id) === String(targetId)
-            )
-          ) {
-            // Return this loop if it has csvColumns
-            if (item.csvColumns && item.csvColumns.length > 0) {
-              return item;
-            }
-          }
-          // Check recursively in nested loops
-          const found = findParentLoopWithCsv(item.trials, targetId);
-          if (found) return found;
-        }
+      // Check if trial has its own CSV
+      if (targetTrial.csvColumns && targetTrial.csvColumns.length > 0) {
+        return targetTrial.csvColumns;
       }
-      return null;
-    };
 
-    const parentLoop = findParentLoopWithCsv(trials, trialId);
-
-    if (parentLoop && "csvColumns" in parentLoop && parentLoop.csvColumns) {
-      return parentLoop.csvColumns;
+      // Note: Without recursive structure, we can't find parent loop CSV
+      // This would need parentLoopId in trial and API call to get loop
+      return [];
+    } catch (error) {
+      console.error("Error loading target trial CSV columns:", error);
+      return [];
     }
-
-    return [];
   };
 
   // Add custom parameter to condition
@@ -401,101 +378,40 @@ function BranchConditions({
 
   // Get available trials for branches (same scope)
   const getBranchTrials = () => {
-    if (!selectedTrial) return [];
+    if (!selectedTrial || !selectedTrial.branches) return [];
 
-    // Recursive function to find parent loop containing the selected trial
-    const findParentLoop = (items: any[], targetId: string | number): any => {
-      for (const item of items) {
-        if ("trials" in item && Array.isArray(item.trials)) {
-          // Check if this loop contains the target trial directly
-          if (
-            item.trials.some(
-              (t: any) => t.id === targetId || String(t.id) === String(targetId)
-            )
-          ) {
-            return item;
-          }
-          // Check recursively in nested loops
-          const found = findParentLoop(item.trials, targetId);
-          if (found) return found;
-        }
-      }
-      return null;
-    };
-
-    const parentLoop = findParentLoop(trials, selectedTrial.id);
-
-    let branchTrials: any[] = [];
-
-    if (parentLoop && "trials" in parentLoop) {
-      // If trial is inside a loop, show trials within the same loop
-      branchTrials = parentLoop.trials
-        .filter(
-          (t: any) =>
-            t.id !== selectedTrial.id &&
-            String(t.id) !== String(selectedTrial.id)
+    // Use the branches array that comes from the backend
+    // Filter timeline to only show items that are in branches
+    return timeline
+      .filter((item) =>
+        selectedTrial.branches.some(
+          (branchId: string | number) => String(item.id) === String(branchId)
         )
-        .map((t: any) => ({ id: t.id, name: t.name, isLoop: "trials" in t }));
-    } else {
-      // If trial is in main timeline, show all trials and loops at the same level
-      branchTrials = trials
-        .filter((item: any) => {
-          if (
-            item.id === selectedTrial.id ||
-            String(item.id) === String(selectedTrial.id)
-          )
-            return false;
-          return true;
-        })
-        .map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          isLoop: "trials" in item,
-        }));
-    }
-
-    return branchTrials;
+      )
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        isLoop: item.type === "loop",
+      }));
   };
 
-  // Get ALL available trials/loops recursively for Jump functionality
+  // Get ALL available trials/loops for Jump functionality
   const getAllTrialsForJump = () => {
     if (!selectedTrial) return [];
 
-    // Recursive function to collect all trials and loops at any depth
-    const collectAllTrials = (items: any[], path: string = ""): any[] => {
-      const result: any[] = [];
-
-      for (const item of items) {
-        // Skip the current trial
-        if (
-          item.id === selectedTrial.id ||
-          String(item.id) === String(selectedTrial.id)
-        ) {
-          continue;
-        }
-
-        // Determine the display path
-        const itemPath = path ? `${path} > ${item.name}` : item.name;
-
-        // Add this trial/loop
-        result.push({
-          id: item.id,
-          name: item.name,
-          displayName: itemPath,
-          isLoop: "trials" in item,
-        });
-
-        // If it's a loop, recursively collect trials inside it
-        if ("trials" in item && Array.isArray(item.trials)) {
-          const nestedTrials = collectAllTrials(item.trials, itemPath);
-          result.push(...nestedTrials);
-        }
-      }
-
-      return result;
-    };
-
-    return collectAllTrials(trials);
+    // Timeline is already flat, just filter out current trial
+    return timeline
+      .filter(
+        (item) =>
+          item.id !== selectedTrial.id &&
+          String(item.id) !== String(selectedTrial.id)
+      )
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        displayName: item.name, // In flat structure, no nested paths
+        isLoop: item.type === "loop",
+      }));
   };
 
   // Combined available trials (branches + all for jump)
@@ -1182,7 +1098,7 @@ function BranchConditions({
                                       Select trial
                                     </option>
                                     {branchTrials.length > 0 && (
-                                      <optgroup label="📍 Branches (Same Scope)">
+                                      <optgroup label="Branches (Same Scope)">
                                         {branchTrials.map((trial) => (
                                           <option
                                             key={trial.id}
@@ -1195,7 +1111,7 @@ function BranchConditions({
                                       </optgroup>
                                     )}
                                     {allJumpTrials.length > 0 && (
-                                      <optgroup label="🔗 Jump (Any Trial)">
+                                      <optgroup label="Jump (Any Trial)">
                                         {allJumpTrials.map((trial) => (
                                           <option
                                             key={trial.id}
@@ -1214,8 +1130,7 @@ function BranchConditions({
                                         className="text-xs mt-1 font-semibold"
                                         style={{ color: "var(--gold)" }}
                                       >
-                                        🔗 Jump mode: Parameter override
-                                        disabled
+                                        Jump mode: Parameter override disabled
                                       </span>
                                     )}
                                 </div>

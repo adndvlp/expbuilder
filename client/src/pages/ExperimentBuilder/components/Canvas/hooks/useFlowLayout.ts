@@ -17,25 +17,26 @@ import {
 } from "../utils/layoutUtils";
 
 interface UseFlowLayoutProps {
-  trials: any[];
+  timeline: any[];
   selectedTrial: Trial | null;
   selectedLoop: any;
   onSelectTrial: (trial: Trial) => void;
   onSelectLoop: (loop: any) => void;
   onAddBranch: (id: number | string) => void;
+  onOpenLoop?: (loopId: string) => void;
   openLoop?: any;
   setOpenLoop?: (loop: any) => void;
 }
 
 export function useFlowLayout({
-  trials,
+  timeline,
   selectedTrial,
   selectedLoop,
   onSelectTrial,
   onSelectLoop,
   onAddBranch,
+  onOpenLoop,
   openLoop,
-  setOpenLoop,
 }: UseFlowLayoutProps) {
   const { nodes, edges } = useMemo(() => {
     const nodes: LayoutNode[] = [];
@@ -45,13 +46,15 @@ export function useFlowLayout({
     const { xTrial, yStep, branchHorizontalSpacing, branchVerticalOffset } =
       LAYOUT_CONSTANTS;
 
-    const trialIdsInLoops = getTrialIdsInLoops(trials);
-    const branchIds = collectAllBranchIds(trials);
+    const trialIdsInLoops = getTrialIdsInLoops(timeline);
+    const branchIds = collectAllBranchIds(timeline);
 
-    const allBlocks = trials.filter((item) => {
-      if (isTrial(item)) {
+    const allBlocks = timeline.filter((item) => {
+      // Usar la propiedad "type" del timeline para distinguir
+      if (item.type === "trial") {
         return !trialIdsInLoops.includes(item.id) && !branchIds.has(item.id);
       } else {
+        // Para loops, solo excluir si está en branchIds
         return !branchIds.has(item.id);
       }
     });
@@ -89,13 +92,7 @@ export function useFlowLayout({
           x,
           y,
           !!isSelected,
-          () => {
-            onSelectTrial(trial);
-            // Close any open loop when selecting a branch trial
-            if (setOpenLoop) {
-              setOpenLoop(null);
-            }
-          },
+          () => onSelectTrial(trial),
           isSelected ? () => onAddBranch(trial.id) : undefined
         )
       );
@@ -108,20 +105,25 @@ export function useFlowLayout({
         trial.branches.length > 0
       ) {
         const branchWidths = trial.branches.map((branchId) =>
-          calculateBranchWidth(branchId, trials, branchHorizontalSpacing)
+          calculateBranchWidth(branchId, timeline, branchHorizontalSpacing)
         );
         const totalWidth = branchWidths.reduce((sum, width) => sum + width, 0);
 
         let currentX = x - totalWidth / 2;
 
         trial.branches.forEach((branchId: number | string, index: number) => {
-          const item = findItemById(trials, branchId);
+          const item = findItemById(timeline, branchId);
+
           if (item) {
             const branchWidth = branchWidths[index];
             const branchX = currentX + branchWidth / 2;
             const branchY = y + branchVerticalOffset;
 
-            if (isTrial(item)) {
+            // Usar item.type si está disponible, sino usar isTrial()
+            const isTrialItem =
+              "type" in item ? item.type === "trial" : isTrial(item);
+
+            if (isTrialItem) {
               const branchTrial = item as Trial;
               const branchDepth = renderTrialWithBranches(
                 branchTrial,
@@ -190,12 +192,9 @@ export function useFlowLayout({
           x,
           y,
           !!isSelected,
-          () => {
-            onSelectLoop(loop);
-            if (setOpenLoop) setOpenLoop(loop);
-          },
+          () => onSelectLoop(loop),
           isSelected ? () => onAddBranch(loop.id) : undefined,
-          setOpenLoop ? () => setOpenLoop(loop) : undefined
+          onOpenLoop ? () => onOpenLoop(String(loop.id)) : undefined
         )
       );
 
@@ -207,20 +206,25 @@ export function useFlowLayout({
         loop.branches.length > 0
       ) {
         const branchWidths = loop.branches.map((branchId) =>
-          calculateBranchWidth(branchId, trials, branchHorizontalSpacing)
+          calculateBranchWidth(branchId, timeline, branchHorizontalSpacing)
         );
         const totalWidth = branchWidths.reduce((sum, width) => sum + width, 0);
 
         let currentX = x - totalWidth / 2;
 
         loop.branches.forEach((branchId: number | string, index: number) => {
-          const item = findItemById(trials, branchId);
+          const item = findItemById(timeline, branchId);
+
           if (item) {
             const branchWidth = branchWidths[index];
             const branchX = currentX + branchWidth / 2;
             const branchY = y + branchVerticalOffset;
 
-            if (isTrial(item)) {
+            // Usar item.type si está disponible, sino usar isTrial()
+            const isTrialItem =
+              "type" in item ? item.type === "trial" : isTrial(item);
+
+            if (isTrialItem) {
               const branchTrial = item as Trial;
               const branchDepth = renderTrialWithBranches(
                 branchTrial,
@@ -257,17 +261,20 @@ export function useFlowLayout({
     // Render main sequence trials and their branches
     let yPos = 100;
     allBlocks.forEach((item) => {
-      const itemId = isTrial(item) ? String(item.id) : `loop-${item.id}`;
+      // Usar item.type para distinguir entre trial y loop
+      const itemId =
+        item.type === "trial" ? String(item.id) : `loop-${item.id}`;
 
-      const isSelected = isTrial(item)
-        ? selectedTrial && selectedTrial.id === item.id
-        : (selectedLoop && selectedLoop.id === item.id) ||
-          (openLoop && openLoop.id === item.id);
+      const isSelected =
+        item.type === "trial"
+          ? selectedTrial && selectedTrial.id === item.id
+          : (selectedLoop && selectedLoop.id === item.id) ||
+            (openLoop && openLoop.id === item.id);
 
       // Mark main sequence items as rendered
       renderedTrials.set(item.id, itemId);
 
-      if (isTrial(item)) {
+      if (item.type === "trial") {
         nodes.push(
           createTrialNode(
             itemId,
@@ -275,41 +282,22 @@ export function useFlowLayout({
             xTrial,
             yPos,
             !!isSelected,
-            () => {
-              onSelectTrial(item);
-              // Check if this trial belongs to a loop
-              const parentLoop = trials.find(
-                (t: any) =>
-                  t.trials && t.trials.some((tr: any) => tr.id === item.id)
-              );
-              if (parentLoop && setOpenLoop) {
-                // Only open the loop if it's not already open
-                if (!openLoop || openLoop.id !== parentLoop.id) {
-                  setOpenLoop(parentLoop);
-                }
-              } else if (setOpenLoop) {
-                // This trial is not in any loop, so close any open loop
-                setOpenLoop(null);
-              }
-            },
+            () => onSelectTrial(item),
             isSelected ? () => onAddBranch(item.id) : undefined
           )
         );
       } else {
-        const loopItem = item as Loop;
+        // item.type === "loop"
         nodes.push(
           createLoopNode(
             itemId,
-            loopItem.name,
+            item.name,
             xTrial,
             yPos,
             !!isSelected,
-            () => {
-              onSelectLoop(loopItem);
-              if (setOpenLoop) setOpenLoop(loopItem);
-            },
-            isSelected ? () => onAddBranch(loopItem.id) : undefined,
-            setOpenLoop ? () => setOpenLoop(loopItem) : undefined
+            () => onSelectLoop(item),
+            isSelected ? () => onAddBranch(item.id) : undefined,
+            onOpenLoop ? () => onOpenLoop(String(item.id)) : undefined
           )
         );
       }
@@ -322,7 +310,7 @@ export function useFlowLayout({
         item.branches.length > 0
       ) {
         const branchWidths = item.branches.map((branchId: number | string) =>
-          calculateBranchWidth(branchId, trials, branchHorizontalSpacing)
+          calculateBranchWidth(branchId, timeline, branchHorizontalSpacing)
         );
         const totalWidth = branchWidths.reduce(
           (sum: number, width: number) => sum + width,
@@ -331,12 +319,19 @@ export function useFlowLayout({
         let currentX = xTrial - totalWidth / 2;
 
         item.branches.forEach((branchId: number | string, index: number) => {
-          const branchItem = findItemById(trials, branchId);
+          const branchItem = findItemById(timeline, branchId);
+
           if (branchItem) {
             const branchWidth = branchWidths[index];
             const branchX = currentX + branchWidth / 2;
 
-            if (isTrial(branchItem)) {
+            // Usar branchItem.type si está disponible, sino usar isTrial()
+            const isTrialItem =
+              "type" in branchItem
+                ? branchItem.type === "trial"
+                : isTrial(branchItem);
+
+            if (isTrialItem) {
               const branchTrial = branchItem as Trial;
               const branchDepth = renderTrialWithBranches(
                 branchTrial,
@@ -376,25 +371,27 @@ export function useFlowLayout({
 
     // Create vertical edges between main sequence trials
     for (let i = 0; i < allBlocks.length - 1; i++) {
-      const currentId = isTrial(allBlocks[i])
-        ? String(allBlocks[i].id)
-        : `loop-${allBlocks[i].id}`;
-      const nextId = isTrial(allBlocks[i + 1])
-        ? String(allBlocks[i + 1].id)
-        : `loop-${allBlocks[i + 1].id}`;
+      // Usar .type si está disponible, sino usar isTrial()
+      const currentId =
+        allBlocks[i].type === "trial"
+          ? String(allBlocks[i].id)
+          : `loop-${allBlocks[i].id}`;
+      const nextId =
+        allBlocks[i + 1].type === "trial"
+          ? String(allBlocks[i + 1].id)
+          : `loop-${allBlocks[i + 1].id}`;
 
       edges.push(createEdge(currentId, nextId));
     }
 
     return { nodes, edges };
   }, [
-    trials,
+    timeline,
     selectedTrial,
     selectedLoop,
     openLoop,
-    onSelectTrial,
-    onSelectLoop,
-    onAddBranch,
+    // NO incluir funciones callback - causan re-renders innecesarios en React Flow
+    // onSelectTrial, onSelectLoop, onAddBranch se usan pero no como dependencias
   ]);
 
   return { nodes, edges };

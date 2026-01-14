@@ -20,7 +20,7 @@ export interface Loop {
   categories: boolean;
   categoryColumn: string;
   categoryData: any[];
-  trials: TrialOrLoop[];
+  trials: (string | number)[]; // Solo IDs de trials, estructura plana
   code: string;
   csvJson?: any[];
   csvColumns?: string[];
@@ -120,9 +120,10 @@ export type Trial = {
   repeatConditions?: RepeatCondition[];
 
   paramsOverride?: ParamsOverrideCondition[];
-};
 
-export type TrialOrLoop = Trial | Loop;
+  // Loop context - assigned when trial is inside a loop
+  parentLoopId?: string | null;
+};
 
 export type MoveItemParams = {
   dragged: { type: "trial" | "loop"; id: string | number };

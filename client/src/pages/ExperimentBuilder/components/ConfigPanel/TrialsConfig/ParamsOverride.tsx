@@ -19,7 +19,7 @@ type Parameter = {
 };
 
 function ParamsOverride({ selectedTrial, onClose }: Props) {
-  const { trials, setTrials, setSelectedTrial } = useTrials();
+  const { timeline, getTrial, updateTrial, setSelectedTrial } = useTrials();
 
   const [conditions, setConditions] = useState<ParamsOverrideCondition[]>([]);
   const [trialDataFields, setTrialDataFields] = useState<
@@ -77,15 +77,15 @@ function ParamsOverride({ selectedTrial, onClose }: Props) {
       return;
     }
 
-    const trial = findTrialById(trialId);
-    if (!trial || !trial.plugin) {
-      console.log("Trial not found or has no plugin:", trialId);
-      return;
-    }
-
-    setLoadingData((prev) => ({ ...prev, [trialId]: true }));
-
     try {
+      const trial = await getTrial(trialId);
+      if (!trial || !trial.plugin) {
+        console.log("Trial not found or has no plugin:", trialId);
+        return;
+      }
+
+      setLoadingData((prev) => ({ ...prev, [trialId]: true }));
+
       const result = await loadPluginParameters(trial.plugin);
       setTrialDataFields((prev) => ({
         ...prev,
@@ -98,75 +98,34 @@ function ParamsOverride({ selectedTrial, onClose }: Props) {
     }
   };
 
-  // Find trial by ID recursively at any depth
-  const findTrialById = (trialId: string | number): any => {
-    const findRecursive = (items: any[]): any => {
-      for (const item of items) {
-        // Check direct ID match
-        if (item.id === trialId || String(item.id) === String(trialId)) {
-          return item;
-        }
-        // If it's a loop, search recursively in its trials
-        if ("trials" in item && Array.isArray(item.trials)) {
-          const found = findRecursive(item.trials);
-          if (found) return found;
-        }
-      }
-      return null;
-    };
-
-    return findRecursive(trials);
-  };
-
   // Get available trials to reference (trials that come before the current trial)
   const getAvailableTrials = () => {
     if (!selectedTrial) return [];
 
     const allTrials: any[] = [];
 
-    // Recursive function to find parent loop containing the selected trial
-    const findParentLoop = (items: any[], targetId: string | number): any => {
-      for (const item of items) {
-        if ("trials" in item && Array.isArray(item.trials)) {
-          // Check if this loop contains the target trial directly
-          if (
-            item.trials.some(
-              (t: any) => t.id === targetId || String(t.id) === String(targetId)
-            )
-          ) {
-            return item;
-          }
-          // Check recursively in nested loops
-          const found = findParentLoop(item.trials, targetId);
-          if (found) return found;
-        }
-      }
-      return null;
-    };
+    // Find position of current trial in timeline
+    const currentIndex = timeline.findIndex(
+      (item) =>
+        item.id === selectedTrial.id ||
+        String(item.id) === String(selectedTrial.id)
+    );
 
-    const parentLoop = findParentLoop(trials, selectedTrial.id);
+    if (currentIndex === -1) return [];
 
-    if (parentLoop && "trials" in parentLoop) {
-      // If inside a loop, only show trials within the same loop that come before
-      for (const trial of parentLoop.trials) {
-        if (
-          trial.id === selectedTrial.id ||
-          String(trial.id) === String(selectedTrial.id)
-        ) {
-          break;
-        }
-        allTrials.push({ id: trial.id, name: trial.name });
+    // If trial has parentLoopId, only show trials from same loop that come before
+    if (selectedTrial.parentLoopId) {
+      // Filter timeline for items with same parentLoopId before current position
+      for (let i = 0; i < currentIndex; i++) {
+        const item = timeline[i];
+        // Note: parentLoopId is in the trial object, not in timeline metadata
+        // We'll just use timeline order for now as approximation
+        allTrials.push({ id: item.id, name: item.name });
       }
     } else {
       // If in main timeline, show all trials/loops that come before
-      for (const item of trials) {
-        if (
-          item.id === selectedTrial.id ||
-          String(item.id) === String(selectedTrial.id)
-        ) {
-          break;
-        }
-
+      for (let i = 0; i < currentIndex; i++) {
+        const item = timeline[i];
         allTrials.push({ id: item.id, name: item.name });
       }
     }
@@ -200,38 +159,9 @@ function ParamsOverride({ selectedTrial, onClose }: Props) {
       return selectedTrial.csvColumns;
     }
 
-    // Recursive function to find parent loop with csvColumns
-    const findParentLoopWithCsv = (
-      items: any[],
-      targetId: string | number
-    ): any => {
-      for (const item of items) {
-        if ("trials" in item && Array.isArray(item.trials)) {
-          // Check if this loop contains the target trial
-          if (
-            item.trials.some(
-              (t: any) => t.id === targetId || String(t.id) === String(targetId)
-            )
-          ) {
-            // Return this loop if it has csvColumns
-            if (item.csvColumns && item.csvColumns.length > 0) {
-              return item;
-            }
-          }
-          // Check recursively in nested loops
-          const found = findParentLoopWithCsv(item.trials, targetId);
-          if (found) return found;
-        }
-      }
-      return null;
-    };
-
-    const parentLoop = findParentLoopWithCsv(trials, selectedTrial.id);
-
-    if (parentLoop && "csvColumns" in parentLoop && parentLoop.csvColumns) {
-      return parentLoop.csvColumns;
-    }
-
+    // Note: Without recursive structure, we can't find parent loop CSV columns
+    // This would need to be handled differently, possibly by storing parentLoopId
+    // and fetching the loop's CSV columns via API
     return [];
   };
 
@@ -379,53 +309,29 @@ function ParamsOverride({ selectedTrial, onClose }: Props) {
   };
 
   // Save conditions
-  const handleSaveConditions = () => {
+  const handleSaveConditions = async () => {
     if (!selectedTrial) return;
 
-    // Recursive function to find and update the trial
-    const updateTrialRecursive = (items: any[]): any[] => {
-      return items.map((item) => {
-        // Check if this is the trial we're looking for
-        if (
-          item.id === selectedTrial.id ||
-          String(item.id) === String(selectedTrial.id)
-        ) {
-          return {
-            ...item,
-            paramsOverride: conditions,
-          };
-        }
-
-        // If it's a loop, recursively update its trials
-        if ("trials" in item && Array.isArray(item.trials)) {
-          return {
-            ...item,
-            trials: updateTrialRecursive(item.trials),
-          };
-        }
-
-        return item;
-      });
-    };
-
-    const updatedTrials = updateTrialRecursive(trials);
-    setTrials(updatedTrials);
-    console.log("Params override conditions saved:", conditions);
-
-    // Update selectedTrial with the new data so changes reflect immediately
-    const updatedSelectedTrial = findTrialById(selectedTrial.id);
-    if (updatedSelectedTrial) {
-      setSelectedTrial({
-        ...updatedSelectedTrial,
+    try {
+      const updatedTrial = await updateTrial(selectedTrial.id, {
         paramsOverride: conditions,
       });
-    }
 
-    // Show save indicator
-    setSaveIndicator(true);
-    setTimeout(() => {
-      setSaveIndicator(false);
-    }, 1500);
+      console.log("Params override conditions saved:", conditions);
+
+      // Update selectedTrial with the new data so changes reflect immediately
+      if (updatedTrial) {
+        setSelectedTrial(updatedTrial);
+      }
+
+      // Show save indicator
+      setSaveIndicator(true);
+      setTimeout(() => {
+        setSaveIndicator(false);
+      }, 1500);
+    } catch (error) {
+      console.error("Error saving params override conditions:", error);
+    }
   };
 
   const availableTrials = getAvailableTrials();

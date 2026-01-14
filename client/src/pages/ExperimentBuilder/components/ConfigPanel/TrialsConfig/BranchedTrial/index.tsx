@@ -7,7 +7,7 @@ import { Condition, RepeatConditionState, Props, Parameter } from "./types";
 import BranchConditions from "./BranchConditions";
 
 function BranchedTrial({ selectedTrial, onClose }: Props) {
-  const { trials, setTrials, setSelectedTrial } = useTrials();
+  const { timeline, updateTrial, getTrial, setSelectedTrial } = useTrials();
 
   const [activeTab, setActiveTab] = useState<"branch" | "params">("branch");
   const [data, setData] = useState<import("../../types").DataDefinition[]>([]);
@@ -116,7 +116,7 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
 
   // Load parameters for target trial
   const loadTargetTrialParameters = async (trialId: string | number) => {
-    const targetTrial = findTrialById(trialId);
+    const targetTrial = await findTrialById(trialId);
     console.log("loadTargetTrialParameters called for:", trialId, targetTrial);
 
     if (!targetTrial) {
@@ -173,32 +173,21 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
     }
   };
 
-  // Find trial by ID
-  // Find trial by ID recursively at any depth
-  const findTrialById = (trialId: string | number): any => {
-    console.log("Finding trial:", trialId, "in trials:", trials);
-
-    const findRecursive = (items: any[]): any => {
-      for (const item of items) {
-        // Check direct ID match
-        if (item.id === trialId || String(item.id) === String(trialId)) {
-          console.log("Found trial:", item);
-          return item;
-        }
-        // If it's a loop, search recursively in its trials
-        if ("trials" in item && Array.isArray(item.trials)) {
-          const found = findRecursive(item.trials);
-          if (found) return found;
-        }
+  // Find trial by ID using the API
+  const findTrialById = async (trialId: string | number): Promise<any> => {
+    console.log("Finding trial:", trialId);
+    try {
+      const trial = await getTrial(trialId);
+      if (!trial) {
+        console.log("Trial not found!");
+      } else {
+        console.log("Found trial:", trial);
       }
+      return trial;
+    } catch (error) {
+      console.error("Error finding trial:", error);
       return null;
-    };
-
-    const result = findRecursive(trials);
-    if (!result) {
-      console.log("Trial not found!");
     }
-    return result;
   };
 
   /**
@@ -254,47 +243,24 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
       });
     });
 
-    // Recursive function to find and update the trial
-    const updateTrialRecursive = (items: any[]): any[] => {
-      return items.map((item) => {
-        // Check if this is the trial we're looking for
-        if (
-          item.id === selectedTrial.id ||
-          String(item.id) === String(selectedTrial.id)
-        ) {
-          return {
-            ...item,
-            branchConditions,
-            repeatConditions: repeatConditionsToSave,
-          };
-        }
-
-        // If it's a loop, recursively update its trials
-        if ("trials" in item && Array.isArray(item.trials)) {
-          return {
-            ...item,
-            trials: updateTrialRecursive(item.trials),
-          };
-        }
-
-        return item;
-      });
+    // Update trial using the API
+    const updateData = {
+      branchConditions,
+      repeatConditions: repeatConditionsToSave,
     };
 
-    const updatedTrials = updateTrialRecursive(trials);
+    updateTrial(selectedTrial.id, updateData)
+      .then((updatedTrial) => {
+        console.log("Branch conditions saved:", branchConditions);
 
-    setTrials(updatedTrials);
-    console.log("Branch conditions saved:", branchConditions);
-
-    // Update selectedTrial with the new data so changes reflect immediately
-    const updatedSelectedTrial = findTrialById(selectedTrial.id);
-    if (updatedSelectedTrial) {
-      setSelectedTrial({
-        ...updatedSelectedTrial,
-        branchConditions,
-        repeatConditions: repeatConditionsToSave,
+        // Update selectedTrial with the new data so changes reflect immediately
+        if (updatedTrial) {
+          setSelectedTrial(updatedTrial);
+        }
+      })
+      .catch((error) => {
+        console.error("Error saving conditions:", error);
       });
-    }
 
     // Show save indicator
     setSaveIndicator(true);

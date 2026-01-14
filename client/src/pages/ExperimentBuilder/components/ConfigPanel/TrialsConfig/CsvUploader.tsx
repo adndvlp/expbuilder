@@ -25,7 +25,7 @@ function CsvUploader({
         onChange={onCsvUpload}
         disabled={disabled}
       />
-      {csvJson.length > 0 && (
+      {csvJson && csvJson.length > 0 && (
         <div className="mt-4">
           <h5 className="font-semibold">Data Preview:</h5>
           <div style={{ overflowX: "auto", maxHeight: "16rem" }}>

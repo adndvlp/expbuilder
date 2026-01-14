@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   fetchExperimentNameByID,
   useExperimentID,
 } from "../../hooks/useExperimentID";
-import useTrials from "../../hooks/useTrials";
-import { Trial } from "../ConfigPanel/types";
 import { useExperimentStorage } from "../../hooks/useStorage";
 
 const DATA_API_URL = import.meta.env.VITE_DATA_API_URL;
@@ -17,10 +15,9 @@ interface UploadedFile {
 
 export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
   const [experimentName, setExperimentName] = useState("Experiment");
+  const [extensionsString, setExtensionsString] = useState("");
 
   const experimentID = useExperimentID();
-
-  const { trials } = useTrials();
 
   // Obtén el storage desde el hook, pero si está undefined, usa el valor cacheado en localStorage
   let storage = useExperimentStorage(experimentID ?? "");
@@ -36,45 +33,37 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
   useEffect(() => {
     if (experimentID) {
       fetchExperimentNameByID(experimentID).then(setExperimentName);
+
+      // Cargar extensiones desde el endpoint si es necesario
+      fetch(
+        `${import.meta.env.VITE_API_URL}/api/trials-metadata/${experimentID}`
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          const { trials = [] } = data;
+          const hasExt = trials.some((t: any) => t.extensions?.length > 0);
+          if (hasExt) {
+            const extensionsSet = new Set<string>();
+            trials.forEach((t: any) => {
+              if (t.extensions) {
+                t.extensions.forEach((ext: string) => extensionsSet.add(ext));
+              }
+            });
+            const extArray = Array.from(extensionsSet);
+            const extStr =
+              extArray.length > 0
+                ? `extensions: [${extArray.map((ext) => `{ type: ${ext} }`).join(", ")}],`
+                : "";
+            setExtensionsString(extStr);
+          }
+        })
+        .catch((err) => {
+          console.error("Error loading extensions:", err);
+        });
     }
   }, [experimentID]);
 
-  function isTrial(trial: any): trial is Trial {
-    return "parameters" in trial;
-  }
-
-  const allCodes = trials
-    .map((item) => {
-      if ("parameters" in item) return item.trialCode;
-      if ("trials" in item) return item.code;
-      return "";
-    })
-    .filter(Boolean)
-    .join("\n\n");
-
-  const extensions = useMemo(() => {
-    // Solo incluir extensiones si includesExtensions es true
-    const rawExtensionsChain: string[] = [];
-    trials.forEach((trial) => {
-      if (isTrial(trial) && trial.parameters?.includesExtensions) {
-        if (trial.parameters?.extensionType) {
-          rawExtensionsChain.push(trial.parameters.extensionType);
-        }
-      }
-    });
-
-    const uniqueExtensions = [
-      ...new Set(rawExtensionsChain.filter((val) => val !== "")),
-    ];
-
-    if (uniqueExtensions.length > 0) {
-      const extensionsArrayStr = uniqueExtensions
-        .map((e) => `{type: ${e}}`)
-        .join(",");
-      return `extensions: [${extensionsArrayStr}],`;
-    }
-    return "";
-  }, [trials]);
+  const extensions = extensionsString;
 
   const evaluateCondition = `// --- Branching logic functions (outside initJsPsych for timeline access) ---
     window.nextTrialId = null;
@@ -234,7 +223,19 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
         window.branchingActive = true;
       }`;
 
-  const generateLocalExperiment = () => {
+  const generateLocalExperiment = async () => {
+    // Fetch codes from endpoint
+    let allCodes = "";
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/timeline-code/${experimentID}`
+      );
+      const data = await response.json();
+      allCodes = data.codes.join("\n\n");
+    } catch (error) {
+      console.error("Error loading codes:", error);
+    }
+
     return `
   // --- Recolectar metadata del sistema ---
   const getMetadata = () => {
@@ -451,7 +452,19 @@ jsPsych.run(timeline);
 `;
   };
 
-  const generateExperiment = () => {
+  const generateExperiment = async () => {
+    // Fetch codes from endpoint
+    let allCodes = "";
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/timeline-code/${experimentID}`
+      );
+      const data = await response.json();
+      allCodes = data.codes.join("\n\n");
+    } catch (error) {
+      console.error("Error loading codes:", error);
+    }
+
     return `
   // --- Recolectar metadata del sistema ---
   const getMetadata = () => {

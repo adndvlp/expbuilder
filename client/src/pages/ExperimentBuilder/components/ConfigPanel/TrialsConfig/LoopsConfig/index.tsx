@@ -6,18 +6,12 @@ import { useCsvData } from "../hooks/useCsvData";
 import { useTrialOrders } from "../hooks/useTrialOrders";
 import { Loop, LoopCondition } from "../../types";
 import useTrials from "../../../../hooks/useTrials";
-import isEqual from "lodash.isequal";
-import useLoopCode from "./useLoopCode";
-import { useTrialCode } from "../hooks/useTrialCode";
-import { usePluginParameters } from "../../hooks/usePluginParameters";
-import { useCsvMapper } from "../hooks/useCsvMapper";
-import { useFileUpload } from "../../../Timeline/useFileUpload";
 import ConditionalLoop from "./ConditionalLoop";
 
 type Props = { loop?: Loop };
 
 function LoopsConfig({ loop }: Props) {
-  const { trials, setTrials, removeLoop } = useTrials();
+  const { updateLoop, deleteLoop } = useTrials();
 
   const [isLoadingLoop, setIsLoadingLoop] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -63,32 +57,10 @@ function LoopsConfig({ loop }: Props) {
     setTimeout(() => setIsLoadingLoop(false), 100); // 500 en producción
   }, [loop]);
 
-  const handleCsvUploadLoop = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleCsvUpload(e); // actualiza el csvJson y csvColumns del loop
-
-    // Propaga el CSV del loop a los trials dentro del loop
-    if (loop) {
-      setTrials(
-        trials.map((item) => {
-          if ("trials" in item && item.id === loop.id) {
-            return {
-              ...item,
-              csvJson: csvJson,
-              csvColumns: csvColumns,
-              trials: item.trials.map((trial) => ({
-                ...trial,
-                prevCsvJson: trial.csvJson, // guarda el anterior
-                prevCsvColumns: trial.csvColumns,
-                csvJson: csvJson,
-                csvColumns: csvColumns,
-                csvFromLoop: true,
-              })),
-            };
-          }
-          return item;
-        })
-      );
-    }
+  const handleCsvUploadLoop = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    handleCsvUpload(e);
   };
 
   const {
@@ -106,360 +78,11 @@ function LoopsConfig({ loop }: Props) {
     mapCategoriesFromCsv,
   } = useTrialOrders();
 
-  function toCamelCase(str: string): string {
-    if (!str) return "";
-    return str
-      .replace(/^plugin/, "jsPsych") // elimina el prefijo "plugin-" y agrega "jsPsych"
-      .split("-") // divide el string por guiones
-      .map((word, index) =>
-        index === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1)
-      )
-      .join("");
-  }
-
-  function mergeStimuliArrays(arrays: Record<string, any>[][]) {
-    const maxLength = Math.max(...arrays.map((arr) => arr.length));
-    const merged: Record<string, any>[] = [];
-    for (let i = 0; i < maxLength; i++) {
-      const obj: Record<string, any> = {};
-      arrays.forEach((arr) => {
-        Object.assign(obj, arr[i] || {});
-      });
-      merged.push(obj);
-    }
-    return merged;
-  }
-
-  // Procesar SOLO los trials directos del loop (sin entrar en loops anidados)
-  // Los loops anidados se procesarán cuando se abra su propio LoopsConfig
-  const directTrials = loop?.trials.filter((item: any) => item.plugin) || [];
-
-  // Procesar trials directos con hooks
-  const trialsData = directTrials.map((trial: any) => {
-    const { parameters, data } = usePluginParameters(trial.plugin);
-    const fieldGroups = {
-      pluginParameters: parameters,
-    };
-    const { getColumnValue } = useCsvMapper({
-      fieldGroups: fieldGroups,
-    });
-
-    const hasMediaParameters = (params: any[]) => {
-      return params.some((param) => {
-        const keyLower = param.key.toLowerCase();
-        return (
-          keyLower.includes("img") ||
-          keyLower.includes("image") ||
-          keyLower.includes("stimulus") ||
-          keyLower.includes("audio") ||
-          keyLower.includes("video") ||
-          keyLower.includes("sound") ||
-          keyLower.includes("media")
-        );
-      });
-    };
-
-    const getFileTypeAndFolder = () => {
-      if (/plugin-audio/i.test(trial.plugin)) {
-        return { accept: "audio/*", folder: "aud" };
-      }
-      if (/plugin-video/i.test(trial.plugin)) {
-        return { accept: "video/*", folder: "vid" };
-      }
-
-      if (/plugin-preload/i.test(trial.plugin)) {
-        return { accept: "audio/*,video/*,image/*", folder: "all" };
-      }
-
-      // For custom plugins, determine file type based on parameters
-      if (hasMediaParameters(parameters)) {
-        const hasAudio = parameters.some((p) => {
-          const keyLower = p.key.toLowerCase();
-          return keyLower.includes("audio") || keyLower.includes("sound");
-        });
-        const hasVideo = parameters.some((p) => {
-          const keyLower = p.key.toLowerCase();
-          return keyLower.includes("video");
-        });
-        const hasImage = parameters.some((p) => {
-          const keyLower = p.key.toLowerCase();
-          return (
-            keyLower.includes("img") ||
-            keyLower.includes("image") ||
-            keyLower.includes("stimulus")
-          );
-        });
-
-        // If multiple types, accept all
-        if ([hasAudio, hasVideo, hasImage].filter(Boolean).length > 1) {
-          return { accept: "audio/*,video/*,image/*", folder: "all" };
-        }
-
-        if (hasAudio) return { accept: "audio/*", folder: "aud" };
-        if (hasVideo) return { accept: "video/*", folder: "vid" };
-        if (hasImage) return { accept: "image/*", folder: "img" };
-      }
-
-      // Por defecto imagen
-      return { accept: "image/*", folder: "img" };
-    };
-
-    const { folder } = getFileTypeAndFolder();
-
-    const { uploadedFiles } = useFileUpload({ folder });
-
-    const { genTrialCode, mappedJson } = useTrialCode({
-      id: trial.id,
-      branches: trial.branches,
-      branchConditions: trial.branchConditions,
-      repeatConditions: trial.repeatConditions,
-      paramsOverride: trial.paramsOverride,
-      pluginName: trial.plugin,
-      parameters: parameters,
-      data: data,
-      getColumnValue: getColumnValue,
-      columnMapping: trial.columnMapping || {},
-      uploadedFiles: uploadedFiles || [],
-      csvJson: trial.csvJson ?? [],
-      trialName: trial.name,
-      includesExtensions: trial.includesExtensions || false,
-      extensions: trial.extensions || "",
-      orders: orders,
-      stimuliOrders: stimuliOrders,
-      categories: categories,
-      categoryData: categoryData,
-      isInLoop: true,
-      parentLoopId: loop?.id, // Pasar el ID del loop padre
-    });
-
-    return {
-      trialName: trial.name,
-      pluginName: toCamelCase(trial.plugin),
-      timelineProps: genTrialCode(),
-      mappedJson,
-    };
-  });
-
-  // Función RECURSIVA para procesar trials dentro de loops anidados
-  const processNestedTrials = (items: any[], parentLoopId?: string): any[] => {
-    return items
-      .map((item: any) => {
-        // Si es un loop anidado
-        if ("trials" in item && !item.plugin) {
-          // Procesar recursivamente los trials dentro del loop anidado
-          const nestedProcessedItems = processNestedTrials(
-            item.trials,
-            item.id
-          ); // Pasar el ID del nested loop
-
-          // Calcular unifiedStimuli para el loop anidado
-          const nestedUnifiedStimuli = mergeStimuliArrays(
-            nestedProcessedItems
-              .filter((i: any) => !i.isLoop && i.mappedJson)
-              .map((i: any) => i.mappedJson || [])
-          );
-
-          return {
-            loopName: item.name,
-            loopId: item.id,
-            repetitions: item.repetitions || 1,
-            randomize: item.randomize || false,
-            orders: item.orders || false,
-            stimuliOrders: item.stimuliOrders || [],
-            categories: item.categories || false,
-            categoryData: item.categoryData || [],
-            branches: item.branches,
-            branchConditions: item.branchConditions,
-            repeatConditions: item.repeatConditions,
-            loopConditions: item.loopConditions || [],
-            isConditionalLoop: item.isConditionalLoop || false,
-            items: nestedProcessedItems, // Ahora contiene los trials/loops procesados recursivamente
-            unifiedStimuli: nestedUnifiedStimuli,
-            isLoop: true as const,
-          };
-        }
-
-        // Si es un trial, procesarlo con hooks
-        const { parameters, data } = usePluginParameters(item.plugin);
-        const fieldGroups = {
-          pluginParameters: parameters,
-        };
-        const { getColumnValue } = useCsvMapper({
-          fieldGroups: fieldGroups,
-        });
-
-        const hasMediaParameters = (params: any[]) => {
-          return params.some((param) => {
-            const keyLower = param.key.toLowerCase();
-            return (
-              keyLower.includes("img") ||
-              keyLower.includes("image") ||
-              keyLower.includes("stimulus") ||
-              keyLower.includes("audio") ||
-              keyLower.includes("video") ||
-              keyLower.includes("sound") ||
-              keyLower.includes("media")
-            );
-          });
-        };
-
-        const getFileTypeAndFolder = () => {
-          if (/plugin-audio/i.test(item.plugin)) {
-            return { accept: "audio/*", folder: "aud" };
-          }
-          if (/plugin-video/i.test(item.plugin)) {
-            return { accept: "video/*", folder: "vid" };
-          }
-          if (/plugin-preload/i.test(item.plugin)) {
-            return { accept: "audio/*,video/*,image/*", folder: "all" };
-          }
-
-          if (hasMediaParameters(parameters)) {
-            const hasAudio = parameters.some((p) => {
-              const keyLower = p.key.toLowerCase();
-              return keyLower.includes("audio") || keyLower.includes("sound");
-            });
-            const hasVideo = parameters.some((p) => {
-              const keyLower = p.key.toLowerCase();
-              return keyLower.includes("video");
-            });
-            const hasImage = parameters.some((p) => {
-              const keyLower = p.key.toLowerCase();
-              return (
-                keyLower.includes("img") ||
-                keyLower.includes("image") ||
-                keyLower.includes("stimulus")
-              );
-            });
-
-            if ([hasAudio, hasVideo, hasImage].filter(Boolean).length > 1) {
-              return { accept: "audio/*,video/*,image/*", folder: "all" };
-            }
-
-            if (hasAudio) return { accept: "audio/*", folder: "aud" };
-            if (hasVideo) return { accept: "video/*", folder: "vid" };
-            if (hasImage) return { accept: "image/*", folder: "img" };
-          }
-
-          return { accept: "image/*", folder: "img" };
-        };
-
-        const { folder } = getFileTypeAndFolder();
-        const { uploadedFiles } = useFileUpload({ folder });
-
-        const { genTrialCode, mappedJson } = useTrialCode({
-          id: item.id,
-          branches: item.branches,
-          branchConditions: item.branchConditions,
-          repeatConditions: item.repeatConditions,
-          paramsOverride: item.paramsOverride,
-          pluginName: item.plugin,
-          parameters: parameters,
-          data: data,
-          getColumnValue: getColumnValue,
-          columnMapping: item.columnMapping || {},
-          uploadedFiles: uploadedFiles || [],
-          csvJson: item.csvJson ?? [],
-          trialName: item.name,
-          includesExtensions: item.includesExtensions || false,
-          extensions: item.extensions || "",
-          orders: orders,
-          stimuliOrders: stimuliOrders,
-          categories: categories,
-          categoryData: categoryData,
-          isInLoop: true,
-          parentLoopId: parentLoopId, // Pasar el ID del loop padre
-        });
-
-        return {
-          trialName: item.name,
-          pluginName: toCamelCase(item.plugin),
-          timelineProps: genTrialCode(),
-          mappedJson,
-        };
-      })
-      .filter(Boolean);
-  };
-
-  // Construir la estructura completa con loops anidados procesados recursivamente
-  const structuredData = loop?.trials
-    ? processNestedTrials(loop.trials, loop.id) // Pasar el ID del loop principal
-    : trialsData;
-
-  const unifiedStimuli = mergeStimuliArrays(
-    trialsData.map((t) => t.mappedJson || [])
-  );
-
-  // Usar useLoopCode con los datos estructurados (incluye loops anidados)
-  const generateLoopCode = useLoopCode({
-    id: loop?.id,
-    branches: loop?.branches,
-    branchConditions: loop?.branchConditions,
-    repeatConditions: loop?.repeatConditions,
-    repetitions,
-    randomize,
-    orders,
-    stimuliOrders,
-    categories,
-    categoryData,
-    trials: structuredData, // Usar la estructura con loops anidados
-    unifiedStimuli,
-    loopConditions,
-    isConditionalLoop,
-    parentLoopId: null, // Este es un loop raíz, no tiene padre
-  });
-
-  const loopCode = generateLoopCode();
-
   const canSave = !!loop && !isLoadingLoop;
 
-  // Función recursiva para actualizar un loop en cualquier nivel de anidación
-  const updateLoopRecursive = (
-    items: any[],
-    targetLoopId: string | number
-  ): any[] => {
-    return items.map((item) => {
-      // Si es el loop que buscamos, actualizarlo
-      if ("trials" in item && item.id === targetLoopId) {
-        return {
-          ...item,
-          repetitions,
-          randomize,
-          isConditionalLoop,
-          loopConditions,
-          csvJson,
-          csvColumns,
-          orders,
-          orderColumns,
-          categories,
-          categoryColumn,
-          stimuliOrders,
-          categoryData,
-          code: loopCode,
-        };
-      }
-      // Si es un loop pero no es el que buscamos, buscar recursivamente en sus trials
-      if ("trials" in item && Array.isArray(item.trials)) {
-        return {
-          ...item,
-          trials: updateLoopRecursive(item.trials, targetLoopId),
-        };
-      }
-      // Si es un trial, devolverlo sin cambios
-      return item;
-    });
-  };
+  const handleSave = async () => {
+    if (!canSave || !loop) return;
 
-  const handleSave = (force = true) => {
-    // if (!loop || isLoadingLoop) return;
-    if (!canSave) return;
-
-    // Buscar el loop en el primer nivel
-    const loopIndex = trials.findIndex(
-      (item) => "trials" in item && item.id === loop.id
-    );
-
-    // Crear el objeto actualizado del loop
     const updatedLoopData = {
       repetitions,
       randomize,
@@ -473,72 +96,45 @@ function LoopsConfig({ loop }: Props) {
       categoryColumn,
       stimuliOrders,
       categoryData,
-      code: loopCode,
+      // Code will be generated lazily when needed (Timeline, Run, Publish)
+      code: "",
     };
 
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-
-    timeoutRef.current = setTimeout(() => {
-      let updatedTrials: any[];
-
-      if (loopIndex !== -1) {
-        // Loop está en el primer nivel
-        const prevLoop = trials[loopIndex];
-        const updatedLoop = {
-          ...prevLoop,
-          ...updatedLoopData,
-        };
-
-        if (!force && isEqual(updatedLoop, prevLoop)) return;
-
-        updatedTrials = [...trials];
-        updatedTrials[loopIndex] = updatedLoop;
-      } else {
-        // Loop está anidado - buscar recursivamente
-        updatedTrials = updateLoopRecursive(trials, loop.id);
-      }
-
-      setTrials(updatedTrials);
+    try {
+      await updateLoop(loop.id, updatedLoopData);
 
       setSaveIndicator(true);
-      // console.log(loopCode);
       setTimeout(() => setSaveIndicator(false), 2000);
-    }, 1000);
+    } catch (error) {
+      console.error("Error saving loop:", error);
+    }
   };
 
+  // Auto-save removed - using manual save only
+  // Cleanup timeout on unmount
   useEffect(() => {
-    handleSave();
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [
-    repetitions,
-    randomize,
-    isConditionalLoop,
-    loopConditions,
-    csvJson,
-    csvColumns,
-    orders,
-    orderColumns,
-    categories,
-    categoryColumn,
-    isLoadingLoop,
-  ]);
+  }, []);
 
   const handleSaveLoopConditions = (conditions: LoopCondition[]) => {
     setLoopConditions(conditions);
     setIsConditionalLoop(conditions.length > 0);
   };
 
-  const handleRemoveLoop = () => {
+  const handleRemoveLoop = async () => {
     if (
       window.confirm(
         "Are you sure you want to delete this loop? This action cannot be undone."
       ) &&
-      removeLoop &&
       loop
     ) {
-      removeLoop(loop.id);
+      try {
+        await deleteLoop(loop.id);
+      } catch (error) {
+        console.error("Error deleting loop:", error);
+      }
     }
   };
 
@@ -568,8 +164,7 @@ function LoopsConfig({ loop }: Props) {
           >
             ✓ Saved Loop
           </div>
-          <strong>Trials en loop:</strong>{" "}
-          {loop?.trials.map((t) => t.name).join(", ")}
+          <strong>Trials in loop:</strong> {loop?.trials?.length || 0} trial(s)
         </div>
 
         {/* CSV and XLSX section */}
@@ -713,7 +308,7 @@ function LoopsConfig({ loop }: Props) {
 
         {/* Save and Delete Loop */}
         <button
-          onClick={() => handleSave(true)}
+          onClick={handleSave}
           className="mt-4 save-button mb-4 w-full p-3 bg-green-600 hover:bg-green-700 font-medium rounded"
           disabled={!canSave}
         >

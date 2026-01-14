@@ -17,7 +17,7 @@ interface PluginEditorProps {
 
 const PluginEditor: React.FC<PluginEditorProps> = ({ selectedPluginName }) => {
   const { plugins, setPlugins } = usePlugins();
-  const { trials, setTrials, setSelectedTrial } = useTrials();
+  const { selectedTrial, updateTrial, setSelectedTrial } = useTrials();
   const [saveIndicator, setSaveIndicator] = useState(false);
   const [localPlugin, setLocalPlugin] = useState<Plugin | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -91,33 +91,16 @@ const PluginEditor: React.FC<PluginEditorProps> = ({ selectedPluginName }) => {
     }
 
     // Asigna el plugin subido al trial seleccionado (no crea trial nuevo)
-    if (trials && setTrials && setSelectedTrial) {
-      // Solo considera items que son Trial (tienen id numérico y propiedad plugin)
-      const selectedTrial =
-        trials.find(
-          (t) =>
-            typeof t.id === "number" &&
-            "plugin" in t &&
-            t.plugin === selectedPluginName
-        ) || trials.find((t) => typeof t.id === "number" && "plugin" in t);
-
-      if (
-        selectedTrial &&
-        typeof selectedTrial.id === "number" &&
-        "plugin" in selectedTrial
-      ) {
-        const updatedTrial = { ...selectedTrial, plugin: name };
-        setTrials(
-          trials.map((t) =>
-            typeof t.id === "number" &&
-            "plugin" in t &&
-            t.id === selectedTrial.id
-              ? updatedTrial
-              : t
-          )
-        );
-        setSelectedTrial(updatedTrial);
-      }
+    if (selectedTrial && "plugin" in selectedTrial) {
+      updateTrial(selectedTrial.id, { plugin: newPlugin.name })
+        .then((updated) => {
+          if (updated) {
+            setSelectedTrial(updated);
+          }
+        })
+        .catch((error) => {
+          console.error("Error updating trial plugin:", error);
+        });
     }
     setLocalPlugin(newPlugin);
     if (fileInputRef.current) fileInputRef.current.value = "";

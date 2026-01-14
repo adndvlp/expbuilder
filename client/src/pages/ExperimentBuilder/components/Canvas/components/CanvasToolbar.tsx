@@ -18,7 +18,7 @@ function CanvasToolbar({
   openLoop,
   setShowBranchedModal,
 }: CanvasToolbarProps) {
-  const { trials, selectedTrial, selectedLoop } = useTrials();
+  const { timeline, selectedTrial, selectedLoop } = useTrials();
 
   return (
     <div
@@ -31,7 +31,7 @@ function CanvasToolbar({
         zIndex: 10,
       }}
     >
-      {trials.length > 1 && (
+      {timeline.length > 1 && (
         <button
           style={{
             ...fabStyle,
@@ -49,7 +49,7 @@ function CanvasToolbar({
           <FiRefreshCw size={24} color="#fff" />
         </button>
       )}
-      {trials.length === 0 && (
+      {timeline.length === 0 && (
         <button
           style={{
             ...fabStyle,
@@ -73,24 +73,13 @@ function CanvasToolbar({
           openLoop &&
           openLoop.trials &&
           selectedTrial &&
-          openLoop.trials.some((t: any) => t.id === selectedTrial.id);
-
-        // Count total number of trials (including those in loops)
-        const totalTrialCount = trials.reduce((count, item) => {
-          if ("trials" in item) {
-            // It's a loop, count its trials
-            return count + item.trials.length;
-          } else {
-            // It's a trial
-            return count + 1;
-          }
-        }, 0);
+          openLoop.trials.includes(selectedTrial.id);
 
         // Show button if:
-        // - There's more than one trial in the entire experiment, AND
+        // - There's more than one item in timeline, AND
         // - A trial or loop is selected
         const shouldShow =
-          totalTrialCount > 1 &&
+          timeline.length > 1 &&
           ((selectedLoop && !isTrialInsideOpenLoop) ||
             (selectedTrial && !isTrialInsideOpenLoop));
 

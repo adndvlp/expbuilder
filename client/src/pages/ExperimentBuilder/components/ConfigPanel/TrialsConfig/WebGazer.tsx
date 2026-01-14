@@ -112,7 +112,7 @@ function WebGazer({ webgazerPlugins }: Props) {
   const { csvJson, setCsvJson, csvColumns, setCsvColumns, handleCsvUpload } =
     useCsvData();
 
-  const { trials, setTrials, selectedTrial, setSelectedTrial } = useTrials();
+  const { updateTrial, selectedTrial, setSelectedTrial } = useTrials();
 
   const [trialName, setTrialName] = useState<string>("");
   const { columnMapping, setColumnMapping } = useColumnMapping({});
@@ -166,12 +166,8 @@ function WebGazer({ webgazerPlugins }: Props) {
     setIsLoadingTrial,
   });
 
-  const { handleDeleteTrial } = useTrialPersistence({
-    trials,
-    setTrials,
-    selectedTrial,
-    setSelectedTrial,
-  });
+  // No necesitamos useTrialPersistence, usaremos directamente deleteTrial del contexto
+  // const { handleDeleteTrial } = useTrialPersistence({ ... });
 
   const webGazerPhases = [
     {
@@ -273,25 +269,17 @@ function WebGazer({ webgazerPlugins }: Props) {
 
   // guardar y actualizar el estado global del ensayo
 
-  const canSave = !!trialName && !isLoadingTrial;
+  const canSave = !!trialName && !isLoadingTrial && !!selectedTrial;
   const handleSave = useCallback(
-    (force = false) => {
-      if (!canSave) return;
+    async (force = false) => {
+      if (!canSave || !selectedTrial) return;
 
       if (isInitialFileLoad.current) {
         isInitialFileLoad.current = false;
         return;
       }
 
-      const trialIndex = trials.findIndex((t) => t.name === trialName);
-      if (trialIndex === -1) return;
-
-      const prevTrial = trials[trialIndex];
-
-      if (!("type" in prevTrial)) return;
-
-      const updatedTrial = {
-        ...prevTrial,
+      const updatedData = {
         plugin: "webgazer",
         parameters: {
           include_instructions: include_instructions,
@@ -303,24 +291,40 @@ function WebGazer({ webgazerPlugins }: Props) {
         csvColumns: [...csvColumns],
       };
 
-      if (!force && isEqual(updatedTrial, prevTrial)) return;
+      // Check if changed (unless forced)
+      if (!force) {
+        const hasChanged =
+          selectedTrial.plugin !== "webgazer" ||
+          !isEqual(selectedTrial.parameters, updatedData.parameters) ||
+          !isEqual(selectedTrial.columnMapping, updatedData.columnMapping) ||
+          !isEqual(selectedTrial.csvJson, updatedData.csvJson) ||
+          !isEqual(selectedTrial.csvColumns, updatedData.csvColumns) ||
+          selectedTrial.trialCode !== updatedData.trialCode;
+
+        if (!hasChanged) return;
+      }
 
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
-      timeoutRef.current = setTimeout(() => {
-        const updatedTrials = [...trials];
-        updatedTrials[trialIndex] = updatedTrial;
-        setTrials(updatedTrials);
-        setSelectedTrial(updatedTrial);
+      timeoutRef.current = setTimeout(async () => {
+        try {
+          const updated = await updateTrial(selectedTrial.id, updatedData);
+          if (updated) {
+            setSelectedTrial(updated);
+          }
 
-        setSaveIndicator(true);
-        setTimeout(() => {
-          setSaveIndicator(false);
-        }, 2000);
+          setSaveIndicator(true);
+          setTimeout(() => {
+            setSaveIndicator(false);
+          }, 2000);
+        } catch (error) {
+          console.error("Error saving trial:", error);
+        }
       }, 1000);
     },
     [
       canSave,
+      selectedTrial,
       trialName,
       include_instructions,
       minimumPercentAcceptable,
@@ -328,8 +332,7 @@ function WebGazer({ webgazerPlugins }: Props) {
       mappedColumns,
       csvJson,
       csvColumns,
-      trials,
-      setTrials,
+      updateTrial,
       setSelectedTrial,
     ]
   );
@@ -376,9 +379,7 @@ function WebGazer({ webgazerPlugins }: Props) {
         <TrialMetaConfig
           trialName={trialName}
           setTrialName={setTrialName}
-          trials={trials}
           selectedTrial={selectedTrial}
-          setTrials={setTrials}
           setSelectedTrial={setSelectedTrial}
         />
 
@@ -445,7 +446,7 @@ function WebGazer({ webgazerPlugins }: Props) {
       <TrialActions
         onSave={() => handleSave(true)}
         canSave={canSave}
-        onDelete={handleDeleteTrial}
+        onDelete={() => console.log("Delete not yet migrated")}
       />
     </div>
   );

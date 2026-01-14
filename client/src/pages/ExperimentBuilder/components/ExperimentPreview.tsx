@@ -30,43 +30,7 @@ function ExperimentPreview() {
     setStarted(false);
   };
 
-  const { selectedTrial, selectedLoop, trials } = useTrials();
-
-  // Helper function to recursively find all trials at any depth
-  const getAllTrialsRecursively = (items: any[]): any[] => {
-    const allTrials: any[] = [];
-
-    const traverse = (itemsList: any[]) => {
-      itemsList.forEach((item: any) => {
-        // If it's a trial (has parameters), add it
-        if ("parameters" in item) {
-          allTrials.push(item);
-        }
-        // If it's a loop (has trials array), traverse its trials
-        if ("trials" in item && Array.isArray(item.trials)) {
-          traverse(item.trials);
-        }
-      });
-    };
-
-    traverse(items);
-    return allTrials;
-  };
-
-  // Memoize all trials to prevent infinite loops in useEffect
-  const allTrialsFlattened = useMemo(
-    () => getAllTrialsRecursively(trials),
-    [trials]
-  );
-
-  const allCodes = trials
-    .map((item) => {
-      if ("parameters" in item) return item.trialCode;
-      if ("trials" in item) return item.code;
-      return "";
-    })
-    .filter(Boolean)
-    .join("\n\n");
+  const { selectedTrial, selectedLoop } = useTrials();
 
   // trials preview
   useEffect(() => {
@@ -125,9 +89,7 @@ localStorage.removeItem('jsPsych_jumpToTrial');
 
       const timeline = [];
       
-      ${!isDevMode && selectedTrial?.trialCode ? selectedTrial?.trialCode : selectedLoop?.code}
-
-    ${isDevMode && allCodes}
+      ${selectedTrial?.trialCode || selectedLoop?.code || ""}
 
       jsPsych.run(timeline);
       
@@ -145,7 +107,7 @@ localStorage.removeItem('jsPsych_jumpToTrial');
         incrementVersion();
       })();
     }
-  }, [selectedTrial, selectedLoop, allTrialsFlattened, isDevMode]);
+  }, [selectedTrial, selectedLoop, experimentID]);
 
   // Crear URL con parámetros únicos para evitar caché
 

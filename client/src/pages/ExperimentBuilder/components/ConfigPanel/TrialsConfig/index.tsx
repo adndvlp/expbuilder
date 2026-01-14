@@ -8,14 +8,12 @@ import ParameterMapper from "./ParameterMapper";
 import TrialActions from "./TrialActions";
 import { useFileUpload } from "../../Timeline/useFileUpload";
 import { useCsvData } from "./hooks/useCsvData";
-import { useTrialPersistence } from "./hooks/useTrialPersistence";
 import { useColumnMapping } from "./hooks/useColumnMapping";
 import { useCsvMapper } from "./hooks/useCsvMapper";
 import { useTrialCode } from "./hooks/useTrialCode";
 import { useExtensions } from "./hooks/useExtensions";
 import ExtensionsConfig from "./ExtensionsConfig";
-import isEqual from "lodash.isequal";
-import { Trial } from "../types";
+import { Trial, Loop } from "../types";
 import { useTrialOrders } from "./hooks/useTrialOrders";
 import TrialOrders from "./TrialOrders";
 import KonvaTrialDesigner from "./ParameterMapper/KonvaTrialDesigner";
@@ -25,7 +23,7 @@ type Props = { pluginName: string };
 
 function TrialsConfig({ pluginName }: Props) {
   // Basic trial configuration
-  const { trials, setTrials, selectedTrial, setSelectedTrial } = useTrials();
+  const { selectedTrial, setSelectedTrial, updateTrial } = useTrials();
   const [trialName, setTrialName] = useState<string>("");
 
   // Autosave
@@ -57,48 +55,42 @@ function TrialsConfig({ pluginName }: Props) {
     setExtensionType,
   } = useExtensions(pluginName, parameters);
 
-  const { handleDeleteTrial } = useTrialPersistence({
-    trials,
-    setTrials,
-    selectedTrial,
-    setSelectedTrial,
-  });
+  // Simplified delete trial handler
+  const { deleteTrial } = useTrials();
 
-  function getLoopCsvData(trial: Trial) {
+  const handleDeleteTrial = async () => {
+    if (!selectedTrial) return;
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${selectedTrial.name}"?`
+    );
+    if (!confirmed) return;
+
+    const success = await deleteTrial(selectedTrial.id);
+    if (success) {
+      setSelectedTrial(null);
+    }
+  };
+
+  async function getLoopCsvData(trial: Trial) {
     if (!trial?.csvFromLoop)
       return {
         csvJson: trial?.csvJson || [],
         csvColumns: trial?.csvColumns || [],
       };
 
-    // Recursive function to find parent loop containing the trial
-    const findParentLoop = (items: any[], targetId: string | number): any => {
-      for (const item of items) {
-        if ("trials" in item && Array.isArray(item.trials)) {
-          // Check if this loop contains the target trial
-          if (
-            item.trials.some(
-              (t: any) => t.id === targetId || String(t.id) === String(targetId)
-            )
-          ) {
-            return item;
-          }
-          // Check recursively in nested loops
-          const found = findParentLoop(item.trials, targetId);
-          if (found) return found;
-        }
+    // Find parent loop containing the trial using parentLoopId
+    if (trial.parentLoopId) {
+      const { getLoop } = useTrials();
+      const parentLoop = await getLoop(trial.parentLoopId);
+
+      if (parentLoop) {
+        return {
+          csvJson: parentLoop.csvJson || [],
+          csvColumns: parentLoop.csvColumns || [],
+        };
       }
-      return null;
-    };
-
-    const parentLoop = findParentLoop(trials, trial.id);
-
-    if (parentLoop) {
-      return {
-        csvJson: parentLoop.csvJson || [],
-        csvColumns: parentLoop.csvColumns || [],
-      };
     }
+
     return {
       csvJson: trial?.csvJson || [],
       csvColumns: trial?.csvColumns || [],
@@ -118,6 +110,7 @@ function TrialsConfig({ pluginName }: Props) {
     categoryColumn,
     setCategoryColumn,
     categoryData,
+    setCategoryData,
     mapCategoriesFromCsv,
   } = useTrialOrders();
 
@@ -149,6 +142,7 @@ function TrialsConfig({ pluginName }: Props) {
       setStimuliOrders(selectedTrial.stimuliOrders || []);
       setCategories(selectedTrial.categories || false);
       setCategoryColumn(selectedTrial.categoryColumn || "");
+      setCategoryData(selectedTrial.categoryData || []);
 
       setTimeout(() => {
         setIsLoadingTrial(false);
@@ -169,7 +163,23 @@ function TrialsConfig({ pluginName }: Props) {
   });
   // ^Por la implementación del webgazer esto se define así^
 
-  const isTrialInLoop = !!selectedTrial?.csvFromLoop;
+  // Detect parent loop context automatically using parentLoopId
+  const [parentLoop, setParentLoop] = useState<Loop | null>(null);
+
+  useEffect(() => {
+    const loadParentLoop = async () => {
+      if (!selectedTrial?.parentLoopId) {
+        setParentLoop(null);
+        return;
+      }
+
+      const { getLoop } = useTrials();
+      const loop = await getLoop(selectedTrial.parentLoopId);
+      setParentLoop(loop);
+    };
+
+    loadParentLoop();
+  }, [selectedTrial?.parentLoopId]);
 
   // Detect if this is the dynamic plugin
   const isDynamicPlugin = pluginName === "plugin-dynamic";
@@ -199,181 +209,68 @@ function TrialsConfig({ pluginName }: Props) {
     data: data,
     includesExtensions: includesExtensions,
     extensions: extensions,
-    orders: orders,
-    stimuliOrders: stimuliOrders,
-    categories: categories,
-    categoryData: categoryData,
-    isInLoop: isTrialInLoop,
+    // Use loop context if trial is inside a loop
+    orders: parentLoop?.orders || orders,
+    stimuliOrders: parentLoop?.stimuliOrders || stimuliOrders,
+    categories: parentLoop?.categories || categories,
+    categoryData: parentLoop?.categoryData || categoryData,
+    isInLoop: !!parentLoop,
+    parentLoopId: parentLoop?.id,
   });
 
   const canSave = !!trialName && !isLoadingTrial;
-  // guardar y actualizar el estado global del ensayo
-  const handleSave = useCallback(
-    (force = false) => {
-      if (!canSave) return;
 
-      // Helper recursivo para actualizar trial en cualquier nivel de anidamiento
-      const updateTrialRecursive = (
-        items: any[]
-      ): { updated: any[]; found: boolean } => {
-        let found = false;
-        const updated = items.map((item: any) => {
-          // Si es el trial que buscamos (tiene plugin O type y coincide el ID)
-          if (
-            ("plugin" in item || "type" in item) &&
-            item.id == selectedTrial?.id
-          ) {
-            found = true;
-            return {
-              ...item,
-              id: Number(item.id),
-              name: trialName,
-              plugin: pluginName,
-              parameters: {
-                includesExtensions: includesExtensions,
-                extensionType: extensionType,
-              },
-              trialCode: genTrialCode(),
-              columnMapping: { ...columnMapping },
-              csvJson: [...csvJson],
-              csvColumns: [...csvColumns],
-              orders,
-              orderColumns,
-              stimuliOrders,
-              categories,
-              categoryColumn,
-            };
-          }
+  // guardar y actualizar el estado global del ensayo (estructura plana)
+  const handleSave = async () => {
+    if (!canSave || !selectedTrial) return;
 
-          // Si es un loop, buscar recursivamente en sus trials
-          if ("trials" in item && Array.isArray(item.trials)) {
-            const result = updateTrialRecursive(item.trials);
-            if (result.found) {
-              found = true;
-              return {
-                ...item,
-                trials: result.updated,
-              };
-            }
-          }
-
-          return item;
-        });
-
-        return { updated, found };
-      };
-
-      // Obtener el trial original para comparar
-      const findTrialRecursive = (items: any[]): any => {
-        for (const item of items) {
-          // Un trial puede tener "plugin" O "type" (para compatibilidad)
-          if (
-            ("plugin" in item || "type" in item) &&
-            item.id == selectedTrial?.id
-          ) {
-            return item;
-          }
-          if ("trials" in item && Array.isArray(item.trials)) {
-            const found = findTrialRecursive(item.trials);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-
-      const prevTrial = findTrialRecursive(trials);
-
-      if (!prevTrial) return;
-
-      const updatedTrial = {
-        ...prevTrial,
-        id: Number(prevTrial.id),
-        name: trialName,
-        plugin: pluginName,
-        parameters: {
-          includesExtensions: includesExtensions,
-          extensionType: extensionType,
-        },
-        trialCode: genTrialCode(),
-        columnMapping: { ...columnMapping },
-        csvJson: [...csvJson],
-        csvColumns: [...csvColumns],
-        orders,
-        orderColumns,
-        stimuliOrders,
-        categories,
-        categoryColumn,
-      };
-
-      if (!force && isEqual(updatedTrial, prevTrial)) return;
-
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-
-      timeoutRef.current = setTimeout(() => {
-        const result = updateTrialRecursive(trials);
-
-        if (result.found) {
-          setTrials(result.updated);
-
-          // Find the updated trial in the new structure to ensure state sync
-          const updatedTrialInStructure = findTrialRecursive(result.updated);
-          if (updatedTrialInStructure) {
-            setSelectedTrial(updatedTrialInStructure);
-          }
-          console.log(updatedTrialInStructure || updatedTrial);
-        }
-
-        // less intrusve indicator
-        setSaveIndicator(true);
-        setTimeout(() => {
-          setSaveIndicator(false);
-        }, 2000);
-      }, 1000);
-    },
-    [
-      canSave,
-      trialName,
-      pluginName,
-      includesExtensions,
-      extensionType,
-      columnMapping,
-      csvJson,
-      csvColumns,
+    const updatedTrialData = {
+      name: trialName,
+      plugin: pluginName,
+      parameters: {
+        includesExtensions: includesExtensions,
+        extensionType: extensionType,
+      },
+      trialCode: genTrialCode(),
+      columnMapping: { ...columnMapping },
+      csvJson: csvJson ? [...csvJson] : [],
+      csvColumns: csvColumns ? [...csvColumns] : [],
       orders,
       orderColumns,
       stimuliOrders,
       categories,
       categoryColumn,
-      genTrialCode,
-      trials,
-      selectedTrial,
-      setTrials,
-      setSelectedTrial,
-    ]
-  );
+      categoryData,
+      parentLoopId: parentLoop?.id || null,
+    };
 
+    try {
+      const updatedTrial = await updateTrial(
+        selectedTrial.id,
+        updatedTrialData
+      );
+      if (updatedTrial) {
+        setSelectedTrial(updatedTrial);
+        console.log("Trial updated:", updatedTrial);
+      }
+
+      // Mostrar indicador de guardado
+      setSaveIndicator(true);
+      setTimeout(() => {
+        setSaveIndicator(false);
+      }, 2000);
+    } catch (error) {
+      console.error("Error saving trial:", error);
+    }
+  };
+
+  // Auto-save removed - using manual save only
+  // Cleanup timeout on unmount
   useEffect(() => {
-    handleSave();
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [
-    handleSave,
-    pluginName,
-    includesExtensions,
-    extensionType,
-    columnMapping,
-    csvJson,
-    csvColumns,
-    orders,
-    orderColumns,
-    categories,
-    categoryColumn,
-    stimuliOrders,
-    categoryData,
-    trialName,
-    isLoadingTrial,
-  ]);
+  }, []);
 
   const deleteCsv = () => {
     if (csvJson.length === 0) return;
@@ -412,9 +309,7 @@ function TrialsConfig({ pluginName }: Props) {
         <TrialMetaConfig
           trialName={trialName}
           setTrialName={setTrialName}
-          trials={trials}
           selectedTrial={selectedTrial}
-          setTrials={setTrials}
           setSelectedTrial={setSelectedTrial}
         />
         {/* CSV and XLSX section */}
@@ -667,7 +562,7 @@ function TrialsConfig({ pluginName }: Props) {
       </div>
 
       <TrialActions
-        onSave={() => handleSave(true)}
+        onSave={handleSave}
         canSave={canSave}
         onDelete={handleDeleteTrial}
       />

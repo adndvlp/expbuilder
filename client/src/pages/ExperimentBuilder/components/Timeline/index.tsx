@@ -1,8 +1,6 @@
 // src/components/Timeline.tsx
 import { useEffect, useState } from "react";
 import { openExternal } from "../../../../lib/openExternal";
-import { Trial } from "../ConfigPanel/types";
-import useTrials from "../../hooks/useTrials";
 import useUrl from "../../hooks/useUrl";
 import useDevMode from "../../hooks/useDevMode";
 import FileUploader from "./FileUploader";
@@ -90,12 +88,6 @@ function Timeline({
 
   const experimentID = useExperimentID();
 
-  const { trials } = useTrials();
-
-  function isTrial(trial: any): trial is Trial {
-    return "parameters" in trial;
-  }
-
   const { isDevMode, code, setCode } = useDevMode();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -111,11 +103,11 @@ function Timeline({
     setIsSubmitting(true);
 
     try {
-      const generatedCode = isDevMode ? code : generateLocalExperiment();
+      const generatedCode = isDevMode ? code : await generateLocalExperiment();
 
       if (!isDevMode) {
         setSubmitStatus("Saving configuration...");
-        const generatedCode = generateExperiment();
+        const generatedCode = await generateExperiment();
 
         setCode(generatedCode);
 
@@ -390,23 +382,8 @@ function Timeline({
     }
   };
 
-  const hasTrials = trials.filter(isTrial).length > 0;
-  const hasLoops = trials.filter((item) => "trials" in item).length > 0;
-
-  const allTrialsHaveCode =
-    !hasTrials ||
-    trials
-      .filter(isTrial)
-      .every((trial) => !!trial.trialCode && trial.trialCode.trim() !== "");
-
-  const allLoopsHaveCode =
-    !hasLoops ||
-    trials
-      .filter((item) => "trials" in item)
-      .every((loop) => !!loop.code && loop.code.trim() !== "");
-
-  const isDisabled =
-    isSubmitting || ((!allTrialsHaveCode || !allLoopsHaveCode) && !isDevMode);
+  // Ya no validamos códigos localmente - el backend maneja esto cuando se genera el experimento
+  const isDisabled = isSubmitting;
 
   return (
     <div className="timeline">

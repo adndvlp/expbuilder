@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Loop, LoopCondition, LoopConditionRule } from "../../types";
 import { loadPluginParameters } from "../../utils/pluginParameterLoader";
 import type { DataDefinition } from "../../types";
+import useTrials from "../../../../hooks/useTrials";
 
 type Props = {
   loop: Loop;
@@ -16,6 +17,8 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
     Record<string, DataDefinition[]>
   >({});
   const [loadingData, setLoadingData] = useState<Record<string, boolean>>({});
+
+  const { getTrial } = useTrials();
 
   // Load existing loop conditions
   useEffect(() => {
@@ -35,39 +38,23 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
     }
   }, [loop]);
 
-  // Load data fields for a specific trial (recursive search in nested loops)
+  // Load data fields for a specific trial using API
   const loadTrialDataFields = async (trialId: string | number) => {
     // Check if already loaded or loading
     if (trialDataFields[trialId] || loadingData[trialId]) {
       return;
     }
 
-    // Recursive function to find trial at any depth
-    const findTrialRecursive = (items: any[]): any => {
-      for (const item of items) {
-        // Check if this is the trial we're looking for
-        if (item.id === trialId || String(item.id) === String(trialId)) {
-          return item;
-        }
-        // If it's a loop, search recursively in its trials
-        if ("trials" in item && Array.isArray(item.trials)) {
-          const found = findTrialRecursive(item.trials);
-          if (found) return found;
-        }
-      }
-      return null;
-    };
-
-    const trial = findTrialRecursive(loop.trials);
-
-    if (!trial || !("plugin" in trial) || !trial.plugin) {
-      console.log("Trial not found or has no plugin:", trialId);
-      return;
-    }
-
     setLoadingData((prev) => ({ ...prev, [trialId]: true }));
 
     try {
+      const trial = await getTrial(trialId);
+
+      if (!trial || !("plugin" in trial) || !trial.plugin) {
+        console.log("Trial not found or has no plugin:", trialId);
+        return;
+      }
+
       const result = await loadPluginParameters(trial.plugin);
       setTrialDataFields((prev) => ({
         ...prev,

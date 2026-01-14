@@ -16,7 +16,7 @@ interface ConfigPanelProps {
 }
 
 const ConfigPanel: React.FC<ConfigPanelProps> = ({ uploadedFiles }) => {
-  const { trials, setTrials, selectedTrial, setSelectedTrial, selectedLoop } =
+  const { selectedTrial, setSelectedTrial, selectedLoop, updateTrial } =
     useTrials();
   const [selectedId, setSelectedId] = useState<string>("plugin-dynamic");
   const [pluginList, setPluginList] = useState<string[]>([]);
@@ -154,11 +154,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ uploadedFiles }) => {
       // Cambiar a plugin-dynamic
       setSelectedId("plugin-dynamic");
       if (selectedTrial) {
-        const updatedTrial = { ...selectedTrial, plugin: "plugin-dynamic" };
-        setTrials(
-          trials.map((t) => (t.id === selectedTrial.id ? updatedTrial : t))
-        );
-        setSelectedTrial(updatedTrial);
+        updateTrial(selectedTrial.id, { plugin: "plugin-dynamic" });
       }
     }
   };
@@ -188,22 +184,14 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ uploadedFiles }) => {
       };
       setPlugins([...plugins, newPlugin]);
       if (selectedTrial) {
-        const updatedTrial = { ...selectedTrial, plugin: name };
-        setTrials(
-          trials.map((t) => (t.id === selectedTrial.id ? updatedTrial : t))
-        );
-        setSelectedTrial(updatedTrial);
+        updateTrial(selectedTrial.id, { plugin: name });
       }
       setSelectedId(name);
       return;
     }
 
     if (selectedTrial) {
-      const updatedTrial = { ...selectedTrial, plugin: newValue.value };
-      setTrials(
-        trials.map((t) => (t.id === selectedTrial.id ? updatedTrial : t))
-      );
-      setSelectedTrial(updatedTrial);
+      updateTrial(selectedTrial.id, { plugin: newValue.value });
     }
 
     // Si selecciona un plugin subido por el usuario, activa el editor automáticamente
@@ -402,44 +390,41 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ uploadedFiles }) => {
             )}
           </div>
 
-          {selectedId !== "new-plugin" &&
-            !pluginEditor &&
-            !metadata404 &&
-            selectedTrial?.parameters && (
+          {selectedId !== "new-plugin" && !pluginEditor && !metadata404 && (
+            <div>
+              <hr />
               <div>
-                <hr />
-                <div>
-                  {/* Mostrar TrialsConfig para plugin-dynamic */}
-                  {selectedId === "plugin-dynamic" && (
+                {/* Mostrar TrialsConfig para plugin-dynamic */}
+                {selectedId === "plugin-dynamic" && (
+                  <TrialsConfig
+                    pluginName={selectedId}
+                    uploadedFiles={uploadedFiles}
+                  />
+                )}
+                {/* Mostrar TrialsConfig para otros plugins */}
+                {selectedId &&
+                  selectedId !== "webgazer" &&
+                  selectedId !== "plugin-dynamic" &&
+                  !isCustomPlugin &&
+                  selectedId !== "Select a stimulus-response" && (
                     <TrialsConfig
                       pluginName={selectedId}
                       uploadedFiles={uploadedFiles}
                     />
                   )}
-                  {/* Mostrar TrialsConfig para otros plugins */}
-                  {selectedId &&
-                    selectedId !== "webgazer" &&
-                    selectedId !== "plugin-dynamic" &&
-                    !isCustomPlugin &&
-                    selectedId !== "Select a stimulus-response" && (
-                      <TrialsConfig
-                        pluginName={selectedId}
-                        uploadedFiles={uploadedFiles}
-                      />
-                    )}
-                  {selectedId === "webgazer" && (
-                    <WebGazer webgazerPlugins={webgazerPlugins} />
-                  )}
-                  {/* Si es custom/subido y hay parámetros, muestra TrialsConfig */}
-                  {isCustomPlugin && !metadata404 && (
-                    <TrialsConfig
-                      pluginName={selectedId}
-                      uploadedFiles={uploadedFiles}
-                    />
-                  )}
-                </div>
+                {selectedId === "webgazer" && (
+                  <WebGazer webgazerPlugins={webgazerPlugins} />
+                )}
+                {/* Si es custom/subido y hay parámetros, muestra TrialsConfig */}
+                {isCustomPlugin && !metadata404 && (
+                  <TrialsConfig
+                    pluginName={selectedId}
+                    uploadedFiles={uploadedFiles}
+                  />
+                )}
               </div>
-            )}
+            </div>
+          )}
         </div>
       </div>
     </div>

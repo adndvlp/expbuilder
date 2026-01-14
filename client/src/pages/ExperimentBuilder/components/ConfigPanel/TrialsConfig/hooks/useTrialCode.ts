@@ -58,6 +58,11 @@ export function useTrialCode({
   isInLoop,
   parentLoopId,
 }: Props) {
+  // Defensive checks for undefined values
+  const safeCsvJson = csvJson || [];
+  const safeStimuliOrders = stimuliOrders || [];
+  const safeCategoryData = categoryData || [];
+
   const activeParameters = parameters.filter(
     (p) => columnMapping[p.key]?.source !== "none"
   );
@@ -410,8 +415,8 @@ export function useTrialCode({
       return result;
     };
 
-    if (csvJson.length > 0) {
-      return csvJson.map((row) => mapRow(row));
+    if (safeCsvJson.length > 0) {
+      return safeCsvJson.map((row) => mapRow(row));
     } else {
       // Verificar si hay múltiples archivos separados por comas en algún parámetro
       const multipleInputsParams: { [key: string]: string[] } = {};
@@ -674,8 +679,8 @@ export function useTrialCode({
     let test_stimuli_${trialNameSanitized} = [];
     
     if (typeof participantNumber === "number" && !isNaN(participantNumber)) {
-      const stimuliOrders = ${JSON.stringify(stimuliOrders)};
-      const categoryData = ${JSON.stringify(categoryData)};
+      const stimuliOrders = ${JSON.stringify(safeStimuliOrders)};
+      const categoryData = ${JSON.stringify(safeCategoryData)};
       const test_stimuli_previous_${trialNameSanitized} = [${testStimuliCode.join(",")}];
       
       if (categoryData.length > 0) {

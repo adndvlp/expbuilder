@@ -1,31 +1,35 @@
-import { Trial, Loop } from "../../ConfigPanel/types";
+import { Trial } from "../../ConfigPanel/types";
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 export function isTrial(item: any): item is Trial {
-  return "parameters" in item;
+  // En la estructura plana: loops tienen "trials" array, trials NO
+  return !("trials" in item);
 }
+
+// ==================== FUNCIONES QUE USAN SOLO TIMELINE METADATA ====================
 
 export function findTrialById(
-  trials: any[],
+  timeline: any[],
   id: number | string
-): Trial | null {
+): any | null {
   const numId = typeof id === "string" ? parseInt(id) : id;
-  const found = trials.find((t: any) => isTrial(t) && t.id === numId);
-  return found && isTrial(found) ? found : null;
+  const found = timeline.find(
+    (item) => item.type === "trial" && item.id === numId
+  );
+  return found || null;
 }
 
-export function findLoopById(trials: any[], id: string): Loop | null {
-  const found = trials.find((t: any) => !isTrial(t) && t.id === id);
-  return found && !isTrial(found) ? (found as Loop) : null;
+export function findLoopById(timeline: any[], id: string): any | null {
+  const found = timeline.find((item) => item.type === "loop" && item.id === id);
+  return found || null;
 }
 
-export function findItemById(
-  trials: any[],
-  id: number | string
-): Trial | Loop | null {
+export function findItemById(timeline: any[], id: number | string): any | null {
   if (typeof id === "string" && id.startsWith("loop_")) {
-    return findLoopById(trials, id);
+    return findLoopById(timeline, id);
   }
-  return findTrialById(trials, id);
+  return findTrialById(timeline, id);
 }
 
 export function generateUniqueName(
@@ -41,16 +45,7 @@ export function generateUniqueName(
   return newName;
 }
 
-export function getAllExistingNames(trials: any[]): string[] {
-  return [
-    ...trials.filter((t) => isTrial(t)).map((t: any) => t.name),
-    ...trials
-      .filter((t) => "trials" in t)
-      .flatMap((loop: any) => loop.trials.map((trial: any) => trial.name)),
-  ];
-}
-
-export function collectAllBranchIds(items: any[]): Set<number | string> {
+export function collectAllBranchIds(timeline: any[]): Set<number | string> {
   const branchIds = new Set<number | string>();
 
   const processItem = (item: any) => {
@@ -66,7 +61,7 @@ export function collectAllBranchIds(items: any[]): Set<number | string> {
               : null;
 
         if (numId !== null) {
-          const branchTrial = findTrialById(items, numId);
+          const branchTrial = findTrialById(timeline, numId);
           if (branchTrial) {
             processItem(branchTrial);
           }
@@ -75,83 +70,81 @@ export function collectAllBranchIds(items: any[]): Set<number | string> {
     }
   };
 
-  items.forEach(processItem);
+  timeline.forEach(processItem);
   return branchIds;
 }
 
-export function getTrialIdsInLoops(trials: any[]): number[] {
-  return trials
-    .filter((item) => "trials" in item)
-    .flatMap((loop: any) => loop.trials.map((t: any) => t.id));
+export function getTrialIdsInLoops(timeline: any[]): (number | string)[] {
+  return timeline
+    .filter((item) => item.type === "loop")
+    .flatMap((loop: any) => loop.trials || []);
+}
+
+// ==================== FUNCIONES ASYNC QUE USAN ENDPOINTS ====================
+
+/**
+ * Obtiene todos los nombres existentes (incluyendo trials dentro de loops)
+ * desde el backend
+ */
+export async function getAllExistingNames(
+  experimentID: string
+): Promise<string[]> {
+  try {
+    const response = await fetch(
+      `${API_URL}/api/timeline-names/${experimentID}`
+    );
+    const data = await response.json();
+    return data.names || [];
+  } catch (error) {
+    console.error("Error fetching timeline names:", error);
+    return [];
+  }
 }
 
 /**
- * Check if sourceId is an ancestor of targetId in the hierarchy
- * This prevents creating circular dependencies
+ * Verifica si sourceId es un ancestro de targetId en la jerarquía
+ * Esto previene crear dependencias circulares
  */
-export function isAncestor(
+export async function isAncestor(
   sourceId: number | string,
   targetId: number | string,
-  items: any[],
-  visited = new Set<number | string>()
-): boolean {
-  // Avoid infinite loops
-  if (visited.has(targetId)) {
+  experimentID: string
+): Promise<boolean> {
+  try {
+    const response = await fetch(
+      `${API_URL}/api/validate-ancestor/${experimentID}?source=${sourceId}&target=${targetId}`
+    );
+    const data = await response.json();
+    return data.isAncestor || false;
+  } catch (error) {
+    console.error("Error validating ancestor:", error);
     return false;
   }
-  visited.add(targetId);
-
-  // If they are the same, return true
-  if (sourceId === targetId) {
-    return true;
-  }
-
-  // Find the target item
-  const targetItem = findItemById(items, targetId);
-  if (!targetItem || !targetItem.branches) {
-    return false;
-  }
-
-  // Check if sourceId is in the branches of targetId
-  if (targetItem.branches.includes(sourceId)) {
-    return true;
-  }
-
-  // Recursively check all branches
-  for (const branchId of targetItem.branches) {
-    if (isAncestor(sourceId, branchId, items, visited)) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 /**
- * Validate if a connection between source and target is valid
- * Returns an object with isValid and errorMessage
+ * Valida si una conexión entre source y target es válida
+ * Retorna un objeto con isValid y errorMessage
  */
-export function validateConnection(
+export async function validateConnection(
   sourceId: number | string,
   targetId: number | string,
-  items: any[]
-): { isValid: boolean; errorMessage?: string } {
-  // Can't connect to itself
-  if (sourceId === targetId) {
+  experimentID: string
+): Promise<{ isValid: boolean; errorMessage?: string }> {
+  try {
+    const response = await fetch(
+      `${API_URL}/api/validate-connection/${experimentID}?source=${sourceId}&target=${targetId}`
+    );
+    const data = await response.json();
+    return {
+      isValid: data.isValid,
+      errorMessage: data.errorMessage,
+    };
+  } catch (error) {
+    console.error("Error validating connection:", error);
     return {
       isValid: false,
-      errorMessage: "Cannot connect a trial to itself",
+      errorMessage: "Error validating connection",
     };
   }
-
-  // Check if target is an ancestor of source (would create a cycle)
-  if (isAncestor(targetId, sourceId, items)) {
-    return {
-      isValid: false,
-      errorMessage:
-        "Cannot connect to an ancestor trial (would create a circular dependency)",
-    };
-  }
-
-  return { isValid: true };
 }
