@@ -243,12 +243,27 @@ function Canvas({}: Props) {
     getLoop,
     selectedTrial,
     selectedLoop,
-    onSelectTrial: (trial) => {
-      setSelectedTrial(trial);
+    onSelectTrial: async (trial) => {
+      try {
+        const fullTrial = await getTrial(trial.id);
+        if (fullTrial) {
+          setSelectedTrial(fullTrial);
+        }
+      } catch (error) {
+        console.error("Error fetching full trial data:", error);
+      }
       setSelectedLoop(null);
     },
-    onSelectLoop: (loop) => {
-      setSelectedLoop(loop);
+    onSelectLoop: async (loop) => {
+      try {
+        const fullLoop = await getLoop(loop.id);
+        if (fullLoop) {
+          setSelectedLoop(fullLoop);
+          // Also fetch metadata for loop trials? handled by handleOpenLoop if needed
+        }
+      } catch (error) {
+        console.error("Error fetching full loop data:", error);
+      }
       setSelectedTrial(null);
     },
     onAddBranch,

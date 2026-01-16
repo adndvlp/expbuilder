@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Manages experiment routes (CRUD, publishing, execution).
+ * Handles creation, reading, updating, deleting, and publishing operations
+ * for jsPsych experiments, as well as HTML generation for local execution.
+ * @module routes/experiments
+ */
+
 import { Router } from "express";
 import path from "path";
 import fs from "fs";
@@ -9,6 +16,7 @@ import * as cheerio from "cheerio";
 
 const router = Router();
 
+// Directorios para archivos HTML de experimentos y previews
 const experimentsHtmlDir = path.join(userDataRoot, "experiments_html");
 const trialsPreviewsHtmlDir = path.join(userDataRoot, "trials_previews_html");
 if (!fs.existsSync(experimentsHtmlDir))
@@ -16,6 +24,19 @@ if (!fs.existsSync(experimentsHtmlDir))
 if (!fs.existsSync(trialsPreviewsHtmlDir))
   fs.mkdirSync(trialsPreviewsHtmlDir, { recursive: true });
 
+/**
+ * Gets all experiments sorted by creation date (newest first).
+ * @route GET /api/load-experiments
+ * @returns {Object} 200 - List of experiments
+ * @returns {Object[]} 200.experiments - Array of experiments
+ * @returns {string} 200.experiments[].experimentID - Unique experiment ID
+ * @returns {string} 200.experiments[].name - Experiment name
+ * @returns {string} 200.experiments[].description - Optional description
+ * @returns {string} 200.experiments[].createdAt - ISO creation date
+ * @returns {string} 200.experiments[].updatedAt - Last update date
+ * @returns {string} 200.experiments[].storage - Storage provider (googledrive|dropbox)
+ * @returns {Object} 500 - Server error
+ */
 router.get("/api/load-experiments", async (req, res) => {
   try {
     await db.read();
@@ -29,6 +50,15 @@ router.get("/api/load-experiments", async (req, res) => {
   }
 });
 
+/**
+ * Gets a specific experiment by its ID.
+ * @route GET /api/experiment/:experimentID
+ * @param {string} experimentID - Experiment ID (path parameter)
+ * @returns {Object} 200 - Experiment found
+ * @returns {Object} 200.experiment - Experiment data
+ * @returns {Object} 404 - Experiment not found
+ * @returns {Object} 500 - Server error
+ */
 router.get("/api/experiment/:experimentID", async (req, res) => {
   try {
     await db.read();
@@ -44,6 +74,22 @@ router.get("/api/experiment/:experimentID", async (req, res) => {
   }
 });
 
+/**
+ * Creates a new experiment.
+ * @route POST /api/create-experiment
+ * @param {Object} req.body - Experiment data
+ * @param {string} req.body.name - Experiment name (required)
+ * @param {string} [req.body.description] - Experiment description
+ * @param {string} [req.body.author] - Experiment author
+ * @param {string} [req.body.uid] - User ID
+ * @param {string} [req.body.storage="googledrive"] - Storage provider
+ * @returns {Object} 200 - Experiment successfully created
+ * @returns {boolean} 200.success - Indicates success
+ * @returns {Object} 200.experiment - Created experiment data
+ * @returns {string} 200.experiment.experimentID - Generated UUID
+ * @returns {Object} 400 - Experiment name is missing
+ * @returns {Object} 500 - Server error
+ */
 router.post("/api/create-experiment", async (req, res) => {
   try {
     const { name, description, author, uid, storage } = req.body;
@@ -75,6 +121,18 @@ router.post("/api/create-experiment", async (req, res) => {
   }
 });
 
+/**
+ * Deletes an experiment and all its related data.
+ * Deletes: experiment, trials, configs, results, HTML files, and multimedia.
+ * Optionally calls Firebase to remove from storage and GitHub.
+ * @route DELETE /api/delete-experiment/:experimentID
+ * @param {string} experimentID - Experiment ID (path parameter)
+ * @param {Object} req.body - Additional data
+ * @param {string} [req.body.uid] - User ID to delete in Firebase
+ * @returns {Object} 200 - Experiment successfully deleted
+ * @returns {boolean} 200.success - Indicates success
+ * @returns {Object} 500 - Server error
+ */
 router.delete("/api/delete-experiment/:experimentID", async (req, res) => {
   try {
     const { experimentID } = req.params;
@@ -208,6 +266,21 @@ router.use((req, res, next) => {
   next();
 });
 
+/**
+ * Generates and updates the experiment HTML with the generated jsPsych code.
+ * Creates or updates the HTML file based on the template.
+ * @route POST /api/run-experiment/:experimentID
+ * @param {string} experimentID - Experiment ID (path parameter)
+ * @param {Object} req.body - Generated code
+ * @param {string} req.body.generatedCode - Generated jsPsych JavaScript code
+ * @returns {Object} 200 - Experiment successfully compiled
+ * @returns {boolean} 200.success - Indicates success
+ * @returns {string} 200.message - Confirmation message
+ * @returns {string} 200.experimentUrl - Local experiment URL
+ * @returns {Object} 400 - Missing generated code
+ * @returns {Object} 404 - Experiment not found
+ * @returns {Object} 500 - Server error
+ */
 router.post("/api/run-experiment/:experimentID", async (req, res) => {
   try {
     const { generatedCode } = req.body;
@@ -257,6 +330,13 @@ router.post("/api/run-experiment/:experimentID", async (req, res) => {
   }
 });
 
+/**
+ * Serves the experiment HTML file for execution.
+ * @route GET /:experimentID
+ * @param {string} experimentID - Experiment ID (path parameter)
+ * @returns {File} 200 - Experiment HTML file
+ * @returns {string} 404 - Experiment or HTML not found
+ */
 router.get("/:experimentID", async (req, res) => {
   const experimentID = req.params.experimentID;
   await db.read();
@@ -272,6 +352,13 @@ router.get("/:experimentID", async (req, res) => {
   res.sendFile(htmlPath);
 });
 
+/**
+ * Serves the preview HTML file for an individual trial.
+ * @route GET /:experimentID/preview
+ * @param {string} experimentID - Experiment ID (path parameter)
+ * @returns {File} 200 - Preview HTML file
+ * @returns {string} 404 - Experiment or preview not found
+ */
 router.get("/:experimentID/preview", async (req, res) => {
   const experimentID = req.params.experimentID;
   await db.read();
@@ -287,6 +374,19 @@ router.get("/:experimentID/preview", async (req, res) => {
   res.sendFile(htmlPath);
 });
 
+/**
+ * Generates the preview HTML to visualize an individual trial.
+ * @route POST /api/trials-preview/:experimentID
+ * @param {string} experimentID - Experiment ID (path parameter)
+ * @param {Object} req.body - Trial code
+ * @param {string} req.body.generatedCode - Trial JavaScript code
+ * @returns {Object} 200 - Preview successfully generated
+ * @returns {boolean} 200.success - Indicates success
+ * @returns {string} 200.experimentUrl - Preview URL
+ * @returns {Object} 400 - Missing generated code
+ * @returns {Object} 404 - Experiment not found
+ * @returns {Object} 500 - Server error
+ */
 router.post("/api/trials-preview/:experimentID", async (req, res) => {
   try {
     const { generatedCode } = req.body;
@@ -334,6 +434,24 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
   }
 });
 
+/**
+ * Publishes an experiment to GitHub Pages.
+ * Converts HTML to publishable format (CDN), packages multimedia files in base64,
+ * and calls the Firebase function to create/update the GitHub repository.
+ * @route POST /api/publish-experiment/:experimentID
+ * @param {string} experimentID - Experiment ID (path parameter)
+ * @param {Object} req.body - Publication data
+ * @param {string} req.body.uid - User ID (required)
+ * @param {string} [req.body.storage="googledrive"] - Storage provider
+ * @returns {Object} 200 - Experiment successfully published
+ * @returns {boolean} 200.success - Indicates success
+ * @returns {string} 200.message - Confirmation message
+ * @returns {string} 200.repoUrl - GitHub repository URL
+ * @returns {string} 200.pagesUrl - Public experiment URL on GitHub Pages
+ * @returns {Object} 400 - Missing uid or publication failed
+ * @returns {Object} 404 - Experiment or HTML not found
+ * @returns {Object} 500 - Server or GitHub error
+ */
 router.post("/api/publish-experiment/:experimentID", async (req, res) => {
   try {
     const { experimentID } = req.params;

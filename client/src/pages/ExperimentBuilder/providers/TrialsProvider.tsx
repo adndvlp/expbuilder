@@ -11,15 +11,19 @@ type Props = {
 
 export default function TrialsProvider({ children }: Props) {
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
+  const [loopTimeline, setLoopTimeline] = useState<TimelineItem[]>([]);
+  const [activeLoopId, setActiveLoopId] = useState<string | number | null>(
+    null
+  );
   const [selectedTrial, setSelectedTrial] = useState<Trial | null>(null);
   const [selectedLoop, setSelectedLoop] = useState<Loop | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const experimentID = useExperimentID();
 
-  // ==================== METADATA METHODS ====================
+  // ==================== TIMELINE METHODS ====================
 
-  const loadTrialsMetadata = useCallback(async () => {
+  const getTimeline = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch(
@@ -27,7 +31,7 @@ export default function TrialsProvider({ children }: Props) {
       );
 
       if (!response.ok) {
-        throw new Error("Failed to load trials metadata");
+        throw new Error("Failed to load trials timeline");
       }
 
       const data = await response.json();
@@ -35,32 +39,48 @@ export default function TrialsProvider({ children }: Props) {
       // Actualizar timeline (solo metadata: id, type, name, branches)
       setTimeline(data.timeline || []);
     } catch (error) {
-      console.error("Error loading trials metadata:", error);
+      console.error("Error loading trials timeline:", error);
     } finally {
       setIsLoading(false);
     }
   }, [experimentID]);
 
-  const getLoopTrialsMetadata = useCallback(
+  const getLoopTimeline = useCallback(
     async (loopId: string | number): Promise<TimelineItem[]> => {
       try {
+        // Si es el mismo loop activo, devolver el estado cacheado
+        if (activeLoopId === loopId && loopTimeline.length > 0) {
+          return loopTimeline;
+        }
+
         const response = await fetch(
           `${API_URL}/api/loop-trials-metadata/${experimentID}/${loopId}`
         );
 
         if (!response.ok) {
-          throw new Error("Failed to load loop trials metadata");
+          throw new Error("Failed to load loop trials timeline");
         }
 
         const data = await response.json();
-        return data.trialsMetadata || [];
+        const timeline = data.trialsMetadata || [];
+
+        // Guardar en el estado SIEMPRE (independientemente de selectedLoop)
+        setLoopTimeline(timeline);
+        setActiveLoopId(loopId);
+
+        return timeline;
       } catch (error) {
-        console.error("Error loading loop trials metadata:", error);
+        console.error("Error loading loop trials timeline:", error);
         return [];
       }
     },
-    [experimentID]
+    [experimentID, activeLoopId, loopTimeline]
   );
+
+  const clearLoopTimeline = useCallback(() => {
+    setLoopTimeline([]);
+    setActiveLoopId(null);
+  }, []);
 
   // ==================== TRIAL METHODS ====================
 
@@ -80,16 +100,26 @@ export default function TrialsProvider({ children }: Props) {
         const data = await response.json();
         const newTrial = data.trial;
 
-        // Recargar timeline desde backend para tener branches
-        await loadTrialsMetadata();
+        // Optimistic UI: agregar al timeline localmente
+        setTimeline((prev) => [
+          ...prev,
+          {
+            id: newTrial.id,
+            type: "trial",
+            name: newTrial.name,
+            branches: newTrial.branches || [],
+          },
+        ]);
 
         return newTrial;
       } catch (error) {
         console.error("Error creating trial:", error);
+        // Si falla, recargar timeline
+        await getTimeline();
         throw error;
       }
     },
-    [experimentID, loadTrialsMetadata]
+    [experimentID, getTimeline]
   );
 
   const getTrial = useCallback(
@@ -135,8 +165,18 @@ export default function TrialsProvider({ children }: Props) {
         const data = await response.json();
         const updatedTrial = data.trial;
 
-        // Recargar timeline para sincronizar branches
-        await loadTrialsMetadata();
+        // Optimistic UI: actualizar timeline localmente
+        setTimeline((prev) =>
+          prev.map((item) =>
+            item.id === id && item.type === "trial"
+              ? {
+                  ...item,
+                  name: updatedTrial.name,
+                  branches: updatedTrial.branches || [],
+                }
+              : item
+          )
+        );
 
         // Actualizar selectedTrial si es el que está seleccionado
         if (selectedTrial?.id === id) {
@@ -146,10 +186,12 @@ export default function TrialsProvider({ children }: Props) {
         return updatedTrial;
       } catch (error) {
         console.error("Error updating trial:", error);
+        // Si falla, recargar timeline
+        await getTimeline();
         return null;
       }
     },
-    [experimentID, selectedTrial, loadTrialsMetadata]
+    [experimentID, selectedTrial, getTimeline]
   );
 
   const deleteTrial = useCallback(
@@ -166,8 +208,18 @@ export default function TrialsProvider({ children }: Props) {
           throw new Error("Failed to delete trial");
         }
 
-        // Recargar timeline desde backend
-        await loadTrialsMetadata();
+        // Optimistic UI: eliminar del timeline y limpiar referencias en branches
+        setTimeline((prev) =>
+          prev
+            // 1. Eliminar el trial del timeline
+            .filter((item) => item.id !== id)
+            // 2. Limpiar referencias del trial en todos los branches
+            .map((item) => ({
+              ...item,
+              branches:
+                item.branches?.filter((branchId) => branchId !== id) || [],
+            }))
+        );
 
         // Limpiar selección si era el trial eliminado
         if (selectedTrial?.id === id) {
@@ -177,10 +229,12 @@ export default function TrialsProvider({ children }: Props) {
         return true;
       } catch (error) {
         console.error("Error deleting trial:", error);
+        // Si falla, recargar timeline
+        await getTimeline();
         return false;
       }
     },
-    [experimentID, selectedTrial, loadTrialsMetadata]
+    [experimentID, selectedTrial, getTimeline]
   );
 
   // ==================== LOOP METHODS ====================
@@ -201,9 +255,6 @@ export default function TrialsProvider({ children }: Props) {
         const data = await response.json();
         const newLoop = data.loop;
 
-        // Recargar timeline desde backend para tener branches y trials
-        await loadTrialsMetadata();
-
         // Actualizar parentLoopId en todos los trials del loop
         for (const trialId of loop.trials) {
           try {
@@ -220,13 +271,67 @@ export default function TrialsProvider({ children }: Props) {
           }
         }
 
+        // Optimistic UI: actualizar timeline igual que el backend
+        setTimeline((prev) => {
+          // 1. Filtrar los trials que ahora están en el loop
+          const filteredTimeline = prev.filter(
+            (item) => !loop.trials.includes(item.id)
+          );
+
+          // 2. Actualizar branches: reemplazar trial IDs por loop ID
+          const updatedTimeline = filteredTimeline.map((item) => {
+            // Saltar si este item está dentro del loop (evita referencias circulares)
+            if (loop.trials.includes(item.id)) {
+              return item;
+            }
+
+            // Si tiene branches con trials del loop, reemplazarlos con el loop ID
+            if (item.branches && item.branches.length > 0) {
+              const hasAnyTrialFromLoop = item.branches.some((branchId) =>
+                loop.trials.includes(branchId)
+              );
+
+              if (hasAnyTrialFromLoop) {
+                // Remover todos los trial IDs que están en el loop
+                const filteredBranches = item.branches.filter(
+                  (branchId) => !loop.trials.includes(branchId)
+                );
+                // Agregar el loop ID si no está ya
+                if (!filteredBranches.includes(newLoop.id)) {
+                  filteredBranches.push(newLoop.id);
+                }
+                return {
+                  ...item,
+                  branches: filteredBranches,
+                };
+              }
+            }
+
+            return item;
+          });
+
+          // 3. Agregar el nuevo loop al timeline
+          return [
+            ...updatedTimeline,
+            {
+              id: newLoop.id,
+              type: "loop",
+              name: newLoop.name,
+              branches: newLoop.branches || [],
+              trials: newLoop.trials || [],
+            },
+          ];
+        });
+
         return newLoop;
       } catch (error) {
         console.error("Error creating loop:", error);
+        // Si falla, recargar timeline
+        await getTimeline();
         throw error;
       }
     },
-    [experimentID, loadTrialsMetadata]
+    [experimentID, getTimeline]
   );
 
   const getLoop = useCallback(
@@ -316,8 +421,19 @@ export default function TrialsProvider({ children }: Props) {
           }
         }
 
-        // Recargar timeline para sincronizar branches y trials
-        await loadTrialsMetadata();
+        // Optimistic UI: actualizar timeline localmente
+        setTimeline((prev) =>
+          prev.map((item) =>
+            item.id === id && item.type === "loop"
+              ? {
+                  ...item,
+                  name: updatedLoop.name,
+                  branches: updatedLoop.branches || [],
+                  trials: updatedLoop.trials || [],
+                }
+              : item
+          )
+        );
 
         // Actualizar selectedLoop si es el que está seleccionado
         if (selectedLoop?.id === id) {
@@ -327,16 +443,18 @@ export default function TrialsProvider({ children }: Props) {
         return updatedLoop;
       } catch (error) {
         console.error("Error updating loop:", error);
+        // Si falla, recargar timeline
+        await getTimeline();
         return null;
       }
     },
-    [experimentID, selectedLoop, loadTrialsMetadata]
+    [experimentID, selectedLoop, getTimeline]
   );
 
   const deleteLoop = useCallback(
     async (id: string | number): Promise<boolean> => {
       try {
-        // Get loop before deleting to clear parentLoopId from trials
+        // Get loop before deleting to get its trials
         const loopToDelete = await getLoop(id);
 
         const response = await fetch(
@@ -368,21 +486,24 @@ export default function TrialsProvider({ children }: Props) {
           }
         }
 
-        // Recargar timeline desde backend
-        await loadTrialsMetadata();
-
         // Deseleccionar si es el seleccionado
         if (selectedLoop?.id === id) {
           setSelectedLoop(null);
         }
 
+        // Recargar timeline para reflejar los cambios correctamente
+        // (trials restaurados al timeline o agregados a branches según corresponda)
+        await getTimeline();
+
         return true;
       } catch (error) {
         console.error("Error deleting loop:", error);
+        // Si falla, recargar timeline
+        await getTimeline();
         return false;
       }
     },
-    [experimentID, selectedLoop, loadTrialsMetadata]
+    [experimentID, selectedLoop, getTimeline, getLoop]
   );
 
   // ==================== TIMELINE METHODS ====================
@@ -443,14 +564,16 @@ export default function TrialsProvider({ children }: Props) {
 
   useEffect(() => {
     if (experimentID) {
-      loadTrialsMetadata();
+      getTimeline();
     }
-  }, [experimentID, loadTrialsMetadata]);
+  }, [experimentID, getTimeline]);
 
   return (
     <TrialsContext.Provider
       value={{
         timeline,
+        loopTimeline,
+        activeLoopId,
         selectedTrial,
         setSelectedTrial,
         selectedLoop,
@@ -464,8 +587,9 @@ export default function TrialsProvider({ children }: Props) {
         updateLoop,
         deleteLoop,
         updateTimeline,
-        loadTrialsMetadata,
-        getLoopTrialsMetadata,
+        getTimeline,
+        getLoopTimeline,
+        clearLoopTimeline,
         deleteAllTrials,
         isLoading,
       }}

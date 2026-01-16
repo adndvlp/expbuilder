@@ -5,6 +5,11 @@ import {
   ColumnMappingEntry,
   ParamsOverrideCondition,
 } from "../../types";
+import {
+  generateOnStartCode,
+  generateOnFinishCode,
+  generateConditionalFunctionCode,
+} from "./codeGenerators";
 
 type Props = {
   id: number | undefined;
@@ -101,7 +106,9 @@ export function useTrialCode({
         !/^https?:\/\//.test(value)
       ) {
         const found = uploadedFiles.find(
-          (f) => f.name && (f.name === value || f.name.endsWith(value))
+          (f) =>
+            f.name &&
+            (f.name === value || f.url === value || value.endsWith(f.name))
         );
         return found && found.url ? found.url : value;
       }
@@ -150,34 +157,27 @@ export function useTrialCode({
 
             const processedComp = { ...comp };
 
-            // Eliminar button_html si es undefined o null para no contaminar el objeto
-            if ("button_html" in processedComp) {
-              if (
-                processedComp.button_html === undefined ||
-                processedComp.button_html === null
-              ) {
-                delete processedComp.button_html;
+            // Procesar cada propiedad que está en formato {source, value}
+            // y extraer el valor real
+            Object.keys(processedComp).forEach((prop) => {
+              // Ignorar type y propiedades estructurales
+              if (prop === "type") {
+                return;
               }
-              // Si es función o string, dejarla como está - stringifyWithFunctions la manejará
-            }
 
-            // Si el componente tiene metadata de configuración, usarla para determinar qué resolver
-            const metadata = processedComp.__configMetadata || {};
+              const propValue = processedComp[prop];
 
-            // Primero, resolver TODAS las propiedades si hay CSV
-            // Si el valor es un nombre de columna del CSV, reemplazarlo con el valor de esa columna
-            if (row) {
-              Object.keys(processedComp).forEach((prop) => {
-                // Ignorar metadata y propiedades estructurales (pero NO width!)
-                if (prop === "__configMetadata" || prop === "type") {
-                  return;
-                }
+              // Si la propiedad está en formato {source, value}, procesarla
+              if (
+                propValue &&
+                typeof propValue === "object" &&
+                "source" in propValue &&
+                "value" in propValue
+              ) {
+                const { source, value } = propValue;
 
-                const value = processedComp[prop];
-                const paramMetadata = metadata[prop];
-
-                // Si hay metadata y el source es csv, resolver la columna
-                if (paramMetadata && paramMetadata.source === "csv") {
+                // Si es CSV y hay row, resolver la columna
+                if (source === "csv" && row) {
                   if (Array.isArray(value)) {
                     // Si el valor es un array, mapear cada elemento
                     const resolved = value.map((item) => {
@@ -208,39 +208,22 @@ export function useTrialCode({
                       processedComp[prop] = [value];
                     }
                   }
+                } else if (source === "typed") {
+                  // Si es typed, usar el valor directamente
+                  processedComp[prop] = value;
                 }
-                // Si no hay metadata, usar la lógica heurística anterior
-                else if (!paramMetadata) {
-                  // Resolver strings directos que son nombres de columnas
-                  if (typeof value === "string" && row[value] !== undefined) {
-                    processedComp[prop] = row[value];
-                  }
-                  // Resolver arrays que contienen nombres de columnas
-                  else if (Array.isArray(value)) {
-                    processedComp[prop] = value.map((item) => {
-                      // Si el item es un string que corresponde a una columna, resolverlo
-                      if (typeof item === "string" && row[item] !== undefined) {
-                        return row[item];
-                      }
-                      return item;
-                    });
-                  }
-                }
-                // Si source es "typed" pero el valor parece ser un nombre de columna, resolverlo
-                else if (paramMetadata.source === "typed") {
-                  // Si el valor es un string y existe como columna en el CSV, probablemente sea un mapeo CSV
-                  if (typeof value === "string" && row[value] !== undefined) {
-                    // Verificar si este parámetro fue marcado como CSV en algún momento
-                    // (esto puede pasar si el usuario asignó una columna pero se guardó como typed)
-                    processedComp[prop] = row[value];
-                  }
-                }
-              });
-            }
+              }
+            });
 
-            // SIEMPRE eliminar la metadata del objeto final (independientemente de si hay row o no)
-            if (processedComp.__configMetadata) {
-              delete processedComp.__configMetadata;
+            // Eliminar button_html si es undefined o null para no contaminar el objeto
+            if ("button_html" in processedComp) {
+              if (
+                processedComp.button_html === undefined ||
+                processedComp.button_html === null
+              ) {
+                delete processedComp.button_html;
+              }
+              // Si es función o string, dejarla como está - stringifyWithFunctions la manejará
             }
 
             // Luego, mapear archivos multimedia en componentes (stimulus, src, etc.)
@@ -608,10 +591,7 @@ export function useTrialCode({
           .map((item) => {
             if (typeof item === "object" && item !== null) {
               // Process objects within arrays (like component configs)
-              // Filter out __configMetadata from serialization
-              const objKeys = Object.keys(item).filter(
-                (k) => k !== "__configMetadata"
-              );
+              const objKeys = Object.keys(item);
               const objProps = objKeys
                 .map((objKey) => {
                   const objVal = item[objKey];
@@ -752,820 +732,29 @@ export function useTrialCode({
     const pluginTypeForCode =
       pluginName === "plugin-dynamic" ? "DynamicPlugin" : pluginNameImport;
 
+    // Generate on_start code using the modular generator
+    const onStartCode = generateOnStartCode({
+      paramsOverride,
+      isInLoop,
+      getVarName,
+    });
+
     code += `
     const ${trialNameSanitized}_timeline = {
     type: ${pluginTypeForCode}, ${timelineProps}
-    on_start: function(trial) {
-      // First, evaluate and apply params override conditions (if any)
-      ${
-        paramsOverride && paramsOverride.length > 0
-          ? `
-      const paramsOverrideConditions = ${JSON.stringify(paramsOverride)};
-      
-      // Evaluate params override conditions
-      for (const condition of paramsOverrideConditions) {
-        if (!condition || !condition.rules) {
-          continue;
-        }
-        
-        // Get data from all previous trials
-        const allData = jsPsych.data.get().values();
-        
-        // Check if all rules match (AND logic within condition)
-        const allRulesMatch = condition.rules.every(rule => {
-          if (!rule.trialId) {
-            return false;
-          }
-          
-          // Find data from the referenced trial
-          const trialData = allData.filter(d => {
-            // Compare both as strings to handle type mismatches
-            return String(d.trial_id) === String(rule.trialId) || d.trial_id === rule.trialId;
-          });
-          if (trialData.length === 0) {
-            return false;
-          }
-          
-          // Use the most recent data if multiple exist
-          const data = trialData[trialData.length - 1];
-          
-          let propValue;
-          // For dynamic plugins, handle nested structure
-          if (rule.fieldType && rule.componentIdx !== undefined && rule.componentIdx !== "") {
-            // Note: response_components in the builder becomes "response" in the actual trial data
-            const actualFieldName = rule.fieldType === 'response_components' ? 'response' : rule.fieldType;
-            const fieldArray = data[actualFieldName];
-            if (!Array.isArray(fieldArray)) {
-              return false;
-            }
-            // componentIdx is the component name, not a numeric index
-            const component = fieldArray.find(c => c.name === rule.componentIdx);
-            if (!component) {
-              return false;
-            }
-            if (rule.prop === "response" && component.response !== undefined) {
-              propValue = component.response;
-            } else if (component[rule.prop] !== undefined) {
-              propValue = component[rule.prop];
-            } else {
-              return false;
-            }
-          } else {
-            // Normal plugin structure
-            if (!rule.prop) {
-              return false;
-            }
-            propValue = data[rule.prop];
-          }
-          
-          const compareValue = rule.value;
-          
-          // Handle array responses (multi-select questions)
-          if (Array.isArray(propValue)) {
-            // For array values, check if compareValue is included in the array
-            switch (rule.op) {
-              case '==':
-                return propValue.includes(compareValue);
-              case '!=':
-                return !propValue.includes(compareValue);
-              default:
-                return false; // Comparison operators don't make sense for arrays
-            }
-          }
-          
-          // Convert values for comparison (for non-array values)
-          const numPropValue = parseFloat(propValue);
-          const numCompareValue = parseFloat(compareValue);
-          const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
-          
-          switch (rule.op) {
-            case '==':
-              return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
-            case '!=':
-              return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
-            case '>':
-              return isNumeric && numPropValue > numCompareValue;
-            case '<':
-              return isNumeric && numPropValue < numCompareValue;
-            case '>=':
-              return isNumeric && numPropValue >= numCompareValue;
-            case '<=':
-              return isNumeric && numPropValue <= numCompareValue;
-            default:
-              return false;
-          }
-        });
-        
-        // If all rules match, apply parameter overrides
-        if (allRulesMatch && condition.paramsToOverride) {
-          Object.entries(condition.paramsToOverride).forEach(([key, param]) => {
-            if (param && param.source !== 'none') {
-              // Parse key to check if it's a nested survey question
-              const parts = key.split('::');
-              
-              if (parts.length === 4) {
-                // Format: fieldType::componentName::survey_json::questionName
-                const [fieldType, componentName, propName, questionName] = parts;
-                
-                if (fieldType && componentName && propName === 'survey_json' && questionName) {
-                  // Find the component by name in the field array
-                  const fieldArray = trial[fieldType];
-                  if (Array.isArray(fieldArray)) {
-                    const compIndex = fieldArray.findIndex(c => c.name === componentName);
-                    if (compIndex !== -1 && fieldArray[compIndex].survey_json) {
-                      // Find the question in survey_json.elements
-                      const elements = fieldArray[compIndex].survey_json.elements || [];
-                      const questionIndex = elements.findIndex(q => q.name === questionName);
-                      
-                      if (questionIndex !== -1) {
-                        // Apply the override value (from typed or csv)
-                        let valueToSet;
-                        if (param.source === 'typed') {
-                          valueToSet = String(param.value); // Convert to string for SurveyJS
-                        } else if (param.source === 'csv') {
-                          valueToSet = String(trial[param.value]); // Get from CSV column and convert to string
-                        }
-                        
-                        if (valueToSet !== undefined && valueToSet !== null) {
-                          fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;
-                        }
-                      }
-                    }
-                  }
-                }
-              } else {
-                // Normal parameter (not nested survey question)
-                if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
-                  trial[key] = param.value;
-                } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
-                  // For CSV source, param.value contains the column name, get the actual value from trial
-                  trial[key] = trial[param.value];
-                }
-              }
-            }
-          });
-          // Break after first matching condition (OR logic between conditions)
-          break;
-        }
-      }
-      `
-          : ""
-      }
-      // Then apply custom parameters from branching conditions (higher priority)
-      ${
-        isInLoop
-          ? `
-      // For trials in loops, use loop-specific BranchCustomParameters
-      if (typeof ${getVarName("BranchCustomParameters")} !== 'undefined' && ${getVarName("BranchCustomParameters")} && typeof ${getVarName("BranchCustomParameters")} === 'object') {
-        Object.entries(${getVarName("BranchCustomParameters")}).forEach(([key, param]) => {
-          if (param && param.source !== 'none') {
-            // Parse key to check if it's a nested survey question
-            const parts = key.split('::');
-            
-            if (parts.length === 4) {
-              // Format: fieldType::componentName::survey_json::questionName
-              const [fieldType, componentName, propName, questionName] = parts;
-              
-              if (fieldType && componentName && propName === 'survey_json' && questionName) {
-                // Find the component by name in the field array
-                const fieldArray = trial[fieldType];
-                if (Array.isArray(fieldArray)) {
-                  const compIndex = fieldArray.findIndex(c => c.name === componentName);
-                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {
-                    // Find the question in survey_json.elements
-                    const elements = fieldArray[compIndex].survey_json.elements || [];
-                    const questionIndex = elements.findIndex(q => q.name === questionName);
-                    
-                    if (questionIndex !== -1) {
-                      // Apply the override value (from typed or csv)
-                      let valueToSet;
-                      if (param.source === 'typed') {
-                        valueToSet = String(param.value); // Convert to string for SurveyJS
-                      } else if (param.source === 'csv') {
-                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string
-                      }
-                      
-                      if (valueToSet !== undefined && valueToSet !== null) {
-                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;
-                      }
-                    }
-                  }
-                }
-              }
-            } else {
-              // Normal parameter (not nested survey question)
-              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
-                trial[key] = param.value;
-              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
-                trial[key] = trial[param.value];
-              }
-            }
-          }
-        });
-        // Clear the custom parameters after applying them
-        ${getVarName("BranchCustomParameters")} = null;
-      }
-      `
-          : `
-      // For trials outside loops, use window.branchCustomParameters
-      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {
-        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {
-          if (param && param.source !== 'none') {
-            // Parse key to check if it's a nested survey question
-            const parts = key.split('::');
-            
-            if (parts.length === 4) {
-              // Format: fieldType::componentName::survey_json::questionName
-              const [fieldType, componentName, propName, questionName] = parts;
-              
-              if (fieldType && componentName && propName === 'survey_json' && questionName) {
-                // Find the component by name in the field array
-                const fieldArray = trial[fieldType];
-                if (Array.isArray(fieldArray)) {
-                  const compIndex = fieldArray.findIndex(c => c.name === componentName);
-                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {
-                    // Find the question in survey_json.elements
-                    const elements = fieldArray[compIndex].survey_json.elements || [];
-                    const questionIndex = elements.findIndex(q => q.name === questionName);
-                    
-                    if (questionIndex !== -1) {
-                      // Apply the override value (from typed or csv)
-                      let valueToSet;
-                      if (param.source === 'typed') {
-                        valueToSet = String(param.value); // Convert to string for SurveyJS
-                      } else if (param.source === 'csv') {
-                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string
-                      }
-                      
-                      if (valueToSet !== undefined && valueToSet !== null) {
-                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;
-                      }
-                    }
-                  }
-                }
-              }
-            } else {
-              // Normal parameter (not nested survey question)
-              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
-                trial[key] = param.value;
-              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
-                trial[key] = trial[param.value];
-              }
-            }
-          }
-        });
-        // Clear the custom parameters after applying them
-        window.branchCustomParameters = null;
-      }
-      `
-      }
-    },
+    ${onStartCode}
     `;
 
-    // Lógica de branching
-    if (isInLoop) {
-      // Trial dentro de un loop: usar variables locales del loop para branching
-      const hasBranches = branches && branches.length > 0;
-      const hasBranchConditions =
-        branchConditions && branchConditions.length > 0;
-      const hasRepeatConditions =
-        repeatConditions && repeatConditions.length > 0;
+    // Generate on_finish code using the modular generator
+    const onFinishCode = generateOnFinishCode({
+      branches,
+      branchConditions,
+      repeatConditions,
+      isInLoop,
+      getVarName,
+    });
 
-      if (hasBranches || hasRepeatConditions) {
-        // Si tiene branches o repeat conditions, agregar lógica completa
-        if (hasRepeatConditions) {
-          // Si tiene repeat conditions, generar on_finish completo
-          code += `
-    on_finish: function(data) {
-      // Evaluar repeat conditions (para reiniciar el experimento desde un trial específico)
-      const repeatConditionsArray = ${JSON.stringify(repeatConditions)};
-      
-      let shouldRepeat = false;
-      for (const condition of repeatConditionsArray) {
-        if (!condition || !condition.rules) {
-          continue;
-        }
-        
-        // Todas las reglas en una condición deben ser verdaderas (lógica AND)
-        const allRulesMatch = condition.rules.every(rule => {
-          let propValue;
-          // For dynamic plugins, handle nested structure
-          if (rule.fieldType && rule.componentIdx !== undefined && rule.componentIdx !== "") {
-            // Note: response_components in the builder becomes "response" in the actual trial data
-            const actualFieldName = rule.fieldType === 'response_components' ? 'response' : rule.fieldType;
-            const fieldArray = data[actualFieldName];
-            if (!Array.isArray(fieldArray)) {
-              return false;
-            }
-            // componentIdx is the component name, not a numeric index
-            const component = fieldArray.find(c => c.name === rule.componentIdx);
-            if (!component) {
-              return false;
-            }
-            
-            // For SurveyComponent, the response structure is different
-            // The prop is actually a question name inside component.response
-            if (component.type === "SurveyComponent" && component.response && typeof component.response === 'object') {
-              // The prop (e.g., "question1") is a key inside component.response
-              if (component.response[rule.prop] !== undefined) {
-                propValue = component.response[rule.prop];
-              } else {
-                return false;
-              }
-            } else {
-              // For other components, check direct properties
-              if (rule.prop === "response" && component.response !== undefined) {
-                propValue = component.response;
-              } else if (component[rule.prop] !== undefined) {
-                propValue = component[rule.prop];
-              } else {
-                return false;
-              }
-            }
-          } else {
-            // Normal plugin structure
-            if (!rule.prop) {
-              return false;
-            }
-            propValue = data[rule.prop];
-          }
-          
-          const compareValue = rule.value;
-          
-          // Handle array responses (multi-select questions)
-          if (Array.isArray(propValue)) {
-            // For array values, check if compareValue is included in the array
-            switch (rule.op) {
-              case '==':
-                return propValue.includes(compareValue);
-              case '!=':
-                return !propValue.includes(compareValue);
-              default:
-                return false; // Comparison operators don't make sense for arrays
-            }
-          }
-          
-          // Convertir valores para comparación (for non-array values)
-          const numPropValue = parseFloat(propValue);
-          const numCompareValue = parseFloat(compareValue);
-          const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
-          
-          switch (rule.op) {
-            case '==':
-              return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
-            case '!=':
-              return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
-            case '>':
-              return isNumeric && numPropValue > numCompareValue;
-            case '<':
-              return isNumeric && numPropValue < numCompareValue;
-            case '>=':
-              return isNumeric && numPropValue >= numCompareValue;
-            case '<=':
-              return isNumeric && numPropValue <= numCompareValue;
-            default:
-              return false;
-          }
-        });
-        
-        if (allRulesMatch && condition.jumpToTrialId) {
-          console.log('Repeat condition matched in loop! Jumping to trial:', condition.jumpToTrialId);
-          // Guardar el trial objetivo en localStorage
-          localStorage.setItem('jsPsych_jumpToTrial', String(condition.jumpToTrialId));
-          shouldRepeat = true;
-          break;
-        }
-      }
-      
-      if (shouldRepeat) {
-        // Limpiar el contenedor de jsPsych (jspsych-container es el display_element)
-        const container = document.getElementById('jspsych-container');
-        if (container) {
-          // Limpiar todo el contenido del container
-          container.innerHTML = '';
-        }
-        // Reiniciar el timeline
-        setTimeout(() => {
-          jsPsych.run(timeline);
-        }, 100);
-        return;
-      }
-      
-      ${
-        hasBranches
-          ? !hasBranchConditions
-            ? `
-      // Branching automático al primer branch (dentro del loop)
-      const branches = [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}];
-      if (branches.length > 0) {
-        ${getVarName("NextTrialId")} = branches[0];
-        ${getVarName("SkipRemaining")} = true;
-        ${getVarName("BranchingActive")} = true;
-      }
-      `
-            : `
-      // Evaluar condiciones del trial para branching interno del loop
-      const branches = [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}];
-      const branchConditions = ${JSON.stringify(branchConditions)}.flat();
-      
-      let nextTrialId = null;
-      let matchedCustomParameters = null;
-      
-      // Evaluar cada condición (lógica OR entre condiciones)
-      for (const condition of branchConditions) {
-        if (!condition || !condition.rules) {
-          continue;
-        }
-        
-        // Todas las reglas en una condición deben ser verdaderas (lógica AND)
-        const allRulesMatch = condition.rules.every(rule => {
-          let propValue;
-          
-          // Check if this is a dynamic plugin with fieldType
-          if (rule.fieldType && rule.componentIdx !== undefined && rule.componentIdx !== "") {
-            // Dynamic plugin structure
-            const actualFieldName = rule.fieldType === 'response_components' ? 'response' : rule.fieldType;
-            const fieldArray = data[actualFieldName];
-            if (!Array.isArray(fieldArray)) {
-              console.log('Branch eval (loop): fieldArray is not an array', actualFieldName, data);
-              return false;
-            }
-            const component = fieldArray.find(c => c.name === rule.componentIdx);
-            if (!component) {
-              console.log('Branch eval (loop): component not found', rule.componentIdx);
-              return false;
-            }
-            
-            // For SurveyComponent, check inside component.response
-            if (component.type === "SurveyComponent" && component.response && typeof component.response === 'object') {
-              if (component.response[rule.prop] !== undefined) {
-                propValue = component.response[rule.prop];
-                console.log('Branch eval (loop): Found question response', rule.prop, propValue);
-              } else {
-                console.log('Branch eval (loop): Question not found', rule.prop);
-                return false;
-              }
-            } else {
-              // Other component types
-              if (rule.prop === "response" && component.response !== undefined) {
-                propValue = component.response;
-              } else if (component[rule.prop] !== undefined) {
-                propValue = component[rule.prop];
-              } else {
-                return false;
-              }
-            }
-          } else {
-            // Normal plugin structure
-            propValue = data[rule.prop];
-          }
-          
-          const compareValue = rule.value;
-          console.log('Branch eval (loop): Comparing', propValue, rule.op, compareValue);
-          
-          // Handle array responses (multi-select or single-select returned as array)
-          if (Array.isArray(propValue)) {
-            const matches = propValue.includes(compareValue) || propValue.includes(String(compareValue));
-            console.log('Branch eval (loop): Array comparison result', matches);
-            switch (rule.op) {
-              case '==':
-                return matches;
-              case '!=':
-                return !matches;
-              default:
-                return false;
-            }
-          }
-          
-          // Convertir valores para comparación
-          const numPropValue = parseFloat(propValue);
-          const numCompareValue = parseFloat(compareValue);
-          const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
-          
-          switch (rule.op) {
-            case '==':
-              return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
-            case '!=':
-              return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
-            case '>':
-              return isNumeric && numPropValue > numCompareValue;
-            case '<':
-              return isNumeric && numPropValue < numCompareValue;
-            case '>=':
-              return isNumeric && numPropValue >= numCompareValue;
-            case '<=':
-              return isNumeric && numPropValue <= numCompareValue;
-            default:
-              return false;
-          }
-        });
-        
-        if (allRulesMatch) {
-          console.log('Branch condition matched (loop)! Next trial:', condition.nextTrialId);
-          nextTrialId = condition.nextTrialId;
-          // Store custom parameters if they exist
-          if (condition.customParameters) {
-            matchedCustomParameters = condition.customParameters;
-            console.log('Loop branching: matched custom parameters:', matchedCustomParameters);
-          }
-          break;
-        }
-      }
-      
-      // Si se encontró match, activar branching
-      if (nextTrialId) {
-        console.log('Activating branching in loop to:', nextTrialId);
-        ${getVarName("NextTrialId")} = nextTrialId;
-        ${getVarName("SkipRemaining")} = true;
-        ${getVarName("BranchingActive")} = true;
-        // Store custom parameters for the next trial in the loop
-        if (matchedCustomParameters) {
-          ${getVarName("BranchCustomParameters")} = matchedCustomParameters;
-        }
-      }
-      `
-          : `
-      // Este trial no tiene branches, verificar si el loop padre tiene branches
-      if (typeof ${getVarName("HasBranches")} !== 'undefined' && ${getVarName("HasBranches")}) {
-        // El loop tiene branches, activar branching del loop al terminar
-        // Esto se manejará en el on_finish del loop
-        ${getVarName("ShouldBranchOnFinish")} = true;
-      } else if (!${getVarName("HasBranches")}) {
-        // Ni el trial ni el loop tienen branches - trial terminal
-        // Si llegamos aquí después de un branching global, terminar el experimento
-        if (window.branchingActive) {
-          jsPsych.abortExperiment('', {});
-        }
-      }
-      `
-      }
-    },`;
-        } else if (hasBranches) {
-          // Si tiene branches pero NO repeat conditions
-          if (!hasBranchConditions) {
-            // Si NO hay condiciones, seguir automáticamente al primer branch
-            code += `
-    on_finish: function(data) {
-      // Branching automático al primer branch (dentro del loop)
-      const branches = [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}];
-      if (branches.length > 0) {
-        ${getVarName("NextTrialId")} = branches[0];
-        ${getVarName("SkipRemaining")} = true;
-        ${getVarName("BranchingActive")} = true;
-      }
-    },`;
-          } else {
-            // Si hay condiciones, evaluar las condiciones (siempre)
-            code += `
-    on_finish: function(data) {
-      // Evaluar condiciones del trial para branching interno del loop
-      const branches = [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}];
-      const branchConditions = ${JSON.stringify(branchConditions)}.flat();
-      
-      let nextTrialId = null;
-      let matchedCustomParameters = null;
-      
-      // Evaluar cada condición (lógica OR entre condiciones)
-      for (const condition of branchConditions) {
-        if (!condition || !condition.rules) {
-          continue;
-        }
-        
-        // Todas las reglas en una condición deben ser verdaderas (lógica AND)
-        const allRulesMatch = condition.rules.every(rule => {
-          const propValue = data[rule.prop];
-          const compareValue = rule.value;
-          
-          // Convertir valores para comparación
-          const numPropValue = parseFloat(propValue);
-          const numCompareValue = parseFloat(compareValue);
-          const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
-          
-          switch (rule.op) {
-            case '==':
-              return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
-            case '!=':
-              return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
-            case '>':
-              return isNumeric && numPropValue > numCompareValue;
-            case '<':
-              return isNumeric && numPropValue < numCompareValue;
-            case '>=':
-              return isNumeric && numPropValue >= numCompareValue;
-            case '<=':
-              return isNumeric && numPropValue <= numCompareValue;
-            default:
-              return false;
-          }
-        });
-        
-        if (allRulesMatch) {
-          nextTrialId = condition.nextTrialId;
-          // Store custom parameters if they exist
-          if (condition.customParameters) {
-            matchedCustomParameters = condition.customParameters;
-            console.log('Loop branching: matched custom parameters:', matchedCustomParameters);
-          }
-          break;
-        }
-      }
-      
-      // Si se encontró match, activar branching
-      if (nextTrialId) {
-        ${getVarName("NextTrialId")} = nextTrialId;
-        ${getVarName("SkipRemaining")} = true;
-        ${getVarName("BranchingActive")} = true;
-        // Store custom parameters for the next trial in the loop
-        if (matchedCustomParameters) {
-          ${getVarName("BranchCustomParameters")} = matchedCustomParameters;
-        }
-      }
-    },`;
-          }
-        }
-      } else {
-        // Trial terminal dentro del loop: no tiene branches ni repeat conditions
-        // Verificar si el loop padre tiene branches
-        code += `
-    on_finish: function(data) {
-      // Este trial no tiene branches ni repeat conditions, verificar si el loop padre tiene branches
-      if (typeof ${getVarName("HasBranches")} !== 'undefined' && ${getVarName("HasBranches")}) {
-        // El loop tiene branches, activar branching del loop al terminar
-        // Esto se manejará en el on_finish del loop
-        ${getVarName("ShouldBranchOnFinish")} = true;
-      } else if (!${getVarName("HasBranches")}) {
-        // Ni el trial ni el loop tienen branches - trial terminal
-        // Si llegamos aquí después de un branching global, terminar el experimento
-        if (window.branchingActive) {
-          jsPsych.abortExperiment('', {});
-        }
-      }
-    },`;
-      }
-    } else {
-      // Lógica de branching para trials que NO están en loops (timeline principal)
-      const hasBranches = branches && branches.length > 0;
-      const hasMultipleBranches = branches && branches.length > 1;
-      const hasBranchConditions =
-        branchConditions && branchConditions.length > 0;
-      const hasRepeatConditions =
-        repeatConditions && repeatConditions.length > 0;
-
-      if (hasBranches || hasRepeatConditions) {
-        // Si tiene branches o repeat conditions, generar on_finish completo
-        code += `
-    on_finish: function(data) {
-      ${
-        hasRepeatConditions
-          ? `
-      // Evaluar repeat conditions (para reiniciar el experimento desde un trial específico)
-      const repeatConditionsArray = ${JSON.stringify(repeatConditions)};
-      
-      for (const condition of repeatConditionsArray) {
-        if (!condition || !condition.rules) {
-          continue;
-        }
-        
-        // Todas las reglas en una condición deben ser verdaderas (lógica AND)
-        const allRulesMatch = condition.rules.every(rule => {
-          let propValue;
-          // For dynamic plugins, handle nested structure
-          if (rule.fieldType && rule.componentIdx !== undefined && rule.componentIdx !== "") {
-            // Note: response_components in the builder becomes "response" in the actual trial data
-            const actualFieldName = rule.fieldType === 'response_components' ? 'response' : rule.fieldType;
-            const fieldArray = data[actualFieldName];
-            if (!Array.isArray(fieldArray)) {
-              return false;
-            }
-            // componentIdx is the component name, not a numeric index
-            const component = fieldArray.find(c => c.name === rule.componentIdx);
-            if (!component) {
-              return false;
-            }
-            
-            // For SurveyComponent, the response structure is different
-            // The prop is actually a question name inside component.response
-            if (component.type === "SurveyComponent" && component.response && typeof component.response === 'object') {
-              // The prop (e.g., "question1") is a key inside component.response
-              if (component.response[rule.prop] !== undefined) {
-                propValue = component.response[rule.prop];
-              } else {
-                return false;
-              }
-            } else {
-              // For other components, check direct properties
-              if (rule.prop === "response" && component.response !== undefined) {
-                propValue = component.response;
-              } else if (component[rule.prop] !== undefined) {
-                propValue = component[rule.prop];
-              } else {
-                return false;
-              }
-            }
-          } else {
-            // Normal plugin structure
-            if (!rule.prop) {
-              return false;
-            }
-            propValue = data[rule.prop];
-          }
-          
-          const compareValue = rule.value;
-          
-          // Handle array responses (multi-select questions)
-          if (Array.isArray(propValue)) {
-            // For array values, check if compareValue is included in the array
-            switch (rule.op) {
-              case '==':
-                return propValue.includes(compareValue);
-              case '!=':
-                return !propValue.includes(compareValue);
-              default:
-                return false; // Comparison operators don't make sense for arrays
-            }
-          }
-          
-          // Convertir valores para comparación (for non-array values)
-          const numPropValue = parseFloat(propValue);
-          const numCompareValue = parseFloat(compareValue);
-          const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
-          
-          switch (rule.op) {
-            case '==':
-              return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
-            case '!=':
-              return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
-            case '>':
-              return isNumeric && numPropValue > numCompareValue;
-            case '<':
-              return isNumeric && numPropValue < numCompareValue;
-            case '>=':
-              return isNumeric && numPropValue >= numCompareValue;
-            case '<=':
-              return isNumeric && numPropValue <= numCompareValue;
-            default:
-              return false;
-          }
-        });
-        
-        if (allRulesMatch && condition.jumpToTrialId) {
-          console.log('Repeat condition matched! Jumping to trial:', condition.jumpToTrialId);
-          // Guardar el trial objetivo en localStorage
-          localStorage.setItem('jsPsych_jumpToTrial', String(condition.jumpToTrialId));
-          // Limpiar el contenedor de jsPsych (jspsych-container es el display_element)
-          const container = document.getElementById('jspsych-container');
-          if (container) {
-            // Limpiar todo el contenido del container
-            container.innerHTML = '';
-          }
-          // Reiniciar el timeline
-          setTimeout(() => {
-            jsPsych.run(timeline);
-          }, 100);
-          return;
-        }
-      }
-      `
-          : ""
-      }
-      ${
-        hasBranches
-          ? hasMultipleBranches && hasBranchConditions
-            ? `
-      // Si hay múltiples branches Y condiciones, la lógica se maneja en Timeline.tsx
-      `
-            : `
-      // Branching automático al primer branch
-      const branches = [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}];
-      if (branches.length > 0) {
-        window.nextTrialId = branches[0];
-        window.skipRemaining = true;
-        window.branchingActive = true;
-      }
-      `
-          : `
-      // Este trial no tiene branches, es un trial terminal
-      // Si llegamos aquí después de un branching, terminar el experimento
-      if (window.branchingActive) {
-        jsPsych.abortExperiment('', {});
-      }
-      `
-      }
-    },
-    `;
-      } else {
-        // Trial terminal: no tiene branches ni repeat conditions
-        code += `
-    on_finish: function(data) {
-      // Este trial no tiene branches ni repeat conditions, es un trial terminal
-      // Si llegamos aquí después de un branching, terminar el experimento
-      if (window.branchingActive) {
-        jsPsych.abortExperiment('', {});
-      }
-    },
-    `;
-      }
-    }
+    code += onFinishCode;
 
     if (includesExtensions && extensions !== "") {
       code += `
@@ -1584,37 +773,7 @@ export function useTrialCode({
     timeline: 
     [${trialNameSanitized}_timeline],
     timeline_variables: test_stimuli_${trialNameSanitized},
-    conditional_function: function() {
-      const currentId = ${id};
-      
-      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
-      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
-      if (jumpToTrial) {
-        if (String(currentId) === String(jumpToTrial)) {
-          // Encontramos el trial objetivo para repeat/jump
-          console.log('Repeat/jump: Found target trial', currentId);
-          localStorage.removeItem('jsPsych_jumpToTrial');
-          return true;
-        }
-        // No es el objetivo, saltar
-        console.log('Repeat/jump: Skipping trial', currentId);
-        return false;
-      }
-      
-      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo
-      if (window.skipRemaining) {
-        if (String(currentId) === String(window.nextTrialId)) {
-          // Encontramos el trial objetivo
-          window.skipRemaining = false;
-          window.nextTrialId = null;
-          return true;
-        }
-        // No es el objetivo, saltar
-        return false;
-      }
-      
-      return true;
-    },
+    ${generateConditionalFunctionCode(id)}
     `;
 
       if (includesExtensions && extensions !== "") {

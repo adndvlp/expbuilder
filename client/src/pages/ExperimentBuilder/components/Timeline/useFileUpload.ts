@@ -13,6 +13,7 @@ type FileCache = {
 
 export function useFileUpload({ folder }: UseFileUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
 
   const experimentID = useExperimentID();
@@ -22,11 +23,11 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
   const lastFetchTime = useRef<{ [key: string]: number }>({});
   const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos en milisegundos
 
-  // solo para navegadores modernos, hacer poder subir carpetas
+  // Configurar el input de carpetas con webkitdirectory
   useEffect(() => {
-    if (fileInputRef.current) {
-      fileInputRef.current.setAttribute("webkitdirectory", "");
-      fileInputRef.current.setAttribute("directory", "");
+    if (folderInputRef.current) {
+      folderInputRef.current.setAttribute("webkitdirectory", "");
+      folderInputRef.current.setAttribute("directory", "");
     }
   }, []);
 
@@ -89,24 +90,53 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
     }
   };
 
-  const handleDeleteFile = async (fileName: string) => {
-    const filename = fileName.split("/").pop();
+  const handleDeleteFile = async (file: UploadedFile) => {
+    const { type, name } = file;
+
     await fetch(
-      `${API_URL}/api/delete-file/${folder}/${filename}/${experimentID}`,
+      `${API_URL}/api/delete-file/${type}/${encodeURIComponent(name)}/${experimentID}`,
       {
         method: "DELETE",
       }
     );
     invalidateCache();
-    setUploadedFiles((prev) => prev.filter((i) => i.name !== fileName));
+    setUploadedFiles((prev) => prev.filter((i) => i.url !== file.url));
+  };
+
+  const handleDeleteMultipleFiles = async (files: UploadedFile[]) => {
+    try {
+      // Borrar todos los archivos en paralelo
+      await Promise.all(
+        files.map(async (file) => {
+          const { type, name } = file;
+
+          await fetch(
+            `${API_URL}/api/delete-file/${type}/${encodeURIComponent(name)}/${experimentID}`,
+            {
+              method: "DELETE",
+            }
+          );
+        })
+      );
+      invalidateCache();
+      const urlsToDelete = files.map((f) => f.url);
+      setUploadedFiles((prev) =>
+        prev.filter((i) => !urlsToDelete.includes(i.url))
+      );
+    } catch (err) {
+      console.error("Error deleting multiple files:", err);
+      throw err;
+    }
   };
 
   return {
     fileInputRef,
+    folderInputRef,
     uploadedFiles,
     setUploadedFiles,
     handleFileUpload,
     handleDeleteFile,
+    handleDeleteMultipleFiles,
     refreshUploadedFiles,
   };
 }

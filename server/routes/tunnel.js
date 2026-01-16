@@ -1,3 +1,9 @@
+/**
+ * @fileoverview Manages Cloudflare tunnels for experiment sharing.
+ * Allows creating and closing temporary tunnels using cloudflared.
+ * @module routes/tunnel
+ */
+
 import { Router } from "express";
 import path from "path";
 import os from "os";
@@ -6,10 +12,16 @@ import { __dirname } from "../utils/paths.js";
 
 const router = Router();
 
+/**
+ * Gets the path to the cloudflared binary based on OS and architecture.
+ * @private
+ * @returns {string} Absolute path to cloudflared binary
+ * @throws {Error} If OS is not supported
+ */
 function getCloudflaredPath() {
   const baseDir = path.join(__dirname, "cloudflared");
   if (os.platform() === "darwin") {
-    // MacOS: selecciona el binario correcto según la arquitectura
+    // MacOS: select binary based on architecture
     if (os.arch() === "arm64") {
       return path.join(baseDir, "cloudflared-darwin-arm64");
     } else {
@@ -28,6 +40,17 @@ function getCloudflaredPath() {
 
 let tunnelProcess = null;
 
+/**
+ * Creates a Cloudflare tunnel to share the local server.
+ * Attempts to retrieve tunnel URL (*.trycloudflare.com) up to 3 times.
+ * Keeps the process running in the background.
+ * @route POST /api/create-tunnel
+ * @returns {Object} 200 - Tunnel successfully created
+ * @returns {boolean} 200.success - Indicates success
+ * @returns {string} 200.url - Public tunnel URL (e.g., "https://abc.trycloudflare.com")
+ * @returns {Object} 500 - Error starting cloudflared
+ * @returns {Object} 504 - Timeout: URL not retrieved after 3 attempts
+ */
 router.post("/api/create-tunnel", async (req, res) => {
   const maxAttempts = 3;
   const timeoutMs = 10000; // 10 seconds
@@ -50,7 +73,7 @@ router.post("/api/create-tunnel", async (req, res) => {
 
     function cleanup() {
       if (timeoutId) clearTimeout(timeoutId);
-      // No matamos el proceso aquí, solo limpiamos el timeout
+      // We don't kill the process here, just clear the timeout
     }
 
     function handleTunnelOutput(data) {
@@ -96,6 +119,14 @@ router.post("/api/create-tunnel", async (req, res) => {
   tryCreateTunnel();
 });
 
+/**
+ * Cierra el túnel de Cloudflare activo.
+ * @route POST /api/close-tunnel
+ * @returns {Object} 200 - Túnel cerrado exitosamente
+ * @returns {boolean} 200.success - Indica éxito
+ * @returns {string} 200.message - Mensaje de confirmación
+ * @returns {Object} 400 - No hay túnel activo
+ */
 router.post("/api/close-tunnel", (req, res) => {
   if (tunnelProcess) {
     tunnelProcess.kill();

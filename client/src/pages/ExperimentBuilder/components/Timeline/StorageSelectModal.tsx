@@ -73,6 +73,28 @@ export function StorageSelectModal({
     </svg>
   );
 
+  const OSFIcon = () => (
+    <svg
+      width="56"
+      height="56"
+      viewBox="0 0 100 100"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <circle cx="50" cy="50" r="45" fill="#3E7EBB" />
+      <text
+        x="50"
+        y="65"
+        fontSize="48"
+        fontWeight="bold"
+        fill="white"
+        textAnchor="middle"
+        fontFamily="Arial, sans-serif"
+      >
+        OSF
+      </text>
+    </svg>
+  );
+
   return (
     <div className="storage-modal-overlay" onClick={onCancel}>
       <div
@@ -104,6 +126,17 @@ export function StorageSelectModal({
                 <DropboxIcon />
               </div>
               <div className="storage-name">Dropbox</div>
+            </button>
+          )}
+          {availableStorages.includes("osf") && (
+            <button
+              className={`storage-option ${selectedStorage === "osf" ? "selected" : ""}`}
+              onClick={() => setSelectedStorage("osf")}
+            >
+              <div className="storage-icon">
+                <OSFIcon />
+              </div>
+              <div className="storage-name">OSF</div>
             </button>
           )}
         </div>

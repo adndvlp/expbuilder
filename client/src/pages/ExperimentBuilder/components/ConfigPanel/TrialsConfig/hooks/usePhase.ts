@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { usePluginParameters } from "../../hooks/usePluginParameters"; // Make sure path is correct
 import { useCsvMapper } from "./useCsvMapper";
 import { ColumnMapping, Trial } from "../../types";
+import {
+  generateOnStartCode,
+  generateOnFinishCode,
+  generateConditionalFunctionCode,
+} from "./codeGenerators";
 
 type PhaseProps = {
   pluginName: string;
@@ -28,6 +33,24 @@ export const usePhase = ({
   setColumnMapping,
   setIsLoadingTrial,
 }: PhaseProps) => {
+  // Extract trial logic properties from selectedTrial
+  const branches = selectedTrial?.branches;
+  const branchConditions = selectedTrial?.branchConditions;
+  const repeatConditions = selectedTrial?.repeatConditions;
+  const paramsOverride = selectedTrial?.paramsOverride;
+  const isInLoop = (selectedTrial as any)?.isInLoop;
+  const parentLoopId = (selectedTrial as any)?.parentLoopId;
+
+  // Helper for dynamic variable names
+  const getVarName = (baseName: string): string => {
+    if (!isInLoop || !parentLoopId) {
+      return baseName;
+    }
+    const sanitizeName = (name: string) => name.replace(/[^a-zA-Z0-9_]/g, "_");
+    const sanitizedParentId = sanitizeName(parentLoopId);
+    return `loop_${sanitizedParentId}_${baseName}`;
+  };
+
   useEffect(() => {
     if (selectedTrial) {
       setIsLoadingTrial(true);
@@ -180,6 +203,22 @@ export const usePhase = ({
   const genTrialCode = () => {
     let code = "";
 
+    const onStartCode = generateOnStartCode({
+      paramsOverride,
+      isInLoop,
+      getVarName,
+    });
+    const onFinishCode = generateOnFinishCode({
+      branches,
+      branchConditions,
+      repeatConditions,
+      isInLoop,
+      getVarName,
+    });
+    const conditionalFunctionCode = generateConditionalFunctionCode(
+      selectedTrial?.id
+    );
+
     if (includeInstructions) {
       code += `const ${pluginNameRefactor}_instructions = {
       type: jsPsychHtmlButtonResponse,
@@ -202,7 +241,10 @@ export const usePhase = ({
       !pluginRecal
         ? `
     const ${pluginNameRefactor}_timeline = {
-    type: ${pluginNameImport}, ${timelineProps}};`
+    type: ${pluginNameImport}, ${timelineProps}
+    ${onStartCode}
+    ${onFinishCode}
+    };`
         : ""
     };
     `;
@@ -216,6 +258,7 @@ export const usePhase = ({
     ${!pluginRecal ? `${pluginNameRefactor}_timeline ` : ""}
     ],
     timeline_variables: test_stimuli_${pluginNameRefactor},
+    ${conditionalFunctionCode}
   };
     timeline.push(${pluginNameRefactor}_procedure);
   ;`;
@@ -252,6 +295,7 @@ export const usePhase = ({
       includeInstructions ? `plugin_webgazer_recalibrate_instructions,` : ""
     }recalibrate_timeline],
     timeline_variables: test_stimuli_plugin_webgazer_recalibrate,
+    ${conditionalFunctionCode}
   };
     timeline.push(recalibrateWebGazer_procedure);
   ;`;

@@ -174,3 +174,46 @@ ipcMain.handle("save-json-file", async (_event, { content, defaultName }) => {
     return { success: false, error: err.message };
   }
 });
+
+// Firebase config handlers
+const getFirebaseConfigPath = () => {
+  return path.join(app.getPath("userData"), "firebase-config.json");
+};
+
+ipcMain.handle("read-firebase-config", async () => {
+  try {
+    const configPath = getFirebaseConfigPath();
+    if (fs.existsSync(configPath)) {
+      const data = fs.readFileSync(configPath, "utf8");
+      return JSON.parse(data);
+    }
+    return null;
+  } catch (error) {
+    console.error("Error reading firebase config:", error);
+    return null;
+  }
+});
+
+ipcMain.handle("write-firebase-config", async (_event, config) => {
+  try {
+    const configPath = getFirebaseConfigPath();
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), "utf8");
+    return { success: true };
+  } catch (error) {
+    console.error("Error writing firebase config:", error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle("delete-firebase-config", async () => {
+  try {
+    const configPath = getFirebaseConfigPath();
+    if (fs.existsSync(configPath)) {
+      fs.unlinkSync(configPath);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting firebase config:", error);
+    return { success: false, error: error.message };
+  }
+});

@@ -31,8 +31,14 @@ function ExperimentBuilder() {
   const { isDevMode, setDevMode } = useDevMode();
 
   // Shared file upload state between Timeline and TrialsConfig
-  const { uploadedFiles, fileInputRef, handleFileUpload, handleDeleteFile } =
-    useFileUpload({ folder: "all" });
+  const {
+    uploadedFiles,
+    fileInputRef,
+    folderInputRef,
+    handleFileUpload,
+    handleDeleteFile,
+    handleDeleteMultipleFiles,
+  } = useFileUpload({ folder: "all" });
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -133,8 +139,10 @@ function ExperimentBuilder() {
                 <Timeline
                   uploadedFiles={uploadedFiles}
                   fileInputRef={fileInputRef}
+                  folderInputRef={folderInputRef}
                   handleFileUpload={handleFileUpload}
                   handleDeleteFile={handleDeleteFile}
+                  handleDeleteMultipleFiles={handleDeleteMultipleFiles}
                 />
 
                 {/* Barra de redimensionamiento derecha */}

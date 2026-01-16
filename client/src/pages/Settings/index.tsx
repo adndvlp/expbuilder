@@ -4,8 +4,10 @@ import { auth } from "../../lib/firebase";
 import GoogleDriveToken from "./GoogleDriveToken";
 import DropboxToken from "./DropboxToken";
 import GithubToken from "./GithubToken";
+import OsfToken from "./OsfToken";
 import ChangePassword from "./ChangePassword";
 import DeleteAccount from "./DeleteAccount";
+import FirebaseCredentials from "./FirebaseCredentials";
 import "./index.css";
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -268,6 +270,15 @@ export default function Settings() {
             Export your data to restore it later if you reinstall the app.
           </div>
         </div>
+        {/* Firebase Credentials - Siempre visible, no requiere autenticación */}
+        <div className="settings-section">
+          <h2 className="settings-section-title">Firebase Configuration</h2>
+          <div style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>
+            Configure your own Firebase project credentials. This allows you to
+            connect the app to your own Firebase backend.
+          </div>
+          <FirebaseCredentials />
+        </div>
         {/* Overlay borroso solo para secciones de usuario hacia abajo */}
         <div style={{ position: "relative" }}>
           {/* Información del usuario */}
@@ -294,6 +305,7 @@ export default function Settings() {
               <GoogleDriveToken />
               <DropboxToken />
               <GithubToken />
+              <OsfToken />
             </div>
           </div>
 

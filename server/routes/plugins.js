@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Manages custom jsPsych plugins.
+ * Allows uploading, saving, deleting, and serving custom plugins along with their metadata.
+ * Automatically extracts parameter metadata using extract-metadata.mjs.
+ * @module routes/plugins
+ */
+
 import { Router } from "express";
 import express from "express";
 import path from "path";
@@ -23,7 +30,14 @@ router.use("/api/metadata", express.static(metadataPath));
 // Serve the components metadata directory
 router.use("/api/components-metadata", express.static(componentsMetadataPath));
 
-// Component metadata endpoint
+/**
+ * Gets metadata for a specific component (audio, button, etc.).
+ * @route GET /api/component-metadata/:componentType
+ * @param {string} componentType - Component type (e.g. "audio", "button-response")
+ * @returns {Object} 200 - Component metadata
+ * @returns {Object} 404 - Metadata not found
+ * @returns {Object} 500 - Server error
+ */
 router.get("/api/component-metadata/:componentType", (req, res) => {
   try {
     const { componentType } = req.params;
@@ -46,10 +60,17 @@ router.get("/api/component-metadata/:componentType", (req, res) => {
   }
 });
 
+/**
+ * Lists all available plugins (name without .json extension).
+ * @route GET /api/plugins-list
+ * @returns {Object} 200 - List of plugins
+ * @returns {string[]} 200.plugins - Array of plugin names
+ * @returns {Object} 500 - Server error
+ */
 router.get("/api/plugins-list", (req, res) => {
   fs.readdir(metadataPath, (err, files) => {
     if (err) return res.status(500).json({ error: "No metadata dir" });
-    // Solo archivos .json
+    // Only .json files
     const plugins = files
       .filter((f) => f.endsWith(".json"))
       .map((f) => f.replace(/\.json$/, ""));
@@ -57,7 +78,7 @@ router.get("/api/plugins-list", (req, res) => {
   });
 });
 
-// Guardar un solo plugin por id
+// Save a single plugin by id
 router.post("/api/save-plugin/:id", async (req, res) => {
   try {
     const index = Number(req.params.id);
@@ -193,6 +214,17 @@ router.post("/api/save-plugin/:id", async (req, res) => {
   }
 });
 
+/**
+ * Elimina un plugin custom por su índice.
+ * Borra archivo del plugin, metadata, y referencias en plantillas HTML.
+ * @route DELETE /api/delete-plugin/:index
+ * @param {number} index - Índice del plugin (path parameter)
+ * @returns {Object} 200 - Plugin eliminado exitosamente
+ * @returns {boolean} 200.success - Indica éxito
+ * @returns {Object} 400 - Índice inválido
+ * @returns {Object} 404 - Plugin no encontrado
+ * @returns {Object} 500 - Error del servidor
+ */
 router.delete("/api/delete-plugin/:index", async (req, res) => {
   try {
     const index = Number(req.params.index);
@@ -261,7 +293,17 @@ router.delete("/api/delete-plugin/:index", async (req, res) => {
   }
 });
 
-// Endpoint para obtener todos los plugins custom/subidos
+/**
+ * Obtiene la lista de todos los plugins custom guardados.
+ * @route GET /api/load-plugins
+ * @returns {Object} 200 - Plugins encontrados
+ * @returns {Object[]} 200.plugins - Array de plugins
+ * @returns {number} 200.plugins[].index - Índice del plugin
+ * @returns {string} 200.plugins[].name - Nombre del plugin
+ * @returns {string} 200.plugins[].scripTag - Ruta del script
+ * @returns {string} 200.plugins[].pluginCode - Código fuente
+ * @returns {Object} 500 - Error del servidor
+ */
 router.get("/api/load-plugins", async (req, res) => {
   try {
     await db.read();

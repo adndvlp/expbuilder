@@ -11,23 +11,30 @@ import { useExperimentCode } from "./useExperimentCode";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+type UploadedFile = { name: string; url: string; type: string };
+
 type TimelineProps = {
-  uploadedFiles: { name: string; url: string; type: string }[];
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  uploadedFiles: UploadedFile[];
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  folderInputRef: React.RefObject<HTMLInputElement | null>;
   handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
-  handleDeleteFile: (fileName: string, fileType: string) => Promise<void>;
+  handleDeleteFile: (file: UploadedFile) => Promise<void>;
+  handleDeleteMultipleFiles?: (files: UploadedFile[]) => Promise<void>;
 };
 
 function Timeline({
   uploadedFiles,
   fileInputRef,
+  folderInputRef,
   handleFileUpload,
   handleDeleteFile,
+  handleDeleteMultipleFiles,
 }: TimelineProps) {
   // Estado para tokens del usuario
   const [userTokens, setUserTokens] = useState<{
     drive: boolean;
     dropbox: boolean;
+    osf: boolean;
     github: boolean;
   } | null>(null);
 
@@ -36,14 +43,17 @@ function Timeline({
     return !(
       userTokens &&
       userTokens.github &&
-      (userTokens.drive || userTokens.dropbox)
+      (userTokens.drive || userTokens.dropbox || userTokens.osf)
     );
   }
 
   // Función para obtener tokens del usuario desde Firestore
-  async function getUserTokens(
-    uid: string
-  ): Promise<{ drive: boolean; dropbox: boolean; github: boolean }> {
+  async function getUserTokens(uid: string): Promise<{
+    drive: boolean;
+    dropbox: boolean;
+    osf: boolean;
+    github: boolean;
+  }> {
     try {
       // Importar Firestore dinámicamente para evitar dependencias innecesarias
       const { doc, getDoc } = await import("firebase/firestore");
@@ -51,15 +61,16 @@ function Timeline({
       const docRef = doc(db, "users", uid);
       const docSnap = await getDoc(docRef);
       if (!docSnap.exists())
-        return { drive: false, dropbox: false, github: false };
+        return { drive: false, dropbox: false, osf: false, github: false };
       const data = docSnap.data();
       return {
         drive: !!data.googleDriveTokens,
         dropbox: !!data.dropboxTokens,
+        osf: !!(data.osfToken && data.osfTokenValid),
         github: !!data.githubTokens,
       };
     } catch {
-      return { drive: false, dropbox: false, github: false };
+      return { drive: false, dropbox: false, osf: false, github: false };
     }
   }
 
@@ -299,11 +310,12 @@ function Timeline({
       const storages: string[] = [];
       if (tokens.drive) storages.push("googledrive");
       if (tokens.dropbox) storages.push("dropbox");
+      if (tokens.osf) storages.push("osf");
 
       // Si no hay ningún storage conectado, mostrar error
       if (storages.length === 0) {
         setPublishStatus(
-          "Error: Please connect Google Drive or Dropbox in Settings"
+          "Error: Please connect Google Drive, Dropbox, or OSF in Settings"
         );
         return;
       }
@@ -625,7 +637,9 @@ function Timeline({
           uploadedFiles={uploadedFiles}
           onFileUpload={handleFileUpload}
           onDeleteFile={handleDeleteFile}
+          onDeleteMultipleFiles={handleDeleteMultipleFiles}
           fileInputRef={fileInputRef}
+          folderInputRef={folderInputRef}
           accept={accept}
         />
       </div>

@@ -15,6 +15,10 @@ type TrialsContextType = {
   loops: Loop[];
   timeline: TimelineItem[];
 
+  // Loop timeline para el loop activo
+  loopTimeline: TimelineItem[];
+  activeLoopId: string | number | null;
+
   // Estado de selección
   selectedTrial: Trial | null;
   setSelectedTrial: (trial: Trial | null) => void;
@@ -42,11 +46,14 @@ type TrialsContextType = {
   // Métodos para Timeline
   updateTimeline: (timeline: TimelineItem[]) => Promise<boolean>;
 
-  // Método para cargar metadata (GET trials metadata)
-  loadTrialsMetadata: () => Promise<void>;
+  // Método para cargar timeline (GET trials timeline)
+  getTimeline: () => Promise<void>;
 
-  // Método para cargar metadata de trials/loops dentro de un loop
-  getLoopTrialsMetadata: (loopId: string | number) => Promise<TimelineItem[]>;
+  // Método para cargar timeline de trials/loops dentro de un loop
+  getLoopTimeline: (loopId: string | number) => Promise<TimelineItem[]>;
+
+  // Método para limpiar loop timeline
+  clearLoopTimeline: () => void;
 
   // Método para borrar todo (cuando se borra experimento)
   deleteAllTrials: () => Promise<boolean>;
@@ -59,6 +66,8 @@ const TrialsContext = createContext<TrialsContextType>({
   trials: [],
   loops: [],
   timeline: [],
+  loopTimeline: [],
+  activeLoopId: null,
   selectedTrial: null,
   setSelectedTrial: () => {},
   selectedLoop: null,
@@ -72,8 +81,9 @@ const TrialsContext = createContext<TrialsContextType>({
   updateLoop: async () => null,
   deleteLoop: async () => false,
   updateTimeline: async () => false,
-  loadTrialsMetadata: async () => {},
-  getLoopTrialsMetadata: async () => [],
+  getTimeline: async () => {},
+  getLoopTimeline: async () => [],
+  clearLoopTimeline: () => {},
   deleteAllTrials: async () => false,
   isLoading: false,
 });

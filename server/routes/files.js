@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Manages multimedia files (img, aud, vid, others).
+ * Handles uploading, listing, and deleting files per experiment.
+ * Organizes files into folders by type and experiment.
+ * @module routes/files
+ */
+
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
@@ -19,11 +26,11 @@ const storage = multer.diskStorage({
       else type = "others";
 
       if (!type) {
-        // Rechaza el archivo si no es de los tipos permitidos
+        // Reject the file if it is not of the allowed types
         return cb(new Error("File type not allowed"), null);
       }
 
-      // Obtener el nombre del experimento
+      // Get the experiment name
       let experimentName = experimentID;
       await db.read();
       const experiment = db.data.experiments.find(
@@ -47,6 +54,18 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+/**
+ * Uploads multimedia files for an experiment.
+ * Automatically classifies by extension: img/aud/vid/others.
+ * @route POST /api/upload-files/:experimentID
+ * @param {string} experimentID - Experiment ID (path parameter)
+ * @param {File[]} req.files - Files to upload (multipart/form-data)
+ * @returns {Object} 200 - Files successfully uploaded
+ * @returns {string[]} 200.fileUrls - Relative file URLs (e.g. "img/photo.jpg")
+ * @returns {number} 200.count - Number of uploaded files
+ * @returns {Object} 400 - No files uploaded
+ * @returns {Object} 500 - Server error
+ */
 router.post(
   "/api/upload-files/:experimentID",
   upload.array("files"),
@@ -79,6 +98,18 @@ router.post(
   }
 );
 
+/**
+ * Lista archivos de un experimento filtrados por tipo.
+ * @route GET /api/list-files/:type/:experimentID
+ * @param {string} type - Tipo de archivo: "img"|"aud"|"vid"|"others"|"all"
+ * @param {string} experimentID - ID del experimento
+ * @returns {Object} 200 - Lista de archivos
+ * @returns {Object[]} 200.files - Array de archivos
+ * @returns {string} 200.files[].name - Nombre del archivo
+ * @returns {string} 200.files[].url - URL relativa (ej: "img/photo.jpg")
+ * @returns {string} 200.files[].type - Tipo del archivo
+ * @returns {Object} 500 - Error del servidor
+ */
 router.get("/api/list-files/:type/:experimentID", async (req, res) => {
   const { experimentID, type } = req.params;
   try {
@@ -121,10 +152,22 @@ router.get("/api/list-files/:type/:experimentID", async (req, res) => {
   }
 });
 
+/**
+ * Elimina un archivo específico de un experimento.
+ * @route DELETE /api/delete-file/:type/:filename/:experimentID
+ * @param {string} type - Tipo de archivo ("img"|"aud"|"vid"|"others")
+ * @param {string} filename - Nombre del archivo
+ * @param {string} experimentID - ID del experimento
+ * @returns {Object} 200 - Archivo eliminado exitosamente
+ * @returns {boolean} 200.success - Indica éxito
+ * @returns {Object} 404 - Archivo no encontrado
+ * @returns {Object} 500 - Error del servidor
+ */
 router.delete(
   "/api/delete-file/:type/:filename/:experimentID",
   async (req, res) => {
-    const { experimentID, type, filename } = req.params;
+    const { experimentID, type } = req.params;
+    const filename = decodeURIComponent(req.params.filename);
     let experimentName = experimentID;
     await db.read();
     const experiment = db.data.experiments.find(

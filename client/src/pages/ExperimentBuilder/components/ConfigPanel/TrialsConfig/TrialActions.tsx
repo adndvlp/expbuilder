@@ -25,9 +25,7 @@ const TrialActions: React.FC<TrialActionsProps> = ({
     <br />
     <button
       onClick={() => {
-        if (window.confirm("Are you sure on deleting this trial?")) {
-          onDelete();
-        }
+        onDelete();
       }}
       className="w-full p-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded remove-button"
     >

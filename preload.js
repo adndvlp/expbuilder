@@ -7,4 +7,8 @@ contextBridge.exposeInMainWorld("electron", {
     ipcRenderer.invoke("save-csv-zip", { files, defaultName }),
   saveJsonFile: (content, defaultName) =>
     ipcRenderer.invoke("save-json-file", { content, defaultName }),
+  readFirebaseConfig: () => ipcRenderer.invoke("read-firebase-config"),
+  writeFirebaseConfig: (config) =>
+    ipcRenderer.invoke("write-firebase-config", config),
+  deleteFirebaseConfig: () => ipcRenderer.invoke("delete-firebase-config"),
 });

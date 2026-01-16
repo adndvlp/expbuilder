@@ -1,7 +1,23 @@
+/**
+ * @fileoverview Manages experiment configurations.
+ * Saves/loads generated code and Development Mode status.
+ * @module routes/configs
+ */
+
 import { Router } from "express";
 import { db } from "../utils/db.js";
 
 const router = Router();
+
+/**
+ * Loads the saved configuration of an experiment.
+ * @route GET /api/load-config/:experimentID
+ * @param {string} experimentID - Experiment ID
+ * @returns {Object} 200 - Configuration found
+ * @returns {Object|null} 200.config - Configuration data (generatedCode, etc.)
+ * @returns {boolean} 200.isDevMode - Whether it's in development mode
+ * @returns {Object} 500 - Server error
+ */
 router.get("/api/load-config/:experimentID", async (req, res) => {
   try {
     await db.read();
@@ -17,7 +33,19 @@ router.get("/api/load-config/:experimentID", async (req, res) => {
   }
 });
 
-// API endpoint to save configuration and generated code
+/**
+ * Saves or updates an experiment's configuration.
+ * Includes generated code and Dev Mode state.
+ * @route POST /api/save-config/:experimentID
+ * @param {string} experimentID - Experiment ID
+ * @param {Object} req.body - Configuration data
+ * @param {Object} req.body.config - Configuration to save (generatedCode, etc.)
+ * @param {boolean} req.body.isDevMode - Whether it's in development mode
+ * @returns {Object} 200 - Configuration saved
+ * @returns {boolean} 200.success - Indicates success
+ * @returns {Object} 200.config - Saved configuration with timestamps
+ * @returns {Object} 500 - Server error
+ */
 router.post("/api/save-config/:experimentID", async (req, res) => {
   try {
     const { config, isDevMode } = req.body;

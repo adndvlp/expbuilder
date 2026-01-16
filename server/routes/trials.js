@@ -1,9 +1,25 @@
+/**
+ * @fileoverview Manages trials and loops with normalized architecture.
+ * Implements a flat storage system where trials and loops are stored
+ * separately but linked via IDs. Allows CRUD operations on trials,
+ * loops, timeline, and branch management (conditional connections).
+ * @module routes/trials
+ * @see {@link file://CAMBIOS_NORMALIZACION.md} For refactoring details
+ */
+
 import { Router } from "express";
 import { db } from "../utils/db.js";
 
 const router = Router();
 
-// ==================== GET TIMELINE CODE (trialCode de trials + code de loops) ====================
+/**
+ * Gets all generated JavaScript code (trials + loops) for an experiment.
+ * @route GET /api/timeline-code/:experimentID
+ * @param {string} experimentID - Experiment ID (path parameter)
+ * @returns {Object} 200 - Generated codes
+ * @returns {string[]} 200.codes - Array with code for all trials and loops
+ * @returns {Object} 500 - Server error
+ */
 router.get("/api/timeline-code/:experimentID", async (req, res) => {
   try {
     await db.read();
@@ -17,7 +33,7 @@ router.get("/api/timeline-code/:experimentID", async (req, res) => {
       return res.json({ codes: [] });
     }
 
-    // Concatenar códigos de trials y loops
+    // Concatenate trial and loop codes
     const trialCodes = experimentDoc.trials
       .map((trial) => trial.trialCode)
       .filter(Boolean);
@@ -34,13 +50,26 @@ router.get("/api/timeline-code/:experimentID", async (req, res) => {
   }
 });
 
-// ==================== GET TRIALS METADATA (id, type, name, branches) ====================
+/**
+ * Gets metadata for all trials/loops for Canvas rendering.
+ * Returns only id, type, name, and branches (does not include full code).
+ * @route GET /api/trials-metadata/:experimentID
+ * @param {string} experimentID - Experiment ID (path parameter)
+ * @returns {Object} 200 - Timeline with metadata
+ * @returns {Object[]} 200.timeline - Array with item metadata
+ * @returns {number|string} 200.timeline[].id - Trial or Loop ID
+ * @returns {string} 200.timeline[].type - "trial" | "loop"
+ * @returns {string} 200.timeline[].name - Item name
+ * @returns {Array} 200.timeline[].branches - Branch IDs (connections)
+ * @returns {Array} [200.timeline[].trials] - Trial IDs (loops only)
+ * @returns {Object} 500 - Server error
+ */
 router.get("/api/trials-metadata/:experimentID", async (req, res) => {
   try {
     await db.read();
     const { experimentID } = req.params;
 
-    // Buscar el documento del experimento
+    // Find experiment document
     const experimentDoc = db.data.trials.find(
       (t) => t.experimentID === experimentID
     );
@@ -49,7 +78,7 @@ router.get("/api/trials-metadata/:experimentID", async (req, res) => {
       return res.json({ timeline: [] });
     }
 
-    // Construir timeline con metadata necesaria para render (id, type, name, branches)
+    // Build timeline with necessary metadata for render (id, type, name, branches)
     const timelineWithBranches = experimentDoc.timeline.map((item) => {
       if (item.type === "trial") {
         const trial = experimentDoc.trials.find((t) => t.id === item.id);
@@ -80,9 +109,23 @@ router.get("/api/trials-metadata/:experimentID", async (req, res) => {
   }
 });
 
-// ==================== TRIAL ENDPOINTS ====================
-
-// POST - Crear un trial
+/**
+ * Crea un nuevo trial en el experimento.
+ * Genera un ID único basado en timestamp y lo agrega al documento normalizado.
+ * @route POST /api/trial/:experimentID
+ * @param {string} experimentID - ID del experimento (path parameter)
+ * @param {Object} req.body - Datos del trial
+ * @param {string} req.body.name - Nombre del trial
+ * @param {string} req.body.plugin - Plugin jsPsych utilizado
+ * @param {Object} req.body.parameters - Parámetros del plugin
+ * @param {string} [req.body.trialCode] - Código JavaScript generado
+ * @param {Array} [req.body.branches] - IDs de branches
+ * @param {string} [req.body.parentLoopId] - ID del loop padre (si aplica)
+ * @returns {Object} 200 - Trial creado
+ * @returns {boolean} 200.success - Indica éxito
+ * @returns {Object} 200.trial - Datos del trial creado con ID generado
+ * @returns {Object} 500 - Error del servidor
+ */
 router.post("/api/trial/:experimentID", async (req, res) => {
   try {
     const { experimentID } = req.params;
@@ -140,7 +183,15 @@ router.post("/api/trial/:experimentID", async (req, res) => {
   }
 });
 
-// GET - Obtener un trial específico
+/**
+ * Obtiene un trial específico por su ID.
+ * @route GET /api/trial/:experimentID/:id
+ * @param {string} experimentID - ID del experimento
+ * @param {number} id - ID del trial
+ * @returns {Object} 200 - Trial encontrado
+ * @returns {Object} 404 - Trial o experimento no encontrado
+ * @returns {Object} 500 - Error del servidor
+ */
 router.get("/api/trial/:experimentID/:id", async (req, res) => {
   try {
     const { experimentID, id } = req.params;
@@ -170,7 +221,17 @@ router.get("/api/trial/:experimentID/:id", async (req, res) => {
   }
 });
 
-// PATCH - Actualizar un trial
+/**
+ * Actualiza un trial existente (PATCH parcial).
+ * Permite actualizaciones incrementales, actualiza automáticamente el timeline si cambia nombre/branches.
+ * @route PATCH /api/trial/:experimentID/:id
+ * @param {string} experimentID - ID del experimento
+ * @param {number} id - ID del trial
+ * @param {Object} req.body - Campos a actualizar
+ * @returns {Object} 200 - Trial actualizado
+ * @returns {Object} 404 - Trial o experimento no encontrado
+ * @returns {Object} 500 - Error del servidor
+ */
 router.patch("/api/trial/:experimentID/:id", async (req, res) => {
   try {
     const { experimentID, id } = req.params;
@@ -228,7 +289,16 @@ router.patch("/api/trial/:experimentID/:id", async (req, res) => {
   }
 });
 
-// DELETE - Eliminar un trial
+/**
+ * Elimina un trial y todas sus referencias.
+ * Limpia el trial del timeline, de loops que lo contengan, y de branches.
+ * @route DELETE /api/trial/:experimentID/:id
+ * @param {string} experimentID - ID del experimento
+ * @param {number} id - ID del trial
+ * @returns {Object} 200 - Trial eliminado
+ * @returns {Object} 404 - Experimento no encontrado
+ * @returns {Object} 500 - Error del servidor
+ */
 router.delete("/api/trial/:experimentID/:id", async (req, res) => {
   try {
     const { experimentID, id } = req.params;
@@ -260,6 +330,37 @@ router.delete("/api/trial/:experimentID/:id", async (req, res) => {
       trials: loop.trials?.filter((tid) => tid !== trialId) || [],
     }));
 
+    // Eliminar referencias en branches de todos los trials
+    experimentDoc.trials = experimentDoc.trials.map((trial) => ({
+      ...trial,
+      branches: trial.branches?.filter((bid) => bid !== trialId) || [],
+    }));
+
+    // Eliminar referencias en branches de todos los loops
+    experimentDoc.loops = experimentDoc.loops.map((loop) => ({
+      ...loop,
+      branches: loop.branches?.filter((bid) => bid !== trialId) || [],
+    }));
+
+    // Actualizar branches en el timeline
+    experimentDoc.timeline = experimentDoc.timeline.map((item) => {
+      if (item.type === "trial") {
+        const trial = experimentDoc.trials.find((t) => t.id === item.id);
+        return {
+          ...item,
+          branches: trial?.branches || [],
+        };
+      } else if (item.type === "loop") {
+        const loop = experimentDoc.loops.find((l) => l.id === item.id);
+        return {
+          ...item,
+          branches: loop?.branches || [],
+          trials: loop?.trials || [],
+        };
+      }
+      return item;
+    });
+
     experimentDoc.updatedAt = new Date().toISOString();
 
     await db.write();
@@ -270,9 +371,21 @@ router.delete("/api/trial/:experimentID/:id", async (req, res) => {
   }
 });
 
-// ==================== LOOP ENDPOINTS ====================
-
-// POST - Crear un loop
+/**
+ * Crea un nuevo loop que agrupa múltiples trials.
+ * Genera ID tipo "loop_{timestamp}", actualiza branches en trials/loops que referencian
+ * los trials agrupados, y los remueve del timeline principal.
+ * @route POST /api/loop/:experimentID
+ * @param {string} experimentID - ID del experimento
+ * @param {Object} req.body - Datos del loop
+ * @param {string} req.body.name - Nombre del loop
+ * @param {Array<number>} req.body.trials - IDs de trials a agrupar
+ * @param {Object} req.body.loopConfig - Configuración del loop (repeticiones, etc.)
+ * @param {string} [req.body.code] - Código JavaScript del loop
+ * @param {Array} [req.body.branches] - IDs de branches
+ * @returns {Object} 200 - Loop creado
+ * @returns {Object} 500 - Error del servidor
+ */
 router.post("/api/loop/:experimentID", async (req, res) => {
   try {
     const { experimentID } = req.params;
@@ -399,7 +512,17 @@ router.post("/api/loop/:experimentID", async (req, res) => {
   }
 });
 
-// GET - Obtener metadata de trials/loops dentro de un loop
+/**
+ * Obtiene metadata de todos los trials/loops dentro de un loop específico.
+ * Recorre recursivamente todos los branches para incluir items referenciados.
+ * @route GET /api/loop-trials-metadata/:experimentID/:loopId
+ * @param {string} experimentID - ID del experimento
+ * @param {string} loopId - ID del loop
+ * @returns {Object} 200 - Metadata de trials en el loop
+ * @returns {Array} 200.trialsMetadata - Metadata de trials/loops
+ * @returns {Object} 404 - Loop o experimento no encontrado
+ * @returns {Object} 500 - Error del servidor
+ */
 router.get(
   "/api/loop-trials-metadata/:experimentID/:loopId",
   async (req, res) => {
@@ -499,7 +622,15 @@ router.get(
   }
 );
 
-// GET - Obtener un loop específico
+/**
+ * Obtiene un loop específico con metadata de sus trials.
+ * @route GET /api/loop/:experimentID/:id
+ * @param {string} experimentID - ID del experimento
+ * @param {string} id - ID del loop
+ * @returns {Object} 200 - Loop encontrado con trialsMetadata
+ * @returns {Object} 404 - Loop o experimento no encontrado
+ * @returns {Object} 500 - Error del servidor
+ */
 router.get("/api/loop/:experimentID/:id", async (req, res) => {
   try {
     const { experimentID, id } = req.params;
@@ -542,7 +673,17 @@ router.get("/api/loop/:experimentID/:id", async (req, res) => {
   }
 });
 
-// PATCH - Actualizar un loop
+/**
+ * Actualiza un loop existente.
+ * Si cambian los trials, actualiza el timeline removiendo trials que entran al loop.
+ * @route PATCH /api/loop/:experimentID/:id
+ * @param {string} experimentID - ID del experimento
+ * @param {string} id - ID del loop
+ * @param {Object} req.body - Campos a actualizar
+ * @returns {Object} 200 - Loop actualizado
+ * @returns {Object} 404 - Loop o experimento no encontrado
+ * @returns {Object} 500 - Error del servidor
+ */
 router.patch("/api/loop/:experimentID/:id", async (req, res) => {
   try {
     const { experimentID, id } = req.params;
@@ -613,7 +754,17 @@ router.patch("/api/loop/:experimentID/:id", async (req, res) => {
   }
 });
 
-// DELETE - Eliminar un loop
+/**
+ * Elimina un loop y restaura sus trials al timeline.
+ * Los trials se reinsertan en la posición donde estaba el loop.
+ * Actualiza branches que referencian al loop.
+ * @route DELETE /api/loop/:experimentID/:id
+ * @param {string} experimentID - ID del experimento
+ * @param {string} id - ID del loop
+ * @returns {Object} 200 - Loop eliminado
+ * @returns {Object} 404 - Experimento no encontrado
+ * @returns {Object} 500 - Error del servidor
+ */
 router.delete("/api/loop/:experimentID/:id", async (req, res) => {
   try {
     const { experimentID, id } = req.params;
@@ -665,16 +816,31 @@ router.delete("/api/loop/:experimentID/:id", async (req, res) => {
     }
 
     // Actualizar branches de todos los trials/loops que contenían este loop
-    // Reemplazar el ID del loop por los IDs individuales de los trials que estaban en él
+    // Reemplazar el ID del loop por los IDs de los trials que estaban en el loop
+    // pero solo los que NO tienen parentId dentro del loop (root trials del loop)
     if (loopToDelete && loopToDelete.trials) {
+      // Encontrar los root trials del loop (los que no son branches de otros trials dentro del loop)
+      const trialsInLoop = loopToDelete.trials;
+      const rootTrialsInLoop = trialsInLoop.filter((trialId) => {
+        // Un trial es root si ningún otro trial del loop lo tiene como branch
+        const isRootTrial = !trialsInLoop.some((otherTrialId) => {
+          if (otherTrialId === trialId) return false;
+          const otherTrial = experimentDoc.trials.find(
+            (t) => t.id === otherTrialId
+          );
+          return otherTrial?.branches?.includes(trialId);
+        });
+        return isRootTrial;
+      });
+
       experimentDoc.trials.forEach((trial) => {
         if (trial.branches && trial.branches.includes(id)) {
           // Remover el loop ID
           const filteredBranches = trial.branches.filter(
             (branchId) => branchId !== id
           );
-          // Agregar los trial IDs que estaban en el loop
-          loopToDelete.trials.forEach((trialId) => {
+          // Agregar solo los root trial IDs del loop
+          rootTrialsInLoop.forEach((trialId) => {
             if (!filteredBranches.includes(trialId)) {
               filteredBranches.push(trialId);
             }
@@ -689,8 +855,8 @@ router.delete("/api/loop/:experimentID/:id", async (req, res) => {
           const filteredBranches = loop.branches.filter(
             (branchId) => branchId !== id
           );
-          // Agregar los trial IDs que estaban en el loop eliminado
-          loopToDelete.trials.forEach((trialId) => {
+          // Agregar solo los root trial IDs del loop eliminado
+          rootTrialsInLoop.forEach((trialId) => {
             if (!filteredBranches.includes(trialId)) {
               filteredBranches.push(trialId);
             }
@@ -725,9 +891,16 @@ router.delete("/api/loop/:experimentID/:id", async (req, res) => {
   }
 });
 
-// ==================== TIMELINE ENDPOINT ====================
-
-// PATCH - Actualizar timeline (orden)
+/**
+ * Actualiza el orden del timeline (drag & drop).
+ * @route PATCH /api/timeline/:experimentID
+ * @param {string} experimentID - ID del experimento
+ * @param {Object} req.body - Nuevo timeline
+ * @param {Array} req.body.timeline - Array con nuevo orden de items
+ * @returns {Object} 200 - Timeline actualizado
+ * @returns {Object} 404 - Experimento no encontrado
+ * @returns {Object} 500 - Error del servidor
+ */
 router.patch("/api/timeline/:experimentID", async (req, res) => {
   try {
     const { experimentID } = req.params;
@@ -757,8 +930,13 @@ router.patch("/api/timeline/:experimentID", async (req, res) => {
   }
 });
 
-// ==================== DELETE ALL TRIALS (cuando se borra experimento) ====================
-
+/**
+ * Elimina todos los trials de un experimento (usado al borrar experimento).
+ * @route DELETE /api/trials/:experimentID
+ * @param {string} experimentID - ID del experimento
+ * @returns {Object} 200 - Trials eliminados
+ * @returns {Object} 500 - Error del servidor
+ */
 router.delete("/api/trials/:experimentID", async (req, res) => {
   try {
     const { experimentID } = req.params;
@@ -778,7 +956,14 @@ router.delete("/api/trials/:experimentID", async (req, res) => {
   }
 });
 
-// ==================== GET ALL TRIAL NAMES (para validación de nombres únicos) ====================
+/**
+ * Obtiene todos los nombres de trials/loops para validar unicidad.
+ * @route GET /api/timeline-names/:experimentID
+ * @param {string} experimentID - ID del experimento
+ * @returns {Object} 200 - Nombres existentes
+ * @returns {string[]} 200.names - Array de nombres
+ * @returns {Object} 500 - Error del servidor
+ */
 router.get("/api/timeline-names/:experimentID", async (req, res) => {
   try {
     await db.read();
@@ -813,7 +998,17 @@ router.get("/api/timeline-names/:experimentID", async (req, res) => {
   }
 });
 
-// ==================== VALIDATE ANCESTOR (previene ciclos circulares) ====================
+/**
+ * Valida si un item es ancestro de otro (previene ciclos circulares).
+ * Recorre recursivamente los branches para detectar dependencias.
+ * @route GET /api/validate-ancestor/:experimentID
+ * @param {string} experimentID - ID del experimento
+ * @param {string} source - ID del posible ancestro (query param)
+ * @param {string} target - ID del item a validar (query param)
+ * @returns {Object} 200 - Resultado de validación
+ * @returns {boolean} 200.isAncestor - true si source es ancestro de target
+ * @returns {Object} 500 - Error del servidor
+ */
 router.get("/api/validate-ancestor/:experimentID", async (req, res) => {
   try {
     await db.read();
@@ -884,7 +1079,18 @@ router.get("/api/validate-ancestor/:experimentID", async (req, res) => {
   }
 });
 
-// ==================== VALIDATE CONNECTION (valida que una conexión sea válida) ====================
+/**
+ * Valida si una conexión (branch) entre dos items es válida.
+ * Previene: auto-conexión y ciclos circulares.
+ * @route GET /api/validate-connection/:experimentID
+ * @param {string} experimentID - ID del experimento
+ * @param {string} source - ID del item origen (query param)
+ * @param {string} target - ID del item destino (query param)
+ * @returns {Object} 200 - Resultado de validación
+ * @returns {boolean} 200.isValid - true si la conexión es válida
+ * @returns {string} [200.errorMessage] - Mensaje de error si no es válida
+ * @returns {Object} 500 - Error del servidor
+ */
 router.get("/api/validate-connection/:experimentID", async (req, res) => {
   try {
     await db.read();

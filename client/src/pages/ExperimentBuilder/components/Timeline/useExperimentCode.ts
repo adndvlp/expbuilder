@@ -214,13 +214,16 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
       if (nextTrialId) {
         // Check if nextTrialId is "FINISH_EXPERIMENT"
         if (nextTrialId === 'FINISH_EXPERIMENT') {
+          console.log('🏁 [BRANCHING] Finishing experiment via branching');
           jsPsych.abortExperiment('Experiment finished by branching condition', {});
           return;
         }
         
+        console.log('🎯 [BRANCHING] Setting global branch target:', nextTrialId);
         window.nextTrialId = nextTrialId;
         window.skipRemaining = true;
         window.branchingActive = true;
+        console.log('🎯 [BRANCHING] Skip remaining activated');
       }`;
 
   const generateLocalExperiment = async () => {

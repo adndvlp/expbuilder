@@ -73,7 +73,7 @@ function LoopRangeModal({
 
   // Helper para mostrar el nombre con indicador de tipo
   const getItemLabel = (item: TimelineItem) => {
-    return item.type === "loop" ? `🔁 ${item.name}` : item.name;
+    return item.type === "loop" ? `${item.name}` : item.name;
   };
 
   // Combinar selecciones manuales y automáticas

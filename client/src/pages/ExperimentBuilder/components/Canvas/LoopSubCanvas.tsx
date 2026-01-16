@@ -32,7 +32,7 @@ const nodeTypes = {
 interface LoopSubCanvasProps {
   loopId: string | number;
   loopName: string;
-  trialsMetadata: TimelineItem[];
+  loopTimeline: TimelineItem[];
   onClose: () => void;
   isDark: boolean;
   selectedTrial: Trial | null;
@@ -49,7 +49,7 @@ interface LoopSubCanvasProps {
 function LoopSubCanvas({
   loopId,
   loopName,
-  trialsMetadata,
+  loopTimeline,
   onClose,
   isDark,
   selectedTrial,
@@ -91,7 +91,7 @@ function LoopSubCanvas({
   const onAddBranch = async (parentId: number | string) => {
     // Obtener TODOS los nombres existentes: del timeline principal + del loop actual
     const timelineNames = timeline.map((item) => item.name);
-    const loopTrialNames = trialsMetadata.map((item) => item.name);
+    const loopTrialNames = loopTimeline.map((item) => item.name);
     const allNames = [...new Set([...timelineNames, ...loopTrialNames])];
     const newName = generateUniqueName(allNames);
 
@@ -106,7 +106,7 @@ function LoopSubCanvas({
       });
 
       // Actualizar el parent (trial o loop) para incluir este branch
-      const parentItem = trialsMetadata.find((item) => item.id === parentId);
+      const parentItem = loopTimeline.find((item) => item.id === parentId);
       if (!parentItem) return;
 
       if (parentItem.type === "trial") {
@@ -158,7 +158,7 @@ function LoopSubCanvas({
 
       // Obtener TODOS los nombres existentes: del timeline principal + del loop actual
       const timelineNames = timeline.map((item) => item.name);
-      const loopTrialNames = trialsMetadata.map((item) => item.name);
+      const loopTrialNames = loopTimeline.map((item) => item.name);
       const allNames = [...new Set([...timelineNames, ...loopTrialNames])];
       const loopName = generateUniqueName(allNames, "Nested Loop 1");
 
@@ -220,8 +220,8 @@ function LoopSubCanvas({
     }
 
     try {
-      // Buscar el source en trialsMetadata
-      const sourceItem = trialsMetadata.find((item) => item.id === sourceId);
+      // Buscar el source en loopTimeline
+      const sourceItem = loopTimeline.find((item) => item.id === sourceId);
       if (!sourceItem) return;
 
       if (sourceItem.type === "trial") {
@@ -252,7 +252,7 @@ function LoopSubCanvas({
     }
   };
 
-  // Generar nodes y edges basándose en trialsMetadata
+  // Generar nodes y edges basándose en loopTimeline
   const { nodes, edges } = useMemo(() => {
     const nodes: any[] = [];
     const edges: any[] = [];
@@ -284,8 +284,8 @@ function LoopSubCanvas({
       return branchIds;
     };
 
-    const branchItemIds = collectAllBranchIds(trialsMetadata);
-    const mainItems = trialsMetadata.filter(
+    const branchItemIds = collectAllBranchIds(loopTimeline);
+    const mainItems = loopTimeline.filter(
       (item) => !branchItemIds.has(item.id)
     );
 
@@ -361,7 +361,7 @@ function LoopSubCanvas({
       // Renderizar branches
       if (item.branches && item.branches.length > 0) {
         const branches = item.branches
-          .map((branchId) => trialsMetadata.find((i) => i.id === branchId))
+          .map((branchId) => loopTimeline.find((i) => i.id === branchId))
           .filter((b): b is TimelineItem => b !== undefined);
 
         if (branches.length > 0) {
@@ -418,7 +418,7 @@ function LoopSubCanvas({
 
     return { nodes, edges };
   }, [
-    trialsMetadata,
+    loopTimeline,
     selectedTrial,
     selectedLoop,
     onSelectTrial,
@@ -518,7 +518,7 @@ function LoopSubCanvas({
         {/* Create Loop button - show if there's more than one trial and either a trial or loop is selected */}
         {(() => {
           // Count total number of trials
-          const totalTrialCount = trialsMetadata.length;
+          const totalTrialCount = loopTimeline.length;
 
           // Show button if there's more than one trial and either a trial or loop is selected
           const shouldShow =
@@ -557,7 +557,7 @@ function LoopSubCanvas({
         {/* Branches button - show if there's more than one trial in the loop and a trial or loop is selected */}
         {(() => {
           // Count total number of trials
-          const totalTrialCount = trialsMetadata.length;
+          const totalTrialCount = loopTimeline.length;
 
           // Show button if there's more than one trial and either a trial or loop is selected
           const shouldShow =
@@ -669,7 +669,7 @@ function LoopSubCanvas({
         >
           <div style={{ position: "relative", zIndex: 10000 }}>
             <LoopRangeModal
-              timeline={trialsMetadata}
+              timeline={loopTimeline}
               onConfirm={handleAddLoop}
               onClose={() => setShowLoopModal(false)}
               selectedTrialId={selectedTrial?.id || selectedLoop?.id || null}
