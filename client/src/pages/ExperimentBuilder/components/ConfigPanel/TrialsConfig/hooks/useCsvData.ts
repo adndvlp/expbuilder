@@ -6,7 +6,10 @@ export function useCsvData() {
   const [csvJson, setCsvJson] = useState<any[]>([]);
   const [csvColumns, setCsvColumns] = useState<string[]>([]);
 
-  const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCsvUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    onDataLoaded?: (data: any[], columns: string[]) => void
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -17,9 +20,17 @@ export function useCsvData() {
         header: true,
         skipEmptyLines: true,
         complete: (results) => {
-          setCsvJson(results.data);
-          if (results.data.length > 0) {
-            setCsvColumns(Object.keys(results.data[0] as Record<string, any>));
+          const newData = results.data;
+          const newColumns =
+            results.data.length > 0
+              ? Object.keys(results.data[0] as Record<string, any>)
+              : [];
+
+          setCsvJson(newData);
+          setCsvColumns(newColumns);
+
+          if (onDataLoaded) {
+            onDataLoaded(newData, newColumns);
           }
         },
         error: (err) => {
@@ -78,8 +89,13 @@ export function useCsvData() {
           }
         });
 
+        const newColumns = headers.filter((header) => header);
         setCsvJson(jsonData);
-        setCsvColumns(headers.filter((header) => header)); // Remove empty headers
+        setCsvColumns(newColumns); // Remove empty headers
+
+        if (onDataLoaded) {
+          onDataLoaded(jsonData, newColumns);
+        }
       } catch (error) {
         console.error("Error reading Excel file:", error);
         alert("Error reading the Excel file. Please check the file format.");

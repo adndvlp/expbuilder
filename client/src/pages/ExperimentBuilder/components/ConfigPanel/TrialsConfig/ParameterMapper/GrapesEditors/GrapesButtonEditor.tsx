@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import juice from "juice";
 import grapesjs from "grapesjs";
 import "grapesjs/dist/css/grapes.min.css";
@@ -10,6 +10,7 @@ interface GrapesButtonEditorProps {
   onClose: () => void;
   value?: string;
   onChange: (html: string) => void;
+  onAutoSave?: (html: string) => void;
   title?: string;
 }
 
@@ -18,16 +19,22 @@ const GrapesButtonEditor: React.FC<GrapesButtonEditorProps> = ({
   onClose,
   value = "",
   onChange,
+  onAutoSave,
   title = "Button Editor (GrapesJS)",
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const grapesInstance = useRef<any>(null);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [saveIndicator, setSaveIndicator] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
     initGrapes();
     // Cleanup on close
     return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
       if (grapesInstance.current) {
         grapesInstance.current.destroy();
         grapesInstance.current = null;
@@ -35,6 +42,29 @@ const GrapesButtonEditor: React.FC<GrapesButtonEditorProps> = ({
     };
     // eslint-disable-next-line
   }, [isOpen]);
+
+  const getProcessedHtml = () => {
+    if (!grapesInstance.current) return "";
+    let html = grapesInstance.current.getHtml({});
+    html = html.replace(/<\/?body[^>]*>/gi, "");
+    const css = grapesInstance.current.getCss({});
+    return juice.inlineContent(html, css);
+  };
+
+  const triggerAutoSave = () => {
+    if (onAutoSave && grapesInstance.current) {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        const inlinedHtml = getProcessedHtml();
+        onAutoSave(inlinedHtml);
+        setSaveIndicator(true);
+        setTimeout(() => setSaveIndicator(false), 1500);
+      }, 1000);
+    }
+  };
 
   const initGrapes = () => {
     if (!editorRef.current) return;
@@ -183,6 +213,9 @@ const GrapesButtonEditor: React.FC<GrapesButtonEditorProps> = ({
         bm.remove(blockId);
       }
     });
+
+    // Hook events for autosave
+    grapesInstance.current.on("update", triggerAutoSave);
   };
 
   const handleSave = () => {
@@ -198,7 +231,31 @@ const GrapesButtonEditor: React.FC<GrapesButtonEditorProps> = ({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
-      <div style={{ minWidth: "70vw", minHeight: "520px" }}>
+      <div
+        style={{ minWidth: "70vw", minHeight: "520px", position: "relative" }}
+      >
+        {/* Save Indicator */}
+        <div
+          style={{
+            opacity: saveIndicator ? 1 : 0,
+            transition: "opacity 0.3s",
+            color: "white",
+            fontWeight: "600",
+            position: "absolute",
+            top: "10px",
+            right: "10px",
+            zIndex: 10000,
+            backgroundColor: "rgba(34, 197, 94, 0.95)",
+            padding: "6px 12px",
+            borderRadius: "6px",
+            fontSize: "12px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+            border: "1px solid white",
+            pointerEvents: "none",
+          }}
+        >
+          ✓ Saved
+        </div>
         <div
           style={{
             marginBottom: "12px",

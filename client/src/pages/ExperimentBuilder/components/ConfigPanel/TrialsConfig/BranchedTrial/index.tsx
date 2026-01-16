@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import useTrials from "../../../../hooks/useTrials";
 import { loadPluginParameters } from "../../utils/pluginParameterLoader";
 import { BranchCondition, RepeatCondition } from "../../types";
@@ -21,6 +21,12 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
   const [targetTrialParameters, setTargetTrialParameters] = useState<
     Record<string, Parameter[]>
   >({});
+  const [targetTrialCsvColumns, setTargetTrialCsvColumns] = useState<
+    Record<string, string[]>
+  >({});
+
+  // Ref to track if we are saving to avoid reloading state and causing flickers
+  const isSavingRef = useRef(false);
 
   // Load data fields from the selected trial's plugin
   useEffect(() => {
@@ -49,6 +55,12 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
 
   // Load existing branch conditions and repeat conditions when selectedTrial changes
   useEffect(() => {
+    // If we just saved, skip reloading to prevent flickering/state reset
+    if (isSavingRef.current) {
+      isSavingRef.current = false;
+      return;
+    }
+
     const allConditions: Condition[] = [];
 
     // Load branch conditions (within scope)
@@ -64,7 +76,6 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
       // Load parameters for each condition with a nextTrialId
       loadedBranchConditions.forEach((condition: Condition) => {
         if (condition.nextTrialId) {
-          console.log("Loading parameters for trial:", condition.nextTrialId);
           loadTargetTrialParameters(condition.nextTrialId);
         }
       });
@@ -105,10 +116,6 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
         condition.nextTrialId &&
         !targetTrialParameters[condition.nextTrialId]
       ) {
-        console.log(
-          "Loading parameters for newly selected trial:",
-          condition.nextTrialId
-        );
         loadTargetTrialParameters(condition.nextTrialId);
       }
     });
@@ -117,16 +124,19 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
   // Load parameters for target trial
   const loadTargetTrialParameters = async (trialId: string | number) => {
     const targetTrial = await findTrialById(trialId);
-    console.log("loadTargetTrialParameters called for:", trialId, targetTrial);
 
-    if (!targetTrial) {
-      console.log("Target trial not found");
-      return;
+    if (!targetTrial) return;
+
+    // Load CSV columns if available
+    if (targetTrial.csvColumns && targetTrial.csvColumns.length > 0) {
+      setTargetTrialCsvColumns((prev) => ({
+        ...prev,
+        [trialId]: targetTrial.csvColumns,
+      }));
     }
 
     // Check if it's a Loop - loops have different parameters
     if ("trials" in targetTrial) {
-      console.log("Target is a Loop, setting loop-specific parameters");
       // Define loop-specific parameters
       const loopParameters: Parameter[] = [
         { label: "Repetitions", key: "repetitions", type: "number" },
@@ -142,47 +152,23 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
       return;
     }
 
-    // Type guard to ensure we have a plugin property (for regular trials)
-    console.log("Checking plugin property:", {
-      hasPlugin: "plugin" in targetTrial,
-      pluginValue: targetTrial.plugin,
-      targetTrial,
-    });
-
     if ("plugin" in targetTrial && targetTrial.plugin) {
       try {
-        console.log("Loading plugin parameters for:", targetTrial.plugin);
         const result = await loadPluginParameters(targetTrial.plugin);
-        console.log("Loaded parameters:", result.parameters);
-        setTargetTrialParameters((prev) => {
-          const updated = {
-            ...prev,
-            [trialId]: result.parameters,
-          };
-          console.log("Updated targetTrialParameters:", updated);
-          return updated;
-        });
+        setTargetTrialParameters((prev) => ({
+          ...prev,
+          [trialId]: result.parameters,
+        }));
       } catch (err) {
         console.error("Error loading target trial parameters:", err);
       }
-    } else {
-      console.log("Target trial has no plugin property or plugin is null", {
-        hasPlugin: "plugin" in targetTrial,
-        plugin: targetTrial.plugin,
-      });
     }
   };
 
   // Find trial by ID using the API
   const findTrialById = async (trialId: string | number): Promise<any> => {
-    console.log("Finding trial:", trialId);
     try {
       const trial = await getTrial(trialId);
-      if (!trial) {
-        console.log("Trial not found!");
-      } else {
-        console.log("Found trial:", trial);
-      }
       return trial;
     } catch (error) {
       console.error("Error finding trial:", error);
@@ -208,14 +194,16 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
    * 1. branchConditions: Conditions where nextTrialId is in branches[] (same scope, can override params)
    * 2. repeatConditions: Conditions where nextTrialId is NOT in branches[] (jump to any trial, no param override)
    */
-  const handleSaveConditions = () => {
+  const handleSaveConditions = (conditionsToSave?: Condition[]) => {
     if (!selectedTrial) return;
+
+    const currentConditions = conditionsToSave || conditions;
 
     // Separate conditions into branch conditions and repeat conditions
     const branchConditions: BranchCondition[] = [];
     const repeatConditionsToSave: RepeatCondition[] = [];
 
-    conditions.forEach((condition) => {
+    currentConditions.forEach((condition) => {
       if (condition.nextTrialId && isInBranches(condition.nextTrialId)) {
         // It's a branch condition (within scope)
         branchConditions.push({
@@ -249,10 +237,11 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
       repeatConditions: repeatConditionsToSave,
     };
 
+    // Set flag to prevent useEffect from resetting state
+    isSavingRef.current = true;
+
     updateTrial(selectedTrial.id, updateData)
       .then((updatedTrial) => {
-        console.log("Branch conditions saved:", branchConditions);
-
         // Update selectedTrial with the new data so changes reflect immediately
         if (updatedTrial) {
           setSelectedTrial(updatedTrial);
@@ -260,6 +249,7 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
       })
       .catch((error) => {
         console.error("Error saving conditions:", error);
+        isSavingRef.current = false; // Reset flag on error
       });
 
     // Show save indicator
@@ -273,6 +263,7 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
     <div
       className="rounded-lg shadow-2xl"
       style={{
+        position: "relative",
         color: "var(--text-dark)",
         minWidth: "900px",
         maxWidth: "1100px",
@@ -288,22 +279,41 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
           transition: "opacity 0.3s",
           color: "white",
           fontWeight: "600",
-          position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
+          position: "absolute",
+          top: "20px",
+          right: "60px", // Moved left to make room for close button
           zIndex: 10000,
           backgroundColor: "rgba(34, 197, 94, 0.95)",
-          padding: "16px 32px",
-          borderRadius: "12px",
-          fontSize: "18px",
-          boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
-          border: "2px solid white",
+          padding: "8px 16px",
+          borderRadius: "8px",
+          fontSize: "14px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+          border: "1px solid white",
           pointerEvents: "none",
         }}
       >
-        ✓ Conditions Saved!
+        ✓ Saved
       </div>
+
+      {/* Close Button */}
+      <button
+        onClick={onClose}
+        style={{
+          position: "absolute",
+          top: "16px",
+          right: "16px",
+          background: "transparent",
+          border: "none",
+          color: "var(--text-dark)",
+          fontSize: "24px",
+          fontWeight: "bold",
+          cursor: "pointer",
+          zIndex: 10001,
+        }}
+        aria-label="Close"
+      >
+        ✕
+      </button>
 
       {/* Tab Navigation */}
       <div
@@ -409,8 +419,10 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
             loadTargetTrialParameters={loadTargetTrialParameters}
             findTrialById={findTrialById}
             targetTrialParameters={targetTrialParameters}
+            targetTrialCsvColumns={targetTrialCsvColumns}
             selectedTrial={selectedTrial}
             data={data}
+            onAutoSave={handleSaveConditions}
           />
         )}
 

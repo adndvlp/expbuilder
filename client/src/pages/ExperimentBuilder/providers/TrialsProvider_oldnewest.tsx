@@ -194,68 +194,6 @@ export default function TrialsProvider({ children }: Props) {
     [experimentID, selectedTrial, getTimeline]
   );
 
-  // Actualización granular de un solo campo (optimizado para autoguardado)
-  const updateTrialField = useCallback(
-    async (
-      id: string | number,
-      fieldName: string,
-      value: any
-    ): Promise<boolean> => {
-      try {
-        const response = await fetch(
-          `${API_URL}/api/trial/${experimentID}/${id}`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ [fieldName]: value }),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to update ${fieldName}`);
-        }
-
-        const data = await response.json();
-        const updatedTrial = data.trial;
-
-        // Optimistic UI: actualizar timeline si es campo name o branches
-        if (fieldName === "name" || fieldName === "branches") {
-          setTimeline((prev) =>
-            prev.map((item) =>
-              item.id === id && item.type === "trial"
-                ? {
-                    ...item,
-                    name: updatedTrial.name,
-                    branches: updatedTrial.branches || [],
-                  }
-                : item
-            )
-          );
-        }
-
-        // Actualizar selectedTrial si es el que está seleccionado
-        if (selectedTrial?.id === id) {
-          setSelectedTrial(updatedTrial);
-        }
-
-        return true;
-      } catch (error) {
-        console.error(`Error updating ${fieldName}:`, error);
-
-        // Si falla, recargar el trial completo para mantener consistencia
-        if (selectedTrial?.id === id) {
-          const freshTrial = await getTrial(id);
-          if (freshTrial) {
-            setSelectedTrial(freshTrial);
-          }
-        }
-
-        return false;
-      }
-    },
-    [experimentID, selectedTrial, getTrial]
-  );
-
   const deleteTrial = useCallback(
     async (id: string | number): Promise<boolean> => {
       try {
@@ -643,7 +581,6 @@ export default function TrialsProvider({ children }: Props) {
         createTrial,
         getTrial,
         updateTrial,
-        updateTrialField,
         deleteTrial,
         createLoop,
         getLoop,

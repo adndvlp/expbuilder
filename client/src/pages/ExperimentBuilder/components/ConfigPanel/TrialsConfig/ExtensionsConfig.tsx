@@ -9,6 +9,7 @@ type Props = {
   parameters: any[];
   pluginName?: string;
   columnMapping?: ColumnMapping;
+  onSave?: (includeExt: boolean, extType: string) => void; // Recibe valores directamente
 };
 
 function ExtensionsConfig({
@@ -19,6 +20,7 @@ function ExtensionsConfig({
   setExtensionType,
   pluginName,
   columnMapping = {},
+  onSave,
 }: Props) {
   let isWebgazer = false;
 
@@ -58,7 +60,13 @@ function ExtensionsConfig({
       >
         <Switch
           checked={includesExtensions}
-          onChange={(checked) => setIncludeExtensions(checked)}
+          onChange={(checked) => {
+            setIncludeExtensions(checked);
+            // Autoguardar pasando el nuevo valor directamente
+            if (onSave) {
+              setTimeout(() => onSave(checked, extensionType), 300);
+            }
+          }}
           onColor="#f1c40f"
           onHandleColor="#ffffff"
           handleDiameter={24}
@@ -83,6 +91,13 @@ function ExtensionsConfig({
             value={extensionType}
             onChange={(e) => {
               setExtensionType(e.target.value);
+              // Autoguardar pasando el nuevo valor directamente
+              if (onSave) {
+                setTimeout(
+                  () => onSave(includesExtensions, e.target.value),
+                  300
+                );
+              }
             }}
           >
             <option value="">Select extension</option>

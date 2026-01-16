@@ -26,6 +26,8 @@ export type KonvaTrialDesignerProps = {
   isOpen: boolean;
   onClose: () => void;
   onSave: (config: any) => void;
+  onAutoSave?: (config: any) => void;
+  isAutoSaving?: boolean;
   initialConfig?: any;
   parameters: any[];
   columnMapping: Record<string, any>;

@@ -18,7 +18,8 @@ type Props = {
     conditionId: number,
     ruleIndex: number,
     field: string,
-    value: string
+    value: string,
+    shouldSave?: boolean
   ) => void;
   addRuleToCondition: (conditionId: number) => void;
   removeRuleFromCondition: (conditionId: number, ruleIndex: number) => void;
@@ -39,8 +40,9 @@ type Props = {
     displayName: string;
     isLoop: boolean;
   }>;
-  setConditions: React.Dispatch<React.SetStateAction<Condition[]>>;
+  setConditions: (conditions: Condition[], shouldSave?: boolean) => void;
   conditions: Condition[];
+  triggerSave?: () => void;
 };
 
 function ConditionRules({
@@ -59,6 +61,7 @@ function ConditionRules({
   allJumpTrials,
   setConditions,
   conditions,
+  triggerSave,
 }: Props) {
   // Helper para extraer valor de propiedades en formato {source, value}
   const getPropValue = (prop: any): any => {
@@ -368,8 +371,15 @@ function ConditionRules({
                     type="text"
                     value={rule.value}
                     onChange={(e) =>
-                      updateRule(condition.id, ruleIdx, "value", e.target.value)
+                      updateRule(
+                        condition.id,
+                        ruleIdx,
+                        "value",
+                        e.target.value,
+                        false // Don't autosave on type
+                      )
                     }
+                    onBlur={() => triggerSave && triggerSave()} // Autosave on blur
                     placeholder="Value"
                     className="border rounded px-2 py-1 w-full text-xs"
                     style={{

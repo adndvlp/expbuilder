@@ -1,5 +1,5 @@
 // Custom Survey Builder - Editor visual con preview en tiempo real
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Modal from "../Modal";
 import CustomSurveyEditor from "./CustomSurveyEditor";
 import SurveyPreview from "./SurveyPreview";
@@ -11,6 +11,7 @@ interface SurveyBuilderProps {
   onClose: () => void;
   value?: string | Record<string, unknown>;
   onChange: (surveyJson: Record<string, unknown>) => void;
+  onAutoSave?: (surveyJson: Record<string, unknown>) => void;
   title?: string;
   uploadedFiles?: UploadedFile[];
 }
@@ -20,6 +21,7 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({
   onClose,
   value = {},
   onChange,
+  onAutoSave,
   title = "Survey Builder",
   uploadedFiles = [],
 }) => {
@@ -27,6 +29,15 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({
     title: "My Survey",
     elements: [],
   });
+
+  const [saveIndicator, setSaveIndicator] = useState(false);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -55,6 +66,19 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({
     onClose();
   };
 
+  const handleAutoSave = (newJson: Record<string, unknown>) => {
+    if (onAutoSave) {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        onAutoSave(newJson);
+        setSaveIndicator(true);
+        setTimeout(() => setSaveIndicator(false), 1500);
+      }, 1000);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -65,8 +89,32 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({
           flexDirection: "column",
           height: "100%",
           width: "100%",
+          position: "relative",
         }}
       >
+        {/* Save Indicator */}
+        <div
+          style={{
+            opacity: saveIndicator ? 1 : 0,
+            transition: "opacity 0.3s",
+            color: "white",
+            fontWeight: "600",
+            position: "absolute",
+            top: "60px",
+            right: "20px",
+            zIndex: 10000,
+            backgroundColor: "rgba(34, 197, 94, 0.95)",
+            padding: "6px 12px",
+            borderRadius: "6px",
+            fontSize: "12px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+            border: "1px solid white",
+            pointerEvents: "none",
+          }}
+        >
+          ✓ Saved
+        </div>
+
         {/* Header */}
         <div
           style={{
@@ -135,7 +183,10 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({
           >
             <CustomSurveyEditor
               surveyJson={surveyJson}
-              onChange={setSurveyJson}
+              onChange={(newJson) => {
+                setSurveyJson(newJson);
+                handleAutoSave(newJson);
+              }}
               uploadedFiles={uploadedFiles}
             />
           </div>

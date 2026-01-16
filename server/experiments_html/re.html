@@ -389,12 +389,12 @@ const timeline = [];
 
 
 
-    const test_stimuli_Pregunta = [{components: [],
-response_components: [{ type: "SurveyComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, survey_json: {"title":"Seco","elements":[{"type":"radiogroup","name":"loca","title":"sexo en el oxo ?","isRequired":false,"choices":[{"value":"si","text":"si","imageLink":""},{"value":"nel","text":"nel","imageLink":""}]},{"type":"text","name":"huevos","title":"tu","isRequired":false}],"description":"Cola"}, name: "survey" }, { type: "ButtonResponseComponent", coordinates: {"x":0.20329670329670302,"y":0.44322344322344315}, width: 200, height: 50, choices: ["loca", "no"], name: "boton" }],
+    const test_stimuli_nPreguntasmdns = [{components: [],
+response_components: [{ type: "SurveyComponent", coordinates: {"x":0.7786885245901636,"y":0.2295081967213113}, width: 200, height: 50, survey_json: {"title":"Seco","elements":[{"type":"radiogroup","name":"loca","title":"sexo en el oxo ?","isRequired":false,"choices":[{"value":"si","text":"si","imageLink":""},{"value":"nel","text":"nel","imageLink":""}]},{"type":"text","name":"huevos","title":"tu","isRequired":false}],"description":"Cola"}, name: "survey" }, { type: "ButtonResponseComponent", coordinates: {"x":0.7893622770671946,"y":0.8312015852999455}, width: 200, height: 50, choices: ["loca", "no"], name: "boton" }],
 stimuli_duration: undefined,
 trial_duration: undefined,
 response_ends_trial: undefined}];
-    const Pregunta_timeline = {
+    const nPreguntasmdns_timeline = {
     type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
 response_components: jsPsych.timelineVariable("response_components"),
 stimuli_duration: jsPsych.timelineVariable("stimuli_duration"),
@@ -591,10 +591,10 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
       }
       
     },};
-    const Pregunta_procedure = {
+    const nPreguntasmdns_procedure = {
     timeline: 
-    [Pregunta_timeline],
-    timeline_variables: test_stimuli_Pregunta,
+    [nPreguntasmdns_timeline],
+    timeline_variables: test_stimuli_nPreguntasmdns,
     
     conditional_function: function() {
       const currentId = 1768521719165;
@@ -633,12 +633,12 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
   
     
     };
-    timeline.push(Pregunta_procedure);
+    timeline.push(nPreguntasmdns_procedure);
   
 
 
-    const test_stimuli_New_Trial_1 = [{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, stimulus: "<div style=\"box-sizing: border-box;\">Type or design here</div>" }],
-response_components: [{ type: "KeyboardResponseComponent", coordinates: {"x":0.48901098901098883,"y":0.41391941391941395}, width: 200, height: 50 }],
+    const test_stimuli_New_Trial_1 = [{components: [{ type: "HtmlComponent", coordinates: {"x":0.1788280208095232,"y":-0.13759175307252672}, width: 260.5073648041071, height: 65.12684120102682, stimulus: "<div style=\"box-sizing: border-box;\">Type or design here</div>" }],
+response_components: [{ type: "KeyboardResponseComponent", coordinates: {"x":0.6201585299945953,"y":0.7745751516243319}, width: 200, height: 50 }],
 stimuli_duration: undefined,
 trial_duration: undefined,
 response_ends_trial: undefined}];

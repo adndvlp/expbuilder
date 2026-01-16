@@ -32,6 +32,11 @@ type TrialsContextType = {
     id: string | number,
     trial: Partial<Trial>
   ) => Promise<Trial | null>;
+  updateTrialField: (
+    id: string | number,
+    fieldName: string,
+    value: any
+  ) => Promise<boolean>;
   deleteTrial: (id: string | number) => Promise<boolean>;
 
   // Métodos singulares para Loop
@@ -75,6 +80,7 @@ const TrialsContext = createContext<TrialsContextType>({
   createTrial: async () => ({}) as Trial,
   getTrial: async () => null,
   updateTrial: async () => null,
+  updateTrialField: async () => false,
   deleteTrial: async () => false,
   createLoop: async () => ({}) as Loop,
   getLoop: async () => null,

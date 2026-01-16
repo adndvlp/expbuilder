@@ -36,7 +36,7 @@
 
 
         const trialSessionId =
-            "Pregunta_result_" + (crypto.randomUUID
+            "nPreguntasmdns_result_" + (crypto.randomUUID
               ? crypto.randomUUID()
               : Math.random().toString(36).slice(2, 10));
 
@@ -85,12 +85,12 @@ localStorage.removeItem('jsPsych_jumpToTrial');
       const timeline = [];
       
       
-    const test_stimuli_Pregunta = [{components: [],
-response_components: [{ type: "SurveyComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, survey_json: {"title":"Seco","elements":[{"type":"radiogroup","name":"loca","title":"sexo en el oxo ?","isRequired":false,"choices":[{"value":"si","text":"si","imageLink":""},{"value":"nel","text":"nel","imageLink":""}]},{"type":"text","name":"huevos","title":"tu","isRequired":false}],"description":"Cola"}, name: "survey" }, { type: "ButtonResponseComponent", coordinates: {"x":0.20329670329670302,"y":0.44322344322344315}, width: 200, height: 50, choices: ["loca", "no"], name: "boton" }],
+    const test_stimuli_nPreguntasmdns = [{components: [{ type: "HtmlComponent", coordinates: {"x":-0.04508196721311486,"y":-0.3224043715846994}, width: 200, height: 50, stimulus: "<div style=\"box-sizing: border-box;\">Type or design here</div>" }],
+response_components: [],
 stimuli_duration: undefined,
 trial_duration: undefined,
 response_ends_trial: undefined}];
-    const Pregunta_timeline = {
+    const nPreguntasmdns_timeline = {
     type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
 response_components: jsPsych.timelineVariable("response_components"),
 stimuli_duration: jsPsych.timelineVariable("stimuli_duration"),
@@ -102,7 +102,7 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
         
         
         branches: [1768521892763, 1768524559825],
-        branchConditions: [[{"id":1768535708995,"rules":[{"column":"survey_huevos","op":"==","value":"tu"}],"nextTrialId":"1768524559825","customParameters":{}}]] 
+        branchConditions: [[{"id":1768535708995,"rules":[{"column":"boton_type","op":"==","value":"mjnlnmn"}],"nextTrialId":"1768521892763","customParameters":{"components":{"source":"none","value":null}}}]] 
         
       },
     on_start: function(trial) {
@@ -163,7 +163,7 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
       // Evaluar condiciones del trial para branching global
       console.log('🔍 [GLOBAL BRANCH] Evaluating branch conditions...');
       const branches = [1768521892763, 1768524559825];
-      const branchConditions = [{"id":1768535708995,"rules":[{"column":"survey_huevos","op":"==","value":"tu"}],"nextTrialId":"1768524559825","customParameters":{}}].flat();
+      const branchConditions = [{"id":1768535708995,"rules":[{"column":"boton_type","op":"==","value":"mjnlnmn"}],"nextTrialId":"1768521892763","customParameters":{"components":{"source":"none","value":null}}}].flat();
       console.log('🔍 [GLOBAL BRANCH] Available branches:', branches);
       console.log('🔍 [GLOBAL BRANCH] Conditions to evaluate:', branchConditions.length);
       
@@ -287,10 +287,10 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
       }
       
     },};
-    const Pregunta_procedure = {
+    const nPreguntasmdns_procedure = {
     timeline: 
-    [Pregunta_timeline],
-    timeline_variables: test_stimuli_Pregunta,
+    [nPreguntasmdns_timeline],
+    timeline_variables: test_stimuli_nPreguntasmdns,
     
     conditional_function: function() {
       const currentId = 1768521719165;
@@ -329,7 +329,7 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
   
     
     };
-    timeline.push(Pregunta_procedure);
+    timeline.push(nPreguntasmdns_procedure);
   
 
       jsPsych.run(timeline);

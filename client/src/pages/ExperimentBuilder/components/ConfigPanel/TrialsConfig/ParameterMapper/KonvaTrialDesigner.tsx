@@ -36,6 +36,8 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   isOpen,
   onClose,
   onSave,
+  onAutoSave,
+  isAutoSaving,
   columnMapping,
   csvColumns,
 }) => {
@@ -306,65 +308,12 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     return component.config || {};
   }, [selectedId, components]);
 
-  // Handle component parameter changes
-  const handleComponentColumnMappingChange = useCallback(
-    (updateFn: any) => {
-      if (!selectedId) return;
-
-      // Update the component's config
-      setComponents((prevComponents) => {
-        const updatedComponents = prevComponents.map((comp) => {
-          if (comp.id === selectedId) {
-            const newConfig =
-              typeof updateFn === "function"
-                ? updateFn(comp.config || {})
-                : updateFn;
-
-            // Sync canvas properties from config changes
-            const updated = { ...comp, config: newConfig };
-
-            // Update coordinates if changed in config
-            if (newConfig.coordinates?.value) {
-              const canvasCoords = fromJsPsychCoords(
-                newConfig.coordinates.value
-              );
-              updated.x = canvasCoords.x;
-              updated.y = canvasCoords.y;
-            }
-
-            // Update width if changed in config
-            if (newConfig.width?.value !== undefined) {
-              updated.width = newConfig.width.value;
-            }
-
-            // Update height if changed in config
-            if (newConfig.height?.value !== undefined) {
-              updated.height = newConfig.height.value;
-            }
-
-            // Update rotation if changed in config
-            if (newConfig.rotation?.value !== undefined) {
-              updated.rotation = newConfig.rotation.value;
-            }
-
-            return updated;
-          }
-          return comp;
-        });
-
-        return updatedComponents;
-      });
-    },
-    [selectedId]
-  );
-
-  // Helper function to build components config from current state
-  // This is called only when saving, not continuously
-  const buildComponentsConfig = () => {
+  // Helper function to build config from a list of components (reusable for autosave)
+  const generateConfigFromComponents = (comps: TrialComponent[]) => {
     const stimulusComponents: any[] = [];
     const responseComponents: any[] = [];
 
-    components.forEach((comp) => {
+    comps.forEach((comp) => {
       const coords = toJsPsychCoords(comp.x, comp.y);
       const componentData: Record<string, any> = {
         type: comp.type,
@@ -423,8 +372,96 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       }
     });
 
-    return { stimulusComponents, responseComponents };
+    // Start with existing columnMapping to preserve General Settings
+    const dynamicPluginConfig: Record<string, any> = { ...columnMapping };
+
+    // Clean up any parameters with source:'none'
+    Object.keys(dynamicPluginConfig).forEach((key) => {
+      if (dynamicPluginConfig[key]?.source === "none") {
+        delete dynamicPluginConfig[key];
+      }
+    });
+
+    // Update or remove components
+    if (stimulusComponents.length > 0) {
+      dynamicPluginConfig.components = {
+        source: "typed",
+        value: stimulusComponents,
+      };
+    } else {
+      delete dynamicPluginConfig.components;
+    }
+
+    // Update or remove response_components
+    if (responseComponents.length > 0) {
+      dynamicPluginConfig.response_components = {
+        source: "typed",
+        value: responseComponents,
+      };
+    } else {
+      delete dynamicPluginConfig.response_components;
+    }
+
+    return dynamicPluginConfig;
   };
+
+  // Handle component parameter changes
+  const handleComponentColumnMappingChange = useCallback(
+    (updateFn: any) => {
+      if (!selectedId) return;
+
+      setComponents((prevComponents) => {
+        const updatedComponents = prevComponents.map((comp) => {
+          if (comp.id === selectedId) {
+            const newConfig =
+              typeof updateFn === "function"
+                ? updateFn(comp.config || {})
+                : updateFn;
+
+            const updated = { ...comp, config: newConfig };
+
+            if (newConfig.coordinates?.value) {
+              const canvasCoords = fromJsPsychCoords(
+                newConfig.coordinates.value
+              );
+              updated.x = canvasCoords.x;
+              updated.y = canvasCoords.y;
+            }
+
+            if (newConfig.width?.value !== undefined) {
+              updated.width = newConfig.width.value;
+            }
+
+            if (newConfig.height?.value !== undefined) {
+              updated.height = newConfig.height.value;
+            }
+
+            if (newConfig.rotation?.value !== undefined) {
+              updated.rotation = newConfig.rotation.value;
+            }
+
+            return updated;
+          }
+          return comp;
+        });
+
+        // Autosave triggered here
+        if (onAutoSave) {
+          const config = generateConfigFromComponents(updatedComponents);
+          // Debounce could be good here but user asked for "luego me dices" logic,
+          // implying immediate action on drop/change might be acceptable or I should use timeout.
+          // ParameterMapper uses timeout 100ms. I'll use a small timeout to not block rendering.
+          setTimeout(() => onAutoSave(config), 100);
+        }
+
+        return updatedComponents;
+      });
+    },
+    [selectedId, onAutoSave, columnMapping]
+  );
+
+  // Helper function to build components config from current state
+  // This is called only when saving, not continuously
 
   // Handle resize
   useEffect(() => {
@@ -559,7 +596,17 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       },
     };
 
-    setComponents((prev) => [...prev, newComponent]);
+    setComponents((prev) => {
+      const updatedComponents = [...prev, newComponent];
+
+      // Trigger autosave
+      if (onAutoSave) {
+        const config = generateConfigFromComponents(updatedComponents);
+        setTimeout(() => onAutoSave(config), 100);
+      }
+
+      return updatedComponents;
+    });
     setSelectedId(newComponent.id);
   };
 
@@ -571,27 +618,33 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
 
   // Handle drag end
   const handleDragEnd = (id: string, e: any) => {
-    setComponents(
-      components.map((comp) => {
-        if (comp.id === id) {
-          const newX = e.target.x();
-          const newY = e.target.y();
-          const coords = toJsPsychCoords(newX, newY);
+    const newX = e.target.x();
+    const newY = e.target.y();
+    const coords = toJsPsychCoords(newX, newY);
 
-          // Update config with new coordinates
-          const newConfig = {
-            ...comp.config,
-            coordinates: {
-              source: "typed",
-              value: coords,
-            },
-          };
+    const updatedComponents = components.map((comp) => {
+      if (comp.id === id) {
+        // Update config with new coordinates
+        const newConfig = {
+          ...comp.config,
+          coordinates: {
+            source: "typed",
+            value: coords,
+          },
+        };
 
-          return { ...comp, x: newX, y: newY, config: newConfig };
-        }
-        return comp;
-      })
-    );
+        return { ...comp, x: newX, y: newY, config: newConfig };
+      }
+      return comp;
+    });
+
+    setComponents(updatedComponents);
+
+    // Trigger autosave
+    if (onAutoSave) {
+      const config = generateConfigFromComponents(updatedComponents);
+      setTimeout(() => onAutoSave(config), 100);
+    }
   };
 
   // Handle selection
@@ -601,50 +654,17 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
 
   // Export configuration
   const handleExport = () => {
-    // Build components config from current component state
-    const { stimulusComponents, responseComponents } = buildComponentsConfig();
-
-    // Start with existing columnMapping to preserve General Settings and other parameters
-    const dynamicPluginConfig: Record<string, any> = { ...columnMapping };
-
-    // Clean up any parameters with source:'none' that shouldn't be in columnMapping
-    Object.keys(dynamicPluginConfig).forEach((key) => {
-      if (dynamicPluginConfig[key]?.source === "none") {
-        delete dynamicPluginConfig[key];
-      }
-    });
-
-    // Update or remove components
-    if (stimulusComponents.length > 0) {
-      dynamicPluginConfig.components = {
-        source: "typed",
-        value: stimulusComponents,
-      };
-    } else {
-      delete dynamicPluginConfig.components;
-    }
-
-    // Update or remove response_components
-    if (responseComponents.length > 0) {
-      dynamicPluginConfig.response_components = {
-        source: "typed",
-        value: responseComponents,
-      };
-    } else {
-      delete dynamicPluginConfig.response_components;
-    }
-
-    onSave(dynamicPluginConfig);
+    const config = generateConfigFromComponents(components);
+    onSave(config);
     onClose();
   };
 
-  // Render component on canvas
   const renderComponent = (comp: TrialComponent) => {
     const isSelected = comp.id === selectedId;
 
     const handleComponentChange = (newAttrs: any) => {
-      setComponents((prevComponents) =>
-        prevComponents.map((c) => {
+      setComponents((prevComponents) => {
+        const updatedComponents = prevComponents.map((c) => {
           if (c.id === comp.id) {
             const updated = { ...c, ...newAttrs };
 
@@ -699,8 +719,16 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             return updated;
           }
           return c;
-        })
-      );
+        });
+
+        // Trigger autosave
+        if (onAutoSave) {
+          const config = generateConfigFromComponents(updatedComponents);
+          setTimeout(() => onAutoSave(config), 100);
+        }
+
+        return updatedComponents;
+      });
     };
     switch (comp.type) {
       case "ImageComponent":
@@ -846,6 +874,26 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     }
   };
 
+  // Wrapper for setComponents to trigger autosave from Sidebar
+  const setComponentsWrapper: React.Dispatch<
+    React.SetStateAction<TrialComponent[]>
+  > = (value) => {
+    setComponents((prev) => {
+      const nextComponents =
+        typeof value === "function"
+          ? (value as (prev: TrialComponent[]) => TrialComponent[])(prev)
+          : value;
+
+      // Trigger autosave
+      if (onAutoSave) {
+        const config = generateConfigFromComponents(nextComponents);
+        setTimeout(() => onAutoSave(config), 100);
+      }
+
+      return nextComponents;
+    });
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <div
@@ -868,7 +916,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             CANVAS_WIDTH={CANVAS_WIDTH}
             CANVAS_HEIGHT={CANVAS_HEIGHT}
             toJsPsychCoords={toJsPsychCoords}
-            setComponents={setComponents}
+            setComponents={setComponentsWrapper}
             getDefaultConfig={getDefaultConfig}
             selectedId={selectedId}
             setSelectedId={setSelectedId}
@@ -1169,11 +1217,48 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             padding: "12px 16px",
             display: "flex",
             justifyContent: "flex-end",
+            alignItems: "center",
             gap: "10px",
             borderTop: "2px solid var(--neutral-mid)",
             background: "var(--neutral-light)",
           }}
         >
+          {onAutoSave && (
+            <div
+              style={{
+                marginRight: "auto",
+                fontSize: "13px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                color: isAutoSaving ? "var(--text-light)" : "#059669",
+                transition: "all 0.3s ease",
+              }}
+            >
+              {isAutoSaving ? (
+                <>
+                  <div
+                    className="spinner"
+                    style={{
+                      width: "12px",
+                      height: "12px",
+                      border: "2px solid #e5e7eb",
+                      borderTopColor: "var(--primary-blue)",
+                      borderRadius: "50%",
+                      animation: "spin 1s linear infinite",
+                    }}
+                  />
+                  Saving changes...
+                </>
+              ) : (
+                <>✓ All changes saved</>
+              )}
+              <style>
+                {`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}
+              </style>
+            </div>
+          )}
+
           <button
             onClick={onClose}
             style={{

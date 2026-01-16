@@ -9,11 +9,21 @@ type Props = {
   setOrderColumns: (cols: string[]) => void;
   mapOrdersFromCsv: (csvJson: any[], columnKeys: string[]) => void;
   csvJson: any[];
+  stimuliOrders: any[]; // Agregado
   categories: boolean;
   setCategories: React.Dispatch<React.SetStateAction<boolean>>;
   categoryColumn: string;
   setCategoryColumn: (col: string) => void;
+  categoryData: any[]; // Agregado
   mapCategoriesFromCsv: (csvJson: any[], categoryColumn: string) => void;
+  onSave?: (
+    ord: boolean,
+    ordCols: string[],
+    stimOrd: any[],
+    cat: boolean,
+    catCol: string,
+    catData: any[]
+  ) => void; // Recibe valores directamente
 };
 
 function TrialOrders({
@@ -24,22 +34,57 @@ function TrialOrders({
   setOrderColumns,
   mapOrdersFromCsv,
   csvJson,
+  stimuliOrders,
   categories,
   setCategories,
   categoryColumn,
   setCategoryColumn,
+  categoryData,
   mapCategoriesFromCsv,
+  onSave,
 }: Props) {
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const cols = Array.from(e.target.selectedOptions, (opt) => opt.value);
     setOrderColumns(cols);
     mapOrdersFromCsv(csvJson, cols);
+
+    // Autoguardar pasando el nuevo valor directamente
+    if (onSave) {
+      setTimeout(
+        () =>
+          onSave(
+            orders,
+            cols,
+            stimuliOrders,
+            categories,
+            categoryColumn,
+            categoryData
+          ),
+        100
+      );
+    }
   };
 
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const column = e.target.value;
     setCategoryColumn(column);
-    mapCategoriesFromCsv(csvJson, column); // Agregar esta línea
+    mapCategoriesFromCsv(csvJson, column);
+
+    // Autoguardar pasando el nuevo valor directamente
+    if (onSave) {
+      setTimeout(
+        () =>
+          onSave(
+            orders,
+            orderColumns,
+            stimuliOrders,
+            categories,
+            column,
+            categoryData
+          ),
+        100
+      );
+    }
   };
 
   return (
@@ -55,7 +100,23 @@ function TrialOrders({
         >
           <Switch
             checked={orders}
-            onChange={(checked) => setOrders(checked)}
+            onChange={(checked) => {
+              setOrders(checked);
+              if (onSave) {
+                setTimeout(
+                  () =>
+                    onSave(
+                      checked,
+                      orderColumns,
+                      stimuliOrders,
+                      categories,
+                      categoryColumn,
+                      categoryData
+                    ),
+                  300
+                );
+              }
+            }}
             onColor="#f1c40f"
             onHandleColor="#ffffff"
             handleDiameter={24}
@@ -76,11 +137,15 @@ function TrialOrders({
               onChange={handleSelectChange}
               className="ml-2"
             >
-              {columnOptions.map((col) => (
-                <option key={col} value={col}>
-                  {col}
-                </option>
-              ))}
+              {columnOptions && columnOptions.length > 0 ? (
+                columnOptions.map((col) => (
+                  <option key={col} value={col}>
+                    {col}
+                  </option>
+                ))
+              ) : (
+                <option disabled>No columns available</option>
+              )}
             </select>
           </div>
         )}
@@ -90,7 +155,24 @@ function TrialOrders({
         >
           <Switch
             checked={categories}
-            onChange={(checked) => setCategories(checked)}
+            onChange={(checked) => {
+              setCategories(checked);
+              // Autoguardar pasando el nuevo valor directamente
+              if (onSave) {
+                setTimeout(
+                  () =>
+                    onSave(
+                      orders,
+                      orderColumns,
+                      stimuliOrders,
+                      checked,
+                      categoryColumn,
+                      categoryData
+                    ),
+                  300
+                );
+              }
+            }}
             onColor="#f1c40f"
             onHandleColor="#ffffff"
             handleDiameter={24}
@@ -111,11 +193,15 @@ function TrialOrders({
               className="ml-2"
             >
               <option value="">Select</option>
-              {columnOptions.map((col) => (
-                <option key={col} value={col}>
-                  {col}
-                </option>
-              ))}
+              {columnOptions && columnOptions.length > 0 ? (
+                columnOptions.map((col) => (
+                  <option key={col} value={col}>
+                    {col}
+                  </option>
+                ))
+              ) : (
+                <option disabled>No columns available</option>
+              )}
             </select>
           </div>
         )}

@@ -37,6 +37,8 @@ type ParameterMapperProps = {
     componentId: string,
     config: Record<string, any>
   ) => void;
+  // Autoguardado
+  onSave?: (key: string, value: any) => void; // Se llama con key y value para evitar closures
 };
 
 const ParameterMapper: React.FC<ParameterMapperProps> = ({
@@ -47,6 +49,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
   pluginName,
   componentMode = false,
   uploadedFiles = [],
+  onSave,
 }) => {
   const pluginLink = () => {
     const pluginUrl = pluginName
@@ -107,14 +110,20 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
     if (currentHtmlKey) {
       const param = parameters.find((p) => p.key === currentHtmlKey);
       const isHtmlArray = param?.type === "html_string_array";
+      const newValue = {
+        source: "typed" as const,
+        value: isHtmlArray ? [htmlValue] : htmlValue,
+      };
 
       setColumnMapping((prev) => ({
         ...prev,
-        [currentHtmlKey]: {
-          source: "typed",
-          value: isHtmlArray ? [htmlValue] : htmlValue,
-        },
+        [currentHtmlKey]: newValue,
       }));
+
+      // Autoguardar después de cambiar HTML
+      if (onSave) {
+        setTimeout(() => onSave(currentHtmlKey, newValue), 100);
+      }
     }
   };
 
@@ -147,32 +156,46 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
 }`;
 
       // Update both button_html and choices
+      const buttonValue = { source: "typed" as const, value: functionString };
+      const choicesValue = {
+        source: "typed" as const,
+        value: extractedChoices,
+      };
+
       setColumnMapping((prev) => ({
         ...prev,
-        [currentButtonKey]: {
-          source: "typed",
-          value: functionString,
-        },
+        [currentButtonKey]: buttonValue,
         // Also update choices if they exist in the parameters
         ...(parameters.some((p) => p.key === "choices") && {
-          choices: {
-            source: "typed",
-            value: extractedChoices,
-          },
+          choices: choicesValue,
         }),
       }));
+
+      // Autoguardar después de cambiar botones
+      if (onSave) {
+        setTimeout(() => {
+          onSave(currentButtonKey, buttonValue);
+          if (parameters.some((p) => p.key === "choices")) {
+            onSave("choices", choicesValue);
+          }
+        }, 100);
+      }
     }
   };
 
   const handleSurveyChange = (surveyJson: object) => {
     if (currentSurveyKey) {
+      const newValue = { source: "typed" as const, value: surveyJson };
+
       setColumnMapping((prev) => ({
         ...prev,
-        [currentSurveyKey]: {
-          source: "typed",
-          value: surveyJson,
-        },
+        [currentSurveyKey]: newValue,
       }));
+
+      // Autoguardar después de cambiar survey
+      if (onSave) {
+        setTimeout(() => onSave(currentSurveyKey, newValue), 100);
+      }
     }
   };
 
@@ -226,17 +249,6 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
           parameters.length > 0 &&
           parameters.map(({ label, key, type }) => {
             const entry = columnMapping[key] || { source: "none" };
-            // console.log(JSON.stringify(parameters));
-
-            const handleTypedValueChange = (value: any) => {
-              setColumnMapping((prev) => ({
-                ...prev,
-                [key]: {
-                  source: "typed",
-                  value,
-                },
-              }));
-            };
 
             return (
               <div key={key}>
@@ -303,13 +315,17 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                             [65, 65],
                           ]))
                     ) {
+                      const newValue = {
+                        source: "typed" as const,
+                        value: JSON.parse(value),
+                      };
                       setColumnMapping((prev) => ({
                         ...prev,
-                        [key]: {
-                          source: "typed",
-                          value: JSON.parse(value),
-                        },
+                        [key]: newValue,
                       }));
+                      if (onSave) {
+                        setTimeout(() => onSave(key, newValue), 100);
+                      }
                       return;
                     }
                     const source =
@@ -324,27 +340,38 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                       if (source === "none") {
                         const newMapping = { ...prev };
                         delete newMapping[key];
+                        // Autoguardar después de eliminar
+                        if (onSave) {
+                          setTimeout(() => onSave(key, undefined), 100);
+                        }
                         return newMapping;
                       }
 
                       // Otherwise, add/update the parameter
+                      const newValue: ColumnMappingEntry = {
+                        source: source as "csv" | "typed",
+                        value:
+                          source === "typed"
+                            ? type === "boolean"
+                              ? false
+                              : type === "number"
+                                ? 0
+                                : type.endsWith("_array")
+                                  ? []
+                                  : type === "object" && key === "coordinates"
+                                    ? { x: 0, y: 0 }
+                                    : ""
+                            : value,
+                      };
+
+                      // Autoguardar después de cambiar source/CSV column
+                      if (onSave) {
+                        setTimeout(() => onSave(key, newValue), 100);
+                      }
+
                       return {
                         ...prev,
-                        [key]: {
-                          source,
-                          value:
-                            source === "typed"
-                              ? type === "boolean"
-                                ? false
-                                : type === "number"
-                                  ? 0
-                                  : type.endsWith("_array")
-                                    ? []
-                                    : type === "object" && key === "coordinates"
-                                      ? { x: 0, y: 0 }
-                                      : ""
-                              : value,
-                        },
+                        [key]: newValue,
                       };
                     });
                   }}
@@ -419,9 +446,19 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                       <div className="mt-2 flex items-center gap-3">
                         <Switch
                           checked={entry.value === true}
-                          onChange={(checked) =>
-                            handleTypedValueChange(checked)
-                          }
+                          onChange={(checked) => {
+                            const newValue = {
+                              source: "typed" as const,
+                              value: checked,
+                            };
+                            setColumnMapping((prev) => ({
+                              ...prev,
+                              [key]: newValue,
+                            }));
+                            if (onSave) {
+                              setTimeout(() => onSave(key, newValue), 100);
+                            }
+                          }}
                           onColor="#3d92b4"
                           onHandleColor="#ffffff"
                           handleDiameter={24}
@@ -496,7 +533,17 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                         }
                         onChange={(e) => {
                           const rawValue = Number(e.target.value);
-                          handleTypedValueChange(rawValue);
+                          const newValue = {
+                            source: "typed" as const,
+                            value: rawValue,
+                          };
+                          setColumnMapping((prev) => ({
+                            ...prev,
+                            [key]: newValue,
+                          }));
+                          if (onSave) {
+                            setTimeout(() => onSave(key, newValue), 100);
+                          }
                         }}
                       />
                     ) : type.endsWith("_array") &&
@@ -583,7 +630,17 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                               }
                             });
 
-                            handleTypedValueChange(castedArray);
+                            const newValue = {
+                              source: "typed" as const,
+                              value: castedArray,
+                            };
+                            setColumnMapping((prev) => ({
+                              ...prev,
+                              [key]: newValue,
+                            }));
+                            if (onSave) {
+                              setTimeout(() => onSave(key, newValue), 100);
+                            }
 
                             setLocalInputValues((prev) => {
                               const newState = { ...prev };
@@ -625,7 +682,17 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                           if (input === undefined) return;
 
                           if (input.trim() === "") {
-                            handleTypedValueChange([]);
+                            const newValue = {
+                              source: "typed" as const,
+                              value: [],
+                            };
+                            setColumnMapping((prev) => ({
+                              ...prev,
+                              [key]: newValue,
+                            }));
+                            if (onSave) {
+                              setTimeout(() => onSave(key, newValue), 100);
+                            }
                             return;
                           }
 
@@ -633,11 +700,31 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                           try {
                             // Si el usuario ya puso los corchetes exteriores
                             finalValue = JSON.parse(input.trim());
-                            handleTypedValueChange(finalValue);
+                            const newValue = {
+                              source: "typed" as const,
+                              value: finalValue,
+                            };
+                            setColumnMapping((prev) => ({
+                              ...prev,
+                              [key]: newValue,
+                            }));
+                            if (onSave) {
+                              setTimeout(() => onSave(key, newValue), 100);
+                            }
                           } catch {
                             try {
                               finalValue = JSON.parse(`[${input.trim()}]`);
-                              handleTypedValueChange(finalValue);
+                              const newValue = {
+                                source: "typed" as const,
+                                value: finalValue,
+                              };
+                              setColumnMapping((prev) => ({
+                                ...prev,
+                                [key]: newValue,
+                              }));
+                              if (onSave) {
+                                setTimeout(() => onSave(key, newValue), 100);
+                              }
                               // Limpia el valor temporal después de un guardado exitoso
                               setLocalInputValues((prev) => {
                                 const newState = { ...prev };
@@ -664,18 +751,38 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                               ? JSON.stringify(entry.value, null, 2)
                               : ""
                         }
-                        onChange={(e) => handleTypedValueChange(e.target.value)}
+                        onChange={(e) => {
+                          const newValue = {
+                            source: "typed" as const,
+                            value: e.target.value,
+                          };
+                          setColumnMapping((prev) => ({
+                            ...prev,
+                            [key]: newValue,
+                          }));
+                        }}
                         onBlur={(e) => {
                           const input = e.target.value.trim();
+                          let finalValue;
                           try {
                             // eslint-disable-next-line no-new-func
-                            const obj = Function(
+                            finalValue = Function(
                               '"use strict";return (' + input + ")"
                             )();
-                            handleTypedValueChange(obj);
                           } catch (err) {
-                            // Si falla, deja el texto como string (o muestra un error si prefieres)
-                            handleTypedValueChange(input);
+                            // Si falla, deja el texto como string
+                            finalValue = input;
+                          }
+                          const newValue = {
+                            source: "typed" as const,
+                            value: finalValue,
+                          };
+                          setColumnMapping((prev) => ({
+                            ...prev,
+                            [key]: newValue,
+                          }));
+                          if (onSave) {
+                            setTimeout(() => onSave(key, newValue), 100);
                           }
                         }}
                       />
@@ -713,9 +820,19 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                           value={
                             typeof entry.value === "string" ? entry.value : ""
                           }
-                          onChange={(e) =>
-                            handleTypedValueChange(e.target.value)
-                          }
+                          onChange={(e) => {
+                            const newValue = {
+                              source: "typed" as const,
+                              value: e.target.value,
+                            };
+                            setColumnMapping((prev) => ({
+                              ...prev,
+                              [key]: newValue,
+                            }));
+                            if (onSave) {
+                              setTimeout(() => onSave(key, newValue), 100);
+                            }
+                          }}
                         />
                       )
                     ) : type === "object" && key === "coordinates" ? (
@@ -741,7 +858,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                               -1,
                               Math.min(1, rawValue)
                             );
-                            handleTypedValueChange({
+                            const coordValue = {
                               ...(entry.value &&
                               typeof entry.value === "object" &&
                               "x" in entry.value &&
@@ -749,7 +866,18 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                                 ? entry.value
                                 : { x: 0, y: 0 }),
                               x: clampedValue,
-                            });
+                            };
+                            const newValue = {
+                              source: "typed" as const,
+                              value: coordValue,
+                            };
+                            setColumnMapping((prev) => ({
+                              ...prev,
+                              [key]: newValue,
+                            }));
+                            if (onSave) {
+                              setTimeout(() => onSave(key, newValue), 100);
+                            }
                           }}
                         />
 
@@ -774,7 +902,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                               -1,
                               Math.min(1, rawValue)
                             );
-                            handleTypedValueChange({
+                            const coordValue = {
                               ...(entry.value &&
                               typeof entry.value === "object" &&
                               "x" in entry.value &&
@@ -782,7 +910,18 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                                 ? entry.value
                                 : { x: 0, y: 0 }),
                               y: clampedValue,
-                            });
+                            };
+                            const newValue = {
+                              source: "typed" as const,
+                              value: coordValue,
+                            };
+                            setColumnMapping((prev) => ({
+                              ...prev,
+                              [key]: newValue,
+                            }));
+                            if (onSave) {
+                              setTimeout(() => onSave(key, newValue), 100);
+                            }
                           }}
                         />
                       </>
@@ -797,7 +936,19 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                             ? entry.value
                             : ""
                         }
-                        onChange={(e) => handleTypedValueChange(e.target.value)}
+                        onChange={(e) => {
+                          const newValue = {
+                            source: "typed" as const,
+                            value: e.target.value,
+                          };
+                          setColumnMapping((prev) => ({
+                            ...prev,
+                            [key]: newValue,
+                          }));
+                          if (onSave) {
+                            setTimeout(() => onSave(key, newValue), 100);
+                          }
+                        }}
                       />
                     )}
                   </>
@@ -825,6 +976,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
           return typeof currentValue === "string" ? currentValue : "";
         })()}
         onChange={handleHtmlChange}
+        onAutoSave={handleHtmlChange}
       />
 
       {/* Button HTML Modal */}
@@ -851,6 +1003,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
           return '<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;"><button style="padding:10px 20px;border-radius:6px;background:#3b82f6;color:white;border:none;font-weight:600;cursor:pointer;">Option 1</button><button style="padding:10px 20px;border-radius:6px;background:#10b981;color:white;border:none;font-weight:600;cursor:pointer;">Option 2</button><button style="padding:10px 20px;border-radius:6px;background:#f59e0b;color:white;border:none;font-weight:600;cursor:pointer;">Option 3</button></div>';
         })()}
         onChange={handleButtonHtmlChange}
+        onAutoSave={handleButtonHtmlChange}
       />
 
       {/* Survey Builder Modal */}
@@ -860,6 +1013,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
         title={`Design Survey - ${parameters.find((p) => p.key === currentSurveyKey)?.label || ""}`}
         value={columnMapping[currentSurveyKey]?.value || {}}
         onChange={handleSurveyChange}
+        onAutoSave={handleSurveyChange}
         uploadedFiles={uploadedFiles}
       />
     </div>

@@ -26,8 +26,10 @@ type Props = {
   loadTargetTrialParameters: (trialId: string | number) => Promise<void>;
   findTrialById: (trialId: string | number) => any;
   targetTrialParameters: Record<string, Parameter[]>;
+  targetTrialCsvColumns: Record<string, string[]>;
   selectedTrial: any;
   data: DataDefinition[];
+  onAutoSave?: (conditions: Condition[]) => void;
 };
 
 function BranchConditions({
@@ -36,12 +38,42 @@ function BranchConditions({
   loadTargetTrialParameters,
   findTrialById,
   targetTrialParameters,
+  targetTrialCsvColumns,
   selectedTrial,
   data,
+  onAutoSave,
 }: Props) {
   const { timeline, getTrial } = useTrials();
 
-  // Helper para extraer valor de propiedades en formato {source, value}
+  // Helper to update conditions and trigger autosave
+  const setConditionsWrapper = (
+    newConditionsOrFn: SetStateAction<Condition[]>,
+    shouldSave: boolean = true
+  ) => {
+    let newConditions: Condition[];
+
+    if (typeof newConditionsOrFn === "function") {
+      newConditions = (newConditionsOrFn as (prev: Condition[]) => Condition[])(
+        conditions
+      );
+    } else {
+      newConditions = newConditionsOrFn;
+    }
+
+    setConditions(newConditions);
+
+    if (onAutoSave && shouldSave) {
+      // Debounce autosave slightly to prevent spamming from text inputs
+      setTimeout(() => onAutoSave(newConditions), 500);
+    }
+  };
+
+  const triggerSave = () => {
+    if (onAutoSave) {
+      onAutoSave(conditions);
+    }
+  };
+
   const getPropValue = (prop: any): any => {
     if (
       prop &&
@@ -54,7 +86,7 @@ function BranchConditions({
     return prop;
   };
   const addCondition = () => {
-    setConditions([
+    setConditionsWrapper([
       ...conditions,
       {
         id: Date.now(),
@@ -66,11 +98,11 @@ function BranchConditions({
   };
 
   const removeCondition = (conditionId: number) => {
-    setConditions(conditions.filter((c) => c.id !== conditionId));
+    setConditionsWrapper(conditions.filter((c) => c.id !== conditionId));
   };
 
   const addRuleToCondition = (conditionId: number) => {
-    setConditions(
+    setConditionsWrapper(
       conditions.map((c) =>
         c.id === conditionId
           ? {
@@ -90,7 +122,7 @@ function BranchConditions({
   };
 
   const removeRuleFromCondition = (conditionId: number, ruleIndex: number) => {
-    setConditions(
+    setConditionsWrapper(
       conditions.map((c) =>
         c.id === conditionId
           ? { ...c, rules: c.rules.filter((_, idx) => idx !== ruleIndex) }
@@ -103,9 +135,10 @@ function BranchConditions({
     conditionId: number,
     ruleIndex: number,
     field: string,
-    value: string
+    value: string,
+    shouldSave: boolean = true
   ) => {
-    setConditions(
+    setConditionsWrapper(
       conditions.map((c) =>
         c.id === conditionId
           ? {
@@ -115,12 +148,13 @@ function BranchConditions({
               ),
             }
           : c
-      )
+      ),
+      shouldSave
     );
   };
 
   const updateNextTrial = (conditionId: number, nextTrialId: string) => {
-    setConditions(
+    setConditionsWrapper(
       conditions.map((c) =>
         c.id === conditionId ? { ...c, nextTrialId, customParameters: {} } : c
       )
@@ -307,28 +341,6 @@ function BranchConditions({
     }
 
     return columns;
-  };
-
-  // Get CSV columns for target trial
-  const getTargetTrialCsvColumns = async (
-    trialId: string | number
-  ): Promise<string[]> => {
-    try {
-      const targetTrial = await getTrial(trialId);
-      if (!targetTrial) return [];
-
-      // Check if trial has its own CSV
-      if (targetTrial.csvColumns && targetTrial.csvColumns.length > 0) {
-        return targetTrial.csvColumns;
-      }
-
-      // Note: Without recursive structure, we can't find parent loop CSV
-      // This would need parentLoopId in trial and API call to get loop
-      return [];
-    } catch (error) {
-      console.error("Error loading target trial CSV columns:", error);
-      return [];
-    }
   };
 
   // Helper function to check if a trialId is in the branches array
@@ -665,8 +677,9 @@ function BranchConditions({
                         isJumpCondition={isJumpCondition}
                         branchTrials={branchTrials}
                         allJumpTrials={allJumpTrials}
-                        setConditions={setConditions}
+                        setConditions={setConditionsWrapper as any}
                         conditions={conditions}
+                        triggerSave={triggerSave}
                       />
                       <ParameterOverride
                         condition={condition}
@@ -674,9 +687,10 @@ function BranchConditions({
                         findTrialById={findTrialById}
                         isJumpCondition={isJumpCondition(condition)}
                         selectedTrial={selectedTrial}
-                        setConditions={setConditions}
+                        setConditions={setConditionsWrapper as any}
                         conditions={conditions}
-                        getTargetTrialCsvColumns={getTargetTrialCsvColumns}
+                        targetTrialCsvColumns={targetTrialCsvColumns}
+                        triggerSave={triggerSave}
                       />
                     </tbody>
                   </table>

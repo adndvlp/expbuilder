@@ -17,9 +17,10 @@ type Props = {
   findTrialById: (trialId: string | number) => any;
   isJumpCondition: boolean;
   selectedTrial: any;
-  setConditions: Dispatch<SetStateAction<Condition[]>>;
+  setConditions: (conditions: Condition[], shouldSave?: boolean) => void;
   conditions: Condition[];
-  getTargetTrialCsvColumns: (trialId: string | number) => Promise<string[]>;
+  targetTrialCsvColumns: Record<string, string[]>;
+  triggerSave?: () => void;
 };
 
 function ParameterOverride({
@@ -30,7 +31,8 @@ function ParameterOverride({
   selectedTrial,
   setConditions,
   conditions,
-  getTargetTrialCsvColumns,
+  targetTrialCsvColumns,
+  triggerSave,
 }: Props) {
   // Helper para extraer valor de propiedades en formato {source, value}
   const getPropValue = (prop: any): any => {
@@ -49,7 +51,8 @@ function ParameterOverride({
     conditionId: number,
     paramKey: string,
     source: "csv" | "typed" | "none",
-    value: any
+    value: any,
+    shouldSave: boolean = true
   ) => {
     setConditions(
       conditions.map((c) => {
@@ -63,7 +66,8 @@ function ParameterOverride({
           };
         }
         return c;
-      })
+      }),
+      shouldSave
     );
   };
 
@@ -131,7 +135,10 @@ function ParameterOverride({
       {customParamKeys.map((paramKey) => {
         const paramValue = condition.customParameters![paramKey];
         const param = availableParams.find((p) => p.key === paramKey);
-        const csvColumns = getTargetTrialCsvColumns(condition.nextTrialId!);
+        const csvColumns =
+          (condition.nextTrialId &&
+            targetTrialCsvColumns[condition.nextTrialId]) ||
+          [];
 
         // For dynamic plugins, parse the paramKey to get field structure
         let fieldType = "";
@@ -527,9 +534,11 @@ function ParameterOverride({
                               condition.id,
                               paramKey,
                               "typed",
-                              e.target.value
+                              e.target.value,
+                              false
                             )
                           }
+                          onBlur={() => triggerSave && triggerSave()}
                           style={{
                             color: "var(--text-dark)",
                             backgroundColor: "var(--neutral-light)",
@@ -553,9 +562,11 @@ function ParameterOverride({
                               condition.id,
                               paramKey,
                               "typed",
-                              e.target.value
+                              e.target.value,
+                              false
                             )
                           }
+                          onBlur={() => triggerSave && triggerSave()}
                           style={{
                             color: "var(--text-dark)",
                             backgroundColor: "var(--neutral-light)",
@@ -580,9 +591,11 @@ function ParameterOverride({
                               condition.id,
                               paramKey,
                               "typed",
-                              Number(e.target.value)
+                              Number(e.target.value),
+                              false
                             )
                           }
+                          onBlur={() => triggerSave && triggerSave()}
                           style={{
                             color: "var(--text-dark)",
                             backgroundColor: "var(--neutral-light)",
@@ -605,9 +618,11 @@ function ParameterOverride({
                               condition.id,
                               paramKey,
                               "typed",
-                              e.target.value
+                              e.target.value,
+                              false
                             )
                           }
+                          onBlur={() => triggerSave && triggerSave()}
                           style={{
                             color: "var(--text-dark)",
                             backgroundColor: "var(--neutral-light)",
@@ -709,9 +724,11 @@ function ParameterOverride({
                               condition.id,
                               paramKey,
                               "typed",
-                              Number(e.target.value)
+                              Number(e.target.value),
+                              false
                             )
                           }
+                          onBlur={() => triggerSave && triggerSave()}
                           style={{
                             color: "var(--text-dark)",
                             backgroundColor: "var(--neutral-light)",
@@ -734,9 +751,11 @@ function ParameterOverride({
                               condition.id,
                               paramKey,
                               "typed",
-                              e.target.value
+                              e.target.value,
+                              false
                             )
                           }
+                          onBlur={() => triggerSave && triggerSave()}
                           style={{
                             color: "var(--text-dark)",
                             backgroundColor: "var(--neutral-light)",

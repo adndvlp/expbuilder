@@ -6,6 +6,7 @@ type TrialMetaConfigProps = {
   setTrialName: (name: string) => void;
   selectedTrial: any;
   setSelectedTrial: (trial: any) => void;
+  onSave?: () => void; // Autoguardado en onBlur
 };
 
 const TrialMetaConfig: React.FC<TrialMetaConfigProps> = ({
@@ -13,8 +14,9 @@ const TrialMetaConfig: React.FC<TrialMetaConfigProps> = ({
   setTrialName,
   selectedTrial,
   setSelectedTrial,
+  onSave,
 }) => {
-  const { timeline, updateTrial } = useTrials();
+  const { timeline } = useTrials();
 
   return (
     <div className="mb-4">
@@ -22,35 +24,28 @@ const TrialMetaConfig: React.FC<TrialMetaConfigProps> = ({
       <input
         type="text"
         value={trialName}
-        onChange={async (e) => {
+        onChange={(e) => {
           const newName = e.target.value;
+          // Solo validar y actualizar estado local, NO guardar
           const nameExists = timeline.some(
             (t) => t.name === newName && t.id !== selectedTrial?.id
           );
-          if (nameExists) {
+          if (nameExists && newName !== "") {
             alert("It already exists a trial name with that name.");
             return;
           }
           setTrialName(newName);
-
-          if (selectedTrial) {
-            const updated = await updateTrial(selectedTrial.id, {
-              name: newName,
-            });
-            if (updated) {
-              setSelectedTrial(updated);
-            }
+        }}
+        onBlur={() => {
+          // Guardar solo cuando sale del input
+          if (onSave && trialName !== "") {
+            onSave();
           }
         }}
-        onFocus={async () => {
+        onFocus={() => {
+          // Limpiar "New Trial" al hacer focus
           if (trialName === "New Trial") {
             setTrialName("");
-            if (selectedTrial) {
-              const updated = await updateTrial(selectedTrial.id, { name: "" });
-              if (updated) {
-                setSelectedTrial(updated);
-              }
-            }
           }
         }}
         className="w-full p-2 border rounded"

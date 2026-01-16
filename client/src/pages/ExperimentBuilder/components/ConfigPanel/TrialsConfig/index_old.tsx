@@ -23,13 +23,7 @@ type Props = { pluginName: string };
 
 function TrialsConfig({ pluginName }: Props) {
   // Basic trial configuration
-  const {
-    selectedTrial,
-    setSelectedTrial,
-    updateTrial,
-    updateTrialField,
-    getLoop,
-  } = useTrials();
+  const { selectedTrial, setSelectedTrial, updateTrial } = useTrials();
   const [trialName, setTrialName] = useState<string>("");
 
   // Autosave
@@ -37,7 +31,6 @@ function TrialsConfig({ pluginName }: Props) {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialFileLoad = useRef(false);
   const [saveIndicator, setSaveIndicator] = useState(false);
-  const [savingField, setSavingField] = useState<string | null>(null);
 
   const { csvJson, setCsvJson, csvColumns, setCsvColumns, handleCsvUpload } =
     useCsvData();
@@ -87,6 +80,7 @@ function TrialsConfig({ pluginName }: Props) {
 
     // Find parent loop containing the trial using parentLoopId
     if (trial.parentLoopId) {
+      const { getLoop } = useTrials();
       const parentLoop = await getLoop(trial.parentLoopId);
 
       if (parentLoop) {
@@ -122,41 +116,39 @@ function TrialsConfig({ pluginName }: Props) {
 
   // Persistir/traer datos del trial
   useEffect(() => {
-    const loadTrialData = async () => {
-      if (selectedTrial) {
-        setIsLoadingTrial(true);
-        setTrialName(selectedTrial.name || "");
-        setIncludeExtensions(
-          selectedTrial.parameters?.includesExtensions !== undefined
-            ? !!selectedTrial.parameters.includesExtensions
-            : includesExtensions
-        );
-        setExtensionType(selectedTrial.parameters?.extensionType || "");
+    if (selectedTrial) {
+      setIsLoadingTrial(true);
+      setTrialName(selectedTrial.name || "");
+      setIncludeExtensions(
+        selectedTrial.parameters?.includesExtensions !== undefined
+          ? !!selectedTrial.parameters.includesExtensions
+          : includesExtensions
+      );
+      setExtensionType(selectedTrial.parameters?.extensionType || "");
 
-        // Restaura CSV y columnas si existen
-        setColumnMapping(selectedTrial.columnMapping || {});
+      // Restaura CSV y columnas si existen
+      setColumnMapping(selectedTrial.columnMapping || {});
+      setCsvJson(selectedTrial.csvJson || []);
+      setCsvColumns(selectedTrial.csvColumns || []);
 
-        // Priority to loop CSV if exists, otherwise trial CSV
-        const { csvJson: effectiveCsvJson, csvColumns: effectiveCsvColumns } =
-          await getLoopCsvData(selectedTrial);
+      // Csv loop
+      const { csvJson: effectiveCsvJson, csvColumns: effectiveCsvColumns } =
+        getLoopCsvData(selectedTrial);
+      setCsvJson(effectiveCsvJson);
+      setCsvColumns(effectiveCsvColumns);
 
-        setCsvJson(effectiveCsvJson);
-        setCsvColumns(effectiveCsvColumns);
+      setOrders(selectedTrial.orders || false);
+      setOrderColumns(selectedTrial.orderColumns || []);
+      setStimuliOrders(selectedTrial.stimuliOrders || []);
+      setCategories(selectedTrial.categories || false);
+      setCategoryColumn(selectedTrial.categoryColumn || "");
+      setCategoryData(selectedTrial.categoryData || []);
 
-        setOrders(selectedTrial.orders || false);
-        setOrderColumns(selectedTrial.orderColumns || []);
-        setStimuliOrders(selectedTrial.stimuliOrders || []);
-        setCategories(selectedTrial.categories || false);
-        setCategoryColumn(selectedTrial.categoryColumn || "");
-        setCategoryData(selectedTrial.categoryData || []);
-
-        setTimeout(() => {
-          setIsLoadingTrial(false);
-          isInitialFileLoad.current = false; // Permitir guardado después de cargar el trial
-        }, 100); // 500 en producción
-      }
-    };
-    loadTrialData();
+      setTimeout(() => {
+        setIsLoadingTrial(false);
+        isInitialFileLoad.current = false; // Permitir guardado después de cargar el trial
+      }, 100); // 500 en producción
+    }
 
     // eslint-disable-next-line
   }, [selectedTrial]);
@@ -181,6 +173,7 @@ function TrialsConfig({ pluginName }: Props) {
         return;
       }
 
+      const { getLoop } = useTrials();
       const loop = await getLoop(selectedTrial.parentLoopId);
       setParentLoop(loop);
     };
@@ -227,115 +220,7 @@ function TrialsConfig({ pluginName }: Props) {
 
   const canSave = !!trialName && !isLoadingTrial;
 
-  // Función auxiliar para mostrar indicador de guardado
-  const showSaveIndicator = (fieldName?: string) => {
-    setSavingField(fieldName || null);
-    setSaveIndicator(true);
-    setTimeout(() => {
-      setSaveIndicator(false);
-      setSavingField(null);
-    }, 1500);
-  };
-
-  // Guardar campo individual (para autoguardado granular)
-  const saveField = async (fieldName: string, value: any) => {
-    if (!selectedTrial) return;
-    const success = await updateTrialField(selectedTrial.id, fieldName, value);
-    if (success) {
-      showSaveIndicator(fieldName);
-    }
-  };
-
-  // Guardar nombre del trial
-  const saveName = async () => {
-    if (!selectedTrial || !trialName) return;
-    await saveField("name", trialName);
-  };
-
-  // Guardar columnMapping (con parámetros para evitar closures)
-  const saveColumnMapping = async (key: string, value: any) => {
-    if (!selectedTrial) return;
-    // Actualizar solo el campo específico del columnMapping
-    const updatedMapping =
-      value !== undefined
-        ? { ...selectedTrial.columnMapping, [key]: value }
-        : (() => {
-            const { [key]: removed, ...rest } =
-              selectedTrial.columnMapping || {};
-            return rest;
-          })();
-    await saveField("columnMapping", updatedMapping);
-  };
-
-  // Guardar CSV data
-  const saveCsvData = async (dataToSave?: any[], colsToSave?: string[]) => {
-    if (!selectedTrial) return;
-
-    const finalJson = dataToSave !== undefined ? dataToSave : csvJson;
-    const finalCols = colsToSave !== undefined ? colsToSave : csvColumns;
-
-    await updateTrialField(
-      selectedTrial.id,
-      "csvJson",
-      finalJson ? [...finalJson] : []
-    );
-    await updateTrialField(
-      selectedTrial.id,
-      "csvColumns",
-      finalCols ? [...finalCols] : []
-    );
-    showSaveIndicator("csv");
-  };
-
-  // Wrapper para handleCsvUpload que guarda automáticamente
-  const onHandleCsvUploadWrapped = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleCsvUpload(e, (newData, newCols) => {
-      saveCsvData(newData, newCols);
-    });
-  };
-
-  // Guardar extensions (recibe valores como parámetros para evitar closures)
-  const saveExtensions = async (includeExt: boolean, extType: string) => {
-    if (!selectedTrial) return;
-    await saveField("parameters", {
-      includesExtensions: includeExt,
-      extensionType: extType,
-    });
-  };
-
-  // Guardar trial orders (1 solo request con todos los campos)
-  const saveTrialOrders = async (
-    ord: boolean,
-    ordCols: string[],
-    stimOrd: any[],
-    cat: boolean,
-    catCol: string,
-    catData: any[]
-  ) => {
-    if (!selectedTrial) return;
-
-    // Usar updateTrial para 1 solo PATCH con todos los campos
-    const updatedTrial = await updateTrial(selectedTrial.id, {
-      orders: ord,
-      orderColumns: ordCols,
-      stimuliOrders: stimOrd,
-      categories: cat,
-      categoryColumn: catCol,
-      categoryData: catData,
-    });
-
-    if (updatedTrial) {
-      showSaveIndicator("orders");
-    }
-  };
-
-  // Guardar trialCode (generado)
-  const saveTrialCode = async () => {
-    if (!selectedTrial) return;
-    await saveField("trialCode", genTrialCode());
-  };
-
-  // Guardar TODO (botón manual - 1 solo request con todos los campos)
+  // guardar y actualizar el estado global del ensayo (estructura plana)
   const handleSave = async () => {
     if (!canSave || !selectedTrial) return;
 
@@ -343,8 +228,8 @@ function TrialsConfig({ pluginName }: Props) {
       name: trialName,
       plugin: pluginName,
       parameters: {
-        includesExtensions,
-        extensionType,
+        includesExtensions: includesExtensions,
+        extensionType: extensionType,
       },
       trialCode: genTrialCode(),
       columnMapping: { ...columnMapping },
@@ -366,8 +251,14 @@ function TrialsConfig({ pluginName }: Props) {
       );
       if (updatedTrial) {
         setSelectedTrial(updatedTrial);
+        console.log("Trial updated:", updatedTrial);
       }
-      showSaveIndicator();
+
+      // Mostrar indicador de guardado
+      setSaveIndicator(true);
+      setTimeout(() => {
+        setSaveIndicator(false);
+      }, 2000);
     } catch (error) {
       console.error("Error saving trial:", error);
     }
@@ -385,7 +276,6 @@ function TrialsConfig({ pluginName }: Props) {
     if (csvJson.length === 0) return;
     setCsvJson([]);
     setCsvColumns([]);
-    saveCsvData([], []);
   };
 
   return (
@@ -413,7 +303,7 @@ function TrialsConfig({ pluginName }: Props) {
             border: "1px solid #22c55e",
           }}
         >
-          ✓ Saved {savingField ? `(${savingField})` : "Trial"}
+          ✓ Saved Trial
         </div>
         {/* Trial name */}
         <TrialMetaConfig
@@ -421,7 +311,6 @@ function TrialsConfig({ pluginName }: Props) {
           setTrialName={setTrialName}
           selectedTrial={selectedTrial}
           setSelectedTrial={setSelectedTrial}
-          onSave={saveName}
         />
         {/* CSV and XLSX section */}
         {selectedTrial?.csvFromLoop ? (
@@ -459,7 +348,7 @@ function TrialsConfig({ pluginName }: Props) {
           </div>
         ) : (
           <CsvUploader
-            onCsvUpload={onHandleCsvUploadWrapped}
+            onCsvUpload={handleCsvUpload}
             csvJson={csvJson}
             onDeleteCSV={deleteCsv}
           />
@@ -617,18 +506,8 @@ function TrialsConfig({ pluginName }: Props) {
                     // Replace columnMapping with the complete config from Konva designer
                     // This includes both components and General Settings parameters
                     setColumnMapping(config);
-                    // Also trigger backend save when manually saving/closing
-                    saveField("columnMapping", config);
                     setShowKonvaDesigner(false);
                   }}
-                  onAutoSave={(config) => {
-                    // Autosave logic: update state and backend without closing
-                    setColumnMapping(config);
-                    saveField("columnMapping", config);
-                  }}
-                  isAutoSaving={
-                    saveIndicator && savingField === "columnMapping"
-                  }
                   parameters={parameters}
                   columnMapping={columnMapping}
                   csvColumns={csvColumns}
@@ -643,7 +522,6 @@ function TrialsConfig({ pluginName }: Props) {
                 setColumnMapping={setColumnMapping}
                 csvColumns={csvColumns}
                 uploadedFiles={uploadedFiles}
-                onSave={saveColumnMapping}
               />
             )}
           </div>
@@ -655,7 +533,6 @@ function TrialsConfig({ pluginName }: Props) {
             setColumnMapping={setColumnMapping}
             csvColumns={csvColumns}
             uploadedFiles={uploadedFiles}
-            onSave={saveColumnMapping}
           />
         )}{" "}
         <TrialOrders
@@ -666,14 +543,11 @@ function TrialsConfig({ pluginName }: Props) {
           setOrderColumns={setOrderColumns}
           mapOrdersFromCsv={mapOrdersFromCsv}
           csvJson={csvJson}
-          stimuliOrders={stimuliOrders}
           categories={categories}
           setCategories={setCategories}
           setCategoryColumn={setCategoryColumn}
           categoryColumn={categoryColumn}
-          categoryData={categoryData}
           mapCategoriesFromCsv={mapCategoriesFromCsv}
-          onSave={saveTrialOrders}
         ></TrialOrders>
         {/* Extensions */}
         <ExtensionsConfig
@@ -684,7 +558,6 @@ function TrialsConfig({ pluginName }: Props) {
           setExtensionType={setExtensionType}
           pluginName={pluginName}
           columnMapping={columnMapping}
-          onSave={saveExtensions}
         ></ExtensionsConfig>
       </div>
 
