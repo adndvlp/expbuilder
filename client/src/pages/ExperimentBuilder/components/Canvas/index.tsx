@@ -41,7 +41,7 @@ function Canvas({}: Props) {
     updateTrial,
     updateLoop,
     updateTimeline,
-    getLoopTrialsMetadata,
+    getLoopTimeline,
   } = useTrials();
 
   const [showLoopModal, setShowLoopModal] = useState(false);
@@ -123,7 +123,7 @@ function Canvas({}: Props) {
   const handleOpenLoop = async (loopId: string) => {
     try {
       const loopData = await getLoop(loopId);
-      const metadata = await getLoopTrialsMetadata(loopId);
+      const metadata = await getLoopTimeline(loopId);
 
       if (loopData) {
         setOpenLoop(loopData);
@@ -138,7 +138,7 @@ function Canvas({}: Props) {
   const handleRefreshLoopMetadata = async () => {
     if (!openLoop) return;
     try {
-      const metadata = await getLoopTrialsMetadata(openLoop.id);
+      const metadata = await getLoopTimeline(openLoop.id);
       setOpenLoopMetadata(metadata);
     } catch (error) {
       console.error("Error refreshing loop metadata:", error);
@@ -360,7 +360,7 @@ function Canvas({}: Props) {
           <LoopSubCanvas
             loopId={openLoop.id}
             loopName={openLoop.name}
-            trialsMetadata={openLoopMetadata}
+            loopTimeline={openLoopMetadata}
             onRefreshMetadata={handleRefreshLoopMetadata}
             isDark={isDark}
             selectedTrial={selectedTrial}

@@ -106,13 +106,15 @@ function WebGazer({ webgazerPlugins }: Props) {
   // Autosave
   const [isLoadingTrial, setIsLoadingTrial] = useState(false);
   const [saveIndicator, setSaveIndicator] = useState(false);
+  const [savingField, setSavingField] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialFileLoad = useRef(false);
 
   const { csvJson, setCsvJson, csvColumns, setCsvColumns, handleCsvUpload } =
     useCsvData();
 
-  const { updateTrial, selectedTrial, setSelectedTrial } = useTrials();
+  const { updateTrial, updateTrialField, selectedTrial, setSelectedTrial } =
+    useTrials();
 
   const [trialName, setTrialName] = useState<string>("");
   const { columnMapping, setColumnMapping } = useColumnMapping({});
@@ -270,84 +272,156 @@ function WebGazer({ webgazerPlugins }: Props) {
   // guardar y actualizar el estado global del ensayo
 
   const canSave = !!trialName && !isLoadingTrial && !!selectedTrial;
-  const handleSave = useCallback(
-    async (force = false) => {
-      if (!canSave || !selectedTrial) return;
 
-      if (isInitialFileLoad.current) {
-        isInitialFileLoad.current = false;
-        return;
-      }
+  // Función auxiliar para mostrar indicador de guardado
+  const showSaveIndicator = (fieldName?: string) => {
+    setSavingField(fieldName || null);
+    setSaveIndicator(true);
+    setTimeout(() => {
+      setSaveIndicator(false);
+      setSavingField(null);
+    }, 1500);
+  };
 
-      const updatedData = {
-        plugin: "webgazer",
-        parameters: {
-          include_instructions: include_instructions,
-          minimum_percent: minimumPercentAcceptable,
-        },
-        trialCode: trialCode,
-        columnMapping: mappedColumns,
-        csvJson: [...csvJson],
-        csvColumns: [...csvColumns],
-      };
+  // Guardar campo individual
+  const saveField = async (fieldName: string, value: any) => {
+    if (!selectedTrial) return;
+    const success = await updateTrialField(selectedTrial.id, fieldName, value);
+    if (success) {
+      showSaveIndicator(fieldName);
+    }
+  };
 
-      // Check if changed (unless forced)
-      if (!force) {
-        const hasChanged =
-          selectedTrial.plugin !== "webgazer" ||
-          !isEqual(selectedTrial.parameters, updatedData.parameters) ||
-          !isEqual(selectedTrial.columnMapping, updatedData.columnMapping) ||
-          !isEqual(selectedTrial.csvJson, updatedData.csvJson) ||
-          !isEqual(selectedTrial.csvColumns, updatedData.csvColumns) ||
-          selectedTrial.trialCode !== updatedData.trialCode;
+  // Guardar nombre
+  const saveName = async () => {
+    if (!selectedTrial || !trialName) return;
+    await saveField("name", trialName);
+  };
 
-        if (!hasChanged) return;
-      }
+  // Guardar CSV
+  const saveCsvData = async (dataToSave?: any[], colsToSave?: string[]) => {
+    if (!selectedTrial) return;
 
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    const finalJson = dataToSave !== undefined ? dataToSave : csvJson;
+    const finalCols = colsToSave !== undefined ? colsToSave : csvColumns;
 
-      timeoutRef.current = setTimeout(async () => {
-        try {
-          const updated = await updateTrial(selectedTrial.id, updatedData);
-          if (updated) {
-            setSelectedTrial(updated);
-          }
+    await updateTrialField(
+      selectedTrial.id,
+      "csvJson",
+      finalJson ? [...finalJson] : []
+    );
+    await updateTrialField(
+      selectedTrial.id,
+      "csvColumns",
+      finalCols ? [...finalCols] : []
+    );
+    showSaveIndicator("csv");
+  };
 
-          setSaveIndicator(true);
-          setTimeout(() => {
-            setSaveIndicator(false);
-          }, 2000);
-        } catch (error) {
-          console.error("Error saving trial:", error);
-        }
-      }, 1000);
-    },
-    [
-      canSave,
-      selectedTrial,
-      trialName,
-      include_instructions,
-      minimumPercentAcceptable,
-      trialCode,
-      mappedColumns,
-      csvJson,
-      csvColumns,
-      updateTrial,
-      setSelectedTrial,
-    ]
-  );
+  // Guardar Column Mapping (compartido por todas las fases)
+  const saveColumnMapping = async (key: string, value: any) => {
+    if (!selectedTrial) return;
+    const updatedMapping =
+      value !== undefined
+        ? { ...columnMapping, [key]: value }
+        : (() => {
+            const { [key]: removed, ...rest } = columnMapping || {};
+            return rest;
+          })();
 
-  useEffect(() => {
-    handleSave();
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    await saveField("columnMapping", updatedMapping);
+  };
+
+  // Guardar Instructions (complejo porque depende de múltiples fases)
+  const saveInstructions = async (changedPlugin: string, newValue: boolean) => {
+    if (!selectedTrial) return;
+    const updatedInstructions = {
+      ...include_instructions,
+      [changedPlugin]: newValue,
     };
-  }, [handleSave]);
+    await saveField("parameters", {
+      include_instructions: updatedInstructions,
+      minimum_percent: minimumPercentAcceptable,
+    });
+  };
+
+  // Guardar Minimum Percent
+  const saveMinimumPercent = async (newValue: number) => {
+    if (!selectedTrial) return;
+    await saveField("parameters", {
+      include_instructions,
+      minimum_percent: newValue,
+    });
+  };
+
+  // Guardar Trial Code (debería llamarse cuando algo cambia que afecta el código)
+  // Nota: Al usar updateTrialField para partes individuales, el backend no recalcula el trialCode automáticamente?
+  // Si el trialCode se guarda en BBDD, necesitamos actualizarlo también.
+  // Sin embargo, trialCode depende de TODO.
+  // Para simplificar, podríamos recalcular y guardar trialCode cada vez que guardamos otra cosa,
+  // pero eso requeriría tener el estado más reciente.
+  // Una alternativa es usar un useEffect SOLO para trialCode?
+  // O simplemente invocar saveTrialCode en los handlers específicos.
+
+  const saveTrialCode = async () => {
+    if (!selectedTrial) return;
+    // Recalculamos usando el useMemo actual
+    await saveField("trialCode", trialCode);
+  };
+
+  // Wrapper para handleCsvUpload que guarda automáticamente
+  const onHandleCsvUploadWrapped = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleCsvUpload(e, (newData, newCols) => {
+      saveCsvData(newData, newCols);
+    });
+  };
+
+  const handleSave = async (force = false) => {
+    // Implementación manual "Save All" si se requiere, o para el botón "Save"
+    if (!canSave || !selectedTrial) return;
+
+    const updatedData = {
+      name: trialName,
+      plugin: "webgazer",
+      parameters: {
+        include_instructions: include_instructions,
+        minimum_percent: minimumPercentAcceptable,
+      },
+      trialCode: trialCode,
+      columnMapping: mappedColumns,
+      csvJson: [...csvJson],
+      csvColumns: [...csvColumns],
+    };
+
+    try {
+      const updated = await updateTrial(selectedTrial.id, updatedData);
+      if (updated) {
+        setSelectedTrial(updated);
+      }
+      showSaveIndicator();
+    } catch (error) {
+      console.error("Error saving trial:", error);
+    }
+  };
+
+  // Trigger trialCode save when dependencies change (debounced)
+  useEffect(() => {
+    if (isInitialFileLoad.current) {
+      isInitialFileLoad.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      saveTrialCode();
+    }, 1000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line
+  }, [trialCode]); // Solo guardar trialCode cuando cambie el código generado
 
   const deleteCsv = () => {
     if (csvJson.length === 0) return;
     setCsvJson([]);
     setCsvColumns([]);
+    saveCsvData([], []);
   };
 
   return (
@@ -370,7 +444,7 @@ function WebGazer({ webgazerPlugins }: Props) {
           border: "1px solid #22c55e",
         }}
       >
-        ✓ Saved Trial
+        ✓ Saved {savingField ? `(${savingField})` : "Trial"}
       </div>
       <div className="mb-1 input-section p-4 border rounded">
         <h4 className="text-lg font-bold mb-3">WebGazer</h4>
@@ -381,11 +455,12 @@ function WebGazer({ webgazerPlugins }: Props) {
           setTrialName={setTrialName}
           selectedTrial={selectedTrial}
           setSelectedTrial={setSelectedTrial}
+          onSave={saveName}
         />
 
         {/* CSV and XLSX section */}
         <CsvUploader
-          onCsvUpload={handleCsvUpload}
+          onCsvUpload={onHandleCsvUploadWrapped}
           csvJson={csvJson}
           onDeleteCSV={deleteCsv}
         />
@@ -395,11 +470,15 @@ function WebGazer({ webgazerPlugins }: Props) {
 
             <InstructionsConfig
               includeInstructions={phase.includeInstructions}
-              setIncludeInstructions={phase.setIncludeInstructions}
+              setIncludeInstructions={(val) => {
+                phase.setIncludeInstructions(val);
+                saveInstructions(phase.pluginName, val);
+              }}
               instructionsFields={phase.fieldGroups.instructions}
               columnMapping={phase.columnMapping}
               setColumnMapping={phase.setColumnMapping}
               csvColumns={csvColumns}
+              onSave={saveColumnMapping}
             />
 
             {phase.pluginName !== recalibrateWebGazer && (
@@ -411,6 +490,7 @@ function WebGazer({ webgazerPlugins }: Props) {
                   columnMapping={phase.columnMapping}
                   setColumnMapping={phase.setColumnMapping}
                   csvColumns={csvColumns}
+                  onSave={saveColumnMapping}
                 />
               </>
             )}
@@ -434,6 +514,13 @@ function WebGazer({ webgazerPlugins }: Props) {
                     const setPercent =
                       recalibratePhase.setMinimumPercentAcceptable;
                     setPercent(val);
+                  }}
+                  onBlur={(e) => {
+                    const val = Math.max(
+                      1,
+                      Math.floor(Number(e.target.value)) || 1
+                    );
+                    saveMinimumPercent(val);
                   }}
                 ></input>
               </div>

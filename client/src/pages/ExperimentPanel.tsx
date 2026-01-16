@@ -53,20 +53,19 @@ function ExperimentPanel() {
         Experiment ID:{" "}
         <span style={{ fontWeight: "normal", fontSize: 18 }}>{id}</span>
       </p>
-
       <button
         className="gradient-btn"
-        onClick={() => navigate(`/home/experiment/${id}/builder`)}
         style={{ marginTop: 24 }}
-      >
-        Go to Builder
-      </button>
-      <button
-        className="gradient-btn"
-        style={{ marginTop: 16, marginLeft: 16 }}
         onClick={() => navigate("/home")}
       >
         Go to Home
+      </button>
+      <button
+        className="gradient-btn"
+        onClick={() => navigate(`/home/experiment/${id}/builder`)}
+        style={{ marginTop: 16, marginLeft: 16 }}
+      >
+        Go to Builder
       </button>
 
       {/* Tabs */}
