@@ -208,7 +208,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     // Load response components
     if (columnMapping.response_components?.value) {
       const responseArray = Array.isArray(
-        columnMapping.response_components.value
+        columnMapping.response_components.value,
       )
         ? columnMapping.response_components.value
         : [columnMapping.response_components.value];
@@ -422,7 +422,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
 
             if (newConfig.coordinates?.value) {
               const canvasCoords = fromJsPsychCoords(
-                newConfig.coordinates.value
+                newConfig.coordinates.value,
               );
               updated.x = canvasCoords.x;
               updated.y = canvasCoords.y;
@@ -457,7 +457,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
         return updatedComponents;
       });
     },
-    [selectedId, onAutoSave, columnMapping]
+    [selectedId, onAutoSave, columnMapping],
   );
 
   // Helper function to build components config from current state
@@ -549,7 +549,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   const handleDrop = (
     e: React.DragEvent,
     fileUrl: string,
-    type: ComponentType
+    type: ComponentType,
   ) => {
     e.preventDefault();
     const stage = stageRef.current;
@@ -562,6 +562,16 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     // Convert to jsPsych coordinates
     const coords = toJsPsychCoords(x, y);
 
+    // Generate name based on existing components of the same type
+    let nameCounter = 1;
+    let newName = `${type}_${nameCounter}`;
+    const existingNames = new Set(components.map((c) => c.config?.name?.value));
+
+    while (existingNames.has(newName)) {
+      nameCounter++;
+      newName = `${type}_${nameCounter}`;
+    }
+
     const newComponent: TrialComponent = {
       id: `${type}-${Date.now()}`,
       type,
@@ -571,6 +581,10 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       height: 0,
       config: {
         ...getDefaultConfig(type),
+        name: {
+          source: "typed",
+          value: newName,
+        },
         coordinates: {
           source: "typed",
           value: coords,
@@ -672,7 +686,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             if (newAttrs.x !== undefined || newAttrs.y !== undefined) {
               const coords = toJsPsychCoords(
                 newAttrs.x ?? updated.x,
-                newAttrs.y ?? updated.y
+                newAttrs.y ?? updated.y,
               );
               updated.config = {
                 ...updated.config,
@@ -1106,7 +1120,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
                     ) : componentMetadata ? (
                       <ParameterMapper
                         parameters={Object.entries(
-                          componentMetadata.parameters
+                          componentMetadata.parameters,
                         ).map(([key, param]) => ({
                           key,
                           label:
@@ -1125,8 +1139,8 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
                         onComponentConfigChange={(compId, config) => {
                           setComponents((prev) =>
                             prev.map((c) =>
-                              c.id === compId ? { ...c, config } : c
-                            )
+                              c.id === compId ? { ...c, config } : c,
+                            ),
                           );
                         }}
                       />

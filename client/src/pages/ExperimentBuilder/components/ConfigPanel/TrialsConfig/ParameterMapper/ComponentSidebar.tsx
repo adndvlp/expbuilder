@@ -14,7 +14,7 @@ type Props = {
   CANVAS_HEIGHT: number;
   toJsPsychCoords: (
     x: number,
-    y: number
+    y: number,
   ) => {
     x: number;
     y: number;
@@ -103,6 +103,16 @@ function ComponentSidebar({
     // Convert to jsPsych coordinates
     const coords = toJsPsychCoords(x, y);
 
+    // Generate name based on existing components of the same type
+    let nameCounter = 1;
+    let newName = `${type}_${nameCounter}`;
+    const existingNames = new Set(components.map((c) => c.config?.name?.value));
+
+    while (existingNames.has(newName)) {
+      nameCounter++;
+      newName = `${type}_${nameCounter}`;
+    }
+
     // Determine default dimensions based on component type
     let width = 200;
     let height = 50;
@@ -127,6 +137,10 @@ function ComponentSidebar({
       height,
       config: {
         ...getDefaultConfig(type),
+        name: {
+          source: "typed",
+          value: newName,
+        },
         coordinates: {
           source: "typed",
           value: coords,
@@ -222,7 +236,7 @@ function ComponentSidebar({
                         "VideoComponent",
                         "AudioComponent",
                         "HtmlComponent",
-                      ].includes(type)
+                      ].includes(type),
                     )
                     .map(({ type, label }) => (
                       <div key={type}>
@@ -283,11 +297,11 @@ function ComponentSidebar({
                                       onDragStart={(e) => {
                                         e.dataTransfer.setData(
                                           "fileUrl",
-                                          imgUrl
+                                          imgUrl,
                                         );
                                         e.dataTransfer.setData(
                                           "type",
-                                          "ImageComponent"
+                                          "ImageComponent",
                                         );
                                       }}
                                       style={{
@@ -372,11 +386,11 @@ function ComponentSidebar({
                                       onDragStart={(e) => {
                                         e.dataTransfer.setData(
                                           "fileUrl",
-                                          vidUrl
+                                          vidUrl,
                                         );
                                         e.dataTransfer.setData(
                                           "type",
-                                          "VideoComponent"
+                                          "VideoComponent",
                                         );
                                       }}
                                       style={{
@@ -475,11 +489,11 @@ function ComponentSidebar({
                                       onDragStart={(e) => {
                                         e.dataTransfer.setData(
                                           "fileUrl",
-                                          audUrl
+                                          audUrl,
                                         );
                                         e.dataTransfer.setData(
                                           "type",
-                                          "AudioComponent"
+                                          "AudioComponent",
                                         );
                                       }}
                                       style={{
@@ -591,7 +605,7 @@ function ComponentSidebar({
                         "SketchpadComponent",
                         "SurveyComponent",
                         "AudioResponseComponent",
-                      ].includes(type)
+                      ].includes(type),
                     )
                     .map(({ type, label }) => (
                       <div key={type}>
