@@ -35,7 +35,7 @@ type ParameterMapperProps = {
   selectedComponentId?: string | null; // ID of selected component in Konva
   onComponentConfigChange?: (
     componentId: string,
-    config: Record<string, any>
+    config: Record<string, any>,
   ) => void;
   // Autoguardado
   onSave?: (key: string, value: any) => void; // Se llama con key y value para evitar closures
@@ -136,14 +136,14 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
 
       if (buttons.length === 0) {
         alert(
-          "No buttons found in the template. Please add at least one button."
+          "No buttons found in the template. Please add at least one button.",
         );
         return;
       }
 
       // Extract choices from button text content
       const extractedChoices = buttons.map(
-        (btn) => btn.textContent?.trim() || "Button"
+        (btn) => btn.textContent?.trim() || "Button",
       );
 
       // Store the button elements as templates indexed by their position
@@ -526,12 +526,19 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                         step="any"
                         className="w-full p-2 border rounded mt-2"
                         value={
-                          typeof entry.value === "string" ||
+                          localInputValues[key] ??
+                          (typeof entry.value === "string" ||
                           typeof entry.value === "number"
                             ? entry.value
-                            : ""
+                            : "")
                         }
                         onChange={(e) => {
+                          setLocalInputValues((prev) => ({
+                            ...prev,
+                            [key]: e.target.value,
+                          }));
+                        }}
+                        onBlur={(e) => {
                           const rawValue = Number(e.target.value);
                           const newValue = {
                             source: "typed" as const,
@@ -544,6 +551,11 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                           if (onSave) {
                             setTimeout(() => onSave(key, newValue), 100);
                           }
+                          setLocalInputValues((prev) => {
+                            const newState = { ...prev };
+                            delete newState[key];
+                            return newState;
+                          });
                         }}
                       />
                     ) : type.endsWith("_array") &&
@@ -603,7 +615,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                               .split(",")
 
                               .map((item) =>
-                                item.trim().replace(/\s{2,}/g, " ")
+                                item.trim().replace(/\s{2,}/g, " "),
                               )
                               .filter((item) => item.length > 0);
 
@@ -767,7 +779,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                           try {
                             // eslint-disable-next-line no-new-func
                             finalValue = Function(
-                              '"use strict";return (' + input + ")"
+                              '"use strict";return (' + input + ")",
                             )();
                           } catch (err) {
                             // Si falla, deja el texto como string
@@ -818,9 +830,16 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                           rows={4}
                           placeholder={`Type a function for ${label.toLowerCase()}`}
                           value={
-                            typeof entry.value === "string" ? entry.value : ""
+                            localInputValues[key] ??
+                            (typeof entry.value === "string" ? entry.value : "")
                           }
                           onChange={(e) => {
+                            setLocalInputValues((prev) => ({
+                              ...prev,
+                              [key]: e.target.value,
+                            }));
+                          }}
+                          onBlur={(e) => {
                             const newValue = {
                               source: "typed" as const,
                               value: e.target.value,
@@ -832,6 +851,11 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                             if (onSave) {
                               setTimeout(() => onSave(key, newValue), 100);
                             }
+                            setLocalInputValues((prev) => {
+                              const newState = { ...prev };
+                              delete newState[key];
+                              return newState;
+                            });
                           }}
                         />
                       )
@@ -845,18 +869,25 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                           step="any"
                           className="w-full p-2 border rounded mt-1"
                           value={
-                            entry.value &&
+                            localInputValues[`${key}_x`] ??
+                            (entry.value &&
                             typeof entry.value === "object" &&
                             "x" in entry.value &&
                             typeof (entry.value as any).x === "number"
                               ? (entry.value as any).x
-                              : 0
+                              : 0)
                           }
                           onChange={(e) => {
+                            setLocalInputValues((prev) => ({
+                              ...prev,
+                              [`${key}_x`]: e.target.value,
+                            }));
+                          }}
+                          onBlur={(e) => {
                             const rawValue = Number(e.target.value);
                             const clampedValue = Math.max(
                               -1,
-                              Math.min(1, rawValue)
+                              Math.min(1, rawValue),
                             );
                             const coordValue = {
                               ...(entry.value &&
@@ -878,6 +909,11 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                             if (onSave) {
                               setTimeout(() => onSave(key, newValue), 100);
                             }
+                            setLocalInputValues((prev) => {
+                              const newState = { ...prev };
+                              delete newState[`${key}_x`];
+                              return newState;
+                            });
                           }}
                         />
 
@@ -889,18 +925,25 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                           step="any"
                           className="w-full p-2 border rounded mt-1"
                           value={
-                            entry.value &&
+                            localInputValues[`${key}_y`] ??
+                            (entry.value &&
                             typeof entry.value === "object" &&
                             "y" in entry.value &&
                             typeof (entry.value as any).y === "number"
                               ? (entry.value as any).y
-                              : 0
+                              : 0)
                           }
                           onChange={(e) => {
+                            setLocalInputValues((prev) => ({
+                              ...prev,
+                              [`${key}_y`]: e.target.value,
+                            }));
+                          }}
+                          onBlur={(e) => {
                             const rawValue = Number(e.target.value);
                             const clampedValue = Math.max(
                               -1,
-                              Math.min(1, rawValue)
+                              Math.min(1, rawValue),
                             );
                             const coordValue = {
                               ...(entry.value &&
@@ -922,6 +965,11 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                             if (onSave) {
                               setTimeout(() => onSave(key, newValue), 100);
                             }
+                            setLocalInputValues((prev) => {
+                              const newState = { ...prev };
+                              delete newState[`${key}_y`];
+                              return newState;
+                            });
                           }}
                         />
                       </>
@@ -931,12 +979,19 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                         className="w-full p-2 border rounded mt-2"
                         placeholder={`Type a value for ${label.toLowerCase()}`}
                         value={
-                          typeof entry.value === "string" ||
+                          localInputValues[key] ??
+                          (typeof entry.value === "string" ||
                           typeof entry.value === "number"
                             ? entry.value
-                            : ""
+                            : "")
                         }
                         onChange={(e) => {
+                          setLocalInputValues((prev) => ({
+                            ...prev,
+                            [key]: e.target.value,
+                          }));
+                        }}
+                        onBlur={(e) => {
                           const newValue = {
                             source: "typed" as const,
                             value: e.target.value,
@@ -948,6 +1003,11 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                           if (onSave) {
                             setTimeout(() => onSave(key, newValue), 100);
                           }
+                          setLocalInputValues((prev) => {
+                            const newState = { ...prev };
+                            delete newState[key];
+                            return newState;
+                          });
                         }}
                       />
                     )}
