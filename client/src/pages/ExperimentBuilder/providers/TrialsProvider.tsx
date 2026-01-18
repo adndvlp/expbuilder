@@ -511,7 +511,71 @@ export default function TrialsProvider({ children }: Props) {
         return null;
       }
     },
-    [experimentID, selectedLoop, getTimeline],
+    [experimentID, selectedLoop, getTimeline, getLoop],
+  );
+
+  // Actualización granular de un solo campo del loop (optimizado para autoguardado)
+  const updateLoopField = useCallback(
+    async (
+      id: string | number,
+      fieldName: string,
+      value: any,
+      updateSelectedLoop: boolean = true,
+    ): Promise<boolean> => {
+      try {
+        const response = await fetch(
+          `${API_URL}/api/loop/${experimentID}/${id}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ [fieldName]: value }),
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to update ${fieldName}`);
+        }
+
+        const data = await response.json();
+        const updatedLoop = data.loop;
+
+        // Optimistic UI: actualizar timeline si es campo name o branches
+        if (fieldName === "name" || fieldName === "branches") {
+          setTimeline((prev) =>
+            prev.map((item) =>
+              item.id === id && item.type === "loop"
+                ? {
+                    ...item,
+                    name: updatedLoop.name,
+                    branches: updatedLoop.branches || [],
+                    trials: updatedLoop.trials || [],
+                  }
+                : item,
+            ),
+          );
+        }
+
+        // Actualizar selectedLoop si es el que está seleccionado y se solicita
+        if (updateSelectedLoop && selectedLoop?.id === id) {
+          setSelectedLoop(updatedLoop);
+        }
+
+        return true;
+      } catch (error) {
+        console.error(`Error updating ${fieldName}:`, error);
+
+        // Si falla, recargar el loop completo para mantener consistencia
+        if (selectedLoop?.id === id) {
+          const freshLoop = await getLoop(id);
+          if (freshLoop) {
+            setSelectedLoop(freshLoop);
+          }
+        }
+
+        return false;
+      }
+    },
+    [experimentID, selectedLoop, getLoop],
   );
 
   const deleteLoop = useCallback(
@@ -649,6 +713,7 @@ export default function TrialsProvider({ children }: Props) {
         createLoop,
         getLoop,
         updateLoop,
+        updateLoopField,
         deleteLoop,
         updateTimeline,
         getTimeline,

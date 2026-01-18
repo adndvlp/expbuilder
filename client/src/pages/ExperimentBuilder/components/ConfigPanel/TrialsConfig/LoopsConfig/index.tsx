@@ -11,29 +11,32 @@ import ConditionalLoop from "./ConditionalLoop";
 type Props = { loop?: Loop };
 
 function LoopsConfig({ loop }: Props) {
-  const { updateLoop, deleteLoop } = useTrials();
+  const { updateLoop, updateLoopField, deleteLoop } = useTrials();
 
   const [isLoadingLoop, setIsLoadingLoop] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [saveIndicator, setSaveIndicator] = useState(false);
+  const [savingField, setSavingField] = useState<string | null>(null);
   const [showConditionalModal, setShowConditionalModal] = useState(false);
 
   const [repetitions, setRepetitions] = useState<number>(
-    loop?.repetitions || 1
+    loop?.repetitions || 1,
   );
   const [randomize, setRandomize] = useState<boolean>(loop?.randomize || false);
   const [isConditionalLoop, setIsConditionalLoop] = useState<boolean>(
-    loop?.isConditionalLoop || false
+    loop?.isConditionalLoop || false,
   );
   const [loopConditions, setLoopConditions] = useState<LoopCondition[]>(
-    loop?.loopConditions || []
+    loop?.loopConditions || [],
   );
 
   const { csvJson, setCsvJson, csvColumns, setCsvColumns, handleCsvUpload } =
     useCsvData();
   const deleteCsv = () => {
+    if (csvJson.length === 0) return;
     setCsvJson([]);
     setCsvColumns([]);
+    saveCsvData([], []);
   };
 
   useEffect(() => {
@@ -57,12 +60,6 @@ function LoopsConfig({ loop }: Props) {
     setTimeout(() => setIsLoadingLoop(false), 100); // 500 en producción
   }, [loop]);
 
-  const handleCsvUploadLoop = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    handleCsvUpload(e);
-  };
-
   const {
     orders,
     setOrders,
@@ -79,6 +76,80 @@ function LoopsConfig({ loop }: Props) {
   } = useTrialOrders();
 
   const canSave = !!loop && !isLoadingLoop;
+
+  // Función auxiliar para mostrar indicador de guardado
+  const showSaveIndicator = (fieldName?: string) => {
+    setSavingField(fieldName || null);
+    setSaveIndicator(true);
+    setTimeout(() => {
+      setSaveIndicator(false);
+      setSavingField(null);
+    }, 1500);
+  };
+
+  // Guardar campo individual (para guardado granular)
+  const saveField = async (fieldName: string, value: any) => {
+    if (!loop) return;
+    const success = await updateLoopField(loop.id, fieldName, value);
+    if (success) {
+      showSaveIndicator(fieldName);
+    }
+  };
+
+  // Guardar CSV data
+  const saveCsvData = async (dataToSave?: any[], colsToSave?: string[]) => {
+    if (!loop) return;
+
+    const finalJson = dataToSave !== undefined ? dataToSave : csvJson;
+    const finalCols = colsToSave !== undefined ? colsToSave : csvColumns;
+
+    await updateLoopField(
+      loop.id,
+      "csvJson",
+      finalJson ? [...finalJson] : [],
+      false,
+    );
+    await updateLoopField(
+      loop.id,
+      "csvColumns",
+      finalCols ? [...finalCols] : [],
+      false,
+    );
+    showSaveIndicator("csv");
+  };
+
+  // Wrapper para handleCsvUpload que guarda automáticamente
+  const onHandleCsvUploadWrapped = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleCsvUpload(e, (newData, newCols) => {
+      saveCsvData(newData, newCols);
+    });
+  };
+
+  // Guardar loop orders (1 solo request con todos los campos)
+  const saveLoopOrders = async (
+    ord: boolean,
+    ordCols: string[],
+    stimOrd: any[],
+    cat: boolean,
+    catCol: string,
+    catData: any[],
+  ) => {
+    if (!loop) return;
+
+    // Usar updateLoop para 1 solo PATCH con todos los campos
+    const updatedLoop = await updateLoop(loop.id, {
+      orders: ord,
+      orderColumns: ordCols,
+      stimuliOrders: stimOrd,
+      categories: cat,
+      categoryColumn: catCol,
+      categoryData: catData,
+    });
+
+    if (updatedLoop) {
+      showSaveIndicator("orders");
+    }
+  };
 
   const handleSave = async () => {
     if (!canSave || !loop) return;
@@ -102,9 +173,7 @@ function LoopsConfig({ loop }: Props) {
 
     try {
       await updateLoop(loop.id, updatedLoopData);
-
-      setSaveIndicator(true);
-      setTimeout(() => setSaveIndicator(false), 2000);
+      showSaveIndicator();
     } catch (error) {
       console.error("Error saving loop:", error);
     }
@@ -118,15 +187,24 @@ function LoopsConfig({ loop }: Props) {
     };
   }, []);
 
-  const handleSaveLoopConditions = (conditions: LoopCondition[]) => {
+  const handleSaveLoopConditions = async (conditions: LoopCondition[]) => {
     setLoopConditions(conditions);
     setIsConditionalLoop(conditions.length > 0);
+
+    // Guardar automáticamente cuando se configuran las condiciones
+    if (loop) {
+      await updateLoop(loop.id, {
+        loopConditions: conditions,
+        isConditionalLoop: conditions.length > 0,
+      });
+      showSaveIndicator("loop conditions");
+    }
   };
 
   const handleRemoveLoop = async () => {
     if (
       window.confirm(
-        "Are you sure you want to delete this loop? This action cannot be undone."
+        "Are you sure you want to delete this loop? This action cannot be undone.",
       ) &&
       loop
     ) {
@@ -162,14 +240,14 @@ function LoopsConfig({ loop }: Props) {
               border: "1px solid #22c55e",
             }}
           >
-            ✓ Saved Loop
+            ✓ Saved {savingField ? `(${savingField})` : "Loop"}
           </div>
           <strong>Trials in loop:</strong> {loop?.trials?.length || 0} trial(s)
         </div>
 
         {/* CSV and XLSX section */}
         <CsvUploader
-          onCsvUpload={handleCsvUploadLoop}
+          onCsvUpload={onHandleCsvUploadWrapped}
           csvJson={csvJson}
           onDeleteCSV={deleteCsv}
         />
@@ -188,6 +266,7 @@ function LoopsConfig({ loop }: Props) {
           setCategoryColumn={setCategoryColumn}
           mapCategoriesFromCsv={mapCategoriesFromCsv}
           csvJson={csvJson}
+          onSave={saveLoopOrders}
         />
 
         {/* Repetitions y Randomize */}
@@ -202,10 +281,11 @@ function LoopsConfig({ loop }: Props) {
               onChange={(e) => {
                 const val = Math.max(
                   1,
-                  Math.floor(Number(e.target.value)) || 1
+                  Math.floor(Number(e.target.value)) || 1,
                 );
                 setRepetitions(val);
               }}
+              onBlur={() => saveField("repetitions", repetitions)}
               className="mr-2"
               placeholder="1"
               style={{ width: "100%" }}
@@ -214,7 +294,10 @@ function LoopsConfig({ loop }: Props) {
           <div className="flex items-center" style={{ gap: "12px" }}>
             <Switch
               checked={randomize}
-              onChange={(checked) => setRandomize(checked)}
+              onChange={(checked) => {
+                setRandomize(checked);
+                saveField("randomize", checked);
+              }}
               onColor="#f1c40f"
               onHandleColor="#ffffff"
               handleDiameter={24}
@@ -242,6 +325,13 @@ function LoopsConfig({ loop }: Props) {
                 setIsConditionalLoop(checked);
                 if (!checked) {
                   setLoopConditions([]);
+                  // Guardar ambos campos cuando se desactiva
+                  updateLoop(loop?.id, {
+                    isConditionalLoop: false,
+                    loopConditions: [],
+                  }).then(() => showSaveIndicator("loop conditions"));
+                } else {
+                  saveField("isConditionalLoop", checked);
                 }
               }}
               onColor="#f1c40f"

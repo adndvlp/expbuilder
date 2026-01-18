@@ -236,13 +236,18 @@
       "loops": [
         {
           "name": "Loop 1",
-          "repetitions": 1,
-          "randomize": false,
-          "orders": false,
+          "repetitions": 5,
+          "randomize": true,
+          "orders": true,
           "stimuliOrders": [],
-          "orderColumns": [],
-          "categoryColumn": "",
-          "categories": false,
+          "orderColumns": [
+            "plugin_version",
+            "time_elapsed",
+            "session_browser",
+            "session_browser_version"
+          ],
+          "categoryColumn": "trial_id",
+          "categories": true,
           "categoryData": [],
           "trials": [
             1768683378653,
@@ -251,7 +256,11 @@
           "code": "",
           "id": "loop_1768683384399",
           "createdAt": "2026-01-17T20:56:24.399Z",
-          "updatedAt": "2026-01-17T20:56:24.399Z"
+          "updatedAt": "2026-01-18T03:37:40.562Z",
+          "isConditionalLoop": true,
+          "loopConditions": [],
+          "csvJson": [],
+          "csvColumns": []
         }
       ],
       "timeline": [
@@ -282,7 +291,7 @@
         }
       ],
       "createdAt": "2026-01-16T00:01:59.166Z",
-      "updatedAt": "2026-01-18T03:20:07.786Z"
+      "updatedAt": "2026-01-18T03:37:40.562Z"
     }
   ],
   "configs": [
@@ -293,7 +302,7 @@
       },
       "isDevMode": false,
       "createdAt": "2026-01-16T00:01:59.416Z",
-      "updatedAt": "2026-01-18T03:22:43.898Z"
+      "updatedAt": "2026-01-18T03:37:31.481Z"
     }
   ],
   "pluginConfigs": [],

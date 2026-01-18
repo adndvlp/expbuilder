@@ -47,6 +47,12 @@ type TrialsContextType = {
     id: string | number,
     loop: Partial<Loop>,
   ) => Promise<Loop | null>;
+  updateLoopField: (
+    id: string | number,
+    fieldName: string,
+    value: any,
+    updateSelectedLoop?: boolean,
+  ) => Promise<boolean>;
   deleteLoop: (id: string | number) => Promise<boolean>;
 
   // Métodos para Timeline
@@ -86,6 +92,7 @@ const TrialsContext = createContext<TrialsContextType>({
   createLoop: async () => ({}) as Loop,
   getLoop: async () => null,
   updateLoop: async () => null,
+  updateLoopField: async () => false,
   deleteLoop: async () => false,
   updateTimeline: async () => false,
   getTimeline: async () => {},
