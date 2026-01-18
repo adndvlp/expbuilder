@@ -9,7 +9,7 @@ type Props = {
     ruleIndex: number,
     field: string,
     value: string,
-    shouldSave?: boolean
+    shouldSave?: boolean,
   ) => void;
   removeRuleFromCondition: (conditionId: number, ruleIndex: number) => void;
   getAvailableColumns: () => Array<{
@@ -23,7 +23,7 @@ type Props = {
   triggerSave?: () => void;
 };
 
-function ConditionRuleCells({
+function ConditionRule({
   condition,
   ruleIndex,
   updateRule,
@@ -67,7 +67,7 @@ function ConditionRuleCells({
 
   // Get selected column info to determine value input type
   const selectedColumn = availableColumns.find(
-    (col) => col.value === rule.column
+    (col) => col.value === rule.column,
   );
 
   // For DynamicPlugin, parse column name to determine component type for value input
@@ -88,7 +88,7 @@ function ConditionRuleCells({
       const responseComponents =
         selectedTrial.columnMapping?.response_components?.value || [];
       component = [...components, ...responseComponents].find(
-        (c: any) => getPropValue(c.name) === componentName
+        (c: any) => getPropValue(c.name) === componentName,
       );
     }
   }
@@ -113,11 +113,11 @@ function ConditionRuleCells({
                               column: newValue,
                               value: "", // Reset value when column changes
                             }
-                          : r
+                          : r,
                       ),
                     }
-                  : c
-              )
+                  : c,
+              ),
             );
           }}
           className="border rounded px-2 py-1 w-full text-xs"
@@ -188,7 +188,7 @@ function ConditionRuleCells({
             // Extract question name from column (format: ComponentName_questionName)
             const questionName = rule.column?.split("_").slice(1).join("_");
             const question = componentSurveyJson.elements.find(
-              (q: any) => q.name === questionName
+              (q: any) => q.name === questionName,
             );
 
             if (question) {
@@ -202,7 +202,7 @@ function ConditionRuleCells({
                         condition.id,
                         ruleIndex,
                         "value",
-                        e.target.value
+                        e.target.value,
                       )
                     }
                     className="border rounded px-2 py-1 w-full text-xs"
@@ -236,7 +236,7 @@ function ConditionRuleCells({
                         condition.id,
                         ruleIndex,
                         "value",
-                        e.target.value
+                        e.target.value,
                       )
                     }
                     className="border rounded px-2 py-1 w-full text-xs"
@@ -268,7 +268,7 @@ function ConditionRuleCells({
                         condition.id,
                         ruleIndex,
                         "value",
-                        e.target.value
+                        e.target.value,
                       )
                     }
                     className="border rounded px-2 py-1 w-full text-xs"
@@ -281,7 +281,7 @@ function ConditionRuleCells({
                     <option value="">Select value</option>
                     {Array.from(
                       { length: rateMax - rateMin + 1 },
-                      (_, i) => i + rateMin
+                      (_, i) => i + rateMin,
                     ).map((val) => (
                       <option key={val} value={val}>
                         {val}
@@ -339,7 +339,7 @@ function ConditionRuleCells({
                   ruleIndex,
                   "value",
                   e.target.value,
-                  false // Don't autosave on type
+                  false, // Don't autosave on type
                 )
               }
               onBlur={() => triggerSave && triggerSave()} // Autosave on blur
@@ -373,4 +373,4 @@ function ConditionRuleCells({
   );
 }
 
-export default ConditionRuleCells;
+export default ConditionRule;

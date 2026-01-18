@@ -3,6 +3,7 @@ import { Loop, LoopCondition, LoopConditionRule } from "../../types";
 import { loadPluginParameters } from "../../utils/pluginParameterLoader";
 import type { DataDefinition } from "../../types";
 import useTrials from "../../../../hooks/useTrials";
+import { FaCog, FaTimes } from "react-icons/fa";
 
 type Props = {
   loop: Loop;
@@ -111,8 +112,8 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                 },
               ],
             }
-          : c
-      )
+          : c,
+      ),
     );
   };
 
@@ -122,8 +123,8 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
       conditions.map((c) =>
         c.id === conditionId
           ? { ...c, rules: c.rules.filter((_, idx) => idx !== ruleIndex) }
-          : c
-      )
+          : c,
+      ),
     );
   };
 
@@ -132,7 +133,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
     conditionId: number,
     ruleIndex: number,
     field: string,
-    value: string | number
+    value: string | number,
   ) => {
     setConditions(
       conditions.map((c) => {
@@ -157,7 +158,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
           return { ...c, rules: newRules };
         }
         return c;
-      })
+      }),
     );
   };
 
@@ -192,7 +193,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
     const allTrials = collectAllTrials(loop.trials);
 
     return allTrials.filter(
-      (t) => !usedIds.includes(t.id) && !usedIds.includes(String(t.id))
+      (t) => !usedIds.includes(t.id) && !usedIds.includes(String(t.id)),
     );
   };
 
@@ -229,34 +230,71 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
           transition: "opacity 0.3s",
           color: "white",
           fontWeight: "600",
-          position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
+          position: "absolute",
+          top: "10px",
+          right: "10px",
           zIndex: 10000,
           backgroundColor: "rgba(34, 197, 94, 0.95)",
-          padding: "16px 32px",
-          borderRadius: "12px",
-          fontSize: "18px",
-          boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
-          border: "2px solid white",
+          padding: "6px 12px",
+          borderRadius: "6px",
+          fontSize: "12px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+          border: "1px solid white",
           pointerEvents: "none",
         }}
       >
-        ✓ Loop Conditions Saved!
+        ✓ Saved
       </div>
 
       {/* Header */}
       <div
-        className="px-6 py-4"
         style={{
+          padding: "20px 24px",
           background:
             "linear-gradient(135deg, var(--primary-blue), var(--light-blue))",
-          color: "var(--text-light)",
+          color: "white",
+          borderBottom: "3px solid rgba(255,255,255,0.2)",
         }}
       >
-        <h3 className="text-xl font-bold">Conditional Loop: {loop.name}</h3>
-        <p className="text-sm opacity-90 mt-1">
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            marginBottom: "8px",
+          }}
+        >
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              borderRadius: "10px",
+              backgroundColor: "rgba(255,255,255,0.2)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <FaCog size={20} />
+          </div>
+          <h3
+            style={{
+              fontSize: "22px",
+              fontWeight: 700,
+              margin: 0,
+            }}
+          >
+            Conditional Loop: {loop.name}
+          </h3>
+        </div>
+        <p
+          style={{
+            margin: 0,
+            fontSize: "14px",
+            opacity: 0.95,
+            paddingLeft: "52px",
+          }}
+        >
           Define conditions to repeat the loop based on trial data
         </p>
       </div>
@@ -272,25 +310,63 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
       >
         {conditions.length === 0 ? (
           <div
-            className="text-center py-12 rounded-xl border-2 border-dashed"
             style={{
-              borderColor: "var(--neutral-mid)",
-              backgroundColor: "var(--neutral-light)",
+              textAlign: "center",
+              padding: "48px 24px",
+              borderRadius: "16px",
+              border: "2px dashed var(--neutral-mid)",
+              backgroundColor: "var(--background)",
             }}
           >
+            <div
+              style={{
+                width: "64px",
+                height: "64px",
+                margin: "0 auto 16px",
+                borderRadius: "50%",
+                backgroundColor: "var(--neutral-light)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--primary-blue)",
+              }}
+            >
+              <FaCog size={32} />
+            </div>
             <p
-              className="mb-6 text-lg font-medium"
-              style={{ color: "var(--text-dark)" }}
+              style={{
+                marginBottom: "24px",
+                fontSize: "18px",
+                fontWeight: 600,
+                color: "var(--text-dark)",
+              }}
             >
               No conditions configured
             </p>
             <button
               onClick={addCondition}
-              className="px-6 py-3 rounded-lg font-semibold shadow-lg transform transition hover:scale-105"
               style={{
+                padding: "12px 32px",
+                borderRadius: "10px",
+                fontWeight: 700,
+                fontSize: "14px",
+                border: "none",
+                cursor: "pointer",
+                transition: "all 0.3s ease",
                 background:
-                  "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+                  "linear-gradient(135deg, var(--primary-blue), var(--light-blue))",
                 color: "var(--text-light)",
+                boxShadow: "0 4px 12px rgba(61, 146, 180, 0.3)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow =
+                  "0 6px 16px rgba(61, 146, 180, 0.4)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow =
+                  "0 4px 12px rgba(61, 146, 180, 0.3)";
               }}
             >
               + Add first condition
@@ -304,40 +380,95 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
               return (
                 <div
                   key={condition.id}
-                  className="rounded-xl shadow-lg hover:shadow-xl transition-shadow overflow-hidden"
                   style={{
-                    backgroundColor: "var(--neutral-light)",
+                    borderRadius: "16px",
+                    overflow: "hidden",
+                    backgroundColor: "var(--background)",
                     border: "2px solid var(--neutral-mid)",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                    transition: "all 0.3s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow =
+                      "0 8px 24px rgba(0,0,0,0.12)";
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow =
+                      "0 4px 12px rgba(0,0,0,0.08)";
+                    e.currentTarget.style.transform = "translateY(0)";
                   }}
                 >
                   {/* Condition Header */}
                   <div
-                    className="px-4 py-3"
                     style={{
+                      padding: "16px 20px",
                       background:
                         "linear-gradient(135deg, var(--primary-blue), var(--light-blue))",
                       display: "flex",
                       alignItems: "center",
-                      gap: "12px",
+                      justifyContent: "space-between",
                     }}
                   >
-                    <span
-                      className="font-bold text-base"
-                      style={{ color: "var(--text-light)" }}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                      }}
                     >
-                      {condIdx === 0 ? "IF" : "OR IF"} (Condition {condIdx + 1})
-                    </span>
+                      <div
+                        style={{
+                          padding: "6px 12px",
+                          borderRadius: "8px",
+                          backgroundColor: "rgba(255,255,255,0.2)",
+                          fontWeight: 700,
+                          fontSize: "14px",
+                          color: "white",
+                        }}
+                      >
+                        {condIdx === 0 ? "IF" : "OR IF"}
+                      </div>
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          fontSize: "15px",
+                          color: "white",
+                        }}
+                      >
+                        Condition {condIdx + 1}
+                      </span>
+                    </div>
                     <button
                       onClick={() => removeCondition(condition.id)}
-                      className="rounded-full w-8 h-8 flex items-center justify-center transition hover:bg-red-600 font-bold"
                       style={{
-                        backgroundColor: "var(--danger)",
-                        color: "var(--text-light)",
-                        marginLeft: "8px",
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "8px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        border: "none",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                        backgroundColor: "rgba(207, 0, 11, 0.9)",
+                        color: "white",
+                        fontWeight: 700,
+                        fontSize: "18px",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor =
+                          "rgba(207, 0, 11, 1)";
+                        e.currentTarget.style.transform = "scale(1.1)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor =
+                          "rgba(207, 0, 11, 0.9)";
+                        e.currentTarget.style.transform = "scale(1)";
                       }}
                       title="Remove condition"
                     >
-                      ✕
+                      <FaTimes />
                     </button>
                   </div>
 
@@ -372,7 +503,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                               (rule) => {
                                 // Recursive function to find trial at any depth
                                 const findTrialRecursive = (
-                                  items: any[]
+                                  items: any[],
                                 ): any => {
                                   for (const item of items) {
                                     if (
@@ -386,7 +517,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                       Array.isArray(item.trials)
                                     ) {
                                       const found = findTrialRecursive(
-                                        item.trials
+                                        item.trials,
                                       );
                                       if (found) return found;
                                     }
@@ -394,12 +525,12 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                   return null;
                                 };
                                 const referencedTrial = findTrialRecursive(
-                                  loop.trials
+                                  loop.trials,
                                 );
                                 return (
                                   referencedTrial?.plugin === "plugin-dynamic"
                                 );
-                              }
+                              },
                             );
 
                             if (hasDynamicTrial) {
@@ -529,7 +660,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                           const comp =
                             componentIdx !== "" && compArr.length > 0
                               ? compArr.find(
-                                  (c: any) => c.name === componentIdx
+                                  (c: any) => c.name === componentIdx,
                                 )
                               : null;
 
@@ -552,7 +683,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                       condition.id,
                                       ruleIdx,
                                       "trialId",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
@@ -574,7 +705,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                     .filter(
                                       (t) =>
                                         t.id !== rule.trialId &&
-                                        String(t.id) !== String(rule.trialId)
+                                        String(t.id) !== String(rule.trialId),
                                     )
                                     .map((trial) => (
                                       <option key={trial.id} value={trial.id}>
@@ -596,25 +727,25 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                           condition.id,
                                           ruleIdx,
                                           "fieldType",
-                                          newValue
+                                          newValue,
                                         );
                                         updateRule(
                                           condition.id,
                                           ruleIdx,
                                           "componentIdx",
-                                          ""
+                                          "",
                                         );
                                         updateRule(
                                           condition.id,
                                           ruleIdx,
                                           "prop",
-                                          ""
+                                          "",
                                         );
                                         updateRule(
                                           condition.id,
                                           ruleIdx,
                                           "value",
-                                          ""
+                                          "",
                                         );
                                       }}
                                       disabled={!rule.trialId}
@@ -645,19 +776,19 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                           condition.id,
                                           ruleIdx,
                                           "componentIdx",
-                                          newValue
+                                          newValue,
                                         );
                                         updateRule(
                                           condition.id,
                                           ruleIdx,
                                           "prop",
-                                          ""
+                                          "",
                                         );
                                         updateRule(
                                           condition.id,
                                           ruleIdx,
                                           "value",
-                                          ""
+                                          "",
                                         );
                                       }}
                                       disabled={!fieldType}
@@ -688,13 +819,13 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                             condition.id,
                                             ruleIdx,
                                             "prop",
-                                            newValue
+                                            newValue,
                                           );
                                           updateRule(
                                             condition.id,
                                             ruleIdx,
                                             "value",
-                                            ""
+                                            "",
                                           );
                                         }}
                                         disabled={!componentIdx}
@@ -714,7 +845,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                             <option key={q.name} value={q.name}>
                                               {q.title || q.name}
                                             </option>
-                                          )
+                                          ),
                                         )}
                                       </select>
                                     ) : comp &&
@@ -728,13 +859,13 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                             condition.id,
                                             ruleIdx,
                                             "prop",
-                                            newValue
+                                            newValue,
                                           );
                                           updateRule(
                                             condition.id,
                                             ruleIdx,
                                             "value",
-                                            ""
+                                            "",
                                           );
                                         }}
                                         disabled={!componentIdx}
@@ -763,13 +894,13 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                             condition.id,
                                             ruleIdx,
                                             "prop",
-                                            newValue
+                                            newValue,
                                           );
                                           updateRule(
                                             condition.id,
                                             ruleIdx,
                                             "value",
-                                            ""
+                                            "",
                                           );
                                         }}
                                         disabled={!componentIdx}
@@ -801,7 +932,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                             condition.id,
                                             ruleIdx,
                                             "prop",
-                                            e.target.value
+                                            e.target.value,
                                           )
                                         }
                                         disabled={!rule.trialId}
@@ -841,7 +972,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                       condition.id,
                                       ruleIdx,
                                       "op",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
@@ -913,7 +1044,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                               condition.id,
                                               ruleIdx,
                                               "value",
-                                              e.target.value
+                                              e.target.value,
                                             )
                                           }
                                           className="border rounded px-2 py-1 w-full text-xs"
@@ -955,7 +1086,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                             condition.id,
                                             ruleIdx,
                                             "value",
-                                            e.target.value
+                                            e.target.value,
                                           )
                                         }
                                         placeholder="Value"
@@ -980,7 +1111,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                         condition.id,
                                         ruleIdx,
                                         "value",
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                     className="border rounded px-2 py-1 w-full text-xs"
@@ -1019,7 +1150,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                         condition.id,
                                         ruleIdx,
                                         "value",
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                     placeholder="Value"
@@ -1040,7 +1171,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                     onClick={() =>
                                       removeRuleFromCondition(
                                         condition.id,
-                                        ruleIdx
+                                        ruleIdx,
                                       )
                                     }
                                     className="rounded-full w-6 h-6 flex items-center justify-center transition hover:bg-red-600 text-xs font-bold mx-auto"
@@ -1050,7 +1181,7 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
                                     }}
                                     title="Remove rule"
                                   >
-                                    ✕
+                                    <FaTimes size={10} />
                                   </button>
                                 )}
                               </td>
@@ -1102,11 +1233,29 @@ function ConditionalLoop({ loop, onClose, onSave }: Props) {
       <div className="px-6 pb-4">
         <button
           onClick={handleSaveConditions}
-          className="px-8 py-3 rounded-lg font-bold w-full shadow-lg transform transition hover:scale-105"
           style={{
+            width: "100%",
+            padding: "14px 32px",
+            borderRadius: "12px",
+            fontSize: "14px",
+            fontWeight: 700,
+            border: "none",
+            cursor: "pointer",
+            transition: "all 0.3s ease",
             background:
               "linear-gradient(135deg, var(--gold), var(--dark-gold))",
-            color: "var(--text-light)",
+            color: "white",
+            boxShadow: "0 4px 12px rgba(212, 175, 55, 0.3)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-2px)";
+            e.currentTarget.style.boxShadow =
+              "0 6px 16px rgba(212, 175, 55, 0.4)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow =
+              "0 4px 12px rgba(212, 175, 55, 0.3)";
           }}
         >
           Save Loop Conditions

@@ -13,9 +13,10 @@ type Props = {
   targetTrialCsvColumns: Record<string, string[]>;
   triggerSave?: () => void;
   isTargetDynamic: boolean;
+  hasSurveyJsonParam?: boolean;
 };
 
-export function ParameterOverrideCells({
+export function ParameterOverride({
   condition,
   paramKey,
   targetTrialParameters,
@@ -26,6 +27,7 @@ export function ParameterOverrideCells({
   targetTrialCsvColumns,
   triggerSave,
   isTargetDynamic,
+  hasSurveyJsonParam = false,
 }: Props) {
   // Helper para extraer valor de propiedades en formato {source, value}
   const getPropValue = (prop: any): any => {
@@ -116,7 +118,7 @@ export function ParameterOverrideCells({
           <td className="px-2 py-2"></td>
           <td className="px-2 py-2"></td>
           <td className="px-2 py-2"></td>
-          <td className="px-2 py-2"></td>
+          {hasSurveyJsonParam && <td className="px-2 py-2"></td>}
           <td className="px-2 py-2"></td>
         </>
       );
@@ -308,7 +310,7 @@ export function ParameterOverrideCells({
       )}
 
       {/* Columna Override Params - Question (solo para SurveyComponent) */}
-      {isTargetDynamic && (
+      {isTargetDynamic && hasSurveyJsonParam && (
         <td
           className="px-2 py-2"
           style={{
@@ -701,17 +703,19 @@ type AddParamProps = {
   condition: Condition;
   addCustomParameter: (conditionId: number, isTargetDynamic: boolean) => void;
   isTargetDynamic: boolean;
+  hasSurveyJsonParam?: boolean;
 };
 
 export function AddParamButtonCell({
   condition,
   addCustomParameter,
   isTargetDynamic,
+  hasSurveyJsonParam = false,
 }: AddParamProps) {
   return (
     <>
       <td
-        colSpan={isTargetDynamic ? 3 : 1}
+        colSpan={isTargetDynamic ? (hasSurveyJsonParam ? 4 : 3) : 1}
         className="px-2 py-2"
         style={{
           backgroundColor: "rgba(255, 209, 102, 0.05)",

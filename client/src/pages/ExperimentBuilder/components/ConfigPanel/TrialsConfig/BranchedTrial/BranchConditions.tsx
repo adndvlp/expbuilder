@@ -17,11 +17,8 @@ import { Dispatch, SetStateAction } from "react";
 import { Condition, Parameter } from "./types";
 import useTrials from "../../../../hooks/useTrials";
 import { DataDefinition } from "../../types";
-import ConditionRuleCells from "./ConditionRuleCells";
-import {
-  ParameterOverrideCells,
-  AddParamButtonCell,
-} from "./ParameterOverrideCells";
+import ConditionRule from "./ConditionRule";
+import { ParameterOverride, AddParamButtonCell } from "./ParameterOverride";
 import { FaClipboardList, FaCodeBranch, FaArrowRight } from "react-icons/fa";
 
 type Props = {
@@ -829,6 +826,33 @@ function BranchConditions({
                           const isTargetDynamic =
                             targetTrial?.plugin === "plugin-dynamic";
 
+                          // Check if any parameter requires survey_json (for conditional Question column)
+                          const hasSurveyJsonParam = condition.customParameters
+                            ? Object.keys(condition.customParameters).some(
+                                (key) => {
+                                  if (!key.includes("::")) return false;
+                                  const parts = key.split("::");
+                                  if (parts.length < 3) return false;
+                                  const [fieldType, componentIdx, paramKey] =
+                                    parts;
+                                  if (paramKey !== "survey_json") return false;
+
+                                  const compArr =
+                                    targetTrial?.columnMapping?.[fieldType]
+                                      ?.value || [];
+                                  const comp = compArr.find(
+                                    (c: any) =>
+                                      (c.name &&
+                                      typeof c.name === "object" &&
+                                      "value" in c.name
+                                        ? c.name.value
+                                        : c.name) === componentIdx,
+                                  );
+                                  return comp?.type === "SurveyComponent";
+                                },
+                              )
+                            : false;
+
                           if (isTargetDynamic) {
                             return (
                               <>
@@ -865,17 +889,19 @@ function BranchConditions({
                                 >
                                   Property
                                 </th>
-                                <th
-                                  className="px-2 py-2 text-center text-sm font-semibold"
-                                  style={{
-                                    color: "var(--gold)",
-                                    borderBottom:
-                                      "2px solid var(--neutral-mid)",
-                                    minWidth: "150px",
-                                  }}
-                                >
-                                  Question
-                                </th>
+                                {hasSurveyJsonParam && (
+                                  <th
+                                    className="px-2 py-2 text-center text-sm font-semibold"
+                                    style={{
+                                      color: "var(--gold)",
+                                      borderBottom:
+                                        "2px solid var(--neutral-mid)",
+                                      minWidth: "150px",
+                                    }}
+                                  >
+                                    Question
+                                  </th>
+                                )}
                                 <th
                                   className="px-2 py-2 text-center text-sm font-semibold"
                                   style={{
@@ -959,7 +985,7 @@ function BranchConditions({
                                       : "none",
                                 }}
                               >
-                                <ConditionRuleCells
+                                <ConditionRule
                                   condition={condition}
                                   ruleIndex={rowIndex}
                                   updateRule={updateRule}
@@ -1068,9 +1094,44 @@ function BranchConditions({
                                 )}
 
                                 {(() => {
+                                  // Calculate hasSurveyJsonParam for conditional Question column
+                                  const hasSurveyJsonParam =
+                                    condition.customParameters
+                                      ? Object.keys(
+                                          condition.customParameters,
+                                        ).some((key) => {
+                                          if (!key.includes("::")) return false;
+                                          const parts = key.split("::");
+                                          if (parts.length < 3) return false;
+                                          const [
+                                            fieldType,
+                                            componentIdx,
+                                            paramKey,
+                                          ] = parts;
+                                          if (paramKey !== "survey_json")
+                                            return false;
+
+                                          const compArr =
+                                            targetTrial?.columnMapping?.[
+                                              fieldType
+                                            ]?.value || [];
+                                          const comp = compArr.find(
+                                            (c: any) =>
+                                              (c.name &&
+                                              typeof c.name === "object" &&
+                                              "value" in c.name
+                                                ? c.name.value
+                                                : c.name) === componentIdx,
+                                          );
+                                          return (
+                                            comp?.type === "SurveyComponent"
+                                          );
+                                        })
+                                      : false;
+
                                   if (rowIndex < paramKeys.length) {
                                     return (
-                                      <ParameterOverrideCells
+                                      <ParameterOverride
                                         condition={condition}
                                         paramKey={paramKeys[rowIndex]}
                                         isTargetDynamic={isTargetDynamic}
@@ -1089,6 +1150,7 @@ function BranchConditions({
                                           targetTrialCsvColumns
                                         }
                                         triggerSave={triggerSave}
+                                        hasSurveyJsonParam={hasSurveyJsonParam}
                                       />
                                     );
                                   } else if (
@@ -1100,11 +1162,12 @@ function BranchConditions({
                                         condition={condition}
                                         addCustomParameter={addCustomParameter}
                                         isTargetDynamic={isTargetDynamic}
+                                        hasSurveyJsonParam={hasSurveyJsonParam}
                                       />
                                     );
                                   } else {
                                     return (
-                                      <ParameterOverrideCells
+                                      <ParameterOverride
                                         condition={condition}
                                         paramKey=""
                                         isTargetDynamic={isTargetDynamic}
@@ -1123,6 +1186,7 @@ function BranchConditions({
                                           targetTrialCsvColumns
                                         }
                                         triggerSave={triggerSave}
+                                        hasSurveyJsonParam={hasSurveyJsonParam}
                                       />
                                     );
                                   }
