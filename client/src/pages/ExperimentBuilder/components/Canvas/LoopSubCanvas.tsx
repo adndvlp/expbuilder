@@ -135,7 +135,7 @@ function LoopSubCanvas({
   // Handler para crear loop anidado
   const handleCreateNestedLoop = () => {
     const confirmed = window.confirm(
-      "Are you sure you want to group these trials/loops into a nested loop?"
+      "Are you sure you want to group these trials/loops into a nested loop?",
     );
     if (!confirmed) {
       return;
@@ -264,7 +264,7 @@ function LoopSubCanvas({
 
     // Recopilar todos los IDs de branches (recursivamente)
     const collectAllBranchIds = (
-      items: TimelineItem[]
+      items: TimelineItem[],
     ): Set<number | string> => {
       const branchIds = new Set<number | string>();
 
@@ -286,7 +286,7 @@ function LoopSubCanvas({
 
     const branchItemIds = collectAllBranchIds(loopTimeline);
     const mainItems = loopTimeline.filter(
-      (item) => !branchItemIds.has(item.id)
+      (item) => !branchItemIds.has(item.id),
     );
 
     // Función recursiva para renderizar un item y sus branches
@@ -295,7 +295,7 @@ function LoopSubCanvas({
       parentId: string,
       x: number,
       y: number,
-      depth: number = 0
+      depth: number = 0,
     ): number => {
       const isTrial = item.type === "trial";
       const nodeId = isTrial ? `trial-${item.id}` : `loop-${item.id}`;
@@ -334,8 +334,8 @@ function LoopSubCanvas({
             y,
             isSelected,
             handleSelect,
-            isSelected ? () => onAddBranch(item.id) : undefined
-          )
+            isSelected ? () => onAddBranch(item.id) : undefined,
+          ),
         );
       } else {
         nodes.push(
@@ -347,8 +347,8 @@ function LoopSubCanvas({
             isSelected,
             handleSelect,
             isSelected ? () => onAddBranch(item.id) : undefined,
-            onOpenNestedLoop ? () => onOpenNestedLoop(item.id) : undefined
-          )
+            onOpenNestedLoop ? () => onOpenNestedLoop(item.id) : undefined,
+          ),
         );
       }
 
@@ -379,7 +379,7 @@ function LoopSubCanvas({
               nodeId,
               branchX,
               branchY,
-              depth + 1
+              depth + 1,
             );
             maxY = Math.max(maxY, finalY);
           });
@@ -605,51 +605,11 @@ function LoopSubCanvas({
       </div>
 
       {showBranchedModal && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            background: "rgba(0,0,0,0.32)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 9999,
-          }}
-        >
-          <div style={{ position: "relative", zIndex: 10000 }}>
-            <button
-              style={{
-                position: "absolute",
-                top: 12,
-                right: 12,
-                width: 36,
-                height: 36,
-                borderRadius: "50%",
-                background: "rgba(0,0,0,0.5)",
-                color: "#fff",
-                border: "none",
-                cursor: "pointer",
-                fontWeight: "bold",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 22,
-                boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-              }}
-              onClick={() => setShowBranchedModal(false)}
-              title="Close"
-            >
-              <FiX />
-            </button>
-            <BranchedTrial
-              selectedTrial={selectedTrial}
-              onClose={() => setShowBranchedModal(false)}
-            />
-          </div>
-        </div>
+        <BranchedTrial
+          selectedTrial={selectedTrial}
+          onClose={() => setShowBranchedModal(false)}
+          isOpen={showBranchedModal}
+        />
       )}
 
       {showLoopModal && (

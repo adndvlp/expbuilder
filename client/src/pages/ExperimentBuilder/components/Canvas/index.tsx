@@ -74,7 +74,7 @@ function Canvas({}: Props) {
 
   const handleCreateLoop = () => {
     const confirmed = window.confirm(
-      "Are you sure you want to group these trials/loops into a loop?"
+      "Are you sure you want to group these trials/loops into a loop?",
     );
     if (!confirmed) {
       return;
@@ -298,51 +298,11 @@ function Canvas({}: Props) {
         {/* Removed standalone button - accessible via Branches modal > Params Override tab */}
 
         {showBranchedModal && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              width: "100vw",
-              height: "100vh",
-              background: "rgba(0,0,0,0.32)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 9999,
-            }}
-          >
-            <div style={{ position: "relative", zIndex: 10000 }}>
-              <button
-                style={{
-                  position: "absolute",
-                  top: 12,
-                  right: 12,
-                  width: 36,
-                  height: 36,
-                  borderRadius: "50%",
-                  background: "rgba(0,0,0,0.5)",
-                  color: "#fff",
-                  border: "none",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 22,
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-                }}
-                onClick={() => setShowBranchedModal(false)}
-                title="Close"
-              >
-                <FiX />
-              </button>
-              <BranchedTrial
-                selectedTrial={selectedTrial || selectedLoop}
-                onClose={() => setShowBranchedModal(false)}
-              />
-            </div>
-          </div>
+          <BranchedTrial
+            selectedTrial={selectedTrial || selectedLoop}
+            onClose={() => setShowBranchedModal(false)}
+            isOpen={showBranchedModal}
+          />
         )}
 
         {/* ParamsOverride modal removed - now integrated in BranchedTrial modal */}
@@ -400,7 +360,7 @@ function Canvas({}: Props) {
             }}
             onOpenNestedLoop={async (nestedLoopId) => {
               const isAlreadyInStack = loopStack.some(
-                (l) => l.id === openLoop.id
+                (l) => l.id === openLoop.id,
               );
 
               const newStack = isAlreadyInStack

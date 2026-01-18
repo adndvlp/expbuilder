@@ -21,20 +21,20 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        backgroundColor: "rgba(0, 0, 0, 0.75)",
       }}
     >
       <div
         className="fixed inset-0"
         style={{
-          backgroundColor: "rgba(0, 0, 0, 0.5)",
-          backdropFilter: "blur(2px)",
+          backgroundColor: "rgba(0, 0, 0, 0.75)",
+          backdropFilter: "blur(4px)",
         }}
         onClick={onClose}
       />
 
       <div
-        className="relative bg-white w-full h-full overflow-hidden"
+        className="relative w-full h-full overflow-hidden"
         style={{
           width: "100vw",
           height: "100vh",
@@ -42,12 +42,13 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
           maxHeight: "100vh",
           zIndex: 1000000,
           position: "relative",
+          backgroundColor: "var(--background)",
         }}
       >
         {children}
       </div>
     </div>,
-    document.body
+    document.body,
   );
 };
 

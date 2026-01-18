@@ -1,4 +1,6 @@
 import { Condition, Parameter } from "./types";
+import { useComponentMetadata } from "../hooks/useComponentMetadata";
+import { ParameterInput } from "../ParameterMapper/ParameterInput";
 
 type Props = {
   condition: Condition;
@@ -38,12 +40,56 @@ export function ParameterOverrideCells({
     return prop;
   };
 
+  const targetTrial = findTrialById(condition.nextTrialId);
+
+  // For dynamic plugins, parse the paramKey to get field structure
+  let fieldType = "";
+  let componentIdx = "";
+  let propName = "";
+  let questionName = "";
+  if (isTargetDynamic && paramKey.includes("::")) {
+    const parts = paramKey.split("::");
+    if (parts.length === 3) {
+      [fieldType, componentIdx, propName] = parts;
+    } else if (parts.length === 4) {
+      [fieldType, componentIdx, propName, questionName] = parts;
+    }
+  }
+
+  // Get component array and specific component for dynamic plugins
+  const compArr =
+    isTargetDynamic && fieldType
+      ? targetTrial?.columnMapping?.[fieldType]?.value || []
+      : [];
+  const comp =
+    isTargetDynamic && componentIdx !== "" && compArr.length > 0
+      ? compArr.find((c: any) => getPropValue(c.name) === componentIdx)
+      : null;
+
+  // Load component metadata to get available parameters
+  const { metadata: componentMetadata, loading: metadataLoading } =
+    useComponentMetadata(comp?.type || null);
+
+  // Helper para convertir array a comma separated string
+  const arrayToCommaSeparated = (arr: any): string => {
+    if (Array.isArray(arr)) {
+      return arr.join(", ");
+    }
+    return "";
+  };
+
+  // Helper para convertir comma separated string a array
+  const commaSeparatedToArray = (str: string): any[] => {
+    if (!str || str.trim() === "") return [];
+    return str.split(",").map((item) => item.trim());
+  };
+
   const updateCustomParameter = (
     conditionId: number,
     paramKey: string,
     source: "csv" | "typed" | "none",
     value: any,
-    shouldSave: boolean = true
+    shouldSave: boolean = true,
   ) => {
     setConditions(
       conditions.map((c) => {
@@ -58,7 +104,7 @@ export function ParameterOverrideCells({
         }
         return c;
       }),
-      shouldSave
+      shouldSave,
     );
   };
 
@@ -92,31 +138,21 @@ export function ParameterOverrideCells({
     (condition.nextTrialId && targetTrialCsvColumns[condition.nextTrialId]) ||
     [];
 
-  const targetTrial = findTrialById(condition.nextTrialId);
+  // Convert parameters object to array for easier manipulation
+  const parametersArray = componentMetadata?.parameters
+    ? Object.entries(componentMetadata.parameters).map(([key, param]) => ({
+        key,
+        label: param.pretty_name || key,
+        type: param.type,
+        default: param.default,
+        description: param.description,
+      }))
+    : [];
 
-  // For dynamic plugins, parse the paramKey to get field structure
-  let fieldType = "";
-  let componentIdx = "";
-  let propName = "";
-  let questionName = "";
-  if (isTargetDynamic && paramKey.includes("::")) {
-    const parts = paramKey.split("::");
-    if (parts.length === 3) {
-      [fieldType, componentIdx, propName] = parts;
-    } else if (parts.length === 4) {
-      [fieldType, componentIdx, propName, questionName] = parts;
-    }
-  }
-
-  // Get component array and specific component for dynamic plugins
-  const compArr =
-    isTargetDynamic && fieldType
-      ? targetTrial?.columnMapping?.[fieldType]?.value || []
-      : [];
-  const comp =
-    isTargetDynamic && componentIdx !== "" && compArr.length > 0
-      ? compArr.find((c: any) => getPropValue(c.name) === componentIdx)
-      : null;
+  // Get parameter metadata for the selected property
+  const selectedParamMetadata = parametersArray.find(
+    (p: any) => p.key === propName,
+  );
 
   return (
     <>
@@ -141,8 +177,8 @@ export function ParameterOverrideCells({
                   conditions.map((c) =>
                     c.id === condition.id
                       ? { ...c, customParameters: newParams }
-                      : c
-                  )
+                      : c,
+                  ),
                 );
               } else {
                 // Change field type
@@ -157,8 +193,8 @@ export function ParameterOverrideCells({
                   conditions.map((c) =>
                     c.id === condition.id
                       ? { ...c, customParameters: newParams }
-                      : c
-                  )
+                      : c,
+                  ),
                 );
               }
             }}
@@ -199,8 +235,8 @@ export function ParameterOverrideCells({
                 conditions.map((c) =>
                   c.id === condition.id
                     ? { ...c, customParameters: newParams }
-                    : c
-                )
+                    : c,
+                ),
               );
             }}
             className="w-full border rounded px-2 py-1.5 text-xs"
@@ -247,8 +283,8 @@ export function ParameterOverrideCells({
                 conditions.map((c) =>
                   c.id === condition.id
                     ? { ...c, customParameters: newParams }
-                    : c
-                )
+                    : c,
+                ),
               );
             }}
             className="w-full border rounded px-2 py-1.5 text-xs"
@@ -257,39 +293,16 @@ export function ParameterOverrideCells({
               backgroundColor: "var(--neutral-light)",
               borderColor: "var(--gold)",
             }}
-            disabled={!fieldType || !componentIdx || !comp}
+            disabled={!fieldType || !componentIdx || !comp || metadataLoading}
           >
-            <option value="">Select property</option>
-            {comp && comp.type === "SurveyComponent" && (
-              <>
-                <option value="survey_json">Survey Questions</option>
-              </>
-            )}
-            {comp && comp.type === "ButtonResponseComponent" && (
-              <>
-                <option value="choices">Button Choices</option>
-              </>
-            )}
-            {comp && comp.type === "HtmlComponent" && (
-              <option value="stimulus">HTML Content</option>
-            )}
-            {comp && comp.type === "ImageComponent" && (
-              <>
-                <option value="stimulus">Image Source</option>
-                <option value="coordinates">Coordinates</option>
-              </>
-            )}
-            {comp && comp.type === "VideoComponent" && (
-              <>
-                <option value="stimulus">Video Source</option>
-                <option value="coordinates">Coordinates</option>
-              </>
-            )}
-            {comp && comp.type === "AudioComponent" && (
-              <>
-                <option value="stimulus">Audio Source</option>
-              </>
-            )}
+            <option value="">
+              {metadataLoading ? "Loading..." : "Select property"}
+            </option>
+            {parametersArray.map((param: any) => (
+              <option key={param.key} value={param.key}>
+                {param.label}
+              </option>
+            ))}
           </select>
         </td>
       )}
@@ -318,8 +331,8 @@ export function ParameterOverrideCells({
                   conditions.map((c) =>
                     c.id === condition.id
                       ? { ...c, customParameters: newParams }
-                      : c
-                  )
+                      : c,
+                  ),
                 );
               }}
               className="w-full border rounded px-2 py-1.5 text-xs"
@@ -336,7 +349,7 @@ export function ParameterOverrideCells({
                   <option key={q.name} value={q.name}>
                     {q.title || q.name}
                   </option>
-                )
+                ),
               )}
             </select>
           ) : (
@@ -366,8 +379,8 @@ export function ParameterOverrideCells({
                   conditions.map((c) =>
                     c.id === condition.id
                       ? { ...c, customParameters: newParams }
-                      : c
-                  )
+                      : c,
+                  ),
                 );
               } else {
                 // Change parameter
@@ -378,8 +391,8 @@ export function ParameterOverrideCells({
                   conditions.map((c) =>
                     c.id === condition.id
                       ? { ...c, customParameters: newParams }
-                      : c
-                  )
+                      : c,
+                  ),
                 );
               }
             }}
@@ -440,7 +453,7 @@ export function ParameterOverrideCells({
                   condition.id,
                   paramKey,
                   source,
-                  initialValue
+                  initialValue,
                 );
               }}
               className="w-full border rounded px-2 py-1.5 text-xs"
@@ -461,6 +474,7 @@ export function ParameterOverrideCells({
 
             {paramValue.source === "typed" && (
               <div>
+                {/* Special case: SurveyComponent question override */}
                 {comp?.type === "SurveyComponent" &&
                 propName === "survey_json" &&
                 questionName ? (
@@ -480,7 +494,7 @@ export function ParameterOverrideCells({
                         paramKey,
                         "typed",
                         e.target.value,
-                        false
+                        false,
                       )
                     }
                     onBlur={() => triggerSave && triggerSave()}
@@ -490,64 +504,29 @@ export function ParameterOverrideCells({
                       borderColor: "var(--neutral-mid)",
                     }}
                   />
-                ) : comp?.type === "ButtonResponseComponent" &&
-                  propName === "choices" &&
-                  getPropValue(comp.choices) ? (
-                  <textarea
-                    className="w-full border rounded px-2 py-1.5 text-xs"
-                    placeholder="JSON array"
-                    rows={3}
-                    value={
-                      typeof paramValue.value === "string"
-                        ? paramValue.value
-                        : JSON.stringify(paramValue.value || [])
-                    }
-                    onChange={(e) =>
-                      updateCustomParameter(
-                        condition.id,
-                        paramKey,
-                        "typed",
-                        e.target.value,
-                        false
-                      )
-                    }
-                    onBlur={() => triggerSave && triggerSave()}
-                    style={{
-                      color: "var(--text-dark)",
-                      backgroundColor: "var(--neutral-light)",
-                      borderColor: "var(--neutral-mid)",
-                    }}
-                  />
-                ) : propName === "stimulus_width" ||
-                  propName === "stimulus_height" ||
-                  propName === "width" ||
-                  propName === "height" ? (
-                  <input
-                    type="number"
-                    className="w-full border rounded px-2 py-1.5 text-xs"
-                    placeholder="Number"
-                    value={
-                      typeof paramValue.value === "number"
-                        ? paramValue.value
-                        : ""
-                    }
-                    onChange={(e) =>
-                      updateCustomParameter(
-                        condition.id,
-                        paramKey,
-                        "typed",
-                        Number(e.target.value),
-                        false
-                      )
-                    }
-                    onBlur={() => triggerSave && triggerSave()}
-                    style={{
-                      color: "var(--text-dark)",
-                      backgroundColor: "var(--neutral-light)",
-                      borderColor: "var(--neutral-mid)",
-                    }}
-                  />
+                ) : selectedParamMetadata ? (
+                  /* Use ParameterInput for all other types */
+                  <div className="text-xs">
+                    <ParameterInput
+                      paramKey={propName}
+                      paramLabel={selectedParamMetadata.label || propName}
+                      paramType={selectedParamMetadata.type}
+                      value={paramValue.value}
+                      onChange={(newValue) => {
+                        updateCustomParameter(
+                          condition.id,
+                          paramKey,
+                          "typed",
+                          newValue,
+                          false,
+                        );
+                        // Trigger save after a short delay
+                        setTimeout(() => triggerSave && triggerSave(), 500);
+                      }}
+                    />
+                  </div>
                 ) : (
+                  /* Fallback for parameters without metadata */
                   <input
                     type="text"
                     className="w-full border rounded px-2 py-1.5 text-xs"
@@ -564,7 +543,7 @@ export function ParameterOverrideCells({
                         paramKey,
                         "typed",
                         e.target.value,
-                        false
+                        false,
                       )
                     }
                     onBlur={() => triggerSave && triggerSave()}
@@ -613,7 +592,7 @@ export function ParameterOverrideCells({
                   condition.id,
                   paramKey,
                   source,
-                  initialValue
+                  initialValue,
                 );
               }}
               className="w-full border rounded px-2 py-1.5 text-xs"
@@ -643,7 +622,7 @@ export function ParameterOverrideCells({
                         condition.id,
                         paramKey,
                         "typed",
-                        e.target.value === "true"
+                        e.target.value === "true",
                       )
                     }
                     style={{
@@ -670,7 +649,7 @@ export function ParameterOverrideCells({
                         paramKey,
                         "typed",
                         Number(e.target.value),
-                        false
+                        false,
                       )
                     }
                     onBlur={() => triggerSave && triggerSave()}
@@ -697,7 +676,7 @@ export function ParameterOverrideCells({
                         paramKey,
                         "typed",
                         e.target.value,
-                        false
+                        false,
                       )
                     }
                     onBlur={() => triggerSave && triggerSave()}

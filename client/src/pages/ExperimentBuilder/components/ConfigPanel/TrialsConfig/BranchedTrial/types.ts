@@ -26,6 +26,7 @@ export type RepeatConditionState = {
 export type Props = {
   selectedTrial: any;
   onClose?: () => void;
+  isOpen?: boolean;
 };
 
 export type Parameter = {

@@ -5,9 +5,18 @@ import { BranchCondition, RepeatCondition } from "../../types";
 import ParamsOverride from "../ParamsOverride";
 import { Condition, RepeatConditionState, Props, Parameter } from "./types";
 import BranchConditions from "./BranchConditions";
+import Modal from "../ParameterMapper/Modal";
+import { FaTimes } from "react-icons/fa";
 
-function BranchedTrial({ selectedTrial, onClose }: Props) {
-  const { timeline, updateTrial, getTrial, setSelectedTrial } = useTrials();
+function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
+  const {
+    timeline,
+    updateTrial,
+    updateTrialField,
+    getTrial,
+    getLoop,
+    setSelectedTrial,
+  } = useTrials();
 
   const [activeTab, setActiveTab] = useState<"branch" | "params">("branch");
   const [data, setData] = useState<import("../../types").DataDefinition[]>([]);
@@ -24,9 +33,8 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
   const [targetTrialCsvColumns, setTargetTrialCsvColumns] = useState<
     Record<string, string[]>
   >({});
-
-  // Ref to track if we are saving to avoid reloading state and causing flickers
-  const isSavingRef = useRef(false);
+  const [loadedTrials, setLoadedTrials] = useState<Record<string, any>>({});
+  const hasLoaded = useRef(false);
 
   // Load data fields from the selected trial's plugin
   useEffect(() => {
@@ -51,15 +59,19 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
         setData([]);
         setLoading(false);
       });
-  }, [selectedTrial]);
+  }, [selectedTrial?.id]);
 
-  // Load existing branch conditions and repeat conditions when selectedTrial changes
+  // Load existing branch conditions and repeat conditions when modal opens
   useEffect(() => {
-    // If we just saved, skip reloading to prevent flickering/state reset
-    if (isSavingRef.current) {
-      isSavingRef.current = false;
+    if (!isOpen) {
+      hasLoaded.current = false;
       return;
     }
+
+    if (hasLoaded.current) return;
+    hasLoaded.current = true;
+
+    if (!selectedTrial) return;
 
     const allConditions: Condition[] = [];
 
@@ -69,7 +81,7 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
         (bc: BranchCondition) => ({
           ...bc,
           customParameters: bc.customParameters || {},
-        })
+        }),
       );
       allConditions.push(...loadedBranchConditions);
 
@@ -89,7 +101,7 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
           rules: rc.rules,
           nextTrialId: rc.jumpToTrialId, // Map jumpToTrialId to nextTrialId
           customParameters: {}, // Jump conditions don't have custom parameters
-        })
+        }),
       );
       allConditions.push(...loadedRepeatConditions);
     }
@@ -101,13 +113,14 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
       const loadedRepeatConditions = selectedTrial.repeatConditions.map(
         (rc: RepeatCondition) => ({
           ...rc,
-        })
+        }),
       );
       setRepeatConditions(loadedRepeatConditions);
     } else {
       setRepeatConditions([]);
     }
-  }, [selectedTrial]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Also load parameters when conditions change (e.g., when nextTrialId is set)
   useEffect(() => {
@@ -126,6 +139,9 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
     const targetTrial = await findTrialById(trialId);
 
     if (!targetTrial) return;
+
+    // Store the loaded trial
+    setLoadedTrials((prev) => ({ ...prev, [trialId]: targetTrial }));
 
     // Load CSV columns if available
     if (targetTrial.csvColumns && targetTrial.csvColumns.length > 0) {
@@ -165,15 +181,28 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
     }
   };
 
-  // Find trial by ID using the API
+  // Find trial or loop by ID using the API
   const findTrialById = async (trialId: string | number): Promise<any> => {
     try {
-      const trial = await getTrial(trialId);
-      return trial;
+      // Check if it's a loop (IDs start with "loop_")
+      const isLoop = String(trialId).startsWith("loop_");
+
+      if (isLoop) {
+        const loop = await getLoop(trialId);
+        return loop;
+      } else {
+        const trial = await getTrial(trialId);
+        return trial;
+      }
     } catch (error) {
-      console.error("Error finding trial:", error);
+      console.error("Error finding trial/loop:", error);
       return null;
     }
+  };
+
+  // Find trial or loop by ID synchronously from loaded trials
+  const findTrialByIdSync = (trialId: string | number): any => {
+    return loadedTrials[trialId] || null;
   };
 
   /**
@@ -183,7 +212,7 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
   const isInBranches = (trialId: string | number | null): boolean => {
     if (!trialId || !selectedTrial?.branches) return false;
     return selectedTrial.branches.some(
-      (branchId: string | number) => String(branchId) === String(trialId)
+      (branchId: string | number) => String(branchId) === String(trialId),
     );
   };
 
@@ -231,26 +260,17 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
       });
     });
 
-    // Update trial using the API
-    const updateData = {
-      branchConditions,
-      repeatConditions: repeatConditionsToSave,
-    };
-
-    // Set flag to prevent useEffect from resetting state
-    isSavingRef.current = true;
-
-    updateTrial(selectedTrial.id, updateData)
-      .then((updatedTrial) => {
-        // Update selectedTrial with the new data so changes reflect immediately
-        if (updatedTrial) {
-          setSelectedTrial(updatedTrial);
-        }
-      })
-      .catch((error) => {
-        console.error("Error saving conditions:", error);
-        isSavingRef.current = false; // Reset flag on error
-      });
+    // Update backend and selectedTrial
+    Promise.all([
+      updateTrialField(selectedTrial.id, "branchConditions", branchConditions),
+      updateTrialField(
+        selectedTrial.id,
+        "repeatConditions",
+        repeatConditionsToSave,
+      ),
+    ]).catch((error) => {
+      console.error("Error saving conditions:", error);
+    });
 
     // Show save indicator
     setSaveIndicator(true);
@@ -260,196 +280,306 @@ function BranchedTrial({ selectedTrial, onClose }: Props) {
   };
 
   return (
-    <div
-      className="rounded-lg shadow-2xl"
-      style={{
-        position: "relative",
-        color: "var(--text-dark)",
-        minWidth: "900px",
-        maxWidth: "1100px",
-        maxHeight: "85vh",
-        backgroundColor: "var(--neutral-light)",
-        overflow: "hidden",
-      }}
-    >
-      {/* Save Indicator */}
+    <Modal isOpen={isOpen} onClose={onClose}>
       <div
         style={{
-          opacity: saveIndicator ? 1 : 0,
-          transition: "opacity 0.3s",
-          color: "white",
-          fontWeight: "600",
-          position: "absolute",
-          top: "20px",
-          right: "60px", // Moved left to make room for close button
-          zIndex: 10000,
-          backgroundColor: "rgba(34, 197, 94, 0.95)",
-          padding: "8px 16px",
-          borderRadius: "8px",
-          fontSize: "14px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-          border: "1px solid white",
-          pointerEvents: "none",
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "24px",
         }}
       >
-        ✓ Saved
-      </div>
-
-      {/* Close Button */}
-      <button
-        onClick={onClose}
-        style={{
-          position: "absolute",
-          top: "16px",
-          right: "16px",
-          background: "transparent",
-          border: "none",
-          color: "var(--text-dark)",
-          fontSize: "24px",
-          fontWeight: "bold",
-          cursor: "pointer",
-          zIndex: 10001,
-        }}
-        aria-label="Close"
-      >
-        ✕
-      </button>
-
-      {/* Tab Navigation */}
-      <div
-        className="px-6 pt-4 pb-2"
-        style={{
-          borderBottom: "2px solid var(--neutral-mid)",
-        }}
-      >
-        <div className="flex gap-2">
-          <button
-            onClick={() => setActiveTab("branch")}
-            className={`px-6 py-3 rounded-t-lg font-semibold transition-all ${
-              activeTab === "branch"
-                ? "shadow-lg"
-                : "opacity-60 hover:opacity-80"
-            }`}
-            style={{
-              backgroundColor:
-                activeTab === "branch"
-                  ? "var(--primary-blue)"
-                  : "var(--neutral-mid)",
-              color:
-                activeTab === "branch"
-                  ? "var(--text-light)"
-                  : "var(--text-dark)",
-              borderBottom:
-                activeTab === "branch" ? "3px solid var(--gold)" : "none",
-            }}
-          >
-            Branch & Jump Conditions
-          </button>
-          <button
-            onClick={() => setActiveTab("params")}
-            className={`px-6 py-3 rounded-t-lg font-semibold transition-all ${
-              activeTab === "params"
-                ? "shadow-lg"
-                : "opacity-60 hover:opacity-80"
-            }`}
-            style={{
-              backgroundColor:
-                activeTab === "params"
-                  ? "var(--primary-blue)"
-                  : "var(--neutral-mid)",
-              color:
-                activeTab === "params"
-                  ? "var(--text-light)"
-                  : "var(--text-dark)",
-              borderBottom:
-                activeTab === "params" ? "3px solid var(--gold)" : "none",
-            }}
-          >
-            Params Override
-          </button>
-        </div>
-      </div>
-
-      {/* Scrollable Content */}
-      <div
-        className="px-6 pb-6 pt-4"
-        style={{
-          maxHeight: "calc(85vh - 180px)",
-          overflowY: "auto",
-          overflowX: "hidden",
-        }}
-      >
-        {loading && (
+        <div
+          style={{
+            minWidth: "900px",
+            maxWidth: "1100px",
+            minHeight: "60vh",
+            maxHeight: "85vh",
+            display: "flex",
+            flexDirection: "column",
+            position: "relative",
+            backgroundColor: "var(--background)",
+            borderRadius: "12px",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+          }}
+        >
+          {/* Save Indicator */}
           <div
-            className="text-center py-8 rounded-lg border"
             style={{
-              backgroundColor: "var(--neutral-light)",
-              borderColor: "var(--neutral-mid)",
+              opacity: saveIndicator ? 1 : 0,
+              transition: "opacity 0.3s",
+              color: "white",
+              fontWeight: "600",
+              position: "absolute",
+              top: "10px",
+              right: "10px",
+              zIndex: 10000,
+              backgroundColor: "rgba(34, 197, 94, 0.95)",
+              padding: "6px 12px",
+              borderRadius: "6px",
+              fontSize: "12px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+              border: "1px solid white",
+              pointerEvents: "none",
             }}
           >
-            <div
-              className="inline-block animate-spin rounded-full h-8 w-8 border-4"
-              style={{
-                borderColor: "var(--primary-blue)",
-                borderTopColor: "transparent",
-              }}
-            ></div>
-            <p className="mt-3" style={{ color: "var(--text-dark)" }}>
-              Loading data fields...
-            </p>
+            ✓ Saved
           </div>
-        )}
-        {error && (
-          <div
-            className="border-2 py-4 px-4 rounded-lg"
+          {/* Close Button */}
+          <button
+            onClick={onClose}
             style={{
-              backgroundColor: "rgba(207, 0, 11, 0.1)",
-              borderColor: "var(--danger)",
+              position: "absolute",
+              top: "16px",
+              right: "16px",
+
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
+              border: "2px solid var(--neutral-mid)",
+              backgroundColor: "var(--background)",
               color: "var(--text-dark)",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.2s ease",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--primary-blue)";
+              e.currentTarget.style.color = "white";
+              e.currentTarget.style.borderColor = "var(--primary-blue)";
+              e.currentTarget.style.transform = "scale(1.1)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--background)";
+              e.currentTarget.style.color = "var(--text-dark)";
+              e.currentTarget.style.borderColor = "var(--neutral-mid)";
+              e.currentTarget.style.transform = "scale(1)";
             }}
           >
-            <strong>Error:</strong> {error}
-          </div>
-        )}
-
-        {!loading && !error && activeTab === "branch" && (
-          <BranchConditions
-            conditions={conditions}
-            setConditions={setConditions}
-            loadTargetTrialParameters={loadTargetTrialParameters}
-            findTrialById={findTrialById}
-            targetTrialParameters={targetTrialParameters}
-            targetTrialCsvColumns={targetTrialCsvColumns}
-            selectedTrial={selectedTrial}
-            data={data}
-            onAutoSave={handleSaveConditions}
-          />
-        )}
-
-        {/* PARAMS OVERRIDE TAB CONTENT */}
-        {activeTab === "params" && (
-          <ParamsOverride selectedTrial={selectedTrial} onClose={onClose} />
-        )}
-      </div>
-
-      {/* Footer con botón de guardar - Fixed position */}
-      {/* Only show save button for branch and repeat tabs, params has its own */}
-      {activeTab !== "params" && (
-        <div>
-          <button
-            onClick={handleSaveConditions}
-            className="px-8 py-3 rounded-lg font-bold w-full shadow-lg transform transition hover:scale-105"
-            style={{
-              background:
-                "linear-gradient(135deg, var(--gold), var(--dark-gold))",
-              color: "var(--text-light)",
-            }}
-          >
-            Save configuration
+            <FaTimes size={18} />
           </button>
+
+          {/* Tab Navigation */}
+          <div
+            style={{
+              borderBottom: "2px solid var(--neutral-mid)",
+              padding: "16px 24px 8px",
+            }}
+          >
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button
+                onClick={() => setActiveTab("branch")}
+                style={{
+                  padding: "12px 24px",
+                  borderRadius: "8px 8px 0 0",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "all 0.3s ease",
+                  backgroundColor:
+                    activeTab === "branch"
+                      ? "var(--primary-blue)"
+                      : "var(--neutral-light)",
+                  color:
+                    activeTab === "branch"
+                      ? "var(--text-light)"
+                      : "var(--text-dark)",
+                  borderBottom:
+                    activeTab === "branch" ? "3px solid var(--gold)" : "none",
+                  opacity: activeTab === "branch" ? 1 : 0.7,
+                  boxShadow:
+                    activeTab === "branch"
+                      ? "0 4px 12px rgba(61, 146, 180, 0.3)"
+                      : "none",
+                }}
+                onMouseEnter={(e) => {
+                  if (activeTab !== "branch") {
+                    e.currentTarget.style.opacity = "1";
+                    e.currentTarget.style.backgroundColor =
+                      "var(--neutral-mid)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeTab !== "branch") {
+                    e.currentTarget.style.opacity = "0.7";
+                    e.currentTarget.style.backgroundColor =
+                      "var(--neutral-light)";
+                  }
+                }}
+              >
+                Branch & Jump Conditions
+              </button>
+              <button
+                onClick={() => setActiveTab("params")}
+                style={{
+                  padding: "12px 24px",
+                  borderRadius: "8px 8px 0 0",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "all 0.3s ease",
+                  backgroundColor:
+                    activeTab === "params"
+                      ? "var(--primary-blue)"
+                      : "var(--neutral-light)",
+                  color:
+                    activeTab === "params"
+                      ? "var(--text-light)"
+                      : "var(--text-dark)",
+                  borderBottom:
+                    activeTab === "params" ? "3px solid var(--gold)" : "none",
+                  opacity: activeTab === "params" ? 1 : 0.7,
+                  boxShadow:
+                    activeTab === "params"
+                      ? "0 4px 12px rgba(61, 146, 180, 0.3)"
+                      : "none",
+                }}
+                onMouseEnter={(e) => {
+                  if (activeTab !== "params") {
+                    e.currentTarget.style.opacity = "1";
+                    e.currentTarget.style.backgroundColor =
+                      "var(--neutral-mid)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeTab !== "params") {
+                    e.currentTarget.style.opacity = "0.7";
+                    e.currentTarget.style.backgroundColor =
+                      "var(--neutral-light)";
+                  }
+                }}
+              >
+                Params Override
+              </button>
+            </div>
+          </div>
+
+          {/* Scrollable Content */}
+          <div
+            style={{
+              flex: 1,
+              padding: "24px",
+              overflowY: "auto",
+              overflowX: "hidden",
+              backgroundColor: "var(--background)",
+            }}
+          >
+            {loading && (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "32px",
+                  borderRadius: "12px",
+                  border: "1px solid var(--neutral-mid)",
+                  backgroundColor: "var(--neutral-light)",
+                }}
+              >
+                <div
+                  style={{
+                    display: "inline-block",
+                    width: "32px",
+                    height: "32px",
+                    border: "4px solid var(--primary-blue)",
+                    borderTopColor: "transparent",
+                    borderRadius: "50%",
+                    animation: "spin 1s linear infinite",
+                  }}
+                ></div>
+                <p
+                  style={{
+                    marginTop: "12px",
+                    color: "var(--text-dark)",
+                    fontSize: "14px",
+                  }}
+                >
+                  Loading data fields...
+                </p>
+              </div>
+            )}
+            {error && (
+              <div
+                style={{
+                  padding: "16px",
+                  borderRadius: "12px",
+                  border: "2px solid var(--danger)",
+                  backgroundColor: "rgba(207, 0, 11, 0.05)",
+                  color: "var(--text-dark)",
+                }}
+              >
+                <strong>Error:</strong> {error}
+              </div>
+            )}
+
+            {!loading && !error && activeTab === "branch" && (
+              <BranchConditions
+                conditions={conditions}
+                setConditions={setConditions}
+                loadTargetTrialParameters={loadTargetTrialParameters}
+                findTrialById={findTrialByIdSync}
+                targetTrialParameters={targetTrialParameters}
+                targetTrialCsvColumns={targetTrialCsvColumns}
+                selectedTrial={selectedTrial}
+                data={data}
+                onAutoSave={handleSaveConditions}
+              />
+            )}
+
+            {/* PARAMS OVERRIDE TAB CONTENT */}
+            {activeTab === "params" && (
+              <ParamsOverride selectedTrial={selectedTrial} onClose={onClose} />
+            )}
+          </div>
+
+          {/* Footer con botón de guardar */}
+          {activeTab !== "params" && (
+            <div
+              style={{
+                padding: "16px 24px",
+                borderTop: "2px solid var(--neutral-mid)",
+                backgroundColor: "var(--background)",
+              }}
+            >
+              <button
+                onClick={handleSaveConditions}
+                style={{
+                  width: "100%",
+                  padding: "12px 32px",
+                  borderRadius: "8px",
+                  fontWeight: 700,
+                  fontSize: "14px",
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "all 0.3s ease",
+                  background:
+                    "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+                  color: "var(--text-light)",
+                  boxShadow: "0 4px 12px rgba(212, 175, 55, 0.3)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 6px 16px rgba(212, 175, 55, 0.4)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow =
+                    "0 4px 12px rgba(212, 175, 55, 0.3)";
+                }}
+              >
+                Save configuration
+              </button>
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      </div>
+    </Modal>
   );
 }
 

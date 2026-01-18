@@ -22,6 +22,7 @@ import {
   ParameterOverrideCells,
   AddParamButtonCell,
 } from "./ParameterOverrideCells";
+import { FaClipboardList, FaCodeBranch, FaArrowRight } from "react-icons/fa";
 
 type Props = {
   conditions: Condition[];
@@ -51,13 +52,13 @@ function BranchConditions({
   // Helper to update conditions and trigger autosave
   const setConditionsWrapper = (
     newConditionsOrFn: SetStateAction<Condition[]>,
-    shouldSave: boolean = true
+    shouldSave: boolean = true,
   ) => {
     let newConditions: Condition[];
 
     if (typeof newConditionsOrFn === "function") {
       newConditions = (newConditionsOrFn as (prev: Condition[]) => Condition[])(
-        conditions
+        conditions,
       );
     } else {
       newConditions = newConditionsOrFn;
@@ -92,7 +93,7 @@ function BranchConditions({
   // Add custom parameter to condition
   const addCustomParameter = (
     conditionId: number,
-    isTargetDynamic: boolean
+    isTargetDynamic: boolean,
   ) => {
     setConditionsWrapper(
       conditions.map((c) => {
@@ -114,7 +115,7 @@ function BranchConditions({
 
             // Find first parameter not already added
             const nextParam = availableParams.find(
-              (p) => !existingKeys.includes(p.key)
+              (p) => !existingKeys.includes(p.key),
             );
 
             if (nextParam) {
@@ -128,7 +129,7 @@ function BranchConditions({
           return { ...c, customParameters: newParams };
         }
         return c;
-      })
+      }),
     );
   };
 
@@ -163,8 +164,8 @@ function BranchConditions({
                 },
               ],
             }
-          : c
-      )
+          : c,
+      ),
     );
   };
 
@@ -173,8 +174,8 @@ function BranchConditions({
       conditions.map((c) =>
         c.id === conditionId
           ? { ...c, rules: c.rules.filter((_, idx) => idx !== ruleIndex) }
-          : c
-      )
+          : c,
+      ),
     );
   };
 
@@ -183,7 +184,7 @@ function BranchConditions({
     ruleIndex: number,
     field: string,
     value: string,
-    shouldSave: boolean = true
+    shouldSave: boolean = true,
   ) => {
     setConditionsWrapper(
       conditions.map((c) =>
@@ -191,20 +192,20 @@ function BranchConditions({
           ? {
               ...c,
               rules: c.rules.map((r, idx) =>
-                idx === ruleIndex ? { ...r, [field]: value } : r
+                idx === ruleIndex ? { ...r, [field]: value } : r,
               ),
             }
-          : c
+          : c,
       ),
-      shouldSave
+      shouldSave,
     );
   };
 
   const updateNextTrial = (conditionId: number, nextTrialId: string) => {
     setConditionsWrapper(
       conditions.map((c) =>
-        c.id === conditionId ? { ...c, nextTrialId, customParameters: {} } : c
-      )
+        c.id === conditionId ? { ...c, nextTrialId, customParameters: {} } : c,
+      ),
     );
 
     // Load parameters for the selected trial
@@ -394,7 +395,7 @@ function BranchConditions({
   const isInBranches = (trialId: string | number | null): boolean => {
     if (!trialId || !selectedTrial?.branches) return false;
     return selectedTrial.branches.some(
-      (branchId: string | number) => String(branchId) === String(trialId)
+      (branchId: string | number) => String(branchId) === String(trialId),
     );
   };
 
@@ -412,8 +413,8 @@ function BranchConditions({
     return timeline
       .filter((item) =>
         selectedTrial.branches.some(
-          (branchId: string | number) => String(item.id) === String(branchId)
-        )
+          (branchId: string | number) => String(item.id) === String(branchId),
+        ),
       )
       .map((item) => ({
         id: item.id,
@@ -431,7 +432,7 @@ function BranchConditions({
       .filter(
         (item) =>
           item.id !== selectedTrial.id &&
-          String(item.id) !== String(selectedTrial.id)
+          String(item.id) !== String(selectedTrial.id),
       )
       .map((item) => ({
         id: item.id,
@@ -449,57 +450,212 @@ function BranchConditions({
     <>
       {/* Description */}
       <div
-        className="mb-4 p-4 rounded-lg border-l-4"
         style={{
-          backgroundColor: "rgba(78, 205, 196, 0.1)",
-          borderColor: "var(--primary-blue)",
+          marginBottom: "24px",
+          padding: "20px",
+          borderRadius: "12px",
+          border: "2px solid var(--primary-blue)",
+          backgroundColor: "var(--neutral-light)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
         }}
       >
-        <p style={{ color: "var(--text-dark)", fontSize: "14px" }}>
-          <strong>Branch Conditions:</strong> Configure conditions to navigate
-          between trials.
-        </p>
-        <ul
+        <div
           style={{
-            marginTop: "8px",
-            marginLeft: "20px",
-            fontSize: "14px",
-            color: "var(--text-dark)",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            marginBottom: "12px",
           }}
         >
-          <li>
-            <strong>Branch:</strong> Select a trial from your current scope
-            (branches). You can override parameters for these trials.
-          </li>
-          <li>
-            <strong>Jump:</strong> Select any trial from the entire experiment,
-            regardless of hierarchy. Jumps cannot override parameters.
-          </li>
-        </ul>
+          <div
+            style={{
+              width: "4px",
+              height: "24px",
+              backgroundColor: "var(--primary-blue)",
+              borderRadius: "2px",
+            }}
+          />
+          <h3
+            style={{
+              color: "var(--text-dark)",
+              fontSize: "16px",
+              fontWeight: 700,
+              margin: 0,
+            }}
+          >
+            Branch & Jump Conditions
+          </h3>
+        </div>
+        <p
+          style={{
+            color: "var(--text-dark)",
+            fontSize: "14px",
+            marginBottom: "12px",
+            lineHeight: "1.6",
+          }}
+        >
+          Configure conditions to navigate between trials dynamically.
+        </p>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "16px",
+          }}
+        >
+          <div
+            style={{
+              padding: "12px",
+              borderRadius: "8px",
+              backgroundColor: "rgba(61, 146, 180, 0.1)",
+              border: "1px solid var(--primary-blue)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "8px",
+              }}
+            >
+              <div
+                style={{
+                  width: "24px",
+                  height: "24px",
+                  borderRadius: "50%",
+                  backgroundColor: "var(--primary-blue)",
+                  color: "white",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <FaCodeBranch size={12} />
+              </div>
+              <strong style={{ fontSize: "14px", color: "var(--text-dark)" }}>
+                Branch
+              </strong>
+            </div>
+            <p
+              style={{
+                fontSize: "13px",
+                color: "var(--text-dark)",
+                margin: 0,
+                lineHeight: "1.5",
+              }}
+            >
+              Navigate within current scope. Allows parameter overriding.
+            </p>
+          </div>
+          <div
+            style={{
+              padding: "12px",
+              borderRadius: "8px",
+              backgroundColor: "rgba(212, 175, 55, 0.1)",
+              border: "1px solid var(--gold)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "8px",
+              }}
+            >
+              <div
+                style={{
+                  width: "24px",
+                  height: "24px",
+                  borderRadius: "50%",
+                  backgroundColor: "var(--gold)",
+                  color: "white",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <FaArrowRight size={12} />
+              </div>
+              <strong style={{ fontSize: "14px", color: "var(--text-dark)" }}>
+                Jump
+              </strong>
+            </div>
+            <p
+              style={{
+                fontSize: "13px",
+                color: "var(--text-dark)",
+                margin: 0,
+                lineHeight: "1.5",
+              }}
+            >
+              Navigate to any trial. Parameter override disabled.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Lista de condiciones */}
       {conditions.length === 0 ? (
         <div
-          className="text-center py-12 rounded-xl border-2 border-dashed"
           style={{
-            borderColor: "var(--neutral-mid)",
-            backgroundColor: "var(--neutral-light)",
+            textAlign: "center",
+            padding: "48px 24px",
+            borderRadius: "16px",
+            border: "2px dashed var(--neutral-mid)",
+            backgroundColor: "var(--background)",
           }}
         >
+          <div
+            style={{
+              width: "64px",
+              height: "64px",
+              margin: "0 auto 16px",
+              borderRadius: "50%",
+              backgroundColor: "var(--neutral-light)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--primary-blue)",
+            }}
+          >
+            <FaClipboardList size={32} />
+          </div>
           <p
-            className="mb-6 text-lg font-medium"
-            style={{ color: "var(--text-dark)" }}
+            style={{
+              marginBottom: "24px",
+              fontSize: "18px",
+              fontWeight: 600,
+              color: "var(--text-dark)",
+            }}
           >
             No conditions configured
           </p>
           <button
             onClick={addCondition}
-            className="px-6 py-3 rounded-lg font-semibold shadow-lg transform transition hover:scale-105"
             style={{
+              padding: "12px 32px",
+              borderRadius: "10px",
+              fontWeight: 700,
+              fontSize: "14px",
+              border: "none",
+              cursor: "pointer",
+              transition: "all 0.3s ease",
               background:
                 "linear-gradient(135deg, var(--gold), var(--dark-gold))",
               color: "var(--text-light)",
+              boxShadow: "0 4px 12px rgba(212, 175, 55, 0.3)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-2px)";
+              e.currentTarget.style.boxShadow =
+                "0 6px 16px rgba(212, 175, 55, 0.4)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow =
+                "0 4px 12px rgba(212, 175, 55, 0.3)";
             }}
           >
             + Add first condition
@@ -511,36 +667,91 @@ function BranchConditions({
             return (
               <div
                 key={condition.id}
-                className="rounded-xl shadow-lg hover:shadow-xl transition-shadow overflow-hidden"
                 style={{
-                  backgroundColor: "var(--neutral-light)",
+                  borderRadius: "16px",
+                  overflow: "hidden",
+                  backgroundColor: "var(--background)",
                   border: "2px solid var(--neutral-mid)",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                  transition: "all 0.3s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow =
+                    "0 8px 24px rgba(0,0,0,0.12)";
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow =
+                    "0 4px 12px rgba(0,0,0,0.08)";
+                  e.currentTarget.style.transform = "translateY(0)";
                 }}
               >
                 {/* Header de la condición */}
                 <div
-                  className="px-4 py-3"
                   style={{
+                    padding: "16px 20px",
                     background:
                       "linear-gradient(135deg, var(--primary-blue), var(--light-blue))",
                     display: "flex",
                     alignItems: "center",
-                    gap: "12px",
+                    justifyContent: "space-between",
                   }}
                 >
-                  <span
-                    className="font-bold text-base"
-                    style={{ color: "var(--text-light)" }}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                    }}
                   >
-                    {condIdx === 0 ? "IF" : "OR IF"} (Condition {condIdx + 1})
-                  </span>
+                    <div
+                      style={{
+                        padding: "6px 12px",
+                        borderRadius: "8px",
+                        backgroundColor: "rgba(255,255,255,0.2)",
+                        fontWeight: 700,
+                        fontSize: "14px",
+                        color: "white",
+                      }}
+                    >
+                      {condIdx === 0 ? "IF" : "OR IF"}
+                    </div>
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        fontSize: "15px",
+                        color: "white",
+                      }}
+                    >
+                      Condition {condIdx + 1}
+                    </span>
+                  </div>
                   <button
                     onClick={() => removeCondition(condition.id)}
-                    className="rounded-full w-8 h-8 flex items-center justify-center transition hover:bg-red-600 font-bold"
                     style={{
-                      backgroundColor: "var(--danger)",
-                      color: "var(--text-light)",
-                      marginLeft: "8px",
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      border: "none",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      backgroundColor: "rgba(207, 0, 11, 0.9)",
+                      color: "white",
+                      fontWeight: 700,
+                      fontSize: "18px",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor =
+                        "rgba(207, 0, 11, 1)";
+                      e.currentTarget.style.transform = "scale(1.1)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor =
+                        "rgba(207, 0, 11, 0.9)";
+                      e.currentTarget.style.transform = "scale(1)";
                     }}
                     title="Remove condition"
                   >
@@ -731,7 +942,7 @@ function BranchConditions({
 
                         const totalRows = Math.max(
                           condition.rules.length,
-                          paramKeys.length + (showAddParamButton ? 1 : 0)
+                          paramKeys.length + (showAddParamButton ? 1 : 0),
                         );
 
                         return Array.from({ length: totalRows }).map(
@@ -779,7 +990,7 @@ function BranchConditions({
                                         onChange={(e) => {
                                           updateNextTrial(
                                             condition.id,
-                                            e.target.value
+                                            e.target.value,
                                           );
                                           if (
                                             e.target.value &&
@@ -792,8 +1003,8 @@ function BranchConditions({
                                                       ...c,
                                                       customParameters: {},
                                                     }
-                                                  : c
-                                              )
+                                                  : c,
+                                              ),
                                             );
                                           }
                                         }}
@@ -868,7 +1079,7 @@ function BranchConditions({
                                         }
                                         findTrialById={findTrialById}
                                         isJumpCondition={isJumpCondition(
-                                          condition
+                                          condition,
                                         )}
                                         setConditions={
                                           setConditionsWrapper as any
@@ -902,7 +1113,7 @@ function BranchConditions({
                                         }
                                         findTrialById={findTrialById}
                                         isJumpCondition={isJumpCondition(
-                                          condition
+                                          condition,
                                         )}
                                         setConditions={
                                           setConditionsWrapper as any
@@ -918,7 +1129,7 @@ function BranchConditions({
                                 })()}
                               </tr>
                             );
-                          }
+                          },
                         );
                       })()}
                     </tbody>
@@ -927,13 +1138,34 @@ function BranchConditions({
                   {/* Botón para añadir regla AND */}
                   <button
                     onClick={() => addRuleToCondition(condition.id)}
-                    className="mt-3 px-4 py-2 rounded text-sm font-semibold flex items-center gap-2 transition hover:opacity-80"
                     style={{
+                      marginTop: "12px",
+                      padding: "10px 20px",
+                      borderRadius: "8px",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      border: "none",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      transition: "all 0.2s ease",
                       backgroundColor: "var(--primary-blue)",
-                      color: "var(--text-light)",
+                      color: "white",
+                      boxShadow: "0 2px 6px rgba(61, 146, 180, 0.3)",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                      e.currentTarget.style.boxShadow =
+                        "0 4px 8px rgba(61, 146, 180, 0.4)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow =
+                        "0 2px 6px rgba(61, 146, 180, 0.3)";
                     }}
                   >
-                    <span className="text-base">+</span> Add rule (AND)
+                    <span style={{ fontSize: "16px" }}>+</span> Add rule (AND)
                   </button>
                 </div>
               </div>
@@ -946,16 +1178,37 @@ function BranchConditions({
       {conditions.length > 0 && (
         <button
           onClick={addCondition}
-          className="mt-6 px-6 py-3 rounded-lg w-full font-semibold shadow-lg transform transition hover:scale-105 flex items-center justify-center gap-2"
           style={{
-            marginTop: 12,
-            marginBottom: 12,
+            width: "100%",
+            marginTop: "24px",
+            padding: "14px 32px",
+            borderRadius: "12px",
+            fontSize: "14px",
+            fontWeight: 700,
+            border: "none",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "10px",
+            transition: "all 0.3s ease",
             background:
               "linear-gradient(135deg, var(--primary-blue), var(--light-blue))",
-            color: "var(--text-light)",
+            color: "white",
+            boxShadow: "0 4px 12px rgba(61, 146, 180, 0.3)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-2px)";
+            e.currentTarget.style.boxShadow =
+              "0 6px 16px rgba(61, 146, 180, 0.4)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow =
+              "0 4px 12px rgba(61, 146, 180, 0.3)";
           }}
         >
-          <span className="text-xl">+</span> Add condition (OR)
+          <span style={{ fontSize: "18px" }}>+</span> Add condition (OR)
         </button>
       )}
     </>

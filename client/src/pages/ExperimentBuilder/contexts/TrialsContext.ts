@@ -30,12 +30,13 @@ type TrialsContextType = {
   getTrial: (id: string | number) => Promise<Trial | null>;
   updateTrial: (
     id: string | number,
-    trial: Partial<Trial>
+    trial: Partial<Trial>,
   ) => Promise<Trial | null>;
   updateTrialField: (
     id: string | number,
     fieldName: string,
-    value: any
+    value: any,
+    updateSelectedTrial?: boolean,
   ) => Promise<boolean>;
   deleteTrial: (id: string | number) => Promise<boolean>;
 
@@ -44,7 +45,7 @@ type TrialsContextType = {
   getLoop: (id: string | number) => Promise<Loop | null>;
   updateLoop: (
     id: string | number,
-    loop: Partial<Loop>
+    loop: Partial<Loop>,
   ) => Promise<Loop | null>;
   deleteLoop: (id: string | number) => Promise<boolean>;
 
