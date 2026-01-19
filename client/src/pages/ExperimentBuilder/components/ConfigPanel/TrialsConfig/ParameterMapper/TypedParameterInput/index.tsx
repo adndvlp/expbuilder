@@ -5,6 +5,8 @@ import ObjectInput from "./ObjectInput";
 import ObjectCoordsInput from "./ObjectCoordsInput";
 import TextInput from "./TextInput";
 import FunctionInput from "./FunctionInput";
+import WebgazerInput from "./WebGazerInput";
+import ArrayInput from "./ArrayInput";
 
 type Props = {
   key: string;
@@ -181,163 +183,25 @@ function index({
             </div>
           </>
         ) : (
-          <input
-            type="text"
-            className="w-full p-2 border rounded mt-2"
-            placeholder={`Comma-separated values for ${label.toLowerCase()}`}
-            value={
-              localInputValues[key] ??
-              (typeof entry.value === "string"
-                ? entry.value
-                : Array.isArray(entry.value)
-                  ? entry.value.join(", ")
-                  : "")
-            }
-            onChange={(e) => {
-              setLocalInputValues((prev) => ({
-                ...prev,
-                [key]: e.target.value,
-              }));
-            }}
-            onBlur={(e) => {
-              const input = localInputValues[key] ?? e.target.value;
-
-              const rawItems = input
-                .split(",")
-
-                .map((item) => item.trim().replace(/\s{2,}/g, " "))
-                .filter((item) => item.length > 0);
-
-              const baseType = type.replace(/_array$/, "");
-
-              const castedArray = rawItems.map((item) => {
-                switch (baseType) {
-                  case "number":
-                  case "int":
-                  case "float":
-                    if (item === "" || isNaN(Number(item))) {
-                      return item;
-                    }
-                    return Number(item);
-                  case "boolean":
-                  case "bool": {
-                    const lower = item.toLowerCase();
-                    if (lower === "true") return true;
-                    if (lower === "false") return false;
-                    return item;
-                  }
-                  default:
-                    return item;
-                }
-              });
-
-              const newValue = {
-                source: "typed" as const,
-                value: castedArray,
-              };
-              setColumnMapping((prev) => ({
-                ...prev,
-                [key]: newValue,
-              }));
-              if (onSave) {
-                setTimeout(() => onSave(key, newValue), 100);
-              }
-
-              setLocalInputValues((prev) => {
-                const newState = { ...prev };
-                delete newState[key];
-                return newState;
-              });
-            }}
+          <ArrayInput
+            localInputValues={localInputValues}
+            setLocalInputValues={setLocalInputValues}
+            setColumnMapping={setColumnMapping}
+            label={label}
+            key={key}
+            entry={entry}
+            type={type}
           />
         )
       ) : type.endsWith("_array") &&
         (key === "calibration_points" || key === "validation_points") ? (
-        <input
-          type="text"
-          className="w-full p-2 border rounded mt-2"
-          placeholder={`Escribe ${label.toLowerCase()}`}
-          // 2. El valor del input es el texto temporal si existe,
-          //    o el valor del estado principal formateado si no.
-          value={
-            localInputValues[key] ?? // El operador '??' es clave aquí
-            (Array.isArray(entry.value)
-              ? JSON.stringify(entry.value)
-                  // .slice(1, -1)
-                  .replace(/],\[/g, "], [")
-              : "")
-          }
-          onChange={(e) => {
-            // 3. onChange actualiza el estado de texto TEMPORAL.
-            setLocalInputValues((prev) => ({
-              ...prev,
-              [key]: e.target.value,
-            }));
-          }}
-          onBlur={() => {
-            // 4. onBlur lee el texto temporal, lo procesa y actualiza el estado PRINCIPAL.
-            const input = localInputValues[key];
-
-            // Si no hay nada en el estado local, no hagas nada.
-            if (input === undefined) return;
-
-            if (input.trim() === "") {
-              const newValue = {
-                source: "typed" as const,
-                value: [],
-              };
-              setColumnMapping((prev) => ({
-                ...prev,
-                [key]: newValue,
-              }));
-              if (onSave) {
-                setTimeout(() => onSave(key, newValue), 100);
-              }
-              return;
-            }
-
-            let finalValue;
-            try {
-              // Si el usuario ya puso los corchetes exteriores
-              finalValue = JSON.parse(input.trim());
-              const newValue = {
-                source: "typed" as const,
-                value: finalValue,
-              };
-              setColumnMapping((prev) => ({
-                ...prev,
-                [key]: newValue,
-              }));
-              if (onSave) {
-                setTimeout(() => onSave(key, newValue), 100);
-              }
-            } catch {
-              try {
-                finalValue = JSON.parse(`[${input.trim()}]`);
-                const newValue = {
-                  source: "typed" as const,
-                  value: finalValue,
-                };
-                setColumnMapping((prev) => ({
-                  ...prev,
-                  [key]: newValue,
-                }));
-                if (onSave) {
-                  setTimeout(() => onSave(key, newValue), 100);
-                }
-                // Limpia el valor temporal después de un guardado exitoso
-                setLocalInputValues((prev) => {
-                  const newState = { ...prev };
-                  delete newState[key];
-                  return newState;
-                });
-              } catch (error) {
-                console.error("Input format error:", error);
-                // No actualices si hay error, el texto incorrecto
-                // permanecerá en el input para que el usuario lo corrija.
-              }
-            }
-          }}
+        <WebgazerInput
+          localInputValues={localInputValues}
+          setLocalInputValues={setLocalInputValues}
+          setColumnMapping={setColumnMapping}
+          label={label}
+          key={key}
+          entry={entry}
         />
       ) : type === "object" && key !== "coordinates" ? (
         <ObjectInput

@@ -33,7 +33,7 @@ type Props = {
   components: TrialComponent[];
 };
 
-const renderComponent = ({
+const RenderComponent = ({
   comp,
   setComponents,
   toJsPsychCoords,
@@ -292,4 +292,4 @@ const renderComponent = ({
   }
 };
 
-export default renderComponent;
+export default RenderComponent;
