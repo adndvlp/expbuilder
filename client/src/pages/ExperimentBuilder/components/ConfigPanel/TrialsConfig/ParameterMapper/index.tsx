@@ -5,12 +5,12 @@ import { IoIosHelpCircle } from "react-icons/io";
 import { BiEdit } from "react-icons/bi";
 import GrapesHtmlEditor from "./GrapesEditors/GrapesHtmlEditor";
 import GrapesButtonEditor from "./GrapesEditors/GrapesButtonEditor";
-import SurveyBuilder from "./SurveyEditor/SurveyBuilder";
+import SurveyBuilder from "./SurveyEditor";
 import isEqual from "lodash.isequal";
 
 type UploadedFile = { name: string; url: string; type: string };
 
-type Parameter = {
+export type Parameter = {
   label: string;
   key: string;
   type: string;

@@ -42,9 +42,9 @@ function TrialsConfig({ pluginName }: Props) {
   const filteredDynamicPluginParameters = useMemo(
     () =>
       parameters.filter(
-        (p) => !["components", "response_components"].includes(p.key)
+        (p) => !["components", "response_components"].includes(p.key),
       ),
-    [parameters]
+    [parameters],
   );
 
   const {
@@ -61,7 +61,7 @@ function TrialsConfig({ pluginName }: Props) {
   const handleDeleteTrial = async () => {
     if (!selectedTrial) return;
     const confirmed = window.confirm(
-      `Are you sure you want to delete "${selectedTrial.name}"?`
+      `Are you sure you want to delete "${selectedTrial.name}"?`,
     );
     if (!confirmed) return;
 
@@ -122,7 +122,7 @@ function TrialsConfig({ pluginName }: Props) {
       setIncludeExtensions(
         selectedTrial.parameters?.includesExtensions !== undefined
           ? !!selectedTrial.parameters.includesExtensions
-          : includesExtensions
+          : includesExtensions,
       );
       setExtensionType(selectedTrial.parameters?.extensionType || "");
 
@@ -247,7 +247,7 @@ function TrialsConfig({ pluginName }: Props) {
     try {
       const updatedTrial = await updateTrial(
         selectedTrial.id,
-        updatedTrialData
+        updatedTrialData,
       );
       if (updatedTrial) {
         setSelectedTrial(updatedTrial);

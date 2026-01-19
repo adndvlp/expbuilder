@@ -40,13 +40,13 @@ const FileUploader = ({
     setSelected((prev) =>
       prev.includes(fileUrl)
         ? prev.filter((x) => x !== fileUrl)
-        : [...prev, fileUrl]
+        : [...prev, fileUrl],
     );
   };
 
   const toggleSelectAll = () => {
     const filteredFiles = uploadedFiles.filter(
-      (file) => file.name.split("/").pop() !== ".DS_Store"
+      (file) => file.name.split("/").pop() !== ".DS_Store",
     );
     if (selected.length === filteredFiles.length) {
       setSelected([]);
@@ -111,7 +111,7 @@ const FileUploader = ({
         />
         <div className="mt-4">
           {uploadedFiles.filter(
-            (file) => file.name.split("/").pop() !== ".DS_Store"
+            (file) => file.name.split("/").pop() !== ".DS_Store",
           ).length > 0 && (
             <>
               <h4 className="mb-4 text-center">Uploaded files</h4>
@@ -173,7 +173,7 @@ const FileUploader = ({
               )}
               {selectMode &&
                 uploadedFiles.filter(
-                  (file) => file.name.split("/").pop() !== ".DS_Store"
+                  (file) => file.name.split("/").pop() !== ".DS_Store",
                 ).length > 0 && (
                   <div
                     style={{
@@ -187,10 +187,11 @@ const FileUploader = ({
                       checked={
                         selected.length ===
                           uploadedFiles.filter(
-                            (file) => file.name.split("/").pop() !== ".DS_Store"
+                            (file) =>
+                              file.name.split("/").pop() !== ".DS_Store",
                           ).length &&
                         uploadedFiles.filter(
-                          (file) => file.name.split("/").pop() !== ".DS_Store"
+                          (file) => file.name.split("/").pop() !== ".DS_Store",
                         ).length > 0
                       }
                       onChange={toggleSelectAll}

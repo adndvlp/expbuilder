@@ -5,7 +5,7 @@ import { IoIosHelpCircle } from "react-icons/io";
 import { BiEdit } from "react-icons/bi";
 import GrapesHtmlEditor from "./GrapesEditors/GrapesHtmlEditor";
 import GrapesButtonEditor from "./GrapesEditors/GrapesButtonEditor";
-import SurveyBuilder from "./SurveyEditor/SurveyBuilder";
+import SurveyBuilder from "./SurveyEditor";
 import isEqual from "lodash.isequal";
 
 type UploadedFile = { name: string; url: string; type: string };
@@ -35,7 +35,7 @@ type ParameterMapperProps = {
   selectedComponentId?: string | null; // ID of selected component in Konva
   onComponentConfigChange?: (
     componentId: string,
-    config: Record<string, any>
+    config: Record<string, any>,
   ) => void;
   // Autoguardado
   onSave?: (key: string, value: any) => void; // Se llama con key y value para evitar closures
@@ -136,14 +136,14 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
 
       if (buttons.length === 0) {
         alert(
-          "No buttons found in the template. Please add at least one button."
+          "No buttons found in the template. Please add at least one button.",
         );
         return;
       }
 
       // Extract choices from button text content
       const extractedChoices = buttons.map(
-        (btn) => btn.textContent?.trim() || "Button"
+        (btn) => btn.textContent?.trim() || "Button",
       );
 
       // Store the button elements as templates indexed by their position
@@ -603,7 +603,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                               .split(",")
 
                               .map((item) =>
-                                item.trim().replace(/\s{2,}/g, " ")
+                                item.trim().replace(/\s{2,}/g, " "),
                               )
                               .filter((item) => item.length > 0);
 
@@ -767,7 +767,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                           try {
                             // eslint-disable-next-line no-new-func
                             finalValue = Function(
-                              '"use strict";return (' + input + ")"
+                              '"use strict";return (' + input + ")",
                             )();
                           } catch (err) {
                             // Si falla, deja el texto como string
@@ -856,7 +856,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                             const rawValue = Number(e.target.value);
                             const clampedValue = Math.max(
                               -1,
-                              Math.min(1, rawValue)
+                              Math.min(1, rawValue),
                             );
                             const coordValue = {
                               ...(entry.value &&
@@ -900,7 +900,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                             const rawValue = Number(e.target.value);
                             const clampedValue = Math.max(
                               -1,
-                              Math.min(1, rawValue)
+                              Math.min(1, rawValue),
                             );
                             const coordValue = {
                               ...(entry.value &&

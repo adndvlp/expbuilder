@@ -1,19 +1,19 @@
 import { useState, useEffect } from "react";
 const API_URL = import.meta.env.VITE_API_URL;
 
-interface ComponentParameter {
+type ComponentParameter = {
   type: string;
   default?: any;
   pretty_name?: string;
   description?: string;
-}
+};
 
-interface ComponentMetadata {
+export type ComponentMetadata = {
   name: string;
   version: string;
   parameters: Record<string, ComponentParameter>;
   data?: Record<string, any>;
-}
+};
 
 export const useComponentMetadata = (componentType: string | null) => {
   const [metadata, setMetadata] = useState<ComponentMetadata | null>(null);
