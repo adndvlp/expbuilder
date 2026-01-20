@@ -1,5 +1,5 @@
 import { createContext } from "react";
-import { Loop, Trial } from "../components/ConfigPanel/types";
+import { Loop, Trial } from "../components/ConfigurationPanel/types";
 
 export type TimelineItem = {
   id: string | number;

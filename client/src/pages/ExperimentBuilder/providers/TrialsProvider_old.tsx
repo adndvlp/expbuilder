@@ -1,6 +1,10 @@
 import { ReactNode, useState, useEffect } from "react";
 import TrialsContext from "../contexts/TrialsContext";
-import { Loop, Trial, TrialOrLoop } from "../components/ConfigPanel/types";
+import {
+  Loop,
+  Trial,
+  TrialOrLoop,
+} from "../components/ConfigurationPanel/types";
 import { useExperimentID } from "../hooks/useExperimentID";
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -18,7 +22,7 @@ export default function TrialsProvider({ children }: Props) {
   // Agrupa trials/loops en un loop (soporta nested loops)
   const groupTrialsAsLoop = (
     trialIndices: number[],
-    loopProps?: Partial<Omit<Loop, "trials" | "id">>
+    loopProps?: Partial<Omit<Loop, "trials" | "id">>,
   ) => {
     if (trialIndices.length < 2) return;
 
@@ -149,7 +153,7 @@ export default function TrialsProvider({ children }: Props) {
       const draggedIndex = newTrials.findIndex((item) =>
         dragged.type === "trial"
           ? "parameters" in item && item.id === dragged.id
-          : "trials" in item && item.id === dragged.id
+          : "trials" in item && item.id === dragged.id,
       );
 
       let draggedItem = newTrials[draggedIndex];
@@ -159,7 +163,7 @@ export default function TrialsProvider({ children }: Props) {
         const loopIndex = newTrials.findIndex(
           (item) =>
             "trials" in item &&
-            (item as Loop).trials.some((t) => t.id === dragged.id)
+            (item as Loop).trials.some((t) => t.id === dragged.id),
         );
         if (loopIndex !== -1) {
           const loop = newTrials[loopIndex] as Loop;
@@ -188,7 +192,7 @@ export default function TrialsProvider({ children }: Props) {
       // Si el destino es dentro de un loop
       if (position === "inside" && target.type === "loop" && target.id) {
         const loopIndex = newTrials.findIndex(
-          (item) => "trials" in item && item.id === target.id
+          (item) => "trials" in item && item.id === target.id,
         );
         if (loopIndex !== -1) {
           const loop = newTrials[loopIndex] as Loop;
@@ -219,7 +223,7 @@ export default function TrialsProvider({ children }: Props) {
         ? newTrials.findIndex((item) =>
             target.type === "trial"
               ? "parameters" in item && item.id === target.id
-              : "trials" in item && item.id === target.id
+              : "trials" in item && item.id === target.id,
           )
         : newTrials.length;
 
@@ -252,7 +256,7 @@ export default function TrialsProvider({ children }: Props) {
     setTrials((prevTrials) => {
       // Helper recursivo para encontrar y eliminar el loop
       const removeLoopRecursive = (
-        items: TrialOrLoop[]
+        items: TrialOrLoop[],
       ): { newItems: TrialOrLoop[]; found: boolean; loop?: Loop } => {
         for (let idx = 0; idx < items.length; idx++) {
           const item = items[idx];
@@ -293,7 +297,7 @@ export default function TrialsProvider({ children }: Props) {
               loop.trials.forEach((trial) => {
                 if (trial.branches) {
                   trial.branches.forEach((branchId) =>
-                    branchIdsInLoop.add(branchId)
+                    branchIdsInLoop.add(branchId),
                   );
                 }
               });

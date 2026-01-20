@@ -2,12 +2,12 @@ import "@xyflow/react/dist/style.css";
 import { useState } from "react";
 import ReactFlow, { Connection } from "reactflow";
 import useTrials from "../../hooks/useTrials";
-import { Trial } from "../ConfigPanel/types";
+import { Trial } from "../ConfigurationPanel/types";
 import TrialNode from "./TrialNode";
 import LoopNode from "./LoopNode";
 import LoopSubCanvas from "./LoopSubCanvas";
-import LoopRangeModal from "../ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeModal";
-import BranchedTrial from "../ConfigPanel/TrialsConfig/BranchedTrial";
+import LoopRangeModal from "../ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/LoopRangeModal";
+import BranchedTrial from "../ConfigurationPanel/TrialsConfiguration/BranchedTrial";
 import CanvasToolbar from "./components/CanvasToolbar";
 import { useFlowLayout } from "./hooks/useFlowLayout";
 

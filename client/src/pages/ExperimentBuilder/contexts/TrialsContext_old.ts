@@ -4,7 +4,7 @@ import {
   Trial,
   TrialOrLoop,
   MoveItemParams,
-} from "../components/ConfigPanel/types";
+} from "../components/ConfigurationPanel/types";
 
 type TrialsContextType = {
   trials: TrialOrLoop[];
@@ -15,7 +15,7 @@ type TrialsContextType = {
   setSelectedLoop: (loop: Loop | null) => void;
   groupTrialsAsLoop?: (
     trialIndices: number[],
-    loopProps?: Partial<Omit<Loop, "trials" | "id">>
+    loopProps?: Partial<Omit<Loop, "trials" | "id">>,
   ) => void;
   moveTrialOrLoop?: (params: MoveItemParams) => void;
   removeLoop?: (loopId: string) => void;

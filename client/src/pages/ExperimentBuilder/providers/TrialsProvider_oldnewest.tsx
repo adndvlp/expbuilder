@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState, useCallback } from "react";
 import TrialsContext, { TimelineItem } from "../contexts/TrialsContext";
-import { Trial, Loop } from "../components/ConfigPanel/types";
+import { Trial, Loop } from "../components/ConfigurationPanel/types";
 import { useExperimentID } from "../hooks/useExperimentID";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -13,7 +13,7 @@ export default function TrialsProvider({ children }: Props) {
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [loopTimeline, setLoopTimeline] = useState<TimelineItem[]>([]);
   const [activeLoopId, setActiveLoopId] = useState<string | number | null>(
-    null
+    null,
   );
   const [selectedTrial, setSelectedTrial] = useState<Trial | null>(null);
   const [selectedLoop, setSelectedLoop] = useState<Loop | null>(null);
@@ -27,7 +27,7 @@ export default function TrialsProvider({ children }: Props) {
     try {
       setIsLoading(true);
       const response = await fetch(
-        `${API_URL}/api/trials-metadata/${experimentID}`
+        `${API_URL}/api/trials-metadata/${experimentID}`,
       );
 
       if (!response.ok) {
@@ -54,7 +54,7 @@ export default function TrialsProvider({ children }: Props) {
         }
 
         const response = await fetch(
-          `${API_URL}/api/loop-trials-metadata/${experimentID}/${loopId}`
+          `${API_URL}/api/loop-trials-metadata/${experimentID}/${loopId}`,
         );
 
         if (!response.ok) {
@@ -74,7 +74,7 @@ export default function TrialsProvider({ children }: Props) {
         return [];
       }
     },
-    [experimentID, activeLoopId, loopTimeline]
+    [experimentID, activeLoopId, loopTimeline],
   );
 
   const clearLoopTimeline = useCallback(() => {
@@ -119,14 +119,14 @@ export default function TrialsProvider({ children }: Props) {
         throw error;
       }
     },
-    [experimentID, getTimeline]
+    [experimentID, getTimeline],
   );
 
   const getTrial = useCallback(
     async (id: string | number): Promise<Trial | null> => {
       try {
         const response = await fetch(
-          `${API_URL}/api/trial/${experimentID}/${id}`
+          `${API_URL}/api/trial/${experimentID}/${id}`,
         );
 
         if (!response.ok) {
@@ -140,13 +140,13 @@ export default function TrialsProvider({ children }: Props) {
         return null;
       }
     },
-    [experimentID]
+    [experimentID],
   );
 
   const updateTrial = useCallback(
     async (
       id: string | number,
-      trial: Partial<Trial>
+      trial: Partial<Trial>,
     ): Promise<Trial | null> => {
       try {
         const response = await fetch(
@@ -155,7 +155,7 @@ export default function TrialsProvider({ children }: Props) {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(trial),
-          }
+          },
         );
 
         if (!response.ok) {
@@ -174,8 +174,8 @@ export default function TrialsProvider({ children }: Props) {
                   name: updatedTrial.name,
                   branches: updatedTrial.branches || [],
                 }
-              : item
-          )
+              : item,
+          ),
         );
 
         // Actualizar selectedTrial si es el que está seleccionado
@@ -191,7 +191,7 @@ export default function TrialsProvider({ children }: Props) {
         return null;
       }
     },
-    [experimentID, selectedTrial, getTimeline]
+    [experimentID, selectedTrial, getTimeline],
   );
 
   const deleteTrial = useCallback(
@@ -201,7 +201,7 @@ export default function TrialsProvider({ children }: Props) {
           `${API_URL}/api/trial/${experimentID}/${id}`,
           {
             method: "DELETE",
-          }
+          },
         );
 
         if (!response.ok) {
@@ -218,7 +218,7 @@ export default function TrialsProvider({ children }: Props) {
               ...item,
               branches:
                 item.branches?.filter((branchId) => branchId !== id) || [],
-            }))
+            })),
         );
 
         // Limpiar selección si era el trial eliminado
@@ -234,7 +234,7 @@ export default function TrialsProvider({ children }: Props) {
         return false;
       }
     },
-    [experimentID, selectedTrial, getTimeline]
+    [experimentID, selectedTrial, getTimeline],
   );
 
   // ==================== LOOP METHODS ====================
@@ -266,7 +266,7 @@ export default function TrialsProvider({ children }: Props) {
           } catch (error) {
             console.error(
               `Error updating parentLoopId for trial ${trialId}:`,
-              error
+              error,
             );
           }
         }
@@ -275,7 +275,7 @@ export default function TrialsProvider({ children }: Props) {
         setTimeline((prev) => {
           // 1. Filtrar los trials que ahora están en el loop
           const filteredTimeline = prev.filter(
-            (item) => !loop.trials.includes(item.id)
+            (item) => !loop.trials.includes(item.id),
           );
 
           // 2. Actualizar branches: reemplazar trial IDs por loop ID
@@ -288,13 +288,13 @@ export default function TrialsProvider({ children }: Props) {
             // Si tiene branches con trials del loop, reemplazarlos con el loop ID
             if (item.branches && item.branches.length > 0) {
               const hasAnyTrialFromLoop = item.branches.some((branchId) =>
-                loop.trials.includes(branchId)
+                loop.trials.includes(branchId),
               );
 
               if (hasAnyTrialFromLoop) {
                 // Remover todos los trial IDs que están en el loop
                 const filteredBranches = item.branches.filter(
-                  (branchId) => !loop.trials.includes(branchId)
+                  (branchId) => !loop.trials.includes(branchId),
                 );
                 // Agregar el loop ID si no está ya
                 if (!filteredBranches.includes(newLoop.id)) {
@@ -331,14 +331,14 @@ export default function TrialsProvider({ children }: Props) {
         throw error;
       }
     },
-    [experimentID, getTimeline]
+    [experimentID, getTimeline],
   );
 
   const getLoop = useCallback(
     async (id: string | number): Promise<Loop | null> => {
       try {
         const response = await fetch(
-          `${API_URL}/api/loop/${experimentID}/${id}`
+          `${API_URL}/api/loop/${experimentID}/${id}`,
         );
 
         if (!response.ok) {
@@ -352,7 +352,7 @@ export default function TrialsProvider({ children }: Props) {
         return null;
       }
     },
-    [experimentID]
+    [experimentID],
   );
 
   const updateLoop = useCallback(
@@ -367,7 +367,7 @@ export default function TrialsProvider({ children }: Props) {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(loop),
-          }
+          },
         );
 
         if (!response.ok) {
@@ -384,7 +384,7 @@ export default function TrialsProvider({ children }: Props) {
 
           // Trials removidos del loop - limpiar parentLoopId
           const removedTrials = oldTrials.filter(
-            (trialId) => !newTrials.includes(trialId)
+            (trialId) => !newTrials.includes(trialId),
           );
           for (const trialId of removedTrials) {
             try {
@@ -396,14 +396,14 @@ export default function TrialsProvider({ children }: Props) {
             } catch (error) {
               console.error(
                 `Error clearing parentLoopId for trial ${trialId}:`,
-                error
+                error,
               );
             }
           }
 
           // Trials agregados al loop - asignar parentLoopId
           const addedTrials = newTrials.filter(
-            (trialId) => !oldTrials.includes(trialId)
+            (trialId) => !oldTrials.includes(trialId),
           );
           for (const trialId of addedTrials) {
             try {
@@ -415,7 +415,7 @@ export default function TrialsProvider({ children }: Props) {
             } catch (error) {
               console.error(
                 `Error setting parentLoopId for trial ${trialId}:`,
-                error
+                error,
               );
             }
           }
@@ -431,8 +431,8 @@ export default function TrialsProvider({ children }: Props) {
                   branches: updatedLoop.branches || [],
                   trials: updatedLoop.trials || [],
                 }
-              : item
-          )
+              : item,
+          ),
         );
 
         // Actualizar selectedLoop si es el que está seleccionado
@@ -448,7 +448,7 @@ export default function TrialsProvider({ children }: Props) {
         return null;
       }
     },
-    [experimentID, selectedLoop, getTimeline]
+    [experimentID, selectedLoop, getTimeline],
   );
 
   const deleteLoop = useCallback(
@@ -461,7 +461,7 @@ export default function TrialsProvider({ children }: Props) {
           `${API_URL}/api/loop/${experimentID}/${id}`,
           {
             method: "DELETE",
-          }
+          },
         );
 
         if (!response.ok) {
@@ -480,7 +480,7 @@ export default function TrialsProvider({ children }: Props) {
             } catch (error) {
               console.error(
                 `Error clearing parentLoopId for trial ${trialId}:`,
-                error
+                error,
               );
             }
           }
@@ -503,7 +503,7 @@ export default function TrialsProvider({ children }: Props) {
         return false;
       }
     },
-    [experimentID, selectedLoop, getTimeline, getLoop]
+    [experimentID, selectedLoop, getTimeline, getLoop],
   );
 
   // ==================== TIMELINE METHODS ====================
@@ -517,7 +517,7 @@ export default function TrialsProvider({ children }: Props) {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ timeline: newTimeline }),
-          }
+          },
         );
 
         if (!response.ok) {
@@ -533,7 +533,7 @@ export default function TrialsProvider({ children }: Props) {
         return false;
       }
     },
-    [experimentID]
+    [experimentID],
   );
 
   // ==================== DELETE ALL ====================

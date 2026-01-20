@@ -1,4 +1,4 @@
-import { Trial } from "../../ConfigPanel/types";
+import { Trial } from "../../ConfigurationPanel/types";
 import { isTrial, findItemById } from "./trialUtils";
 
 export const LAYOUT_CONSTANTS = {
@@ -31,7 +31,7 @@ export interface LayoutResult {
 export function calculateBranchWidth(
   branchId: number | string,
   trials: any[],
-  branchHorizontalSpacing: number
+  branchHorizontalSpacing: number,
 ): number {
   const item = findItemById(trials, branchId);
   if (!item) return branchHorizontalSpacing;
@@ -49,7 +49,7 @@ export function calculateBranchWidth(
           calculateBranchWidth(subBranchId, trials, branchHorizontalSpacing)
         );
       },
-      0
+      0,
     );
 
     return Math.max(branchHorizontalSpacing, subBranchesWidth);
@@ -65,7 +65,7 @@ export function createTrialNode(
   y: number,
   isSelected: boolean,
   onClick: () => void,
-  onAddBranch?: () => void
+  onAddBranch?: () => void,
 ): LayoutNode {
   return {
     id,
@@ -89,7 +89,7 @@ export function createLoopNode(
   isSelected: boolean,
   onClick: () => void,
   onAddBranch?: () => void,
-  onOpenLoop?: () => void
+  onOpenLoop?: () => void,
 ): LayoutNode {
   return {
     id,
@@ -109,7 +109,7 @@ export function createLoopNode(
 export function createEdge(
   source: string,
   target: string,
-  edgeType: string = "default"
+  edgeType: string = "default",
 ): LayoutEdge {
   return {
     id: `e${source}-${target}`,

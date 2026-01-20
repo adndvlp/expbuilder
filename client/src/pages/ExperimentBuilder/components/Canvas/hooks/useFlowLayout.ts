@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Trial, Loop } from "../../ConfigPanel/types";
+import { Trial, Loop } from "../../ConfigurationPanel/types";
 import {
   isTrial,
   findItemById,
@@ -65,7 +65,7 @@ export function useFlowLayout({
       parentId: string,
       x: number,
       y: number,
-      depth: number = 0
+      depth: number = 0,
     ): number => {
       const trialId = `${parentId}-${trial.id}`;
       const isSelected = selectedTrial && selectedTrial.id === trial.id;
@@ -93,8 +93,8 @@ export function useFlowLayout({
           y,
           !!isSelected,
           () => onSelectTrial(trial),
-          isSelected ? () => onAddBranch(trial.id) : undefined
-        )
+          isSelected ? () => onAddBranch(trial.id) : undefined,
+        ),
       );
 
       let maxDepth = 0;
@@ -105,7 +105,7 @@ export function useFlowLayout({
         trial.branches.length > 0
       ) {
         const branchWidths = trial.branches.map((branchId) =>
-          calculateBranchWidth(branchId, timeline, branchHorizontalSpacing)
+          calculateBranchWidth(branchId, timeline, branchHorizontalSpacing),
         );
         const totalWidth = branchWidths.reduce((sum, width) => sum + width, 0);
 
@@ -130,7 +130,7 @@ export function useFlowLayout({
                 trialId,
                 branchX,
                 branchY,
-                depth + 1
+                depth + 1,
               );
               maxDepth = Math.max(maxDepth, branchDepth);
 
@@ -142,7 +142,7 @@ export function useFlowLayout({
                 trialId,
                 branchX,
                 branchY,
-                depth + 1
+                depth + 1,
               );
               maxDepth = Math.max(maxDepth, loopDepth);
 
@@ -163,7 +163,7 @@ export function useFlowLayout({
       parentId: string,
       x: number,
       y: number,
-      depth: number = 0
+      depth: number = 0,
     ): number => {
       const loopId = `${parentId}-${loop.id}`;
       const isSelected =
@@ -194,8 +194,8 @@ export function useFlowLayout({
           !!isSelected,
           () => onSelectLoop(loop),
           isSelected ? () => onAddBranch(loop.id) : undefined,
-          onOpenLoop ? () => onOpenLoop(String(loop.id)) : undefined
-        )
+          onOpenLoop ? () => onOpenLoop(String(loop.id)) : undefined,
+        ),
       );
 
       let maxDepth = 0;
@@ -206,7 +206,7 @@ export function useFlowLayout({
         loop.branches.length > 0
       ) {
         const branchWidths = loop.branches.map((branchId) =>
-          calculateBranchWidth(branchId, timeline, branchHorizontalSpacing)
+          calculateBranchWidth(branchId, timeline, branchHorizontalSpacing),
         );
         const totalWidth = branchWidths.reduce((sum, width) => sum + width, 0);
 
@@ -231,7 +231,7 @@ export function useFlowLayout({
                 loopId,
                 branchX,
                 branchY,
-                depth + 1
+                depth + 1,
               );
               maxDepth = Math.max(maxDepth, branchDepth);
 
@@ -243,7 +243,7 @@ export function useFlowLayout({
                 loopId,
                 branchX,
                 branchY,
-                depth + 1
+                depth + 1,
               );
               maxDepth = Math.max(maxDepth, nestedDepth);
 
@@ -283,8 +283,8 @@ export function useFlowLayout({
             yPos,
             !!isSelected,
             () => onSelectTrial(item),
-            isSelected ? () => onAddBranch(item.id) : undefined
-          )
+            isSelected ? () => onAddBranch(item.id) : undefined,
+          ),
         );
       } else {
         // item.type === "loop"
@@ -297,8 +297,8 @@ export function useFlowLayout({
             !!isSelected,
             () => onSelectLoop(item),
             isSelected ? () => onAddBranch(item.id) : undefined,
-            onOpenLoop ? () => onOpenLoop(String(item.id)) : undefined
-          )
+            onOpenLoop ? () => onOpenLoop(String(item.id)) : undefined,
+          ),
         );
       }
 
@@ -310,11 +310,11 @@ export function useFlowLayout({
         item.branches.length > 0
       ) {
         const branchWidths = item.branches.map((branchId: number | string) =>
-          calculateBranchWidth(branchId, timeline, branchHorizontalSpacing)
+          calculateBranchWidth(branchId, timeline, branchHorizontalSpacing),
         );
         const totalWidth = branchWidths.reduce(
           (sum: number, width: number) => sum + width,
-          0
+          0,
         );
         let currentX = xTrial - totalWidth / 2;
 
@@ -338,7 +338,7 @@ export function useFlowLayout({
                 itemId,
                 branchX,
                 yPos + branchVerticalOffset,
-                0
+                0,
               );
               maxBranchDepth = Math.max(maxBranchDepth, branchDepth);
 
@@ -350,7 +350,7 @@ export function useFlowLayout({
                 itemId,
                 branchX,
                 yPos + branchVerticalOffset,
-                0
+                0,
               );
               maxBranchDepth = Math.max(maxBranchDepth, loopDepth);
 

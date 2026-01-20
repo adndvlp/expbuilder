@@ -5,9 +5,9 @@ import TrialNode from "./TrialNode";
 import LoopNode from "./LoopNode";
 import ResizeHandle from "./components/ResizeHandle";
 import LoopBreadcrumb from "./components/LoopBreadcrumb";
-import BranchedTrial from "../ConfigPanel/TrialsConfig/BranchedTrial";
-import LoopRangeModal from "../ConfigPanel/TrialsConfig/LoopsConfig/LoopRangeModal";
-import { Trial, Loop, TrialOrLoop } from "../ConfigPanel/types";
+import BranchedTrial from "../ConfigurationPanel/TrialsConfiguration/BranchedTrial";
+import LoopRangeModal from "../ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/LoopRangeModal";
+import { Trial, Loop, TrialOrLoop } from "../ConfigurationPanel/types";
 import { useDraggable } from "./hooks/useDraggable";
 import { useResizable } from "./hooks/useResizable";
 import { TbBinaryTree } from "react-icons/tb";
@@ -87,7 +87,7 @@ function LoopSubCanvas({
   const updateInNestedStructure = (
     items: any[],
     stackIndex: number,
-    updateFn: (items: any[]) => any[]
+    updateFn: (items: any[]) => any[],
   ): any[] => {
     if (stackIndex >= loopStack.length) {
       // Ya llegamos al loop actual, aplicar la actualización
@@ -102,7 +102,7 @@ function LoopSubCanvas({
           trials: updateInNestedStructure(
             item.trials,
             stackIndex + 1,
-            updateFn
+            updateFn,
           ),
         };
       }
@@ -239,7 +239,7 @@ function LoopSubCanvas({
     // Helper para generar un nombre único
     const generateUniqueLoopName = (
       baseName: string,
-      existingNames: string[]
+      existingNames: string[],
     ): string => {
       let counter = 1;
       let name = baseName;
@@ -296,7 +296,7 @@ function LoopSubCanvas({
           const hasBranchToGroup = item.branches.some(
             (branchId: number | string) => {
               return idsToGroup.includes(branchId);
-            }
+            },
           );
 
           if (hasBranchToGroup) {
@@ -328,7 +328,7 @@ function LoopSubCanvas({
             const updatedBranches = item.branches.filter(
               (branchId: number | string) => {
                 return !idsToGroup.includes(branchId);
-              }
+              },
             );
 
             // If this is the parent and some branches were grouped, add the loop ID
@@ -412,7 +412,7 @@ function LoopSubCanvas({
 
     // Collect all item IDs that are branches (recursively)
     const collectAllBranchIds = (
-      itemsList: TrialOrLoop[]
+      itemsList: TrialOrLoop[],
     ): Set<number | string> => {
       const branchIds = new Set<number | string>();
       const processItem = (item: TrialOrLoop) => {
@@ -439,7 +439,7 @@ function LoopSubCanvas({
       parentId: string,
       x: number,
       y: number,
-      depth: number = 0
+      depth: number = 0,
     ): number => {
       const itemId = `${parentId}-${item.id}`;
       const isItemTrial = isTrial(item);
@@ -490,8 +490,8 @@ function LoopSubCanvas({
             y,
             !!isSelectedTrial,
             () => onSelectTrial(item as Trial),
-            isSelectedTrial ? handleAddBranchForItem : undefined
-          )
+            isSelectedTrial ? handleAddBranchForItem : undefined,
+          ),
         );
       } else {
         const loopItem = item as Loop;
@@ -504,8 +504,8 @@ function LoopSubCanvas({
             !!isSelectedLoop,
             () => onSelectLoop(loopItem),
             isSelectedLoop ? handleAddBranchForItem : undefined,
-            onOpenNestedLoop ? () => onOpenNestedLoop(loopItem) : undefined
-          )
+            onOpenNestedLoop ? () => onOpenNestedLoop(loopItem) : undefined,
+          ),
         );
       }
 
@@ -517,11 +517,11 @@ function LoopSubCanvas({
         item.branches.length > 0
       ) {
         const branchWidths = item.branches.map((branchId: number | string) =>
-          calculateBranchWidth(branchId, trials, branchHorizontalSpacing)
+          calculateBranchWidth(branchId, trials, branchHorizontalSpacing),
         );
         const totalWidth = branchWidths.reduce(
           (sum: number, width: number) => sum + width,
-          0
+          0,
         );
 
         let currentX = x - totalWidth / 2;
@@ -538,7 +538,7 @@ function LoopSubCanvas({
               itemId,
               branchX,
               branchY,
-              depth + 1
+              depth + 1,
             );
             maxDepth = Math.max(maxDepth, branchDepth);
 
@@ -589,8 +589,8 @@ function LoopSubCanvas({
             yPos,
             !!isSelectedTrial,
             () => onSelectTrial(item as Trial),
-            isSelectedTrial ? handleAddBranchForItem : undefined
-          )
+            isSelectedTrial ? handleAddBranchForItem : undefined,
+          ),
         );
       } else {
         const loopItem = item as Loop;
@@ -603,8 +603,8 @@ function LoopSubCanvas({
             !!isSelectedLoop,
             () => onSelectLoop(loopItem),
             isSelectedLoop ? handleAddBranchForItem : undefined,
-            onOpenNestedLoop ? () => onOpenNestedLoop(loopItem) : undefined
-          )
+            onOpenNestedLoop ? () => onOpenNestedLoop(loopItem) : undefined,
+          ),
         );
       }
 
@@ -616,11 +616,11 @@ function LoopSubCanvas({
         item.branches.length > 0
       ) {
         const branchWidths = item.branches.map((branchId: number | string) =>
-          calculateBranchWidth(branchId, trials, branchHorizontalSpacing)
+          calculateBranchWidth(branchId, trials, branchHorizontalSpacing),
         );
         const totalWidth = branchWidths.reduce(
           (sum: number, width: number) => sum + width,
-          0
+          0,
         );
         let currentX = xTrial - totalWidth / 2;
 
@@ -635,7 +635,7 @@ function LoopSubCanvas({
               String(item.id),
               branchX,
               yPos + branchVerticalOffset,
-              0
+              0,
             );
             maxBranchDepth = Math.max(maxBranchDepth, branchDepth);
 
@@ -650,7 +650,7 @@ function LoopSubCanvas({
     // Add edges between main sequence items (vertical connection)
     for (let i = 0; i < mainItems.length - 1; i++) {
       edges.push(
-        createEdge(String(mainItems[i].id), String(mainItems[i + 1].id))
+        createEdge(String(mainItems[i].id), String(mainItems[i + 1].id)),
       );
     }
 

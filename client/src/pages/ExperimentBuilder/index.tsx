@@ -1,7 +1,7 @@
 import "./index.css";
 import Timeline from "./components/Timeline";
 import Canvas from "./components/Canvas";
-import ConfigPanel from "./components/ConfigPanel";
+import ConfigPanel from "./components/ConfigurationPanel";
 import TrialsProvider from "./providers/TrialsProvider";
 import UrlProvider from "./providers/UrlProvider";
 import ExperimentPreview from "./components/ExperimentPreview";
@@ -21,7 +21,7 @@ function ExperimentBuilder() {
   const [showTimeline, setShowTimeline] = useState(true);
   const [showConfig, setShowConfig] = useState(true);
   const [timelineWidth, setTimelineWidth] = useState(
-    () => window.innerWidth * 0.2
+    () => window.innerWidth * 0.2,
   );
   const [configWidth, setConfigWidth] = useState(() => window.innerWidth * 0.3);
 

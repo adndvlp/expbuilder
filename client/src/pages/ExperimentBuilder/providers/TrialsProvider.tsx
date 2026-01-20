@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState, useCallback } from "react";
 import TrialsContext, { TimelineItem } from "../contexts/TrialsContext";
-import { Trial, Loop } from "../components/ConfigPanel/types";
+import { Trial, Loop } from "../components/ConfigurationPanel/types";
 import { useExperimentID } from "../hooks/useExperimentID";
 
 const API_URL = import.meta.env.VITE_API_URL;

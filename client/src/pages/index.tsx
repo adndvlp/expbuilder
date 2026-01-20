@@ -9,9 +9,9 @@ import Register from "./Auth/Register";
 import Login from "./Auth/Login";
 import ErrorDetail from "./ErrorDetail";
 import Settings from "./Settings";
-import GoogleDriveCallback from "./Settings/GoogleDriveCallback";
-import DropboxCallback from "./Settings/DropboxCallback";
-import GithubCallback from "./Settings/GithubCallback";
+import GoogleDriveCallback from "./Settings/GoogleDrive/GoogleDriveCallback";
+import DropboxCallback from "./Settings/Dropbox/DropboxCallback";
+import GithubCallback from "./Settings/Github/GithubCallback";
 import ExperimentPanel from "./ExperimentPanel";
 
 // import ProtectedRoute from "../components/ProtectedRoute";

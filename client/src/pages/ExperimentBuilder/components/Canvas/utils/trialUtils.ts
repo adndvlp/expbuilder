@@ -1,4 +1,4 @@
-import { Trial } from "../../ConfigPanel/types";
+import { Trial } from "../../ConfigurationPanel/types";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -11,11 +11,11 @@ export function isTrial(item: any): item is Trial {
 
 export function findTrialById(
   timeline: any[],
-  id: number | string
+  id: number | string,
 ): any | null {
   const numId = typeof id === "string" ? parseInt(id) : id;
   const found = timeline.find(
-    (item) => item.type === "trial" && item.id === numId
+    (item) => item.type === "trial" && item.id === numId,
   );
   return found || null;
 }
@@ -34,7 +34,7 @@ export function findItemById(timeline: any[], id: number | string): any | null {
 
 export function generateUniqueName(
   existingNames: string[],
-  baseName = "New Trial"
+  baseName = "New Trial",
 ): string {
   let newName = baseName;
   let counter = 1;
@@ -87,11 +87,11 @@ export function getTrialIdsInLoops(timeline: any[]): (number | string)[] {
  * desde el backend
  */
 export async function getAllExistingNames(
-  experimentID: string
+  experimentID: string,
 ): Promise<string[]> {
   try {
     const response = await fetch(
-      `${API_URL}/api/timeline-names/${experimentID}`
+      `${API_URL}/api/timeline-names/${experimentID}`,
     );
     const data = await response.json();
     return data.names || [];
@@ -108,11 +108,11 @@ export async function getAllExistingNames(
 export async function isAncestor(
   sourceId: number | string,
   targetId: number | string,
-  experimentID: string
+  experimentID: string,
 ): Promise<boolean> {
   try {
     const response = await fetch(
-      `${API_URL}/api/validate-ancestor/${experimentID}?source=${sourceId}&target=${targetId}`
+      `${API_URL}/api/validate-ancestor/${experimentID}?source=${sourceId}&target=${targetId}`,
     );
     const data = await response.json();
     return data.isAncestor || false;
@@ -129,11 +129,11 @@ export async function isAncestor(
 export async function validateConnection(
   sourceId: number | string,
   targetId: number | string,
-  experimentID: string
+  experimentID: string,
 ): Promise<{ isValid: boolean; errorMessage?: string }> {
   try {
     const response = await fetch(
-      `${API_URL}/api/validate-connection/${experimentID}?source=${sourceId}&target=${targetId}`
+      `${API_URL}/api/validate-connection/${experimentID}?source=${sourceId}&target=${targetId}`,
     );
     const data = await response.json();
     return {
