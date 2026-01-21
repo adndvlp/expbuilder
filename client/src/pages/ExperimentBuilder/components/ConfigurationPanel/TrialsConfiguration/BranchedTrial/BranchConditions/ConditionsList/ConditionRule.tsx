@@ -1,5 +1,5 @@
-import { Condition } from "./types";
-import { DataDefinition } from "../../types";
+import { Condition } from "../../types";
+import { DataDefinition } from "../../../../types";
 
 type Props = {
   condition: Condition;

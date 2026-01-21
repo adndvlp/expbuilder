@@ -17,7 +17,7 @@ import { Dispatch, SetStateAction } from "react";
 import { Condition, Parameter } from "./types";
 import useTrials from "../../../../hooks/useTrials";
 import { DataDefinition } from "../../types";
-import ConditionRule from "./ConditionRule";
+import ConditionRule from "./BranchConditions/ConditionsList/ConditionRule";
 import { ParameterOverride, AddParamButtonCell } from "./ParameterOverride";
 import { FaClipboardList, FaCodeBranch, FaArrowRight } from "react-icons/fa";
 

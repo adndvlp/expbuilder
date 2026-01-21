@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 
-interface Size {
+export type Size = {
   width: number;
   height: number;
-}
+};
 
 export function useResizable(
   initialSize: Size,
   minWidth = 280,
-  minHeight = 180
+  minHeight = 180,
 ) {
   const [resizing, setResizing] = useState(false);
   const [size, setSize] = useState(initialSize);
@@ -38,11 +38,11 @@ export function useResizable(
     if (resizing) {
       const newWidth = Math.max(
         minWidth,
-        resizeStart.width + (e.clientX - resizeStart.x)
+        resizeStart.width + (e.clientX - resizeStart.x),
       );
       const newHeight = Math.max(
         minHeight,
-        resizeStart.height + (e.clientY - resizeStart.y)
+        resizeStart.height + (e.clientY - resizeStart.y),
       );
       setSize({ width: newWidth, height: newHeight });
     }

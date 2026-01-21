@@ -9,7 +9,7 @@ import {
   updateRule as updateRuleAction,
   addParameterToOverride as addParameterToOverrideAction,
 } from "./ConditionActions";
-import { ConditionBlock } from "./ConditionBlock";
+import { ConditionBlock } from "./ConditionBlock/ConditionBlock";
 
 function ParamsOverride({ selectedTrial }: Props) {
   const {

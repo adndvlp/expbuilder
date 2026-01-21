@@ -2,7 +2,7 @@ import "./index.css";
 import Timeline from "./components/Timeline";
 import Canvas from "./components/Canvas";
 import ConfigPanel from "./components/ConfigurationPanel";
-import TrialsProvider from "./providers/TrialsProvider";
+import TrialsProvider from "./providers/TrialsProvider/TrialsProvider";
 import UrlProvider from "./providers/UrlProvider";
 import ExperimentPreview from "./components/ExperimentPreview";
 import { useEffect, useRef, useState } from "react";

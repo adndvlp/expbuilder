@@ -2,16 +2,13 @@ import "@xyflow/react/dist/style.css";
 import { useState } from "react";
 import ReactFlow, { Connection } from "reactflow";
 import useTrials from "../../hooks/useTrials";
-import { Trial } from "../ConfigurationPanel/types";
 import TrialNode from "./TrialNode";
 import LoopNode from "./LoopNode";
-import LoopSubCanvas from "./LoopSubCanvas";
+import SubCanvas from "./SubCanvas";
 import LoopRangeModal from "../ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/LoopRangeModal";
 import BranchedTrial from "../ConfigurationPanel/TrialsConfiguration/BranchedTrial";
 import CanvasToolbar from "./components/CanvasToolbar";
 import { useFlowLayout } from "./hooks/useFlowLayout";
-
-import { FiX } from "react-icons/fi";
 import { generateUniqueName } from "./utils/trialUtils";
 import {
   getIsDarkMode,
@@ -317,7 +314,7 @@ function Canvas({}: Props) {
         />
 
         {openLoop && (
-          <LoopSubCanvas
+          <SubCanvas
             loopId={openLoop.id}
             loopName={openLoop.name}
             loopTimeline={openLoopMetadata}

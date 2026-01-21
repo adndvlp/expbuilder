@@ -5,7 +5,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 type UseFileUploadProps = {
   folder: string;
 };
-type UploadedFile = { name: string; url: string; type: string };
+export type UploadedFile = { name: string; url: string; type: string };
 
 type FileCache = {
   [key: string]: UploadedFile[];
@@ -77,7 +77,7 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
         {
           method: "POST",
           body: formData,
-        }
+        },
       );
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Error uploading files");
@@ -97,7 +97,7 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
       `${API_URL}/api/delete-file/${type}/${encodeURIComponent(name)}/${experimentID}`,
       {
         method: "DELETE",
-      }
+      },
     );
     invalidateCache();
     setUploadedFiles((prev) => prev.filter((i) => i.url !== file.url));
@@ -114,14 +114,14 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
             `${API_URL}/api/delete-file/${type}/${encodeURIComponent(name)}/${experimentID}`,
             {
               method: "DELETE",
-            }
+            },
           );
-        })
+        }),
       );
       invalidateCache();
       const urlsToDelete = files.map((f) => f.url);
       setUploadedFiles((prev) =>
-        prev.filter((i) => !urlsToDelete.includes(i.url))
+        prev.filter((i) => !urlsToDelete.includes(i.url)),
       );
     } catch (err) {
       console.error("Error deleting multiple files:", err);

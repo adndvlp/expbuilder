@@ -14,12 +14,14 @@
  */
 
 import { Dispatch, SetStateAction } from "react";
-import { Condition, Parameter } from "./types";
-import useTrials from "../../../../hooks/useTrials";
-import { DataDefinition, Trial } from "../../types";
-import { FaClipboardList, FaCodeBranch, FaArrowRight } from "react-icons/fa";
+import { Condition, Parameter } from "../types";
+import useTrials from "../../../../../hooks/useTrials";
+import { DataDefinition, Trial } from "../../../types";
+import { FaClipboardList } from "react-icons/fa";
 import ConditionsList from "./ConditionsList";
 import useAvailableColumns from "./useAvailableColumns";
+import useBranchConditions from "./useBranchConditions";
+import Descriptions from "./Descriptions";
 
 type Props = {
   conditions: Condition[];
@@ -44,7 +46,7 @@ function BranchConditions({
   data,
   onAutoSave,
 }: Props) {
-  const { timeline, getTrial } = useTrials();
+  const { timeline } = useTrials();
 
   // Helper to update conditions and trigger autosave
   const setConditionsWrapper = (
@@ -87,129 +89,20 @@ function BranchConditions({
     return prop;
   };
 
-  // Add custom parameter to condition
-  const addCustomParameter = (
-    conditionId: number,
-    isTargetDynamic: boolean,
-  ) => {
-    setConditionsWrapper(
-      conditions.map((c) => {
-        if (c.id === conditionId) {
-          const newParams = { ...(c.customParameters || {}) };
-          if (isTargetDynamic) {
-            // For dynamic plugins, add a template parameter
-            const newKey = `components::::`;
-            newParams[newKey] = {
-              source: "none",
-              value: null,
-            };
-          } else {
-            const existingKeys = Object.keys(newParams);
-            const availableParams =
-              c.nextTrialId && targetTrialParameters[c.nextTrialId]
-                ? targetTrialParameters[c.nextTrialId]
-                : [];
-
-            // Find first parameter not already added
-            const nextParam = availableParams.find(
-              (p) => !existingKeys.includes(p.key),
-            );
-
-            if (nextParam) {
-              newParams[nextParam.key] = {
-                source: "none",
-                value: null,
-              };
-            }
-          }
-
-          return { ...c, customParameters: newParams };
-        }
-        return c;
-      }),
-    );
-  };
-
-  const addCondition = () => {
-    setConditionsWrapper([
-      ...conditions,
-      {
-        id: Date.now(),
-        rules: [{ column: "", op: "==", value: "" }],
-        nextTrialId: null,
-        customParameters: {},
-      },
-    ]);
-  };
-
-  const removeCondition = (conditionId: number) => {
-    setConditionsWrapper(conditions.filter((c) => c.id !== conditionId));
-  };
-
-  const addRuleToCondition = (conditionId: number) => {
-    setConditionsWrapper(
-      conditions.map((c) =>
-        c.id === conditionId
-          ? {
-              ...c,
-              rules: [
-                ...c.rules,
-                {
-                  column: "",
-                  op: "==",
-                  value: "",
-                },
-              ],
-            }
-          : c,
-      ),
-    );
-  };
-
-  const removeRuleFromCondition = (conditionId: number, ruleIndex: number) => {
-    setConditionsWrapper(
-      conditions.map((c) =>
-        c.id === conditionId
-          ? { ...c, rules: c.rules.filter((_, idx) => idx !== ruleIndex) }
-          : c,
-      ),
-    );
-  };
-
-  const updateRule = (
-    conditionId: number,
-    ruleIndex: number,
-    field: string,
-    value: string,
-    shouldSave: boolean = true,
-  ) => {
-    setConditionsWrapper(
-      conditions.map((c) =>
-        c.id === conditionId
-          ? {
-              ...c,
-              rules: c.rules.map((r, idx) =>
-                idx === ruleIndex ? { ...r, [field]: value } : r,
-              ),
-            }
-          : c,
-      ),
-      shouldSave,
-    );
-  };
-
-  const updateNextTrial = (conditionId: number, nextTrialId: string) => {
-    setConditionsWrapper(
-      conditions.map((c) =>
-        c.id === conditionId ? { ...c, nextTrialId, customParameters: {} } : c,
-      ),
-    );
-
-    // Load parameters for the selected trial
-    if (nextTrialId) {
-      loadTargetTrialParameters(nextTrialId);
-    }
-  };
+  const {
+    addCondition,
+    addCustomParameter,
+    addRuleToCondition,
+    updateNextTrial,
+    updateRule,
+    removeCondition,
+    removeRuleFromCondition,
+  } = useBranchConditions({
+    loadTargetTrialParameters,
+    setConditionsWrapper,
+    conditions,
+    targetTrialParameters,
+  });
 
   // Get all available columns for the current trial (for branching conditions)
   const getAvailableColumns = useAvailableColumns({
@@ -275,154 +168,7 @@ function BranchConditions({
 
   return (
     <>
-      {/* Description */}
-      <div
-        style={{
-          marginBottom: "24px",
-          padding: "20px",
-          borderRadius: "12px",
-          border: "2px solid var(--primary-blue)",
-          backgroundColor: "var(--neutral-light)",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            marginBottom: "12px",
-          }}
-        >
-          <div
-            style={{
-              width: "4px",
-              height: "24px",
-              backgroundColor: "var(--primary-blue)",
-              borderRadius: "2px",
-            }}
-          />
-          <h3
-            style={{
-              color: "var(--text-dark)",
-              fontSize: "16px",
-              fontWeight: 700,
-              margin: 0,
-            }}
-          >
-            Branch & Jump Conditions
-          </h3>
-        </div>
-        <p
-          style={{
-            color: "var(--text-dark)",
-            fontSize: "14px",
-            marginBottom: "12px",
-            lineHeight: "1.6",
-          }}
-        >
-          Configure conditions to navigate between trials dynamically.
-        </p>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "16px",
-          }}
-        >
-          <div
-            style={{
-              padding: "12px",
-              borderRadius: "8px",
-              backgroundColor: "rgba(61, 146, 180, 0.1)",
-              border: "1px solid var(--primary-blue)",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                marginBottom: "8px",
-              }}
-            >
-              <div
-                style={{
-                  width: "24px",
-                  height: "24px",
-                  borderRadius: "50%",
-                  backgroundColor: "var(--primary-blue)",
-                  color: "white",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <FaCodeBranch size={12} />
-              </div>
-              <strong style={{ fontSize: "14px", color: "var(--text-dark)" }}>
-                Branch
-              </strong>
-            </div>
-            <p
-              style={{
-                fontSize: "13px",
-                color: "var(--text-dark)",
-                margin: 0,
-                lineHeight: "1.5",
-              }}
-            >
-              Navigate within current scope. Allows parameter overriding.
-            </p>
-          </div>
-          <div
-            style={{
-              padding: "12px",
-              borderRadius: "8px",
-              backgroundColor: "rgba(212, 175, 55, 0.1)",
-              border: "1px solid var(--gold)",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                marginBottom: "8px",
-              }}
-            >
-              <div
-                style={{
-                  width: "24px",
-                  height: "24px",
-                  borderRadius: "50%",
-                  backgroundColor: "var(--gold)",
-                  color: "white",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <FaArrowRight size={12} />
-              </div>
-              <strong style={{ fontSize: "14px", color: "var(--text-dark)" }}>
-                Jump
-              </strong>
-            </div>
-            <p
-              style={{
-                fontSize: "13px",
-                color: "var(--text-dark)",
-                margin: 0,
-                lineHeight: "1.5",
-              }}
-            >
-              Navigate to any trial. Parameter override disabled.
-            </p>
-          </div>
-        </div>
-      </div>
-
+      <Descriptions />
       {/* Lista de condiciones */}
       {conditions.length === 0 ? (
         <div

@@ -1,4 +1,4 @@
-import { DataDefinition, Trial } from "../../types";
+import { DataDefinition, Trial } from "../../../types";
 
 type Props = {
   selectedTrial: Trial | null;
