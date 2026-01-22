@@ -56,6 +56,15 @@ export default function useLoopCode({
     // Sanitizar el ID del loop para usarlo en nombres de variables
     const loopIdSanitized = id ? sanitizeName(id) : "Loop";
 
+    console.log("🔍 [USELOOPCODE ANALYSIS] Loop ID:", id);
+    console.log(
+      "🔍 [USELOOPCODE ANALYSIS] unifiedStimuli received:",
+      unifiedStimuli,
+    );
+    console.log("🔍 [USELOOPCODE ANALYSIS] trials.length:", trials?.length);
+    console.log("🔍 [USELOOPCODE ANALYSIS] orders:", orders);
+    console.log("🔍 [USELOOPCODE ANALYSIS] categories:", categories);
+
     // Detectar si este loop es anidado (tiene parent)
     const parentLoopIdSanitized = parentLoopId
       ? sanitizeName(parentLoopId)
@@ -65,8 +74,12 @@ export default function useLoopCode({
     const itemDefinitions = trials
       .map((item) => {
         if (isLoopData(item)) {
-          // Es un nested loop - generar código recursivamente usando genLoopCode
-          // Pasar el ID de este loop como parentLoopId del nested loop
+          // Si el nested loop ya tiene timelineProps (código generado), usarlo directamente
+          if (item.timelineProps) {
+            return item.timelineProps;
+          }
+
+          // Si no tiene timelineProps, generar código recursivamente
           const nestedLoopCode = useLoopCode({
             id: item.loopId,
             branches: item.branches,
@@ -97,18 +110,23 @@ export default function useLoopCode({
     // Generar wrappers con conditional_function para cada trial/loop dentro del loop
     const itemWrappers = trials
       .map((item, index) => {
-        const itemName = isLoopData(item) ? item.loopName : item.trialName;
+        // Para nested loops que vienen de trialsWithCode, tienen {id, name, type, isLoop, timelineProps}
+        // Para nested loops antiguos (legacy), tienen {loopId, loopName, ...}
+        const itemName = isLoopData(item)
+          ? item.loopName || item.name // Soportar ambos formatos
+          : item.trialName;
         const itemNameSanitized = sanitizeName(itemName);
         const isLastItem = index === trials.length - 1;
 
         // Para loops, usar el ID sanitizado del loop en lugar del nombre
         // Esto debe coincidir con cómo se define el procedure del loop
+        const loopId = isLoopData(item) ? item.loopId || item.id : null; // Soportar ambos formatos
         const timelineRef = isLoopData(item)
-          ? `${sanitizeName(item.loopId)}_procedure`
+          ? `${sanitizeName(loopId)}_procedure`
           : `${itemNameSanitized}_timeline`;
 
         const itemId = isLoopData(item)
-          ? `"${sanitizeName(item.loopId)}"`
+          ? `"${sanitizeName(loopId)}"`
           : `${timelineRef}.data.trial_id`;
 
         return `
@@ -183,7 +201,9 @@ export default function useLoopCode({
     // Generar la lista de nombres de wrappers para el timeline del loop
     const timelineRefs = trials
       .map((item) => {
-        const itemName = isLoopData(item) ? item.loopName : item.trialName;
+        const itemName = isLoopData(item)
+          ? item.loopName || item.name // Soportar ambos formatos
+          : item.trialName;
         const itemNameSanitized = sanitizeName(itemName);
         return `${itemNameSanitized}_wrapper`;
       })
@@ -269,7 +289,7 @@ export default function useLoopCode({
     // Check if loop has branches
     const hasBranchesLoop = branches && branches.length > 0;
 
-    BranchingLogicCode({
+    const branchingResult = BranchingLogicCode({
       code,
       parentLoopIdSanitized,
       itemDefinitions,
@@ -283,13 +303,15 @@ export default function useLoopCode({
       branches,
     });
 
+    code = branchingResult.code;
+
     // Siempre agregar loop_id al data (sin branches/branchConditions para evitar conflictos)
     code += `
   data: {
     loop_id: "${id}"
   },`;
 
-    BranchesCode({
+    const branchesResult = BranchesCode({
       code,
       hasBranchesLoop,
       branches,
@@ -297,6 +319,8 @@ export default function useLoopCode({
       id,
       loopIdSanitized,
     });
+
+    code = branchesResult.code;
 
     code += `
 };

@@ -1,4 +1,10 @@
 import { UploadedFile } from "./useExperimentCode";
+import { Trial, Loop } from "../../ConfigurationPanel/types";
+import { TimelineItem } from "../../../contexts/TrialsContext";
+
+type GetTrialFn = (id: string | number) => Promise<Trial | null>;
+type GetLoopTimelineFn = (loopId: string | number) => Promise<TimelineItem[]>;
+type GetLoopFn = (id: string | number) => Promise<Loop | null>;
 
 type Props = {
   experimentID: string | undefined;
@@ -6,6 +12,9 @@ type Props = {
   extensions: string;
   branchingEvaluation: string;
   uploadedFiles: UploadedFile[];
+  getTrial: GetTrialFn;
+  getLoopTimeline: GetLoopTimelineFn;
+  getLoop: GetLoopFn;
 };
 
 export default function LocalExperiment({
@@ -14,6 +23,9 @@ export default function LocalExperiment({
   extensions,
   branchingEvaluation,
   uploadedFiles,
+  getTrial,
+  getLoopTimeline,
+  getLoop,
 }: Props) {
   const generateLocalExperiment = async () => {
     // Generate codes dynamically from trial/loop data
@@ -22,7 +34,13 @@ export default function LocalExperiment({
       const { generateAllCodes } = await import(
         "../../../utils/generateTrialLoopCodes"
       );
-      const codes = await generateAllCodes(experimentID || "", uploadedFiles);
+      const codes = await generateAllCodes(
+        experimentID || "",
+        uploadedFiles,
+        getTrial,
+        getLoopTimeline,
+        getLoop,
+      );
       allCodes = codes.join("\n\n");
     } catch (error) {
       console.error("Error generating codes:", error);

@@ -1,5 +1,11 @@
 import { UploadedFile } from "./useExperimentCode";
+import { Trial, Loop } from "../../ConfigurationPanel/types";
+import { TimelineItem } from "../../../contexts/TrialsContext";
 const DATA_API_URL = import.meta.env.VITE_DATA_API_URL;
+
+type GetTrialFn = (id: string | number) => Promise<Trial | null>;
+type GetLoopTimelineFn = (loopId: string | number) => Promise<TimelineItem[]>;
+type GetLoopFn = (id: string | number) => Promise<Loop | null>;
 
 type Props = {
   experimentID: string | undefined;
@@ -9,6 +15,9 @@ type Props = {
   uploadedFiles: UploadedFile[];
   experimentName: string;
   storage: string | undefined;
+  getTrial: GetTrialFn;
+  getLoopTimeline: GetLoopTimelineFn;
+  getLoop: GetLoopFn;
 };
 
 export default function PublicExperiment({
@@ -19,6 +28,9 @@ export default function PublicExperiment({
   uploadedFiles,
   experimentName,
   storage,
+  getTrial,
+  getLoopTimeline,
+  getLoop,
 }: Props) {
   const generateExperiment = async () => {
     // Generate codes dynamically from trial/loop data
@@ -27,7 +39,13 @@ export default function PublicExperiment({
       const { generateAllCodes } = await import(
         "../../../utils/generateTrialLoopCodes"
       );
-      const codes = await generateAllCodes(experimentID || "", uploadedFiles);
+      const codes = await generateAllCodes(
+        experimentID || "",
+        uploadedFiles,
+        getTrial,
+        getLoopTimeline,
+        getLoop,
+      );
       allCodes = codes.join("\n\n");
     } catch (error) {
       console.error("Error generating codes:", error);

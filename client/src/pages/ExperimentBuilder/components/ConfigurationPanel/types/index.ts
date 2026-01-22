@@ -29,6 +29,7 @@ export interface Loop {
   repeatConditions?: RepeatCondition[];
   loopConditions?: LoopCondition[];
   isConditionalLoop?: boolean;
+  parentLoopId?: string | number | null; // ID del loop padre para nested loops
 }
 
 export type BranchCondition = {

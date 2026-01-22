@@ -6,6 +6,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 type Props = {
   experimentID: string | undefined;
   setTimeline: Dispatch<SetStateAction<TimelineItem[]>>;
+  setLoopTimeline: Dispatch<SetStateAction<TimelineItem[]>>;
   getTimeline: () => Promise<void>;
   selectedTrial: Trial | null;
   setSelectedTrial: (trial: Trial | null) => void;
@@ -15,6 +16,7 @@ export default function TrialMethods({
   selectedTrial,
   experimentID,
   setTimeline,
+  setLoopTimeline,
   getTimeline,
   setSelectedTrial,
 }: Props) {
@@ -34,16 +36,10 @@ export default function TrialMethods({
         const data = await response.json();
         const newTrial = data.trial;
 
-        // Optimistic UI: agregar al timeline localmente
-        setTimeline((prev) => [
-          ...prev,
-          {
-            id: newTrial.id,
-            type: "trial",
-            name: newTrial.name,
-            branches: newTrial.branches || [],
-          },
-        ]);
+        // NO actualizar timeline optimísticamente aquí
+        // El backend ya maneja la lógica de agregar al timeline
+        // Si es branch, updateTrial del parent lo agregará cuando actualice branches
+        // Si no es branch, se agregará en el siguiente getTimeline/getLoopTimeline
 
         return newTrial;
       } catch (error) {
@@ -81,6 +77,7 @@ export default function TrialMethods({
     async (
       id: string | number,
       trial: Partial<Trial>,
+      newBranchTrial?: Trial, // Trial recién creado como branch
     ): Promise<Trial | null> => {
       try {
         const response = await fetch(
@@ -99,9 +96,10 @@ export default function TrialMethods({
         const data = await response.json();
         const updatedTrial = data.trial;
 
-        // Optimistic UI: actualizar timeline localmente
-        setTimeline((prev) =>
-          prev.map((item) =>
+        // Optimistic UI: actualizar el timeline correcto
+        const updateTimelineFn = (prev: TimelineItem[]) => {
+          // 1. Actualizar el trial que se está modificando
+          let updated = prev.map((item) =>
             item.id === id && item.type === "trial"
               ? {
                   ...item,
@@ -109,8 +107,45 @@ export default function TrialMethods({
                   branches: updatedTrial.branches || [],
                 }
               : item,
-          ),
-        );
+          );
+
+          // 2. Agregar trials de branches que no estén en el timeline
+          if (updatedTrial.branches && updatedTrial.branches.length > 0) {
+            const existingIds = new Set(updated.map((item) => item.id));
+            const missingBranchIds = updatedTrial.branches.filter(
+              (branchId: number | string) => !existingIds.has(branchId),
+            );
+
+            // Para cada branch faltante, agregarlo al timeline
+            missingBranchIds.forEach((branchId: number | string) => {
+              // Si es el trial recién creado, usar sus datos reales
+              if (newBranchTrial && newBranchTrial.id === branchId) {
+                updated.push({
+                  id: newBranchTrial.id,
+                  type: "trial" as const,
+                  name: newBranchTrial.name,
+                  branches: newBranchTrial.branches || [],
+                });
+              } else {
+                // Para otros branches, usar placeholder (se actualizarán después)
+                updated.push({
+                  id: branchId,
+                  type: "trial" as const,
+                  name: "Loading...",
+                  branches: [],
+                });
+              }
+            });
+          }
+
+          return updated;
+        };
+
+        if (updatedTrial.parentLoopId) {
+          setLoopTimeline(updateTimelineFn);
+        } else {
+          setTimeline(updateTimelineFn);
+        }
 
         // Actualizar selectedTrial si es el que está seleccionado
         if (selectedTrial?.id === id) {
@@ -205,8 +240,8 @@ export default function TrialMethods({
           throw new Error("Failed to delete trial");
         }
 
-        // Optimistic UI: eliminar del timeline y limpiar referencias en branches
-        setTimeline((prev) =>
+        // Optimistic UI: eliminar del timeline correcto y limpiar referencias en branches
+        const updateTimelineFn = (prev: any[]) =>
           prev
             // 1. Eliminar el trial del timeline
             .filter((item) => item.id !== id)
@@ -215,8 +250,11 @@ export default function TrialMethods({
               ...item,
               branches:
                 item.branches?.filter((branchId) => branchId !== id) || [],
-            })),
-        );
+            }));
+
+        // Actualizar ambos timelines para cubrir todos los casos
+        setTimeline(updateTimelineFn);
+        setLoopTimeline(updateTimelineFn);
 
         // Limpiar selección si era el trial eliminado
         if (selectedTrial?.id === id) {

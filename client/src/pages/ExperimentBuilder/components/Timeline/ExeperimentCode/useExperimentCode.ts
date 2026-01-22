@@ -4,6 +4,7 @@ import {
   useExperimentID,
 } from "../../../hooks/useExperimentID";
 import { useExperimentStorage } from "../../../hooks/useStorage";
+import useTrials from "../../../hooks/useTrials";
 import LocalExperiment from "./LocalExperiment";
 import PublicExperiment from "./PublicExperiment";
 
@@ -226,12 +227,17 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
         console.log('🎯 [BRANCHING] Skip remaining activated');
       }`;
 
+  const { getTrial, getLoopTimeline, getLoop } = useTrials();
+
   const { generateLocalExperiment } = LocalExperiment({
     experimentID,
     evaluateCondition,
     extensions,
     branchingEvaluation,
     uploadedFiles,
+    getTrial,
+    getLoopTimeline,
+    getLoop,
   });
 
   const { generateExperiment } = PublicExperiment({
@@ -242,6 +248,9 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
     uploadedFiles,
     experimentName,
     storage,
+    getTrial,
+    getLoopTimeline,
+    getLoop,
   });
 
   return { generateLocalExperiment, generateExperiment };

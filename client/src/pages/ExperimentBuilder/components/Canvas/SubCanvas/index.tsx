@@ -34,7 +34,7 @@ type SubCanvasProps = {
   onSelectTrial: (trial: Trial) => void;
   onSelectLoop: (loop: Loop) => void;
   onOpenNestedLoop?: (loopId: string | number) => void;
-  onRefreshMetadata?: () => void; // Callback para recargar metadata desde Canvas
+  onRefreshMetadata?: () => void;
   loopStack?: Array<{ id: string; name: string }>;
   onNavigateToLoop?: (index: number) => void;
   onNavigateToRoot?: () => void;

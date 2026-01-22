@@ -32,7 +32,8 @@ function ExperimentPreview() {
     setStarted(false);
   };
 
-  const { selectedTrial, selectedLoop } = useTrials();
+  const { selectedTrial, selectedLoop, getTrial, getLoopTimeline, getLoop } =
+    useTrials();
 
   // trials preview - generate code dynamically
   useEffect(() => {
@@ -46,11 +47,16 @@ function ExperimentPreview() {
           selectedTrial,
           [], // uploadedFiles - empty for preview
           experimentID || "",
+          getTrial,
         );
       } else if (selectedLoop) {
         generatedCode = await generateSingleLoopCode(
           selectedLoop,
           experimentID || "",
+          [], // uploadedFiles - empty for preview
+          getTrial,
+          getLoopTimeline,
+          getLoop,
         );
       }
 

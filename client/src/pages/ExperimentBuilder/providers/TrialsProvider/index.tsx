@@ -89,6 +89,7 @@ export default function TrialsProvider({ children }: Props) {
       selectedTrial,
       experimentID,
       setTimeline,
+      setLoopTimeline,
       getTimeline,
       setSelectedTrial,
     });
@@ -96,8 +97,12 @@ export default function TrialsProvider({ children }: Props) {
   const { createLoop, getLoop, updateLoop, updateLoopField, deleteLoop } =
     LoopMethods({
       experimentID,
+      timeline,
+      loopTimeline,
       setTimeline,
+      setLoopTimeline,
       getTimeline,
+      getLoopTimeline,
       selectedLoop,
       setSelectedLoop,
     });

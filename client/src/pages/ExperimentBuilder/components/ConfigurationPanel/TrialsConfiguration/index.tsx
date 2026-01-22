@@ -124,6 +124,22 @@ function TrialsConfig({ pluginName }: Props) {
         setExtensionType(selectedTrial.parameters?.extensionType || "");
 
         // Restaura CSV y columnas si existen
+        console.log(
+          "🔍 [INDEX LOAD] columnMapping from DB:",
+          selectedTrial.columnMapping,
+        );
+        console.log(
+          "🔍 [INDEX LOAD] stimuli_duration:",
+          selectedTrial.columnMapping?.stimuli_duration,
+        );
+        console.log(
+          "🔍 [INDEX LOAD] trial_duration:",
+          selectedTrial.columnMapping?.trial_duration,
+        );
+        console.log(
+          "🔍 [INDEX LOAD] response_ends_trial:",
+          selectedTrial.columnMapping?.response_ends_trial,
+        );
         setColumnMapping(selectedTrial.columnMapping || {});
 
         // Priority to loop CSV if exists, otherwise trial CSV
@@ -294,6 +310,20 @@ function TrialsConfig({ pluginName }: Props) {
   // Guardar TODO (botón manual - 1 solo request con todos los campos)
   const handleSave = async () => {
     if (!canSave || !selectedTrial) return;
+
+    console.log("🔍 [INDEX SAVE] columnMapping before save:", columnMapping);
+    console.log(
+      "🔍 [INDEX SAVE] stimuli_duration:",
+      columnMapping.stimuli_duration,
+    );
+    console.log(
+      "🔍 [INDEX SAVE] trial_duration:",
+      columnMapping.trial_duration,
+    );
+    console.log(
+      "🔍 [INDEX SAVE] response_ends_trial:",
+      columnMapping.response_ends_trial,
+    );
 
     const updatedTrialData = {
       name: trialName,

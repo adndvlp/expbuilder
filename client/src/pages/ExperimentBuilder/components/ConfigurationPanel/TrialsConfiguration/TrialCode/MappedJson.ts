@@ -256,7 +256,8 @@ export default function MappedJson({
 
         additionalDynamicParams.forEach((paramKey) => {
           const paramMapping = columnMapping[paramKey];
-          if (paramMapping) {
+          // Solo agregar si existe mapping Y no es source='none'
+          if (paramMapping && paramMapping.source !== "none") {
             const prefixedKey = isInLoop
               ? `${paramKey}_${trialNameSanitized}`
               : paramKey;
@@ -283,6 +284,12 @@ export default function MappedJson({
       activeParameters.forEach((param) => {
         const { key } = param;
         const prefixedkey = isInLoop ? `${key}_${trialNameSanitized}` : key;
+
+        // Solo procesar si existe mapping Y no es source='none'
+        const mapping = columnMapping[key];
+        if (!mapping || mapping.source === "none") {
+          return; // Skip this parameter
+        }
 
         // Detectar si es un parámetro de archivos multimedia
         const isMediaParameter = (key: string | undefined) => {

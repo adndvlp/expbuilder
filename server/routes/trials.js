@@ -26,7 +26,7 @@ router.get("/api/timeline-code/:experimentID", async (req, res) => {
     const { experimentID } = req.params;
 
     const experimentDoc = db.data.trials.find(
-      (t) => t.experimentID === experimentID
+      (t) => t.experimentID === experimentID,
     );
 
     if (!experimentDoc) {
@@ -71,7 +71,7 @@ router.get("/api/trials-metadata/:experimentID", async (req, res) => {
 
     // Find experiment document
     const experimentDoc = db.data.trials.find(
-      (t) => t.experimentID === experimentID
+      (t) => t.experimentID === experimentID,
     );
 
     if (!experimentDoc) {
@@ -144,7 +144,7 @@ router.post("/api/trial/:experimentID", async (req, res) => {
 
     // Buscar o crear el documento del experimento
     let experimentDoc = db.data.trials.find(
-      (t) => t.experimentID === experimentID
+      (t) => t.experimentID === experimentID,
     );
 
     if (!experimentDoc) {
@@ -200,7 +200,7 @@ router.get("/api/trial/:experimentID/:id", async (req, res) => {
     await db.read();
 
     const experimentDoc = db.data.trials.find(
-      (t) => t.experimentID === experimentID
+      (t) => t.experimentID === experimentID,
     );
 
     if (!experimentDoc) {
@@ -241,7 +241,7 @@ router.patch("/api/trial/:experimentID/:id", async (req, res) => {
     await db.read();
 
     const experimentDoc = db.data.trials.find(
-      (t) => t.experimentID === experimentID
+      (t) => t.experimentID === experimentID,
     );
 
     if (!experimentDoc) {
@@ -267,7 +267,7 @@ router.patch("/api/trial/:experimentID/:id", async (req, res) => {
     // Si cambió el nombre o branches, actualizar timeline
     if (updates.name || updates.branches !== undefined) {
       const timelineIndex = experimentDoc.timeline.findIndex(
-        (item) => item.id === trialId && item.type === "trial"
+        (item) => item.id === trialId && item.type === "trial",
       );
       if (timelineIndex !== -1) {
         if (updates.name) {
@@ -307,7 +307,7 @@ router.delete("/api/trial/:experimentID/:id", async (req, res) => {
     await db.read();
 
     const experimentDoc = db.data.trials.find(
-      (t) => t.experimentID === experimentID
+      (t) => t.experimentID === experimentID,
     );
 
     if (!experimentDoc) {
@@ -321,7 +321,7 @@ router.delete("/api/trial/:experimentID/:id", async (req, res) => {
 
     // Eliminar del timeline
     experimentDoc.timeline = experimentDoc.timeline.filter(
-      (item) => !(item.id === trialId && item.type === "trial")
+      (item) => !(item.id === trialId && item.type === "trial"),
     );
 
     // Eliminar referencias en loops
@@ -405,7 +405,7 @@ router.post("/api/loop/:experimentID", async (req, res) => {
 
     // Buscar o crear el documento del experimento
     let experimentDoc = db.data.trials.find(
-      (t) => t.experimentID === experimentID
+      (t) => t.experimentID === experimentID,
     );
 
     if (!experimentDoc) {
@@ -428,7 +428,7 @@ router.post("/api/loop/:experimentID", async (req, res) => {
     if (!newLoop.parentLoopId) {
       // Remover los trials del timeline que ahora están dentro del loop
       experimentDoc.timeline = experimentDoc.timeline.filter(
-        (item) => !(item.type === "trial" && newLoop.trials.includes(item.id))
+        (item) => !(item.type === "trial" && newLoop.trials.includes(item.id)),
       );
 
       // Agregar loop al timeline
@@ -452,12 +452,12 @@ router.post("/api/loop/:experimentID", async (req, res) => {
 
       if (trial.branches && trial.branches.length > 0) {
         const hasAnyTrialFromLoop = trial.branches.some((branchId) =>
-          newLoop.trials.includes(branchId)
+          newLoop.trials.includes(branchId),
         );
         if (hasAnyTrialFromLoop) {
           // Remover todos los trial IDs que están en el loop
           const filteredBranches = trial.branches.filter(
-            (branchId) => !newLoop.trials.includes(branchId)
+            (branchId) => !newLoop.trials.includes(branchId),
           );
           // Agregar el loop ID si no está ya
           if (!filteredBranches.includes(newLoop.id)) {
@@ -471,12 +471,12 @@ router.post("/api/loop/:experimentID", async (req, res) => {
     experimentDoc.loops.forEach((loop) => {
       if (loop.id !== newLoop.id && loop.branches && loop.branches.length > 0) {
         const hasAnyTrialFromNewLoop = loop.branches.some((branchId) =>
-          newLoop.trials.includes(branchId)
+          newLoop.trials.includes(branchId),
         );
         if (hasAnyTrialFromNewLoop) {
           // Remover todos los trial IDs que están en el nuevo loop
           const filteredBranches = loop.branches.filter(
-            (branchId) => !newLoop.trials.includes(branchId)
+            (branchId) => !newLoop.trials.includes(branchId),
           );
           // Agregar el nuevo loop ID si no está ya
           if (!filteredBranches.includes(newLoop.id)) {
@@ -532,7 +532,7 @@ router.get(
       await db.read();
 
       const experimentDoc = db.data.trials.find(
-        (t) => t.experimentID === experimentID
+        (t) => t.experimentID === experimentID,
       );
 
       if (!experimentDoc) {
@@ -570,7 +570,7 @@ router.get(
           if (nestedLoop) {
             if (nestedLoop.branches) {
               toProcess.push(
-                ...nestedLoop.branches.filter((bid) => bid !== loopId)
+                ...nestedLoop.branches.filter((bid) => bid !== loopId),
               );
             }
             // NO agregar nestedLoop.trials aquí porque esos se manejan separadamente en su propio loop
@@ -619,7 +619,7 @@ router.get(
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
-  }
+  },
 );
 
 /**
@@ -638,7 +638,7 @@ router.get("/api/loop/:experimentID/:id", async (req, res) => {
     await db.read();
 
     const experimentDoc = db.data.trials.find(
-      (t) => t.experimentID === experimentID
+      (t) => t.experimentID === experimentID,
     );
 
     if (!experimentDoc) {
@@ -692,7 +692,7 @@ router.patch("/api/loop/:experimentID/:id", async (req, res) => {
     await db.read();
 
     const experimentDoc = db.data.trials.find(
-      (t) => t.experimentID === experimentID
+      (t) => t.experimentID === experimentID,
     );
 
     if (!experimentDoc) {
@@ -722,7 +722,7 @@ router.patch("/api/loop/:experimentID/:id", async (req, res) => {
       updates.trials !== undefined
     ) {
       const timelineIndex = experimentDoc.timeline.findIndex(
-        (item) => item.id === id && item.type === "loop"
+        (item) => item.id === id && item.type === "loop",
       );
       if (timelineIndex !== -1) {
         if (updates.name) {
@@ -738,7 +738,8 @@ router.patch("/api/loop/:experimentID/:id", async (req, res) => {
           // Remover trials del timeline que ahora están en el loop
           const loopTrialIds = updates.trials;
           experimentDoc.timeline = experimentDoc.timeline.filter(
-            (item) => !(item.type === "trial" && loopTrialIds.includes(item.id))
+            (item) =>
+              !(item.type === "trial" && loopTrialIds.includes(item.id)),
           );
         }
       }
@@ -772,7 +773,7 @@ router.delete("/api/loop/:experimentID/:id", async (req, res) => {
     await db.read();
 
     const experimentDoc = db.data.trials.find(
-      (t) => t.experimentID === experimentID
+      (t) => t.experimentID === experimentID,
     );
 
     if (!experimentDoc) {
@@ -786,7 +787,7 @@ router.delete("/api/loop/:experimentID/:id", async (req, res) => {
 
     // Encontrar la posición del loop en el timeline
     const loopIndex = experimentDoc.timeline.findIndex(
-      (item) => item.id === id && item.type === "loop"
+      (item) => item.id === id && item.type === "loop",
     );
 
     // Eliminar loop del array
@@ -794,20 +795,38 @@ router.delete("/api/loop/:experimentID/:id", async (req, res) => {
 
     // Eliminar del timeline
     experimentDoc.timeline = experimentDoc.timeline.filter(
-      (item) => !(item.id === id && item.type === "loop")
+      (item) => !(item.id === id && item.type === "loop"),
     );
 
     // Restaurar los trials en la posición donde estaba el loop
     if (loopToDelete && loopToDelete.trials && loopIndex !== -1) {
       const trialsToInsert = [];
-      for (const trialId of loopToDelete.trials) {
-        const trial = experimentDoc.trials.find((t) => t.id === trialId);
+      for (const itemId of loopToDelete.trials) {
+        // Buscar en trials
+        const trial = experimentDoc.trials.find((t) => t.id === itemId);
         if (trial) {
+          // Limpiar parentLoopId del trial
+          trial.parentLoopId = null;
           trialsToInsert.push({
             id: trial.id,
             type: "trial",
             name: trial.name,
             branches: trial.branches || [],
+          });
+          continue;
+        }
+
+        // Buscar en loops (nested loops)
+        const nestedLoop = experimentDoc.loops.find((l) => l.id === itemId);
+        if (nestedLoop) {
+          // Limpiar parentLoopId del loop nested
+          nestedLoop.parentLoopId = null;
+          trialsToInsert.push({
+            id: nestedLoop.id,
+            type: "loop",
+            name: nestedLoop.name,
+            branches: nestedLoop.branches || [],
+            trials: nestedLoop.trials || [],
           });
         }
       }
@@ -826,7 +845,7 @@ router.delete("/api/loop/:experimentID/:id", async (req, res) => {
         const isRootTrial = !trialsInLoop.some((otherTrialId) => {
           if (otherTrialId === trialId) return false;
           const otherTrial = experimentDoc.trials.find(
-            (t) => t.id === otherTrialId
+            (t) => t.id === otherTrialId,
           );
           return otherTrial?.branches?.includes(trialId);
         });
@@ -837,7 +856,7 @@ router.delete("/api/loop/:experimentID/:id", async (req, res) => {
         if (trial.branches && trial.branches.includes(id)) {
           // Remover el loop ID
           const filteredBranches = trial.branches.filter(
-            (branchId) => branchId !== id
+            (branchId) => branchId !== id,
           );
           // Agregar solo los root trial IDs del loop
           rootTrialsInLoop.forEach((trialId) => {
@@ -853,7 +872,7 @@ router.delete("/api/loop/:experimentID/:id", async (req, res) => {
         if (loop.branches && loop.branches.includes(id)) {
           // Remover el loop ID
           const filteredBranches = loop.branches.filter(
-            (branchId) => branchId !== id
+            (branchId) => branchId !== id,
           );
           // Agregar solo los root trial IDs del loop eliminado
           rootTrialsInLoop.forEach((trialId) => {
@@ -909,7 +928,7 @@ router.patch("/api/timeline/:experimentID", async (req, res) => {
     await db.read();
 
     const experimentDoc = db.data.trials.find(
-      (t) => t.experimentID === experimentID
+      (t) => t.experimentID === experimentID,
     );
 
     if (!experimentDoc) {
@@ -945,7 +964,7 @@ router.delete("/api/trials/:experimentID", async (req, res) => {
 
     // Eliminar el documento completo del experimento
     db.data.trials = db.data.trials.filter(
-      (t) => t.experimentID !== experimentID
+      (t) => t.experimentID !== experimentID,
     );
 
     await db.write();
@@ -970,7 +989,7 @@ router.get("/api/timeline-names/:experimentID", async (req, res) => {
     const { experimentID } = req.params;
 
     const experimentDoc = db.data.trials.find(
-      (t) => t.experimentID === experimentID
+      (t) => t.experimentID === experimentID,
     );
 
     if (!experimentDoc) {
@@ -1016,7 +1035,7 @@ router.get("/api/validate-ancestor/:experimentID", async (req, res) => {
     const { source, target } = req.query;
 
     const experimentDoc = db.data.trials.find(
-      (t) => t.experimentID === experimentID
+      (t) => t.experimentID === experimentID,
     );
 
     if (!experimentDoc) {
@@ -1106,7 +1125,7 @@ router.get("/api/validate-connection/:experimentID", async (req, res) => {
     }
 
     const experimentDoc = db.data.trials.find(
-      (t) => t.experimentID === experimentID
+      (t) => t.experimentID === experimentID,
     );
 
     if (!experimentDoc) {

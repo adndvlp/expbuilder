@@ -8,15 +8,24 @@ import useLoopCode from "../components/ConfigurationPanel/TrialsConfiguration/Lo
 import { Trial, Loop } from "../components/ConfigurationPanel/types";
 import type { TimelineItem } from "../contexts/TrialsContext";
 
+type GetTrialFn = (id: string | number) => Promise<Trial | null>;
+type GetLoopTimelineFn = (loopId: string | number) => Promise<TimelineItem[]>;
+type GetLoopFn = (id: string | number) => Promise<Loop | null>;
+
 /**
  * Generates JavaScript code for all trials and loops in a timeline
  * @param experimentID - The experiment ID
  * @param uploadedFiles - Files uploaded to the timeline (for URL mapping)
+ * @param getTrial - Function to fetch trial data
+ * @param getLoopTimeline - Function to fetch loop timeline
  * @returns Array of generated JavaScript code strings
  */
 export async function generateAllCodes(
   experimentID: string,
   uploadedFiles: UploadedFile[] = [],
+  getTrial: GetTrialFn,
+  getLoopTimeline: GetLoopTimelineFn,
+  getLoop: GetLoopFn,
 ): Promise<string[]> {
   try {
     // Fetch timeline metadata
@@ -36,17 +45,22 @@ export async function generateAllCodes(
     for (const item of timeline) {
       if (item.type === "trial") {
         // It's a trial
-        const code = await generateTrialCode(
+        const result = await generateTrialCode(
           item as unknown as Trial,
           uploadedFiles,
           experimentID,
+          getTrial,
         );
-        if (code) codes.push(code);
+        if (result.code) codes.push(result.code);
       } else if (item.type === "loop") {
         // It's a loop
         const code = await generateLoopCode(
           item as unknown as Loop,
           experimentID,
+          uploadedFiles,
+          getTrial,
+          getLoopTimeline,
+          getLoop,
         );
         if (code) codes.push(code);
       }
@@ -72,20 +86,17 @@ async function generateTrialCode(
   trial: Trial,
   uploadedFiles: UploadedFile[],
   experimentID: string,
+  getTrial: GetTrialFn,
+  isInLoop: boolean = false,
 ): Promise<string> {
   try {
-    // Fetch full trial data if needed
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/trial/${experimentID}/${trial.id}`,
-    );
+    // Fetch full trial data using getTrial
+    const fullTrial = await getTrial(trial.id);
 
-    if (!response.ok) {
+    if (!fullTrial) {
       console.error(`Failed to fetch trial ${trial.id}`);
       return "";
     }
-
-    const responseData = await response.json();
-    const fullTrial: Trial = responseData.trial || responseData;
 
     if (!fullTrial.plugin) {
       console.error(`Trial ${trial.id} has no plugin`);
@@ -150,7 +161,7 @@ async function generateTrialCode(
 
     // Generate code using useTrialCode (which is actually just a function, not a React hook)
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const { genTrialCode } = useTrialCode({
+    const { genTrialCode, mappedJson } = useTrialCode({
       id: fullTrial.id,
       branches: fullTrial.branches,
       branchConditions: fullTrial.branchConditions,
@@ -170,14 +181,28 @@ async function generateTrialCode(
       stimuliOrders: fullTrial.stimuliOrders || [],
       categories: fullTrial.categories || false,
       categoryData: fullTrial.categoryData || [],
-      isInLoop: false,
+      isInLoop: isInLoop,
       parentLoopId: fullTrial.parentLoopId || null,
     });
 
-    return genTrialCode();
+    console.log(
+      "🔍 [TRIAL MAPPED JSON] Trial:",
+      fullTrial.name,
+      "mappedJson:",
+      mappedJson,
+    );
+
+    // Return both code and mappedJson
+    return {
+      code: genTrialCode(),
+      mappedJson: mappedJson,
+    };
   } catch (error) {
     console.error(`Error generating code for trial ${trial.id}:`, error);
-    return "";
+    return {
+      code: "",
+      mappedJson: [],
+    };
   }
 }
 
@@ -187,35 +212,134 @@ async function generateTrialCode(
 async function generateLoopCode(
   loop: Loop,
   experimentID: string,
+  uploadedFiles: UploadedFile[] = [],
+  getTrial: GetTrialFn,
+  getLoopTimeline: GetLoopTimelineFn,
+  getLoop: GetLoopFn,
 ): Promise<string> {
   try {
-    // Fetch full loop data
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/loop/${experimentID}/${loop.id}`,
+    // Use as Loop directly (already has full data from timeline)
+    const fullLoop = loop;
+
+    // Fetch trials metadata within the loop using getLoopTimeline
+    const trialsMetadata = await getLoopTimeline(loop.id);
+
+    // Generate code for each trial/loop in the loop
+    const trialsWithCode = await Promise.all(
+      trialsMetadata.map(async (item) => {
+        if (item.type === "trial") {
+          // Fetch full trial data using getTrial
+          const fullTrial = await getTrial(item.id);
+
+          if (!fullTrial) {
+            console.error(`Failed to fetch trial ${item.id}`);
+            return {
+              trialName: item.name,
+              pluginName: "",
+              timelineProps: "",
+              mappedJson: [],
+            };
+          }
+
+          // Generate trial code with isInLoop = true
+          const trialResult = await generateTrialCode(
+            fullTrial,
+            uploadedFiles,
+            experimentID,
+            getTrial,
+            true, // isInLoop = true
+          );
+
+          return {
+            trialName: fullTrial.name,
+            pluginName: fullTrial.plugin,
+            timelineProps: trialResult.code,
+            mappedJson: trialResult.mappedJson,
+          };
+        } else if (item.type === "loop") {
+          // Recursively generate nested loop code
+          console.log(
+            `🔁 [GENERATE LOOP] Generating nested loop code for:`,
+            item.id,
+          );
+
+          // Fetch full loop data using getLoop
+          const fullNestedLoop = await getLoop(item.id);
+
+          if (!fullNestedLoop) {
+            console.error(
+              `🔁 [GENERATE LOOP] Failed to fetch nested loop ${item.id}`,
+            );
+            return {
+              ...item,
+              timelineProps: "",
+              isLoop: true,
+            };
+          }
+
+          const nestedLoopCode = await generateLoopCode(
+            fullNestedLoop,
+            experimentID,
+            uploadedFiles,
+            getTrial,
+            getLoopTimeline,
+            getLoop,
+          );
+
+          console.log(
+            `🔁 [GENERATE LOOP] Nested loop code generated, length:`,
+            nestedLoopCode?.length || 0,
+          );
+
+          return {
+            ...item,
+            timelineProps: nestedLoopCode,
+            isLoop: true,
+          };
+        }
+        return item;
+      }),
     );
 
-    if (!response.ok) {
-      console.error(`Failed to fetch loop ${loop.id}`);
+    // Combine all mappedJson from trials to create unifiedStimuli
+    // Each row in unifiedStimuli should contain ALL properties from ALL trials
+    const maxRows = Math.max(
+      ...trialsWithCode
+        .filter((t) => t.mappedJson && Array.isArray(t.mappedJson))
+        .map((t) => t.mappedJson.length),
+      0,
+    );
+
+    const unifiedStimuli = [];
+    for (let i = 0; i < maxRows; i++) {
+      const row: Record<string, any> = {};
+
+      trialsWithCode.forEach((trial) => {
+        if (
+          trial.mappedJson &&
+          Array.isArray(trial.mappedJson) &&
+          trial.mappedJson[i]
+        ) {
+          // Merge all properties from this trial's mappedJson[i] into the row
+          Object.assign(row, trial.mappedJson[i]);
+        }
+      });
+
+      unifiedStimuli.push(row);
+    }
+
+    console.log("🔍 [ANALYSIS] Loop:", fullLoop.id);
+    console.log(
+      "🔍 [ANALYSIS] Combined unifiedStimuli from trials:",
+      unifiedStimuli,
+    );
+    console.log("🔍 [ANALYSIS] trialsWithCode.length:", trialsWithCode?.length);
+
+    // Validar que trialsWithCode no esté vacío
+    if (!trialsWithCode || trialsWithCode.length === 0) {
+      console.error("ERROR: trialsWithCode is empty or undefined!");
       return "";
     }
-
-    const responseData = await response.json();
-    const fullLoop: Loop = responseData.loop || responseData;
-
-    // Fetch trials metadata within the loop
-    const trialsResponse = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/loop-trials-metadata/${experimentID}/${loop.id}`,
-    );
-
-    let trialsMetadata: TimelineItem[] = [];
-    if (trialsResponse.ok) {
-      const trialsData = await trialsResponse.json();
-      trialsMetadata = trialsData.trialsMetadata || [];
-    }
-
-    // Generate unified stimuli for the loop
-    const unifiedStimuli =
-      fullLoop.csvJson && fullLoop.csvJson.length > 0 ? fullLoop.csvJson : [];
 
     // Generate code using useLoopCode (which is actually just a function, not a React hook)
     // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -230,7 +354,7 @@ async function generateLoopCode(
       stimuliOrders: fullLoop.stimuliOrders || [],
       categories: fullLoop.categories || false,
       categoryData: fullLoop.categoryData || [],
-      trials: trialsMetadata as unknown as any,
+      trials: trialsWithCode as unknown as any,
       unifiedStimuli,
       loopConditions: fullLoop.loopConditions as unknown as any,
       isConditionalLoop: fullLoop.isConditionalLoop,
@@ -251,13 +375,31 @@ export async function generateSingleTrialCode(
   trial: Trial,
   uploadedFiles: UploadedFile[],
   experimentID: string,
+  getTrial: GetTrialFn,
 ): Promise<string> {
-  return generateTrialCode(trial, uploadedFiles, experimentID);
+  const result = await generateTrialCode(
+    trial,
+    uploadedFiles,
+    experimentID,
+    getTrial,
+  );
+  return result.code;
 }
 
 export async function generateSingleLoopCode(
   loop: Loop,
   experimentID: string,
+  uploadedFiles: UploadedFile[],
+  getTrial: GetTrialFn,
+  getLoopTimeline: GetLoopTimelineFn,
+  getLoop: GetLoopFn,
 ): Promise<string> {
-  return generateLoopCode(loop, experimentID);
+  return generateLoopCode(
+    loop,
+    experimentID,
+    uploadedFiles,
+    getTrial,
+    getLoopTimeline,
+    getLoop,
+  );
 }

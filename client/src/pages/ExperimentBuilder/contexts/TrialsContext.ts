@@ -46,6 +46,7 @@ type TrialsContextType = {
   updateLoop: (
     id: string | number,
     loop: Partial<Loop>,
+    newBranchItem?: any,
   ) => Promise<Loop | null>;
   updateLoopField: (
     id: string | number,

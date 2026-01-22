@@ -27,6 +27,7 @@ type Props = {};
 function Canvas({}: Props) {
   const {
     timeline,
+    loopTimeline,
     selectedTrial,
     setSelectedTrial,
     selectedLoop,
@@ -76,6 +77,17 @@ function Canvas({}: Props) {
         parameters: {},
         trialCode: "",
       });
+
+      // Optimistic UI: agregar el trial al timeline manualmente
+      updateTimeline([
+        ...timeline,
+        {
+          id: newTrial.id,
+          type: "trial",
+          name: newTrial.name,
+          branches: newTrial.branches || [],
+        },
+      ]);
 
       setSelectedTrial(newTrial);
       setSelectedLoop(null);
@@ -162,6 +174,11 @@ function Canvas({}: Props) {
     const newName = generateUniqueName(existingNames);
 
     try {
+      // Primero obtener el parent
+      const parentItem = timeline.find((item) => item.id === parentId);
+      if (!parentItem) return;
+
+      // Crear el trial
       const newBranchTrial = await createTrial({
         type: "Trial",
         name: newName,
@@ -170,24 +187,32 @@ function Canvas({}: Props) {
         trialCode: "",
       });
 
-      // Actualizar el parent (trial o loop) para incluir este branch
-      const parentItem = timeline.find((item) => item.id === parentId);
-      if (!parentItem) return;
+      // Obtener parent actualizado
+      const parent =
+        parentItem.type === "trial"
+          ? await getTrial(parentId)
+          : await getLoop(parentId);
 
+      if (!parent) return;
+
+      // Actualizar el parent con el nuevo branch
+      // updateTrial/updateLoop harán el optimistic UI completo
       if (parentItem.type === "trial") {
-        const parentTrial = await getTrial(parentId);
-        if (parentTrial) {
-          await updateTrial(parentId, {
-            branches: [...(parentTrial.branches || []), newBranchTrial.id],
-          });
-        }
+        await updateTrial(
+          parentId,
+          {
+            branches: [...(parent.branches || []), newBranchTrial.id],
+          },
+          newBranchTrial, // Pasar el trial recién creado
+        );
       } else {
-        const parentLoop = await getLoop(parentId);
-        if (parentLoop) {
-          await updateLoop(parentId, {
-            branches: [...(parentLoop.branches || []), newBranchTrial.id],
-          });
-        }
+        await updateLoop(
+          parentId,
+          {
+            branches: [...(parent.branches || []), newBranchTrial.id],
+          },
+          newBranchTrial, // Pasar el trial recién creado
+        );
       }
 
       setSelectedTrial(newBranchTrial);
@@ -333,7 +358,7 @@ function Canvas({}: Props) {
           <SubCanvas
             loopId={openLoop.id}
             loopName={openLoop.name}
-            loopTimeline={openLoopMetadata}
+            loopTimeline={loopTimeline}
             onRefreshMetadata={handleRefreshLoopMetadata}
             isDark={isDark}
             selectedTrial={selectedTrial}

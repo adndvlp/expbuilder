@@ -16,10 +16,12 @@ type Props = {
   updateLoop: (
     id: string | number,
     loop: Partial<Loop>,
+    newBranchItem?: any,
   ) => Promise<Loop | null>;
   updateTrial: (
     id: string | number,
     trial: Partial<Trial>,
+    newBranchTrial?: Trial,
   ) => Promise<Trial | null>;
   loopId: string | number;
   setShowLoopModal: (value: SetStateAction<boolean>) => void;
@@ -67,21 +69,28 @@ export default function Actions({
       if (parentItem.type === "trial") {
         const parentTrial = await getTrial(parentId);
         if (parentTrial) {
-          await updateTrial(parentId, {
-            branches: [...(parentTrial.branches || []), newBranchTrial.id],
-          });
+          await updateTrial(
+            parentId,
+            {
+              branches: [...(parentTrial.branches || []), newBranchTrial.id],
+            },
+            newBranchTrial, // Pasar el trial recién creado
+          );
         }
       } else {
         const parentLoop = await getLoop(parentId);
         if (parentLoop) {
-          await updateLoop(parentId, {
-            branches: [...(parentLoop.branches || []), newBranchTrial.id],
-          });
+          await updateLoop(
+            parentId,
+            {
+              branches: [...(parentLoop.branches || []), newBranchTrial.id],
+            },
+            newBranchTrial, // Pasar el trial recién creado
+          );
         }
       }
 
       onSelectTrial(newBranchTrial);
-      if (onRefreshMetadata) onRefreshMetadata();
     } catch (error) {
       console.error("Error adding branch:", error);
     }

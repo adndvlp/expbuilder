@@ -70,7 +70,7 @@ export function useTrialCode({
   const safeCategoryData = categoryData || [];
 
   const activeParameters = parameters.filter(
-    (p) => columnMapping[p.key]?.source !== "none",
+    (p) => columnMapping[p.key] && columnMapping[p.key].source !== "none",
   );
   const trialNameSanitized = trialName.replace(/\s+/g, "_");
 
@@ -103,7 +103,11 @@ export function useTrialCode({
   });
 
   // Generación del template del trial/ensayo
-  const generateTrialProps = (params: any[], data: any): string => {
+  const generateTrialProps = (
+    params: any[],
+    data: any,
+    hasData: boolean = true,
+  ): string => {
     // Lógica especial para DynamicPlugin
     if (pluginName === "DynamicPlugin") {
       const componentsKey = isInLoop
@@ -121,9 +125,26 @@ export function useTrialCode({
         .join("\n");
 
       const hasBranches = branches && branches.length > 0;
+
+      // If no data, don't use timelineVariable
+      if (!hasData && !isInLoop) {
+        return `data: {
+        ${dataProps}
+        trial_id: ${id},
+        ${
+          hasBranches
+            ? `
+        branches: [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}],
+        branchConditions: [${JSON.stringify(branchConditions)}] 
+        `
+            : ""
+        }
+      },`;
+      }
+
       return `components: jsPsych.timelineVariable("${componentsKey}"),
-      response_components: jsPsych.timelineVariable("${responseComponentsKey}"),
-      data: {
+response_components: jsPsych.timelineVariable("${responseComponentsKey}"),
+data: {
         ${dataProps}
         trial_id: ${id},
         ${isInLoop ? `isInLoop: true,` : ""}
@@ -139,13 +160,6 @@ export function useTrialCode({
     }
 
     // Lógica normal para otros plugins
-    const paramProps = params
-      .map(({ key }: { key: string }) => {
-        const propKey = isInLoop ? `${key}_${trialNameSanitized}` : key;
-        return `${key}: jsPsych.timelineVariable("${propKey}"),`;
-      })
-      .join("\n");
-
     const dataProps = data
       .map(({ key }: { key: string }) => {
         const propKey = isInLoop ? `${key}_${trialNameSanitized}` : key;
@@ -155,6 +169,30 @@ export function useTrialCode({
 
     // Incluir branches tanto para trials en loop como fuera de loop
     const hasBranches = branches && branches.length > 0;
+
+    // If no data and not in loop, don't use timelineVariable for parameters
+    if (!hasData && !isInLoop) {
+      return `data: {
+        ${dataProps}
+        trial_id: ${id},
+        ${
+          hasBranches
+            ? `
+        branches: [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}],
+        branchConditions: [${JSON.stringify(branchConditions)}] 
+        `
+            : ""
+        }
+      },`;
+    }
+
+    const paramProps = params
+      .map(({ key }: { key: string }) => {
+        const propKey = isInLoop ? `${key}_${trialNameSanitized}` : key;
+        return `${key}: jsPsych.timelineVariable("${propKey}"),`;
+      })
+      .join("\n");
+
     return `${paramProps}
       data: {
         ${dataProps}
@@ -188,10 +226,9 @@ export function useTrialCode({
     params: { key: string; type: string }[],
     values: Record<string, any>,
   ) {
-    const allKeys = [
-      ...params.map((p) => p.key),
-      ...Object.keys(values).filter((k) => !params.some((p) => p.key === k)),
-    ];
+    // Solo incluir keys que existan en values
+    // No forzar la inclusión de todos los params si no están en values
+    const allKeys = Object.keys(values);
 
     // Helper para stringify recursivo que preserva funciones
     const stringifyValue = (val: any, key?: string): string => {
@@ -283,7 +320,14 @@ export function useTrialCode({
       stringifyWithFunctions(activeParameters, row),
     );
 
-    const timelineProps = generateTrialProps(activeParameters, data);
+    // Check if all mapped rows are empty objects
+    const hasAnyData = mappedJson.some((row) => Object.keys(row).length > 0);
+
+    const timelineProps = generateTrialProps(
+      activeParameters,
+      data,
+      hasAnyData,
+    );
     if (!isInLoop) {
       if (orders || categories) {
         code += `
@@ -353,10 +397,12 @@ export function useTrialCode({
         console.log(test_stimuli_${trialNameSanitized});
       }
     }`;
-      } else {
+      } else if (hasAnyData) {
+        // Only generate timeline_variables if there's actual data
         code += `
     const test_stimuli_${trialNameSanitized} = [${testStimuliCode.join(",")}];`;
       }
+      // If !hasAnyData, don't generate test_stimuli at all - trial will use plugin defaults
     }
 
     // Para DynamicPlugin, usar directamente "DynamicPlugin" sin convertir
@@ -402,8 +448,15 @@ export function useTrialCode({
       code += `
     const ${trialNameSanitized}_procedure = {
     timeline: 
-    [${trialNameSanitized}_timeline],
-    timeline_variables: test_stimuli_${trialNameSanitized},
+    [${trialNameSanitized}_timeline],`;
+
+      // Only add timeline_variables if there's data
+      if (hasAnyData || orders || categories) {
+        code += `
+    timeline_variables: test_stimuli_${trialNameSanitized},`;
+      }
+
+      code += `
     ${generateConditionalFunctionCode(id)}
     `;
 
