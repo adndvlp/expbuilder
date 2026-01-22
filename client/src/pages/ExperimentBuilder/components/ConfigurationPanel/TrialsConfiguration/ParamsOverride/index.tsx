@@ -78,6 +78,7 @@ function ParamsOverride({ selectedTrial }: Props) {
         currentTrialParameters,
         isDynamic,
       ),
+      true, // trigger autosave
     );
   };
 

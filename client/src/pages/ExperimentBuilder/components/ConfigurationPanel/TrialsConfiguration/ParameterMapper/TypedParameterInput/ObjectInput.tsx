@@ -2,15 +2,15 @@ import { Dispatch, SetStateAction } from "react";
 import { ColumnMappingEntry } from "..";
 
 type Props = {
-  onSave?: ((key: string, value: any) => void) | undefined;
-  key: string;
+  onSave: ((key: string, value: any) => void) | undefined;
+  paramKey: string;
   entry: ColumnMappingEntry;
   setColumnMapping: Dispatch<
     SetStateAction<Record<string, ColumnMappingEntry>>
   >;
 };
 
-function ObjectInput({ onSave, entry, setColumnMapping, key }: Props) {
+function ObjectInput({ onSave, entry, setColumnMapping, paramKey }: Props) {
   return (
     <textarea
       className="w-full p-2 border rounded mt-2 font-mono"
@@ -30,7 +30,7 @@ function ObjectInput({ onSave, entry, setColumnMapping, key }: Props) {
         };
         setColumnMapping((prev) => ({
           ...prev,
-          [key]: newValue,
+          [paramKey]: newValue,
         }));
       }}
       onBlur={(e) => {
@@ -49,10 +49,10 @@ function ObjectInput({ onSave, entry, setColumnMapping, key }: Props) {
         };
         setColumnMapping((prev) => ({
           ...prev,
-          [key]: newValue,
+          [paramKey]: newValue,
         }));
         if (onSave) {
-          setTimeout(() => onSave(key, newValue), 100);
+          setTimeout(() => onSave(paramKey, newValue), 100);
         }
       }}
     />

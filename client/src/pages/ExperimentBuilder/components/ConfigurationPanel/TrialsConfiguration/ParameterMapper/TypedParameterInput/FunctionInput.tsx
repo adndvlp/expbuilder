@@ -3,11 +3,11 @@ import { ColumnMappingEntry } from "..";
 
 type Props = {
   localInputValues: Record<string, string>;
-  onSave?: ((key: string, value: any) => void) | undefined;
+  onSave: ((key: string, value: any) => void) | undefined;
   label: string;
   setLocalInputValues: Dispatch<SetStateAction<Record<string, string>>>;
   entry: ColumnMappingEntry;
-  key: string;
+  paramKey: string;
   setColumnMapping: Dispatch<
     SetStateAction<Record<string, ColumnMappingEntry>>
   >;
@@ -19,7 +19,7 @@ function FunctionInput({
   label,
   setLocalInputValues,
   entry,
-  key,
+  paramKey,
   setColumnMapping,
 }: Props) {
   return (
@@ -28,13 +28,13 @@ function FunctionInput({
       rows={4}
       placeholder={`Type a function for ${label.toLowerCase()}`}
       value={
-        localInputValues[key] ??
+        localInputValues[paramKey] ??
         (typeof entry.value === "string" ? entry.value : "")
       }
       onChange={(e) => {
         setLocalInputValues((prev) => ({
           ...prev,
-          [key]: e.target.value,
+          [paramKey]: e.target.value,
         }));
       }}
       onBlur={(e) => {
@@ -44,14 +44,14 @@ function FunctionInput({
         };
         setColumnMapping((prev) => ({
           ...prev,
-          [key]: newValue,
+          [paramKey]: newValue,
         }));
         if (onSave) {
-          setTimeout(() => onSave(key, newValue), 100);
+          setTimeout(() => onSave(paramKey, newValue), 100);
         }
         setLocalInputValues((prev) => {
           const newState = { ...prev };
-          delete newState[key];
+          delete newState[paramKey];
           return newState;
         });
       }}

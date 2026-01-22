@@ -1,11 +1,16 @@
 import { Condition } from "../../types";
+import { Trial } from "../../../../types";
 
 type Props = {
   findTrialById: (trialId: string | number) => any;
   condition: Condition;
+  selectedTrial: Trial | null;
 };
 
-function TableHeader({ condition, findTrialById }: Props) {
+function TableHeader({ condition, findTrialById, selectedTrial }: Props) {
+  // Check if selectedTrial is a dynamic plugin
+  const isDynamicPlugin = selectedTrial?.plugin === "plugin-dynamic";
+
   return (
     <thead>
       <tr
@@ -13,22 +18,62 @@ function TableHeader({ condition, findTrialById }: Props) {
           backgroundColor: "rgba(78, 205, 196, 0.15)",
         }}
       >
+        {isDynamicPlugin ? (
+          <>
+            <th
+              className="px-2 py-2 text-left text-sm font-semibold"
+              style={{
+                color: "var(--text-dark)",
+                borderBottom: "2px solid var(--neutral-mid)",
+                width: "12%",
+                minWidth: "120px",
+              }}
+            >
+              Field Type
+            </th>
+            <th
+              className="px-2 py-2 text-left text-sm font-semibold"
+              style={{
+                color: "var(--text-dark)",
+                borderBottom: "2px solid var(--neutral-mid)",
+                width: "15%",
+                minWidth: "150px",
+              }}
+            >
+              Component
+            </th>
+            <th
+              className="px-2 py-2 text-left text-sm font-semibold"
+              style={{
+                color: "var(--text-dark)",
+                borderBottom: "2px solid var(--neutral-mid)",
+                width: "15%",
+                minWidth: "150px",
+              }}
+            >
+              Property
+            </th>
+          </>
+        ) : (
+          <th
+            className="px-2 py-2 text-left text-sm font-semibold"
+            style={{
+              color: "var(--text-dark)",
+              borderBottom: "2px solid var(--neutral-mid)",
+              width: "42%",
+              minWidth: "300px",
+            }}
+          >
+            Column
+          </th>
+        )}
         <th
           className="px-2 py-2 text-left text-sm font-semibold"
           style={{
             color: "var(--text-dark)",
             borderBottom: "2px solid var(--neutral-mid)",
-            minWidth: "300px",
-          }}
-        >
-          Column
-        </th>
-        <th
-          className="px-2 py-2 text-left text-sm font-semibold"
-          style={{
-            color: "var(--text-dark)",
-            borderBottom: "2px solid var(--neutral-mid)",
-            minWidth: "80px",
+            width: "10%",
+            minWidth: "100px",
           }}
         >
           Op
@@ -38,6 +83,7 @@ function TableHeader({ condition, findTrialById }: Props) {
           style={{
             color: "var(--text-dark)",
             borderBottom: "2px solid var(--neutral-mid)",
+            width: "15%",
             minWidth: "150px",
           }}
         >
@@ -48,6 +94,7 @@ function TableHeader({ condition, findTrialById }: Props) {
           style={{
             color: "var(--text-dark)",
             borderBottom: "2px solid var(--neutral-mid)",
+            width: "5%",
             minWidth: "50px",
           }}
         ></th>

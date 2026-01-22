@@ -1,5 +1,5 @@
 import "@xyflow/react/dist/style.css";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ReactFlow, { Connection } from "reactflow";
 import useTrials from "../../hooks/useTrials";
 import TrialNode from "./TrialNode";
@@ -49,6 +49,20 @@ function Canvas({}: Props) {
   >([]); // Stack for nested loops
   const [showBranchedModal, setShowBranchedModal] = useState(false);
 
+  // Load loopTimeline when branched modal opens for trial inside loop
+  useEffect(() => {
+    if (showBranchedModal) {
+      const item = selectedTrial || selectedLoop;
+      if (item?.parentLoopId) {
+        getLoopTimeline(item.parentLoopId);
+      }
+    }
+  }, [
+    showBranchedModal,
+    selectedTrial?.parentLoopId,
+    selectedLoop?.parentLoopId,
+  ]);
+
   const onAddTrial = async (type: string) => {
     // Generar nombre único basado en timeline
     const existingNames = timeline.map((item) => item.name);
@@ -58,6 +72,7 @@ function Canvas({}: Props) {
       const newTrial = await createTrial({
         type: type,
         name: newName,
+        plugin: "plugin-dynamic",
         parameters: {},
         trialCode: "",
       });
@@ -150,6 +165,7 @@ function Canvas({}: Props) {
       const newBranchTrial = await createTrial({
         type: "Trial",
         name: newName,
+        plugin: "plugin-dynamic",
         parameters: {},
         trialCode: "",
       });

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { auth } from "../../lib/firebase";
-import GoogleDriveToken from "./GoogleDriveToken";
+import GoogleDriveToken from "./GoogleDrive/GoogleDriveToken";
 import DropboxToken from "./Dropbox/DropboxToken";
 import GithubToken from "./Github/GithubToken";
 import OsfToken from "./OsfToken";

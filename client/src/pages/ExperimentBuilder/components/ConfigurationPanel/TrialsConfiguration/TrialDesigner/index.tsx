@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import Konva from "konva";
-import Modal from "../Modal";
-import { useComponentMetadata } from "../../hooks/useComponentMetadata";
+import Modal from "../ParameterMapper/Modal";
+import { useComponentMetadata } from "../hooks/useComponentMetadata";
 import {
   ComponentType,
   TrialComponent,
@@ -9,7 +9,7 @@ import {
 } from "./types";
 import ComponentSidebar from "./ComponentSidebar";
 import useConfigComponents from "./useConfigFromComponents";
-import renderComponent from "./RenderComponent";
+import renderComponent from "./renderComponent";
 import useLoadComponents from "./useLoadComponents";
 import handleDrop from "./useHandleDrop";
 import ActionButtons from "./ActionButtons";
@@ -106,7 +106,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   });
 
   const onRenderComponent = (comp: TrialComponent) => {
-    renderComponent({
+    return renderComponent({
       comp,
       setComponents,
       toJsPsychCoords,

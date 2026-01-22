@@ -6,17 +6,17 @@ type Props = {
   setColumnMapping: Dispatch<
     SetStateAction<Record<string, ColumnMappingEntry>>
   >;
-  key: string;
+  paramKey: string;
   entry: ColumnMappingEntry;
   label: string;
-  onSave?: ((key: string, value: any) => void) | undefined;
+  onSave: ((key: string, value: any) => void) | undefined;
   setLocalInputValues: Dispatch<SetStateAction<Record<string, string>>>;
 };
 
 function TextInput({
   localInputValues,
   setColumnMapping,
-  key,
+  paramKey,
   entry,
   onSave,
   label,
@@ -28,7 +28,7 @@ function TextInput({
       className="w-full p-2 border rounded mt-2"
       placeholder={`Type a value for ${label.toLowerCase()}`}
       value={
-        localInputValues[key] ??
+        localInputValues[paramKey] ??
         (typeof entry.value === "string" || typeof entry.value === "number"
           ? entry.value
           : "")
@@ -36,7 +36,7 @@ function TextInput({
       onChange={(e) => {
         setLocalInputValues((prev) => ({
           ...prev,
-          [key]: e.target.value,
+          [paramKey]: e.target.value,
         }));
       }}
       onBlur={(e) => {
@@ -46,14 +46,14 @@ function TextInput({
         };
         setColumnMapping((prev) => ({
           ...prev,
-          [key]: newValue,
+          [paramKey]: newValue,
         }));
         if (onSave) {
-          setTimeout(() => onSave(key, newValue), 100);
+          setTimeout(() => onSave(paramKey, newValue), 100);
         }
         setLocalInputValues((prev) => {
           const newState = { ...prev };
-          delete newState[key];
+          delete newState[paramKey];
           return newState;
         });
       }}

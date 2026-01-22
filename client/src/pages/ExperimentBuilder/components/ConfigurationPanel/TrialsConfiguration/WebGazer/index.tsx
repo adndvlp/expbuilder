@@ -12,7 +12,7 @@ import InstructionsArrays from "./InstructionsArrays";
 
 type Props = { webgazerPlugins: string[] };
 
-function WebGazer({ webgazerPlugins }: Props) {
+function Webgazer({ webgazerPlugins }: Props) {
   // Basic trial configuration
   // these are the replacement of pluginName
   const initCamera = webgazerPlugins[1];
@@ -182,19 +182,8 @@ function WebGazer({ webgazerPlugins }: Props) {
     recalibratePhase.columnMapping,
   ]);
 
-  const trialCode = useMemo(() => {
-    return (
-      initCameraPhase.trialCode +
-      calibratePhase.trialCode +
-      validatePhase.trialCode +
-      recalibratePhase.trialCode
-    );
-  }, [
-    initCameraPhase.trialCode,
-    calibratePhase.trialCode,
-    validatePhase.trialCode,
-    recalibratePhase.trialCode,
-  ]);
+  // Note: trialCode is NO LONGER generated here - it's generated dynamically when needed
+  // (Run Experiment, Run Demo, Publish) to avoid storing duplicate data
 
   // guardar y actualizar el estado global del ensayo
 
@@ -305,7 +294,7 @@ function WebGazer({ webgazerPlugins }: Props) {
         include_instructions: include_instructions,
         minimum_percent: minimumPercentAcceptable,
       },
-      trialCode: trialCode,
+      // trialCode is NO LONGER saved - it's generated dynamically when needed
       columnMapping: mappedColumns,
       csvJson: csvJson ? [...csvJson] : [],
       csvColumns: csvColumns ? [...csvColumns] : [],
@@ -458,4 +447,4 @@ function WebGazer({ webgazerPlugins }: Props) {
   );
 }
 
-export default WebGazer;
+export default Webgazer;

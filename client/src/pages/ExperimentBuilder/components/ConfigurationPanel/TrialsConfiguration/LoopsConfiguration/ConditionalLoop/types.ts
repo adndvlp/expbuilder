@@ -23,6 +23,9 @@ export type Loop = {
   [key: string]: unknown;
 };
 
+// Union type for trials and loops
+export type LoadedItem = LoadedTrial | Loop;
+
 export type LoadedTrial = {
   id: string | number;
   name: string;

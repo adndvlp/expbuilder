@@ -1,7 +1,7 @@
 import { useMemo, useCallback } from "react";
 import { ComponentMetadata } from "../hooks/useComponentMetadata";
 import { TrialComponent } from "./types";
-import ParameterMapper from "../index";
+import ParameterMapper from "../ParameterMapper";
 
 type Props = {
   rightPanelWidth: number;

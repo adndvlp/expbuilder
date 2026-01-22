@@ -1,14 +1,19 @@
 import { useState, useEffect, useCallback } from "react";
 import useTrials from "../../../../../hooks/useTrials";
 import { loadPluginParameters } from "../../../utils/pluginParameterLoader";
-import { LoopCondition, Loop, LoadedTrial } from "./types";
+import { LoopCondition, Loop, LoadedItem } from "./types";
 import { DataDefinition } from "../../../types";
+import { useExperimentID } from "../../../../../hooks/useExperimentID";
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 export const useConditionalLoop = (
   loop: Loop,
   onSave: (conditions: LoopCondition[]) => void,
 ) => {
-  const { getTrial, loopTimeline, activeLoopId, getLoopTimeline } = useTrials();
+  const { getTrial, getLoop, loopTimeline, activeLoopId, getLoopTimeline } =
+    useTrials();
+  const experimentID = useExperimentID();
 
   const [conditions, setConditions] = useState<LoopCondition[]>([]);
   const [trialDataFields, setTrialDataFields] = useState<
@@ -16,7 +21,7 @@ export const useConditionalLoop = (
   >({});
   const [loadingData, setLoadingData] = useState<Record<string, boolean>>({});
   const [saveIndicator, setSaveIndicator] = useState(false);
-  const [loadedTrials, setLoadedTrials] = useState<Record<string, LoadedTrial>>(
+  const [loadedTrials, setLoadedTrials] = useState<Record<string, LoadedItem>>(
     {},
   );
 
@@ -46,25 +51,54 @@ export const useConditionalLoop = (
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loop]);
 
-  // Load data fields for a specific trial using API
+  // Load trial or loop by ID (determines type by ID format)
+  const loadTrialOrLoop = async (
+    trialId: string | number,
+  ): Promise<LoadedItem | null> => {
+    // Check if already loaded
+    if (loadedTrials[trialId]) {
+      return loadedTrials[trialId];
+    }
+
+    try {
+      // Determine if it's a loop or trial based on ID format
+      const isLoop = String(trialId).startsWith("loop_");
+      const item = isLoop ? await getLoop(trialId) : await getTrial(trialId);
+
+      if (!item) {
+        console.log("Trial/Loop not found:", trialId);
+        return null;
+      }
+
+      // Cast item to LoadedItem since we know it has the right structure
+      const loadedItem = item as LoadedItem;
+
+      // Store the loaded trial/loop
+      setLoadedTrials((prev) => ({ ...prev, [trialId]: loadedItem }));
+      return loadedItem;
+    } catch (err) {
+      console.error("Error loading trial/loop:", err);
+      return null;
+    }
+  };
+
+  // Load data fields for a specific trial
   const loadTrialDataFields = async (trialId: string | number) => {
-    // Check if already loaded or loading
     if (trialDataFields[trialId] || loadingData[trialId]) {
       return;
     }
 
-    setLoadingData((prev) => ({ ...prev, [trialId]: true }));
-
     try {
       const trial = await getTrial(trialId);
-
-      if (!trial || !("plugin" in trial) || !trial.plugin) {
+      if (!trial || !trial.plugin) {
         console.log("Trial not found or has no plugin:", trialId);
         return;
       }
 
       // Store the loaded trial
       setLoadedTrials((prev) => ({ ...prev, [trialId]: trial }));
+
+      setLoadingData((prev) => ({ ...prev, [trialId]: true }));
 
       const result = await loadPluginParameters(trial.plugin);
       setTrialDataFields((prev) => ({
@@ -80,7 +114,7 @@ export const useConditionalLoop = (
 
   // Find trial by ID synchronously from loaded trials
   const findTrialByIdSync = useCallback(
-    (trialId: string | number | null): LoadedTrial | null => {
+    (trialId: string | number | null): LoadedItem | null => {
       if (!trialId) return null;
       return loadedTrials[trialId] || null;
     },
@@ -103,19 +137,17 @@ export const useConditionalLoop = (
     (conditionId: number) => {
       const usedIds = getUsedTrialIds(conditionId);
 
-      // Use loopTimeline from context if it matches the current loop
+      // Use loopTimeline from context (trials within the loop)
       const metadata =
         activeLoopId === loop.id && loopTimeline.length > 0 ? loopTimeline : [];
 
-      // Filter only trials (type === "trial"), excluding loops
-      const allTrials = metadata
-        .filter((item) => item.type === "trial")
-        .map((item) => ({
-          id: item.id,
-          name: item.name,
-        }));
+      // Get all items (trials and loops) from loopTimeline
+      const allItems = metadata.map((item) => ({
+        id: item.id,
+        name: item.name,
+      }));
 
-      return allTrials.filter(
+      return allItems.filter(
         (t) => !usedIds.includes(t.id) && !usedIds.includes(String(t.id)),
       );
     },
@@ -162,6 +194,7 @@ export const useConditionalLoop = (
     loadingData,
     saveIndicator,
     loadTrialDataFields,
+    loadTrialOrLoop,
     findTrialByIdSync,
     getAvailableTrials,
     handleSaveConditions,

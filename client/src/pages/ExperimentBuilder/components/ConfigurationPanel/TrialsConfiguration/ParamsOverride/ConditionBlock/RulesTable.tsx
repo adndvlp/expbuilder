@@ -57,6 +57,13 @@ function RulesTable({
   hasDynamicTrial,
   currentTrial,
 }: Props) {
+  // Check if any rule references a dynamic plugin trial
+  const hasDynamicTrialInRules = condition.rules.some((rule) => {
+    if (!rule.trialId) return false;
+    const trial = findTrialByIdSync(rule.trialId);
+    return trial?.plugin === "plugin-dynamic";
+  });
+
   return (
     <table
       className="w-full border-collapse rounded-lg overflow-hidden"
@@ -82,17 +89,55 @@ function RulesTable({
           >
             From Trial
           </th>
-          <th
-            className="px-2 py-2 text-left text-sm font-semibold"
-            style={{
-              color: "var(--text-dark)",
-              borderBottom: "2px solid var(--neutral-mid)",
-              width: "18%",
-              minWidth: "200px",
-            }}
-          >
-            Data Field
-          </th>
+          {hasDynamicTrialInRules ? (
+            <>
+              <th
+                className="px-2 py-2 text-left text-sm font-semibold"
+                style={{
+                  color: "var(--text-dark)",
+                  borderBottom: "2px solid var(--neutral-mid)",
+                  width: "12%",
+                  minWidth: "120px",
+                }}
+              >
+                Field Type
+              </th>
+              <th
+                className="px-2 py-2 text-left text-sm font-semibold"
+                style={{
+                  color: "var(--text-dark)",
+                  borderBottom: "2px solid var(--neutral-mid)",
+                  width: "15%",
+                  minWidth: "150px",
+                }}
+              >
+                Component
+              </th>
+              <th
+                className="px-2 py-2 text-left text-sm font-semibold"
+                style={{
+                  color: "var(--text-dark)",
+                  borderBottom: "2px solid var(--neutral-mid)",
+                  width: "15%",
+                  minWidth: "150px",
+                }}
+              >
+                Property
+              </th>
+            </>
+          ) : (
+            <th
+              className="px-2 py-2 text-left text-sm font-semibold"
+              style={{
+                color: "var(--text-dark)",
+                borderBottom: "2px solid var(--neutral-mid)",
+                width: "18%",
+                minWidth: "200px",
+              }}
+            >
+              Data Field
+            </th>
+          )}
           <th
             className="px-2 py-2 text-left text-sm font-semibold"
             style={{
@@ -287,7 +332,7 @@ function RulesTable({
                     conditionId={condition.id}
                     currentTrialParameters={currentTrialParameters}
                     getCurrentTrialCsvColumns={getCurrentTrialCsvColumns}
-                    setConditions={setConditions}
+                    setConditionsWrapper={setConditionsWrapper}
                     conditions={conditions}
                     hasDynamicTrial={currentTrial !== null}
                     currentTrial={currentTrial}

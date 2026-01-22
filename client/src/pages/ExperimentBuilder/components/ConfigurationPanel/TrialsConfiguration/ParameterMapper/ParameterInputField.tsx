@@ -3,7 +3,7 @@ import { ColumnMappingEntry } from ".";
 
 type Props = {
   entry: ColumnMappingEntry;
-  key: string;
+  paramKey: string;
   type: string;
   setColumnMapping: (
     value: React.SetStateAction<Record<string, ColumnMappingEntry>>,
@@ -14,7 +14,7 @@ type Props = {
 
 function ParameterInputField({
   entry,
-  key,
+  paramKey,
   type,
   setColumnMapping,
   onSave,
@@ -30,7 +30,8 @@ function ParameterInputField({
                 typeof entry.value === "number")
             ? entry.value
             : type.endsWith("_array") &&
-                (key === "calibration_points" || key === "validation_points") &&
+                (paramKey === "calibration_points" ||
+                  paramKey === "validation_points") &&
                 Array.isArray(entry.value)
               ? JSON.stringify(entry.value)
               : ""
@@ -40,7 +41,8 @@ function ParameterInputField({
         // Si es uno de los presets, parsea el string a array
         if (
           type.endsWith("_array") &&
-          (key === "calibration_points" || key === "validation_points") &&
+          (paramKey === "calibration_points" ||
+            paramKey === "validation_points") &&
           (value ===
             JSON.stringify([
               [20, 20],
@@ -84,10 +86,10 @@ function ParameterInputField({
           };
           setColumnMapping((prev) => ({
             ...prev,
-            [key]: newValue,
+            [paramKey]: newValue,
           }));
           if (onSave) {
-            setTimeout(() => onSave(key, newValue), 100);
+            setTimeout(() => onSave(paramKey, newValue), 100);
           }
           return;
         }
@@ -98,10 +100,10 @@ function ParameterInputField({
           // If source is 'none', remove the parameter from columnMapping
           if (source === "none") {
             const newMapping = { ...prev };
-            delete newMapping[key];
+            delete newMapping[paramKey];
             // Autoguardar después de eliminar
             if (onSave) {
-              setTimeout(() => onSave(key, undefined), 100);
+              setTimeout(() => onSave(paramKey, undefined), 100);
             }
             return newMapping;
           }
@@ -117,7 +119,7 @@ function ParameterInputField({
                     ? 0
                     : type.endsWith("_array")
                       ? []
-                      : type === "object" && key === "coordinates"
+                      : type === "object" && paramKey === "coordinates"
                         ? { x: 0, y: 0 }
                         : ""
                 : value,
@@ -125,12 +127,12 @@ function ParameterInputField({
 
           // Autoguardar después de cambiar source/CSV column
           if (onSave) {
-            setTimeout(() => onSave(key, newValue), 100);
+            setTimeout(() => onSave(paramKey, newValue), 100);
           }
 
           return {
             ...prev,
-            [key]: newValue,
+            [paramKey]: newValue,
           };
         });
       }}
@@ -147,7 +149,8 @@ function ParameterInputField({
         ))}
       {/* Presets para calibration/validation */}
       {type.endsWith("_array") &&
-        (key === "calibration_points" || key === "validation_points") && (
+        (paramKey === "calibration_points" ||
+          paramKey === "validation_points") && (
           <>
             <option
               value={JSON.stringify([

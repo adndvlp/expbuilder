@@ -143,6 +143,7 @@ export function ParameterOverride({
         compArr={compArr}
         getPropValue={getPropValue}
         metadataLoading={metadataLoading}
+        hasSurveyJsonParam={hasSurveyJsonParam}
       />
 
       {/* Columna Value */}

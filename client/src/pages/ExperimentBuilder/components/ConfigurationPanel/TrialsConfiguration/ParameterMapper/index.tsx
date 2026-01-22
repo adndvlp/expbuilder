@@ -6,7 +6,7 @@ import GrapesButtonEditor from "../TrialDesigner/GrapesEditors/GrapesButtonEdito
 import SurveyBuilder from "../TrialDesigner/SurveyEditor";
 import isEqual from "lodash.isequal";
 import useAutoSaveHandlers from "./useAutoSaveHandlers";
-import useParameterModal from "./useParameterModal";
+import useParameterModals from "./useParameterModals";
 import ParameterInputField from "./ParameterInputField";
 import TypedParameterInput from "./TypedParameterInput";
 
@@ -79,7 +79,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
     currentSurveyKey,
     openSurveyModal,
     closeSurveyModal,
-  } = useParameterModal();
+  } = useParameterModals();
 
   const { handleHtmlChange, handleButtonHtmlChange, handleSurveyChange } =
     useAutoSaveHandlers({
@@ -149,15 +149,18 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
 
                 <ParameterInputField
                   entry={entry}
-                  key={key}
+                  key={`${key}-field`}
+                  paramKey={key}
                   type={type}
                   setColumnMapping={setColumnMapping}
                   csvColumns={csvColumns}
+                  onSave={onSave}
                 />
 
                 {entry.source === "typed" && (
                   <TypedParameterInput
-                    key={key}
+                    key={`${key}-input`}
+                    paramKey={key}
                     type={type}
                     entry={entry}
                     setColumnMapping={setColumnMapping}

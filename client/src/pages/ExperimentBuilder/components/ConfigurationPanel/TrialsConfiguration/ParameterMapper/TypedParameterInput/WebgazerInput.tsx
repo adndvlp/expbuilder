@@ -5,7 +5,7 @@ type Props = {
   localInputValues: Record<string, string>;
   setLocalInputValues: Dispatch<SetStateAction<Record<string, string>>>;
   label: string;
-  key: string;
+  paramKey: string;
   entry: ColumnMappingEntry;
   onSave?: ((key: string, value: any) => void) | undefined;
   setColumnMapping: Dispatch<
@@ -17,7 +17,7 @@ function WebgazerInput({
   localInputValues,
   setLocalInputValues,
   label,
-  key,
+  paramKey,
   entry,
   onSave,
   setColumnMapping,
@@ -30,7 +30,7 @@ function WebgazerInput({
       // 2. El valor del input es el texto temporal si existe,
       //    o el valor del estado principal formateado si no.
       value={
-        localInputValues[key] ?? // El operador '??' es clave aquí
+        localInputValues[paramKey] ?? // El operador '??' es clave aquí
         (Array.isArray(entry.value)
           ? JSON.stringify(entry.value)
               // .slice(1, -1)
@@ -41,12 +41,12 @@ function WebgazerInput({
         // 3. onChange actualiza el estado de texto TEMPORAL.
         setLocalInputValues((prev) => ({
           ...prev,
-          [key]: e.target.value,
+          [paramKey]: e.target.value,
         }));
       }}
       onBlur={() => {
         // 4. onBlur lee el texto temporal, lo procesa y actualiza el estado PRINCIPAL.
-        const input = localInputValues[key];
+        const input = localInputValues[paramKey];
 
         // Si no hay nada en el estado local, no hagas nada.
         if (input === undefined) return;
@@ -58,10 +58,10 @@ function WebgazerInput({
           };
           setColumnMapping((prev) => ({
             ...prev,
-            [key]: newValue,
+            [paramKey]: newValue,
           }));
           if (onSave) {
-            setTimeout(() => onSave(key, newValue), 100);
+            setTimeout(() => onSave(paramKey, newValue), 100);
           }
           return;
         }
@@ -76,10 +76,10 @@ function WebgazerInput({
           };
           setColumnMapping((prev) => ({
             ...prev,
-            [key]: newValue,
+            [paramKey]: newValue,
           }));
           if (onSave) {
-            setTimeout(() => onSave(key, newValue), 100);
+            setTimeout(() => onSave(paramKey, newValue), 100);
           }
         } catch {
           try {
@@ -90,15 +90,15 @@ function WebgazerInput({
             };
             setColumnMapping((prev) => ({
               ...prev,
-              [key]: newValue,
+              [paramKey]: newValue,
             }));
             if (onSave) {
-              setTimeout(() => onSave(key, newValue), 100);
+              setTimeout(() => onSave(paramKey, newValue), 100);
             }
             // Limpia el valor temporal después de un guardado exitoso
             setLocalInputValues((prev) => {
               const newState = { ...prev };
-              delete newState[key];
+              delete newState[paramKey];
               return newState;
             });
           } catch (error) {

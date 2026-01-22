@@ -8,9 +8,10 @@ type Props = {
   conditionId: number;
   currentTrialParameters: Parameter[];
   getCurrentTrialCsvColumns: () => string[];
-  setConditions: React.Dispatch<
-    React.SetStateAction<ParamsOverrideCondition[]>
-  >;
+  setConditionsWrapper: (
+    newConditions: ParamsOverrideCondition[],
+    shouldSave?: boolean,
+  ) => void;
   conditions: ParamsOverrideCondition[];
   hasDynamicTrial: boolean;
   currentTrial: LoadedTrial | null;
@@ -23,7 +24,7 @@ export function ParameterOverrideRow({
   conditionId,
   currentTrialParameters,
   getCurrentTrialCsvColumns,
-  setConditions,
+  setConditionsWrapper,
   conditions,
   hasDynamicTrial,
   currentTrial,
@@ -110,7 +111,7 @@ export function ParameterOverrideRow({
     source: "csv" | "typed" | "none",
     value: unknown,
   ) => {
-    setConditions(
+    setConditionsWrapper(
       conditions.map((c) => {
         if (c.id === conditionId) {
           return {
@@ -126,11 +127,12 @@ export function ParameterOverrideRow({
         }
         return c;
       }),
+      true, // trigger autosave
     );
   };
 
   const removeParameter = () => {
-    setConditions(
+    setConditionsWrapper(
       conditions.map((c) => {
         if (c.id === conditionId && c.paramsToOverride) {
           const newParams = { ...c.paramsToOverride };
@@ -139,6 +141,7 @@ export function ParameterOverrideRow({
         }
         return c;
       }),
+      true,
     );
   };
 
@@ -146,7 +149,7 @@ export function ParameterOverrideRow({
     if (newKey === "") {
       removeParameter();
     } else if (newKey !== paramKey) {
-      setConditions(
+      setConditionsWrapper(
         conditions.map((c) => {
           if (c.id === conditionId) {
             const newParams = { ...c.paramsToOverride };
@@ -156,6 +159,7 @@ export function ParameterOverrideRow({
           }
           return c;
         }),
+        true,
       );
     }
   };
@@ -179,7 +183,7 @@ export function ParameterOverrideRow({
                 if (newFieldType === "") {
                   removeParameter();
                 } else {
-                  changeParameterKey(`${newFieldType}:::::`);
+                  changeParameterKey(`${newFieldType}::::`);
                 }
               }}
               className="w-full border rounded px-2 py-1.5 text-xs"

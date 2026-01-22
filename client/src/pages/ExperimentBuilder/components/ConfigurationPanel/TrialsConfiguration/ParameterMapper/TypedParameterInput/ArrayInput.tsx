@@ -5,9 +5,9 @@ type Props = {
   localInputValues: Record<string, string>;
   setLocalInputValues: Dispatch<SetStateAction<Record<string, string>>>;
   label: string;
-  key: string;
+  paramKey: string;
   entry: ColumnMappingEntry;
-  onSave?: ((key: string, value: any) => void) | undefined;
+  onSave: ((key: string, value: any) => void) | undefined;
   setColumnMapping: Dispatch<
     SetStateAction<Record<string, ColumnMappingEntry>>
   >;
@@ -18,7 +18,7 @@ function ArrayInput({
   localInputValues,
   setLocalInputValues,
   label,
-  key,
+  paramKey,
   entry,
   onSave,
   setColumnMapping,
@@ -30,7 +30,7 @@ function ArrayInput({
       className="w-full p-2 border rounded mt-2"
       placeholder={`Comma-separated values for ${label.toLowerCase()}`}
       value={
-        localInputValues[key] ??
+        localInputValues[paramKey] ??
         (typeof entry.value === "string"
           ? entry.value
           : Array.isArray(entry.value)
@@ -40,11 +40,11 @@ function ArrayInput({
       onChange={(e) => {
         setLocalInputValues((prev) => ({
           ...prev,
-          [key]: e.target.value,
+          [paramKey]: e.target.value,
         }));
       }}
       onBlur={(e) => {
-        const input = localInputValues[key] ?? e.target.value;
+        const input = localInputValues[paramKey] ?? e.target.value;
 
         const rawItems = input
           .split(",")
@@ -81,15 +81,15 @@ function ArrayInput({
         };
         setColumnMapping((prev) => ({
           ...prev,
-          [key]: newValue,
+          [paramKey]: newValue,
         }));
         if (onSave) {
-          setTimeout(() => onSave(key, newValue), 100);
+          setTimeout(() => onSave(paramKey, newValue), 100);
         }
 
         setLocalInputValues((prev) => {
           const newState = { ...prev };
-          delete newState[key];
+          delete newState[paramKey];
           return newState;
         });
       }}

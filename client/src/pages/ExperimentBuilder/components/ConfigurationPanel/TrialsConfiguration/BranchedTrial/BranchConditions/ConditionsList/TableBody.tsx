@@ -80,6 +80,9 @@ function TableBody({
         const canAddMoreParams =
           availableParams.length > 0 &&
           paramKeys.length < availableParams.length;
+
+        // For dynamic plugins, always show add param button (unlimited params)
+        // For normal plugins, only show if there are more params available
         const showAddParamButton =
           !isJumpCondition(condition) &&
           condition.nextTrialId &&

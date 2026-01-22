@@ -1,9 +1,12 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import useUrl from "../hooks/useUrl";
 import { useExperimentState } from "../hooks/useExpetimentState";
 import useTrials from "../hooks/useTrials";
 import { useExperimentID } from "../hooks/useExperimentID";
-import useDevMode from "../hooks/useDevMode";
+import {
+  generateSingleTrialCode,
+  generateSingleLoopCode,
+} from "../utils/generateTrialLoopCodes";
 const API_URL = import.meta.env.VITE_API_URL;
 
 function ExperimentPreview() {
@@ -13,7 +16,6 @@ function ExperimentPreview() {
   const [key, setKey] = useState(0);
 
   const experimentID = useExperimentID();
-  const { isDevMode } = useDevMode();
 
   useEffect(() => {
     if (started && version) {
@@ -32,16 +34,32 @@ function ExperimentPreview() {
 
   const { selectedTrial, selectedLoop } = useTrials();
 
-  // trials preview
+  // trials preview - generate code dynamically
   useEffect(() => {
-    if (
-      (selectedTrial && selectedTrial.trialCode) ||
-      (selectedLoop && selectedLoop.code)
-    ) {
+    const generateAndSendCode = async () => {
+      if (!selectedTrial && !selectedLoop) return;
+
+      let generatedCode = "";
+
+      if (selectedTrial) {
+        generatedCode = await generateSingleTrialCode(
+          selectedTrial,
+          [], // uploadedFiles - empty for preview
+          experimentID || "",
+        );
+      } else if (selectedLoop) {
+        generatedCode = await generateSingleLoopCode(
+          selectedLoop,
+          experimentID || "",
+        );
+      }
+
+      if (!generatedCode) return;
+
       const trialCode = `
 
         const trialSessionId =
-            "${selectedTrial?.name}_result_" + (crypto.randomUUID
+            "${selectedTrial?.name || selectedLoop?.name}_result_" + (crypto.randomUUID
               ? crypto.randomUUID()
               : Math.random().toString(36).slice(2, 10));
 
@@ -89,24 +107,24 @@ localStorage.removeItem('jsPsych_jumpToTrial');
 
       const timeline = [];
       
-      ${selectedTrial?.trialCode || selectedLoop?.code || ""}
+      ${generatedCode}
 
       jsPsych.run(timeline);
       
       })()
       `;
 
-      (async () => {
-        await fetch(`${API_URL}/api/trials-preview/${experimentID}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ generatedCode: trialCode }),
-          credentials: "include",
-          mode: "cors",
-        });
-        incrementVersion();
-      })();
-    }
+      await fetch(`${API_URL}/api/trials-preview/${experimentID}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ generatedCode: trialCode }),
+        credentials: "include",
+        mode: "cors",
+      });
+      incrementVersion();
+    };
+
+    generateAndSendCode();
   }, [selectedTrial, selectedLoop, experimentID]);
 
   // Crear URL con parámetros únicos para evitar caché

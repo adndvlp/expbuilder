@@ -20,7 +20,7 @@ type Props = {
     parameters: FieldDefinition[];
     data: DataDefinition[];
   }>;
-
+  getLoopTimeline: (loopId: string | number) => Promise<any>;
   setConditions: Dispatch<SetStateAction<Condition[]>>;
   setRepeatConditions: Dispatch<SetStateAction<RepeatConditionState[]>>;
 };
@@ -35,6 +35,7 @@ export default function useLoadData({
   setError,
   setLoading,
   loadPluginParameters,
+  getLoopTimeline,
   setConditions,
   setRepeatConditions,
 }: Props) {
@@ -75,6 +76,11 @@ export default function useLoadData({
     hasLoaded.current = true;
 
     if (!selectedTrial) return;
+
+    // Load loopTimeline if trial is inside a loop
+    if (selectedTrial.parentLoopId) {
+      getLoopTimeline(selectedTrial.parentLoopId);
+    }
 
     const allConditions: Condition[] = [];
 

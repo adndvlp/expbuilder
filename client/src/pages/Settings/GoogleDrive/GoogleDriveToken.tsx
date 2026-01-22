@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { openExternal } from "../../lib/openExternal";
+import { openExternal } from "../../../lib/openExternal";
 import { doc, updateDoc } from "firebase/firestore";
-import { auth, db } from "../../lib/firebase";
+import { auth, db } from "../../../lib/firebase";
 
 // Detectar si estamos en Electron
 const isElectron = !!(window as any).electron?.startOAuthFlow;
@@ -29,9 +29,9 @@ export default function GoogleDriveToken() {
     "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appfolder https://www.googleapis.com/auth/userinfo.email";
 
   const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
-    REDIRECT_URI
+    REDIRECT_URI,
   )}&response_type=${RESPONSE_TYPE}&scope=${encodeURIComponent(
-    SCOPE
+    SCOPE,
   )}&access_type=offline&prompt=consent&state=${user?.uid}`;
 
   // Cargar estado del token
@@ -42,7 +42,7 @@ export default function GoogleDriveToken() {
       try {
         const docRef = doc(db, "users", user.uid);
         const docSnap = await import("firebase/firestore").then(({ getDoc }) =>
-          getDoc(docRef)
+          getDoc(docRef),
         );
 
         if (docSnap.exists()) {
@@ -80,10 +80,10 @@ export default function GoogleDriveToken() {
           const electronRedirectUri = "http://localhost:8888/callback";
           const functionUrl = import.meta.env.DEV
             ? `http://127.0.0.1:5001/test-e4cf9/us-central1/googleDriveOAuthCallback?code=${encodeURIComponent(
-                result.code
+                result.code,
               )}&state=${encodeURIComponent(result.state)}&redirect_uri=${encodeURIComponent(electronRedirectUri)}`
             : `https://us-central1-test-e4cf9.cloudfunctions.net/googleDriveOAuthCallback?code=${encodeURIComponent(
-                result.code
+                result.code,
               )}&state=${encodeURIComponent(result.state)}&redirect_uri=${encodeURIComponent(electronRedirectUri)}`;
 
           const response = await fetch(functionUrl);

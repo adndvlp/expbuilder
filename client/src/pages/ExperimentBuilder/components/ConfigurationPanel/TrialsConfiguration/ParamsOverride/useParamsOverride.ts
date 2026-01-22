@@ -10,7 +10,14 @@ import {
 import { DataDefinition } from "../../types";
 
 export const useParamsOverride = (selectedTrial: unknown) => {
-  const { timeline, getTrial, updateTrial, setSelectedTrial } = useTrials();
+  const {
+    timeline,
+    loopTimeline,
+    getTrial,
+    updateTrial,
+    setSelectedTrial,
+    getLoopTimeline,
+  } = useTrials();
 
   const [conditions, setConditions] = useState<ParamsOverrideCondition[]>([]);
   const [trialDataFields, setTrialDataFields] = useState<
@@ -53,9 +60,15 @@ export const useParamsOverride = (selectedTrial: unknown) => {
       (selectedTrial as { paramsOverride?: ParamsOverrideCondition[] })
         .paramsOverride
     ) {
+      // Load loopTimeline if trial is inside a loop
       const trial = selectedTrial as {
+        parentLoopId?: string | number;
         paramsOverride: ParamsOverrideCondition[];
       };
+      if (trial.parentLoopId) {
+        getLoopTimeline(trial.parentLoopId);
+      }
+
       setConditions(trial.paramsOverride);
 
       // Load data fields for each trial that appears in the conditions
@@ -113,22 +126,41 @@ export const useParamsOverride = (selectedTrial: unknown) => {
 
   // Get available trials to reference (trials that come before the current trial)
   const getAvailableTrials = (): { id: string | number; name: string }[] => {
-    const trial = selectedTrial as { id?: string | number };
+    const trial = selectedTrial as {
+      id?: string | number;
+      parentLoopId?: string | number;
+    };
     if (!selectedTrial) return [];
 
     const allTrials: { id: string | number; name: string }[] = [];
 
-    // Find position of current trial in timeline
-    const currentIndex = timeline.findIndex(
-      (item) => item.id === trial.id || String(item.id) === String(trial.id),
-    );
+    // Check if trial is inside a loop
+    if (trial.parentLoopId) {
+      // Trial is inside a loop - only show trials from same loop (loopTimeline)
+      const currentIndex = loopTimeline.findIndex(
+        (item) => item.id === trial.id || String(item.id) === String(trial.id),
+      );
 
-    if (currentIndex === -1) return [];
+      if (currentIndex === -1) return [];
 
-    // Get all trials/loops that come before
-    for (let i = 0; i < currentIndex; i++) {
-      const item = timeline[i];
-      allTrials.push({ id: item.id, name: item.name });
+      // Get all trials/loops from the same loop that come before
+      for (let i = 0; i < currentIndex; i++) {
+        const item = loopTimeline[i];
+        allTrials.push({ id: item.id, name: item.name });
+      }
+    } else {
+      // Trial is outside a loop - show all trials from main timeline
+      const currentIndex = timeline.findIndex(
+        (item) => item.id === trial.id || String(item.id) === String(trial.id),
+      );
+
+      if (currentIndex === -1) return [];
+
+      // Get all trials/loops that come before
+      for (let i = 0; i < currentIndex; i++) {
+        const item = timeline[i];
+        allTrials.push({ id: item.id, name: item.name });
+      }
     }
 
     return allTrials;

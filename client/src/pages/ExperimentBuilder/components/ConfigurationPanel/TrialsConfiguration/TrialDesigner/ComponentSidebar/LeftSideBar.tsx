@@ -206,6 +206,7 @@ function LeftSideBar({
                 )
                 .map(({ type, label }) => (
                   <ComponentsSection
+                    key={type}
                     type={type}
                     label={label}
                     images={images}

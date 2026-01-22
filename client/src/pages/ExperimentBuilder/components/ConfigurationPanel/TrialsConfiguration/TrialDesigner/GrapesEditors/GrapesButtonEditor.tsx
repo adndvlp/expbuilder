@@ -3,7 +3,7 @@ import juice from "juice";
 import grapesjs from "grapesjs";
 import "grapesjs/dist/css/grapes.min.css";
 import "./grapesjs-theme.css";
-import Modal from "../../Modal";
+import Modal from "../../ParameterMapper/Modal";
 
 interface GrapesButtonEditorProps {
   isOpen: boolean;

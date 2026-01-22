@@ -54,6 +54,7 @@ export default function Actions({
       const newBranchTrial = await createTrial({
         type: "Trial",
         name: newName,
+        plugin: "plugin-dynamic",
         parameters: {},
         trialCode: "",
         parentLoopId: loopId, // Importante: establece que este trial está dentro del loop

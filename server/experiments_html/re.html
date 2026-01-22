@@ -389,12 +389,12 @@ const timeline = [];
 
 
 
-    const test_stimuli_nPreguntasmdns = [{components: [],
-response_components: [{ type: "SurveyComponent", coordinates: {"x":0.7786885245901636,"y":0.2295081967213113}, width: 200, height: 50, survey_json: {"title":"Seco","elements":[{"type":"radiogroup","name":"loca","title":"sexo en el oxo ?","isRequired":false,"choices":[{"value":"si","text":"si","imageLink":""},{"value":"nel","text":"nel","imageLink":""}]},{"type":"text","name":"huevos","title":"tu","isRequired":false}],"description":"Cola"}, name: "survey" }, { type: "ButtonResponseComponent", coordinates: {"x":0.7893622770671946,"y":0.8312015852999455}, width: 200, height: 50, choices: ["loca", "no"], name: "boton" }],
+    const test_stimuli_New_Trial_3 = [{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, name: "HtmlComponent_1", stimulus: "<div style=\"box-sizing: border-box;\">Type or design here</div>" }],
+response_components: [{ type: "SurveyComponent", coordinates: {"x":0.5860655737704916,"y":0.6612021857923498}, width: 200, height: 50, name: "SurveyComponent_1", survey_json: {"title":"My Survey","elements":[{"type":"text","name":"question1","title":"Question 1","isRequired":false}]} }, { type: "ButtonResponseComponent", coordinates: {"x":0,"y":0.3989071038251364}, width: 200, height: 50, name: "ButtonResponseComponent_1", choices: ["loca"] }],
 stimuli_duration: undefined,
 trial_duration: undefined,
 response_ends_trial: undefined}];
-    const nPreguntasmdns_timeline = {
+    const New_Trial_3_timeline = {
     type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
 response_components: jsPsych.timelineVariable("response_components"),
 stimuli_duration: jsPsych.timelineVariable("stimuli_duration"),
@@ -402,142 +402,89 @@ trial_duration: jsPsych.timelineVariable("trial_duration"),
 response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
       data: {
         rt: "rt",
-        trial_id: 1768521719165,
+        trial_id: 1769036060509,
         
         
-        branches: [1768521892763, 1768524559825],
-        branchConditions: [[{"id":1768535708995,"rules":[{"column":"survey_huevos","op":"==","value":"tu"}],"nextTrialId":"1768524559825","customParameters":{}}]] 
+        branches: [1769036061527],
+        branchConditions: [[]] 
         
       },
     on_start: function(trial) {
-      // Then apply custom parameters from branching conditions (higher priority)
-      // For trials outside loops, use window.branchCustomParameters
-      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {
-        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {
-          if (param && param.source !== 'none') {
-            // Parse key to check if it's a nested survey question
-            const parts = key.split('::');
-            
-            if (parts.length === 4) {
-              // Format: fieldType::componentName::survey_json::questionName
-              const [fieldType, componentName, propName, questionName] = parts;
-              
-              if (fieldType && componentName && propName === 'survey_json' && questionName) {
-                // Find the component by name in the field array
-                const fieldArray = trial[fieldType];
-                if (Array.isArray(fieldArray)) {
-                  const compIndex = fieldArray.findIndex(c => c.name === componentName);
-                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {
-                    // Find the question in survey_json.elements
-                    const elements = fieldArray[compIndex].survey_json.elements || [];
-                    const questionIndex = elements.findIndex(q => q.name === questionName);
-                    
-                    if (questionIndex !== -1) {
-                      // Apply the override value (from typed or csv)
-                      let valueToSet;
-                      if (param.source === 'typed') {
-                        valueToSet = String(param.value); // Convert to string for SurveyJS
-                      } else if (param.source === 'csv') {
-                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string
-                      }
-                      
-                      if (valueToSet !== undefined && valueToSet !== null) {
-                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;
-                      }
-                    }
-                  }
-                }
-              }
-            } else {
-              // Normal parameter (not nested survey question)
-              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
-                trial[key] = param.value;
-              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
-                trial[key] = trial[param.value];
-              }
-            }
-          }
-        });
-        // Clear the custom parameters after applying them
-        window.branchCustomParameters = null;
-      }
+      // First, evaluate and apply params override conditions (if any)
+      const paramsOverrideConditions = [{"id":1769037252477,"rules":[{"trialId":"","column":"","op":"==","value":"e","prop":""}],"paramsToOverride":{"components::::":{"source":"none","value":null},"::::":{"source":"none","value":null}}}];
       
-    },
-    on_finish: function(data) {
-      // Evaluar condiciones del trial para branching global
-      console.log('🔍 [GLOBAL BRANCH] Evaluating branch conditions...');
-      const branches = [1768521892763, 1768524559825];
-      const branchConditions = [{"id":1768535708995,"rules":[{"column":"survey_huevos","op":"==","value":"tu"}],"nextTrialId":"1768524559825","customParameters":{}}].flat();
-      console.log('🔍 [GLOBAL BRANCH] Available branches:', branches);
-      console.log('🔍 [GLOBAL BRANCH] Conditions to evaluate:', branchConditions.length);
-      
-      let nextTrialId = null;
-      let matchedCustomParameters = null;
-      
-      // Evaluar cada condición (lógica OR entre condiciones)
-      for (const condition of branchConditions) {
+      // Evaluate params override conditions
+      for (const condition of paramsOverrideConditions) {
         if (!condition || !condition.rules) {
           continue;
         }
         
-        // Todas las reglas en una condición deben ser verdaderas (lógica AND)
+        // Get data from all previous trials
+        const allData = jsPsych.data.get().values();
+        
+        // Check if all rules match (AND logic within condition)
         const allRulesMatch = condition.rules.every(rule => {
+          if (!rule.trialId) {
+            return false;
+          }
+          
+          // Find data from the referenced trial
+          const trialData = allData.filter(d => {
+            // Compare both as strings to handle type mismatches
+            return String(d.trial_id) === String(rule.trialId) || d.trial_id === rule.trialId;
+          });
+          if (trialData.length === 0) {
+            return false;
+          }
+          
+          // Use the most recent data if multiple exist
+          const data = trialData[trialData.length - 1];
+          
           let propValue;
-          
-          // Parse column name to extract component info for dynamic plugins
-          // Format: "componentName_propertyName" or "componentName_questionName" for surveys
-          const columnName = rule.column || rule.prop || "";
-          const parts = columnName.split("_");
-          
-          // Check if this looks like a dynamic plugin column (has underscore)
-          if (parts.length >= 2) {
-            // Last part is the property or question name
-            const propertyOrQuestion = parts[parts.length - 1];
-            // Everything before the last underscore is the component name
-            const componentName = parts.slice(0, -1).join("_");
-            
-            // Try to find the data in the format: componentName_response
-            const responseKey = componentName + '_response';
-            const responseData = data[responseKey];
-            
-            // If response data exists and is an object (SurveyComponent case)
-            if (responseData && typeof responseData === 'object' && !Array.isArray(responseData)) {
-              // This is likely a survey response - check if property is a question name
-              if (responseData[propertyOrQuestion] !== undefined) {
-                propValue = responseData[propertyOrQuestion];
-              } else {
-                return false;
-              }
+          // For dynamic plugins, handle nested structure
+          if (rule.fieldType && rule.componentIdx !== undefined && rule.componentIdx !== "") {
+            // Note: response_components in the builder becomes "response" in the actual trial data
+            const actualFieldName = rule.fieldType === 'response_components' ? 'response' : rule.fieldType;
+            const fieldArray = data[actualFieldName];
+            if (!Array.isArray(fieldArray)) {
+              return false;
+            }
+            // componentIdx is the component name, not a numeric index
+            const component = fieldArray.find(c => c.name === rule.componentIdx);
+            if (!component) {
+              return false;
+            }
+            if (rule.prop === "response" && component.response !== undefined) {
+              propValue = component.response;
+            } else if (component[rule.prop] !== undefined) {
+              propValue = component[rule.prop];
             } else {
-              // Not a survey response object, try direct property access
-              const directKey = componentName + '_' + propertyOrQuestion;
-              if (data[directKey] !== undefined) {
-                propValue = data[directKey];
-              } else {
-                return false;
-              }
+              return false;
             }
           } else {
-            // Normal plugin structure - direct property access
-            propValue = data[columnName];
+            // Normal plugin structure
+            if (!rule.prop) {
+              return false;
+            }
+            propValue = data[rule.prop];
           }
           
           const compareValue = rule.value;
           
-          // Handle array responses (multi-select or single-select returned as array)
+          // Handle array responses (multi-select questions)
           if (Array.isArray(propValue)) {
-            const matches = propValue.includes(compareValue) || propValue.includes(String(compareValue));
+            // For array values, check if compareValue is included in the array
             switch (rule.op) {
               case '==':
-                return matches;
+                return propValue.includes(compareValue);
               case '!=':
-                return !matches;
+                return !propValue.includes(compareValue);
               default:
-                return false;
+                return false; // Comparison operators don't make sense for arrays
             }
           }
           
-          // Convertir valores para comparación
+          // Convert values for comparison (for non-array values)
           const numPropValue = parseFloat(propValue);
           const numCompareValue = parseFloat(compareValue);
           const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
@@ -560,44 +507,127 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
           }
         });
         
-        if (allRulesMatch) {
-          console.log('✅ [GLOBAL BRANCH] Condition matched! Next trial:', condition.nextTrialId);
-          nextTrialId = condition.nextTrialId;
-          // Store custom parameters if they exist
-          if (condition.customParameters) {
-            matchedCustomParameters = condition.customParameters;
-            console.log('✅ [GLOBAL BRANCH] Custom parameters:', matchedCustomParameters);
-          }
+        // If all rules match, apply parameter overrides
+        if (allRulesMatch && condition.paramsToOverride) {
+          Object.entries(condition.paramsToOverride).forEach(([key, param]) => {
+            if (param && param.source !== 'none') {
+              // Parse key to check if it's a nested survey question
+              const parts = key.split('::');
+              
+              if (parts.length === 4) {
+                // Format: fieldType::componentName::survey_json::questionName
+                const [fieldType, componentName, propName, questionName] = parts;
+                
+                if (fieldType && componentName && propName === 'survey_json' && questionName) {
+                  // Find the component by name in the field array
+                  const fieldArray = trial[fieldType];
+                  if (Array.isArray(fieldArray)) {
+                    const compIndex = fieldArray.findIndex(c => c.name === componentName);
+                    if (compIndex !== -1 && fieldArray[compIndex].survey_json) {
+                      // Find the question in survey_json.elements
+                      const elements = fieldArray[compIndex].survey_json.elements || [];
+                      const questionIndex = elements.findIndex(q => q.name === questionName);
+                      
+                      if (questionIndex !== -1) {
+                        // Apply the override value (from typed or csv)
+                        let valueToSet;
+                        if (param.source === 'typed') {
+                          valueToSet = String(param.value); // Convert to string for SurveyJS
+                        } else if (param.source === 'csv') {
+                          valueToSet = String(trial[param.value]); // Get from CSV column and convert to string
+                        }
+                        
+                        if (valueToSet !== undefined && valueToSet !== null) {
+                          fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;
+                        }
+                      }
+                    }
+                  }
+                }
+              } else {
+                // Normal parameter (not nested survey question)
+                if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
+                  trial[key] = param.value;
+                } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
+                  // For CSV source, param.value contains the column name, get the actual value from trial
+                  trial[key] = trial[param.value];
+                }
+              }
+            }
+          });
+          // Break after first matching condition (OR logic between conditions)
           break;
         }
       }
       
-      // Si se encontró match, activar branching
-      if (nextTrialId) {
-        console.log('🎯 [GLOBAL BRANCH] Activating branching to trial:', nextTrialId);
-        window.nextTrialId = nextTrialId;
-        window.skipRemaining = true;
-        window.branchingActive = true;
-        // Store custom parameters for the next trial
-        if (matchedCustomParameters) {
-          window.branchCustomParameters = matchedCustomParameters;
-        }
-      } else {
-        // No match - ir al primer branch por defecto
-        console.log('⚠️ [GLOBAL BRANCH] No condition matched, branching to first branch:', branches[0]);
-        window.nextTrialId = branches[0];
-        window.skipRemaining = true;
-        window.branchingActive = true;
+      // Then apply custom parameters from branching conditions (higher priority)
+      // For trials outside loops, use window.branchCustomParameters
+      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {
+        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {
+          if (param && param.source !== 'none') {
+            // Parse key to check if it's a nested survey question
+            const parts = key.split('::');
+            
+            if (parts.length === 4) {
+              // Format: fieldType::componentName::survey_json::questionName
+              const [fieldType, componentName, propName, questionName] = parts;
+              
+              if (fieldType && componentName && propName === 'survey_json' && questionName) {
+                // Find the component by name in the field array
+                const fieldArray = trial[fieldType];
+                if (Array.isArray(fieldArray)) {
+                  const compIndex = fieldArray.findIndex(c => c.name === componentName);
+                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {
+                    // Find the question in survey_json.elements
+                    const elements = fieldArray[compIndex].survey_json.elements || [];
+                    const questionIndex = elements.findIndex(q => q.name === questionName);
+                    
+                    if (questionIndex !== -1) {
+                      // Apply the override value (from typed or csv)
+                      let valueToSet;
+                      if (param.source === 'typed') {
+                        valueToSet = String(param.value); // Convert to string for SurveyJS
+                      } else if (param.source === 'csv') {
+                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string
+                      }
+                      
+                      if (valueToSet !== undefined && valueToSet !== null) {
+                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;
+                      }
+                    }
+                  }
+                }
+              }
+            } else {
+              // Normal parameter (not nested survey question)
+              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
+                trial[key] = param.value;
+              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
+                trial[key] = trial[param.value];
+              }
+            }
+          }
+        });
+        // Clear the custom parameters after applying them
+        window.branchCustomParameters = null;
       }
       
+    },
+    on_finish: function(data) {
+      // Branching automático al primer branch (global)
+      console.log('🔄 [GLOBAL BRANCH] Auto-branching to first branch:', 1769036061527);
+      window.nextTrialId = 1769036061527;
+      window.skipRemaining = true;
+      window.branchingActive = true;
+      
     },};
-    const nPreguntasmdns_procedure = {
+    const New_Trial_3_procedure = {
     timeline: 
-    [nPreguntasmdns_timeline],
-    timeline_variables: test_stimuli_nPreguntasmdns,
+    [New_Trial_3_timeline],
+    timeline_variables: test_stimuli_New_Trial_3,
     
     conditional_function: function() {
-      const currentId = 1768521719165;
+      const currentId = 1769036060509;
       
       // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
       const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
@@ -633,16 +663,16 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
   
     
     };
-    timeline.push(nPreguntasmdns_procedure);
+    timeline.push(New_Trial_3_procedure);
   
 
 
-    const test_stimuli_New_Trial_1 = [{components: [{ type: "HtmlComponent", coordinates: {"x":0.1788280208095232,"y":-0.13759175307252672}, width: 260.5073648041071, height: 65.12684120102682, stimulus: "<div style=\"box-sizing: border-box;\">Type or design here</div>" }],
-response_components: [{ type: "KeyboardResponseComponent", coordinates: {"x":0.6201585299945953,"y":0.7745751516243319}, width: 200, height: 50 }],
+    const test_stimuli_New_Trial_4 = [{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, name: "HtmlComponent_1", stimulus: "<div style=\"box-sizing: border-box;\">Type or design here</div>" }],
+response_components: [{ type: "KeyboardResponseComponent", coordinates: {"x":0.024725274725274637,"y":0.3113553113553113}, width: 200, height: 50, name: "KeyboardResponseComponent_1" }],
 stimuli_duration: undefined,
 trial_duration: undefined,
 response_ends_trial: undefined}];
-    const New_Trial_1_timeline = {
+    const New_Trial_4_timeline = {
     type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
 response_components: jsPsych.timelineVariable("response_components"),
 stimuli_duration: jsPsych.timelineVariable("stimuli_duration"),
@@ -650,11 +680,161 @@ trial_duration: jsPsych.timelineVariable("trial_duration"),
 response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
       data: {
         rt: "rt",
-        trial_id: 1768521892763,
+        trial_id: 1769036061527,
         
         
       },
     on_start: function(trial) {
+      // First, evaluate and apply params override conditions (if any)
+      const paramsOverrideConditions = [{"id":1769038461610,"rules":[{"trialId":"1769036060509","column":"","op":"==","value":"","prop":"question1","fieldType":"response_components","componentIdx":"SurveyComponent_1"}],"paramsToOverride":{"response_components::SurveyComponent_1::name":{"source":"typed","value":"cwc"}}}];
+      
+      // Evaluate params override conditions
+      for (const condition of paramsOverrideConditions) {
+        if (!condition || !condition.rules) {
+          continue;
+        }
+        
+        // Get data from all previous trials
+        const allData = jsPsych.data.get().values();
+        
+        // Check if all rules match (AND logic within condition)
+        const allRulesMatch = condition.rules.every(rule => {
+          if (!rule.trialId) {
+            return false;
+          }
+          
+          // Find data from the referenced trial
+          const trialData = allData.filter(d => {
+            // Compare both as strings to handle type mismatches
+            return String(d.trial_id) === String(rule.trialId) || d.trial_id === rule.trialId;
+          });
+          if (trialData.length === 0) {
+            return false;
+          }
+          
+          // Use the most recent data if multiple exist
+          const data = trialData[trialData.length - 1];
+          
+          let propValue;
+          // For dynamic plugins, handle nested structure
+          if (rule.fieldType && rule.componentIdx !== undefined && rule.componentIdx !== "") {
+            // Note: response_components in the builder becomes "response" in the actual trial data
+            const actualFieldName = rule.fieldType === 'response_components' ? 'response' : rule.fieldType;
+            const fieldArray = data[actualFieldName];
+            if (!Array.isArray(fieldArray)) {
+              return false;
+            }
+            // componentIdx is the component name, not a numeric index
+            const component = fieldArray.find(c => c.name === rule.componentIdx);
+            if (!component) {
+              return false;
+            }
+            if (rule.prop === "response" && component.response !== undefined) {
+              propValue = component.response;
+            } else if (component[rule.prop] !== undefined) {
+              propValue = component[rule.prop];
+            } else {
+              return false;
+            }
+          } else {
+            // Normal plugin structure
+            if (!rule.prop) {
+              return false;
+            }
+            propValue = data[rule.prop];
+          }
+          
+          const compareValue = rule.value;
+          
+          // Handle array responses (multi-select questions)
+          if (Array.isArray(propValue)) {
+            // For array values, check if compareValue is included in the array
+            switch (rule.op) {
+              case '==':
+                return propValue.includes(compareValue);
+              case '!=':
+                return !propValue.includes(compareValue);
+              default:
+                return false; // Comparison operators don't make sense for arrays
+            }
+          }
+          
+          // Convert values for comparison (for non-array values)
+          const numPropValue = parseFloat(propValue);
+          const numCompareValue = parseFloat(compareValue);
+          const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
+          
+          switch (rule.op) {
+            case '==':
+              return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
+            case '!=':
+              return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
+            case '>':
+              return isNumeric && numPropValue > numCompareValue;
+            case '<':
+              return isNumeric && numPropValue < numCompareValue;
+            case '>=':
+              return isNumeric && numPropValue >= numCompareValue;
+            case '<=':
+              return isNumeric && numPropValue <= numCompareValue;
+            default:
+              return false;
+          }
+        });
+        
+        // If all rules match, apply parameter overrides
+        if (allRulesMatch && condition.paramsToOverride) {
+          Object.entries(condition.paramsToOverride).forEach(([key, param]) => {
+            if (param && param.source !== 'none') {
+              // Parse key to check if it's a nested survey question
+              const parts = key.split('::');
+              
+              if (parts.length === 4) {
+                // Format: fieldType::componentName::survey_json::questionName
+                const [fieldType, componentName, propName, questionName] = parts;
+                
+                if (fieldType && componentName && propName === 'survey_json' && questionName) {
+                  // Find the component by name in the field array
+                  const fieldArray = trial[fieldType];
+                  if (Array.isArray(fieldArray)) {
+                    const compIndex = fieldArray.findIndex(c => c.name === componentName);
+                    if (compIndex !== -1 && fieldArray[compIndex].survey_json) {
+                      // Find the question in survey_json.elements
+                      const elements = fieldArray[compIndex].survey_json.elements || [];
+                      const questionIndex = elements.findIndex(q => q.name === questionName);
+                      
+                      if (questionIndex !== -1) {
+                        // Apply the override value (from typed or csv)
+                        let valueToSet;
+                        if (param.source === 'typed') {
+                          valueToSet = String(param.value); // Convert to string for SurveyJS
+                        } else if (param.source === 'csv') {
+                          valueToSet = String(trial[param.value]); // Get from CSV column and convert to string
+                        }
+                        
+                        if (valueToSet !== undefined && valueToSet !== null) {
+                          fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;
+                        }
+                      }
+                    }
+                  }
+                }
+              } else {
+                // Normal parameter (not nested survey question)
+                if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
+                  trial[key] = param.value;
+                } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
+                  // For CSV source, param.value contains the column name, get the actual value from trial
+                  trial[key] = trial[param.value];
+                }
+              }
+            }
+          });
+          // Break after first matching condition (OR logic between conditions)
+          break;
+        }
+      }
+      
       // Then apply custom parameters from branching conditions (higher priority)
       // For trials outside loops, use window.branchCustomParameters
       if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {
@@ -714,13 +894,13 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
         jsPsych.abortExperiment('', {});
       }
     },};
-    const New_Trial_1_procedure = {
+    const New_Trial_4_procedure = {
     timeline: 
-    [New_Trial_1_timeline],
-    timeline_variables: test_stimuli_New_Trial_1,
+    [New_Trial_4_timeline],
+    timeline_variables: test_stimuli_New_Trial_4,
     
     conditional_function: function() {
-      const currentId = 1768521892763;
+      const currentId = 1769036061527;
       
       // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
       const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
@@ -756,130 +936,7 @@ response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
   
     
     };
-    timeline.push(New_Trial_1_procedure);
-  
-
-
-    const test_stimuli_locao = [{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, stimulus: "<div id=\"i3ls\" style=\"box-sizing: border-box;\">Locao</div>" }],
-response_components: [{ type: "KeyboardResponseComponent", coordinates: {"x":0.1153846153846152,"y":0.4395604395604395}, width: 200, height: 50 }],
-stimuli_duration: undefined,
-trial_duration: undefined,
-response_ends_trial: undefined}];
-    const locao_timeline = {
-    type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
-response_components: jsPsych.timelineVariable("response_components"),
-stimuli_duration: jsPsych.timelineVariable("stimuli_duration"),
-trial_duration: jsPsych.timelineVariable("trial_duration"),
-response_ends_trial: jsPsych.timelineVariable("response_ends_trial"),
-      data: {
-        rt: "rt",
-        trial_id: 1768524559825,
-        
-        
-      },
-    on_start: function(trial) {
-      // Then apply custom parameters from branching conditions (higher priority)
-      // For trials outside loops, use window.branchCustomParameters
-      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {
-        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {
-          if (param && param.source !== 'none') {
-            // Parse key to check if it's a nested survey question
-            const parts = key.split('::');
-            
-            if (parts.length === 4) {
-              // Format: fieldType::componentName::survey_json::questionName
-              const [fieldType, componentName, propName, questionName] = parts;
-              
-              if (fieldType && componentName && propName === 'survey_json' && questionName) {
-                // Find the component by name in the field array
-                const fieldArray = trial[fieldType];
-                if (Array.isArray(fieldArray)) {
-                  const compIndex = fieldArray.findIndex(c => c.name === componentName);
-                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {
-                    // Find the question in survey_json.elements
-                    const elements = fieldArray[compIndex].survey_json.elements || [];
-                    const questionIndex = elements.findIndex(q => q.name === questionName);
-                    
-                    if (questionIndex !== -1) {
-                      // Apply the override value (from typed or csv)
-                      let valueToSet;
-                      if (param.source === 'typed') {
-                        valueToSet = String(param.value); // Convert to string for SurveyJS
-                      } else if (param.source === 'csv') {
-                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string
-                      }
-                      
-                      if (valueToSet !== undefined && valueToSet !== null) {
-                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;
-                      }
-                    }
-                  }
-                }
-              }
-            } else {
-              // Normal parameter (not nested survey question)
-              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
-                trial[key] = param.value;
-              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
-                trial[key] = trial[param.value];
-              }
-            }
-          }
-        });
-        // Clear the custom parameters after applying them
-        window.branchCustomParameters = null;
-      }
-      
-    },
-    on_finish: function(data) {
-      // Trial terminal - si llegamos aquí después de branching, terminar el experimento
-      if (window.branchingActive) {
-        jsPsych.abortExperiment('', {});
-      }
-    },};
-    const locao_procedure = {
-    timeline: 
-    [locao_timeline],
-    timeline_variables: test_stimuli_locao,
-    
-    conditional_function: function() {
-      const currentId = 1768524559825;
-      
-      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
-      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
-      if (jumpToTrial) {
-        if (String(currentId) === String(jumpToTrial)) {
-          // Encontramos el trial objetivo para repeat/jump
-          console.log('🔁 [REPEAT/JUMP] Found target trial', currentId);
-          localStorage.removeItem('jsPsych_jumpToTrial');
-          return true;
-        }
-        // No es el objetivo, saltar
-        console.log('⏭️ [REPEAT/JUMP] Skipping trial', currentId);
-        return false;
-      }
-      
-      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo
-      if (window.skipRemaining) {
-        console.log('🔍 [SKIP CHECK] Trial', currentId, '| Target:', window.nextTrialId, '| Match:', String(currentId) === String(window.nextTrialId));
-        if (String(currentId) === String(window.nextTrialId)) {
-          // Encontramos el trial objetivo
-          console.log('✅ [SKIP CHECK] Found target trial! Disabling skip mode');
-          window.skipRemaining = false;
-          window.nextTrialId = null;
-          return true;
-        }
-        // No es el objetivo, saltar
-        console.log('⏭️ [SKIP CHECK] Skipping trial', currentId);
-        return false;
-      }
-      
-      return true;
-    },
-  
-    
-    };
-    timeline.push(locao_procedure);
+    timeline.push(New_Trial_4_procedure);
   
 
 jsPsych.run(timeline);

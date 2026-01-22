@@ -168,8 +168,7 @@ function LoopsConfig({ loop }: Props) {
       categoryColumn,
       stimuliOrders,
       categoryData,
-      // Code will be generated lazily when needed (Timeline, Run, Publish)
-      code: "",
+      // Code is NO LONGER saved - it's generated dynamically when needed
     };
 
     try {

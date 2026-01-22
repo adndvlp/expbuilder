@@ -3,9 +3,9 @@ import { ColumnMappingEntry } from "..";
 
 type Props = {
   localInputValues: Record<string, string>;
-  onSave?: ((key: string, value: any) => void) | undefined;
+  onSave: ((key: string, value: any) => void) | undefined;
   entry: ColumnMappingEntry;
-  key: string;
+  paramKey: string;
   setLocalInputValues: Dispatch<SetStateAction<Record<string, string>>>;
   setColumnMapping: Dispatch<
     SetStateAction<Record<string, ColumnMappingEntry>>
@@ -18,7 +18,7 @@ function ObjectCoordsInput({
   entry,
   setLocalInputValues,
   setColumnMapping,
-  key,
+  paramKey,
 }: Props) {
   return (
     <>
@@ -30,7 +30,7 @@ function ObjectCoordsInput({
         step="any"
         className="w-full p-2 border rounded mt-1"
         value={
-          localInputValues[`${key}_x`] ??
+          localInputValues[`${paramKey}_x`] ??
           (entry.value &&
           typeof entry.value === "object" &&
           "x" in entry.value &&
@@ -41,7 +41,7 @@ function ObjectCoordsInput({
         onChange={(e) => {
           setLocalInputValues((prev) => ({
             ...prev,
-            [`${key}_x`]: e.target.value,
+            [`${paramKey}_x`]: e.target.value,
           }));
         }}
         onBlur={(e) => {
@@ -62,14 +62,14 @@ function ObjectCoordsInput({
           };
           setColumnMapping((prev) => ({
             ...prev,
-            [key]: newValue,
+            [paramKey]: newValue,
           }));
           if (onSave) {
-            setTimeout(() => onSave(key, newValue), 100);
+            setTimeout(() => onSave(paramKey, newValue), 100);
           }
           setLocalInputValues((prev) => {
             const newState = { ...prev };
-            delete newState[`${key}_x`];
+            delete newState[`${paramKey}_x`];
             return newState;
           });
         }}
@@ -83,7 +83,7 @@ function ObjectCoordsInput({
         step="any"
         className="w-full p-2 border rounded mt-1"
         value={
-          localInputValues[`${key}_y`] ??
+          localInputValues[`${paramKey}_y`] ??
           (entry.value &&
           typeof entry.value === "object" &&
           "y" in entry.value &&
@@ -94,7 +94,7 @@ function ObjectCoordsInput({
         onChange={(e) => {
           setLocalInputValues((prev) => ({
             ...prev,
-            [`${key}_y`]: e.target.value,
+            [`${paramKey}_y`]: e.target.value,
           }));
         }}
         onBlur={(e) => {
@@ -115,14 +115,14 @@ function ObjectCoordsInput({
           };
           setColumnMapping((prev) => ({
             ...prev,
-            [key]: newValue,
+            [paramKey]: newValue,
           }));
           if (onSave) {
-            setTimeout(() => onSave(key, newValue), 100);
+            setTimeout(() => onSave(paramKey, newValue), 100);
           }
           setLocalInputValues((prev) => {
             const newState = { ...prev };
-            delete newState[`${key}_y`];
+            delete newState[`${paramKey}_y`];
             return newState;
           });
         }}

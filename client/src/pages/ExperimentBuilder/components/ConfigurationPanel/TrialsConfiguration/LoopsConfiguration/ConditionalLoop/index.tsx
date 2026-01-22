@@ -18,6 +18,7 @@ function ConditionalLoop({ loop, onSave }: Props) {
     loadingData,
     saveIndicator,
     loadTrialDataFields,
+    loadTrialOrLoop,
     findTrialByIdSync,
     getAvailableTrials,
     handleSaveConditions,
@@ -352,52 +353,9 @@ function ConditionalLoop({ loop, onSave }: Props) {
                             // Check if any rule references a dynamic plugin trial
                             const hasDynamicTrial = condition.rules.some(
                               (rule) => {
-                                // Recursive function to find trial at any depth
-                                const findTrialRecursive = (
-                                  items: Array<{
-                                    id: string | number;
-                                    [key: string]: unknown;
-                                  }>,
-                                ): {
-                                  id: string | number;
-                                  plugin?: string;
-                                  [key: string]: unknown;
-                                } | null => {
-                                  for (const item of items) {
-                                    // Check if item is an object and not null
-                                    if (
-                                      typeof item !== "object" ||
-                                      item === null
-                                    ) {
-                                      continue;
-                                    }
-
-                                    if (
-                                      item.id === rule.trialId ||
-                                      String(item.id) === String(rule.trialId)
-                                    ) {
-                                      return item;
-                                    }
-                                    if (
-                                      "trials" in item &&
-                                      Array.isArray(item.trials)
-                                    ) {
-                                      const found = findTrialRecursive(
-                                        item.trials as Array<{
-                                          id: string | number;
-                                          [key: string]: unknown;
-                                        }>,
-                                      );
-                                      if (found) return found;
-                                    }
-                                  }
-                                  return null;
-                                };
-                                const referencedTrial = findTrialRecursive(
-                                  loop.trials as Array<{
-                                    id: string | number;
-                                    [key: string]: unknown;
-                                  }>,
+                                if (!rule.trialId) return false;
+                                const referencedTrial = findTrialByIdSync(
+                                  rule.trialId,
                                 );
                                 return (
                                   referencedTrial?.plugin === "plugin-dynamic"
@@ -502,6 +460,8 @@ function ConditionalLoop({ loop, onSave }: Props) {
                               updateRule={updateRule}
                               removeRuleFromCondition={removeRuleFromCondition}
                               findTrialByIdSync={findTrialByIdSync}
+                              loadTrialOrLoop={loadTrialOrLoop}
+                              loadTrialDataFields={loadTrialDataFields}
                               trialDataFields={trialDataFields}
                               loadingData={loadingData}
                               canRemove={condition.rules.length > 1}

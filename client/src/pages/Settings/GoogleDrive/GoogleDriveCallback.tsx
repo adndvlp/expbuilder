@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import "./index.css";
+import "../index.css";
 
 export default function GoogleDriveCallback() {
   const [searchParams] = useSearchParams();
@@ -15,7 +15,7 @@ export default function GoogleDriveCallback() {
       // Si el usuario rechazó el acceso
       if (error) {
         navigate(
-          `/settings?status=error&service=google-drive&message=${encodeURIComponent(error)}`
+          `/settings?status=error&service=google-drive&message=${encodeURIComponent(error)}`,
         );
         return;
       }
@@ -23,7 +23,7 @@ export default function GoogleDriveCallback() {
       // Si faltan parámetros
       if (!code || !state) {
         navigate(
-          "/settings?status=error&service=google-drive&message=Missing parameters"
+          "/settings?status=error&service=google-drive&message=Missing parameters",
         );
         return;
       }
@@ -39,7 +39,7 @@ export default function GoogleDriveCallback() {
         window.location.href = functionUrl;
       } catch (err: any) {
         navigate(
-          `/settings?status=error&service=google-drive&message=${encodeURIComponent(err.message)}`
+          `/settings?status=error&service=google-drive&message=${encodeURIComponent(err.message)}`,
         );
       }
     };

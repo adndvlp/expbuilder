@@ -16,16 +16,16 @@ export default function LocalExperiment({
   uploadedFiles,
 }: Props) {
   const generateLocalExperiment = async () => {
-    // Fetch codes from endpoint
+    // Generate codes dynamically from trial/loop data
     let allCodes = "";
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/timeline-code/${experimentID}`,
+      const { generateAllCodes } = await import(
+        "../../../utils/generateTrialLoopCodes"
       );
-      const data = await response.json();
-      allCodes = data.codes.join("\n\n");
+      const codes = await generateAllCodes(experimentID || "", uploadedFiles);
+      allCodes = codes.join("\n\n");
     } catch (error) {
-      console.error("Error loading codes:", error);
+      console.error("Error generating codes:", error);
     }
 
     return `

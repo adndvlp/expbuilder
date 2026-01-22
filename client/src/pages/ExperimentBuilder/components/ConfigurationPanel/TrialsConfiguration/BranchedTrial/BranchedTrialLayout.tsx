@@ -17,6 +17,7 @@ type Props = {
   setConditions: Dispatch<SetStateAction<Condition[]>>;
   loadTargetTrialParameters: (trialId: string | number) => Promise<void>;
   findTrialByIdSync: (trialId: string | number) => any;
+  getAvailableTrials: () => { id: string | number; name: string }[];
 };
 
 function BranchedTrialLayout({
@@ -32,6 +33,7 @@ function BranchedTrialLayout({
   handleSaveConditions,
   loadTargetTrialParameters,
   findTrialByIdSync,
+  getAvailableTrials,
 }: Props) {
   const [activeTab, setActiveTab] = useState<"branch" | "params">("branch");
   return (
@@ -195,6 +197,7 @@ function BranchedTrialLayout({
             selectedTrial={selectedTrial}
             data={data}
             onAutoSave={handleSaveConditions}
+            getAvailableTrials={getAvailableTrials}
           />
         )}
 

@@ -111,6 +111,7 @@ function ConditionsList({
                 <TableHeader
                   findTrialById={findTrialById}
                   condition={condition}
+                  selectedTrial={selectedTrial}
                 />
                 <TableBody
                   isInBranches={isInBranches}

@@ -1,6 +1,6 @@
 // Custom Survey Builder - Editor visual con preview en tiempo real
 import React, { useState, useEffect, useRef } from "react";
-import Modal from "../../Modal";
+import Modal from "../../ParameterMapper/Modal";
 import CustomSurveyEditor from "./Builder";
 import SurveyPreview from "./Preview";
 

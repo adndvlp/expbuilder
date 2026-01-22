@@ -72,6 +72,7 @@ function ColumnParams({
                       ? { ...c, customParameters: newParams }
                       : c,
                   ),
+                  true,
                 );
               } else {
                 // Change field type
@@ -88,6 +89,7 @@ function ColumnParams({
                       ? { ...c, customParameters: newParams }
                       : c,
                   ),
+                  true,
                 );
               }
             }}
@@ -130,6 +132,7 @@ function ColumnParams({
                     ? { ...c, customParameters: newParams }
                     : c,
                 ),
+                true,
               );
             }}
             className="w-full border rounded px-2 py-1.5 text-xs"
@@ -178,6 +181,7 @@ function ColumnParams({
                     ? { ...c, customParameters: newParams }
                     : c,
                 ),
+                true,
               );
             }}
             className="w-full border rounded px-2 py-1.5 text-xs"
@@ -226,6 +230,7 @@ function ColumnParams({
                       ? { ...c, customParameters: newParams }
                       : c,
                   ),
+                  true,
                 );
               }}
               className="w-full border rounded px-2 py-1.5 text-xs"
@@ -274,6 +279,7 @@ function ColumnParams({
                       ? { ...c, customParameters: newParams }
                       : c,
                   ),
+                  true,
                 );
               } else {
                 // Change parameter
@@ -286,6 +292,7 @@ function ColumnParams({
                       ? { ...c, customParameters: newParams }
                       : c,
                   ),
+                  true,
                 );
               }
             }}

@@ -27,8 +27,9 @@ export default function useBranchConditions({
         if (c.id === conditionId) {
           const newParams = { ...(c.customParameters || {}) };
           if (isTargetDynamic) {
-            // For dynamic plugins, add a template parameter
-            const newKey = `components::::`;
+            // For dynamic plugins, add a template parameter with unique key
+            // Use timestamp to ensure uniqueness
+            const newKey = `components::::_${Date.now()}`;
             newParams[newKey] = {
               source: "none",
               value: null,
@@ -57,6 +58,7 @@ export default function useBranchConditions({
         }
         return c;
       }),
+      true,
     );
   };
 

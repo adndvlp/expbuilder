@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import "./index.css";
+import "../index.css";
 
 export default function DropboxCallback() {
   const [searchParams] = useSearchParams();
@@ -15,7 +15,7 @@ export default function DropboxCallback() {
       // Si el usuario rechazó el acceso
       if (error) {
         navigate(
-          `/settings?status=error&service=dropbox&message=${encodeURIComponent(error)}`
+          `/settings?status=error&service=dropbox&message=${encodeURIComponent(error)}`,
         );
         return;
       }
@@ -23,7 +23,7 @@ export default function DropboxCallback() {
       // Si faltan parámetros
       if (!code || !state) {
         navigate(
-          "/settings?status=error&service=dropbox&message=Missing parameters"
+          "/settings?status=error&service=dropbox&message=Missing parameters",
         );
         return;
       }
@@ -39,7 +39,7 @@ export default function DropboxCallback() {
         window.location.href = functionUrl;
       } catch (err: any) {
         navigate(
-          `/settings?status=error&service=dropbox&message=${encodeURIComponent(err.message)}`
+          `/settings?status=error&service=dropbox&message=${encodeURIComponent(err.message)}`,
         );
       }
     };

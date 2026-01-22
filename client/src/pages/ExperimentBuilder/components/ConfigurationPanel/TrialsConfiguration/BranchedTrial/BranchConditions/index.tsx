@@ -33,6 +33,7 @@ type Props = {
   selectedTrial: Trial | null;
   data: DataDefinition[];
   onAutoSave?: (conditions: Condition[]) => void;
+  getAvailableTrials: () => { id: string | number; name: string }[];
 };
 
 function BranchConditions({
@@ -45,8 +46,9 @@ function BranchConditions({
   selectedTrial,
   data,
   onAutoSave,
+  getAvailableTrials,
 }: Props) {
-  const { timeline } = useTrials();
+  const { timeline, loopTimeline } = useTrials();
 
   // Helper to update conditions and trigger autosave
   const setConditionsWrapper = (
@@ -128,9 +130,14 @@ function BranchConditions({
   const getBranchTrials = () => {
     if (!selectedTrial?.branches) return [];
 
+    // Determine which timeline to use based on parentLoopId
+    const relevantTimeline = selectedTrial.parentLoopId
+      ? loopTimeline
+      : timeline;
+
     // Use the branches array that comes from the backend
     // Filter timeline to only show items that are in branches
-    return timeline
+    return relevantTimeline
       .filter((item) =>
         selectedTrial.branches?.some(
           (branchId: string | number) => String(item.id) === String(branchId),
@@ -145,21 +152,17 @@ function BranchConditions({
 
   // Get ALL available trials/loops for Jump functionality
   const getAllTrialsForJump = () => {
-    if (!selectedTrial) return [];
+    // Determine which timeline to use based on whether trial is inside a loop
+    const relevantTimeline = selectedTrial?.parentLoopId
+      ? loopTimeline
+      : timeline;
 
-    // Timeline is already flat, just filter out current trial
-    return timeline
-      .filter(
-        (item) =>
-          item.id !== selectedTrial.id &&
-          String(item.id) !== String(selectedTrial.id),
-      )
-      .map((item) => ({
-        id: item.id,
-        name: item.name,
-        displayName: item.name, // In flat structure, no nested paths
-        isLoop: item.type === "loop",
-      }));
+    return relevantTimeline.map((item) => ({
+      id: item.id,
+      name: item.name,
+      displayName: item.name,
+      isLoop: item.type === "loop",
+    }));
   };
 
   // Combined available trials (branches + all for jump)

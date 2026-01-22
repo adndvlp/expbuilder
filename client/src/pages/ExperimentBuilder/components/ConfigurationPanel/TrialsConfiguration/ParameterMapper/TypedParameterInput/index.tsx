@@ -5,11 +5,11 @@ import ObjectInput from "./ObjectInput";
 import ObjectCoordsInput from "./ObjectCoordsInput";
 import TextInput from "./TextInput";
 import FunctionInput from "./FunctionInput";
-import WebgazerInput from "./WebGazerInput";
+import WebgazerInput from "./WebgazerInput";
 import ArrayInput from "./ArrayInput";
 
 type Props = {
-  key: string;
+  paramKey: string;
   type: string;
   entry: ColumnMappingEntry;
   setColumnMapping: React.Dispatch<
@@ -27,7 +27,7 @@ type Props = {
 };
 
 function index({
-  key,
+  paramKey,
   type,
   entry,
   setColumnMapping,
@@ -52,10 +52,10 @@ function index({
               };
               setColumnMapping((prev) => ({
                 ...prev,
-                [key]: newValue,
+                [paramKey]: newValue,
               }));
               if (onSave) {
-                setTimeout(() => onSave(key, newValue), 100);
+                setTimeout(() => onSave(paramKey, newValue), 100);
               }
             }}
             onColor="#3d92b4"
@@ -82,7 +82,7 @@ function index({
             />
             <button
               type="button"
-              onClick={() => openHtmlModal(key)}
+              onClick={() => openHtmlModal(paramKey)}
               className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-1 transition-colors"
             >
               <BiEdit size={16} />
@@ -90,7 +90,7 @@ function index({
             </button>
           </div>
         </>
-      ) : type === "object" && key === "survey_json" ? (
+      ) : type === "object" && paramKey === "survey_json" ? (
         <>
           <div className="mt-2 flex items-center gap-2">
             <input
@@ -106,7 +106,7 @@ function index({
             />
             <button
               type="button"
-              onClick={() => openSurveyModal(key)}
+              onClick={() => openSurveyModal(paramKey)}
               className="px-3 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 flex items-center gap-1 transition-colors"
             >
               <BiEdit size={16} />
@@ -121,7 +121,7 @@ function index({
           step="any"
           className="w-full p-2 border rounded mt-2"
           value={
-            localInputValues[key] ??
+            localInputValues[paramKey] ??
             (typeof entry.value === "string" || typeof entry.value === "number"
               ? entry.value
               : "")
@@ -129,7 +129,7 @@ function index({
           onChange={(e) => {
             setLocalInputValues((prev) => ({
               ...prev,
-              [key]: e.target.value,
+              [paramKey]: e.target.value,
             }));
           }}
           onBlur={(e) => {
@@ -140,21 +140,21 @@ function index({
             };
             setColumnMapping((prev) => ({
               ...prev,
-              [key]: newValue,
+              [paramKey]: newValue,
             }));
             if (onSave) {
-              setTimeout(() => onSave(key, newValue), 100);
+              setTimeout(() => onSave(paramKey, newValue), 100);
             }
             setLocalInputValues((prev) => {
               const newState = { ...prev };
-              delete newState[key];
+              delete newState[paramKey];
               return newState;
             });
           }}
         />
       ) : type.endsWith("_array") &&
-        key !== "calibration_points" &&
-        key !== "validation_points" ? (
+        paramKey !== "calibration_points" &&
+        paramKey !== "validation_points" ? (
         type === "html_string_array" ? (
           <>
             <div className="mt-2 flex items-center gap-2">
@@ -174,7 +174,7 @@ function index({
               />
               <button
                 type="button"
-                onClick={() => openHtmlModal(key)}
+                onClick={() => openHtmlModal(paramKey)}
                 className="px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 flex items-center gap-1 transition-colors"
               >
                 <BiEdit size={16} />
@@ -184,33 +184,36 @@ function index({
           </>
         ) : (
           <ArrayInput
+            onSave={onSave}
             localInputValues={localInputValues}
             setLocalInputValues={setLocalInputValues}
             setColumnMapping={setColumnMapping}
             label={label}
-            key={key}
+            paramKey={paramKey}
             entry={entry}
             type={type}
           />
         )
       ) : type.endsWith("_array") &&
-        (key === "calibration_points" || key === "validation_points") ? (
+        (paramKey === "calibration_points" ||
+          paramKey === "validation_points") ? (
         <WebgazerInput
           localInputValues={localInputValues}
           setLocalInputValues={setLocalInputValues}
           setColumnMapping={setColumnMapping}
           label={label}
-          key={key}
+          paramKey={paramKey}
           entry={entry}
         />
-      ) : type === "object" && key !== "coordinates" ? (
+      ) : type === "object" && paramKey !== "coordinates" ? (
         <ObjectInput
-          key={key}
+          onSave={onSave}
+          paramKey={paramKey}
           entry={entry}
           setColumnMapping={setColumnMapping}
         />
       ) : type === "function" ? (
-        key === "button_html" ? (
+        paramKey === "button_html" ? (
           <>
             <div className="mt-2 flex items-center gap-2">
               <input
@@ -227,7 +230,7 @@ function index({
               />
               <button
                 type="button"
-                onClick={() => openButtonModal(key)}
+                onClick={() => openButtonModal(paramKey)}
                 className="px-3 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 flex items-center gap-1 transition-colors"
               >
                 <BiEdit size={16} />
@@ -237,27 +240,30 @@ function index({
           </>
         ) : (
           <FunctionInput
+            onSave={onSave}
             localInputValues={localInputValues}
             label={label}
             setLocalInputValues={setLocalInputValues}
             entry={entry}
-            key={key}
+            paramKey={paramKey}
             setColumnMapping={setColumnMapping}
           />
         )
-      ) : type === "object" && key === "coordinates" ? (
+      ) : type === "object" && paramKey === "coordinates" ? (
         <ObjectCoordsInput
+          onSave={onSave}
           localInputValues={localInputValues}
           entry={entry}
-          key={key}
+          paramKey={paramKey}
           setLocalInputValues={setLocalInputValues}
           setColumnMapping={setColumnMapping}
         />
       ) : (
         <TextInput
+          onSave={onSave}
           localInputValues={localInputValues}
           setColumnMapping={setColumnMapping}
-          key={key}
+          paramKey={paramKey}
           entry={entry}
           label={label}
           setLocalInputValues={setLocalInputValues}

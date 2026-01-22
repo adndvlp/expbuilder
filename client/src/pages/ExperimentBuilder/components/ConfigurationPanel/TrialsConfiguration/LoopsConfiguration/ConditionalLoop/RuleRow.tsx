@@ -1,6 +1,13 @@
-import { LoopConditionRule, LoopCondition, LoadedTrial } from "./types";
+import { LoopConditionRule, LoopCondition, LoadedItem } from "./types";
 import { DataDefinition } from "../../../types";
 import { FaTimes } from "react-icons/fa";
+import {
+  updateTrialSelection,
+  updateFieldType,
+  updateComponentIdx,
+} from "./ruleUpdateHelpers";
+import { DynamicPluginPropertyColumn } from "./DynamicPluginPropertyColumn";
+import { RuleValueInput } from "./RuleValueInput";
 
 type Props = {
   rule: LoopConditionRule;
@@ -16,7 +23,9 @@ type Props = {
     shouldSave?: boolean,
   ) => void;
   removeRuleFromCondition: (conditionId: number, ruleIdx: number) => void;
-  findTrialByIdSync: (trialId: string | number | null) => LoadedTrial | null;
+  findTrialByIdSync: (trialId: string | number | null) => LoadedItem | null;
+  loadTrialOrLoop: (trialId: string | number) => Promise<LoadedItem | null>;
+  loadTrialDataFields: (trialId: string | number) => Promise<void>;
   trialDataFields: Record<string, DataDefinition[]>;
   loadingData: Record<string, boolean>;
   canRemove: boolean;
@@ -36,6 +45,8 @@ export function RuleRow({
   updateRule,
   removeRuleFromCondition,
   findTrialByIdSync,
+  loadTrialOrLoop,
+  loadTrialDataFields,
   trialDataFields,
   loadingData,
   canRemove,
@@ -45,6 +56,9 @@ export function RuleRow({
   const selectedTrial = findTrialByIdSync(rule.trialId);
   const dataFields = rule.trialId ? trialDataFields[rule.trialId] || [] : [];
   const isLoadingField = rule.trialId ? loadingData[rule.trialId] : false;
+
+  // Check if the selected item is a trial (has plugin) or a loop
+  const isTrial = selectedTrial && "plugin" in selectedTrial;
 
   // Helper to get prop value
   const getPropValue = (prop: unknown): unknown => {
@@ -60,13 +74,19 @@ export function RuleRow({
   };
 
   // For dynamic plugins, get component data
-  const isDynamicPlugin = selectedTrial?.plugin === "plugin-dynamic";
+  const isDynamicPlugin = isTrial && selectedTrial?.plugin === "plugin-dynamic";
   const fieldType = rule.fieldType || "";
   const componentIdx = rule.componentIdx ?? "";
+
+  // Safely access columnMapping
+  const columnMapping = (
+    selectedTrial as { columnMapping?: Record<string, unknown> }
+  )?.columnMapping;
   const compArr =
-    isDynamicPlugin && fieldType
-      ? ((selectedTrial?.columnMapping?.[fieldType] as { value?: unknown[] })
-          ?.value as unknown[] | undefined) || []
+    isDynamicPlugin && fieldType && columnMapping
+      ? ((columnMapping[fieldType] as { value?: unknown[] })?.value as
+          | unknown[]
+          | undefined) || []
       : [];
   const comp =
     componentIdx !== "" && compArr.length > 0
@@ -89,28 +109,23 @@ export function RuleRow({
       <td className="px-2 py-2">
         <select
           value={rule.trialId}
-          onChange={(e) => {
+          onChange={async (e) => {
             const newTrialId = e.target.value;
+
+            // Load the trial/loop first
+            if (newTrialId) {
+              await loadTrialOrLoop(newTrialId);
+              // Also load the trial data fields for the dropdown
+              await loadTrialDataFields(newTrialId);
+            }
+
             // Use setConditionsWrapper for autosave
             setConditionsWrapper(
-              conditions.map((c) =>
-                c.id === conditionId
-                  ? {
-                      ...c,
-                      rules: c.rules.map((r: LoopConditionRule, idx: number) =>
-                        idx === ruleIdx
-                          ? {
-                              ...r,
-                              trialId: newTrialId,
-                              prop: "",
-                              fieldType: "",
-                              componentIdx: "",
-                              value: "",
-                            }
-                          : r,
-                      ),
-                    }
-                  : c,
+              updateTrialSelection(
+                conditions,
+                conditionId,
+                ruleIdx,
+                newTrialId,
               ),
               true,
             );
@@ -148,25 +163,7 @@ export function RuleRow({
               onChange={(e) => {
                 const newValue = e.target.value;
                 setConditionsWrapper(
-                  conditions.map((c) =>
-                    c.id === conditionId
-                      ? {
-                          ...c,
-                          rules: c.rules.map(
-                            (r: LoopConditionRule, idx: number) =>
-                              idx === ruleIdx
-                                ? {
-                                    ...r,
-                                    fieldType: newValue,
-                                    componentIdx: "",
-                                    prop: "",
-                                    value: "",
-                                  }
-                                : r,
-                          ),
-                        }
-                      : c,
-                  ),
+                  updateFieldType(conditions, conditionId, ruleIdx, newValue),
                   true,
                 );
               }}
@@ -191,23 +188,11 @@ export function RuleRow({
               onChange={(e) => {
                 const newValue = e.target.value;
                 setConditionsWrapper(
-                  conditions.map((c) =>
-                    c.id === conditionId
-                      ? {
-                          ...c,
-                          rules: c.rules.map(
-                            (r: LoopConditionRule, idx: number) =>
-                              idx === ruleIdx
-                                ? {
-                                    ...r,
-                                    componentIdx: newValue,
-                                    prop: "",
-                                    value: "",
-                                  }
-                                : r,
-                          ),
-                        }
-                      : c,
+                  updateComponentIdx(
+                    conditions,
+                    conditionId,
+                    ruleIdx,
+                    newValue,
                   ),
                   true,
                 );
@@ -234,116 +219,16 @@ export function RuleRow({
 
           {/* Property Column */}
           <td className="px-2 py-2">
-            {comp && (comp as { type?: string }).type === "SurveyComponent" ? (
-              <select
-                value={rule.prop}
-                onChange={(e) => {
-                  const newValue = e.target.value;
-                  setConditionsWrapper(
-                    conditions.map((c) =>
-                      c.id === conditionId
-                        ? {
-                            ...c,
-                            rules: c.rules.map(
-                              (r: LoopConditionRule, idx: number) =>
-                                idx === ruleIdx
-                                  ? { ...r, prop: newValue, value: "" }
-                                  : r,
-                            ),
-                          }
-                        : c,
-                    ),
-                    true,
-                  );
-                }}
-                disabled={!componentIdx}
-                className="border rounded px-2 py-1 w-full text-xs"
-                style={{
-                  color: "var(--text-dark)",
-                  backgroundColor: "var(--neutral-light)",
-                  borderColor: "var(--neutral-mid)",
-                }}
-              >
-                <option value="">Select question</option>
-                {(
-                  (
-                    getPropValue(
-                      (comp as { survey_json?: unknown }).survey_json,
-                    ) as { elements?: Array<{ name: string; title?: string }> }
-                  )?.elements || []
-                ).map((q) => (
-                  <option key={q.name} value={q.name}>
-                    {q.title || q.name}
-                  </option>
-                ))}
-              </select>
-            ) : comp &&
-              (comp as { type?: string }).type === "ButtonResponseComponent" ? (
-              <select
-                value={rule.prop}
-                onChange={(e) => {
-                  const newValue = e.target.value;
-                  setConditionsWrapper(
-                    conditions.map((c) =>
-                      c.id === conditionId
-                        ? {
-                            ...c,
-                            rules: c.rules.map(
-                              (r: LoopConditionRule, idx: number) =>
-                                idx === ruleIdx
-                                  ? { ...r, prop: newValue, value: "" }
-                                  : r,
-                            ),
-                          }
-                        : c,
-                    ),
-                    true,
-                  );
-                }}
-                disabled={!componentIdx}
-                className="border rounded px-2 py-1 w-full text-xs"
-                style={{
-                  color: "var(--text-dark)",
-                  backgroundColor: "var(--neutral-light)",
-                  borderColor: "var(--neutral-mid)",
-                }}
-              >
-                <option value="">Select property</option>
-                <option value="response">response</option>
-              </select>
-            ) : (
-              <input
-                type="text"
-                value={rule.prop}
-                onChange={(e) => {
-                  const newValue = e.target.value;
-                  setConditionsWrapper(
-                    conditions.map((c) =>
-                      c.id === conditionId
-                        ? {
-                            ...c,
-                            rules: c.rules.map(
-                              (r: LoopConditionRule, idx: number) =>
-                                idx === ruleIdx
-                                  ? { ...r, prop: newValue, value: "" }
-                                  : r,
-                            ),
-                          }
-                        : c,
-                    ),
-                    true,
-                  );
-                }}
-                disabled={!componentIdx}
-                placeholder="Property"
-                className="border rounded px-2 py-1 w-full text-xs"
-                style={{
-                  color: "var(--text-dark)",
-                  backgroundColor: "var(--neutral-light)",
-                  borderColor: "var(--neutral-mid)",
-                }}
-              />
-            )}
+            <DynamicPluginPropertyColumn
+              rule={rule}
+              comp={comp}
+              componentIdx={componentIdx}
+              conditionId={conditionId}
+              ruleIdx={ruleIdx}
+              conditions={conditions}
+              setConditionsWrapper={setConditionsWrapper}
+              getPropValue={getPropValue}
+            />
           </td>
         </>
       ) : (
@@ -431,116 +316,15 @@ export function RuleRow({
 
       {/* Value Input */}
       <td className="px-2 py-2">
-        {(() => {
-          // For DynamicPlugin Survey components with questions
-          if (
-            isDynamicPlugin &&
-            comp &&
-            (comp as { type?: string }).type === "SurveyComponent" &&
-            rule.prop
-          ) {
-            const surveyJson = getPropValue(
-              (comp as { survey_json?: unknown }).survey_json,
-            ) as
-              | {
-                  elements?: Array<{
-                    name: string;
-                    type?: string;
-                    choices?: Array<string | { value: string; text?: string }>;
-                  }>;
-                }
-              | undefined;
-            const question = surveyJson?.elements?.find(
-              (q) => q.name === rule.prop,
-            );
-            if (
-              question &&
-              question.type === "radiogroup" &&
-              question.choices
-            ) {
-              return (
-                <select
-                  value={rule.value}
-                  onChange={(e) =>
-                    updateRule(conditionId, ruleIdx, "value", e.target.value)
-                  }
-                  className="border rounded px-2 py-1 w-full text-xs"
-                  style={{
-                    color: "var(--text-dark)",
-                    backgroundColor: "var(--neutral-light)",
-                    borderColor: "var(--neutral-mid)",
-                  }}
-                >
-                  <option value="">Select value</option>
-                  {question.choices.map((opt) => (
-                    <option
-                      key={typeof opt === "string" ? opt : opt.value}
-                      value={typeof opt === "string" ? opt : opt.value}
-                    >
-                      {typeof opt === "string" ? opt : opt.text || opt.value}
-                    </option>
-                  ))}
-                </select>
-              );
-            }
-          }
-
-          // For ButtonResponseComponent with choices
-          if (
-            isDynamicPlugin &&
-            comp &&
-            (comp as { type?: string }).type === "ButtonResponseComponent" &&
-            rule.prop === "response"
-          ) {
-            const choices = getPropValue(
-              (comp as { choices?: unknown }).choices,
-            ) as Array<string | { value: string; text?: string }> | undefined;
-            if (choices && Array.isArray(choices)) {
-              return (
-                <select
-                  value={rule.value}
-                  onChange={(e) =>
-                    updateRule(conditionId, ruleIdx, "value", e.target.value)
-                  }
-                  className="border rounded px-2 py-1 w-full text-xs"
-                  style={{
-                    color: "var(--text-dark)",
-                    backgroundColor: "var(--neutral-light)",
-                    borderColor: "var(--neutral-mid)",
-                  }}
-                >
-                  <option value="">Select value</option>
-                  {choices.map((opt) => (
-                    <option
-                      key={typeof opt === "string" ? opt : opt.value}
-                      value={typeof opt === "string" ? opt : opt.value}
-                    >
-                      {typeof opt === "string" ? opt : opt.text || opt.value}
-                    </option>
-                  ))}
-                </select>
-              );
-            }
-          }
-
-          // Default text input
-          return (
-            <input
-              type="text"
-              value={rule.value}
-              onChange={(e) =>
-                updateRule(conditionId, ruleIdx, "value", e.target.value)
-              }
-              placeholder="Value"
-              className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
-              style={{
-                color: "var(--text-dark)",
-                backgroundColor: "var(--neutral-light)",
-                borderColor: "var(--neutral-mid)",
-              }}
-            />
-          );
-        })()}
+        <RuleValueInput
+          rule={rule}
+          isDynamicPlugin={!!isDynamicPlugin}
+          comp={comp}
+          conditionId={conditionId}
+          ruleIdx={ruleIdx}
+          updateRule={updateRule}
+          getPropValue={getPropValue}
+        />
       </td>
 
       {/* Remove Rule Button */}

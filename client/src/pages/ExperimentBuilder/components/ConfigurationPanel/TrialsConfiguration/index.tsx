@@ -10,7 +10,7 @@ import { useFileUpload } from "../../Timeline/useFileUpload";
 import { useCsvData } from "./Csv/useCsvData";
 import { useColumnMapping } from "./hooks/useColumnMapping";
 import { useCsvMapper } from "./Csv/useCsvMapper";
-import { useTrialCode } from "./TrialCode/useTrialCode";
+// useTrialCode removed - code is generated dynamically when needed
 import { useExtensions } from "./Extensions/useExtensions";
 import ExtensionsConfig from "./Extensions";
 import { Trial, Loop } from "../types";
@@ -184,30 +184,8 @@ function TrialsConfig({ pluginName }: Props) {
   const folder = "all";
   const { uploadedFiles } = useFileUpload({ folder });
 
-  const { genTrialCode } = useTrialCode({
-    id: selectedTrial?.id,
-    branches: selectedTrial?.branches,
-    branchConditions: selectedTrial?.branchConditions,
-    repeatConditions: selectedTrial?.repeatConditions,
-    paramsOverride: selectedTrial?.paramsOverride,
-    pluginName: pluginName,
-    parameters: parameters,
-    getColumnValue: getColumnValue,
-    columnMapping: columnMapping,
-    uploadedFiles: uploadedFiles,
-    csvJson: csvJson,
-    trialName: trialName,
-    data: data,
-    includesExtensions: includesExtensions,
-    extensions: extensions,
-    // Use loop context if trial is inside a loop
-    orders: parentLoop?.orders || orders,
-    stimuliOrders: parentLoop?.stimuliOrders || stimuliOrders,
-    categories: parentLoop?.categories || categories,
-    categoryData: parentLoop?.categoryData || categoryData,
-    isInLoop: !!parentLoop,
-    parentLoopId: parentLoop?.id,
-  });
+  // Note: trialCode is NO LONGER generated here - it's generated dynamically when needed
+  // (Run Experiment, Run Demo, Publish) to avoid storing duplicate data
 
   const canSave = !!trialName && !isLoadingTrial;
 
@@ -313,12 +291,6 @@ function TrialsConfig({ pluginName }: Props) {
     }
   };
 
-  // Guardar trialCode (generado)
-  const saveTrialCode = async () => {
-    if (!selectedTrial) return;
-    await saveField("trialCode", genTrialCode());
-  };
-
   // Guardar TODO (botón manual - 1 solo request con todos los campos)
   const handleSave = async () => {
     if (!canSave || !selectedTrial) return;
@@ -330,7 +302,7 @@ function TrialsConfig({ pluginName }: Props) {
         includesExtensions,
         extensionType,
       },
-      trialCode: genTrialCode(),
+      // trialCode is NO LONGER saved - it's generated dynamically when needed
       columnMapping: { ...columnMapping },
       csvJson: csvJson ? [...csvJson] : [],
       csvColumns: csvColumns ? [...csvColumns] : [],

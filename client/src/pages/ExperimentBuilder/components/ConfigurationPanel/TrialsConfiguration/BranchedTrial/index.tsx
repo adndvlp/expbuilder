@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import useTrials from "../../../../hooks/useTrials";
 import { loadPluginParameters } from "../../utils/pluginParameterLoader";
 import { BranchCondition, RepeatCondition } from "../../types";
@@ -9,7 +9,14 @@ import BranchedTrialLayout from "./BranchedTrialLayout";
 import { FaTimes } from "react-icons/fa";
 
 function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
-  const { updateTrialField, getTrial, getLoop } = useTrials();
+  const {
+    updateTrialField,
+    getTrial,
+    getLoop,
+    timeline,
+    loopTimeline,
+    getLoopTimeline,
+  } = useTrials();
   const [data, setData] = useState<import("../../types").DataDefinition[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +89,7 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
     setError,
     setLoading,
     loadPluginParameters,
+    getLoopTimeline,
     setConditions,
     setRepeatConditions,
   });
@@ -108,6 +116,52 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
   // Find trial or loop by ID synchronously from loaded trials
   const findTrialByIdSync = (trialId: string | number): any => {
     return loadedTrials[trialId] || null;
+  };
+
+  /**
+   * Get available trials to reference (trials that come before the current trial)
+   * If trial is inside a loop (has parentLoopId), only show trials from same loop
+   * If trial is outside a loop, show all trials from main timeline
+   */
+  const getAvailableTrials = (): { id: string | number; name: string }[] => {
+    if (!selectedTrial) return [];
+
+    const allTrials: { id: string | number; name: string }[] = [];
+
+    // Check if trial is inside a loop
+    if (selectedTrial.parentLoopId) {
+      // Trial is inside a loop - only show trials from same loop (loopTimeline)
+      const currentIndex = loopTimeline.findIndex(
+        (item) =>
+          item.id === selectedTrial.id ||
+          String(item.id) === String(selectedTrial.id),
+      );
+
+      if (currentIndex === -1) return [];
+
+      // Get all trials/loops from the same loop that come before
+      for (let i = 0; i < currentIndex; i++) {
+        const item = loopTimeline[i];
+        allTrials.push({ id: item.id, name: item.name });
+      }
+    } else {
+      // Trial is outside a loop - show all trials from main timeline
+      const currentIndex = timeline.findIndex(
+        (item) =>
+          item.id === selectedTrial.id ||
+          String(item.id) === String(selectedTrial.id),
+      );
+
+      if (currentIndex === -1) return [];
+
+      // Get all trials/loops that come before
+      for (let i = 0; i < currentIndex; i++) {
+        const item = timeline[i];
+        allTrials.push({ id: item.id, name: item.name });
+      }
+    }
+
+    return allTrials;
   };
 
   /**
@@ -280,6 +334,7 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
             setConditions={setConditions}
             loadTargetTrialParameters={loadTargetTrialParameters}
             findTrialByIdSync={findTrialByIdSync}
+            getAvailableTrials={getAvailableTrials}
           />
         </div>
       </div>
