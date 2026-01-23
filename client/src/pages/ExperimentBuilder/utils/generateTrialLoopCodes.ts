@@ -186,6 +186,16 @@ async function generateTrialCode(
     });
 
     console.log(
+      "🔍 [generateTrialCode] Trial:",
+      fullTrial.name,
+      "| ID:",
+      fullTrial.id,
+    );
+    console.log("  orders:", fullTrial.orders);
+    console.log("  stimuliOrders:", fullTrial.stimuliOrders);
+    console.log("  categories:", fullTrial.categories);
+    console.log("  categoryData:", fullTrial.categoryData);
+    console.log(
       "🔍 [TRIAL MAPPED JSON] Trial:",
       fullTrial.name,
       "mappedJson:",

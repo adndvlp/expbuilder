@@ -292,6 +292,14 @@ function TrialsConfig({ pluginName }: Props) {
   ) => {
     if (!selectedTrial) return;
 
+    console.log("💾 [saveOrdersAndCategories] Called with:");
+    console.log("  orders:", ord);
+    console.log("  orderColumns:", ordCols);
+    console.log("  stimuliOrders:", stimOrd);
+    console.log("  categories:", cat);
+    console.log("  categoryColumn:", catCol);
+    console.log("  categoryData:", catData);
+
     // Usar updateTrial para 1 solo PATCH con todos los campos
     const updatedTrial = await updateTrial(selectedTrial.id, {
       orders: ord,
@@ -303,7 +311,10 @@ function TrialsConfig({ pluginName }: Props) {
     });
 
     if (updatedTrial) {
+      console.log("✅ Trial updated successfully:", updatedTrial);
       showSaveIndicator("orders");
+    } else {
+      console.error("❌ Failed to update trial");
     }
   };
 

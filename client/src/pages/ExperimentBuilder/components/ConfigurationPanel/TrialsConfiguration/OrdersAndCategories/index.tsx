@@ -46,16 +46,39 @@ function OrdersAndCategories({
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const cols = Array.from(e.target.selectedOptions, (opt) => opt.value);
     setOrderColumns(cols);
+
+    console.log("📊 [handleSelectChange] Selected columns:", cols);
+    console.log("📊 [handleSelectChange] csvJson:", csvJson);
+
+    // Calcular stimuliOrders directamente ANTES de guardar
+    const newStimuliOrders = cols.map((key) => {
+      console.log(
+        `  Processing column "${key}":`,
+        csvJson.map((row) => row[key]),
+      );
+      const mapped = csvJson
+        .map((row) => Number(row[key] - 1))
+        .filter((v) => !isNaN(v));
+      console.log(`  Result for "${key}":`, mapped);
+      return mapped;
+    });
+
+    console.log(
+      "📊 [handleSelectChange] Final newStimuliOrders:",
+      newStimuliOrders,
+    );
+
+    // Actualizar el state
     mapOrdersFromCsv(csvJson, cols);
 
-    // Autoguardar pasando el nuevo valor directamente
+    // Autoguardar pasando el valor calculado directamente
     if (onSave) {
       setTimeout(
         () =>
           onSave(
             orders,
             cols,
-            stimuliOrders,
+            newStimuliOrders, // ← Usar el valor calculado, no el state
             categories,
             categoryColumn,
             categoryData,
@@ -68,9 +91,15 @@ function OrdersAndCategories({
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const column = e.target.value;
     setCategoryColumn(column);
+
+    // Calcular categoryData directamente ANTES de guardar
+    const newCategoryData =
+      column && csvJson.length > 0 ? csvJson.map((row) => row[column]) : [];
+
+    // Actualizar el state
     mapCategoriesFromCsv(csvJson, column);
 
-    // Autoguardar pasando el nuevo valor directamente
+    // Autoguardar pasando el valor calculado directamente
     if (onSave) {
       setTimeout(
         () =>
@@ -80,7 +109,7 @@ function OrdersAndCategories({
             stimuliOrders,
             categories,
             column,
-            categoryData,
+            newCategoryData, // ← Usar el valor calculado, no el state
           ),
         100,
       );
