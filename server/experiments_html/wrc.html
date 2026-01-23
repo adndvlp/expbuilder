@@ -400,7 +400,7 @@ response_components: jsPsych.timelineVariable("response_components"),
         
         
         branches: [1769054414149, "loop_1769054420851"],
-        branchConditions: [[{"id":1769125088942,"rules":[{"column":"","op":"==","value":"nose","fieldType":"response_components","componentIdx":"ButtonResponseComponent_1","prop":"response"}],"nextTrialId":"1769054414149","customParameters":{}},{"id":1769125796392,"rules":[{"column":"","op":"==","value":"si","fieldType":"response_components","componentIdx":"ButtonResponseComponent_1","prop":"response"}],"nextTrialId":"loop_1769054420851","customParameters":{}}]] 
+        branchConditions: [[{"id":1769125088942,"rules":[{"column":"","op":"==","value":"nose","fieldType":"response_components","componentIdx":"ButtonResponseComponent_1","prop":"response"}],"nextTrialId":"1769054414149","customParameters":{}},{"id":1769125796392,"rules":[{"column":"","op":"==","value":"si","fieldType":"response_components","componentIdx":"ButtonResponseComponent_1","prop":"response"}],"nextTrialId":"loop_1769054420851","customParameters":{}},{"id":1769128638211,"rules":[{"column":"","op":"==","value":"no","fieldType":"response_components","componentIdx":"ButtonResponseComponent_1","prop":"response"}],"nextTrialId":"1769054414149","customParameters":{"response_components::ButtonResponseComponent_2::choices":{"source":"typed","value":["colalocalcoa"]}}}]] 
         
       },
     on_start: function(trial) {
@@ -642,7 +642,7 @@ response_components: jsPsych.timelineVariable("response_components"),
       // Evaluar condiciones del trial para branching global
       console.log('🔍 [GLOBAL BRANCH] Evaluating branch conditions...');
       const branches = [1769054414149, "loop_1769054420851"];
-      const branchConditions = [{"id":1769125088942,"rules":[{"column":"","op":"==","value":"nose","fieldType":"response_components","componentIdx":"ButtonResponseComponent_1","prop":"response"}],"nextTrialId":"1769054414149","customParameters":{}},{"id":1769125796392,"rules":[{"column":"","op":"==","value":"si","fieldType":"response_components","componentIdx":"ButtonResponseComponent_1","prop":"response"}],"nextTrialId":"loop_1769054420851","customParameters":{}}].flat();
+      const branchConditions = [{"id":1769125088942,"rules":[{"column":"","op":"==","value":"nose","fieldType":"response_components","componentIdx":"ButtonResponseComponent_1","prop":"response"}],"nextTrialId":"1769054414149","customParameters":{}},{"id":1769125796392,"rules":[{"column":"","op":"==","value":"si","fieldType":"response_components","componentIdx":"ButtonResponseComponent_1","prop":"response"}],"nextTrialId":"loop_1769054420851","customParameters":{}},{"id":1769128638211,"rules":[{"column":"","op":"==","value":"no","fieldType":"response_components","componentIdx":"ButtonResponseComponent_1","prop":"response"}],"nextTrialId":"1769054414149","customParameters":{"response_components::ButtonResponseComponent_2::choices":{"source":"typed","value":["colalocalcoa"]}}}].flat();
       console.log('🔍 [GLOBAL BRANCH] Available branches:', branches);
       console.log('🔍 [GLOBAL BRANCH] Conditions to evaluate:', branchConditions.length);
       
@@ -1063,86 +1063,10 @@ response_components: jsPsych.timelineVariable("response_components"),
       
     },
     on_finish: function(data) {
-      // Evaluar repeat conditions (para reiniciar el experimento desde un trial específico)
-      const repeatConditionsArray = [{"id":1769126106374,"rules":[{"column":"","op":"==","value":""}],"jumpToTrialId":"1769054412868"}];
-      
-      let shouldRepeat = false;
-      for (const condition of repeatConditionsArray) {
-        if (!condition || !condition.rules) {
-          continue;
-        }
-        
-        // Todas las reglas en una condición deben ser verdaderas (lógica AND)
-        const allRulesMatch = condition.rules.every(rule => {
-          // Construct column name if empty (for dynamic plugins)
-          let columnName = rule.column || "";
-          if (!columnName && rule.componentIdx && rule.prop) {
-            columnName = rule.componentIdx + '_' + rule.prop;
-          }
-          
-          // Get the property value using the column name
-          const propValue = data[columnName || rule.prop];
-          const compareValue = rule.value;
-          
-          // Handle array responses (multi-select questions)
-          if (Array.isArray(propValue)) {
-            // For array values, check if compareValue is included in the array
-            switch (rule.op) {
-              case '==':
-                return propValue.includes(compareValue);
-              case '!=':
-                return !propValue.includes(compareValue);
-              default:
-                return false; // Comparison operators don't make sense for arrays
-            }
-          }
-          
-          // Convertir valores para comparación (for non-array values)
-          const numPropValue = parseFloat(propValue);
-          const numCompareValue = parseFloat(compareValue);
-          const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
-          
-          switch (rule.op) {
-            case '==':
-              return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
-            case '!=':
-              return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
-            case '>':
-              return isNumeric && numPropValue > numCompareValue;
-            case '<':
-              return isNumeric && numPropValue < numCompareValue;
-            case '>=':
-              return isNumeric && numPropValue >= numCompareValue;
-            case '<=':
-              return isNumeric && numPropValue <= numCompareValue;
-            default:
-              return false;
-          }
-        });
-        
-        if (allRulesMatch && condition.jumpToTrialId) {
-          console.log('Repeat condition matched! Jumping to trial:', condition.jumpToTrialId);
-          // Guardar el trial objetivo en localStorage
-          localStorage.setItem('jsPsych_jumpToTrial', String(condition.jumpToTrialId));
-          shouldRepeat = true;
-          break;
-        }
+      // Trial terminal - si llegamos aquí después de branching, terminar el experimento
+      if (window.branchingActive) {
+        jsPsych.abortExperiment('', {});
       }
-      
-      if (shouldRepeat) {
-        // Limpiar el contenedor de jsPsych (jspsych-container es el display_element)
-        const container = document.getElementById('jspsych-container');
-        if (container) {
-          // Limpiar todo el contenido del container
-          container.innerHTML = '';
-        }
-        // Reiniciar el timeline
-        setTimeout(() => {
-          jsPsych.run(timeline);
-        }, 100);
-        return;
-      }
-      
     },};
     const no_procedure = {
     timeline: 
@@ -2065,7 +1989,7 @@ response_components: jsPsych.timelineVariable("response_components_New_Trial_5")
     },
     on_finish: function(data) {
       // Evaluar repeat conditions (para reiniciar el experimento desde un trial específico)
-      const repeatConditionsArray = [{"id":1769124654889,"rules":[{"column":"","op":"==","value":"ok","fieldType":"response_components","componentIdx":"ButtonResponseComponent_1","prop":"response"}],"jumpToTrialId":"1769054412868"},{"id":1769124654889,"rules":[{"column":"","op":"==","value":""}],"jumpToTrialId":"1769054412868"}];
+      const repeatConditionsArray = [{"id":1769124654889,"rules":[{"column":"","op":"==","value":"ok","fieldType":"response_components","componentIdx":"ButtonResponseComponent_1","prop":"response"}],"jumpToTrialId":"1769054417382"},{"id":1769124654889,"rules":[{"column":"","op":"==","value":""}],"jumpToTrialId":"1769054417382"}];
       
       let shouldRepeat = false;
       for (const condition of repeatConditionsArray) {

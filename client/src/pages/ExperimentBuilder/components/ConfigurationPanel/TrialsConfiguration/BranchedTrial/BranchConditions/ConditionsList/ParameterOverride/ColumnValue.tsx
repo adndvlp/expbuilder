@@ -156,15 +156,6 @@ function ColumnValue({
                       paramKey,
                       "typed",
                       e.target.value,
-                      false,
-                    )
-                  }
-                  onBlur={(e) =>
-                    updateCustomParameter(
-                      condition.id,
-                      paramKey,
-                      "typed",
-                      e.target.value,
                       true,
                     )
                   }
@@ -206,15 +197,6 @@ function ColumnValue({
                       : ""
                   }
                   onChange={(e) =>
-                    updateCustomParameter(
-                      condition.id,
-                      paramKey,
-                      "typed",
-                      e.target.value,
-                      false,
-                    )
-                  }
-                  onBlur={(e) =>
                     updateCustomParameter(
                       condition.id,
                       paramKey,
@@ -323,15 +305,6 @@ function ColumnValue({
                       paramKey,
                       "typed",
                       Number(e.target.value),
-                      false,
-                    )
-                  }
-                  onBlur={(e) =>
-                    updateCustomParameter(
-                      condition.id,
-                      paramKey,
-                      "typed",
-                      Number(e.target.value),
                       true,
                     )
                   }
@@ -353,15 +326,6 @@ function ColumnValue({
                       : ""
                   }
                   onChange={(e) =>
-                    updateCustomParameter(
-                      condition.id,
-                      paramKey,
-                      "typed",
-                      e.target.value,
-                      false,
-                    )
-                  }
-                  onBlur={(e) =>
                     updateCustomParameter(
                       condition.id,
                       paramKey,

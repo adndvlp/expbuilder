@@ -167,16 +167,18 @@ export const ParameterInput: React.FC<ParameterInputProps> = ({
         className="w-full p-2 border rounded mt-2"
         placeholder={`Comma-separated values for ${paramLabel.toLowerCase()}`}
         value={
-          localInputValue ||
-          (typeof value === "string"
-            ? value
-            : Array.isArray(value)
-              ? value.join(", ")
-              : "")
+          localInputValue !== ""
+            ? localInputValue
+            : typeof value === "string"
+              ? value
+              : Array.isArray(value)
+                ? value.join(", ")
+                : ""
         }
         onChange={(e) => setLocalInputValue(e.target.value)}
         onBlur={(e) => {
-          const input = localInputValue || e.target.value;
+          const input =
+            localInputValue !== "" ? localInputValue : e.target.value;
 
           const rawItems = input
             .split(",")
@@ -222,15 +224,14 @@ export const ParameterInput: React.FC<ParameterInputProps> = ({
         className="w-full p-2 border rounded mt-2"
         placeholder={`Enter ${paramLabel.toLowerCase()}`}
         value={
-          localInputValue ||
-          (Array.isArray(value)
-            ? JSON.stringify(value).replace(/],\[/g, "], [")
-            : "")
+          localInputValue !== ""
+            ? localInputValue
+            : Array.isArray(value)
+              ? JSON.stringify(value).replace(/],\[/g, "], [")
+              : ""
         }
         onChange={(e) => setLocalInputValue(e.target.value)}
         onBlur={() => {
-          if (localInputValue === undefined) return;
-
           if (localInputValue.trim() === "") {
             onChange([]);
             setLocalInputValue("");
