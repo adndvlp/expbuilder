@@ -4,7 +4,7 @@
  */
 export function generateBranchCustomParametersCode(
   isInLoop: boolean,
-  getVarName: (baseName: string) => string
+  getVarName: (baseName: string) => string,
 ): string {
   if (isInLoop) {
     return `
@@ -41,6 +41,30 @@ export function generateBranchCustomParametersCode(
                       if (valueToSet !== undefined && valueToSet !== null) {
                         fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;
                       }
+                    }
+                  }
+                }
+              }
+            } else if (parts.length === 3) {
+              // Format: fieldType::componentName::property (for DynamicPlugin components)
+              const [fieldType, componentName, propName] = parts;
+              
+              if (fieldType && componentName && propName) {
+                // Find the component by name in the field array
+                const fieldArray = trial[fieldType];
+                if (Array.isArray(fieldArray)) {
+                  const compIndex = fieldArray.findIndex(c => c.name === componentName);
+                  if (compIndex !== -1) {
+                    // Apply the override value (from typed or csv)
+                    let valueToSet;
+                    if (param.source === 'typed') {
+                      valueToSet = param.value;
+                    } else if (param.source === 'csv') {
+                      valueToSet = trial[param.value];
+                    }
+                    
+                    if (valueToSet !== undefined && valueToSet !== null) {
+                      fieldArray[compIndex][propName] = valueToSet;
                     }
                   }
                 }
@@ -94,6 +118,30 @@ export function generateBranchCustomParametersCode(
                       if (valueToSet !== undefined && valueToSet !== null) {
                         fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;
                       }
+                    }
+                  }
+                }
+              }
+            } else if (parts.length === 3) {
+              // Format: fieldType::componentName::property (for DynamicPlugin components)
+              const [fieldType, componentName, propName] = parts;
+              
+              if (fieldType && componentName && propName) {
+                // Find the component by name in the field array
+                const fieldArray = trial[fieldType];
+                if (Array.isArray(fieldArray)) {
+                  const compIndex = fieldArray.findIndex(c => c.name === componentName);
+                  if (compIndex !== -1) {
+                    // Apply the override value (from typed or csv)
+                    let valueToSet;
+                    if (param.source === 'typed') {
+                      valueToSet = param.value;
+                    } else if (param.source === 'csv') {
+                      valueToSet = trial[param.value];
+                    }
+                    
+                    if (valueToSet !== undefined && valueToSet !== null) {
+                      fieldArray[compIndex][propName] = valueToSet;
                     }
                   }
                 }

@@ -55,21 +55,20 @@ function ColumnValue({
     value: any,
     shouldSave: boolean = true,
   ) => {
-    setConditions(
-      conditions.map((c) => {
-        if (c.id === conditionId) {
-          return {
-            ...c,
-            customParameters: {
-              ...(c.customParameters || {}),
-              [paramKey]: { source, value },
-            },
-          };
-        }
-        return c;
-      }),
-      shouldSave,
-    );
+    const newConditions = conditions.map((c) => {
+      if (c.id === conditionId) {
+        return {
+          ...c,
+          customParameters: {
+            ...(c.customParameters || {}),
+            [paramKey]: { source, value },
+          },
+        };
+      }
+      return c;
+    });
+
+    setConditions(newConditions, shouldSave);
   };
   // Get parameter metadata for the selected property
   const selectedParamMetadata = parametersArray.find(
@@ -160,7 +159,15 @@ function ColumnValue({
                       false,
                     )
                   }
-                  onBlur={() => triggerSave && triggerSave()}
+                  onBlur={(e) =>
+                    updateCustomParameter(
+                      condition.id,
+                      paramKey,
+                      "typed",
+                      e.target.value,
+                      true,
+                    )
+                  }
                   style={{
                     color: "var(--text-dark)",
                     backgroundColor: "var(--neutral-light)",
@@ -181,10 +188,8 @@ function ColumnValue({
                         paramKey,
                         "typed",
                         newValue,
-                        false,
+                        true,
                       );
-                      // Trigger save after a short delay
-                      setTimeout(() => triggerSave && triggerSave(), 500);
                     }}
                   />
                 </div>
@@ -209,7 +214,15 @@ function ColumnValue({
                       false,
                     )
                   }
-                  onBlur={() => triggerSave && triggerSave()}
+                  onBlur={(e) =>
+                    updateCustomParameter(
+                      condition.id,
+                      paramKey,
+                      "typed",
+                      e.target.value,
+                      true,
+                    )
+                  }
                   style={{
                     color: "var(--text-dark)",
                     backgroundColor: "var(--neutral-light)",
@@ -313,7 +326,15 @@ function ColumnValue({
                       false,
                     )
                   }
-                  onBlur={() => triggerSave && triggerSave()}
+                  onBlur={(e) =>
+                    updateCustomParameter(
+                      condition.id,
+                      paramKey,
+                      "typed",
+                      Number(e.target.value),
+                      true,
+                    )
+                  }
                   style={{
                     color: "var(--text-dark)",
                     backgroundColor: "var(--neutral-light)",
@@ -340,7 +361,15 @@ function ColumnValue({
                       false,
                     )
                   }
-                  onBlur={() => triggerSave && triggerSave()}
+                  onBlur={(e) =>
+                    updateCustomParameter(
+                      condition.id,
+                      paramKey,
+                      "typed",
+                      e.target.value,
+                      true,
+                    )
+                  }
                   style={{
                     color: "var(--text-dark)",
                     backgroundColor: "var(--neutral-light)",

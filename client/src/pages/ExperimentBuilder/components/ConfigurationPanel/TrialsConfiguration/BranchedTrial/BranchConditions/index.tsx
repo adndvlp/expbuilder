@@ -151,17 +151,14 @@ function BranchConditions({
   };
 
   // Get ALL available trials/loops for Jump functionality
+  // Use getAvailableTrials from parent which correctly handles both timelines and loop timelines
   const getAllTrialsForJump = () => {
-    // Determine which timeline to use based on whether trial is inside a loop
-    const relevantTimeline = selectedTrial?.parentLoopId
-      ? loopTimeline
-      : timeline;
-
-    return relevantTimeline.map((item) => ({
+    const availableTrials = getAvailableTrials();
+    return availableTrials.map((item) => ({
       id: item.id,
       name: item.name,
       displayName: item.name,
-      isLoop: item.type === "loop",
+      isLoop: false, // We'll determine this from loaded trial if needed
     }));
   };
 

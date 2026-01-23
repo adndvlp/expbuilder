@@ -36,7 +36,7 @@
 
 
         const trialSessionId =
-            "New Trial 6_result_" + (crypto.randomUUID
+            "New Trial 5_result_" + (crypto.randomUUID
               ? crypto.randomUUID()
               : Math.random().toString(36).slice(2, 10));
 
@@ -85,14 +85,14 @@ localStorage.removeItem('jsPsych_jumpToTrial');
       const timeline = [];
       
       
-    const test_stimuli_New_Trial_6 = [{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, name: "HtmlComponent_1", stimulus: "<div id=\"iz48\" style=\"box-sizing: border-box;\">sigamos</div>" }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":0.008196721311475308,"y":0.3169398907103824}, width: 200, height: 50, name: "ButtonResponseComponent_1", choices: ["ok"] }]}];
-    const New_Trial_6_timeline = {
+    const test_stimuli_New_Trial_5 = [{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, name: "HtmlComponent_1", stimulus: "<div id=\"ityh\" style=\"box-sizing: border-box;\">pues no dentro de nested loop</div>" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":0,"y":0.30601092896174853}, width: 200, height: 50, name: "ButtonResponseComponent_1", choices: ["ok"] }]}];
+    const New_Trial_5_timeline = {
     type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
 response_components: jsPsych.timelineVariable("response_components"),
       data: {
         rt: "rt",
-        trial_id: 1769054438952,
+        trial_id: 1769054426032,
         
         
       },
@@ -135,6 +135,30 @@ response_components: jsPsych.timelineVariable("response_components"),
                   }
                 }
               }
+            } else if (parts.length === 3) {
+              // Format: fieldType::componentName::property (for DynamicPlugin components)
+              const [fieldType, componentName, propName] = parts;
+              
+              if (fieldType && componentName && propName) {
+                // Find the component by name in the field array
+                const fieldArray = trial[fieldType];
+                if (Array.isArray(fieldArray)) {
+                  const compIndex = fieldArray.findIndex(c => c.name === componentName);
+                  if (compIndex !== -1) {
+                    // Apply the override value (from typed or csv)
+                    let valueToSet;
+                    if (param.source === 'typed') {
+                      valueToSet = param.value;
+                    } else if (param.source === 'csv') {
+                      valueToSet = trial[param.value];
+                    }
+                    
+                    if (valueToSet !== undefined && valueToSet !== null) {
+                      fieldArray[compIndex][propName] = valueToSet;
+                    }
+                  }
+                }
+              }
             } else {
               // Normal parameter (not nested survey question)
               if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
@@ -151,18 +175,94 @@ response_components: jsPsych.timelineVariable("response_components"),
       
     },
     on_finish: function(data) {
-      // Trial terminal - si llegamos aquí después de branching, terminar el experimento
-      if (window.branchingActive) {
-        jsPsych.abortExperiment('', {});
+      // Evaluar repeat conditions (para reiniciar el experimento desde un trial específico)
+      const repeatConditionsArray = [{"id":1769124654889,"rules":[{"column":"","op":"==","value":"ok","fieldType":"response_components","componentIdx":"ButtonResponseComponent_1","prop":"response"}],"jumpToTrialId":"1769054412868"},{"id":1769124654889,"rules":[{"column":"","op":"==","value":""}],"jumpToTrialId":"1769054412868"}];
+      
+      let shouldRepeat = false;
+      for (const condition of repeatConditionsArray) {
+        if (!condition || !condition.rules) {
+          continue;
+        }
+        
+        // Todas las reglas en una condición deben ser verdaderas (lógica AND)
+        const allRulesMatch = condition.rules.every(rule => {
+          // Construct column name if empty (for dynamic plugins)
+          let columnName = rule.column || "";
+          if (!columnName && rule.componentIdx && rule.prop) {
+            columnName = rule.componentIdx + '_' + rule.prop;
+          }
+          
+          // Get the property value using the column name
+          const propValue = data[columnName || rule.prop];
+          const compareValue = rule.value;
+          
+          // Handle array responses (multi-select questions)
+          if (Array.isArray(propValue)) {
+            // For array values, check if compareValue is included in the array
+            switch (rule.op) {
+              case '==':
+                return propValue.includes(compareValue);
+              case '!=':
+                return !propValue.includes(compareValue);
+              default:
+                return false; // Comparison operators don't make sense for arrays
+            }
+          }
+          
+          // Convertir valores para comparación (for non-array values)
+          const numPropValue = parseFloat(propValue);
+          const numCompareValue = parseFloat(compareValue);
+          const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
+          
+          switch (rule.op) {
+            case '==':
+              return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
+            case '!=':
+              return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
+            case '>':
+              return isNumeric && numPropValue > numCompareValue;
+            case '<':
+              return isNumeric && numPropValue < numCompareValue;
+            case '>=':
+              return isNumeric && numPropValue >= numCompareValue;
+            case '<=':
+              return isNumeric && numPropValue <= numCompareValue;
+            default:
+              return false;
+          }
+        });
+        
+        if (allRulesMatch && condition.jumpToTrialId) {
+          console.log('Repeat condition matched! Jumping to trial:', condition.jumpToTrialId);
+          // Guardar el trial objetivo en localStorage
+          localStorage.setItem('jsPsych_jumpToTrial', String(condition.jumpToTrialId));
+          shouldRepeat = true;
+          break;
+        }
       }
+      
+      if (shouldRepeat) {
+        // Limpiar el contenedor de jsPsych (jspsych-container es el display_element)
+        const container = document.getElementById('jspsych-container');
+        if (container) {
+          // Limpiar todo el contenido del container
+          container.innerHTML = '';
+        }
+        // Reiniciar el timeline
+        setTimeout(() => {
+          jsPsych.run(timeline);
+        }, 100);
+        return;
+      }
+      
     },};
-    const New_Trial_6_procedure = {
+    const New_Trial_5_procedure = {
     timeline: 
-    [New_Trial_6_timeline],
-    timeline_variables: test_stimuli_New_Trial_6,
+    [New_Trial_5_timeline],
+    timeline_variables: test_stimuli_New_Trial_5,
     
     conditional_function: function() {
-      const currentId = 1769054438952;
+      const currentId = 1769054426032;
       
       // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
       const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
@@ -198,7 +298,7 @@ response_components: jsPsych.timelineVariable("response_components"),
   
     
     };
-    timeline.push(New_Trial_6_procedure);
+    timeline.push(New_Trial_5_procedure);
   
 
       jsPsych.run(timeline);

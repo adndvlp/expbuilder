@@ -135,6 +135,7 @@ export default function useBranchConditions({
       conditions.map((c) =>
         c.id === conditionId ? { ...c, nextTrialId, customParameters: {} } : c,
       ),
+      true, // shouldSave: true to persist the change
     );
 
     // Load parameters for the selected trial

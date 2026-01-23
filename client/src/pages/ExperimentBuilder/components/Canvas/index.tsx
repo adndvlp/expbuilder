@@ -350,7 +350,7 @@ function Canvas({}: Props) {
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
-          style={{ background: "transparent", zIndex: 0 }}
+          style={{ background: "transparent", zIndex: -100 }}
           onConnect={handleConnect}
         />
 

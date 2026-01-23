@@ -5,7 +5,7 @@ import { RepeatCondition } from "../../../types";
  * These conditions allow restarting the experiment from a specific trial
  */
 export function generateRepeatConditionsCode(
-  repeatConditions?: RepeatCondition[]
+  repeatConditions?: RepeatCondition[],
 ): string {
   if (!repeatConditions || repeatConditions.length === 0) {
     return "";
@@ -23,48 +23,14 @@ export function generateRepeatConditionsCode(
         
         // Todas las reglas en una condición deben ser verdaderas (lógica AND)
         const allRulesMatch = condition.rules.every(rule => {
-          let propValue;
-          // For dynamic plugins, handle nested structure
-          if (rule.fieldType && rule.componentIdx !== undefined && rule.componentIdx !== "") {
-            // Note: response_components in the builder becomes "response" in the actual trial data
-            const actualFieldName = rule.fieldType === 'response_components' ? 'response' : rule.fieldType;
-            const fieldArray = data[actualFieldName];
-            if (!Array.isArray(fieldArray)) {
-              return false;
-            }
-            // componentIdx is the component name, not a numeric index
-            const component = fieldArray.find(c => c.name === rule.componentIdx);
-            if (!component) {
-              return false;
-            }
-            
-            // For SurveyComponent, the response structure is different
-            // The prop is actually a question name inside component.response
-            if (component.type === "SurveyComponent" && component.response && typeof component.response === 'object') {
-              // The prop (e.g., "question1") is a key inside component.response
-              if (component.response[rule.prop] !== undefined) {
-                propValue = component.response[rule.prop];
-              } else {
-                return false;
-              }
-            } else {
-              // For other components, check direct properties
-              if (rule.prop === "response" && component.response !== undefined) {
-                propValue = component.response;
-              } else if (component[rule.prop] !== undefined) {
-                propValue = component[rule.prop];
-              } else {
-                return false;
-              }
-            }
-          } else {
-            // Normal plugin structure
-            if (!rule.prop) {
-              return false;
-            }
-            propValue = data[rule.prop];
+          // Construct column name if empty (for dynamic plugins)
+          let columnName = rule.column || "";
+          if (!columnName && rule.componentIdx && rule.prop) {
+            columnName = rule.componentIdx + '_' + rule.prop;
           }
           
+          // Get the property value using the column name
+          const propValue = data[columnName || rule.prop];
           const compareValue = rule.value;
           
           // Handle array responses (multi-select questions)

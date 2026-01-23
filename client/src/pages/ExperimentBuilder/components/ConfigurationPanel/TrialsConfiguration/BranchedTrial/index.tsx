@@ -120,7 +120,9 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
 
   /**
    * Get available trials to reference (trials that come before the current trial)
-   * If trial is inside a loop (has parentLoopId), only show trials from same loop
+   * If trial is inside a loop (has parentLoopId):
+   *   - Show trials from same loop (loopTimeline) that come before
+   *   - Show ALL trials from main timeline (to allow jumping out of the loop)
    * If trial is outside a loop, show all trials from main timeline
    */
   const getAvailableTrials = (): { id: string | number; name: string }[] => {
@@ -130,20 +132,35 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
 
     // Check if trial is inside a loop
     if (selectedTrial.parentLoopId) {
-      // Trial is inside a loop - only show trials from same loop (loopTimeline)
+      // Trial is inside a loop
+
+      // 1. Add trials from the same loop that come before
       const currentIndex = loopTimeline.findIndex(
         (item) =>
           item.id === selectedTrial.id ||
           String(item.id) === String(selectedTrial.id),
       );
 
-      if (currentIndex === -1) return [];
-
-      // Get all trials/loops from the same loop that come before
-      for (let i = 0; i < currentIndex; i++) {
-        const item = loopTimeline[i];
-        allTrials.push({ id: item.id, name: item.name });
+      if (currentIndex !== -1) {
+        for (let i = 0; i < currentIndex; i++) {
+          const item = loopTimeline[i];
+          allTrials.push({
+            id: item.id,
+            name: `${item.name} (Loop)`,
+          });
+        }
       }
+
+      // 2. Add ALL trials from main timeline (to allow jumping out)
+      timeline.forEach((item) => {
+        // Only add if not already in the list (avoid duplicates)
+        if (!allTrials.some((t) => String(t.id) === String(item.id))) {
+          allTrials.push({
+            id: item.id,
+            name: `${item.name} (Main)`,
+          });
+        }
+      });
     } else {
       // Trial is outside a loop - show all trials from main timeline
       const currentIndex = timeline.findIndex(
@@ -210,14 +227,8 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
       }
     });
 
-    // Add existing repeat conditions from the separate tab (if any)
-    repeatConditions.forEach((condition) => {
-      repeatConditionsToSave.push({
-        id: condition.id,
-        rules: condition.rules,
-        jumpToTrialId: condition.jumpToTrialId,
-      });
-    });
+    // Note: Don't add existing repeatConditions again - they're already included in currentConditions
+    // The conditions array from state already contains ALL conditions (both branch and jump)
 
     // Update backend and selectedTrial
     Promise.all([

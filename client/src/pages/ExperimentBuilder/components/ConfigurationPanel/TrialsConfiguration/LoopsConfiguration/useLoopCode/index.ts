@@ -301,6 +301,8 @@ export default function useLoopCode({
       repetitions,
       randomize,
       branches,
+      isConditionalLoop,
+      loopConditions,
     });
 
     code = branchingResult.code;

@@ -218,8 +218,13 @@ async function generateLoopCode(
   getLoop: GetLoopFn,
 ): Promise<string> {
   try {
-    // Use as Loop directly (already has full data from timeline)
-    const fullLoop = loop;
+    // Fetch full loop data (including loopConditions and isConditionalLoop)
+    const fullLoop = await getLoop(loop.id);
+
+    if (!fullLoop) {
+      console.error(`Failed to fetch loop ${loop.id}`);
+      return "";
+    }
 
     // Fetch trials metadata within the loop using getLoopTimeline
     const trialsMetadata = await getLoopTimeline(loop.id);

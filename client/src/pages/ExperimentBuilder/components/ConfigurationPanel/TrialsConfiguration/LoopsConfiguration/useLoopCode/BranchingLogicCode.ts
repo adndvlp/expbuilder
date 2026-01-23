@@ -151,11 +151,17 @@ const ${loopIdSanitized}_procedure = {
         const trialData = getTrialData(rule.trialId);
         
         if (!trialData) {
-          console.warn('Trial data not found for:', rule.trialId);
           return false;
         }
         
-        const propValue = trialData[rule.prop];
+        // Construct column name if empty (for dynamic plugins)
+        let columnName = rule.column || "";
+        if (!columnName && rule.componentIdx && rule.prop) {
+          columnName = rule.componentIdx + '_' + rule.prop;
+        }
+        
+        // Get the property value using the column name
+        const propValue = trialData[columnName || rule.prop];
         const compareValue = rule.value;
         
         // Convert values for comparison
@@ -163,29 +169,37 @@ const ${loopIdSanitized}_procedure = {
         const numCompareValue = parseFloat(compareValue);
         const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
         
+        let result;
         switch (rule.op) {
           case '==':
-            return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
+            result = isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
+            break;
           case '!=':
-            return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
+            result = isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
+            break;
           case '>':
-            return isNumeric && numPropValue > numCompareValue;
+            result = isNumeric && numPropValue > numCompareValue;
+            break;
           case '<':
-            return isNumeric && numPropValue < numCompareValue;
+            result = isNumeric && numPropValue < numCompareValue;
+            break;
           case '>=':
-            return isNumeric && numPropValue >= numCompareValue;
+            result = isNumeric && numPropValue >= numCompareValue;
+            break;
           case '<=':
-            return isNumeric && numPropValue <= numCompareValue;
+            result = isNumeric && numPropValue <= numCompareValue;
+            break;
           default:
-            return false;
+            result = false;
         }
+        
+        return result;
       });
     };
     
     // Evaluate all conditions (OR logic between conditions)
     const shouldRepeat = loopConditionsArray.some(condition => evaluateCondition(condition));
     
-    console.log('Loop condition evaluation result:', shouldRepeat);
     return shouldRepeat;
   },`
       : ""

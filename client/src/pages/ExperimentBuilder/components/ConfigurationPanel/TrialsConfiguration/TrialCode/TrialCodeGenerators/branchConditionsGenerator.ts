@@ -204,7 +204,11 @@ export function generateBranchConditionsCode(options: {
           
           // Parse column name to extract component info for dynamic plugins
           // Format: "componentName_propertyName" or "componentName_questionName" for surveys
-          const columnName = rule.column || rule.prop || "";
+          // If column is empty, construct it from componentIdx and prop
+          let columnName = rule.column || "";
+          if (!columnName && rule.componentIdx && rule.prop) {
+            columnName = rule.componentIdx + '_' + rule.prop;
+          }
           const parts = columnName.split("_");
           
           // Check if this looks like a dynamic plugin column (has underscore)

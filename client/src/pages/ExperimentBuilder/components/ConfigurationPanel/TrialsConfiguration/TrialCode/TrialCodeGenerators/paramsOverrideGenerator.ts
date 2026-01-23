@@ -5,7 +5,7 @@ import { ParamsOverrideCondition } from "../../../types";
  * This evaluates conditions based on previous trial data and applies parameter overrides
  */
 export function generateParamsOverrideCode(
-  paramsOverride?: ParamsOverrideCondition[]
+  paramsOverride?: ParamsOverrideCondition[],
 ): string {
   if (!paramsOverride || paramsOverride.length === 0) {
     return "";
@@ -42,35 +42,14 @@ export function generateParamsOverrideCode(
           // Use the most recent data if multiple exist
           const data = trialData[trialData.length - 1];
           
-          let propValue;
-          // For dynamic plugins, handle nested structure
-          if (rule.fieldType && rule.componentIdx !== undefined && rule.componentIdx !== "") {
-            // Note: response_components in the builder becomes "response" in the actual trial data
-            const actualFieldName = rule.fieldType === 'response_components' ? 'response' : rule.fieldType;
-            const fieldArray = data[actualFieldName];
-            if (!Array.isArray(fieldArray)) {
-              return false;
-            }
-            // componentIdx is the component name, not a numeric index
-            const component = fieldArray.find(c => c.name === rule.componentIdx);
-            if (!component) {
-              return false;
-            }
-            if (rule.prop === "response" && component.response !== undefined) {
-              propValue = component.response;
-            } else if (component[rule.prop] !== undefined) {
-              propValue = component[rule.prop];
-            } else {
-              return false;
-            }
-          } else {
-            // Normal plugin structure
-            if (!rule.prop) {
-              return false;
-            }
-            propValue = data[rule.prop];
+          // Construct column name if empty (for dynamic plugins)
+          let columnName = rule.column || "";
+          if (!columnName && rule.componentIdx && rule.prop) {
+            columnName = rule.componentIdx + '_' + rule.prop;
           }
           
+          // Get the property value using the column name
+          const propValue = data[columnName || rule.prop];
           const compareValue = rule.value;
           
           // Handle array responses (multi-select questions)
@@ -113,7 +92,7 @@ export function generateParamsOverrideCode(
         if (allRulesMatch && condition.paramsToOverride) {
           Object.entries(condition.paramsToOverride).forEach(([key, param]) => {
             if (param && param.source !== 'none') {
-              // Parse key to check if it's a nested survey question
+              // Parse key to check structure
               const parts = key.split('::');
               
               if (parts.length === 4) {
@@ -123,8 +102,10 @@ export function generateParamsOverrideCode(
                 if (fieldType && componentName && propName === 'survey_json' && questionName) {
                   // Find the component by name in the field array
                   const fieldArray = trial[fieldType];
+                  
                   if (Array.isArray(fieldArray)) {
                     const compIndex = fieldArray.findIndex(c => c.name === componentName);
+                    
                     if (compIndex !== -1 && fieldArray[compIndex].survey_json) {
                       // Find the question in survey_json.elements
                       const elements = fieldArray[compIndex].survey_json.elements || [];
@@ -146,8 +127,34 @@ export function generateParamsOverrideCode(
                     }
                   }
                 }
+              } else if (parts.length === 3) {
+                // Format: fieldType::componentName::property (for dynamic plugin components like ButtonResponseComponent)
+                const [fieldType, componentName, propName] = parts;
+                
+                if (fieldType && componentName && propName) {
+                  // Find the component by name in the field array
+                  const fieldArray = trial[fieldType];
+                  
+                  if (Array.isArray(fieldArray)) {
+                    const compIndex = fieldArray.findIndex(c => c.name === componentName);
+                    
+                    if (compIndex !== -1) {
+                      // Apply the override value
+                      let valueToSet;
+                      if (param.source === 'typed') {
+                        valueToSet = param.value;
+                      } else if (param.source === 'csv') {
+                        valueToSet = trial[param.value]; // Get from CSV column
+                      }
+                      
+                      if (valueToSet !== undefined && valueToSet !== null) {
+                        fieldArray[compIndex][propName] = valueToSet;
+                      }
+                    }
+                  }
+                }
               } else {
-                // Normal parameter (not nested survey question)
+                // Normal parameter (not nested)
                 if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
                   trial[key] = param.value;
                 } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {

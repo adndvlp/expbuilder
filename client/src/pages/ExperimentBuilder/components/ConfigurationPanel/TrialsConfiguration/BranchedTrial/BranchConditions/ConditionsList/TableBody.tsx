@@ -132,19 +132,8 @@ function TableBody({
                     <select
                       value={condition.nextTrialId || ""}
                       onChange={(e) => {
+                        // updateNextTrial already handles clearing customParameters and saving
                         updateNextTrial(condition.id, e.target.value);
-                        if (e.target.value && !isInBranches(e.target.value)) {
-                          setConditionsWrapper(
-                            conditions.map((c) =>
-                              c.id === condition.id
-                                ? {
-                                    ...c,
-                                    customParameters: {},
-                                  }
-                                : c,
-                            ),
-                          );
-                        }
                       }}
                       className="border-2 rounded-lg px-2 py-1.5 w-full text-xs font-semibold transition focus:ring-2 focus:ring-blue-400"
                       style={{
