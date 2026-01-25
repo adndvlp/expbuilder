@@ -33,8 +33,6 @@ export const ParameterInput: React.FC<ParameterInputProps> = ({
   onChange,
   onOpenHtmlModal,
   onOpenSurveyModal,
-  onOpenButtonModal,
-  uploadedFiles = [],
 }) => {
   const [localInputValue, setLocalInputValue] = useState<string>("");
 

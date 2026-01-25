@@ -30,7 +30,6 @@ export default function useLoopCode({
   id,
   branches,
   branchConditions,
-  repeatConditions,
   repetitions,
   randomize,
   orders,

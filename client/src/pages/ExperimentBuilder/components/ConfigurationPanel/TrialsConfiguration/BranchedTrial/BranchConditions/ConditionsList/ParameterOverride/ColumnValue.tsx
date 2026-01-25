@@ -41,7 +41,6 @@ function ColumnValue({
   condition,
   targetTrialCsvColumns,
   paramKey,
-  triggerSave,
 }: Props) {
   const param = availableParams.find((p) => p.key === paramKey);
   const csvColumns =

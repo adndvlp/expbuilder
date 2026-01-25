@@ -1,5 +1,4 @@
 import { Condition } from "../../types";
-import { DataDefinition } from "../../../../types";
 import { DynamicPluginPropertyColumn } from "../../../LoopsConfiguration/ConditionalLoop/DynamicPluginPropertyColumn";
 import { RuleValueInput } from "../../../LoopsConfiguration/ConditionalLoop/RuleValueInput";
 import { updateFieldType, updateComponentIdx } from "../../ruleUpdateHelpers";
@@ -35,7 +34,6 @@ function ConditionRule({
   selectedTrial,
   setConditions,
   conditions,
-  triggerSave,
 }: Props) {
   // Helper para extraer valor de propiedades en formato {source, value}
   const getPropValue = (prop: any): any => {

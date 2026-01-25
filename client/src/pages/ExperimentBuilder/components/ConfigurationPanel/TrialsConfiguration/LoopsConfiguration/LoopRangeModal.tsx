@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { TimelineItem } from "../../../contexts/TrialsContext";
+import { TimelineItem } from "../../../../contexts/TrialsContext";
 
 type Props = {
   timeline: TimelineItem[];
@@ -8,23 +8,18 @@ type Props = {
   selectedTrialId?: number | string | null;
 };
 
-function LoopRangeModal({
-  timeline,
-  onConfirm,
-  onClose,
-  selectedTrialId,
-}: Props) {
+function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
   const [selectedIds, setSelectedIds] = useState<Set<number | string>>(
-    new Set()
+    new Set(),
   );
   const [autoSelectedIds, setAutoSelectedIds] = useState<Set<number | string>>(
-    new Set()
+    new Set(),
   );
 
   // Función recursiva para obtener todas las branches de un item
   const getAllBranchIds = (
     itemId: number | string,
-    visited = new Set<number | string>()
+    visited = new Set<number | string>(),
   ): (number | string)[] => {
     if (visited.has(itemId)) return [];
     visited.add(itemId);

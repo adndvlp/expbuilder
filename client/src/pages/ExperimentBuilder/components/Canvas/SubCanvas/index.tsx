@@ -1,5 +1,5 @@
 import "@xyflow/react/dist/style.css";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import ReactFlow from "reactflow";
 import TrialNode from "../TrialNode";
 import LoopNode from "../LoopNode";

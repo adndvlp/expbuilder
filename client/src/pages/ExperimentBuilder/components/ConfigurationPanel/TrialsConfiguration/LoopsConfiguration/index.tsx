@@ -11,8 +11,7 @@ import ConditionalLoop from "./ConditionalLoop";
 type Props = { loop?: Loop };
 
 function LoopsConfig({ loop }: Props) {
-  const { updateLoop, updateLoopField, deleteLoop, getLoopTimeline } =
-    useTrials();
+  const { updateLoop, updateLoopField, deleteLoop } = useTrials();
 
   const [isLoadingLoop, setIsLoadingLoop] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);

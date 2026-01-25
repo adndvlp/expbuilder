@@ -54,7 +54,6 @@ function TableBody({
   updateNextTrial,
   setConditionsWrapper,
   triggerSave,
-  isInBranches,
   removeRuleFromCondition,
   getAvailableColumns,
   condition,

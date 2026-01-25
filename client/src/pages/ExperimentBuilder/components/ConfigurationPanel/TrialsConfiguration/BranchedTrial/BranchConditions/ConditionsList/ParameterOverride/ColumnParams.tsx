@@ -1,6 +1,5 @@
-import React from "react";
-import { ColumnMappingEntry } from "../../../types";
-import { Condition } from "../types";
+import { ColumnMappingEntry } from "../../../../../types";
+import { Condition } from "../../../types";
 
 type Props = {
   isTargetDynamic: boolean;

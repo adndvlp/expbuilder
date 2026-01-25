@@ -22,7 +22,6 @@ export function ParameterOverride({
   paramKey,
   targetTrialParameters,
   findTrialById,
-  isJumpCondition,
   setConditions,
   conditions,
   targetTrialCsvColumns,
