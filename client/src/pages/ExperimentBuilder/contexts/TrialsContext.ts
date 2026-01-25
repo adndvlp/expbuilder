@@ -29,6 +29,7 @@ type TrialsContextType = {
   updateTrial: (
     id: string | number,
     trial: Partial<Trial>,
+    newBranchTrial?: Trial,
   ) => Promise<Trial | null>;
   updateTrialField: (
     id: string | number,

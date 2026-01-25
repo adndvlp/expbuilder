@@ -55,7 +55,11 @@ function Canvas() {
         getLoopTimeline(item.parentLoopId);
       }
     }
-  }, [showBranchedModal, selectedTrial, selectedLoop]);
+  }, [
+    showBranchedModal,
+    selectedTrial?.parentLoopId,
+    selectedLoop?.parentLoopId,
+  ]);
 
   const onAddTrial = async (type: string) => {
     // Generar nombre único basado en timeline
@@ -189,13 +193,21 @@ function Canvas() {
       // Actualizar el parent con el nuevo branch
       // updateTrial/updateLoop harán el optimistic UI completo
       if (parentItem.type === "trial") {
-        await updateTrial(parentId, {
-          branches: [...(parent.branches || []), newBranchTrial.id],
-        });
+        await updateTrial(
+          parentId,
+          {
+            branches: [...(parent.branches || []), newBranchTrial.id],
+          },
+          newBranchTrial,
+        );
       } else {
-        await updateLoop(parentId, {
-          branches: [...(parent.branches || []), newBranchTrial.id],
-        });
+        await updateLoop(
+          parentId,
+          {
+            branches: [...(parent.branches || []), newBranchTrial.id],
+          },
+          newBranchTrial,
+        );
       }
 
       setSelectedTrial(newBranchTrial);
