@@ -195,7 +195,7 @@ The project uses a normalized structure for trials and loops (see [CAMBIOS_NORMA
 
 1. **Create experiment** → Dashboard
 2. **Add trials** → ExperimentBuilder (drag to canvas)
-3. **Configure parameters** → ConfigPanel
+3. **Configure parameters** → ConfigurationPanel
 4. **Preview** → ExperimentPreview
 5. **Run locally** → Generates HTML
 6. **Publish** → GitHub Pages
@@ -249,7 +249,7 @@ Vite provides automatic HMR for rapid development.
 
 The project uses strict TypeScript. Main types are in:
 
-- `pages/ExperimentBuilder/components/ConfigPanel/types.ts`
+- `pages/ExperimentBuilder/components/ConfigurationPanel/types.ts`
 - Inline interfaces in components
 
 ## Production Build

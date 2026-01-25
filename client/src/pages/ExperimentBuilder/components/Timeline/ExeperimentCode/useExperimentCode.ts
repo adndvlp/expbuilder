@@ -75,9 +75,14 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
     const evaluateCondition = (trialData, condition) => {
       // All rules in a condition must be true (AND logic)
       return condition.rules.every(rule => {
-        // New flat structure: rule.column contains the direct column name
-        // e.g., "ButtonResponseComponent_1_response" or "response" for normal plugins
-        const columnName = rule.column || rule.prop; // Fallback to rule.prop for backward compatibility
+        // Construct column name from componentIdx and prop if column is empty
+        // This handles dynamic plugins like ButtonResponseComponent_1_response
+        let columnName = rule.column || "";
+        if (!columnName && rule.componentIdx && rule.prop) {
+          columnName = rule.componentIdx + '_' + rule.prop;
+        } else if (!columnName && rule.prop) {
+          columnName = rule.prop;
+        }
         
         if (!columnName) {
           console.warn('No column name specified in rule:', rule);

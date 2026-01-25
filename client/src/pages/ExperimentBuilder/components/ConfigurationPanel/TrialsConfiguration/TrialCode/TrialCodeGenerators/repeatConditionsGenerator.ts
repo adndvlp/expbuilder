@@ -27,10 +27,12 @@ export function generateRepeatConditionsCode(
           let columnName = rule.column || "";
           if (!columnName && rule.componentIdx && rule.prop) {
             columnName = rule.componentIdx + '_' + rule.prop;
+          } else if (!columnName && rule.prop) {
+            columnName = rule.prop;
           }
           
           // Get the property value using the column name
-          const propValue = data[columnName || rule.prop];
+          const propValue = data[columnName];
           const compareValue = rule.value;
           
           // Handle array responses (multi-select questions)

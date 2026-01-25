@@ -9,7 +9,7 @@ import usePlugins from "../../hooks/usePlugins";
 import TrialLoops from "./TrialsConfiguration/LoopsConfiguration";
 const API_URL = import.meta.env.VITE_API_URL;
 
-const ConfigPanel: React.FC = () => {
+const ConfigurationPanel: React.FC = () => {
   const { selectedTrial, selectedLoop, updateTrial } = useTrials();
   const [selectedId, setSelectedId] = useState<string>("plugin-dynamic");
   const [pluginList, setPluginList] = useState<string[]>([]);
@@ -415,4 +415,4 @@ const ConfigPanel: React.FC = () => {
   );
 };
 
-export default ConfigPanel;
+export default ConfigurationPanel;

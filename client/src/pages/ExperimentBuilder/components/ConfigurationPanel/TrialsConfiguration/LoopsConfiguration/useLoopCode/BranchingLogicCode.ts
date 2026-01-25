@@ -50,8 +50,64 @@ ${itemWrappers}
 const evaluateLoopCondition_${loopIdSanitized} = (trialData, condition) => {
   // All rules in a condition must be true (AND logic)
   return condition.rules.every(rule => {
-    const propValue = trialData[rule.prop];
+    let propValue;
+    
+    // Parse column name to extract component info for dynamic plugins
+    // Format: "componentName_propertyName" or "componentName_questionName" for surveys
+    // If column is empty, construct it from componentIdx and prop
+    let columnName = rule.column || "";
+    if (!columnName && rule.componentIdx && rule.prop) {
+      columnName = rule.componentIdx + '_' + rule.prop;
+    } else if (!columnName && rule.prop) {
+      columnName = rule.prop;
+    }
+    const parts = columnName.split("_");
+    
+    // Check if this looks like a dynamic plugin column (has underscore)
+    if (parts.length >= 2) {
+      // Last part is the property or question name
+      const propertyOrQuestion = parts[parts.length - 1];
+      // Everything before the last underscore is the component name
+      const componentName = parts.slice(0, -1).join("_");
+      
+      // First, try direct access with the full columnName (e.g., "ButtonResponseComponent_1_response")
+      if (trialData[columnName] !== undefined) {
+        propValue = trialData[columnName];
+      } else {
+        // If not found, try componentName_response format and check if it's an object (SurveyComponent case)
+        const responseKey = componentName + '_response';
+        const responseData = trialData[responseKey];
+        
+        // If response data exists and is an object (SurveyComponent case)
+        if (responseData && typeof responseData === 'object' && !Array.isArray(responseData)) {
+          // This is likely a survey response - check if property is a question name
+          if (responseData[propertyOrQuestion] !== undefined) {
+            propValue = responseData[propertyOrQuestion];
+          } else {
+            return false;
+          }
+        } else {
+          return false;
+        }
+      }
+    } else {
+      // Normal plugin structure - direct property access
+      propValue = trialData[columnName] || trialData[rule.prop];
+    }
+    
     const compareValue = rule.value;
+    
+    // Handle array responses (multi-select or single-select returned as array)
+    if (Array.isArray(propValue)) {
+      switch (rule.op) {
+        case '==':
+          return propValue.includes(compareValue) || propValue.includes(String(compareValue));
+        case '!=':
+          return !propValue.includes(compareValue) && !propValue.includes(String(compareValue));
+        default:
+          return false;
+      }
+    }
     
     // Convert values for comparison
     const numPropValue = parseFloat(propValue);

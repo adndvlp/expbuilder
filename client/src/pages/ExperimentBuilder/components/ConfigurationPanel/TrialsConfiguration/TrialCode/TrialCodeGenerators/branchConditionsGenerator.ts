@@ -63,7 +63,13 @@ export function generateBranchConditionsCode(options: {
           
           // Parse column name to extract component info for dynamic plugins
           // Format: "componentName_propertyName" or "componentName_questionName" for surveys
-          const columnName = rule.column || rule.prop || "";
+          // If column is empty, construct it from componentIdx and prop
+          let columnName = rule.column || "";
+          if (!columnName && rule.componentIdx && rule.prop) {
+            columnName = rule.componentIdx + '_' + rule.prop;
+          } else if (!columnName && rule.prop) {
+            columnName = rule.prop;
+          }
           const parts = columnName.split("_");
           
           // Check if this looks like a dynamic plugin column (has underscore)
@@ -73,33 +79,33 @@ export function generateBranchConditionsCode(options: {
             // Everything before the last underscore is the component name
             const componentName = parts.slice(0, -1).join("_");
             
-            // Try to find the data in the format: componentName_response
-            const responseKey = componentName + '_response';
-            const responseData = data[responseKey];
-            
             console.log('Branch eval (loop): Checking column', columnName);
             console.log('Branch eval (loop): Component name:', componentName, 'Property:', propertyOrQuestion);
-            console.log('Branch eval (loop): Looking for response key:', responseKey);
-            console.log('Branch eval (loop): Response data:', responseData);
             
-            // If response data exists and is an object (SurveyComponent case)
-            if (responseData && typeof responseData === 'object' && !Array.isArray(responseData)) {
-              // This is likely a survey response - check if property is a question name
-              if (responseData[propertyOrQuestion] !== undefined) {
-                propValue = responseData[propertyOrQuestion];
-                console.log('Branch eval (loop): Found survey question response', propertyOrQuestion, '=', propValue);
-              } else {
-                console.log('Branch eval (loop): Survey question not found:', propertyOrQuestion);
-                return false;
-              }
+            // First, try direct access with the full columnName (e.g., "ButtonResponseComponent_1_response")
+            if (data[columnName] !== undefined) {
+              propValue = data[columnName];
+              console.log('Branch eval (loop): Found direct column value', columnName, '=', propValue);
             } else {
-              // Not a survey response object, try direct property access
-              const directKey = componentName + '_' + propertyOrQuestion;
-              if (data[directKey] !== undefined) {
-                propValue = data[directKey];
-                console.log('Branch eval (loop): Found direct property', directKey, '=', propValue);
+              // If not found, try componentName_response format and check if it's an object (SurveyComponent case)
+              const responseKey = componentName + '_response';
+              const responseData = data[responseKey];
+              
+              console.log('Branch eval (loop): Looking for response key:', responseKey);
+              console.log('Branch eval (loop): Response data:', responseData);
+              
+              // If response data exists and is an object (SurveyComponent case)
+              if (responseData && typeof responseData === 'object' && !Array.isArray(responseData)) {
+                // This is likely a survey response - check if property is a question name
+                if (responseData[propertyOrQuestion] !== undefined) {
+                  propValue = responseData[propertyOrQuestion];
+                  console.log('Branch eval (loop): Found survey question response', propertyOrQuestion, '=', propValue);
+                } else {
+                  console.log('Branch eval (loop): Survey question not found:', propertyOrQuestion);
+                  return false;
+                }
               } else {
-                console.log('Branch eval (loop): Property not found:', directKey);
+                console.log('Branch eval (loop): Property not found:', columnName);
                 return false;
               }
             }
@@ -208,6 +214,8 @@ export function generateBranchConditionsCode(options: {
           let columnName = rule.column || "";
           if (!columnName && rule.componentIdx && rule.prop) {
             columnName = rule.componentIdx + '_' + rule.prop;
+          } else if (!columnName && rule.prop) {
+            columnName = rule.prop;
           }
           const parts = columnName.split("_");
           
@@ -218,23 +226,22 @@ export function generateBranchConditionsCode(options: {
             // Everything before the last underscore is the component name
             const componentName = parts.slice(0, -1).join("_");
             
-            // Try to find the data in the format: componentName_response
-            const responseKey = componentName + '_response';
-            const responseData = data[responseKey];
-            
-            // If response data exists and is an object (SurveyComponent case)
-            if (responseData && typeof responseData === 'object' && !Array.isArray(responseData)) {
-              // This is likely a survey response - check if property is a question name
-              if (responseData[propertyOrQuestion] !== undefined) {
-                propValue = responseData[propertyOrQuestion];
-              } else {
-                return false;
-              }
+            // First, try direct access with the full columnName (e.g., "ButtonResponseComponent_1_response")
+            if (data[columnName] !== undefined) {
+              propValue = data[columnName];
             } else {
-              // Not a survey response object, try direct property access
-              const directKey = componentName + '_' + propertyOrQuestion;
-              if (data[directKey] !== undefined) {
-                propValue = data[directKey];
+              // If not found, try componentName_response format and check if it's an object (SurveyComponent case)
+              const responseKey = componentName + '_response';
+              const responseData = data[responseKey];
+              
+              // If response data exists and is an object (SurveyComponent case)
+              if (responseData && typeof responseData === 'object' && !Array.isArray(responseData)) {
+                // This is likely a survey response - check if property is a question name
+                if (responseData[propertyOrQuestion] !== undefined) {
+                  propValue = responseData[propertyOrQuestion];
+                } else {
+                  return false;
+                }
               } else {
                 return false;
               }

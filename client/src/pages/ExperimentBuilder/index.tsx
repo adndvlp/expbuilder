@@ -1,7 +1,7 @@
 import "./index.css";
 import Timeline from "./components/Timeline";
 import Canvas from "./components/Canvas";
-import ConfigPanel from "./components/ConfigurationPanel";
+import ConfigurationPanel from "./components/ConfigurationPanel";
 import TrialsProvider from "./providers/TrialsProvider";
 import UrlProvider from "./providers/UrlProvider";
 import ExperimentPreview from "./components/ExperimentPreview";
@@ -272,7 +272,7 @@ function ExperimentBuilder() {
                     height: "100vh",
                   }}
                 >
-                  <ConfigPanel />
+                  <ConfigurationPanel />
                 </div>
 
                 {/* Barra de redimensionamiento izquierda */}

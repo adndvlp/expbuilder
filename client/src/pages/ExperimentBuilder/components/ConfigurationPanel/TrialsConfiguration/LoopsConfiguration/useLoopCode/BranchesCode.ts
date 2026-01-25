@@ -48,7 +48,15 @@ function BranchesCode({
       
       // Todas las reglas en una condición deben ser verdaderas (lógica AND)
       const allRulesMatch = condition.rules.every(rule => {
-        const propValue = lastTrialData[rule.prop];
+        // Construct column name from componentIdx and prop if column is empty
+        let columnName = rule.column || "";
+        if (!columnName && rule.componentIdx && rule.prop) {
+          columnName = rule.componentIdx + '_' + rule.prop;
+        } else if (!columnName && rule.prop) {
+          columnName = rule.prop;
+        }
+        
+        const propValue = lastTrialData[columnName];
         const compareValue = rule.value;
         
         // Convertir valores para comparación
