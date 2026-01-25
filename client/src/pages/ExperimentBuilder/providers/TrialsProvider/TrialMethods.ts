@@ -160,14 +160,7 @@ export default function TrialMethods({
         return null;
       }
     },
-    [
-      experimentID,
-      selectedTrial,
-      getTimeline,
-      setLoopTimeline,
-      setSelectedTrial,
-      setTimeline,
-    ],
+    [experimentID, selectedTrial, getTimeline],
   );
 
   // Actualización granular de un solo campo (optimizado para autoguardado)
@@ -230,7 +223,7 @@ export default function TrialMethods({
         return false;
       }
     },
-    [experimentID, selectedTrial, getTrial, setSelectedTrial, setTimeline],
+    [experimentID, selectedTrial, getTrial],
   );
 
   const deleteTrial = useCallback(
@@ -278,14 +271,7 @@ export default function TrialMethods({
         return false;
       }
     },
-    [
-      experimentID,
-      selectedTrial,
-      getTimeline,
-      setLoopTimeline,
-      setSelectedTrial,
-      setTimeline,
-    ],
+    [experimentID, selectedTrial, getTimeline],
   );
   return { createTrial, getTrial, updateTrial, updateTrialField, deleteTrial };
 }

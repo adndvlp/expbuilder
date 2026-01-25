@@ -52,7 +52,7 @@ function ExperimentBuilder() {
       }
     }
     fetchExperiment();
-  }, [id, navigate, API_URL]);
+  }, [id, navigate]);
 
   const handleMouseMove = (e: MouseEvent) => {
     if (isResizingTimeline.current) {

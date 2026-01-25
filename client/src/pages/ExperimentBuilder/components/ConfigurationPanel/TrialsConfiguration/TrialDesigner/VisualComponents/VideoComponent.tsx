@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { Image as KonvaImage, Transformer } from "react-konva";
 import Konva from "konva";
 import useImage from "use-image";
@@ -35,17 +35,14 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   // Extract the actual value from the config structure
-  const getConfigValue = useCallback(
-    (key: string) => {
-      const config = shapeProps.config[key];
-      if (!config) return null;
-      if (config.source === "typed" || config.source === "csv") {
-        return config.value;
-      }
-      return config; // fallback for direct values
-    },
-    [shapeProps],
-  );
+  const getConfigValue = (key: string) => {
+    const config = shapeProps.config[key];
+    if (!config) return null;
+    if (config.source === "typed" || config.source === "csv") {
+      return config.value;
+    }
+    return config; // fallback for direct values
+  };
 
   useEffect(() => {
     const videoValue = getConfigValue("stimulus");
@@ -83,7 +80,7 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
         videoRef.current.src = "";
       }
     };
-  }, [shapeProps.config.stimulus, getConfigValue]);
+  }, [shapeProps.config.stimulus]);
 
   useEffect(() => {
     if (isSelected && trRef.current && shapeRef.current) {

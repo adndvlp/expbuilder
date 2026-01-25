@@ -52,12 +52,5 @@ export default function useHandleResize({
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", stopResizing);
     };
-  }, [
-    isResizingLeft,
-    isResizingRight,
-    setLeftPanelWidth,
-    setShowLeftPanel,
-    setRightPanelWidth,
-    setShowRightPanel,
-  ]);
+  }, []);
 }

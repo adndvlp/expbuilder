@@ -29,7 +29,7 @@ export default function DevModeProvider({ children }: Props) {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [experimentID]);
+  }, []);
 
   useEffect(() => {
     if (isLoading) return;
@@ -56,7 +56,7 @@ export default function DevModeProvider({ children }: Props) {
     }, 1000);
 
     return () => clearTimeout(timeoutId);
-  }, [isDevMode, code, isLoading, experimentID]);
+  }, [isDevMode, code, isLoading]);
 
   return (
     <DevModeContext.Provider value={{ isDevMode, setDevMode, code, setCode }}>

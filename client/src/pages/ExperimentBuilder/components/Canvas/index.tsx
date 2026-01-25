@@ -55,7 +55,7 @@ function Canvas() {
         getLoopTimeline(item.parentLoopId);
       }
     }
-  }, [showBranchedModal, selectedTrial, selectedLoop, getLoopTimeline]);
+  }, [showBranchedModal, selectedTrial, selectedLoop]);
 
   const onAddTrial = async (type: string) => {
     // Generar nombre único basado en timeline

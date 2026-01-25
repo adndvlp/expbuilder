@@ -174,13 +174,7 @@ export default function FetchSessions({
 
       setSessions(Array.from(onlineSessionsMap.values()));
     }
-  }, [
-    activeTab,
-    allSessions,
-    onlineSessions,
-    localActiveSessions,
-    setSessions,
-  ]);
+  }, [activeTab, allSessions, onlineSessions, localActiveSessions]);
 
   useEffect(() => {
     fetchSessions();

@@ -50,7 +50,7 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
         filesCache.current[folder] = data.files;
         lastFetchTime.current[folder] = now;
       });
-  }, [folder, CACHE_DURATION, experimentID]);
+  }, [folder]);
 
   useEffect(() => {
     refreshUploadedFiles();

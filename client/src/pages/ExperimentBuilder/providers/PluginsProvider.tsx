@@ -40,7 +40,7 @@ export default function PluginsProvider({ children }: Props) {
     return () => {
       isMounted = false;
     };
-  }, [API_URL]);
+  }, []);
 
   // Autosave solo si plugins cambian respecto al inicial (como TrialsConfig)
 
@@ -92,7 +92,7 @@ export default function PluginsProvider({ children }: Props) {
       clearTimeout(timeoutId);
       setIsSaving(false);
     };
-  }, [plugins, isLoading, initialPlugins, API_URL, isSaving]);
+  }, [plugins, isLoading, initialPlugins]);
 
   return (
     <PluginsContext.Provider

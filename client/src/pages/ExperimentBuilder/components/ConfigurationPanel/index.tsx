@@ -36,7 +36,7 @@ const ConfigPanel: React.FC = () => {
         setMetadataError("Could not load plugin list: " + err);
       }
     })();
-  }, [isSaving, setMetadataError]);
+  }, [isSaving]);
 
   useEffect(() => {
     if (selectedTrial?.plugin) {
@@ -73,7 +73,7 @@ const ConfigPanel: React.FC = () => {
       setMetadataError("");
       setMetadata404(false);
     }
-  }, [selectedTrial, plugins, isSaving, setMetadataError]);
+  }, [selectedTrial, plugins, isSaving]);
 
   if (selectedLoop) {
     return (

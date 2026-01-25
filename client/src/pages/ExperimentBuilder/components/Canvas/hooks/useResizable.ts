@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 
 export type Size = {
   width: number;
@@ -30,26 +30,23 @@ export function useResizable(
     });
   };
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = () => {
     setResizing(false);
-  }, []);
+  };
 
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (resizing) {
-        const newWidth = Math.max(
-          minWidth,
-          resizeStart.width + (e.clientX - resizeStart.x),
-        );
-        const newHeight = Math.max(
-          minHeight,
-          resizeStart.height + (e.clientY - resizeStart.y),
-        );
-        setSize({ width: newWidth, height: newHeight });
-      }
-    },
-    [minHeight, minWidth, resizeStart, resizing],
-  );
+  const handleMouseMove = (e: MouseEvent) => {
+    if (resizing) {
+      const newWidth = Math.max(
+        minWidth,
+        resizeStart.width + (e.clientX - resizeStart.x),
+      );
+      const newHeight = Math.max(
+        minHeight,
+        resizeStart.height + (e.clientY - resizeStart.y),
+      );
+      setSize({ width: newWidth, height: newHeight });
+    }
+  };
 
   useEffect(() => {
     if (resizing) {
@@ -63,7 +60,7 @@ export function useResizable(
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [resizing, resizeStart, handleMouseMove, handleMouseUp]);
+  }, [resizing, resizeStart]);
 
   return {
     resizing,

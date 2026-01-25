@@ -36,7 +36,7 @@
 
 
         const trialSessionId =
-            "New Trial 2_result_" + (crypto.randomUUID
+            "New Trial 3_result_" + (crypto.randomUUID
               ? crypto.randomUUID()
               : Math.random().toString(36).slice(2, 10));
 
@@ -85,13 +85,13 @@ localStorage.removeItem('jsPsych_jumpToTrial');
       const timeline = [];
       
       
-    const test_stimuli_New_Trial_2 = [{components: [],
+    const test_stimuli_New_Trial_3 = [{components: [],
 response_components: []}];
-    const New_Trial_2_timeline = {
+    const New_Trial_3_timeline = {
     type: DynamicPlugin, 
       data: {
         rt: "rt",
-        trial_id: 1769320934928,
+        trial_id: 1769324906766,
         
         
       },
@@ -179,17 +179,17 @@ response_components: []}];
         jsPsych.abortExperiment('', {});
       }
     },};
-    console.log("=== PROCEDURE SETUP New_Trial_2 ===");
-    console.log("test_stimuli_New_Trial_2 before procedure:", test_stimuli_New_Trial_2);
-    console.log("test_stimuli_New_Trial_2.length:", test_stimuli_New_Trial_2 ? test_stimuli_New_Trial_2.length : 'undefined');
+    console.log("=== PROCEDURE SETUP New_Trial_3 ===");
+    console.log("test_stimuli_New_Trial_3 before procedure:", test_stimuli_New_Trial_3);
+    console.log("test_stimuli_New_Trial_3.length:", test_stimuli_New_Trial_3 ? test_stimuli_New_Trial_3.length : 'undefined');
     
-    const New_Trial_2_procedure = {
+    const New_Trial_3_procedure = {
     timeline: 
-    [New_Trial_2_timeline],
-    timeline_variables: test_stimuli_New_Trial_2,
+    [New_Trial_3_timeline],
+    timeline_variables: test_stimuli_New_Trial_3,
     
     conditional_function: function() {
-      const currentId = 1769320934928;
+      const currentId = 1769324906766;
       
       // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
       const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
@@ -225,7 +225,7 @@ response_components: []}];
   
     
     };
-    timeline.push(New_Trial_2_procedure);
+    timeline.push(New_Trial_3_procedure);
   
 
       jsPsych.run(timeline);

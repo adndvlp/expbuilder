@@ -41,6 +41,7 @@ function KonvaParameterMapper({
   setShowRightPanel,
   setRightPanelWidth,
   csvColumns,
+  columnMapping,
 }: Props) {
   const initResizeRight = () => {
     isResizingRight.current = true;
@@ -122,13 +123,7 @@ function KonvaParameterMapper({
         return updatedComponents;
       });
     },
-    [
-      selectedId,
-      onAutoSave,
-      fromJsPsychCoords,
-      generateConfigFromComponents,
-      setComponents,
-    ],
+    [selectedId, onAutoSave, columnMapping],
   );
   return (
     <div

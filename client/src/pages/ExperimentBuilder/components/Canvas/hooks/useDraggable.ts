@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 
 interface Position {
   x: number;
@@ -18,21 +18,18 @@ export function useDraggable(initialPos: Position) {
     });
   };
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = () => {
     setDragging(false);
-  }, []);
+  };
 
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (dragging) {
-        setPos({
-          x: e.clientX - offset.x,
-          y: e.clientY - offset.y,
-        });
-      }
-    },
-    [dragging, offset],
-  );
+  const handleMouseMove = (e: MouseEvent) => {
+    if (dragging) {
+      setPos({
+        x: e.clientX - offset.x,
+        y: e.clientY - offset.y,
+      });
+    }
+  };
 
   useEffect(() => {
     if (dragging) {
@@ -46,7 +43,7 @@ export function useDraggable(initialPos: Position) {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [dragging, offset, handleMouseUp, handleMouseMove]);
+  }, [dragging, offset]);
 
   return {
     dragging,

@@ -179,7 +179,7 @@ function TrialsConfig({ pluginName }: Props) {
     };
 
     loadParentLoop();
-  }, [selectedTrial?.parentLoopId, getLoop]);
+  }, [selectedTrial?.parentLoopId]);
 
   // Detect if this is the dynamic plugin
   const isDynamicPlugin = pluginName === "plugin-dynamic";
