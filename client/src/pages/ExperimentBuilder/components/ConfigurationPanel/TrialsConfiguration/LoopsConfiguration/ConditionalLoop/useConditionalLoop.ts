@@ -3,9 +3,6 @@ import useTrials from "../../../../../hooks/useTrials";
 import { loadPluginParameters } from "../../../utils/pluginParameterLoader";
 import { LoopCondition, Loop, LoadedItem } from "./types";
 import { DataDefinition } from "../../../types";
-import { useExperimentID } from "../../../../../hooks/useExperimentID";
-
-const API_URL = import.meta.env.VITE_API_URL;
 
 export const useConditionalLoop = (
   loop: Loop,
@@ -13,7 +10,6 @@ export const useConditionalLoop = (
 ) => {
   const { getTrial, getLoop, loopTimeline, activeLoopId, getLoopTimeline } =
     useTrials();
-  const experimentID = useExperimentID();
 
   const [conditions, setConditions] = useState<LoopCondition[]>([]);
   const [trialDataFields, setTrialDataFields] = useState<

@@ -52,7 +52,7 @@ function ExperimentBuilder() {
       }
     }
     fetchExperiment();
-  }, [id, navigate]);
+  }, [id, navigate, API_URL]);
 
   const handleMouseMove = (e: MouseEvent) => {
     if (isResizingTimeline.current) {
@@ -272,7 +272,7 @@ function ExperimentBuilder() {
                     height: "100vh",
                   }}
                 >
-                  <ConfigPanel uploadedFiles={uploadedFiles} />
+                  <ConfigPanel />
                 </div>
 
                 {/* Barra de redimensionamiento izquierda */}

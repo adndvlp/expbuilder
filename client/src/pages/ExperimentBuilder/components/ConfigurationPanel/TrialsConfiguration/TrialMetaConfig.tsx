@@ -13,7 +13,6 @@ const TrialMetaConfig: React.FC<TrialMetaConfigProps> = ({
   trialName,
   setTrialName,
   selectedTrial,
-  setSelectedTrial,
   onSave,
 }) => {
   const { timeline } = useTrials();
@@ -28,7 +27,7 @@ const TrialMetaConfig: React.FC<TrialMetaConfigProps> = ({
           const newName = e.target.value;
           // Solo validar y actualizar estado local, NO guardar
           const nameExists = timeline.some(
-            (t) => t.name === newName && t.id !== selectedTrial?.id
+            (t) => t.name === newName && t.id !== selectedTrial?.id,
           );
           if (nameExists && newName !== "") {
             alert("It already exists a trial name with that name.");

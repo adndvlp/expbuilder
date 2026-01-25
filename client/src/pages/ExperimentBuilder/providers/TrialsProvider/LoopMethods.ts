@@ -17,7 +17,6 @@ type Props = {
 
 export default function LoopMethods({
   experimentID,
-  timeline,
   loopTimeline,
   setTimeline,
   setLoopTimeline,
@@ -126,6 +125,7 @@ export default function LoopMethods({
               console.error(
                 `Error updating parentLoopId for item ${itemId}:`,
                 error,
+                loopError,
               );
             }
           }
@@ -226,7 +226,7 @@ export default function LoopMethods({
         // OPTIMISTIC UI PRIMERO - actualizar antes del fetch
         const optimisticUpdateFn = (prev: TimelineItem[]) => {
           // 1. Actualizar el loop que se está modificando
-          let updated = prev.map((item) => {
+          const updated = prev.map((item) => {
             if (item.id === id && item.type === "loop") {
               return {
                 ...item,
@@ -339,6 +339,7 @@ export default function LoopMethods({
                 console.error(
                   `Error clearing parentLoopId for item ${itemId}:`,
                   error,
+                  loopError,
                 );
               }
             }
@@ -366,6 +367,7 @@ export default function LoopMethods({
                 console.error(
                   `Error setting parentLoopId for item ${itemId}:`,
                   error,
+                  loopError,
                 );
               }
             }
@@ -695,7 +697,6 @@ export default function LoopMethods({
       setTimeline,
       setLoopTimeline,
       setSelectedLoop,
-      timeline,
       loopTimeline,
     ],
   );

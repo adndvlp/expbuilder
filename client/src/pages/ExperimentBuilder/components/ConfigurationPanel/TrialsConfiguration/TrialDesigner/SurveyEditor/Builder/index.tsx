@@ -17,7 +17,6 @@ type CustomSurveyEditorProps = {
 const CustomSurveyEditor: React.FC<CustomSurveyEditorProps> = ({
   surveyJson,
   onChange,
-  uploadedFiles = [],
 }) => {
   const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
   const questions = (surveyJson?.elements as Question[]) || [];

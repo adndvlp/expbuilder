@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import useTrials from "../../../../hooks/useTrials";
 import { loadPluginParameters } from "../../utils/pluginParameterLoader";
 import { BranchCondition, RepeatCondition } from "../../types";
-import { Condition, RepeatConditionState, Props, Parameter } from "./types";
+import { Condition, Props, Parameter } from "./types";
 import Modal from "../ParameterMapper/Modal";
 import useLoadData from "./useLoadData";
 import BranchedTrialLayout from "./BranchedTrialLayout";
@@ -21,9 +21,6 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [conditions, setConditions] = useState<Condition[]>([]);
-  const [repeatConditions, setRepeatConditions] = useState<
-    RepeatConditionState[]
-  >([]);
   const [saveIndicator, setSaveIndicator] = useState(false);
   const [targetTrialParameters, setTargetTrialParameters] = useState<
     Record<string, Parameter[]>
@@ -91,7 +88,7 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
     loadPluginParameters,
     getLoopTimeline,
     setConditions,
-    setRepeatConditions,
+    setRepeatConditions: () => {}, // Función vacía ya que no se usa
   });
 
   // Find trial or loop by ID using the API
@@ -250,7 +247,7 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
+    <Modal isOpen={isOpen} onClose={onClose || (() => {})}>
       <div
         style={{
           width: "100%",

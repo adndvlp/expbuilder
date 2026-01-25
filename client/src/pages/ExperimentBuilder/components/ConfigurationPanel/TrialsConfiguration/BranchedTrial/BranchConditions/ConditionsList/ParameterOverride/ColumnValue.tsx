@@ -1,6 +1,6 @@
 import { ColumnMappingEntry } from "../../../../../types";
 import { ParameterInput } from "../../../../ParameterMapper/ParameterInput";
-import { Condition } from "../../../types";
+import { Condition, Parameter } from "../../../types";
 
 type Props = {
   isTargetDynamic: boolean;
@@ -41,9 +41,8 @@ function ColumnValue({
   condition,
   targetTrialCsvColumns,
   paramKey,
-  triggerSave,
 }: Props) {
-  const param = availableParams.find((p) => p.key === paramKey);
+  const param = availableParams.find((p: Parameter) => p.key === paramKey);
   const csvColumns =
     (condition.nextTrialId && targetTrialCsvColumns[condition.nextTrialId]) ||
     [];

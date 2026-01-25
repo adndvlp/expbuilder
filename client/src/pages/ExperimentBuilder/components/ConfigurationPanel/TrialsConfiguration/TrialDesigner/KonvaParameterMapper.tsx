@@ -37,7 +37,6 @@ function KonvaParameterMapper({
   fromJsPsychCoords,
   onAutoSave,
   generateConfigFromComponents,
-  columnMapping,
   isResizingRight,
   setShowRightPanel,
   setRightPanelWidth,
@@ -123,7 +122,13 @@ function KonvaParameterMapper({
         return updatedComponents;
       });
     },
-    [selectedId, onAutoSave, columnMapping],
+    [
+      selectedId,
+      onAutoSave,
+      fromJsPsychCoords,
+      generateConfigFromComponents,
+      setComponents,
+    ],
   );
   return (
     <div

@@ -9,15 +9,8 @@ import usePlugins from "../../hooks/usePlugins";
 import TrialLoops from "./TrialsConfiguration/LoopsConfiguration";
 const API_URL = import.meta.env.VITE_API_URL;
 
-type UploadedFile = { name: string; url: string; type: string };
-
-interface ConfigPanelProps {
-  uploadedFiles: UploadedFile[];
-}
-
-const ConfigPanel: React.FC<ConfigPanelProps> = ({ uploadedFiles }) => {
-  const { selectedTrial, setSelectedTrial, selectedLoop, updateTrial } =
-    useTrials();
+const ConfigPanel: React.FC = () => {
+  const { selectedTrial, selectedLoop, updateTrial } = useTrials();
   const [selectedId, setSelectedId] = useState<string>("plugin-dynamic");
   const [pluginList, setPluginList] = useState<string[]>([]);
   const [pluginEditor, setPluginEditor] = useState<boolean>(false);
@@ -40,10 +33,10 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ uploadedFiles }) => {
         prevPluginList.current = newPluginList;
       } catch (err) {
         // Si la petición falla, muestra error global
-        setMetadataError("Could not load plugin list");
+        setMetadataError("Could not load plugin list: " + err);
       }
     })();
-  }, [isSaving]);
+  }, [isSaving, setMetadataError]);
 
   useEffect(() => {
     if (selectedTrial?.plugin) {
@@ -80,7 +73,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ uploadedFiles }) => {
       setMetadataError("");
       setMetadata404(false);
     }
-  }, [selectedTrial, plugins, isSaving]);
+  }, [selectedTrial, plugins, isSaving, setMetadataError]);
 
   if (selectedLoop) {
     return (
@@ -396,10 +389,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ uploadedFiles }) => {
               <div>
                 {/* Mostrar TrialsConfig para plugin-dynamic */}
                 {selectedId === "plugin-dynamic" && (
-                  <TrialsConfig
-                    pluginName={selectedId}
-                    uploadedFiles={uploadedFiles}
-                  />
+                  <TrialsConfig pluginName={selectedId} />
                 )}
                 {/* Mostrar TrialsConfig para otros plugins */}
                 {selectedId &&
@@ -407,20 +397,14 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ uploadedFiles }) => {
                   selectedId !== "plugin-dynamic" &&
                   !isCustomPlugin &&
                   selectedId !== "Select a stimulus-response" && (
-                    <TrialsConfig
-                      pluginName={selectedId}
-                      uploadedFiles={uploadedFiles}
-                    />
+                    <TrialsConfig pluginName={selectedId} />
                   )}
                 {selectedId === "webgazer" && (
                   <WebGazer webgazerPlugins={webgazerPlugins} />
                 )}
                 {/* Si es custom/subido y hay parámetros, muestra TrialsConfig */}
                 {isCustomPlugin && !metadata404 && (
-                  <TrialsConfig
-                    pluginName={selectedId}
-                    uploadedFiles={uploadedFiles}
-                  />
+                  <TrialsConfig pluginName={selectedId} />
                 )}
               </div>
             </div>

@@ -1,6 +1,4 @@
-type Props = {};
-
-function GrapesSurveyEditor({}: Props) {
+function GrapesSurveyEditor() {
   return <div>GrapesSurveyEditor</div>;
 }
 

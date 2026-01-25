@@ -21,7 +21,7 @@ function ExperimentPreview() {
     if (started && version) {
       setKey((prev) => prev + 1);
     }
-  }, [version]);
+  }, [version, started]);
 
   const handleStart = () => {
     setStarted(true);
@@ -131,7 +131,15 @@ localStorage.removeItem('jsPsych_jumpToTrial');
     };
 
     generateAndSendCode();
-  }, [selectedTrial, selectedLoop, experimentID]);
+  }, [
+    selectedTrial,
+    selectedLoop,
+    experimentID,
+    getLoop,
+    getLoopTimeline,
+    getTrial,
+    incrementVersion,
+  ]);
 
   // Crear URL con parámetros únicos para evitar caché
 

@@ -172,7 +172,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   };
 
   // Return empty object - let jsPsych handle defaults
-  const getDefaultConfig = (_type: ComponentType): Record<string, any> => {
+  const getDefaultConfig = (): Record<string, any> => {
     return {};
   };
 

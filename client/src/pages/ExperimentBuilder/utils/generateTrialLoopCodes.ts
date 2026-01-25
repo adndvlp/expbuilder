@@ -79,28 +79,39 @@ type UploadedFile = {
   type?: string;
 };
 
+type GeneratedTrialResult = {
+  code: string;
+  mappedJson: Record<string, any>[];
+};
+
 /**
  * Generates code for a single trial
  */
 async function generateTrialCode(
   trial: Trial,
   uploadedFiles: UploadedFile[],
-  experimentID: string,
+  _experimentID: string,
   getTrial: GetTrialFn,
   isInLoop: boolean = false,
-): Promise<string> {
+): Promise<GeneratedTrialResult> {
   try {
     // Fetch full trial data using getTrial
     const fullTrial = await getTrial(trial.id);
 
     if (!fullTrial) {
       console.error(`Failed to fetch trial ${trial.id}`);
-      return "";
+      return {
+        code: "",
+        mappedJson: [],
+      };
     }
 
     if (!fullTrial.plugin) {
       console.error(`Trial ${trial.id} has no plugin`);
-      return "";
+      return {
+        code: "",
+        mappedJson: [],
+      };
     }
 
     // Load plugin parameters directly without hook
@@ -216,6 +227,19 @@ async function generateTrialCode(
   }
 }
 
+type TrialWithCode = {
+  trialName: string;
+  pluginName?: string;
+  timelineProps: string;
+  mappedJson?: Record<string, any>[];
+  isLoop?: boolean;
+  id?: string | number;
+  type?: string;
+  name?: string;
+  plugin?: string;
+  order?: number;
+};
+
 /**
  * Generates code for a single loop
  */
@@ -240,7 +264,7 @@ async function generateLoopCode(
     const trialsMetadata = await getLoopTimeline(loop.id);
 
     // Generate code for each trial/loop in the loop
-    const trialsWithCode = await Promise.all(
+    const trialsWithCode = (await Promise.all(
       trialsMetadata.map(async (item) => {
         if (item.type === "trial") {
           // Fetch full trial data using getTrial
@@ -253,7 +277,7 @@ async function generateLoopCode(
               pluginName: "",
               timelineProps: "",
               mappedJson: [],
-            };
+            } as TrialWithCode;
           }
 
           // Generate trial code with isInLoop = true
@@ -314,14 +338,14 @@ async function generateLoopCode(
         }
         return item;
       }),
-    );
+    )) as TrialWithCode[];
 
     // Combine all mappedJson from trials to create unifiedStimuli
     // Each row in unifiedStimuli should contain ALL properties from ALL trials
     const maxRows = Math.max(
       ...trialsWithCode
         .filter((t) => t.mappedJson && Array.isArray(t.mappedJson))
-        .map((t) => t.mappedJson.length),
+        .map((t) => t.mappedJson?.length || 0),
       0,
     );
 

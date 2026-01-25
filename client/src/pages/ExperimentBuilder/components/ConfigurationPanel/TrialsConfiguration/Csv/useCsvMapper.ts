@@ -23,7 +23,7 @@ export function useCsvMapper({ fieldGroups }: UseParameterValueArgs) {
       }
       return "";
     },
-    [fieldGroups]
+    [fieldGroups],
   );
 
   const getColumnValue = useCallback(
@@ -31,7 +31,7 @@ export function useCsvMapper({ fieldGroups }: UseParameterValueArgs) {
       mapping: ColumnMappingEntry | undefined,
       row?: Record<string, any>,
       defaultValue?: any,
-      key?: string
+      key?: string,
     ): any => {
       if (!mapping || mapping.source === "none") {
         return defaultValue ?? (key ? getDefaultValueForKey(key) : "");
@@ -44,7 +44,7 @@ export function useCsvMapper({ fieldGroups }: UseParameterValueArgs) {
       if (mapping.source === "csv" && row && key) {
         const columnKey = mapping.value;
         if (typeof columnKey === "string" || typeof columnKey === "number") {
-          let rawValue = row[columnKey];
+          const rawValue = row[columnKey];
           // const param = [...fieldGroups].find((p) => p.key === key); // params deleted
           const param = Object.values(fieldGroups)
             .flat()
@@ -59,25 +59,18 @@ export function useCsvMapper({ fieldGroups }: UseParameterValueArgs) {
                 typeof rawValue === "string"
               ) {
                 // Parse coordinate pairs like "[4,2], [2,4]" into [[4,2], [2,4]]
-                const coordPairs = rawValue
-                  .split("],")
-                  .map((pair, index, array) => {
-                    // Clean up the pair - remove brackets and trim
-                    let cleanPair = pair.replace(/[\[\]]/g, "").trim();
+                const coordPairs = rawValue.split("],").map((pair) => {
+                  // Clean up the pair - remove brackets and trim
+                  const cleanPair = pair.replace(/[\[\]]/g, "").trim();
 
-                    // Add back closing bracket if this isn't the last item
-                    if (index < array.length - 1) {
-                      cleanPair = cleanPair;
-                    }
-
-                    // Split by comma and convert to numbers
-                    const coords = cleanPair.split(",").map((coord) => {
-                      const num = parseFloat(coord.trim());
-                      return isNaN(num) ? coord.trim() : num;
-                    });
-
-                    return coords;
+                  // Split by comma and convert to numbers
+                  const coords = cleanPair.split(",").map((coord) => {
+                    const num = parseFloat(coord.trim());
+                    return isNaN(num) ? coord.trim() : num;
                   });
+
+                  return coords;
+                });
 
                 return coordPairs;
               }
@@ -93,11 +86,12 @@ export function useCsvMapper({ fieldGroups }: UseParameterValueArgs) {
                     case "float":
                       return isNaN(Number(item)) ? item : Number(item);
                     case "boolean":
-                    case "bool":
+                    case "bool": {
                       const lower = item.toLowerCase();
                       if (lower === "true" || lower === "1") return true;
                       if (lower === "false" || lower === "0") return false;
                       return item;
+                    }
                     default:
                       return item;
                   }
@@ -154,7 +148,7 @@ export function useCsvMapper({ fieldGroups }: UseParameterValueArgs) {
 
       return defaultValue ?? (key ? getDefaultValueForKey(key) : "");
     },
-    [fieldGroups, getDefaultValueForKey]
+    [fieldGroups, getDefaultValueForKey],
   );
 
   return { getColumnValue };

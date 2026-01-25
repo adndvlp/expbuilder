@@ -40,7 +40,7 @@ export default function PluginsProvider({ children }: Props) {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [API_URL]);
 
   // Autosave solo si plugins cambian respecto al inicial (como TrialsConfig)
 
@@ -66,17 +66,17 @@ export default function PluginsProvider({ children }: Props) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(plugin),
-              }
+              },
             );
             return res.json();
-          })
+          }),
         );
         const errorResult = results.find(
-          (r) => r && r.metadataStatus === "error"
+          (r) => r && r.metadataStatus === "error",
         );
         if (errorResult) {
           setMetadataError(
-            errorResult.metadataError || "Error extracting metadata"
+            errorResult.metadataError || "Error extracting metadata",
           );
         } else {
           setMetadataError("");
@@ -92,7 +92,7 @@ export default function PluginsProvider({ children }: Props) {
       clearTimeout(timeoutId);
       setIsSaving(false);
     };
-  }, [plugins, isLoading, initialPlugins]);
+  }, [plugins, isLoading, initialPlugins, API_URL, isSaving]);
 
   return (
     <PluginsContext.Provider

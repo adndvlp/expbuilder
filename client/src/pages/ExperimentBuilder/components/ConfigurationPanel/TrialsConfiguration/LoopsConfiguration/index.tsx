@@ -11,8 +11,7 @@ import ConditionalLoop from "./ConditionalLoop";
 type Props = { loop?: Loop };
 
 function LoopsConfig({ loop }: Props) {
-  const { updateLoop, updateLoopField, deleteLoop, getLoopTimeline } =
-    useTrials();
+  const { updateLoop, updateLoopField, deleteLoop } = useTrials();
 
   const [isLoadingLoop, setIsLoadingLoop] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -59,6 +58,7 @@ function LoopsConfig({ loop }: Props) {
     setCategoryColumn(loop.categoryColumn ?? "");
     mapCategoriesFromCsv(loop.csvJson ?? [], loop.categoryColumn ?? "");
     setTimeout(() => setIsLoadingLoop(false), 100); // 500 en producción
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loop]);
 
   const {
@@ -182,8 +182,9 @@ function LoopsConfig({ loop }: Props) {
   // Auto-save removed - using manual save only
   // Cleanup timeout on unmount
   useEffect(() => {
+    const timeoutCurrent = timeoutRef.current;
     return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (timeoutCurrent) clearTimeout(timeoutCurrent);
     };
   }, []);
 
@@ -327,11 +328,13 @@ function LoopsConfig({ loop }: Props) {
                 setIsConditionalLoop(checked);
                 if (!checked) {
                   setLoopConditions([]);
-                  // Guardar ambos campos cuando se desactiva
-                  updateLoop(loop?.id, {
-                    isConditionalLoop: false,
-                    loopConditions: [],
-                  }).then(() => showSaveIndicator("loop conditions"));
+                  if (loop) {
+                    // Guardar ambos campos cuando se desactiva
+                    updateLoop(loop.id, {
+                      isConditionalLoop: false,
+                      loopConditions: [],
+                    }).then(() => showSaveIndicator("loop conditions"));
+                  }
                 } else {
                   saveField("isConditionalLoop", checked);
                 }
@@ -390,7 +393,7 @@ function LoopsConfig({ loop }: Props) {
           >
             <div onClick={(e) => e.stopPropagation()}>
               <ConditionalLoop
-                loop={loop}
+                loop={loop as any}
                 onClose={() => setShowConditionalModal(false)}
                 onSave={handleSaveLoopConditions}
               />

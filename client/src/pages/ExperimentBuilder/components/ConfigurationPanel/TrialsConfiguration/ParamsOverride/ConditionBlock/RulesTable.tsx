@@ -51,7 +51,6 @@ function RulesTable({
   trialDataFields,
   loadingData,
   getCurrentTrialCsvColumns,
-  setConditions,
   setConditionsWrapper,
   conditions,
   hasDynamicTrial,

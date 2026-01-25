@@ -210,8 +210,8 @@ export function RuleRow({
               componentIdx={componentIdx}
               conditionId={conditionId}
               ruleIdx={ruleIdx}
-              conditions={conditions}
-              setConditionsWrapper={setConditionsWrapper}
+              conditions={conditions as any}
+              setConditionsWrapper={setConditionsWrapper as any}
               getPropValue={getPropValue}
             />
           </td>
@@ -254,8 +254,8 @@ export function RuleRow({
               >
                 <option value="">Select field</option>
                 {dataFields.map((field) => (
-                  <option key={field.name} value={field.name}>
-                    {field.name}
+                  <option key={field.key} value={field.key}>
+                    {field.key}
                   </option>
                 ))}
               </select>
@@ -296,7 +296,15 @@ export function RuleRow({
           getPropValue={getPropValue}
           conditionId={conditionId}
           ruleIdx={ruleIdx}
-          updateRule={updateRule}
+          updateRule={(condId, ruleIdx, field, value, shouldSave) =>
+            updateRule(
+              condId,
+              ruleIdx,
+              field as keyof ParamsOverrideRule,
+              value,
+              shouldSave,
+            )
+          }
         />
       </td>
 

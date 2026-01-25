@@ -112,7 +112,7 @@ export default function useBranchConditions({
     conditionId: number,
     ruleIndex: number,
     field: string,
-    value: string,
+    value: string | number,
     shouldSave: boolean = true,
   ) => {
     setConditionsWrapper(

@@ -21,7 +21,7 @@ type Props = {
     conditionId: number,
     ruleIndex: number,
     field: string,
-    value: string,
+    value: string | number,
     shouldSave?: boolean,
   ) => void;
   getAvailableColumns: () => {

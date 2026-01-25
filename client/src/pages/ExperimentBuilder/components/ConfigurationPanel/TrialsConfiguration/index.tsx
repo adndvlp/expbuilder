@@ -9,8 +9,6 @@ import TrialActions from "./TrialActions";
 import { useFileUpload } from "../../Timeline/useFileUpload";
 import { useCsvData } from "./Csv/useCsvData";
 import { useColumnMapping } from "./hooks/useColumnMapping";
-import { useCsvMapper } from "./Csv/useCsvMapper";
-// useTrialCode removed - code is generated dynamically when needed
 import { useExtensions } from "./Extensions/useExtensions";
 import ExtensionsConfig from "./Extensions";
 import { Trial, Loop } from "../types";
@@ -42,10 +40,9 @@ function TrialsConfig({ pluginName }: Props) {
     useCsvData();
 
   const { columnMapping, setColumnMapping } = useColumnMapping({});
-  const { parameters, data } = usePluginParameters(pluginName);
+  const { parameters } = usePluginParameters(pluginName);
 
   const {
-    extensions,
     includesExtensions,
     setIncludeExtensions,
     extensionType,
@@ -167,16 +164,6 @@ function TrialsConfig({ pluginName }: Props) {
     // eslint-disable-next-line
   }, [selectedTrial]);
 
-  // parámetros mapeados de los plugins
-  const fieldGroups = {
-    pluginParameters: parameters,
-  };
-
-  const { getColumnValue } = useCsvMapper({
-    fieldGroups: fieldGroups,
-  });
-  // ^Por la implementación del webgazer esto se define así^
-
   // Detect parent loop context automatically using parentLoopId
   const [parentLoop, setParentLoop] = useState<Loop | null>(null);
 
@@ -192,7 +179,7 @@ function TrialsConfig({ pluginName }: Props) {
     };
 
     loadParentLoop();
-  }, [selectedTrial?.parentLoopId]);
+  }, [selectedTrial?.parentLoopId, getLoop]);
 
   // Detect if this is the dynamic plugin
   const isDynamicPlugin = pluginName === "plugin-dynamic";

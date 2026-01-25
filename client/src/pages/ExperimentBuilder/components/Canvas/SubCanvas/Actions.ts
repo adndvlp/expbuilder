@@ -59,7 +59,7 @@ export default function Actions({
         plugin: "plugin-dynamic",
         parameters: {},
         trialCode: "",
-        parentLoopId: loopId, // Importante: establece que este trial está dentro del loop
+        parentLoopId: String(loopId), // Importante: establece que este trial está dentro del loop
       });
 
       // Actualizar el parent (trial o loop) para incluir este branch

@@ -11,8 +11,6 @@ export type TimelineItem = {
 
 type TrialsContextType = {
   // Tres arrays planos
-  trials: Trial[];
-  loops: Loop[];
   timeline: TimelineItem[];
 
   // Loop timeline para el loop activo
@@ -76,8 +74,6 @@ type TrialsContextType = {
 };
 
 const TrialsContext = createContext<TrialsContextType>({
-  trials: [],
-  loops: [],
   timeline: [],
   loopTimeline: [],
   activeLoopId: null,

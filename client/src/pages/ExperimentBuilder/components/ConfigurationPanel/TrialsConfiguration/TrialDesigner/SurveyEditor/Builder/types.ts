@@ -1,4 +1,4 @@
-export type UploadedFile = { name: string; url: string; export type: string };
+export type UploadedFile = { name: string; url: string; type: string };
 
 export type ChoiceItem = {
   value: string;

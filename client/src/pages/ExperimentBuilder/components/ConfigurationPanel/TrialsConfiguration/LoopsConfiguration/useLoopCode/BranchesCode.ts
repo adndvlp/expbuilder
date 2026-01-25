@@ -121,7 +121,7 @@ function BranchesCode({
     // Branching automático al primer branch del loop
     // Solo si NO se activó desde trial interno (ShouldBranchOnFinish o BranchingActive)
     if (!loop_${loopIdSanitized}_ShouldBranchOnFinish && !loop_${loopIdSanitized}_BranchingActive) {
-      const branches = [${branches.map((b) => (typeof b === "string" ? `"${b}"` : b))}];
+      const branches = [${branches?.map((b) => (typeof b === "string" ? `"${b}"` : b)) ?? []}];
       if (branches.length > 0) {
         window.nextTrialId = branches[0];
         window.skipRemaining = true;
@@ -148,7 +148,7 @@ function BranchesCode({
     // Branching automático al primer branch del loop
     // Solo si NO se activó desde trial interno (ShouldBranchOnFinish o BranchingActive)
     if (!loop_${loopIdSanitized}_ShouldBranchOnFinish && !loop_${loopIdSanitized}_BranchingActive) {
-      const branches = [${branches.map((b) => (typeof b === "string" ? `"${b}"` : b))}];
+      const branches = [${branches?.map((b) => (typeof b === "string" ? `"${b}"` : b)) ?? []}];
       if (branches.length > 0) {
         window.nextTrialId = branches[0];
         window.skipRemaining = true;

@@ -1,8 +1,6 @@
 import { isRouteErrorResponse, Link, useRouteError } from "react-router-dom";
 
-type Props = {};
-
-function ErrorDetail({}: Props) {
+function ErrorDetail() {
   const error = useRouteError();
 
   if (isRouteErrorResponse(error)) {

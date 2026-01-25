@@ -216,7 +216,7 @@ function BranchedTrialLayout({
           }}
         >
           <button
-            onClick={handleSaveConditions}
+            onClick={() => handleSaveConditions()}
             style={{
               width: "100%",
               padding: "12px 32px",

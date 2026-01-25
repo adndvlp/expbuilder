@@ -1,9 +1,7 @@
 import { Link } from "react-router-dom";
 import logo from "../../../icon/icon.png";
 
-type Props = {};
-
-function LandingPage({}: Props) {
+function LandingPage() {
   return (
     <div
       style={{

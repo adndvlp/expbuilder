@@ -11,7 +11,7 @@ type Props = {
     conditionId: number,
     ruleIndex: number,
     field: string,
-    value: string,
+    value: string | number,
     shouldSave?: boolean | undefined,
   ) => void;
   addCustomParameter: (conditionId: number, isTargetDynamic: boolean) => void;
@@ -54,7 +54,6 @@ function TableBody({
   updateNextTrial,
   setConditionsWrapper,
   triggerSave,
-  isInBranches,
   removeRuleFromCondition,
   getAvailableColumns,
   condition,
@@ -75,8 +74,9 @@ function TableBody({
         const paramKeys = condition.customParameters
           ? Object.keys(condition.customParameters)
           : [];
-        const availableParams =
-          targetTrialParameters[condition.nextTrialId] || [];
+        const availableParams = condition.nextTrialId
+          ? targetTrialParameters[condition.nextTrialId] || []
+          : [];
         const canAddMoreParams =
           availableParams.length > 0 &&
           paramKeys.length < availableParams.length;

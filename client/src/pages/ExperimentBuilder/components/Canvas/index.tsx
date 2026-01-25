@@ -22,9 +22,7 @@ const nodeTypes = {
   loop: LoopNode,
 };
 
-type Props = {};
-
-function Canvas({}: Props) {
+function Canvas() {
   const {
     timeline,
     loopTimeline,
@@ -44,7 +42,6 @@ function Canvas({}: Props) {
 
   const [showLoopModal, setShowLoopModal] = useState(false);
   const [openLoop, setOpenLoop] = useState<any>(null);
-  const [openLoopMetadata, setOpenLoopMetadata] = useState<any[]>([]);
   const [loopStack, setLoopStack] = useState<
     Array<{ id: string; name: string }>
   >([]); // Stack for nested loops
@@ -58,11 +55,7 @@ function Canvas({}: Props) {
         getLoopTimeline(item.parentLoopId);
       }
     }
-  }, [
-    showBranchedModal,
-    selectedTrial?.parentLoopId,
-    selectedLoop?.parentLoopId,
-  ]);
+  }, [showBranchedModal, selectedTrial, selectedLoop, getLoopTimeline]);
 
   const onAddTrial = async (type: string) => {
     // Generar nombre único basado en timeline
@@ -147,11 +140,10 @@ function Canvas({}: Props) {
   const handleOpenLoop = async (loopId: string) => {
     try {
       const loopData = await getLoop(loopId);
-      const metadata = await getLoopTimeline(loopId);
+      await getLoopTimeline(loopId);
 
       if (loopData) {
         setOpenLoop(loopData);
-        setOpenLoopMetadata(metadata);
       }
     } catch (error) {
       console.error("Error loading loop:", error);
@@ -162,8 +154,7 @@ function Canvas({}: Props) {
   const handleRefreshLoopMetadata = async () => {
     if (!openLoop) return;
     try {
-      const metadata = await getLoopTimeline(openLoop.id);
-      setOpenLoopMetadata(metadata);
+      await getLoopTimeline(openLoop.id);
     } catch (error) {
       console.error("Error refreshing loop metadata:", error);
     }
@@ -198,21 +189,13 @@ function Canvas({}: Props) {
       // Actualizar el parent con el nuevo branch
       // updateTrial/updateLoop harán el optimistic UI completo
       if (parentItem.type === "trial") {
-        await updateTrial(
-          parentId,
-          {
-            branches: [...(parent.branches || []), newBranchTrial.id],
-          },
-          newBranchTrial, // Pasar el trial recién creado
-        );
+        await updateTrial(parentId, {
+          branches: [...(parent.branches || []), newBranchTrial.id],
+        });
       } else {
-        await updateLoop(
-          parentId,
-          {
-            branches: [...(parent.branches || []), newBranchTrial.id],
-          },
-          newBranchTrial, // Pasar el trial recién creado
-        );
+        await updateLoop(parentId, {
+          branches: [...(parent.branches || []), newBranchTrial.id],
+        });
       }
 
       setSelectedTrial(newBranchTrial);
@@ -277,8 +260,6 @@ function Canvas({}: Props) {
 
   const { nodes, edges } = useFlowLayout({
     timeline,
-    getTrial,
-    getLoop,
     selectedTrial,
     selectedLoop,
     onSelectTrial: async (trial) => {
@@ -373,7 +354,6 @@ function Canvas({}: Props) {
             }}
             onNavigateToRoot={() => {
               setOpenLoop(null);
-              setOpenLoopMetadata([]);
               setSelectedLoop(null);
               setLoopStack([]);
             }}
@@ -384,7 +364,6 @@ function Canvas({}: Props) {
                 setLoopStack(loopStack.slice(0, -1));
               } else {
                 setOpenLoop(null);
-                setOpenLoopMetadata([]);
                 setSelectedLoop(null);
               }
             }}

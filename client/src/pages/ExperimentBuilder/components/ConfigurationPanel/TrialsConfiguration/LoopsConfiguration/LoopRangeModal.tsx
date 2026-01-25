@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { TimelineItem } from "../../../contexts/TrialsContext";
+import { useState, useEffect, useCallback } from "react";
+import { TimelineItem } from "../../../../contexts/TrialsContext";
 
 type Props = {
   timeline: TimelineItem[];
@@ -8,42 +8,40 @@ type Props = {
   selectedTrialId?: number | string | null;
 };
 
-function LoopRangeModal({
-  timeline,
-  onConfirm,
-  onClose,
-  selectedTrialId,
-}: Props) {
+function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
   const [selectedIds, setSelectedIds] = useState<Set<number | string>>(
-    new Set()
+    new Set(),
   );
   const [autoSelectedIds, setAutoSelectedIds] = useState<Set<number | string>>(
-    new Set()
+    new Set(),
   );
 
   // Función recursiva para obtener todas las branches de un item
-  const getAllBranchIds = (
-    itemId: number | string,
-    visited = new Set<number | string>()
-  ): (number | string)[] => {
-    if (visited.has(itemId)) return [];
-    visited.add(itemId);
+  const getAllBranchIds = useCallback(
+    (
+      itemId: number | string,
+      visited = new Set<number | string>(),
+    ): (number | string)[] => {
+      if (visited.has(itemId)) return [];
+      visited.add(itemId);
 
-    const item = timeline.find((t) => t.id === itemId);
-    if (!item || !item.branches || item.branches.length === 0) {
-      return [];
-    }
+      const item = timeline.find((t) => t.id === itemId);
+      if (!item || !item.branches || item.branches.length === 0) {
+        return [];
+      }
 
-    const branchIds: (number | string)[] = [...item.branches];
+      const branchIds: (number | string)[] = [...item.branches];
 
-    // Recursivamente obtener branches de las branches
-    for (const branchId of item.branches) {
-      const nestedBranches = getAllBranchIds(branchId, visited);
-      branchIds.push(...nestedBranches);
-    }
+      // Recursivamente obtener branches de las branches
+      for (const branchId of item.branches) {
+        const nestedBranches = getAllBranchIds(branchId, visited);
+        branchIds.push(...nestedBranches);
+      }
 
-    return branchIds;
-  };
+      return branchIds;
+    },
+    [timeline],
+  );
 
   // Actualizar auto-selección cuando cambian las selecciones manuales
   useEffect(() => {
@@ -55,7 +53,7 @@ function LoopRangeModal({
     });
 
     setAutoSelectedIds(auto);
-  }, [selectedIds, timeline]);
+  }, [selectedIds, timeline, getAllBranchIds]);
 
   const handleToggle = (id: number | string) => {
     const newSelected = new Set(selectedIds);

@@ -1,4 +1,4 @@
-import { ParamsOverrideCondition, ParamsOverrideRule } from "../types";
+import { ParamsOverrideCondition, ParamsOverrideRule } from "../../types";
 
 /**
  * Update field type in a rule (for dynamic plugins)

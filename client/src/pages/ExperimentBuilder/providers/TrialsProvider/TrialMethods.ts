@@ -99,7 +99,7 @@ export default function TrialMethods({
         // Optimistic UI: actualizar el timeline correcto
         const updateTimelineFn = (prev: TimelineItem[]) => {
           // 1. Actualizar el trial que se está modificando
-          let updated = prev.map((item) =>
+          const updated = prev.map((item) =>
             item.id === id && item.type === "trial"
               ? {
                   ...item,
@@ -160,7 +160,14 @@ export default function TrialMethods({
         return null;
       }
     },
-    [experimentID, selectedTrial, getTimeline],
+    [
+      experimentID,
+      selectedTrial,
+      getTimeline,
+      setLoopTimeline,
+      setSelectedTrial,
+      setTimeline,
+    ],
   );
 
   // Actualización granular de un solo campo (optimizado para autoguardado)
@@ -223,7 +230,7 @@ export default function TrialMethods({
         return false;
       }
     },
-    [experimentID, selectedTrial, getTrial],
+    [experimentID, selectedTrial, getTrial, setSelectedTrial, setTimeline],
   );
 
   const deleteTrial = useCallback(
@@ -249,7 +256,9 @@ export default function TrialMethods({
             .map((item) => ({
               ...item,
               branches:
-                item.branches?.filter((branchId) => branchId !== id) || [],
+                item.branches?.filter(
+                  (branchId: string | number) => branchId !== id,
+                ) || [],
             }));
 
         // Actualizar ambos timelines para cubrir todos los casos
@@ -269,7 +278,14 @@ export default function TrialMethods({
         return false;
       }
     },
-    [experimentID, selectedTrial, getTimeline],
+    [
+      experimentID,
+      selectedTrial,
+      getTimeline,
+      setLoopTimeline,
+      setSelectedTrial,
+      setTimeline,
+    ],
   );
   return { createTrial, getTrial, updateTrial, updateTrialField, deleteTrial };
 }

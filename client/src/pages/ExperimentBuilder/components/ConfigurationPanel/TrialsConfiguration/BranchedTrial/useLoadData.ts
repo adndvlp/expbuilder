@@ -63,7 +63,14 @@ export default function useLoadData({
         setData([]);
         setLoading(false);
       });
-  }, [selectedTrial?.id]);
+  }, [
+    selectedTrial?.id,
+    loadPluginParameters,
+    selectedTrial,
+    setError,
+    setData,
+    setLoading,
+  ]);
 
   // Load existing branch conditions and repeat conditions when modal opens
   useEffect(() => {
@@ -141,5 +148,5 @@ export default function useLoadData({
         loadTargetTrialParameters(condition.nextTrialId);
       }
     });
-  }, [conditions]);
+  }, [conditions, targetTrialParameters, loadTargetTrialParameters]);
 }

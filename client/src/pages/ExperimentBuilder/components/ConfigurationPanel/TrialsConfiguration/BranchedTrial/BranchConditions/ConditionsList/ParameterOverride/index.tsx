@@ -22,7 +22,6 @@ export function ParameterOverride({
   paramKey,
   targetTrialParameters,
   findTrialById,
-  isJumpCondition,
   setConditions,
   conditions,
   targetTrialCsvColumns,
@@ -43,7 +42,9 @@ export function ParameterOverride({
     return prop;
   };
 
-  const targetTrial = findTrialById(condition.nextTrialId);
+  const targetTrial = condition.nextTrialId
+    ? findTrialById(condition.nextTrialId)
+    : null;
 
   // For dynamic plugins, parse the paramKey to get field structure
   let fieldType = "";
@@ -73,20 +74,6 @@ export function ParameterOverride({
   const { metadata: componentMetadata, loading: metadataLoading } =
     useComponentMetadata(comp?.type || null);
 
-  // Helper para convertir array a comma separated string
-  const arrayToCommaSeparated = (arr: any): string => {
-    if (Array.isArray(arr)) {
-      return arr.join(", ");
-    }
-    return "";
-  };
-
-  // Helper para convertir comma separated string a array
-  const commaSeparatedToArray = (str: string): any[] => {
-    if (!str || str.trim() === "") return [];
-    return str.split(",").map((item) => item.trim());
-  };
-
   if (!paramKey) {
     // Empty cells
     if (isTargetDynamic) {
@@ -111,7 +98,9 @@ export function ParameterOverride({
 
   // If paramKey is present, render actual content
   const paramValue = condition.customParameters![paramKey];
-  const availableParams = targetTrialParameters[condition.nextTrialId] || [];
+  const availableParams = condition.nextTrialId
+    ? targetTrialParameters[condition.nextTrialId] || []
+    : [];
 
   // Convert parameters object to array for easier manipulation
   const parametersArray = componentMetadata?.parameters

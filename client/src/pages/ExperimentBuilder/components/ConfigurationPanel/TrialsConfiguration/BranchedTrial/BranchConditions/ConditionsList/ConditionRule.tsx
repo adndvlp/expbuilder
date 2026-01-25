@@ -1,5 +1,4 @@
 import { Condition } from "../../types";
-import { DataDefinition } from "../../../../types";
 import { DynamicPluginPropertyColumn } from "../../../LoopsConfiguration/ConditionalLoop/DynamicPluginPropertyColumn";
 import { RuleValueInput } from "../../../LoopsConfiguration/ConditionalLoop/RuleValueInput";
 import { updateFieldType, updateComponentIdx } from "../../ruleUpdateHelpers";
@@ -11,7 +10,7 @@ type Props = {
     conditionId: number,
     ruleIndex: number,
     field: string,
-    value: string,
+    value: string | number,
     shouldSave?: boolean,
   ) => void;
   removeRuleFromCondition: (conditionId: number, ruleIndex: number) => void;
@@ -35,7 +34,6 @@ function ConditionRule({
   selectedTrial,
   setConditions,
   conditions,
-  triggerSave,
 }: Props) {
   // Helper para extraer valor de propiedades en formato {source, value}
   const getPropValue = (prop: any): any => {
@@ -170,14 +168,14 @@ function ConditionRule({
           {/* Property Column */}
           <td className="px-2 py-2">
             <DynamicPluginPropertyColumn
-              rule={rule}
+              rule={{ ...rule, trialId: condition.nextTrialId || "" } as any}
               comp={comp}
               componentIdx={componentIdx}
               conditionId={condition.id}
               ruleIdx={ruleIndex}
-              conditions={conditions}
+              conditions={conditions as any}
               setConditionsWrapper={(newConditions, shouldSave) =>
-                setConditions(newConditions, shouldSave)
+                setConditions(newConditions as any, shouldSave)
               }
               getPropValue={getPropValue}
             />
@@ -256,13 +254,15 @@ function ConditionRule({
       {/* Value Column */}
       <td className="px-2 py-2">
         <RuleValueInput
-          rule={rule}
+          rule={{ ...rule, trialId: condition.nextTrialId || "" } as any}
           isDynamicPlugin={isDynamicPlugin}
           comp={comp}
           getPropValue={getPropValue}
           conditionId={condition.id}
           ruleIdx={ruleIndex}
-          updateRule={updateRule}
+          updateRule={(condId, ruleIdx, field, value, shouldSave) =>
+            updateRule(condId, ruleIdx, field, String(value), shouldSave)
+          }
         />
       </td>
       <td className="px-1 py-2 text-center">

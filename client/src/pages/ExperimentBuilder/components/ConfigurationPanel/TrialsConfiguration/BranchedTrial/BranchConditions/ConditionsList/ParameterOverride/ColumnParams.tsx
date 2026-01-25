@@ -1,6 +1,5 @@
-import React from "react";
-import { ColumnMappingEntry } from "../../../types";
-import { Condition } from "../types";
+import { ColumnMappingEntry } from "../../../../../types";
+import { Condition, Parameter } from "../../../types";
 
 type Props = {
   isTargetDynamic: boolean;
@@ -304,9 +303,9 @@ function ColumnParams({
             }}
           >
             <option value="">Remove parameter</option>
-            {availableParams.map((p) => (
+            {availableParams.map((p: Parameter) => (
               <option key={p.key} value={p.key}>
-                {p.name || p.key}
+                {p.label || p.key}
               </option>
             ))}
           </select>

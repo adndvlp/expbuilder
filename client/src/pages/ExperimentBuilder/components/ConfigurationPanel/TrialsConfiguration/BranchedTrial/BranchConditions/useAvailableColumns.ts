@@ -178,7 +178,7 @@ export default function useAvailableColumns({
       data.forEach((field) => {
         columns.push({
           value: field.key,
-          label: field.name || field.key,
+          label: field.key,
           group: "Trial Data",
         });
       });

@@ -185,7 +185,7 @@ export default function Actions({
       setTunnelActive(true);
       setExperimentUrl(`${tunnelUrl}/${experimentID}`);
     }
-  }, [experimentID, setExperimentUrl]);
+  }, [experimentID, setExperimentUrl, setTunnelActive]);
 
   const handleCopyLink = async () => {
     let linkToCopy = "";

@@ -30,7 +30,6 @@ export default function useLoopCode({
   id,
   branches,
   branchConditions,
-  repeatConditions,
   repetitions,
   randomize,
   orders,
@@ -52,7 +51,7 @@ export default function useLoopCode({
     return "isLoop" in item && item.isLoop === true;
   };
 
-  const genLoopCode = () => {
+  const genLoopCode = (): string => {
     // Sanitizar el ID del loop para usarlo en nombres de variables
     const loopIdSanitized = id ? sanitizeName(id) : "Loop";
 
@@ -75,11 +74,12 @@ export default function useLoopCode({
       .map((item) => {
         if (isLoopData(item)) {
           // Si el nested loop ya tiene timelineProps (código generado), usarlo directamente
-          if (item.timelineProps) {
-            return item.timelineProps;
+          if ((item as any).timelineProps) {
+            return (item as any).timelineProps;
           }
 
           // Si no tiene timelineProps, generar código recursivamente
+          // eslint-disable-next-line react-hooks/rules-of-hooks
           const nestedLoopCode = useLoopCode({
             id: item.loopId,
             branches: item.branches,
@@ -113,14 +113,16 @@ export default function useLoopCode({
         // Para nested loops que vienen de trialsWithCode, tienen {id, name, type, isLoop, timelineProps}
         // Para nested loops antiguos (legacy), tienen {loopId, loopName, ...}
         const itemName = isLoopData(item)
-          ? item.loopName || item.name // Soportar ambos formatos
+          ? item.loopName || (item as any).name // Soportar ambos formatos
           : item.trialName;
         const itemNameSanitized = sanitizeName(itemName);
         const isLastItem = index === trials.length - 1;
 
         // Para loops, usar el ID sanitizado del loop en lugar del nombre
         // Esto debe coincidir con cómo se define el procedure del loop
-        const loopId = isLoopData(item) ? item.loopId || item.id : null; // Soportar ambos formatos
+        const loopId = isLoopData(item)
+          ? item.loopId || (item as any).id
+          : null; // Soportar ambos formatos
         const timelineRef = isLoopData(item)
           ? `${sanitizeName(loopId)}_procedure`
           : `${itemNameSanitized}_timeline`;
@@ -202,7 +204,7 @@ export default function useLoopCode({
     const timelineRefs = trials
       .map((item) => {
         const itemName = isLoopData(item)
-          ? item.loopName || item.name // Soportar ambos formatos
+          ? item.loopName || (item as any).name // Soportar ambos formatos
           : item.trialName;
         const itemNameSanitized = sanitizeName(itemName);
         return `${itemNameSanitized}_wrapper`;
