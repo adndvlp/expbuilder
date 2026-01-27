@@ -3,7 +3,6 @@ import {
   fetchExperimentNameByID,
   useExperimentID,
 } from "../../../hooks/useExperimentID";
-import { useExperimentStorage } from "../../../hooks/useStorage";
 import useTrials from "../../../hooks/useTrials";
 import LocalExperiment from "./LocalExperiment";
 import PublicExperiment from "./PublicExperiment";
@@ -19,17 +18,6 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
   const [extensionsString, setExtensionsString] = useState("");
 
   const experimentID = useExperimentID();
-
-  // Obtén el storage desde el hook, pero si está undefined, usa el valor cacheado en localStorage
-  let storage = useExperimentStorage(experimentID ?? "");
-  if (!storage && experimentID) {
-    try {
-      const cached = localStorage.getItem(`experiment_storage_${experimentID}`);
-      if (cached) storage = cached;
-    } catch (e) {
-      // Ignorar errores de localStorage
-    }
-  }
 
   useEffect(() => {
     if (experimentID) {
@@ -252,7 +240,7 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
     branchingEvaluation,
     uploadedFiles,
     experimentName,
-    storage,
+    storage: undefined, // No usar storage del hook, siempre pasar como parámetro
     getTrial,
     getLoopTimeline,
     getLoop,

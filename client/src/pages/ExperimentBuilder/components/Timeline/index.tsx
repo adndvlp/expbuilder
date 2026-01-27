@@ -113,7 +113,6 @@ function Timeline({
     experimentID,
     lastPagesUrl,
     isTunnelActive,
-    generateExperiment,
     setIsSubmitting,
     generateLocalExperiment,
     setSubmitStatus,
@@ -131,6 +130,7 @@ function Timeline({
     setAvailableStorages,
     setShowStorageModal,
     setIsPublishing,
+    generateExperiment, // Pasar la función para generar código público
   });
 
   // Ya no validamos códigos localmente - el backend maneja esto cuando se genera el experimento

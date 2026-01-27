@@ -13,14 +13,12 @@ type Props = {
   setCopyStatus: Dispatch<SetStateAction<string>>;
   setTunnelStatus: Dispatch<SetStateAction<string>>;
   setTunnelActive: Dispatch<SetStateAction<boolean>>;
-  generateExperiment: () => Promise<string>;
 };
 
 export default function Actions({
   experimentID,
   lastPagesUrl,
   isTunnelActive,
-  generateExperiment,
   setIsSubmitting,
   generateLocalExperiment,
   setSubmitStatus,
@@ -34,15 +32,18 @@ export default function Actions({
     setIsSubmitting(true);
 
     try {
-      const generatedCode = isDevMode ? code : await generateLocalExperiment();
+      const generatedLocalCode = isDevMode
+        ? code
+        : await generateLocalExperiment();
 
       if (!isDevMode) {
         setSubmitStatus("Saving configuration...");
-        const generatedCode = await generateExperiment();
 
-        setCode(generatedCode);
+        setCode(generatedLocalCode);
 
-        const config = { generatedCode };
+        const config = {
+          generatedCode: generatedLocalCode, // Código local para ejecutar
+        };
 
         // Paso 1: Guarda la configuración
         const response = await fetch(
@@ -50,7 +51,7 @@ export default function Actions({
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(config),
+            body: JSON.stringify({ config, isDevMode }),
             credentials: "include",
             mode: "cors",
           },
@@ -69,14 +70,14 @@ export default function Actions({
         setSubmitStatus("Saved Configuration! Building experiment...");
       }
 
-      // Paso 2: Llama al build/run-experiment
+      // Paso 2: Llama al build/run-experiment con código LOCAL
       setSubmitStatus("Running experiment...");
       const runResponse = await fetch(
         `${API_URL}/api/run-experiment/${experimentID}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ generatedCode }),
+          body: JSON.stringify({ generatedCode: generatedLocalCode }),
           credentials: "include",
           mode: "cors",
         },

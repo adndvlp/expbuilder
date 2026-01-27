@@ -14,6 +14,7 @@ type Props = {
   setAvailableStorages: Dispatch<SetStateAction<string[]>>;
   setShowStorageModal: Dispatch<SetStateAction<boolean>>;
   setIsPublishing: Dispatch<SetStateAction<boolean>>;
+  generateExperiment: (storage?: string) => Promise<string>; // Función para generar código público
 };
 
 export default function PublishExperiment({
@@ -24,6 +25,7 @@ export default function PublishExperiment({
   setAvailableStorages,
   setShowStorageModal,
   setIsPublishing,
+  generateExperiment,
 }: Props) {
   const handlePublishToGitHub = async () => {
     try {
@@ -72,15 +74,28 @@ export default function PublishExperiment({
   const publishWithStorage = async (uid: string, selectedStorage: string) => {
     setShowStorageModal(false);
     setIsPublishing(true);
-    setPublishStatus("Publishing to GitHub...");
+    setPublishStatus("Generating public code...");
 
     try {
+      // Generar código público para GitHub Pages con el storage seleccionado
+      const generatedPublicCode = await generateExperiment(selectedStorage);
+
+      if (!generatedPublicCode) {
+        throw new Error("Failed to generate public experiment code");
+      }
+
+      setPublishStatus("Publishing to GitHub...");
+
       const response = await fetch(
         `${API_URL}/api/publish-experiment/${experimentID}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ uid, storage: selectedStorage }),
+          body: JSON.stringify({
+            uid,
+            storage: selectedStorage,
+            generatedPublicCode, // Enviar el código público generado
+          }),
           credentials: "include",
           mode: "cors",
         },

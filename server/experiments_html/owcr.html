@@ -951,7 +951,9 @@ response_components: jsPsych.timelineVariable("response_components"),
           "ok"
         ]
       }
-    ]
+    ],
+    "components_New_Trial_1": [],
+    "response_components_New_Trial_1": []
   }
 ];
     
@@ -1205,6 +1207,9 @@ response_components: jsPsych.timelineVariable("response_components_pura"),
         trial_id: 1769327103239,
         isInLoop: true,
         
+        branches: [1769375167838],
+        branchConditions: [[]] 
+        
       },
     on_start: function(trial) {
       // Then apply custom parameters from branching conditions (higher priority)
@@ -1285,18 +1290,15 @@ response_components: jsPsych.timelineVariable("response_components_pura"),
       
     },
     on_finish: function(data) {
-      // Este trial no tiene branches ni repeat conditions, verificar si el loop padre tiene branches
-      if (typeof loop_loop_1769327107791_HasBranches !== 'undefined' && loop_loop_1769327107791_HasBranches) {
-        // El loop tiene branches, activar branching del loop al terminar
-        // Esto se manejará en el on_finish del loop
-        loop_loop_1769327107791_ShouldBranchOnFinish = true;
-      } else if (!loop_loop_1769327107791_HasBranches) {
-        // Ni el trial ni el loop tienen branches - trial terminal
-        // Si llegamos aquí después de un branching global, terminar el experimento
-        if (window.branchingActive) {
-          jsPsych.abortExperiment('', {});
-        }
+      // Branching automático al primer branch (dentro del loop)
+      const branches = [1769375167838];
+      if (branches.length > 0) {
+        console.log('🔄 [LOOP BRANCH] Auto-branching to first branch:', branches[0]);
+        loop_loop_1769327107791_NextTrialId = branches[0];
+        loop_loop_1769327107791_SkipRemaining = true;
+        loop_loop_1769327107791_BranchingActive = true;
       }
+      
     },};
 
 
@@ -2005,6 +2007,110 @@ const loop_1769327257543_procedure = {
 timeline.push(loop_1769327257543_procedure);
 
 
+
+    
+    const New_Trial_1_timeline = {
+    type: DynamicPlugin, 
+      data: {
+        rt: "rt_New_Trial_1",
+        trial_id: 1769375167838,
+        isInLoop: true,
+        
+      },
+    on_start: function(trial) {
+      // Then apply custom parameters from branching conditions (higher priority)
+      // For trials in loops, use loop-specific BranchCustomParameters
+      if (typeof loop_loop_1769327107791_BranchCustomParameters !== 'undefined' && loop_loop_1769327107791_BranchCustomParameters && typeof loop_loop_1769327107791_BranchCustomParameters === 'object') {
+        Object.entries(loop_loop_1769327107791_BranchCustomParameters).forEach(([key, param]) => {
+          if (param && param.source !== 'none') {
+            // Parse key to check if it's a nested survey question
+            const parts = key.split('::');
+            
+            if (parts.length === 4) {
+              // Format: fieldType::componentName::survey_json::questionName
+              const [fieldType, componentName, propName, questionName] = parts;
+              
+              if (fieldType && componentName && propName === 'survey_json' && questionName) {
+                // Find the component by name in the field array
+                const fieldArray = trial[fieldType];
+                if (Array.isArray(fieldArray)) {
+                  const compIndex = fieldArray.findIndex(c => c.name === componentName);
+                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {
+                    // Find the question in survey_json.elements
+                    const elements = fieldArray[compIndex].survey_json.elements || [];
+                    const questionIndex = elements.findIndex(q => q.name === questionName);
+                    
+                    if (questionIndex !== -1) {
+                      // Apply the override value (from typed or csv)
+                      let valueToSet;
+                      if (param.source === 'typed') {
+                        valueToSet = String(param.value); // Convert to string for SurveyJS
+                      } else if (param.source === 'csv') {
+                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string
+                      }
+                      
+                      if (valueToSet !== undefined && valueToSet !== null) {
+                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;
+                      }
+                    }
+                  }
+                }
+              }
+            } else if (parts.length === 3) {
+              // Format: fieldType::componentName::property (for DynamicPlugin components)
+              const [fieldType, componentName, propName] = parts;
+              
+              if (fieldType && componentName && propName) {
+                // Find the component by name in the field array
+                const fieldArray = trial[fieldType];
+                if (Array.isArray(fieldArray)) {
+                  const compIndex = fieldArray.findIndex(c => c.name === componentName);
+                  if (compIndex !== -1) {
+                    // Apply the override value (from typed or csv)
+                    let valueToSet;
+                    if (param.source === 'typed') {
+                      valueToSet = param.value;
+                    } else if (param.source === 'csv') {
+                      valueToSet = trial[param.value];
+                    }
+                    
+                    if (valueToSet !== undefined && valueToSet !== null) {
+                      fieldArray[compIndex][propName] = valueToSet;
+                    }
+                  }
+                }
+              }
+            } else {
+              // Normal parameter (not nested survey question)
+              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
+                trial[key] = param.value;
+              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
+                trial[key] = trial[param.value];
+              }
+            }
+          }
+        });
+        // Clear the custom parameters after applying them
+        loop_loop_1769327107791_BranchCustomParameters = null;
+      }
+      
+    },
+    on_finish: function(data) {
+      // Este trial no tiene branches ni repeat conditions, verificar si el loop padre tiene branches
+      if (typeof loop_loop_1769327107791_HasBranches !== 'undefined' && loop_loop_1769327107791_HasBranches) {
+        // El loop tiene branches, activar branching del loop al terminar
+        // Esto se manejará en el on_finish del loop
+        loop_loop_1769327107791_ShouldBranchOnFinish = true;
+      } else if (!loop_loop_1769327107791_HasBranches) {
+        // Ni el trial ni el loop tienen branches - trial terminal
+        // Si llegamos aquí después de un branching global, terminar el experimento
+        if (window.branchingActive) {
+          jsPsych.abortExperiment('', {});
+        }
+      }
+    },};
+
+
 // --- Branching logic variables for loop loop_1769327107791 ---
 let loop_loop_1769327107791_NextTrialId = null;
 let loop_loop_1769327107791_SkipRemaining = false;
@@ -2110,6 +2216,51 @@ let loop_loop_1769327107791_ShouldBranchOnFinish = false;
       timeline: [loop_1769327257543_procedure],
       conditional_function: function() {
         const currentId = "loop_1769327257543";
+        
+        // Verificar si hay un trial/loop objetivo guardado en localStorage (para repeat/jump global)
+        const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
+        if (jumpToTrial) {
+          if (String(currentId) === String(jumpToTrial)) {
+            // Encontramos el trial/loop objetivo para repeat/jump
+            console.log('Repeat/jump: Found target trial/loop inside loop', currentId);
+            localStorage.removeItem('jsPsych_jumpToTrial');
+            return true;
+          }
+          // No es el objetivo, saltar
+          console.log('Repeat/jump: Skipping trial/loop inside loop', currentId);
+          return false;
+        }
+        
+        // Si el item objetivo ya fue ejecutado, saltar todos los items restantes en esta iteración
+        if (loop_loop_1769327107791_TargetExecuted) {
+          
+          return false;
+        }
+        
+        // Si loopSkipRemaining está activo, verificar si este es el item objetivo
+        if (loop_loop_1769327107791_SkipRemaining) {
+          if (String(currentId) === String(loop_loop_1769327107791_NextTrialId)) {
+            // Encontramos el item objetivo dentro del loop
+            loop_loop_1769327107791_TargetExecuted = true;
+            return true;
+          }
+          // No es el objetivo, saltar
+          return false;
+        }
+        
+        // No hay branching activo, ejecutar normalmente
+        return true;
+      },
+      on_timeline_finish: function() {
+        
+      }
+    };
+
+
+    const New_Trial_1_wrapper = {
+      timeline: [New_Trial_1_timeline],
+      conditional_function: function() {
+        const currentId = New_Trial_1_timeline.data.trial_id;
         
         // Verificar si hay un trial/loop objetivo guardado en localStorage (para repeat/jump global)
         const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
@@ -2293,7 +2444,7 @@ const getNextLoopTrialId_loop_1769327107791 = (lastTrialData) => {
 };
 
 const loop_1769327107791_procedure = {
-  timeline: [agua_wrapper, pura_wrapper, Nested_Loop_1_wrapper],
+  timeline: [agua_wrapper, pura_wrapper, Nested_Loop_1_wrapper, New_Trial_1_wrapper],
   timeline_variables: test_stimuli_loop_1769327107791,
   repetitions: 1,
   randomize_order: false,

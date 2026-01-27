@@ -32,7 +32,8 @@ export default function PublicExperiment({
   getLoopTimeline,
   getLoop,
 }: Props) {
-  const generateExperiment = async () => {
+  const generateExperiment = async (storageOverride?: string) => {
+    const useStorage = storageOverride || storage;
     // Generate codes dynamically from trial/loop data
     let allCodes = "";
     try {
@@ -155,7 +156,7 @@ export default function PublicExperiment({
           experimentID: "${experimentID}",
           experimentName: "${experimentName}", 
           sessionId: trialSessionId,
-          storage: "${storage}",
+          storage: "${useStorage}",
           uid: Uid
         }),
       });
@@ -214,22 +215,11 @@ export default function PublicExperiment({
       experimentID: '${experimentID}',
       sessionId: trialSessionId,
       startedAt: window.firebase.database.ServerValue.TIMESTAMP,
-      storage: '${storage}',
+      storage: '${useStorage}',
       state: 'initiated',
       lastUpdate: window.firebase.database.ServerValue.TIMESTAMP,
       metadata: metadata
     });
-    
-    // Guardar metadata en db.json local también (para persistencia)
-    fetch('/api/save-online-session-metadata/${experimentID}', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: trialSessionId,
-        metadata: metadata,
-        state: 'initiated'
-      })
-    }).catch(err => console.warn('Could not save metadata to local db:', err));
     
     // Cuando se desconecte sin completar, marcar como abandoned
     // Incluir needsFinalization para que se procesen los datos en caso de desconexión
@@ -238,7 +228,7 @@ export default function PublicExperiment({
       needsFinalization: true,
       state: 'abandoned',
       disconnectedAt: window.firebase.database.ServerValue.TIMESTAMP,
-      storage: '${storage}'
+      storage: '${useStorage}'
     });
 
     ${evaluateCondition}
@@ -260,22 +250,15 @@ export default function PublicExperiment({
 
       on_data_update: function (data) {
 
+        // Agregar timestamp del cliente para ordenamiento correcto
+        data.clientTimestamp = Date.now();
+
         // Actualizar estado a 'in-progress' en la primera actualización
         if (data.trial_index === 0) {
           sessionRef.update({
             state: 'in-progress',
             lastUpdate: window.firebase.database.ServerValue.TIMESTAMP
           }).catch(err => console.error('Error updating state:', err));
-          
-          // Actualizar también en db.json local
-          fetch('/api/save-online-session-metadata/${experimentID}', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              sessionId: trialSessionId,
-              state: 'in-progress'
-            })
-          }).catch(err => console.warn('Could not update state in local db:', err));
         }
 
         // Create and track the promise for this data save
@@ -286,7 +269,7 @@ export default function PublicExperiment({
             experimentID: "${experimentID}",
             sessionId: trialSessionId,
             data: data,
-            storage: "${storage}",
+            storage: "${useStorage}",
           }),
         })
         .then(res => {
@@ -344,16 +327,6 @@ export default function PublicExperiment({
             finishedAt: window.firebase.database.ServerValue.TIMESTAMP,
             lastUpdate: window.firebase.database.ServerValue.TIMESTAMP
           });
-          
-          // Guardar estado completado en db.json local (persistencia)
-          await fetch('/api/save-online-session-metadata/${experimentID}', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              sessionId: trialSessionId,
-              state: 'completed'
-            })
-          }).catch(err => console.warn('Could not update completed state in local db:', err));
           
           // El backend procesará la finalización al detectar needsFinalization=true
           console.log('Session marked for finalization in Firebase');

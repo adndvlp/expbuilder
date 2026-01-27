@@ -42,7 +42,7 @@ router.get("/api/load-experiments", async (req, res) => {
     await db.read();
     ensureDbData();
     const experiments = db.data.experiments.sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
     );
     res.json({ experiments });
   } catch (error) {
@@ -63,7 +63,7 @@ router.get("/api/experiment/:experimentID", async (req, res) => {
   try {
     await db.read();
     const experiment = db.data.experiments.find(
-      (e) => e.experimentID === req.params.experimentID
+      (e) => e.experimentID === req.params.experimentID,
     );
     if (!experiment) {
       return res.status(404).json({ experiment: null });
@@ -142,12 +142,12 @@ router.delete("/api/delete-experiment/:experimentID", async (req, res) => {
     ensureDbData();
     // Obtener storage desde la base de datos
     const experiment = db.data.experiments.find(
-      (e) => e.experimentID === experimentID
+      (e) => e.experimentID === experimentID,
     );
     const storage = experiment?.storage;
 
     const experimentIndex = db.data.experiments.findIndex(
-      (e) => e.experimentID === experimentID
+      (e) => e.experimentID === experimentID,
     );
     if (experimentIndex !== -1) {
       db.data.experiments.splice(experimentIndex, 1);
@@ -155,17 +155,17 @@ router.delete("/api/delete-experiment/:experimentID", async (req, res) => {
 
     // Eliminar trials relacionados
     db.data.trials = db.data.trials.filter(
-      (t) => t.experimentID !== experimentID
+      (t) => t.experimentID !== experimentID,
     );
 
     // Eliminar configs relacionados
     db.data.configs = db.data.configs.filter(
-      (c) => c.experimentID !== experimentID
+      (c) => c.experimentID !== experimentID,
     );
 
     // Eliminar session results relacionados
     db.data.sessionResults = db.data.sessionResults.filter(
-      (s) => s.experimentID !== experimentID
+      (s) => s.experimentID !== experimentID,
     );
 
     await db.write();
@@ -174,13 +174,13 @@ router.delete("/api/delete-experiment/:experimentID", async (req, res) => {
     if (experiment && experiment.name) {
       const experimentHtmlPath = path.join(
         experimentsHtmlDir,
-        `${experiment.name}.html`
+        `${experiment.name}.html`,
       );
       if (fs.existsSync(experimentHtmlPath)) fs.unlinkSync(experimentHtmlPath);
 
       const previewHtmlPath = path.join(
         trialsPreviewsHtmlDir,
-        `${experiment.name}.html`
+        `${experiment.name}.html`,
       );
       if (fs.existsSync(previewHtmlPath)) fs.unlinkSync(previewHtmlPath);
     }
@@ -198,6 +198,14 @@ router.delete("/api/delete-experiment/:experimentID", async (req, res) => {
     // Llamar a Firebase para eliminar experimento (storage + GitHub repo)
     if (uid) {
       try {
+        // Sanitizar nombre del repositorio igual que en publish
+        const sanitizedRepoName = experiment?.name
+          ? experiment.name
+              .replace(/\s+/g, "-") // Espacios a guiones
+              .replace(/[^a-zA-Z0-9-_]/g, "") // Solo alfanuméricos, guiones y guión bajo
+              .toLowerCase()
+          : experimentID;
+
         const firebaseUrl = `${process.env.FIREBASE_URL}/apiDeleteExperiment`;
 
         const firebaseResponse = await fetch(firebaseUrl, {
@@ -208,7 +216,7 @@ router.delete("/api/delete-experiment/:experimentID", async (req, res) => {
           body: JSON.stringify({
             experimentID: experimentID,
             uid: uid,
-            repoName: experiment?.name || experimentID,
+            repoName: sanitizedRepoName,
           }),
         });
 
@@ -225,13 +233,13 @@ router.delete("/api/delete-experiment/:experimentID", async (req, res) => {
         } else {
           console.warn(
             "Warning: Firebase experiment deletion failed:",
-            firebaseData.message
+            firebaseData.message,
           );
         }
       } catch (firebaseError) {
         console.error(
           "Error calling Firebase delete experiment:",
-          firebaseError.message
+          firebaseError.message,
         );
       }
     }
@@ -289,7 +297,7 @@ router.post("/api/run-experiment/:experimentID", async (req, res) => {
     // Obtener el nombre del experimento
     await db.read();
     const experiment = db.data.experiments.find(
-      (e) => e.experimentID === experimentID
+      (e) => e.experimentID === experimentID,
     );
     if (!experiment || !experiment.name) {
       return res
@@ -301,7 +309,7 @@ router.post("/api/run-experiment/:experimentID", async (req, res) => {
     const templatePath = ensureTemplate("experiment_template.html");
     const experimentHtmlPath = path.join(
       experimentsHtmlDir,
-      `${experimentName}.html`
+      `${experimentName}.html`,
     );
     // Copia el template si no existe
     if (!fs.existsSync(experimentHtmlPath)) {
@@ -316,7 +324,7 @@ router.post("/api/run-experiment/:experimentID", async (req, res) => {
         .json({ success: false, error: "No generated code provided" });
     }
     $("body").append(
-      `<script id="generated-script">\n${generatedCode}\n</script>`
+      `<script id="generated-script">\n${generatedCode}\n</script>`,
     );
     fs.writeFileSync(experimentHtmlPath, $.html());
     res.json({
@@ -341,7 +349,7 @@ router.get("/:experimentID", async (req, res) => {
   const experimentID = req.params.experimentID;
   await db.read();
   const experiment = db.data.experiments.find(
-    (e) => e.experimentID === experimentID
+    (e) => e.experimentID === experimentID,
   );
   if (!experiment || !experiment.name)
     return res.status(404).send("Experiment not found");
@@ -363,7 +371,7 @@ router.get("/:experimentID/preview", async (req, res) => {
   const experimentID = req.params.experimentID;
   await db.read();
   const experiment = db.data.experiments.find(
-    (e) => e.experimentID === experimentID
+    (e) => e.experimentID === experimentID,
   );
   if (!experiment || !experiment.name)
     return res.status(404).send("Experiment not found");
@@ -395,7 +403,7 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
     // Obtener el nombre del experimento
     await db.read();
     const experiment = db.data.experiments.find(
-      (e) => e.experimentID === experimentID
+      (e) => e.experimentID === experimentID,
     );
     if (!experiment || !experiment.name) {
       return res
@@ -406,7 +414,7 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
     const templatePath = ensureTemplate("trials_preview_template.html");
     const previewHtmlPath = path.join(
       trialsPreviewsHtmlDir,
-      `${experimentName}.html`
+      `${experimentName}.html`,
     );
     if (!fs.existsSync(previewHtmlPath)) {
       fs.copyFileSync(templatePath, previewHtmlPath);
@@ -420,7 +428,7 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
         .json({ success: false, error: "No generated code provided" });
     }
     $("body").append(
-      `<script id="generated-script">\n${generatedCode}\n</script>`
+      `<script id="generated-script">\n${generatedCode}\n</script>`,
     );
     fs.writeFileSync(previewHtmlPath, $.html());
     res.json({
@@ -455,7 +463,7 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
 router.post("/api/publish-experiment/:experimentID", async (req, res) => {
   try {
     const { experimentID } = req.params;
-    const { uid, storage } = req.body;
+    const { uid, storage, generatedPublicCode } = req.body;
 
     if (!uid) {
       return res.status(400).json({
@@ -464,86 +472,93 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
       });
     }
 
+    if (!generatedPublicCode) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Generated public code is required. Please build the experiment first.",
+      });
+    }
+
     const normalizedStorage = storage || "googledrive";
 
-    // Buscar el nombre del experimento
+    // Buscar el experimento
     await db.read();
-    const experimentPublish = db.data.experiments.find(
-      (e) => e.experimentID === experimentID
+    const experiment = db.data.experiments.find(
+      (e) => e.experimentID === experimentID,
     );
-    if (!experimentPublish || !experimentPublish.name) {
+
+    if (!experiment || !experiment.name) {
       return res.status(404).json({
         success: false,
         error: "Experiment not found",
       });
     }
 
-    // Actualizar storage si se proporciona y es diferente
-    if (experimentPublish.storage !== normalizedStorage) {
-      experimentPublish.storage = normalizedStorage;
+    // Actualizar storage si cambió
+    if (experiment.storage !== normalizedStorage) {
+      experiment.storage = normalizedStorage;
+      experiment.updatedAt = new Date().toISOString();
       await db.write();
       console.log(
-        `Storage updated to ${normalizedStorage} for experiment ${experimentID}`
+        `Storage updated to ${normalizedStorage} for experiment ${experimentID}`,
       );
     }
-    const experimentNamePublish = experimentPublish.name;
-    // Verificar que el HTML del experimento exista
+
+    // Sanitizar nombre del repositorio (sin espacios, caracteres especiales)
+    const sanitizedRepoName = experiment.name
+      .replace(/\s+/g, "-") // Espacios a guiones
+      .replace(/[^a-zA-Z0-9-_]/g, "") // Solo alfanuméricos, guiones y guión bajo
+      .toLowerCase();
+
+    console.log(
+      `Publishing experiment: ${experiment.name} as repo: ${sanitizedRepoName}`,
+    );
+
+    // Leer el HTML del experimento existente (con código local)
     const experimentHtmlPath = path.join(
       experimentsHtmlDir,
-      `${experimentNamePublish}.html`
+      `${experiment.name}.html`,
     );
+
     if (!fs.existsSync(experimentHtmlPath)) {
       return res.status(404).json({
         success: false,
-        error: "Experiment HTML not found. Please run the experiment first.",
+        error: "Experiment HTML not found. Please build the experiment first.",
       });
     }
-    // Leer y modificar el HTML para reemplazar el script generado
+
     let html = fs.readFileSync(experimentHtmlPath, "utf8");
     const $ = cheerio.load(html);
 
-    // Obtener el código generado más reciente desde config
-    await db.read();
-    const configDoc = db.data.configs.find(
-      (c) => c.experimentID === experimentID
+    // Reemplazar el script generado con código PÚBLICO enviado desde el frontend
+    console.log(
+      "Replacing script with PUBLIC experiment code for publishing...",
     );
-    const generatedCode = configDoc?.data?.generatedCode || "";
-
-    // Reemplazar el script generado
     $("script#generated-script").remove();
-    if (generatedCode) {
+    if (generatedPublicCode) {
       $("body").append(
-        `<script id=\"generated-script\">\n${generatedCode}\n</script>`
+        `<script id=\"generated-script\">\n${generatedPublicCode}\n</script>`,
       );
     }
-
-    // Obtener storage actualizado desde la base de datos
-    const experiment = db.data.experiments.find(
-      (e) => e.experimentID === experimentID
-    );
-    const finalStorage = experiment?.storage || "googledrive";
 
     // Reemplazar rutas locales por rutas CDN para publicación
     $("link[href*='jspsych-bundle']").attr(
       "href",
-      "https://adndvlp.github.io/jspsych-cdn-for-expbuilder/index.css"
+      "https://adndvlp.github.io/jspsych-cdn-for-expbuilder/index.css",
     );
     $("script[src*='jspsych-bundle']").attr(
       "src",
-      "https://adndvlp.github.io/jspsych-cdn-for-expbuilder/index.js"
+      "https://adndvlp.github.io/jspsych-cdn-for-expbuilder/index.js",
     );
 
-    // Usar el HTML modificado para publicar en GitHub
     const htmlContent = $.html();
 
     // Leer archivos multimedia y convertir a base64
-    let experimentNameUploads = experimentID;
-    if (experimentPublish && experimentPublish.name) {
-      experimentNameUploads = experimentPublish.name;
-    }
-    const uploadsBase = path.join(userDataRoot, experimentNameUploads);
+    const uploadsBase = path.join(userDataRoot, experiment.name);
     const mediaTypes = ["img", "vid", "aud"];
     let mediaFiles = [];
+
     for (const type of mediaTypes) {
       const typeDir = path.join(uploadsBase, type);
       if (fs.existsSync(typeDir)) {
@@ -575,13 +590,13 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
         },
         body: JSON.stringify({
           uid: uid,
-          repoName: experiment?.name || experimentID,
+          repoName: sanitizedRepoName,
           htmlContent: htmlContent,
-          description: `Experiment: ${experiment?.name || experimentID}`,
+          description: `Experiment: ${experiment.name}`,
           isPrivate: false,
           mediaFiles: mediaFiles.length > 0 ? mediaFiles : undefined,
           experimentID: experimentID,
-          storageProvider: finalStorage,
+          storageProvider: normalizedStorage,
         }),
       });
 
@@ -590,7 +605,7 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
       if (githubData.success) {
         console.log(
           "Experiment published to GitHub Pages:",
-          githubData.pagesUrl
+          githubData.pagesUrl,
         );
         res.json({
           success: true,

@@ -103,7 +103,7 @@ export default function OsfToken() {
 
     if (
       !confirm(
-        "Are you sure you want to disconnect OSF? This will remove your token."
+        "Are you sure you want to disconnect OSF? This will remove your token.",
       )
     ) {
       return;
@@ -233,17 +233,18 @@ export default function OsfToken() {
                       marginTop: 12,
                     }}
                   >
-                    OSF Project ID:
+                    OSF Parent Project ID:
                   </p>
                   <p style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>
-                    Enter the ID of your OSF project where experiment data will
-                    be stored. You can find this in your project URL (e.g.,
+                    Enter the ID of your OSF parent project. Each experiment
+                    will create a data component (sub-project) inside this
+                    project. You can find the ID in your project URL (e.g.,
                     https://osf.io/<strong>abc12</strong>)
                   </p>
                 </div>
                 <input
                   type="text"
-                  placeholder="OSF Project ID (e.g., abc12)"
+                  placeholder="Parent Project ID (e.g., abc12)"
                   value={projectIdInput}
                   onChange={(e) => {
                     setProjectIdInput(e.target.value);
