@@ -229,6 +229,52 @@ export default function TrialMethods({
   const deleteTrial = useCallback(
     async (id: string | number): Promise<boolean> => {
       try {
+        // ========== OPTIMISTIC UI: BORRADO INTELIGENTE ==========
+        // Reconectar TODOS los branches (hijos) del trial eliminado con TODOS los padres
+        const updateTimelineFn = (prev: any[]) => {
+          // 1. Encontrar el trial que se va a eliminar para obtener sus branches (hijos)
+          const trialToDelete = prev.find(
+            (item) => item.id === id && item.type === "trial",
+          );
+          const childrenBranches = trialToDelete?.branches || [];
+
+          // 2. Reconectar: reemplazar referencias al trial eliminado con TODOS sus hijos
+          //    Ejemplo: Trial0→Trial1→[Trial2, Trial3]
+          //    Al borrar Trial1 → Trial0→[Trial2, Trial3]
+          const reconnected = prev.map((item) => {
+            if (item.branches && item.branches.includes(id)) {
+              // Remover el trial eliminado
+              const newBranches = item.branches.filter(
+                (branchId: string | number) => branchId !== id,
+              );
+              // Agregar TODOS los hijos del trial eliminado (evitar duplicados)
+              childrenBranches.forEach((childId: string | number) => {
+                if (!newBranches.includes(childId)) {
+                  newBranches.push(childId);
+                }
+              });
+              return {
+                ...item,
+                branches: newBranches,
+              };
+            }
+            return item;
+          });
+
+          // 3. Eliminar el trial del timeline
+          return reconnected.filter((item) => item.id !== id);
+        };
+
+        // Actualizar ambos timelines para cubrir todos los casos
+        setTimeline(updateTimelineFn);
+        setLoopTimeline(updateTimelineFn);
+
+        // Limpiar selección si era el trial eliminado
+        if (selectedTrial?.id === id) {
+          setSelectedTrial(null);
+        }
+        // ========== FIN OPTIMISTIC UI ==========
+
         const response = await fetch(
           `${API_URL}/api/trial/${experimentID}/${id}`,
           {
@@ -240,29 +286,6 @@ export default function TrialMethods({
           throw new Error("Failed to delete trial");
         }
 
-        // Optimistic UI: eliminar del timeline correcto y limpiar referencias en branches
-        const updateTimelineFn = (prev: any[]) =>
-          prev
-            // 1. Eliminar el trial del timeline
-            .filter((item) => item.id !== id)
-            // 2. Limpiar referencias del trial en todos los branches
-            .map((item) => ({
-              ...item,
-              branches:
-                item.branches?.filter(
-                  (branchId: string | number) => branchId !== id,
-                ) || [],
-            }));
-
-        // Actualizar ambos timelines para cubrir todos los casos
-        setTimeline(updateTimelineFn);
-        setLoopTimeline(updateTimelineFn);
-
-        // Limpiar selección si era el trial eliminado
-        if (selectedTrial?.id === id) {
-          setSelectedTrial(null);
-        }
-
         return true;
       } catch (error) {
         console.error("Error deleting trial:", error);
@@ -271,7 +294,7 @@ export default function TrialMethods({
         return false;
       }
     },
-    [experimentID, selectedTrial, getTimeline],
+    [experimentID, selectedTrial, getTimeline, setTimeline, setLoopTimeline],
   );
   return { createTrial, getTrial, updateTrial, updateTrialField, deleteTrial };
 }

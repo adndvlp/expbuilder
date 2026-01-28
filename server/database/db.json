@@ -5,6 +5,12 @@
       "name": "owcr",
       "createdAt": "2026-01-25T05:55:49.622Z",
       "updatedAt": "2026-01-25T05:55:49.622Z"
+    },
+    {
+      "experimentID": "b4517f16-e6ea-4e0e-a5a4-15f14b1f9a58",
+      "name": "wrvnjk",
+      "createdAt": "2026-01-28T23:13:34.593Z",
+      "updatedAt": "2026-01-28T23:13:34.593Z"
     }
   ],
   "trials": [
@@ -641,6 +647,214 @@
       ],
       "createdAt": "2026-01-25T06:00:05.656Z",
       "updatedAt": "2026-01-27T01:38:55.479Z"
+    },
+    {
+      "experimentID": "b4517f16-e6ea-4e0e-a5a4-15f14b1f9a58",
+      "trials": [
+        {
+          "type": "Trial",
+          "name": "New Trial",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1769642020433,
+          "createdAt": "2026-01-28T23:13:40.433Z",
+          "updatedAt": "2026-01-28T23:13:42.227Z",
+          "branches": [
+            1769642021366,
+            1769642022214
+          ]
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 1",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1769642021366,
+          "createdAt": "2026-01-28T23:13:41.366Z",
+          "updatedAt": "2026-01-28T23:13:45.197Z",
+          "branches": [
+            1769642023281,
+            1769642025184
+          ]
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 2",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1769642022214,
+          "createdAt": "2026-01-28T23:13:42.214Z",
+          "updatedAt": "2026-01-28T23:13:57.147Z",
+          "branches": [
+            1769642026731,
+            1769642037134
+          ],
+          "parentLoopId": null
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 3",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1769642023281,
+          "createdAt": "2026-01-28T23:13:43.281Z",
+          "updatedAt": "2026-01-28T23:13:43.281Z"
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 4",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1769642025184,
+          "createdAt": "2026-01-28T23:13:45.184Z",
+          "updatedAt": "2026-01-28T23:13:45.184Z"
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 5",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1769642026731,
+          "createdAt": "2026-01-28T23:13:46.731Z",
+          "updatedAt": "2026-01-28T23:13:52.739Z",
+          "parentLoopId": null
+        },
+        {
+          "type": "Trial",
+          "name": "rama de loop ahora de nested",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1769642033918,
+          "createdAt": "2026-01-28T23:13:53.918Z",
+          "updatedAt": "2026-01-28T23:14:41.951Z"
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 6",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "parentLoopId": null,
+          "id": 1769642037134,
+          "createdAt": "2026-01-28T23:13:57.134Z",
+          "updatedAt": "2026-01-28T23:14:09.013Z",
+          "branches": [
+            1769642038417,
+            1769642049000
+          ]
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 7",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "parentLoopId": null,
+          "id": 1769642038417,
+          "createdAt": "2026-01-28T23:13:58.417Z",
+          "updatedAt": "2026-01-28T23:14:02.229Z",
+          "branches": [
+            1769642033918
+          ]
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 5",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "parentLoopId": null,
+          "id": 1769642049000,
+          "createdAt": "2026-01-28T23:14:09.000Z",
+          "updatedAt": "2026-01-28T23:14:09.000Z"
+        }
+      ],
+      "loops": [],
+      "timeline": [
+        {
+          "id": 1769642020433,
+          "type": "trial",
+          "name": "New Trial",
+          "branches": [
+            1769642021366,
+            1769642022214
+          ]
+        },
+        {
+          "id": 1769642021366,
+          "type": "trial",
+          "name": "New Trial 1",
+          "branches": [
+            1769642023281,
+            1769642025184
+          ]
+        },
+        {
+          "id": 1769642023281,
+          "type": "trial",
+          "name": "New Trial 3",
+          "branches": []
+        },
+        {
+          "id": 1769642025184,
+          "type": "trial",
+          "name": "New Trial 4",
+          "branches": []
+        },
+        {
+          "id": 1769642022214,
+          "type": "trial",
+          "name": "New Trial 2",
+          "branches": [
+            1769642026731,
+            1769642037134
+          ]
+        },
+        {
+          "id": 1769642026731,
+          "type": "trial",
+          "name": "New Trial 5",
+          "branches": []
+        },
+        {
+          "id": 1769642037134,
+          "type": "trial",
+          "name": "New Trial 6",
+          "branches": [
+            1769642038417,
+            1769642049000
+          ]
+        },
+        {
+          "id": 1769642038417,
+          "type": "trial",
+          "name": "New Trial 7",
+          "branches": [
+            1769642033918
+          ]
+        },
+        {
+          "id": 1769642049000,
+          "type": "trial",
+          "name": "New Trial 5",
+          "branches": []
+        },
+        {
+          "id": 1769642033918,
+          "type": "trial",
+          "name": "rama de loop ahora de nested",
+          "branches": []
+        }
+      ],
+      "createdAt": "2026-01-28T23:13:40.435Z",
+      "updatedAt": "2026-01-28T23:15:01.325Z"
     }
   ],
   "configs": [
@@ -651,7 +865,16 @@
       },
       "isDevMode": false,
       "createdAt": "2026-01-25T05:57:09.201Z",
-      "updatedAt": "2026-01-27T02:03:02.133Z"
+      "updatedAt": "2026-01-28T22:35:16.387Z"
+    },
+    {
+      "experimentID": "b4517f16-e6ea-4e0e-a5a4-15f14b1f9a58",
+      "data": {
+        "generatedCode": ""
+      },
+      "isDevMode": false,
+      "createdAt": "2026-01-28T23:13:40.834Z",
+      "updatedAt": "2026-01-28T23:15:03.473Z"
     }
   ],
   "pluginConfigs": [],

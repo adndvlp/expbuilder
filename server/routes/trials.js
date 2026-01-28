@@ -359,6 +359,48 @@ router.delete("/api/trial/:experimentID/:id", async (req, res) => {
         .json({ success: false, error: "Experiment not found" });
     }
 
+    // ========== BORRADO INTELIGENTE: RECONECTAR PADRES CON HIJOS ==========
+    // 1. Encontrar el trial antes de eliminarlo para obtener sus branches (hijos)
+    const trialToDelete = experimentDoc.trials.find((t) => t.id === trialId);
+    const childrenBranches = trialToDelete?.branches || [];
+
+    // 2. Reconectar: Buscar todos los padres (trials/loops que tienen este trial en sus branches)
+    //    y reemplazar la referencia al trial eliminado con TODOS sus hijos
+    //    Esto asegura que si Trial1 tiene [Trial2, Trial3] y Trial0→Trial1,
+    //    al borrar Trial1, Trial0 quedará con [Trial2, Trial3]
+    experimentDoc.trials.forEach((trial) => {
+      if (trial.branches && trial.branches.includes(trialId)) {
+        // Remover el trial eliminado y agregar TODOS sus hijos
+        const newBranches = trial.branches.filter(
+          (branchId) => branchId !== trialId,
+        );
+        // Agregar TODOS los hijos del trial eliminado (evitar duplicados)
+        childrenBranches.forEach((childId) => {
+          if (!newBranches.includes(childId)) {
+            newBranches.push(childId);
+          }
+        });
+        trial.branches = newBranches;
+      }
+    });
+
+    experimentDoc.loops.forEach((loop) => {
+      if (loop.branches && loop.branches.includes(trialId)) {
+        // Remover el trial eliminado y agregar TODOS sus hijos
+        const newBranches = loop.branches.filter(
+          (branchId) => branchId !== trialId,
+        );
+        // Agregar TODOS los hijos del trial eliminado (evitar duplicados)
+        childrenBranches.forEach((childId) => {
+          if (!newBranches.includes(childId)) {
+            newBranches.push(childId);
+          }
+        });
+        loop.branches = newBranches;
+      }
+    });
+    // ========== FIN BORRADO INTELIGENTE ==========
+
     // Eliminar trial del array
     experimentDoc.trials = experimentDoc.trials.filter((t) => t.id !== trialId);
 
@@ -367,25 +409,13 @@ router.delete("/api/trial/:experimentID/:id", async (req, res) => {
       (item) => !(item.id === trialId && item.type === "trial"),
     );
 
-    // Eliminar referencias en loops
+    // Eliminar referencias en loops (trials contenidos)
     experimentDoc.loops = experimentDoc.loops.map((loop) => ({
       ...loop,
       trials: loop.trials?.filter((tid) => tid !== trialId) || [],
     }));
 
-    // Eliminar referencias en branches de todos los trials
-    experimentDoc.trials = experimentDoc.trials.map((trial) => ({
-      ...trial,
-      branches: trial.branches?.filter((bid) => bid !== trialId) || [],
-    }));
-
-    // Eliminar referencias en branches de todos los loops
-    experimentDoc.loops = experimentDoc.loops.map((loop) => ({
-      ...loop,
-      branches: loop.branches?.filter((bid) => bid !== trialId) || [],
-    }));
-
-    // Actualizar branches en el timeline
+    // Actualizar branches en el timeline con los nuevos valores
     experimentDoc.timeline = experimentDoc.timeline.map((item) => {
       if (item.type === "trial") {
         const trial = experimentDoc.trials.find((t) => t.id === item.id);
@@ -825,13 +855,122 @@ router.delete("/api/loop/:experimentID/:id", async (req, res) => {
         .json({ success: false, error: "Experiment not found" });
     }
 
-    // Encontrar el loop antes de eliminarlo para obtener sus trials
+    // Encontrar el loop antes de eliminarlo para obtener sus trials y branches
     const loopToDelete = experimentDoc.loops.find((l) => l.id === id);
+
+    if (!loopToDelete) {
+      return res.status(404).json({ success: false, error: "Loop not found" });
+    }
 
     // Encontrar la posición del loop en el timeline
     const loopIndex = experimentDoc.timeline.findIndex(
       (item) => item.id === id && item.type === "loop",
     );
+
+    // ========== BORRADO INTELIGENTE: RECONECTAR ESTRUCTURA DEL LOOP ==========
+    // Estrategia:
+    // 1. El PRIMER trial/loop del contenido se conecta con los padres
+    // 2. La estructura INTERNA del loop se mantiene intacta
+    // 3. Los BRANCHES del loop se conectan con el ÚLTIMO item de la cadena interna
+
+    const firstTrialId = loopToDelete.trials?.[0] || null;
+    const loopBranches = loopToDelete.branches || [];
+
+    // Paso 1: Reconectar padres con el PRIMER trial del loop
+    if (firstTrialId) {
+      experimentDoc.trials.forEach((trial) => {
+        if (trial.branches && trial.branches.includes(id)) {
+          // Reemplazar el loop con el primer trial del loop
+          trial.branches = trial.branches.map((branchId) =>
+            branchId === id ? firstTrialId : branchId,
+          );
+        }
+      });
+
+      experimentDoc.loops.forEach((loop) => {
+        if (loop.branches && loop.branches.includes(id)) {
+          // Reemplazar el loop con el primer trial del loop
+          loop.branches = loop.branches.map((branchId) =>
+            branchId === id ? firstTrialId : branchId,
+          );
+        }
+      });
+    } else {
+      // Si el loop está vacío, simplemente remover referencias
+      experimentDoc.trials.forEach((trial) => {
+        if (trial.branches && trial.branches.includes(id)) {
+          trial.branches = trial.branches.filter((branchId) => branchId !== id);
+        }
+      });
+
+      experimentDoc.loops.forEach((loop) => {
+        if (loop.branches && loop.branches.includes(id)) {
+          loop.branches = loop.branches.filter((branchId) => branchId !== id);
+        }
+      });
+    }
+
+    // Paso 2: Conectar los branches del loop con el ÚLTIMO item de la cadena interna
+    // Solo si el loop tiene branches
+    if (loopBranches.length > 0 && loopToDelete.trials) {
+      // Función helper para encontrar los últimos items (items que no son padres de otros)
+      const findLastItems = (trialIds) => {
+        const lastItems = [];
+
+        for (const trialId of trialIds) {
+          // Verificar si este trial es padre de algún otro trial dentro del loop
+          const trial = experimentDoc.trials.find((t) => t.id === trialId);
+          const nestedLoop = experimentDoc.loops.find((l) => l.id === trialId);
+
+          const itemBranches = trial?.branches || nestedLoop?.branches || [];
+
+          // Verificar si alguno de sus branches está dentro del loop
+          const hasBranchesInsideLoop = itemBranches.some((branchId) =>
+            trialIds.includes(branchId),
+          );
+
+          // Si no tiene branches dentro del loop, es un item final
+          if (!hasBranchesInsideLoop) {
+            lastItems.push(trialId);
+          }
+        }
+
+        return lastItems.length > 0 ? lastItems : [trialIds[0]];
+      };
+
+      const lastItems = findLastItems(loopToDelete.trials);
+
+      // Conectar al ÚLTIMO último item con los branches del loop
+      // (evita crear múltiples padres para el mismo branch)
+      if (lastItems.length > 0) {
+        const lastLastItemId = lastItems[lastItems.length - 1];
+
+        const trial = experimentDoc.trials.find((t) => t.id === lastLastItemId);
+        if (trial) {
+          // Agregar los branches del loop al trial final (evitar duplicados)
+          const currentBranches = trial.branches || [];
+          loopBranches.forEach((branchId) => {
+            if (!currentBranches.includes(branchId)) {
+              currentBranches.push(branchId);
+            }
+          });
+          trial.branches = currentBranches;
+        }
+
+        const loop = experimentDoc.loops.find((l) => l.id === lastLastItemId);
+        if (loop) {
+          // Agregar los branches del loop al loop final (evitar duplicados)
+          const currentBranches = loop.branches || [];
+          loopBranches.forEach((branchId) => {
+            if (!currentBranches.includes(branchId)) {
+              currentBranches.push(branchId);
+            }
+          });
+          loop.branches = currentBranches;
+        }
+      }
+    }
+    // ========== FIN BORRADO INTELIGENTE ==========
 
     // Eliminar loop del array
     experimentDoc.loops = experimentDoc.loops.filter((l) => l.id !== id);
@@ -841,13 +980,14 @@ router.delete("/api/loop/:experimentID/:id", async (req, res) => {
       (item) => !(item.id === id && item.type === "loop"),
     );
 
-    // Restaurar los trials en la posición donde estaba el loop
-    if (loopToDelete && loopToDelete.trials && loopIndex !== -1) {
+    // Restaurar TODOS los trials/loops que tienen este parentLoopId
+    // (no solo los que están en loop.trials, porque pueden haber branches internos)
+    if (loopIndex !== -1) {
       const trialsToInsert = [];
-      for (const itemId of loopToDelete.trials) {
-        // Buscar en trials
-        const trial = experimentDoc.trials.find((t) => t.id === itemId);
-        if (trial) {
+
+      // Buscar TODOS los trials que tienen este loop como padre
+      experimentDoc.trials.forEach((trial) => {
+        if (trial.parentLoopId === id) {
           // Limpiar parentLoopId del trial
           trial.parentLoopId = null;
           trialsToInsert.push({
@@ -856,92 +996,47 @@ router.delete("/api/loop/:experimentID/:id", async (req, res) => {
             name: trial.name,
             branches: trial.branches || [],
           });
-          continue;
         }
+      });
 
-        // Buscar en loops (nested loops)
-        const nestedLoop = experimentDoc.loops.find((l) => l.id === itemId);
-        if (nestedLoop) {
-          // Limpiar parentLoopId del loop nested
-          nestedLoop.parentLoopId = null;
+      // Buscar TODOS los nested loops que tienen este loop como padre
+      experimentDoc.loops.forEach((loop) => {
+        if (loop.parentLoopId === id) {
+          // IMPORTANTE: Limpiar parentLoopId del loop nested
+          // porque su padre acaba de ser borrado
+          loop.parentLoopId = null;
           trialsToInsert.push({
-            id: nestedLoop.id,
+            id: loop.id,
             type: "loop",
-            name: nestedLoop.name,
-            branches: nestedLoop.branches || [],
-            trials: nestedLoop.trials || [],
+            name: loop.name,
+            branches: loop.branches || [],
+            trials: loop.trials || [],
+            // Asegurar que el timeline item tampoco tenga parentLoopId
+            parentLoopId: undefined,
           });
+        }
+      });
+
+      // Insertar en la posición original del loop
+      if (trialsToInsert.length > 0) {
+        experimentDoc.timeline.splice(loopIndex, 0, ...trialsToInsert);
+      }
+    }
+
+    // Actualizar timeline con los branches actualizados
+    experimentDoc.timeline.forEach((item) => {
+      if (item.type === "trial") {
+        const trial = experimentDoc.trials.find((t) => t.id === item.id);
+        if (trial) {
+          item.branches = trial.branches || [];
+        }
+      } else if (item.type === "loop") {
+        const loop = experimentDoc.loops.find((l) => l.id === item.id);
+        if (loop) {
+          item.branches = loop.branches || [];
         }
       }
-      // Insertar en la posición original del loop
-      experimentDoc.timeline.splice(loopIndex, 0, ...trialsToInsert);
-    }
-
-    // Actualizar branches de todos los trials/loops que contenían este loop
-    // Reemplazar el ID del loop por los IDs de los trials que estaban en el loop
-    // pero solo los que NO tienen parentId dentro del loop (root trials del loop)
-    if (loopToDelete && loopToDelete.trials) {
-      // Encontrar los root trials del loop (los que no son branches de otros trials dentro del loop)
-      const trialsInLoop = loopToDelete.trials;
-      const rootTrialsInLoop = trialsInLoop.filter((trialId) => {
-        // Un trial es root si ningún otro trial del loop lo tiene como branch
-        const isRootTrial = !trialsInLoop.some((otherTrialId) => {
-          if (otherTrialId === trialId) return false;
-          const otherTrial = experimentDoc.trials.find(
-            (t) => t.id === otherTrialId,
-          );
-          return otherTrial?.branches?.includes(trialId);
-        });
-        return isRootTrial;
-      });
-
-      experimentDoc.trials.forEach((trial) => {
-        if (trial.branches && trial.branches.includes(id)) {
-          // Remover el loop ID
-          const filteredBranches = trial.branches.filter(
-            (branchId) => branchId !== id,
-          );
-          // Agregar solo los root trial IDs del loop
-          rootTrialsInLoop.forEach((trialId) => {
-            if (!filteredBranches.includes(trialId)) {
-              filteredBranches.push(trialId);
-            }
-          });
-          trial.branches = filteredBranches;
-        }
-      });
-
-      experimentDoc.loops.forEach((loop) => {
-        if (loop.branches && loop.branches.includes(id)) {
-          // Remover el loop ID
-          const filteredBranches = loop.branches.filter(
-            (branchId) => branchId !== id,
-          );
-          // Agregar solo los root trial IDs del loop eliminado
-          rootTrialsInLoop.forEach((trialId) => {
-            if (!filteredBranches.includes(trialId)) {
-              filteredBranches.push(trialId);
-            }
-          });
-          loop.branches = filteredBranches;
-        }
-      });
-
-      // Actualizar timeline con los branches actualizados
-      experimentDoc.timeline.forEach((item) => {
-        if (item.type === "trial") {
-          const trial = experimentDoc.trials.find((t) => t.id === item.id);
-          if (trial) {
-            item.branches = trial.branches || [];
-          }
-        } else if (item.type === "loop") {
-          const loop = experimentDoc.loops.find((l) => l.id === item.id);
-          if (loop) {
-            item.branches = loop.branches || [];
-          }
-        }
-      });
-    }
+    });
 
     experimentDoc.updatedAt = new Date().toISOString();
 
