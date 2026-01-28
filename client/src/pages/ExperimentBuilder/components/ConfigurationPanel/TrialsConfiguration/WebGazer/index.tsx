@@ -6,7 +6,7 @@ import CsvUploader from "../Csv/CsvUploader";
 import ParameterMapper from "../ParameterMapper";
 import TrialActions from "../TrialActions";
 import InstructionsConfig from "./Instructions";
-import { usePhase } from "./usePhase";
+import { generatePhaseCode } from "./generatePhaseCode";
 import { useColumnMapping } from "../hooks/useColumnMapping";
 import InstructionsArrays from "./InstructionsArrays";
 
@@ -46,7 +46,7 @@ function Webgazer({ webgazerPlugins }: Props) {
   const [trialName, setTrialName] = useState<string>("");
   const { columnMapping, setColumnMapping } = useColumnMapping({});
 
-  const initCameraPhase = usePhase({
+  const initCameraPhase = generatePhaseCode({
     pluginName: initCamera,
     instructions: initCameraInstructions,
     csvJson,
@@ -58,7 +58,7 @@ function Webgazer({ webgazerPlugins }: Props) {
     setColumnMapping,
     setIsLoadingTrial,
   });
-  const calibratePhase = usePhase({
+  const calibratePhase = generatePhaseCode({
     pluginName: calibrateWebgazer,
     instructions: calibrateInstructions,
     csvJson,
@@ -70,7 +70,7 @@ function Webgazer({ webgazerPlugins }: Props) {
     setColumnMapping,
     setIsLoadingTrial,
   });
-  const validatePhase = usePhase({
+  const validatePhase = generatePhaseCode({
     pluginName: validateWebgazer,
     instructions: validateInstructions,
     csvJson,
@@ -82,7 +82,7 @@ function Webgazer({ webgazerPlugins }: Props) {
     setColumnMapping,
     setIsLoadingTrial,
   });
-  const recalibratePhase = usePhase({
+  const recalibratePhase = generatePhaseCode({
     pluginName: recalibrateWebGazer,
     instructions: recalibrateInstructions,
     csvJson,
@@ -182,8 +182,22 @@ function Webgazer({ webgazerPlugins }: Props) {
     recalibratePhase.columnMapping,
   ]);
 
-  // Note: trialCode is NO LONGER generated here - it's generated dynamically when needed
-  // (Run Experiment, Run Demo, Publish) to avoid storing duplicate data
+  const trialCode = useMemo(() => {
+    return (
+      initCameraPhase.trialCode +
+      calibratePhase.trialCode +
+      validatePhase.trialCode +
+      recalibratePhase.trialCode
+    );
+  }, [
+    initCameraPhase.trialCode,
+    calibratePhase.trialCode,
+    validatePhase.trialCode,
+    recalibratePhase.trialCode,
+  ]);
+
+  // Note: trialCode is saved to DB on every change
+  // generateTrialLoopCodes will use the saved code instead of regenerating it
 
   // guardar y actualizar el estado global del ensayo
 
@@ -208,10 +222,17 @@ function Webgazer({ webgazerPlugins }: Props) {
     }
   };
 
+  // Guardar el código generado (se llama después de cada cambio)
+  const saveTrialCode = async () => {
+    if (!selectedTrial || !trialCode) return;
+    await updateTrialField(selectedTrial.id, "trialCode", trialCode);
+  };
+
   // Guardar nombre
   const saveName = async () => {
     if (!selectedTrial || !trialName) return;
     await saveField("name", trialName);
+    await saveTrialCode();
   };
 
   // Guardar CSV
@@ -231,6 +252,7 @@ function Webgazer({ webgazerPlugins }: Props) {
       "csvColumns",
       finalCols ? [...finalCols] : [],
     );
+    await saveTrialCode();
     showSaveIndicator("csv");
   };
 
@@ -247,6 +269,7 @@ function Webgazer({ webgazerPlugins }: Props) {
           })();
 
     await saveField("columnMapping", updatedMapping);
+    await saveTrialCode();
   };
 
   // Guardar Instructions (complejo porque depende de múltiples fases)
@@ -265,6 +288,7 @@ function Webgazer({ webgazerPlugins }: Props) {
       minimum_percent:
         currentParams.minimum_percent ?? minimumPercentAcceptable,
     });
+    await saveTrialCode();
   };
 
   // Guardar Minimum Percent
@@ -275,6 +299,7 @@ function Webgazer({ webgazerPlugins }: Props) {
       ...currentParams,
       minimum_percent: newValue,
     });
+    await saveTrialCode();
   };
 
   // Wrapper para handleCsvUpload que guarda automáticamente
@@ -294,7 +319,8 @@ function Webgazer({ webgazerPlugins }: Props) {
         include_instructions: include_instructions,
         minimum_percent: minimumPercentAcceptable,
       },
-      // trialCode is NO LONGER saved - it's generated dynamically when needed
+      // WebGazer is complex, so we save the generated code
+      trialCode: trialCode,
       columnMapping: mappedColumns,
       csvJson: csvJson ? [...csvJson] : [],
       csvColumns: csvColumns ? [...csvColumns] : [],

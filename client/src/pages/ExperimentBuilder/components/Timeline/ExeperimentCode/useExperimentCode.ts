@@ -15,44 +15,35 @@ export type UploadedFile = {
 
 export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
   const [experimentName, setExperimentName] = useState("Experiment");
-  const [extensionsString, setExtensionsString] = useState("");
 
   const experimentID = useExperimentID();
 
   useEffect(() => {
     if (experimentID) {
       fetchExperimentNameByID(experimentID).then(setExperimentName);
-
-      // Cargar extensiones desde el endpoint si es necesario
-      fetch(
-        `${import.meta.env.VITE_API_URL}/api/trials-metadata/${experimentID}`,
-      )
-        .then((res) => res.json())
-        .then((data) => {
-          const { trials = [] } = data;
-          const hasExt = trials.some((t: any) => t.extensions?.length > 0);
-          if (hasExt) {
-            const extensionsSet = new Set<string>();
-            trials.forEach((t: any) => {
-              if (t.extensions) {
-                t.extensions.forEach((ext: string) => extensionsSet.add(ext));
-              }
-            });
-            const extArray = Array.from(extensionsSet);
-            const extStr =
-              extArray.length > 0
-                ? `extensions: [${extArray.map((ext) => `{ type: ${ext} }`).join(", ")}],`
-                : "";
-            setExtensionsString(extStr);
-          }
-        })
-        .catch((err) => {
-          console.error("Error loading extensions:", err);
-        });
     }
   }, [experimentID]);
 
-  const extensions = extensionsString;
+  // Función para obtener extensiones del experimento
+  const fetchExtensions = async (): Promise<string> => {
+    if (!experimentID) return "";
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/trials-extensions/${experimentID}`,
+      );
+      const data = await res.json();
+      const { extensions = [] } = data;
+
+      if (extensions.length > 0) {
+        return `extensions: [${extensions.map((ext: string) => `{ type: ${ext} }`).join(", ")}],`;
+      }
+      return "";
+    } catch (err) {
+      console.error("Error loading extensions:", err);
+      return "";
+    }
+  };
 
   const evaluateCondition = `// --- Branching logic functions (outside initJsPsych for timeline access) ---
     window.nextTrialId = null;
@@ -225,7 +216,7 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
   const { generateLocalExperiment } = LocalExperiment({
     experimentID,
     evaluateCondition,
-    extensions,
+    fetchExtensions,
     branchingEvaluation,
     uploadedFiles,
     getTrial,
@@ -236,7 +227,7 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
   const { generateExperiment } = PublicExperiment({
     experimentID,
     evaluateCondition,
-    extensions,
+    fetchExtensions,
     branchingEvaluation,
     uploadedFiles,
     experimentName,

@@ -72,7 +72,7 @@ export default function FirebaseCredentials() {
         setHasCustomConfig(true);
         setIsEditing(false);
         alert(
-          "Firebase credentials saved successfully! Please restart the app for changes to take effect."
+          "Firebase credentials saved successfully! Please restart the app for changes to take effect.",
         );
       } else {
         alert("Error saving credentials: " + (result.error || "Unknown error"));
@@ -90,7 +90,7 @@ export default function FirebaseCredentials() {
 
     if (
       !confirm(
-        "Are you sure you want to reset to default Firebase credentials? The app will need to be restarted."
+        "Are you sure you want to reset to default Firebase credentials? The app will need to be restarted.",
       )
     ) {
       return;
@@ -110,11 +110,11 @@ export default function FirebaseCredentials() {
         });
         setIsEditing(false);
         alert(
-          "Firebase credentials reset to default! Please restart the app for changes to take effect."
+          "Firebase credentials reset to default! Please restart the app for changes to take effect.",
         );
       } else {
         alert(
-          "Error resetting credentials: " + (result.error || "Unknown error")
+          "Error resetting credentials: " + (result.error || "Unknown error"),
         );
       }
     } catch (error) {
@@ -172,32 +172,14 @@ export default function FirebaseCredentials() {
             <>
               <button
                 onClick={() => setIsEditing(true)}
-                style={{
-                  padding: "6px 16px",
-                  borderRadius: 6,
-                  background: "#3d92b4",
-                  color: "white",
-                  border: "none",
-                  fontWeight: 600,
-                  fontSize: 14,
-                  cursor: "pointer",
-                }}
+                className="token-button connect"
               >
                 {hasCustomConfig ? "Edit" : "Set Custom Credentials"}
               </button>
               {hasCustomConfig && (
                 <button
                   onClick={handleReset}
-                  style={{
-                    padding: "6px 16px",
-                    borderRadius: 6,
-                    background: "#dc3545",
-                    color: "white",
-                    border: "none",
-                    fontWeight: 600,
-                    fontSize: 14,
-                    cursor: "pointer",
-                  }}
+                  className="token-button disconnect"
                 >
                   Reset to Default
                 </button>
@@ -208,14 +190,10 @@ export default function FirebaseCredentials() {
               <button
                 onClick={handleSave}
                 disabled={isSaving}
+                className="token-button"
                 style={{
-                  padding: "6px 16px",
-                  borderRadius: 6,
                   background: "#28a745",
                   color: "white",
-                  border: "none",
-                  fontWeight: 600,
-                  fontSize: 14,
                   cursor: isSaving ? "not-allowed" : "pointer",
                   opacity: isSaving ? 0.6 : 1,
                 }}
@@ -228,14 +206,10 @@ export default function FirebaseCredentials() {
                   loadConfig();
                 }}
                 disabled={isSaving}
+                className="token-button"
                 style={{
-                  padding: "6px 16px",
-                  borderRadius: 6,
                   background: "#6c757d",
                   color: "white",
-                  border: "none",
-                  fontWeight: 600,
-                  fontSize: 14,
                   cursor: isSaving ? "not-allowed" : "pointer",
                   opacity: isSaving ? 0.6 : 1,
                 }}

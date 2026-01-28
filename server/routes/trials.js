@@ -110,6 +110,49 @@ router.get("/api/trials-metadata/:experimentID", async (req, res) => {
 });
 
 /**
+ * Gets only the extensions from all trials in an experiment.
+ * Returns a compact array with only extension information.
+ * @route GET /api/trials-extensions/:experimentID
+ * @param {string} experimentID - Experiment ID (path parameter)
+ * @returns {Object} 200 - Extensions data
+ * @returns {Array<string>} 200.extensions - Unique array of all extensions used
+ * @returns {Object} 500 - Server error
+ */
+router.get("/api/trials-extensions/:experimentID", async (req, res) => {
+  try {
+    await db.read();
+    const { experimentID } = req.params;
+
+    const experimentDoc = db.data.trials.find(
+      (t) => t.experimentID === experimentID,
+    );
+
+    if (!experimentDoc) {
+      return res.status(404).json({ error: "Experiment not found" });
+    }
+
+    // Collect all unique extensions from trials
+    const extensionsSet = new Set();
+
+    experimentDoc.trials.forEach((trial) => {
+      // Check for includesExtensions (boolean) and extensionType (string)
+      if (
+        trial.parameters?.includesExtensions &&
+        trial.parameters?.extensionType
+      ) {
+        extensionsSet.add(trial.parameters.extensionType);
+      }
+    });
+
+    const extensions = Array.from(extensionsSet);
+
+    res.json({ extensions });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * Crea un nuevo trial en el experimento.
  * Genera un ID único basado en timestamp y lo agrega al documento normalizado.
  * @route POST /api/trial/:experimentID

@@ -156,7 +156,7 @@ function KonvaParameterMapper({
           flex: 1,
           padding: "16px",
           overflowY: "auto",
-          color: "var(--text-light)",
+          color: "var(--text-dark)",
         }}
       >
         {/* Show component parameters if a component is selected */}
@@ -174,7 +174,7 @@ function KonvaParameterMapper({
                   margin: 0,
                   fontSize: "14px",
                   fontWeight: 600,
-                  color: "var(--text-light)",
+                  color: "var(--text-dark)",
                 }}
               >
                 Selected Component
@@ -184,7 +184,7 @@ function KonvaParameterMapper({
                   margin: "4px 0 0",
                   fontSize: "16px",
                   fontWeight: 700,
-                  color: "var(--text-light)",
+                  color: "var(--text-dark)",
                 }}
               >
                 {selectedComponent.type.replace(/Component$/, "")}
@@ -196,7 +196,7 @@ function KonvaParameterMapper({
                 style={{
                   textAlign: "center",
                   padding: "20px",
-                  color: "var(--text-light)",
+                  color: "var(--text-dark)",
                 }}
               >
                 Loading component parameters...
@@ -243,14 +243,14 @@ function KonvaParameterMapper({
             style={{
               textAlign: "center",
               padding: "40px 20px",
-              color: "var(--text-light)",
+              color: "var(--text-dark)",
             }}
           >
             <div style={{ fontSize: "48px", marginBottom: "12px" }}></div>
             <p
               style={{
                 margin: 0,
-                color: "var(--text-light)",
+                color: "var(--text-dark)",
               }}
             >
               Select a component from the canvas to edit its parameters

@@ -180,7 +180,7 @@ export default function OsfToken() {
           <button
             onClick={handleDeleteToken}
             disabled={isDeleting}
-            className="delete-token-button"
+            className="token-button disconnect"
           >
             {isDeleting ? "Disconnecting..." : "Disconnect"}
           </button>
@@ -189,9 +189,9 @@ export default function OsfToken() {
             {!showTokenInput ? (
               <button
                 onClick={() => setShowTokenInput(true)}
-                className="connect-button"
+                className="token-button connect"
               >
-                Set OSF Token
+                Connect
               </button>
             ) : (
               <div className="token-input-container">
@@ -289,7 +289,7 @@ export default function OsfToken() {
                   <button
                     onClick={handleSaveToken}
                     disabled={isSaving || !tokenInput.trim()}
-                    className="connect-button"
+                    className="token-button connect"
                     style={{ flex: 1 }}
                   >
                     {isSaving ? "Saving..." : "Save Token"}
@@ -301,14 +301,11 @@ export default function OsfToken() {
                       setProjectIdInput("");
                       setError("");
                     }}
-                    className="cancel-button"
+                    className="token-button"
                     style={{
-                      padding: "8px 16px",
-                      borderRadius: 4,
-                      background: "#ccc",
-                      border: "none",
-                      cursor: "pointer",
-                      fontSize: 14,
+                      flex: 1,
+                      background: "#6c757d",
+                      color: "white",
                     }}
                   >
                     Cancel

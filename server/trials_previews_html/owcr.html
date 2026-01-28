@@ -95,6 +95,9 @@ response_components: jsPsych.timelineVariable("response_components"),
         trial_id: 1769325848278,
         
         
+        branches: [1769477186791],
+        branchConditions: [[]] 
+        
       },
     on_start: function(trial) {
       // Then apply custom parameters from branching conditions (higher priority)
@@ -256,6 +259,12 @@ response_components: jsPsych.timelineVariable("response_components"),
         }, 100);
         return;
       }
+      
+      // Branching automático al primer branch (global)
+      console.log('🔄 [GLOBAL BRANCH] Auto-branching to first branch:', 1769477186791);
+      window.nextTrialId = 1769477186791;
+      window.skipRemaining = true;
+      window.branchingActive = true;
       
     },};
     console.log("=== PROCEDURE SETUP masagua ===");

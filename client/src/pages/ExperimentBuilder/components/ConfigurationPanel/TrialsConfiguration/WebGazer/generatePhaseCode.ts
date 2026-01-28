@@ -21,7 +21,7 @@ type PhaseProps = {
   setIsLoadingTrial: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
-export const usePhase = ({
+export const generatePhaseCode = ({
   pluginName,
   instructions,
   csvJson,
@@ -143,7 +143,7 @@ export const usePhase = ({
       return `${paramProps}
     data: {
       task: 'validate'
-    }`;
+    },`;
     }
   };
 
@@ -203,21 +203,13 @@ export const usePhase = ({
   const genTrialCode = () => {
     let code = "";
 
+    // WebGazer phases should NOT have individual branching
+    // Branching should only happen AFTER the last procedure (recalibrate)
     const onStartCode = generateOnStartCode({
       paramsOverride,
       isInLoop,
       getVarName,
     });
-    const onFinishCode = generateOnFinishCode({
-      branches,
-      branchConditions,
-      repeatConditions,
-      isInLoop,
-      getVarName,
-    });
-    const conditionalFunctionCode = generateConditionalFunctionCode(
-      selectedTrial?.id,
-    );
 
     if (includeInstructions) {
       code += `const ${pluginNameRefactor}_instructions = {
@@ -243,7 +235,6 @@ export const usePhase = ({
     const ${pluginNameRefactor}_timeline = {
     type: ${pluginNameImport}, ${timelineProps}
     ${onStartCode}
-    ${onFinishCode}
     };`
         : ""
     };
@@ -257,8 +248,7 @@ export const usePhase = ({
     
     ${!pluginRecal ? `${pluginNameRefactor}_timeline ` : ""}
     ],
-    timeline_variables: test_stimuli_${pluginNameRefactor},
-    ${conditionalFunctionCode}
+    timeline_variables: test_stimuli_${pluginNameRefactor}
   };
     timeline.push(${pluginNameRefactor}_procedure);
   ;`;
@@ -294,8 +284,7 @@ export const usePhase = ({
     [${
       includeInstructions ? `plugin_webgazer_recalibrate_instructions,` : ""
     }recalibrate_timeline],
-    timeline_variables: test_stimuli_plugin_webgazer_recalibrate,
-    ${conditionalFunctionCode}
+    timeline_variables: test_stimuli_plugin_webgazer_recalibrate
   };
     timeline.push(recalibrateWebGazer_procedure);
   ;`;
@@ -305,7 +294,14 @@ export const usePhase = ({
         stimulus: \`
           <p>Great, we're done with calibration!</p>
         \`,
-        choices: ['OK']
+        choices: ['OK'],
+        ${generateOnFinishCode({
+          branches,
+          branchConditions,
+          repeatConditions,
+          isInLoop,
+          getVarName,
+        })}
       }
     timeline.push(calibration_done);
 `;

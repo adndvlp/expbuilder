@@ -88,6 +88,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
       currentButtonKey,
       currentHtmlKey,
       currentSurveyKey,
+      onSave,
     });
 
   useEffect(() => {
@@ -107,7 +108,10 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
   }, [parameters]);
 
   return (
-    <div className={componentMode ? "" : "mb-4 p-4 border rounded bg-gray-50"}>
+    <div
+      className={componentMode ? "" : "mb-4 p-4 border rounded bg-gray-50"}
+      style={componentMode ? { color: "var(--text-dark)" } : {}}
+    >
       {/* Header - Only show in normal mode */}
       {!componentMode && (
         <div className="flex items-center justify-between mb-4">
@@ -143,7 +147,10 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
 
             return (
               <div key={key}>
-                <label className="mb-2 mt-3 block text-sm font-medium">
+                <label
+                  className="mb-2 mt-3 block text-sm font-medium"
+                  style={componentMode ? { color: "var(--text-dark)" } : {}}
+                >
                   {label}
                 </label>
 

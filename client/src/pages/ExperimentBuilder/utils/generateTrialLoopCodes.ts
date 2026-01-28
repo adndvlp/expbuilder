@@ -7,6 +7,7 @@ import { useTrialCode } from "../components/ConfigurationPanel/TrialsConfigurati
 import useLoopCode from "../components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/useLoopCode";
 import { Trial, Loop } from "../components/ConfigurationPanel/types";
 import type { TimelineItem } from "../contexts/TrialsContext";
+import { generateExtensionCode } from "./generateExtensionCode";
 
 type GetTrialFn = (id: string | number) => Promise<Trial | null>;
 type GetLoopTimelineFn = (loopId: string | number) => Promise<TimelineItem[]>;
@@ -114,12 +115,32 @@ async function generateTrialCode(
       };
     }
 
+    // WebGazer is complex - use saved code instead of generating it
+    // IMPORTANT: Check this BEFORE trying to load plugin parameters
+    if (fullTrial.plugin === "webgazer") {
+      return {
+        code: fullTrial.trialCode || "",
+        mappedJson: fullTrial.csvJson || [],
+      };
+    }
+
     // Load plugin parameters directly without hook
     const { loadPluginParameters } = await import(
       "../components/ConfigurationPanel/utils/pluginParameterLoader"
     );
 
     const { parameters, data } = await loadPluginParameters(fullTrial.plugin);
+
+    // Generate extension code if needed
+    const extensionsCode =
+      fullTrial.parameters?.includesExtensions &&
+      fullTrial.parameters?.extensionType
+        ? generateExtensionCode(
+            fullTrial.parameters.extensionType,
+            fullTrial.plugin,
+            parameters,
+          )
+        : "";
 
     // Create getColumnValue function without hook
     const getDefaultValueForKey = (key: string) => {
@@ -187,7 +208,7 @@ async function generateTrialCode(
       trialName: fullTrial.name,
       data,
       includesExtensions: fullTrial.parameters?.includesExtensions || false,
-      extensions: fullTrial.parameters?.extensionType || "",
+      extensions: extensionsCode,
       orders: fullTrial.orders || false,
       stimuliOrders: fullTrial.stimuliOrders || [],
       categories: fullTrial.categories || false,

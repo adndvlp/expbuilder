@@ -10,7 +10,7 @@ type GetLoopFn = (id: string | number) => Promise<Loop | null>;
 type Props = {
   experimentID: string | undefined;
   evaluateCondition: string;
-  extensions: string;
+  fetchExtensions: () => Promise<string>;
   branchingEvaluation: string;
   uploadedFiles: UploadedFile[];
   experimentName: string;
@@ -23,7 +23,7 @@ type Props = {
 export default function PublicExperiment({
   experimentID,
   evaluateCondition,
-  extensions,
+  fetchExtensions,
   branchingEvaluation,
   uploadedFiles,
   experimentName,
@@ -34,6 +34,9 @@ export default function PublicExperiment({
 }: Props) {
   const generateExperiment = async (storageOverride?: string) => {
     const useStorage = storageOverride || storage;
+
+    // Fetch extensions before generating experiment
+    const extensions = await fetchExtensions();
     // Generate codes dynamically from trial/loop data
     let allCodes = "";
     try {
