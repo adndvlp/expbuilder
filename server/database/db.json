@@ -7,10 +7,10 @@
       "updatedAt": "2026-01-25T05:55:49.622Z"
     },
     {
-      "experimentID": "4344d87f-8335-410e-8ec0-863d4764ac07",
-      "name": "rwvwr",
-      "createdAt": "2026-01-29T00:09:56.656Z",
-      "updatedAt": "2026-01-29T00:09:56.656Z"
+      "experimentID": "d89adce5-c16a-4c51-b70f-305a460787a1",
+      "name": "vwr",
+      "createdAt": "2026-01-29T01:04:24.119Z",
+      "updatedAt": "2026-01-29T01:04:24.119Z"
     }
   ],
   "trials": [
@@ -649,7 +649,7 @@
       "updatedAt": "2026-01-27T01:38:55.479Z"
     },
     {
-      "experimentID": "4344d87f-8335-410e-8ec0-863d4764ac07",
+      "experimentID": "d89adce5-c16a-4c51-b70f-305a460787a1",
       "trials": [
         {
           "type": "Trial",
@@ -657,12 +657,12 @@
           "plugin": "plugin-dynamic",
           "parameters": {},
           "trialCode": "",
-          "id": 1769645401957,
-          "createdAt": "2026-01-29T00:10:01.957Z",
-          "updatedAt": "2026-01-29T00:10:06.751Z",
+          "id": 1769648669483,
+          "createdAt": "2026-01-29T01:04:29.483Z",
+          "updatedAt": "2026-01-29T01:43:48.409Z",
           "branches": [
-            1769645404053,
-            "loop_1769645414757"
+            1769648670966,
+            1769650880068
           ]
         },
         {
@@ -671,12 +671,11 @@
           "plugin": "plugin-dynamic",
           "parameters": {},
           "trialCode": "",
-          "id": 1769645404053,
-          "createdAt": "2026-01-29T00:10:04.053Z",
-          "updatedAt": "2026-01-29T00:20:41.487Z",
+          "id": 1769648670966,
+          "createdAt": "2026-01-29T01:04:30.966Z",
+          "updatedAt": "2026-01-29T01:44:26.086Z",
           "branches": [
-            1769645419571,
-            1769645578686
+            "loop_1769648749599"
           ]
         },
         {
@@ -685,49 +684,14 @@
           "plugin": "plugin-dynamic",
           "parameters": {},
           "trialCode": "",
-          "id": 1769645406737,
-          "createdAt": "2026-01-29T00:10:06.737Z",
-          "updatedAt": "2026-01-29T00:13:03.620Z",
+          "id": 1769648674000,
+          "createdAt": "2026-01-29T01:04:34.000Z",
+          "updatedAt": "2026-01-29T01:44:52.825Z",
           "branches": [
-            1769645410054,
-            "loop_1769645594924"
+            1769648753728,
+            1769649869391
           ],
-          "parentLoopId": "loop_1769645414757"
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 3",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "id": 1769645410054,
-          "createdAt": "2026-01-29T00:10:10.054Z",
-          "updatedAt": "2026-01-29T00:14:24.813Z",
-          "parentLoopId": "loop_1769645414757",
-          "branches": [
-            1769645590020,
-            1769645664798
-          ]
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 2",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "id": 1769645419571,
-          "createdAt": "2026-01-29T00:10:19.571Z",
-          "updatedAt": "2026-01-29T00:10:19.571Z"
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 3",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "id": 1769645422020,
-          "createdAt": "2026-01-29T00:10:22.020Z",
-          "updatedAt": "2026-01-29T00:10:22.020Z"
+          "parentLoopId": "loop_1769648749599"
         },
         {
           "type": "Trial",
@@ -735,9 +699,13 @@
           "plugin": "plugin-dynamic",
           "parameters": {},
           "trialCode": "",
-          "id": 1769645425508,
-          "createdAt": "2026-01-29T00:10:25.508Z",
-          "updatedAt": "2026-01-29T00:10:25.508Z"
+          "parentLoopId": "loop_1769648749599",
+          "id": 1769648753728,
+          "createdAt": "2026-01-29T01:05:53.728Z",
+          "updatedAt": "2026-01-29T01:46:04.899Z",
+          "branches": [
+            1769650903617
+          ]
         },
         {
           "type": "Trial",
@@ -745,12 +713,11 @@
           "plugin": "plugin-dynamic",
           "parameters": {},
           "trialCode": "",
-          "id": 1769645578686,
-          "createdAt": "2026-01-29T00:12:58.686Z",
-          "updatedAt": "2026-01-29T00:23:17.218Z",
-          "branches": [
-            1769646050355
-          ]
+          "parentLoopId": "loop_1769648749599",
+          "id": 1769648755710,
+          "createdAt": "2026-01-29T01:05:55.710Z",
+          "updatedAt": "2026-01-29T01:19:31.292Z",
+          "branches": []
         },
         {
           "type": "Trial",
@@ -758,12 +725,13 @@
           "plugin": "plugin-dynamic",
           "parameters": {},
           "trialCode": "",
-          "parentLoopId": "loop_1769645594924",
-          "id": 1769645583601,
-          "createdAt": "2026-01-29T00:13:03.601Z",
-          "updatedAt": "2026-01-29T00:13:14.941Z",
+          "parentLoopId": "loop_1769649707813",
+          "id": 1769649699775,
+          "createdAt": "2026-01-29T01:21:39.775Z",
+          "updatedAt": "2026-01-29T01:42:29.428Z",
           "branches": [
-            1769645585953
+            1769649702926,
+            "loop_1769650962027"
           ]
         },
         {
@@ -772,10 +740,94 @@
           "plugin": "plugin-dynamic",
           "parameters": {},
           "trialCode": "",
-          "parentLoopId": "loop_1769645594924",
-          "id": 1769645585953,
-          "createdAt": "2026-01-29T00:13:05.953Z",
-          "updatedAt": "2026-01-29T00:13:14.948Z"
+          "parentLoopId": "loop_1769649707813",
+          "id": 1769649702926,
+          "createdAt": "2026-01-29T01:21:42.926Z",
+          "updatedAt": "2026-01-29T01:21:47.840Z"
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 3",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "parentLoopId": "loop_1769648749599",
+          "id": 1769649869391,
+          "createdAt": "2026-01-29T01:24:29.391Z",
+          "updatedAt": "2026-01-29T01:46:04.946Z",
+          "branches": [
+            1769651114423,
+            "loop_1769649707813"
+          ]
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 5",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "parentLoopId": "loop_1769648749599",
+          "id": 1769649872987,
+          "createdAt": "2026-01-29T01:24:32.987Z",
+          "updatedAt": "2026-01-29T01:24:32.987Z"
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 2",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1769650347035,
+          "createdAt": "2026-01-29T01:32:27.035Z",
+          "updatedAt": "2026-01-29T01:32:27.035Z"
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 3",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1769650880068,
+          "createdAt": "2026-01-29T01:41:20.068Z",
+          "updatedAt": "2026-01-29T01:44:17.439Z",
+          "branches": [
+            1769650347035
+          ]
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 4",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1769650886233,
+          "createdAt": "2026-01-29T01:41:26.233Z",
+          "updatedAt": "2026-01-29T01:41:26.233Z"
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 6",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "parentLoopId": "loop_1769648749599",
+          "id": 1769650903617,
+          "createdAt": "2026-01-29T01:41:43.617Z",
+          "updatedAt": "2026-01-29T01:41:43.617Z"
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 5",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "parentLoopId": "loop_1769650962027",
+          "id": 1769650949417,
+          "createdAt": "2026-01-29T01:42:29.417Z",
+          "updatedAt": "2026-01-29T01:42:42.051Z",
+          "branches": [
+            1769650951903
+          ]
         },
         {
           "type": "Trial",
@@ -783,67 +835,21 @@
           "plugin": "plugin-dynamic",
           "parameters": {},
           "trialCode": "",
-          "parentLoopId": "loop_1769645414757",
-          "id": 1769645590020,
-          "createdAt": "2026-01-29T00:13:10.020Z",
-          "updatedAt": "2026-01-29T00:20:59.858Z",
-          "branches": [
-            1769646057037
-          ]
+          "parentLoopId": "loop_1769650962027",
+          "id": 1769650951903,
+          "createdAt": "2026-01-29T01:42:31.903Z",
+          "updatedAt": "2026-01-29T01:42:42.056Z"
         },
         {
           "type": "Trial",
-          "name": "New Trial 6",
+          "name": "New Trial 5",
           "plugin": "plugin-dynamic",
           "parameters": {},
           "trialCode": "",
-          "parentLoopId": "loop_1769645414757",
-          "id": 1769645607003,
-          "createdAt": "2026-01-29T00:13:27.003Z",
-          "updatedAt": "2026-01-29T00:13:27.003Z"
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 7",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "parentLoopId": "loop_1769645414757",
-          "id": 1769645612918,
-          "createdAt": "2026-01-29T00:13:32.918Z",
-          "updatedAt": "2026-01-29T00:13:32.918Z"
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 9",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "parentLoopId": "loop_1769645414757",
-          "id": 1769645664798,
-          "createdAt": "2026-01-29T00:14:24.798Z",
-          "updatedAt": "2026-01-29T00:14:24.798Z"
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 6",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "id": 1769646050355,
-          "createdAt": "2026-01-29T00:20:50.355Z",
-          "updatedAt": "2026-01-29T00:20:50.355Z"
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 10",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "parentLoopId": "loop_1769645414757",
-          "id": 1769646057037,
-          "createdAt": "2026-01-29T00:20:57.037Z",
-          "updatedAt": "2026-01-29T00:20:57.037Z"
+          "parentLoopId": "loop_1769648749599",
+          "id": 1769651114423,
+          "createdAt": "2026-01-29T01:45:14.423Z",
+          "updatedAt": "2026-01-29T01:45:14.423Z"
         }
       ],
       "loops": [
@@ -858,17 +864,15 @@
           "categories": false,
           "categoryData": [],
           "trials": [
-            1769645406737,
-            1769645410054,
-            "loop_1769645594924"
+            1769648674000,
+            "loop_1769649707813"
           ],
           "code": "",
-          "id": "loop_1769645414757",
-          "createdAt": "2026-01-29T00:10:14.757Z",
-          "updatedAt": "2026-01-29T00:13:14.967Z",
+          "id": "loop_1769648749599",
+          "createdAt": "2026-01-29T01:05:49.599Z",
+          "updatedAt": "2026-01-29T01:44:26.069Z",
           "branches": [
-            1769645422020,
-            1769645425508
+            1769650886233
           ]
         },
         {
@@ -882,88 +886,91 @@
           "categories": false,
           "categoryData": [],
           "trials": [
-            1769645583601,
-            1769645585953
+            1769649699775,
+            1769649702926,
+            "loop_1769650962027"
           ],
           "code": "",
-          "parentLoopId": "loop_1769645414757",
-          "id": "loop_1769645594924",
-          "createdAt": "2026-01-29T00:13:14.924Z",
-          "updatedAt": "2026-01-29T00:13:32.945Z",
-          "branches": [
-            1769645607003,
-            1769645612918
-          ]
+          "parentLoopId": "loop_1769648749599",
+          "id": "loop_1769649707813",
+          "createdAt": "2026-01-29T01:21:47.813Z",
+          "updatedAt": "2026-01-29T01:46:04.916Z",
+          "branches": []
+        },
+        {
+          "name": "Nested Loop 1",
+          "repetitions": 1,
+          "randomize": false,
+          "orders": false,
+          "stimuliOrders": [],
+          "orderColumns": [],
+          "categoryColumn": "",
+          "categories": false,
+          "categoryData": [],
+          "trials": [
+            1769650949417,
+            1769650951903
+          ],
+          "code": "",
+          "parentLoopId": "loop_1769649707813",
+          "id": "loop_1769650962027",
+          "createdAt": "2026-01-29T01:42:42.027Z",
+          "updatedAt": "2026-01-29T01:42:42.027Z"
         }
       ],
       "timeline": [
         {
-          "id": 1769645401957,
+          "id": 1769648669483,
           "type": "trial",
           "name": "New Trial",
           "branches": [
-            1769645404053,
-            "loop_1769645414757"
+            1769648670966,
+            1769650880068
           ]
         },
         {
-          "id": 1769645404053,
+          "id": 1769648670966,
           "type": "trial",
           "name": "New Trial 1",
           "branches": [
-            1769645419571,
-            1769645578686
+            "loop_1769648749599"
           ]
         },
         {
-          "id": "loop_1769645414757",
+          "id": "loop_1769648749599",
           "type": "loop",
           "name": "Loop 1",
           "branches": [
-            1769645422020,
-            1769645425508
+            1769650886233
           ],
           "trials": [
-            1769645406737,
-            1769645410054,
-            "loop_1769645594924"
+            1769648674000,
+            "loop_1769649707813"
           ]
         },
         {
-          "id": 1769645419571,
+          "id": 1769650347035,
           "type": "trial",
           "name": "New Trial 2",
           "branches": []
         },
         {
-          "id": 1769645422020,
+          "id": 1769650880068,
           "type": "trial",
           "name": "New Trial 3",
-          "branches": []
-        },
-        {
-          "id": 1769645425508,
-          "type": "trial",
-          "name": "New Trial 4",
-          "branches": []
-        },
-        {
-          "id": 1769645578686,
-          "type": "trial",
-          "name": "New Trial 5",
           "branches": [
-            1769646050355
+            1769650347035
           ]
         },
         {
-          "id": 1769646050355,
+          "id": 1769650886233,
           "type": "trial",
-          "name": "New Trial 6",
+          "name": "New Trial 4",
           "branches": []
         }
       ],
-      "createdAt": "2026-01-29T00:10:01.959Z",
-      "updatedAt": "2026-01-29T00:23:19.774Z"
+      "createdAt": "2026-01-29T01:04:29.485Z",
+      "updatedAt": "2026-01-29T01:46:04.946Z"
     }
   ],
   "configs": [
@@ -977,13 +984,13 @@
       "updatedAt": "2026-01-28T22:35:16.387Z"
     },
     {
-      "experimentID": "4344d87f-8335-410e-8ec0-863d4764ac07",
+      "experimentID": "d89adce5-c16a-4c51-b70f-305a460787a1",
       "data": {
         "generatedCode": ""
       },
       "isDevMode": false,
-      "createdAt": "2026-01-29T00:09:59.799Z",
-      "updatedAt": "2026-01-29T00:20:13.592Z"
+      "createdAt": "2026-01-29T01:04:29.798Z",
+      "updatedAt": "2026-01-29T01:45:16.827Z"
     }
   ],
   "pluginConfigs": [],

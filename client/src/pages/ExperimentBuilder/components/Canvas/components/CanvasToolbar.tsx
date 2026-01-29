@@ -9,6 +9,7 @@ type CanvasToolbarProps = {
   onAddTrial: () => void;
   openLoop: any;
   setShowBranchedModal: (value: boolean) => void;
+  onMoveItem?: () => void;
 };
 
 function CanvasToolbar({
@@ -17,6 +18,7 @@ function CanvasToolbar({
   onAddTrial,
   openLoop,
   setShowBranchedModal,
+  onMoveItem,
 }: CanvasToolbarProps) {
   const { timeline, selectedTrial, selectedLoop } = useTrials();
 
@@ -31,7 +33,7 @@ function CanvasToolbar({
         zIndex: 10,
       }}
     >
-      {timeline.length > 1 && (
+      {timeline.length > 1 && !openLoop && (
         <button
           style={{
             ...fabStyle,
@@ -77,8 +79,10 @@ function CanvasToolbar({
 
         // Show button if:
         // - There's more than one item in timeline, AND
-        // - A trial or loop is selected
+        // - A trial or loop is selected, AND
+        // - SubCanvas is not open
         const shouldShow =
+          !openLoop &&
           timeline.length > 1 &&
           ((selectedLoop && !isTrialInsideOpenLoop) ||
             (selectedTrial && !isTrialInsideOpenLoop));
@@ -100,6 +104,46 @@ function CanvasToolbar({
               onClick={() => setShowBranchedModal(true)}
             >
               <TbBinaryTree size={24} color="#fff" />
+            </button>
+          )
+        );
+      })()}
+      {(() => {
+        // Check if selectedTrial is inside the openLoop
+        const isTrialInsideOpenLoop =
+          openLoop &&
+          openLoop.trials &&
+          selectedTrial &&
+          openLoop.trials.includes(selectedTrial.id);
+
+        // Show button if:
+        // - There's more than one item in timeline, AND
+        // - A trial or loop is selected, AND
+        // - SubCanvas is not open
+        const shouldShow =
+          !openLoop &&
+          timeline.length > 1 &&
+          ((selectedLoop && !isTrialInsideOpenLoop) ||
+            (selectedTrial && !isTrialInsideOpenLoop));
+
+        return (
+          shouldShow &&
+          onMoveItem && (
+            <button
+              style={{
+                ...fabStyle,
+                position: "static",
+                width: 48,
+                height: 48,
+                fontSize: 28,
+                background: "#ff9800",
+                color: "#fff",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+              }}
+              title="Move Item"
+              onClick={onMoveItem}
+            >
+              ⇄
             </button>
           )
         );

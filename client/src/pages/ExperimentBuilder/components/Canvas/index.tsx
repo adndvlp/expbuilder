@@ -8,6 +8,7 @@ import SubCanvas from "./SubCanvas";
 import LoopRangeModal from "../ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/LoopRangeModal";
 import BranchedTrial from "../ConfigurationPanel/TrialsConfiguration/BranchedTrial";
 import AddTrialModal from "./components/AddTrialModal";
+import MoveItemModal from "./components/MoveItemModal";
 import CanvasToolbar from "./components/CanvasToolbar";
 import { useFlowLayout } from "./hooks/useFlowLayout";
 import { generateUniqueName } from "./utils/trialUtils";
@@ -51,6 +52,12 @@ function Canvas() {
   const [pendingParentId, setPendingParentId] = useState<
     number | string | null
   >(null);
+  const [showMoveItemModal, setShowMoveItemModal] = useState(false);
+  const [itemToMove, setItemToMove] = useState<{
+    id: number | string;
+    name: string;
+    type: "trial" | "loop";
+  } | null>(null);
 
   // Load loopTimeline when branched modal opens for trial inside loop
   useEffect(() => {
@@ -315,6 +322,159 @@ function Canvas() {
     setPendingParentId(null);
   };
 
+  // Handler para abrir el modal de mover
+  const onMoveItem = async (itemId: number | string) => {
+    const item = timeline.find((t) => t.id === itemId);
+    if (!item) return;
+
+    setItemToMove({
+      id: item.id,
+      name: item.name,
+      type: item.type,
+    });
+    setShowMoveItemModal(true);
+  };
+
+  // Handler para ejecutar el movimiento del item
+  const handleMoveItemConfirm = async (
+    destinationId: number | string,
+    addAsBranch: boolean,
+  ) => {
+    if (!itemToMove) return;
+
+    setShowMoveItemModal(false);
+
+    try {
+      // ========== PASO 1: REMOVER del parent actual (reconectar como DELETE) ==========
+      const currentParent = timeline.find((item) =>
+        item.branches?.includes(itemToMove.id),
+      );
+
+      if (currentParent) {
+        // Obtener las branches del item que vamos a mover (sus hijos)
+        const itemToMoveData = timeline.find(
+          (item) => item.id === itemToMove.id,
+        );
+        const childrenBranches = itemToMoveData?.branches || [];
+
+        // Remover el item de las branches del parent
+        const updatedBranches = (currentParent.branches || []).filter(
+          (branchId) => branchId !== itemToMove.id,
+        );
+
+        // RECONECTAR: Agregar TODOS los hijos del item a las branches del parent
+        childrenBranches.forEach((childId) => {
+          if (!updatedBranches.includes(childId)) {
+            updatedBranches.push(childId);
+          }
+        });
+
+        // Actualizar el parent
+        if (currentParent.type === "trial") {
+          await updateTrial(currentParent.id, {
+            branches: updatedBranches,
+          });
+        } else {
+          await updateLoop(currentParent.id, {
+            branches: updatedBranches,
+          });
+        }
+      }
+
+      // ========== PASO 2: AGREGAR al nuevo destino ==========
+      const destinationItem = timeline.find(
+        (item) => item.id === destinationId,
+      );
+      if (!destinationItem) {
+        console.error("Destination item not found");
+        return;
+      }
+
+      if (addAsBranch) {
+        // Modo BRANCH (paralelo): Limpiar branches del item y agregarlo al destino
+        // Primero limpiar las branches del item movido
+        if (itemToMove.type === "trial") {
+          await updateTrial(itemToMove.id, {
+            branches: [],
+          });
+        } else {
+          await updateLoop(itemToMove.id, {
+            branches: [],
+          });
+        }
+
+        // Luego agregarlo a las branches del destino
+        if (destinationItem.type === "trial") {
+          const destTrial = await getTrial(destinationId);
+          if (destTrial) {
+            await updateTrial(destinationId, {
+              branches: [...(destTrial.branches || []), itemToMove.id],
+            });
+          }
+        } else {
+          const destLoop = await getLoop(destinationId);
+          if (destLoop) {
+            await updateLoop(destinationId, {
+              branches: [...(destLoop.branches || []), itemToMove.id],
+            });
+          }
+        }
+      } else {
+        // Modo SEQUENTIAL (parent): El item movido toma las branches del destino,
+        // y el destino apunta solo al item movido
+        if (destinationItem.type === "trial") {
+          const destTrial = await getTrial(destinationId);
+          if (destTrial) {
+            const destBranches = destTrial.branches || [];
+
+            // Actualizar el item movido para que tenga las branches del destino
+            if (itemToMove.type === "trial") {
+              await updateTrial(itemToMove.id, {
+                branches: destBranches,
+              });
+            } else {
+              await updateLoop(itemToMove.id, {
+                branches: destBranches,
+              });
+            }
+
+            // Actualizar el destino para que apunte solo al item movido
+            await updateTrial(destinationId, {
+              branches: [itemToMove.id],
+            });
+          }
+        } else {
+          const destLoop = await getLoop(destinationId);
+          if (destLoop) {
+            const destBranches = destLoop.branches || [];
+
+            // Actualizar el item movido para que tenga las branches del destino
+            if (itemToMove.type === "trial") {
+              await updateTrial(itemToMove.id, {
+                branches: destBranches,
+              });
+            } else {
+              await updateLoop(itemToMove.id, {
+                branches: destBranches,
+              });
+            }
+
+            // Actualizar el destino para que apunte solo al item movido
+            await updateLoop(destinationId, {
+              branches: [itemToMove.id],
+            });
+          }
+        }
+      }
+
+      console.log(`✓ Moved ${itemToMove.name} to ${destinationItem.name}`);
+    } catch (error) {
+      console.error("Error moving item:", error);
+    } finally {
+      setItemToMove(null);
+    }
+  };
+
   // Handler for connecting trials manually
   const handleConnect = async (connection: Connection) => {
     if (!connection.source || !connection.target) return;
@@ -422,6 +582,11 @@ function Canvas() {
           onAddTrial={() => onAddTrial("Trial")}
           openLoop={openLoop}
           setShowBranchedModal={setShowBranchedModal}
+          onMoveItem={
+            selectedTrial || selectedLoop
+              ? () => onMoveItem((selectedTrial || selectedLoop)!.id)
+              : undefined
+          }
         />
 
         {/* Params Override Button - Now integrated in BranchedTrial modal */}
@@ -569,6 +734,63 @@ function Canvas() {
             </div>
           </div>
         )}
+
+        {showMoveItemModal &&
+          itemToMove &&
+          (() => {
+            // Encontrar el parent actual del item
+            const currentParent = timeline.find((item) =>
+              item.branches?.includes(itemToMove.id),
+            );
+
+            return (
+              <div
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  width: "100vw",
+                  height: "100vh",
+                  background: "rgba(0,0,0,0.32)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 9999,
+                }}
+              >
+                <div style={{ position: "relative", zIndex: 10000 }}>
+                  <MoveItemModal
+                    onConfirm={handleMoveItemConfirm}
+                    onClose={() => {
+                      setShowMoveItemModal(false);
+                      setItemToMove(null);
+                    }}
+                    itemName={itemToMove.name}
+                    availableDestinations={timeline
+                      .filter((item) => {
+                        // No mostrar el item mismo
+                        if (item.id === itemToMove.id) return false;
+
+                        // No mostrar el parent actual a menos que tenga más de 1 branch
+                        if (currentParent && item.id === currentParent.id) {
+                          const parentBranchCount =
+                            currentParent.branches?.length || 0;
+                          return parentBranchCount > 1;
+                        }
+
+                        return true;
+                      })
+                      .map((item) => ({
+                        id: item.id,
+                        name: item.name,
+                        type: item.type,
+                        hasBranches: (item.branches?.length || 0) > 0,
+                      }))}
+                  />
+                </div>
+              </div>
+            );
+          })()}
       </div>
     </div>
   );
