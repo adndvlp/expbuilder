@@ -7,6 +7,7 @@ import ResizeHandle from "../components/ResizeHandle";
 import LoopBreadcrumb from "../components/LoopBreadcrumb";
 import BranchedTrial from "../../ConfigurationPanel/TrialsConfiguration/BranchedTrial";
 import LoopRangeModal from "../../ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/LoopRangeModal";
+import AddTrialModal from "../components/AddTrialModal";
 import { Trial, Loop } from "../../ConfigurationPanel/types";
 import { TimelineItem } from "../../../contexts/TrialsContext";
 import { useDraggable } from "../hooks/useDraggable";
@@ -74,6 +75,10 @@ function LoopSubCanvas({
 
   const [showBranchedModal, setShowBranchedModal] = useState(false);
   const [showLoopModal, setShowLoopModal] = useState(false);
+  const [showAddTrialModal, setShowAddTrialModal] = useState(false);
+  const [pendingParentId, setPendingParentId] = useState<
+    number | string | null
+  >(null);
 
   // Construir el breadcrumb completo (stack + loop actual)
   const fullBreadcrumb =
@@ -81,24 +86,71 @@ function LoopSubCanvas({
       ? [...loopStack, { id: String(loopId), name: loopName }]
       : loopStack;
 
-  const { onAddBranch, handleCreateNestedLoop, handleAddLoop, handleConnect } =
-    Actions({
-      onSelectTrial,
-      onSelectLoop,
-      onRefreshMetadata,
-      getLoop,
-      updateLoop,
-      getTrial,
-      updateTrial,
-      loopTimeline,
-      timeline,
-      loopId,
-      createTrial,
-      setShowLoopModal,
-      createLoop,
-    });
+  const {
+    addTrialAsBranch,
+    addTrialAsParent,
+    handleCreateNestedLoop,
+    handleAddLoop,
+    handleConnect,
+  } = Actions({
+    onSelectTrial,
+    onSelectLoop,
+    onRefreshMetadata,
+    getLoop,
+    updateLoop,
+    getTrial,
+    updateTrial,
+    loopTimeline,
+    timeline,
+    loopId,
+    createTrial,
+    setShowLoopModal,
+    createLoop,
+  });
+
+  // Wrapper para onAddBranch que muestra el modal
+  const handleAddBranchClick = async (parentId: number | string) => {
+    // Verificar si el parent tiene branches
+    const parentItem = loopTimeline.find((item) => item.id === parentId);
+    if (!parentItem) return;
+
+    const parentBranches = parentItem.branches || [];
+
+    // Si no tiene branches, agregar directamente como branch
+    if (parentBranches.length === 0) {
+      await addTrialAsBranch(parentId);
+      if (onRefreshMetadata) {
+        onRefreshMetadata();
+      }
+      return;
+    }
+
+    // Si tiene branches, mostrar modal para preguntar
+    setPendingParentId(parentId);
+    setShowAddTrialModal(true);
+  };
+
+  // Handler cuando el usuario confirma en el modal
+  const handleAddTrialConfirm = async (addAsBranch: boolean) => {
+    if (!pendingParentId) return;
+
+    setShowAddTrialModal(false);
+
+    if (addAsBranch) {
+      await addTrialAsBranch(pendingParentId);
+    } else {
+      await addTrialAsParent(pendingParentId);
+    }
+
+    setPendingParentId(null);
+
+    // Refresh metadata si está disponible
+    if (onRefreshMetadata) {
+      onRefreshMetadata();
+    }
+  };
   const { nodes, edges } = GenerateNodesAndEdges({
-    onAddBranch,
+    onAddBranch: handleAddBranchClick,
     getLoop,
     getTrial,
     selectedLoop,
@@ -313,6 +365,39 @@ function LoopSubCanvas({
               onConfirm={handleAddLoop}
               onClose={() => setShowLoopModal(false)}
               selectedTrialId={selectedTrial?.id || selectedLoop?.id || null}
+            />
+          </div>
+        </div>
+      )}
+
+      {showAddTrialModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "rgba(0,0,0,0.32)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+          }}
+        >
+          <div style={{ position: "relative", zIndex: 10000 }}>
+            <AddTrialModal
+              onConfirm={handleAddTrialConfirm}
+              onClose={() => {
+                setShowAddTrialModal(false);
+                setPendingParentId(null);
+              }}
+              parentName={
+                pendingParentId
+                  ? loopTimeline.find((item) => item.id === pendingParentId)
+                      ?.name
+                  : undefined
+              }
             />
           </div>
         </div>

@@ -7,6 +7,7 @@ import LoopNode from "./LoopNode";
 import SubCanvas from "./SubCanvas";
 import LoopRangeModal from "../ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/LoopRangeModal";
 import BranchedTrial from "../ConfigurationPanel/TrialsConfiguration/BranchedTrial";
+import AddTrialModal from "./components/AddTrialModal";
 import CanvasToolbar from "./components/CanvasToolbar";
 import { useFlowLayout } from "./hooks/useFlowLayout";
 import { generateUniqueName } from "./utils/trialUtils";
@@ -46,6 +47,10 @@ function Canvas() {
     Array<{ id: string; name: string }>
   >([]); // Stack for nested loops
   const [showBranchedModal, setShowBranchedModal] = useState(false);
+  const [showAddTrialModal, setShowAddTrialModal] = useState(false);
+  const [pendingParentId, setPendingParentId] = useState<
+    number | string | null
+  >(null);
 
   // Load loopTimeline when branched modal opens for trial inside loop
   useEffect(() => {
@@ -164,7 +169,27 @@ function Canvas() {
     }
   };
 
+  // Handler para mostrar el modal de agregar trial
   const onAddBranch = async (parentId: number | string) => {
+    // Verificar si el parent tiene branches
+    const parentItem = timeline.find((item) => item.id === parentId);
+    if (!parentItem) return;
+
+    const parentBranches = parentItem.branches || [];
+
+    // Si no tiene branches, agregar directamente como branch
+    if (parentBranches.length === 0) {
+      await addTrialAsBranch(parentId);
+      return;
+    }
+
+    // Si tiene branches, mostrar modal para preguntar
+    setPendingParentId(parentId);
+    setShowAddTrialModal(true);
+  };
+
+  // Agregar trial como branch (sibling)
+  const addTrialAsBranch = async (parentId: number | string) => {
     const existingNames = timeline.map((item) => item.name);
     const newName = generateUniqueName(existingNames);
 
@@ -214,6 +239,80 @@ function Canvas() {
     } catch (error) {
       console.error("Error adding branch:", error);
     }
+  };
+
+  // Agregar trial como parent (de las branches existentes)
+  const addTrialAsParent = async (parentId: number | string) => {
+    const existingNames = timeline.map((item) => item.name);
+    const newName = generateUniqueName(existingNames);
+
+    try {
+      // Obtener el parent para acceder a sus branches
+      const parentItem = timeline.find((item) => item.id === parentId);
+      if (!parentItem) return;
+
+      let parentBranches: (number | string)[] = [];
+
+      if (parentItem.type === "trial") {
+        const parentTrial = await getTrial(parentId);
+        if (parentTrial) {
+          parentBranches = parentTrial.branches || [];
+        }
+      } else {
+        const parentLoop = await getLoop(parentId);
+        if (parentLoop) {
+          parentBranches = parentLoop.branches || [];
+        }
+      }
+
+      // Crear el nuevo trial que será el parent de las branches
+      const newParentTrial = await createTrial({
+        type: "Trial",
+        name: newName,
+        plugin: "plugin-dynamic",
+        parameters: {},
+        trialCode: "",
+        branches: parentBranches, // El nuevo trial se convierte en padre de las branches existentes
+      });
+
+      // Actualizar el parent original para que apunte al nuevo trial en lugar de las branches
+      if (parentItem.type === "trial") {
+        await updateTrial(
+          parentId,
+          {
+            branches: [newParentTrial.id], // Ahora solo apunta al nuevo trial
+          },
+          newParentTrial,
+        );
+      } else {
+        await updateLoop(
+          parentId,
+          {
+            branches: [newParentTrial.id], // Ahora solo apunta al nuevo trial
+          },
+          newParentTrial,
+        );
+      }
+
+      setSelectedTrial(newParentTrial);
+    } catch (error) {
+      console.error("Error adding trial as parent:", error);
+    }
+  };
+
+  // Handler cuando el usuario confirma en el modal
+  const handleAddTrialConfirm = async (addAsBranch: boolean) => {
+    if (!pendingParentId) return;
+
+    setShowAddTrialModal(false);
+
+    if (addAsBranch) {
+      await addTrialAsBranch(pendingParentId);
+    } else {
+      await addTrialAsParent(pendingParentId);
+    }
+
+    setPendingParentId(null);
   };
 
   // Handler for connecting trials manually
@@ -434,6 +533,38 @@ function Canvas() {
                 onConfirm={handleAddLoop}
                 onClose={() => setShowLoopModal(false)}
                 selectedTrialId={selectedTrial?.id || selectedLoop?.id || null}
+              />
+            </div>
+          </div>
+        )}
+
+        {showAddTrialModal && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: "100vh",
+              background: "rgba(0,0,0,0.32)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+            }}
+          >
+            <div style={{ position: "relative", zIndex: 10000 }}>
+              <AddTrialModal
+                onConfirm={handleAddTrialConfirm}
+                onClose={() => {
+                  setShowAddTrialModal(false);
+                  setPendingParentId(null);
+                }}
+                parentName={
+                  pendingParentId
+                    ? timeline.find((item) => item.id === pendingParentId)?.name
+                    : undefined
+                }
               />
             </div>
           </div>

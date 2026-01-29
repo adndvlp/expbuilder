@@ -1,5 +1,4 @@
-import { Trial } from "../../ConfigurationPanel/types";
-import { isTrial, findItemById } from "./trialUtils";
+import { findItemById } from "./trialUtils";
 
 export const LAYOUT_CONSTANTS = {
   xTrial: 250,
@@ -36,26 +35,25 @@ export function calculateBranchWidth(
   const item = findItemById(trials, branchId);
   if (!item) return branchHorizontalSpacing;
 
-  if (isTrial(item)) {
-    const branchTrial = item as Trial;
-    if (!branchTrial.branches || branchTrial.branches.length === 0) {
-      return branchHorizontalSpacing;
-    }
+  // Verificar si tiene branches (tanto trials como loops)
+  const itemBranches = item.branches || [];
 
-    const subBranchesWidth = branchTrial.branches.reduce(
-      (total: number, subBranchId: number | string) => {
-        return (
-          total +
-          calculateBranchWidth(subBranchId, trials, branchHorizontalSpacing)
-        );
-      },
-      0,
-    );
-
-    return Math.max(branchHorizontalSpacing, subBranchesWidth);
-  } else {
+  if (itemBranches.length === 0) {
     return branchHorizontalSpacing;
   }
+
+  // Calcular el ancho total de todos los sub-branches
+  const subBranchesWidth = itemBranches.reduce(
+    (total: number, subBranchId: number | string) => {
+      return (
+        total +
+        calculateBranchWidth(subBranchId, trials, branchHorizontalSpacing)
+      );
+    },
+    0,
+  );
+
+  return Math.max(branchHorizontalSpacing, subBranchesWidth);
 }
 
 export function createTrialNode(

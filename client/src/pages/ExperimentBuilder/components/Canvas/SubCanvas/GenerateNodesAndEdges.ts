@@ -4,6 +4,7 @@ import {
   createTrialNode,
   createLoopNode,
   createEdge,
+  calculateBranchWidth,
 } from "../utils/layoutUtils";
 import { Loop, Trial } from "../../ConfigurationPanel/types";
 import { TimelineItem } from "../../../contexts/TrialsContext";
@@ -147,13 +148,24 @@ export default function GenerateNodesAndEdges({
           .filter((b): b is TimelineItem => b !== undefined);
 
         if (branches.length > 0) {
-          const startX =
-            x -
-            (branches.length * branchHorizontalSpacing) / 2 +
-            branchHorizontalSpacing / 2;
+          // Calcular el ancho de cada branch considerando sus sub-branches
+          const branchWidths = item.branches.map((branchId) =>
+            calculateBranchWidth(
+              branchId,
+              loopTimeline,
+              branchHorizontalSpacing,
+            ),
+          );
+          const totalWidth = branchWidths.reduce(
+            (sum, width) => sum + width,
+            0,
+          );
+
+          let currentX = x - totalWidth / 2;
 
           branches.forEach((branch, index) => {
-            const branchX = startX + index * branchHorizontalSpacing;
+            const branchWidth = branchWidths[index];
+            const branchX = currentX + branchWidth / 2;
             const branchY = y + branchVerticalOffset;
 
             const finalY = renderItemWithBranches(
@@ -164,6 +176,8 @@ export default function GenerateNodesAndEdges({
               depth + 1,
             );
             maxY = Math.max(maxY, finalY);
+
+            currentX += branchWidth;
           });
         }
       }
