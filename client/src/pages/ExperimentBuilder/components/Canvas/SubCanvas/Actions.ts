@@ -50,8 +50,6 @@ export default function Actions({
     const parentItem = loopTimeline.find((item) => item.id === parentId);
     if (!parentItem) return parentId;
 
-    const parentBranches = parentItem.branches || [];
-
     // Si no tiene branches, devolver parentId para que se maneje directamente
     // Si tiene branches, también devolver para que el componente padre maneje el modal
     return parentId;

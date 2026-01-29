@@ -5,7 +5,6 @@ import { ColumnMapping, Trial } from "../../types";
 import {
   generateOnStartCode,
   generateOnFinishCode,
-  generateConditionalFunctionCode,
 } from "../TrialCode/TrialCodeGenerators";
 
 type PhaseProps = {

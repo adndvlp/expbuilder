@@ -7,10 +7,10 @@
       "updatedAt": "2026-01-25T05:55:49.622Z"
     },
     {
-      "experimentID": "d89adce5-c16a-4c51-b70f-305a460787a1",
-      "name": "vwr",
-      "createdAt": "2026-01-29T01:04:24.119Z",
-      "updatedAt": "2026-01-29T01:04:24.119Z"
+      "experimentID": "9b5717d4-c36a-45fb-b9b7-b9dd09a8869e",
+      "name": "jsn",
+      "createdAt": "2026-01-29T03:39:50.895Z",
+      "updatedAt": "2026-01-29T03:39:50.895Z"
     }
   ],
   "trials": [
@@ -649,7 +649,7 @@
       "updatedAt": "2026-01-27T01:38:55.479Z"
     },
     {
-      "experimentID": "d89adce5-c16a-4c51-b70f-305a460787a1",
+      "experimentID": "9b5717d4-c36a-45fb-b9b7-b9dd09a8869e",
       "trials": [
         {
           "type": "Trial",
@@ -657,12 +657,12 @@
           "plugin": "plugin-dynamic",
           "parameters": {},
           "trialCode": "",
-          "id": 1769648669483,
-          "createdAt": "2026-01-29T01:04:29.483Z",
-          "updatedAt": "2026-01-29T01:43:48.409Z",
+          "id": 1769657994290,
+          "createdAt": "2026-01-29T03:39:54.290Z",
+          "updatedAt": "2026-01-29T03:39:58.200Z",
           "branches": [
-            1769648670966,
-            1769650880068
+            1769657995571,
+            "loop_1769658004705"
           ]
         },
         {
@@ -671,12 +671,9 @@
           "plugin": "plugin-dynamic",
           "parameters": {},
           "trialCode": "",
-          "id": 1769648670966,
-          "createdAt": "2026-01-29T01:04:30.966Z",
-          "updatedAt": "2026-01-29T01:44:26.086Z",
-          "branches": [
-            "loop_1769648749599"
-          ]
+          "id": 1769657995571,
+          "createdAt": "2026-01-29T03:39:55.571Z",
+          "updatedAt": "2026-01-29T03:39:55.571Z"
         },
         {
           "type": "Trial",
@@ -684,66 +681,14 @@
           "plugin": "plugin-dynamic",
           "parameters": {},
           "trialCode": "",
-          "id": 1769648674000,
-          "createdAt": "2026-01-29T01:04:34.000Z",
-          "updatedAt": "2026-01-29T01:44:52.825Z",
+          "id": 1769657998187,
+          "createdAt": "2026-01-29T03:39:58.187Z",
+          "updatedAt": "2026-01-29T03:40:08.176Z",
           "branches": [
-            1769648753728,
-            1769649869391
+            1769657999323,
+            "loop_1769658013657"
           ],
-          "parentLoopId": "loop_1769648749599"
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 4",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "parentLoopId": "loop_1769648749599",
-          "id": 1769648753728,
-          "createdAt": "2026-01-29T01:05:53.728Z",
-          "updatedAt": "2026-01-29T01:46:04.899Z",
-          "branches": [
-            1769650903617
-          ]
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 5",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "parentLoopId": "loop_1769648749599",
-          "id": 1769648755710,
-          "createdAt": "2026-01-29T01:05:55.710Z",
-          "updatedAt": "2026-01-29T01:19:31.292Z",
-          "branches": []
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 6",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "parentLoopId": "loop_1769649707813",
-          "id": 1769649699775,
-          "createdAt": "2026-01-29T01:21:39.775Z",
-          "updatedAt": "2026-01-29T01:42:29.428Z",
-          "branches": [
-            1769649702926,
-            "loop_1769650962027"
-          ]
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 7",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "parentLoopId": "loop_1769649707813",
-          "id": 1769649702926,
-          "createdAt": "2026-01-29T01:21:42.926Z",
-          "updatedAt": "2026-01-29T01:21:47.840Z"
+          "parentLoopId": "loop_1769658004705"
         },
         {
           "type": "Trial",
@@ -751,48 +696,10 @@
           "plugin": "plugin-dynamic",
           "parameters": {},
           "trialCode": "",
-          "parentLoopId": "loop_1769648749599",
-          "id": 1769649869391,
-          "createdAt": "2026-01-29T01:24:29.391Z",
-          "updatedAt": "2026-01-29T01:46:04.946Z",
-          "branches": [
-            1769651114423,
-            "loop_1769649707813"
-          ]
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 5",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "parentLoopId": "loop_1769648749599",
-          "id": 1769649872987,
-          "createdAt": "2026-01-29T01:24:32.987Z",
-          "updatedAt": "2026-01-29T01:24:32.987Z"
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 2",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "id": 1769650347035,
-          "createdAt": "2026-01-29T01:32:27.035Z",
-          "updatedAt": "2026-01-29T01:32:27.035Z"
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 3",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "id": 1769650880068,
-          "createdAt": "2026-01-29T01:41:20.068Z",
-          "updatedAt": "2026-01-29T01:44:17.439Z",
-          "branches": [
-            1769650347035
-          ]
+          "id": 1769657999323,
+          "createdAt": "2026-01-29T03:39:59.323Z",
+          "updatedAt": "2026-01-29T03:40:04.728Z",
+          "parentLoopId": "loop_1769658004705"
         },
         {
           "type": "Trial",
@@ -800,56 +707,24 @@
           "plugin": "plugin-dynamic",
           "parameters": {},
           "trialCode": "",
-          "id": 1769650886233,
-          "createdAt": "2026-01-29T01:41:26.233Z",
-          "updatedAt": "2026-01-29T01:41:26.233Z"
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 6",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "parentLoopId": "loop_1769648749599",
-          "id": 1769650903617,
-          "createdAt": "2026-01-29T01:41:43.617Z",
-          "updatedAt": "2026-01-29T01:41:43.617Z"
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 5",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "parentLoopId": "loop_1769650962027",
-          "id": 1769650949417,
-          "createdAt": "2026-01-29T01:42:29.417Z",
-          "updatedAt": "2026-01-29T01:42:42.051Z",
+          "parentLoopId": "loop_1769658013657",
+          "id": 1769658008155,
+          "createdAt": "2026-01-29T03:40:08.155Z",
+          "updatedAt": "2026-01-29T03:40:13.673Z",
           "branches": [
-            1769650951903
+            1769658009570
           ]
         },
         {
           "type": "Trial",
-          "name": "New Trial 8",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "parentLoopId": "loop_1769650962027",
-          "id": 1769650951903,
-          "createdAt": "2026-01-29T01:42:31.903Z",
-          "updatedAt": "2026-01-29T01:42:42.056Z"
-        },
-        {
-          "type": "Trial",
           "name": "New Trial 5",
           "plugin": "plugin-dynamic",
           "parameters": {},
           "trialCode": "",
-          "parentLoopId": "loop_1769648749599",
-          "id": 1769651114423,
-          "createdAt": "2026-01-29T01:45:14.423Z",
-          "updatedAt": "2026-01-29T01:45:14.423Z"
+          "parentLoopId": "loop_1769658013657",
+          "id": 1769658009570,
+          "createdAt": "2026-01-29T03:40:09.570Z",
+          "updatedAt": "2026-01-29T03:40:13.684Z"
         }
       ],
       "loops": [
@@ -864,16 +739,14 @@
           "categories": false,
           "categoryData": [],
           "trials": [
-            1769648674000,
-            "loop_1769649707813"
+            1769657998187,
+            1769657999323,
+            "loop_1769658013657"
           ],
           "code": "",
-          "id": "loop_1769648749599",
-          "createdAt": "2026-01-29T01:05:49.599Z",
-          "updatedAt": "2026-01-29T01:44:26.069Z",
-          "branches": [
-            1769650886233
-          ]
+          "id": "loop_1769658004705",
+          "createdAt": "2026-01-29T03:40:04.705Z",
+          "updatedAt": "2026-01-29T03:40:13.703Z"
         },
         {
           "name": "Nested Loop 1",
@@ -886,91 +759,46 @@
           "categories": false,
           "categoryData": [],
           "trials": [
-            1769649699775,
-            1769649702926,
-            "loop_1769650962027"
+            1769658008155,
+            1769658009570
           ],
           "code": "",
-          "parentLoopId": "loop_1769648749599",
-          "id": "loop_1769649707813",
-          "createdAt": "2026-01-29T01:21:47.813Z",
-          "updatedAt": "2026-01-29T01:46:04.916Z",
-          "branches": []
-        },
-        {
-          "name": "Nested Loop 1",
-          "repetitions": 1,
-          "randomize": false,
-          "orders": false,
-          "stimuliOrders": [],
-          "orderColumns": [],
-          "categoryColumn": "",
-          "categories": false,
-          "categoryData": [],
-          "trials": [
-            1769650949417,
-            1769650951903
-          ],
-          "code": "",
-          "parentLoopId": "loop_1769649707813",
-          "id": "loop_1769650962027",
-          "createdAt": "2026-01-29T01:42:42.027Z",
-          "updatedAt": "2026-01-29T01:42:42.027Z"
+          "parentLoopId": "loop_1769658004705",
+          "id": "loop_1769658013657",
+          "createdAt": "2026-01-29T03:40:13.657Z",
+          "updatedAt": "2026-01-29T03:40:13.657Z"
         }
       ],
       "timeline": [
         {
-          "id": 1769648669483,
+          "id": 1769657994290,
           "type": "trial",
           "name": "New Trial",
           "branches": [
-            1769648670966,
-            1769650880068
+            1769657995571,
+            "loop_1769658004705"
           ]
         },
         {
-          "id": 1769648670966,
+          "id": 1769657995571,
           "type": "trial",
           "name": "New Trial 1",
-          "branches": [
-            "loop_1769648749599"
-          ]
+          "branches": []
         },
         {
-          "id": "loop_1769648749599",
+          "id": "loop_1769658004705",
           "type": "loop",
           "name": "Loop 1",
-          "branches": [
-            1769650886233
-          ],
+          "branches": [],
           "trials": [
-            1769648674000,
-            "loop_1769649707813"
+            1769657998187,
+            1769657999323,
+            "loop_1769658013657"
           ]
-        },
-        {
-          "id": 1769650347035,
-          "type": "trial",
-          "name": "New Trial 2",
-          "branches": []
-        },
-        {
-          "id": 1769650880068,
-          "type": "trial",
-          "name": "New Trial 3",
-          "branches": [
-            1769650347035
-          ]
-        },
-        {
-          "id": 1769650886233,
-          "type": "trial",
-          "name": "New Trial 4",
-          "branches": []
         }
       ],
-      "createdAt": "2026-01-29T01:04:29.485Z",
-      "updatedAt": "2026-01-29T01:46:04.946Z"
+      "createdAt": "2026-01-29T03:39:54.292Z",
+      "updatedAt": "2026-01-29T03:40:13.703Z"
     }
   ],
   "configs": [
@@ -984,13 +812,13 @@
       "updatedAt": "2026-01-28T22:35:16.387Z"
     },
     {
-      "experimentID": "d89adce5-c16a-4c51-b70f-305a460787a1",
+      "experimentID": "9b5717d4-c36a-45fb-b9b7-b9dd09a8869e",
       "data": {
         "generatedCode": ""
       },
       "isDevMode": false,
-      "createdAt": "2026-01-29T01:04:29.798Z",
-      "updatedAt": "2026-01-29T01:45:16.827Z"
+      "createdAt": "2026-01-29T03:39:54.673Z",
+      "updatedAt": "2026-01-29T04:28:07.072Z"
     }
   ],
   "pluginConfigs": [],

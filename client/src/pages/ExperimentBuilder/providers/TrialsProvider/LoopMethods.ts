@@ -17,6 +17,7 @@ type Props = {
 
 export default function LoopMethods({
   experimentID,
+  timeline,
   loopTimeline,
   setTimeline,
   setLoopTimeline,
@@ -697,11 +698,11 @@ export default function LoopMethods({
         if (isNestedLoop && loopToDelete.parentLoopId) {
           // Verificar si el padre existe en el timeline principal o en loopTimeline
           const parentExistsInMainTimeline = timeline.some(
-            (item) =>
+            (item: TimelineItem) =>
               item.id === loopToDelete.parentLoopId && item.type === "loop",
           );
           const parentExistsInLoopTimeline = loopTimeline.some(
-            (item) =>
+            (item: TimelineItem) =>
               item.id === loopToDelete.parentLoopId && item.type === "loop",
           );
 
