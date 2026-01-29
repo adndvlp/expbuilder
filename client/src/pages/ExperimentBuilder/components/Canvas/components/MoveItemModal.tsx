@@ -41,7 +41,7 @@ function MoveItemModal({
   return (
     <div
       style={{
-        background: "rgba(0,0,0,0.32)",
+        background: "rgba(0,0,0,0.75)",
         padding: "24px 20px",
         borderRadius: "12px",
         boxShadow: "0 2px 12px rgba(0,0,0,0.14)",
@@ -59,7 +59,7 @@ function MoveItemModal({
       <h5
         style={{
           margin: "0 0 12px 0",
-          color: "var(--text-dark)",
+          color: "#fff",
           fontWeight: 600,
           fontSize: 18,
         }}
@@ -70,7 +70,7 @@ function MoveItemModal({
       <p
         style={{
           fontSize: 14,
-          color: "var(--text-dark)",
+          color: "#fff",
           marginBottom: 20,
           textAlign: "center",
           opacity: 0.8,
@@ -97,7 +97,7 @@ function MoveItemModal({
         {availableDestinations.length === 0 ? (
           <p
             style={{
-              color: "var(--text-dark)",
+              color: "#fff",
               opacity: 0.6,
               textAlign: "center",
               padding: "16px",
@@ -140,7 +140,7 @@ function MoveItemModal({
             >
               <div
                 style={{
-                  color: "var(--text-dark)",
+                  color: "#fff",
                   fontSize: 15,
                   fontWeight: 600,
                 }}
@@ -149,7 +149,7 @@ function MoveItemModal({
               </div>
               <div
                 style={{
-                  color: "var(--text-dark)",
+                  color: "#fff",
                   fontSize: 12,
                   opacity: 0.7,
                   marginTop: "2px",
@@ -177,7 +177,7 @@ function MoveItemModal({
           <p
             style={{
               fontSize: 13,
-              color: "var(--text-dark)",
+              color: "#fff",
               marginBottom: 12,
               opacity: 0.9,
             }}
@@ -200,7 +200,7 @@ function MoveItemModal({
                 background: !moveAsBranch
                   ? "rgba(76, 175, 80, 0.2)"
                   : "rgba(255, 255, 255, 0.05)",
-                color: "var(--text-dark)",
+                color: "#fff",
                 cursor: "pointer",
                 fontSize: 13,
                 fontWeight: 600,
@@ -224,7 +224,7 @@ function MoveItemModal({
                 background: moveAsBranch
                   ? "rgba(76, 175, 80, 0.2)"
                   : "rgba(255, 255, 255, 0.05)",
-                color: "var(--text-dark)",
+                color: "#fff",
                 cursor: "pointer",
                 fontSize: 13,
                 fontWeight: 600,
@@ -253,7 +253,7 @@ function MoveItemModal({
             borderRadius: "8px",
             border: "2px solid rgba(255, 255, 255, 0.3)",
             background: "rgba(255, 255, 255, 0.05)",
-            color: "var(--text-dark)",
+            color: "#fff",
             cursor: "pointer",
             fontSize: 15,
             fontWeight: 600,

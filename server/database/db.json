@@ -7,10 +7,10 @@
       "updatedAt": "2026-01-25T05:55:49.622Z"
     },
     {
-      "experimentID": "9b5717d4-c36a-45fb-b9b7-b9dd09a8869e",
-      "name": "jsn",
-      "createdAt": "2026-01-29T03:39:50.895Z",
-      "updatedAt": "2026-01-29T03:39:50.895Z"
+      "experimentID": "8019a6a5-b00c-48ce-9a1d-2ead306f29fc",
+      "name": "vwln",
+      "createdAt": "2026-01-29T16:58:11.631Z",
+      "updatedAt": "2026-01-29T16:58:11.631Z"
     }
   ],
   "trials": [
@@ -649,31 +649,24 @@
       "updatedAt": "2026-01-27T01:38:55.479Z"
     },
     {
-      "experimentID": "9b5717d4-c36a-45fb-b9b7-b9dd09a8869e",
+      "experimentID": "8019a6a5-b00c-48ce-9a1d-2ead306f29fc",
       "trials": [
         {
           "type": "Trial",
           "name": "New Trial",
           "plugin": "plugin-dynamic",
-          "parameters": {},
+          "parameters": {
+            "includesExtensions": false,
+            "extensionType": ""
+          },
           "trialCode": "",
-          "id": 1769657994290,
-          "createdAt": "2026-01-29T03:39:54.290Z",
-          "updatedAt": "2026-01-29T03:39:58.200Z",
+          "id": 1769705894794,
+          "createdAt": "2026-01-29T16:58:14.794Z",
+          "updatedAt": "2026-01-29T17:52:33.144Z",
           "branches": [
-            1769657995571,
-            "loop_1769658004705"
+            1769705898572,
+            1769709153129
           ]
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 1",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "id": 1769657995571,
-          "createdAt": "2026-01-29T03:39:55.571Z",
-          "updatedAt": "2026-01-29T03:39:55.571Z"
         },
         {
           "type": "Trial",
@@ -681,14 +674,48 @@
           "plugin": "plugin-dynamic",
           "parameters": {},
           "trialCode": "",
-          "id": 1769657998187,
-          "createdAt": "2026-01-29T03:39:58.187Z",
-          "updatedAt": "2026-01-29T03:40:08.176Z",
+          "id": 1769705898572,
+          "createdAt": "2026-01-29T16:58:18.572Z",
+          "updatedAt": "2026-01-29T17:51:19.688Z",
+          "branches": [],
+          "columnMapping": {}
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 1",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1769709153129,
+          "createdAt": "2026-01-29T17:52:33.129Z",
+          "updatedAt": "2026-01-29T17:59:10.032Z",
           "branches": [
-            1769657999323,
-            "loop_1769658013657"
+            1769709178414
           ],
-          "parentLoopId": "loop_1769658004705"
+          "columnMapping": {
+            "components": {
+              "source": "typed",
+              "value": [
+                {
+                  "type": "HtmlComponent",
+                  "coordinates": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "width": 200,
+                  "height": 50,
+                  "name": {
+                    "source": "typed",
+                    "value": "HtmlComponent_1"
+                  },
+                  "stimulus": {
+                    "source": "typed",
+                    "value": "<div id=\"ivxg\" style=\"box-sizing: border-box;\">Type or design here</div>"
+                  }
+                }
+              ]
+            }
+          }
         },
         {
           "type": "Trial",
@@ -696,109 +723,47 @@
           "plugin": "plugin-dynamic",
           "parameters": {},
           "trialCode": "",
-          "id": 1769657999323,
-          "createdAt": "2026-01-29T03:39:59.323Z",
-          "updatedAt": "2026-01-29T03:40:04.728Z",
-          "parentLoopId": "loop_1769658004705"
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 4",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "parentLoopId": "loop_1769658013657",
-          "id": 1769658008155,
-          "createdAt": "2026-01-29T03:40:08.155Z",
-          "updatedAt": "2026-01-29T03:40:13.673Z",
-          "branches": [
-            1769658009570
-          ]
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 5",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "parentLoopId": "loop_1769658013657",
-          "id": 1769658009570,
-          "createdAt": "2026-01-29T03:40:09.570Z",
-          "updatedAt": "2026-01-29T03:40:13.684Z"
+          "id": 1769709178414,
+          "createdAt": "2026-01-29T17:52:58.414Z",
+          "updatedAt": "2026-01-29T17:59:58.493Z",
+          "branchConditions": [],
+          "repeatConditions": []
         }
       ],
-      "loops": [
-        {
-          "name": "Loop 1",
-          "repetitions": 1,
-          "randomize": false,
-          "orders": false,
-          "stimuliOrders": [],
-          "orderColumns": [],
-          "categoryColumn": "",
-          "categories": false,
-          "categoryData": [],
-          "trials": [
-            1769657998187,
-            1769657999323,
-            "loop_1769658013657"
-          ],
-          "code": "",
-          "id": "loop_1769658004705",
-          "createdAt": "2026-01-29T03:40:04.705Z",
-          "updatedAt": "2026-01-29T03:40:13.703Z"
-        },
-        {
-          "name": "Nested Loop 1",
-          "repetitions": 1,
-          "randomize": false,
-          "orders": false,
-          "stimuliOrders": [],
-          "orderColumns": [],
-          "categoryColumn": "",
-          "categories": false,
-          "categoryData": [],
-          "trials": [
-            1769658008155,
-            1769658009570
-          ],
-          "code": "",
-          "parentLoopId": "loop_1769658004705",
-          "id": "loop_1769658013657",
-          "createdAt": "2026-01-29T03:40:13.657Z",
-          "updatedAt": "2026-01-29T03:40:13.657Z"
-        }
-      ],
+      "loops": [],
       "timeline": [
         {
-          "id": 1769657994290,
+          "id": 1769705894794,
           "type": "trial",
           "name": "New Trial",
           "branches": [
-            1769657995571,
-            "loop_1769658004705"
+            1769705898572,
+            1769709153129
           ]
         },
         {
-          "id": 1769657995571,
+          "id": 1769705898572,
           "type": "trial",
-          "name": "New Trial 1",
+          "name": "New Trial 2",
           "branches": []
         },
         {
-          "id": "loop_1769658004705",
-          "type": "loop",
-          "name": "Loop 1",
-          "branches": [],
-          "trials": [
-            1769657998187,
-            1769657999323,
-            "loop_1769658013657"
+          "id": 1769709153129,
+          "type": "trial",
+          "name": "New Trial 1",
+          "branches": [
+            1769709178414
           ]
+        },
+        {
+          "id": 1769709178414,
+          "type": "trial",
+          "name": "New Trial 3",
+          "branches": []
         }
       ],
-      "createdAt": "2026-01-29T03:39:54.292Z",
-      "updatedAt": "2026-01-29T03:40:13.703Z"
+      "createdAt": "2026-01-29T16:58:14.795Z",
+      "updatedAt": "2026-01-29T17:59:58.493Z"
     }
   ],
   "configs": [
@@ -812,15 +777,34 @@
       "updatedAt": "2026-01-28T22:35:16.387Z"
     },
     {
-      "experimentID": "9b5717d4-c36a-45fb-b9b7-b9dd09a8869e",
+      "experimentID": "8019a6a5-b00c-48ce-9a1d-2ead306f29fc",
       "data": {
         "generatedCode": ""
       },
       "isDevMode": false,
-      "createdAt": "2026-01-29T03:39:54.673Z",
-      "updatedAt": "2026-01-29T04:28:07.072Z"
+      "createdAt": "2026-01-29T16:58:14.292Z",
+      "updatedAt": "2026-01-29T17:59:36.499Z"
     }
   ],
   "pluginConfigs": [],
-  "sessionResults": []
+  "sessionResults": [
+    {
+      "experimentID": "8019a6a5-b00c-48ce-9a1d-2ead306f29fc",
+      "sessionId": "New Trial 1_result_b2c54746-b7d8-4b9f-98b6-497211cab22d",
+      "createdAt": "2026-01-29T17:58:13.445Z",
+      "data": [],
+      "state": "initiated",
+      "lastUpdate": "2026-01-29T17:58:13.445Z",
+      "metadata": {}
+    },
+    {
+      "experimentID": "8019a6a5-b00c-48ce-9a1d-2ead306f29fc",
+      "sessionId": "New Trial 1_result_67c2d90f-3ca8-491a-a754-b7e95432d1c3",
+      "createdAt": "2026-01-29T17:58:30.147Z",
+      "data": [],
+      "state": "initiated",
+      "lastUpdate": "2026-01-29T17:58:30.147Z",
+      "metadata": {}
+    }
+  ]
 }

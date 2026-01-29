@@ -77,7 +77,7 @@ function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
   return (
     <div
       style={{
-        background: "rgba(0,0,0,0.32)",
+        background: "rgba(0,0,0,0.75)",
         padding: "20px 18px",
         borderRadius: "12px",
         boxShadow: "0 2px 12px rgba(0,0,0,0.14)",
@@ -94,7 +94,7 @@ function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
       <h5
         style={{
           margin: "0 0 18px 0",
-          color: "var(--text-dark)",
+          color: "#fff",
           fontWeight: 600,
           fontSize: 18,
         }}
@@ -105,7 +105,7 @@ function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
       <div
         style={{
           fontSize: 13,
-          color: "var(--text-dark)",
+          color: "#fff",
           marginBottom: 12,
           textAlign: "center",
           opacity: 0.8,
@@ -171,7 +171,7 @@ function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
               />
               <span
                 style={{
-                  color: "var(--text-dark)",
+                  color: "#fff",
                   fontSize: 15,
                   flex: 1,
                 }}

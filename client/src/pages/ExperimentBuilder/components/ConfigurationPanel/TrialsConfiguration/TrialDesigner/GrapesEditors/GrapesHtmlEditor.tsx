@@ -328,7 +328,7 @@ const GrapesHtmlEditor: React.FC<GrapesHtmlEditorProps> = ({
             onClick={handleSave}
             style={{
               background: "var(--gold)",
-              color: "var(--text-dark)",
+              color: "var(--text-light)",
               padding: "8px 20px",
               borderRadius: 6,
               border: "none",
@@ -347,7 +347,7 @@ const GrapesHtmlEditor: React.FC<GrapesHtmlEditorProps> = ({
               (e.currentTarget as HTMLButtonElement).style.background =
                 "var(--gold)";
               (e.currentTarget as HTMLButtonElement).style.color =
-                "var(--text-dark)";
+                "var(--text-light)";
             }}
           >
             Save HTML

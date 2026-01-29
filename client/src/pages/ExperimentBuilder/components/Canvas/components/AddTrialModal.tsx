@@ -8,7 +8,7 @@ function AddTrialModal({ onConfirm, onClose, parentName }: Props) {
   return (
     <div
       style={{
-        background: "rgba(0,0,0,0.32)",
+        background: "rgba(0,0,0,0.75)",
         padding: "24px 20px",
         borderRadius: "12px",
         boxShadow: "0 2px 12px rgba(0,0,0,0.14)",
@@ -24,7 +24,7 @@ function AddTrialModal({ onConfirm, onClose, parentName }: Props) {
       <h5
         style={{
           margin: "0 0 12px 0",
-          color: "var(--text-dark)",
+          color: "#fff",
           fontWeight: 600,
           fontSize: 18,
         }}
@@ -35,7 +35,7 @@ function AddTrialModal({ onConfirm, onClose, parentName }: Props) {
       <p
         style={{
           fontSize: 14,
-          color: "var(--text-dark)",
+          color: "#fff",
           marginBottom: 20,
           textAlign: "center",
           opacity: 0.8,
@@ -64,7 +64,7 @@ function AddTrialModal({ onConfirm, onClose, parentName }: Props) {
             borderRadius: "8px",
             border: "2px solid rgba(255, 255, 255, 0.3)",
             background: "rgba(255, 255, 255, 0.05)",
-            color: "var(--text-dark)",
+            color: "#fff",
             cursor: "pointer",
             fontSize: 15,
             fontWeight: 600,
@@ -81,7 +81,7 @@ function AddTrialModal({ onConfirm, onClose, parentName }: Props) {
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
-            e.currentTarget.style.color = "var(--text-dark)";
+            e.currentTarget.style.color = "#fff";
             e.currentTarget.style.border = "2px solid rgba(255, 255, 255, 0.3)";
             e.currentTarget.style.transform = "translateY(0)";
             e.currentTarget.style.boxShadow = "none";
@@ -98,7 +98,7 @@ function AddTrialModal({ onConfirm, onClose, parentName }: Props) {
             borderRadius: "8px",
             border: "2px solid rgba(255, 255, 255, 0.3)",
             background: "rgba(255, 255, 255, 0.05)",
-            color: "var(--text-dark)",
+            color: "#fff",
             cursor: "pointer",
             fontSize: 15,
             fontWeight: 600,
@@ -115,7 +115,7 @@ function AddTrialModal({ onConfirm, onClose, parentName }: Props) {
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
-            e.currentTarget.style.color = "var(--text-dark)";
+            e.currentTarget.style.color = "#fff";
             e.currentTarget.style.border = "2px solid rgba(255, 255, 255, 0.3)";
             e.currentTarget.style.transform = "translateY(0)";
             e.currentTarget.style.boxShadow = "none";
@@ -132,7 +132,7 @@ function AddTrialModal({ onConfirm, onClose, parentName }: Props) {
           padding: "8px 16px",
           background: "transparent",
           border: "none",
-          color: "var(--text-dark)",
+          color: "#fff",
           cursor: "pointer",
           fontSize: 13,
           opacity: 0.7,
