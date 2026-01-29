@@ -653,45 +653,30 @@
       "trials": [
         {
           "type": "Trial",
+          "name": "New Trial 3",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1769714735453,
+          "createdAt": "2026-01-29T19:25:35.453Z",
+          "updatedAt": "2026-01-29T19:27:42.369Z",
+          "branches": [
+            1769714817647,
+            "loop_1769714835668"
+          ],
+          "branchConditions": [],
+          "repeatConditions": []
+        },
+        {
+          "type": "Trial",
           "name": "New Trial",
           "plugin": "plugin-dynamic",
-          "parameters": {
-            "includesExtensions": false,
-            "extensionType": ""
-          },
-          "trialCode": "",
-          "id": 1769705894794,
-          "createdAt": "2026-01-29T16:58:14.794Z",
-          "updatedAt": "2026-01-29T17:52:33.144Z",
-          "branches": [
-            1769705898572,
-            1769709153129
-          ]
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 2",
-          "plugin": "plugin-dynamic",
           "parameters": {},
           "trialCode": "",
-          "id": 1769705898572,
-          "createdAt": "2026-01-29T16:58:18.572Z",
-          "updatedAt": "2026-01-29T17:51:19.688Z",
+          "id": 1769714817647,
+          "createdAt": "2026-01-29T19:26:57.647Z",
+          "updatedAt": "2026-01-29T19:29:03.820Z",
           "branches": [],
-          "columnMapping": {}
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 1",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "id": 1769709153129,
-          "createdAt": "2026-01-29T17:52:33.129Z",
-          "updatedAt": "2026-01-29T17:59:10.032Z",
-          "branches": [
-            1769709178414
-          ],
           "columnMapping": {
             "components": {
               "source": "typed",
@@ -710,7 +695,7 @@
                   },
                   "stimulus": {
                     "source": "typed",
-                    "value": "<div id=\"ivxg\" style=\"box-sizing: border-box;\">Type or design here</div>"
+                    "value": "<div style=\"box-sizing: border-box;\">Type or design here</div>"
                   }
                 }
               ]
@@ -719,51 +704,113 @@
         },
         {
           "type": "Trial",
-          "name": "New Trial 3",
+          "name": "New Trial 1",
           "plugin": "plugin-dynamic",
           "parameters": {},
           "trialCode": "",
-          "id": 1769709178414,
-          "createdAt": "2026-01-29T17:52:58.414Z",
-          "updatedAt": "2026-01-29T17:59:58.493Z",
-          "branchConditions": [],
-          "repeatConditions": []
+          "id": 1769714819965,
+          "createdAt": "2026-01-29T19:26:59.965Z",
+          "updatedAt": "2026-01-29T19:37:42.561Z",
+          "branches": [
+            1769714823532,
+            1769715462548
+          ],
+          "parentLoopId": "loop_1769714835668"
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 2",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1769714823532,
+          "createdAt": "2026-01-29T19:27:03.532Z",
+          "updatedAt": "2026-01-29T19:27:15.685Z",
+          "parentLoopId": "loop_1769714835668"
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 1",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1769714838964,
+          "createdAt": "2026-01-29T19:27:18.964Z",
+          "updatedAt": "2026-01-29T19:27:18.964Z"
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 4",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "parentLoopId": "loop_1769714835668",
+          "id": 1769715462548,
+          "createdAt": "2026-01-29T19:37:42.548Z",
+          "updatedAt": "2026-01-29T19:37:42.548Z"
         }
       ],
-      "loops": [],
+      "loops": [
+        {
+          "name": "Loop 1",
+          "repetitions": 1,
+          "randomize": false,
+          "orders": false,
+          "stimuliOrders": [],
+          "orderColumns": [],
+          "categoryColumn": "",
+          "categories": false,
+          "categoryData": [],
+          "trials": [
+            1769714819965,
+            1769714823532
+          ],
+          "code": "",
+          "id": "loop_1769714835668",
+          "createdAt": "2026-01-29T19:27:15.668Z",
+          "updatedAt": "2026-01-29T19:27:18.975Z",
+          "branches": [
+            1769714838964
+          ]
+        }
+      ],
       "timeline": [
         {
-          "id": 1769705894794,
+          "id": 1769714735453,
           "type": "trial",
-          "name": "New Trial",
+          "name": "New Trial 3",
           "branches": [
-            1769705898572,
-            1769709153129
+            1769714817647,
+            "loop_1769714835668"
           ]
         },
         {
-          "id": 1769705898572,
+          "id": 1769714817647,
           "type": "trial",
-          "name": "New Trial 2",
+          "name": "New Trial",
           "branches": []
         },
         {
-          "id": 1769709153129,
-          "type": "trial",
-          "name": "New Trial 1",
+          "id": "loop_1769714835668",
+          "type": "loop",
+          "name": "Loop 1",
           "branches": [
-            1769709178414
+            1769714838964
+          ],
+          "trials": [
+            1769714819965,
+            1769714823532
           ]
         },
         {
-          "id": 1769709178414,
+          "id": 1769714838964,
           "type": "trial",
-          "name": "New Trial 3",
+          "name": "New Trial 1",
           "branches": []
         }
       ],
       "createdAt": "2026-01-29T16:58:14.795Z",
-      "updatedAt": "2026-01-29T17:59:58.493Z"
+      "updatedAt": "2026-01-29T19:37:42.561Z"
     }
   ],
   "configs": [
@@ -783,7 +830,7 @@
       },
       "isDevMode": false,
       "createdAt": "2026-01-29T16:58:14.292Z",
-      "updatedAt": "2026-01-29T17:59:36.499Z"
+      "updatedAt": "2026-01-29T19:45:34.797Z"
     }
   ],
   "pluginConfigs": [],

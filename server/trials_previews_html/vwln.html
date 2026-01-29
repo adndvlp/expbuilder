@@ -91,8 +91,11 @@ response_components: []}];
     type: DynamicPlugin, 
       data: {
         rt: "rt",
-        trial_id: 1769709178414,
+        trial_id: 1769714735453,
         
+        
+        branches: [1769714817647, "loop_1769714835668"],
+        branchConditions: [[]] 
         
       },
     on_start: function(trial) {
@@ -174,10 +177,12 @@ response_components: []}];
       
     },
     on_finish: function(data) {
-      // Trial terminal - si llegamos aquí después de branching, terminar el experimento
-      if (window.branchingActive) {
-        jsPsych.abortExperiment('', {});
-      }
+      // Branching automático al primer branch (global)
+      console.log('🔄 [GLOBAL BRANCH] Auto-branching to first branch:', 1769714817647);
+      window.nextTrialId = 1769714817647;
+      window.skipRemaining = true;
+      window.branchingActive = true;
+      
     },};
     console.log("=== PROCEDURE SETUP New_Trial_3 ===");
     console.log("test_stimuli_New_Trial_3 before procedure:", test_stimuli_New_Trial_3);
@@ -189,7 +194,7 @@ response_components: []}];
     timeline_variables: test_stimuli_New_Trial_3,
     
     conditional_function: function() {
-      const currentId = 1769709178414;
+      const currentId = 1769714735453;
       
       // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
       const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
