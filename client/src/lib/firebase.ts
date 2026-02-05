@@ -2,7 +2,7 @@ import { initializeApp, FirebaseApp } from "firebase/app";
 import { getAuth, Auth } from "firebase/auth";
 import { getFirestore, Firestore } from "firebase/firestore";
 
-// Configuración por defecto
+// Default configuration
 const defaultConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -12,19 +12,19 @@ const defaultConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// Variables para la app inicializada
+// Variables for the initialized app
 let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
 let isInitialized = false;
 
-// Función para inicializar Firebase
+// Function to initialize Firebase
 async function initializeFirebase() {
   if (isInitialized) return { app, auth, db };
 
   let firebaseConfig = defaultConfig;
 
-  // En Electron, intentar cargar config personalizada
+  // In Electron, try to load custom config
   const isElectron = !!window.electron?.readFirebaseConfig;
   if (isElectron) {
     try {
@@ -44,7 +44,7 @@ async function initializeFirebase() {
   auth = getAuth(app);
   db = getFirestore(app);
 
-  // Conectar a emuladores locales en desarrollo
+  // Connect to local emulators in development
   if (import.meta.env.DEV) {
     // Auth Emulator
     import("firebase/auth").then(({ connectAuthEmulator }) => {
@@ -68,20 +68,20 @@ async function initializeFirebase() {
   return { app, auth, db };
 }
 
-// Inicializar inmediatamente
+// Initialize immediately
 const initPromise = initializeFirebase();
 
-// Exportar una promesa que se resuelve con los objetos inicializados
+// Export a promise that resolves with the initialized objects
 export const getFirebaseApp = () => initPromise.then(({ app }) => app);
 export const getFirebaseAuth = () => initPromise.then(({ auth }) => auth);
 export const getFirebaseDb = () => initPromise.then(({ db }) => db);
 
-// Para compatibilidad, exportar también de forma síncrona (se inicializarán después)
+// For compatibility, also export synchronously (will be initialized later)
 initPromise.then(({ app: _app, auth: _auth, db: _db }) => {
   app = _app;
   auth = _auth;
   db = _db;
 });
 
-// Exportaciones síncronas que estarán disponibles después de la inicialización
+// Synchronous exports that will be available after initialization
 export { auth, db, app };

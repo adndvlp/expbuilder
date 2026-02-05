@@ -5,11 +5,11 @@ export type Trial = {
   mappedJson?: Record<string, any>[];
 };
 
-// LoopData: Similar a Loop pero con 'items' en lugar de 'trials' (para datos procesados)
-// y solo las propiedades necesarias para generación de código
+// LoopData: Similar to Loop but with 'items' instead of 'trials' (for processed data)
+// and only the properties needed for code generation
 export type LoopData = {
-  loopName: string; // Equivalente a Loop.name
-  loopId: string; // Equivalente a Loop.id
+  loopName: string; // Equivalent to Loop.name
+  loopId: string; // Equivalent to Loop.id
   repetitions: number;
   randomize: boolean;
   orders: boolean;
@@ -21,9 +21,9 @@ export type LoopData = {
   repeatConditions?: RepeatCondition[];
   loopConditions?: LoopCondition[];
   isConditionalLoop?: boolean;
-  items: TimelineItem[]; // Recursivo: contiene Trial[] o LoopData[] procesados
+  items: TimelineItem[]; // Recursive: contains processed Trial[] or LoopData[]
   unifiedStimuli: Record<string, any>[];
-  isLoop: true; // Discriminador para type guard
+  isLoop: true; // Discriminator for type guard
 };
 
 export type TimelineItem = Trial | LoopData;

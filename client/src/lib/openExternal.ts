@@ -1,4 +1,4 @@
-// Utilidad para abrir URLs en el navegador predeterminado, compatible con Electron y web
+// Utility to open URLs in the default browser, compatible with Electron and web
 
 export function openExternal(url: string) {
   if (typeof window !== "undefined" && window.electron?.openExternal) {

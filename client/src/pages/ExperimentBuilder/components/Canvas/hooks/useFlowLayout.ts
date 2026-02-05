@@ -50,11 +50,11 @@ export function useFlowLayout({
     const branchIds = collectAllBranchIds(timeline);
 
     const allBlocks = timeline.filter((item) => {
-      // Usar la propiedad "type" del timeline para distinguir
+      // Use the "type" property of the timeline to distinguish
       if (item.type === "trial") {
         return !trialIdsInLoops.includes(item.id) && !branchIds.has(item.id);
       } else {
-        // Para loops, solo excluir si está en branchIds
+        // For loops, only exclude if it is in branchIds
         return !branchIds.has(item.id);
       }
     });
@@ -119,7 +119,7 @@ export function useFlowLayout({
             const branchX = currentX + branchWidth / 2;
             const branchY = y + branchVerticalOffset;
 
-            // Usar item.type si está disponible, sino usar isTrial()
+            // Use item.type if available, otherwise use isTrial()
             const isTrialItem =
               "type" in item ? item.type === "trial" : isTrial(item);
 
@@ -220,7 +220,7 @@ export function useFlowLayout({
             const branchX = currentX + branchWidth / 2;
             const branchY = y + branchVerticalOffset;
 
-            // Usar item.type si está disponible, sino usar isTrial()
+            // Use item.type if available, otherwise use isTrial()
             const isTrialItem =
               "type" in item ? item.type === "trial" : isTrial(item);
 
@@ -261,7 +261,7 @@ export function useFlowLayout({
     // Render main sequence trials and their branches
     let yPos = 100;
     allBlocks.forEach((item) => {
-      // Usar item.type para distinguir entre trial y loop
+      // Use item.type to distinguish between trial and loop
       const itemId =
         item.type === "trial" ? String(item.id) : `loop-${item.id}`;
 
@@ -325,7 +325,7 @@ export function useFlowLayout({
             const branchWidth = branchWidths[index];
             const branchX = currentX + branchWidth / 2;
 
-            // Usar branchItem.type si está disponible, sino usar isTrial()
+            // Use branchItem.type if available, otherwise use isTrial()
             const isTrialItem =
               "type" in branchItem
                 ? branchItem.type === "trial"
@@ -371,7 +371,7 @@ export function useFlowLayout({
 
     // Create vertical edges between main sequence trials
     for (let i = 0; i < allBlocks.length - 1; i++) {
-      // Usar .type si está disponible, sino usar isTrial()
+      // Use .type if available, otherwise use isTrial()
       const currentId =
         allBlocks[i].type === "trial"
           ? String(allBlocks[i].id)
@@ -390,8 +390,8 @@ export function useFlowLayout({
     selectedTrial,
     selectedLoop,
     openLoop,
-    // NO incluir funciones callback - causan re-renders innecesarios en React Flow
-    // onSelectTrial, onSelectLoop, onAddBranch se usan pero no como dependencias
+    // DO NOT include callback functions - they cause unnecessary re-renders in React Flow
+    // onSelectTrial, onSelectLoop, onAddBranch are used but not as dependencies
   ]);
 
   return { nodes, edges };

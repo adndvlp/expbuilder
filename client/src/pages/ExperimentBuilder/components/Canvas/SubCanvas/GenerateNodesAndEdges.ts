@@ -35,7 +35,7 @@ export default function GenerateNodesAndEdges({
   onSelectLoop,
   onOpenNestedLoop,
 }: Props) {
-  // Generar nodes y edges basándose en loopTimeline
+  // Generate nodes and edges based on loopTimeline
   const { nodes, edges } = useMemo(() => {
     const nodes: any[] = [];
     const edges: any[] = [];
@@ -45,7 +45,7 @@ export default function GenerateNodesAndEdges({
 
     const xTrial = size.width / 3.1;
 
-    // Recopilar todos los IDs de branches (recursivamente)
+    // Collect all branch IDs (recursively)
     const collectAllBranchIds = (
       items: TimelineItem[],
     ): Set<number | string> => {
@@ -72,7 +72,7 @@ export default function GenerateNodesAndEdges({
       (item) => !branchItemIds.has(item.id),
     );
 
-    // Función recursiva para renderizar un item y sus branches
+    // Recursive function to render an item and its branches
     const renderItemWithBranches = (
       item: TimelineItem,
       parentId: string,
@@ -93,7 +93,7 @@ export default function GenerateNodesAndEdges({
 
       renderedItems.set(item.id, nodeId);
 
-      // Crear nodo
+      // Create node
       const isSelected = isTrial
         ? selectedTrial?.id === item.id
         : selectedLoop?.id === item.id;
@@ -141,14 +141,14 @@ export default function GenerateNodesAndEdges({
 
       let maxY = y;
 
-      // Renderizar branches
+      // Render branches
       if (item.branches && item.branches.length > 0) {
         const branches = item.branches
           .map((branchId) => loopTimeline.find((i) => i.id === branchId))
           .filter((b): b is TimelineItem => b !== undefined);
 
         if (branches.length > 0) {
-          // Calcular el ancho de cada branch considerando sus sub-branches
+          // Calculate the width of each branch considering its sub-branches
           const branchWidths = item.branches.map((branchId) =>
             calculateBranchWidth(
               branchId,
@@ -185,7 +185,7 @@ export default function GenerateNodesAndEdges({
       return maxY;
     };
 
-    // Renderizar items principales y sus branches
+    // Render main items and their branches
     let yPos = 60;
     mainItems.forEach((item, index) => {
       const finalY = renderItemWithBranches(item, "root", xTrial, yPos, 0);
@@ -195,7 +195,7 @@ export default function GenerateNodesAndEdges({
       }
     });
 
-    // Agregar edges entre items principales (secuencia vertical)
+    // Add edges between main items (vertical sequence)
     for (let i = 0; i < mainItems.length - 1; i++) {
       const currentItem = mainItems[i];
       const nextItem = mainItems[i + 1];

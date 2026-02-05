@@ -135,7 +135,6 @@ export function ParameterOverride({
         hasSurveyJsonParam={hasSurveyJsonParam}
       />
 
-      {/* Columna Value */}
       <ColumnValue
         isTargetDynamic={isTargetDynamic}
         fieldType={fieldType}
@@ -157,7 +156,6 @@ export function ParameterOverride({
   );
 }
 
-// Add Param Button Component
 type AddParamProps = {
   condition: Condition;
   addCustomParameter: (conditionId: number, isTargetDynamic: boolean) => void;

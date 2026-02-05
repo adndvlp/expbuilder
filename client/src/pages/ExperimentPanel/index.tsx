@@ -1,9 +1,10 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import ResultsList from "./ExperimentBuilder/components/ResultsList";
-import { fetchExperimentNameByID } from "./ExperimentBuilder/hooks/useExperimentID";
+import ResultsList from "../ExperimentBuilder/components/ResultsList";
+import { fetchExperimentNameByID } from "../ExperimentBuilder/hooks/useExperimentID";
+import ExperimentSettings from "./ExperimentSettings";
 
-type TabType = "preview" | "local" | "online";
+type TabType = "preview" | "local" | "online" | "settings";
 
 function ExperimentPanel() {
   const navigate = useNavigate();
@@ -134,10 +135,33 @@ function ExperimentPanel() {
         >
           Online Experiments
         </button>
+        <button
+          onClick={() => setActiveTab("settings")}
+          style={{
+            padding: "12px 24px",
+            border: "none",
+            background:
+              activeTab === "settings"
+                ? "linear-gradient(135deg, var(--gold), var(--dark-gold))"
+                : "var(--neutral-medium)",
+            color: activeTab === "settings" ? "white" : "var(--text-dark)",
+            fontWeight: activeTab === "settings" ? "bold" : "normal",
+            cursor: "pointer",
+            borderRadius: "8px 8px 0 0",
+            fontSize: 16,
+            transition: "all 0.2s",
+          }}
+        >
+          Settings
+        </button>
       </div>
 
       {/* Tab Content */}
-      <ResultsList activeTab={activeTab} />
+      {activeTab === "settings" ? (
+        <ExperimentSettings experimentID={id} />
+      ) : (
+        <ResultsList activeTab={activeTab} />
+      )}
     </div>
   );
 }

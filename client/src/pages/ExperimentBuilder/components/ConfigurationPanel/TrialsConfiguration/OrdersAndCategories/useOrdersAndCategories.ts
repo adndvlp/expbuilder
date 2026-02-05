@@ -8,7 +8,6 @@ export function useOrdersAndCategories() {
   const [categoryColumn, setCategoryColumn] = useState<string>("");
   const [categoryData, setCategoryData] = useState<any[]>([]);
 
-  // Mapea los valores del csvJson por columnas de orden
   function mapOrdersFromCsv(csvJson: any[], columnKeys: string[]) {
     const mapped = columnKeys.map((key) =>
       csvJson.map((row) => Number(row[key] - 1)).filter((v) => !isNaN(v)),

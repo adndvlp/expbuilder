@@ -19,19 +19,19 @@ function BranchesCode({
   loopIdSanitized,
   id,
 }: Props) {
-  // Lógica de branching para el loop (igual que trials)
+  // Branching logic for the loop (same as trials)
   const hasBranches = hasBranchesLoop;
   const hasMultipleBranches = branches && branches.length > 1;
   const hasBranchConditions = branchConditions && branchConditions.length > 0;
   const hasRepeatConditions = repeatConditions && repeatConditions.length > 0;
 
   if (hasBranches || hasRepeatConditions) {
-    // Si tiene branches o repeat conditions, generar on_finish completo
+    // If it has branches or repeat conditions, generate full on_finish
     if (hasRepeatConditions) {
-      // Generar on_finish con evaluación de repeat conditions
+      // Generate on_finish with evaluation of repeat conditions
       code += `
   on_finish: function(data) {
-    // Evaluar repeat conditions (para reiniciar el experimento desde un trial específico)
+    // Evaluate repeat conditions (to restart the experiment from a specific trial)
     const repeatConditionsArray = ${JSON.stringify(repeatConditions)};
     
     let shouldRepeat = false;
@@ -46,7 +46,7 @@ function BranchesCode({
       
       const lastTrialData = loopData[loopData.length - 1];
       
-      // Todas las reglas en una condición deben ser verdaderas (lógica AND)
+      // All rules in a condition must be true (AND logic)
       const allRulesMatch = condition.rules.every(rule => {
         // Construct column name from componentIdx and prop if column is empty
         let columnName = rule.column || "";
@@ -59,7 +59,7 @@ function BranchesCode({
         const propValue = lastTrialData[columnName];
         const compareValue = rule.value;
         
-        // Convertir valores para comparación
+        // Convert values for comparison
         const numPropValue = parseFloat(propValue);
         const numCompareValue = parseFloat(compareValue);
         const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
@@ -84,7 +84,7 @@ function BranchesCode({
       
       if (allRulesMatch && condition.jumpToTrialId) {
         console.log('Loop repeat condition matched! Jumping to trial:', condition.jumpToTrialId);
-        // Guardar el trial objetivo en localStorage
+        // Save the target trial in localStorage
         localStorage.setItem('jsPsych_jumpToTrial', String(condition.jumpToTrialId));
         shouldRepeat = true;
         break;
@@ -92,13 +92,13 @@ function BranchesCode({
     }
     
     if (shouldRepeat) {
-      // Limpiar el contenedor de jsPsych (jspsych-container es el display_element)
+      // Clear the jsPsych container (jspsych-container is the display_element)
       const container = document.getElementById('jspsych-container');
       if (container) {
-        // Limpiar todo el contenido del container
+        // Clear all content from the container
         container.innerHTML = '';
       }
-      // Reiniciar el timeline
+      // Restart the timeline
       setTimeout(() => {
         jsPsych.run(timeline);
       }, 100);
@@ -109,14 +109,14 @@ function BranchesCode({
       hasBranches
         ? hasMultipleBranches && hasBranchConditions
           ? `
-    // Evaluar condiciones del loop para branching
-    // Solo si NO se activó desde trial interno (ShouldBranchOnFinish o BranchingActive)
+    // Evaluate loop conditions for branching
+    // Only if it was NOT activated from an internal trial (ShouldBranchOnFinish or BranchingActive)
     if (!loop_${loopIdSanitized}_ShouldBranchOnFinish && !loop_${loopIdSanitized}_BranchingActive) {
       const branches = [${branches.map((b) => (typeof b === "string" ? `"${b}"` : b))}];
       const branchConditions = ${JSON.stringify(branchConditions)};
       
-      // TODO: Implementar evaluación de condiciones si es necesario
-      // Por ahora, seguir al primer branch
+      // TODO: Implement condition evaluation if necessary
+      // For now, follow the first branch
       if (branches.length > 0) {
         window.nextTrialId = branches[0];
         window.skipRemaining = true;
@@ -126,8 +126,8 @@ function BranchesCode({
     }
     `
           : `
-    // Branching automático al primer branch del loop
-    // Solo si NO se activó desde trial interno (ShouldBranchOnFinish o BranchingActive)
+    // Automatic branching to the first branch of the loop
+    // Only if it was NOT activated from an internal trial (ShouldBranchOnFinish or BranchingActive)
     if (!loop_${loopIdSanitized}_ShouldBranchOnFinish && !loop_${loopIdSanitized}_BranchingActive) {
       const branches = [${branches?.map((b) => (typeof b === "string" ? `"${b}"` : b)) ?? []}];
       if (branches.length > 0) {
@@ -139,8 +139,8 @@ function BranchesCode({
     }
     `
         : `
-    // Este loop no tiene branches, es un loop terminal
-    // Si llegamos aquí después de un branching, terminar el experimento
+    // This loop has no branches, it is a terminal loop
+    // If we get here after branching, end the experiment
     if (window.branchingActive) {
       jsPsych.abortExperiment('', {});
     }
@@ -148,13 +148,13 @@ function BranchesCode({
     }
   },`;
     } else if (hasBranches) {
-      // Si tiene branches pero NO repeat conditions
+      // If it has branches but NO repeat conditions
       if (!hasMultipleBranches || !hasBranchConditions) {
-        // Si solo hay un branch O no hay condiciones, seguir automáticamente al primer branch
+        // If there is only one branch OR there are no conditions, automatically follow the first branch
         code += `
   on_finish: function(data) {
-    // Branching automático al primer branch del loop
-    // Solo si NO se activó desde trial interno (ShouldBranchOnFinish o BranchingActive)
+    // Automatic branching to the first branch of the loop
+    // Only if it was NOT activated from an internal trial (ShouldBranchOnFinish or BranchingActive)
     if (!loop_${loopIdSanitized}_ShouldBranchOnFinish && !loop_${loopIdSanitized}_BranchingActive) {
       const branches = [${branches?.map((b) => (typeof b === "string" ? `"${b}"` : b)) ?? []}];
       if (branches.length > 0) {
@@ -166,17 +166,17 @@ function BranchesCode({
     }
   },`;
       } else {
-        // Si hay múltiples branches Y condiciones, necesitamos evaluarlas
+        // If there are multiple branches AND conditions, we need to evaluate them
         code += `
   on_finish: function(data) {
-    // Evaluar condiciones del loop para branching
-    // Solo si NO se activó desde trial interno (ShouldBranchOnFinish o BranchingActive)
+    // Evaluate loop conditions for branching
+    // Only if it was NOT activated from an internal trial (ShouldBranchOnFinish or BranchingActive)
     if (!loop_${loopIdSanitized}_ShouldBranchOnFinish && !loop_${loopIdSanitized}_BranchingActive) {
       const branches = [${branches.map((b) => (typeof b === "string" ? `"${b}"` : b))}];
       const branchConditions = ${JSON.stringify(branchConditions)};
       
-      // TODO: Implementar evaluación de condiciones si es necesario
-      // Por ahora, seguir al primer branch
+      // TODO: Implement condition evaluation if necessary
+      // For now, follow the first branch
       if (branches.length > 0) {
         window.nextTrialId = branches[0];
         window.skipRemaining = true;
@@ -188,11 +188,11 @@ function BranchesCode({
       }
     }
   } else {
-    // Loop terminal: no tiene branches ni repeat conditions
+    // Terminal loop: has no branches or repeat conditions
     code += `
   on_finish: function(data) {
-    // Este loop no tiene branches ni repeat conditions, es un loop terminal
-    // Si llegamos aquí después de un branching, terminar el experimento
+    // This loop has no branches or repeat conditions, it is a terminal loop
+    // If we get here after branching, end the experiment
     if (window.branchingActive) {
       jsPsych.abortExperiment('', {});
     }

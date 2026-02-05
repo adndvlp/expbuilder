@@ -87,7 +87,7 @@ function LoopSubCanvas({
     type: "trial" | "loop";
   } | null>(null);
 
-  // Construir el breadcrumb completo (stack + loop actual)
+  // Build the full breadcrumb (stack + current loop)
   const fullBreadcrumb =
     loopId && !loopStack.some((l) => l.id === loopId)
       ? [...loopStack, { id: String(loopId), name: loopName }]
@@ -115,15 +115,15 @@ function LoopSubCanvas({
     createLoop,
   });
 
-  // Wrapper para onAddBranch que muestra el modal
+  // Wrapper for onAddBranch that shows the modal
   const handleAddBranchClick = async (parentId: number | string) => {
-    // Verificar si el parent tiene branches
+    // Check if the parent has branches
     const parentItem = loopTimeline.find((item) => item.id === parentId);
     if (!parentItem) return;
 
     const parentBranches = parentItem.branches || [];
 
-    // Si no tiene branches, agregar directamente como branch
+    // If it has no branches, add directly as branch
     if (parentBranches.length === 0) {
       await addTrialAsBranch(parentId);
       if (onRefreshMetadata) {
@@ -132,12 +132,12 @@ function LoopSubCanvas({
       return;
     }
 
-    // Si tiene branches, mostrar modal para preguntar
+    // If it has branches, show modal to ask
     setPendingParentId(parentId);
     setShowAddTrialModal(true);
   };
 
-  // Handler cuando el usuario confirma en el modal
+  // Handler when the user confirms in the modal
   const handleAddTrialConfirm = async (addAsBranch: boolean) => {
     if (!pendingParentId) return;
 
@@ -151,13 +151,13 @@ function LoopSubCanvas({
 
     setPendingParentId(null);
 
-    // Refresh metadata si está disponible
+    // Refresh metadata if available
     if (onRefreshMetadata) {
       onRefreshMetadata();
     }
   };
 
-  // Handler para abrir el modal de mover
+  // Handler to open the move modal
   const onMoveItem = async (itemId: number | string) => {
     const item = loopTimeline.find((t) => t.id === itemId);
     if (!item) return;
@@ -170,7 +170,7 @@ function LoopSubCanvas({
     setShowMoveItemModal(true);
   };
 
-  // Handler para ejecutar el movimiento del item
+  // Handler to execute the item move
   const handleMoveItemConfirm = async (
     destinationId: number | string,
     addAsBranch: boolean,
@@ -180,31 +180,31 @@ function LoopSubCanvas({
     setShowMoveItemModal(false);
 
     try {
-      // ========== PASO 1: REMOVER del parent actual (reconectar como DELETE) ==========
+      // ========== STEP 1: REMOVE from current parent (reconnect as DELETE) ==========
       const currentParent = loopTimeline.find((item) =>
         item.branches?.includes(itemToMove.id),
       );
 
       if (currentParent) {
-        // Obtener las branches del item que vamos a mover (sus hijos)
+        // Get the branches of the item to move (its children)
         const itemToMoveData = loopTimeline.find(
           (item) => item.id === itemToMove.id,
         );
         const childrenBranches = itemToMoveData?.branches || [];
 
-        // Remover el item de las branches del parent
+        // Remove the item from the parent's branches
         const updatedBranches = (currentParent.branches || []).filter(
           (branchId) => branchId !== itemToMove.id,
         );
 
-        // RECONECTAR: Agregar TODOS los hijos del item a las branches del parent
+        // RECONNECT: Add ALL children of the item to the parent's branches
         childrenBranches.forEach((childId) => {
           if (!updatedBranches.includes(childId)) {
             updatedBranches.push(childId);
           }
         });
 
-        // Actualizar el parent
+        // Update the parent
         if (currentParent.type === "trial") {
           await updateTrial(currentParent.id, {
             branches: updatedBranches,
@@ -216,7 +216,7 @@ function LoopSubCanvas({
         }
       }
 
-      // ========== PASO 2: AGREGAR al nuevo destino ==========
+      // ========== STEP 2: ADD to the new destination ==========
       const destinationItem = loopTimeline.find(
         (item) => item.id === destinationId,
       );
@@ -226,8 +226,8 @@ function LoopSubCanvas({
       }
 
       if (addAsBranch) {
-        // Modo BRANCH (paralelo): Limpiar branches del item y agregarlo al destino
-        // Primero limpiar las branches del item movido
+        // BRANCH mode (parallel): Clear branches of the item and add it to the destination
+        // First clear the branches of the moved item
         if (itemToMove.type === "trial") {
           await updateTrial(itemToMove.id, {
             branches: [],
@@ -238,7 +238,7 @@ function LoopSubCanvas({
           });
         }
 
-        // Luego agregarlo a las branches del destino
+        // Then add it to the destination's branches
         if (destinationItem.type === "trial") {
           const destTrial = await getTrial(destinationId);
           if (destTrial) {
@@ -255,14 +255,14 @@ function LoopSubCanvas({
           }
         }
       } else {
-        // Modo SEQUENTIAL (parent): El item movido toma las branches del destino,
-        // y el destino apunta solo al item movido
+        // SEQUENTIAL mode (parent): The moved item takes the destination's branches,
+        // and the destination points only to the moved item
         if (destinationItem.type === "trial") {
           const destTrial = await getTrial(destinationId);
           if (destTrial) {
             const destBranches = destTrial.branches || [];
 
-            // Actualizar el item movido para que tenga las branches del destino
+            // Update the moved item to have the destination's branches
             if (itemToMove.type === "trial") {
               await updateTrial(itemToMove.id, {
                 branches: destBranches,
@@ -273,7 +273,7 @@ function LoopSubCanvas({
               });
             }
 
-            // Actualizar el destino para que apunte solo al item movido
+            // Update the destination to point only to the moved item
             await updateTrial(destinationId, {
               branches: [itemToMove.id],
             });
@@ -283,7 +283,7 @@ function LoopSubCanvas({
           if (destLoop) {
             const destBranches = destLoop.branches || [];
 
-            // Actualizar el item movido para que tenga las branches del destino
+            // Update the moved item to have the destination's branches
             if (itemToMove.type === "trial") {
               await updateTrial(itemToMove.id, {
                 branches: destBranches,
@@ -294,7 +294,7 @@ function LoopSubCanvas({
               });
             }
 
-            // Actualizar el destino para que apunte solo al item movido
+            // Update the destination to point only to the moved item
             await updateLoop(destinationId, {
               branches: [itemToMove.id],
             });
@@ -592,7 +592,7 @@ function LoopSubCanvas({
       {showMoveItemModal &&
         itemToMove &&
         (() => {
-          // Encontrar el parent actual del item
+          // Find the current parent of the item
           const currentParent = loopTimeline.find((item) =>
             item.branches?.includes(itemToMove.id),
           );
@@ -622,10 +622,10 @@ function LoopSubCanvas({
                   itemName={itemToMove.name}
                   availableDestinations={loopTimeline
                     .filter((item) => {
-                      // No mostrar el item mismo
+                      // Do not show the item itself
                       if (item.id === itemToMove.id) return false;
 
-                      // No mostrar el parent actual a menos que tenga más de 1 branch
+                      // Do not show the current parent unless it has more than 1 branch
                       if (currentParent && item.id === currentParent.id) {
                         const parentBranchCount =
                           currentParent.branches?.length || 0;

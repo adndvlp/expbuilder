@@ -5,12 +5,6 @@
       "name": "owcr",
       "createdAt": "2026-01-25T05:55:49.622Z",
       "updatedAt": "2026-01-25T05:55:49.622Z"
-    },
-    {
-      "experimentID": "8019a6a5-b00c-48ce-9a1d-2ead306f29fc",
-      "name": "vwln",
-      "createdAt": "2026-01-29T16:58:11.631Z",
-      "updatedAt": "2026-01-29T16:58:11.631Z"
     }
   ],
   "trials": [
@@ -647,170 +641,6 @@
       ],
       "createdAt": "2026-01-25T06:00:05.656Z",
       "updatedAt": "2026-01-27T01:38:55.479Z"
-    },
-    {
-      "experimentID": "8019a6a5-b00c-48ce-9a1d-2ead306f29fc",
-      "trials": [
-        {
-          "type": "Trial",
-          "name": "New Trial 3",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "id": 1769714735453,
-          "createdAt": "2026-01-29T19:25:35.453Z",
-          "updatedAt": "2026-01-29T19:27:42.369Z",
-          "branches": [
-            1769714817647,
-            "loop_1769714835668"
-          ],
-          "branchConditions": [],
-          "repeatConditions": []
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "id": 1769714817647,
-          "createdAt": "2026-01-29T19:26:57.647Z",
-          "updatedAt": "2026-01-29T19:29:03.820Z",
-          "branches": [],
-          "columnMapping": {
-            "components": {
-              "source": "typed",
-              "value": [
-                {
-                  "type": "HtmlComponent",
-                  "coordinates": {
-                    "x": 0,
-                    "y": 0
-                  },
-                  "width": 200,
-                  "height": 50,
-                  "name": {
-                    "source": "typed",
-                    "value": "HtmlComponent_1"
-                  },
-                  "stimulus": {
-                    "source": "typed",
-                    "value": "<div style=\"box-sizing: border-box;\">Type or design here</div>"
-                  }
-                }
-              ]
-            }
-          }
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 1",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "id": 1769714819965,
-          "createdAt": "2026-01-29T19:26:59.965Z",
-          "updatedAt": "2026-01-29T19:37:42.561Z",
-          "branches": [
-            1769714823532,
-            1769715462548
-          ],
-          "parentLoopId": "loop_1769714835668"
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 2",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "id": 1769714823532,
-          "createdAt": "2026-01-29T19:27:03.532Z",
-          "updatedAt": "2026-01-29T19:27:15.685Z",
-          "parentLoopId": "loop_1769714835668"
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 1",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "id": 1769714838964,
-          "createdAt": "2026-01-29T19:27:18.964Z",
-          "updatedAt": "2026-01-29T19:27:18.964Z"
-        },
-        {
-          "type": "Trial",
-          "name": "New Trial 4",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "parentLoopId": "loop_1769714835668",
-          "id": 1769715462548,
-          "createdAt": "2026-01-29T19:37:42.548Z",
-          "updatedAt": "2026-01-29T19:37:42.548Z"
-        }
-      ],
-      "loops": [
-        {
-          "name": "Loop 1",
-          "repetitions": 1,
-          "randomize": false,
-          "orders": false,
-          "stimuliOrders": [],
-          "orderColumns": [],
-          "categoryColumn": "",
-          "categories": false,
-          "categoryData": [],
-          "trials": [
-            1769714819965,
-            1769714823532
-          ],
-          "code": "",
-          "id": "loop_1769714835668",
-          "createdAt": "2026-01-29T19:27:15.668Z",
-          "updatedAt": "2026-01-29T19:27:18.975Z",
-          "branches": [
-            1769714838964
-          ]
-        }
-      ],
-      "timeline": [
-        {
-          "id": 1769714735453,
-          "type": "trial",
-          "name": "New Trial 3",
-          "branches": [
-            1769714817647,
-            "loop_1769714835668"
-          ]
-        },
-        {
-          "id": 1769714817647,
-          "type": "trial",
-          "name": "New Trial",
-          "branches": []
-        },
-        {
-          "id": "loop_1769714835668",
-          "type": "loop",
-          "name": "Loop 1",
-          "branches": [
-            1769714838964
-          ],
-          "trials": [
-            1769714819965,
-            1769714823532
-          ]
-        },
-        {
-          "id": 1769714838964,
-          "type": "trial",
-          "name": "New Trial 1",
-          "branches": []
-        }
-      ],
-      "createdAt": "2026-01-29T16:58:14.795Z",
-      "updatedAt": "2026-01-29T19:37:42.561Z"
     }
   ],
   "configs": [
@@ -821,37 +651,14 @@
       },
       "isDevMode": false,
       "createdAt": "2026-01-25T05:57:09.201Z",
-      "updatedAt": "2026-01-28T22:35:16.387Z"
-    },
-    {
-      "experimentID": "8019a6a5-b00c-48ce-9a1d-2ead306f29fc",
-      "data": {
-        "generatedCode": ""
-      },
-      "isDevMode": false,
-      "createdAt": "2026-01-29T16:58:14.292Z",
-      "updatedAt": "2026-01-29T19:45:34.797Z"
+      "updatedAt": "2026-02-04T05:38:50.225Z"
     }
   ],
-  "pluginConfigs": [],
-  "sessionResults": [
+  "pluginConfigs": [
     {
-      "experimentID": "8019a6a5-b00c-48ce-9a1d-2ead306f29fc",
-      "sessionId": "New Trial 1_result_b2c54746-b7d8-4b9f-98b6-497211cab22d",
-      "createdAt": "2026-01-29T17:58:13.445Z",
-      "data": [],
-      "state": "initiated",
-      "lastUpdate": "2026-01-29T17:58:13.445Z",
-      "metadata": {}
-    },
-    {
-      "experimentID": "8019a6a5-b00c-48ce-9a1d-2ead306f29fc",
-      "sessionId": "New Trial 1_result_67c2d90f-3ca8-491a-a754-b7e95432d1c3",
-      "createdAt": "2026-01-29T17:58:30.147Z",
-      "data": [],
-      "state": "initiated",
-      "lastUpdate": "2026-01-29T17:58:30.147Z",
-      "metadata": {}
+      "plugins": [],
+      "config": {}
     }
-  ]
+  ],
+  "sessionResults": []
 }

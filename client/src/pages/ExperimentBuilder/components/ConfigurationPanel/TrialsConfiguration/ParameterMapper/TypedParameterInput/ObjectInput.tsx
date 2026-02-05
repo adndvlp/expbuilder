@@ -40,7 +40,7 @@ function ObjectInput({ onSave, entry, setColumnMapping, paramKey }: Props) {
           // eslint-disable-next-line no-new-func
           finalValue = Function('"use strict";return (' + input + ")")();
         } catch (err) {
-          // Si falla, deja el texto como string
+          // If fails, keep text as string
           finalValue = input;
         }
         const newValue = {

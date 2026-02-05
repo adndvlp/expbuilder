@@ -40,8 +40,8 @@ let loop_${loopIdSanitized}_NextTrialId = null;
 let loop_${loopIdSanitized}_SkipRemaining = false;
 let loop_${loopIdSanitized}_BranchingActive = false;
 let loop_${loopIdSanitized}_BranchCustomParameters = null; // Store custom parameters for branching within loops
-let loop_${loopIdSanitized}_TargetExecuted = false; // Indica si el trial objetivo ya se ejecutó en esta iteración
-let loop_${loopIdSanitized}_IterationComplete = false; // Indica que la iteración actual terminó
+let loop_${loopIdSanitized}_TargetExecuted = false; // Indicates if the target trial has already been executed in this iteration
+let loop_${loopIdSanitized}_IterationComplete = false; // Indicates that the current iteration is complete
 const loop_${loopIdSanitized}_HasBranches = ${hasBranchesLoop ? "true" : "false"};
 let loop_${loopIdSanitized}_ShouldBranchOnFinish = false;
 
@@ -145,7 +145,7 @@ const getNextLoopTrialId_${loopIdSanitized} = (lastTrialData) => {
     return null;
   }
   
-  // Si solo hay un branch O no hay condiciones, seguir al primer branch automáticamente
+  // If there is only one branch OR there are no conditions, automatically follow the first branch
   const hasMultipleBranches = trial.branches.length > 1;
   const hasBranchConditions = Array.isArray(trial.branchConditions) && trial.branchConditions.length > 0;
   
@@ -154,7 +154,7 @@ const getNextLoopTrialId_${loopIdSanitized} = (lastTrialData) => {
     return trial.branches[0];
   }
   
-  // Si hay múltiples branches Y condiciones, evaluar las condiciones
+  // If there are multiple branches AND conditions, evaluate the conditions
   const conditions = trial.branchConditions.flat();
   
   // Evaluate each condition (OR logic between conditions)
@@ -170,7 +170,7 @@ const getNextLoopTrialId_${loopIdSanitized} = (lastTrialData) => {
     }
   }
   
-  // No condition matched - seguir al primer branch por defecto
+  // No condition matched - default to the first branch
   console.log('Loop internal: No condition matched, defaulting to first branch:', trial.branches[0]);
   return trial.branches[0];
 };
@@ -263,37 +263,37 @@ const ${loopIdSanitized}_procedure = {
   conditional_function: function() {
     const currentId = "${id}";
     
-    // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
+    // Check if there is a target trial saved in localStorage (for repeat/jump)
     const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
     if (jumpToTrial) {
       if (String(currentId) === String(jumpToTrial)) {
-        // Encontramos el loop objetivo para repeat/jump
+        // Found the target loop for repeat/jump
         console.log('Repeat/jump: Found target loop', currentId);
         localStorage.removeItem('jsPsych_jumpToTrial');
         return true;
       }
-      // No es el objetivo, saltar
+      // Not the target, skip
       console.log('Repeat/jump: Skipping loop', currentId);
       return false;
     }
     
-    // Si skipRemaining está activo (branching normal), verificar si este es el loop objetivo
+    // If skipRemaining is active (normal branching), check if this is the target loop
     if (window.skipRemaining) {
       if (String(currentId) === String(window.nextTrialId)) {
-        // Encontramos el loop objetivo
+        // Found the target loop
         window.skipRemaining = false;
         window.nextTrialId = null;
         return true;
       }
-      // No es el objetivo, saltar
+      // Not the target, skip
       return false;
     }
     
     return true;
   },
   on_timeline_start: function() {
-    // Resetear las flags al inicio de cada iteración del loop
-    // Esto permite que cada repetición del loop funcione correctamente
+    // Reset the flags at the start of each loop iteration
+    // This allows each repetition of the loop to work correctly
     loop_${loopIdSanitized}_NextTrialId = null;
     loop_${loopIdSanitized}_SkipRemaining = false;
     loop_${loopIdSanitized}_BranchingActive = false;
@@ -302,8 +302,8 @@ const ${loopIdSanitized}_procedure = {
     loop_${loopIdSanitized}_IterationComplete = false;
     loop_${loopIdSanitized}_ShouldBranchOnFinish = false;
     
-    // IMPORTANTE: Si el loop es condicional, resetear también el branching GLOBAL
-    // para que se regenere durante esta iteración del loop
+    // IMPORTANT: If the loop is conditional, also reset the GLOBAL branching
+    // so that it regenerates during this loop iteration
     ${
       isConditionalLoop && loopConditions && loopConditions.length > 0
         ? `
@@ -317,28 +317,28 @@ const ${loopIdSanitized}_procedure = {
     }
   },
   on_timeline_finish: function() {
-    // Resetear las flags al finalizar todas las repeticiones del loop
+    // Reset the flags at the end of all loop repetitions
     loop_${loopIdSanitized}_NextTrialId = null;
     loop_${loopIdSanitized}_SkipRemaining = false;
     loop_${loopIdSanitized}_TargetExecuted = false;
     loop_${loopIdSanitized}_BranchingActive = false;
     loop_${loopIdSanitized}_BranchCustomParameters = null;
     
-    // Verificar si se debe hacer branching porque un trial sin branches se completó
-    // pero el loop tiene branches
+    // Check if branching should occur because a trial without branches was completed
+    // but the loop has branches
     if (loop_${loopIdSanitized}_ShouldBranchOnFinish && loop_${loopIdSanitized}_HasBranches) {
       const branches = [${branches && branches.length > 0 ? branches.map((b) => (typeof b === "string" ? `"${b}"` : b)).join(", ") : ""}];
       if (branches.length > 0) {
         ${
           parentLoopIdSanitized
             ? `
-        // Este es un nested loop - activar branching del loop padre
+        // This is a nested loop - activate parent loop branching
         loop_${parentLoopIdSanitized}_NextTrialId = branches[0];
         loop_${parentLoopIdSanitized}_SkipRemaining = true;
         loop_${parentLoopIdSanitized}_BranchingActive = true;
         console.log('Nested loop finished (from internal trial), activating parent loop branching to:', branches[0]);`
             : `
-        // Este es un loop raíz - activar branching global
+        // This is a root loop - activate global branching
         window.nextTrialId = branches[0];
         window.skipRemaining = true;
         window.branchingActive = true;
@@ -347,7 +347,7 @@ const ${loopIdSanitized}_procedure = {
       }
     }
     
-    // Resetear todas las variables de branching del loop
+    // Reset all branching variables of the loop
     loop_${loopIdSanitized}_NextTrialId = null;
     loop_${loopIdSanitized}_SkipRemaining = false;
     loop_${loopIdSanitized}_BranchingActive = false;

@@ -88,7 +88,7 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
     loadPluginParameters,
     getLoopTimeline,
     setConditions,
-    setRepeatConditions: () => {}, // Función vacía ya que no se usa
+    setRepeatConditions: () => {}, // Empty function since it is not used
   });
 
   // Find trial or loop by ID using the API

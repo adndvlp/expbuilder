@@ -1,4 +1,3 @@
-// hooks/usePluginParameters.ts
 import { useEffect, useState } from "react";
 import { loadPluginParameters } from "../utils/pluginParameterLoader";
 import type { DataDefinition, FieldDefinition } from "../types";

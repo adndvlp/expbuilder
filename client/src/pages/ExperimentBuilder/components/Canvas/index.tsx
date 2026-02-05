@@ -74,7 +74,7 @@ function Canvas() {
   ]);
 
   const onAddTrial = async (type: string) => {
-    // Generar nombre único basado en timeline
+    // Generate unique name based on timeline
     const existingNames = timeline.map((item) => item.name);
     const newName = generateUniqueName(existingNames);
 
@@ -87,7 +87,7 @@ function Canvas() {
         trialCode: "",
       });
 
-      // Optimistic UI: agregar el trial al timeline manualmente
+      // Optimistic UI: add the trial to the timeline manually
       updateTimeline([
         ...timeline,
         {
@@ -113,7 +113,7 @@ function Canvas() {
       return;
     }
 
-    // Mostrar modal para seleccionar rango
+    // Show modal to select range
     setShowLoopModal(true);
   };
 
@@ -125,7 +125,7 @@ function Canvas() {
     }
 
     try {
-      // Contar loops existentes para generar nombre
+      // Count existing loops to generate name
       const loopCount = timeline.filter((item) => item.type === "loop").length;
       const loopName = `Loop ${loopCount + 1}`;
 
@@ -139,7 +139,7 @@ function Canvas() {
         categoryColumn: "",
         categories: false,
         categoryData: [],
-        trials: itemIds, // Solo IDs
+        trials: itemIds, // Only IDs
         code: "",
       });
 
@@ -152,7 +152,7 @@ function Canvas() {
     }
   };
 
-  // Cargar loop completo y metadata cuando se abre
+  // Load full loop and metadata when opened
   const handleOpenLoop = async (loopId: string) => {
     try {
       const loopData = await getLoop(loopId);
@@ -166,7 +166,7 @@ function Canvas() {
     }
   };
 
-  // Recargar metadata del loop abierto
+  // Reload metadata of the open loop
   const handleRefreshLoopMetadata = async () => {
     if (!openLoop) return;
     try {
@@ -176,36 +176,36 @@ function Canvas() {
     }
   };
 
-  // Handler para mostrar el modal de agregar trial
+  // Handler to show the add trial modal
   const onAddBranch = async (parentId: number | string) => {
-    // Verificar si el parent tiene branches
+    // Check if the parent has branches
     const parentItem = timeline.find((item) => item.id === parentId);
     if (!parentItem) return;
 
     const parentBranches = parentItem.branches || [];
 
-    // Si no tiene branches, agregar directamente como branch
+    // If it has no branches, add directly as branch
     if (parentBranches.length === 0) {
       await addTrialAsBranch(parentId);
       return;
     }
 
-    // Si tiene branches, mostrar modal para preguntar
+    // If it has branches, show modal to ask
     setPendingParentId(parentId);
     setShowAddTrialModal(true);
   };
 
-  // Agregar trial como branch (sibling)
+  // Add trial as branch (sibling)
   const addTrialAsBranch = async (parentId: number | string) => {
     const existingNames = timeline.map((item) => item.name);
     const newName = generateUniqueName(existingNames);
 
     try {
-      // Primero obtener el parent
+      // First get the parent
       const parentItem = timeline.find((item) => item.id === parentId);
       if (!parentItem) return;
 
-      // Crear el trial
+      // Create the trial
       const newBranchTrial = await createTrial({
         type: "Trial",
         name: newName,
@@ -214,7 +214,7 @@ function Canvas() {
         trialCode: "",
       });
 
-      // Obtener parent actualizado
+      // Get updated parent
       const parent =
         parentItem.type === "trial"
           ? await getTrial(parentId)
@@ -222,8 +222,8 @@ function Canvas() {
 
       if (!parent) return;
 
-      // Actualizar el parent con el nuevo branch
-      // updateTrial/updateLoop harán el optimistic UI completo
+      // Update the parent with the new branch
+      // updateTrial/updateLoop will do the full optimistic UI
       if (parentItem.type === "trial") {
         await updateTrial(
           parentId,
@@ -248,13 +248,13 @@ function Canvas() {
     }
   };
 
-  // Agregar trial como parent (de las branches existentes)
+  // Add trial as parent (of the existing branches)
   const addTrialAsParent = async (parentId: number | string) => {
     const existingNames = timeline.map((item) => item.name);
     const newName = generateUniqueName(existingNames);
 
     try {
-      // Obtener el parent para acceder a sus branches
+      // Get the parent to access its branches
       const parentItem = timeline.find((item) => item.id === parentId);
       if (!parentItem) return;
 
@@ -272,22 +272,22 @@ function Canvas() {
         }
       }
 
-      // Crear el nuevo trial que será el parent de las branches
+      // Create the new trial that will be the parent of the branches
       const newParentTrial = await createTrial({
         type: "Trial",
         name: newName,
         plugin: "plugin-dynamic",
         parameters: {},
         trialCode: "",
-        branches: parentBranches, // El nuevo trial se convierte en padre de las branches existentes
+        branches: parentBranches, // The new trial becomes the parent of the existing branches
       });
 
-      // Actualizar el parent original para que apunte al nuevo trial en lugar de las branches
+      // Update the original parent to point to the new trial instead of the branches
       if (parentItem.type === "trial") {
         await updateTrial(
           parentId,
           {
-            branches: [newParentTrial.id], // Ahora solo apunta al nuevo trial
+            branches: [newParentTrial.id], // Now only points to the new trial
           },
           newParentTrial,
         );
@@ -295,7 +295,7 @@ function Canvas() {
         await updateLoop(
           parentId,
           {
-            branches: [newParentTrial.id], // Ahora solo apunta al nuevo trial
+            branches: [newParentTrial.id], // Now only points to the new trial
           },
           newParentTrial,
         );
@@ -307,7 +307,7 @@ function Canvas() {
     }
   };
 
-  // Handler cuando el usuario confirma en el modal
+  // Handler when the user confirms in the modal
   const handleAddTrialConfirm = async (addAsBranch: boolean) => {
     if (!pendingParentId) return;
 
@@ -322,7 +322,7 @@ function Canvas() {
     setPendingParentId(null);
   };
 
-  // Handler para abrir el modal de mover
+  // Handler to open the move modal
   const onMoveItem = async (itemId: number | string) => {
     const item = timeline.find((t) => t.id === itemId);
     if (!item) return;
@@ -335,7 +335,7 @@ function Canvas() {
     setShowMoveItemModal(true);
   };
 
-  // Handler para ejecutar el movimiento del item
+  // Handler to execute the item move
   const handleMoveItemConfirm = async (
     destinationId: number | string,
     addAsBranch: boolean,
@@ -345,31 +345,31 @@ function Canvas() {
     setShowMoveItemModal(false);
 
     try {
-      // ========== PASO 1: REMOVER del parent actual (reconectar como DELETE) ==========
+      // ========== STEP 1: REMOVE from current parent (reconnect as DELETE) ==========
       const currentParent = timeline.find((item) =>
         item.branches?.includes(itemToMove.id),
       );
 
       if (currentParent) {
-        // Obtener las branches del item que vamos a mover (sus hijos)
+        // Get the branches of the item to move (its children)
         const itemToMoveData = timeline.find(
           (item) => item.id === itemToMove.id,
         );
         const childrenBranches = itemToMoveData?.branches || [];
 
-        // Remover el item de las branches del parent
+        // Remove the item from the parent's branches
         const updatedBranches = (currentParent.branches || []).filter(
           (branchId) => branchId !== itemToMove.id,
         );
 
-        // RECONECTAR: Agregar TODOS los hijos del item a las branches del parent
+        // RECONNECT: Add ALL children of the item to the parent's branches
         childrenBranches.forEach((childId) => {
           if (!updatedBranches.includes(childId)) {
             updatedBranches.push(childId);
           }
         });
 
-        // Actualizar el parent
+        // Update the parent
         if (currentParent.type === "trial") {
           await updateTrial(currentParent.id, {
             branches: updatedBranches,
@@ -381,7 +381,7 @@ function Canvas() {
         }
       }
 
-      // ========== PASO 2: AGREGAR al nuevo destino ==========
+      // ========== STEP 2: ADD to the new destination ==========
       const destinationItem = timeline.find(
         (item) => item.id === destinationId,
       );
@@ -391,8 +391,8 @@ function Canvas() {
       }
 
       if (addAsBranch) {
-        // Modo BRANCH (paralelo): Limpiar branches del item y agregarlo al destino
-        // Primero limpiar las branches del item movido
+        // BRANCH mode (parallel): Clear branches of the item and add it to the destination
+        // First clear the branches of the moved item
         if (itemToMove.type === "trial") {
           await updateTrial(itemToMove.id, {
             branches: [],
@@ -403,7 +403,7 @@ function Canvas() {
           });
         }
 
-        // Luego agregarlo a las branches del destino
+        // Then add it to the destination's branches
         if (destinationItem.type === "trial") {
           const destTrial = await getTrial(destinationId);
           if (destTrial) {
@@ -420,14 +420,14 @@ function Canvas() {
           }
         }
       } else {
-        // Modo SEQUENTIAL (parent): El item movido toma las branches del destino,
-        // y el destino apunta solo al item movido
+        // SEQUENTIAL mode (parent): The moved item takes the destination's branches,
+        // and the destination points only to the moved item
         if (destinationItem.type === "trial") {
           const destTrial = await getTrial(destinationId);
           if (destTrial) {
             const destBranches = destTrial.branches || [];
 
-            // Actualizar el item movido para que tenga las branches del destino
+            // Update the moved item to have the destination's branches
             if (itemToMove.type === "trial") {
               await updateTrial(itemToMove.id, {
                 branches: destBranches,
@@ -438,7 +438,7 @@ function Canvas() {
               });
             }
 
-            // Actualizar el destino para que apunte solo al item movido
+            // Update the destination to point only to the moved item
             await updateTrial(destinationId, {
               branches: [itemToMove.id],
             });
@@ -448,7 +448,7 @@ function Canvas() {
           if (destLoop) {
             const destBranches = destLoop.branches || [];
 
-            // Actualizar el item movido para que tenga las branches del destino
+            // Update the moved item to have the destination's branches
             if (itemToMove.type === "trial") {
               await updateTrial(itemToMove.id, {
                 branches: destBranches,
@@ -459,7 +459,7 @@ function Canvas() {
               });
             }
 
-            // Actualizar el destino para que apunte solo al item movido
+            // Update the destination to point only to the moved item
             await updateLoop(destinationId, {
               branches: [itemToMove.id],
             });
@@ -499,7 +499,7 @@ function Canvas() {
     }
 
     try {
-      // Buscar el source en timeline
+      // Find the source in timeline
       const sourceItem = timeline.find((item) => item.id === sourceId);
       if (!sourceItem) return;
 
@@ -589,9 +589,6 @@ function Canvas() {
           }
         />
 
-        {/* Params Override Button - Now integrated in BranchedTrial modal */}
-        {/* Removed standalone button - accessible via Branches modal > Params Override tab */}
-
         {showBranchedModal && (
           <BranchedTrial
             selectedTrial={selectedTrial || selectedLoop}
@@ -599,8 +596,6 @@ function Canvas() {
             isOpen={showBranchedModal}
           />
         )}
-
-        {/* ParamsOverride modal removed - now integrated in BranchedTrial modal */}
 
         <ReactFlow
           proOptions={{ hideAttribution: true }}
@@ -738,7 +733,7 @@ function Canvas() {
         {showMoveItemModal &&
           itemToMove &&
           (() => {
-            // Encontrar el parent actual del item
+            // Find the current parent of the item
             const currentParent = timeline.find((item) =>
               item.branches?.includes(itemToMove.id),
             );
@@ -768,10 +763,10 @@ function Canvas() {
                     itemName={itemToMove.name}
                     availableDestinations={timeline
                       .filter((item) => {
-                        // No mostrar el item mismo
+                        // Do not show the item itself
                         if (item.id === itemToMove.id) return false;
 
-                        // No mostrar el parent actual a menos que tenga más de 1 branch
+                        // Do not show the current parent unless it has more than 1 branch
                         if (currentParent && item.id === currentParent.id) {
                           const parentBranchCount =
                             currentParent.branches?.length || 0;

@@ -35,14 +35,14 @@ export function calculateBranchWidth(
   const item = findItemById(trials, branchId);
   if (!item) return branchHorizontalSpacing;
 
-  // Verificar si tiene branches (tanto trials como loops)
+  // Check if it has branches (both trials and loops)
   const itemBranches = item.branches || [];
 
   if (itemBranches.length === 0) {
     return branchHorizontalSpacing;
   }
 
-  // Calcular el ancho total de todos los sub-branches
+  // Calculate the total width of all sub-branches
   const subBranchesWidth = itemBranches.reduce(
     (total: number, subBranchId: number | string) => {
       return (

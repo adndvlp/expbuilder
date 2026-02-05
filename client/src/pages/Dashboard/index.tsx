@@ -18,19 +18,19 @@ function Dashboard() {
 
   const navigate = useNavigate();
 
-  // Cargar experimentos al montar
+  // Load experiments on mount
   useEffect(() => {
     fetch(`${VITE_API}/api/load-experiments`)
       .then((res) => res.json())
       .then((data) => setExperiments(data.experiments || []));
   }, []);
 
-  // Crear experimento
+  // Create experiment
   const handleCreate = () => {
     setShowPromptModal(true);
   };
 
-  // Confirmar creación del experimento con el nombre ingresado
+  // Confirm experiment creation with entered name
   const handleConfirmCreate = async (name: string) => {
     setShowPromptModal(false);
     setLoading(true);
@@ -47,12 +47,12 @@ function Dashboard() {
     setLoading(false);
   };
 
-  // Eliminar experimento
+  // Delete experiment
   const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this experiment?")) return;
     setLoading(true);
 
-    // Obtener el uid del usuario autenticado si está disponible
+    // Get the authenticated user's uid if available
     let uid = null;
     try {
       const userStr = localStorage.getItem("user");
@@ -63,7 +63,7 @@ function Dashboard() {
         }
       }
     } catch {
-      // Ignorar errores de parseo
+      // Ignore parsing errors
     }
     const body = uid ? { uid } : {};
     const res = await fetch(`${VITE_API}/api/delete-experiment/${id}`, {
@@ -79,7 +79,7 @@ function Dashboard() {
     setLoading(false);
   };
 
-  // Navegar al builder
+  // Navigate to builder
   const handleSelect = (id: string) => {
     navigate(`/home/experiment/${id}`);
   };

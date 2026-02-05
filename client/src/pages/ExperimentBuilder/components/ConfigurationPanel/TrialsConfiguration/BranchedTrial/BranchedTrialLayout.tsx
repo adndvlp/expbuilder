@@ -206,7 +206,7 @@ function BranchedTrialLayout({
           <ParamsOverride selectedTrial={selectedTrial} onClose={onClose} />
         )}
       </div>
-      {/* Footer con botón de guardar */}
+      {/* Footer with save button */}
       {activeTab !== "params" && (
         <div
           style={{

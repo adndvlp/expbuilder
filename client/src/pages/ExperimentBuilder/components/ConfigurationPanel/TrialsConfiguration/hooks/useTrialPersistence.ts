@@ -14,17 +14,17 @@ export function useTrialPersistence({
   selectedTrial,
   setSelectedTrial,
 }: UseTrialPersistenceProps) {
-  // Guardar trials en la base de datos cuando cambian
+  // Save trials to the database when they change
   const experimentID = useExperimentID();
 
-  // Borrar trial de la base de datos
+  // Delete trial from the database
   const deleteTrial = async (id: number) => {
     try {
       const response = await fetch(
         `${API_URL}/api/trials/${id}/${experimentID}`,
         {
           method: "DELETE",
-        }
+        },
       );
 
       if (!response.ok) {
@@ -35,28 +35,28 @@ export function useTrialPersistence({
     }
   };
 
-  // Borrar trial del estado global y de la base de datos, y eliminar referencias en branches
+  // Delete trial from global state and database, and remove references in branches
   const handleDeleteTrial = () => {
     if (!selectedTrial) return;
     const trialIdToDelete = selectedTrial.id;
 
-    // Helper recursivo para eliminar trial y sus referencias
+    // Recursive helper to remove trial and its references
     const removeTrialRecursive = (items: any[]): any[] => {
       return items
-        .filter((item: any) => item.id !== trialIdToDelete) // Eliminar el trial si es este item
+        .filter((item: any) => item.id !== trialIdToDelete) // Remove the trial if this is the item
         .map((item: any) => {
-          // Limpiar referencias en branches
+          // Clean up references in branches
           if (item.branches && Array.isArray(item.branches)) {
             item = {
               ...item,
               branches: item.branches.filter(
                 (id: number | string) =>
-                  id !== trialIdToDelete && id !== String(trialIdToDelete)
+                  id !== trialIdToDelete && id !== String(trialIdToDelete),
               ),
             };
           }
 
-          // Si es un loop, buscar recursivamente en sus trials
+          // If it is a loop, search recursively in its trials
           if ("trials" in item && Array.isArray(item.trials)) {
             return {
               ...item,

@@ -147,6 +147,7 @@ export function useTrialCode({
         return `data: {
         ${dataProps}
         trial_id: ${id},
+        builder_id: ${id},
         ${
           hasBranches
             ? `
@@ -163,6 +164,7 @@ response_components: jsPsych.timelineVariable("${responseComponentsKey}"),
 data: {
         ${dataProps}
         trial_id: ${id},
+        builder_id: ${id},
         ${isInLoop ? `isInLoop: true,` : ""}
         ${
           hasBranches
@@ -191,6 +193,7 @@ data: {
       return `data: {
         ${dataProps}
         trial_id: ${id},
+        builder_id: ${id},
         ${
           hasBranches
             ? `
@@ -213,6 +216,7 @@ data: {
       data: {
         ${dataProps}
         trial_id: ${id},
+        builder_id: ${id},
         ${isInLoop ? `isInLoop: true,` : ""}
         ${
           hasBranches

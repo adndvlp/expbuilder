@@ -48,7 +48,7 @@ function ColumnParams({
 }: Props) {
   return (
     <>
-      {/* Columna Override Params - Field Type */}
+      {/* Column Override Params - Field Type */}
       {isTargetDynamic && (
         <td
           className="px-2 py-2"
@@ -106,7 +106,7 @@ function ColumnParams({
         </td>
       )}
 
-      {/* Columna Override Params - Component */}
+      {/* Column Override Params - Component */}
       {isTargetDynamic && (
         <td
           className="px-2 py-2"
@@ -155,7 +155,7 @@ function ColumnParams({
         </td>
       )}
 
-      {/* Columna Override Params - Property */}
+      {/* Column Override Params - Property */}
       {isTargetDynamic && (
         <td
           className="px-2 py-2"
@@ -203,7 +203,7 @@ function ColumnParams({
         </td>
       )}
 
-      {/* Columna Override Params - Question (solo para SurveyComponent) */}
+      {/* Column Override Params - Question (only for SurveyComponent) */}
       {isTargetDynamic && hasSurveyJsonParam && (
         <td
           className="px-2 py-2"
@@ -255,7 +255,7 @@ function ColumnParams({
         </td>
       )}
 
-      {/* Columna Override Params - Normal plugins */}
+      {/* Column Override Params - Normal plugins */}
       {!isTargetDynamic && (
         <td
           className="px-2 py-2"

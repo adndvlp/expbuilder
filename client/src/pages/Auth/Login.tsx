@@ -23,17 +23,17 @@ const Login: React.FC = () => {
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
-        password
+        password,
       );
       setSuccess(true);
       setEmail("");
       setPassword("");
-      // Guardar usuario en localStorage para persistencia de sesión
+      // Save user in localStorage for session persistence
       if (userCredential && userCredential.user) {
         const { uid, email } = userCredential.user;
         localStorage.setItem("user", JSON.stringify({ uid, email }));
       }
-      // Redirigir a /home después de login exitoso
+      // Redirect to /home after successful login
       navigate("/home");
     } catch (error: any) {
       if (error.code === "auth/user-not-found") {

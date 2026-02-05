@@ -9,7 +9,7 @@ type Props = {
   parameters: any[];
   pluginName?: string;
   columnMapping?: ColumnMapping;
-  onSave?: (includeExt: boolean, extType: string) => void; // Recibe valores directamente
+  onSave?: (includeExt: boolean, extType: string) => void;
 };
 
 function ExtensionsConfig({
@@ -62,7 +62,6 @@ function ExtensionsConfig({
           checked={includesExtensions}
           onChange={(checked) => {
             setIncludeExtensions(checked);
-            // Autoguardar pasando el nuevo valor directamente
             if (onSave) {
               setTimeout(() => onSave(checked, extensionType), 300);
             }
@@ -91,7 +90,6 @@ function ExtensionsConfig({
             value={extensionType}
             onChange={(e) => {
               setExtensionType(e.target.value);
-              // Autoguardar pasando el nuevo valor directamente
               if (onSave) {
                 setTimeout(
                   () => onSave(includesExtensions, e.target.value),

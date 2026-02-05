@@ -77,7 +77,6 @@ function CsvUploader({
                       className="border px-2 py-1"
                       style={{
                         color: "black",
-                        // border: "1px solid black",
                         backgroundColor: "white",
                         padding: "0.5rem 0.25rem",
                         fontWeight: "bold",
@@ -108,7 +107,6 @@ function CsvUploader({
                         className="border px-2 py-1"
                         style={{
                           color: "black",
-                          // border: "1px solid black",
                           padding: "0.5rem 0.25rem",
                         }}
                       >

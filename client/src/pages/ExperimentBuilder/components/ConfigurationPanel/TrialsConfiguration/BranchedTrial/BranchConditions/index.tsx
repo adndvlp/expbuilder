@@ -169,7 +169,7 @@ function BranchConditions({
   return (
     <>
       <Descriptions />
-      {/* Lista de condiciones */}
+      {/* Conditions list */}
       {conditions.length === 0 ? (
         <div
           style={{
@@ -235,7 +235,6 @@ function BranchConditions({
           </button>
         </div>
       ) : (
-        // Aquí va conditions ListConditions
         <ConditionsList
           conditions={conditions}
           removeCondition={removeCondition}
@@ -258,7 +257,7 @@ function BranchConditions({
         />
       )}
 
-      {/* Botón para añadir más condiciones (OR) */}
+      {/* Button to add more conditions (OR) */}
       {conditions.length > 0 && (
         <button
           onClick={addCondition}

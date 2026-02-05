@@ -92,14 +92,13 @@ function ConditionsList({
               e.currentTarget.style.transform = "translateY(0)";
             }}
           >
-            {/* Header de la condición */}
             <ConditionHeader
               condIdx={condIdx}
               condition={condition}
               removeCondition={removeCondition}
             />
 
-            {/* Tabla de reglas */}
+            {/* Rules table */}
             <div className="p-4 overflow-x-auto">
               <table
                 className="w-full border-collapse rounded-lg overflow-hidden"
@@ -134,7 +133,7 @@ function ConditionsList({
                 />
               </table>
 
-              {/* Botón para añadir regla AND */}
+              {/* Button to add AND rule */}
               <button
                 onClick={() => addRuleToCondition(condition.id)}
                 style={{

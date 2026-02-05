@@ -13,7 +13,7 @@ export function useExtensions(pluginName: string, parameters: any[]) {
       if (pluginName === "DynamicPlugin") {
         // Find the first component with stimulus or stimuli
         const stimulusParam = parameters.find(
-          (param) => param.key === "components" && Array.isArray(param.value)
+          (param) => param.key === "components" && Array.isArray(param.value),
         );
 
         if (stimulusParam && stimulusParam.value.length > 0) {
@@ -26,12 +26,12 @@ export function useExtensions(pluginName: string, parameters: any[]) {
             (comp: ComponentType) =>
               comp.type === "ImageComponent" ||
               comp.type === "VideoComponent" ||
-              comp.type === "HtmlComponent"
+              comp.type === "HtmlComponent",
           );
 
           if (firstComponent && firstComponent.name) {
             setTargetedPlugin(
-              `#jspsych-dynamic-${firstComponent.name}-stimulus`
+              `#jspsych-dynamic-${firstComponent.name}-stimulus`,
             );
           } else {
             // Fallback to default selector if no name is found
@@ -76,8 +76,8 @@ export function useExtensions(pluginName: string, parameters: any[]) {
     .map((ext) => {
       const paramsString = JSON.stringify(ext.params, null, 2).replace(
         /"([^"]+)":/g,
-        "$1:"
-      ); // Quita comillas de las claves en params
+        "$1:",
+      ); // Removes quotes from keys in params
 
       const filteredExtensions = () => {
         let code = "";

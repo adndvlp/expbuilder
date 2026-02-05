@@ -16,7 +16,7 @@ function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
     new Set(),
   );
 
-  // Función recursiva para obtener todas las branches de un item
+  // Recursive function to obtain all branches of an item
   const getAllBranchIds = (
     itemId: number | string,
     visited = new Set<number | string>(),
@@ -31,7 +31,7 @@ function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
 
     const branchIds: (number | string)[] = [...item.branches];
 
-    // Recursivamente obtener branches de las branches
+    // Obtain recursively branches of branches
     for (const branchId of item.branches) {
       const nestedBranches = getAllBranchIds(branchId, visited);
       branchIds.push(...nestedBranches);
@@ -40,7 +40,7 @@ function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
     return branchIds;
   };
 
-  // Actualizar auto-selección cuando cambian las selecciones manuales
+  // Update auto-selection when manual selection changes
   useEffect(() => {
     const auto = new Set<number | string>();
 
@@ -56,22 +56,22 @@ function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
     const newSelected = new Set(selectedIds);
 
     if (newSelected.has(id)) {
-      // Deseleccionar
+      // Deselect
       newSelected.delete(id);
     } else {
-      // Seleccionar
+      // Select
       newSelected.add(id);
     }
 
     setSelectedIds(newSelected);
   };
 
-  // Helper para mostrar el nombre con indicador de tipo
+  // Helper to show name with type indicator
   const getItemLabel = (item: TimelineItem) => {
     return item.type === "loop" ? `${item.name}` : item.name;
   };
 
-  // Combinar selecciones manuales y automáticas
+  // Combine manual and automatic selections
   const allSelectedIds = new Set([...selectedIds, ...autoSelectedIds]);
 
   return (

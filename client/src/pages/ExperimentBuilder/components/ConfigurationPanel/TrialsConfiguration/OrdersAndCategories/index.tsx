@@ -4,17 +4,17 @@ import Switch from "react-switch";
 type Props = {
   orders: boolean;
   setOrders: React.Dispatch<React.SetStateAction<boolean>>;
-  columnOptions: string[]; // Las columnas disponibles
-  orderColumns: string[]; // Las columnas seleccionadas
+  columnOptions: string[];
+  orderColumns: string[];
   setOrderColumns: (cols: string[]) => void;
   mapOrdersFromCsv: (csvJson: any[], columnKeys: string[]) => void;
   csvJson: any[];
-  stimuliOrders: any[]; // Agregado
+  stimuliOrders: any[];
   categories: boolean;
   setCategories: React.Dispatch<React.SetStateAction<boolean>>;
   categoryColumn: string;
   setCategoryColumn: (col: string) => void;
-  categoryData: any[]; // Agregado
+  categoryData: any[];
   mapCategoriesFromCsv: (csvJson: any[], categoryColumn: string) => void;
   onSave?: (
     ord: boolean,
@@ -23,7 +23,7 @@ type Props = {
     cat: boolean,
     catCol: string,
     catData: any[],
-  ) => void; // Recibe valores directamente
+  ) => void;
 };
 
 function OrdersAndCategories({
@@ -47,10 +47,7 @@ function OrdersAndCategories({
     const cols = Array.from(e.target.selectedOptions, (opt) => opt.value);
     setOrderColumns(cols);
 
-    console.log("📊 [handleSelectChange] Selected columns:", cols);
-    console.log("📊 [handleSelectChange] csvJson:", csvJson);
-
-    // Calcular stimuliOrders directamente ANTES de guardar
+    // Calculate stimuliOrders before saving
     const newStimuliOrders = cols.map((key) => {
       console.log(
         `  Processing column "${key}":`,
@@ -63,22 +60,16 @@ function OrdersAndCategories({
       return mapped;
     });
 
-    console.log(
-      "📊 [handleSelectChange] Final newStimuliOrders:",
-      newStimuliOrders,
-    );
-
-    // Actualizar el state
+    // Update state
     mapOrdersFromCsv(csvJson, cols);
 
-    // Autoguardar pasando el valor calculado directamente
     if (onSave) {
       setTimeout(
         () =>
           onSave(
             orders,
             cols,
-            newStimuliOrders, // ← Usar el valor calculado, no el state
+            newStimuliOrders, // Use calculated value, not the state
             categories,
             categoryColumn,
             categoryData,
@@ -92,14 +83,13 @@ function OrdersAndCategories({
     const column = e.target.value;
     setCategoryColumn(column);
 
-    // Calcular categoryData directamente ANTES de guardar
+    // Calculate categoryData before saving
     const newCategoryData =
       column && csvJson.length > 0 ? csvJson.map((row) => row[column]) : [];
 
-    // Actualizar el state
+    // Update state
     mapCategoriesFromCsv(csvJson, column);
 
-    // Autoguardar pasando el valor calculado directamente
     if (onSave) {
       setTimeout(
         () =>
@@ -109,7 +99,7 @@ function OrdersAndCategories({
             stimuliOrders,
             categories,
             column,
-            newCategoryData, // ← Usar el valor calculado, no el state
+            newCategoryData,
           ),
         100,
       );
@@ -186,7 +176,6 @@ function OrdersAndCategories({
             checked={categories}
             onChange={(checked) => {
               setCategories(checked);
-              // Autoguardar pasando el nuevo valor directamente
               if (onSave) {
                 setTimeout(
                   () =>

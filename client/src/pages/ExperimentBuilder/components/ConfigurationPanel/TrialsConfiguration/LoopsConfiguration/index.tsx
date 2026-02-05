@@ -44,7 +44,6 @@ function LoopsConfig({ loop }: Props) {
 
     setIsLoadingLoop(true);
 
-    // Restaura los datos del loop
     setRepetitions(loop.repetitions ?? 1);
     setRandomize(loop.randomize ?? false);
     setIsConditionalLoop(loop.isConditionalLoop ?? false);
@@ -57,7 +56,7 @@ function LoopsConfig({ loop }: Props) {
     mapOrdersFromCsv(loop.csvJson ?? [], loop.orderColumns ?? []);
     setCategoryColumn(loop.categoryColumn ?? "");
     mapCategoriesFromCsv(loop.csvJson ?? [], loop.categoryColumn ?? "");
-    setTimeout(() => setIsLoadingLoop(false), 100); // 500 en producción
+    setTimeout(() => setIsLoadingLoop(false), 100); // 500 in production
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loop]);
 
@@ -78,7 +77,6 @@ function LoopsConfig({ loop }: Props) {
 
   const canSave = !!loop && !isLoadingLoop;
 
-  // Función auxiliar para mostrar indicador de guardado
   const showSaveIndicator = (fieldName?: string) => {
     setSavingField(fieldName || null);
     setSaveIndicator(true);
@@ -88,7 +86,6 @@ function LoopsConfig({ loop }: Props) {
     }, 1500);
   };
 
-  // Guardar campo individual (para guardado granular)
   const saveField = async (fieldName: string, value: any) => {
     if (!loop) return;
     const success = await updateLoopField(loop.id, fieldName, value);
@@ -97,7 +94,6 @@ function LoopsConfig({ loop }: Props) {
     }
   };
 
-  // Guardar CSV data
   const saveCsvData = async (dataToSave?: any[], colsToSave?: string[]) => {
     if (!loop) return;
 
@@ -119,14 +115,12 @@ function LoopsConfig({ loop }: Props) {
     showSaveIndicator("csv");
   };
 
-  // Wrapper para handleCsvUpload que guarda automáticamente
   const onHandleCsvUploadWrapped = (e: React.ChangeEvent<HTMLInputElement>) => {
     handleCsvUpload(e, (newData, newCols) => {
       saveCsvData(newData, newCols);
     });
   };
 
-  // Guardar loop orders (1 solo request con todos los campos)
   const saveLoopOrders = async (
     ord: boolean,
     ordCols: string[],
@@ -137,7 +131,7 @@ function LoopsConfig({ loop }: Props) {
   ) => {
     if (!loop) return;
 
-    // Usar updateLoop para 1 solo PATCH con todos los campos
+    // Use updateLoop for 1 PATCH with all fields
     const updatedLoop = await updateLoop(loop.id, {
       orders: ord,
       orderColumns: ordCols,
@@ -168,7 +162,6 @@ function LoopsConfig({ loop }: Props) {
       categoryColumn,
       stimuliOrders,
       categoryData,
-      // Code is NO LONGER saved - it's generated dynamically when needed
     };
 
     try {
@@ -179,7 +172,6 @@ function LoopsConfig({ loop }: Props) {
     }
   };
 
-  // Auto-save removed - using manual save only
   // Cleanup timeout on unmount
   useEffect(() => {
     const timeoutCurrent = timeoutRef.current;
@@ -192,7 +184,7 @@ function LoopsConfig({ loop }: Props) {
     setLoopConditions(conditions);
     setIsConditionalLoop(conditions.length > 0);
 
-    // Guardar automáticamente cuando se configuran las condiciones
+    // Save automatically when conditions are configured
     if (loop) {
       await updateLoop(loop.id, {
         loopConditions: conditions,
@@ -222,7 +214,6 @@ function LoopsConfig({ loop }: Props) {
       <div className="mb-1 input-section p-4 border rounded">
         <h4 className="text-lg font-bold mb-3">{loop?.name || "Loop"}</h4>
         <div className="mb-2">
-          {/* Indicador de guardado */}
           <div
             style={{
               opacity: saveIndicator ? 1 : 0,
@@ -246,14 +237,12 @@ function LoopsConfig({ loop }: Props) {
           <strong>Trials in loop:</strong> {loop?.trials?.length || 0} trial(s)
         </div>
 
-        {/* CSV and XLSX section */}
         <CsvUploader
           onCsvUpload={onHandleCsvUploadWrapped}
           csvJson={csvJson}
           onDeleteCSV={deleteCsv}
         />
 
-        {/* Orders */}
         <OrdersAndCategories
           stimuliOrders={stimuliOrders}
           categoryData={categoryData}

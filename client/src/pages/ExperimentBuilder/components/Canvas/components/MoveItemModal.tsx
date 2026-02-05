@@ -25,7 +25,7 @@ function MoveItemModal({
 
   const handleConfirm = () => {
     if (selectedDestination !== null) {
-      // Si el destino no tiene branches, siempre es secuencial
+      // If the destination has no branches, it is always sequential
       const destination = availableDestinations.find(
         (d) => d.id === selectedDestination,
       );
@@ -82,7 +82,7 @@ function MoveItemModal({
         Select a destination:
       </p>
 
-      {/* Lista de destinos */}
+      {/* List of destinations */}
       <div
         style={{
           width: "100%",
@@ -162,7 +162,7 @@ function MoveItemModal({
         )}
       </div>
 
-      {/* Opciones: Branch (paralelo) o Sequential - solo si el destino tiene branches */}
+      {/* Options: Branch (parallel) or Sequential - only if the destination has branches */}
       {selectedDest && selectedDest.id && selectedDest.hasBranches && (
         <div
           style={{
@@ -237,7 +237,7 @@ function MoveItemModal({
         </div>
       )}
 
-      {/* Botones de acción */}
+      {/* Action buttons */}
       <div
         style={{
           display: "flex",

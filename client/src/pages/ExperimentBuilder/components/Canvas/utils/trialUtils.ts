@@ -3,11 +3,11 @@ import { Trial } from "../../ConfigurationPanel/types";
 const API_URL = import.meta.env.VITE_API_URL;
 
 export function isTrial(item: any): item is Trial {
-  // En la estructura plana: loops tienen "trials" array, trials NO
+  // In the flat structure: loops have a "trials" array, trials do NOT
   return !("trials" in item);
 }
 
-// ==================== FUNCIONES QUE USAN SOLO TIMELINE METADATA ====================
+// ==================== FUNCTIONS THAT USE ONLY TIMELINE METADATA ====================
 
 export function findTrialById(
   timeline: any[],
@@ -80,11 +80,11 @@ export function getTrialIdsInLoops(timeline: any[]): (number | string)[] {
     .flatMap((loop: any) => loop.trials || []);
 }
 
-// ==================== FUNCIONES ASYNC QUE USAN ENDPOINTS ====================
+// ==================== ASYNC FUNCTIONS THAT USE ENDPOINTS ====================
 
 /**
- * Obtiene todos los nombres existentes (incluyendo trials dentro de loops)
- * desde el backend
+ * Gets all existing names (including trials inside loops)
+ * from the backend
  */
 export async function getAllExistingNames(
   experimentID: string,
@@ -102,8 +102,8 @@ export async function getAllExistingNames(
 }
 
 /**
- * Verifica si sourceId es un ancestro de targetId en la jerarquía
- * Esto previene crear dependencias circulares
+ * Checks if sourceId is an ancestor of targetId in the hierarchy
+ * This prevents creating circular dependencies
  */
 export async function isAncestor(
   sourceId: number | string,
@@ -123,8 +123,8 @@ export async function isAncestor(
 }
 
 /**
- * Valida si una conexión entre source y target es válida
- * Retorna un objeto con isValid y errorMessage
+ * Validates if a connection between source and target is valid
+ * Returns an object with isValid and errorMessage
  */
 export async function validateConnection(
   sourceId: number | string,

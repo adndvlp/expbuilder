@@ -35,7 +35,7 @@ function ConditionRule({
   setConditions,
   conditions,
 }: Props) {
-  // Helper para extraer valor de propiedades en formato {source, value}
+  // Helper to extract value from properties in {source, value} format
   const getPropValue = (prop: any): any => {
     if (
       prop &&

@@ -43,28 +43,28 @@ export default function Actions({
   setShowLoopModal,
   createLoop,
 }: Props) {
-  // Handler para mostrar el modal de agregar trial
-  // Verifica si el parent tiene branches antes de mostrar el modal
+  // Handler to show the add trial modal
+  // Checks if the parent has branches before showing the modal
   const onAddBranch = async (parentId: number | string) => {
-    // Verificar si el parent tiene branches
+    // Check if the parent has branches
     const parentItem = loopTimeline.find((item) => item.id === parentId);
     if (!parentItem) return parentId;
 
-    // Si no tiene branches, devolver parentId para que se maneje directamente
-    // Si tiene branches, también devolver para que el componente padre maneje el modal
+    // If it has no branches, return parentId to handle directly
+    // If it has branches, also return so the parent component handles the modal
     return parentId;
   };
 
-  // Handler para agregar trial como branch (sibling)
+  // Handler to add trial as branch (sibling)
   const addTrialAsBranch = async (parentId: number | string) => {
-    // Obtener TODOS los nombres existentes: del timeline principal + del loop actual
+    // Get ALL existing names: from the main timeline + the current loop
     const timelineNames = timeline.map((item) => item.name);
     const loopTrialNames = loopTimeline.map((item) => item.name);
     const allNames = [...new Set([...timelineNames, ...loopTrialNames])];
     const newName = generateUniqueName(allNames);
 
     try {
-      // Crear el trial branch con parentLoopId para que no se agregue al timeline principal
+      // Create the trial branch with parentLoopId so it is not added to the main timeline
       const newBranchTrial = await createTrial({
         type: "Trial",
         name: newName,
@@ -74,7 +74,7 @@ export default function Actions({
         parentLoopId: String(loopId), // Importante: establece que este trial está dentro del loop
       });
 
-      // Actualizar el parent (trial o loop) para incluir este branch
+      // Update the parent (trial or loop) to include this branch
       const parentItem = loopTimeline.find((item) => item.id === parentId);
       if (!parentItem) return;
 
@@ -86,7 +86,7 @@ export default function Actions({
             {
               branches: [...(parentTrial.branches || []), newBranchTrial.id],
             },
-            newBranchTrial, // Pasar el trial recién creado
+            newBranchTrial, // Pass the newly created trial
           );
         }
       } else {
@@ -97,7 +97,7 @@ export default function Actions({
             {
               branches: [...(parentLoop.branches || []), newBranchTrial.id],
             },
-            newBranchTrial, // Pasar el trial recién creado
+            newBranchTrial, // Pass the newly created trial
           );
         }
       }
@@ -108,16 +108,16 @@ export default function Actions({
     }
   };
 
-  // Handler para agregar trial como parent (de las branches existentes)
+  // Handler to add trial as parent (of the existing branches)
   const addTrialAsParent = async (parentId: number | string) => {
-    // Obtener TODOS los nombres existentes: del timeline principal + del loop actual
+    // Get ALL existing names: from the main timeline + the current loop
     const timelineNames = timeline.map((item) => item.name);
     const loopTrialNames = loopTimeline.map((item) => item.name);
     const allNames = [...new Set([...timelineNames, ...loopTrialNames])];
     const newName = generateUniqueName(allNames);
 
     try {
-      // Obtener el parent para acceder a sus branches
+      // Get the parent to access its branches
       const parentItem = loopTimeline.find((item) => item.id === parentId);
       if (!parentItem) return;
 
@@ -135,7 +135,7 @@ export default function Actions({
         }
       }
 
-      // Crear el nuevo trial que será el parent de las branches
+      // Create the new trial that will be the parent of the branches
       const newParentTrial = await createTrial({
         type: "Trial",
         name: newName,
@@ -143,15 +143,15 @@ export default function Actions({
         parameters: {},
         trialCode: "",
         parentLoopId: String(loopId),
-        branches: parentBranches, // El nuevo trial se convierte en padre de las branches existentes
+        branches: parentBranches, // The new trial becomes the parent of the existing branches
       });
 
-      // Actualizar el parent original para que apunte al nuevo trial en lugar de las branches
+      // Update the original parent to point to the new trial instead of the branches
       if (parentItem.type === "trial") {
         await updateTrial(
           parentId,
           {
-            branches: [newParentTrial.id], // Ahora solo apunta al nuevo trial
+            branches: [newParentTrial.id], // Now only points to the new trial
           },
           newParentTrial,
         );
@@ -159,7 +159,7 @@ export default function Actions({
         await updateLoop(
           parentId,
           {
-            branches: [newParentTrial.id], // Ahora solo apunta al nuevo trial
+            branches: [newParentTrial.id], // Now only points to the new trial
           },
           newParentTrial,
         );
@@ -171,7 +171,7 @@ export default function Actions({
     }
   };
 
-  // Handler para crear loop anidado
+  // Handler to create nested loop
   const handleCreateNestedLoop = () => {
     const confirmed = window.confirm(
       "Are you sure you want to group these trials/loops into a nested loop?",
@@ -191,11 +191,11 @@ export default function Actions({
     }
 
     try {
-      // Obtener el loop padre completo para contar loops anidados
+      // Get the full parent loop to count nested loops
       const parentLoop = await getLoop(loopId);
       if (!parentLoop) return;
 
-      // Obtener TODOS los nombres existentes: del timeline principal + del loop actual
+      // Get ALL existing names: from the main timeline + the current loop
       const timelineNames = timeline.map((item) => item.name);
       const loopTrialNames = loopTimeline.map((item) => item.name);
       const allNames = [...new Set([...timelineNames, ...loopTrialNames])];
@@ -213,10 +213,10 @@ export default function Actions({
         categoryData: [],
         trials: itemIds,
         code: "",
-        parentLoopId: loopId, // Importante: establece que este loop está dentro del loop padre
+        parentLoopId: loopId, // Important: sets that this loop is inside the parent loop
       });
 
-      // Actualizar el loop padre para incluir el nuevo loop anidado
+      // Update the parent loop to include the new nested loop
       const updatedTrials = [
         ...(parentLoop.trials || []).filter((id) => !itemIds.includes(id)),
         newLoop.id,
@@ -235,11 +235,11 @@ export default function Actions({
     }
   };
 
-  // Handler para conectar trials manualmente
+  // Handler to manually connect trials
   const handleConnect = async (connection: Connection) => {
     if (!connection.source || !connection.target) return;
 
-    // Extraer IDs de los nodos
+    // Extract node IDs
     const extractId = (nodeId: string): number | string | null => {
       if (nodeId.startsWith("loop-")) {
         return nodeId.substring(5);
@@ -259,7 +259,7 @@ export default function Actions({
     }
 
     try {
-      // Buscar el source en loopTimeline
+      // Find the source in loopTimeline
       const sourceItem = loopTimeline.find((item) => item.id === sourceId);
       if (!sourceItem) return;
 

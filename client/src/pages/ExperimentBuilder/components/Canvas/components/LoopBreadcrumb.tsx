@@ -18,7 +18,7 @@ function LoopBreadcrumb({
   onNavigateToRoot,
   compact = false,
 }: LoopBreadcrumbProps) {
-  const MAX_VISIBLE_LOOPS = 3; // Mostrar máximo 3 loops antes de colapsar
+  const MAX_VISIBLE_LOOPS = 3; // Show a maximum of 3 loops before collapsing
 
   const containerStyle = compact
     ? {
@@ -49,13 +49,13 @@ function LoopBreadcrumb({
   const fontSize = compact ? "12px" : "14px";
   const iconSize = compact ? 14 : 16;
 
-  // Determinar qué loops mostrar
+  // Determine which loops to show
   const shouldCollapse = loopStack.length > MAX_VISIBLE_LOOPS;
   const visibleLoops = shouldCollapse
     ? [
-        loopStack[0], // Primer loop
-        null, // Indicador de colapso (...)
-        ...loopStack.slice(-2), // Últimos 2 loops
+        loopStack[0], // First loop
+        null, // Collapse indicator (...)
+        ...loopStack.slice(-2), // Last 2 loops
       ]
     : loopStack;
 
@@ -98,7 +98,7 @@ function LoopBreadcrumb({
 
       {/* Loop path */}
       {visibleLoops.map((loop, displayIndex) => {
-        // Si es null, mostrar los tres puntos
+        // If null, show the ellipsis
         if (loop === null) {
           return (
             <div
@@ -126,13 +126,13 @@ function LoopBreadcrumb({
           );
         }
 
-        // Calcular el índice real en loopStack
+        // Calculate the real index in loopStack
         let realIndex: number;
         if (shouldCollapse) {
           if (displayIndex === 0) {
             realIndex = 0;
           } else {
-            // displayIndex - 1 porque saltamos el null, luego -2 desde el final
+            // displayIndex - 1 because we skip the null, then -2 from the end
             realIndex = loopStack.length - (visibleLoops.length - displayIndex);
           }
         } else {
