@@ -350,7 +350,8 @@ export default function PublicExperiment({
         body: JSON.stringify({
           experimentID: "${experimentID}",
           sessionId: trialSessionId,
-          uid: Uid
+          uid: Uid,
+          batchSize: ${batchConfig.batchSize}
         }),
       });
       
@@ -547,7 +548,8 @@ export default function PublicExperiment({
       }));
       
       // Enviar trials como JSON - el backend los convertirá a CSV
-      return fetch("${DATA_API_URL}/apiDataComplete", {
+      const apiBaseUrl = "${DATA_API_URL}".replace('/apiData', '');
+      return fetch(\`\${apiBaseUrl}/apiDataComplete\`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "*/*" },
         body: JSON.stringify({
@@ -740,19 +742,24 @@ export default function PublicExperiment({
         console.log('Experiment finished normally, sending data to storage...');
         
         try {
+          // Si batchSize=0 CON IndexedDB: Ya se envió directo al storage, NO necesita finalización
+          const needsBackendFinalization = !(BATCH_CONFIG.useIndexedDB && BATCH_CONFIG.size === 0);
           
-          // Marcar en Firebase que terminó correctamente Y necesita finalización
+          // Marcar en Firebase que terminó correctamente
           await sessionRef.update({
             connected: false,
             finished: true,
-            needsFinalization: true,
+            needsFinalization: needsBackendFinalization,
             state: 'completed',
             finishedAt: window.firebase.database.ServerValue.TIMESTAMP,
             lastUpdate: window.firebase.database.ServerValue.TIMESTAMP
           });
           
-          // El backend procesará la finalización al detectar needsFinalization=true
-          console.log('Session marked for finalization in Firebase');
+          if (needsBackendFinalization) {
+            console.log('Session marked for finalization in Firebase');
+          } else {
+            console.log('Session completed (batch=0, already sent to storage)');
+          }
         } catch (error) {
           console.error('Error marking session as finished:', error);
         }
