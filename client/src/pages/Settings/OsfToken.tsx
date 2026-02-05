@@ -1,10 +1,15 @@
 import { useState, useEffect } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase";
+import { openExternal } from "../../lib/openExternal";
+
+// Detectar si estamos en Electron
+const isElectron = !!(window as any).electron?.startOAuthFlow;
 
 export default function OsfToken() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [hasToken, setHasToken] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showTokenInput, setShowTokenInput] = useState(false);
@@ -14,6 +19,22 @@ export default function OsfToken() {
   const [osfUserName, setOsfUserName] = useState("");
   const [osfProjectId, setOsfProjectId] = useState("");
   const user = auth.currentUser;
+
+  // OSF OAuth credentials
+  const CLIENT_ID = "ee4514d3235d4acb8da4443b3516ede2";
+
+  // REDIRECT_URI dinámico según el entorno
+  const REDIRECT_URI = isElectron
+    ? "http://localhost:8888/oauth/osf/callback"
+    : import.meta.env.DEV
+      ? "http://localhost:5173/oauth/osf/callback"
+      : "https://us-central1-builder-f43c3.cloudfunctions.net/osfOAuthCallback";
+
+  const oauthUrl = `https://accounts.osf.io/oauth2/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
+    REDIRECT_URI,
+  )}&scope=${encodeURIComponent(
+    "osf.full_read osf.full_write",
+  )}&access_type=offline&approval_prompt=auto&state=${user?.uid}`;
 
   // Cargar estado del token
   useEffect(() => {
@@ -26,7 +47,10 @@ export default function OsfToken() {
 
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setHasToken(!!data.osfToken && data.osfTokenValid);
+          // Verificar si tiene OAuth tokens o token manual
+          const hasOAuthToken = !!data.osfTokens?.access_token;
+          const hasManualToken = !!data.osfToken && data.osfTokenValid;
+          setHasToken(hasOAuthToken || hasManualToken);
           setOsfUserName(data.osfUserName || "");
           setOsfProjectId(data.osfProjectId || "");
         }
@@ -40,7 +64,89 @@ export default function OsfToken() {
     loadTokenStatus();
   }, [user]);
 
-  // Función para guardar el token de OSF
+  // Función para manejar la conexión con OSF OAuth
+  const handleConnectOAuth = async (retryAttempt = 0) => {
+    if (!user) return;
+
+    // Si estamos en Electron, usar el flujo nativo
+    if (isElectron) {
+      setIsConnecting(true);
+
+      // Si es el primer intento, dar tiempo a que OSF propague la configuración
+      if (retryAttempt === 0) {
+        setError(
+          "Opening OSF authorization... If it fails, it will retry automatically.",
+        );
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+
+      try {
+        const result = await (window as any).electron.startOAuthFlow({
+          provider: "osf",
+          clientId: CLIENT_ID,
+          scope: "osf.full_read osf.full_write",
+          state: user.uid,
+        });
+
+        if (result.success) {
+          // Llamar a la Cloud Function para intercambiar el código por tokens
+          const electronRedirectUri = "http://localhost:8888/callback";
+          const functionUrl = import.meta.env.DEV
+            ? `http://127.0.0.1:5001/test-e4cf9/us-central1/osfOAuthCallback?code=${encodeURIComponent(
+                result.code,
+              )}&state=${encodeURIComponent(result.state)}&redirect_uri=${encodeURIComponent(electronRedirectUri)}`
+            : `https://us-central1-test-e4cf9.cloudfunctions.net/osfOAuthCallback?code=${encodeURIComponent(
+                result.code,
+              )}&state=${encodeURIComponent(result.state)}&redirect_uri=${encodeURIComponent(electronRedirectUri)}`;
+
+          const response = await fetch(functionUrl);
+
+          if (response.ok || response.redirected) {
+            // Recargar el estado del token
+            const docRef = doc(db, "users", user.uid);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+              const data = docSnap.data();
+              setHasToken(!!data.osfTokens?.access_token);
+              setOsfUserName(data.osfUserName || "");
+              setOsfProjectId(data.osfProjectId || "");
+            }
+            alert("OSF connected successfully via OAuth!");
+          } else {
+            throw new Error("Failed to exchange tokens");
+          }
+        } else {
+          // Si el error es invalid_client y no hemos reintentado aún
+          if (result.error?.includes("invalid_client") && retryAttempt < 2) {
+            setError(
+              `OSF configuration is propagating... Retrying (attempt ${retryAttempt + 2}/3)`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, 3000)); // Esperar 3 segundos
+            return handleConnectOAuth(retryAttempt + 1);
+          }
+          throw new Error(result.error || "OAuth flow failed");
+        }
+      } catch (error: any) {
+        console.error("Error connecting OSF:", error);
+
+        // Mensaje más útil para el usuario
+        if (error.message?.includes("invalid_client")) {
+          setError(
+            "OSF OAuth configuration error. Please ensure your application is properly configured at https://osf.io/settings/applications/ and try again in a few seconds.",
+          );
+        } else {
+          setError(`Connection failed: ${error.message}`);
+        }
+      } finally {
+        setIsConnecting(false);
+      }
+    } else {
+      // Flujo web normal (abre en navegador y redirige)
+      openExternal(oauthUrl);
+    }
+  };
+
+  // Función para guardar el token de OSF manualmente
   const handleSaveToken = async () => {
     if (!user || !tokenInput.trim()) {
       setError("Please enter a valid token");
@@ -185,16 +291,87 @@ export default function OsfToken() {
             {isDeleting ? "Disconnecting..." : "Disconnect"}
           </button>
         ) : (
-          <>
-            {!showTokenInput ? (
-              <button
-                onClick={() => setShowTokenInput(true)}
-                className="token-button connect"
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              width: "100%",
+            }}
+          >
+            {/* Botón de OAuth */}
+            <button
+              onClick={() => handleConnectOAuth(0)}
+              disabled={isConnecting}
+              className="token-button connect"
+              style={{
+                background: "linear-gradient(90deg, #3d92b4 60%, #4fc3f7 100%)",
+                fontSize: 14,
+                fontWeight: 600,
+              }}
+            >
+              {isConnecting ? "Connecting..." : "🔐 Connect with OSF OAuth"}
+            </button>
+
+            {/* Mensaje de estado/error */}
+            {error && (
+              <div
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 4,
+                  background:
+                    error.includes("Retrying") || error.includes("Opening")
+                      ? "#e3f2fd"
+                      : "#ffebee",
+                  color:
+                    error.includes("Retrying") || error.includes("Opening")
+                      ? "#1976d2"
+                      : "#c62828",
+                  fontSize: 12,
+                  lineHeight: 1.4,
+                }}
               >
-                Connect
-              </button>
+                {error}
+              </div>
+            )}
+
+            {/* Opciones manuales colapsables */}
+            {!showTokenInput ? (
+              <details style={{ marginTop: 4 }}>
+                <summary
+                  style={{
+                    fontSize: 12,
+                    color: "#666",
+                    cursor: "pointer",
+                    padding: "4px 0",
+                  }}
+                >
+                  Use Personal Access Token instead
+                </summary>
+                <button
+                  onClick={() => setShowTokenInput(true)}
+                  className="token-button"
+                  style={{
+                    marginTop: 8,
+                    fontSize: 13,
+                    background: "#f5f5f5",
+                    color: "#333",
+                  }}
+                >
+                  Enter Manual Token
+                </button>
+              </details>
             ) : (
-              <div className="token-input-container">
+              <div
+                className="token-input-container"
+                style={{
+                  marginTop: 8,
+                  padding: 12,
+                  background: "#f9f9f9",
+                  borderRadius: 6,
+                  border: "1px solid #e0e0e0",
+                }}
+              >
                 <div style={{ marginBottom: 8 }}>
                   <p style={{ fontSize: 13, color: "#666", marginBottom: 4 }}>
                     To generate an OSF token:
@@ -313,7 +490,7 @@ export default function OsfToken() {
                 </div>
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
     </div>

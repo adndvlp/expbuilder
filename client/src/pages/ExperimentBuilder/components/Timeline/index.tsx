@@ -63,7 +63,7 @@ function Timeline({
       return {
         drive: !!data.googleDriveTokens,
         dropbox: !!data.dropboxTokens,
-        osf: !!(data.osfToken && data.osfTokenValid),
+        osf: !!data.osfTokens,
         github: !!data.githubTokens,
       };
     } catch {

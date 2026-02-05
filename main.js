@@ -79,20 +79,26 @@ ipcMain.handle(
 
       if (provider === "google-drive") {
         authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(
-          redirectUri
+          redirectUri,
         )}&response_type=code&scope=${encodeURIComponent(
-          scope
+          scope,
         )}&access_type=offline&prompt=consent&state=${state}`;
       } else if (provider === "dropbox") {
         authUrl = `https://www.dropbox.com/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
-          redirectUri
+          redirectUri,
         )}&response_type=code&token_access_type=offline&state=${state}&scope=${encodeURIComponent(
-          scope
+          scope,
         )}`;
       } else if (provider === "github") {
         authUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
-          redirectUri
+          redirectUri,
         )}&scope=${encodeURIComponent(scope)}&state=${state}`;
+      } else if (provider === "osf") {
+        authUrl = `https://accounts.osf.io/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(
+          redirectUri,
+        )}&scope=${encodeURIComponent(
+          scope,
+        )}&access_type=offline&state=${state}`;
       } else {
         throw new Error(`Unsupported provider: ${provider}`);
       }
@@ -113,7 +119,7 @@ ipcMain.handle(
         error: error.message,
       };
     }
-  }
+  },
 );
 
 function createWindow() {

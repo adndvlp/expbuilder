@@ -12,6 +12,7 @@ import Settings from "./Settings";
 import GoogleDriveCallback from "./Settings/GoogleDrive/GoogleDriveCallback";
 import DropboxCallback from "./Settings/Dropbox/DropboxCallback";
 import GithubCallback from "./Settings/Github/GithubCallback";
+import OsfCallback from "./Settings/OsfCallback";
 import ExperimentPanel from "./ExperimentPanel";
 
 // import ProtectedRoute from "../components/ProtectedRoute";
@@ -58,6 +59,10 @@ const router = createHashRouter([
   {
     path: "/github-callback",
     element: <GithubCallback />,
+  },
+  {
+    path: "/oauth/osf/callback",
+    element: <OsfCallback />,
   },
   {
     path: "/home/experiment/:id",
