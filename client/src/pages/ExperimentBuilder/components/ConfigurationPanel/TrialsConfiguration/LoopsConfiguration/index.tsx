@@ -11,7 +11,8 @@ import ConditionalLoop from "./ConditionalLoop";
 type Props = { loop?: Loop };
 
 function LoopsConfig({ loop }: Props) {
-  const { updateLoop, updateLoopField, deleteLoop } = useTrials();
+  const { updateLoop, updateLoopField, deleteLoop, updateTrialField } =
+    useTrials();
 
   const [isLoadingLoop, setIsLoadingLoop] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -32,11 +33,11 @@ function LoopsConfig({ loop }: Props) {
 
   const { csvJson, setCsvJson, csvColumns, setCsvColumns, handleCsvUpload } =
     useCsvData();
-  const deleteCsv = () => {
+  const deleteCsv = async () => {
     if (csvJson.length === 0) return;
     setCsvJson([]);
     setCsvColumns([]);
-    saveCsvData([], []);
+    await saveCsvData([], []);
   };
 
   useEffect(() => {
@@ -112,6 +113,22 @@ function LoopsConfig({ loop }: Props) {
       finalCols ? [...finalCols] : [],
       false,
     );
+
+    // Propagar CSV a todos los trials del loop
+    if (loop.trials && loop.trials.length > 0) {
+      const hasCsv = finalJson.length > 0;
+
+      // Actualizar cada trial con el flag csvFromLoop
+      for (const trialId of loop.trials) {
+        await updateTrialField(
+          trialId,
+          "csvFromLoop",
+          hasCsv,
+          false, // no actualizar selectedTrial automáticamente
+        );
+      }
+    }
+
     showSaveIndicator("csv");
   };
 

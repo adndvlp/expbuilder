@@ -23,6 +23,12 @@ type Props = {
     trial: Partial<Trial>,
     newBranchTrial?: Trial,
   ) => Promise<Trial | null>;
+  updateTrialField: (
+    id: string | number,
+    fieldName: string,
+    value: any,
+    updateSelectedTrial?: boolean,
+  ) => Promise<boolean>;
   loopId: string | number;
   setShowLoopModal: (value: SetStateAction<boolean>) => void;
   createLoop: (loop: Omit<Loop, "id">) => Promise<Loop>;
@@ -36,6 +42,7 @@ export default function Actions({
   updateLoop,
   getTrial,
   updateTrial,
+  updateTrialField,
   loopTimeline,
   timeline,
   loopId,
@@ -73,6 +80,12 @@ export default function Actions({
         trialCode: "",
         parentLoopId: String(loopId), // Importante: establece que este trial está dentro del loop
       });
+
+      // Check if the parent loop has CSV and mark the trial accordingly
+      const parentLoop = await getLoop(loopId);
+      if (parentLoop && parentLoop.csvJson && parentLoop.csvJson.length > 0) {
+        await updateTrialField(newBranchTrial.id, "csvFromLoop", true, false);
+      }
 
       // Update the parent (trial or loop) to include this branch
       const parentItem = loopTimeline.find((item) => item.id === parentId);
@@ -145,6 +158,12 @@ export default function Actions({
         parentLoopId: String(loopId),
         branches: parentBranches, // The new trial becomes the parent of the existing branches
       });
+
+      // Check if the parent loop has CSV and mark the trial accordingly
+      const parentLoop = await getLoop(loopId);
+      if (parentLoop && parentLoop.csvJson && parentLoop.csvJson.length > 0) {
+        await updateTrialField(newParentTrial.id, "csvFromLoop", true, false);
+      }
 
       // Update the original parent to point to the new trial instead of the branches
       if (parentItem.type === "trial") {

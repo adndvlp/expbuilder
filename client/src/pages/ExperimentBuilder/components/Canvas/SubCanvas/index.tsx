@@ -70,6 +70,7 @@ function LoopSubCanvas({
     getTrial,
     getLoop,
     updateTrial,
+    updateTrialField,
     updateLoop,
     timeline,
   } = useTrials();
@@ -107,6 +108,7 @@ function LoopSubCanvas({
     updateLoop,
     getTrial,
     updateTrial,
+    updateTrialField,
     loopTimeline,
     timeline,
     loopId,
