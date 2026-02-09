@@ -178,18 +178,14 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     }
 
     // Render ALL components in parallel (stimulus and response together)
-    // Pass onResponse callback to ALL components so they can end the trial if needed
-    stimulusComponents.forEach(({ instance, config }) => {
-      instance.render(mainContainer, config, () => {
-        if (!hasResponded && trial.response_ends_trial) {
-          hasResponded = true;
-          recordAllPendingResponses();
-          endTrial();
-        }
-      });
-    });
+    // Sort by zIndex to control layering (lower zIndex renders first = appears behind)
+    const allComponents = [...stimulusComponents, ...responseComponents];
+    allComponents.sort(
+      (a, b) => (a.config.zIndex ?? 0) - (b.config.zIndex ?? 0),
+    );
 
-    responseComponents.forEach(({ instance, config }) => {
+    // Pass onResponse callback to ALL components so they can end the trial if needed
+    allComponents.forEach(({ instance, config }) => {
       instance.render(mainContainer, config, () => {
         if (!hasResponded && trial.response_ends_trial) {
           hasResponded = true;

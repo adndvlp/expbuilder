@@ -53,6 +53,13 @@ const info = {
       type: ParameterType.OBJECT,
       default: { x: 0, y: 0 },
     },
+    /** Z-index for layering (higher values appear on top) */
+    zIndex: {
+      type: ParameterType.INT,
+      pretty_name: "Z-Index",
+      default: 0,
+      description: "Layer order - higher values render on top of lower values",
+    },
   },
   data: {
     /** The numeric value of the slider. */
@@ -114,7 +121,7 @@ class SliderResponseComponent {
   render(
     display_element: HTMLElement,
     trial: any,
-    onResponse?: () => void
+    onResponse?: () => void,
   ): void {
     // Helper to map coordinate values
     const mapValue = (value: number): number => {
@@ -169,7 +176,7 @@ class SliderResponseComponent {
 
     // Get slider element reference
     this.sliderElement = this.sliderContainer.querySelector(
-      "#jspsych-slider-response-component"
+      "#jspsych-slider-response-component",
     ) as HTMLInputElement;
 
     // Track movement if required

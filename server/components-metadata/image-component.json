@@ -29,6 +29,12 @@
       "default": "{ x: 0, y: 0 }",
       "pretty_name": "Coordinates",
       "description": "Object with x and y properties for absolute positioning"
+    },
+    "zIndex": {
+      "type": "number",
+      "default": 0,
+      "pretty_name": "Z-Index",
+      "description": "Layer order - higher values render on top of lower values"
     }
   }
 }

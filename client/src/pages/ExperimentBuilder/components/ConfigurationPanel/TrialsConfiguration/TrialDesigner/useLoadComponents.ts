@@ -59,7 +59,8 @@ export default function useLoadComponents({
             key !== "coordinates" &&
             key !== "width" &&
             key !== "height" &&
-            key !== "rotation"
+            key !== "rotation" &&
+            key !== "zIndex"
           ) {
             // Asumir que siempre está en formato {source, value}
             if (
@@ -97,6 +98,12 @@ export default function useLoadComponents({
             value: comp.rotation,
           };
         }
+        if (comp.zIndex !== undefined) {
+          config.zIndex = {
+            source: "typed",
+            value: comp.zIndex,
+          };
+        }
 
         // Use explicit width/height if saved, otherwise 0 (let component decide its size)
         const numericWidth = typeof comp.width === "number" ? comp.width : 0;
@@ -110,6 +117,7 @@ export default function useLoadComponents({
           width: numericWidth,
           height: numericHeight,
           rotation: comp.rotation || 0,
+          zIndex: comp.zIndex ?? 0,
           config: config,
         });
       });
@@ -137,7 +145,8 @@ export default function useLoadComponents({
             key !== "coordinates" &&
             key !== "width" &&
             key !== "height" &&
-            key !== "rotation"
+            key !== "rotation" &&
+            key !== "zIndex"
           ) {
             // Si ya está en formato {source, value}, usarlo directamente
             if (
@@ -181,6 +190,12 @@ export default function useLoadComponents({
             value: comp.rotation,
           };
         }
+        if (comp.zIndex !== undefined) {
+          config.zIndex = {
+            source: "typed",
+            value: comp.zIndex,
+          };
+        }
 
         // Use explicit width/height if saved, otherwise 0 (let component decide its size)
         const numericWidth = typeof comp.width === "number" ? comp.width : 0;
@@ -194,6 +209,7 @@ export default function useLoadComponents({
           width: numericWidth,
           height: numericHeight,
           rotation: comp.rotation || 0,
+          zIndex: comp.zIndex ?? 0,
           config: config,
         });
       });

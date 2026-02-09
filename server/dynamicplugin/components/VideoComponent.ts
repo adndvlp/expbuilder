@@ -69,6 +69,13 @@ const info = {
       type: ParameterType.OBJECT,
       default: { x: 0, y: 0 },
     },
+    /** Z-index for layering (higher values appear on top) */
+    zIndex: {
+      type: ParameterType.INT,
+      pretty_name: "Z-Index",
+      default: 0,
+      description: "Layer order - higher values render on top of lower values",
+    },
   },
   // prettier-ignore
   citations: {
@@ -158,7 +165,7 @@ class VideoComponent {
 
     // Check for preloaded video buffer
     const videoPreloadBlob = this.jsPsych.pluginAPI.getVideoBuffer(
-      config.stimulus[0]
+      config.stimulus[0],
     );
 
     if (!videoPreloadBlob) {
@@ -173,7 +180,7 @@ class VideoComponent {
 
         if (type === "mov") {
           console.warn(
-            "Warning: VideoComponent does not reliably support .mov files."
+            "Warning: VideoComponent does not reliably support .mov files.",
           );
         }
 
@@ -212,7 +219,7 @@ class VideoComponent {
                     () => {
                       videoElement.muted = false;
                     },
-                    { once: true }
+                    { once: true },
                   );
                 })
                 .catch((err) => {
@@ -222,7 +229,7 @@ class VideoComponent {
             });
           }
         },
-        { once: true }
+        { once: true },
       );
     }
 

@@ -174,6 +174,13 @@ const info = {
       type: ParameterType.OBJECT,
       default: { x: 0, y: 0 },
     },
+    /** Z-index for layering (higher values appear on top) */
+    zIndex: {
+      type: ParameterType.INT,
+      pretty_name: "Z-Index",
+      default: 0,
+      description: "Layer order - higher values render on top of lower values",
+    },
   },
   data: {
     /** If `save_final_image` is true, then this will contain the base64 encoded data URL for the image, in png format. */
@@ -296,7 +303,7 @@ class SketchpadComponent {
       `;
     } else {
       throw new Error(
-        '`canvas_shape` parameter in sketchpad plugin must be either "rectangle" or "circle"'
+        '`canvas_shape` parameter in sketchpad plugin must be either "rectangle" or "circle"',
       );
     }
     let sketchpad_controls = `<div id="sketchpad-controls">`;
@@ -347,11 +354,11 @@ class SketchpadComponent {
 
     this.canvas.addEventListener(
       "pointerdown",
-      this.start_draw.bind(this, config)
+      this.start_draw.bind(this, config),
     );
     this.canvas.addEventListener(
       "pointermove",
-      this.move_draw.bind(this, config)
+      this.move_draw.bind(this, config),
     );
     this.canvas.addEventListener("pointerup", this.end_draw.bind(this));
     this.canvas.addEventListener("pointerleave", this.end_draw.bind(this));
@@ -368,14 +375,14 @@ class SketchpadComponent {
             this.canvas &&
             document.elementFromPoint(
               this.mouse_position.x,
-              this.mouse_position.y
+              this.mouse_position.y,
             ) == this.canvas
           ) {
             this.canvas.dispatchEvent(
               new PointerEvent("pointerdown", {
                 clientX: this.mouse_position.x,
                 clientY: this.mouse_position.y,
-              })
+              }),
             );
           }
         }
@@ -387,14 +394,14 @@ class SketchpadComponent {
             this.canvas &&
             document.elementFromPoint(
               this.mouse_position.x,
-              this.mouse_position.y
+              this.mouse_position.y,
             ) == this.canvas
           ) {
             this.canvas.dispatchEvent(
               new PointerEvent("pointerup", {
                 clientX: this.mouse_position.x,
                 clientY: this.mouse_position.y,
-              })
+              }),
             );
           }
         }
@@ -417,7 +424,7 @@ class SketchpadComponent {
     }
     if (this.display) {
       const color_btns = Array.prototype.slice.call(
-        this.display.querySelectorAll(".sketchpad-color-select")
+        this.display.querySelectorAll(".sketchpad-color-select"),
       );
       for (const btn of color_btns) {
         btn.addEventListener("click", (e: any) => {
@@ -458,13 +465,13 @@ class SketchpadComponent {
         #sketchpad-canvas {
           touch-action: none;
           border: ${config.canvas_border_width}px solid ${
-        config.canvas_border_color
-      };
+            config.canvas_border_color
+          };
         }
         .sketchpad-circle {
           border-radius: ${config.canvas_diameter / 2}px;
         }
-      </style>`
+      </style>`,
     );
   }
   add_background_color(config: any) {
@@ -521,7 +528,7 @@ class SketchpadComponent {
 
     if (this.is_drawing) {
       const x = Math.round(
-        e.clientX - this.canvas.getBoundingClientRect().left
+        e.clientX - this.canvas.getBoundingClientRect().left,
       );
       const y = Math.round(e.clientY - this.canvas.getBoundingClientRect().top);
       this.ctx.lineTo(x, y);
@@ -596,7 +603,7 @@ class SketchpadComponent {
   set_undo_btn_state(enabled: boolean, config: any) {
     if (config.show_undo_button && this.display) {
       const btn = this.display.querySelector(
-        "#sketchpad-undo"
+        "#sketchpad-undo",
       ) as HTMLButtonElement;
       if (btn) btn.disabled = !enabled;
     }
@@ -604,7 +611,7 @@ class SketchpadComponent {
   set_redo_btn_state(enabled: boolean, config: any) {
     if (config.show_undo_button && config.show_redo_button && this.display) {
       const btn = this.display.querySelector(
-        "#sketchpad-redo"
+        "#sketchpad-redo",
       ) as HTMLButtonElement;
       if (btn) btn.disabled = !enabled;
     }
@@ -612,7 +619,7 @@ class SketchpadComponent {
   set_clear_btn_state(enabled: boolean, config: any) {
     if (config.show_clear_button && this.display) {
       const btn = this.display.querySelector(
-        "#sketchpad-clear"
+        "#sketchpad-clear",
       ) as HTMLButtonElement;
       if (btn) btn.disabled = !enabled;
     }

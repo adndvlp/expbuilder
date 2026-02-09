@@ -59,6 +59,13 @@ const info = {
       type: ParameterType.OBJECT,
       default: { x: 0, y: 0 },
     },
+    /** Z-index for layering (higher values appear on top) */
+    zIndex: {
+      type: ParameterType.INT,
+      pretty_name: "Z-Index",
+      default: 0,
+      description: "Layer order - higher values render on top of lower values",
+    },
   },
   data: {
     /** An object containing the response to each question. The object will have a separate key (identifier) for each question. If the `name` parameter is defined for the question (recommended), then the response object will use the value of `name` as the key for each question. If any questions do not have a name parameter, their keys will named automatically, with the first unnamed question recorded as `question1`, the second as `question2`, and so on. The response type will depend on the question type. This will be encoded as a JSON string when data is saved using the `.json()` or `.csv()` functions. */
@@ -134,7 +141,7 @@ class SurveyjsComponent {
       trial.survey_function === null
     ) {
       console.error(
-        "Survey plugin warning: you must define the survey using a non-empty JSON object and/or a survey function."
+        "Survey plugin warning: you must define the survey using a non-empty JSON object and/or a survey function.",
       );
     }
 
@@ -183,7 +190,7 @@ class SurveyjsComponent {
     });
     const survey_container = this.createSurveyContainer(
       surveyContainer,
-      trial.min_width || "min(100vw, 800px)"
+      trial.min_width || "min(100vw, 800px)",
     );
     this.survey.render(survey_container);
     this.startTime = performance.now();

@@ -45,6 +45,13 @@ const info = {
       default: { x: 0, y: 0 },
       description: "Object with x and y properties for absolute positioning",
     },
+    /** Z-index for layering (higher values appear on top) */
+    zIndex: {
+      type: ParameterType.INT,
+      pretty_name: "Z-Index",
+      default: 0,
+      description: "Layer order - higher values render on top of lower values",
+    },
   },
 
   // prettier-ignore
@@ -112,7 +119,7 @@ class ImageComponent {
     }
 
     const calculateImageDimensions = (
-      image: HTMLImageElement
+      image: HTMLImageElement,
     ): [number, number] => {
       let width: number;
       let height: number;
@@ -168,7 +175,7 @@ class ImageComponent {
 
     const drawImage = () => {
       const [width, height] = calculateImageDimensions(
-        image as HTMLImageElement
+        image as HTMLImageElement,
       );
 
       if (config.render_on_canvas && canvas) {

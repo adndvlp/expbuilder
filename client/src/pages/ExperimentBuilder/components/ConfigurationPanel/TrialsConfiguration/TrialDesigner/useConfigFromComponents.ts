@@ -41,6 +41,11 @@ export default function useConfigComponents({
         componentData.rotation = comp.rotation;
       }
 
+      // Add zIndex if present
+      if (comp.zIndex !== undefined) {
+        componentData.zIndex = comp.zIndex;
+      }
+
       // Apply parameters from component's config
       // Guardar cada propiedad directamente en formato {source, value}
       if (comp.config) {
@@ -50,7 +55,8 @@ export default function useConfigComponents({
             key !== "coordinates" &&
             key !== "width" &&
             key !== "height" &&
-            key !== "rotation"
+            key !== "rotation" &&
+            key !== "zIndex"
           ) {
             // Guardar directamente en formato {source, value}
             componentData[key] = {

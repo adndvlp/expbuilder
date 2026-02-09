@@ -58,6 +58,13 @@ export default function handleDrop({
     newName = `${type}_${nameCounter}`;
   }
 
+  // Calculate next zIndex (highest existing zIndex + 1)
+  const maxZIndex = components.reduce(
+    (max, c) => Math.max(max, c.zIndex ?? 0),
+    0,
+  );
+  const newZIndex = maxZIndex + 1;
+
   const newComponent: TrialComponent = {
     id: `${type}-${Date.now()}`,
     type,
@@ -65,6 +72,7 @@ export default function handleDrop({
     y,
     width: 0,
     height: 0,
+    zIndex: newZIndex,
     config: {
       ...getDefaultConfig(type),
       name: {
@@ -74,6 +82,10 @@ export default function handleDrop({
       coordinates: {
         source: "typed",
         value: coords,
+      },
+      zIndex: {
+        source: "typed",
+        value: newZIndex,
       },
       ...(type === "ImageComponent" && {
         stimulus: {

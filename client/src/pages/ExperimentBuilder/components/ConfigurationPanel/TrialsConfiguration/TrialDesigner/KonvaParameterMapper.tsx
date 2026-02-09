@@ -106,6 +106,10 @@ function KonvaParameterMapper({
               updated.rotation = newConfig.rotation.value;
             }
 
+            if (newConfig.zIndex?.value !== undefined) {
+              updated.zIndex = newConfig.zIndex.value;
+            }
+
             return updated;
           }
           return comp;

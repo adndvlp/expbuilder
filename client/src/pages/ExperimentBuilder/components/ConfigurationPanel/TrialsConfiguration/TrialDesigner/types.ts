@@ -19,6 +19,7 @@ export type TrialComponent = {
   width: number;
   height: number;
   rotation?: number;
+  zIndex?: number;
   config: Record<string, any>;
 };
 

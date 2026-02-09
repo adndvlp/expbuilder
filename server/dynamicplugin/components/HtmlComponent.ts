@@ -20,6 +20,13 @@ const info = {
       type: ParameterType.OBJECT,
       default: { x: 0, y: 0 },
     },
+    /** Z-index for layering (higher values appear on top) */
+    zIndex: {
+      type: ParameterType.INT,
+      pretty_name: "Z-Index",
+      default: 0,
+      description: "Layer order - higher values render on top of lower values",
+    },
   },
   // prettier-ignore
   citations: {

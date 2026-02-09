@@ -53,6 +53,13 @@ const info = {
       type: ParameterType.OBJECT,
       default: { x: 0, y: 0 },
     },
+    /** Z-index for layering (higher values appear on top) */
+    zIndex: {
+      type: ParameterType.INT,
+      pretty_name: "Z-Index",
+      default: 0,
+      description: "Layer order - higher values render on top of lower values",
+    },
   },
   data: {
     /** Answers the participant gave. */
@@ -110,7 +117,7 @@ class InputResponseComponent {
   render(
     display_element: HTMLElement,
     trial: any,
-    onResponse?: () => void
+    onResponse?: () => void,
   ): void {
     // Helper to map coordinate values
     const mapValue = (value: number): number => {
@@ -254,7 +261,7 @@ class InputResponseComponent {
       solutions.push(
         case_sensitive
           ? elements[i].trim().split("/")
-          : elements[i].toLowerCase().trim().split("/")
+          : elements[i].toLowerCase().trim().split("/"),
       );
     }
 

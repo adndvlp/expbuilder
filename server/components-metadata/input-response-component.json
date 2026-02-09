@@ -27,6 +27,12 @@
     "coordinates": {
       "type": "object",
       "default": "{ x: 0, y: 0 }"
+    },
+    "zIndex": {
+      "type": "number",
+      "default": 0,
+      "pretty_name": "Z-Index",
+      "description": "Layer order - higher values render on top of lower values"
     }
   },
   "data": {

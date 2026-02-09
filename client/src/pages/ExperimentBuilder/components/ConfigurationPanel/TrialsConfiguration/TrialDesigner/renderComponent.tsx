@@ -99,6 +99,17 @@ const RenderComponent = ({
             };
           }
 
+          // Sync zIndex to config if changed
+          if (newAttrs.zIndex !== undefined) {
+            updated.config = {
+              ...updated.config,
+              zIndex: {
+                source: "typed",
+                value: newAttrs.zIndex,
+              },
+            };
+          }
+
           return updated;
         }
         return c;

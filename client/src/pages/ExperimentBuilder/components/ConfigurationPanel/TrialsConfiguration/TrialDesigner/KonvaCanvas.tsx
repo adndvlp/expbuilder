@@ -129,7 +129,12 @@ function KonvaCanvas({
             }
           }}
         >
-          <Layer>{components.map((comp) => onRenderComponent(comp))}</Layer>
+          <Layer>
+            {/* Sort components by zIndex before rendering */}
+            {[...components]
+              .sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
+              .map((comp) => onRenderComponent(comp))}
+          </Layer>
         </Stage>
       </div>
     </div>

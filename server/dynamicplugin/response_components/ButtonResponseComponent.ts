@@ -76,6 +76,13 @@ const info = {
       type: ParameterType.OBJECT,
       default: { x: 0, y: 0 },
     },
+    /** Z-index for layering (higher values appear on top) */
+    zIndex: {
+      type: ParameterType.INT,
+      pretty_name: "Z-Index",
+      default: 0,
+      description: "Layer order - higher values render on top of lower values",
+    },
   },
   data: {
     /** Indicates which button the participant pressed. The first button in the `choices` array is 0, the second is 1, and so on.  */
@@ -146,7 +153,7 @@ class ButtonResponseComponent {
   private generateButtonHtml(
     choice: string,
     index: number,
-    trial: any
+    trial: any,
   ): string {
     if (this.isImageUrl(choice)) {
       // Generate image button
@@ -167,7 +174,7 @@ class ButtonResponseComponent {
   render(
     display_element: HTMLElement,
     trial: any,
-    onResponse?: () => void
+    onResponse?: () => void,
   ): void {
     // Helper to map coordinate values
     const mapValue = (value: number): number => {
@@ -198,7 +205,7 @@ class ButtonResponseComponent {
 
       if (trial.grid_rows === null && trial.grid_columns === null) {
         throw new Error(
-          "You cannot set `grid_rows` to `null` without providing a value for `grid_columns`."
+          "You cannot set `grid_rows` to `null` without providing a value for `grid_columns`.",
         );
       }
 
