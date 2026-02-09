@@ -183,6 +183,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       instance.render(mainContainer, config, () => {
         if (!hasResponded && trial.response_ends_trial) {
           hasResponded = true;
+          recordAllPendingResponses();
           endTrial();
         }
       });
@@ -192,10 +193,36 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       instance.render(mainContainer, config, () => {
         if (!hasResponded && trial.response_ends_trial) {
           hasResponded = true;
+          recordAllPendingResponses();
           endTrial();
         }
       });
     });
+
+    // Function to record all pending responses before ending trial
+    const recordAllPendingResponses = () => {
+      // Record responses from all response components that haven't responded yet
+      responseComponents.forEach(({ instance, config }) => {
+        if (
+          instance.recordResponse &&
+          typeof instance.recordResponse === "function"
+        ) {
+          // Try to record response (will fail gracefully if validation fails)
+          instance.recordResponse(config);
+        }
+      });
+
+      // Record responses from stimulus components that have response capability
+      stimulusComponents.forEach(({ instance, config }) => {
+        if (
+          instance.recordResponse &&
+          typeof instance.recordResponse === "function"
+        ) {
+          // Try to record response (will fail gracefully if validation fails)
+          instance.recordResponse(config);
+        }
+      });
+    };
 
     // Function to end the trial and collect data
     const endTrial = () => {
@@ -222,7 +249,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         // Add coordinates if exists (stringify for CSV compatibility)
         if (config.coordinates !== undefined) {
           trialData[`${prefix}_coordinates`] = JSON.stringify(
-            config.coordinates
+            config.coordinates,
           );
         }
 
@@ -289,7 +316,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             typeof instance.getStrokes === "function"
           ) {
             trialData[`${prefix}_strokes`] = JSON.stringify(
-              instance.getStrokes()
+              instance.getStrokes(),
             );
           }
           if (
@@ -347,6 +374,10 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     // Handle trial duration (end trial after duration)
     if (trial.trial_duration !== null && trial.trial_duration !== undefined) {
       this.jsPsych.pluginAPI.setTimeout(() => {
+        if (!hasResponded) {
+          hasResponded = true;
+          recordAllPendingResponses();
+        }
         endTrial();
       }, trial.trial_duration);
     }
