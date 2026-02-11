@@ -25,6 +25,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   onAutoSave,
   columnMapping,
   csvColumns,
+  uploadedFiles = [],
 }) => {
   const [components, setComponents] = useState<TrialComponent[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -115,6 +116,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       generateConfigFromComponents,
       setSelectedId,
       components,
+      uploadedFiles,
     });
   };
 

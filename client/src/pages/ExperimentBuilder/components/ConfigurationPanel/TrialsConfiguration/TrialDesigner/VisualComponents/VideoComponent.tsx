@@ -3,6 +3,7 @@ import { Image as KonvaImage, Transformer } from "react-konva";
 import Konva from "konva";
 import useImage from "use-image";
 import videoPlaceholder from "../../../../../../../assets/video.png";
+import { mapFileToUrl } from "../../../../../utils/mapFileToUrl";
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface TrialComponent {
@@ -21,6 +22,7 @@ interface VideoComponentProps {
   isSelected: boolean;
   onSelect: () => void;
   onChange: (newAttrs: any) => void;
+  uploadedFiles?: any[];
 }
 
 const VideoComponent: React.FC<VideoComponentProps> = ({
@@ -28,6 +30,7 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
   isSelected,
   onSelect,
   onChange,
+  uploadedFiles = [],
 }) => {
   const shapeRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
@@ -46,9 +49,14 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
 
   useEffect(() => {
     const videoValue = getConfigValue("stimulus");
-    const videoUrl = Array.isArray(videoValue) ? videoValue[0] : videoValue;
+    let videoUrl = Array.isArray(videoValue) ? videoValue[0] : videoValue;
 
     if (!videoUrl) return;
+
+    // Map filename to full path (e.g., "video.mp4" -> "vid/video.mp4")
+    if (uploadedFiles.length > 0) {
+      videoUrl = mapFileToUrl(videoUrl, uploadedFiles);
+    }
 
     const video = document.createElement("video");
     video.crossOrigin = "anonymous";
@@ -80,7 +88,7 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
         videoRef.current.src = "";
       }
     };
-  }, [shapeProps.config.stimulus]);
+  }, [shapeProps.config.stimulus, uploadedFiles]);
 
   useEffect(() => {
     if (isSelected && trRef.current && shapeRef.current) {

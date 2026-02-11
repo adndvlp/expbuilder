@@ -468,6 +468,45 @@ function Canvas() {
       }
 
       console.log(`✓ Moved ${itemToMove.name} to ${destinationItem.name}`);
+
+      // ========== STEP 3: REORDER TIMELINE ==========
+      // The moved item should be positioned right after the destination
+      const newTimeline = [...timeline];
+
+      // Remove the moved item from its current position
+      const movedItemIndex = newTimeline.findIndex(
+        (item) => item.id === itemToMove.id,
+      );
+      if (movedItemIndex !== -1) {
+        newTimeline.splice(movedItemIndex, 1);
+      }
+
+      // Find the destination's position (after removal)
+      const destIndex = newTimeline.findIndex(
+        (item) => item.id === destinationId,
+      );
+
+      // Insert the moved item right after the destination
+      if (destIndex !== -1) {
+        newTimeline.splice(destIndex + 1, 0, {
+          id: itemToMove.id,
+          type: itemToMove.type,
+          name: itemToMove.name,
+          branches: [], // Will be updated by the backend
+        });
+      } else {
+        // If destination not found, append at the end
+        newTimeline.push({
+          id: itemToMove.id,
+          type: itemToMove.type,
+          name: itemToMove.name,
+          branches: [],
+        });
+      }
+
+      // Update the timeline in the backend
+      await updateTimeline(newTimeline);
+      console.log("✓ Timeline reordered");
     } catch (error) {
       console.error("Error moving item:", error);
     } finally {

@@ -201,6 +201,7 @@ function TavNavigation({
             columnMapping={columnMapping}
             csvColumns={csvColumns}
             pluginName={pluginName}
+            uploadedFiles={uploadedFiles}
           />
         </div>
       ) : (

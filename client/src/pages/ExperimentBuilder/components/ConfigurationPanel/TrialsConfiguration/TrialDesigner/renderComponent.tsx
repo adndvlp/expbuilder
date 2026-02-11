@@ -31,6 +31,7 @@ type Props = {
   ) => Record<string, any>;
   setSelectedId: React.Dispatch<React.SetStateAction<string | null>>;
   components: TrialComponent[];
+  uploadedFiles?: any[];
 };
 
 const RenderComponent = ({
@@ -42,6 +43,7 @@ const RenderComponent = ({
   generateConfigFromComponents,
   setSelectedId,
   components,
+  uploadedFiles = [],
 }: Props) => {
   const isSelected = comp.id === selectedId;
 
@@ -168,6 +170,7 @@ const RenderComponent = ({
           isSelected={isSelected}
           onSelect={() => handleSelect(comp.id)}
           onChange={handleComponentChange}
+          uploadedFiles={uploadedFiles}
         />
       );
 
@@ -201,6 +204,7 @@ const RenderComponent = ({
           isSelected={isSelected}
           onSelect={() => handleSelect(comp.id)}
           onChange={handleComponentChange}
+          uploadedFiles={uploadedFiles}
         />
       );
 

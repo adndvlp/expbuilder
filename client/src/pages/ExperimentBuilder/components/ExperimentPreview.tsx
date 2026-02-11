@@ -9,7 +9,13 @@ import {
 } from "../utils/generateTrialLoopCodes";
 const API_URL = import.meta.env.VITE_API_URL;
 
-function ExperimentPreview() {
+type UploadedFile = { name: string; url: string; type: string };
+
+type Props = {
+  uploadedFiles?: UploadedFile[];
+};
+
+function ExperimentPreview({ uploadedFiles = [] }: Props) {
   const { trialUrl } = useUrl();
   const { version, incrementVersion } = useExperimentState();
   const [started, setStarted] = useState(false);
@@ -45,7 +51,7 @@ function ExperimentPreview() {
       if (selectedTrial) {
         generatedCode = await generateSingleTrialCode(
           selectedTrial,
-          [], // uploadedFiles - empty for preview
+          uploadedFiles,
           experimentID || "",
           getTrial,
         );
@@ -53,7 +59,7 @@ function ExperimentPreview() {
         generatedCode = await generateSingleLoopCode(
           selectedLoop,
           experimentID || "",
-          [], // uploadedFiles - empty for preview
+          uploadedFiles,
           getTrial,
           getLoopTimeline,
           getLoop,

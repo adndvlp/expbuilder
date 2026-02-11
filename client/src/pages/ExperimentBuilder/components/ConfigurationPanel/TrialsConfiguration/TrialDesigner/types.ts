@@ -34,4 +34,5 @@ export type KonvaTrialDesignerProps = {
   columnMapping: Record<string, any>;
   csvColumns: string[];
   pluginName: string;
+  uploadedFiles?: any[];
 };

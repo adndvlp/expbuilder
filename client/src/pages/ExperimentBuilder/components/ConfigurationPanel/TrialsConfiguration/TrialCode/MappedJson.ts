@@ -1,4 +1,5 @@
 import { ColumnMapping, ColumnMappingEntry } from "../../types";
+import { mapFileToUrl } from "../../../../utils/mapFileToUrl";
 
 type Props = {
   isInLoop: boolean | undefined;
@@ -30,32 +31,6 @@ export default function MappedJson({
 }: Props) {
   const safeCsvJson = csvJson || [];
   const mappedJson = (() => {
-    // Helper para mapear nombres de archivos a URLs
-    const mapFileToUrl = (value: any): any => {
-      if (!value) return value;
-
-      // Si es un array, procesar cada elemento
-      if (Array.isArray(value)) {
-        return value.map((v) => mapFileToUrl(v));
-      }
-
-      // Si es un string que no es URL, buscar en uploadedFiles
-      if (
-        typeof value === "string" &&
-        value.trim() &&
-        !/^https?:\/\//.test(value)
-      ) {
-        const found = uploadedFiles.find(
-          (f) =>
-            f.name &&
-            (f.name === value || f.url === value || value.endsWith(f.name)),
-        );
-        return found && found.url ? found.url : value;
-      }
-
-      return value;
-    };
-
     const mapRow = (row?: Record<string, any>) => {
       const result: Record<string, any> = {};
 
@@ -182,7 +157,7 @@ export default function MappedJson({
               mediaProperties.forEach((prop) => {
                 if (prop in processedComp) {
                   const value = processedComp[prop];
-                  const mappedValue = mapFileToUrl(value);
+                  const mappedValue = mapFileToUrl(value, uploadedFiles);
 
                   // VideoComponent requiere que stimulus sea un array
                   // Si el componente es VideoComponent y stimulus es string, convertir a array
@@ -314,7 +289,7 @@ export default function MappedJson({
               : getColumnValue(columnMapping[key], row, undefined, key);
 
           // Usar el helper mapFileToUrl para mapear archivos
-          let mappedValue = mapFileToUrl(value);
+          let mappedValue = mapFileToUrl(value, uploadedFiles);
 
           // Los plugins de video de jsPsych requieren que stimulus sea un array
           // Detectar si es un plugin de video y convertir string a array si es necesario

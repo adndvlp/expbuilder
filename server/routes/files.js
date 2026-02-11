@@ -34,7 +34,7 @@ const storage = multer.diskStorage({
       let experimentName = experimentID;
       await db.read();
       const experiment = db.data.experiments.find(
-        (e) => e.experimentID === experimentID
+        (e) => e.experimentID === experimentID,
       );
       if (experiment && experiment.name) {
         experimentName = experiment.name;
@@ -78,14 +78,14 @@ router.post(
       let experimentName = experimentID;
       await db.read();
       const experiment = db.data.experiments.find(
-        (e) => e.experimentID === experimentID
+        (e) => e.experimentID === experimentID,
       );
       if (experiment && experiment.name) {
         experimentName = experiment.name;
       }
       const fileUrls = req.files.map((file) => {
         const type = path.basename(path.dirname(file.path));
-        return `${type}/${file.filename}`;
+        return `${type}/${encodeURIComponent(file.filename)}`;
       });
       res.json({
         fileUrls,
@@ -95,7 +95,7 @@ router.post(
       console.error("Error uploading files:", err);
       res.status(500).json({ error: err.message || "Error uploading files" });
     }
-  }
+  },
 );
 
 /**
@@ -118,7 +118,7 @@ router.get("/api/list-files/:type/:experimentID", async (req, res) => {
     let experimentName = experimentID;
     await db.read();
     const experiment = db.data.experiments.find(
-      (e) => e.experimentID === experimentID
+      (e) => e.experimentID === experimentID,
     );
     if (experiment && experiment.name) {
       experimentName = experiment.name;
@@ -130,7 +130,7 @@ router.get("/api/list-files/:type/:experimentID", async (req, res) => {
         if (fs.existsSync(dir)) {
           const typeFiles = fs.readdirSync(dir).map((filename) => ({
             name: filename,
-            url: `${t}/${filename}`,
+            url: `${t}/${encodeURIComponent(filename)}`,
             type: t,
           }));
           files = files.concat(typeFiles);
@@ -141,7 +141,7 @@ router.get("/api/list-files/:type/:experimentID", async (req, res) => {
       if (fs.existsSync(dir)) {
         files = fs.readdirSync(dir).map((filename) => ({
           name: filename,
-          url: `${type}/${filename}`,
+          url: `${type}/${encodeURIComponent(filename)}`,
           type,
         }));
       }
@@ -171,7 +171,7 @@ router.delete(
     let experimentName = experimentID;
     await db.read();
     const experiment = db.data.experiments.find(
-      (e) => e.experimentID === experimentID
+      (e) => e.experimentID === experimentID,
     );
     if (experiment && experiment.name) {
       experimentName = experiment.name;
@@ -187,7 +187,7 @@ router.delete(
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }
-  }
+  },
 );
 
 export default router;

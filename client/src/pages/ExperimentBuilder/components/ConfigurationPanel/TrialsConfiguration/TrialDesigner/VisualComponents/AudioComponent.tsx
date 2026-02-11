@@ -4,7 +4,7 @@ import Konva from "konva";
 import useImage from "use-image";
 import speakerPlaceholder from "../../../../../../../assets/audio.png";
 
-interface TrialComponent {
+type TrialComponent = {
   id: string;
   type: string;
   x: number;
@@ -13,14 +13,14 @@ interface TrialComponent {
   height: number;
   rotation?: number;
   config: Record<string, any>;
-}
+};
 
-interface AudioComponentProps {
+type AudioComponentProps = {
   shapeProps: TrialComponent;
   isSelected: boolean;
   onSelect: () => void;
   onChange: (newAttrs: any) => void;
-}
+};
 
 const AudioComponent: React.FC<AudioComponentProps> = ({
   shapeProps,

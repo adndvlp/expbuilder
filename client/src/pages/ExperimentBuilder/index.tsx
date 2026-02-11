@@ -225,7 +225,9 @@ function ExperimentBuilder() {
                     </span>
                   </div>
                 </label>
-                {!isDevMode && <ExperimentPreview />}
+                {!isDevMode && (
+                  <ExperimentPreview uploadedFiles={uploadedFiles} />
+                )}
                 {!showConfig && (
                   <div
                     style={{
@@ -313,7 +315,7 @@ function ExperimentBuilder() {
                     paddingLeft: "0px",
                   }}
                 >
-                  <ExperimentPreview />
+                  <ExperimentPreview uploadedFiles={uploadedFiles} />
                 </div>
 
                 {/* Barra de redimensionamiento izquierda */}

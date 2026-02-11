@@ -3,6 +3,7 @@ import { Image as KonvaImage, Transformer } from "react-konva";
 import Konva from "konva";
 import useImage from "use-image";
 import imagePlaceholder from "../../../../../../../assets/image.png";
+import { mapFileToUrl } from "../../../../../utils/mapFileToUrl";
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface TrialComponent {
@@ -21,6 +22,7 @@ interface ImageComponentProps {
   isSelected: boolean;
   onSelect: () => void;
   onChange: (newAttrs: any) => void;
+  uploadedFiles?: any[];
 }
 
 const ImageComponent: React.FC<ImageComponentProps> = ({
@@ -28,6 +30,7 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
   isSelected,
   onSelect,
   onChange,
+  uploadedFiles = [],
 }) => {
   const shapeRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
@@ -43,6 +46,10 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
   };
 
   let imageUrl = getConfigValue("stimulus");
+  // Map filename to full path (e.g., "cofre.png" -> "img/cofre.png")
+  if (imageUrl && uploadedFiles.length > 0) {
+    imageUrl = mapFileToUrl(imageUrl, uploadedFiles);
+  }
   // Add http://localhost:3000/ prefix if not already present
   if (imageUrl && !imageUrl.startsWith("http")) {
     imageUrl = `${API_URL}/${imageUrl}`;

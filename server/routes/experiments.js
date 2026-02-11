@@ -254,7 +254,9 @@ router.use((req, res, next) => {
   // Match paths like /img/filename OR /:anything/img/filename
   const match = req.path.match(/^(?:\/[^/]+)?\/(img|aud|vid|others)\/(.+)$/);
   if (match) {
-    const [, type, filename] = match;
+    const [, type, encodedFilename] = match;
+    // Decode the filename to handle spaces and special characters
+    const filename = decodeURIComponent(encodedFilename);
     // Search across all experiment folders
     const experiments = fs.readdirSync(userDataRoot).filter((dir) => {
       const stat = fs.statSync(path.join(userDataRoot, dir));
