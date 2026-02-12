@@ -7,6 +7,8 @@ import {
   generateSingleTrialCode,
   generateSingleLoopCode,
 } from "../utils/generateTrialLoopCodes";
+import useDevMode from "../hooks/useDevMode";
+import { useExperimentCode } from "./Timeline/ExperimentCode/useExperimentCode";
 const API_URL = import.meta.env.VITE_API_URL;
 
 type UploadedFile = { name: string; url: string; type: string };
@@ -16,10 +18,13 @@ type Props = {
 };
 
 function ExperimentPreview({ uploadedFiles = [] }: Props) {
+  const { generateLocalExperiment } = useExperimentCode(uploadedFiles);
   const { trialUrl } = useUrl();
   const { version, incrementVersion } = useExperimentState();
   const [started, setStarted] = useState(false);
   const [key, setKey] = useState(0);
+
+  const { isDevMode } = useDevMode();
 
   const experimentID = useExperimentID();
 
@@ -43,32 +48,36 @@ function ExperimentPreview({ uploadedFiles = [] }: Props) {
 
   // trials preview - generate code dynamically
   useEffect(() => {
+    let code = "";
     const generateAndSendCode = async () => {
-      if (!selectedTrial && !selectedLoop) return;
+      if (isDevMode) {
+        code = await generateLocalExperiment();
+      } else {
+        if (!selectedTrial && !selectedLoop) return;
 
-      let generatedCode = "";
+        let generatedCode = "";
 
-      if (selectedTrial) {
-        generatedCode = await generateSingleTrialCode(
-          selectedTrial,
-          uploadedFiles,
-          experimentID || "",
-          getTrial,
-        );
-      } else if (selectedLoop) {
-        generatedCode = await generateSingleLoopCode(
-          selectedLoop,
-          experimentID || "",
-          uploadedFiles,
-          getTrial,
-          getLoopTimeline,
-          getLoop,
-        );
-      }
+        if (selectedTrial) {
+          generatedCode = await generateSingleTrialCode(
+            selectedTrial,
+            uploadedFiles,
+            experimentID || "",
+            getTrial,
+          );
+        } else if (selectedLoop) {
+          generatedCode = await generateSingleLoopCode(
+            selectedLoop,
+            experimentID || "",
+            uploadedFiles,
+            getTrial,
+            getLoopTimeline,
+            getLoop,
+          );
+        }
 
-      if (!generatedCode) return;
+        if (!generatedCode) return;
 
-      const trialCode = `
+        const trialCode = `
 
         const trialSessionId =
             "${selectedTrial?.name || selectedLoop?.name}_result_" + (crypto.randomUUID
@@ -125,11 +134,13 @@ localStorage.removeItem('jsPsych_jumpToTrial');
       
       })()
       `;
+        code = trialCode;
+      }
 
       await fetch(`${API_URL}/api/trials-preview/${experimentID}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ generatedCode: trialCode }),
+        body: JSON.stringify({ generatedCode: code }),
         credentials: "include",
         mode: "cors",
       });
@@ -137,7 +148,7 @@ localStorage.removeItem('jsPsych_jumpToTrial');
     };
 
     generateAndSendCode();
-  }, [selectedTrial, selectedLoop, experimentID]);
+  }, [isDevMode, selectedTrial, selectedLoop, experimentID]);
 
   // Crear URL con parámetros únicos para evitar caché
 
