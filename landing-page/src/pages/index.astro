@@ -1,0 +1,295 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+	<header>
+        <nav class="container">
+            <div class="logo">ExpBuilder</div>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#download" class="btn-nav">Download</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container hero-content">
+                <div class="hero-text">
+                    <img src="/logo.png" alt="ExpBuilder Logo" class="hero-logo" />
+                    <span id="version-badge" class="badge">LATEST RELEASE</span>
+                    <h1>Design <span class="gradient-text">Professional</span> Experiments in Minutes</h1>
+                    <p>The ultimate tool for researchers. Intuitive visual interface, no-code, unlimited power. JsPsych compatible and future-ready.</p>
+                    <div class="cta-group">
+                        <a href="#download" class="btn btn-primary"><i class="fab fa-apple"></i> Download Mac (Silicon)</a>
+                        <a href="#download" class="btn btn-secondary"><i class="fab fa-windows"></i> Download Windows</a>
+                    </div>
+                </div>
+                <div class="hero-visual">
+                    <div class="app-mockup">
+                        <div class="mockup-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                        </div>
+                        <div class="mockup-body">
+                            <!-- Abstract representation of the UI -->
+                            <div class="mock-sidebar"></div>
+                            <div class="mock-canvas">
+                                <div class="mock-node n1"></div>
+                                <div class="mock-node n2"></div>
+                                <div class="mock-node n3"></div>
+                                <svg class="mock-lines">
+                                    <path d="M50 50 L150 150" stroke="#d4af37" stroke-width="2"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glow-effect"></div>
+                </div>
+            </div>
+            
+            <div class="scroll-indicator">
+                <i class="fas fa-chevron-down"></i>
+            </div>
+        </section>
+
+        <section id="features" class="features">
+            <div class="container">
+                <h2 class="section-title">Empower Your Research</h2>
+                <div class="cards-grid">
+                    <div class="card">
+                        <div class="icon-box">
+                            <i class="fas fa-hand-holding-dollar"></i>
+                        </div>
+                        <h3>100% Free & Open Source</h3>
+                        <p>No subscriptions, no per-participant fees. Host experiments on your own terms using GitHub Pages or any static server.</p>
+                    </div>
+                    <div class="card">
+                        <div class="icon-box">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <h3>Data Sovereignty</h3>
+                        <p>Your data, your infrastructure. Connect directly to your own Firebase, OSF, Google Drive, or Dropbox. Compliance made easy.</p>
+                    </div>
+                    <div class="card">
+                        <div class="icon-box">
+                            <i class="fas fa-shapes"></i>
+                        </div>
+                        <h3>Visual & Code Hybrid</h3>
+                        <p>Start with a drag-and-drop canvas. Drop down to code when you need complex logic. The best of both worlds.</p>
+                    </div>
+                    <div class="card">
+                        <div class="icon-box">
+                            <i class="fas fa-globe"></i>
+                        </div>
+                        <h3>Simplicity for Everyone</h3>
+                        <p>Built on jsPsych. Runs in any browser. Includes basic templates to help you understand the flow and structure of your experiments.</p>
+                    </div>
+                    <div class="card">
+                        <div class="icon-box">
+                            <i class="fas fa-stopwatch"></i>
+                        </div>
+                        <h3>Standard Precision</h3>
+                        <p>Reliable graphical timing suitable for web-based cognitive tasks. Similar to jsPsych, optimized for modern browser performance.</p>
+                    </div>
+                    <div class="card">
+                        <div class="icon-box">
+                            <i class="fas fa-laptop-code"></i>
+                        </div>
+                        <h3>Offline-Capable</h3>
+                        <p>Design offline with our desktop app. Export standard HTML/JS packages ready for deployment.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Removed separate Donate section to move to footer as requested -->
+
+        <section id="download" class="download">
+            <div class="container download-content">
+                <h2>Start Creating Today</h2>
+                <p>Join the community of researchers already using ExpBuilder.</p>
+                <div class="download-cards">
+                    <div class="dl-card mac">
+                        <i class="fab fa-apple dl-icon"></i>
+                        <h3>macOS</h3>
+                        <p>Universal Support</p>
+                        <div class="btn-group">
+                            <a id="dl-mac-arm" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-primary">Apple Silicon</a>
+                            <a id="dl-mac-intel" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-secondary">Intel</a>
+                        </div>
+                    </div>
+                    <div class="dl-card win">
+                        <i class="fab fa-windows dl-icon"></i>
+                        <h3>Windows</h3>
+                        <p>Windows 10/11</p>
+                        <a id="dl-win" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-primary full-width">Download .exe</a>
+                    </div>
+                    <div class="dl-card linux">
+                        <i class="fab fa-linux dl-icon"></i>
+                        <h3>Linux</h3>
+                        <p>Debian & AppImage</p>
+                        <div class="btn-group">
+                             <a id="dl-linux-deb" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-primary">.deb</a>
+                             <a id="dl-linux-app" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-secondary">.AppImage</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container footer-content">
+            <div class="footer-columns">
+                <div class="footer-col brand-col">
+                    <div class="footer-logo">ExpBuilder</div>
+                    <p class="copyright-text">&copy; <span id="year"></span> Laboratorio de Psicolingüística, Fac. Psicología, UNAM.</p>
+                    <p class="license-text">Open Source Project under MIT License.</p>
+                </div>
+                
+                <div class="footer-col links-col">
+                    <h4>Institutional Home</h4>
+                    <div class="inst-logos" style="display: flex; gap: 20px; align-items: center; margin-top: 10px;">
+                        <a href="https://www.unam.mx/" target="_blank" title="Universidad Nacional Autónoma de México">
+                            <img src="/unam-logo.svg" alt="UNAM" class="inst-logo unam-filter" />
+                        </a>
+                        <a href="https://www.psicologia.unam.mx/" target="_blank" title="Facultad de Psicología">
+                            <img src="/fp%20white.png" alt="Facultad de Psicología" class="inst-logo" />
+                        </a>
+                        <a href="https://www.labpsicolinguistica.psicol.unam.mx/" target="_blank" title="Laboratorio de Psicolingüística">
+                            <img src="/lab.png" alt="Laboratorio de Psicolingüística" class="inst-logo" />
+                        </a>
+                    </div>
+                </div>
+
+                <div class="footer-col support-col">
+                    <h4>Support Us</h4>
+                    <p>Help us maintain these tools for open science.</p>
+                    <a href="https://opencollective.com/" target="_blank" class="btn-footer-action"><i class="fas fa-heart"></i> Donate on Open Collective</a>
+                </div>
+
+                <div class="footer-col contact-col">
+                    <h4>Developer Contact</h4>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px;">Andrés Pacheco Fabián</p>
+                    <div class="socials">
+                        <a href="https://github.com/adndvlp" target="_blank" title="My GitHub Profile"><i class="fab fa-github"></i></a>
+                        <a href="https://www.linkedin.com/in/" target="_blank" title="My LinkedIn Profile"><i class="fab fa-linkedin"></i></a>
+                        <a href="mailto:andngdv.lpr@gmail.com" title="Email Me"><i class="fas fa-envelope"></i></a>
+                    </div>
+                    <a href="https://github.com/adndvlp/expbuilder" target="_blank" class="project-repo-link"><i class="fas fa-code-branch"></i> View Project Repo</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Set dynamic year
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        // OS Detection Logic
+        function detectOS() {
+            const userAgent = window.navigator.userAgent;
+            const platform = window.navigator.platform;
+            const macosPlatforms = ['Macintosh', 'MacIntel', 'MacPPC', 'Mac68K'];
+            const windowsPlatforms = ['Win32', 'Win64', 'Windows', 'WinCE'];
+            const iosPlatforms = ['iPhone', 'iPad', 'iPod'];
+
+            let os = null;
+
+            if (macosPlatforms.indexOf(platform) !== -1) {
+                os = 'mac';
+            } else if (iosPlatforms.indexOf(platform) !== -1) {
+                os = 'mac'; // iOS treated as Mac for this purpose (or ignore)
+            } else if (windowsPlatforms.indexOf(platform) !== -1) {
+                os = 'windows';
+            } else if (/Android/.test(userAgent)) {
+                os = 'android';
+            } else if (!os && /Linux/.test(platform)) {
+                os = 'linux';
+            }
+
+            return os;
+        }
+
+        const currentOS = detectOS();
+        if (currentOS) {
+            let selector = '';
+            if (currentOS === 'mac') selector = '.dl-card.mac';
+            if (currentOS === 'windows') selector = '.dl-card.win';
+            if (currentOS === 'linux') selector = '.dl-card.linux';
+
+            if (selector) {
+                const card = document.querySelector(selector);
+                if (card) {
+                    card.classList.add('recommended');
+                    card.innerHTML += '<div class="rec-badge">Recommended for You</div>';
+                }
+            }
+        }
+
+        // Simple intersection observer
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.card, .dl-card, .hero-text').forEach((el) => {
+            el.classList.add('fade-in');
+            observer.observe(el);
+        });
+
+        // Dynamic Release Fetcher
+        fetch('https://api.github.com/repos/adndvlp/expbuilder/releases/latest')
+            .then(res => res.json())
+            .then(data => {
+                // Update Version Badge
+                if(data.tag_name) {
+                    const badge = document.getElementById('version-badge');
+                    if(badge) badge.textContent = `NEW VERSION ${data.tag_name}`;
+                }
+
+                if(data.assets && data.assets.length > 0) {
+                    // Windows
+                    const winAsset = data.assets.find(a => a.name.endsWith('.exe'));
+                    if(winAsset) {
+                        const winBtn = document.getElementById('dl-win');
+                        if(winBtn) winBtn.href = winAsset.browser_download_url;
+                    }
+
+                    // Mac 
+                    // Usually arm64 has 'arm64' in name, Intel usually doesn't (or has x64)
+                    const macArmAsset = data.assets.find(a => a.name.endsWith('.dmg') && a.name.includes('arm64'));
+                    const macIntelAsset = data.assets.find(a => a.name.endsWith('.dmg') && !a.name.includes('arm64'));
+                    
+                    if(macArmAsset) {
+                        const btn = document.getElementById('dl-mac-arm');
+                        if(btn) btn.href = macArmAsset.browser_download_url;
+                    }
+                    if(macIntelAsset) {
+                        const btn = document.getElementById('dl-mac-intel');
+                        if(btn) btn.href = macIntelAsset.browser_download_url;
+                    }
+
+                    // Linux
+                    const debAsset = data.assets.find(a => a.name.endsWith('.deb'));
+                    const appImageAsset = data.assets.find(a => a.name.endsWith('.AppImage'));
+
+                    if(debAsset) {
+                        const btn = document.getElementById('dl-linux-deb');
+                        if(btn) btn.href = debAsset.browser_download_url;
+                    }
+                    if(appImageAsset) {
+                        const btn = document.getElementById('dl-linux-app');
+                        if(btn) btn.href = appImageAsset.browser_download_url;
+                    }
+                }
+            })
+            .catch(e => console.log('Could not fetch latest release, using default link'));
+    </script>
+</Layout>
