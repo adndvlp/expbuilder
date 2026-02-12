@@ -33,8 +33,8 @@ type SubCanvasProps = {
   isDark: boolean;
   selectedTrial: Trial | null;
   selectedLoop: Loop | null;
-  onSelectTrial: (trial: Trial) => void;
-  onSelectLoop: (loop: Loop) => void;
+  onSelectTrial: (trial: Trial | null) => void;
+  onSelectLoop: (loop: Loop | null) => void;
   onOpenNestedLoop?: (loopId: string | number) => void;
   onRefreshMetadata?: () => void;
   loopStack?: Array<{ id: string; name: string }>;
@@ -560,6 +560,10 @@ function LoopSubCanvas({
           nodeTypes={nodeTypes}
           style={{ background: "transparent", zIndex: 2 }}
           onConnect={handleConnect}
+          onPaneClick={() => {
+            onSelectTrial(null);
+            onSelectLoop(null);
+          }}
         />
         <ResizeHandle onMouseDown={handleResizeMouseDown} />
       </div>

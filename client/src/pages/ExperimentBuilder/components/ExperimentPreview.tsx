@@ -24,7 +24,7 @@ function ExperimentPreview({ uploadedFiles = [] }: Props) {
   const [started, setStarted] = useState(false);
   const [key, setKey] = useState(0);
 
-  const { isDevMode } = useDevMode();
+  const { isDevMode, code } = useDevMode();
 
   const experimentID = useExperimentID();
 
@@ -50,7 +50,7 @@ function ExperimentPreview({ uploadedFiles = [] }: Props) {
   useEffect(() => {
     let code = "";
     const generateAndSendCode = async () => {
-      if (isDevMode) {
+      if (isDevMode || (!selectedTrial && !selectedLoop)) {
         code = await generateLocalExperiment();
       } else {
         if (!selectedTrial && !selectedLoop) return;
@@ -148,7 +148,7 @@ localStorage.removeItem('jsPsych_jumpToTrial');
     };
 
     generateAndSendCode();
-  }, [isDevMode, selectedTrial, selectedLoop, experimentID]);
+  }, [code, isDevMode, selectedTrial, selectedLoop, experimentID]);
 
   // Crear URL con parámetros únicos para evitar caché
 

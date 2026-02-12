@@ -643,6 +643,10 @@ function Canvas() {
           nodeTypes={nodeTypes}
           style={{ background: "transparent", zIndex: -100 }}
           onConnect={handleConnect}
+          onPaneClick={() => {
+            setSelectedTrial(null);
+            setSelectedLoop(null);
+          }}
         />
 
         {openLoop && (
