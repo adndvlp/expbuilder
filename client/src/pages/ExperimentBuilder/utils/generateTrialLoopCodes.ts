@@ -94,6 +94,7 @@ async function generateTrialCode(
   _experimentID: string,
   getTrial: GetTrialFn,
   isInLoop: boolean = false,
+  loopCsvJson?: Record<string, any>[],
 ): Promise<GeneratedTrialResult> {
   try {
     // Fetch full trial data using getTrial
@@ -191,6 +192,13 @@ async function generateTrialCode(
       return key ? getDefaultValueForKey(key) : "";
     };
 
+    // Determine which CSV data to use
+    // If trial is set to use loop CSV and loop CSV is provided, use it
+    const effectiveCsvJson =
+      fullTrial.csvFromLoop && loopCsvJson && loopCsvJson.length > 0
+        ? loopCsvJson
+        : fullTrial.csvJson || [];
+
     // Generate code using useTrialCode (which is actually just a function, not a React hook)
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const { genTrialCode, mappedJson } = useTrialCode({
@@ -204,7 +212,7 @@ async function generateTrialCode(
       getColumnValue,
       columnMapping: fullTrial.columnMapping || {},
       uploadedFiles,
-      csvJson: fullTrial.csvJson || [],
+      csvJson: effectiveCsvJson,
       trialName: fullTrial.name,
       data,
       includesExtensions: fullTrial.parameters?.includesExtensions || false,
@@ -308,6 +316,7 @@ async function generateLoopCode(
             experimentID,
             getTrial,
             true, // isInLoop = true
+            fullLoop?.csvJson,
           );
 
           return {
