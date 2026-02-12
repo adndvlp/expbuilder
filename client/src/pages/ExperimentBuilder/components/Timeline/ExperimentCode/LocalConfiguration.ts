@@ -1,6 +1,7 @@
 import { UploadedFile } from "./useExperimentCode";
 import { Trial, Loop } from "../../ConfigurationPanel/types";
 import { TimelineItem } from "../../../contexts/TrialsContext";
+import ExperimentBase from "./ExperimentBase";
 
 type GetTrialFn = (id: string | number) => Promise<Trial | null>;
 type GetLoopTimelineFn = (loopId: string | number) => Promise<TimelineItem[]>;
@@ -17,7 +18,7 @@ type Props = {
   getLoop: GetLoopFn;
 };
 
-export default function LocalExperiment({
+export default function LocalConfiguration({
   experimentID,
   evaluateCondition,
   fetchExtensions,
@@ -27,26 +28,18 @@ export default function LocalExperiment({
   getLoopTimeline,
   getLoop,
 }: Props) {
+  const { generatedBaseCode } = ExperimentBase({
+    experimentID,
+    uploadedFiles,
+    getTrial,
+    getLoopTimeline,
+    getLoop,
+  });
   const generateLocalExperiment = async () => {
     // Fetch extensions before generating experiment
     const extensions = await fetchExtensions();
     // Generate codes dynamically from trial/loop data
-    let allCodes = "";
-    try {
-      const { generateAllCodes } = await import(
-        "../../../utils/generateTrialLoopCodes"
-      );
-      const codes = await generateAllCodes(
-        experimentID || "",
-        uploadedFiles,
-        getTrial,
-        getLoopTimeline,
-        getLoop,
-      );
-      allCodes = codes.join("\n\n");
-    } catch (error) {
-      console.error("Error generating codes:", error);
-    }
+    const baseCode = await generatedBaseCode();
 
     return `
   // --- Recolectar metadata del sistema ---
@@ -241,24 +234,7 @@ export default function LocalExperiment({
   }
 });
 
-const timeline = [];
-
-// Global preload for all uploaded files from Timeline
-${
-  uploadedFiles.length > 0
-    ? `
-const globalPreload = {
-  type: jsPsychPreload,
-  files: ${JSON.stringify(uploadedFiles.filter((f) => f && f.url).map((f) => f.url))}
-};
-timeline.push(globalPreload);
-`
-    : ""
-}
-
-${allCodes}
-
-jsPsych.run(timeline);
+${baseCode}
 
 })();
 `;

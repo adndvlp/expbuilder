@@ -8,6 +8,7 @@ type Props = {
   isTunnelActive: boolean;
   setIsSubmitting: Dispatch<SetStateAction<boolean>>;
   generateLocalExperiment: () => Promise<string>;
+  generatedBaseCode: () => Promise<string>;
   setSubmitStatus: Dispatch<SetStateAction<string>>;
   setExperimentUrl: (url: string) => void;
   setCopyStatus: Dispatch<SetStateAction<string>>;
@@ -21,25 +22,24 @@ export default function Actions({
   isTunnelActive,
   setIsSubmitting,
   generateLocalExperiment,
+  generatedBaseCode,
   setSubmitStatus,
   setExperimentUrl,
   setCopyStatus,
   setTunnelStatus,
   setTunnelActive,
 }: Props) {
-  const { isDevMode, code, setCode } = useDevMode();
+  const { isDevMode, setCode } = useDevMode();
   const handleRunExperiment = async () => {
     setIsSubmitting(true);
 
     try {
-      const generatedLocalCode = isDevMode
-        ? code
-        : await generateLocalExperiment();
+      const generatedLocalCode = await generateLocalExperiment();
 
       if (!isDevMode) {
         setSubmitStatus("Saving configuration...");
 
-        setCode(generatedLocalCode);
+        setCode(await generatedBaseCode());
 
         const config = {
           generatedCode: generatedLocalCode, // Código local para ejecutar

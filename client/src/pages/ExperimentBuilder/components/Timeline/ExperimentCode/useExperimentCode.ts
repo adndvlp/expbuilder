@@ -4,8 +4,9 @@ import {
   useExperimentID,
 } from "../../../hooks/useExperimentID";
 import useTrials from "../../../hooks/useTrials";
-import LocalExperiment from "./LocalExperiment";
-import PublicExperiment from "./PublicExperiment";
+import LocalConfiguration from "./LocalConfiguration";
+import PublicConfiguration from "./PublicConfiguration";
+import ExperimentBase from "./ExperimentBase";
 
 export type UploadedFile = {
   url?: string;
@@ -213,7 +214,7 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
 
   const { getTrial, getLoopTimeline, getLoop } = useTrials();
 
-  const { generateLocalExperiment } = LocalExperiment({
+  const { generateLocalExperiment } = LocalConfiguration({
     experimentID,
     evaluateCondition,
     fetchExtensions,
@@ -224,7 +225,7 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
     getLoop,
   });
 
-  const { generateExperiment } = PublicExperiment({
+  const { generateExperiment } = PublicConfiguration({
     experimentID,
     evaluateCondition,
     fetchExtensions,
@@ -237,5 +238,13 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
     getLoop,
   });
 
-  return { generateLocalExperiment, generateExperiment };
+  const { generatedBaseCode } = ExperimentBase({
+    experimentID,
+    uploadedFiles,
+    getTrial,
+    getLoopTimeline,
+    getLoop,
+  });
+
+  return { generateLocalExperiment, generateExperiment, generatedBaseCode };
 }

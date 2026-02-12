@@ -101,7 +101,7 @@ function Timeline({
   // For files in devmode
   const accept = "audio/*,video/*,image/*";
 
-  const { generateLocalExperiment, generateExperiment } =
+  const { generateLocalExperiment, generateExperiment, generatedBaseCode } =
     useExperimentCode(uploadedFiles);
 
   const {
@@ -115,6 +115,7 @@ function Timeline({
     isTunnelActive,
     setIsSubmitting,
     generateLocalExperiment,
+    generatedBaseCode,
     setSubmitStatus,
     setExperimentUrl,
     setCopyStatus,

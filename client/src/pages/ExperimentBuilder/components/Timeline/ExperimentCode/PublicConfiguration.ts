@@ -1,6 +1,7 @@
 import { UploadedFile } from "./useExperimentCode";
 import { Trial, Loop } from "../../ConfigurationPanel/types";
 import { TimelineItem } from "../../../contexts/TrialsContext";
+import ExperimentBase from "./ExperimentBase";
 const DATA_API_URL = import.meta.env.VITE_DATA_API_URL;
 
 type GetTrialFn = (id: string | number) => Promise<Trial | null>;
@@ -20,7 +21,7 @@ type Props = {
   getLoop: GetLoopFn;
 };
 
-export default function PublicExperiment({
+export default function PublicConfiguration({
   experimentID,
   evaluateCondition,
   fetchExtensions,
@@ -31,6 +32,13 @@ export default function PublicExperiment({
   getLoopTimeline,
   getLoop,
 }: Props) {
+  const { generatedBaseCode } = ExperimentBase({
+    experimentID,
+    uploadedFiles,
+    getTrial,
+    getLoopTimeline,
+    getLoop,
+  });
   const generateExperiment = async (storageOverride?: string) => {
     const useStorage = storageOverride || storage;
 
@@ -68,22 +76,7 @@ export default function PublicExperiment({
     // Fetch extensions before generating experiment
     const extensions = await fetchExtensions();
     // Generate codes dynamically from trial/loop data
-    let allCodes = "";
-    try {
-      const { generateAllCodes } = await import(
-        "../../../utils/generateTrialLoopCodes"
-      );
-      const codes = await generateAllCodes(
-        experimentID || "",
-        uploadedFiles,
-        getTrial,
-        getLoopTimeline,
-        getLoop,
-      );
-      allCodes = codes.join("\n\n");
-    } catch (error) {
-      console.error("Error generating codes:", error);
-    }
+    const baseCode = await generatedBaseCode();
 
     return `
   // --- IndexedDB Wrapper para Batching con TTL (3 días) ---
@@ -769,24 +762,7 @@ export default function PublicExperiment({
     // Uncomment to see the json results after finishing a session experiment
     // jsPsych.data.displayData('csv');
 
-    const timeline = [];
-
-    // Global preload for all uploaded files from Timeline
-    ${
-      uploadedFiles.length > 0
-        ? `
-    const globalPreload = {
-      type: jsPsychPreload,
-      files: ${JSON.stringify(uploadedFiles.filter((f) => f && f.url).map((f) => f.url))}
-    };
-    timeline.push(globalPreload);
-    `
-        : ""
-    }
-
-    ${allCodes}
-
-    jsPsych.run(timeline);
+    ${baseCode}
 
 })();
 `;
