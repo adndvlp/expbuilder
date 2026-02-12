@@ -1,0 +1,25 @@
+{
+  "name": "@adndvlp/jspsych-builder",
+  "version": "1.0.0",
+  "description": "Custom JsPsych build for ExpBuilder",
+  "main": "index.js",
+  "style": "index.css",
+  "files": [
+    "index.js",
+    "index.css"
+  ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adndvlp/expbuilder.git"
+  },
+  "keywords": [
+    "jspsych",
+    "experiment",
+    "psychology"
+  ],
+  "author": "Andrés Pacheco Fabián",
+  "license": "MIT"
+}
