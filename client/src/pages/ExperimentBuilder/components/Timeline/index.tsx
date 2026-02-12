@@ -4,7 +4,7 @@ import useUrl from "../../hooks/useUrl";
 import FileUploader from "./FileUploader";
 import { StorageSelectModal } from "./StorageSelectModal";
 import { useExperimentID } from "../../hooks/useExperimentID";
-import { useExperimentCode } from "./ExeperimentCode/useExperimentCode";
+import { useExperimentCode } from "./ExperimentCode/useExperimentCode";
 import PublishExperiment from "./PublishExperiment";
 import Actions from "./Actions";
 

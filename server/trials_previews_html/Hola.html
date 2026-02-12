@@ -36,7 +36,7 @@
 
 
         const trialSessionId =
-            "antes de loop_result_" + (crypto.randomUUID
+            "fijacion_result_" + (crypto.randomUUID
               ? crypto.randomUUID()
               : Math.random().toString(36).slice(2, 10));
 
@@ -85,139 +85,20 @@ localStorage.removeItem('jsPsych_jumpToTrial');
       const timeline = [];
       
       
-    let test_stimuli_antes_de_loop = [];
-    
-    console.log("=== DEBUG antes_de_loop: Starting orders/categories logic ===");
-    console.log("Trial name: antes_de_loop");
-    console.log("Trial ID: 1770854458230");
-    console.log("orders flag:", false);
-    console.log("categories flag:", true);
-    console.log("typeof participantNumber:", typeof participantNumber);
-    console.log("participantNumber value:", participantNumber);
-    console.log("isNaN(participantNumber):", isNaN(participantNumber));
-    console.log("Condition check (typeof participantNumber === 'number' && !isNaN(participantNumber)):", (typeof participantNumber === "number" && !isNaN(participantNumber)));
-    
-    if (typeof participantNumber === "number" && !isNaN(participantNumber)) {
-      console.log("✓ INSIDE participantNumber check - condition passed");
-      const stimuliOrders = [];
-      const categoryData = ["1","1","1","1","2","2","2","3","3","3"];
-      const test_stimuli_previous_antes_de_loop = [{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, zIndex: 0, name: "HtmlComponent_1", stimulus: "1" }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":0,"y":0.25683060109289607}, width: 200, height: 50, zIndex: 0, name: "ButtonResponseComponent_1", choices: ["Ok"] }]},{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, zIndex: 0, name: "HtmlComponent_1", stimulus: "2" }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":0,"y":0.25683060109289607}, width: 200, height: 50, zIndex: 0, name: "ButtonResponseComponent_1", choices: ["Ok"] }]},{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, zIndex: 0, name: "HtmlComponent_1", stimulus: "3" }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":0,"y":0.25683060109289607}, width: 200, height: 50, zIndex: 0, name: "ButtonResponseComponent_1", choices: ["Ok"] }]},{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, zIndex: 0, name: "HtmlComponent_1", stimulus: "4" }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":0,"y":0.25683060109289607}, width: 200, height: 50, zIndex: 0, name: "ButtonResponseComponent_1", choices: ["Ok"] }]},{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, zIndex: 0, name: "HtmlComponent_1", stimulus: "5" }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":0,"y":0.25683060109289607}, width: 200, height: 50, zIndex: 0, name: "ButtonResponseComponent_1", choices: ["Ok"] }]},{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, zIndex: 0, name: "HtmlComponent_1", stimulus: "6" }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":0,"y":0.25683060109289607}, width: 200, height: 50, zIndex: 0, name: "ButtonResponseComponent_1", choices: ["Ok"] }]},{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, zIndex: 0, name: "HtmlComponent_1", stimulus: "7" }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":0,"y":0.25683060109289607}, width: 200, height: 50, zIndex: 0, name: "ButtonResponseComponent_1", choices: ["Ok"] }]},{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, zIndex: 0, name: "HtmlComponent_1", stimulus: "8" }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":0,"y":0.25683060109289607}, width: 200, height: 50, zIndex: 0, name: "ButtonResponseComponent_1", choices: ["Ok"] }]},{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, zIndex: 0, name: "HtmlComponent_1", stimulus: "9" }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":0,"y":0.25683060109289607}, width: 200, height: 50, zIndex: 0, name: "ButtonResponseComponent_1", choices: ["Ok"] }]},{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, zIndex: 0, name: "HtmlComponent_1", stimulus: "10" }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":0,"y":0.25683060109289607}, width: 200, height: 50, zIndex: 0, name: "ButtonResponseComponent_1", choices: ["Ok"] }]}];
-      
-      console.log("participantNumber:", participantNumber);
-      console.log("stimuliOrders:", stimuliOrders);
-      console.log("stimuliOrders.length:", stimuliOrders.length);
-      console.log("categoryData:", categoryData);
-      console.log("categoryData.length:", categoryData.length);
-      console.log("test_stimuli_previous_antes_de_loop.length:", test_stimuli_previous_antes_de_loop.length);
-      
-      if (categoryData.length > 0) {
-        console.log("ENTERING categoryData.length > 0 branch");
-        // Obtener todas las categorías únicas
-        const allCategories = [...new Set(categoryData)];
-        console.log("allCategories:", allCategories);
-        
-        // Determinar qué categoría le corresponde a este participante
-        const categoryIndex = (participantNumber - 1) % allCategories.length;
-        const participantCategory = allCategories[categoryIndex];
-        console.log("categoryIndex:", categoryIndex);
-        console.log("participantCategory:", participantCategory);
-        
-        // Encontrar los índices que corresponden a esta categoría
-        const categoryIndices = [];
-        categoryData.forEach((category, index) => {
-          if (category === participantCategory) {
-            categoryIndices.push(index);
-          }
-        });
-        console.log("categoryIndices:", categoryIndices);
-        
-        // Filtrar los estímulos por categoría
-        const categoryFilteredStimuli = categoryIndices.map(index => 
-          test_stimuli_previous_antes_de_loop[index]
-        );
-        console.log("categoryFilteredStimuli.length:", categoryFilteredStimuli.length);
-
-        // Aplicar el orden si existe
-        if (stimuliOrders.length > 0) {
-          console.log("ENTERING stimuliOrders.length > 0 sub-branch");
-          const orderIndex = (participantNumber - 1) % stimuliOrders.length;
-          const index_order = stimuliOrders[orderIndex];
-          console.log("orderIndex:", orderIndex);
-          console.log("index_order:", index_order);
-          
-          // Crear mapeo de índices originales a índices filtrados
-          const indexMapping = {};
-          categoryIndices.forEach((originalIndex, filteredIndex) => {
-            indexMapping[originalIndex] = filteredIndex;
-          });
-          console.log("indexMapping:", indexMapping);
-          
-          // Aplicar el orden solo a los índices que existen en la categoría filtrada
-          const orderedIndices = index_order
-            .filter(i => indexMapping.hasOwnProperty(i))
-            .map(i => indexMapping[i]);
-          console.log("orderedIndices:", orderedIndices);
-          
-          test_stimuli_antes_de_loop = orderedIndices
-            .filter(i => i >= 0 && i < categoryFilteredStimuli.length)
-            .map(i => categoryFilteredStimuli[i]);
-        } else {
-          console.log("ENTERING else (no orders) sub-branch");
-          test_stimuli_antes_de_loop = categoryFilteredStimuli;
-        }
-        
-        console.log("Participant:", participantNumber, "Category:", participantCategory);
-        console.log("Category indices:", categoryIndices);
-        console.log("Filtered stimuli:", test_stimuli_antes_de_loop);
-        console.log("Final test_stimuli_antes_de_loop.length:", test_stimuli_antes_de_loop.length);
-      } else if (stimuliOrders.length > 0) {
-        console.log("ENTERING stimuliOrders.length > 0 branch (no categories)");
-        // Lógica original sin categorías pero con órdenes
-        const orderIndex = (participantNumber - 1) % stimuliOrders.length;
-        const index_order = stimuliOrders[orderIndex];
-        console.log("orderIndex:", orderIndex);
-        console.log("index_order:", index_order);
-        
-        test_stimuli_antes_de_loop = index_order
-          .filter((i) => i !== -1 && i >= 0 && i < test_stimuli_previous_antes_de_loop.length)
-          .map((i) => test_stimuli_previous_antes_de_loop[i]);
-          
-        console.log(test_stimuli_antes_de_loop);
-        console.log("Final test_stimuli_antes_de_loop.length:", test_stimuli_antes_de_loop.length);
-      } else {
-        console.log("ENTERING else branch (no categories, no orders)");
-        // Sin categorías ni órdenes, usar todos los estímulos
-        test_stimuli_antes_de_loop = test_stimuli_previous_antes_de_loop;
-        console.log("Final test_stimuli_antes_de_loop.length:", test_stimuli_antes_de_loop.length);
-      }
-    } else {
-      console.log("✗ FAILED participantNumber check");
-      console.log("Reason: typeof participantNumber !== 'number' OR isNaN(participantNumber)");
-      console.log("test_stimuli_antes_de_loop will be empty array!");
-    }
-    console.log("=== END DEBUG antes_de_loop ===");
-    console.log("Final test_stimuli_antes_de_loop:", test_stimuli_antes_de_loop);
-    console.log("Final test_stimuli_antes_de_loop.length:", test_stimuli_antes_de_loop.length);
-    const antes_de_loop_timeline = {
+    const test_stimuli_fijacion = [{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, zIndex: 0, name: "HtmlComponent_1", stimulus: {"source":"csv","value":"fixation"} }],
+response_components: [{ type: "KeyboardResponseComponent", coordinates: {"x":0.18852459016393452,"y":0.5846994535519124}, width: 200, height: 50, zIndex: 0, name: "KeyboardResponseComponent_1", choices: ["NO_KEYS"] }],
+trial_duration: 250}];
+    const fijacion_timeline = {
     type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
 response_components: jsPsych.timelineVariable("response_components"),
+trial_duration: jsPsych.timelineVariable("trial_duration"),
       data: {
         rt: "rt",
-        trial_id: 1770854458230,
-        builder_id: 1770854458230,
+        trial_id: 1770853031494,
+        builder_id: 1770853031494,
         
         
-        branches: ["loop_1770853038631"],
+        branches: [1770853034647],
         branchConditions: [undefined] 
         
       },
@@ -301,23 +182,23 @@ response_components: jsPsych.timelineVariable("response_components"),
     },
     on_finish: function(data) {
       // Branching automático al primer branch (global)
-      console.log('🔄 [GLOBAL BRANCH] Auto-branching to first branch:', "loop_1770853038631");
-      window.nextTrialId = "loop_1770853038631";
+      console.log('🔄 [GLOBAL BRANCH] Auto-branching to first branch:', 1770853034647);
+      window.nextTrialId = 1770853034647;
       window.skipRemaining = true;
       window.branchingActive = true;
       
     },};
-    console.log("=== PROCEDURE SETUP antes_de_loop ===");
-    console.log("test_stimuli_antes_de_loop before procedure:", test_stimuli_antes_de_loop);
-    console.log("test_stimuli_antes_de_loop.length:", test_stimuli_antes_de_loop ? test_stimuli_antes_de_loop.length : 'undefined');
+    console.log("=== PROCEDURE SETUP fijacion ===");
+    console.log("test_stimuli_fijacion before procedure:", test_stimuli_fijacion);
+    console.log("test_stimuli_fijacion.length:", test_stimuli_fijacion ? test_stimuli_fijacion.length : 'undefined');
     
-    const antes_de_loop_procedure = {
+    const fijacion_procedure = {
     timeline: 
-    [antes_de_loop_timeline],
-    timeline_variables: test_stimuli_antes_de_loop,
+    [fijacion_timeline],
+    timeline_variables: test_stimuli_fijacion,
     
     conditional_function: function() {
-      const currentId = 1770854458230;
+      const currentId = 1770853031494;
       
       // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
       const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
@@ -353,7 +234,7 @@ response_components: jsPsych.timelineVariable("response_components"),
   
     
     };
-    timeline.push(antes_de_loop_procedure);
+    timeline.push(fijacion_procedure);
   
 
       jsPsych.run(timeline);

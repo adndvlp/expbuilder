@@ -476,23 +476,59 @@ function TrialsConfig({ pluginName }: Props) {
             onSave={saveColumnMapping}
           />
         )}{" "}
-        <OrdersAndCategories
-          orders={orders}
-          setOrders={setOrders}
-          columnOptions={csvColumns}
-          orderColumns={orderColumns}
-          setOrderColumns={setOrderColumns}
-          mapOrdersFromCsv={mapOrdersFromCsv}
-          csvJson={csvJson}
-          stimuliOrders={stimuliOrders}
-          categories={categories}
-          setCategories={setCategories}
-          setCategoryColumn={setCategoryColumn}
-          categoryColumn={categoryColumn}
-          categoryData={categoryData}
-          mapCategoriesFromCsv={mapCategoriesFromCsv}
-          onSave={saveOrdersAndCategories}
-        ></OrdersAndCategories>
+        {selectedTrial?.csvFromLoop ? (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              marginTop: "16px",
+              marginBottom: "16px",
+              padding: "12px 16px",
+              backgroundColor: "var(--neutral-light)",
+              borderRadius: "8px",
+              border: "1px solid var(--neutral-mid)",
+            }}
+          >
+            <Switch
+              checked={true}
+              onChange={() => {}}
+              disabled={true}
+              onColor="#f1c40f"
+              offColor="#cccccc"
+              onHandleColor="#ffffff"
+              offHandleColor="#ffffff"
+              handleDiameter={24}
+              uncheckedIcon={false}
+              checkedIcon={false}
+              height={20}
+              width={44}
+            />
+            <label
+              style={{ margin: 0, fontWeight: 500, color: "var(--text-dark)" }}
+            >
+              Orders and Categories managed by loop
+            </label>
+          </div>
+        ) : (
+          <OrdersAndCategories
+            orders={orders}
+            setOrders={setOrders}
+            columnOptions={csvColumns}
+            orderColumns={orderColumns}
+            setOrderColumns={setOrderColumns}
+            mapOrdersFromCsv={mapOrdersFromCsv}
+            csvJson={csvJson}
+            stimuliOrders={stimuliOrders}
+            categories={categories}
+            setCategories={setCategories}
+            setCategoryColumn={setCategoryColumn}
+            categoryColumn={categoryColumn}
+            categoryData={categoryData}
+            mapCategoriesFromCsv={mapCategoriesFromCsv}
+            onSave={saveOrdersAndCategories}
+          />
+        )}
         {/* Extensions */}
         <ExtensionsConfig
           parameters={parameters}
