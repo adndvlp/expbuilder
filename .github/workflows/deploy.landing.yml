@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "JsPsych/landing-page/**"
+  workflow_dispatch:
 
 permissions:
   contents: read
