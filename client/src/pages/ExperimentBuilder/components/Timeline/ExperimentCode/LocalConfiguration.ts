@@ -2,6 +2,7 @@ import { UploadedFile } from "./useExperimentCode";
 import { Trial, Loop } from "../../ConfigurationPanel/types";
 import { TimelineItem } from "../../../contexts/TrialsContext";
 import ExperimentBase from "./ExperimentBase";
+import useDevMode from "../../../hooks/useDevMode";
 
 type GetTrialFn = (id: string | number) => Promise<Trial | null>;
 type GetLoopTimelineFn = (loopId: string | number) => Promise<TimelineItem[]>;
@@ -28,6 +29,7 @@ export default function LocalConfiguration({
   getLoopTimeline,
   getLoop,
 }: Props) {
+  const { isDevMode, code } = useDevMode();
   const { generatedBaseCode } = ExperimentBase({
     experimentID,
     uploadedFiles,
@@ -39,7 +41,7 @@ export default function LocalConfiguration({
     // Fetch extensions before generating experiment
     const extensions = await fetchExtensions();
     // Generate codes dynamically from trial/loop data
-    const baseCode = await generatedBaseCode();
+    const baseCode = isDevMode ? code : await generatedBaseCode();
 
     return `
   // --- Recolectar metadata del sistema ---

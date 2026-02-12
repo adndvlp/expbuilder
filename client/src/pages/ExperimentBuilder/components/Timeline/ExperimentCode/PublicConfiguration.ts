@@ -2,6 +2,8 @@ import { UploadedFile } from "./useExperimentCode";
 import { Trial, Loop } from "../../ConfigurationPanel/types";
 import { TimelineItem } from "../../../contexts/TrialsContext";
 import ExperimentBase from "./ExperimentBase";
+import useDevMode from "../../../hooks/useDevMode";
+
 const DATA_API_URL = import.meta.env.VITE_DATA_API_URL;
 
 type GetTrialFn = (id: string | number) => Promise<Trial | null>;
@@ -32,6 +34,7 @@ export default function PublicConfiguration({
   getLoopTimeline,
   getLoop,
 }: Props) {
+  const { isDevMode, code } = useDevMode();
   const { generatedBaseCode } = ExperimentBase({
     experimentID,
     uploadedFiles,
@@ -76,7 +79,7 @@ export default function PublicConfiguration({
     // Fetch extensions before generating experiment
     const extensions = await fetchExtensions();
     // Generate codes dynamically from trial/loop data
-    const baseCode = await generatedBaseCode();
+    const baseCode = isDevMode ? code : await generatedBaseCode();
 
     return `
   // --- IndexedDB Wrapper para Batching con TTL (3 días) ---
