@@ -12,7 +12,7 @@ import experimentsRouter from "./routes/experiments.js";
 import pluginsRouter from "./routes/plugins.js";
 import filesRouter from "./routes/files.js";
 import resultsRouter from "./routes/results.js";
-import trialsRouter from "./routes/trials.js";
+import trialsRouter from "./routes/timeline/index.js";
 import tunnelRouter from "./routes/tunnel.js";
 import configsRouter from "./routes/configs.js";
 import dbRouter from "./routes/db.js";
@@ -35,7 +35,7 @@ app.use(
   cors({
     origin: `${process.env.ORIGIN}`,
     credentials: true,
-  })
+  }),
 );
 
 app.use(express.json({ limit: "50mb" }));
@@ -95,7 +95,7 @@ io.on("connection", (socket) => {
       // Guardar o actualizar estado en la base de datos
       await db.read();
       const existing = db.data.sessionResults.find(
-        (s) => s.experimentID === experimentID && s.sessionId === sessionId
+        (s) => s.experimentID === experimentID && s.sessionId === sessionId,
       );
       if (existing) {
         if (state) existing.state = state;
@@ -103,14 +103,14 @@ io.on("connection", (socket) => {
         existing.lastUpdate = new Date().toISOString();
         await db.write();
       }
-    }
+    },
   );
 
   socket.on(
     "update-session-state",
     async ({ experimentID, sessionId, state }) => {
       console.log(
-        `Session state updated: ${experimentID}/${sessionId} -> ${state}`
+        `Session state updated: ${experimentID}/${sessionId} -> ${state}`,
       );
 
       if (activeSessions.has(experimentID)) {
@@ -131,14 +131,14 @@ io.on("connection", (socket) => {
       // Actualizar en base de datos
       await db.read();
       const existing = db.data.sessionResults.find(
-        (s) => s.experimentID === experimentID && s.sessionId === sessionId
+        (s) => s.experimentID === experimentID && s.sessionId === sessionId,
       );
       if (existing) {
         existing.state = state;
         existing.lastUpdate = new Date().toISOString();
         await db.write();
       }
-    }
+    },
   );
 
   socket.on("disconnect", async () => {
@@ -157,7 +157,7 @@ io.on("connection", (socket) => {
             await db.read();
             const existing = db.data.sessionResults.find(
               (s) =>
-                s.experimentID === experimentID && s.sessionId === sessionId
+                s.experimentID === experimentID && s.sessionId === sessionId,
             );
             if (existing) {
               existing.state = "abandoned";

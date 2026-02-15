@@ -3,7 +3,7 @@ import useTrials from "../../hooks/useTrials";
 import Select from "react-select";
 import Switch from "react-switch";
 import TrialsConfig from "./TrialsConfiguration";
-import WebGazer from "./TrialsConfiguration/Webgazer";
+import Webgazer from "./TrialsConfiguration/Webgazer";
 import PluginEditor from "../PluginEditor";
 import usePlugins from "../../hooks/usePlugins";
 import TrialLoops from "./TrialsConfiguration/LoopsConfiguration";
@@ -400,7 +400,7 @@ const ConfigurationPanel: React.FC = () => {
                     <TrialsConfig pluginName={selectedId} />
                   )}
                 {selectedId === "webgazer" && (
-                  <WebGazer webgazerPlugins={webgazerPlugins} />
+                  <Webgazer webgazerPlugins={webgazerPlugins} />
                 )}
                 {/* Si es custom/subido y hay parámetros, muestra TrialsConfig */}
                 {isCustomPlugin && !metadata404 && (
