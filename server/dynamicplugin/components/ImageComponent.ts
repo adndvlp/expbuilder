@@ -107,7 +107,7 @@ class ImageComponent {
       }
       if (config.coordinates.y !== undefined) {
         const yValue = mapValue(config.coordinates.y);
-        imageContainer.style.top = `calc(50% + ${yValue}vh)`;
+        imageContainer.style.top = `calc(50% - ${yValue}vh)`;
       } else {
         imageContainer.style.top = "50%";
       }

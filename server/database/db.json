@@ -1,12 +1,226 @@
 {
-  "experiments": [],
-  "trials": [],
-  "configs": [],
+  "experiments": [
+    {
+      "experimentID": "5de9a3dd-867e-46d2-bed9-b0b461b56880",
+      "name": "Hola",
+      "createdAt": "2026-02-18T21:22:57.079Z",
+      "updatedAt": "2026-02-18T21:22:57.079Z"
+    }
+  ],
+  "trials": [
+    {
+      "experimentID": "5de9a3dd-867e-46d2-bed9-b0b461b56880",
+      "trials": [
+        {
+          "type": "Trial",
+          "name": "New Trial",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1771449779189,
+          "createdAt": "2026-02-18T21:22:59.189Z",
+          "updatedAt": "2026-02-18T21:35:01.338Z",
+          "columnMapping": {
+            "components": {
+              "source": "typed",
+              "value": [
+                {
+                  "type": "ImageComponent",
+                  "coordinates": {
+                    "x": -0.556640625,
+                    "y": 0.5807291666666666
+                  },
+                  "zIndex": 1,
+                  "name": {
+                    "source": "typed",
+                    "value": "ImageComponent_1"
+                  },
+                  "stimulus": {
+                    "source": "typed",
+                    "value": "img/armadillo.png"
+                  }
+                },
+                {
+                  "type": "HtmlComponent",
+                  "coordinates": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "width": 200,
+                  "height": 50,
+                  "zIndex": 3,
+                  "name": {
+                    "source": "typed",
+                    "value": "HtmlComponent_1"
+                  }
+                }
+              ]
+            },
+            "response_components": {
+              "source": "typed",
+              "value": [
+                {
+                  "type": "SketchpadComponent",
+                  "coordinates": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "width": 200,
+                  "height": 200,
+                  "zIndex": 2,
+                  "name": {
+                    "source": "typed",
+                    "value": "SketchpadComponent_1"
+                  }
+                },
+                {
+                  "type": "ButtonResponseComponent",
+                  "coordinates": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "width": 200,
+                  "height": 50,
+                  "zIndex": 4,
+                  "name": {
+                    "source": "typed",
+                    "value": "ButtonResponseComponent_1"
+                  }
+                },
+                {
+                  "type": "SliderResponseComponent",
+                  "coordinates": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "width": 250,
+                  "height": 100,
+                  "zIndex": 5,
+                  "name": {
+                    "source": "typed",
+                    "value": "SliderResponseComponent_1"
+                  }
+                },
+                {
+                  "type": "ButtonResponseComponent",
+                  "coordinates": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "width": 200,
+                  "height": 50,
+                  "zIndex": 6,
+                  "name": {
+                    "source": "typed",
+                    "value": "ButtonResponseComponent_2"
+                  }
+                },
+                {
+                  "type": "AudioResponseComponent",
+                  "coordinates": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "width": 200,
+                  "height": 50,
+                  "zIndex": 7,
+                  "name": {
+                    "source": "typed",
+                    "value": "AudioResponseComponent_1"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "loops": [],
+      "timeline": [
+        {
+          "id": 1771449779189,
+          "type": "trial",
+          "name": "New Trial",
+          "branches": []
+        }
+      ],
+      "createdAt": "2026-02-18T21:22:59.189Z",
+      "updatedAt": "2026-02-18T21:35:01.338Z"
+    }
+  ],
+  "configs": [
+    {
+      "experimentID": "5de9a3dd-867e-46d2-bed9-b0b461b56880",
+      "data": {
+        "generatedCode": ""
+      },
+      "isDevMode": false,
+      "createdAt": "2026-02-18T21:22:59.656Z",
+      "updatedAt": "2026-02-18T21:34:09.351Z"
+    }
+  ],
   "pluginConfigs": [
     {
       "plugins": [],
       "config": {}
     }
   ],
-  "sessionResults": []
+  "sessionResults": [
+    {
+      "experimentID": "5de9a3dd-867e-46d2-bed9-b0b461b56880",
+      "sessionId": "ce35cb3f-a477-4da0-9ecc-937ad1c5ea8e",
+      "createdAt": "2026-02-18T21:30:38.589Z",
+      "data": [],
+      "state": "abandoned",
+      "lastUpdate": "2026-02-18T21:30:40.448Z",
+      "metadata": {
+        "browser": "Chrome",
+        "browserVersion": "140.0",
+        "os": "macOS",
+        "screenWidth": 1440,
+        "screenHeight": 900,
+        "screenResolution": "1440x900",
+        "viewportWidth": 530,
+        "viewportHeight": 461,
+        "language": "de",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) expbuilder/2.1.2 Chrome/140.0.7339.240 Electron/38.3.0 Safari/537.36",
+        "startedAt": "2026-02-18T21:30:38.535Z"
+      }
+    },
+    {
+      "experimentID": "5de9a3dd-867e-46d2-bed9-b0b461b56880",
+      "sessionId": "New Trial_result_8d10d817-1d8a-4bae-bbc3-f69459df8e04",
+      "createdAt": "2026-02-18T21:30:40.502Z",
+      "data": [],
+      "state": "initiated",
+      "lastUpdate": "2026-02-18T21:30:40.502Z",
+      "metadata": {}
+    },
+    {
+      "experimentID": "5de9a3dd-867e-46d2-bed9-b0b461b56880",
+      "sessionId": "New Trial_result_9dc0bb3e-a631-4da3-a98b-74e9ed27a0d0",
+      "createdAt": "2026-02-18T21:30:44.642Z",
+      "data": [],
+      "state": "initiated",
+      "lastUpdate": "2026-02-18T21:30:44.642Z",
+      "metadata": {}
+    },
+    {
+      "experimentID": "5de9a3dd-867e-46d2-bed9-b0b461b56880",
+      "sessionId": "New Trial_result_c9d98ce2-4d60-47b5-813c-f3e70dc920cb",
+      "createdAt": "2026-02-18T21:30:48.915Z",
+      "data": [],
+      "state": "initiated",
+      "lastUpdate": "2026-02-18T21:30:48.915Z",
+      "metadata": {}
+    },
+    {
+      "experimentID": "5de9a3dd-867e-46d2-bed9-b0b461b56880",
+      "sessionId": "New Trial_result_3d46b26b-5f09-4d08-b062-19b202cb1b31",
+      "createdAt": "2026-02-18T21:30:50.884Z",
+      "data": [],
+      "state": "initiated",
+      "lastUpdate": "2026-02-18T21:30:50.884Z",
+      "metadata": {}
+    }
+  ]
 }

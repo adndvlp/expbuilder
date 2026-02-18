@@ -194,7 +194,7 @@ class ButtonResponseComponent {
     const xVw = mapValue(coordinates.x);
     const yVh = mapValue(coordinates.y);
     this.buttonGroupElement.style.left = `calc(50% + ${xVw}vw)`;
-    this.buttonGroupElement.style.top = `calc(50% + ${yVh}vh)`;
+    this.buttonGroupElement.style.top = `calc(50% - ${yVh}vh)`;
     this.buttonGroupElement.style.transform = "translate(-50%, -50%)";
 
     display_element.appendChild(this.buttonGroupElement);

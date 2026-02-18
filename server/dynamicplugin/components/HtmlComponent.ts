@@ -75,7 +75,7 @@ class HtmlComponent {
     const xVw = mapValue(config.coordinates.x);
     const yVh = mapValue(config.coordinates.y);
     stimulusElement.style.left = `calc(50% + ${xVw}vw)`;
-    stimulusElement.style.top = `calc(50% + ${yVh}vh)`;
+    stimulusElement.style.top = `calc(50% - ${yVh}vh)`;
     stimulusElement.style.transform = "translate(-50%, -50%)";
 
     stimulusElement.innerHTML = config.stimulus;

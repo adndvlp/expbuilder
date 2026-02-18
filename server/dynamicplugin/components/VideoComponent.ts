@@ -123,7 +123,7 @@ class VideoComponent {
     const xVw = mapValue(config.coordinates.x);
     const yVh = mapValue(config.coordinates.y);
     stimulusWrapper.style.left = `calc(50% + ${xVw}vw)`;
-    stimulusWrapper.style.top = `calc(50% + ${yVh}vh)`;
+    stimulusWrapper.style.top = `calc(50% - ${yVh}vh)`;
     stimulusWrapper.style.transform = "translate(-50%, -50%)";
 
     container.appendChild(stimulusWrapper);

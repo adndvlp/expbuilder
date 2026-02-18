@@ -131,7 +131,7 @@ class SurveyjsComponent {
     const xVw = mapValue(trial.coordinates.x);
     const yVh = mapValue(trial.coordinates.y);
     surveyContainer.style.left = `calc(50% + ${xVw}vw)`;
-    surveyContainer.style.top = `calc(50% + ${yVh}vh)`;
+    surveyContainer.style.top = `calc(50% - ${yVh}vh)`;
     surveyContainer.style.transform = "translate(-50%, -50%)";
 
     display_element.appendChild(surveyContainer);

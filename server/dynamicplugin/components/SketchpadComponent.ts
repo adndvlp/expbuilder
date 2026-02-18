@@ -269,7 +269,7 @@ class SketchpadComponent {
     const xVw = mapValue(config.coordinates.x);
     const yVh = mapValue(config.coordinates.y);
     sketchpadContainer.style.left = `calc(50% + ${xVw}vw)`;
-    sketchpadContainer.style.top = `calc(50% + ${yVh}vh)`;
+    sketchpadContainer.style.top = `calc(50% - ${yVh}vh)`;
     sketchpadContainer.style.transform = "translate(-50%, -50%)";
 
     container.appendChild(sketchpadContainer);

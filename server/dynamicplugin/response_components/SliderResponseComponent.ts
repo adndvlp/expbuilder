@@ -146,7 +146,7 @@ class SliderResponseComponent {
     const xVw = mapValue(coordinates.x);
     const yVh = mapValue(coordinates.y);
     this.sliderContainer.style.left = `calc(50% + ${xVw}vw)`;
-    this.sliderContainer.style.top = `calc(50% + ${yVh}vh)`;
+    this.sliderContainer.style.top = `calc(50% - ${yVh}vh)`;
     this.sliderContainer.style.transform = "translate(-50%, -50%)";
 
     display_element.appendChild(this.sliderContainer);

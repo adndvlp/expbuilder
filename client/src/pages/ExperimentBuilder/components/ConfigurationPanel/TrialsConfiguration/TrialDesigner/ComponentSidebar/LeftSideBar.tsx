@@ -97,6 +97,13 @@ function LeftSideBar({
       height = 200;
     }
 
+    // Calculate max z-index to ensure new component is on top
+    const maxZIndex = components.reduce(
+      (max, c) => Math.max(max, c.zIndex ?? 0),
+      0,
+    );
+    const newZIndex = maxZIndex + 1;
+
     const newComponent: TrialComponent = {
       id: `${type}-${Date.now()}`,
       type,
@@ -104,6 +111,7 @@ function LeftSideBar({
       y,
       width,
       height,
+      zIndex: newZIndex,
       config: {
         ...getDefaultConfig(type),
         name: {
@@ -113,6 +121,10 @@ function LeftSideBar({
         coordinates: {
           source: "typed",
           value: coords,
+        },
+        zIndex: {
+          source: "typed",
+          value: newZIndex,
         },
       },
     };

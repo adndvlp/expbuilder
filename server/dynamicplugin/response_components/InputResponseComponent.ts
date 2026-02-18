@@ -140,7 +140,7 @@ class InputResponseComponent {
     const xVw = mapValue(coordinates.x);
     const yVh = mapValue(coordinates.y);
     this.clozeContainer.style.left = `calc(50% + ${xVw}vw)`;
-    this.clozeContainer.style.top = `calc(50% + ${yVh}vh)`;
+    this.clozeContainer.style.top = `calc(50% - ${yVh}vh)`;
     this.clozeContainer.style.transform = "translate(-50%, -50%)";
 
     // Build cloze HTML with input fields

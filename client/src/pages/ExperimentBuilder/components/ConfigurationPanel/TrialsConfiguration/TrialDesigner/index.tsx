@@ -56,7 +56,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
 
     return {
       x: centerX + coords.x * (CANVAS_WIDTH / 2),
-      y: centerY + coords.y * (CANVAS_HEIGHT / 2),
+      y: centerY - coords.y * (CANVAS_HEIGHT / 2),
     };
   };
 
@@ -126,7 +126,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
 
     return {
       x: Math.max(-1, Math.min(1, (x - centerX) / (CANVAS_WIDTH / 2))),
-      y: Math.max(-1, Math.min(1, (y - centerY) / (CANVAS_HEIGHT / 2))),
+      y: Math.max(-1, Math.min(1, (centerY - y) / (CANVAS_HEIGHT / 2))),
     };
   };
 
