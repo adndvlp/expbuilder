@@ -3,6 +3,7 @@ import { Trial, Loop } from "../../ConfigurationPanel/types";
 import { TimelineItem } from "../../../contexts/TrialsContext";
 import ExperimentBase from "./ExperimentBase";
 import useDevMode from "../../../hooks/useDevMode";
+import { loadingOverlayCode } from "./LoadingOverlay";
 
 type GetTrialFn = (id: string | number) => Promise<Trial | null>;
 type GetLoopTimelineFn = (loopId: string | number) => Promise<TimelineItem[]>;
@@ -133,6 +134,8 @@ export default function LocalConfiguration({
     
   }
 
+  ${loadingOverlayCode()}
+
   (async () => {
 
     localStorage.removeItem('jsPsych_jumpToTrial');
@@ -141,6 +144,7 @@ export default function LocalConfiguration({
     await waitForSocket();
     socket = io();
     
+    _setLoadingMsg('Creating session…');
     participantNumber = await saveSession(trialSessionId);
 
     if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
@@ -157,6 +161,8 @@ export default function LocalConfiguration({
     });
 
     ${evaluateCondition}
+
+    _hideLoading();
 
     // Track pending data saves to ensure all complete before finishing
     const pendingDataSaves = [];

@@ -3,6 +3,7 @@ import { Trial, Loop } from "../../ConfigurationPanel/types";
 import { TimelineItem } from "../../../contexts/TrialsContext";
 import ExperimentBase from "./ExperimentBase";
 import useDevMode from "../../../hooks/useDevMode";
+import { loadingOverlayCode } from "./LoadingOverlay";
 
 const DATA_API_URL = import.meta.env.VITE_DATA_API_URL;
 
@@ -52,6 +53,11 @@ export default function PublicConfiguration({
       resumeTimeoutMinutes: 30,
     };
 
+    let recruitmentConfig = {
+      platform: "none" as "none" | "prolific" | "mturk",
+      prolificCompletionCode: "",
+    };
+
     try {
       const { doc, getDoc } = await import("firebase/firestore");
       const { db } = await import("../../../../../lib/firebase");
@@ -67,6 +73,13 @@ export default function PublicConfiguration({
               useIndexedDB: data.batchConfig.useIndexedDB ?? true,
               batchSize: data.batchConfig.batchSize ?? 0,
               resumeTimeoutMinutes: data.batchConfig.resumeTimeoutMinutes ?? 30,
+            };
+          }
+          if (data.recruitmentConfig) {
+            recruitmentConfig = {
+              platform: data.recruitmentConfig.platform ?? "none",
+              prolificCompletionCode:
+                data.recruitmentConfig.prolificCompletionCode ?? "",
             };
           }
         }
@@ -372,6 +385,8 @@ export default function PublicConfiguration({
     }
   }
 
+  ${loadingOverlayCode()}
+
   (async () => {
     // Limpiar el localStorage de valores de sesiones anteriores (solo repeat/jump conditions)
     localStorage.removeItem('jsPsych_jumpToTrial');
@@ -421,6 +436,7 @@ export default function PublicConfiguration({
     
     // SIEMPRE llamar a createSession (para crear documento en Firestore)
     // El backend maneja sesiones duplicadas (409) y las retorna correctamente
+    _setLoadingMsg('Creating session…');
     participantNumber = await createSession();
     
     // Guardar sessionId y participantNumber en localStorage para futuras retomas
@@ -435,6 +451,7 @@ export default function PublicConfiguration({
     console.log('Participant number assigned:', participantNumber);
     
     // Esperar e inicializar Firebase
+    _setLoadingMsg('Loading resources…');
     await waitForFirebase();
     if (!window.firebase.apps.length) {
       window.firebase.initializeApp(firebaseConfig);
@@ -466,6 +483,35 @@ export default function PublicConfiguration({
     });
 
     ${evaluateCondition}
+
+    _hideLoading();
+
+    // --- Recruitment platform URL params (using URLSearchParams - available before initJsPsych) ---
+    const _urlParams = new URLSearchParams(window.location.search);
+    const _prolificPID = _urlParams.get('PROLIFIC_PID');
+    const _prolificStudyID = _urlParams.get('STUDY_ID');
+    const _prolificSessionID = _urlParams.get('SESSION_ID');
+    const _mturkWorkerID = _urlParams.get('workerId');
+    const _mturkAssignmentID = _urlParams.get('assignmentId');
+    const _mturkHitID = _urlParams.get('hitId');
+    const _mturkTurkSubmitTo = _urlParams.get('turkSubmitTo');
+    const _mturkIsPreview = _mturkAssignmentID === 'ASSIGNMENT_ID_NOT_AVAILABLE';
+
+    ${
+      recruitmentConfig.platform === "mturk"
+        ? `
+    // MTurk preview mode: block experiment from starting
+    if (_mturkIsPreview) {
+      document.getElementById('jspsych-container').innerHTML =
+        '<div style="padding:40px;text-align:center;font-family:sans-serif">' +
+        '<h2>Preview</h2>' +
+        '<p>Accept the HIT to start the experiment.</p>' +
+        '</div>';
+      return;
+    }
+    `
+        : ""
+    }
 
     // Track pending batch saves
     const pendingBatchSaves = [];
@@ -681,6 +727,9 @@ export default function PublicConfiguration({
       on_finish: async function() {
         
         console.log('Experiment finishing...');
+
+        _showLoading('Saving your data\u2026');
+        await new Promise(r => setTimeout(r, 0));
         
         // Limpiar el localStorage de retoma ya que el experimento terminó correctamente
         localStorage.removeItem('jsPsych_resumeTrial');
@@ -694,6 +743,7 @@ export default function PublicConfiguration({
           // Esperar cualquier batch pendiente
           if (pendingBatchSaves.length > 0) {
             console.log('Waiting for', pendingBatchSaves.length, 'pending batch saves...');
+            _setLoadingMsg('Uploading batches\u2026');
             await Promise.allSettled(pendingBatchSaves);
           }
 
@@ -705,23 +755,27 @@ export default function PublicConfiguration({
               console.log(\`Sending \${allTrials.length} trials directly to storage (batchSize=0)\`);
               
               try {
+                _setLoadingMsg('Uploading data\u2026');
                 await sendCompleteExperiment(allTrials);
                 await TrialDB.clear();
                 console.log('Complete experiment sent to storage successfully');
               } catch (error) {
                 console.error('Error sending complete experiment:', error);
-                alert('Error sending experiment data. Please contact support.');
+                _setLoadingMsg('Error saving data. Please contact support.');
+                return;
               }
             } else {
               // batchSize>0: Enviar trials restantes como batch final a Firestore
               BATCH_CONFIG.currentBatchNumber++;
               console.log(\`Sending final batch #\${BATCH_CONFIG.currentBatchNumber} with \${allTrials.length} remaining trials\`);
+              _setLoadingMsg('Sending final batch\u2026');
               await sendBatchConcatenated(allTrials, BATCH_CONFIG.currentBatchNumber);
               await TrialDB.clear();
               
               // Esperar que el batch final termine
               if (pendingBatchSaves.length > 0) {
                 console.log('Waiting for final batch to complete...');
+                _setLoadingMsg('Finishing upload\u2026');
                 await Promise.allSettled(pendingBatchSaves);
               }
             }
@@ -736,6 +790,7 @@ export default function PublicConfiguration({
 
         // Finalizar la sesión normalmente y marcar en Firebase que terminó correctamente
         console.log('Experiment finished normally, sending data to storage...');
+        _setLoadingMsg('Finishing up\u2026');
         
         try {
           // Si batchSize=0 CON IndexedDB: Ya se envió directo al storage, NO necesita finalización
@@ -759,11 +814,62 @@ export default function PublicConfiguration({
         } catch (error) {
           console.error('Error marking session as finished:', error);
         }
+
+        // --- Recruitment platform redirect ---
+        ${
+          recruitmentConfig.platform === "prolific"
+            ? `
+        if (_prolificPID && '${recruitmentConfig.prolificCompletionCode}') {
+          _setLoadingMsg('Redirecting to Prolific\u2026');
+          await new Promise(r => setTimeout(r, 300));
+          window.location.href = 'https://app.prolific.com/submissions/complete?cc=${recruitmentConfig.prolificCompletionCode}';
+        } else {
+          // No Prolific URL params — testing mode or direct access
+          _showSuccess();
+        }
+        `
+            : ""
+        }
+        ${
+          recruitmentConfig.platform === "mturk"
+            ? `
+        if (_mturkTurkSubmitTo && _mturkAssignmentID && !_mturkIsPreview) {
+          _setLoadingMsg('Submitting to MTurk\u2026');
+          const _mturkForm = document.createElement('form');
+          _mturkForm.method = 'POST';
+          _mturkForm.action = _mturkTurkSubmitTo + '/mturk/externalSubmit';
+          _mturkForm.innerHTML = '<input name="assignmentId" value="' + _mturkAssignmentID + '">';
+          document.body.appendChild(_mturkForm);
+          _mturkForm.submit();
+        } else {
+          _showSuccess();
+        }
+        `
+            : ""
+        }
+        ${recruitmentConfig.platform === "none" ? `_hideLoading();` : ""}
       }
     });
     
     // Uncomment to see the json results after finishing a session experiment
     // jsPsych.data.displayData('csv');
+
+    ${
+      recruitmentConfig.platform === "prolific" ||
+      recruitmentConfig.platform === "mturk"
+        ? `
+    // Add platform IDs to all trials automatically (after initJsPsych)
+    jsPsych.data.addProperties({
+      prolific_pid: _prolificPID || "",
+      prolific_study_id: _prolificStudyID || "",
+      prolific_session_id: _prolificSessionID || "",
+      mturk_worker_id: _mturkWorkerID || "",
+      mturk_assignment_id: _mturkAssignmentID || "",
+      mturk_hit_id: _mturkHitID || "",
+    });
+    `
+        : ""
+    }
 
     ${baseCode}
 

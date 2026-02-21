@@ -12,12 +12,26 @@ type BatchConfig = {
   resumeTimeoutMinutes: number;
 };
 
+type RecruitmentPlatform = "none" | "prolific" | "mturk";
+
+type RecruitmentConfig = {
+  platform: RecruitmentPlatform;
+  prolificCompletionCode: string;
+};
+
 function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
   const [config, setConfig] = useState<BatchConfig>({
     useIndexedDB: true,
     batchSize: 0,
     resumeTimeoutMinutes: 30,
   });
+  const [recruitmentConfig, setRecruitmentConfig] = useState<RecruitmentConfig>(
+    {
+      platform: "none",
+      prolificCompletionCode: "",
+    },
+  );
+  const [experimentExists, setExperimentExists] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{
@@ -34,11 +48,17 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
+          setExperimentExists(true);
           const data = docSnap.data();
           setConfig({
             useIndexedDB: data.batchConfig?.useIndexedDB ?? true,
             batchSize: data.batchConfig?.batchSize ?? 0,
             resumeTimeoutMinutes: data.batchConfig?.resumeTimeoutMinutes ?? 30,
+          });
+          setRecruitmentConfig({
+            platform: data.recruitmentConfig?.platform ?? "none",
+            prolificCompletionCode:
+              data.recruitmentConfig?.prolificCompletionCode ?? "",
           });
         }
       } catch (error) {
@@ -64,6 +84,7 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
         docRef,
         {
           batchConfig: config,
+          recruitmentConfig: recruitmentConfig,
         },
         { merge: true },
       );
@@ -102,204 +123,371 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
         Experiment Data Configuration
       </h2>
 
+      {/* IndexedDB Setting — only shown when experiment is published */}
+      {!experimentExists && (
+        <div
+          style={{
+            padding: 12,
+            marginBottom: 24,
+            backgroundColor: "var(--neutral-mid)",
+            borderRadius: 6,
+            fontSize: 14,
+            color: "var(--text-dark)",
+            opacity: 0.8,
+          }}
+        >
+          Data configuration options are available after the experiment is
+          published.
+        </div>
+      )}
+
       {/* IndexedDB Setting */}
-      <div style={{ marginBottom: 32 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <input
-            type="checkbox"
-            id="useIndexedDB"
-            checked={config.useIndexedDB}
-            onChange={(e) =>
-              setConfig({ ...config, useIndexedDB: e.target.checked })
-            }
-            style={{ width: 20, height: 20, cursor: "pointer" }}
-          />
-          <label
-            htmlFor="useIndexedDB"
+      {experimentExists && (
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <input
+              type="checkbox"
+              id="useIndexedDB"
+              checked={config.useIndexedDB}
+              onChange={(e) =>
+                setConfig({ ...config, useIndexedDB: e.target.checked })
+              }
+              style={{ width: 20, height: 20, cursor: "pointer" }}
+            />
+            <label
+              htmlFor="useIndexedDB"
+              style={{
+                fontSize: 16,
+                fontWeight: "600",
+                color: "var(--text-dark)",
+                cursor: "pointer",
+              }}
+            >
+              Use IndexedDB (Client-side persistence)
+            </label>
+          </div>
+          <p
             style={{
+              marginLeft: 32,
+              marginTop: 8,
+              color: "var(--text-dark)",
+              fontSize: 14,
+              opacity: 0.8,
+            }}
+          >
+            When enabled, trial data is stored in the participant's browser for
+            offline resilience. Disable for maximum data confidentiality (trials
+            sent directly to Firestore).
+          </p>
+        </div>
+      )}
+
+      {/* Batch Size Setting */}
+      {experimentExists && (
+        <div style={{ marginBottom: 32 }}>
+          <label
+            htmlFor="batchSize"
+            style={{
+              display: "block",
               fontSize: 16,
               fontWeight: "600",
               color: "var(--text-dark)",
-              cursor: "pointer",
+              marginBottom: 8,
             }}
           >
-            Use IndexedDB (Client-side persistence)
+            Batch Size
           </label>
+          <input
+            type="number"
+            id="batchSize"
+            min="0"
+            value={config.batchSize}
+            onChange={(e) =>
+              setConfig({ ...config, batchSize: parseInt(e.target.value) || 0 })
+            }
+            style={{
+              padding: 12,
+              fontSize: 16,
+              border: "2px solid var(--neutral-mid)",
+              borderRadius: 6,
+              width: "200px",
+              backgroundColor: "var(--neutral-light)",
+              color: "var(--text-dark)",
+            }}
+            disabled={!config.useIndexedDB}
+          />
+          <p
+            style={{
+              marginTop: 8,
+              color: "var(--text-dark)",
+              fontSize: 14,
+              opacity: 0.8,
+            }}
+          >
+            <strong>0</strong>: Send all trials at the end (no batching)
+            <br />
+            <strong>&gt; 0</strong>: Send trials in batches of N (e.g., 10 =
+            batch every 10 trials)
+            <br />
+            {!config.useIndexedDB && (
+              <em>(Only available with IndexedDB enabled)</em>
+            )}
+          </p>
         </div>
-        <p
-          style={{
-            marginLeft: 32,
-            marginTop: 8,
-            color: "var(--text-dark)",
-            fontSize: 14,
-            opacity: 0.8,
-          }}
-        >
-          When enabled, trial data is stored in the participant's browser for
-          offline resilience. Disable for maximum data confidentiality (trials
-          sent directly to Firestore).
-        </p>
-      </div>
-
-      {/* Batch Size Setting */}
-      <div style={{ marginBottom: 32 }}>
-        <label
-          htmlFor="batchSize"
-          style={{
-            display: "block",
-            fontSize: 16,
-            fontWeight: "600",
-            color: "var(--text-dark)",
-            marginBottom: 8,
-          }}
-        >
-          Batch Size
-        </label>
-        <input
-          type="number"
-          id="batchSize"
-          min="0"
-          value={config.batchSize}
-          onChange={(e) =>
-            setConfig({ ...config, batchSize: parseInt(e.target.value) || 0 })
-          }
-          style={{
-            padding: 12,
-            fontSize: 16,
-            border: "2px solid var(--neutral-mid)",
-            borderRadius: 6,
-            width: "200px",
-            backgroundColor: "var(--neutral-light)",
-            color: "var(--text-dark)",
-          }}
-          disabled={!config.useIndexedDB}
-        />
-        <p
-          style={{
-            marginTop: 8,
-            color: "var(--text-dark)",
-            fontSize: 14,
-            opacity: 0.8,
-          }}
-        >
-          <strong>0</strong>: Send all trials at the end (no batching)
-          <br />
-          <strong>&gt; 0</strong>: Send trials in batches of N (e.g., 10 = batch
-          every 10 trials)
-          <br />
-          {!config.useIndexedDB && (
-            <em>(Only available with IndexedDB enabled)</em>
-          )}
-        </p>
-      </div>
+      )}
 
       {/* Resume Timeout Setting */}
-      <div style={{ marginBottom: 32 }}>
-        <label
-          htmlFor="resumeTimeout"
-          style={{
-            display: "block",
-            fontSize: 16,
-            fontWeight: "600",
-            color: "var(--text-dark)",
-            marginBottom: 8,
-          }}
-        >
-          Resume Timeout (minutes)
-        </label>
-        <input
-          type="number"
-          id="resumeTimeout"
-          min="1"
-          max="1440"
-          value={config.resumeTimeoutMinutes}
-          onChange={(e) =>
-            setConfig({
-              ...config,
-              resumeTimeoutMinutes: parseInt(e.target.value) || 30,
-            })
-          }
-          style={{
-            padding: 12,
-            fontSize: 16,
-            border: "2px solid var(--neutral-mid)",
-            borderRadius: 6,
-            width: "200px",
-            backgroundColor: "var(--neutral-light)",
-            color: "var(--text-dark)",
-          }}
-        />
-        <p
-          style={{
-            marginTop: 8,
-            color: "var(--text-dark)",
-            fontSize: 14,
-            opacity: 0.8,
-          }}
-        >
-          Time before disconnected session data is deleted (1-1440 minutes)
-        </p>
-      </div>
+      {experimentExists && (
+        <div style={{ marginBottom: 32 }}>
+          <label
+            htmlFor="resumeTimeout"
+            style={{
+              display: "block",
+              fontSize: 16,
+              fontWeight: "600",
+              color: "var(--text-dark)",
+              marginBottom: 8,
+            }}
+          >
+            Resume Timeout (minutes)
+          </label>
+          <input
+            type="number"
+            id="resumeTimeout"
+            min="1"
+            max="1440"
+            value={config.resumeTimeoutMinutes}
+            onChange={(e) =>
+              setConfig({
+                ...config,
+                resumeTimeoutMinutes: parseInt(e.target.value) || 30,
+              })
+            }
+            style={{
+              padding: 12,
+              fontSize: 16,
+              border: "2px solid var(--neutral-mid)",
+              borderRadius: 6,
+              width: "200px",
+              backgroundColor: "var(--neutral-light)",
+              color: "var(--text-dark)",
+            }}
+          />
+          <p
+            style={{
+              marginTop: 8,
+              color: "var(--text-dark)",
+              fontSize: 14,
+              opacity: 0.8,
+            }}
+          >
+            Time before disconnected session data is deleted (1-1440 minutes)
+          </p>
+        </div>
+      )}
 
       {/* Storage Behavior Info */}
-      <div
-        style={{
-          padding: 16,
-          backgroundColor: "var(--primary-blue)",
-          border: `4px solid var(--dark-blue)`,
-          borderRadius: 6,
-          marginBottom: 24,
-          opacity: 0.9,
-        }}
-      >
-        <h3
+      {experimentExists && (
+        <div
           style={{
-            color: "var(--text-light)",
-            marginBottom: 12,
-            fontSize: 16,
-            fontWeight: "bold",
+            padding: 16,
+            backgroundColor: "var(--primary-blue)",
+            border: `4px solid var(--dark-blue)`,
+            borderRadius: 6,
+            marginBottom: 24,
+            opacity: 0.9,
           }}
         >
-          Storage Behavior Summary
-        </h3>
-        <ul
-          style={{
-            color: "var(--text-light)",
-            fontSize: 14,
-            lineHeight: 1.8,
-            paddingLeft: 20,
-          }}
+          <h3
+            style={{
+              color: "var(--text-light)",
+              marginBottom: 12,
+              fontSize: 16,
+              fontWeight: "bold",
+            }}
+          >
+            Storage Behavior Summary
+          </h3>
+          <ul
+            style={{
+              color: "var(--text-light)",
+              fontSize: 14,
+              lineHeight: 1.8,
+              paddingLeft: 20,
+            }}
+          >
+            {config.useIndexedDB ? (
+              <>
+                <li>
+                  <strong>IndexedDB enabled:</strong> Trials cached locally
+                  {config.batchSize === 0
+                    ? ", sent all at once when experiment completes"
+                    : ` in batches of ${config.batchSize} trials`}
+                </li>
+                <li>
+                  Participants can reconnect within{" "}
+                  {config.resumeTimeoutMinutes} minutes
+                </li>
+              </>
+            ) : (
+              <>
+                <li>
+                  <strong>IndexedDB disabled:</strong> Trials sent individually
+                  to Firestore
+                </li>
+                <li>
+                  <strong>Google Drive/Dropbox:</strong> Partial save on
+                  disconnect, append on completion
+                </li>
+                <li>
+                  <strong>OSF:</strong> Complete save only after timeout or
+                  completion (no PATCH support)
+                </li>
+              </>
+            )}
+          </ul>
+        </div>
+      )}
+
+      {/* Recruitment Platform Setting */}
+      <div style={{ marginBottom: 32 }}>
+        <h2
+          style={{ color: "var(--text-dark)", marginBottom: 24, fontSize: 24 }}
         >
-          {config.useIndexedDB ? (
-            <>
-              <li>
-                <strong>IndexedDB enabled:</strong> Trials cached locally
-                {config.batchSize === 0
-                  ? ", sent all at once when experiment completes"
-                  : ` in batches of ${config.batchSize} trials`}
-              </li>
-              <li>
-                Participants can reconnect within {config.resumeTimeoutMinutes}{" "}
-                minutes
-              </li>
-            </>
-          ) : (
-            <>
-              <li>
-                <strong>IndexedDB disabled:</strong> Trials sent individually to
-                Firestore
-              </li>
-              <li>
-                <strong>Google Drive/Dropbox:</strong> Partial save on
-                disconnect, append on completion
-              </li>
-              <li>
-                <strong>OSF:</strong> Complete save only after timeout or
-                completion (no PATCH support)
-              </li>
-            </>
-          )}
-        </ul>
+          Recruitment Platform
+        </h2>
+
+        {/* Platform selector */}
+        <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+          {(["none", "prolific", "mturk"] as RecruitmentPlatform[]).map((p) => (
+            <button
+              key={p}
+              onClick={() =>
+                setRecruitmentConfig({ ...recruitmentConfig, platform: p })
+              }
+              style={{
+                padding: "8px 20px",
+                borderRadius: 6,
+                border: "2px solid",
+                borderColor:
+                  recruitmentConfig.platform === p
+                    ? "var(--primary-blue)"
+                    : "var(--neutral-mid)",
+                backgroundColor:
+                  recruitmentConfig.platform === p
+                    ? "var(--primary-blue)"
+                    : "transparent",
+                color:
+                  recruitmentConfig.platform === p
+                    ? "var(--text-light)"
+                    : "var(--text-dark)",
+                fontWeight: 600,
+                cursor: "pointer",
+                textTransform: "capitalize",
+              }}
+            >
+              {p === "none" ? "None" : p === "prolific" ? "Prolific" : "MTurk"}
+            </button>
+          ))}
+        </div>
+
+        {/* Prolific options */}
+        {recruitmentConfig.platform === "prolific" && (
+          <div
+            style={{
+              padding: 16,
+              border: "1px solid var(--neutral-mid)",
+              borderRadius: 8,
+              marginTop: 12,
+            }}
+          >
+            <p
+              style={{
+                color: "var(--text-dark)",
+                fontSize: 14,
+                marginBottom: 12,
+                opacity: 0.8,
+              }}
+            >
+              Prolific will append <code>?PROLIFIC_PID=...</code>&amp;
+              <code>STUDY_ID=...</code>&amp;<code>SESSION_ID=...</code> to your
+              experiment URL automatically. Paste the{" "}
+              <strong>completion code</strong> provided by Prolific when
+              creating their study.
+            </p>
+            <label
+              htmlFor="prolificCode"
+              style={{
+                display: "block",
+                fontSize: 15,
+                fontWeight: 600,
+                color: "var(--text-dark)",
+                marginBottom: 6,
+              }}
+            >
+              Prolific Completion Code
+            </label>
+            <input
+              id="prolificCode"
+              type="text"
+              placeholder="e.g. C1A2B3C4"
+              value={recruitmentConfig.prolificCompletionCode}
+              onChange={(e) =>
+                setRecruitmentConfig({
+                  ...recruitmentConfig,
+                  prolificCompletionCode: e.target.value,
+                })
+              }
+              style={{
+                padding: 10,
+                fontSize: 15,
+                border: "2px solid var(--neutral-mid)",
+                borderRadius: 6,
+                width: "280px",
+                backgroundColor: "var(--neutral-light)",
+                color: "var(--text-dark)",
+              }}
+            />
+            <p
+              style={{
+                marginTop: 8,
+                fontSize: 13,
+                color: "var(--text-dark)",
+                opacity: 0.7,
+              }}
+            >
+              On <code>on_finish</code>, participants will be redirected to{" "}
+              <code>
+                https://app.prolific.com/submissions/complete?cc=&#123;code&#125;
+              </code>
+            </p>
+          </div>
+        )}
+
+        {/* MTurk info */}
+        {recruitmentConfig.platform === "mturk" && (
+          <div
+            style={{
+              padding: 16,
+              border: "1px solid var(--neutral-mid)",
+              borderRadius: 8,
+              marginTop: 12,
+            }}
+          >
+            <p
+              style={{ color: "var(--text-dark)", fontSize: 14, opacity: 0.8 }}
+            >
+              MTurk will append <code>?workerId=...</code>&amp;
+              <code>assignmentId=...</code>&amp;
+              <code>hitId=...</code>&amp;<code>turkSubmitTo=...</code> to your
+              experiment URL when loading it inside a HIT. On{" "}
+              <code>on_finish</code>, a form will be submitted to Amazon
+              automatically. If{" "}
+              <code>assignmentId=ASSIGNMENT_ID_NOT_AVAILABLE</code> (preview
+              mode), the experiment will show a message instead of starting.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Save Button */}
