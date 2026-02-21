@@ -166,8 +166,21 @@ export default function LocalConfiguration({
     await waitForSocket();
     socket = io();
     
-    _setLoadingMsg('Creating session\u2026');
-    participantNumber = await saveSession(trialSessionId);
+    if (isResuming) {
+      // Sesión existente (retoma o repeat/jump): recuperar participantNumber del localStorage
+      // para evitar crear una sesión duplicada en el backend
+      const storedPN = localStorage.getItem('jsPsych_participantNumber');
+      if (storedPN && !isNaN(Number(storedPN))) {
+        participantNumber = Number(storedPN);
+      } else {
+        // Número de participante perdido — recrear sesión como nueva
+        _setLoadingMsg('Creating session\u2026');
+        participantNumber = await saveSession(trialSessionId);
+      }
+    } else {
+      _setLoadingMsg('Creating session\u2026');
+      participantNumber = await saveSession(trialSessionId);
+    }
 
     // Si falla con el sessionId existente (sesión huérfana), reintentar con uno nuevo
     // IMPORTANTE: NO borrar jsPsych_resumeTrial aquí para no perder el punto de retoma
@@ -178,6 +191,7 @@ export default function LocalConfiguration({
         ? crypto.randomUUID()
         : Math.random().toString(36).slice(2, 10);
       isResuming = false;
+      _setLoadingMsg('Creating session\u2026');
       participantNumber = await saveSession(trialSessionId);
     }
 
