@@ -4,6 +4,7 @@ import { TimelineItem } from "../../../contexts/TrialsContext";
 import ExperimentBase from "./ExperimentBase";
 import useDevMode from "../../../hooks/useDevMode";
 import { loadingOverlayCode } from "./LoadingOverlay";
+import { resumeCode } from "./ResumeCode";
 
 const DATA_API_URL = import.meta.env.VITE_DATA_API_URL;
 
@@ -343,10 +344,8 @@ export default function PublicConfiguration({
     trialSessionId = "online_" + (crypto.randomUUID
       ? crypto.randomUUID()
       : Math.random().toString(36).slice(2, 10));
-    console.log('🆕 [RESUME] Created NEW sessionId:', trialSessionId);
   } else {
     isResuming = true;
-    console.log('🔄 [RESUME] Loaded EXISTING sessionId from localStorage:', trialSessionId);
   }
 
   let participantNumber;
@@ -386,10 +385,23 @@ export default function PublicConfiguration({
   }
 
   ${loadingOverlayCode()}
+  ${resumeCode()}
 
   (async () => {
-    // Limpiar el localStorage de valores de sesiones anteriores (solo repeat/jump conditions)
-    localStorage.removeItem('jsPsych_jumpToTrial');
+    // Leer datos de retoma ANTES de cualquier limpieza
+    const resumeRaw = localStorage.getItem('jsPsych_resumeTrial');
+    const existingJump = localStorage.getItem('jsPsych_jumpToTrial');
+
+    if (!existingJump) {
+      // Sin jump pendiente: derivar destino desde el último trial completado
+      localStorage.removeItem('jsPsych_jumpToTrial');
+      const jumpTarget = _resolveResumeBranch(resumeRaw);
+      localStorage.removeItem('jsPsych_resumeTrial');
+      if (jumpTarget) localStorage.setItem('jsPsych_jumpToTrial', jumpTarget);
+    } else {
+      // Jump ya establecido por repeat/jump — preservarlo, solo limpiar resume
+      localStorage.removeItem('jsPsych_resumeTrial');
+    }
     
     // --- Configuración de Batching (cargada desde Firestore) ---
     const BATCH_CONFIG = {
@@ -408,30 +420,18 @@ export default function PublicConfiguration({
     let resumedSession = false;
     
     if (BATCH_CONFIG.useIndexedDB) {
-      console.log('🔍 [RESUME] Checking IndexedDB for existing trials...');
       const existingTrials = await TrialDB.getAll();
-      console.log('🔍 [RESUME] Found ' + existingTrials.length + ' trials in IndexedDB');
       
       if (existingTrials.length > 0) {
         const lastTrial = existingTrials[existingTrials.length - 1];
-        console.log('🔍 [RESUME] Last trial sessionId:', lastTrial.sessionId);
-        console.log('🔍 [RESUME] Current sessionId:', trialSessionId);
         
         if (lastTrial.sessionId === trialSessionId) {
-          console.log('✅ [RESUME] Resuming session with ' + existingTrials.length + ' existing trials');
           BATCH_CONFIG.currentBatchNumber = Math.floor(existingTrials.length / (BATCH_CONFIG.size || 1));
           resumedSession = true;
         } else {
-          console.log('❌ [RESUME] SessionId mismatch. Clearing old trials from different session.');
-          console.log('   Old:', lastTrial.sessionId);
-          console.log('   New:', trialSessionId);
           await TrialDB.clear();
         }
-      } else {
-        console.log('ℹ️ [RESUME] No existing trials found. Starting fresh session.');
       }
-    } else {
-      console.log('ℹ️ [RESUME] IndexedDB disabled. Resume check skipped.');
     }
     
     // SIEMPRE llamar a createSession (para crear documento en Firestore)
@@ -447,8 +447,6 @@ export default function PublicConfiguration({
       alert("The participant number is not assigned. Please, wait.");
       throw new Error("participantNumber not assigned");
     }
-
-    console.log('Participant number assigned:', participantNumber);
     
     // Esperar e inicializar Firebase
     _setLoadingMsg('Loading resources…');
@@ -622,21 +620,6 @@ export default function PublicConfiguration({
       });
     }
 
-    // Verificar si hay un trial guardado para retomar (de una sesión previa)
-    const resumeTrialId = localStorage.getItem('jsPsych_resumeTrial');
-    console.log('🔍 [RESUME] Checking for resume trial ID in localStorage...');
-    console.log('🔍 [RESUME] resumeTrialId:', resumeTrialId);
-    
-    if (resumeTrialId) {
-      console.log('✅ [RESUME] Found resume point! Jumping to trial:', resumeTrialId);
-      // Usar la misma lógica de jump pero con la key de retoma
-      localStorage.setItem('jsPsych_jumpToTrial', resumeTrialId);
-      localStorage.removeItem('jsPsych_resumeTrial');
-      console.log('✅ [RESUME] Set jsPsych_jumpToTrial to:', resumeTrialId);
-    } else {
-      console.log('ℹ️ [RESUME] No resume trial ID found. Starting from beginning.');
-    }
-
     const jsPsych = initJsPsych({
       display_element: document.getElementById('jspsych-container'),
 
@@ -664,10 +647,13 @@ export default function PublicConfiguration({
           }).catch(err => console.error('Error updating state:', err));
         }
 
-        // 🔄 SISTEMA DE RETOMA: Guardar builder_id (jsPsych no lo sobrescribe)
+        // 🔄 SISTEMA DE RETOMA: Guardar branches + datos del trial para evaluar al reanudar
         if (data.builder_id !== undefined && data.builder_id !== null) {
-          localStorage.setItem('jsPsych_resumeTrial', String(data.builder_id));
-          console.log('💾 [RESUME] Saved builder_id:', data.builder_id);
+          localStorage.setItem('jsPsych_resumeTrial', JSON.stringify({
+            branches: data.branches || [],
+            branchConditions: data.branchConditions || [],
+            trialData: data
+          }));
         }
 
         if (BATCH_CONFIG.useIndexedDB) {
@@ -725,24 +711,26 @@ export default function PublicConfiguration({
       },
 
       on_finish: async function() {
-        
-        console.log('Experiment finishing...');
+        // Si hay un repeat/jump pendiente, recargar para ejecutarlo
+        if (localStorage.getItem('jsPsych_jumpToTrial')) {
+          if (pendingBatchSaves.length > 0) await Promise.allSettled(pendingBatchSaves);
+          window.location.reload();
+          return;
+        }
 
         _showLoading('Saving your data\u2026');
         await new Promise(r => setTimeout(r, 0));
         
-        // Limpiar el localStorage de retoma ya que el experimento terminó correctamente
+        // Limpiar datos de retoma ya que el experimento terminó correctamente
         localStorage.removeItem('jsPsych_resumeTrial');
         localStorage.removeItem('jsPsych_currentSessionId');
         localStorage.removeItem('jsPsych_participantNumber');
-        console.log('🧹 [RESUME] Cleared resume data - experiment completed');
 
         if (BATCH_CONFIG.useIndexedDB) {
           // --- CON IndexedDB: Enviar datos acumulados ---
           
           // Esperar cualquier batch pendiente
           if (pendingBatchSaves.length > 0) {
-            console.log('Waiting for', pendingBatchSaves.length, 'pending batch saves...');
             _setLoadingMsg('Uploading batches\u2026');
             await Promise.allSettled(pendingBatchSaves);
           }
@@ -751,52 +739,37 @@ export default function PublicConfiguration({
           
           if (allTrials.length > 0) {
             if (BATCH_CONFIG.size === 0) {
-              // batchSize=0: Enviar TODO directo al storage (sin Firestore)
-              console.log(\`Sending \${allTrials.length} trials directly to storage (batchSize=0)\`);
-              
               try {
                 _setLoadingMsg('Uploading data\u2026');
                 await sendCompleteExperiment(allTrials);
                 await TrialDB.clear();
-                console.log('Complete experiment sent to storage successfully');
               } catch (error) {
                 console.error('Error sending complete experiment:', error);
                 _setLoadingMsg('Error saving data. Please contact support.');
                 return;
               }
             } else {
-              // batchSize>0: Enviar trials restantes como batch final a Firestore
               BATCH_CONFIG.currentBatchNumber++;
-              console.log(\`Sending final batch #\${BATCH_CONFIG.currentBatchNumber} with \${allTrials.length} remaining trials\`);
               _setLoadingMsg('Sending final batch\u2026');
               await sendBatchConcatenated(allTrials, BATCH_CONFIG.currentBatchNumber);
               await TrialDB.clear();
               
-              // Esperar que el batch final termine
               if (pendingBatchSaves.length > 0) {
-                console.log('Waiting for final batch to complete...');
                 _setLoadingMsg('Finishing upload\u2026');
                 await Promise.allSettled(pendingBatchSaves);
               }
             }
           }
-        } else {
-          // --- SIN IndexedDB: Datos ya están en Firestore (trials individuales) ---
-          console.log('All trials already in Firestore, triggering finalization...');
         }
         
         // Cancelar el onDisconnect para evitar que marque como abandoned
         sessionRef.onDisconnect().cancel();
 
-        // Finalizar la sesión normalmente y marcar en Firebase que terminó correctamente
-        console.log('Experiment finished normally, sending data to storage...');
         _setLoadingMsg('Finishing up\u2026');
         
         try {
-          // Si batchSize=0 CON IndexedDB: Ya se envió directo al storage, NO necesita finalización
           const needsBackendFinalization = !(BATCH_CONFIG.useIndexedDB && BATCH_CONFIG.size === 0);
           
-          // Marcar en Firebase que terminó correctamente
           await sessionRef.update({
             connected: false,
             finished: true,
@@ -805,12 +778,6 @@ export default function PublicConfiguration({
             finishedAt: window.firebase.database.ServerValue.TIMESTAMP,
             lastUpdate: window.firebase.database.ServerValue.TIMESTAMP
           });
-          
-          if (needsBackendFinalization) {
-            console.log('Session marked for finalization in Firebase');
-          } else {
-            console.log('Session completed (batch=0, already sent to storage)');
-          }
         } catch (error) {
           console.error('Error marking session as finished:', error);
         }

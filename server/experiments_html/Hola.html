@@ -539,8 +539,12 @@
     },
 
   on_finish: async function() {
-    // Si hay un repeat/jump pendiente, recargar para ejecutarlo
-    if (localStorage.getItem('jsPsych_jumpToTrial')) {
+    // Si hay un repeat/jump pendiente (via window o localStorage), recargar para ejecutarlo
+    const pendingJump = localStorage.getItem('jsPsych_jumpToTrial') || (window.skipRemaining && window.nextTrialId);
+    if (pendingJump) {
+      if (window.skipRemaining && window.nextTrialId) {
+        localStorage.setItem('jsPsych_jumpToTrial', String(window.nextTrialId));
+      }
       if (pendingDataSaves.length > 0) await Promise.allSettled(pendingDataSaves);
       window.location.reload();
       return;

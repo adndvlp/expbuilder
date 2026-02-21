@@ -3,7 +3,7 @@
  * This handles skipping remaining trials (branching) and repeating/jumping logic
  */
 export function generateConditionalFunctionCode(
-  id: number | undefined
+  id: number | undefined,
 ): string {
   // If no ID is provided, use a placeholder or handle gracefully
   // In the builder, every trial usually has an ID
