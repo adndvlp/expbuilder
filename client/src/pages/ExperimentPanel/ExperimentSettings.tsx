@@ -19,6 +19,14 @@ type RecruitmentConfig = {
   prolificCompletionCode: string;
 };
 
+type CaptchaProvider = "hcaptcha" | "recaptcha";
+
+type CaptchaConfig = {
+  enabled: boolean;
+  provider: CaptchaProvider;
+  siteKey: string;
+};
+
 function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
   const [config, setConfig] = useState<BatchConfig>({
     useIndexedDB: true,
@@ -31,6 +39,11 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
       prolificCompletionCode: "",
     },
   );
+  const [captchaConfig, setCaptchaConfig] = useState<CaptchaConfig>({
+    enabled: false,
+    provider: "hcaptcha",
+    siteKey: "",
+  });
   const [experimentExists, setExperimentExists] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -60,6 +73,11 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
             prolificCompletionCode:
               data.recruitmentConfig?.prolificCompletionCode ?? "",
           });
+          setCaptchaConfig({
+            enabled: data.captchaConfig?.enabled ?? false,
+            provider: data.captchaConfig?.provider ?? "hcaptcha",
+            siteKey: data.captchaConfig?.siteKey ?? "",
+          });
         }
       } catch (error) {
         console.error("Error loading configuration:", error);
@@ -85,6 +103,7 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
         {
           batchConfig: config,
           recruitmentConfig: recruitmentConfig,
+          captchaConfig: captchaConfig,
         },
         { merge: true },
       );
@@ -486,6 +505,186 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
               <code>assignmentId=ASSIGNMENT_ID_NOT_AVAILABLE</code> (preview
               mode), the experiment will show a message instead of starting.
             </p>
+          </div>
+        )}
+      </div>
+
+      {/* CAPTCHA / Web3Forms Setting */}
+      <div style={{ marginBottom: 32 }}>
+        <h2
+          style={{ color: "var(--text-dark)", marginBottom: 8, fontSize: 24 }}
+        >
+          Anti-Spam (CAPTCHA)
+        </h2>
+        <p
+          style={{
+            color: "var(--text-dark)",
+            fontSize: 14,
+            opacity: 0.8,
+            marginBottom: 16,
+          }}
+        >
+          Uses{" "}
+          <a
+            href="https://www.hcaptcha.com"
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: "var(--primary-blue)" }}
+          >
+            hCaptcha
+          </a>{" "}
+          or{" "}
+          <a
+            href="https://www.google.com/recaptcha"
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: "var(--primary-blue)" }}
+          >
+            reCAPTCHA v2
+          </a>
+          . Participants must pass the challenge before the experiment starts.
+        </p>
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            marginBottom: 16,
+          }}
+        >
+          <input
+            type="checkbox"
+            id="captchaEnabled"
+            checked={captchaConfig.enabled}
+            onChange={(e) =>
+              setCaptchaConfig({ ...captchaConfig, enabled: e.target.checked })
+            }
+            style={{ width: 20, height: 20, cursor: "pointer" }}
+          />
+          <label
+            htmlFor="captchaEnabled"
+            style={{
+              fontSize: 16,
+              fontWeight: "600",
+              color: "var(--text-dark)",
+              cursor: "pointer",
+            }}
+          >
+            Enable CAPTCHA
+          </label>
+        </div>
+
+        {captchaConfig.enabled && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 20,
+              marginTop: 4,
+            }}
+          >
+            {/* Provider selector */}
+            <div>
+              <p
+                style={{
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "var(--text-dark)",
+                  marginBottom: 8,
+                }}
+              >
+                Provider
+              </p>
+              <div style={{ display: "flex", gap: 10 }}>
+                {(["hcaptcha", "recaptcha"] as CaptchaProvider[]).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() =>
+                      setCaptchaConfig({ ...captchaConfig, provider: p })
+                    }
+                    style={{
+                      padding: "7px 18px",
+                      borderRadius: 6,
+                      border: "2px solid",
+                      borderColor:
+                        captchaConfig.provider === p
+                          ? "var(--primary-blue)"
+                          : "var(--neutral-mid)",
+                      backgroundColor:
+                        captchaConfig.provider === p
+                          ? "var(--primary-blue)"
+                          : "transparent",
+                      color:
+                        captchaConfig.provider === p
+                          ? "var(--text-light)"
+                          : "var(--text-dark)",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {p === "hcaptcha" ? "hCaptcha" : "reCAPTCHA v2"}
+                  </button>
+                ))}
+              </div>
+              <p
+                style={{
+                  marginTop: 6,
+                  fontSize: 12,
+                  color: "var(--text-dark)",
+                  opacity: 0.65,
+                }}
+              >
+                {captchaConfig.provider === "hcaptcha"
+                  ? "Get your keys at hcaptcha.com → Sites"
+                  : 'Get your keys at google.com/recaptcha → Admin Console (v2 "I am not a robot")'}
+              </p>
+            </div>
+
+            {/* Site Key */}
+            <div>
+              <label
+                htmlFor="captchaSiteKey"
+                style={{
+                  display: "block",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: "var(--text-dark)",
+                  marginBottom: 6,
+                }}
+              >
+                Site Key{" "}
+                <span style={{ fontWeight: 400, opacity: 0.6, fontSize: 13 }}>
+                  (public — used in the browser)
+                </span>
+              </label>
+              <input
+                id="captchaSiteKey"
+                type="text"
+                placeholder={
+                  captchaConfig.provider === "hcaptcha"
+                    ? "e.g. d2263a2a-7d46-48c8-b490-c50812a6c80e"
+                    : "e.g. 6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
+                }
+                value={captchaConfig.siteKey}
+                onChange={(e) =>
+                  setCaptchaConfig({
+                    ...captchaConfig,
+                    siteKey: e.target.value,
+                  })
+                }
+                style={{
+                  padding: 10,
+                  fontSize: 14,
+                  border: "2px solid var(--neutral-mid)",
+                  borderRadius: 6,
+                  width: "380px",
+                  backgroundColor: "var(--neutral-light)",
+                  color: "var(--text-dark)",
+                  fontFamily: "monospace",
+                }}
+              />
+            </div>
           </div>
         )}
       </div>

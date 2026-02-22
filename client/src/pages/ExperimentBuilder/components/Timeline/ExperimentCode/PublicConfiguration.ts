@@ -5,6 +5,7 @@ import ExperimentBase from "./ExperimentBase";
 import useDevMode from "../../../hooks/useDevMode";
 import { loadingOverlayCode } from "./LoadingOverlay";
 import { resumeCode } from "./ResumeCode";
+import { captchaCode } from "./CaptchaCode";
 
 const DATA_API_URL = import.meta.env.VITE_DATA_API_URL;
 
@@ -59,6 +60,12 @@ export default function PublicConfiguration({
       prolificCompletionCode: "",
     };
 
+    let captchaConfig = {
+      enabled: false,
+      provider: "hcaptcha" as "hcaptcha" | "recaptcha",
+      siteKey: "",
+    };
+
     try {
       const { doc, getDoc } = await import("firebase/firestore");
       const { db } = await import("../../../../../lib/firebase");
@@ -81,6 +88,13 @@ export default function PublicConfiguration({
               platform: data.recruitmentConfig.platform ?? "none",
               prolificCompletionCode:
                 data.recruitmentConfig.prolificCompletionCode ?? "",
+            };
+          }
+          if (data.captchaConfig) {
+            captchaConfig = {
+              enabled: data.captchaConfig.enabled ?? false,
+              provider: data.captchaConfig.provider ?? "hcaptcha",
+              siteKey: data.captchaConfig.siteKey ?? "",
             };
           }
         }
@@ -386,8 +400,20 @@ export default function PublicConfiguration({
 
   ${loadingOverlayCode()}
   ${resumeCode()}
+  ${captchaCode()}
 
   (async () => {
+    // --- CAPTCHA gate (hCaptcha / reCAPTCHA) ---
+    // Se omite en recargas por jump (sessionStorage persiste entre reloads del mismo tab)
+    if (${captchaConfig.enabled} && "${captchaConfig.siteKey}" && !sessionStorage.getItem('jsPsych_captchaPassed')) {
+      const _loadingEl = document.getElementById('jspsych-loading-overlay');
+      if (_loadingEl) _loadingEl.style.display = 'none';
+      await _showCaptchaGate("${captchaConfig.siteKey}", "${captchaConfig.provider}");
+      sessionStorage.setItem('jsPsych_captchaPassed', '1');
+      if (_loadingEl) _loadingEl.style.display = 'flex';
+      _setLoadingMsg('Creating session\u2026');
+    }
+
     // Leer datos de retoma ANTES de cualquier limpieza
     const resumeRaw = localStorage.getItem('jsPsych_resumeTrial');
     const existingJump = localStorage.getItem('jsPsych_jumpToTrial');
@@ -725,6 +751,7 @@ export default function PublicConfiguration({
         localStorage.removeItem('jsPsych_resumeTrial');
         localStorage.removeItem('jsPsych_currentSessionId');
         localStorage.removeItem('jsPsych_participantNumber');
+        sessionStorage.removeItem('jsPsych_captchaPassed');
 
         if (BATCH_CONFIG.useIndexedDB) {
           // --- CON IndexedDB: Enviar datos acumulados ---
