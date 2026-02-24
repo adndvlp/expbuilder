@@ -293,7 +293,7 @@ router.use((req, res, next) => {
  */
 router.post("/api/run-experiment/:experimentID", async (req, res) => {
   try {
-    const { generatedCode } = req.body;
+    const { generatedCode, canvasStyles: canvasStylesFromBody } = req.body;
     const experimentID = req.params.experimentID;
 
     // Obtener el nombre del experimento
@@ -307,6 +307,24 @@ router.post("/api/run-experiment/:experimentID", async (req, res) => {
         .json({ success: false, error: "Experiment not found" });
     }
     const experimentName = experiment.name;
+
+    // Resolve canvasStyles: use value from request body, fallback to DB
+    let canvasStyles = canvasStylesFromBody;
+    if (!canvasStyles) {
+      const trialDoc = db.data.trials.find(
+        (t) => t.experimentID === experimentID,
+      );
+      if (trialDoc) {
+        for (const trial of trialDoc.trials || []) {
+          const saved = trial.columnMapping?.__canvasStyles?.value;
+          if (saved) {
+            canvasStyles = saved;
+            break;
+          }
+        }
+      }
+    }
+
     // Ruta de template y destino
     const templatePath = ensureTemplate("experiment_template.html");
     const experimentHtmlPath = path.join(
@@ -325,6 +343,16 @@ router.post("/api/run-experiment/:experimentID", async (req, res) => {
         .status(400)
         .json({ success: false, error: "No generated code provided" });
     }
+
+    // Inject only background color — never constrain width/height on full runs (must stay responsive)
+    $("style#canvas-styles").remove();
+    if (canvasStyles?.backgroundColor) {
+      const bg = canvasStyles.backgroundColor;
+      $("head").append(
+        `<style id="canvas-styles">\n  body { background-color: ${bg}; }\n  .jspsych-display-element { background-color: ${bg}; }\n</style>`,
+      );
+    }
+
     $("body").append(
       `<script id="generated-script">\n${generatedCode}\n</script>`,
     );
@@ -399,7 +427,7 @@ router.get("/:experimentID/preview", async (req, res) => {
  */
 router.post("/api/trials-preview/:experimentID", async (req, res) => {
   try {
-    const { generatedCode } = req.body;
+    const { generatedCode, canvasStyles: canvasStylesFromBody } = req.body;
     const experimentID = req.params.experimentID;
 
     // Obtener el nombre del experimento
@@ -413,6 +441,24 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
         .json({ success: false, error: "Experiment not found" });
     }
     const experimentName = experiment.name;
+
+    // Resolve canvasStyles: use value from request body, fallback to DB
+    let canvasStyles = canvasStylesFromBody;
+    if (!canvasStyles) {
+      const trialDoc = db.data.trials.find(
+        (t) => t.experimentID === experimentID,
+      );
+      if (trialDoc) {
+        for (const trial of trialDoc.trials || []) {
+          const saved = trial.columnMapping?.__canvasStyles?.value;
+          if (saved) {
+            canvasStyles = saved;
+            break;
+          }
+        }
+      }
+    }
+
     const templatePath = ensureTemplate("trials_preview_template.html");
     const previewHtmlPath = path.join(
       trialsPreviewsHtmlDir,
@@ -429,6 +475,16 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
         .status(400)
         .json({ success: false, error: "No generated code provided" });
     }
+
+    // Inject only background color — sizing is handled by the iframe wrapper in the UI
+    $("style#canvas-styles").remove();
+    if (canvasStyles?.backgroundColor) {
+      const bg = canvasStyles.backgroundColor;
+      $("head").append(
+        `<style id="canvas-styles">\n  body { background-color: ${bg}; }\n  .jspsych-display-element { background-color: ${bg}; }\n</style>`,
+      );
+    }
+
     $("body").append(
       `<script id="generated-script">\n${generatedCode}\n</script>`,
     );
@@ -547,11 +603,15 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     // Reemplazar rutas locales por rutas CDN para publicación
     $("link[href*='jspsych-bundle']").attr(
       "href",
-      "https://adndvlp.github.io/jspsych-cdn-for-expbuilder/index.css",
+      "https://unpkg.com/jspsych-expbuilder-custom@1.0.0/index.css",
     );
     $("script[src*='jspsych-bundle']").attr(
       "src",
-      "https://adndvlp.github.io/jspsych-cdn-for-expbuilder/index.js",
+      "https://unpkg.com/jspsych-expbuilder-custom@1.0.0/index.js",
+    );
+    $("script[src*='webgazer']").attr(
+      "src",
+      "https://unpkg.com/jspsych-expbuilder-custom@1.0.0/webgazer.js",
     );
 
     const htmlContent = $.html();

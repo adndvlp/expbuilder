@@ -13,16 +13,28 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 type UploadedFile = { name: string; url: string; type: string };
 
-type Props = {
-  uploadedFiles?: UploadedFile[];
+type CanvasStylesProp = {
+  backgroundColor?: string;
+  width?: number;
+  height?: number;
 };
 
-function ExperimentPreview({ uploadedFiles = [] }: Props) {
+type Props = {
+  uploadedFiles?: UploadedFile[];
+  canvasStyles?: CanvasStylesProp;
+  autoStart?: boolean;
+};
+
+function ExperimentPreview({
+  uploadedFiles = [],
+  canvasStyles,
+  autoStart = false,
+}: Props) {
   const { generateLocalExperiment } = useExperimentCode(uploadedFiles);
   const { trialUrl } = useUrl();
   const { version, incrementVersion } = useExperimentState();
-  const [started, setStarted] = useState(false);
-  const [key, setKey] = useState(0);
+  const [started, setStarted] = useState(autoStart);
+  const [key, setKey] = useState(autoStart ? 1 : 0);
 
   const { isDevMode, code } = useDevMode();
 
@@ -140,7 +152,7 @@ localStorage.removeItem('jsPsych_jumpToTrial');
       await fetch(`${API_URL}/api/trials-preview/${experimentID}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ generatedCode: code }),
+        body: JSON.stringify({ generatedCode: code, canvasStyles }),
         credentials: "include",
         mode: "cors",
       });
@@ -148,12 +160,25 @@ localStorage.removeItem('jsPsych_jumpToTrial');
     };
 
     generateAndSendCode();
-  }, [code, isDevMode, selectedTrial, selectedLoop, experimentID]);
+  }, [
+    code,
+    isDevMode,
+    selectedTrial,
+    selectedLoop,
+    experimentID,
+    canvasStyles,
+  ]);
 
   // Crear URL con parámetros únicos para evitar caché
 
   return (
-    <div>
+    <div
+      style={
+        autoStart
+          ? { display: "flex", flexDirection: "column", height: "100%" }
+          : undefined
+      }
+    >
       {!started && (
         <div>
           <button
@@ -166,21 +191,42 @@ localStorage.removeItem('jsPsych_jumpToTrial');
       )}
 
       {started && (
-        <div>
-          <button
-            style={{ width: "100%", borderRadius: "5px" }}
-            onClick={handleStop}
+        <div
+          style={{ display: "flex", flexDirection: "column", height: "100%" }}
+        >
+          {!autoStart && (
+            <button
+              style={{ width: "100%", borderRadius: "5px" }}
+              onClick={handleStop}
+            >
+              Stop Demo
+            </button>
+          )}
+          <div
+            style={{
+              display: "flex",
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "auto",
+              background: "var(--neutral-light, #e5e7eb)",
+              padding: "16px",
+            }}
           >
-            Stop Demo
-          </button>
-          <div style={{ width: "100%", height: "60vh", marginTop: "1rem" }}>
             <iframe
               key={key}
               src={trialUrl}
               title="Experiment Preview"
-              width="100%"
-              height="100%"
-              style={{ border: "none" }}
+              style={{
+                border: "none",
+                width: canvasStyles?.width ? `${canvasStyles.width}px` : "100%",
+                height: canvasStyles?.height
+                  ? `${canvasStyles.height}px`
+                  : "60vh",
+                maxWidth: "100%",
+                boxShadow: "0 4px 24px rgba(0,0,0,0.18)",
+                background: canvasStyles?.backgroundColor || "transparent",
+              }}
             />
           </div>
         </div>

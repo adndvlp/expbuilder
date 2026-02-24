@@ -1,12 +1,12 @@
 import React from "react";
-import { ComponentType, TrialComponent } from "./types";
-import { Stage, Layer } from "react-konva";
+import { ComponentType, TrialComponent, CanvasStyles } from "./types";
+import { Stage, Layer, Rect } from "react-konva";
 import type Konva from "konva";
 
 type Props = {
   canvasContainerRef: React.RefObject<HTMLDivElement | null>;
-  CANVAS_WIDTH: 1024;
-  CANVAS_HEIGHT: 768;
+  CANVAS_WIDTH: number;
+  CANVAS_HEIGHT: number;
   stageScale: number;
   onDrop: (
     e: React.DragEvent<Element>,
@@ -17,6 +17,8 @@ type Props = {
   setSelectedId: React.Dispatch<React.SetStateAction<string | null>>;
   components: TrialComponent[];
   onRenderComponent: (comp: TrialComponent) => void;
+  uploadedFiles: any[];
+  canvasStyles: CanvasStyles;
 };
 
 function KonvaCanvas({
@@ -29,6 +31,8 @@ function KonvaCanvas({
   setSelectedId,
   components,
   onRenderComponent,
+  uploadedFiles,
+  canvasStyles,
 }: Props) {
   return (
     <div
@@ -50,7 +54,7 @@ function KonvaCanvas({
           border: "2px solid var(--neutral-mid)",
           borderRadius: "8px",
           overflow: "hidden",
-          background: "var(--neutral-light)",
+          background: canvasStyles.backgroundColor,
           position: "relative",
           boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
           width: `${CANVAS_WIDTH * stageScale}px`,
@@ -130,6 +134,15 @@ function KonvaCanvas({
           }}
         >
           <Layer>
+            {/* Background color fill (part of the Konva stage) */}
+            <Rect
+              x={0}
+              y={0}
+              width={CANVAS_WIDTH}
+              height={CANVAS_HEIGHT}
+              fill={canvasStyles.backgroundColor}
+              listening={false}
+            />
             {/* Sort components by zIndex before rendering */}
             {[...components]
               .sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))

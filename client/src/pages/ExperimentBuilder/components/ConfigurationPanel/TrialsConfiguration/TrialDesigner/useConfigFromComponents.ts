@@ -1,4 +1,4 @@
-import { TrialComponent } from "./types";
+import { TrialComponent, CanvasStyles } from "./types";
 
 type Props = {
   toJsPsychCoords: (
@@ -9,11 +9,13 @@ type Props = {
     y: number;
   };
   columnMapping: Record<string, any>;
+  canvasStyles?: CanvasStyles;
 };
 
 export default function useConfigComponents({
   toJsPsychCoords,
   columnMapping,
+  canvasStyles,
 }: Props) {
   const generateConfigFromComponents = (comps: TrialComponent[]) => {
     const stimulusComponents: any[] = [];
@@ -112,6 +114,14 @@ export default function useConfigComponents({
       };
     } else {
       delete dynamicPluginConfig.response_components;
+    }
+
+    // Persist canvas styles so they can be restored on re-open
+    if (canvasStyles) {
+      dynamicPluginConfig.__canvasStyles = {
+        source: "typed",
+        value: canvasStyles,
+      };
     }
 
     return dynamicPluginConfig;

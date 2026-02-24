@@ -6,6 +6,8 @@ import {
   ComponentType,
   TrialComponent,
   KonvaTrialDesignerProps,
+  CanvasStyles,
+  DEFAULT_CANVAS_STYLES,
 } from "./types";
 import ComponentSidebar from "./ComponentSidebar";
 import useConfigComponents from "./useConfigFromComponents";
@@ -16,6 +18,8 @@ import ActionButtons from "./ActionButtons";
 import KonvaCanvas from "./KonvaCanvas";
 import KonvaParameterMapper from "./KonvaParameterMapper";
 import useHandleResize from "./useHandleResize";
+import CanvasStylesBar from "./CanvasStylesBar";
+import ExperimentPreview from "../../../ExperimentPreview";
 
 const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   isOpen,
@@ -29,8 +33,16 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
 }) => {
   const [components, setComponents] = useState<TrialComponent[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [canvasStyles, setCanvasStyles] = useState<CanvasStyles>(
+    DEFAULT_CANVAS_STYLES,
+  );
+  const [isDemoRunning, setIsDemoRunning] = useState(false);
 
   const stageRef = useRef<Konva.Stage>(null);
+  // Track previous canvas size to rescale component positions on resize
+  const prevCanvasSizeRef = useRef<{ width: number; height: number } | null>(
+    null,
+  );
 
   const selectedComponent = components.find((c) => c.id === selectedId);
   const { metadata: componentMetadata, loading: metadataLoading } =
@@ -43,8 +55,8 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   const isResizingLeft = useRef(false);
   const isResizingRight = useRef(false);
 
-  const CANVAS_WIDTH = 1024;
-  const CANVAS_HEIGHT = 768;
+  const CANVAS_WIDTH = canvasStyles.width;
+  const CANVAS_HEIGHT = canvasStyles.height;
 
   const [stageScale, setStageScale] = useState(1);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -104,7 +116,35 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     CANVAS_HEIGHT,
     CANVAS_WIDTH,
     fromJsPsychCoords,
+    setCanvasStyles,
   });
+
+  // When canvas size changes (device preset switch), proportionally rescale
+  // all component pixel positions to maintain their relative positions.
+  useEffect(() => {
+    const prev = prevCanvasSizeRef.current;
+    if (
+      prev &&
+      (prev.width !== CANVAS_WIDTH || prev.height !== CANVAS_HEIGHT)
+    ) {
+      setComponents((comps) => {
+        if (comps.length === 0) return comps;
+        const rescaled = comps.map((comp) => ({
+          ...comp,
+          x: (comp.x / prev.width) * CANVAS_WIDTH,
+          y: (comp.y / prev.height) * CANVAS_HEIGHT,
+        }));
+        // Trigger autosave with updated positions
+        if (onAutoSave) {
+          const config = generateConfigFromComponents(rescaled);
+          setTimeout(() => onAutoSave(config), 100);
+        }
+        return rescaled;
+      });
+    }
+    prevCanvasSizeRef.current = { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [CANVAS_WIDTH, CANVAS_HEIGHT]);
 
   const onRenderComponent = (comp: TrialComponent) => {
     return renderComponent({
@@ -133,6 +173,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   const generateConfigFromComponents = useConfigComponents({
     toJsPsychCoords,
     columnMapping,
+    canvasStyles,
   });
 
   useHandleResize({
@@ -208,6 +249,40 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
           width: "100%",
         }}
       >
+        {/* Global styles toolbar */}
+        <CanvasStylesBar
+          canvasStyles={canvasStyles}
+          setCanvasStyles={setCanvasStyles}
+          stageScale={stageScale}
+          isDemoRunning={isDemoRunning}
+          onRunDemo={() => setIsDemoRunning(true)}
+          onStopDemo={() => setIsDemoRunning(false)}
+        />
+
+        {/* Demo preview overlay */}
+        {isDemoRunning && (
+          <div
+            style={{
+              position: "absolute",
+              top: 42,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 50,
+              background: "var(--neutral-light)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <ExperimentPreview
+              uploadedFiles={uploadedFiles}
+              canvasStyles={canvasStyles}
+              autoStart={true}
+            />
+          </div>
+        )}
+
         {/* Main content area with 3 panels */}
         <div style={{ display: "flex", flex: 1, gap: 0, overflow: "hidden" }}>
           <ComponentSidebar
@@ -226,6 +301,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             setSelectedId={setSelectedId}
             components={components}
           />
+
           {/* Canvas */}
           <KonvaCanvas
             canvasContainerRef={canvasContainerRef}
@@ -237,6 +313,8 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             setSelectedId={setSelectedId}
             components={components}
             onRenderComponent={onRenderComponent}
+            uploadedFiles={uploadedFiles}
+            canvasStyles={canvasStyles}
           />
 
           {/* Right Panel - Parameter Mapper */}

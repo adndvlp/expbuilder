@@ -9,13 +9,16 @@
 export function loadingOverlayCode(): string {
   return `
   // --- Loading overlay ---
+  // Read body background at runtime to match canvas styles injected via <style>
+  const _bgColor = (getComputedStyle(document.body).backgroundColor || '').trim();
+  const _overlayBg = _bgColor && _bgColor !== 'rgba(0, 0, 0, 0)' && _bgColor !== 'transparent' ? _bgColor : '#fff';
   const _loadingOverlay = document.createElement('div');
   _loadingOverlay.id = 'jspsych-loading-overlay';
   _loadingOverlay.style.cssText = [
     'position:fixed', 'inset:0', 'z-index:9999',
     'display:flex', 'flex-direction:column',
     'align-items:center', 'justify-content:center',
-    'background:#fff', 'gap:20px',
+    'background:' + _overlayBg, 'gap:20px',
     'font-family:sans-serif'
   ].join(';');
   _loadingOverlay.innerHTML = \`
@@ -43,7 +46,7 @@ export function loadingOverlayCode(): string {
       'position:fixed', 'inset:0', 'z-index:9999',
       'display:flex', 'flex-direction:column',
       'align-items:center', 'justify-content:center',
-      'background:#fff', 'gap:16px',
+      'background:' + _overlayBg, 'gap:16px',
       'font-family:sans-serif'
     ].join(';');
     overlay.innerHTML = \`
@@ -65,7 +68,7 @@ export function loadingOverlayCode(): string {
       'position:fixed', 'inset:0', 'z-index:9999',
       'display:flex', 'flex-direction:column',
       'align-items:center', 'justify-content:center',
-      'background:#fff', 'gap:20px',
+      'background:' + _overlayBg, 'gap:20px',
       'font-family:sans-serif'
     ].join(';');
     overlay.innerHTML = \`

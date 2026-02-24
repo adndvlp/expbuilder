@@ -14,6 +14,10 @@ export function captchaCode(): string {
     return new Promise((resolve) => {
       provider = provider || 'hcaptcha';
 
+      // Read body background at call time to match canvas styles
+      const _bgColor = (getComputedStyle(document.body).backgroundColor || '').trim();
+      const _captchaBg = _bgColor && _bgColor !== 'rgba(0, 0, 0, 0)' && _bgColor !== 'transparent' ? _bgColor : '#fff';
+
       // Load the appropriate script once
       if (!document.getElementById('captcha-script')) {
         const s = document.createElement('script');
@@ -36,7 +40,7 @@ export function captchaCode(): string {
         'position:fixed', 'inset:0', 'z-index:10000',
         'display:flex', 'flex-direction:column',
         'align-items:center', 'justify-content:center',
-        'background:#fff', 'gap:24px',
+        'background:' + _captchaBg, 'gap:24px',
         'font-family:sans-serif'
       ].join(';');
       overlay.innerHTML = \`

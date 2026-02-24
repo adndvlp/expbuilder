@@ -1,5 +1,10 @@
 import { useEffect, useRef } from "react";
-import { TrialComponent, ComponentType } from "./types";
+import {
+  TrialComponent,
+  ComponentType,
+  CanvasStyles,
+  DEFAULT_CANVAS_STYLES,
+} from "./types";
 
 type Props = {
   isOpen: boolean;
@@ -8,10 +13,11 @@ type Props = {
     x: number;
     y: number;
   };
-  CANVAS_WIDTH: 1024;
-  CANVAS_HEIGHT: 768;
+  CANVAS_WIDTH: number;
+  CANVAS_HEIGHT: number;
   setComponents: React.Dispatch<React.SetStateAction<TrialComponent[]>>;
   setSelectedId: React.Dispatch<React.SetStateAction<string | null>>;
+  setCanvasStyles: React.Dispatch<React.SetStateAction<CanvasStyles>>;
 };
 
 export default function useLoadComponents({
@@ -22,6 +28,7 @@ export default function useLoadComponents({
   CANVAS_HEIGHT,
   setComponents,
   setSelectedId,
+  setCanvasStyles,
 }: Props) {
   const hasLoadedComponents = useRef(false);
 
@@ -221,6 +228,17 @@ export default function useLoadComponents({
     } else {
       setComponents([]);
       setSelectedId(null);
+    }
+
+    // Restore canvas styles if previously saved
+    if (columnMapping.__canvasStyles?.value) {
+      const saved = columnMapping.__canvasStyles.value as Partial<CanvasStyles>;
+      setCanvasStyles({
+        ...DEFAULT_CANVAS_STYLES,
+        ...saved,
+      });
+    } else {
+      setCanvasStyles(DEFAULT_CANVAS_STYLES);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);

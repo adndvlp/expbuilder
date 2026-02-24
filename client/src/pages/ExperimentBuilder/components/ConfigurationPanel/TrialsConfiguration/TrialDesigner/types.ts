@@ -23,6 +23,18 @@ export type TrialComponent = {
   config: Record<string, any>;
 };
 
+export type CanvasStyles = {
+  backgroundColor: string;
+  width: number;
+  height: number;
+};
+
+export const DEFAULT_CANVAS_STYLES: CanvasStyles = {
+  backgroundColor: "#ffffff",
+  width: 1024,
+  height: 768,
+};
+
 export type KonvaTrialDesignerProps = {
   isOpen: boolean;
   onClose: () => void;

@@ -23,7 +23,10 @@
         width: 100%;
       }
     </style>
-  </head>
+  <style id="canvas-styles">
+  body { background-color: #cf2626; }
+  .jspsych-display-element { background-color: #cf2626; }
+</style></head>
   <body>
     <div id="jspsych-container">
       <div id="jspsych-target"></div>
@@ -132,13 +135,16 @@
 
   
   // --- Loading overlay ---
+  // Read body background at runtime to match canvas styles injected via <style>
+  const _bgColor = (getComputedStyle(document.body).backgroundColor || '').trim();
+  const _overlayBg = _bgColor && _bgColor !== 'rgba(0, 0, 0, 0)' && _bgColor !== 'transparent' ? _bgColor : '#fff';
   const _loadingOverlay = document.createElement('div');
   _loadingOverlay.id = 'jspsych-loading-overlay';
   _loadingOverlay.style.cssText = [
     'position:fixed', 'inset:0', 'z-index:9999',
     'display:flex', 'flex-direction:column',
     'align-items:center', 'justify-content:center',
-    'background:#fff', 'gap:20px',
+    'background:' + _overlayBg, 'gap:20px',
     'font-family:sans-serif'
   ].join(';');
   _loadingOverlay.innerHTML = `
@@ -166,7 +172,7 @@
       'position:fixed', 'inset:0', 'z-index:9999',
       'display:flex', 'flex-direction:column',
       'align-items:center', 'justify-content:center',
-      'background:#fff', 'gap:16px',
+      'background:' + _overlayBg, 'gap:16px',
       'font-family:sans-serif'
     ].join(';');
     overlay.innerHTML = `
@@ -188,7 +194,7 @@
       'position:fixed', 'inset:0', 'z-index:9999',
       'display:flex', 'flex-direction:column',
       'align-items:center', 'justify-content:center',
-      'background:#fff', 'gap:20px',
+      'background:' + _overlayBg, 'gap:20px',
       'font-family:sans-serif'
     ].join(';');
     overlay.innerHTML = `
@@ -281,8 +287,21 @@
     await waitForSocket();
     socket = io();
     
-    _setLoadingMsg('Creating session…');
-    participantNumber = await saveSession(trialSessionId);
+    if (isResuming) {
+      // Sesión existente (retoma o repeat/jump): recuperar participantNumber del localStorage
+      // para evitar crear una sesión duplicada en el backend
+      const storedPN = localStorage.getItem('jsPsych_participantNumber');
+      if (storedPN && !isNaN(Number(storedPN))) {
+        participantNumber = Number(storedPN);
+      } else {
+        // Número de participante perdido — recrear sesión como nueva
+        _setLoadingMsg('Creating session…');
+        participantNumber = await saveSession(trialSessionId);
+      }
+    } else {
+      _setLoadingMsg('Creating session…');
+      participantNumber = await saveSession(trialSessionId);
+    }
 
     // Si falla con el sessionId existente (sesión huérfana), reintentar con uno nuevo
     // IMPORTANTE: NO borrar jsPsych_resumeTrial aquí para no perder el punto de retoma
@@ -293,6 +312,7 @@
         ? crypto.randomUUID()
         : Math.random().toString(36).slice(2, 10);
       isResuming = false;
+      _setLoadingMsg('Creating session…');
       participantNumber = await saveSession(trialSessionId);
     }
 
@@ -539,12 +559,8 @@
     },
 
   on_finish: async function() {
-    // Si hay un repeat/jump pendiente (via window o localStorage), recargar para ejecutarlo
-    const pendingJump = localStorage.getItem('jsPsych_jumpToTrial') || (window.skipRemaining && window.nextTrialId);
-    if (pendingJump) {
-      if (window.skipRemaining && window.nextTrialId) {
-        localStorage.setItem('jsPsych_jumpToTrial', String(window.nextTrialId));
-      }
+    // Si hay un repeat/jump pendiente, recargar para ejecutarlo
+    if (localStorage.getItem('jsPsych_jumpToTrial')) {
       if (pendingDataSaves.length > 0) await Promise.allSettled(pendingDataSaves);
       window.location.reload();
       return;
@@ -750,8 +766,8 @@ response_components: jsPsych.timelineVariable("response_components"),
   
 
 
-    const test_stimuli_New_Trial_1 = [{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":0}, width: 200, height: 50, zIndex: 1, name: "HtmlComponent_1", stimulus: "<div style=\"box-sizing: border-box;\">Type or design here</div>" }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":0,"y":-0.3333333333333333}, width: 200, height: 50, zIndex: 2, name: "ButtonResponseComponent_1", choices: ["2"] }]}];
+    const test_stimuli_New_Trial_1 = [{components: [{ type: "HtmlComponent", coordinates: {"x":0.06857805550231166,"y":0.38867186828912215}, width: 234.42310122735452, height: 58.95554255232862, zIndex: 1, name: "HtmlComponent_1", stimulus: "<div style=\"box-sizing: border-box;\">Type or design here</div>" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":-0.09262295081967231,"y":-0.3274475498694525}, width: 200, height: 50, zIndex: 2, name: "ButtonResponseComponent_1", choices: ["2"] }]}];
     const New_Trial_1_timeline = {
     type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
 response_components: jsPsych.timelineVariable("response_components"),
