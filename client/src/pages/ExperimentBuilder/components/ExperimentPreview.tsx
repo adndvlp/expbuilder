@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import useUrl from "../hooks/useUrl";
 import { useExperimentState } from "../hooks/useExpetimentState";
 import useTrials from "../hooks/useTrials";
@@ -39,6 +39,25 @@ function ExperimentPreview({
   const { isDevMode, code } = useDevMode();
 
   const experimentID = useExperimentID();
+
+  // Scale iframe to fit container while keeping internal vw/vh correct
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    if (!canvasStyles?.width || !canvasStyles?.height) return;
+    const el = wrapperRef.current;
+    if (!el) return;
+    const update = () => {
+      const scaleX = el.clientWidth / canvasStyles.width!;
+      const scaleY = el.clientHeight / canvasStyles.height!;
+      setScale(Math.min(scaleX, scaleY, 1));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [canvasStyles?.width, canvasStyles?.height, started]);
 
   useEffect(() => {
     if (started && version) {
@@ -203,14 +222,14 @@ localStorage.removeItem('jsPsych_jumpToTrial');
             </button>
           )}
           <div
+            ref={wrapperRef}
             style={{
               display: "flex",
               flex: 1,
               alignItems: "center",
               justifyContent: "center",
-              overflow: "auto",
+              overflow: "hidden",
               background: "var(--neutral-light, #e5e7eb)",
-              padding: "16px",
             }}
           >
             <iframe
@@ -223,7 +242,9 @@ localStorage.removeItem('jsPsych_jumpToTrial');
                 height: canvasStyles?.height
                   ? `${canvasStyles.height}px`
                   : "60vh",
-                maxWidth: "100%",
+                flexShrink: 0,
+                transform: `scale(${scale})`,
+                transformOrigin: "center center",
                 boxShadow: "0 4px 24px rgba(0,0,0,0.18)",
                 background: canvasStyles?.backgroundColor || "transparent",
               }}

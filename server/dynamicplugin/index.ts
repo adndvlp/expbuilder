@@ -106,13 +106,11 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       styleElement.id = "jspsych-dynamic-plugin-styles";
       styleElement.textContent = `
         #jspsych-dynamic-plugin-container {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          min-height: 100vh;
-          position: relative;
-          width: 100%;
+          position: fixed;
+          inset: 0;
+          width: 100vw;
+          height: 100vh;
+          overflow: auto;
         }
         .dynamic-image-component,
         #jspsych-html-component-main,

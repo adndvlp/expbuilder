@@ -615,15 +615,15 @@ const timeline = [];
     
 
     
-    const test_stimuli_New_Trial = [{components: [{ type: "ImageComponent", coordinates: {"x":-2.1477602313690154,"y":52.25115730910349}, width: 99.80662435350686, height: 86.1237747439571, zIndex: 4, stimulus: "img/bmw.png", name: "ImageComponent_2" }, { type: "TextComponent", coordinates: {"x":-4.78839095046674,"y":-34.91901321419264}, width: 95.95102354526345, height: 19.19020470905269, zIndex: 6, text: "Text", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":-0.2597685871981762,"y":-48.09584989935616}, width: 100.5874592417159, height: 92.59787868483129, zIndex: 5, choices: ["Button"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]}];
+    const test_stimuli_New_Trial = [{components: [{ type: "ImageComponent", coordinates: {"x":-0.38810165568122557,"y":56.077303052255886}, width: 99.5702796468397, height: 41.2369463135063, zIndex: 2, stimulus: "img/cube.png", name: "ImageComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":-1.4382664121318278,"y":-33.737630171714265}, width: 20.380566143091695, height: 8.661740610813967, zIndex: 1, choices: ["Button"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]}];
     const New_Trial_timeline = {
     type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
 response_components: jsPsych.timelineVariable("response_components"),
       data: {
         rt: "rt",
-        trial_id: 1771976158012,
-        builder_id: 1771976158012,
+        trial_id: 1771978598933,
+        builder_id: 1771978598933,
         
         
       },
@@ -721,7 +721,7 @@ response_components: jsPsych.timelineVariable("response_components"),
     timeline_variables: test_stimuli_New_Trial,
     
     conditional_function: function() {
-      const currentId = 1771976158012;
+      const currentId = 1771978598933;
       
       // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
       const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');

@@ -8,28 +8,28 @@ const DEVICE_PRESETS = [
     label: "Mobile",
     description: "375 × 667",
     width: 375,
-    height: 667,
+    height: 725,
   },
   {
     icon: FaTabletAlt,
     label: "Tablet",
     description: "768 × 1024",
     width: 768,
-    height: 1024,
+    height: 725,
   },
   {
     icon: FaLaptop,
     label: "Laptop",
     description: "1280 × 800",
-    width: 1280,
-    height: 800,
+    width: 1440,
+    height: 763,
   },
   {
     icon: FaDesktop,
     label: "Desktop",
     description: "1920 × 1080",
-    width: 1920,
-    height: 1080,
+    width: 2560,
+    height: 1450,
   },
 ];
 
@@ -355,7 +355,7 @@ function CanvasStylesBar({
             : "Run a live preview of this trial"
         }
       >
-        {isDemoRunning ? "⏹ Stop Demo" : "▶ Run Demo"}
+        {isDemoRunning ? "Stop Demo" : "Run Demo"}
       </button>
     </div>
   );

@@ -88,10 +88,11 @@ localStorage.removeItem('jsPsych_jumpToTrial');
       const timeline = [];
       
       
-    const test_stimuli_New_Trial = [{components: [],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":0,"y":0}, zIndex: 1, choices: ["Button"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }, { type: "SketchpadComponent", coordinates: {"x":28.846153846153832,"y":55.311355311355314}, zIndex: 2, canvas_shape: "rectangle", canvas_width: 400, canvas_height: 300, canvas_border_width: 2, canvas_border_color: "#000000", background_color: "#ffffff", stroke_width: 3, stroke_color: "#000000", show_clear_button: true, clear_button_label: "Clear", show_undo_button: true, undo_button_label: "Undo", name: "SketchpadComponent_1" }]}];
+    const test_stimuli_New_Trial = [{components: [{ type: "ImageComponent", coordinates: {"x":-0.38810165568123145,"y":56.077303052255886}, width: 99.57027964683971, height: 41.2369463135063, zIndex: 2, stimulus: "img/cube.png", name: "ImageComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":-1.4382664121318278,"y":-33.737630171714265}, width: 0.7961158649645192, height: 0.3383492426099205, zIndex: 1, choices: ["Button"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]}];
     const New_Trial_timeline = {
-    type: DynamicPlugin, response_components: jsPsych.timelineVariable("response_components"),
+    type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
+response_components: jsPsych.timelineVariable("response_components"),
       data: {
         rt: "rt",
         trial_id: 1771978598933,
