@@ -88,10 +88,132 @@ localStorage.removeItem('jsPsych_jumpToTrial');
       const timeline = [];
       
       
-    const test_stimuli_numeros = [{components: [{ type: "HtmlComponent", coordinates: {"x":19.097065751292153,"y":14.149843698041234}, width: 36.32719622997397, height: 18.163598114986986, zIndex: 1, stimulus: "<p>HTML</p>", name: "HtmlComponent_1" }],
-response_components: []}];
+    let test_stimuli_numeros = [];
+    
+    console.log("=== DEBUG numeros: Starting orders/categories logic ===");
+    console.log("Trial name: numeros");
+    console.log("Trial ID: 1771980159612");
+    console.log("orders flag:", true);
+    console.log("categories flag:", true);
+    console.log("typeof participantNumber:", typeof participantNumber);
+    console.log("participantNumber value:", participantNumber);
+    console.log("isNaN(participantNumber):", isNaN(participantNumber));
+    console.log("Condition check (typeof participantNumber === 'number' && !isNaN(participantNumber)):", (typeof participantNumber === "number" && !isNaN(participantNumber)));
+    
+    if (typeof participantNumber === "number" && !isNaN(participantNumber)) {
+      console.log("✓ INSIDE participantNumber check - condition passed");
+      const stimuliOrders = [[9,8,7,6,5,4,3,2,1,0],[5,6,7,8,9,0,1,2,3,4]];
+      const categoryData = ["non","par","non","par","non","par","non","par","non","par"];
+      const test_stimuli_previous_numeros = [{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "1", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":1.6483516483516425,"y":-23.809523809523768}, zIndex: 2, choices: ["siguiente"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "2", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":1.6483516483516425,"y":-23.809523809523768}, zIndex: 2, choices: ["siguiente"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "3", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":1.6483516483516425,"y":-23.809523809523768}, zIndex: 2, choices: ["siguiente"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "4", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":1.6483516483516425,"y":-23.809523809523768}, zIndex: 2, choices: ["siguiente"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "5", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":1.6483516483516425,"y":-23.809523809523768}, zIndex: 2, choices: ["siguiente"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "6", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":1.6483516483516425,"y":-23.809523809523768}, zIndex: 2, choices: ["siguiente"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "7", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":1.6483516483516425,"y":-23.809523809523768}, zIndex: 2, choices: ["siguiente"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "8", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":1.6483516483516425,"y":-23.809523809523768}, zIndex: 2, choices: ["siguiente"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "9", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":1.6483516483516425,"y":-23.809523809523768}, zIndex: 2, choices: ["siguiente"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "10", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":1.6483516483516425,"y":-23.809523809523768}, zIndex: 2, choices: ["siguiente"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]}];
+      
+      console.log("participantNumber:", participantNumber);
+      console.log("stimuliOrders:", stimuliOrders);
+      console.log("stimuliOrders.length:", stimuliOrders.length);
+      console.log("categoryData:", categoryData);
+      console.log("categoryData.length:", categoryData.length);
+      console.log("test_stimuli_previous_numeros.length:", test_stimuli_previous_numeros.length);
+      
+      if (categoryData.length > 0) {
+        console.log("ENTERING categoryData.length > 0 branch");
+        // Obtener todas las categorías únicas
+        const allCategories = [...new Set(categoryData)];
+        console.log("allCategories:", allCategories);
+        
+        // Determinar qué categoría le corresponde a este participante
+        const categoryIndex = (participantNumber - 1) % allCategories.length;
+        const participantCategory = allCategories[categoryIndex];
+        console.log("categoryIndex:", categoryIndex);
+        console.log("participantCategory:", participantCategory);
+        
+        // Encontrar los índices que corresponden a esta categoría
+        const categoryIndices = [];
+        categoryData.forEach((category, index) => {
+          if (category === participantCategory) {
+            categoryIndices.push(index);
+          }
+        });
+        console.log("categoryIndices:", categoryIndices);
+        
+        // Filtrar los estímulos por categoría
+        const categoryFilteredStimuli = categoryIndices.map(index => 
+          test_stimuli_previous_numeros[index]
+        );
+        console.log("categoryFilteredStimuli.length:", categoryFilteredStimuli.length);
+
+        // Aplicar el orden si existe
+        if (stimuliOrders.length > 0) {
+          console.log("ENTERING stimuliOrders.length > 0 sub-branch");
+          const orderIndex = (participantNumber - 1) % stimuliOrders.length;
+          const index_order = stimuliOrders[orderIndex];
+          console.log("orderIndex:", orderIndex);
+          console.log("index_order:", index_order);
+          
+          // Crear mapeo de índices originales a índices filtrados
+          const indexMapping = {};
+          categoryIndices.forEach((originalIndex, filteredIndex) => {
+            indexMapping[originalIndex] = filteredIndex;
+          });
+          console.log("indexMapping:", indexMapping);
+          
+          // Aplicar el orden solo a los índices que existen en la categoría filtrada
+          const orderedIndices = index_order
+            .filter(i => indexMapping.hasOwnProperty(i))
+            .map(i => indexMapping[i]);
+          console.log("orderedIndices:", orderedIndices);
+          
+          test_stimuli_numeros = orderedIndices
+            .filter(i => i >= 0 && i < categoryFilteredStimuli.length)
+            .map(i => categoryFilteredStimuli[i]);
+        } else {
+          console.log("ENTERING else (no orders) sub-branch");
+          test_stimuli_numeros = categoryFilteredStimuli;
+        }
+        
+        console.log("Participant:", participantNumber, "Category:", participantCategory);
+        console.log("Category indices:", categoryIndices);
+        console.log("Filtered stimuli:", test_stimuli_numeros);
+        console.log("Final test_stimuli_numeros.length:", test_stimuli_numeros.length);
+      } else if (stimuliOrders.length > 0) {
+        console.log("ENTERING stimuliOrders.length > 0 branch (no categories)");
+        // Lógica original sin categorías pero con órdenes
+        const orderIndex = (participantNumber - 1) % stimuliOrders.length;
+        const index_order = stimuliOrders[orderIndex];
+        console.log("orderIndex:", orderIndex);
+        console.log("index_order:", index_order);
+        
+        test_stimuli_numeros = index_order
+          .filter((i) => i !== -1 && i >= 0 && i < test_stimuli_previous_numeros.length)
+          .map((i) => test_stimuli_previous_numeros[i]);
+          
+        console.log(test_stimuli_numeros);
+        console.log("Final test_stimuli_numeros.length:", test_stimuli_numeros.length);
+      } else {
+        console.log("ENTERING else branch (no categories, no orders)");
+        // Sin categorías ni órdenes, usar todos los estímulos
+        test_stimuli_numeros = test_stimuli_previous_numeros;
+        console.log("Final test_stimuli_numeros.length:", test_stimuli_numeros.length);
+      }
+    } else {
+      console.log("✗ FAILED participantNumber check");
+      console.log("Reason: typeof participantNumber !== 'number' OR isNaN(participantNumber)");
+      console.log("test_stimuli_numeros will be empty array!");
+    }
+    console.log("=== END DEBUG numeros ===");
+    console.log("Final test_stimuli_numeros:", test_stimuli_numeros);
+    console.log("Final test_stimuli_numeros.length:", test_stimuli_numeros.length);
     const numeros_timeline = {
     type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
+response_components: jsPsych.timelineVariable("response_components"),
       data: {
         rt: "rt",
         trial_id: 1771980159612,

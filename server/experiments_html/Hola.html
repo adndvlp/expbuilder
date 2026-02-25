@@ -615,160 +615,132 @@ const timeline = [];
     
 
     
-    const test_stimuli_New_Trial = [{components: [],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":-1.4382664121318278,"y":-33.737630171714265}, width: 0.07774568993794134, height: 0.033041918223625046, zIndex: 1, choices: ["Button"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }, { type: "ButtonResponseComponent", coordinates: {"x":15.07009228741163,"y":-25.84613950428196}, width: 12.724153744349318, height: 5.4077653413484565, zIndex: 2, choices: ["Button"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_2" }]}];
-    const New_Trial_timeline = {
-    type: DynamicPlugin, response_components: jsPsych.timelineVariable("response_components"),
-      data: {
-        rt: "rt",
-        trial_id: 1771978598933,
-        builder_id: 1771978598933,
+    let test_stimuli_numeros = [];
+    
+    console.log("=== DEBUG numeros: Starting orders/categories logic ===");
+    console.log("Trial name: numeros");
+    console.log("Trial ID: 1771980159612");
+    console.log("orders flag:", true);
+    console.log("categories flag:", false);
+    console.log("typeof participantNumber:", typeof participantNumber);
+    console.log("participantNumber value:", participantNumber);
+    console.log("isNaN(participantNumber):", isNaN(participantNumber));
+    console.log("Condition check (typeof participantNumber === 'number' && !isNaN(participantNumber)):", (typeof participantNumber === "number" && !isNaN(participantNumber)));
+    
+    if (typeof participantNumber === "number" && !isNaN(participantNumber)) {
+      console.log("✓ INSIDE participantNumber check - condition passed");
+      const stimuliOrders = [[9,8,7,6,5,4,3,2,1,0],[5,6,7,8,9,0,1,2,3,4]];
+      const categoryData = ["non","par","non","par","non","par","non","par","non","par"];
+      const test_stimuli_previous_numeros = [{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "1", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":1.6483516483516425,"y":-23.809523809523768}, zIndex: 2, choices: ["siguiente"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "2", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":1.6483516483516425,"y":-23.809523809523768}, zIndex: 2, choices: ["siguiente"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "3", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":1.6483516483516425,"y":-23.809523809523768}, zIndex: 2, choices: ["siguiente"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "4", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":1.6483516483516425,"y":-23.809523809523768}, zIndex: 2, choices: ["siguiente"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "5", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":1.6483516483516425,"y":-23.809523809523768}, zIndex: 2, choices: ["siguiente"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "6", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":1.6483516483516425,"y":-23.809523809523768}, zIndex: 2, choices: ["siguiente"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "7", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":1.6483516483516425,"y":-23.809523809523768}, zIndex: 2, choices: ["siguiente"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "8", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":1.6483516483516425,"y":-23.809523809523768}, zIndex: 2, choices: ["siguiente"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "9", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":1.6483516483516425,"y":-23.809523809523768}, zIndex: 2, choices: ["siguiente"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "10", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":1.6483516483516425,"y":-23.809523809523768}, zIndex: 2, choices: ["siguiente"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]}];
+      
+      console.log("participantNumber:", participantNumber);
+      console.log("stimuliOrders:", stimuliOrders);
+      console.log("stimuliOrders.length:", stimuliOrders.length);
+      console.log("categoryData:", categoryData);
+      console.log("categoryData.length:", categoryData.length);
+      console.log("test_stimuli_previous_numeros.length:", test_stimuli_previous_numeros.length);
+      
+      if (categoryData.length > 0) {
+        console.log("ENTERING categoryData.length > 0 branch");
+        // Obtener todas las categorías únicas
+        const allCategories = [...new Set(categoryData)];
+        console.log("allCategories:", allCategories);
         
+        // Determinar qué categoría le corresponde a este participante
+        const categoryIndex = (participantNumber - 1) % allCategories.length;
+        const participantCategory = allCategories[categoryIndex];
+        console.log("categoryIndex:", categoryIndex);
+        console.log("participantCategory:", participantCategory);
         
-        branches: [1771980159612],
-        branchConditions: [undefined] 
-        
-      },
-    on_start: function(trial) {
-      // Then apply custom parameters from branching conditions (higher priority)
-      // For trials outside loops, use window.branchCustomParameters
-      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {
-        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {
-          if (param && param.source !== 'none') {
-            // Parse key to check if it's a nested survey question
-            const parts = key.split('::');
-            
-            if (parts.length === 4) {
-              // Format: fieldType::componentName::survey_json::questionName
-              const [fieldType, componentName, propName, questionName] = parts;
-              
-              if (fieldType && componentName && propName === 'survey_json' && questionName) {
-                // Find the component by name in the field array
-                const fieldArray = trial[fieldType];
-                if (Array.isArray(fieldArray)) {
-                  const compIndex = fieldArray.findIndex(c => c.name === componentName);
-                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {
-                    // Find the question in survey_json.elements
-                    const elements = fieldArray[compIndex].survey_json.elements || [];
-                    const questionIndex = elements.findIndex(q => q.name === questionName);
-                    
-                    if (questionIndex !== -1) {
-                      // Apply the override value (from typed or csv)
-                      let valueToSet;
-                      if (param.source === 'typed') {
-                        valueToSet = String(param.value); // Convert to string for SurveyJS
-                      } else if (param.source === 'csv') {
-                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string
-                      }
-                      
-                      if (valueToSet !== undefined && valueToSet !== null) {
-                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;
-                      }
-                    }
-                  }
-                }
-              }
-            } else if (parts.length === 3) {
-              // Format: fieldType::componentName::property (for DynamicPlugin components)
-              const [fieldType, componentName, propName] = parts;
-              
-              if (fieldType && componentName && propName) {
-                // Find the component by name in the field array
-                const fieldArray = trial[fieldType];
-                if (Array.isArray(fieldArray)) {
-                  const compIndex = fieldArray.findIndex(c => c.name === componentName);
-                  if (compIndex !== -1) {
-                    // Apply the override value (from typed or csv)
-                    let valueToSet;
-                    if (param.source === 'typed') {
-                      valueToSet = param.value;
-                    } else if (param.source === 'csv') {
-                      valueToSet = trial[param.value];
-                    }
-                    
-                    if (valueToSet !== undefined && valueToSet !== null) {
-                      fieldArray[compIndex][propName] = valueToSet;
-                    }
-                  }
-                }
-              }
-            } else {
-              // Normal parameter (not nested survey question)
-              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {
-                trial[key] = param.value;
-              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {
-                trial[key] = trial[param.value];
-              }
-            }
+        // Encontrar los índices que corresponden a esta categoría
+        const categoryIndices = [];
+        categoryData.forEach((category, index) => {
+          if (category === participantCategory) {
+            categoryIndices.push(index);
           }
         });
-        // Clear the custom parameters after applying them
-        window.branchCustomParameters = null;
-      }
-      
-    },
-    on_finish: function(data) {
-      // Branching automático al primer branch (global)
-      console.log('🔄 [GLOBAL BRANCH] Auto-branching to first branch:', 1771980159612);
-      window.nextTrialId = 1771980159612;
-      window.skipRemaining = true;
-      window.branchingActive = true;
-      
-    },};
-    console.log("=== PROCEDURE SETUP New_Trial ===");
-    console.log("test_stimuli_New_Trial before procedure:", test_stimuli_New_Trial);
-    console.log("test_stimuli_New_Trial.length:", test_stimuli_New_Trial ? test_stimuli_New_Trial.length : 'undefined');
-    
-    const New_Trial_procedure = {
-    timeline: 
-    [New_Trial_timeline],
-    timeline_variables: test_stimuli_New_Trial,
-    
-    conditional_function: function() {
-      const currentId = 1771978598933;
-      
-      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
-      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
-      if (jumpToTrial) {
-        if (String(currentId) === String(jumpToTrial)) {
-          // Encontramos el trial objetivo para repeat/jump
-          console.log('🔁 [REPEAT/JUMP] Found target trial', currentId);
-          localStorage.removeItem('jsPsych_jumpToTrial');
-          return true;
-        }
-        // No es el objetivo, saltar
-        console.log('⏭️ [REPEAT/JUMP] Skipping trial', currentId);
-        return false;
-      }
-      
-      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo
-      if (window.skipRemaining) {
-        console.log('🔍 [SKIP CHECK] Trial', currentId, '| Target:', window.nextTrialId, '| Match:', String(currentId) === String(window.nextTrialId));
-        if (String(currentId) === String(window.nextTrialId)) {
-          // Encontramos el trial objetivo
-          console.log('✅ [SKIP CHECK] Found target trial! Disabling skip mode');
-          window.skipRemaining = false;
-          window.nextTrialId = null;
-          return true;
-        }
-        // No es el objetivo, saltar
-        console.log('⏭️ [SKIP CHECK] Skipping trial', currentId);
-        return false;
-      }
-      
-      return true;
-    },
-  
-    
-    };
-    timeline.push(New_Trial_procedure);
-  
+        console.log("categoryIndices:", categoryIndices);
+        
+        // Filtrar los estímulos por categoría
+        const categoryFilteredStimuli = categoryIndices.map(index => 
+          test_stimuli_previous_numeros[index]
+        );
+        console.log("categoryFilteredStimuli.length:", categoryFilteredStimuli.length);
 
-
-    const test_stimuli_New_Trial_1 = [{components: [{ type: "HtmlComponent", coordinates: {"x":19.097065751292153,"y":14.149843698041234}, width: 36.32719622997397, height: 18.163598114986986, zIndex: 1, stimulus: "<p>HTML</p>", name: "HtmlComponent_1" }],
-response_components: []}];
-    const New_Trial_1_timeline = {
+        // Aplicar el orden si existe
+        if (stimuliOrders.length > 0) {
+          console.log("ENTERING stimuliOrders.length > 0 sub-branch");
+          const orderIndex = (participantNumber - 1) % stimuliOrders.length;
+          const index_order = stimuliOrders[orderIndex];
+          console.log("orderIndex:", orderIndex);
+          console.log("index_order:", index_order);
+          
+          // Crear mapeo de índices originales a índices filtrados
+          const indexMapping = {};
+          categoryIndices.forEach((originalIndex, filteredIndex) => {
+            indexMapping[originalIndex] = filteredIndex;
+          });
+          console.log("indexMapping:", indexMapping);
+          
+          // Aplicar el orden solo a los índices que existen en la categoría filtrada
+          const orderedIndices = index_order
+            .filter(i => indexMapping.hasOwnProperty(i))
+            .map(i => indexMapping[i]);
+          console.log("orderedIndices:", orderedIndices);
+          
+          test_stimuli_numeros = orderedIndices
+            .filter(i => i >= 0 && i < categoryFilteredStimuli.length)
+            .map(i => categoryFilteredStimuli[i]);
+        } else {
+          console.log("ENTERING else (no orders) sub-branch");
+          test_stimuli_numeros = categoryFilteredStimuli;
+        }
+        
+        console.log("Participant:", participantNumber, "Category:", participantCategory);
+        console.log("Category indices:", categoryIndices);
+        console.log("Filtered stimuli:", test_stimuli_numeros);
+        console.log("Final test_stimuli_numeros.length:", test_stimuli_numeros.length);
+      } else if (stimuliOrders.length > 0) {
+        console.log("ENTERING stimuliOrders.length > 0 branch (no categories)");
+        // Lógica original sin categorías pero con órdenes
+        const orderIndex = (participantNumber - 1) % stimuliOrders.length;
+        const index_order = stimuliOrders[orderIndex];
+        console.log("orderIndex:", orderIndex);
+        console.log("index_order:", index_order);
+        
+        test_stimuli_numeros = index_order
+          .filter((i) => i !== -1 && i >= 0 && i < test_stimuli_previous_numeros.length)
+          .map((i) => test_stimuli_previous_numeros[i]);
+          
+        console.log(test_stimuli_numeros);
+        console.log("Final test_stimuli_numeros.length:", test_stimuli_numeros.length);
+      } else {
+        console.log("ENTERING else branch (no categories, no orders)");
+        // Sin categorías ni órdenes, usar todos los estímulos
+        test_stimuli_numeros = test_stimuli_previous_numeros;
+        console.log("Final test_stimuli_numeros.length:", test_stimuli_numeros.length);
+      }
+    } else {
+      console.log("✗ FAILED participantNumber check");
+      console.log("Reason: typeof participantNumber !== 'number' OR isNaN(participantNumber)");
+      console.log("test_stimuli_numeros will be empty array!");
+    }
+    console.log("=== END DEBUG numeros ===");
+    console.log("Final test_stimuli_numeros:", test_stimuli_numeros);
+    console.log("Final test_stimuli_numeros.length:", test_stimuli_numeros.length);
+    const numeros_timeline = {
     type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
+response_components: jsPsych.timelineVariable("response_components"),
       data: {
         rt: "rt",
         trial_id: 1771980159612,
@@ -860,14 +832,14 @@ response_components: []}];
         jsPsych.abortExperiment('', {});
       }
     },};
-    console.log("=== PROCEDURE SETUP New_Trial_1 ===");
-    console.log("test_stimuli_New_Trial_1 before procedure:", test_stimuli_New_Trial_1);
-    console.log("test_stimuli_New_Trial_1.length:", test_stimuli_New_Trial_1 ? test_stimuli_New_Trial_1.length : 'undefined');
+    console.log("=== PROCEDURE SETUP numeros ===");
+    console.log("test_stimuli_numeros before procedure:", test_stimuli_numeros);
+    console.log("test_stimuli_numeros.length:", test_stimuli_numeros ? test_stimuli_numeros.length : 'undefined');
     
-    const New_Trial_1_procedure = {
+    const numeros_procedure = {
     timeline: 
-    [New_Trial_1_timeline],
-    timeline_variables: test_stimuli_New_Trial_1,
+    [numeros_timeline],
+    timeline_variables: test_stimuli_numeros,
     
     conditional_function: function() {
       const currentId = 1771980159612;
@@ -906,7 +878,7 @@ response_components: []}];
   
     
     };
-    timeline.push(New_Trial_1_procedure);
+    timeline.push(numeros_procedure);
   
 
     jsPsych.run(timeline);

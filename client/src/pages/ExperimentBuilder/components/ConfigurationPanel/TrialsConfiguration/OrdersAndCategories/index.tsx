@@ -121,13 +121,17 @@ function OrdersAndCategories({
             checked={orders}
             onChange={(checked) => {
               setOrders(checked);
+              if (!checked) {
+                setOrderColumns([]);
+                mapOrdersFromCsv(csvJson, []);
+              }
               if (onSave) {
                 setTimeout(
                   () =>
                     onSave(
                       checked,
-                      orderColumns,
-                      stimuliOrders,
+                      checked ? orderColumns : [],
+                      checked ? stimuliOrders : [],
                       categories,
                       categoryColumn,
                       categoryData,
@@ -176,6 +180,10 @@ function OrdersAndCategories({
             checked={categories}
             onChange={(checked) => {
               setCategories(checked);
+              if (!checked) {
+                setCategoryColumn("");
+                mapCategoriesFromCsv(csvJson, "");
+              }
               if (onSave) {
                 setTimeout(
                   () =>
@@ -184,8 +192,8 @@ function OrdersAndCategories({
                       orderColumns,
                       stimuliOrders,
                       checked,
-                      categoryColumn,
-                      categoryData,
+                      checked ? categoryColumn : "",
+                      checked ? categoryData : [],
                     ),
                   300,
                 );
