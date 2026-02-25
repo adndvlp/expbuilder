@@ -21,7 +21,10 @@ const router = Router();
  * @throws {Error} If OS is not supported
  */
 function getCloudflaredPath() {
-  const baseDir = path.join(__dirname, "cloudflared");
+  const isProduction = process.env.NODE_ENV === "production";
+  const baseDir = isProduction
+    ? path.join(process.resourcesPath, "cloudflared")
+    : path.join(__dirname, "cloudflared");
   const platform = os.platform();
   const arch = os.arch();
 

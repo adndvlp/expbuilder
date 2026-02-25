@@ -53,6 +53,7 @@
       "preload.js",
       ".env.production",
       "server/**",
+      "!server/cloudflared/**",
       "!server/dynamicplugin/**",
       "!server/jspsych-bundler/**",
       "!landing-page"
@@ -61,6 +62,10 @@
       {
         "from": "client/dist",
         "to": "client/dist"
+      },
+      {
+        "from": "server/cloudflared",
+        "to": "cloudflared"
       }
     ],
     "icon": "icon/icon.png",

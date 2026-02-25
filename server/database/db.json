@@ -4,8 +4,8 @@
       "experimentID": "931344b4-2370-41fa-ac44-1526491ea8fe",
       "name": ",jbl",
       "createdAt": "2026-02-25T20:37:08.899Z",
-      "updatedAt": "2026-02-25T20:37:24.688Z",
-      "tunnelUrl": "https://fallen-defines-tba-lucia.trycloudflare.com"
+      "updatedAt": "2026-02-25T21:34:09.060Z",
+      "tunnelUrl": "https://suspension-assumptions-damages-public.trycloudflare.com"
     }
   ],
   "trials": [
@@ -75,7 +75,7 @@
       },
       "isDevMode": false,
       "createdAt": "2026-02-25T20:37:12.459Z",
-      "updatedAt": "2026-02-25T20:37:20.544Z"
+      "updatedAt": "2026-02-25T21:34:04.996Z"
     }
   ],
   "pluginConfigs": [
@@ -104,6 +104,27 @@
         "language": "en-US",
         "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
         "startedAt": "2026-02-25T20:37:35.941Z"
+      }
+    },
+    {
+      "experimentID": "931344b4-2370-41fa-ac44-1526491ea8fe",
+      "sessionId": "f6300127-4258-4b81-acca-7858e49dbce1",
+      "createdAt": "2026-02-25T21:34:40.441Z",
+      "data": [],
+      "state": "initiated",
+      "lastUpdate": "2026-02-25T21:34:40.998Z",
+      "metadata": {
+        "browser": "Chrome",
+        "browserVersion": "145.0",
+        "os": "macOS",
+        "screenWidth": 1440,
+        "screenHeight": 900,
+        "screenResolution": "1440x900",
+        "viewportWidth": 1440,
+        "viewportHeight": 812,
+        "language": "en-US",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
+        "startedAt": "2026-02-25T21:34:40.017Z"
       }
     }
   ]
