@@ -125,9 +125,9 @@ class SliderResponseComponent {
   ): void {
     // Helper to map coordinate values
     const mapValue = (value: number): number => {
-      if (value < -1) return -50;
-      if (value > 1) return 50;
-      return value * 50;
+      if (value < -100) return -50;
+      if (value > 100) return 50;
+      return value * 0.5;
     };
 
     const half_thumb_width = 7.5;

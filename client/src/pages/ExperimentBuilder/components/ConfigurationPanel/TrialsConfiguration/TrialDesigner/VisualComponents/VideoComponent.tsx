@@ -133,10 +133,8 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
           onTransformEnd={() => {
             const node = shapeRef.current;
             if (!placeholderImg) return;
-
             const scaleX = node.scaleX();
             const scaleY = node.scaleY();
-
             onChange({
               ...shapeProps,
               x: node.x(),
@@ -195,10 +193,8 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
         onTransformEnd={() => {
           const node = shapeRef.current;
           if (!videoImage) return;
-
           const scaleX = node.scaleX();
           const scaleY = node.scaleY();
-
           onChange({
             ...shapeProps,
             x: node.x(),

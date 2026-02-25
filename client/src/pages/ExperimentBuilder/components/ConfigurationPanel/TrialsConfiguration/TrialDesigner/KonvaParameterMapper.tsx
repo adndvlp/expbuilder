@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from "react";
 import { ComponentMetadata } from "../hooks/useComponentMetadata";
 import { TrialComponent } from "./types";
+import { syncConfigToComponent } from "./syncConfigToComponent";
 import ParameterMapper from "../ParameterMapper";
 
 type Props = {
@@ -19,7 +20,6 @@ type Props = {
   generateConfigFromComponents: (
     comps: TrialComponent[],
   ) => Record<string, any>;
-  columnMapping: Record<string, any>;
   isResizingRight: React.RefObject<boolean>;
   setShowRightPanel: React.Dispatch<React.SetStateAction<boolean>>;
   setRightPanelWidth: React.Dispatch<React.SetStateAction<number>>;
@@ -41,7 +41,6 @@ function KonvaParameterMapper({
   setShowRightPanel,
   setRightPanelWidth,
   csvColumns,
-  columnMapping,
 }: Props) {
   const initResizeRight = () => {
     isResizingRight.current = true;
@@ -78,56 +77,34 @@ function KonvaParameterMapper({
 
       setComponents((prevComponents) => {
         const updatedComponents = prevComponents.map((comp) => {
-          if (comp.id === selectedId) {
-            const newConfig =
-              typeof updateFn === "function"
-                ? updateFn(comp.config || {})
-                : updateFn;
+          if (comp.id !== selectedId) return comp;
 
-            const updated = { ...comp, config: newConfig };
+          const newConfig =
+            typeof updateFn === "function"
+              ? updateFn(comp.config || {})
+              : updateFn;
 
-            if (newConfig.coordinates?.value) {
-              const canvasCoords = fromJsPsychCoords(
-                newConfig.coordinates.value,
-              );
-              updated.x = canvasCoords.x;
-              updated.y = canvasCoords.y;
-            }
-
-            if (newConfig.width?.value !== undefined) {
-              updated.width = newConfig.width.value;
-            }
-
-            if (newConfig.height?.value !== undefined) {
-              updated.height = newConfig.height.value;
-            }
-
-            if (newConfig.rotation?.value !== undefined) {
-              updated.rotation = newConfig.rotation.value;
-            }
-
-            if (newConfig.zIndex?.value !== undefined) {
-              updated.zIndex = newConfig.zIndex.value;
-            }
-
-            return updated;
-          }
-          return comp;
+          // Sync ALL config keys that have a Konva visual counterpart
+          // (coordinates → x/y, width, height, rotation, zIndex,
+          //  and per-component style fields like button colours)
+          return syncConfigToComponent(comp, newConfig, fromJsPsychCoords);
         });
 
-        // Autosave triggered here
         if (onAutoSave) {
           const config = generateConfigFromComponents(updatedComponents);
-          // Debounce could be good here but user asked for "luego me dices" logic,
-          // implying immediate action on drop/change might be acceptable or I should use timeout.
-          // ParameterMapper uses timeout 100ms. I'll use a small timeout to not block rendering.
           setTimeout(() => onAutoSave(config), 100);
         }
 
         return updatedComponents;
       });
     },
-    [selectedId, onAutoSave, columnMapping],
+    [
+      selectedId,
+      onAutoSave,
+      setComponents,
+      fromJsPsychCoords,
+      generateConfigFromComponents,
+    ],
   );
   return (
     <div

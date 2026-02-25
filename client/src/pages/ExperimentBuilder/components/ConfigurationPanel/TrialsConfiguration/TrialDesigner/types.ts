@@ -3,6 +3,7 @@ export type ComponentType =
   | "VideoComponent"
   | "AudioComponent"
   | "HtmlComponent"
+  | "TextComponent"
   | "ButtonResponseComponent"
   | "KeyboardResponseComponent"
   | "SliderResponseComponent"
@@ -20,6 +21,24 @@ export type TrialComponent = {
   height: number;
   rotation?: number;
   zIndex?: number;
+  // Button style fields (synced from config, like x/y/rotation)
+  buttonColor?: string;
+  buttonTextColor?: string;
+  buttonFontSize?: number;
+  buttonBorderRadius?: number;
+  buttonBorderColor?: string;
+  buttonBorderWidth?: number;
+  // Text style fields
+  textFontColor?: string;
+  textFontSize?: number;
+  textFontFamily?: string;
+  textFontWeight?: string;
+  textFontStyle?: string;
+  textAlign?: string;
+  textBackgroundColor?: string;
+  textBorderRadius?: number;
+  textBorderColor?: string;
+  textBorderWidth?: number;
   config: Record<string, any>;
 };
 

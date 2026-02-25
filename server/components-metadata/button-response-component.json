@@ -45,6 +45,60 @@
       "default": 0,
       "pretty_name": "Z-Index",
       "description": "Layer order - higher values render on top of lower values"
+    },
+    "button_color": {
+      "type": "string",
+      "default": "#e7e7e7",
+      "pretty_name": "Button Color",
+      "description": "Background color of the buttons"
+    },
+    "button_text_color": {
+      "type": "string",
+      "default": "#000000",
+      "pretty_name": "Button Text Color",
+      "description": "Text color inside the buttons"
+    },
+    "button_font_size": {
+      "type": "number",
+      "default": 14,
+      "pretty_name": "Button Font Size",
+      "description": "Font size of the button label in pixels"
+    },
+    "button_border_radius": {
+      "type": "number",
+      "default": 3,
+      "pretty_name": "Button Border Radius",
+      "description": "Corner radius of the buttons in pixels"
+    },
+    "button_border_color": {
+      "type": "string",
+      "default": "#999999",
+      "pretty_name": "Button Border Color",
+      "description": "Border color of the buttons"
+    },
+    "button_border_width": {
+      "type": "number",
+      "default": 1,
+      "pretty_name": "Button Border Width",
+      "description": "Border width of the buttons in pixels"
+    },
+    "button_padding": {
+      "type": "string",
+      "default": "6px 14px",
+      "pretty_name": "Button Padding",
+      "description": "CSS padding shorthand for the button interior"
+    },
+    "width": {
+      "type": "number",
+      "default": null,
+      "pretty_name": "Width",
+      "description": "Width of the button group container in pixels (null = auto)"
+    },
+    "height": {
+      "type": "number",
+      "default": null,
+      "pretty_name": "Height",
+      "description": "Height of the button group container in pixels (null = auto)"
     }
   },
   "data": {

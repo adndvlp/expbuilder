@@ -83,6 +83,73 @@ const info = {
       default: 0,
       description: "Layer order - higher values render on top of lower values",
     },
+
+    // ── Style params ─────────────────────────────────────────────
+    /** Background color of the buttons (CSS color string). */
+    button_color: {
+      type: ParameterType.STRING,
+      pretty_name: "Button Color",
+      default: "#e7e7e7",
+      description: "Background color of the buttons",
+    },
+    /** Text color inside the buttons (CSS color string). */
+    button_text_color: {
+      type: ParameterType.STRING,
+      pretty_name: "Button Text Color",
+      default: "#000000",
+      description: "Text color inside the buttons",
+    },
+    /** Font size of the button text in pixels. */
+    button_font_size: {
+      type: ParameterType.INT,
+      pretty_name: "Button Font Size",
+      default: 14,
+      description: "Font size of the button label in pixels",
+    },
+    /** Border radius of the buttons in pixels. */
+    button_border_radius: {
+      type: ParameterType.INT,
+      pretty_name: "Button Border Radius",
+      default: 3,
+      description: "Corner radius of the buttons in pixels",
+    },
+    /** Border color of the buttons (CSS color string). */
+    button_border_color: {
+      type: ParameterType.STRING,
+      pretty_name: "Button Border Color",
+      default: "#999999",
+      description: "Border color of the buttons",
+    },
+    /** Border width of the buttons in pixels. */
+    button_border_width: {
+      type: ParameterType.INT,
+      pretty_name: "Button Border Width",
+      default: 1,
+      description: "Border width of the buttons in pixels",
+    },
+    /** Padding inside each button (CSS shorthand, e.g. '8px 16px'). */
+    button_padding: {
+      type: ParameterType.STRING,
+      pretty_name: "Button Padding",
+      default: "6px 14px",
+      description: "CSS padding shorthand for the button interior",
+    },
+    /** Width of the entire button group container in pixels. null = auto (max-content). */
+    width: {
+      type: ParameterType.INT,
+      pretty_name: "Width",
+      default: null,
+      description:
+        "Width of the button group container in pixels (null = auto)",
+    },
+    /** Height of the entire button group container in pixels. null = auto. */
+    height: {
+      type: ParameterType.INT,
+      pretty_name: "Height",
+      default: null,
+      description:
+        "Height of the button group container in pixels (null = auto)",
+    },
   },
   data: {
     /** Indicates which button the participant pressed. The first button in the `choices` array is 0, the second is 1, and so on.  */
@@ -130,6 +197,24 @@ class ButtonResponseComponent {
   }
 
   /**
+   * Resolve a parameter value that may be stored as a raw value OR as the
+   * ParameterMapper envelope `{source: "typed"|"csv", value: ...}`.
+   */
+  private resolveParam(raw: any, fallback: any): any {
+    if (raw === undefined || raw === null) return fallback;
+    if (
+      typeof raw === "object" &&
+      "value" in raw &&
+      (raw.source === "typed" || raw.source === "csv")
+    ) {
+      return raw.value !== undefined && raw.value !== null
+        ? raw.value
+        : fallback;
+    }
+    return raw;
+  }
+
+  /**
    * Check if a string is an image URL
    */
   private isImageUrl(str: string): boolean {
@@ -148,23 +233,45 @@ class ButtonResponseComponent {
   }
 
   /**
-   * Generate HTML for a button, handling both text and image choices
+   * Generate HTML for a button, handling both text and image choices.
+   * Style params (button_color, button_text_color, etc.) from `trial` are applied inline.
    */
   private generateButtonHtml(
     choice: string,
     index: number,
     trial: any,
   ): string {
+    const bgColor = this.resolveParam(trial.button_color, "#e7e7e7");
+    const textColor = this.resolveParam(trial.button_text_color, "#000000");
+    const fontSize = this.resolveParam(trial.button_font_size, 14);
+    const borderRadius = this.resolveParam(trial.button_border_radius, 3);
+    const borderColor = this.resolveParam(trial.button_border_color, "#999999");
+    const borderWidth = this.resolveParam(trial.button_border_width, 1);
+    const padding = this.resolveParam(trial.button_padding, "6px 14px");
+    const btnWidth = this.resolveParam(trial.width, null);
+    const btnHeight = this.resolveParam(trial.height, null);
+
+    const baseStyleParts = [
+      `background-color: ${bgColor}`,
+      `color: ${textColor}`,
+      `font-size: ${fontSize}px`,
+      `border-radius: ${borderRadius}px`,
+      `border: ${borderWidth}px solid ${borderColor}`,
+      `padding: ${padding}`,
+      `cursor: pointer`,
+    ];
+    if (btnWidth != null) baseStyleParts.push(`width: ${btnWidth}vw`);
+    if (btnHeight != null) baseStyleParts.push(`height: ${btnHeight}vw`);
+    const baseStyle = baseStyleParts.join("; ");
+
     if (this.isImageUrl(choice)) {
-      // Generate image button
       const width = trial.image_button_width || 150;
       const height = trial.image_button_height || 150;
-      return `<button class="jspsych-btn jspsych-btn-image" style="padding: 5px; border: 2px solid #ccc; background: white;">
+      return `<button class="jspsych-btn jspsych-btn-image" style="${baseStyle}; padding: 5px;">
         <img src="${choice}" style="width: ${width}px; height: ${height}px; object-fit: cover; display: block; pointer-events: none;" />
       </button>`;
     } else {
-      // Generate text button (default behavior)
-      return `<button class="jspsych-btn">${choice}</button>`;
+      return `<button class="jspsych-btn" style="${baseStyle}">${choice}</button>`;
     }
   }
 
@@ -178,15 +285,16 @@ class ButtonResponseComponent {
   ): void {
     // Helper to map coordinate values
     const mapValue = (value: number): number => {
-      if (value < -1) return -50;
-      if (value > 1) return 50;
-      return value * 50;
+      if (value < -100) return -50;
+      if (value > 100) return 50;
+      return value * 0.5;
     };
 
     // Create button group container with coordinates
     this.buttonGroupElement = document.createElement("div");
     this.buttonGroupElement.id = "jspsych-button-response-component-btngroup";
     this.buttonGroupElement.style.position = "absolute";
+    // Container auto-sizes to fit buttons; per-button width/height is applied in generateButtonHtml
     this.buttonGroupElement.style.width = "max-content";
 
     // Use default coordinates if not provided
@@ -195,7 +303,10 @@ class ButtonResponseComponent {
     const yVh = mapValue(coordinates.y);
     this.buttonGroupElement.style.left = `calc(50% + ${xVw}vw)`;
     this.buttonGroupElement.style.top = `calc(50% - ${yVh}vh)`;
-    this.buttonGroupElement.style.transform = "translate(-50%, -50%)";
+
+    // Apply rotation if provided
+    const rotation = trial.rotation ?? 0;
+    this.buttonGroupElement.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
 
     display_element.appendChild(this.buttonGroupElement);
 
@@ -225,11 +336,13 @@ class ButtonResponseComponent {
     }
 
     // Create buttons
-    // Use custom button_html if provided, otherwise use the smart default
-    const buttonHtml = trial.button_html
-      ? trial.button_html
-      : (choice: string, choice_index: number) =>
-          this.generateButtonHtml(choice, choice_index, trial);
+    // Unwrap button_html in case it arrived as a {source,value} envelope
+    const rawButtonHtml = this.resolveParam(trial.button_html, null);
+    const buttonHtml =
+      typeof rawButtonHtml === "function"
+        ? rawButtonHtml
+        : (choice: string, choice_index: number) =>
+            this.generateButtonHtml(choice, choice_index, trial);
 
     for (let i = 0; i < trial.choices.length; i++) {
       const choice = trial.choices[i];

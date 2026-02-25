@@ -25,8 +25,8 @@ function ObjectCoordsInput({
       <label className="block mt-2">x:</label>
       <input
         type="number"
-        min={-1}
-        max={1}
+        min={-100}
+        max={100}
         step="any"
         className="w-full p-2 border rounded mt-1"
         value={
@@ -46,7 +46,7 @@ function ObjectCoordsInput({
         }}
         onBlur={(e) => {
           const rawValue = Number(e.target.value);
-          const clampedValue = Math.max(-1, Math.min(1, rawValue));
+          const clampedValue = Math.max(-100, Math.min(100, rawValue));
           const coordValue = {
             ...(entry.value &&
             typeof entry.value === "object" &&
@@ -78,8 +78,8 @@ function ObjectCoordsInput({
       <label className="block mt-2">y:</label>
       <input
         type="number"
-        min={-1}
-        max={1}
+        min={-100}
+        max={100}
         step="any"
         className="w-full p-2 border rounded mt-1"
         value={
@@ -99,7 +99,7 @@ function ObjectCoordsInput({
         }}
         onBlur={(e) => {
           const rawValue = Number(e.target.value);
-          const clampedValue = Math.max(-1, Math.min(1, rawValue));
+          const clampedValue = Math.max(-100, Math.min(100, rawValue));
           const coordValue = {
             ...(entry.value &&
             typeof entry.value === "object" &&

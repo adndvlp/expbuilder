@@ -30,12 +30,21 @@ export default function useConfigComponents({
 
       // Only save width/height if > 0 (meaning it was explicitly resized)
       // 0 means "use component's calculated/default size"
+      //
+      // All components store both width AND height as vw units
+      // (both divided by canvasStyles.width) so the sizing defined in Konva is
+      // preserved exactly on any screen size at runtime.
+
       if (comp.width > 0) {
-        componentData.width = comp.width;
+        componentData.width = canvasStyles
+          ? (comp.width / canvasStyles.width) * 100
+          : comp.width;
       }
 
       if (comp.height > 0) {
-        componentData.height = comp.height;
+        componentData.height = canvasStyles
+          ? (comp.height / canvasStyles.width) * 100 // vw units — same denominator as width
+          : comp.height;
       }
 
       // Add rotation if present

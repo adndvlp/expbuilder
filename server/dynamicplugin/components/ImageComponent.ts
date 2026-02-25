@@ -84,10 +84,11 @@ class ImageComponent {
    */
   render(container: HTMLElement, config: any): HTMLElement {
     // Helper function to map coordinate values
+    // Coordinate range is [-100, 100], mapped to [-50vw/vh, 50vw/vh]
     const mapValue = (value: number): number => {
-      if (value > 1) return 50;
-      if (value < -1) return -50;
-      return value * 50;
+      if (value > 100) return 50;
+      if (value < -100) return -50;
+      return value * 0.5;
     };
 
     // Always use absolute positioning for proper overlapping
@@ -174,20 +175,34 @@ class ImageComponent {
     }
 
     const drawImage = () => {
-      const [width, height] = calculateImageDimensions(
-        image as HTMLImageElement,
-      );
-
+      const img = image as HTMLImageElement;
       if (config.render_on_canvas && canvas) {
-        canvas.width = width;
-        canvas.height = height;
+        // Canvas path: width drives sizing, height always derived from natural aspect ratio
+        const pxW =
+          config.width !== null
+            ? (config.width / 100) * window.innerWidth
+            : img.naturalWidth;
+        const pxH = img.naturalHeight * (pxW / img.naturalWidth);
+        canvas.width = pxW;
+        canvas.height = pxH;
         const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(image as HTMLImageElement, 0, 0, width, height);
-        }
+        if (ctx) ctx.drawImage(img, 0, 0, pxW, pxH);
       } else {
-        (stimulusElement as HTMLImageElement).style.width = `${width}px`;
-        (stimulusElement as HTMLImageElement).style.height = `${height}px`;
+        // img path: both width and height in vw (same unit) → ratio is preserved exactly
+        if (config.width !== null) {
+          (stimulusElement as HTMLImageElement).style.width =
+            `${config.width}vw`;
+        }
+        if (config.height !== null) {
+          (stimulusElement as HTMLImageElement).style.height =
+            `${config.height}vw`;
+        }
+        // If only one dimension is set, let the browser derive the other
+        if (config.width !== null && config.height === null) {
+          (stimulusElement as HTMLImageElement).style.height = "auto";
+        } else if (config.height !== null && config.width === null) {
+          (stimulusElement as HTMLImageElement).style.width = "auto";
+        }
       }
     };
 

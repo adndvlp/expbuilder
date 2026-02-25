@@ -6,6 +6,7 @@ const version = "1.0.0";
 import ImageComponent from "./components/ImageComponent";
 import VideoComponent from "./components/VideoComponent";
 import HtmlComponent from "./components/HtmlComponent";
+import TextComponent from "./components/TextComponent";
 import AudioComponent from "./components/AudioComponent";
 
 // Import all response components
@@ -71,6 +72,7 @@ const COMPONENT_MAP: Record<string, any> = {
   ImageComponent,
   VideoComponent,
   HtmlComponent,
+  TextComponent,
   AudioComponent,
 };
 
@@ -240,6 +242,11 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         // Add stimulus if exists
         if (config.stimulus !== undefined) {
           trialData[`${prefix}_stimulus`] = config.stimulus;
+        }
+
+        // TextComponent: save the text content as stimulus data
+        if (config.text !== undefined) {
+          trialData[`${prefix}_text`] = config.text;
         }
 
         // Add coordinates if exists (stringify for CSV compatibility)

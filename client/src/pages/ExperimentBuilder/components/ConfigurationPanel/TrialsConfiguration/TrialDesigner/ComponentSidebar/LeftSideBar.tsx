@@ -82,7 +82,8 @@ function LeftSideBar({
       newName = `${type}_${nameCounter}`;
     }
 
-    // Determine default dimensions based on component type
+    // Determine default dimensions based on component type.
+    // 0 = let the Konva visual component use its own natural size.
     let width = 200;
     let height = 50;
 
@@ -93,8 +94,17 @@ function LeftSideBar({
       width = 250;
       height = 100;
     } else if (type === "SketchpadComponent") {
-      width = 200;
-      height = 200;
+      // Natural sizing: let canvas_width/canvas_height from config define the size
+      width = 0;
+      height = 0;
+    } else if (
+      type === "ButtonResponseComponent" ||
+      type === "TextComponent" ||
+      type === "HtmlComponent"
+    ) {
+      // Natural sizing: let the visual component decide its own initial size
+      width = 0;
+      height = 0;
     }
 
     // Calculate max z-index to ensure new component is on top
@@ -146,6 +156,7 @@ function LeftSideBar({
     { type: "VideoComponent", label: "Video" },
     { type: "AudioComponent", label: "Audio" },
     { type: "HtmlComponent", label: "HTML" },
+    { type: "TextComponent", label: "Text" },
     { type: "SketchpadComponent", label: "Sketchpad" },
     { type: "SurveyComponent", label: "Survey" },
     { type: "ButtonResponseComponent", label: "Button" },
@@ -214,6 +225,7 @@ function LeftSideBar({
                     "VideoComponent",
                     "AudioComponent",
                     "HtmlComponent",
+                    "TextComponent",
                   ].includes(type),
                 )
                 .map(({ type, label }) => (

@@ -19,6 +19,14 @@ interface TrialComponent {
   width: number;
   height: number;
   rotation?: number;
+  zIndex?: number;
+  // Button style fields (synced from config, like x/y/rotation)
+  buttonColor?: string;
+  buttonTextColor?: string;
+  buttonFontSize?: number;
+  buttonBorderRadius?: number;
+  buttonBorderColor?: string;
+  buttonBorderWidth?: number;
   config: Record<string, any>;
 }
 
@@ -37,6 +45,11 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
 }) => {
   const groupRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
+
+  // Natural size of a single button cell (matches .jspsych-btn defaults:
+  // "Button" text ~46px + 2*14px padding + 2*1px border ≈ 76px wide, 14px line-height + 2*6px padding + 2px border ≈ 34px tall)
+  const NATURAL_BTN_W = 80;
+  const NATURAL_BTN_H = 34;
 
   // Extract the actual value from the config structure
   const getConfigValue = (key: string, defaultValue: any = null) => {
@@ -78,6 +91,24 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
   const imageButtonWidth = getConfigValue("image_button_width", 150);
   const imageButtonHeight = getConfigValue("image_button_height", 150);
 
+  // Style params – read directly from top-level shapeProps (synced from config,
+  // same pattern as shapeProps.x / shapeProps.rotation), with fallback to config.
+  // Defaults match the actual .jspsych-btn HTML style.
+  const buttonColor =
+    shapeProps.buttonColor ?? getConfigValue("button_color", "#e7e7e7");
+  const buttonTextColor =
+    shapeProps.buttonTextColor ??
+    getConfigValue("button_text_color", "#000000");
+  const buttonFontSize =
+    shapeProps.buttonFontSize ?? getConfigValue("button_font_size", 14);
+  const buttonBorderRadius =
+    shapeProps.buttonBorderRadius ?? getConfigValue("button_border_radius", 3);
+  const buttonBorderColor =
+    shapeProps.buttonBorderColor ??
+    getConfigValue("button_border_color", "#999999");
+  const buttonBorderWidth =
+    shapeProps.buttonBorderWidth ?? getConfigValue("button_border_width", 1);
+
   // Load placeholder image
   const [placeholderImg] = useImage(imagePlaceholder);
 
@@ -117,8 +148,17 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
       ? gridColumns
       : Math.ceil(numButtons / parsedGridRows);
 
-  const buttonWidth = shapeProps.width / parsedGridColumns;
-  const buttonHeight = shapeProps.height / parsedGridRows;
+  // ── Natural size (like ImageComponent's intrinsic image size) ────────
+  // When width/height == 0 (freshly dropped, not yet resized), derive the
+  // natural size from the grid + per-button natural dimensions.
+  const naturalWidth = NATURAL_BTN_W * parsedGridColumns;
+  const naturalHeight = NATURAL_BTN_H * parsedGridRows;
+  const effectiveWidth = shapeProps.width > 0 ? shapeProps.width : naturalWidth;
+  const effectiveHeight =
+    shapeProps.height > 0 ? shapeProps.height : naturalHeight;
+
+  const buttonWidth = effectiveWidth / parsedGridColumns;
+  const buttonHeight = effectiveHeight / parsedGridRows;
 
   // Component to render a single button (text or image)
   const ButtonContent: React.FC<{
@@ -154,10 +194,10 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
             y={y}
             width={width - 4}
             height={height - 4}
-            fill="#ffffff"
-            stroke="#7e22ce"
-            strokeWidth={2}
-            cornerRadius={6}
+            fill={buttonColor}
+            stroke={buttonBorderColor}
+            strokeWidth={buttonBorderWidth}
+            cornerRadius={buttonBorderRadius}
             shadowBlur={2}
             shadowOpacity={0.3}
           />
@@ -186,10 +226,10 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
           y={y}
           width={width - 4}
           height={height - 4}
-          fill="#9333ea"
-          stroke="#7e22ce"
-          strokeWidth={1}
-          cornerRadius={6}
+          fill={buttonColor}
+          stroke={buttonBorderColor}
+          strokeWidth={buttonBorderWidth}
+          cornerRadius={buttonBorderRadius}
           shadowBlur={2}
           shadowOpacity={0.3}
         />
@@ -202,8 +242,8 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
           height={height - 4}
           align="center"
           verticalAlign="middle"
-          fontSize={Math.min(height * 0.4, 14)}
-          fill="#ffffff"
+          fontSize={Math.min(height * 0.4, buttonFontSize)}
+          fill={buttonTextColor}
           fontStyle="bold"
         />
       </>
@@ -230,7 +270,7 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
           width={buttonWidth}
           height={buttonHeight}
           index={index}
-        />
+        />,
       );
     });
 
@@ -262,28 +302,30 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
           node.scaleX(1);
           node.scaleY(1);
 
+          // Use effectiveWidth/Height so scaling from natural size works correctly
           onChange({
             ...shapeProps,
             x: node.x(),
             y: node.y(),
-            width: Math.max(50, shapeProps.width * scaleX),
-            height: Math.max(30, shapeProps.height * scaleY),
+            width: Math.max(50, effectiveWidth * scaleX),
+            height: Math.max(20, effectiveHeight * scaleY),
             rotation: node.rotation(),
           });
         }}
-        offsetX={shapeProps.width / 2}
-        offsetY={shapeProps.height / 2}
+        offsetX={effectiveWidth / 2}
+        offsetY={effectiveHeight / 2}
       >
-        {/* Background container */}
+        {/* Background container – transparent, just shows selection outline */}
         <Rect
           x={0}
           y={0}
-          width={shapeProps.width}
-          height={shapeProps.height}
-          fill={isSelected ? "#dbeafe" : "#eff6ff"}
-          stroke={isSelected ? "#1d4ed8" : "#60a5fa"}
+          width={effectiveWidth}
+          height={effectiveHeight}
+          fill="transparent"
+          stroke={isSelected ? "#1d4ed8" : "rgba(100,100,100,0.25)"}
           strokeWidth={isSelected ? 2 : 1}
-          cornerRadius={8}
+          cornerRadius={4}
+          dash={isSelected ? [] : [4, 3]}
         />
 
         {/* Render buttons */}
@@ -295,8 +337,7 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
           ref={trRef}
           flipEnabled={false}
           boundBoxFunc={(oldBox, newBox) => {
-            // Minimum size
-            if (Math.abs(newBox.width) < 50 || Math.abs(newBox.height) < 30) {
+            if (Math.abs(newBox.width) < 50 || Math.abs(newBox.height) < 20) {
               return oldBox;
             }
             return newBox;

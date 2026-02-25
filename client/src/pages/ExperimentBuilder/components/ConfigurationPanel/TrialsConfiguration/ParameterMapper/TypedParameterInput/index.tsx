@@ -4,6 +4,7 @@ import { ColumnMappingEntry } from "..";
 import ObjectInput from "./ObjectInput";
 import ObjectCoordsInput from "./ObjectCoordsInput";
 import TextInput from "./TextInput";
+import ColorInput from "./ColorInput";
 import FunctionInput from "./FunctionInput";
 import WebgazerInput from "./WebgazerInput";
 import ArrayInput from "./ArrayInput";
@@ -257,6 +258,46 @@ function index({
           paramKey={paramKey}
           setLocalInputValues={setLocalInputValues}
           setColumnMapping={setColumnMapping}
+        />
+      ) : type === "string" && paramKey.endsWith("_color") ? (
+        <ColorInput
+          onSave={onSave}
+          localInputValues={localInputValues}
+          setColumnMapping={setColumnMapping}
+          paramKey={paramKey}
+          entry={entry}
+          label={label}
+          setLocalInputValues={setLocalInputValues}
+        />
+      ) : type === "string" && paramKey === "text" ? (
+        <textarea
+          rows={4}
+          className="w-full p-2 border rounded mt-2 resize-y"
+          style={{ fontFamily: "inherit", fontSize: 13 }}
+          value={
+            localInputValues[paramKey] ??
+            (typeof entry.value === "string" ? entry.value : "")
+          }
+          onChange={(e) => {
+            setLocalInputValues((prev) => ({
+              ...prev,
+              [paramKey]: e.target.value,
+            }));
+          }}
+          onBlur={(e) => {
+            const newValue = {
+              source: "typed" as const,
+              value: e.target.value,
+            };
+            setColumnMapping((prev) => ({ ...prev, [paramKey]: newValue }));
+            if (onSave) setTimeout(() => onSave(paramKey, newValue), 100);
+            setLocalInputValues((prev) => {
+              const s = { ...prev };
+              delete s[paramKey];
+              return s;
+            });
+          }}
+          placeholder="Enter text content..."
         />
       ) : (
         <TextInput

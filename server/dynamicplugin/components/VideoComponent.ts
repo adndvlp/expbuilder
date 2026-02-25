@@ -108,10 +108,11 @@ class VideoComponent {
    */
   render(container: HTMLElement, config: any): HTMLVideoElement {
     // Helper to map coordinate values
+    // Coordinate range is [-100, 100], mapped to [-50vw/vh, 50vw/vh]
     const mapValue = (value: number): number => {
-      if (value < -1) return -50;
-      if (value > 1) return 50;
-      return value * 50;
+      if (value < -100) return -50;
+      if (value > 100) return 50;
+      return value * 0.5;
     };
 
     // Create wrapper with coordinates
@@ -138,12 +139,17 @@ class VideoComponent {
     // Required attributes for autoplay to work reliably
     videoElement.setAttribute("playsinline", ""); // Required for iOS
 
-    // Set video dimensions - if not specified, video will use natural dimensions
+    // Set video dimensions via CSS: both in vw (same unit) → ratio is preserved exactly
     if (config.width) {
-      videoElement.width = config.width;
+      videoElement.style.width = `${config.width}vw`;
     }
     if (config.height) {
-      videoElement.height = config.height;
+      videoElement.style.height = `${config.height}vw`;
+    }
+    if (config.width && !config.height) {
+      videoElement.style.height = "auto";
+    } else if (config.height && !config.width) {
+      videoElement.style.width = "auto";
     }
 
     // Set video controls

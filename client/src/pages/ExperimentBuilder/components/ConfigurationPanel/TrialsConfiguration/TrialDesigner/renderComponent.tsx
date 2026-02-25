@@ -1,10 +1,11 @@
-import { TrialComponent } from "./types";
+import { TrialComponent, CanvasStyles } from "./types";
 import { Rect } from "react-konva";
 import {
   ImageComponent,
   VideoComponent,
   AudioComponent,
   HtmlComponent,
+  TextComponent,
   ButtonResponseComponent,
   KeyboardResponseComponent,
   SliderResponseComponent,
@@ -32,6 +33,7 @@ type Props = {
   setSelectedId: React.Dispatch<React.SetStateAction<string | null>>;
   components: TrialComponent[];
   uploadedFiles?: any[];
+  canvasStyles?: CanvasStyles;
 };
 
 const RenderComponent = ({
@@ -44,6 +46,7 @@ const RenderComponent = ({
   setSelectedId,
   components,
   uploadedFiles = [],
+  canvasStyles,
 }: Props) => {
   const isSelected = comp.id === selectedId;
 
@@ -70,22 +73,28 @@ const RenderComponent = ({
 
           // Sync width to config if changed and has valid value
           if (newAttrs.width !== undefined && newAttrs.width > 0) {
+            const configWidth = canvasStyles
+              ? (newAttrs.width / canvasStyles.width) * 100
+              : newAttrs.width;
             updated.config = {
               ...updated.config,
               width: {
                 source: "typed",
-                value: newAttrs.width,
+                value: configWidth,
               },
             };
           }
 
           // Sync height to config if changed and has valid value
           if (newAttrs.height !== undefined && newAttrs.height > 0) {
+            const configHeight = canvasStyles
+              ? (newAttrs.height / canvasStyles.width) * 100 // vw units — same denominator as width
+              : newAttrs.height;
             updated.config = {
               ...updated.config,
               height: {
                 source: "typed",
-                value: newAttrs.height,
+                value: configHeight,
               },
             };
           }
@@ -108,6 +117,20 @@ const RenderComponent = ({
               zIndex: {
                 source: "typed",
                 value: newAttrs.zIndex,
+              },
+            };
+          }
+
+          // Sync font_size to config when TextComponent is resized (Canva-style)
+          if (
+            newAttrs.textFontSize !== undefined &&
+            c.type === "TextComponent"
+          ) {
+            updated.config = {
+              ...updated.config,
+              font_size: {
+                source: "typed",
+                value: newAttrs.textFontSize,
               },
             };
           }
@@ -188,6 +211,17 @@ const RenderComponent = ({
     case "HtmlComponent":
       return (
         <HtmlComponent
+          key={comp.id}
+          shapeProps={comp}
+          isSelected={isSelected}
+          onSelect={() => handleSelect(comp.id)}
+          onChange={handleComponentChange}
+        />
+      );
+
+    case "TextComponent":
+      return (
+        <TextComponent
           key={comp.id}
           shapeProps={comp}
           isSelected={isSelected}

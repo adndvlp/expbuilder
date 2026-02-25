@@ -58,9 +58,9 @@ class HtmlComponent {
   render(container: HTMLElement, config: any): HTMLElement {
     // Helper to map coordinate values
     const mapValue = (value: number): number => {
-      if (value < -1) return -50;
-      if (value > 1) return 50;
-      return value * 50;
+      if (value < -100) return -50;
+      if (value > 100) return 50;
+      return value * 0.5;
     };
 
     // Create stimulus element with coordinates

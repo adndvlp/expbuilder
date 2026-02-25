@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import { Rect, Circle, Transformer, Group, Line } from "react-konva";
+import { Rect, Circle, Transformer, Group, Line, Text } from "react-konva";
 import Konva from "konva";
 
 interface TrialComponent {
@@ -29,22 +29,14 @@ const SketchpadComponent: React.FC<SketchpadComponentProps> = ({
   const groupRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
 
-  // Extract the actual value from the config structure
   const getConfigValue = (key: string, defaultValue: any = null) => {
     const config = shapeProps.config[key];
     if (!config) return defaultValue;
-
-    // Handle nested config structure with source/value
     if (typeof config === "object" && config !== null && "source" in config) {
-      if (config.source === "typed" || config.source === "csv") {
-        return config.value !== undefined && config.value !== null
-          ? config.value
-          : defaultValue;
-      }
-      return defaultValue;
+      return config.value !== undefined && config.value !== null
+        ? config.value
+        : defaultValue;
     }
-
-    // Direct value
     return config !== undefined && config !== null ? config : defaultValue;
   };
 
@@ -52,12 +44,11 @@ const SketchpadComponent: React.FC<SketchpadComponentProps> = ({
   const canvasWidth = getConfigValue("canvas_width", 500);
   const canvasHeight = getConfigValue("canvas_height", 500);
   const canvasDiameter = getConfigValue("canvas_diameter", 500);
-  const canvasBorderWidth = getConfigValue("canvas_border_width", 0);
-  const canvasBorderColor = getConfigValue("canvas_border_color", "#000");
+  const borderWidth = getConfigValue("canvas_border_width", 0);
+  const borderColor = getConfigValue("canvas_border_color", "#000000");
   const backgroundColor = getConfigValue("background_color", "#ffffff");
   const strokeColor = getConfigValue("stroke_color", "#000000");
   const strokeWidth = getConfigValue("stroke_width", 2);
-  const strokeColorPalette = getConfigValue("stroke_color_palette", []);
 
   useEffect(() => {
     if (isSelected && trRef.current && groupRef.current) {
@@ -66,41 +57,36 @@ const SketchpadComponent: React.FC<SketchpadComponentProps> = ({
     }
   }, [isSelected]);
 
-  // Calculate dimensions based on shape
   const isCircle = canvasShape === "circle";
-  const displayWidth = isCircle ? canvasDiameter : canvasWidth;
-  const displayHeight = isCircle ? canvasDiameter : canvasHeight;
 
-  // Scale to fit component bounds
-  const scaleX = shapeProps.width / displayWidth;
-  const scaleY = shapeProps.height / displayHeight;
-  const scale = Math.min(scaleX, scaleY, 1); // Don't scale up, only down
+  // Natural size mirrors the actual runtime canvas size exactly
+  const naturalWidth = isCircle ? canvasDiameter : canvasWidth;
+  const naturalHeight = isCircle ? canvasDiameter : canvasHeight;
 
-  const scaledWidth = displayWidth * scale;
-  const scaledHeight = displayHeight * scale;
-  const scaledRadius = isCircle ? (canvasDiameter / 2) * scale : 0;
+  // Use stored size after a Konva resize; fall back to natural on first drop
+  const effectiveWidth = shapeProps.width > 0 ? shapeProps.width : naturalWidth;
+  const effectiveHeight =
+    shapeProps.height > 0 ? shapeProps.height : naturalHeight;
 
-  // Example stroke paths to show on canvas (decorative)
+  // Decorative example strokes (proportional to effective size)
   const exampleStrokes = [
-    // Simple curve
     [
-      scaledWidth * 0.3,
-      scaledHeight * 0.4,
-      scaledWidth * 0.4,
-      scaledHeight * 0.3,
-      scaledWidth * 0.5,
-      scaledHeight * 0.4,
-      scaledWidth * 0.6,
-      scaledHeight * 0.5,
+      effectiveWidth * 0.25,
+      effectiveHeight * 0.45,
+      effectiveWidth * 0.38,
+      effectiveHeight * 0.32,
+      effectiveWidth * 0.52,
+      effectiveHeight * 0.42,
+      effectiveWidth * 0.65,
+      effectiveHeight * 0.55,
     ],
-    // Another curve
     [
-      scaledWidth * 0.2,
-      scaledHeight * 0.6,
-      scaledWidth * 0.3,
-      scaledHeight * 0.7,
-      scaledWidth * 0.4,
-      scaledHeight * 0.65,
+      effectiveWidth * 0.3,
+      effectiveHeight * 0.62,
+      effectiveWidth * 0.42,
+      effectiveHeight * 0.72,
+      effectiveWidth * 0.55,
+      effectiveHeight * 0.65,
     ],
   ];
 
@@ -111,95 +97,100 @@ const SketchpadComponent: React.FC<SketchpadComponentProps> = ({
         x={shapeProps.x}
         y={shapeProps.y}
         rotation={shapeProps.rotation || 0}
+        offsetX={effectiveWidth / 2}
+        offsetY={effectiveHeight / 2}
         draggable
         onClick={onSelect}
         onTap={onSelect}
         onDragEnd={(e) => {
-          onChange({
-            ...shapeProps,
-            x: e.target.x(),
-            y: e.target.y(),
-          });
+          onChange({ ...shapeProps, x: e.target.x(), y: e.target.y() });
         }}
         onTransformEnd={() => {
           const node = groupRef.current;
-          const scaleX = node.scaleX();
-          const scaleY = node.scaleY();
-
-          // Reset scale and update width/height
+          const sx = node.scaleX();
+          const sy = node.scaleY();
           node.scaleX(1);
           node.scaleY(1);
-
           onChange({
             ...shapeProps,
             x: node.x(),
             y: node.y(),
-            width: Math.max(100, shapeProps.width * scaleX),
-            height: Math.max(100, shapeProps.height * scaleY),
+            width: Math.max(50, effectiveWidth * sx),
+            height: Math.max(50, effectiveHeight * sy),
             rotation: node.rotation(),
           });
         }}
       >
-        {/* Canvas background */}
+        {/* Canvas area — matches runtime shape */}
         {isCircle ? (
           <Circle
-            x={scaledWidth / 2}
-            y={scaledHeight / 2}
-            radius={scaledRadius}
+            x={effectiveWidth / 2}
+            y={effectiveHeight / 2}
+            radius={effectiveWidth / 2}
             fill={backgroundColor}
-            stroke={canvasBorderWidth > 0 ? canvasBorderColor : undefined}
-            strokeWidth={canvasBorderWidth * scale}
+            stroke={
+              borderWidth > 0
+                ? borderColor
+                : isSelected
+                  ? "#1d4ed8"
+                  : "rgba(100,100,100,0.4)"
+            }
+            strokeWidth={borderWidth > 0 ? borderWidth : isSelected ? 2 : 1}
           />
         ) : (
           <Rect
             x={0}
             y={0}
-            width={scaledWidth}
-            height={scaledHeight}
+            width={effectiveWidth}
+            height={effectiveHeight}
             fill={backgroundColor}
-            stroke={canvasBorderWidth > 0 ? canvasBorderColor : undefined}
-            strokeWidth={canvasBorderWidth * scale}
-            cornerRadius={4}
+            stroke={
+              borderWidth > 0
+                ? borderColor
+                : isSelected
+                  ? "#1d4ed8"
+                  : "rgba(100,100,100,0.4)"
+            }
+            strokeWidth={borderWidth > 0 ? borderWidth : isSelected ? 2 : 1}
           />
         )}
 
-        {/* Example strokes */}
-        {exampleStrokes.map((points, index) => (
+        {/* Decorative strokes showing it's a drawing area */}
+        {exampleStrokes.map((points, i) => (
           <Line
-            key={`stroke-${index}`}
+            key={i}
             points={points}
             stroke={strokeColor}
-            strokeWidth={strokeWidth * scale}
+            strokeWidth={Math.max(1, strokeWidth)}
             lineCap="round"
             lineJoin="round"
             tension={0.5}
+            opacity={0.45}
           />
         ))}
 
-        {/* Color palette indicator */}
-        {Array.isArray(strokeColorPalette) && strokeColorPalette.length > 0 && (
-          <Group x={10 * scale} y={scaledHeight - 30 * scale}>
-            {strokeColorPalette.slice(0, 5).map((color, index) => (
-              <Circle
-                key={`palette-${index}`}
-                x={index * 15 * scale}
-                y={0}
-                radius={5 * scale}
-                fill={String(color)}
-                stroke="#333"
-                strokeWidth={0.5}
-              />
-            ))}
-          </Group>
-        )}
+        {/* Dimension label */}
+        <Text
+          x={0}
+          y={0}
+          width={effectiveWidth}
+          height={effectiveHeight}
+          text={`${isCircle ? "⬤" : "▭"}  ${naturalWidth} × ${naturalHeight} px`}
+          fontSize={11}
+          fill="rgba(80,80,80,0.6)"
+          align="center"
+          verticalAlign="bottom"
+          padding={6}
+        />
       </Group>
+
       {isSelected && (
         <Transformer
           ref={trRef}
+          flipEnabled={false}
           boundBoxFunc={(oldBox, newBox) => {
-            if (newBox.width < 100 || newBox.height < 100) {
+            if (Math.abs(newBox.width) < 50 || Math.abs(newBox.height) < 50)
               return oldBox;
-            }
             return newBox;
           }}
         />

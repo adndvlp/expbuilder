@@ -91,8 +91,8 @@ const HtmlComponent: React.FC<HtmlComponentProps> = ({
             ...shapeProps,
             x: node.x(),
             y: node.y(),
-            width: Math.max(50, shapeProps.width * scaleX),
-            height: Math.max(30, shapeProps.height * scaleY),
+            width: Math.max(50, (shapeProps.width || 200) * scaleX),
+            height: Math.max(30, (shapeProps.height || 100) * scaleY),
             rotation: node.rotation(),
           });
         }}

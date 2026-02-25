@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <title>My experiment</title>
@@ -44,11 +44,6 @@
 
     /* create timeline */
     var timeline = [];
-    var trial = {
-      type: jsPsychInitializeMicrophone,
-    };
-
-    timeline.push(trial);
 
     // ============================================
     const inputResponseTrial = {
@@ -175,39 +170,18 @@
     };
 
     // Add trials to timeline
-    timeline.push(inputResponseTrial);
-    timeline.push(freeInputTrial);
-    timeline.push(multiResponseTrial);
-    timeline.push(sketchpadTrial);
+    // timeline.push(inputResponseTrial);
+    // timeline.push(freeInputTrial);
+    // timeline.push(multiResponseTrial);
+    // timeline.push(sketchpadTrial);
 
     const procedure2 = {
       type: DynamicPlugin,
       components: [
         {
-          type: "ImageComponent",
-          stimulus: "cofre.png",
-          coordinates: { x: 0.0, y: 0 },
-        },
-        {
-          type: "ImageComponent",
-          stimulus: "armadillo.png",
-          coordinates: { x: 0.0, y: 1 },
-        },
-        {
           type: "HtmlComponent",
           stimulus: "<p>Cola</p>",
           coordinates: { x: 0, y: 0 },
-        },
-        {
-          type: "VideoComponent",
-          stimulus: ["Dembow.mp4"],
-          coordinates: { x: 1, y: 1 },
-        },
-        {
-          type: "AudioComponent",
-          stimulus: "Alexa.mp3",
-          pan: -1,
-          coordinates: { x: 1, y: 1 },
         },
       ],
       response_components: [
@@ -215,16 +189,19 @@
           type: "ButtonResponseComponent",
           choices: ["Yes", "No"],
           coordinates: { x: 0, y: 0 },
+          width: 100,
+          height: 60,
+          button_color: "#ff4444",
+          button_text_color: "#ffffff",
+          button_font_size: 18,
+          button_border_radius: 8,
+          button_border_color: "#cc0000",
+          button_border_width: 2,
         },
         {
           type: "KeyboardResponseComponent",
           choices: "ALL_KEYS",
           coordinates: { x: 0, y: 0 },
-        },
-        {
-          type: "ButtonResponseComponent",
-          choices: ["Yes2", "No2"],
-          coordinates: { x: 0.1, y: 0 },
         },
       ],
     };

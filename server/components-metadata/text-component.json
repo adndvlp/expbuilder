@@ -1,0 +1,113 @@
+{
+  "name": "TextComponent",
+  "version": "1.0.0",
+  "parameters": {
+    "name": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string",
+      "default": "Text",
+      "pretty_name": "Text",
+      "description": "The text content to display"
+    },
+    "coordinates": {
+      "type": "object",
+      "default": "{ x: 0, y: 0 }"
+    },
+    "zIndex": {
+      "type": "number",
+      "default": 0,
+      "pretty_name": "Z-Index",
+      "description": "Layer order - higher values render on top of lower values"
+    },
+    "rotation": {
+      "type": "number",
+      "default": 0,
+      "pretty_name": "Rotation",
+      "description": "Rotation of the text block in degrees"
+    },
+    "font_color": {
+      "type": "string",
+      "default": "#000000",
+      "pretty_name": "Font Color",
+      "description": "CSS color for the text"
+    },
+    "font_size": {
+      "type": "number",
+      "default": 16,
+      "pretty_name": "Font Size",
+      "description": "Font size of the text in pixels"
+    },
+    "font_family": {
+      "type": "string",
+      "default": "sans-serif",
+      "pretty_name": "Font Family",
+      "description": "CSS font-family value"
+    },
+    "font_weight": {
+      "type": "string",
+      "default": "normal",
+      "pretty_name": "Font Weight",
+      "description": "Font weight (normal / bold / 100–900)"
+    },
+    "font_style": {
+      "type": "string",
+      "default": "normal",
+      "pretty_name": "Font Style",
+      "description": "Font style (normal / italic)"
+    },
+    "text_align": {
+      "type": "string",
+      "default": "center",
+      "pretty_name": "Text Align",
+      "description": "Horizontal alignment of the text (left / center / right)"
+    },
+    "line_height": {
+      "type": "number",
+      "default": 1.5,
+      "pretty_name": "Line Height",
+      "description": "Line height as a unitless multiplier"
+    },
+    "background_color": {
+      "type": "string",
+      "default": "transparent",
+      "pretty_name": "Background Color",
+      "description": "Background color of the text block"
+    },
+    "padding": {
+      "type": "string",
+      "default": "0px",
+      "pretty_name": "Padding",
+      "description": "CSS padding shorthand for the text block"
+    },
+    "border_radius": {
+      "type": "number",
+      "default": 0,
+      "pretty_name": "Border Radius",
+      "description": "Corner radius of the text block in pixels"
+    },
+    "border_color": {
+      "type": "string",
+      "default": "transparent",
+      "pretty_name": "Border Color",
+      "description": "Border color of the text block"
+    },
+    "border_width": {
+      "type": "number",
+      "default": 0,
+      "pretty_name": "Border Width",
+      "description": "Border width of the text block in pixels"
+    },
+    "width": {
+      "type": "number",
+      "default": null,
+      "pretty_name": "Width",
+      "description": "Width of the text block in pixels (null = auto)"
+    }
+  },
+  "data": {
+    "apa": {},
+    "bibtex": {}
+  }
+}

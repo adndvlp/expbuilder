@@ -99,10 +99,8 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
           onTransformEnd={() => {
             const node = shapeRef.current;
             if (!placeholderImg) return;
-
             const scaleX = node.scaleX();
             const scaleY = node.scaleY();
-
             onChange({
               ...shapeProps,
               x: node.x(),
@@ -155,10 +153,8 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
         onTransformEnd={() => {
           const node = shapeRef.current;
           if (!image) return;
-
           const scaleX = node.scaleX();
           const scaleY = node.scaleY();
-
           onChange({
             ...shapeProps,
             x: node.x(),
