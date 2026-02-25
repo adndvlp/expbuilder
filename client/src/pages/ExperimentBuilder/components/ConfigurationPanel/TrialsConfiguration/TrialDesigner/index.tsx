@@ -419,7 +419,6 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             setSelectedId={setSelectedId}
             components={components}
             onRenderComponent={onRenderComponent}
-            uploadedFiles={uploadedFiles}
             canvasStyles={canvasStyles}
           />
 

@@ -17,7 +17,6 @@ type Props = {
   setSelectedId: React.Dispatch<React.SetStateAction<string | null>>;
   components: TrialComponent[];
   onRenderComponent: (comp: TrialComponent) => void;
-  uploadedFiles: any[];
   canvasStyles: CanvasStyles;
 };
 
@@ -31,7 +30,6 @@ function KonvaCanvas({
   setSelectedId,
   components,
   onRenderComponent,
-  uploadedFiles,
   canvasStyles,
 }: Props) {
   return (
