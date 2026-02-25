@@ -214,9 +214,17 @@ export default function useLoadComponents({
           };
         }
 
-        // Use explicit width/height if saved, otherwise 0 (let component decide its size)
-        const numericWidth = typeof comp.width === "number" ? comp.width : 0;
-        const numericHeight = typeof comp.height === "number" ? comp.height : 0;
+        // Use explicit width/height if saved, otherwise 0 (let component decide its size).
+        // All components store both width AND height as vw % (same denominator = CANVAS_WIDTH)
+        // so we reverse both using CANVAS_WIDTH.
+        const numericWidth =
+          typeof comp.width === "number"
+            ? (comp.width / 100) * CANVAS_WIDTH
+            : 0;
+        const numericHeight =
+          typeof comp.height === "number"
+            ? (comp.height / 100) * CANVAS_WIDTH // vw units — same denominator as width
+            : 0;
 
         const base: TrialComponent = {
           id: `${comp.type}-${idCounter++}`,

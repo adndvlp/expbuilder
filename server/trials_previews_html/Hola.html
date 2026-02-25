@@ -39,7 +39,7 @@
 
 
         const trialSessionId =
-            "New Trial_result_" + (crypto.randomUUID
+            "numeros_result_" + (crypto.randomUUID
               ? crypto.randomUUID()
               : Math.random().toString(36).slice(2, 10));
 
@@ -88,15 +88,14 @@ localStorage.removeItem('jsPsych_jumpToTrial');
       const timeline = [];
       
       
-    const test_stimuli_New_Trial = [{components: [{ type: "ImageComponent", coordinates: {"x":-0.38810165568123145,"y":56.077303052255886}, width: 99.57027964683971, height: 41.2369463135063, zIndex: 2, stimulus: "img/cube.png", name: "ImageComponent_1" }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":-1.4382664121318278,"y":-33.737630171714265}, width: 0.7961158649645192, height: 0.3383492426099205, zIndex: 1, choices: ["Button"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1" }]}];
-    const New_Trial_timeline = {
+    const test_stimuli_numeros = [{components: [{ type: "HtmlComponent", coordinates: {"x":19.097065751292153,"y":14.149843698041234}, width: 36.32719622997397, height: 18.163598114986986, zIndex: 1, stimulus: "<p>HTML</p>", name: "HtmlComponent_1" }],
+response_components: []}];
+    const numeros_timeline = {
     type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
-response_components: jsPsych.timelineVariable("response_components"),
       data: {
         rt: "rt",
-        trial_id: 1771978598933,
-        builder_id: 1771978598933,
+        trial_id: 1771980159612,
+        builder_id: 1771980159612,
         
         
       },
@@ -184,17 +183,17 @@ response_components: jsPsych.timelineVariable("response_components"),
         jsPsych.abortExperiment('', {});
       }
     },};
-    console.log("=== PROCEDURE SETUP New_Trial ===");
-    console.log("test_stimuli_New_Trial before procedure:", test_stimuli_New_Trial);
-    console.log("test_stimuli_New_Trial.length:", test_stimuli_New_Trial ? test_stimuli_New_Trial.length : 'undefined');
+    console.log("=== PROCEDURE SETUP numeros ===");
+    console.log("test_stimuli_numeros before procedure:", test_stimuli_numeros);
+    console.log("test_stimuli_numeros.length:", test_stimuli_numeros ? test_stimuli_numeros.length : 'undefined');
     
-    const New_Trial_procedure = {
+    const numeros_procedure = {
     timeline: 
-    [New_Trial_timeline],
-    timeline_variables: test_stimuli_New_Trial,
+    [numeros_timeline],
+    timeline_variables: test_stimuli_numeros,
     
     conditional_function: function() {
-      const currentId = 1771978598933;
+      const currentId = 1771980159612;
       
       // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
       const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
@@ -230,7 +229,7 @@ response_components: jsPsych.timelineVariable("response_components"),
   
     
     };
-    timeline.push(New_Trial_procedure);
+    timeline.push(numeros_procedure);
   
 
       jsPsych.run(timeline);
