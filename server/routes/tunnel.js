@@ -7,8 +7,10 @@
 import { Router } from "express";
 import path from "path";
 import os from "os";
+import fs from "fs";
 import { spawn } from "child_process";
 import { __dirname } from "../utils/paths.js";
+import { db, ensureDbData } from "../utils/db.js";
 
 const router = Router();
 
@@ -20,22 +22,36 @@ const router = Router();
  */
 function getCloudflaredPath() {
   const baseDir = path.join(__dirname, "cloudflared");
-  if (os.platform() === "darwin") {
-    // MacOS: select binary based on architecture
-    if (os.arch() === "arm64") {
-      return path.join(baseDir, "cloudflared-darwin-arm64");
-    } else {
-      return path.join(baseDir, "cloudflared-darwin-amd64");
-    }
-  } else if (os.platform() === "win32") {
-    // Windows
-    return path.join(baseDir, "cloudflared-windows-amd64.exe");
-  } else if (os.platform() === "linux") {
-    // Linux
-    return path.join(baseDir, "cloudflared-linux-amd64");
+  const platform = os.platform();
+  const arch = os.arch();
+
+  let binaryName;
+  if (platform === "darwin") {
+    binaryName =
+      arch === "arm64"
+        ? "cloudflared-darwin-arm64"
+        : "cloudflared-darwin-amd64";
+  } else if (platform === "win32") {
+    binaryName =
+      arch === "arm64"
+        ? "cloudflared-windows-arm64.exe"
+        : "cloudflared-windows-amd64.exe";
+  } else if (platform === "linux") {
+    binaryName =
+      arch === "arm64" ? "cloudflared-linux-arm64" : "cloudflared-linux-amd64";
   } else {
-    throw new Error("Unsupported OS for cloudflared");
+    throw new Error(`Unsupported OS: ${platform}`);
   }
+
+  const binaryPath = path.join(baseDir, binaryName);
+  if (!fs.existsSync(binaryPath)) {
+    throw new Error(
+      `cloudflared binary not found at: ${binaryPath}\n` +
+        `OS: ${platform}, Arch: ${arch}\n` +
+        `Download the correct binary from https://github.com/cloudflare/cloudflared/releases and place it in the 'server/cloudflared/' folder as '${binaryName}'.`,
+    );
+  }
+  return binaryPath;
 }
 
 let tunnelProcess = null;
@@ -84,6 +100,23 @@ router.post("/api/create-tunnel", async (req, res) => {
         tunnelUrl = `${match[0]}`;
         responded = true;
         cleanup();
+        // Persist tunnelUrl in the experiment document
+        const experimentID = req.body?.experimentID;
+        if (experimentID) {
+          db.read()
+            .then(() => {
+              ensureDbData();
+              const exp = db.data.experiments.find(
+                (e) => e.experimentID === experimentID,
+              );
+              if (exp) {
+                exp.tunnelUrl = tunnelUrl;
+                exp.updatedAt = new Date().toISOString();
+                db.write().catch(console.error);
+              }
+            })
+            .catch(console.error);
+        }
         res.json({ success: true, url: tunnelUrl });
       }
     }
@@ -127,10 +160,28 @@ router.post("/api/create-tunnel", async (req, res) => {
  * @returns {string} 200.message - Mensaje de confirmación
  * @returns {Object} 400 - No hay túnel activo
  */
-router.post("/api/close-tunnel", (req, res) => {
+router.post("/api/close-tunnel", async (req, res) => {
+  const { experimentID } = req.body || {};
   if (tunnelProcess) {
     tunnelProcess.kill();
     tunnelProcess = null;
+    // Clear tunnelUrl from the experiment document
+    if (experimentID) {
+      try {
+        await db.read();
+        ensureDbData();
+        const exp = db.data.experiments.find(
+          (e) => e.experimentID === experimentID,
+        );
+        if (exp) {
+          delete exp.tunnelUrl;
+          exp.updatedAt = new Date().toISOString();
+          await db.write();
+        }
+      } catch (err) {
+        console.error("Error clearing tunnelUrl from experiment:", err);
+      }
+    }
     return res.json({ success: true, message: "Tunnel closed" });
   } else {
     return res

@@ -88,6 +88,8 @@ function Timeline({
   const [copyStatus, setCopyStatus] = useState<string>("");
   const [tunnelStatus, setTunnelStatus] = useState<string>("");
   const [isTunnelActive, setTunnelActive] = useState<boolean>(false);
+  const [isTunnelCreating, setIsTunnelCreating] = useState<boolean>(false);
+  const [activeTunnelUrl, setActiveTunnelUrl] = useState<string>("");
   const [lastPagesUrl, setLastPagesUrl] = useState<string>("");
   const [publishStatus, setPublishStatus] = useState<string>("");
   const [isPublishing, setIsPublishing] = useState(false);
@@ -104,24 +106,23 @@ function Timeline({
   const { generateLocalExperiment, generateExperiment, generatedBaseCode } =
     useExperimentCode(uploadedFiles);
 
-  const {
-    handleRunExperiment,
-    handleShareLocalExperiment,
-    handleCloseTunnel,
-    handleCopyLink,
-  } = Actions({
-    experimentID,
-    lastPagesUrl,
-    isTunnelActive,
-    setIsSubmitting,
-    generateLocalExperiment,
-    generatedBaseCode,
-    setSubmitStatus,
-    setExperimentUrl,
-    setCopyStatus,
-    setTunnelStatus,
-    setTunnelActive,
-  });
+  const { handleRunExperiment, handleShareLocalExperiment, handleCloseTunnel } =
+    Actions({
+      experimentID,
+      lastPagesUrl,
+      isTunnelActive,
+      setIsSubmitting,
+      generateLocalExperiment,
+      generatedBaseCode,
+      setSubmitStatus,
+      setExperimentUrl,
+      setCopyStatus,
+      setTunnelStatus,
+      setTunnelActive,
+      setIsTunnelCreating,
+      setActiveTunnelUrl,
+      setLastPagesUrl,
+    });
 
   const { handlePublishToGitHub, publishWithStorage } = PublishExperiment({
     experimentID,
@@ -234,7 +235,8 @@ function Timeline({
               display: "block",
               width: "100%",
               padding: "10px 0",
-              backgroundColor: isTunnelActive ? "#cccccc" : "#604cafff",
+              backgroundColor:
+                isTunnelActive || isTunnelCreating ? "#cccccc" : "#604cafff",
               color: "#fff",
               textAlign: "center",
               textDecoration: "none",
@@ -244,13 +246,18 @@ function Timeline({
               letterSpacing: "0.05em",
               marginTop: 12,
               transition: "background-color 0.3s ease",
-              cursor: isTunnelActive ? "not-allowed" : "pointer",
-              opacity: isTunnelActive ? 0.6 : 1,
+              cursor:
+                isTunnelActive || isTunnelCreating ? "not-allowed" : "pointer",
+              opacity: isTunnelActive || isTunnelCreating ? 0.6 : 1,
             }}
-            onClick={isTunnelActive ? undefined : handleShareLocalExperiment}
-            disabled={isTunnelActive}
+            onClick={
+              isTunnelActive || isTunnelCreating
+                ? undefined
+                : handleShareLocalExperiment
+            }
+            disabled={isTunnelActive || isTunnelCreating}
           >
-            Share Local Experiment
+            {isTunnelCreating ? "Creating tunnel..." : "Share Local Experiment"}
           </button>
           {tunnelStatus && (
             <div style={{ marginTop: 6 }}>
@@ -278,91 +285,143 @@ function Timeline({
           )}
         </div>
 
-        {/* Publish to GitHub Button */}
+        {/* Copy links section */}
         <div style={{ marginTop: "12px" }}>
+          {(activeTunnelUrl || lastPagesUrl) && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {activeTunnelUrl && (
+                <button
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    padding: "10px 0",
+                    backgroundColor: "#604cafff",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 6,
+                    fontWeight: "600",
+                    fontSize: 14,
+                    letterSpacing: "0.05em",
+                    cursor: "pointer",
+                    transition: "background-color 0.3s ease",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor = "#4a3a9a")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor = "#604cafff")
+                  }
+                  onClick={async () => {
+                    const url = `${activeTunnelUrl}/${experimentID}`;
+                    try {
+                      await navigator.clipboard.writeText(url);
+                      setCopyStatus("Tunnel link copied!");
+                      setTimeout(() => setCopyStatus(""), 2000);
+                    } catch {
+                      setCopyStatus("Failed to copy.");
+                      setTimeout(() => setCopyStatus(""), 2000);
+                    }
+                  }}
+                >
+                  Copy Tunnel Link
+                </button>
+              )}
+              {lastPagesUrl && (
+                <button
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    padding: "10px 0",
+                    backgroundColor: "#2196f3",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 6,
+                    fontWeight: "600",
+                    fontSize: 14,
+                    letterSpacing: "0.05em",
+                    marginTop: 4,
+                    cursor: "pointer",
+                    transition: "background-color 0.3s ease",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor = "#1e88e5")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor = "#2196f3")
+                  }
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(lastPagesUrl);
+                      setCopyStatus("GitHub Pages link copied!");
+                      setTimeout(() => setCopyStatus(""), 2000);
+                    } catch {
+                      setCopyStatus("Failed to copy.");
+                      setTimeout(() => setCopyStatus(""), 2000);
+                    }
+                  }}
+                >
+                  Copy GitHub Pages Link
+                </button>
+              )}
+              {copyStatus && (
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: copyStatus.includes("copied")
+                      ? "#4caf50"
+                      : "#f44336",
+                    textAlign: "center",
+                    marginTop: 4,
+                    fontWeight: "500",
+                  }}
+                >
+                  {copyStatus}
+                </p>
+              )}
+            </div>
+          )}
           <button
-            onClick={handleCopyLink}
+            onClick={handlePublishToGitHub}
+            disabled={isPublishing || !experimentUrl || isDisabledByTokens()}
             style={{
               display: "block",
               width: "100%",
               padding: "10px 0",
-              backgroundColor: "#2196f3",
+              backgroundColor:
+                isPublishing || !experimentUrl || isDisabledByTokens()
+                  ? "#cccccc"
+                  : "#ff9800",
               color: "#fff",
               border: "none",
               borderRadius: 6,
               fontWeight: "600",
               fontSize: 14,
               letterSpacing: "0.05em",
-              cursor: "pointer",
               marginTop: 12,
+              cursor:
+                isPublishing || !experimentUrl || isDisabledByTokens()
+                  ? "not-allowed"
+                  : "pointer",
               transition: "background-color 0.3s ease",
             }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.backgroundColor = "#1e88e5")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.backgroundColor = "#2196f3")
-            }
           >
-            Copy Experiment Link
+            {isPublishing ? "Publishing..." : "Publish to GitHub Pages"}
           </button>
-          {copyStatus && (
-            <p
-              style={{
-                fontSize: 13,
-                color: copyStatus.includes("copied!") ? "#4caf50" : "#f44336",
-                textAlign: "center",
-                marginTop: 8,
-                fontWeight: "500",
-              }}
-            >
-              {copyStatus}
-            </p>
-          )}
-          <div style={{ position: "relative" }}>
-            <button
-              onClick={handlePublishToGitHub}
-              disabled={isPublishing || !experimentUrl || isDisabledByTokens()}
-              style={{
-                display: "block",
-                width: "100%",
-                padding: "10px 0",
-                backgroundColor:
-                  isPublishing || !experimentUrl || isDisabledByTokens()
-                    ? "#cccccc"
-                    : "#ff9800",
-                color: "#fff",
-                border: "none",
-                borderRadius: 6,
-                fontWeight: "600",
-                fontSize: 14,
-                letterSpacing: "0.05em",
-                marginTop: 12,
-                cursor:
-                  isPublishing || !experimentUrl || isDisabledByTokens()
-                    ? "not-allowed"
-                    : "pointer",
-                transition: "background-color 0.3s ease",
-              }}
-            >
-              {isPublishing ? "Publishing..." : "Publish to GitHub Pages"}
-            </button>
-          </div>
-          {publishStatus && (
-            <p
-              style={{
-                fontSize: 13,
-                color: publishStatus.includes("Error") ? "#f44336" : "#4caf50",
-                textAlign: "center",
-                marginTop: 8,
-                fontWeight: "500",
-                wordBreak: "break-word",
-              }}
-            >
-              {publishStatus}
-            </p>
-          )}
         </div>
+        {publishStatus && (
+          <p
+            style={{
+              fontSize: 13,
+              color: publishStatus.includes("Error") ? "#f44336" : "#4caf50",
+              textAlign: "center",
+              marginTop: 8,
+              fontWeight: "500",
+              wordBreak: "break-word",
+            }}
+          >
+            {publishStatus}
+          </p>
+        )}
       </div>
       <div
         style={{

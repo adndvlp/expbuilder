@@ -219,7 +219,22 @@ process.on("unhandledRejection", (reason, promise) => {
   // Optionally log to a file or external service
 });
 
-httpServer.listen(port, () => {
+httpServer.listen(port, async () => {
+  // Clear all tunnel URLs on startup — any previous tunnel process is dead
+  try {
+    await db.read();
+    ensureDbData();
+    let changed = false;
+    for (const exp of db.data.experiments) {
+      if (exp.tunnelUrl) {
+        delete exp.tunnelUrl;
+        changed = true;
+      }
+    }
+    if (changed) await db.write();
+  } catch (err) {
+    console.error("Error clearing tunnel URLs on startup:", err);
+  }
   console.log(`Server running on port ${port}`);
   console.log(`Experiment URL: http://localhost:${port}/experiment`);
   console.log(`API URL: http://localhost:${port}/api`);

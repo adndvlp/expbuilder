@@ -14,6 +14,9 @@ type Props = {
   setCopyStatus: Dispatch<SetStateAction<string>>;
   setTunnelStatus: Dispatch<SetStateAction<string>>;
   setTunnelActive: Dispatch<SetStateAction<boolean>>;
+  setIsTunnelCreating: Dispatch<SetStateAction<boolean>>;
+  setActiveTunnelUrl: Dispatch<SetStateAction<string>>;
+  setLastPagesUrl: Dispatch<SetStateAction<string>>;
 };
 
 export default function Actions({
@@ -28,6 +31,9 @@ export default function Actions({
   setCopyStatus,
   setTunnelStatus,
   setTunnelActive,
+  setIsTunnelCreating,
+  setActiveTunnelUrl,
+  setLastPagesUrl,
 }: Props) {
   const { isDevMode, setCode } = useDevMode();
   const handleRunExperiment = async () => {
@@ -123,32 +129,45 @@ export default function Actions({
       "Warning: All your local experiments will be public until you close the tunnel or exit the app. Anyone with a link can access them.",
     );
     if (!confirm) return;
+    setIsTunnelCreating(true);
     try {
       const res = await fetch(`${API_URL}/api/create-tunnel`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ experimentID }),
       });
 
       const data = await res.json();
       if (data.success) {
         setExperimentUrl(`${data.url}/${experimentID}`);
+        setActiveTunnelUrl(data.url);
         // Persist tunnel state in localStorage (global, not per experiment)
         localStorage.setItem("tunnelActive", "true");
         localStorage.setItem("tunnelUrl", data.url);
         const url = `${data.url}/${experimentID}`;
         try {
           await navigator.clipboard.writeText(url);
-          setTunnelStatus("Public link copied to clipboard");
+          setTunnelStatus("Tunnel active — link copied to clipboard");
         } catch (err) {
           console.error("Failed to copy public link: ", err);
+          setTunnelStatus("Tunnel active");
         }
         setTunnelActive(true);
         setTimeout(() => setTunnelStatus(""), 4000);
         return url;
       } else {
         console.error("Error creating tunnel:", data.error);
+        setTunnelStatus(`Failed: ${data.error || "Unknown error"}`);
+        setTimeout(() => setTunnelStatus(""), 5000);
       }
     } catch (error) {
       console.error("Connection error:", error);
+      setTunnelStatus(
+        `Connection error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+      setTimeout(() => setTunnelStatus(""), 5000);
+    } finally {
+      setIsTunnelCreating(false);
     }
   };
 
@@ -160,10 +179,13 @@ export default function Actions({
     try {
       const res = await fetch(`${API_URL}/api/close-tunnel`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ experimentID }),
       });
       const data = await res.json();
 
       setExperimentUrl(`${API_URL}/${experimentID}`);
+      setActiveTunnelUrl("");
       setTunnelActive(false);
       localStorage.removeItem("tunnelActive");
       localStorage.removeItem("tunnelUrl");
@@ -178,7 +200,7 @@ export default function Actions({
       console.error("Error closing tunnel:", err);
     }
   };
-  // Restore tunnel state on mount (global, always show for current experiment)
+  // Restore tunnel state and load saved URLs from DB on mount
   useEffect(() => {
     const tunnelActive = localStorage.getItem("tunnelActive") === "true";
     const tunnelUrl = localStorage.getItem("tunnelUrl");
@@ -186,7 +208,33 @@ export default function Actions({
       setTunnelActive(true);
       setExperimentUrl(`${tunnelUrl}/${experimentID}`);
     }
-  }, [experimentID, setExperimentUrl]);
+    if (!experimentID) return;
+    fetch(`${API_URL}/api/experiment/${experimentID}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.experiment) {
+          if (data.experiment.tunnelUrl) {
+            setActiveTunnelUrl(data.experiment.tunnelUrl);
+          } else {
+            // Server restarted — tunnel is gone, clear stale state
+            setActiveTunnelUrl("");
+            setTunnelActive(false);
+            localStorage.removeItem("tunnelActive");
+            localStorage.removeItem("tunnelUrl");
+          }
+          if (data.experiment.pagesUrl) {
+            setLastPagesUrl(data.experiment.pagesUrl);
+          }
+        }
+      })
+      .catch(console.error);
+  }, [
+    experimentID,
+    setExperimentUrl,
+    setActiveTunnelUrl,
+    setLastPagesUrl,
+    setTunnelActive,
+  ]);
 
   const handleCopyLink = async () => {
     let linkToCopy = "";

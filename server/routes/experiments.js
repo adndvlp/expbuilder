@@ -669,6 +669,12 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
           "Experiment published to GitHub Pages:",
           githubData.pagesUrl,
         );
+        // Persist pagesUrl in the experiment document
+        if (githubData.pagesUrl) {
+          experiment.pagesUrl = githubData.pagesUrl;
+          experiment.updatedAt = new Date().toISOString();
+          await db.write();
+        }
         res.json({
           success: true,
           message: "Experiment published successfully",
