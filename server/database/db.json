@@ -1,94 +1,12 @@
 {
-  "experiments": [
-    {
-      "experimentID": "90a82c1e-d83b-43fc-afd2-29a2e6d65684",
-      "name": "hola",
-      "createdAt": "2026-02-26T01:14:40.350Z",
-      "updatedAt": "2026-02-26T01:14:40.350Z"
-    }
-  ],
-  "trials": [
-    {
-      "experimentID": "90a82c1e-d83b-43fc-afd2-29a2e6d65684",
-      "trials": [
-        {
-          "type": "Trial",
-          "name": "New Trial",
-          "plugin": "plugin-dynamic",
-          "parameters": {},
-          "trialCode": "",
-          "id": 1772068484316,
-          "createdAt": "2026-02-26T01:14:44.316Z",
-          "updatedAt": "2026-02-26T01:27:27.779Z",
-          "columnMapping": {
-            "__canvasStyles": {
-              "source": "typed",
-              "value": {
-                "backgroundColor": "#ffffff",
-                "width": 1024,
-                "height": 768
-              }
-            }
-          }
-        }
-      ],
-      "loops": [],
-      "timeline": [
-        {
-          "id": 1772068484316,
-          "type": "trial",
-          "name": "New Trial",
-          "branches": []
-        }
-      ],
-      "createdAt": "2026-02-26T01:14:44.317Z",
-      "updatedAt": "2026-02-26T01:27:27.779Z"
-    }
-  ],
-  "configs": [
-    {
-      "experimentID": "90a82c1e-d83b-43fc-afd2-29a2e6d65684",
-      "data": {
-        "generatedCode": ""
-      },
-      "isDevMode": false,
-      "createdAt": "2026-02-26T01:14:42.882Z",
-      "updatedAt": "2026-02-26T01:26:52.642Z"
-    }
-  ],
+  "experiments": [],
+  "trials": [],
+  "configs": [],
   "pluginConfigs": [
     {
       "plugins": [],
       "config": {}
     }
   ],
-  "sessionResults": [
-    {
-      "experimentID": "90a82c1e-d83b-43fc-afd2-29a2e6d65684",
-      "sessionId": "New Trial_result_42f76cde-4918-448e-a2d5-ecdc13b93f01",
-      "createdAt": "2026-02-26T01:15:38.399Z",
-      "data": [],
-      "state": "initiated",
-      "lastUpdate": "2026-02-26T01:15:38.399Z",
-      "metadata": {}
-    },
-    {
-      "experimentID": "90a82c1e-d83b-43fc-afd2-29a2e6d65684",
-      "sessionId": "New Trial_result_78d90e9e-c5f7-4466-adb5-7ef7f6605574",
-      "createdAt": "2026-02-26T01:27:08.974Z",
-      "data": [],
-      "state": "initiated",
-      "lastUpdate": "2026-02-26T01:27:08.974Z",
-      "metadata": {}
-    },
-    {
-      "experimentID": "90a82c1e-d83b-43fc-afd2-29a2e6d65684",
-      "sessionId": "New Trial_result_a5884cea-ba2f-459e-8990-d8e526ce4a08",
-      "createdAt": "2026-02-26T01:27:13.305Z",
-      "data": [],
-      "state": "initiated",
-      "lastUpdate": "2026-02-26T01:27:13.305Z",
-      "metadata": {}
-    }
-  ]
+  "sessionResults": []
 }
