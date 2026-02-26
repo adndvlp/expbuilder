@@ -61,6 +61,15 @@ const SliderResponseComponent: React.FC<SliderResponseComponentProps> = ({
   const labels = getConfigValue("labels", []);
   const requireMovement = getConfigValue("require_movement", false);
 
+  const NATURAL_W = 300;
+  const NATURAL_H = 120;
+  const effectiveWidth = shapeProps.width > 0 ? shapeProps.width : NATURAL_W;
+  const effectiveHeight = shapeProps.height > 0 ? shapeProps.height : NATURAL_H;
+  const scale = Math.min(
+    effectiveWidth / NATURAL_W,
+    effectiveHeight / NATURAL_H,
+  );
+
   useEffect(() => {
     if (isSelected && trRef.current && groupRef.current) {
       trRef.current.nodes([groupRef.current]);
@@ -70,10 +79,16 @@ const SliderResponseComponent: React.FC<SliderResponseComponentProps> = ({
 
   // Calculate slider position (normalized)
   const sliderPosition = (sliderStart - min) / (max - min) || 0.5;
-  const sliderPadding = 40;
-  const sliderWidth = shapeProps.width - sliderPadding * 2;
-  const sliderY = shapeProps.height * 0.35;
+  const sliderPadding = Math.max(
+    10,
+    Math.round(40 * (effectiveWidth / NATURAL_W)),
+  );
+  const sliderWidth = effectiveWidth - sliderPadding * 2;
+  const sliderY = effectiveHeight * 0.4;
   const sliderThumbX = sliderPadding + sliderWidth * sliderPosition;
+  const thumbRadius = Math.max(3, Math.round(8 * scale));
+  const titleFontSize = Math.max(6, Math.round(12 * scale));
+  const labelFontSize = Math.max(5, Math.round(10 * scale));
 
   return (
     <>
@@ -104,20 +119,20 @@ const SliderResponseComponent: React.FC<SliderResponseComponentProps> = ({
             ...shapeProps,
             x: node.x(),
             y: node.y(),
-            width: Math.max(150, shapeProps.width * scaleX),
-            height: Math.max(80, shapeProps.height * scaleY),
+            width: Math.max(150, effectiveWidth * scaleX),
+            height: Math.max(80, effectiveHeight * scaleY),
             rotation: node.rotation(),
           });
         }}
-        offsetX={shapeProps.width / 2}
-        offsetY={shapeProps.height / 2}
+        offsetX={effectiveWidth / 2}
+        offsetY={effectiveHeight / 2}
       >
         {/* Background container */}
         <Rect
           x={0}
           y={0}
-          width={shapeProps.width}
-          height={shapeProps.height}
+          width={effectiveWidth}
+          height={effectiveHeight}
           fill={isSelected ? "#f3e8ff" : "#faf5ff"}
           stroke={isSelected ? "#9333ea" : "#c4b5fd"}
           strokeWidth={isSelected ? 2 : 1}
@@ -128,10 +143,10 @@ const SliderResponseComponent: React.FC<SliderResponseComponentProps> = ({
         <Text
           text="Slider Response"
           x={0}
-          y={10}
-          width={shapeProps.width}
+          y={Math.max(4, Math.round(10 * (effectiveHeight / NATURAL_H)))}
+          width={effectiveWidth}
           align="center"
-          fontSize={12}
+          fontSize={titleFontSize}
           fill="#6b21a8"
           fontStyle="bold"
         />
@@ -141,11 +156,11 @@ const SliderResponseComponent: React.FC<SliderResponseComponentProps> = ({
           points={[
             sliderPadding,
             sliderY,
-            shapeProps.width - sliderPadding,
+            effectiveWidth - sliderPadding,
             sliderY,
           ]}
           stroke="#9333ea"
-          strokeWidth={3}
+          strokeWidth={Math.max(1, Math.round(3 * scale))}
           lineCap="round"
         />
 
@@ -153,10 +168,10 @@ const SliderResponseComponent: React.FC<SliderResponseComponentProps> = ({
         <Circle
           x={sliderThumbX}
           y={sliderY}
-          radius={8}
+          radius={thumbRadius}
           fill="#9333ea"
           stroke="#ffffff"
-          strokeWidth={2}
+          strokeWidth={Math.max(1, Math.round(2 * scale))}
         />
 
         {/* Min/Max labels */}
@@ -165,19 +180,19 @@ const SliderResponseComponent: React.FC<SliderResponseComponentProps> = ({
             <Text
               text={String(labels[0])}
               x={0}
-              y={sliderY + 15}
+              y={sliderY + thumbRadius + 4}
               width={sliderPadding * 2}
               align="center"
-              fontSize={10}
+              fontSize={labelFontSize}
               fill="#6b21a8"
             />
             <Text
               text={String(labels[labels.length - 1])}
-              x={shapeProps.width - sliderPadding * 2}
-              y={sliderY + 15}
+              x={effectiveWidth - sliderPadding * 2}
+              y={sliderY + thumbRadius + 4}
               width={sliderPadding * 2}
               align="center"
-              fontSize={10}
+              fontSize={labelFontSize}
               fill="#6b21a8"
             />
           </>
@@ -188,10 +203,13 @@ const SliderResponseComponent: React.FC<SliderResponseComponentProps> = ({
           <Text
             text="(movement required)"
             x={0}
-            y={shapeProps.height - 25}
-            width={shapeProps.width}
+            y={
+              effectiveHeight -
+              Math.max(14, Math.round(25 * (effectiveHeight / NATURAL_H)))
+            }
+            width={effectiveWidth}
             align="center"
-            fontSize={9}
+            fontSize={Math.max(5, Math.round(9 * scale))}
             fill="#9333ea"
             fontStyle="italic"
           />

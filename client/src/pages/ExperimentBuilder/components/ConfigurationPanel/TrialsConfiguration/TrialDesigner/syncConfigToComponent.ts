@@ -61,6 +61,7 @@ export function syncConfigToComponent(
   comp: TrialComponent,
   newConfig: Record<string, any>,
   fromJsPsychCoords: FromJsPsychCoords,
+  canvasWidth = 0,
 ): TrialComponent {
   const updated: TrialComponent = { ...comp, config: newConfig };
 
@@ -73,11 +74,20 @@ export function syncConfigToComponent(
   }
 
   if (newConfig.width?.value !== undefined) {
-    updated.width = newConfig.width.value;
+    // Config stores width/height as vw% (0-100) relative to canvasWidth.
+    // Convert back to pixels when canvasWidth is available.
+    updated.width =
+      canvasWidth > 0
+        ? (newConfig.width.value / 100) * canvasWidth
+        : newConfig.width.value;
   }
 
   if (newConfig.height?.value !== undefined) {
-    updated.height = newConfig.height.value;
+    // Height also uses vw% (same denominator as width, see renderComponent.tsx)
+    updated.height =
+      canvasWidth > 0
+        ? (newConfig.height.value / 100) * canvasWidth
+        : newConfig.height.value;
   }
 
   if (newConfig.rotation?.value !== undefined) {

@@ -302,6 +302,10 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
           node.scaleX(1);
           node.scaleY(1);
 
+          const newButtonFontSize = Math.max(
+            6,
+            Math.round(buttonFontSize * scaleY),
+          );
           // Use effectiveWidth/Height so scaling from natural size works correctly
           onChange({
             ...shapeProps,
@@ -310,6 +314,7 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
             width: Math.max(50, effectiveWidth * scaleX),
             height: Math.max(20, effectiveHeight * scaleY),
             rotation: node.rotation(),
+            buttonFontSize: newButtonFontSize,
           });
         }}
         offsetX={effectiveWidth / 2}

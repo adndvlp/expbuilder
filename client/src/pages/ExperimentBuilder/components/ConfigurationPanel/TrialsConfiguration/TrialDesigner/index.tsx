@@ -433,6 +433,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
               components={components}
               setComponents={setComponents}
               fromJsPsychCoords={fromJsPsychCoords}
+              canvasWidth={CANVAS_WIDTH}
               onAutoSave={onAutoSave}
               generateConfigFromComponents={generateConfigFromComponents}
               isResizingRight={isResizingRight}

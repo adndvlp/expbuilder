@@ -48,6 +48,15 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
   const checkAnswers = getConfigValue("check_answers", false);
   const allowBlanks = getConfigValue("allow_blanks", true);
 
+  const NATURAL_W = 250;
+  const NATURAL_H = 150;
+  const effectiveWidth = shapeProps.width > 0 ? shapeProps.width : NATURAL_W;
+  const effectiveHeight = shapeProps.height > 0 ? shapeProps.height : NATURAL_H;
+  const scale = Math.min(
+    effectiveWidth / NATURAL_W,
+    effectiveHeight / NATURAL_H,
+  );
+
   useEffect(() => {
     if (isSelected && trRef.current && groupRef.current) {
       trRef.current.nodes([groupRef.current]);
@@ -87,20 +96,20 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
             ...shapeProps,
             x: node.x(),
             y: node.y(),
-            width: Math.max(200, shapeProps.width * scaleX),
-            height: Math.max(100, shapeProps.height * scaleY),
+            width: Math.max(80, effectiveWidth * scaleX),
+            height: Math.max(60, effectiveHeight * scaleY),
             rotation: node.rotation(),
           });
         }}
-        offsetX={shapeProps.width / 2}
-        offsetY={shapeProps.height / 2}
+        offsetX={effectiveWidth / 2}
+        offsetY={effectiveHeight / 2}
       >
         {/* Background container */}
         <Rect
           x={0}
           y={0}
-          width={shapeProps.width}
-          height={shapeProps.height}
+          width={effectiveWidth}
+          height={effectiveHeight}
           fill={isSelected ? "#ecfdf5" : "#f0fdf4"}
           stroke={isSelected ? "#10b981" : "#86efac"}
           strokeWidth={isSelected ? 2 : 1}
@@ -111,10 +120,10 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
         <Text
           text="Input Response (Cloze)"
           x={0}
-          y={10}
-          width={shapeProps.width}
+          y={Math.max(4, Math.round(10 * scale))}
+          width={effectiveWidth}
           align="center"
-          fontSize={12}
+          fontSize={Math.max(6, Math.round(12 * scale))}
           fill="#047857"
           fontStyle="bold"
         />
@@ -122,10 +131,10 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
         {/* Preview text with blank representation */}
         <Text
           text={`Text with ${blankCount} blank${blankCount !== 1 ? "s" : ""}`}
-          x={10}
-          y={35}
-          width={shapeProps.width - 20}
-          fontSize={11}
+          x={Math.round(10 * scale)}
+          y={Math.max(14, Math.round(35 * scale))}
+          width={effectiveWidth - Math.round(20 * scale)}
+          fontSize={Math.max(5, Math.round(11 * scale))}
           fill="#065f46"
           wrap="word"
         />
@@ -133,38 +142,45 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
         {/* Sample input fields visualization */}
         {blankCount > 0 && (
           <>
-            {Array.from({ length: Math.min(3, blankCount) }).map((_, index) => (
-              <React.Fragment key={index}>
-                <Rect
-                  x={20}
-                  y={60 + index * 30}
-                  width={shapeProps.width - 40}
-                  height={22}
-                  fill="#ffffff"
-                  stroke="#10b981"
-                  strokeWidth={1}
-                  cornerRadius={2}
-                />
-                <Line
-                  points={[
-                    25,
-                    71 + index * 30,
-                    shapeProps.width - 25,
-                    71 + index * 30,
-                  ]}
-                  stroke="#d1d5db"
-                  strokeWidth={1}
-                  dash={[4, 4]}
-                />
-              </React.Fragment>
-            ))}
+            {Array.from({ length: Math.min(3, blankCount) }).map((_, index) => {
+              const iH = Math.max(6, Math.round(22 * scale));
+              const iSpacing = Math.max(10, Math.round(30 * scale));
+              const iY =
+                Math.max(18, Math.round(60 * scale)) + index * iSpacing;
+              const iX = Math.max(6, Math.round(20 * scale));
+              return (
+                <React.Fragment key={index}>
+                  <Rect
+                    x={iX}
+                    y={iY}
+                    width={effectiveWidth - iX * 2}
+                    height={iH}
+                    fill="#ffffff"
+                    stroke="#10b981"
+                    strokeWidth={1}
+                    cornerRadius={2}
+                  />
+                  <Line
+                    points={[
+                      iX + 5,
+                      iY + iH / 2,
+                      effectiveWidth - iX - 5,
+                      iY + iH / 2,
+                    ]}
+                    stroke="#d1d5db"
+                    strokeWidth={1}
+                    dash={[4, 4]}
+                  />
+                </React.Fragment>
+              );
+            })}
             {blankCount > 3 && (
               <Text
                 text={`... and ${blankCount - 3} more`}
-                x={20}
-                y={155}
-                width={shapeProps.width - 40}
-                fontSize={9}
+                x={Math.round(20 * scale)}
+                y={effectiveHeight * 0.8}
+                width={effectiveWidth - Math.round(40 * scale)}
+                fontSize={Math.max(5, Math.round(9 * scale))}
                 fill="#6b7280"
                 fontStyle="italic"
               />
@@ -175,11 +191,11 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
         {/* Validation info */}
         <Text
           text={`${checkAnswers ? "✓ Check answers" : ""}${checkAnswers && !allowBlanks ? " | " : ""}${!allowBlanks ? "✓ Require all fields" : ""}${!checkAnswers && allowBlanks ? "No validation" : ""}`}
-          x={10}
-          y={shapeProps.height - 25}
-          width={shapeProps.width - 20}
+          x={Math.round(10 * scale)}
+          y={effectiveHeight - Math.max(12, Math.round(25 * scale))}
+          width={effectiveWidth - Math.round(20 * scale)}
           align="center"
-          fontSize={9}
+          fontSize={Math.max(5, Math.round(9 * scale))}
           fill="#047857"
           fontStyle="italic"
         />

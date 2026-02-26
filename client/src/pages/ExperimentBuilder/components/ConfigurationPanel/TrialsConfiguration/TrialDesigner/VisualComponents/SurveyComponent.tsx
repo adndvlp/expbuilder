@@ -111,8 +111,13 @@ const SurveyjsComponent: React.FC<SurveyjsComponentProps> = ({
     (questionCount > 3 ? 20 : 0) +
     buttonHeight +
     padding * 2;
-  const actualWidth = shapeProps.width;
-  const actualHeight = Math.max(totalHeight, shapeProps.height);
+  const actualWidth = shapeProps.width > 0 ? shapeProps.width : 400;
+  const actualHeight = Math.max(
+    totalHeight,
+    shapeProps.height > 0 ? shapeProps.height : totalHeight,
+  );
+  const NATURAL_W = 400;
+  const scaleW = Math.max(0.4, actualWidth / NATURAL_W);
 
   return (
     <>
@@ -143,8 +148,8 @@ const SurveyjsComponent: React.FC<SurveyjsComponentProps> = ({
             ...shapeProps,
             x: node.x(),
             y: node.y(),
-            width: Math.max(250, shapeProps.width * scaleX),
-            height: Math.max(150, shapeProps.height * scaleY),
+            width: Math.max(200, actualWidth * scaleX),
+            height: Math.max(150, actualHeight * scaleY),
             rotation: node.rotation(),
           });
         }}
@@ -170,7 +175,7 @@ const SurveyjsComponent: React.FC<SurveyjsComponentProps> = ({
           y={10}
           width={actualWidth - padding * 2}
           align="center"
-          fontSize={14}
+          fontSize={Math.max(7, Math.round(14 * scaleW))}
           fill="#1e40af"
           fontStyle="bold"
         />
@@ -182,7 +187,7 @@ const SurveyjsComponent: React.FC<SurveyjsComponentProps> = ({
             x={padding}
             y={30}
             width={actualWidth - padding * 2}
-            fontSize={11}
+            fontSize={Math.max(5, Math.round(11 * scaleW))}
             fill="#1e3a8a"
             fontStyle="italic"
             align="center"
@@ -195,7 +200,7 @@ const SurveyjsComponent: React.FC<SurveyjsComponentProps> = ({
           x={padding}
           y={titleHeight + 5}
           width={actualWidth - padding * 2}
-          fontSize={10}
+          fontSize={Math.max(5, Math.round(10 * scaleW))}
           fill="#1e40af"
           align="center"
         />
@@ -225,7 +230,7 @@ const SurveyjsComponent: React.FC<SurveyjsComponentProps> = ({
                   x={padding + 5}
                   y={yPos + 8}
                   width={actualWidth - padding * 2 - 10}
-                  fontSize={10}
+                  fontSize={Math.max(5, Math.round(10 * scaleW))}
                   fill="#1e40af"
                   fontStyle="bold"
                 />
@@ -250,7 +255,7 @@ const SurveyjsComponent: React.FC<SurveyjsComponentProps> = ({
             x={padding}
             y={titleHeight + infoHeight + 10}
             width={actualWidth - padding * 2}
-            fontSize={10}
+            fontSize={Math.max(5, Math.round(10 * scaleW))}
             fill="#64748b"
             fontStyle="italic"
             align="center"
@@ -264,7 +269,7 @@ const SurveyjsComponent: React.FC<SurveyjsComponentProps> = ({
             x={padding}
             y={titleHeight + infoHeight + 3 * questionPreviewHeight}
             width={actualWidth - padding * 2}
-            fontSize={9}
+            fontSize={Math.max(5, Math.round(9 * scaleW))}
             fill="#1e40af"
             fontStyle="italic"
             align="center"
@@ -277,7 +282,7 @@ const SurveyjsComponent: React.FC<SurveyjsComponentProps> = ({
           x={padding}
           y={actualHeight - buttonHeight - 25}
           width={actualWidth - padding * 2}
-          fontSize={8}
+          fontSize={Math.max(5, Math.round(8 * scaleW))}
           fill="#64748b"
           align="center"
         />
@@ -299,7 +304,7 @@ const SurveyjsComponent: React.FC<SurveyjsComponentProps> = ({
           height={buttonHeight}
           align="center"
           verticalAlign="middle"
-          fontSize={11}
+          fontSize={Math.max(5, Math.round(11 * scaleW))}
           fill="#ffffff"
           fontStyle="bold"
         />

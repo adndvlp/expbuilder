@@ -16,6 +16,7 @@ type Props = {
     x: number;
     y: number;
   };
+  canvasWidth: number;
   onAutoSave: ((config: any) => void) | undefined;
   generateConfigFromComponents: (
     comps: TrialComponent[],
@@ -35,6 +36,7 @@ function KonvaParameterMapper({
   components,
   setComponents,
   fromJsPsychCoords,
+  canvasWidth,
   onAutoSave,
   generateConfigFromComponents,
   isResizingRight,
@@ -87,7 +89,12 @@ function KonvaParameterMapper({
           // Sync ALL config keys that have a Konva visual counterpart
           // (coordinates → x/y, width, height, rotation, zIndex,
           //  and per-component style fields like button colours)
-          return syncConfigToComponent(comp, newConfig, fromJsPsychCoords);
+          return syncConfigToComponent(
+            comp,
+            newConfig,
+            fromJsPsychCoords,
+            canvasWidth,
+          );
         });
 
         if (onAutoSave) {
@@ -104,6 +111,7 @@ function KonvaParameterMapper({
       setComponents,
       fromJsPsychCoords,
       generateConfigFromComponents,
+      canvasWidth,
     ],
   );
   return (

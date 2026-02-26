@@ -115,7 +115,7 @@ function CanvasStylesBar({
           letterSpacing: "0.3px",
         }}
       >
-        Canvas
+        Experiment Layout
       </span>
 
       {divider}
@@ -321,7 +321,7 @@ function CanvasStylesBar({
           minWidth: "32px",
         }}
       >
-        {scalePercent}%
+        Zoom {scalePercent}%
       </span>
 
       {/* Spacer */}

@@ -59,9 +59,17 @@ const AudioResponseComponent: React.FC<AudioResponseComponentProps> = ({
     }
   }, [isSelected]);
 
-  const iconSize = Math.min(shapeProps.width, shapeProps.height) * 0.3;
-  const buttonHeight = 40;
-  const padding = 20;
+  const NATURAL_W = 200;
+  const NATURAL_H = 200;
+  const effectiveWidth = shapeProps.width > 0 ? shapeProps.width : NATURAL_W;
+  const effectiveHeight = shapeProps.height > 0 ? shapeProps.height : NATURAL_H;
+  const scale = Math.min(
+    effectiveWidth / NATURAL_W,
+    effectiveHeight / NATURAL_H,
+  );
+  const iconSize = Math.min(effectiveWidth, effectiveHeight) * 0.3;
+  const buttonHeight = Math.max(16, Math.round(40 * scale));
+  const padding = Math.max(8, Math.round(20 * scale));
 
   return (
     <>
@@ -92,20 +100,20 @@ const AudioResponseComponent: React.FC<AudioResponseComponentProps> = ({
             ...shapeProps,
             x: node.x(),
             y: node.y(),
-            width: Math.max(150, shapeProps.width * scaleX),
-            height: Math.max(100, shapeProps.height * scaleY),
+            width: Math.max(80, effectiveWidth * scaleX),
+            height: Math.max(80, effectiveHeight * scaleY),
             rotation: node.rotation(),
           });
         }}
-        offsetX={shapeProps.width / 2}
-        offsetY={shapeProps.height / 2}
+        offsetX={effectiveWidth / 2}
+        offsetY={effectiveHeight / 2}
       >
         {/* Background container */}
         <Rect
           x={0}
           y={0}
-          width={shapeProps.width}
-          height={shapeProps.height}
+          width={effectiveWidth}
+          height={effectiveHeight}
           fill={isSelected ? "#fee2e2" : "#fef2f2"}
           stroke={isSelected ? "#dc2626" : "#ef4444"}
           strokeWidth={isSelected ? 2 : 1}
@@ -116,8 +124,8 @@ const AudioResponseComponent: React.FC<AudioResponseComponentProps> = ({
 
         {/* Microphone Icon */}
         <Group
-          x={shapeProps.width / 2}
-          y={shapeProps.height / 2 - buttonHeight / 2 - padding / 2}
+          x={effectiveWidth / 2}
+          y={effectiveHeight / 2 - buttonHeight / 2 - padding / 2}
         >
           {/* Microphone body */}
           <Rect
@@ -159,10 +167,10 @@ const AudioResponseComponent: React.FC<AudioResponseComponentProps> = ({
         <Text
           text="Audio Recording"
           x={0}
-          y={shapeProps.height / 2 + iconSize * 0.2}
-          width={shapeProps.width}
+          y={effectiveHeight / 2 + iconSize * 0.2}
+          width={effectiveWidth}
           align="center"
-          fontSize={14}
+          fontSize={Math.max(6, Math.round(14 * scale))}
           fontStyle="bold"
           fill="#dc2626"
         />
@@ -171,24 +179,24 @@ const AudioResponseComponent: React.FC<AudioResponseComponentProps> = ({
         {showDoneButton && (
           <>
             <Rect
-              x={shapeProps.width / 2 - 60}
-              y={shapeProps.height - buttonHeight - padding / 2}
-              width={120}
+              x={effectiveWidth / 2 - Math.max(30, Math.round(60 * scale))}
+              y={effectiveHeight - buttonHeight - padding / 2}
+              width={Math.max(60, Math.round(120 * scale))}
               height={buttonHeight}
               fill="#ef4444"
-              cornerRadius={6}
+              cornerRadius={Math.round(6 * scale)}
               shadowBlur={2}
               shadowOpacity={0.3}
             />
             <Text
               text={String(doneButtonLabel)}
-              x={shapeProps.width / 2 - 60}
-              y={shapeProps.height - buttonHeight - padding / 2}
-              width={120}
+              x={effectiveWidth / 2 - Math.max(30, Math.round(60 * scale))}
+              y={effectiveHeight - buttonHeight - padding / 2}
+              width={Math.max(60, Math.round(120 * scale))}
               height={buttonHeight}
               align="center"
               verticalAlign="middle"
-              fontSize={14}
+              fontSize={Math.max(6, Math.round(14 * scale))}
               fill="#ffffff"
               fontStyle="bold"
             />
@@ -201,7 +209,7 @@ const AudioResponseComponent: React.FC<AudioResponseComponentProps> = ({
             text="✓ Playback enabled"
             x={padding}
             y={padding}
-            fontSize={10}
+            fontSize={Math.max(5, Math.round(10 * scale))}
             fill="#059669"
             fontStyle="italic"
           />

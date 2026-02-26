@@ -68,6 +68,12 @@ const SketchpadComponent: React.FC<SketchpadComponentProps> = ({
   const effectiveHeight =
     shapeProps.height > 0 ? shapeProps.height : naturalHeight;
 
+  // Scale factor for the dimension label font
+  const labelScale = Math.min(
+    effectiveWidth / naturalWidth,
+    effectiveHeight / naturalHeight,
+  );
+
   // Decorative example strokes (proportional to effective size)
   const exampleStrokes = [
     [
@@ -176,11 +182,11 @@ const SketchpadComponent: React.FC<SketchpadComponentProps> = ({
           width={effectiveWidth}
           height={effectiveHeight}
           text={`${isCircle ? "⬤" : "▭"}  ${naturalWidth} × ${naturalHeight} px`}
-          fontSize={11}
+          fontSize={Math.max(5, Math.round(11 * labelScale))}
           fill="rgba(80,80,80,0.6)"
           align="center"
           verticalAlign="bottom"
-          padding={6}
+          padding={Math.max(3, Math.round(6 * labelScale))}
         />
       </Group>
 

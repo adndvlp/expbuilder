@@ -55,6 +55,11 @@ const KeyboardResponseComponent: React.FC<KeyboardResponseComponentProps> = ({
     displayText = "⌨️ Keyboard Response";
   }
 
+  const NATURAL_W = 200;
+  const NATURAL_H = 60;
+  const effectiveWidth = shapeProps.width > 0 ? shapeProps.width : NATURAL_W;
+  const effectiveHeight = shapeProps.height > 0 ? shapeProps.height : NATURAL_H;
+
   useEffect(() => {
     if (isSelected && trRef.current && groupRef.current) {
       trRef.current.nodes([groupRef.current]);
@@ -91,20 +96,20 @@ const KeyboardResponseComponent: React.FC<KeyboardResponseComponentProps> = ({
             ...shapeProps,
             x: node.x(),
             y: node.y(),
-            width: Math.max(100, shapeProps.width * scaleX),
-            height: Math.max(30, shapeProps.height * scaleY),
+            width: Math.max(60, effectiveWidth * scaleX),
+            height: Math.max(24, effectiveHeight * scaleY),
             rotation: node.rotation(),
           });
         }}
-        offsetX={shapeProps.width / 2}
-        offsetY={shapeProps.height / 2}
+        offsetX={effectiveWidth / 2}
+        offsetY={effectiveHeight / 2}
       >
         {/* Background */}
         <Rect
           x={0}
           y={0}
-          width={shapeProps.width}
-          height={shapeProps.height}
+          width={effectiveWidth}
+          height={effectiveHeight}
           fill={isSelected ? "#f3e8ff" : "#faf5ff"}
           stroke={isSelected ? "#9333ea" : "#c084fc"}
           strokeWidth={isSelected ? 2 : 1}
@@ -116,11 +121,14 @@ const KeyboardResponseComponent: React.FC<KeyboardResponseComponentProps> = ({
           text={displayText}
           x={0}
           y={0}
-          width={shapeProps.width}
-          height={shapeProps.height}
+          width={effectiveWidth}
+          height={effectiveHeight}
           align="center"
           verticalAlign="middle"
-          fontSize={Math.min(shapeProps.height * 0.5, 14)}
+          fontSize={Math.min(
+            effectiveHeight * 0.5,
+            Math.max(8, Math.round(14 * (effectiveWidth / NATURAL_W))),
+          )}
           fill="#6b21a8"
           fontStyle="bold"
         />

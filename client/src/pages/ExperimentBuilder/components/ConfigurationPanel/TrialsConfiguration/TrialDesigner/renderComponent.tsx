@@ -135,6 +135,20 @@ const RenderComponent = ({
             };
           }
 
+          // Sync button_font_size to config when ButtonResponseComponent is resized
+          if (
+            newAttrs.buttonFontSize !== undefined &&
+            c.type === "ButtonResponseComponent"
+          ) {
+            updated.config = {
+              ...updated.config,
+              button_font_size: {
+                source: "typed",
+                value: newAttrs.buttonFontSize,
+              },
+            };
+          }
+
           return updated;
         }
         return c;
