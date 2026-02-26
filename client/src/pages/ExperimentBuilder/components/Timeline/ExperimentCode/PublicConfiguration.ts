@@ -6,6 +6,7 @@ import useDevMode from "../../../hooks/useDevMode";
 import { loadingOverlayCode } from "./LoadingOverlay";
 import { resumeCode } from "./ResumeCode";
 import { captchaCode } from "./CaptchaCode";
+import { auth } from "../../../../../lib/firebase";
 
 const DATA_API_URL = import.meta.env.VITE_DATA_API_URL;
 
@@ -108,6 +109,8 @@ export default function PublicConfiguration({
     const extensions = await fetchExtensions();
     // Generate codes dynamically from trial/loop data
     const baseCode = isDevMode ? code : await generatedBaseCode();
+
+    const currentUid = auth.currentUser?.uid ?? "";
 
     return `
   // --- IndexedDB Wrapper para Batching con TTL (3 días) ---
@@ -345,9 +348,7 @@ export default function PublicConfiguration({
   }
 
  
-  const userStr = ${window.localStorage.getItem("user")};
-
-  const Uid = userStr.uid
+  const Uid = "${currentUid}";
 
   // Recuperar sessionId de localStorage o crear uno nuevo
   let trialSessionId = localStorage.getItem('jsPsych_currentSessionId');

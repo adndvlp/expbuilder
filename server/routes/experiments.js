@@ -603,15 +603,15 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     // Reemplazar rutas locales por rutas CDN para publicación
     $("link[href*='jspsych-bundle']").attr(
       "href",
-      "https://unpkg.com/jspsych-expbuilder-custom@1.0.0/index.css",
+      "https://unpkg.com/jspsych-expbuilder-custom@2.0.0/index.css",
     );
     $("script[src*='jspsych-bundle']").attr(
       "src",
-      "https://unpkg.com/jspsych-expbuilder-custom@1.0.0/index.js",
+      "https://unpkg.com/jspsych-expbuilder-custom@2.0.0/index.js",
     );
     $("script[src*='webgazer']").attr(
       "src",
-      "https://unpkg.com/jspsych-expbuilder-custom@1.0.0/webgazer.js",
+      "https://unpkg.com/jspsych-expbuilder-custom@2.0.0/webgazer.js",
     );
 
     const htmlContent = $.html();
