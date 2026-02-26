@@ -243,6 +243,10 @@ class ButtonResponseComponent {
   ): string {
     const bgColor = this.resolveParam(trial.button_color, "#e7e7e7");
     const textColor = this.resolveParam(trial.button_text_color, "#000000");
+    const fontSizeVw = this.resolveParam(
+      trial._button_font_size_runtime_vw,
+      null,
+    );
     const fontSize = this.resolveParam(trial.button_font_size, 14);
     const borderRadius = this.resolveParam(trial.button_border_radius, 3);
     const borderColor = this.resolveParam(trial.button_border_color, "#999999");
@@ -254,14 +258,15 @@ class ButtonResponseComponent {
     const baseStyleParts = [
       `background-color: ${bgColor}`,
       `color: ${textColor}`,
-      `font-size: ${fontSize}px`,
+      `font-size: ${fontSizeVw != null ? `${fontSizeVw}vw` : `${fontSize}px`}`,
       `border-radius: ${borderRadius}px`,
       `border: ${borderWidth}px solid ${borderColor}`,
       `padding: ${padding}`,
       `cursor: pointer`,
     ];
     if (btnWidth != null) baseStyleParts.push(`width: ${btnWidth}vw`);
-    if (btnHeight != null) baseStyleParts.push(`height: ${btnHeight}vw`);
+    if (btnHeight != null) baseStyleParts.push(`min-height: ${btnHeight}vw`);
+    baseStyleParts.push(`box-sizing: border-box`, `overflow: hidden`);
     const baseStyle = baseStyleParts.join("; ");
 
     if (this.isImageUrl(choice)) {

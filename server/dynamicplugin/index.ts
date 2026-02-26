@@ -14,7 +14,7 @@ import ButtonResponseComponent from "./response_components/ButtonResponseCompone
 import SliderResponseComponent from "./response_components/SliderResponseComponent";
 import KeyboardResponseComponent from "./response_components/KeyboardResponseComponent";
 import InputResponseComponent from "./response_components/InputResponseComponent";
-import SurveyComponent from "./components/SurveyComponent";
+import SurveyComponent from "./response_components/SurveyComponent";
 import SketchpadComponent from "./components/SketchpadComponent";
 import AudioResponseComponent from "./response_components/AudioResponseComponent";
 

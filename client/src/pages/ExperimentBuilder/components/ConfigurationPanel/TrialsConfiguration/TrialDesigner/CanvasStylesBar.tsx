@@ -6,28 +6,37 @@ const DEVICE_PRESETS = [
   {
     icon: FaMobileAlt,
     label: "Mobile",
-    description: "375 × 667",
+    description: "375 × 725",
     width: 375,
     height: 725,
   },
   {
+    icon: (props: any) => (
+      <FaMobileAlt style={{ transform: "rotate(-90deg)" }} {...props} />
+    ),
+    label: "Mobile",
+    description: "725 × 375",
+    width: 725,
+    height: 375,
+  },
+  {
     icon: FaTabletAlt,
     label: "Tablet",
-    description: "768 × 1024",
+    description: "768 × 725",
     width: 768,
     height: 725,
   },
   {
     icon: FaLaptop,
     label: "Laptop",
-    description: "1280 × 800",
+    description: "1440 × 763",
     width: 1440,
     height: 763,
   },
   {
     icon: FaDesktop,
     label: "Desktop",
-    description: "1920 × 1080",
+    description: "2560 × 1450",
     width: 2560,
     height: 1450,
   },

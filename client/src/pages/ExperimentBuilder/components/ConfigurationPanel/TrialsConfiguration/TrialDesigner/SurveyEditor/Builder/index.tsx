@@ -17,6 +17,7 @@ type CustomSurveyEditorProps = {
 const CustomSurveyEditor: React.FC<CustomSurveyEditorProps> = ({
   surveyJson,
   onChange,
+  uploadedFiles = [],
 }) => {
   const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
   const questions = (surveyJson?.elements as Question[]) || [];
@@ -187,6 +188,7 @@ const CustomSurveyEditor: React.FC<CustomSurveyEditorProps> = ({
                 }
                 canMoveUp={index > 0}
                 canMoveDown={index < questions.length - 1}
+                uploadedFiles={uploadedFiles}
               />
             ))}
           </div>

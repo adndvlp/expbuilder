@@ -440,6 +440,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
               setShowRightPanel={setShowRightPanel}
               setRightPanelWidth={setRightPanelWidth}
               csvColumns={csvColumns}
+              uploadedFiles={uploadedFiles}
             />
           )}
 

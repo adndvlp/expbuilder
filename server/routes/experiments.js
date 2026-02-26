@@ -13,6 +13,12 @@ import { v4 as uuidv4 } from "uuid";
 import { db, ensureDbData, userDataRoot } from "../utils/db.js";
 import { ensureTemplate } from "../utils/templates.js";
 import * as cheerio from "cheerio";
+import { createRequire } from "module";
+
+const _require = createRequire(import.meta.url);
+const bundlePkg = _require("../jspsych-bundle/package.json");
+const BUNDLE_VERSION = bundlePkg.version; // e.g. "2.0.1"
+const BUNDLE_CDN = `https://unpkg.com/jspsych-expbuilder-custom@${BUNDLE_VERSION}`;
 
 const router = Router();
 
@@ -601,18 +607,9 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     }
 
     // Reemplazar rutas locales por rutas CDN para publicación
-    $("link[href*='jspsych-bundle']").attr(
-      "href",
-      "https://unpkg.com/jspsych-expbuilder-custom@2.0.0/index.css",
-    );
-    $("script[src*='jspsych-bundle']").attr(
-      "src",
-      "https://unpkg.com/jspsych-expbuilder-custom@2.0.0/index.js",
-    );
-    $("script[src*='webgazer']").attr(
-      "src",
-      "https://unpkg.com/jspsych-expbuilder-custom@2.0.0/webgazer.js",
-    );
+    $("link[href*='jspsych-bundle']").attr("href", `${BUNDLE_CDN}/index.css`);
+    $("script[src*='jspsych-bundle']").attr("src", `${BUNDLE_CDN}/index.js`);
+    $("script[src*='webgazer']").attr("src", `${BUNDLE_CDN}/webgazer.js`);
 
     const htmlContent = $.html();
 

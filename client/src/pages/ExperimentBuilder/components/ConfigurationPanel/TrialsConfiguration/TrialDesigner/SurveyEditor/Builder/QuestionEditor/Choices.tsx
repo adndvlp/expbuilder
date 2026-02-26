@@ -1,6 +1,7 @@
 import { FiPlus } from "react-icons/fi";
-import { Question, ChoiceItem } from "../types";
-import { useState } from "react";
+import { Question, ChoiceItem, UploadedFile } from "../types";
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 type Props = {
   question: Question;
@@ -12,6 +13,7 @@ type Props = {
   ) => void;
   onRemoveChoice: (choiceIndex: number) => void;
   index: number;
+  uploadedFiles?: UploadedFile[];
 };
 
 function Choices({
@@ -19,11 +21,15 @@ function Choices({
   onAddChoice,
   onUpdateChoice,
   onRemoveChoice,
-  index,
+  uploadedFiles = [],
 }: Props) {
-  const [imageLinkDrafts, setImageLinkDrafts] = useState<
-    Record<string, string>
-  >({});
+  const imageFiles = uploadedFiles.filter(
+    (f) =>
+      f.type === "img" ||
+      f.type === "vid" ||
+      f.type.startsWith("image/") ||
+      f.type.startsWith("video/"),
+  );
 
   // Normalizar choices a objetos
   const normalizedChoices = (question.choices || []).map((choice) => {
@@ -168,57 +174,28 @@ function Choices({
                 </button>
               </div>
               {question.type === "imagepicker" && (
-                <>
-                  <input
-                    type="text"
-                    // use a local draft so we don't call parent on every keystroke
-                    value={
-                      imageLinkDrafts[`${index}-${choiceIndex}`] ??
-                      (choice.imageLink || "")
-                    }
-                    onChange={(e) =>
-                      setImageLinkDrafts((prev) => ({
-                        ...prev,
-                        [`${index}-${choiceIndex}`]: e.target.value,
-                      }))
-                    }
-                    onBlur={(e) => {
-                      const key = `${index}-${choiceIndex}`;
-                      const valueToCommit =
-                        imageLinkDrafts[key] ?? e.target.value;
-                      onUpdateChoice(choiceIndex, "imageLink", valueToCommit);
-                      setImageLinkDrafts((prev) => {
-                        const np = { ...prev };
-                        delete np[key];
-                        return np;
-                      });
-                    }}
-                    placeholder="Image URL (optional)"
-                    style={{
-                      padding: "8px 12px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "13px",
-                      backgroundColor: "var(--neutral-light)",
-                      color: "var(--text-dark)",
-                    }}
-                  />
-                  {choice.imageLink && (
-                    <img
-                      src={choice.imageLink}
-                      alt="Preview"
-                      style={{
-                        maxWidth: "100px",
-                        maxHeight: "100px",
-                        objectFit: "contain",
-                        borderRadius: "4px",
-                      }}
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                  )}
-                </>
+                <select
+                  value={choice.imageLink || ""}
+                  onChange={(e) =>
+                    onUpdateChoice(choiceIndex, "imageLink", e.target.value)
+                  }
+                  style={{
+                    padding: "8px 12px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    backgroundColor: "var(--neutral-light)",
+                    color: "var(--text-dark)",
+                    width: "100%",
+                  }}
+                >
+                  <option value="">-- Select image --</option>
+                  {imageFiles.map((f) => (
+                    <option key={f.url} value={`${API_URL}/${f.url}`}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
               )}
             </div>
           ))}

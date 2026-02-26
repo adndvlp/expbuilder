@@ -267,7 +267,7 @@ const GrapesButtonEditor: React.FC<GrapesButtonEditorProps> = ({
             color: "#856404",
           }}
         >
-          <strong>⚠️ Button Template Mode:</strong> Design your button template
+          <strong>Button Template Mode:</strong> Design your button template
           here. Use{" "}
           <code
             style={{

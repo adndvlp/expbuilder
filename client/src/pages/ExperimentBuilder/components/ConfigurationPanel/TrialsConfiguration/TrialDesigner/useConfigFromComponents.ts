@@ -78,6 +78,26 @@ export default function useConfigComponents({
         });
       }
 
+      // Convert font sizes from Konva px → vw so they scale with viewport at runtime
+      // (same strategy as width/height: divide by canvas width to get a vw percentage)
+      if (comp.type === "TextComponent" && canvasStyles) {
+        const fontSizePx =
+          (comp.config?.font_size?.value as number | undefined) ?? 16;
+        componentData._font_size_runtime_vw = {
+          source: "typed",
+          value: (fontSizePx / canvasStyles.width) * 100,
+        };
+      }
+
+      if (comp.type === "ButtonResponseComponent" && canvasStyles) {
+        const bfsPx =
+          (comp.config?.button_font_size?.value as number | undefined) ?? 14;
+        componentData._button_font_size_runtime_vw = {
+          source: "typed",
+          value: (bfsPx / canvasStyles.width) * 100,
+        };
+      }
+
       // Categorize
       const isResponseComponent =
         comp.type === "ButtonResponseComponent" ||

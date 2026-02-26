@@ -185,6 +185,7 @@ function QuestionEditor({
               onUpdateChoice={onUpdateChoice}
               onRemoveChoice={onRemoveChoice}
               index={index}
+              uploadedFiles={uploadedFiles}
             />
           )}
 

@@ -180,6 +180,7 @@ class TextComponent {
     // Resolve all params
     const text = this.resolveParam(config.text, "Text");
     const fontColor = this.resolveParam(config.font_color, "#000000");
+    const fontSizeVw = this.resolveParam(config._font_size_runtime_vw, null);
     const fontSize = this.resolveParam(config.font_size, 16);
     const fontFamily = this.resolveParam(config.font_family, "sans-serif");
     const fontWeight = this.resolveParam(config.font_weight, "normal");
@@ -214,7 +215,8 @@ class TextComponent {
 
     // Style
     this.element.style.color = fontColor;
-    this.element.style.fontSize = `${fontSize}px`;
+    this.element.style.fontSize =
+      fontSizeVw != null ? `${fontSizeVw}vw` : `${fontSize}px`;
     this.element.style.fontFamily = fontFamily;
     this.element.style.fontWeight = String(fontWeight);
     this.element.style.fontStyle = fontStyle;

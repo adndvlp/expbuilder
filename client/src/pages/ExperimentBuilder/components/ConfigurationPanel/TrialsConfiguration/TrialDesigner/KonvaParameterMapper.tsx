@@ -25,6 +25,7 @@ type Props = {
   setShowRightPanel: React.Dispatch<React.SetStateAction<boolean>>;
   setRightPanelWidth: React.Dispatch<React.SetStateAction<number>>;
   csvColumns: string[];
+  uploadedFiles?: { name: string; url: string; type: string }[];
 };
 
 function KonvaParameterMapper({
@@ -43,6 +44,7 @@ function KonvaParameterMapper({
   setShowRightPanel,
   setRightPanelWidth,
   csvColumns,
+  uploadedFiles = [],
 }: Props) {
   const initResizeRight = () => {
     isResizingRight.current = true;
@@ -209,6 +211,7 @@ function KonvaParameterMapper({
                 pluginName={selectedComponent.type}
                 componentMode={true}
                 selectedComponentId={selectedId}
+                uploadedFiles={uploadedFiles}
                 onComponentConfigChange={(compId, config) => {
                   setComponents((prev) =>
                     prev.map((c) => (c.id === compId ? { ...c, config } : c)),

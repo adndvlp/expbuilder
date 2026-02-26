@@ -101,7 +101,7 @@ const SurveyPreview: React.FC<SurveyPreviewProps> = ({ surveyJson }) => {
                         imageLink: String(cRecord["imageLink"]),
                       };
                     return { value, text };
-                  }
+                  },
                 );
               }
             }
@@ -114,7 +114,7 @@ const SurveyPreview: React.FC<SurveyPreviewProps> = ({ surveyJson }) => {
       };
 
       const sanitized = sanitizeSurveyJson(
-        surveyJson as Record<string, unknown>
+        surveyJson as Record<string, unknown>,
       );
 
       // Crear el modelo de la encuesta (forzar recreación para aplicar nuevos temas)

@@ -1,5 +1,7 @@
 import { Question, UploadedFile } from "../types";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 type Props = {
   question: Question;
   onUpdate: (updates: Partial<Question>) => void;
@@ -7,9 +9,12 @@ type Props = {
 };
 
 function ImageSettings({ question, onUpdate, uploadedFiles }: Props) {
-  // Filtrar archivos por tipo para image/video
   const imageFiles = uploadedFiles.filter(
-    (f) => f.type.startsWith("image/") || f.type.startsWith("video/"),
+    (f) =>
+      f.type === "img" ||
+      f.type === "vid" ||
+      f.type.startsWith("image/") ||
+      f.type.startsWith("video/"),
   );
   return (
     <>
@@ -36,31 +41,15 @@ function ImageSettings({ question, onUpdate, uploadedFiles }: Props) {
             fontSize: "14px",
             backgroundColor: "var(--neutral-light)",
             color: "var(--text-dark)",
-            marginBottom: "8px",
           }}
         >
-          <option value="">-- Select File or Enter URL --</option>
+          <option value="">-- Select File --</option>
           {imageFiles.map((f) => (
-            <option key={f.url} value={f.url}>
+            <option key={f.url} value={`${API_URL}/${f.url}`}>
               {f.name}
             </option>
           ))}
         </select>
-        <input
-          type="text"
-          value={question.imageLink || ""}
-          onChange={(e) => onUpdate({ imageLink: e.target.value })}
-          placeholder="Or paste URL (https://...)"
-          style={{
-            width: "100%",
-            padding: "8px 12px",
-            border: "1px solid #d1d5db",
-            borderRadius: "6px",
-            fontSize: "14px",
-            backgroundColor: "var(--neutral-light)",
-            color: "var(--text-dark)",
-          }}
-        />
       </div>
 
       <div
