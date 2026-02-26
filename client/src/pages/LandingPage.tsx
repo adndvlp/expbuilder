@@ -138,81 +138,27 @@ function LandingPage() {
             gap: "40px",
           }}
         >
-          {/* Contact */}
+          {/* Brand Col */}
           <div style={{ flex: "0 1 auto", minWidth: "200px" }}>
-            <h4
+            <div
               style={{
-                color: "#e0e0e0",
-                marginBottom: "20px",
-                fontSize: "16px",
-                fontWeight: 700,
-                borderBottom: "2px solid #d4af37",
-                display: "inline-block",
-                paddingBottom: "6px",
+                fontSize: "24px",
+                fontWeight: 800,
+                marginBottom: "16px",
+                background: "linear-gradient(to right, #fff, #d4af37)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
               }}
             >
-              Developer Contact
-            </h4>
-            <p style={{ marginBottom: "8px", opacity: 0.8 }}>
-              Andrés Pacheco Fabián
-            </p>
-            <div style={{ display: "flex", gap: "12px", fontSize: "20px" }}>
-              <a
-                href="https://github.com/adndvlp"
-                onClick={(e) => openLink(e, "https://github.com/adndvlp")}
-                title="GitHub Profile"
-                style={{ color: "#fff", transition: "color 0.2s" }}
-                onMouseOver={(e) => (e.currentTarget.style.color = "#d4af37")}
-                onMouseOut={(e) => (e.currentTarget.style.color = "#fff")}
-              >
-                <FaGithub />
-              </a>
-              <a
-                href="https://www.linkedin.com/in/andpacheco/"
-                onClick={(e) =>
-                  openLink(e, "https://www.linkedin.com/in/andpacheco/")
-                }
-                title="LinkedIn Profile"
-                style={{ color: "#fff", transition: "color 0.2s" }}
-                onMouseOver={(e) => (e.currentTarget.style.color = "#d4af37")}
-                onMouseOut={(e) => (e.currentTarget.style.color = "#fff")}
-              >
-                <FaLinkedin />
-              </a>
-              <a
-                href="mailto:andngdv.lpr@gmail.com"
-                onClick={(e) => openLink(e, "mailto:andngdv.lpr@gmail.com")}
-                title="Email Me"
-                style={{ color: "#fff", transition: "color 0.2s" }}
-                onMouseOver={(e) => (e.currentTarget.style.color = "#d4af37")}
-                onMouseOut={(e) => (e.currentTarget.style.color = "#fff")}
-              >
-                <FaEnvelope />
-              </a>
+              ExpBuilder
             </div>
-            <a
-              href="https://github.com/adndvlp/expbuilder"
-              onClick={(e) =>
-                openLink(e, "https://github.com/adndvlp/expbuilder")
-              }
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                marginTop: "16px",
-                color: "#d4af37",
-                textDecoration: "none",
-                fontSize: "13px",
-              }}
-              onMouseOver={(e) =>
-                (e.currentTarget.style.textDecoration = "underline")
-              }
-              onMouseOut={(e) =>
-                (e.currentTarget.style.textDecoration = "none")
-              }
-            >
-              <FaCodeBranch /> View Project Repo
-            </a>
+            <p style={{ marginBottom: "8px", opacity: 0.8 }}>
+              &copy; {new Date().getFullYear()} Laboratorio de Psicolingüística,
+              Fac. Psicología, UNAM.
+            </p>
+            <p style={{ opacity: 0.6, fontSize: "12px" }}>
+              Open Source Project under MIT License.
+            </p>
           </div>
           {/* Institutional Home */}
           <div style={{ flex: "0 1 auto", minWidth: "200px" }}>
@@ -338,27 +284,81 @@ function LandingPage() {
             </a>
           </div>
 
-          {/* Brand Col */}
+          {/* Contact */}
           <div style={{ flex: "0 1 auto", minWidth: "200px" }}>
-            <div
+            <h4
               style={{
-                fontSize: "24px",
-                fontWeight: 800,
-                marginBottom: "16px",
-                background: "linear-gradient(to right, #fff, #d4af37)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
+                color: "#e0e0e0",
+                marginBottom: "20px",
+                fontSize: "16px",
+                fontWeight: 700,
+                borderBottom: "2px solid #d4af37",
+                display: "inline-block",
+                paddingBottom: "6px",
               }}
             >
-              ExpBuilder
-            </div>
+              Developer Contact
+            </h4>
             <p style={{ marginBottom: "8px", opacity: 0.8 }}>
-              &copy; {new Date().getFullYear()} Laboratorio de Psicolingüística,
-              Fac. Psicología, UNAM.
+              Andrés Pacheco Fabián
             </p>
-            <p style={{ opacity: 0.6, fontSize: "12px" }}>
-              Open Source Project under MIT License.
-            </p>
+            <div style={{ display: "flex", gap: "12px", fontSize: "20px" }}>
+              <a
+                href="https://github.com/adndvlp"
+                onClick={(e) => openLink(e, "https://github.com/adndvlp")}
+                title="GitHub Profile"
+                style={{ color: "#fff", transition: "color 0.2s" }}
+                onMouseOver={(e) => (e.currentTarget.style.color = "#d4af37")}
+                onMouseOut={(e) => (e.currentTarget.style.color = "#fff")}
+              >
+                <FaGithub />
+              </a>
+              <a
+                href="https://www.linkedin.com/in/andpacheco/"
+                onClick={(e) =>
+                  openLink(e, "https://www.linkedin.com/in/andpacheco/")
+                }
+                title="LinkedIn Profile"
+                style={{ color: "#fff", transition: "color 0.2s" }}
+                onMouseOver={(e) => (e.currentTarget.style.color = "#d4af37")}
+                onMouseOut={(e) => (e.currentTarget.style.color = "#fff")}
+              >
+                <FaLinkedin />
+              </a>
+              <a
+                href="mailto:andngdv.lpr@gmail.com"
+                onClick={(e) => openLink(e, "mailto:andngdv.lpr@gmail.com")}
+                title="Email Me"
+                style={{ color: "#fff", transition: "color 0.2s" }}
+                onMouseOver={(e) => (e.currentTarget.style.color = "#d4af37")}
+                onMouseOut={(e) => (e.currentTarget.style.color = "#fff")}
+              >
+                <FaEnvelope />
+              </a>
+            </div>
+            <a
+              href="https://github.com/adndvlp/expbuilder"
+              onClick={(e) =>
+                openLink(e, "https://github.com/adndvlp/expbuilder")
+              }
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                marginTop: "16px",
+                color: "#d4af37",
+                textDecoration: "none",
+                fontSize: "13px",
+              }}
+              onMouseOver={(e) =>
+                (e.currentTarget.style.textDecoration = "underline")
+              }
+              onMouseOut={(e) =>
+                (e.currentTarget.style.textDecoration = "none")
+              }
+            >
+              <FaCodeBranch /> View Project Repo
+            </a>
           </div>
         </div>
       </footer>

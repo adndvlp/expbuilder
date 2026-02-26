@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "../../lib/firebase";
 import GoogleDriveToken from "./GoogleDrive/GoogleDriveToken";
 import DropboxToken from "./Dropbox/DropboxToken";
@@ -12,8 +13,17 @@ import "./index.css";
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function Settings() {
-  const user = auth.currentUser;
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
   const [searchParams, setSearchParams] = useSearchParams();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [notification, setNotification] = useState<{
@@ -120,6 +130,24 @@ export default function Settings() {
       setNotification({ type: "error", message: "Failed to import database" });
     }
   };
+
+  if (authLoading) {
+    return (
+      <div
+        className="settings-bg"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+        }}
+      >
+        <div style={{ color: "#3d92b4", fontSize: 18, fontWeight: 600 }}>
+          Loading...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="settings-bg">

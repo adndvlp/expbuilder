@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../../../../lib/firebase";
 import { openExternal } from "../../../../lib/openExternal";
 import useUrl from "../../hooks/useUrl";
 import FileUploader from "./FileUploader";
@@ -44,44 +46,62 @@ function Timeline({
     );
   }
 
-  // Función para obtener tokens del usuario desde Firestore
+  // Función para obtener tokens del usuario desde Firestore (con cache en localStorage)
   async function getUserTokens(uid: string): Promise<{
     drive: boolean;
     dropbox: boolean;
     osf: boolean;
     github: boolean;
   }> {
+    const CACHE_KEY = `userTokens_${uid}`;
+    const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
     try {
-      // Importar Firestore dinámicamente para evitar dependencias innecesarias
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const { tokens, ts } = JSON.parse(cached);
+        if (Date.now() - ts < CACHE_TTL) return tokens;
+      }
+    } catch {}
+    try {
       const { doc, getDoc } = await import("firebase/firestore");
       const { db } = await import("../../../../lib/firebase");
       const docRef = doc(db, "users", uid);
       const docSnap = await getDoc(docRef);
-      if (!docSnap.exists())
-        return { drive: false, dropbox: false, osf: false, github: false };
+      const empty = { drive: false, dropbox: false, osf: false, github: false };
+      if (!docSnap.exists()) {
+        localStorage.setItem(
+          CACHE_KEY,
+          JSON.stringify({ tokens: empty, ts: Date.now() }),
+        );
+        return empty;
+      }
       const data = docSnap.data();
-      return {
+      const tokens = {
         drive: !!data.googleDriveTokens,
         dropbox: !!data.dropboxTokens,
         osf: !!data.osfTokens,
         github: !!data.githubTokens,
       };
+      localStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({ tokens, ts: Date.now() }),
+      );
+      return tokens;
     } catch {
       return { drive: false, dropbox: false, osf: false, github: false };
     }
   }
 
-  // Cargar tokens al montar
+  // Cargar tokens al montar usando onAuthStateChanged para mayor fiabilidad
   useEffect(() => {
-    const userStr = window.localStorage.getItem("user");
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        if (user && user.uid) {
-          getUserTokens(user.uid).then(setUserTokens);
-        }
-      } catch {}
-    }
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser?.uid) {
+        getUserTokens(firebaseUser.uid).then(setUserTokens);
+      } else {
+        setUserTokens(null);
+      }
+    });
+    return () => unsubscribe();
   }, []);
   const [submitStatus, setSubmitStatus] = useState<string>("");
   const { experimentUrl, setExperimentUrl } = useUrl();
@@ -446,10 +466,9 @@ function Timeline({
         isOpen={showStorageModal}
         availableStorages={availableStorages}
         onConfirm={async (storage) => {
-          const userStr = window.localStorage.getItem("user");
-          if (userStr) {
-            const user = JSON.parse(userStr);
-            await publishWithStorage(user.uid, storage);
+          const firebaseUser = auth.currentUser;
+          if (firebaseUser) {
+            await publishWithStorage(firebaseUser.uid, storage);
           }
         }}
         onCancel={() => {

@@ -130,6 +130,7 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
     },
   });
+  win.maximize();
 
   // En desarrollo, cargar desde Vite; en producción, cargar archivos compilados
   if (isProduction) {

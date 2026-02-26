@@ -1,4 +1,5 @@
 import { Dispatch, SetStateAction } from "react";
+import { auth } from "../../../../lib/firebase";
 const API_URL = import.meta.env.VITE_API_URL;
 
 type Props = {
@@ -29,13 +30,12 @@ export default function PublishExperiment({
 }: Props) {
   const handlePublishToGitHub = async () => {
     try {
-      const userStr = window.localStorage.getItem("user");
-      if (!userStr) {
+      const firebaseUser = auth.currentUser;
+      if (!firebaseUser) {
         setPublishStatus("Error: User not logged in");
         return;
       }
-      const user = JSON.parse(userStr);
-      const uid = user.uid;
+      const uid = firebaseUser.uid;
 
       // Obtener tokens del usuario
       const tokens = await getUserTokens(uid);
