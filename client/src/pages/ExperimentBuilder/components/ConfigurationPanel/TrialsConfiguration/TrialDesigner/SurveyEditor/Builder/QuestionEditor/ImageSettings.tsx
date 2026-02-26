@@ -43,7 +43,7 @@ function ImageSettings({ question, onUpdate, uploadedFiles }: Props) {
             color: "var(--text-dark)",
           }}
         >
-          <option value="">-- Select File --</option>
+          <option value="">Select File</option>
           {imageFiles.map((f) => (
             <option key={f.url} value={`${API_URL}/${f.url}`}>
               {f.name}

@@ -189,7 +189,7 @@ function Choices({
                     width: "100%",
                   }}
                 >
-                  <option value="">-- Select image --</option>
+                  <option value="">Select image</option>
                   {imageFiles.map((f) => (
                     <option key={f.url} value={`${API_URL}/${f.url}`}>
                       {f.name}
