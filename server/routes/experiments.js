@@ -12,13 +12,8 @@ import { __dirname } from "../utils/paths.js";
 import { v4 as uuidv4 } from "uuid";
 import { db, ensureDbData, userDataRoot } from "../utils/db.js";
 import { ensureTemplate } from "../utils/templates.js";
+import { getPluginScriptsFromTrials } from "../utils/plugin-scripts.js";
 import * as cheerio from "cheerio";
-import { createRequire } from "module";
-
-const _require = createRequire(import.meta.url);
-const bundlePkg = _require("../jspsych-bundle/package.json");
-const BUNDLE_VERSION = bundlePkg.version; // e.g. "2.0.1"
-const BUNDLE_CDN = `https://unpkg.com/jspsych-expbuilder-custom@${BUNDLE_VERSION}`;
 
 const router = Router();
 
@@ -314,33 +309,30 @@ router.post("/api/run-experiment/:experimentID", async (req, res) => {
     }
     const experimentName = experiment.name;
 
+    // Read trial data for plugin detection and canvasStyles fallback
+    const trialDoc = db.data.trials.find(
+      (t) => t.experimentID === experimentID,
+    );
+
     // Resolve canvasStyles: use value from request body, fallback to DB
     let canvasStyles = canvasStylesFromBody;
-    if (!canvasStyles) {
-      const trialDoc = db.data.trials.find(
-        (t) => t.experimentID === experimentID,
-      );
-      if (trialDoc) {
-        for (const trial of trialDoc.trials || []) {
-          const saved = trial.columnMapping?.__canvasStyles?.value;
-          if (saved) {
-            canvasStyles = saved;
-            break;
-          }
+    if (!canvasStyles && trialDoc) {
+      for (const trial of trialDoc.trials || []) {
+        const saved = trial.columnMapping?.__canvasStyles?.value;
+        if (saved) {
+          canvasStyles = saved;
+          break;
         }
       }
     }
 
-    // Ruta de template y destino
     const templatePath = ensureTemplate("experiment_template.html");
     const experimentHtmlPath = path.join(
       experimentsHtmlDir,
       `${experimentName}.html`,
     );
-    // Copia el template si no existe
-    if (!fs.existsSync(experimentHtmlPath)) {
-      fs.copyFileSync(templatePath, experimentHtmlPath);
-    }
+    // Always copy fresh template so stale HTML is never reused.
+    fs.copyFileSync(templatePath, experimentHtmlPath);
     let html = fs.readFileSync(experimentHtmlPath, "utf8");
     const $ = cheerio.load(html);
     $("script#generated-script").remove();
@@ -448,19 +440,19 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
     }
     const experimentName = experiment.name;
 
+    // Read trial data for plugin detection and canvasStyles fallback
+    const trialDoc = db.data.trials.find(
+      (t) => t.experimentID === experimentID,
+    );
+
     // Resolve canvasStyles: use value from request body, fallback to DB
     let canvasStyles = canvasStylesFromBody;
-    if (!canvasStyles) {
-      const trialDoc = db.data.trials.find(
-        (t) => t.experimentID === experimentID,
-      );
-      if (trialDoc) {
-        for (const trial of trialDoc.trials || []) {
-          const saved = trial.columnMapping?.__canvasStyles?.value;
-          if (saved) {
-            canvasStyles = saved;
-            break;
-          }
+    if (!canvasStyles && trialDoc) {
+      for (const trial of trialDoc.trials || []) {
+        const saved = trial.columnMapping?.__canvasStyles?.value;
+        if (saved) {
+          canvasStyles = saved;
+          break;
         }
       }
     }
@@ -470,9 +462,8 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
       trialsPreviewsHtmlDir,
       `${experimentName}.html`,
     );
-    if (!fs.existsSync(previewHtmlPath)) {
-      fs.copyFileSync(templatePath, previewHtmlPath);
-    }
+    // Always copy fresh template so stale HTML is never reused.
+    fs.copyFileSync(templatePath, previewHtmlPath);
     let html = fs.readFileSync(previewHtmlPath, "utf8");
     const $ = cheerio.load(html);
     $("script#generated-script").remove();
@@ -606,14 +597,60 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
       );
     }
 
-    // Reemplazar rutas locales por rutas CDN para publicación
-    $("link[href*='jspsych-bundle']").attr("href", `${BUNDLE_CDN}/index.css`);
-    $("script[src*='jspsych-bundle']").attr("src", `${BUNDLE_CDN}/index.js`);
-    $("script[src*='webgazer']").attr("src", `${BUNDLE_CDN}/webgazer.js`);
+    // Replace local DynamicPlugin script with the published CDN version.
+    // Resolve package.json via __dirname (works in both dev and Electron asar).
+    // Falls back to hardcoded values if the source folder was excluded from the build.
+    let dynamicName = "jspsych-expbuilder-plugin-dynamic";
+    let dynamicVersion = "1.0.0";
+    try {
+      const dynamicPkgPath = path.resolve(
+        __dirname,
+        "../dynamicplugin/package.json",
+      );
+      const dynamicPkg = JSON.parse(fs.readFileSync(dynamicPkgPath, "utf8"));
+      dynamicName = dynamicPkg.name;
+      dynamicVersion = dynamicPkg.version;
+    } catch {
+      console.warn(
+        "dynamicplugin/package.json not found, using hardcoded CDN fallback",
+      );
+    }
+    const dynamicCdn = `https://unpkg.com/${dynamicName}@${dynamicVersion}/dist/index.iife.js`;
 
-    const htmlContent = $.html();
+    // Swap jspsych-bundle refs for individual CDN scripts
+    $('link[href*="jspsych-bundle"]').remove();
+    $('script[src*="jspsych-bundle"]').remove();
+    $('script[src*="webgazer"]').remove();
+
+    // Add jspsych core from CDN
+    $("head").append(
+      `<link href="https://unpkg.com/jspsych@8.2.2/css/jspsych.css" rel="stylesheet" type="text/css" />`,
+    );
+    $("head").append(`<script src="https://unpkg.com/jspsych@8.2.2"></script>`);
+
+    // Add DynamicPlugin from CDN
+    $("head").append(`<script src="${dynamicCdn}"></script>`);
+
+    // Add only the plugins actually used by this experiment's trials
+    const trialDoc = db.data.trials.find(
+      (t) => t.experimentID === experimentID,
+    );
+    const { scriptUrls, styleUrls } = getPluginScriptsFromTrials(
+      trialDoc?.trials ?? [],
+    );
+    for (const url of styleUrls) {
+      $("head").append(
+        `<link rel="stylesheet" href="${url}" data-dynamic-styles="true" />`,
+      );
+    }
+    for (const url of scriptUrls) {
+      $("head").append(
+        `<script src="${url}" data-dynamic-plugins="true"></script>`,
+      );
+    }
 
     // Leer archivos multimedia y convertir a base64
+    // Must happen BEFORE $.html() so preload plugin can be conditionally injected.
     const uploadsBase = path.join(userDataRoot, experiment.name);
     const mediaTypes = ["img", "vid", "aud"];
     let mediaFiles = [];
@@ -638,6 +675,19 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
         }
       }
     }
+
+    // If the experiment has uploaded media, inject plugin-preload from CDN.
+    // The frontend generates the preload trial in the experiment code, but the
+    // plugin script itself is not stored in the trials array so it must be
+    // detected server-side by checking whether any media files exist.
+    if (mediaFiles.length > 0) {
+      const preloadVersion = "2.1.0";
+      $("head").append(
+        `<script src="https://unpkg.com/@jspsych/plugin-preload@${preloadVersion}" data-dynamic-plugins="true"></script>`,
+      );
+    }
+
+    const htmlContent = $.html();
 
     try {
       const githubUrl = `${process.env.FIREBASE_URL}/publishExperiment`;

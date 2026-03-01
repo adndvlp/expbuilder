@@ -1,14 +1,30 @@
 {
-  "name": "dynamicplugin",
+  "name": "jspsych-expbuilder-plugin-dynamic",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "DynamicPlugin for jsPsych — composable multi-component trial plugin",
+  "main": "dist/index.iife.js",
+  "module": "dist/index.es.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.es.js",
+      "require": "./dist/index.iife.js",
+      "default": "./dist/index.iife.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
+    "prepublishOnly": "npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": [
+    "jspsych",
+    "plugin",
+    "experiment"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",

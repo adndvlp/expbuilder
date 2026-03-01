@@ -49,7 +49,12 @@ function Dashboard() {
 
   // Delete experiment
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this experiment?")) return;
+    const confirmed = window.confirm(
+      "Delete this experiment?\n\n" +
+        "WARNING: This will permanently delete the associated GitHub repository (if published).\n\n" +
+        "Your data storage folder (Dropbox, Google Drive, or OSF) will NOT be affected.",
+    );
+    if (!confirmed) return;
     setLoading(true);
 
     // Get the authenticated user's uid if available
