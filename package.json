@@ -74,13 +74,13 @@
         {
           "target": "dmg",
           "arch": [
-            "arm64"
+            "x64"
           ]
         },
         {
           "target": "zip",
           "arch": [
-            "arm64"
+            "x64"
           ]
         }
       ],
@@ -106,9 +106,19 @@
     },
     "linux": {
       "target": [
+        {
+          "target": "deb",
+          "arch": [
+            "arm64"
+          ]
+        },
+        {
+          "target": "rpm",
+          "arch": [
+            "x64"
+          ]
+        },
         "AppImage",
-        "deb",
-        "rpm",
         "zip"
       ],
       "icon": "icon/icon.png"
