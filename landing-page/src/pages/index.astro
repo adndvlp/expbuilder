@@ -115,25 +115,45 @@ import Layout from '../layouts/Layout.astro';
                     <div class="dl-card mac">
                         <i class="fab fa-apple dl-icon"></i>
                         <h3>macOS</h3>
-                        <p>Universal Support</p>
-                        <div class="btn-group">
-                            <a id="dl-mac-arm" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-primary">Apple Silicon</a>
-                            <a id="dl-mac-intel" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-secondary">Intel</a>
+                        <div class="dl-arch-group">
+                            <span class="arch-label">Apple Silicon</span>
+                            <div class="btn-group">
+                                <a id="dl-mac-arm-dmg" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-primary">.dmg</a>
+                                <a id="dl-mac-arm-zip" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-secondary">.zip</a>
+                            </div>
+                        </div>
+                        <div class="dl-arch-group">
+                            <span class="arch-label">Intel (x64)</span>
+                            <div class="btn-group">
+                                <a id="dl-mac-intel-dmg" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-primary">.dmg</a>
+                                <a id="dl-mac-intel-zip" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-secondary">.zip</a>
+                            </div>
                         </div>
                     </div>
                     <div class="dl-card win">
                         <i class="fab fa-windows dl-icon"></i>
                         <h3>Windows</h3>
-                        <p>Windows 10/11</p>
-                        <a id="dl-win" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-primary full-width">Download .exe</a>
+                        <p>Windows 10/11 (x64)</p>
+                        <div class="btn-group">
+                            <a id="dl-win-exe" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-primary"><i class="fas fa-download"></i> .exe</a>
+                            <a id="dl-win-zip" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-secondary">.zip</a>
+                        </div>
                     </div>
                     <div class="dl-card linux">
                         <i class="fab fa-linux dl-icon"></i>
                         <h3>Linux</h3>
-                        <p>Debian & AppImage</p>
-                        <div class="btn-group">
-                             <a id="dl-linux-deb" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-primary">.deb</a>
-                             <a id="dl-linux-app" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-secondary">.AppImage</a>
+                        <div class="dl-arch-group">
+                            <span class="arch-label">.deb</span>
+                            <div class="btn-group">
+                                <a id="dl-linux-deb-arm" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-primary">ARM64</a>
+                                <a id="dl-linux-deb-amd" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-secondary">AMD64</a>
+                            </div>
+                        </div>
+                        <div class="dl-arch-group">
+                            <span class="arch-label">.rpm</span>
+                            <div class="btn-group">
+                                <a id="dl-linux-rpm-amd" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-secondary full-width">AMD64</a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -186,6 +206,12 @@ import Layout from '../layouts/Layout.astro';
     </footer>
 
     <script>
+        // Helper
+        function setHref(id, url) {
+            const el = document.getElementById(id);
+            if(el) el.href = url;
+        }
+
         // Set dynamic year
         document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -255,39 +281,34 @@ import Layout from '../layouts/Layout.astro';
                 }
 
                 if(data.assets && data.assets.length > 0) {
-                    // Windows
-                    const winAsset = data.assets.find(a => a.name.endsWith('.exe'));
-                    if(winAsset) {
-                        const winBtn = document.getElementById('dl-win');
-                        if(winBtn) winBtn.href = winAsset.browser_download_url;
-                    }
+                    const a = data.assets;
 
-                    // Mac 
-                    // Usually arm64 has 'arm64' in name, Intel usually doesn't (or has x64)
-                    const macArmAsset = data.assets.find(a => a.name.endsWith('.dmg') && a.name.includes('arm64'));
-                    const macIntelAsset = data.assets.find(a => a.name.endsWith('.dmg') && !a.name.includes('arm64'));
-                    
-                    if(macArmAsset) {
-                        const btn = document.getElementById('dl-mac-arm');
-                        if(btn) btn.href = macArmAsset.browser_download_url;
-                    }
-                    if(macIntelAsset) {
-                        const btn = document.getElementById('dl-mac-intel');
-                        if(btn) btn.href = macIntelAsset.browser_download_url;
-                    }
+                    // macOS
+                    const macArmDmg    = a.find(f => f.name.endsWith('.dmg') && f.name.includes('arm64'));
+                    const macIntelDmg  = a.find(f => f.name.endsWith('.dmg') && !f.name.includes('arm64'));
+                    const macArmZip    = a.find(f => f.name.endsWith('.zip') && f.name.toLowerCase().includes('mac') && f.name.includes('arm64'));
+                    const macIntelZip  = a.find(f => f.name.endsWith('.zip') && f.name.toLowerCase().includes('mac') && !f.name.includes('arm64'));
+
+                    if(macArmDmg)   setHref('dl-mac-arm-dmg',   macArmDmg.browser_download_url);
+                    if(macArmZip)   setHref('dl-mac-arm-zip',   macArmZip.browser_download_url);
+                    if(macIntelDmg) setHref('dl-mac-intel-dmg', macIntelDmg.browser_download_url);
+                    if(macIntelZip) setHref('dl-mac-intel-zip', macIntelZip.browser_download_url);
+
+                    // Windows
+                    const winExe = a.find(f => f.name.endsWith('.exe'));
+                    const winZip = a.find(f => f.name.endsWith('.zip') && f.name.toLowerCase().includes('win'));
+
+                    if(winExe) setHref('dl-win-exe', winExe.browser_download_url);
+                    if(winZip) setHref('dl-win-zip', winZip.browser_download_url);
 
                     // Linux
-                    const debAsset = data.assets.find(a => a.name.endsWith('.deb'));
-                    const appImageAsset = data.assets.find(a => a.name.endsWith('.AppImage'));
+                    const debArm = a.find(f => f.name.endsWith('.deb') && f.name.includes('arm64'));
+                    const debAmd = a.find(f => f.name.endsWith('.deb') && (f.name.includes('amd64') || f.name.includes('x86_64') || !f.name.includes('arm64')));
+                    const rpmAmd = a.find(f => f.name.endsWith('.rpm'));
 
-                    if(debAsset) {
-                        const btn = document.getElementById('dl-linux-deb');
-                        if(btn) btn.href = debAsset.browser_download_url;
-                    }
-                    if(appImageAsset) {
-                        const btn = document.getElementById('dl-linux-app');
-                        if(btn) btn.href = appImageAsset.browser_download_url;
-                    }
+                    if(debArm) setHref('dl-linux-deb-arm', debArm.browser_download_url);
+                    if(debAmd) setHref('dl-linux-deb-amd', debAmd.browser_download_url);
+                    if(rpmAmd) setHref('dl-linux-rpm-amd', rpmAmd.browser_download_url);
                 }
             })
             .catch(e => console.log('Could not fetch latest release, using default link'));
