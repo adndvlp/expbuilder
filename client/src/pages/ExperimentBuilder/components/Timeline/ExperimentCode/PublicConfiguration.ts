@@ -842,7 +842,7 @@ export default function PublicConfiguration({
         `
             : ""
         }
-        ${recruitmentConfig.platform === "none" ? `_hideLoading();` : ""}
+        ${recruitmentConfig.platform === "none" ? `_showSuccess();` : ""}
       }
     });
     

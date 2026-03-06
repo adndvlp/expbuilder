@@ -34,13 +34,13 @@ const Register: React.FC = () => {
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
-        password
+        password,
       );
       const user = userCredential.user;
       await setDoc(doc(db, "users", user.uid), {
         email: user.email,
         uid: user.uid,
-        osfToken: "",
+        osfTokens: null,
         osfTokenValid: false,
         dropboxTokens: null,
         githubTokens: null,

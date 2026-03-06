@@ -11,7 +11,8 @@ type Props = {
   generatedBaseCode: () => Promise<string>;
   setSubmitStatus: Dispatch<SetStateAction<string>>;
   setExperimentUrl: (url: string) => void;
-  setCopyStatus: Dispatch<SetStateAction<string>>;
+  setTunnelCopyStatus: Dispatch<SetStateAction<string>>;
+  setPagesCopyStatus: Dispatch<SetStateAction<string>>;
   setTunnelStatus: Dispatch<SetStateAction<string>>;
   setTunnelActive: Dispatch<SetStateAction<boolean>>;
   setIsTunnelCreating: Dispatch<SetStateAction<boolean>>;
@@ -28,7 +29,8 @@ export default function Actions({
   generatedBaseCode,
   setSubmitStatus,
   setExperimentUrl,
-  setCopyStatus,
+  setTunnelCopyStatus,
+  setPagesCopyStatus,
   setTunnelStatus,
   setTunnelActive,
   setIsTunnelCreating,
@@ -247,18 +249,19 @@ export default function Actions({
         linkToCopy = `${tunnelUrl}/${experimentID}`;
       }
     }
+    const setter = lastPagesUrl ? setPagesCopyStatus : setTunnelCopyStatus;
     if (linkToCopy) {
       try {
         await navigator.clipboard.writeText(linkToCopy);
-        setCopyStatus("Link copied!");
-        setTimeout(() => setCopyStatus(""), 2000); // Clear message after 2 seconds
+        setter("Link copied!");
+        setTimeout(() => setter(""), 2000);
       } catch (err) {
         console.error("Failed to copy: ", err);
-        setCopyStatus("Failed to copy link.");
+        setter("Failed to copy link.");
       }
     } else {
-      setCopyStatus("No published link available.");
-      setTimeout(() => setCopyStatus(""), 2000);
+      setter("No published link available.");
+      setTimeout(() => setter(""), 2000);
     }
   };
   return {

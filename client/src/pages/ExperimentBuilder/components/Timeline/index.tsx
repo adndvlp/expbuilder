@@ -105,7 +105,8 @@ function Timeline({
   }, []);
   const [submitStatus, setSubmitStatus] = useState<string>("");
   const { experimentUrl, setExperimentUrl } = useUrl();
-  const [copyStatus, setCopyStatus] = useState<string>("");
+  const [tunnelCopyStatus, setTunnelCopyStatus] = useState<string>("");
+  const [pagesCopyStatus, setPagesCopyStatus] = useState<string>("");
   const [tunnelStatus, setTunnelStatus] = useState<string>("");
   const [isTunnelActive, setTunnelActive] = useState<boolean>(false);
   const [isTunnelCreating, setIsTunnelCreating] = useState<boolean>(false);
@@ -136,7 +137,8 @@ function Timeline({
       generatedBaseCode,
       setSubmitStatus,
       setExperimentUrl,
-      setCopyStatus,
+      setTunnelCopyStatus,
+      setPagesCopyStatus,
       setTunnelStatus,
       setTunnelActive,
       setIsTunnelCreating,
@@ -168,7 +170,7 @@ function Timeline({
         {submitStatus && (
           <div
             style={{
-              marginTop: "12px",
+              marginTop: "16px",
               padding: "12px",
               borderRadius: "4px",
               backgroundColor: submitStatus.includes("success")
@@ -264,7 +266,7 @@ function Timeline({
               fontWeight: "600",
               fontSize: 14,
               letterSpacing: "0.05em",
-              marginTop: 12,
+              marginTop: 16,
               transition: "background-color 0.3s ease",
               cursor:
                 isTunnelActive || isTunnelCreating ? "not-allowed" : "pointer",
@@ -296,7 +298,7 @@ function Timeline({
           )}
           {isTunnelActive && (
             <button
-              style={{ marginTop: 6, marginBottom: 6, width: "100%" }}
+              style={{ marginTop: 6, marginBottom: 16, width: "100%" }}
               onClick={handleCloseTunnel}
               className="remove-button"
             >
@@ -306,7 +308,7 @@ function Timeline({
         </div>
 
         {/* Copy links section */}
-        <div style={{ marginTop: "12px" }}>
+        <div>
           {(activeTunnelUrl || lastPagesUrl) && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {activeTunnelUrl && (
@@ -335,67 +337,29 @@ function Timeline({
                     const url = `${activeTunnelUrl}/${experimentID}`;
                     try {
                       await navigator.clipboard.writeText(url);
-                      setCopyStatus("Tunnel link copied!");
-                      setTimeout(() => setCopyStatus(""), 2000);
+                      setTunnelCopyStatus("Tunnel link copied!");
+                      setTimeout(() => setTunnelCopyStatus(""), 2000);
                     } catch {
-                      setCopyStatus("Failed to copy.");
-                      setTimeout(() => setCopyStatus(""), 2000);
+                      setTunnelCopyStatus("Failed to copy.");
+                      setTimeout(() => setTunnelCopyStatus(""), 2000);
                     }
                   }}
                 >
                   Copy Tunnel Link
                 </button>
               )}
-              {lastPagesUrl && (
-                <button
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    padding: "10px 0",
-                    backgroundColor: "#2196f3",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: 6,
-                    fontWeight: "600",
-                    fontSize: 14,
-                    letterSpacing: "0.05em",
-                    marginTop: 4,
-                    cursor: "pointer",
-                    transition: "background-color 0.3s ease",
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor = "#1e88e5")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.backgroundColor = "#2196f3")
-                  }
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(lastPagesUrl);
-                      setCopyStatus("GitHub Pages link copied!");
-                      setTimeout(() => setCopyStatus(""), 2000);
-                    } catch {
-                      setCopyStatus("Failed to copy.");
-                      setTimeout(() => setCopyStatus(""), 2000);
-                    }
-                  }}
-                >
-                  Copy GitHub Pages Link
-                </button>
-              )}
-              {copyStatus && (
+              {tunnelCopyStatus && (
                 <p
                   style={{
                     fontSize: 13,
-                    color: copyStatus.includes("copied")
+                    color: tunnelCopyStatus.includes("copied")
                       ? "#4caf50"
                       : "#f44336",
                     textAlign: "center",
-                    marginTop: 4,
                     fontWeight: "500",
                   }}
                 >
-                  {copyStatus}
+                  {tunnelCopyStatus}
                 </p>
               )}
             </div>
@@ -417,7 +381,7 @@ function Timeline({
               fontWeight: "600",
               fontSize: 14,
               letterSpacing: "0.05em",
-              marginTop: 12,
+              marginTop: 16,
               cursor:
                 isPublishing || !experimentUrl || isDisabledByTokens()
                   ? "not-allowed"
@@ -442,6 +406,60 @@ function Timeline({
             {publishStatus}
           </p>
         )}
+        <>
+          {lastPagesUrl && (
+            <button
+              style={{
+                display: "block",
+                width: "100%",
+                padding: "10px 0",
+                backgroundColor: "#2196f3",
+                color: "#fff",
+                border: "none",
+                borderRadius: 6,
+                fontWeight: "600",
+                fontSize: 14,
+                letterSpacing: "0.05em",
+                marginTop: 16,
+                cursor: "pointer",
+                transition: "background-color 0.3s ease",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor = "#1e88e5")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.backgroundColor = "#2196f3")
+              }
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(lastPagesUrl);
+                  setPagesCopyStatus("GitHub Pages link copied!");
+                  setTimeout(() => setPagesCopyStatus(""), 2000);
+                } catch {
+                  setPagesCopyStatus("Failed to copy.");
+                  setTimeout(() => setPagesCopyStatus(""), 2000);
+                }
+              }}
+            >
+              Copy GitHub Pages Link
+            </button>
+          )}
+          {pagesCopyStatus && (
+            <p
+              style={{
+                fontSize: 13,
+                color: pagesCopyStatus.includes("copied")
+                  ? "#4caf50"
+                  : "#f44336",
+                textAlign: "center",
+                marginTop: 4,
+                fontWeight: "500",
+              }}
+            >
+              {pagesCopyStatus}
+            </p>
+          )}
+        </>
       </div>
       <div
         style={{
