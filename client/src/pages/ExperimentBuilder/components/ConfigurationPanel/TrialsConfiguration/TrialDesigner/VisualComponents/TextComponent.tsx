@@ -90,6 +90,10 @@ const TextComponent: React.FC<TextComponentProps> = ({
 
   const displayText = getConfigValue("text", "Text");
 
+  // Detect cloze mode (same rule as runtime: at least one %…% pair)
+  const textParts: string[] = String(displayText).split("%");
+  const isClozeMode = textParts.length >= 3 && textParts.length % 2 === 1;
+
   // Natural → effective sizing
   const effectiveWidth = shapeProps.width > 0 ? shapeProps.width : NATURAL_W;
   const effectiveHeight = shapeProps.height > 0 ? shapeProps.height : NATURAL_H;
@@ -103,6 +107,44 @@ const TextComponent: React.FC<TextComponentProps> = ({
       .filter(Boolean)
       .join(" ") || "normal";
 
+  const clampedFontSize = Math.min(effectiveHeight * 0.7, fontSize);
+
+  // ── Cloze: measure segments and build inline layout ──────────────────────
+  // Use the actual fontSize (not clamped) for width estimation so the
+  // segment positions match what the browser renders at runtime.
+  const charW = fontSize * 0.55;
+  const blankW = 10 * charW; // matches runtime `width:10ch`
+
+  type ClozeSegment =
+    | { kind: "text"; text: string; x: number }
+    | { kind: "blank"; x: number; w: number };
+
+  const clozeSegments: ClozeSegment[] = [];
+  let totalClozeWidth = effectiveWidth;
+
+  if (isClozeMode) {
+    let cursorX = 8; // horizontal padding
+    for (let i = 0; i < textParts.length; i++) {
+      if (i % 2 === 0) {
+        if (textParts[i].length > 0) {
+          clozeSegments.push({ kind: "text", text: textParts[i], x: cursorX });
+          cursorX += textParts[i].length * charW;
+        }
+      } else {
+        clozeSegments.push({ kind: "blank", x: cursorX, w: blankW });
+        cursorX += blankW + charW * 0.5; // small gap after blank
+      }
+    }
+    // Content-driven width (like `max-content` in runtime)
+    totalClozeWidth = cursorX + 8;
+  }
+
+  // In cloze mode use content-derived width and let height fit the fontSize.
+  const drawWidth = isClozeMode ? totalClozeWidth : effectiveWidth;
+  const drawHeight = isClozeMode
+    ? Math.max(effectiveHeight, fontSize * 1.6)
+    : effectiveHeight;
+
   return (
     <>
       <Group
@@ -113,8 +155,8 @@ const TextComponent: React.FC<TextComponentProps> = ({
         draggable
         onClick={onSelect}
         onTap={onSelect}
-        offsetX={effectiveWidth / 2}
-        offsetY={effectiveHeight / 2}
+        offsetX={drawWidth / 2}
+        offsetY={drawHeight / 2}
         onDragEnd={(e) => {
           onChange({ ...shapeProps, x: e.target.x(), y: e.target.y() });
         }}
@@ -136,42 +178,83 @@ const TextComponent: React.FC<TextComponentProps> = ({
           });
         }}
       >
-        {/* Background / border rect */}
-        <Rect
-          x={0}
-          y={0}
-          width={effectiveWidth}
-          height={effectiveHeight}
-          fill={bgColor === "transparent" ? "transparent" : bgColor}
-          stroke={
-            isSelected
-              ? "#1d4ed8"
-              : borderWidth > 0
-                ? borderColor
-                : "rgba(100,100,100,0.25)"
-          }
-          strokeWidth={isSelected ? 2 : borderWidth > 0 ? borderWidth : 1}
-          cornerRadius={borderRadius}
-          dash={isSelected ? [] : borderWidth > 0 ? [] : [4, 3]}
-        />
+        {/* Background / border rect — hidden in cloze mode unless user configured a border/bg */}
+        {(!isClozeMode || bgColor !== "transparent" || borderWidth > 0) && (
+          <Rect
+            x={0}
+            y={0}
+            width={drawWidth}
+            height={drawHeight}
+            fill={bgColor === "transparent" ? "transparent" : bgColor}
+            stroke={
+              isSelected && !isClozeMode
+                ? "#1d4ed8"
+                : borderWidth > 0
+                  ? borderColor
+                  : "transparent"
+            }
+            strokeWidth={
+              isSelected && !isClozeMode ? 2 : borderWidth > 0 ? borderWidth : 0
+            }
+            cornerRadius={borderRadius}
+            dash={[]}
+          />
+        )}
 
-        {/* Text */}
-        <Text
-          x={0}
-          y={0}
-          width={effectiveWidth}
-          height={effectiveHeight}
-          text={String(displayText)}
-          fontSize={Math.min(effectiveHeight * 0.7, fontSize)}
-          fontFamily={fontFamily}
-          fontStyle={konvaFontStyle}
-          fill={fontColor}
-          align={textAlign}
-          verticalAlign="middle"
-          padding={4}
-          wrap="word"
-          ellipsis
-        />
+        {isClozeMode ? (
+          // ── Cloze mode: render text segments + blank boxes inline ────────
+          <>
+            {clozeSegments.map((seg, i) =>
+              seg.kind === "text" ? (
+                <Text
+                  key={i}
+                  x={seg.x}
+                  y={0}
+                  height={drawHeight}
+                  text={seg.text}
+                  fontSize={clampedFontSize}
+                  fontFamily={fontFamily}
+                  fontStyle={konvaFontStyle}
+                  fill={fontColor}
+                  verticalAlign="middle"
+                  listening={false}
+                />
+              ) : (
+                <React.Fragment key={i}>
+                  {/* Input box — matches runtime style */}
+                  <Rect
+                    x={seg.x}
+                    y={drawHeight / 2 - fontSize * 0.75}
+                    width={seg.w}
+                    height={fontSize * 1.5}
+                    fill="white"
+                    stroke="#888"
+                    strokeWidth={1}
+                    cornerRadius={2}
+                  />
+                </React.Fragment>
+              ),
+            )}
+          </>
+        ) : (
+          // ── Plain text mode ───────────────────────────────────────────────
+          <Text
+            x={0}
+            y={0}
+            width={effectiveWidth}
+            height={effectiveHeight}
+            text={String(displayText)}
+            fontSize={clampedFontSize}
+            fontFamily={fontFamily}
+            fontStyle={konvaFontStyle}
+            fill={fontColor}
+            align={textAlign}
+            verticalAlign="middle"
+            padding={4}
+            wrap="word"
+            ellipsis
+          />
+        )}
       </Group>
 
       {isSelected && (

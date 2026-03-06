@@ -10,12 +10,17 @@ const info = {
       type: ParameterType.STRING,
       default: undefined,
     },
-    /** The text content to display. Supports basic HTML entities but renders as plain text by default. */
+    /**
+     * The text content to display. Use %% to create inline input fields (cloze blanks).
+     * You can embed a correct answer between the percent signs (e.g. %answer%) and optionally
+     * allow multiple correct answers by separating them with a slash (e.g. %yes/yep%).
+     */
     text: {
       type: ParameterType.STRING,
       pretty_name: "Text",
       default: "Text",
-      description: "The text content to display",
+      description:
+        "The text content to display. Use %% (or %answer%) to embed inline input fields.",
     },
     /** Position coordinates for the text block. x and y should be between -1 and 1. */
     coordinates: {
@@ -129,8 +134,54 @@ const info = {
       default: null,
       description: "Width of the text block in pixels (null = auto)",
     },
+
+    // ── Cloze / inline-input params (only relevant when text contains %%) ──
+    /**
+     * When true, answers are checked against the correct solutions embedded in the text.
+     * Incorrect answers are highlighted in red and the response is NOT recorded until
+     * all answers are correct.
+     */
+    check_answers: {
+      type: ParameterType.BOOL,
+      pretty_name: "Check Answers",
+      default: false,
+      description:
+        "Validate participant answers against the solutions embedded in %%",
+    },
+    /** When false, all input fields must be filled before a response is recorded. */
+    allow_blanks: {
+      type: ParameterType.BOOL,
+      pretty_name: "Allow Blanks",
+      default: true,
+      description: "Whether empty input fields are accepted",
+    },
+    /** Whether answer checking is case-sensitive. */
+    case_sensitivity: {
+      type: ParameterType.BOOL,
+      pretty_name: "Case Sensitivity",
+      default: true,
+      description: "Whether the answer check is case-sensitive",
+    },
+    /** Auto-focus the first inline input field on render. */
+    autofocus: {
+      type: ParameterType.BOOL,
+      pretty_name: "Autofocus",
+      default: true,
+      description:
+        "Auto-focus the first input field when the component renders",
+    },
   },
-  data: {},
+  data: {
+    /** Answers collected from inline input fields (only present when %% is used). */
+    response: {
+      type: ParameterType.STRING,
+      array: true,
+    },
+    /** Time from render to recordResponse in milliseconds (only when %% is used). */
+    rt: {
+      type: ParameterType.INT,
+    },
+  },
   citations: {
     apa: "de Leeuw, J. R., Gilbert, R. A., & Luchterhandt, B. (2023). jsPsych: Enabling an Open-Source Collaborative Ecosystem of Behavioral Experiments. Journal of Open Source Software, 8(85), 5351. https://doi.org/10.21105/joss.05351 ",
     bibtex:
@@ -141,10 +192,23 @@ const info = {
 /**
  * TextComponent - Renders a styled text block at a given position.
  * Supports coordinates, rotation, and full style customisation.
+ *
+ * Cloze mode: when the `text` parameter contains %% markers the component
+ * automatically embeds inline `<input>` fields and records participant answers,
+ * following the same "sketchpad pattern" used by response components
+ * (no finishTrial – data exposed via getResponse() / getRT()).
  */
 class TextComponent {
   private jsPsych: any;
   private element: HTMLElement | null = null;
+
+  // ── Cloze state ─────────────────────────────────────────────────────────
+  private isClozeMode: boolean = false;
+  private response: string[] | null = null;
+  private rt: number | null = null;
+  private start_time: number | null = null;
+  private solutions: string[][] = [];
+  private inputElements: HTMLInputElement[] = [];
 
   constructor(jsPsych: any) {
     this.jsPsych = jsPsych;
@@ -195,6 +259,10 @@ class TextComponent {
     const width = this.resolveParam(config.width, null);
     const rotation = this.resolveParam(config.rotation, 0);
 
+    // Detect cloze mode: text must have at least one %...% pair
+    const parts = text.split("%");
+    this.isClozeMode = parts.length >= 3 && parts.length % 2 === 1;
+
     // Create element
     this.element = document.createElement("div");
     this.element.id = config.name
@@ -228,12 +296,151 @@ class TextComponent {
     this.element.style.border =
       borderWidth > 0 ? `${borderWidth}px solid ${borderColor}` : "none";
     this.element.style.width = width != null ? `${width}vw` : "max-content";
-    this.element.style.whiteSpace = width != null ? "pre-wrap" : "pre";
     this.element.style.boxSizing = "border-box";
 
-    this.element.textContent = text;
-    container.appendChild(this.element);
+    if (this.isClozeMode) {
+      // nowrap keeps text and inline inputs on the same line
+      this.element.style.whiteSpace = "nowrap";
+
+      // ── Cloze mode: same logic as InputResponseComponent ────────────────
+      const caseSensitive = this.resolveParam(config.case_sensitivity, true);
+      this.solutions = this.parseSolutions(parts, caseSensitive);
+
+      let html = "";
+      let solution_counter = 0;
+      for (let i = 0; i < parts.length; i++) {
+        if (i % 2 === 0) {
+          html += parts[i];
+        } else {
+          // No CSS class – all layout via inline styles so nothing overrides
+          html += `<input type="text" id="input${solution_counter}" value="" style="display:inline;font:inherit;color:inherit;vertical-align:baseline;width:10ch;box-sizing:content-box;">`;
+          solution_counter++;
+        }
+      }
+
+      this.element.innerHTML = html;
+      container.appendChild(this.element);
+
+      // Collect input element references
+      this.inputElements = [];
+      for (let i = 0; i < this.solutions.length; i++) {
+        const input = document.getElementById(`input${i}`) as HTMLInputElement;
+        if (input) {
+          this.inputElements.push(input);
+        }
+      }
+
+      // Autofocus first input if enabled
+      const autofocus = this.resolveParam(config.autofocus, true);
+      if (autofocus && this.inputElements.length > 0) {
+        this.inputElements[0].focus();
+      }
+
+      // Start timing
+      this.start_time = performance.now();
+    } else {
+      // ── Plain text mode (original behaviour) ─────────────────────────────
+      this.element.style.whiteSpace = width != null ? "pre-wrap" : "pre";
+      this.element.textContent = text;
+      container.appendChild(this.element);
+    }
+
     return this.element;
+  }
+
+  // ── Cloze helpers ──────────────────────────────────────────────────────
+
+  /**
+   * Parse correct solutions from the odd-indexed segments of the split text.
+   * Accepts multiple correct answers separated by `/`.
+   */
+  private parseSolutions(parts: string[], caseSensitive: boolean): string[][] {
+    const solutions: string[][] = [];
+    for (let i = 1; i < parts.length; i += 2) {
+      const raw = caseSensitive
+        ? parts[i].trim()
+        : parts[i].toLowerCase().trim();
+      solutions.push(raw.split("/").map((s) => s.trim()));
+    }
+    return solutions;
+  }
+
+  /**
+   * Collect answers from all input fields.
+   * Returns the answers array on success, or null when validation fails
+   * (wrong answers / blanks not allowed).
+   */
+  private collectCurrentResponse(config: any): string[] | null {
+    if (!this.isClozeMode) return null;
+
+    const caseSensitive = this.resolveParam(config.case_sensitivity, true);
+    const checkAnswers = this.resolveParam(config.check_answers, false);
+    const allowBlanks = this.resolveParam(config.allow_blanks, true);
+
+    const answers: string[] = [];
+    let allCorrect = true;
+    let allFilled = true;
+
+    for (let i = 0; i < this.solutions.length; i++) {
+      const field = this.inputElements[i];
+      if (!field) continue;
+
+      const raw = field.value.trim();
+      const answer = caseSensitive ? raw : raw.toLowerCase();
+      answers.push(answer);
+
+      if (checkAnswers) {
+        if (!this.solutions[i].includes(answer)) {
+          field.style.color = "red";
+          allCorrect = false;
+        } else {
+          field.style.color = "";
+        }
+      }
+
+      if (!allowBlanks && answer === "") {
+        allFilled = false;
+      }
+    }
+
+    if ((checkAnswers && !allCorrect) || (!allowBlanks && !allFilled)) {
+      return null;
+    }
+    return answers;
+  }
+
+  /**
+   * Record the current cloze response (called externally, e.g. by a button or
+   * the DynamicPlugin's `recordAllPendingResponses`).
+   * Returns true on success, false if validation failed or already recorded.
+   */
+  recordResponse(config: any): boolean {
+    if (!this.isClozeMode || this.response !== null) return false;
+
+    const answers = this.collectCurrentResponse(config);
+    if (answers === null) return false;
+
+    this.rt = Math.round(performance.now() - this.start_time!);
+    this.response = answers;
+    return true;
+  }
+
+  /** Returns the recorded answers, or null when not yet recorded. */
+  getResponse(): string[] | null {
+    return this.response;
+  }
+
+  /** Returns the response time in milliseconds, or null when not yet recorded. */
+  getRT(): number | null {
+    return this.rt;
+  }
+
+  /**
+   * Check whether the current input state would pass validation without
+   * committing the response.
+   */
+  isValid(config: any): boolean {
+    return this.collectCurrentResponse(config) !== null;
   }
 
   hide(): void {

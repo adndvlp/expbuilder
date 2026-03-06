@@ -621,6 +621,7 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     $('link[href*="jspsych-bundle"]').remove();
     $('script[src*="jspsych-bundle"]').remove();
     $('script[src*="webgazer"]').remove();
+    $('script[src*="dynamicplugin"]').remove();
 
     // Add jspsych core from CDN
     $("head").append(

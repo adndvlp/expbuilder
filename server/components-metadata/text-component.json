@@ -9,7 +9,7 @@
       "type": "string",
       "default": "Text",
       "pretty_name": "Text",
-      "description": "The text content to display"
+      "description": "The text content to display. Use %% (or %answer%) to embed inline input fields."
     },
     "coordinates": {
       "type": "object",
@@ -104,10 +104,38 @@
       "default": null,
       "pretty_name": "Width",
       "description": "Width of the text block in pixels (null = auto)"
+    },
+    "check_answers": {
+      "type": "boolean",
+      "default": false,
+      "pretty_name": "Check Answers",
+      "description": "Validate participant answers against the solutions embedded in %%"
+    },
+    "allow_blanks": {
+      "type": "boolean",
+      "default": true,
+      "pretty_name": "Allow Blanks",
+      "description": "Whether empty input fields are accepted"
+    },
+    "case_sensitivity": {
+      "type": "boolean",
+      "default": true,
+      "pretty_name": "Case Sensitivity",
+      "description": "Whether the answer check is case-sensitive"
+    },
+    "autofocus": {
+      "type": "boolean",
+      "default": true,
+      "pretty_name": "Autofocus",
+      "description": "Auto-focus the first input field when the component renders"
     }
   },
   "data": {
-    "apa": {},
-    "bibtex": {}
+    "response": {
+      "type": "string_array"
+    },
+    "rt": {
+      "type": "number"
+    }
   }
 }

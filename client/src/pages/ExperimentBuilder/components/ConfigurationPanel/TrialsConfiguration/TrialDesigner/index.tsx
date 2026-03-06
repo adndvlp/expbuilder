@@ -280,11 +280,6 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       KeyboardResponseComponent: {
         choices: v("ALL_KEYS"),
       },
-      InputResponseComponent: {
-        text: v("Input: %%"),
-        check_answers: v(false),
-        allow_blanks: v(true),
-      },
       AudioComponent: {
         stimulus: v(""),
       },

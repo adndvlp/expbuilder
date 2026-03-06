@@ -9,7 +9,6 @@ import {
   ButtonResponseComponent,
   KeyboardResponseComponent,
   SliderResponseComponent,
-  InputResponseComponent,
   SketchpadComponent,
   SurveyComponent,
   AudioResponseComponent,
@@ -281,17 +280,6 @@ const RenderComponent = ({
     case "SliderResponseComponent":
       return (
         <SliderResponseComponent
-          key={comp.id}
-          shapeProps={comp}
-          isSelected={isSelected}
-          onSelect={() => handleSelect(comp.id)}
-          onChange={handleComponentChange}
-        />
-      );
-
-    case "InputResponseComponent":
-      return (
-        <InputResponseComponent
           key={comp.id}
           shapeProps={comp}
           isSelected={isSelected}

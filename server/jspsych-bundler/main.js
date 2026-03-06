@@ -1,6 +1,6 @@
 // Importar JsPsych principal y exportar todo
-import { initJsPsych } from "jspsych";
-export { initJsPsych };
+import { initJsPsych, ParameterType } from "jspsych";
+export { initJsPsych, ParameterType };
 
 // Importar todos los plugins y exportarlos
 import jsPsychAnimation from "@jspsych/plugin-animation";
@@ -122,7 +122,3 @@ export {
 // Importar CSS de jspsych y survey
 import "jspsych/css/jspsych.css";
 import "@jspsych/plugin-survey/css/survey.css";
-
-// Importar el dynamic plugin
-import DynamicPlugin from "../dynamicplugin/index.ts";
-export { DynamicPlugin };
