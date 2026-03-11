@@ -132,6 +132,8 @@ export default function Actions({
     );
     if (!confirm) return;
     setIsTunnelCreating(true);
+
+    // Hostname is resolved server-side from the experiment's tunnel settings
     try {
       const res = await fetch(`${API_URL}/api/create-tunnel`, {
         method: "POST",

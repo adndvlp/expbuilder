@@ -419,7 +419,20 @@ export default function PublicConfiguration({
     const resumeRaw = localStorage.getItem('jsPsych_resumeTrial');
     const existingJump = localStorage.getItem('jsPsych_jumpToTrial');
 
-    if (!existingJump) {
+    // Guard contra bucle infinito: si la última recarga fue un intento de jump
+    // y el key sigue intacto (ningún trial lo consumió), borrar todo y empezar limpio.
+    const comingFromJumpReload = sessionStorage.getItem('jsPsych_jumpReload') === '1';
+    sessionStorage.removeItem('jsPsych_jumpReload');
+    if (comingFromJumpReload && existingJump) {
+      localStorage.removeItem('jsPsych_jumpToTrial');
+      localStorage.removeItem('jsPsych_resumeTrial');
+      localStorage.removeItem('jsPsych_currentSessionId');
+      localStorage.removeItem('jsPsych_participantNumber');
+      trialSessionId = crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2, 10);
+      isResuming = false;
+    } else if (!existingJump) {
       // Sin jump pendiente: derivar destino desde el último trial completado
       localStorage.removeItem('jsPsych_jumpToTrial');
       const jumpTarget = _resolveResumeBranch(resumeRaw);
@@ -741,6 +754,7 @@ export default function PublicConfiguration({
         // Si hay un repeat/jump pendiente, recargar para ejecutarlo
         if (localStorage.getItem('jsPsych_jumpToTrial')) {
           if (pendingBatchSaves.length > 0) await Promise.allSettled(pendingBatchSaves);
+          sessionStorage.setItem('jsPsych_jumpReload', '1');
           window.location.reload();
           return;
         }

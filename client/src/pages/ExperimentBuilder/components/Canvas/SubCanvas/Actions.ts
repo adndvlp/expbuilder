@@ -203,8 +203,8 @@ export default function Actions({
   };
 
   const handleAddLoop = async (itemIds: (number | string)[]) => {
-    if (itemIds.length < 2) {
-      alert("You must select at least 2 trials/loops to create a loop.");
+    if (itemIds.length < 1) {
+      alert("You must select at least 1 trial/loop to create a loop.");
       setShowLoopModal(false);
       return;
     }

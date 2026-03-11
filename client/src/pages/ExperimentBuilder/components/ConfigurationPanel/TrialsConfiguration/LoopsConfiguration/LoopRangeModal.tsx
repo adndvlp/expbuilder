@@ -111,7 +111,7 @@ function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
           opacity: 0.8,
         }}
       >
-        Select items to include. Branches will be auto-included.
+        Select at least 1 item. Branches will be auto-included.
       </div>
 
       <div
@@ -224,23 +224,23 @@ function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
         )}
         <button
           onClick={() => {
-            if (allSelectedIds.size < 2) {
-              alert("Please select at least 2 items to create a loop.");
+            if (allSelectedIds.size < 1) {
+              alert("Please select at least 1 item to create a loop.");
               return;
             }
             const ids = Array.from(allSelectedIds);
             onConfirm(ids);
             if (onClose) onClose();
           }}
-          disabled={allSelectedIds.size < 2}
+          disabled={allSelectedIds.size < 1}
           style={{
-            background: allSelectedIds.size < 2 ? "#ccc" : "#4caf50",
+            background: allSelectedIds.size < 1 ? "#ccc" : "#4caf50",
             color: "#fff",
             padding: "8px 24px",
             borderRadius: 6,
             fontSize: 15,
             border: "none",
-            cursor: allSelectedIds.size < 2 ? "not-allowed" : "pointer",
+            cursor: allSelectedIds.size < 1 ? "not-allowed" : "pointer",
             fontWeight: 500,
             boxShadow: "0 1px 4px rgba(76,175,80,0.12)",
             transition: "background 0.2s",

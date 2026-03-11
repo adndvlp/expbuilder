@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import CustomDomainSettings from "./CustomDomainSettings";
 
 type ExperimentSettingsProps = {
   experimentID: string | undefined;
@@ -688,6 +689,9 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
           </div>
         )}
       </div>
+
+      {/* Custom Tunnel Domain */}
+      <CustomDomainSettings experimentID={experimentID} />
 
       {/* Save Button */}
       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
