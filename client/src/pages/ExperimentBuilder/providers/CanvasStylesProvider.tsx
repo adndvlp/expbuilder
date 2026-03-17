@@ -10,8 +10,9 @@ export default function CanvasStylesProvider({
 }: {
   children: ReactNode;
 }) {
-  const [canvasStyles, setCanvasStyles] =
-    useState<CanvasStyles>(DEFAULT_CANVAS_STYLES);
+  const [canvasStyles, setCanvasStyles] = useState<CanvasStyles>(
+    DEFAULT_CANVAS_STYLES,
+  );
 
   return (
     <CanvasStylesContext.Provider value={{ canvasStyles, setCanvasStyles }}>

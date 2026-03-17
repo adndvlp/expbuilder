@@ -101,241 +101,243 @@ function ExperimentBuilder() {
       <TrialsProvider>
         <UrlProvider>
           <CanvasStylesProvider>
-          <div className="app-container">
-            {/* Botones de navegación */}
-            <div
-              style={{
-                position: "fixed",
-                top: 8,
-                left: 16,
-                zIndex: 1000,
-                display: "flex",
-                gap: "8px",
-              }}
-            >
-              <button
-                onClick={() => navigate(-1)}
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: 4,
-                  background: "#3e7d96",
-                  color: "white",
-                  border: "none",
-                  cursor: "pointer",
-                }}
-              >
-                ←
-              </button>
-            </div>
-            {/* Timeline */}
-            {showTimeline && (
+            <div className="app-container">
+              {/* Botones de navegación */}
               <div
-                className="timeline-container"
                 style={{
-                  width: `${timelineWidth}px`,
-                  minWidth: 150,
-                  position: "relative",
+                  position: "fixed",
+                  top: 8,
+                  left: 16,
+                  zIndex: 1000,
+                  display: "flex",
+                  gap: "8px",
                 }}
               >
-                <div className="timeline-header">Timeline</div>
-                <Timeline
-                  uploadedFiles={uploadedFiles}
-                  fileInputRef={fileInputRef}
-                  folderInputRef={folderInputRef}
-                  handleFileUpload={handleFileUpload}
-                  handleDeleteFile={handleDeleteFile}
-                  handleDeleteMultipleFiles={handleDeleteMultipleFiles}
-                />
-
-                {/* Barra de redimensionamiento derecha */}
-                <div
-                  onMouseDown={initResizeTimeline}
+                <button
+                  onClick={() => navigate(-1)}
                   style={{
-                    position: "absolute",
-                    top: 0,
-                    right: 0,
-                    width: 2,
-                    height: "100%",
-                    cursor: "col-resize",
-                    background: "#000",
+                    padding: "6px 12px",
+                    borderRadius: 4,
+                    background: "#3e7d96",
+                    color: "white",
+                    border: "none",
+                    cursor: "pointer",
                   }}
-                />
-              </div>
-            )}
-
-            {/* Centro */}
-            <div className="canvas-container">
-              <div className="canvas-header grid grid-cols-3 gap-4 items-center">
-                {!showTimeline && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: 0,
-                      top: "6.2%",
-                      transform: "translateY(-50%)",
-                      background: "#3d92b4",
-                      color: "white",
-                      borderRadius: "0 4px 4px 0",
-                      cursor: "pointer",
-                      padding: "4px 8px",
-                      zIndex: 10,
-                    }}
-                    onClick={() => setShowTimeline(true)}
-                  >
-                    <FaTimeline />
-                  </div>
-                )}
-
-                <label
-                  htmlFor="devMode"
-                  className="flex items-center cursor-pointer gap-2"
-                  style={{ position: "relative", margin: 0 }}
                 >
-                  <div style={{ position: "relative", width: 38, height: 18 }}>
-                    <Switch
-                      id="devMode"
-                      checked={isDevMode}
-                      onChange={(checked) => setDevMode(checked)}
-                      onColor="#f1c40f"
-                      onHandleColor="#ffffff"
-                      handleDiameter={20}
-                      uncheckedIcon={false}
-                      checkedIcon={false}
-                      height={18}
-                      width={38}
-                    />
-                    <span
-                      style={{
-                        position: "absolute",
-                        left: isDevMode ? 20 : 0,
-                        top: 2,
-                        width: 20,
-                        height: 20,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        pointerEvents: "none",
-                        transition: "left 0.2s",
-                      }}
-                    >
-                      <FaHammer
-                        style={{
-                          color: isDevMode ? "#f1c40f" : "#888",
-                          fontSize: "14px",
-                        }}
-                      />
-                    </span>
-                  </div>
-                </label>
-                {!isDevMode && (
-                  <ExperimentPreview uploadedFiles={uploadedFiles} />
-                )}
-                {!showConfig && (
+                  ←
+                </button>
+              </div>
+              {/* Timeline */}
+              {showTimeline && (
+                <div
+                  className="timeline-container"
+                  style={{
+                    width: `${timelineWidth}px`,
+                    minWidth: 150,
+                    position: "relative",
+                  }}
+                >
+                  <div className="timeline-header">Timeline</div>
+                  <Timeline
+                    uploadedFiles={uploadedFiles}
+                    fileInputRef={fileInputRef}
+                    folderInputRef={folderInputRef}
+                    handleFileUpload={handleFileUpload}
+                    handleDeleteFile={handleDeleteFile}
+                    handleDeleteMultipleFiles={handleDeleteMultipleFiles}
+                  />
+
+                  {/* Barra de redimensionamiento derecha */}
                   <div
+                    onMouseDown={initResizeTimeline}
                     style={{
                       position: "absolute",
+                      top: 0,
                       right: 0,
-                      top: "6.2%",
-                      transform: "translateY(-50%)",
-                      background: "#3d92b4",
-                      color: "white",
-                      borderRadius: "0 4px 4px 0",
-                      cursor: "pointer",
-                      padding: "4px 8px",
-                      zIndex: 10,
+                      width: 2,
+                      height: "100%",
+                      cursor: "col-resize",
+                      background: "#000",
                     }}
-                    onClick={() => setShowConfig(true)}
-                  >
-                    <PiGearSixBold />
-                  </div>
-                )}
-              </div>
-              {isDevMode && <CodeEditor />}
-              {!isDevMode && (
-                <div style={{ overflowY: "auto" }}>
-                  <Canvas />
+                  />
                 </div>
               )}
-            </div>
 
-            {/* Config Panel */}
-            {showConfig && !isDevMode && (
-              <div
-                className="config-panel-container"
-                style={{
-                  width: `${configWidth}px`,
-                  minWidth: 150,
-                  position: "relative",
-                }}
-              >
-                {/* Contenido con scroll */}
-                <div
-                  style={{
-                    flex: 1,
-                    overflowY: "auto",
-                    height: "100vh",
-                  }}
-                >
-                  <ConfigurationPanel />
+              {/* Centro */}
+              <div className="canvas-container">
+                <div className="canvas-header grid grid-cols-3 gap-4 items-center">
+                  {!showTimeline && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: 0,
+                        top: "6.2%",
+                        transform: "translateY(-50%)",
+                        background: "#3d92b4",
+                        color: "white",
+                        borderRadius: "0 4px 4px 0",
+                        cursor: "pointer",
+                        padding: "4px 8px",
+                        zIndex: 10,
+                      }}
+                      onClick={() => setShowTimeline(true)}
+                    >
+                      <FaTimeline />
+                    </div>
+                  )}
+
+                  <label
+                    htmlFor="devMode"
+                    className="flex items-center cursor-pointer gap-2"
+                    style={{ position: "relative", margin: 0 }}
+                  >
+                    <div
+                      style={{ position: "relative", width: 38, height: 18 }}
+                    >
+                      <Switch
+                        id="devMode"
+                        checked={isDevMode}
+                        onChange={(checked) => setDevMode(checked)}
+                        onColor="#f1c40f"
+                        onHandleColor="#ffffff"
+                        handleDiameter={20}
+                        uncheckedIcon={false}
+                        checkedIcon={false}
+                        height={18}
+                        width={38}
+                      />
+                      <span
+                        style={{
+                          position: "absolute",
+                          left: isDevMode ? 20 : 0,
+                          top: 2,
+                          width: 20,
+                          height: 20,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          pointerEvents: "none",
+                          transition: "left 0.2s",
+                        }}
+                      >
+                        <FaHammer
+                          style={{
+                            color: isDevMode ? "#f1c40f" : "#888",
+                            fontSize: "14px",
+                          }}
+                        />
+                      </span>
+                    </div>
+                  </label>
+                  {!isDevMode && (
+                    <ExperimentPreview uploadedFiles={uploadedFiles} />
+                  )}
+                  {!showConfig && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        right: 0,
+                        top: "6.2%",
+                        transform: "translateY(-50%)",
+                        background: "#3d92b4",
+                        color: "white",
+                        borderRadius: "0 4px 4px 0",
+                        cursor: "pointer",
+                        padding: "4px 8px",
+                        zIndex: 10,
+                      }}
+                      onClick={() => setShowConfig(true)}
+                    >
+                      <PiGearSixBold />
+                    </div>
+                  )}
                 </div>
-
-                {/* Barra de redimensionamiento izquierda */}
-                <div
-                  onMouseDown={initResizeConfig}
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: 2,
-                    height: "100%",
-                    cursor: "col-resize",
-                    background: "#000",
-                  }}
-                />
+                {isDevMode && <CodeEditor />}
+                {!isDevMode && (
+                  <div style={{ overflowY: "auto" }}>
+                    <Canvas />
+                  </div>
+                )}
               </div>
-            )}
 
-            {isDevMode && (
-              <div
-                className="config-panel-container"
-                style={{
-                  width: `${configWidth}px`,
-                  minWidth: 150,
-                  position: "relative",
-                  height: "100vh", // Altura definida
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
+              {/* Config Panel */}
+              {showConfig && !isDevMode && (
                 <div
                   className="config-panel-container"
                   style={{
                     width: `${configWidth}px`,
                     minWidth: 150,
                     position: "relative",
-                    padding: "15px",
-                    paddingLeft: "0px",
                   }}
                 >
-                  <ExperimentPreview uploadedFiles={uploadedFiles} />
-                </div>
+                  {/* Contenido con scroll */}
+                  <div
+                    style={{
+                      flex: 1,
+                      overflowY: "auto",
+                      height: "100vh",
+                    }}
+                  >
+                    <ConfigurationPanel />
+                  </div>
 
-                {/* Barra de redimensionamiento izquierda */}
+                  {/* Barra de redimensionamiento izquierda */}
+                  <div
+                    onMouseDown={initResizeConfig}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: 2,
+                      height: "100%",
+                      cursor: "col-resize",
+                      background: "#000",
+                    }}
+                  />
+                </div>
+              )}
+
+              {isDevMode && (
                 <div
-                  onMouseDown={initResizeConfig}
+                  className="config-panel-container"
                   style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: 2,
-                    height: "100%",
-                    cursor: "col-resize",
-                    background: "#000",
+                    width: `${configWidth}px`,
+                    minWidth: 150,
+                    position: "relative",
+                    height: "100vh", // Altura definida
+                    display: "flex",
+                    flexDirection: "column",
                   }}
-                />
-              </div>
-            )}
-          </div>
+                >
+                  <div
+                    className="config-panel-container"
+                    style={{
+                      width: `${configWidth}px`,
+                      minWidth: 150,
+                      position: "relative",
+                      padding: "15px",
+                      paddingLeft: "0px",
+                    }}
+                  >
+                    <ExperimentPreview uploadedFiles={uploadedFiles} />
+                  </div>
+
+                  {/* Barra de redimensionamiento izquierda */}
+                  <div
+                    onMouseDown={initResizeConfig}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: 2,
+                      height: "100%",
+                      cursor: "col-resize",
+                      background: "#000",
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </CanvasStylesProvider>
         </UrlProvider>
       </TrialsProvider>
