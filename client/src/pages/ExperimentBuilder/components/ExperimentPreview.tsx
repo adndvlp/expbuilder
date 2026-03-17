@@ -17,6 +17,7 @@ type CanvasStylesProp = {
   backgroundColor?: string;
   width?: number;
   height?: number;
+  fullScreen?: boolean;
 };
 
 type Props = {

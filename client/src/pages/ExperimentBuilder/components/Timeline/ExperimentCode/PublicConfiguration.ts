@@ -1,6 +1,7 @@
 import { UploadedFile } from "./useExperimentCode";
 import { Trial, Loop } from "../../ConfigurationPanel/types";
 import { TimelineItem } from "../../../contexts/TrialsContext";
+import { CanvasStyles } from "../../ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
 import ExperimentBase from "./ExperimentBase";
 import useDevMode from "../../../hooks/useDevMode";
 import { loadingOverlayCode } from "./LoadingOverlay";
@@ -25,6 +26,7 @@ type Props = {
   getTrial: GetTrialFn;
   getLoopTimeline: GetLoopTimelineFn;
   getLoop: GetLoopFn;
+  canvasStyles?: CanvasStyles;
 };
 
 export default function PublicConfiguration({
@@ -37,6 +39,7 @@ export default function PublicConfiguration({
   getTrial,
   getLoopTimeline,
   getLoop,
+  canvasStyles,
 }: Props) {
   const { isDevMode, code } = useDevMode();
   const { generatedBaseCode } = ExperimentBase({
@@ -45,6 +48,7 @@ export default function PublicConfiguration({
     getTrial,
     getLoopTimeline,
     getLoop,
+    canvasStyles,
   });
   const generateExperiment = async (storageOverride?: string) => {
     const useStorage = storageOverride || storage;

@@ -1,6 +1,7 @@
 import { UploadedFile } from "./useExperimentCode";
 import { Trial, Loop } from "../../ConfigurationPanel/types";
 import { TimelineItem } from "../../../contexts/TrialsContext";
+import { CanvasStyles } from "../../ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
 
 type GetTrialFn = (id: string | number) => Promise<Trial | null>;
 type GetLoopTimelineFn = (loopId: string | number) => Promise<TimelineItem[]>;
@@ -12,6 +13,7 @@ type Props = {
   getTrial: GetTrialFn;
   getLoopTimeline: GetLoopTimelineFn;
   getLoop: GetLoopFn;
+  canvasStyles?: CanvasStyles;
 };
 
 export default function ExperimentBase({
@@ -20,6 +22,7 @@ export default function ExperimentBase({
   getTrial,
   getLoopTimeline,
   getLoop,
+  canvasStyles,
 }: Props) {
   const generatedBaseCode = async () => {
     let allCodes = "";
@@ -39,6 +42,8 @@ export default function ExperimentBase({
       console.error("Error generating codes:", error);
     }
 
+    const fullScreen = canvasStyles?.fullScreen ?? false;
+
     return `const timeline = [];
 
     // Global preload for all uploaded files from Timeline
@@ -51,6 +56,17 @@ export default function ExperimentBase({
     };
     timeline.push(globalPreload);
     `
+        : ""
+    }
+
+    //Full screen
+    ${
+      fullScreen
+        ? `
+      timeline.push({
+      type: jsPsychFullscreen,
+      fullscreen_mode: true
+      });`
         : ""
     }
 

@@ -5,6 +5,7 @@ import ExperimentBase from "./ExperimentBase";
 import useDevMode from "../../../hooks/useDevMode";
 import { loadingOverlayCode } from "./LoadingOverlay";
 import { resumeCode } from "./ResumeCode";
+import { CanvasStyles } from "../../ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
 
 type GetTrialFn = (id: string | number) => Promise<Trial | null>;
 type GetLoopTimelineFn = (loopId: string | number) => Promise<TimelineItem[]>;
@@ -19,6 +20,7 @@ type Props = {
   getTrial: GetTrialFn;
   getLoopTimeline: GetLoopTimelineFn;
   getLoop: GetLoopFn;
+  canvasStyles?: CanvasStyles;
 };
 
 export default function LocalConfiguration({
@@ -30,6 +32,7 @@ export default function LocalConfiguration({
   getTrial,
   getLoopTimeline,
   getLoop,
+  canvasStyles,
 }: Props) {
   const { isDevMode, code } = useDevMode();
   const { generatedBaseCode } = ExperimentBase({
@@ -38,6 +41,7 @@ export default function LocalConfiguration({
     getTrial,
     getLoopTimeline,
     getLoop,
+    canvasStyles,
   });
   const generateLocalExperiment = async () => {
     // Fetch extensions before generating experiment

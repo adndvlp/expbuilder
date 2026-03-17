@@ -42,6 +42,7 @@ function ResponseComponetsSection({ componentTypes, addComponent }: Props) {
                 "ButtonResponseComponent",
                 "KeyboardResponseComponent",
                 "SliderResponseComponent",
+                "InputResponseComponent",
                 "SketchpadComponent",
                 "SurveyComponent",
                 "AudioResponseComponent",

@@ -3,6 +3,7 @@ import Timeline from "./components/Timeline";
 import Canvas from "./components/Canvas";
 import ConfigurationPanel from "./components/ConfigurationPanel";
 import TrialsProvider from "./providers/TrialsProvider";
+import CanvasStylesProvider from "./providers/CanvasStylesProvider";
 import UrlProvider from "./providers/UrlProvider";
 import ExperimentPreview from "./components/ExperimentPreview";
 import { useEffect, useRef, useState } from "react";
@@ -99,6 +100,7 @@ function ExperimentBuilder() {
     <ErrorBoundary>
       <TrialsProvider>
         <UrlProvider>
+          <CanvasStylesProvider>
           <div className="app-container">
             {/* Botones de navegación */}
             <div
@@ -334,6 +336,7 @@ function ExperimentBuilder() {
               </div>
             )}
           </div>
+          </CanvasStylesProvider>
         </UrlProvider>
       </TrialsProvider>
     </ErrorBoundary>

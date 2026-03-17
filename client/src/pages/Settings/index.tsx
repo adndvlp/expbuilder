@@ -8,6 +8,7 @@ import GithubToken from "./Github/GithubToken";
 import OsfToken from "./OsfToken";
 import ChangePassword from "./ChangePassword";
 import DeleteAccount from "./DeleteAccount";
+import ResetAppButton from "./ResetAppButton";
 import FirebaseCredentials from "./FirebaseCredentials";
 import "./index.css";
 const API_URL = import.meta.env.VITE_API_URL;
@@ -307,6 +308,14 @@ export default function Settings() {
           </div>
           <FirebaseCredentials />
         </div>
+
+        {/* Mostrar botón de reinicio desde acá SOLO si no hay usuario autenticado */}
+        {!user && (
+          <div style={{ marginBottom: 24 }}>
+            <ResetAppButton />
+          </div>
+        )}
+
         {/* Overlay borroso solo para secciones de usuario hacia abajo */}
         <div style={{ position: "relative" }}>
           {/* Información del usuario */}
@@ -368,6 +377,7 @@ export default function Settings() {
           >
             <h2 className="settings-section-title">Danger Zone</h2>
             <DeleteAccount />
+            {user && <ResetAppButton />}
           </div>
 
           {/* Si no hay usuario, mostrar el overlay borroso y el mensaje SOLO sobre estas secciones */}

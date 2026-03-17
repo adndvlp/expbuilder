@@ -13,6 +13,7 @@ import AudioComponent from "./components/AudioComponent";
 import ButtonResponseComponent from "./response_components/ButtonResponseComponent";
 import SliderResponseComponent from "./response_components/SliderResponseComponent";
 import KeyboardResponseComponent from "./response_components/KeyboardResponseComponent";
+import InputResponseComponent from "./response_components/InputResponseComponent";
 import SurveyComponent from "./response_components/SurveyComponent";
 import SketchpadComponent from "./components/SketchpadComponent";
 import AudioResponseComponent from "./response_components/AudioResponseComponent";
@@ -79,6 +80,7 @@ const RESPONSE_COMPONENT_MAP: Record<string, any> = {
   ButtonResponseComponent,
   SliderResponseComponent,
   KeyboardResponseComponent,
+  InputResponseComponent,
   SurveyComponent,
   SketchpadComponent,
   AudioResponseComponent,

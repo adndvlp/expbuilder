@@ -103,6 +103,7 @@ export default function useConfigComponents({
         comp.type === "ButtonResponseComponent" ||
         comp.type === "KeyboardResponseComponent" ||
         comp.type === "SliderResponseComponent" ||
+        comp.type === "InputResponseComponent" ||
         comp.type === "SketchpadComponent" ||
         comp.type === "SurveyComponent" ||
         comp.type === "AudioResponseComponent";

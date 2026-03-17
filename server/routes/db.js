@@ -7,8 +7,9 @@
 import { Router } from "express";
 import multer from "multer";
 import fs from "fs";
+import path from "path";
 import { __dirname } from "../utils/paths.js";
-import { dbPath, dbDir } from "../utils/db.js";
+import { db, dbPath, dbDir, userDataRoot } from "../utils/db.js";
 
 const router = Router();
 
@@ -53,4 +54,91 @@ router.post("/api/import-db", importDbUpload.single("dbfile"), (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+/**
+ * Factory reset the app: Clear local database, delete multimedia folders,
+ * and optionally clear cloud storage and GitHub repositories via Firebase.
+ * @route POST /api/app/reset
+ */
+router.post("/api/app/reset", async (req, res) => {
+  try {
+    const { uid, deleteRepos } = req.body;
+
+    await db.read();
+    const experiments = db.data.experiments || [];
+
+    // 1. Opcional: Eliminar repositorios y datos de Firebase/Nube
+    if (uid && process.env.FIREBASE_URL) {
+      for (const exp of experiments) {
+        try {
+          const sanitizedRepoName = exp?.name
+            ? exp.name
+                .replace(/\s+/g, "-")
+                .replace(/[^a-zA-Z0-9-_]/g, "")
+                .toLowerCase()
+            : exp.id;
+
+          const bodyPayload = {
+            experimentID: exp.id,
+            uid: uid,
+          };
+
+          if (deleteRepos) {
+            bodyPayload.repoName = sanitizedRepoName;
+          }
+
+          const firebaseUrl = `${process.env.FIREBASE_URL}/apiDeleteExperiment`;
+          await fetch(firebaseUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(bodyPayload),
+          });
+        } catch (err) {
+          console.error(
+            `Error cleaning up Firebase/Github for exp: ${exp.id}`,
+            err,
+          );
+        }
+      }
+    }
+
+    // 2. Limpiar la base de datos local
+    db.data.experiments = [];
+    db.data.trials = [];
+    db.data.configs = [];
+    db.data.pluginConfigs = [];
+    db.data.sessionResults = [];
+    await db.write();
+
+    // 3. Eliminar archivos locales (carpetas de multimedia, exports HTML, etc.)
+    const dirsToDelete = [
+      "uploads",
+      "experiments_html",
+      "trials_previews_html",
+    ];
+    for (const d of dirsToDelete) {
+      const p = path.join(userDataRoot, d);
+      if (fs.existsSync(p)) {
+        fs.rmSync(p, { recursive: true, force: true });
+      }
+    }
+
+    // También borrar carpetas de datos de experimentos usando sus nombres o IDs
+    for (const exp of experiments) {
+      const p = path.join(userDataRoot, exp.name || exp.id);
+      if (fs.existsSync(p)) {
+        fs.rmSync(p, { recursive: true, force: true });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: "Todos los datos de la app han sido borrados.",
+    });
+  } catch (error) {
+    console.error("Error in reset app:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;

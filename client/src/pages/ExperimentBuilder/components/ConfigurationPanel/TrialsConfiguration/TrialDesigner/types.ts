@@ -7,6 +7,7 @@ export type ComponentType =
   | "ButtonResponseComponent"
   | "KeyboardResponseComponent"
   | "SliderResponseComponent"
+  | "InputResponseComponent"
   | "SketchpadComponent"
   | "SurveyComponent"
   | "AudioResponseComponent";
@@ -45,12 +46,14 @@ export type CanvasStyles = {
   backgroundColor: string;
   width: number;
   height: number;
+  fullScreen: boolean;
 };
 
 export const DEFAULT_CANVAS_STYLES: CanvasStyles = {
   backgroundColor: "#ffffff",
   width: 1024,
   height: 768,
+  fullScreen: false,
 };
 
 export type KonvaTrialDesignerProps = {

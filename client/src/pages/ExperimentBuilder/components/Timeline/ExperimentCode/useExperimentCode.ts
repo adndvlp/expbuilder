@@ -7,6 +7,7 @@ import useTrials from "../../../hooks/useTrials";
 import LocalConfiguration from "./LocalConfiguration";
 import PublicConfiguration from "./PublicConfiguration";
 import ExperimentBase from "./ExperimentBase";
+import useCanvasStyles from "../../../hooks/useCanvasStyles";
 
 export type UploadedFile = {
   url?: string;
@@ -213,6 +214,7 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
       }`;
 
   const { getTrial, getLoopTimeline, getLoop } = useTrials();
+  const { canvasStyles } = useCanvasStyles();
 
   const { generateLocalExperiment } = LocalConfiguration({
     experimentID,
@@ -223,6 +225,7 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
     getTrial,
     getLoopTimeline,
     getLoop,
+    canvasStyles,
   });
 
   const { generateExperiment } = PublicConfiguration({
@@ -236,6 +239,7 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
     getTrial,
     getLoopTimeline,
     getLoop,
+    canvasStyles,
   });
 
   const { generatedBaseCode } = ExperimentBase({
@@ -244,6 +248,7 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
     getTrial,
     getLoopTimeline,
     getLoop,
+    canvasStyles,
   });
 
   return { generateLocalExperiment, generateExperiment, generatedBaseCode };

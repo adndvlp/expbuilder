@@ -6,8 +6,6 @@ import {
   ComponentType,
   TrialComponent,
   KonvaTrialDesignerProps,
-  CanvasStyles,
-  DEFAULT_CANVAS_STYLES,
 } from "./types";
 import ComponentSidebar from "./ComponentSidebar";
 import useConfigComponents from "./useConfigFromComponents";
@@ -20,6 +18,7 @@ import KonvaParameterMapper from "./KonvaParameterMapper";
 import useHandleResize from "./useHandleResize";
 import CanvasStylesBar from "./CanvasStylesBar";
 import ExperimentPreview from "../../../ExperimentPreview";
+import useCanvasStyles from "../../../../hooks/useCanvasStyles";
 
 const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   isOpen,
@@ -33,9 +32,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
 }) => {
   const [components, setComponents] = useState<TrialComponent[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [canvasStyles, setCanvasStyles] = useState<CanvasStyles>(
-    DEFAULT_CANVAS_STYLES,
-  );
+  const { canvasStyles, setCanvasStyles } = useCanvasStyles();
   const [isDemoRunning, setIsDemoRunning] = useState(false);
 
   const stageRef = useRef<Konva.Stage>(null);
@@ -279,6 +276,11 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       },
       KeyboardResponseComponent: {
         choices: v("ALL_KEYS"),
+      },
+      InputResponseComponent: {
+        text: v("%%"),
+        check_answers: v(false),
+        allow_blanks: v(true),
       },
       AudioComponent: {
         stimulus: v(""),
