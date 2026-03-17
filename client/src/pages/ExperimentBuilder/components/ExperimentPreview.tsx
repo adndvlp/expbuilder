@@ -82,7 +82,7 @@ function ExperimentPreview({
   useEffect(() => {
     let code = "";
     const generateAndSendCode = async () => {
-      if (isDevMode || (!selectedTrial && !selectedLoop)) {
+      if (autoStart || isDevMode || (!selectedTrial && !selectedLoop)) {
         code = await generateLocalExperiment();
       } else {
         if (!selectedTrial && !selectedLoop) return;

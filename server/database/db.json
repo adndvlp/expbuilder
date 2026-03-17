@@ -22,92 +22,22 @@
           "type": "Trial",
           "name": "New Trial",
           "plugin": "plugin-dynamic",
-          "parameters": {},
+          "parameters": {
+            "includesExtensions": false,
+            "extensionType": ""
+          },
           "trialCode": "",
           "id": 1773430084902,
           "createdAt": "2026-03-13T19:28:04.902Z",
-          "updatedAt": "2026-03-17T19:53:13.996Z",
+          "updatedAt": "2026-03-17T23:01:36.826Z",
           "columnMapping": {
-            "components": {
-              "source": "typed",
-              "value": [
-                {
-                  "type": "TextComponent",
-                  "coordinates": {
-                    "x": 0,
-                    "y": 0
-                  },
-                  "zIndex": 1,
-                  "text": {
-                    "source": "typed",
-                    "value": "%%"
-                  },
-                  "font_color": {
-                    "source": "typed",
-                    "value": "#000000"
-                  },
-                  "font_size": {
-                    "source": "typed",
-                    "value": 16
-                  },
-                  "font_family": {
-                    "source": "typed",
-                    "value": "sans-serif"
-                  },
-                  "font_weight": {
-                    "source": "typed",
-                    "value": "normal"
-                  },
-                  "font_style": {
-                    "source": "typed",
-                    "value": "normal"
-                  },
-                  "text_align": {
-                    "source": "typed",
-                    "value": "center"
-                  },
-                  "line_height": {
-                    "source": "typed",
-                    "value": 1.5
-                  },
-                  "background_color": {
-                    "source": "typed",
-                    "value": "transparent"
-                  },
-                  "padding": {
-                    "source": "typed",
-                    "value": "0px"
-                  },
-                  "border_radius": {
-                    "source": "typed",
-                    "value": 0
-                  },
-                  "border_color": {
-                    "source": "typed",
-                    "value": "transparent"
-                  },
-                  "border_width": {
-                    "source": "typed",
-                    "value": 0
-                  },
-                  "name": {
-                    "source": "typed",
-                    "value": "TextComponent_1"
-                  },
-                  "_font_size_runtime_vw": {
-                    "source": "typed",
-                    "value": 0.625
-                  }
-                }
-              ]
-            },
             "__canvasStyles": {
               "source": "typed",
               "value": {
                 "backgroundColor": "#e6e6e6",
-                "width": 2560,
-                "height": 1450,
-                "fullScreen": true
+                "width": 768,
+                "height": 725,
+                "fullScreen": false
               }
             },
             "response_components": {
@@ -116,11 +46,11 @@
                 {
                   "type": "ButtonResponseComponent",
                   "coordinates": {
-                    "x": -0.5112495758831415,
+                    "x": -0.5112495758831475,
                     "y": -18.98957319564137
                   },
                   "width": 13.210262407876092,
-                  "height": 5.614361523347335,
+                  "height": 5.614361523347336,
                   "zIndex": 2,
                   "choices": {
                     "source": "typed",
@@ -162,33 +92,7 @@
                   },
                   "_button_font_size_runtime_vw": {
                     "source": "typed",
-                    "value": 0.9375
-                  }
-                },
-                {
-                  "type": "InputResponseComponent",
-                  "coordinates": {
-                    "x": -1.9539925233402758e-13,
-                    "y": -1.5680943134016004e-14
-                  },
-                  "width": 7.812499999999997,
-                  "height": 2.343750000000002,
-                  "zIndex": 3,
-                  "text": {
-                    "source": "typed",
-                    "value": "%%"
-                  },
-                  "check_answers": {
-                    "source": "typed",
-                    "value": false
-                  },
-                  "allow_blanks": {
-                    "source": "typed",
-                    "value": true
-                  },
-                  "name": {
-                    "source": "typed",
-                    "value": "InputResponseComponent_1"
+                    "value": 3.125
                   }
                 }
               ]
@@ -272,7 +176,14 @@
             "_1",
             "_2",
             "_3"
-          ]
+          ],
+          "orders": false,
+          "orderColumns": [],
+          "stimuliOrders": [],
+          "categories": false,
+          "categoryColumn": "",
+          "categoryData": [],
+          "parentLoopId": null
         }
       ],
       "loops": [],
@@ -285,7 +196,7 @@
         }
       ],
       "createdAt": "2026-03-13T19:28:04.903Z",
-      "updatedAt": "2026-03-17T19:53:13.996Z"
+      "updatedAt": "2026-03-17T23:01:36.826Z"
     }
   ],
   "configs": [
@@ -296,7 +207,7 @@
       },
       "isDevMode": false,
       "createdAt": "2026-03-13T19:28:04.694Z",
-      "updatedAt": "2026-03-17T19:53:12.046Z"
+      "updatedAt": "2026-03-17T22:40:47.381Z"
     }
   ],
   "pluginConfigs": [],
@@ -1947,6 +1858,342 @@
       ],
       "state": "in-progress",
       "lastUpdate": "2026-03-17T19:49:07.848Z",
+      "metadata": {}
+    },
+    {
+      "experimentID": "3180ad32-fff6-4059-82b7-33ae9f3010c7",
+      "sessionId": "New Trial_result_407363d7-e40d-4711-9fba-dca8a8534c96",
+      "createdAt": "2026-03-17T22:41:17.895Z",
+      "data": [],
+      "state": "initiated",
+      "lastUpdate": "2026-03-17T22:41:17.895Z",
+      "metadata": {}
+    },
+    {
+      "experimentID": "3180ad32-fff6-4059-82b7-33ae9f3010c7",
+      "sessionId": "5ff7b7c0-1a50-426c-83ce-17cff5c88140",
+      "createdAt": "2026-03-17T22:41:23.827Z",
+      "data": [
+        {
+          "rt": 1724,
+          "trial_id": 1773430084902,
+          "builder_id": 1773430084902,
+          "TextComponent_1_type": "TextComponent",
+          "TextComponent_1_text": "%%",
+          "TextComponent_1_coordinates": "{\"x\":0,\"y\":0}",
+          "TextComponent_1_response": [
+            ""
+          ],
+          "TextComponent_1_rt": 1722,
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_response": "Button",
+          "ButtonResponseComponent_1_rt": 1721,
+          "InputResponseComponent_1_type": "InputResponseComponent",
+          "InputResponseComponent_1_response": [
+            ""
+          ],
+          "InputResponseComponent_1_rt": 1722,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 3752
+        },
+        {
+          "rt": 812,
+          "trial_id": 1773430084902,
+          "builder_id": 1773430084902,
+          "TextComponent_1_type": "TextComponent",
+          "TextComponent_1_text": "%%",
+          "TextComponent_1_coordinates": "{\"x\":0,\"y\":0}",
+          "TextComponent_1_response": [
+            ""
+          ],
+          "TextComponent_1_rt": 810,
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_response": "Button",
+          "ButtonResponseComponent_1_rt": 809,
+          "InputResponseComponent_1_type": "InputResponseComponent",
+          "InputResponseComponent_1_response": [
+            ""
+          ],
+          "InputResponseComponent_1_rt": 809,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 4566
+        },
+        {
+          "rt": 980,
+          "trial_id": 1773430084902,
+          "builder_id": 1773430084902,
+          "TextComponent_1_type": "TextComponent",
+          "TextComponent_1_text": "%%",
+          "TextComponent_1_coordinates": "{\"x\":0,\"y\":0}",
+          "TextComponent_1_response": [
+            ""
+          ],
+          "TextComponent_1_rt": 978,
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_response": "Button",
+          "ButtonResponseComponent_1_rt": 977,
+          "InputResponseComponent_1_type": "InputResponseComponent",
+          "InputResponseComponent_1_response": [
+            ""
+          ],
+          "InputResponseComponent_1_rt": 978,
+          "InputResponseComponent_2_type": "InputResponseComponent",
+          "InputResponseComponent_2_response": [
+            ""
+          ],
+          "InputResponseComponent_2_rt": 978,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 3272
+        },
+        {
+          "rt": 213,
+          "trial_id": 1773430084902,
+          "builder_id": 1773430084902,
+          "TextComponent_1_type": "TextComponent",
+          "TextComponent_1_text": "%%",
+          "TextComponent_1_coordinates": "{\"x\":0,\"y\":0}",
+          "TextComponent_1_response": [
+            ""
+          ],
+          "TextComponent_1_rt": 212,
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_response": "Button",
+          "ButtonResponseComponent_1_rt": 212,
+          "InputResponseComponent_1_type": "InputResponseComponent",
+          "InputResponseComponent_1_response": [
+            ""
+          ],
+          "InputResponseComponent_1_rt": 212,
+          "InputResponseComponent_2_type": "InputResponseComponent",
+          "InputResponseComponent_2_response": [
+            ""
+          ],
+          "InputResponseComponent_2_rt": 212,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 3486
+        },
+        {
+          "rt": 148,
+          "trial_id": 1773430084902,
+          "builder_id": 1773430084902,
+          "TextComponent_1_type": "TextComponent",
+          "TextComponent_1_text": "%%",
+          "TextComponent_1_coordinates": "{\"x\":0,\"y\":0}",
+          "TextComponent_1_response": [
+            ""
+          ],
+          "TextComponent_1_rt": 147,
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_response": "Button",
+          "ButtonResponseComponent_1_rt": 147,
+          "InputResponseComponent_1_type": "InputResponseComponent",
+          "InputResponseComponent_1_response": [
+            ""
+          ],
+          "InputResponseComponent_1_rt": 147,
+          "InputResponseComponent_2_type": "InputResponseComponent",
+          "InputResponseComponent_2_response": [
+            ""
+          ],
+          "InputResponseComponent_2_rt": 147,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 3,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 3635
+        },
+        {
+          "rt": 67,
+          "trial_id": 1773430084902,
+          "builder_id": 1773430084902,
+          "TextComponent_1_type": "TextComponent",
+          "TextComponent_1_text": "%%",
+          "TextComponent_1_coordinates": "{\"x\":0,\"y\":0}",
+          "TextComponent_1_response": [
+            ""
+          ],
+          "TextComponent_1_rt": 67,
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_response": "Button",
+          "ButtonResponseComponent_1_rt": 67,
+          "InputResponseComponent_1_type": "InputResponseComponent",
+          "InputResponseComponent_1_response": [
+            ""
+          ],
+          "InputResponseComponent_1_rt": 67,
+          "InputResponseComponent_2_type": "InputResponseComponent",
+          "InputResponseComponent_2_response": [
+            ""
+          ],
+          "InputResponseComponent_2_rt": 67,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 4,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 3703
+        },
+        {
+          "rt": 116,
+          "trial_id": 1773430084902,
+          "builder_id": 1773430084902,
+          "TextComponent_1_type": "TextComponent",
+          "TextComponent_1_text": "%%",
+          "TextComponent_1_coordinates": "{\"x\":0,\"y\":0}",
+          "TextComponent_1_response": [
+            ""
+          ],
+          "TextComponent_1_rt": 116,
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_response": "Button",
+          "ButtonResponseComponent_1_rt": 115,
+          "InputResponseComponent_1_type": "InputResponseComponent",
+          "InputResponseComponent_1_response": [
+            ""
+          ],
+          "InputResponseComponent_1_rt": 116,
+          "InputResponseComponent_2_type": "InputResponseComponent",
+          "InputResponseComponent_2_response": [
+            ""
+          ],
+          "InputResponseComponent_2_rt": 116,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 5,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 3820
+        },
+        {
+          "rt": 97,
+          "trial_id": 1773430084902,
+          "builder_id": 1773430084902,
+          "TextComponent_1_type": "TextComponent",
+          "TextComponent_1_text": "%%",
+          "TextComponent_1_coordinates": "{\"x\":0,\"y\":0}",
+          "TextComponent_1_response": [
+            ""
+          ],
+          "TextComponent_1_rt": 96,
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_response": "Button",
+          "ButtonResponseComponent_1_rt": 96,
+          "InputResponseComponent_1_type": "InputResponseComponent",
+          "InputResponseComponent_1_response": [
+            ""
+          ],
+          "InputResponseComponent_1_rt": 96,
+          "InputResponseComponent_2_type": "InputResponseComponent",
+          "InputResponseComponent_2_response": [
+            ""
+          ],
+          "InputResponseComponent_2_rt": 96,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 6,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 3918
+        },
+        {
+          "rt": 2114,
+          "trial_id": 1773430084902,
+          "builder_id": 1773430084902,
+          "TextComponent_1_type": "TextComponent",
+          "TextComponent_1_text": "%%",
+          "TextComponent_1_coordinates": "{\"x\":0,\"y\":0}",
+          "TextComponent_1_response": [
+            "igi"
+          ],
+          "TextComponent_1_rt": 2113,
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_response": "Button",
+          "ButtonResponseComponent_1_rt": 2113,
+          "InputResponseComponent_1_type": "InputResponseComponent",
+          "InputResponseComponent_1_response": [
+            ""
+          ],
+          "InputResponseComponent_1_rt": 2113,
+          "InputResponseComponent_2_type": "InputResponseComponent",
+          "InputResponseComponent_2_response": [
+            ""
+          ],
+          "InputResponseComponent_2_rt": 2113,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 7672
+        }
+      ],
+      "state": "abandoned",
+      "lastUpdate": "2026-03-17T23:01:26.124Z",
+      "metadata": {
+        "browser": "Chrome",
+        "browserVersion": "140.0",
+        "os": "macOS",
+        "screenWidth": 1440,
+        "screenHeight": 900,
+        "screenResolution": "1440x900",
+        "viewportWidth": 768,
+        "viewportHeight": 725,
+        "language": "es-419",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) expbuilder/2.3.3 Chrome/140.0.7339.240 Electron/38.3.0 Safari/537.36",
+        "startedAt": "2026-03-17T23:01:16.978Z"
+      }
+    },
+    {
+      "experimentID": "3180ad32-fff6-4059-82b7-33ae9f3010c7",
+      "sessionId": "New Trial_result_57b19c82-a4e0-4516-b8f0-2f7ac6784cdd",
+      "createdAt": "2026-03-17T22:41:32.946Z",
+      "data": [],
+      "state": "initiated",
+      "lastUpdate": "2026-03-17T22:41:32.946Z",
+      "metadata": {}
+    },
+    {
+      "experimentID": "3180ad32-fff6-4059-82b7-33ae9f3010c7",
+      "sessionId": "New Trial_result_e63f127a-be93-4edd-8f6c-abc9378ebe08",
+      "createdAt": "2026-03-17T22:43:53.944Z",
+      "data": [],
+      "state": "initiated",
+      "lastUpdate": "2026-03-17T22:43:53.944Z",
+      "metadata": {}
+    },
+    {
+      "experimentID": "3180ad32-fff6-4059-82b7-33ae9f3010c7",
+      "sessionId": "New Trial_result_bbcb4aff-6d8f-4095-bfee-093d655d3221",
+      "createdAt": "2026-03-17T22:43:56.895Z",
+      "data": [],
+      "state": "initiated",
+      "lastUpdate": "2026-03-17T22:43:56.895Z",
+      "metadata": {}
+    },
+    {
+      "experimentID": "3180ad32-fff6-4059-82b7-33ae9f3010c7",
+      "sessionId": "New Trial_result_a423dd12-41f0-426f-98cc-12afd55f646f",
+      "createdAt": "2026-03-17T22:43:57.895Z",
+      "data": [],
+      "state": "initiated",
+      "lastUpdate": "2026-03-17T22:43:57.895Z",
+      "metadata": {}
+    },
+    {
+      "experimentID": "3180ad32-fff6-4059-82b7-33ae9f3010c7",
+      "sessionId": "New Trial_result_3f551bc6-ae5d-46ec-8527-61b65c166a3c",
+      "createdAt": "2026-03-17T22:44:05.855Z",
+      "data": [],
+      "state": "initiated",
+      "lastUpdate": "2026-03-17T22:44:05.855Z",
+      "metadata": {}
+    },
+    {
+      "experimentID": "3180ad32-fff6-4059-82b7-33ae9f3010c7",
+      "sessionId": "New Trial_result_308fef6f-3a90-4bcf-895e-630f0a9a857b",
+      "createdAt": "2026-03-17T22:45:14.390Z",
+      "data": [],
+      "state": "initiated",
+      "lastUpdate": "2026-03-17T22:45:14.390Z",
       "metadata": {}
     }
   ],

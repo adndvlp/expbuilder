@@ -39,6 +39,14 @@ export type TrialComponent = {
   textBorderRadius?: number;
   textBorderColor?: string;
   textBorderWidth?: number;
+  // InputResponse style fields (synced from config)
+  inputFontColor?: string;
+  inputFontSize?: number;
+  inputFontFamily?: string;
+  inputBgColor?: string;
+  inputBorderColor?: string;
+  inputBorderWidth?: number;
+  inputBorderRadius?: number;
   config: Record<string, any>;
 };
 

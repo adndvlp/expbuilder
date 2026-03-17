@@ -98,6 +98,15 @@ export default function useConfigComponents({
         };
       }
 
+      if (comp.type === "InputResponseComponent" && canvasStyles) {
+        const ifsPx =
+          (comp.config?.input_font_size?.value as number | undefined) ?? 14;
+        componentData._input_font_size_runtime_vw = {
+          source: "typed",
+          value: (ifsPx / canvasStyles.width) * 100,
+        };
+      }
+
       // Categorize
       const isResponseComponent =
         comp.type === "ButtonResponseComponent" ||

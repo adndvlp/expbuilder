@@ -49,6 +49,15 @@ const COMPONENT_STYLE_MAPS: Partial<
     border_color: "textBorderColor",
     border_width: "textBorderWidth",
   },
+  InputResponseComponent: {
+    input_font_color: "inputFontColor",
+    input_font_size: "inputFontSize",
+    input_font_family: "inputFontFamily",
+    input_background_color: "inputBgColor",
+    input_border_color: "inputBorderColor",
+    input_border_width: "inputBorderWidth",
+    input_border_radius: "inputBorderRadius",
+  },
 };
 
 /**

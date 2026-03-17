@@ -33,6 +33,60 @@
       "default": 0,
       "pretty_name": "Z-Index",
       "description": "Layer order - higher values render on top of lower values"
+    },
+    "input_font_size": {
+      "type": "number",
+      "default": 14,
+      "pretty_name": "Font Size",
+      "description": "Font size of the input text in pixels"
+    },
+    "input_font_color": {
+      "type": "string",
+      "default": "#000000",
+      "pretty_name": "Font Color",
+      "description": "Text color inside the input field"
+    },
+    "input_font_family": {
+      "type": "string",
+      "default": "sans-serif",
+      "pretty_name": "Font Family",
+      "description": "CSS font-family for the input text"
+    },
+    "input_background_color": {
+      "type": "string",
+      "default": "#ffffff",
+      "pretty_name": "Background Color",
+      "description": "Background color of the input field"
+    },
+    "input_border_color": {
+      "type": "string",
+      "default": "#888888",
+      "pretty_name": "Border Color",
+      "description": "Border color of the input field"
+    },
+    "input_border_width": {
+      "type": "number",
+      "default": 1,
+      "pretty_name": "Border Width",
+      "description": "Border width of the input field in pixels"
+    },
+    "input_border_radius": {
+      "type": "number",
+      "default": 2,
+      "pretty_name": "Border Radius",
+      "description": "Corner radius of the input field in pixels"
+    },
+    "input_padding": {
+      "type": "string",
+      "default": "4px 6px",
+      "pretty_name": "Padding",
+      "description": "CSS padding shorthand for the input field interior"
+    },
+    "placeholder": {
+      "type": "string",
+      "default": "",
+      "pretty_name": "Placeholder",
+      "description": "Placeholder text shown inside the input field when empty"
     }
   },
   "data": {
