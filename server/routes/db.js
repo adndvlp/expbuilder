@@ -76,10 +76,10 @@ router.post("/api/app/reset", async (req, res) => {
                 .replace(/\s+/g, "-")
                 .replace(/[^a-zA-Z0-9-_]/g, "")
                 .toLowerCase()
-            : exp.id;
+            : exp.experimentID;
 
           const bodyPayload = {
-            experimentID: exp.id,
+            experimentID: exp.experimentID,
             uid: uid,
           };
 
@@ -95,7 +95,7 @@ router.post("/api/app/reset", async (req, res) => {
           });
         } catch (err) {
           console.error(
-            `Error cleaning up Firebase/Github for exp: ${exp.id}`,
+            `Error cleaning up Firebase/Github for exp: ${exp.experimentID}`,
             err,
           );
         }
@@ -125,7 +125,7 @@ router.post("/api/app/reset", async (req, res) => {
 
     // También borrar carpetas de datos de experimentos usando sus nombres o IDs
     for (const exp of experiments) {
-      const p = path.join(userDataRoot, exp.name || exp.id);
+      const p = path.join(userDataRoot, exp.name || exp.experimentID);
       if (fs.existsSync(p)) {
         fs.rmSync(p, { recursive: true, force: true });
       }

@@ -2,6 +2,7 @@ import "./index.css";
 import { useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { PromptModal } from "./PromptModal";
+import { auth } from "../../lib/firebase";
 const VITE_API = import.meta.env.VITE_API_URL;
 
 type Experiment = {
@@ -58,18 +59,7 @@ function Dashboard() {
     setLoading(true);
 
     // Get the authenticated user's uid if available
-    let uid = null;
-    try {
-      const userStr = localStorage.getItem("user");
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        if (user && user.uid) {
-          uid = user.uid;
-        }
-      }
-    } catch {
-      // Ignore parsing errors
-    }
+    const uid = auth.currentUser?.uid ?? null;
     const body = uid ? { uid } : {};
     const res = await fetch(`${VITE_API}/api/delete-experiment/${id}`, {
       method: "DELETE",

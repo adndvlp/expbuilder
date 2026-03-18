@@ -54,7 +54,10 @@
       ".env.production",
       "server/**",
       "!server/cloudflared/**",
-      "!server/dynamicplugin/**",
+      "!server/dynamicplugin/node_modules",
+      "!server/dynamicplugin/components",
+      "!server/dynamicplugin/response_components",
+      "!server/dynamicplugin/package-lock.json",
       "!server/jspsych-bundler/**",
       "!landing-page"
     ],

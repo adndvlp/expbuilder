@@ -12,13 +12,15 @@ const ResetAppButton: React.FC = () => {
   const uid = auth.currentUser?.uid || null;
 
   const handleReset = async () => {
+    // Re-read uid at call time in case auth resolved after initial render
+    const currentUid = auth.currentUser?.uid || null;
     setLoading(true);
     try {
       const resp = await fetch(`${API_URL}/api/app/reset`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          uid: uid,
+          uid: currentUid,
           deleteRepos: deleteRepos,
         }),
       });
