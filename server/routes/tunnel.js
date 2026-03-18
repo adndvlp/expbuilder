@@ -58,21 +58,6 @@ function getCloudflaredPath() {
 }
 
 let tunnelProcess = null;
-let ngrokListener = null;
-
-/**
- * Lazily imports the @ngrok/ngrok SDK.
- * @private
- */
-async function getNgrok() {
-  try {
-    return (await import("@ngrok/ngrok")).default;
-  } catch {
-    throw new Error(
-      "@ngrok/ngrok is not installed. Run: npm install @ngrok/ngrok",
-    );
-  }
-}
 
 // ─── Tunnel Settings ─────────────────────────────────────────────────────────
 
@@ -89,9 +74,6 @@ async function getTunnelSettings(experimentID) {
   exp.tunnelSettings ||= {
     hostname: "",
     persistent: false,
-    provider: "cloudflared",
-    ngrokAuthtoken: "",
-    ngrokDomain: "",
   };
   return exp.tunnelSettings;
 }
@@ -120,13 +102,7 @@ router.get("/api/tunnel-settings/:experimentID", async (req, res) => {
  * @body {boolean} persistent - Keep tunnel running across restarts
  */
 router.put("/api/tunnel-settings/:experimentID", async (req, res) => {
-  const {
-    hostname = "",
-    persistent = false,
-    provider = "cloudflared",
-    ngrokAuthtoken = "",
-    ngrokDomain = "",
-  } = req.body || {};
+  const { hostname = "", persistent = false } = req.body || {};
   try {
     await db.read();
     ensureDbData();
@@ -141,16 +117,9 @@ router.put("/api/tunnel-settings/:experimentID", async (req, res) => {
       .replace(/^https?:\/\//, "")
       .replace(/\/$/, "")
       .trim();
-    const normDomain = ngrokDomain
-      .replace(/^https?:\/\//, "")
-      .replace(/\/$/, "")
-      .trim();
     exp.tunnelSettings = {
       hostname: norm,
       persistent: !!persistent,
-      provider,
-      ngrokAuthtoken,
-      ngrokDomain: normDomain,
     };
     exp.updatedAt = new Date().toISOString();
     await db.write();
@@ -170,50 +139,27 @@ setImmediate(async () => {
       const s = exp.tunnelSettings;
       if (!s || !s.persistent) continue;
 
-      const provider = s.provider || "cloudflared";
-
-      if (provider === "ngrok") {
-        if (ngrokListener) continue; // only one at a time
-        if (!s.ngrokAuthtoken || !s.ngrokDomain) continue;
-        console.log(
-          `[tunnel] Auto-starting ngrok tunnel for ${exp.experimentID} → ${s.ngrokDomain}`,
-        );
-        try {
-          const ngrokSdk = await getNgrok();
-          ngrokListener = await ngrokSdk.forward({
-            addr: 3000,
-            authtoken: s.ngrokAuthtoken,
-            domain: s.ngrokDomain,
-          });
-          exp.tunnelUrl = ngrokListener.url();
-          exp.updatedAt = new Date().toISOString();
-        } catch (e) {
-          console.error("[tunnel] ngrok auto-start error:", e.message);
-        }
-      } else {
-        // cloudflared
-        if (!s.hostname) continue;
-        if (tunnelProcess) continue; // only one tunnel at a time for now
-        console.log(
-          `[tunnel] Auto-starting cloudflared tunnel for ${exp.experimentID} → ${s.hostname}`,
-        );
-        const cloudflaredPath = getCloudflaredPath();
-        tunnelProcess = spawn(cloudflaredPath, [
-          "tunnel",
-          "--hostname",
-          s.hostname,
-          "--url",
-          "http://localhost:3000",
-          "--no-autoupdate",
-        ]);
-        tunnelProcess.stderr.on("data", (d) => process.stderr.write(d));
-        tunnelProcess.stdout.on("data", (d) => process.stdout.write(d));
-        tunnelProcess.on("exit", () => {
-          tunnelProcess = null;
-        });
-        exp.tunnelUrl = `https://${s.hostname}`;
-        exp.updatedAt = new Date().toISOString();
-      }
+      if (!s.hostname) continue;
+      if (tunnelProcess) continue; // only one tunnel at a time for now
+      console.log(
+        `[tunnel] Auto-starting cloudflared tunnel for ${exp.experimentID} → ${s.hostname}`,
+      );
+      const cloudflaredPath = getCloudflaredPath();
+      tunnelProcess = spawn(cloudflaredPath, [
+        "tunnel",
+        "--hostname",
+        s.hostname,
+        "--url",
+        "http://localhost:3000",
+        "--no-autoupdate",
+      ]);
+      tunnelProcess.stderr.on("data", (d) => process.stderr.write(d));
+      tunnelProcess.stdout.on("data", (d) => process.stdout.write(d));
+      tunnelProcess.on("exit", () => {
+        tunnelProcess = null;
+      });
+      exp.tunnelUrl = `https://${s.hostname}`;
+      exp.updatedAt = new Date().toISOString();
     }
     await db.write();
   } catch (err) {
@@ -234,60 +180,6 @@ setImmediate(async () => {
  */
 router.post("/api/create-tunnel", async (req, res) => {
   const { experimentID } = req.body || {};
-
-  // ── Resolve provider from experiment settings ──────────────────────────────
-  let resolvedProvider = "cloudflared";
-  let resolvedNgrokAuthtoken = "";
-  let resolvedNgrokDomain = "";
-
-  if (experimentID) {
-    const settings = await getTunnelSettings(experimentID).catch(() => null);
-    if (settings) {
-      resolvedProvider = settings.provider || "cloudflared";
-      resolvedNgrokAuthtoken = settings.ngrokAuthtoken || "";
-      resolvedNgrokDomain = settings.ngrokDomain || "";
-    }
-  }
-
-  // ── ngrok branch ───────────────────────────────────────────────────────────
-  if (resolvedProvider === "ngrok") {
-    if (!resolvedNgrokAuthtoken || !resolvedNgrokDomain) {
-      return res.status(400).json({
-        success: false,
-        error:
-          "ngrok authtoken and static domain are required. Configure them in Tunnel Settings.",
-      });
-    }
-    try {
-      // Close any existing ngrok listener before opening a new one
-      if (ngrokListener) {
-        await ngrokListener.close().catch(() => {});
-        ngrokListener = null;
-      }
-      const ngrokSdk = await getNgrok();
-      ngrokListener = await ngrokSdk.forward({
-        addr: 3000,
-        authtoken: resolvedNgrokAuthtoken,
-        domain: resolvedNgrokDomain,
-      });
-      const url = ngrokListener.url();
-      if (experimentID) {
-        await db.read();
-        ensureDbData();
-        const exp = db.data.experiments.find(
-          (e) => e.experimentID === experimentID,
-        );
-        if (exp) {
-          exp.tunnelUrl = url;
-          exp.updatedAt = new Date().toISOString();
-          await db.write();
-        }
-      }
-      return res.json({ success: true, url });
-    } catch (err) {
-      return res.status(500).json({ success: false, error: err.message });
-    }
-  }
 
   // ── cloudflared branch ─────────────────────────────────────────────────────
   const maxAttempts = 3;
@@ -419,23 +311,14 @@ router.post("/api/create-tunnel", async (req, res) => {
  */
 router.post("/api/close-tunnel", async (req, res) => {
   const { experimentID } = req.body || {};
-  const hasCloudflared = !!tunnelProcess;
-  const hasNgrok = !!ngrokListener;
-
-  if (!hasCloudflared && !hasNgrok) {
+  if (!tunnelProcess) {
     return res
       .status(400)
       .json({ success: false, message: "No active tunnel" });
   }
 
-  if (hasCloudflared) {
-    tunnelProcess.kill();
-    tunnelProcess = null;
-  }
-  if (hasNgrok) {
-    await ngrokListener.close().catch(() => {});
-    ngrokListener = null;
-  }
+  tunnelProcess.kill();
+  tunnelProcess = null;
 
   // Clear tunnelUrl from the experiment document
   if (experimentID) {

@@ -326,6 +326,19 @@ router.post("/api/run-experiment/:experimentID", async (req, res) => {
       }
     }
 
+    // Appearance settings (backgroundColor, fullScreen) are experiment-level and
+    // take priority over whatever is stored in trial-level __canvasStyles.
+    if (experiment.appearanceSettings) {
+      canvasStyles = {
+        ...(canvasStyles || {}),
+        backgroundColor:
+          experiment.appearanceSettings.backgroundColor ??
+          canvasStyles?.backgroundColor,
+        fullScreen:
+          experiment.appearanceSettings.fullScreen ?? canvasStyles?.fullScreen,
+      };
+    }
+
     const templatePath = ensureTemplate("experiment_template.html");
     const experimentHtmlPath = path.join(
       experimentsHtmlDir,
@@ -688,6 +701,15 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
       );
     }
 
+    // If fullScreen mode is enabled, inject plugin-fullscreen from CDN.
+    // ExperimentBase.ts adds a jsPsychFullscreen trial to the timeline when fullScreen is true,
+    // but the plugin is not stored in the trials array so it must be detected server-side.
+    if (experiment.appearanceSettings?.fullScreen) {
+      $("head").append(
+        `<script src="https://unpkg.com/@jspsych/plugin-fullscreen@2.1.0" data-dynamic-plugins="true"></script>`,
+      );
+    }
+
     const htmlContent = $.html();
 
     try {
@@ -746,6 +768,63 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
   } catch (error) {
     console.error(`Error publishing experiment: ${error.message}`);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Gets the appearance settings (backgroundColor, fullScreen) for an experiment.
+ * @route GET /api/appearance-settings/:experimentID
+ */
+router.get("/api/appearance-settings/:experimentID", async (req, res) => {
+  try {
+    await db.read();
+    ensureDbData();
+    const exp = db.data.experiments.find(
+      (e) => e.experimentID === req.params.experimentID,
+    );
+    if (!exp)
+      return res
+        .status(404)
+        .json({ success: false, error: "Experiment not found" });
+    res.json({
+      success: true,
+      settings: exp.appearanceSettings ?? {
+        backgroundColor: "#ffffff",
+        fullScreen: false,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * Saves the appearance settings (backgroundColor, fullScreen) for an experiment.
+ * @route PUT /api/appearance-settings/:experimentID
+ * @body {string} backgroundColor - CSS hex color
+ * @body {boolean} fullScreen - Whether the experiment fills the viewport
+ */
+router.put("/api/appearance-settings/:experimentID", async (req, res) => {
+  const { backgroundColor = "#ffffff", fullScreen = false } = req.body || {};
+  try {
+    await db.read();
+    ensureDbData();
+    const exp = db.data.experiments.find(
+      (e) => e.experimentID === req.params.experimentID,
+    );
+    if (!exp)
+      return res
+        .status(404)
+        .json({ success: false, error: "Experiment not found" });
+    exp.appearanceSettings = {
+      backgroundColor: String(backgroundColor).slice(0, 20),
+      fullScreen: !!fullScreen,
+    };
+    exp.updatedAt = new Date().toISOString();
+    await db.write();
+    res.json({ success: true, settings: exp.appearanceSettings });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

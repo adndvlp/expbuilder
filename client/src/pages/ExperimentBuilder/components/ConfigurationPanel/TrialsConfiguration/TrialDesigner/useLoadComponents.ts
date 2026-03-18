@@ -249,16 +249,22 @@ export default function useLoadComponents({
       setSelectedId(null);
     }
 
-    // Restore canvas styles if previously saved
-    if (columnMapping.__canvasStyles?.value) {
-      const saved = columnMapping.__canvasStyles.value as Partial<CanvasStyles>;
-      setCanvasStyles({
+    // Restore canvas styles if previously saved.
+    // backgroundColor and fullScreen are experiment-level settings managed by
+    // AppearanceSettings (already loaded into context by CanvasStylesProvider).
+    // Only restore layout settings (width, height) from __canvasStyles so we
+    // don't overwrite the values the user set in Experiment Settings.
+    setCanvasStyles((prev) => {
+      const saved = (columnMapping.__canvasStyles?.value ??
+        {}) as Partial<CanvasStyles>;
+      return {
         ...DEFAULT_CANVAS_STYLES,
         ...saved,
-      });
-    } else {
-      setCanvasStyles(DEFAULT_CANVAS_STYLES);
-    }
+        // Keep appearance settings from context (loaded from AppearanceSettings)
+        backgroundColor: prev.backgroundColor,
+        fullScreen: prev.fullScreen,
+      };
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 }

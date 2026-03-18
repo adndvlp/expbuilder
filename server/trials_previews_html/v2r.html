@@ -24,8 +24,8 @@
       }
     </style>
   <style id="canvas-styles">
-  body { background-color: #ff0000; }
-  .jspsych-display-element { background-color: #ff0000; }
+  body { background-color: #ca0707; }
+  .jspsych-display-element { background-color: #ca0707; }
 </style></head>
   <body>
     <div id="jspsych-container">
@@ -118,7 +118,7 @@
 
   async function saveSession(trialSessionId) {
    
-   const res = await fetch("/api/append-result/3180ad32-fff6-4059-82b7-33ae9f3010c7", {
+   const res = await fetch("/api/append-result/4f152e4a-e15d-4401-9ebe-fa8dff2556da", {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "*/*" },
       body: JSON.stringify({
@@ -341,7 +341,7 @@
 
     // Conectar sesión con el servidor via WebSocket
     socket.emit('join-experiment', {
-      experimentID: '3180ad32-fff6-4059-82b7-33ae9f3010c7',
+      experimentID: '4f152e4a-e15d-4401-9ebe-fa8dff2556da',
       sessionId: trialSessionId,
       state: isResuming ? 'resumed' : 'initiated',
       metadata: metadata
@@ -489,7 +489,7 @@
 
     on_data_update: function (data) {
       // Create and track the promise for this data save
-      const savePromise = fetch("/api/append-result/3180ad32-fff6-4059-82b7-33ae9f3010c7", {
+      const savePromise = fetch("/api/append-result/4f152e4a-e15d-4401-9ebe-fa8dff2556da", {
         method: "PUT",
         headers: { "Content-Type": "application/json", Accept: "*/*" },
         body: JSON.stringify({
@@ -528,7 +528,7 @@
       // Actualizar estado a 'in-progress' en la primera actualización
       if (data.trial_index === 0 && socket) {
         socket.emit('update-session-state', {
-          experimentID: '3180ad32-fff6-4059-82b7-33ae9f3010c7',
+          experimentID: '4f152e4a-e15d-4401-9ebe-fa8dff2556da',
           sessionId: trialSessionId,
           state: 'in-progress'
         });
@@ -600,13 +600,13 @@
     // Marcar como completado
     if (socket) {
       socket.emit('update-session-state', {
-        experimentID: '3180ad32-fff6-4059-82b7-33ae9f3010c7',
+        experimentID: '4f152e4a-e15d-4401-9ebe-fa8dff2556da',
         sessionId: trialSessionId,
         state: 'completed'
       });
     }
     
-    await fetch("/api/complete-session/3180ad32-fff6-4059-82b7-33ae9f3010c7", {
+    await fetch("/api/complete-session/4f152e4a-e15d-4401-9ebe-fa8dff2556da", {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "*/*" },
       body: JSON.stringify({
@@ -625,30 +625,17 @@ const timeline = [];
 
     //Full screen
     
-      timeline.push({
-      type: jsPsychFullscreen,
-      fullscreen_mode: true
-      });
 
     
-    const test_stimuli_New_Trial = [{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "%%", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1", _font_size_runtime_vw: 0.625 }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":-0.5112495758831415,"y":-18.98957319564137}, width: 13.210262407876092, height: 5.614361523347335, zIndex: 2, choices: ["Button"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 24, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1", _button_font_size_runtime_vw: 0.9375 }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "%%", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1", _font_size_runtime_vw: 0.625 }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":-0.5112495758831415,"y":-18.98957319564137}, width: 13.210262407876092, height: 5.614361523347335, zIndex: 2, choices: ["Button"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 24, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1", _button_font_size_runtime_vw: 0.9375 }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "%%", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1", _font_size_runtime_vw: 0.625 }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":-0.5112495758831415,"y":-18.98957319564137}, width: 13.210262407876092, height: 5.614361523347335, zIndex: 2, choices: ["Button"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 24, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1", _button_font_size_runtime_vw: 0.9375 }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "%%", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1", _font_size_runtime_vw: 0.625 }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":-0.5112495758831415,"y":-18.98957319564137}, width: 13.210262407876092, height: 5.614361523347335, zIndex: 2, choices: ["Button"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 24, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1", _button_font_size_runtime_vw: 0.9375 }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "%%", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1", _font_size_runtime_vw: 0.625 }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":-0.5112495758831415,"y":-18.98957319564137}, width: 13.210262407876092, height: 5.614361523347335, zIndex: 2, choices: ["Button"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 24, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1", _button_font_size_runtime_vw: 0.9375 }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "%%", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1", _font_size_runtime_vw: 0.625 }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":-0.5112495758831415,"y":-18.98957319564137}, width: 13.210262407876092, height: 5.614361523347335, zIndex: 2, choices: ["Button"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 24, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1", _button_font_size_runtime_vw: 0.9375 }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "%%", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1", _font_size_runtime_vw: 0.625 }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":-0.5112495758831415,"y":-18.98957319564137}, width: 13.210262407876092, height: 5.614361523347335, zIndex: 2, choices: ["Button"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 24, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1", _button_font_size_runtime_vw: 0.9375 }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "%%", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1", _font_size_runtime_vw: 0.625 }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":-0.5112495758831415,"y":-18.98957319564137}, width: 13.210262407876092, height: 5.614361523347335, zIndex: 2, choices: ["Button"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 24, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1", _button_font_size_runtime_vw: 0.9375 }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "%%", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1", _font_size_runtime_vw: 0.625 }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":-0.5112495758831415,"y":-18.98957319564137}, width: 13.210262407876092, height: 5.614361523347335, zIndex: 2, choices: ["Button"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 24, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1", _button_font_size_runtime_vw: 0.9375 }]},{components: [{ type: "TextComponent", coordinates: {"x":0,"y":0}, zIndex: 1, text: "%%", font_color: "#000000", font_size: 16, font_family: "sans-serif", font_weight: "normal", font_style: "normal", text_align: "center", line_height: 1.5, background_color: "transparent", padding: "0px", border_radius: 0, border_color: "transparent", border_width: 0, name: "TextComponent_1", _font_size_runtime_vw: 0.625 }],
-response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":-0.5112495758831415,"y":-18.98957319564137}, width: 13.210262407876092, height: 5.614361523347335, zIndex: 2, choices: ["Button"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 24, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1", _button_font_size_runtime_vw: 0.9375 }]}];
+    const test_stimuli_New_Trial = [{components: [{ type: "HtmlComponent", coordinates: {"x":0,"y":0}, zIndex: 1, stimulus: "<p>HTML</p>", name: "HtmlComponent_1" }],
+response_components: [{ type: "ButtonResponseComponent", coordinates: {"x":-0.8241758241758212,"y":-23.8095238095238}, zIndex: 2, choices: ["Button"], button_color: "#e7e7e7", button_text_color: "#000000", button_font_size: 14, button_border_radius: 3, button_border_color: "#999999", button_border_width: 1, button_padding: "6px 14px", name: "ButtonResponseComponent_1", _button_font_size_runtime_vw: 1.3671875 }]}];
     const New_Trial_timeline = {
     type: DynamicPlugin, components: jsPsych.timelineVariable("components"),
 response_components: jsPsych.timelineVariable("response_components"),
       data: {
         rt: "rt",
-        trial_id: 1773430084902,
-        builder_id: 1773430084902,
+        trial_id: 1773798808924,
+        builder_id: 1773798808924,
         
         
       },
@@ -746,7 +733,7 @@ response_components: jsPsych.timelineVariable("response_components"),
     timeline_variables: test_stimuli_New_Trial,
     
     conditional_function: function() {
-      const currentId = 1773430084902;
+      const currentId = 1773798808924;
       
       // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
       const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');

@@ -14,7 +14,6 @@
     "file-loader": "^6.2.0"
   },
   "dependencies": {
-    "@ngrok/ngrok": "^1.7.0",
     "acorn": "^8.15.0",
     "acorn-walk": "^8.3.4",
     "cheerio": "^1.1.0",

@@ -100,11 +100,16 @@ export default function useConfigComponents({
 
       if (comp.type === "InputResponseComponent" && canvasStyles) {
         const ifsPx =
-          (comp.config?.input_font_size?.value as number | undefined) ?? 14;
+          (comp.config?.input_font_size?.value as number | undefined) ?? 16;
         componentData._input_font_size_runtime_vw = {
           source: "typed",
           value: (ifsPx / canvasStyles.width) * 100,
         };
+        // Derive width and height from fontSize so runtime always matches canvas.
+        // Canvas: box width = inputWidth (if user resized) or 10*fontSize*0.55 ; box height = fontSize*1.5
+        const canvasWidth = (comp as any).inputWidth ?? 10 * ifsPx * 0.55;
+        componentData.width = (canvasWidth / canvasStyles.width) * 100;
+        componentData.height = ((ifsPx * 1.5) / canvasStyles.width) * 100;
       }
 
       // Categorize

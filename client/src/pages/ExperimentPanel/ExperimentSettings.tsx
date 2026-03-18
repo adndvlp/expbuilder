@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import CustomDomainSettings from "./CustomDomainSettings";
+import AppearanceSettings from "./AppearanceSettings";
 
 type ExperimentSettingsProps = {
   experimentID: string | undefined;
@@ -370,282 +371,84 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
       )}
 
       {/* Recruitment Platform Setting */}
-      <div style={{ marginBottom: 32 }}>
-        <h2
-          style={{ color: "var(--text-dark)", marginBottom: 24, fontSize: 24 }}
-        >
-          Recruitment Platform
-        </h2>
-
-        {/* Platform selector */}
-        <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-          {(["none", "prolific", "mturk"] as RecruitmentPlatform[]).map((p) => (
-            <button
-              key={p}
-              onClick={() =>
-                setRecruitmentConfig({ ...recruitmentConfig, platform: p })
-              }
-              style={{
-                padding: "8px 20px",
-                borderRadius: 6,
-                border: "2px solid",
-                borderColor:
-                  recruitmentConfig.platform === p
-                    ? "var(--primary-blue)"
-                    : "var(--neutral-mid)",
-                backgroundColor:
-                  recruitmentConfig.platform === p
-                    ? "var(--primary-blue)"
-                    : "transparent",
-                color:
-                  recruitmentConfig.platform === p
-                    ? "var(--text-light)"
-                    : "var(--text-dark)",
-                fontWeight: 600,
-                cursor: "pointer",
-                textTransform: "capitalize",
-              }}
-            >
-              {p === "none" ? "None" : p === "prolific" ? "Prolific" : "MTurk"}
-            </button>
-          ))}
-        </div>
-
-        {/* Prolific options */}
-        {recruitmentConfig.platform === "prolific" && (
-          <div
+      {experimentExists && (
+        <div style={{ marginBottom: 32 }}>
+          <h2
             style={{
-              padding: 16,
-              border: "1px solid var(--neutral-mid)",
-              borderRadius: 8,
-              marginTop: 12,
-            }}
-          >
-            <p
-              style={{
-                color: "var(--text-dark)",
-                fontSize: 14,
-                marginBottom: 12,
-                opacity: 0.8,
-              }}
-            >
-              Prolific will append <code>?PROLIFIC_PID=...</code>&amp;
-              <code>STUDY_ID=...</code>&amp;<code>SESSION_ID=...</code> to your
-              experiment URL automatically. Paste the{" "}
-              <strong>completion code</strong> provided by Prolific when
-              creating their study.
-            </p>
-            <label
-              htmlFor="prolificCode"
-              style={{
-                display: "block",
-                fontSize: 15,
-                fontWeight: 600,
-                color: "var(--text-dark)",
-                marginBottom: 6,
-              }}
-            >
-              Prolific Completion Code
-            </label>
-            <input
-              id="prolificCode"
-              type="text"
-              placeholder="e.g. C1A2B3C4"
-              value={recruitmentConfig.prolificCompletionCode}
-              onChange={(e) =>
-                setRecruitmentConfig({
-                  ...recruitmentConfig,
-                  prolificCompletionCode: e.target.value,
-                })
-              }
-              style={{
-                padding: 10,
-                fontSize: 15,
-                border: "2px solid var(--neutral-mid)",
-                borderRadius: 6,
-                width: "280px",
-                backgroundColor: "var(--neutral-light)",
-                color: "var(--text-dark)",
-              }}
-            />
-            <p
-              style={{
-                marginTop: 8,
-                fontSize: 13,
-                color: "var(--text-dark)",
-                opacity: 0.7,
-              }}
-            >
-              On <code>on_finish</code>, participants will be redirected to{" "}
-              <code>
-                https://app.prolific.com/submissions/complete?cc=&#123;code&#125;
-              </code>
-            </p>
-          </div>
-        )}
-
-        {/* MTurk info */}
-        {recruitmentConfig.platform === "mturk" && (
-          <div
-            style={{
-              padding: 16,
-              border: "1px solid var(--neutral-mid)",
-              borderRadius: 8,
-              marginTop: 12,
-            }}
-          >
-            <p
-              style={{ color: "var(--text-dark)", fontSize: 14, opacity: 0.8 }}
-            >
-              MTurk will append <code>?workerId=...</code>&amp;
-              <code>assignmentId=...</code>&amp;
-              <code>hitId=...</code>&amp;<code>turkSubmitTo=...</code> to your
-              experiment URL when loading it inside a HIT. On{" "}
-              <code>on_finish</code>, a form will be submitted to Amazon
-              automatically. If{" "}
-              <code>assignmentId=ASSIGNMENT_ID_NOT_AVAILABLE</code> (preview
-              mode), the experiment will show a message instead of starting.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* CAPTCHA / Web3Forms Setting */}
-      <div style={{ marginBottom: 32 }}>
-        <h2
-          style={{ color: "var(--text-dark)", marginBottom: 8, fontSize: 24 }}
-        >
-          Anti-Spam (CAPTCHA)
-        </h2>
-        <p
-          style={{
-            color: "var(--text-dark)",
-            fontSize: 14,
-            opacity: 0.8,
-            marginBottom: 16,
-          }}
-        >
-          Uses{" "}
-          <a
-            href="https://www.hcaptcha.com"
-            target="_blank"
-            rel="noreferrer"
-            style={{ color: "var(--primary-blue)" }}
-          >
-            hCaptcha
-          </a>{" "}
-          or{" "}
-          <a
-            href="https://www.google.com/recaptcha"
-            target="_blank"
-            rel="noreferrer"
-            style={{ color: "var(--primary-blue)" }}
-          >
-            reCAPTCHA v2
-          </a>
-          . Participants must pass the challenge before the experiment starts.
-        </p>
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            marginBottom: 16,
-          }}
-        >
-          <input
-            type="checkbox"
-            id="captchaEnabled"
-            checked={captchaConfig.enabled}
-            onChange={(e) =>
-              setCaptchaConfig({ ...captchaConfig, enabled: e.target.checked })
-            }
-            style={{ width: 20, height: 20, cursor: "pointer" }}
-          />
-          <label
-            htmlFor="captchaEnabled"
-            style={{
-              fontSize: 16,
-              fontWeight: "600",
               color: "var(--text-dark)",
-              cursor: "pointer",
+              marginBottom: 24,
+              fontSize: 24,
             }}
           >
-            Enable CAPTCHA
-          </label>
-        </div>
+            Recruitment Platform
+          </h2>
 
-        {captchaConfig.enabled && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 20,
-              marginTop: 4,
-            }}
-          >
-            {/* Provider selector */}
-            <div>
+          {/* Platform selector */}
+          <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+            {(["none", "prolific", "mturk"] as RecruitmentPlatform[]).map(
+              (p) => (
+                <button
+                  key={p}
+                  onClick={() =>
+                    setRecruitmentConfig({ ...recruitmentConfig, platform: p })
+                  }
+                  style={{
+                    padding: "8px 20px",
+                    borderRadius: 6,
+                    border: "2px solid",
+                    borderColor:
+                      recruitmentConfig.platform === p
+                        ? "var(--primary-blue)"
+                        : "var(--neutral-mid)",
+                    backgroundColor:
+                      recruitmentConfig.platform === p
+                        ? "var(--primary-blue)"
+                        : "transparent",
+                    color:
+                      recruitmentConfig.platform === p
+                        ? "var(--text-light)"
+                        : "var(--text-dark)",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    textTransform: "capitalize",
+                  }}
+                >
+                  {p === "none"
+                    ? "None"
+                    : p === "prolific"
+                      ? "Prolific"
+                      : "MTurk"}
+                </button>
+              ),
+            )}
+          </div>
+
+          {/* Prolific options */}
+          {recruitmentConfig.platform === "prolific" && (
+            <div
+              style={{
+                padding: 16,
+                border: "1px solid var(--neutral-mid)",
+                borderRadius: 8,
+                marginTop: 12,
+              }}
+            >
               <p
                 style={{
+                  color: "var(--text-dark)",
                   fontSize: 14,
-                  fontWeight: 600,
-                  color: "var(--text-dark)",
-                  marginBottom: 8,
+                  marginBottom: 12,
+                  opacity: 0.8,
                 }}
               >
-                Provider
+                Prolific will append <code>?PROLIFIC_PID=...</code>&amp;
+                <code>STUDY_ID=...</code>&amp;<code>SESSION_ID=...</code> to
+                your experiment URL automatically. Paste the{" "}
+                <strong>completion code</strong> provided by Prolific when
+                creating their study.
               </p>
-              <div style={{ display: "flex", gap: 10 }}>
-                {(["hcaptcha", "recaptcha"] as CaptchaProvider[]).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() =>
-                      setCaptchaConfig({ ...captchaConfig, provider: p })
-                    }
-                    style={{
-                      padding: "7px 18px",
-                      borderRadius: 6,
-                      border: "2px solid",
-                      borderColor:
-                        captchaConfig.provider === p
-                          ? "var(--primary-blue)"
-                          : "var(--neutral-mid)",
-                      backgroundColor:
-                        captchaConfig.provider === p
-                          ? "var(--primary-blue)"
-                          : "transparent",
-                      color:
-                        captchaConfig.provider === p
-                          ? "var(--text-light)"
-                          : "var(--text-dark)",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {p === "hcaptcha" ? "hCaptcha" : "reCAPTCHA v2"}
-                  </button>
-                ))}
-              </div>
-              <p
-                style={{
-                  marginTop: 6,
-                  fontSize: 12,
-                  color: "var(--text-dark)",
-                  opacity: 0.65,
-                }}
-              >
-                {captchaConfig.provider === "hcaptcha"
-                  ? "Get your keys at hcaptcha.com → Sites"
-                  : 'Get your keys at google.com/recaptcha → Admin Console (v2 "I am not a robot")'}
-              </p>
-            </div>
-
-            {/* Site Key */}
-            <div>
               <label
-                htmlFor="captchaSiteKey"
+                htmlFor="prolificCode"
                 style={{
                   display: "block",
                   fontSize: 15,
@@ -654,71 +457,294 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
                   marginBottom: 6,
                 }}
               >
-                Site Key{" "}
-                <span style={{ fontWeight: 400, opacity: 0.6, fontSize: 13 }}>
-                  (public — used in the browser)
-                </span>
+                Prolific Completion Code
               </label>
               <input
-                id="captchaSiteKey"
+                id="prolificCode"
                 type="text"
-                placeholder={
-                  captchaConfig.provider === "hcaptcha"
-                    ? "e.g. d2263a2a-7d46-48c8-b490-c50812a6c80e"
-                    : "e.g. 6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
-                }
-                value={captchaConfig.siteKey}
+                placeholder="e.g. C1A2B3C4"
+                value={recruitmentConfig.prolificCompletionCode}
                 onChange={(e) =>
-                  setCaptchaConfig({
-                    ...captchaConfig,
-                    siteKey: e.target.value,
+                  setRecruitmentConfig({
+                    ...recruitmentConfig,
+                    prolificCompletionCode: e.target.value,
                   })
                 }
                 style={{
                   padding: 10,
-                  fontSize: 14,
+                  fontSize: 15,
                   border: "2px solid var(--neutral-mid)",
                   borderRadius: 6,
-                  width: "380px",
+                  width: "280px",
                   backgroundColor: "var(--neutral-light)",
                   color: "var(--text-dark)",
-                  fontFamily: "monospace",
                 }}
               />
+              <p
+                style={{
+                  marginTop: 8,
+                  fontSize: 13,
+                  color: "var(--text-dark)",
+                  opacity: 0.7,
+                }}
+              >
+                On <code>on_finish</code>, participants will be redirected to{" "}
+                <code>
+                  https://app.prolific.com/submissions/complete?cc=&#123;code&#125;
+                </code>
+              </p>
             </div>
+          )}
+
+          {/* MTurk info */}
+          {recruitmentConfig.platform === "mturk" && (
+            <div
+              style={{
+                padding: 16,
+                border: "1px solid var(--neutral-mid)",
+                borderRadius: 8,
+                marginTop: 12,
+              }}
+            >
+              <p
+                style={{
+                  color: "var(--text-dark)",
+                  fontSize: 14,
+                  opacity: 0.8,
+                }}
+              >
+                MTurk will append <code>?workerId=...</code>&amp;
+                <code>assignmentId=...</code>&amp;
+                <code>hitId=...</code>&amp;<code>turkSubmitTo=...</code> to your
+                experiment URL when loading it inside a HIT. On{" "}
+                <code>on_finish</code>, a form will be submitted to Amazon
+                automatically. If{" "}
+                <code>assignmentId=ASSIGNMENT_ID_NOT_AVAILABLE</code> (preview
+                mode), the experiment will show a message instead of starting.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* CAPTCHA / Web3Forms Setting */}
+      {experimentExists && (
+        <div style={{ marginBottom: 32 }}>
+          <h2
+            style={{ color: "var(--text-dark)", marginBottom: 8, fontSize: 24 }}
+          >
+            Anti-Spam (CAPTCHA)
+          </h2>
+          <p
+            style={{
+              color: "var(--text-dark)",
+              fontSize: 14,
+              opacity: 0.8,
+              marginBottom: 16,
+            }}
+          >
+            Uses{" "}
+            <a
+              href="https://www.hcaptcha.com"
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: "var(--primary-blue)" }}
+            >
+              hCaptcha
+            </a>{" "}
+            or{" "}
+            <a
+              href="https://www.google.com/recaptcha"
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: "var(--primary-blue)" }}
+            >
+              reCAPTCHA v2
+            </a>
+            . Participants must pass the challenge before the experiment starts.
+          </p>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              marginBottom: 16,
+            }}
+          >
+            <input
+              type="checkbox"
+              id="captchaEnabled"
+              checked={captchaConfig.enabled}
+              onChange={(e) =>
+                setCaptchaConfig({
+                  ...captchaConfig,
+                  enabled: e.target.checked,
+                })
+              }
+              style={{ width: 20, height: 20, cursor: "pointer" }}
+            />
+            <label
+              htmlFor="captchaEnabled"
+              style={{
+                fontSize: 16,
+                fontWeight: "600",
+                color: "var(--text-dark)",
+                cursor: "pointer",
+              }}
+            >
+              Enable CAPTCHA
+            </label>
           </div>
-        )}
-      </div>
+
+          {captchaConfig.enabled && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 20,
+                marginTop: 4,
+              }}
+            >
+              {/* Provider selector */}
+              <div>
+                <p
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "var(--text-dark)",
+                    marginBottom: 8,
+                  }}
+                >
+                  Provider
+                </p>
+                <div style={{ display: "flex", gap: 10 }}>
+                  {(["hcaptcha", "recaptcha"] as CaptchaProvider[]).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() =>
+                        setCaptchaConfig({ ...captchaConfig, provider: p })
+                      }
+                      style={{
+                        padding: "7px 18px",
+                        borderRadius: 6,
+                        border: "2px solid",
+                        borderColor:
+                          captchaConfig.provider === p
+                            ? "var(--primary-blue)"
+                            : "var(--neutral-mid)",
+                        backgroundColor:
+                          captchaConfig.provider === p
+                            ? "var(--primary-blue)"
+                            : "transparent",
+                        color:
+                          captchaConfig.provider === p
+                            ? "var(--text-light)"
+                            : "var(--text-dark)",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {p === "hcaptcha" ? "hCaptcha" : "reCAPTCHA v2"}
+                    </button>
+                  ))}
+                </div>
+                <p
+                  style={{
+                    marginTop: 6,
+                    fontSize: 12,
+                    color: "var(--text-dark)",
+                    opacity: 0.65,
+                  }}
+                >
+                  {captchaConfig.provider === "hcaptcha"
+                    ? "Get your keys at hcaptcha.com → Sites"
+                    : 'Get your keys at google.com/recaptcha → Admin Console (v2 "I am not a robot")'}
+                </p>
+              </div>
+
+              {/* Site Key */}
+              <div>
+                <label
+                  htmlFor="captchaSiteKey"
+                  style={{
+                    display: "block",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    color: "var(--text-dark)",
+                    marginBottom: 6,
+                  }}
+                >
+                  Site Key{" "}
+                  <span style={{ fontWeight: 400, opacity: 0.6, fontSize: 13 }}>
+                    (public — used in the browser)
+                  </span>
+                </label>
+                <input
+                  id="captchaSiteKey"
+                  type="text"
+                  placeholder={
+                    captchaConfig.provider === "hcaptcha"
+                      ? "e.g. d2263a2a-7d46-48c8-b490-c50812a6c80e"
+                      : "e.g. 6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
+                  }
+                  value={captchaConfig.siteKey}
+                  onChange={(e) =>
+                    setCaptchaConfig({
+                      ...captchaConfig,
+                      siteKey: e.target.value,
+                    })
+                  }
+                  style={{
+                    padding: 10,
+                    fontSize: 14,
+                    border: "2px solid var(--neutral-mid)",
+                    borderRadius: 6,
+                    width: "380px",
+                    backgroundColor: "var(--neutral-light)",
+                    color: "var(--text-dark)",
+                    fontFamily: "monospace",
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {/* Save Button */}
+      {experimentExists && (
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="gradient-btn"
+            style={{
+              opacity: saving ? 0.6 : 1,
+              cursor: saving ? "not-allowed" : "pointer",
+            }}
+          >
+            {saving ? "Saving..." : "Save Configuration"}
+          </button>
+
+          {message && (
+            <p
+              style={{
+                color: message.type === "success" ? "#4caf50" : "#f44336",
+                fontWeight: "600",
+                fontSize: 14,
+              }}
+            >
+              {message.text}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Experiment Appearance */}
+      <AppearanceSettings experimentID={experimentID} />
 
       {/* Custom Tunnel Domain */}
       <CustomDomainSettings experimentID={experimentID} />
-
-      {/* Save Button */}
-      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="gradient-btn"
-          style={{
-            opacity: saving ? 0.6 : 1,
-            cursor: saving ? "not-allowed" : "pointer",
-          }}
-        >
-          {saving ? "Saving..." : "Save Configuration"}
-        </button>
-
-        {message && (
-          <p
-            style={{
-              color: message.type === "success" ? "#4caf50" : "#f44336",
-              fontWeight: "600",
-              fontSize: 14,
-            }}
-          >
-            {message.text}
-          </p>
-        )}
-      </div>
     </div>
   );
 }

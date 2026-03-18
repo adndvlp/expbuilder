@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { FaMobileAlt, FaTabletAlt, FaLaptop, FaDesktop } from "react-icons/fa";
-import ReactSwitch from "react-switch";
 import { CanvasStyles } from "./types";
 
 const DEVICE_PRESETS = [
@@ -127,85 +126,6 @@ function CanvasStylesBar({
       >
         Experiment Layout
       </span>
-      {divider}
-
-      {/* Full screen toggle */}
-      <label
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "6px",
-          cursor: "pointer",
-          fontSize: "12px",
-          color: "var(--text-light)",
-          fontWeight: 500,
-        }}
-        title="Full screen mode"
-      >
-        <span>Full Screen</span>
-        <ReactSwitch
-          checked={canvasStyles.fullScreen}
-          onChange={(checked) =>
-            setCanvasStyles((prev) => ({ ...prev, fullScreen: checked }))
-          }
-          height={18}
-          width={36}
-          handleDiameter={14}
-          onColor="#f0a500"
-          offColor="#555"
-          uncheckedIcon={false}
-          checkedIcon={false}
-        />
-      </label>
-
-      {divider}
-
-      {/* Background color */}
-      <label
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "6px",
-          cursor: "pointer",
-          fontSize: "12px",
-          color: "var(--text-light)",
-          fontWeight: 500,
-        }}
-        title="Background color"
-      >
-        <span>BG</span>
-        <div style={{ position: "relative", display: "inline-flex" }}>
-          <input
-            type="color"
-            value={canvasStyles.backgroundColor}
-            onChange={(e) =>
-              setCanvasStyles((prev) => ({
-                ...prev,
-                backgroundColor: e.target.value,
-              }))
-            }
-            style={{
-              width: "28px",
-              height: "22px",
-              border: "2px solid rgba(255,255,255,0.4)",
-              borderRadius: "4px",
-              cursor: "pointer",
-              padding: "1px",
-              background: "transparent",
-            }}
-          />
-        </div>
-        <span
-          style={{
-            fontFamily: "monospace",
-            fontSize: "11px",
-            color: "rgba(255,255,255,0.75)",
-          }}
-        >
-          {canvasStyles.backgroundColor}
-        </span>
-      </label>
-
       {divider}
 
       {/* Device preset icon buttons */}

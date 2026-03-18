@@ -14,6 +14,7 @@ interface TrialComponent {
   // InputResponse style fields (synced from config)
   inputFontColor?: string;
   inputFontSize?: number;
+  inputWidth?: number; // explicit user resize — undefined means use natural
   inputFontFamily?: string;
   inputBgColor?: string;
   inputBorderColor?: string;
@@ -28,9 +29,6 @@ interface InputResponseComponentProps {
   onSelect: () => void;
   onChange: (newAttrs: any) => void;
 }
-
-const NATURAL_W = 200;
-const NATURAL_H = 36;
 
 const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
   shapeProps,
@@ -65,7 +63,7 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
   const fontColor =
     shapeProps.inputFontColor ?? getConfigValue("input_font_color", "#000000");
   const fontSize =
-    shapeProps.inputFontSize ?? getConfigValue("input_font_size", 14);
+    shapeProps.inputFontSize ?? getConfigValue("input_font_size", 16);
   const fontFamily =
     shapeProps.inputFontFamily ??
     getConfigValue("input_font_family", "sans-serif");
@@ -81,10 +79,11 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
     shapeProps.inputBorderRadius ?? getConfigValue("input_border_radius", 2);
   const placeholder = getConfigValue("placeholder", "");
 
-  const effectiveWidth = shapeProps.width > 0 ? shapeProps.width : NATURAL_W;
-  const effectiveHeight = shapeProps.height > 0 ? shapeProps.height : NATURAL_H;
-
-  const clampedFontSize = Math.min(effectiveHeight * 0.65, fontSize);
+  // Width: only use explicitly-resized value (inputWidth), never the legacy shapeProps.width.
+  // Height: always derived from fontSize (never from stored height).
+  const naturalWidth = 10 * fontSize * 0.55; // 10ch — same as TextComponent cloze blank
+  const effectiveWidth = shapeProps.inputWidth ?? naturalWidth;
+  const drawHeight = fontSize * 1.5;
 
   return (
     <>
@@ -97,7 +96,7 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
         onClick={onSelect}
         onTap={onSelect}
         offsetX={effectiveWidth / 2}
-        offsetY={effectiveHeight / 2}
+        offsetY={drawHeight / 2}
         onDragEnd={(e) => {
           onChange({ ...shapeProps, x: e.target.x(), y: e.target.y() });
         }}
@@ -107,49 +106,52 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
           const scaleY = node.scaleY();
           node.scaleX(1);
           node.scaleY(1);
+          // Vertical scale → font size (same as TextComponent cloze)
+          const newFontSize = Math.max(1, Math.round(fontSize * scaleY));
           onChange({
             ...shapeProps,
             x: node.x(),
             y: node.y(),
-            width: Math.max(60, effectiveWidth * scaleX),
-            height: Math.max(20, effectiveHeight * scaleY),
+            inputWidth: Math.max(40, effectiveWidth * scaleX), // explicit resize
+            // height is NOT stored — always derived from inputFontSize
+            inputFontSize: newFontSize,
             rotation: node.rotation(),
           });
         }}
       >
-        {/* Input box */}
+        {/* Box === group — no y offset */}
         <Rect
           x={0}
           y={0}
           width={effectiveWidth}
-          height={effectiveHeight}
+          height={drawHeight}
           fill={bgColor}
           stroke={isSelected ? "#3b82f6" : borderColor}
           strokeWidth={isSelected ? 2 : borderWidth}
           cornerRadius={borderRadius}
         />
 
-        {/* Placeholder text preview */}
+        {/* Placeholder text */}
         <Text
           x={6}
           y={0}
-          height={effectiveHeight}
+          height={drawHeight}
           width={effectiveWidth - 12}
           text={placeholder || ""}
-          fontSize={clampedFontSize}
+          fontSize={fontSize}
           fontFamily={fontFamily}
           fill={placeholder ? "#9ca3af" : "transparent"}
           verticalAlign="middle"
           listening={false}
         />
 
-        {/* Cursor line – mimics an empty focused input */}
+        {/* Cursor line */}
         {!placeholder && (
           <Rect
             x={8}
-            y={effectiveHeight / 2 - clampedFontSize / 2}
+            y={drawHeight / 2 - fontSize / 2}
             width={1}
-            height={clampedFontSize}
+            height={fontSize}
             fill={fontColor}
             opacity={0.5}
             listening={false}
@@ -162,7 +164,7 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
           ref={trRef}
           flipEnabled={false}
           boundBoxFunc={(oldBox, newBox) => {
-            if (Math.abs(newBox.width) < 60 || Math.abs(newBox.height) < 20)
+            if (Math.abs(newBox.width) < 40 || Math.abs(newBox.height) < 20)
               return oldBox;
             return newBox;
           }}

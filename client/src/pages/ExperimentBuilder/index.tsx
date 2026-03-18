@@ -100,7 +100,7 @@ function ExperimentBuilder() {
     <ErrorBoundary>
       <TrialsProvider>
         <UrlProvider>
-          <CanvasStylesProvider>
+          <CanvasStylesProvider experimentID={id}>
             <div className="app-container">
               {/* Botones de navegación */}
               <div
