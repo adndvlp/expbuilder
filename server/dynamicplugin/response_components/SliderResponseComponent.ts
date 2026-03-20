@@ -257,6 +257,20 @@ class SliderResponseComponent {
     return this.slider_start;
   }
 
+  /** Highlight the slider container to indicate a response is required */
+  showValidationError(): void {
+    if (this.sliderContainer) {
+      this.sliderContainer.classList.add("jspsych-require-response-error");
+    }
+  }
+
+  /** Remove validation error highlight */
+  clearValidationError(): void {
+    if (this.sliderContainer) {
+      this.sliderContainer.classList.remove("jspsych-require-response-error");
+    }
+  }
+
   /**
    * Cleanup: remove elements from DOM
    */

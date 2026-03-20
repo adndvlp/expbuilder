@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import { Rect, Text, Transformer, Group } from "react-konva";
+import { Rect, Text, Transformer, Group, Circle, Line } from "react-konva";
 import Konva from "konva";
 
 interface TrialComponent {
@@ -78,12 +78,186 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
   const borderRadius =
     shapeProps.inputBorderRadius ?? getConfigValue("input_border_radius", 2);
   const placeholder = getConfigValue("placeholder", "");
+  const inputType: string = getConfigValue("input_type", "text");
+
+  // Per-type display: default placeholder text and whether to show a right-side icon widget
+  const ICON_AREA_WIDTH = 26; // px reserved on the right for date/time/number icons
+  interface TypeInfo {
+    displayPlaceholder: string;
+    hasIcon: boolean;
+  }
+  const getTypeInfo = (type: string, userPlaceholder: string): TypeInfo => {
+    switch (type) {
+      case "date":
+        return {
+          displayPlaceholder: userPlaceholder || "YYYY-MM-DD",
+          hasIcon: true,
+        };
+      case "time":
+        return {
+          displayPlaceholder: userPlaceholder || "HH:MM",
+          hasIcon: true,
+        };
+      case "datetime-local":
+        return {
+          displayPlaceholder: userPlaceholder || "YYYY-MM-DD HH:MM",
+          hasIcon: true,
+        };
+      case "number":
+        return { displayPlaceholder: userPlaceholder || "0", hasIcon: true };
+      case "password":
+        return { displayPlaceholder: "••••••", hasIcon: false };
+      default:
+        return { displayPlaceholder: userPlaceholder, hasIcon: false };
+    }
+  };
+  const typeInfo = getTypeInfo(inputType, placeholder);
+  const iconAreaWidth = typeInfo.hasIcon ? ICON_AREA_WIDTH : 0;
 
   // Width: only use explicitly-resized value (inputWidth), never the legacy shapeProps.width.
   // Height: always derived from fontSize (never from stored height).
   const naturalWidth = 10 * fontSize * 0.55; // 10ch — same as TextComponent cloze blank
   const effectiveWidth = shapeProps.inputWidth ?? naturalWidth;
   const drawHeight = fontSize * 1.5;
+
+  // Render the right-side icon widget for date / time / number
+  const renderTypeIcon = () => {
+    const sepX = effectiveWidth - iconAreaWidth;
+    const iconCx = sepX + iconAreaWidth / 2;
+    const iconCy = drawHeight / 2;
+
+    if (inputType === "date" || inputType === "datetime-local") {
+      const calX = iconCx - 7;
+      const calY = iconCy - 7;
+      return (
+        <>
+          {/* Separator */}
+          <Rect
+            x={sepX}
+            y={4}
+            width={1}
+            height={drawHeight - 8}
+            fill="#cccccc"
+            listening={false}
+          />
+          {/* Calendar body */}
+          <Rect
+            x={calX}
+            y={calY + 3}
+            width={14}
+            height={11}
+            fill="none"
+            stroke={borderColor}
+            strokeWidth={1}
+            cornerRadius={1}
+            listening={false}
+          />
+          {/* Calendar header bar */}
+          <Rect
+            x={calX}
+            y={calY + 3}
+            width={14}
+            height={4}
+            fill={borderColor}
+            opacity={0.6}
+            cornerRadius={1}
+            listening={false}
+          />
+          {/* Binding rings */}
+          <Rect
+            x={calX + 3}
+            y={calY}
+            width={2}
+            height={4}
+            fill={borderColor}
+            cornerRadius={1}
+            listening={false}
+          />
+          <Rect
+            x={calX + 9}
+            y={calY}
+            width={2}
+            height={4}
+            fill={borderColor}
+            cornerRadius={1}
+            listening={false}
+          />
+        </>
+      );
+    }
+
+    if (inputType === "time") {
+      const r = 7;
+      return (
+        <>
+          <Rect
+            x={sepX}
+            y={4}
+            width={1}
+            height={drawHeight - 8}
+            fill="#cccccc"
+            listening={false}
+          />
+          <Circle
+            x={iconCx}
+            y={iconCy}
+            radius={r}
+            fill="none"
+            stroke={borderColor}
+            strokeWidth={1}
+            listening={false}
+          />
+          {/* Hour hand */}
+          <Line
+            points={[iconCx, iconCy, iconCx, iconCy - 4]}
+            stroke={borderColor}
+            strokeWidth={1.5}
+            listening={false}
+          />
+          {/* Minute hand */}
+          <Line
+            points={[iconCx, iconCy, iconCx + 3, iconCy + 1]}
+            stroke={borderColor}
+            strokeWidth={1}
+            listening={false}
+          />
+        </>
+      );
+    }
+
+    if (inputType === "number") {
+      return (
+        <>
+          <Rect
+            x={sepX}
+            y={4}
+            width={1}
+            height={drawHeight - 8}
+            fill="#cccccc"
+            listening={false}
+          />
+          <Text
+            x={sepX + 4}
+            y={drawHeight / 2 - fontSize * 0.5}
+            text="▲"
+            fontSize={fontSize * 0.42}
+            fill="#888888"
+            listening={false}
+          />
+          <Text
+            x={sepX + 4}
+            y={drawHeight / 2 + 1}
+            text="▼"
+            fontSize={fontSize * 0.42}
+            fill="#888888"
+            listening={false}
+          />
+        </>
+      );
+    }
+
+    return null;
+  };
 
   return (
     <>
@@ -136,17 +310,17 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
           x={6}
           y={0}
           height={drawHeight}
-          width={effectiveWidth - 12}
-          text={placeholder || ""}
+          width={effectiveWidth - 12 - iconAreaWidth}
+          text={typeInfo.displayPlaceholder || ""}
           fontSize={fontSize}
           fontFamily={fontFamily}
-          fill={placeholder ? "#9ca3af" : "transparent"}
+          fill={typeInfo.displayPlaceholder ? "#9ca3af" : "transparent"}
           verticalAlign="middle"
           listening={false}
         />
 
-        {/* Cursor line */}
-        {!placeholder && (
+        {/* Cursor line (text type with no placeholder) */}
+        {!typeInfo.displayPlaceholder && inputType === "text" && (
           <Rect
             x={8}
             y={drawHeight / 2 - fontSize / 2}
@@ -157,6 +331,9 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
             listening={false}
           />
         )}
+
+        {/* Right-side type icon widget */}
+        {renderTypeIcon()}
       </Group>
 
       {isSelected && (

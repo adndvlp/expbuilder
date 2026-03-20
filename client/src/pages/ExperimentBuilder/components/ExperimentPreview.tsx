@@ -37,7 +37,7 @@ function ExperimentPreview({
   const [started, setStarted] = useState(autoStart);
   const [key, setKey] = useState(autoStart ? 1 : 0);
 
-  const { isDevMode, code } = useDevMode();
+  const { isDevMode, isSaveMode, code } = useDevMode();
 
   const experimentID = useExperimentID();
 
@@ -116,24 +116,29 @@ function ExperimentPreview({
               ? crypto.randomUUID()
               : Math.random().toString(36).slice(2, 10));
 
+        const isSaveMode = ${isSaveMode};
         let participantNumber;
 
-          async function saveSession(trialSessionId) {
-          const res = await fetch("/api/append-result/${experimentID}", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Accept: "*/*" },
-            body: JSON.stringify({
-              sessionId: trialSessionId,
-            }),
-          });
-
-          const result = await res.json();
-          participantNumber = result.participantNumber;
-          return participantNumber;
-    }
+          async function initParticipant(trialSessionId) {
+            if (isSaveMode) {
+              const res = await fetch("/api/append-result/${experimentID}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Accept: "*/*" },
+                body: JSON.stringify({
+                  sessionId: trialSessionId,
+                }),
+              });
+              const result = await res.json();
+              return result.participantNumber;
+            } else {
+              const res = await fetch("/api/participant-number/${experimentID}");
+              const result = await res.json();
+              return result.participantNumber;
+            }
+          }
 (async () => {
 localStorage.removeItem('jsPsych_jumpToTrial');
-  participantNumber = await saveSession(trialSessionId);
+  participantNumber = await initParticipant(trialSessionId);
 
   if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
     alert("The participant number is not assigned. Please, wait.");
@@ -142,15 +147,16 @@ localStorage.removeItem('jsPsych_jumpToTrial');
     const jsPsych = initJsPsych({
     display_element: document.getElementById('jspsych-container'),
           on_data_update: function (data) {
-            const res = fetch("/api/append-result/${experimentID}", {
-              method: "PUT",
-              headers: { "Content-Type": "application/json", Accept: "*/*" },
-              body: JSON.stringify({
-                sessionId: trialSessionId,
-                response: data,
-              }),
-            });
-        
+            if (isSaveMode) {
+              fetch("/api/append-result/${experimentID}", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json", Accept: "*/*" },
+                body: JSON.stringify({
+                  sessionId: trialSessionId,
+                  response: data,
+                }),
+              });
+            }
           },
 
           on_finish: function() {
@@ -183,6 +189,7 @@ localStorage.removeItem('jsPsych_jumpToTrial');
   }, [
     code,
     isDevMode,
+    isSaveMode,
     selectedTrial,
     selectedLoop,
     experimentID,

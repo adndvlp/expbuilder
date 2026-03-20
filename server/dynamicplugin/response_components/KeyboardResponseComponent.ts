@@ -54,6 +54,8 @@ class KeyboardResponseComponent {
   private response: string | null;
   private rt: number | null;
   private keyboardListener: any;
+  private _trial: any = null;
+  private _onResponse: (() => void) | null = null;
 
   static info = info;
 
@@ -70,8 +72,10 @@ class KeyboardResponseComponent {
   render(
     display_element: HTMLElement,
     trial: any,
-    onResponse?: () => void
+    onResponse?: () => void,
   ): void {
+    this._trial = trial;
+    this._onResponse = onResponse || null;
     // Only setup keyboard listener if choices are allowed
     if (trial.choices !== "NO_KEYS") {
       this.keyboardListener = this.jsPsych.pluginAPI.getKeyboardResponse({
@@ -113,6 +117,32 @@ class KeyboardResponseComponent {
    */
   getRT(): number | null {
     return this.rt;
+  }
+
+  /** True once a key has been pressed (always true when choices === "NO_KEYS") */
+  isValid(trial: any): boolean {
+    if (trial.choices === "NO_KEYS") return true;
+    return this.response !== null;
+  }
+
+  /** Reset state and re-register the listener so the user can press a key again */
+  reset(): void {
+    this.response = null;
+    this.rt = null;
+    if (this._trial && this._trial.choices !== "NO_KEYS") {
+      this.keyboardListener = this.jsPsych.pluginAPI.getKeyboardResponse({
+        callback_function: (info: any) => {
+          this.recordResponse(info);
+          if (this._onResponse) {
+            this._onResponse();
+          }
+        },
+        valid_responses: this._trial.choices,
+        rt_method: "performance",
+        persist: false,
+        allow_held_key: false,
+      });
+    }
   }
 
   /**

@@ -142,7 +142,8 @@ export const generatePhaseCode = ({
       return `${paramProps}
     data: {
       task: 'validate'
-    },`;
+    },
+    on_finish: function(data) { delete data.raw_gaze; },`;
     }
   };
 
@@ -202,6 +203,8 @@ export const generatePhaseCode = ({
   const genTrialCode = () => {
     let code = "";
 
+    const pluginRecal = pluginName === "plugin-webgazer-recalibrate";
+
     // WebGazer phases should NOT have individual branching
     // Branching should only happen AFTER the last procedure (recalibrate)
     const onStartCode = generateOnStartCode({
@@ -211,11 +214,28 @@ export const generatePhaseCode = ({
     });
 
     if (includeInstructions) {
-      code += `const ${pluginNameRefactor}_instructions = {
+      if (pluginRecal) {
+        // Recalibrate instructions are placed directly in the timeline (no timeline_variables),
+        // so they must use static values instead of jsPsych.timelineVariable().
+        const row0 = mappedJson[0] ?? {};
+        const stimulus = JSON.stringify(
+          row0[`${pluginNameRefactor}_instructions`] ?? "",
+        );
+        const choices = JSON.stringify(
+          row0[`${pluginNameRefactor}_choices`] ?? ["OK"],
+        );
+        code += `const ${pluginNameRefactor}_instructions = {
+      type: jsPsychHtmlButtonResponse,
+      stimulus: ${stimulus},
+      choices: ${choices},
+    };`;
+      } else {
+        code += `const ${pluginNameRefactor}_instructions = {
       type: jsPsychHtmlButtonResponse,
       stimulus: jsPsych.timelineVariable("${pluginNameRefactor}_instructions"),
       choices: jsPsych.timelineVariable("${pluginNameRefactor}_choices"),
     };`;
+      }
     }
     const timelineProps = generateTrialProps(parameters, data);
 
@@ -225,7 +245,6 @@ export const generatePhaseCode = ({
     code += `
     const test_stimuli_${pluginNameRefactor} = [${testStimuliCodeInit.join(",")}];
 `;
-    const pluginRecal = pluginName === "plugin-webgazer-recalibrate";
 
     code += `
     ${
@@ -239,18 +258,18 @@ export const generatePhaseCode = ({
     };
     `;
 
-    code += `
+    if (!pluginRecal) {
+      code += `
     const ${pluginNameRefactor}_procedure = {
-    timeline: 
-    [
+    timeline: [
     ${includeInstructions ? `${pluginNameRefactor}_instructions,` : ""}
-    
-    ${!pluginRecal ? `${pluginNameRefactor}_timeline ` : ""}
+    ${pluginNameRefactor}_timeline
     ],
     timeline_variables: test_stimuli_${pluginNameRefactor}
   };
     timeline.push(${pluginNameRefactor}_procedure);
   ;`;
+    }
 
     // Recalibrate
 
@@ -278,15 +297,7 @@ export const generatePhaseCode = ({
         }
       }`;
 
-      code += ` \n const recalibrateWebGazer_procedure = {
-    timeline: 
-    [${
-      includeInstructions ? `plugin_webgazer_recalibrate_instructions,` : ""
-    }recalibrate_timeline],
-    timeline_variables: test_stimuli_plugin_webgazer_recalibrate
-  };
-    timeline.push(recalibrateWebGazer_procedure);
-  ;`;
+      code += `\n  timeline.push(recalibrate_timeline);`;
 
       code += `const calibration_done = {
         type: jsPsychHtmlButtonResponse,

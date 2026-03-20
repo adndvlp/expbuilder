@@ -641,6 +641,11 @@ class SketchpadComponent {
     return this.canvas ? this.canvas.toDataURL() : null;
   }
 
+  /** Sketchpad is always valid — any canvas state (including blank) is accepted */
+  isValid(_trial: any): boolean {
+    return true;
+  }
+
   /**
    * Destroy and clean up the component
    */

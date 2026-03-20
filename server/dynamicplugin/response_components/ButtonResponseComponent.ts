@@ -430,6 +430,34 @@ class ButtonResponseComponent {
     return this.rt;
   }
 
+  /** True once a button has been clicked */
+  isValid(_trial: any): boolean {
+    return this.response !== null;
+  }
+
+  /** Highlight the button group to indicate a response is required */
+  showValidationError(): void {
+    if (this.buttonGroupElement) {
+      this.buttonGroupElement.classList.add("jspsych-require-response-error");
+    }
+  }
+
+  /** Remove validation error highlight */
+  clearValidationError(): void {
+    if (this.buttonGroupElement) {
+      this.buttonGroupElement.classList.remove(
+        "jspsych-require-response-error",
+      );
+    }
+  }
+
+  /** Reset state so the user can click again after a failed require_response validation */
+  reset(): void {
+    this.response = null;
+    this.rt = null;
+    this.enableButtons();
+  }
+
   /**
    * Cleanup: remove event listeners and timeouts
    */

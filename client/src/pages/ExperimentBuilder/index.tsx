@@ -11,7 +11,7 @@ import Switch from "react-switch";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { FaTimeline } from "react-icons/fa6";
 import { PiGearSixBold } from "react-icons/pi";
-import { FaHammer } from "react-icons/fa";
+import { FaHammer, FaSave } from "react-icons/fa";
 import CodeEditor from "./components/CodeEditor";
 import useDevMode from "./hooks/useDevMode";
 import { useNavigate, useParams } from "react-router-dom";
@@ -29,7 +29,7 @@ function ExperimentBuilder() {
   const isResizingTimeline = useRef(false);
   const isResizingConfig = useRef(false);
 
-  const { isDevMode, setDevMode } = useDevMode();
+  const { isDevMode, setDevMode, isSaveMode, setSaveMode } = useDevMode();
 
   // Shared file upload state between Timeline and TrialsConfig
   const {
@@ -223,6 +223,52 @@ function ExperimentBuilder() {
                         <FaHammer
                           style={{
                             color: isDevMode ? "#f1c40f" : "#888",
+                            fontSize: "14px",
+                          }}
+                        />
+                      </span>
+                    </div>
+                  </label>
+                  <label
+                    htmlFor="saveMode"
+                    className="flex items-center cursor-pointer gap-2"
+                    style={{ position: "relative", margin: 0 }}
+                    title={
+                      isSaveMode ? "Save results: ON" : "Save results: OFF"
+                    }
+                  >
+                    <div
+                      style={{ position: "relative", width: 38, height: 18 }}
+                    >
+                      <Switch
+                        id="saveMode"
+                        checked={isSaveMode}
+                        onChange={(checked) => setSaveMode(checked)}
+                        onColor="#22c55e"
+                        onHandleColor="#ffffff"
+                        handleDiameter={20}
+                        uncheckedIcon={false}
+                        checkedIcon={false}
+                        height={18}
+                        width={38}
+                      />
+                      <span
+                        style={{
+                          position: "absolute",
+                          left: isSaveMode ? 20 : 0,
+                          top: 2,
+                          width: 20,
+                          height: 20,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          pointerEvents: "none",
+                          transition: "left 0.2s",
+                        }}
+                      >
+                        <FaSave
+                          style={{
+                            color: isSaveMode ? "#22c55e" : "#888",
                             fontSize: "14px",
                           }}
                         />

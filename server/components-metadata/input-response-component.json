@@ -5,6 +5,12 @@
     "name": {
       "type": "string"
     },
+    "input_type": {
+      "type": "string",
+      "default": "text",
+      "pretty_name": "Input Type",
+      "description": "HTML input type (text, date, time, datetime-local, number, email, password, tel)"
+    },
     "text": {
       "type": "html_string"
     },

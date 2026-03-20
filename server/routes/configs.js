@@ -22,10 +22,15 @@ router.get("/api/load-config/:experimentID", async (req, res) => {
   try {
     await db.read();
     const configDoc = db.data.configs.find(
-      (c) => c.experimentID === req.params.experimentID
+      (c) => c.experimentID === req.params.experimentID,
     );
-    if (!configDoc) return res.json({ config: null, isDevMode: false });
-    res.json({ config: configDoc.data, isDevMode: configDoc.isDevMode });
+    if (!configDoc)
+      return res.json({ config: null, isDevMode: false, isSaveMode: false });
+    res.json({
+      config: configDoc.data,
+      isDevMode: configDoc.isDevMode,
+      isSaveMode: configDoc.isSaveMode ?? false,
+    });
   } catch (error) {
     res
       .status(500)
@@ -48,17 +53,18 @@ router.get("/api/load-config/:experimentID", async (req, res) => {
  */
 router.post("/api/save-config/:experimentID", async (req, res) => {
   try {
-    const { config, isDevMode } = req.body;
+    const { config, isDevMode, isSaveMode } = req.body;
 
     await db.read();
     const existingIndex = db.data.configs.findIndex(
-      (c) => c.experimentID === req.params.experimentID
+      (c) => c.experimentID === req.params.experimentID,
     );
 
     const configDoc = {
       experimentID: req.params.experimentID,
       data: config,
       isDevMode: isDevMode,
+      isSaveMode: isSaveMode ?? false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

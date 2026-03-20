@@ -34,6 +34,13 @@ const info = <const>{
       array: true,
       default: [],
     },
+    /** If true, all response components must provide a valid response before the trial can end
+     * via participant action. Respects each component's own validation rules (allow_blanks,
+     * require_movement, etc.). Does NOT block trial end caused by trial_duration timeout. */
+    require_response: {
+      type: ParameterType.BOOL,
+      default: false,
+    },
     /** How long to show the stimulus for in milliseconds. If the value is null, then the stimulus will be shown until the participant
      * makes a response. */
     stimuli_duration: {
@@ -121,6 +128,10 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         #jspsych-dynamic-plugin-container canvas {
           display: block;
         }
+        .jspsych-require-response-error {
+          outline: 2px solid #e74c3c !important;
+          border-radius: 4px;
+        }
       `;
       document.head.appendChild(styleElement);
     }
@@ -185,14 +196,56 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     );
 
     // Pass onResponse callback to ALL components so they can end the trial if needed
-    allComponents.forEach(({ instance, config }) => {
+    allComponents.forEach((comp) => {
+      const { instance, config } = comp;
+      const _prevLen = mainContainer.children.length;
       instance.render(mainContainer, config, () => {
         if (!hasResponded && trial.response_ends_trial) {
+          if (trial.require_response) {
+            // Clear previous highlights
+            responseComponents.forEach(({ instance: ri }) => {
+              if (typeof (ri as any).clearValidationError === "function") {
+                (ri as any).clearValidationError();
+              }
+            });
+            // Check every response component is satisfied
+            const allValid = responseComponents.every(
+              ({ instance: ri, config: rc }) =>
+                typeof (ri as any).isValid === "function"
+                  ? (ri as any).isValid(rc)
+                  : true,
+            );
+            if (!allValid) {
+              // Reset triggering components (button/keyboard) so user can interact again
+              responseComponents.forEach(({ instance: ri }) => {
+                if (typeof (ri as any).reset === "function") {
+                  (ri as any).reset();
+                }
+              });
+              // Highlight still-invalid components
+              responseComponents.forEach(({ instance: ri, config: rc }) => {
+                if (
+                  typeof (ri as any).isValid === "function" &&
+                  !(ri as any).isValid(rc)
+                ) {
+                  if (typeof (ri as any).showValidationError === "function") {
+                    (ri as any).showValidationError();
+                  }
+                }
+              });
+              return; // Block trial end
+            }
+          }
           hasResponded = true;
           recordAllPendingResponses();
           endTrial();
         }
       });
+      // Capture the topmost new child appended during render (synchronous DOM op)
+      comp.renderedEl =
+        mainContainer.children.length > _prevLen
+          ? (mainContainer.lastElementChild as HTMLElement)
+          : null;
     });
 
     // Function to record all pending responses before ending trial
@@ -231,7 +284,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       };
 
       // Add stimulus components data as individual columns
-      stimulusComponents.forEach(({ instance, config }) => {
+      stimulusComponents.forEach((comp) => {
+        const { instance, config } = comp;
         const prefix = config.name; // Component name (e.g., "ImageComponent_1")
 
         // Add type
@@ -247,11 +301,24 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           trialData[`${prefix}_text`] = config.text;
         }
 
-        // Add coordinates if exists (stringify for CSV compatibility)
+        // Coordinates → pixel center in the actual viewport at trial end time.
+        // CSS formula: left = calc(50% + x*0.5 vw), top = calc(50% - y*0.5 vh)
         if (config.coordinates !== undefined) {
-          trialData[`${prefix}_coordinates`] = JSON.stringify(
-            config.coordinates,
-          );
+          const cx = config.coordinates.x ?? 0;
+          const cy = config.coordinates.y ?? 0;
+          trialData[`${prefix}_coordinates`] = JSON.stringify({
+            x: Math.round(window.innerWidth * (0.5 + cx / 200)),
+            y: Math.round(window.innerHeight * (0.5 - cy / 200)),
+          });
+        }
+
+        // Size via element captured at render time
+        if (comp.renderedEl) {
+          const _r = comp.renderedEl.getBoundingClientRect();
+          trialData[`${prefix}_size`] = JSON.stringify({
+            width: Math.round(_r.width),
+            height: Math.round(_r.height),
+          });
         }
 
         // If component has response (like SurveyComponent)
@@ -282,11 +349,29 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       });
 
       // Add response components data as individual columns
-      responseComponents.forEach(({ instance, config }) => {
+      responseComponents.forEach((comp) => {
+        const { instance, config } = comp;
         const prefix = config.name; // Component name (e.g., "ButtonResponseComponent_1")
 
         // Add type
         trialData[`${prefix}_type`] = config.type;
+
+        // Coordinates and size (same logic as stimulus components)
+        if (config.coordinates !== undefined) {
+          const cx = config.coordinates.x ?? 0;
+          const cy = config.coordinates.y ?? 0;
+          trialData[`${prefix}_coordinates`] = JSON.stringify({
+            x: Math.round(window.innerWidth * (0.5 + cx / 200)),
+            y: Math.round(window.innerHeight * (0.5 - cy / 200)),
+          });
+        }
+        if (comp.renderedEl) {
+          const _r = comp.renderedEl.getBoundingClientRect();
+          trialData[`${prefix}_size`] = JSON.stringify({
+            width: Math.round(_r.width),
+            height: Math.round(_r.height),
+          });
+        }
 
         // Add response
         if (

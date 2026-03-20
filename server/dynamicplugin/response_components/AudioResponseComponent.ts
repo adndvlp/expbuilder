@@ -103,14 +103,14 @@ class AudioResponseComponent {
   async render(
     display_element: HTMLElement,
     trial: any,
-    onResponse?: () => void
+    onResponse?: () => void,
   ): Promise<void> {
     // Get the existing recorder (should be initialized by initialize-microphone plugin)
     this.recorder = this.jsPsych.pluginAPI.getMicrophoneRecorder();
 
     if (!this.recorder) {
       console.error(
-        "Microphone recorder not initialized. Make sure to use the initialize-microphone plugin first."
+        "Microphone recorder not initialized. Make sure to use the initialize-microphone plugin first.",
       );
       display_element.innerHTML = `<p style="color: red;">Microphone not initialized. Please add the initialize-microphone plugin to your timeline.</p>`;
       return;
@@ -123,7 +123,7 @@ class AudioResponseComponent {
   private setupRecordingEvents(
     display_element: HTMLElement,
     trial: any,
-    onResponse?: () => void
+    onResponse?: () => void,
   ): void {
     if (!this.recorder) return;
 
@@ -158,15 +158,15 @@ class AudioResponseComponent {
 
     this.recorder.addEventListener(
       "dataavailable",
-      this.data_available_handler as EventListener
+      this.data_available_handler as EventListener,
     );
     this.recorder.addEventListener(
       "stop",
-      this.stop_event_handler as EventListener
+      this.stop_event_handler as EventListener,
     );
     this.recorder.addEventListener(
       "start",
-      this.start_event_handler as EventListener
+      this.start_event_handler as EventListener,
     );
   }
 
@@ -179,7 +179,7 @@ class AudioResponseComponent {
   private showDisplay(
     display_element: HTMLElement,
     trial: any,
-    onResponse?: () => void
+    onResponse?: () => void,
   ): void {
     // Mark when stimulus is shown (recording already started)
     this.stimulus_start_time = performance.now();
@@ -249,7 +249,7 @@ class AudioResponseComponent {
   private showPlaybackControls(
     display_element: HTMLElement,
     trial: any,
-    onResponse?: () => void
+    onResponse?: () => void,
   ): void {
     // Clear the button container
     if (this.buttonContainer) {
@@ -312,7 +312,7 @@ class AudioResponseComponent {
       response: this.response,
       audio_url: this.audio_url,
       estimated_stimulus_onset: Math.round(
-        this.stimulus_start_time - this.recorder_start_time
+        this.stimulus_start_time - this.recorder_start_time,
       ),
     };
   }
@@ -321,24 +321,29 @@ class AudioResponseComponent {
     return this.rt;
   }
 
+  /** True once a recording has been captured and encoded */
+  isValid(_trial: any): boolean {
+    return this.response !== "";
+  }
+
   destroy(): void {
     if (this.recorder) {
       if (this.data_available_handler) {
         this.recorder.removeEventListener(
           "dataavailable",
-          this.data_available_handler as EventListener
+          this.data_available_handler as EventListener,
         );
       }
       if (this.stop_event_handler) {
         this.recorder.removeEventListener(
           "stop",
-          this.stop_event_handler as EventListener
+          this.stop_event_handler as EventListener,
         );
       }
       if (this.start_event_handler) {
         this.recorder.removeEventListener(
           "start",
-          this.start_event_handler as EventListener
+          this.start_event_handler as EventListener,
         );
       }
     }

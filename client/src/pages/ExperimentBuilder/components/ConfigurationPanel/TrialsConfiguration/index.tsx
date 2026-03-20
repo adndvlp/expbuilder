@@ -11,8 +11,6 @@ import { useColumnMapping } from "./hooks/useColumnMapping";
 import { useExtensions } from "./Extensions/useExtensions";
 import ExtensionsConfig from "./Extensions";
 import { Trial, Loop } from "../types";
-import { useOrdersAndCategories } from "./OrdersAndCategories/useOrdersAndCategories";
-import OrdersAndCategories from "./OrdersAndCategories";
 import TabContent from "./TabContent";
 
 type Props = { pluginName: string };
@@ -35,7 +33,7 @@ function TrialsConfig({ pluginName }: Props) {
   const [saveIndicator, setSaveIndicator] = useState(false);
   const [savingField, setSavingField] = useState<string | null>(null);
 
-  const { csvJson, setCsvJson, csvColumns, setCsvColumns } = useCsvData();
+  const { csvColumns, setCsvColumns } = useCsvData();
 
   const { columnMapping, setColumnMapping } = useColumnMapping({});
   const { parameters } = usePluginParameters(pluginName);
@@ -64,35 +62,15 @@ function TrialsConfig({ pluginName }: Props) {
   };
 
   async function getLoopCsvData(trial: Trial) {
-    // CSV data always comes from the parent loop, not from the trial itself
+    // CSV columns come from the parent loop only
     if (trial.parentLoopId) {
       const parentLoop = await getLoop(trial.parentLoopId);
       if (parentLoop) {
-        return {
-          csvJson: parentLoop.csvJson || [],
-          csvColumns: parentLoop.csvColumns || [],
-        };
+        return { csvColumns: parentLoop.csvColumns || [] };
       }
     }
-    return { csvJson: [], csvColumns: [] };
+    return { csvColumns: [] };
   }
-
-  const {
-    orders,
-    setOrders,
-    orderColumns,
-    setOrderColumns,
-    mapOrdersFromCsv,
-    stimuliOrders,
-    setStimuliOrders,
-    categories,
-    setCategories,
-    categoryColumn,
-    setCategoryColumn,
-    categoryData,
-    setCategoryData,
-    mapCategoriesFromCsv,
-  } = useOrdersAndCategories();
 
   // Persistir/traer datos del trial
   useEffect(() => {
@@ -126,19 +104,11 @@ function TrialsConfig({ pluginName }: Props) {
         );
         setColumnMapping(selectedTrial.columnMapping || {});
 
-        // Priority to loop CSV if exists, otherwise trial CSV
-        const { csvJson: effectiveCsvJson, csvColumns: effectiveCsvColumns } =
+        // Priority to loop CSV columns if exists
+        const { csvColumns: effectiveCsvColumns } =
           await getLoopCsvData(selectedTrial);
 
-        setCsvJson(effectiveCsvJson);
         setCsvColumns(effectiveCsvColumns);
-
-        setOrders(selectedTrial.orders || false);
-        setOrderColumns(selectedTrial.orderColumns || []);
-        setStimuliOrders(selectedTrial.stimuliOrders || []);
-        setCategories(selectedTrial.categories || false);
-        setCategoryColumn(selectedTrial.categoryColumn || "");
-        setCategoryData(selectedTrial.categoryData || []);
 
         setTimeout(() => {
           setIsLoadingTrial(false);
@@ -228,43 +198,6 @@ function TrialsConfig({ pluginName }: Props) {
     });
   };
 
-  // Guardar trial orders (1 solo request con todos los campos)
-  const saveOrdersAndCategories = async (
-    ord: boolean,
-    ordCols: string[],
-    stimOrd: any[],
-    cat: boolean,
-    catCol: string,
-    catData: any[],
-  ) => {
-    if (!selectedTrial) return;
-
-    console.log("💾 [saveOrdersAndCategories] Called with:");
-    console.log("  orders:", ord);
-    console.log("  orderColumns:", ordCols);
-    console.log("  stimuliOrders:", stimOrd);
-    console.log("  categories:", cat);
-    console.log("  categoryColumn:", catCol);
-    console.log("  categoryData:", catData);
-
-    // Usar updateTrial para 1 solo PATCH con todos los campos
-    const updatedTrial = await updateTrial(selectedTrial.id, {
-      orders: ord,
-      orderColumns: ordCols,
-      stimuliOrders: stimOrd,
-      categories: cat,
-      categoryColumn: catCol,
-      categoryData: catData,
-    });
-
-    if (updatedTrial) {
-      console.log("✅ Trial updated successfully:", updatedTrial);
-      showSaveIndicator("orders");
-    } else {
-      console.error("❌ Failed to update trial");
-    }
-  };
-
   // Guardar TODO (botón manual - 1 solo request con todos los campos)
   const handleSave = async () => {
     if (!canSave || !selectedTrial) return;
@@ -292,12 +225,6 @@ function TrialsConfig({ pluginName }: Props) {
       },
       // trialCode is NO LONGER saved - it's generated dynamically when needed
       columnMapping: { ...columnMapping },
-      orders,
-      orderColumns,
-      stimuliOrders,
-      categories,
-      categoryColumn,
-      categoryData,
       parentLoopId: parentLoop?.id || null,
     };
 
@@ -421,25 +348,6 @@ function TrialsConfig({ pluginName }: Props) {
             onSave={saveColumnMapping}
           />
         )}{" "}
-        {parentLoop && (
-          <OrdersAndCategories
-            orders={orders}
-            setOrders={setOrders}
-            columnOptions={csvColumns}
-            orderColumns={orderColumns}
-            setOrderColumns={setOrderColumns}
-            mapOrdersFromCsv={mapOrdersFromCsv}
-            csvJson={csvJson}
-            stimuliOrders={stimuliOrders}
-            categories={categories}
-            setCategories={setCategories}
-            setCategoryColumn={setCategoryColumn}
-            categoryColumn={categoryColumn}
-            categoryData={categoryData}
-            mapCategoriesFromCsv={mapCategoriesFromCsv}
-            onSave={saveOrdersAndCategories}
-          />
-        )}
         {/* Extensions */}
         <ExtensionsConfig
           parameters={parameters}

@@ -148,6 +148,7 @@ export function useTrialCode({
         ${dataProps}
         trial_id: ${id},
         builder_id: ${id},
+        trial_name: "${trialName}",
         ${
           hasBranches
             ? `
@@ -165,6 +166,7 @@ data: {
         ${dataProps}
         trial_id: ${id},
         builder_id: ${id},
+        trial_name: "${trialName}",
         ${isInLoop ? `isInLoop: true,` : ""}
         ${
           hasBranches
@@ -194,6 +196,7 @@ data: {
         ${dataProps}
         trial_id: ${id},
         builder_id: ${id},
+        trial_name: "${trialName}",
         ${
           hasBranches
             ? `
@@ -217,6 +220,7 @@ data: {
         ${dataProps}
         trial_id: ${id},
         builder_id: ${id},
+        trial_name: "${trialName}",
         ${isInLoop ? `isInLoop: true,` : ""}
         ${
           hasBranches

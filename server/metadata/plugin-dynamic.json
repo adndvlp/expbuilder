@@ -9,6 +9,10 @@
       "type": "object_array",
       "default": []
     },
+    "require_response": {
+      "type": "boolean",
+      "default": false
+    },
     "stimuli_duration": {
       "type": "number",
       "default": null

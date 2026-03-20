@@ -208,6 +208,15 @@ class SurveyjsComponent {
     return this.survey;
   }
 
+  /** True once the survey has been submitted and response data is available */
+  isValid(_trial: any): boolean {
+    return (
+      this.response !== null &&
+      typeof this.response === "object" &&
+      Object.keys(this.response).length > 0
+    );
+  }
+
   destroy() {
     // Cleanup if needed
   }

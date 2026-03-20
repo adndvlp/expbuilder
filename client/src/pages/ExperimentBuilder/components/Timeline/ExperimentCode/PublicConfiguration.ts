@@ -50,6 +50,9 @@ export default function PublicConfiguration({
     getLoop,
     canvasStyles,
   });
+
+  const progressBar = canvasStyles?.progressBar ?? false;
+
   const generateExperiment = async (storageOverride?: string) => {
     const useStorage = storageOverride || storage;
 
@@ -666,6 +669,10 @@ export default function PublicConfiguration({
 
     const jsPsych = initJsPsych({
       display_element: document.getElementById('jspsych-container'),
+
+      
+      ${progressBar ? `show_progress_bar: true,` : ""} 
+
 
       on_trial_start: function(trial) {
         const lastTrialData = jsPsych.data.get()

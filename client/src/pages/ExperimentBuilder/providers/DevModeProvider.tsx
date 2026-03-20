@@ -9,6 +9,7 @@ type Props = {
 
 export default function DevModeProvider({ children }: Props) {
   const [isDevMode, setDevMode] = useState<boolean>(false);
+  const [isSaveMode, setSaveMode] = useState<boolean>(false);
   const [code, setCode] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const experimentID = useExperimentID();
@@ -21,6 +22,7 @@ export default function DevModeProvider({ children }: Props) {
         if (data?.config) {
           setCode(data.config.generatedCode);
           setDevMode(data.isDevMode);
+          setSaveMode(data.isSaveMode ?? false);
         }
       })
       .catch((error) => {
@@ -43,6 +45,7 @@ export default function DevModeProvider({ children }: Props) {
             body: JSON.stringify({
               config: { generatedCode: code },
               isDevMode: isDevMode,
+              isSaveMode: isSaveMode,
             }),
           },
         );
@@ -56,10 +59,12 @@ export default function DevModeProvider({ children }: Props) {
     }, 1000);
 
     return () => clearTimeout(timeoutId);
-  }, [isDevMode, code, isLoading]);
+  }, [isDevMode, isSaveMode, code, isLoading]);
 
   return (
-    <DevModeContext.Provider value={{ isDevMode, setDevMode, code, setCode }}>
+    <DevModeContext.Provider
+      value={{ isDevMode, setDevMode, isSaveMode, setSaveMode, code, setCode }}
+    >
       {children}
     </DevModeContext.Provider>
   );

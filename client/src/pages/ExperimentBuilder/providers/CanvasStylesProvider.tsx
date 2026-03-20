@@ -30,6 +30,7 @@ export default function CanvasStylesProvider({
             backgroundColor:
               data.settings.backgroundColor ?? prev.backgroundColor,
             fullScreen: data.settings.fullScreen ?? prev.fullScreen,
+            progressBar: data.settings.progressBar ?? prev.progressBar,
           }));
         }
       })

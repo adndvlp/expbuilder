@@ -790,7 +790,8 @@ router.get("/api/appearance-settings/:experimentID", async (req, res) => {
       success: true,
       settings: exp.appearanceSettings ?? {
         backgroundColor: "#ffffff",
-        fullScreen: false,
+        fullScreen: true,
+        progressBar: false,
       },
     });
   } catch (err) {
@@ -805,7 +806,11 @@ router.get("/api/appearance-settings/:experimentID", async (req, res) => {
  * @body {boolean} fullScreen - Whether the experiment fills the viewport
  */
 router.put("/api/appearance-settings/:experimentID", async (req, res) => {
-  const { backgroundColor = "#ffffff", fullScreen = false } = req.body || {};
+  const {
+    backgroundColor = "#ffffff",
+    fullScreen = true,
+    progressBar = false,
+  } = req.body || {};
   try {
     await db.read();
     ensureDbData();
@@ -819,6 +824,7 @@ router.put("/api/appearance-settings/:experimentID", async (req, res) => {
     exp.appearanceSettings = {
       backgroundColor: String(backgroundColor).slice(0, 20),
       fullScreen: !!fullScreen,
+      progressBar: !!progressBar,
     };
     exp.updatedAt = new Date().toISOString();
     await db.write();

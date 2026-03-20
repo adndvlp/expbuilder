@@ -116,6 +116,7 @@ function LoopSubCanvas({
     createTrial,
     setShowLoopModal,
     createLoop,
+    updateTimeline,
   });
 
   // Wrapper for onAddBranch that shows the modal

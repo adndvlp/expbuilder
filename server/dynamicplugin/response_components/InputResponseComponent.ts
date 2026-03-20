@@ -11,6 +11,17 @@ const info = {
       default: undefined,
     },
     /**
+     * HTML input type attribute (text, date, time, datetime-local, number, email, password, tel).
+     * Defaults to "text".
+     */
+    input_type: {
+      type: ParameterType.STRING,
+      pretty_name: "Input Type",
+      default: "text",
+      description:
+        "HTML input type (text, date, time, datetime-local, number, email, password, tel)",
+    },
+    /**
      * The cloze text to be displayed. Blanks are indicated by %% signs and automatically replaced by
      * input fields. If there is a correct answer you want the system to check against, it must be typed
      * between the two percentage signs (i.e. % correct solution %). If you would like to input multiple
@@ -227,6 +238,7 @@ class InputResponseComponent {
     const borderRadius = this.resolveParam(trial.input_border_radius, 2);
     const padding = this.resolveParam(trial.input_padding, "4px 6px");
     const placeholder = this.resolveParam(trial.placeholder, "");
+    const inputType = this.resolveParam(trial.input_type, "text");
 
     // Create container anchored at the given coordinates
     this.clozeContainer = document.createElement("div");
@@ -246,13 +258,13 @@ class InputResponseComponent {
 
     display_element.appendChild(this.clozeContainer);
 
-    // Create one <input> per solution slot
+    // Create one <input> per solution slot (at least 1 for non-cloze types)
     this.inputElements = [];
-    this.inputCount = this.solutions.length;
+    this.inputCount = Math.max(1, this.solutions.length);
 
     for (let i = 0; i < this.inputCount; i++) {
       const input = document.createElement("input");
-      input.type = "text";
+      input.type = inputType;
       input.id = `input${i}`;
       input.classList.add("jspsych-input-response");
       input.value = "";
@@ -399,6 +411,30 @@ class InputResponseComponent {
    */
   isValid(trial: any): boolean {
     return this.collectCurrentResponse(trial) !== null;
+  }
+
+  /** Highlight empty inputs and show native browser validation tooltip */
+  showValidationError(): void {
+    let firstInvalid: HTMLInputElement | null = null;
+    this.inputElements.forEach((input) => {
+      if (!input.value.trim()) {
+        input.classList.add("jspsych-require-response-error");
+        input.setCustomValidity("Please fill in this field.");
+        if (!firstInvalid) firstInvalid = input;
+      }
+    });
+    // reportValidity shows the native browser bubble on the first invalid field
+    if (firstInvalid) {
+      (firstInvalid as HTMLInputElement).reportValidity();
+    }
+  }
+
+  /** Remove validation error highlights and reset custom validity */
+  clearValidationError(): void {
+    this.inputElements.forEach((input) => {
+      input.classList.remove("jspsych-require-response-error");
+      input.setCustomValidity("");
+    });
   }
 
   /**

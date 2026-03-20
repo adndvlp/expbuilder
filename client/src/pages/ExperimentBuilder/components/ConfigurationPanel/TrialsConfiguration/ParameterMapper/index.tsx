@@ -64,6 +64,23 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
     Record<string, string>
   >({});
 
+  // ── input_type live value (used to conditionally hide cloze-only params) ──
+  const inputTypeValue: string =
+    (columnMapping["input_type"]?.value as string) || "text";
+
+  // Params that are only relevant for cloze (text) mode
+  const CLOZE_ONLY_KEYS = new Set([
+    "text",
+    "check_answers",
+    "allow_blanks",
+    "case_sensitivity",
+  ]);
+  // Params hidden for non-text types (date/time/number/email/password/tel don't use cloze)
+  const visibleParameters = parameters.filter(({ key }) => {
+    if (CLOZE_ONLY_KEYS.has(key) && inputTypeValue !== "text") return false;
+    return true;
+  });
+
   const parametersRef = useRef<Parameter[]>([]);
 
   const {
@@ -140,10 +157,57 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
 
       {/* Parameter form */}
       <div className="mb-2 grid grid-cols-2 gap-2">
-        {parameters &&
-          parameters.length > 0 &&
-          parameters.map(({ label, key, type }) => {
+        {visibleParameters &&
+          visibleParameters.length > 0 &&
+          visibleParameters.map(({ label, key, type }) => {
             const entry = columnMapping[key] || { source: "none" };
+
+            // ── Special: input_type → always show as a select dropdown ──
+            if (key === "input_type") {
+              const INPUT_TYPE_OPTIONS = [
+                { value: "text", label: "Text" },
+                { value: "date", label: "Date (calendar)" },
+                { value: "time", label: "Time (clock)" },
+                { value: "datetime-local", label: "Date & Time" },
+                { value: "number", label: "Number" },
+                { value: "password", label: "Password" },
+              ];
+              const currentType =
+                (entry.source === "typed" ? (entry.value as string) : null) ??
+                "text";
+              return (
+                <div key={key} style={{ gridColumn: "1 / -1" }}>
+                  <label
+                    className="mb-2 mt-3 block text-sm font-medium"
+                    style={componentMode ? { color: "var(--text-dark)" } : {}}
+                  >
+                    {label}
+                  </label>
+                  <select
+                    className="w-full p-2 border rounded mt-1"
+                    value={currentType}
+                    onChange={(e) => {
+                      const newValue = {
+                        source: "typed" as const,
+                        value: e.target.value,
+                      };
+                      setColumnMapping((prev) => ({
+                        ...prev,
+                        [key]: newValue,
+                      }));
+                      if (onSave) setTimeout(() => onSave(key, newValue), 100);
+                    }}
+                    style={{ color: "var(--text-dark)" }}
+                  >
+                    {INPUT_TYPE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              );
+            }
 
             return (
               <div key={key}>

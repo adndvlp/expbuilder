@@ -43,6 +43,7 @@ export default function LocalConfiguration({
     getLoop,
     canvasStyles,
   });
+  const progressBar = canvasStyles?.progressBar ?? false;
   const generateLocalExperiment = async () => {
     // Fetch extensions before generating experiment
     const extensions = await fetchExtensions();
@@ -239,6 +240,7 @@ export default function LocalConfiguration({
 
     const jsPsych = initJsPsych({
           display_element: document.getElementById('jspsych-container'),
+           ${progressBar ? `show_progress_bar: true,` : ""} 
 
 
     ${extensions}

@@ -42,7 +42,7 @@ export default function ExperimentBase({
       console.error("Error generating codes:", error);
     }
 
-    const fullScreen = canvasStyles?.fullScreen ?? false;
+    const fullScreen = canvasStyles?.fullScreen ?? true;
 
     return `const timeline = [];
 

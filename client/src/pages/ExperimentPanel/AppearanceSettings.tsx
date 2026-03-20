@@ -9,7 +9,8 @@ type Props = {
 
 function AppearanceSettings({ experimentID }: Props) {
   const [backgroundColor, setBackgroundColor] = useState("#ffffff");
-  const [fullScreen, setFullScreen] = useState(false);
+  const [fullScreen, setFullScreen] = useState(true);
+  const [progressBar, setProgressBar] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{
     type: "success" | "error";
@@ -23,7 +24,8 @@ function AppearanceSettings({ experimentID }: Props) {
       .then((data) => {
         if (data.success && data.settings) {
           setBackgroundColor(data.settings.backgroundColor ?? "#ffffff");
-          setFullScreen(data.settings.fullScreen ?? false);
+          setFullScreen(data.settings.fullScreen ?? true);
+          setProgressBar(data.settings.progressBar ?? false);
         }
       })
       .catch((err) => console.error("Error loading appearance settings:", err));
@@ -39,7 +41,7 @@ function AppearanceSettings({ experimentID }: Props) {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ backgroundColor, fullScreen }),
+          body: JSON.stringify({ backgroundColor, fullScreen, progressBar }),
         },
       );
       const data = await res.json();
@@ -178,6 +180,50 @@ function AppearanceSettings({ experimentID }: Props) {
         >
           When enabled, the experiment fills the entire browser viewport instead
           of a fixed-size canvas.
+        </p>
+      </div>
+      {/* ProgressBar toggle */}
+      <div style={{ marginBottom: 24 }}>
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            cursor: "pointer",
+          }}
+        >
+          <ReactSwitch
+            checked={progressBar}
+            onChange={setProgressBar}
+            height={22}
+            width={44}
+            handleDiameter={16}
+            onColor="#3b82f6"
+            offColor="#9ca3af"
+            uncheckedIcon={false}
+            checkedIcon={false}
+          />
+          <span
+            style={{
+              fontSize: 15,
+              fontWeight: 600,
+              color: "var(--text-dark)",
+            }}
+          >
+            Progress Bar
+          </span>
+        </label>
+        <p
+          style={{
+            marginTop: 6,
+            fontSize: 13,
+            color: "var(--text-dark)",
+            opacity: 0.65,
+            marginLeft: 56,
+          }}
+        >
+          When enabled, the experiment will show on top the progress of the
+          experiment to the participant.
         </p>
       </div>
 

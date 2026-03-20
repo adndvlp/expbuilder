@@ -37,7 +37,7 @@ router.post("/api/append-result/:experimentID", async (req, res) => {
     // Only create if it doesn't exist
     let existing = db.data.sessionResults.find(
       (s) =>
-        s.experimentID === req.params.experimentID && s.sessionId === sessionId
+        s.experimentID === req.params.experimentID && s.sessionId === sessionId,
     );
     if (existing) {
       return res
@@ -101,7 +101,7 @@ router.put("/api/append-result/:experimentID", async (req, res) => {
     // Solo añadir si existe
     let existing = db.data.sessionResults.find(
       (s) =>
-        s.experimentID === req.params.experimentID && s.sessionId === sessionId
+        s.experimentID === req.params.experimentID && s.sessionId === sessionId,
     );
     if (!existing) {
       return res
@@ -175,7 +175,7 @@ router.get(
       const doc = db.data.sessionResults.find(
         (s) =>
           s.experimentID === req.params.experimentID &&
-          s.sessionId === sessionId
+          s.sessionId === sessionId,
       );
       if (!doc) return res.status(404).send("Session not found");
 
@@ -204,7 +204,7 @@ router.get(
 
       // 4. Extraer todos los campos únicos (ahora incluye metadata)
       const allFields = Array.from(
-        new Set(dataWithMetadata.flatMap((row) => Object.keys(row)))
+        new Set(dataWithMetadata.flatMap((row) => Object.keys(row))),
       );
 
       // 5. Convertir a CSV con json2csv
@@ -215,14 +215,14 @@ router.get(
       res.setHeader("Content-Type", "text/csv");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="session_${sessionId}.csv"`
+        `attachment; filename="session_${sessionId}.csv"`,
       );
       res.status(200).send(csv);
     } catch (err) {
       console.error("Error exporting CSV:", err);
       res.status(500).send("Error generating CSV");
     }
-  }
+  },
 );
 
 /**
@@ -248,7 +248,7 @@ router.post("/api/complete-session/:experimentID", async (req, res) => {
     await db.read();
     const existing = db.data.sessionResults.find(
       (s) =>
-        s.experimentID === req.params.experimentID && s.sessionId === sessionId
+        s.experimentID === req.params.experimentID && s.sessionId === sessionId,
     );
 
     if (!existing) {
@@ -297,7 +297,7 @@ router.post(
       const existing = db.data.sessionResults.find(
         (s) =>
           s.experimentID === req.params.experimentID &&
-          s.sessionId === sessionId
+          s.sessionId === sessionId,
       );
 
       if (existing) {
@@ -324,8 +324,29 @@ router.post(
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }
-  }
+  },
 );
+
+/**
+ * Returns the next participant number for an experiment without creating a session.
+ * Used when save mode is disabled.
+ * @route GET /api/participant-number/:experimentID
+ * @param {string} experimentID - Experiment ID
+ * @returns {Object} 200 - Next participant number
+ * @returns {number} 200.participantNumber - Next participant number
+ * @returns {Object} 500 - Server error
+ */
+router.get("/api/participant-number/:experimentID", async (req, res) => {
+  try {
+    await db.read();
+    const count = db.data.sessionResults.filter(
+      (s) => s.experimentID === req.params.experimentID,
+    ).length;
+    res.json({ participantNumber: count + 1 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 /**
  * Elimina una sesión y todos sus datos.
@@ -345,7 +366,7 @@ router.delete(
       const sessionIndex = db.data.sessionResults.findIndex(
         (s) =>
           s.experimentID === req.params.experimentID &&
-          s.sessionId === req.params.sessionId
+          s.sessionId === req.params.sessionId,
       );
 
       if (sessionIndex === -1) {
@@ -361,7 +382,7 @@ router.delete(
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }
-  }
+  },
 );
 
 export default router;

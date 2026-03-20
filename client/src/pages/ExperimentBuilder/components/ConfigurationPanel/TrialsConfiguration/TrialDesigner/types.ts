@@ -55,13 +55,15 @@ export type CanvasStyles = {
   width: number;
   height: number;
   fullScreen: boolean;
+  progressBar: boolean;
 };
 
 export const DEFAULT_CANVAS_STYLES: CanvasStyles = {
   backgroundColor: "#ffffff",
   width: 1024,
   height: 768,
-  fullScreen: false,
+  fullScreen: true,
+  progressBar: false,
 };
 
 export type KonvaTrialDesignerProps = {

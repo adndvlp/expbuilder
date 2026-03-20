@@ -227,6 +227,7 @@ export default function MappedJson({
           "stimuli_duration",
           "trial_duration",
           "response_ends_trial",
+          "require_response",
         ];
 
         additionalDynamicParams.forEach((paramKey) => {

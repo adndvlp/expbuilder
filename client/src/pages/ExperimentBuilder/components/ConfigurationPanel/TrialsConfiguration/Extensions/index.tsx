@@ -26,20 +26,7 @@ function ExtensionsConfig({
 
   // Check if using DynamicPlugin with stimulus components
   if (pluginName === "plugin-dynamic") {
-    // For DynamicPlugin, check the columnMapping for components
-    const componentsConfig = columnMapping.components;
-    if (componentsConfig && Array.isArray(componentsConfig.value)) {
-      // Check if there's any ImageComponent, VideoComponent, or HtmlComponent
-      interface ComponentType {
-        type?: string;
-      }
-      isWebgazer = componentsConfig.value.some(
-        (comp: ComponentType) =>
-          comp.type === "ImageComponent" ||
-          comp.type === "VideoComponent" ||
-          comp.type === "HtmlComponent",
-      );
-    }
+    isWebgazer = true;
   } else {
     // Original logic for standard plugins
     parameters.forEach((param) => {

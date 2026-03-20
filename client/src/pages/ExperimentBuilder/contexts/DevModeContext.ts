@@ -3,6 +3,8 @@ import { createContext } from "react";
 type DevModeContextType = {
   isDevMode: boolean;
   setDevMode: React.Dispatch<React.SetStateAction<boolean>>;
+  isSaveMode: boolean;
+  setSaveMode: React.Dispatch<React.SetStateAction<boolean>>;
   code: string;
   setCode: React.Dispatch<React.SetStateAction<string>>;
 };

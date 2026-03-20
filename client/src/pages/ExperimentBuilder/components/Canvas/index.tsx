@@ -301,6 +301,27 @@ function Canvas() {
         );
       }
 
+      // Reorder timeline: insert new trial right after the parent
+      const newTimeline = timeline
+        .map((item) =>
+          item.id === parentId
+            ? { ...item, branches: [newParentTrial.id] }
+            : item,
+        )
+        .filter((item) => item.id !== newParentTrial.id); // Remove if already appended
+
+      const parentIndex = newTimeline.findIndex((item) => item.id === parentId);
+      const insertIndex =
+        parentIndex !== -1 ? parentIndex + 1 : newTimeline.length;
+      newTimeline.splice(insertIndex, 0, {
+        id: newParentTrial.id,
+        type: "trial",
+        name: newParentTrial.name,
+        branches: newParentTrial.branches || [],
+      });
+
+      await updateTimeline(newTimeline);
+
       setSelectedTrial(newParentTrial);
     } catch (error) {
       console.error("Error adding trial as parent:", error);

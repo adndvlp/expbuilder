@@ -32,6 +32,7 @@ type Props = {
   loopId: string | number;
   setShowLoopModal: (value: SetStateAction<boolean>) => void;
   createLoop: (loop: Omit<Loop, "id">) => Promise<Loop>;
+  updateTimeline: (timeline: TimelineItem[]) => Promise<boolean>;
 };
 
 export default function Actions({
@@ -49,6 +50,7 @@ export default function Actions({
   createTrial,
   setShowLoopModal,
   createLoop,
+  updateTimeline,
 }: Props) {
   // Handler to show the add trial modal
   // Checks if the parent has branches before showing the modal
@@ -183,6 +185,31 @@ export default function Actions({
           newParentTrial,
         );
       }
+
+      // Reorder timeline: insert new trial right after the parent
+      const newTimeline = timeline
+        .map((item) =>
+          item.id === parentId
+            ? { ...item, branches: [newParentTrial.id] }
+            : item,
+        )
+        .filter((item) => item.id !== newParentTrial.id); // Remove if already appended
+
+      const parentTimelineIndex = newTimeline.findIndex(
+        (item) => item.id === parentId,
+      );
+      const insertIndex =
+        parentTimelineIndex !== -1
+          ? parentTimelineIndex + 1
+          : newTimeline.length;
+      newTimeline.splice(insertIndex, 0, {
+        id: newParentTrial.id,
+        type: "trial",
+        name: newParentTrial.name,
+        branches: newParentTrial.branches || [],
+      });
+
+      await updateTimeline(newTimeline);
 
       onSelectTrial(newParentTrial);
     } catch (error) {
