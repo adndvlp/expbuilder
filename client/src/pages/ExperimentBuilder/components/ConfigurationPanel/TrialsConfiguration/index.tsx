@@ -3,7 +3,6 @@ import useTrials from "../../../hooks/useTrials";
 import { usePluginParameters } from "../hooks/usePluginParameters";
 import Switch from "react-switch";
 import TrialMetaConfig from "./TrialMetaConfig";
-import CsvUploader from "./Csv/CsvUploader";
 import ParameterMapper from "./ParameterMapper";
 import TrialActions from "./TrialActions";
 import { useFileUpload } from "../../Timeline/useFileUpload";
@@ -36,8 +35,7 @@ function TrialsConfig({ pluginName }: Props) {
   const [saveIndicator, setSaveIndicator] = useState(false);
   const [savingField, setSavingField] = useState<string | null>(null);
 
-  const { csvJson, setCsvJson, csvColumns, setCsvColumns, handleCsvUpload } =
-    useCsvData();
+  const { csvJson, setCsvJson, csvColumns, setCsvColumns } = useCsvData();
 
   const { columnMapping, setColumnMapping } = useColumnMapping({});
   const { parameters } = usePluginParameters(pluginName);
@@ -66,16 +64,9 @@ function TrialsConfig({ pluginName }: Props) {
   };
 
   async function getLoopCsvData(trial: Trial) {
-    if (!trial?.csvFromLoop)
-      return {
-        csvJson: trial?.csvJson || [],
-        csvColumns: trial?.csvColumns || [],
-      };
-
-    // Find parent loop containing the trial using parentLoopId
+    // CSV data always comes from the parent loop, not from the trial itself
     if (trial.parentLoopId) {
       const parentLoop = await getLoop(trial.parentLoopId);
-
       if (parentLoop) {
         return {
           csvJson: parentLoop.csvJson || [],
@@ -83,11 +74,7 @@ function TrialsConfig({ pluginName }: Props) {
         };
       }
     }
-
-    return {
-      csvJson: trial?.csvJson || [],
-      csvColumns: trial?.csvColumns || [],
-    };
+    return { csvJson: [], csvColumns: [] };
   }
 
   const {
@@ -232,33 +219,6 @@ function TrialsConfig({ pluginName }: Props) {
     await saveField("columnMapping", updatedMapping);
   };
 
-  // Guardar CSV data
-  const saveCsvData = async (dataToSave?: any[], colsToSave?: string[]) => {
-    if (!selectedTrial) return;
-
-    const finalJson = dataToSave !== undefined ? dataToSave : csvJson;
-    const finalCols = colsToSave !== undefined ? colsToSave : csvColumns;
-
-    await updateTrialField(
-      selectedTrial.id,
-      "csvJson",
-      finalJson ? [...finalJson] : [],
-    );
-    await updateTrialField(
-      selectedTrial.id,
-      "csvColumns",
-      finalCols ? [...finalCols] : [],
-    );
-    showSaveIndicator("csv");
-  };
-
-  // Wrapper para handleCsvUpload que guarda automáticamente
-  const onHandleCsvUploadWrapped = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleCsvUpload(e, (newData, newCols) => {
-      saveCsvData(newData, newCols);
-    });
-  };
-
   // Guardar extensions (recibe valores como parámetros para evitar closures)
   const saveExtensions = async (includeExt: boolean, extType: string) => {
     if (!selectedTrial) return;
@@ -332,8 +292,6 @@ function TrialsConfig({ pluginName }: Props) {
       },
       // trialCode is NO LONGER saved - it's generated dynamically when needed
       columnMapping: { ...columnMapping },
-      csvJson: csvJson ? [...csvJson] : [],
-      csvColumns: csvColumns ? [...csvColumns] : [],
       orders,
       orderColumns,
       stimuliOrders,
@@ -364,13 +322,6 @@ function TrialsConfig({ pluginName }: Props) {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
-
-  const deleteCsv = () => {
-    if (csvJson.length === 0) return;
-    setCsvJson([]);
-    setCsvColumns([]);
-    saveCsvData([], []);
-  };
 
   return (
     <div id="plugin-config">
@@ -407,8 +358,8 @@ function TrialsConfig({ pluginName }: Props) {
           setSelectedTrial={setSelectedTrial}
           onSave={saveName}
         />
-        {/* CSV and XLSX section */}
-        {selectedTrial?.csvFromLoop ? (
+        {/* CSV info - CSV is managed at loop level only */}
+        {parentLoop && (parentLoop.csvJson?.length ?? 0) > 0 && (
           <div
             style={{
               display: "flex",
@@ -422,7 +373,7 @@ function TrialsConfig({ pluginName }: Props) {
             }}
           >
             <Switch
-              checked={selectedTrial.csvFromLoop}
+              checked={true}
               onChange={() => {}}
               disabled={true}
               onColor="#f1c40f"
@@ -441,12 +392,6 @@ function TrialsConfig({ pluginName }: Props) {
               Using CSV from loop
             </label>
           </div>
-        ) : (
-          <CsvUploader
-            onCsvUpload={onHandleCsvUploadWrapped}
-            csvJson={csvJson}
-            onDeleteCSV={deleteCsv}
-          />
         )}
         {/* Branched Trial moved to Canvas modal */}
         {/* Parameter section */}
@@ -476,41 +421,7 @@ function TrialsConfig({ pluginName }: Props) {
             onSave={saveColumnMapping}
           />
         )}{" "}
-        {selectedTrial?.csvFromLoop ? (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              marginTop: "16px",
-              marginBottom: "16px",
-              padding: "12px 16px",
-              backgroundColor: "var(--neutral-light)",
-              borderRadius: "8px",
-              border: "1px solid var(--neutral-mid)",
-            }}
-          >
-            <Switch
-              checked={true}
-              onChange={() => {}}
-              disabled={true}
-              onColor="#f1c40f"
-              offColor="#cccccc"
-              onHandleColor="#ffffff"
-              offHandleColor="#ffffff"
-              handleDiameter={24}
-              uncheckedIcon={false}
-              checkedIcon={false}
-              height={20}
-              width={44}
-            />
-            <label
-              style={{ margin: 0, fontWeight: 500, color: "var(--text-dark)" }}
-            >
-              Orders and Categories managed by loop
-            </label>
-          </div>
-        ) : (
+        {parentLoop && (
           <OrdersAndCategories
             orders={orders}
             setOrders={setOrders}

@@ -3,9 +3,5 @@
   "trials": [],
   "configs": [],
   "pluginConfigs": [],
-  "sessionResults": [],
-  "appSettings": {
-    "customDomain": "lcaodojn.duckdns.org",
-    "autoStartTunnel": false
-  }
+  "sessionResults": []
 }

@@ -3,72 +3,72 @@ import { useEffect, useState } from "react";
 export function useExtensions(pluginName: string, parameters: any[]) {
   const [includesExtensions, setIncludeExtensions] = useState<boolean>(false);
   const [extensionType, setExtensionType] = useState<string>("");
-  const [targetedPlugin, setTargetedPlugin] = useState<string>("") || undefined;
+  const [targetedPlugin, setTargetedPlugin] = useState<string[]>([]);
 
   useEffect(() => {
     if (extensionType === "jsPsychExtensionMouseTracking") {
-      setTargetedPlugin("#target");
+      setTargetedPlugin(["#target"]);
     } else if (extensionType === "jsPsychExtensionWebgazer") {
-      // For DynamicPlugin, we need to target the first stimulus component
+      // For DynamicPlugin, target ALL visual stimulus components
       if (pluginName === "DynamicPlugin") {
-        // Find the first component with stimulus or stimuli
         const stimulusParam = parameters.find(
           (param) => param.key === "components" && Array.isArray(param.value),
         );
 
         if (stimulusParam && stimulusParam.value.length > 0) {
-          // Get the first component that has a stimulus (Image, Video, Html)
           interface ComponentType {
             type?: string;
             name?: string;
           }
-          const firstComponent = stimulusParam.value.find(
+          const visualComponents = stimulusParam.value.filter(
             (comp: ComponentType) =>
               comp.type === "ImageComponent" ||
               comp.type === "VideoComponent" ||
-              comp.type === "HtmlComponent",
+              comp.type === "HtmlComponent" ||
+              comp.type === "TextComponent",
           );
 
-          if (firstComponent && firstComponent.name) {
+          if (visualComponents.length > 0) {
+            const targets = visualComponents
+              .filter((comp: ComponentType) => comp.name)
+              .map((comp: ComponentType) =>
+                comp.type === "TextComponent"
+                  ? `#jspsych-text-component-${comp.name}`
+                  : `#jspsych-dynamic-${comp.name}-stimulus`,
+              );
             setTargetedPlugin(
-              `#jspsych-dynamic-${firstComponent.name}-stimulus`,
+              targets.length > 0
+                ? targets
+                : ["#jspsych-dynamic-image-stimulus"],
             );
           } else {
-            // Fallback to default selector if no name is found
-            setTargetedPlugin("#jspsych-dynamic-image-stimulus");
+            setTargetedPlugin([]);
           }
         } else {
-          setTargetedPlugin("");
+          setTargetedPlugin([]);
         }
       } else {
         // Original logic for standard plugins
+        const targets: string[] = [];
         parameters.forEach((param) => {
           if (param.key === "stimulus" || param.key === "stimuli") {
-            let suffix = "";
-            if (param.key === "stimulus") {
-              suffix = "-stimulus";
-            } else if (param.key === "stimuli") {
-              suffix = "-stimuli";
-            }
-            const targetedPlugin = () => {
-              const plugin = pluginName
-                .replace(/^plugin-/, "#jspsych-")
-                .replace(/$/, suffix);
-              return plugin;
-            };
-            setTargetedPlugin(targetedPlugin());
+            const suffix = param.key === "stimulus" ? "-stimulus" : "-stimuli";
+            targets.push(
+              pluginName.replace(/^plugin-/, "#jspsych-").replace(/$/, suffix),
+            );
           }
         });
+        setTargetedPlugin(targets);
       }
     } else {
-      setTargetedPlugin("");
+      setTargetedPlugin([]);
     }
-  }, [extensionType, pluginName, parameters, setTargetedPlugin]);
+  }, [extensionType, pluginName, parameters]);
 
   const extensionsParams = [
     {
       type: extensionType,
-      params: { targets: [targetedPlugin] },
+      params: { targets: targetedPlugin },
     },
   ];
 
@@ -85,7 +85,8 @@ export function useExtensions(pluginName: string, parameters: any[]) {
           return code;
         } else if (
           extensionType === "jsPsychExtensionRecordVideo" ||
-          targetedPlugin === ""
+          (targetedPlugin.length === 0 &&
+            extensionType !== "jsPsychExtensionWebgazer")
         ) {
           code += `
         [{

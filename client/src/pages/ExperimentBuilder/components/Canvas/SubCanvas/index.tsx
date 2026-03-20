@@ -461,7 +461,7 @@ function LoopSubCanvas({
 
           // Show button if there's more than one trial and either a trial or loop is selected
           const shouldShow =
-            totalTrialCount > 1 && (selectedTrial || selectedLoop);
+            totalTrialCount >= 1 && (selectedTrial || selectedLoop);
 
           return (
             shouldShow && (

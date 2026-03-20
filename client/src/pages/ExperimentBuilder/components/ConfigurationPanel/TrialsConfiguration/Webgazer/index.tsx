@@ -2,7 +2,6 @@ import { useState, useMemo } from "react";
 import { useCsvData } from "../Csv/useCsvData";
 import useTrials from "../../../../hooks/useTrials";
 import TrialMetaConfig from "../TrialMetaConfig";
-import CsvUploader from "../Csv/CsvUploader";
 import ParameterMapper from "../ParameterMapper";
 import TrialActions from "../TrialActions";
 import InstructionsConfig from "./Instructions";
@@ -32,8 +31,7 @@ function Webgazer({ webgazerPlugins }: Props) {
   const [saveIndicator, setSaveIndicator] = useState(false);
   const [savingField, setSavingField] = useState<string | null>(null);
 
-  const { csvJson, setCsvJson, csvColumns, setCsvColumns, handleCsvUpload } =
-    useCsvData();
+  const { csvJson, setCsvJson, csvColumns, setCsvColumns } = useCsvData();
 
   const {
     updateTrial,
@@ -235,27 +233,6 @@ function Webgazer({ webgazerPlugins }: Props) {
     await saveTrialCode();
   };
 
-  // Guardar CSV
-  const saveCsvData = async (dataToSave?: unknown[], colsToSave?: string[]) => {
-    if (!selectedTrial) return;
-
-    const finalJson = dataToSave !== undefined ? dataToSave : csvJson;
-    const finalCols = colsToSave !== undefined ? colsToSave : csvColumns;
-
-    await updateTrialField(
-      selectedTrial.id,
-      "csvJson",
-      finalJson ? [...finalJson] : [],
-    );
-    await updateTrialField(
-      selectedTrial.id,
-      "csvColumns",
-      finalCols ? [...finalCols] : [],
-    );
-    await saveTrialCode();
-    showSaveIndicator("csv");
-  };
-
   // Guardar Column Mapping (compartido por todas las fases)
   const saveColumnMapping = async (key: string, value: unknown) => {
     if (!selectedTrial) return;
@@ -302,13 +279,6 @@ function Webgazer({ webgazerPlugins }: Props) {
     await saveTrialCode();
   };
 
-  // Wrapper para handleCsvUpload que guarda automáticamente
-  const onHandleCsvUploadWrapped = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleCsvUpload(e, (newData, newCols) => {
-      saveCsvData(newData, newCols);
-    });
-  };
-
   const handleSave = async () => {
     if (!canSave || !selectedTrial) return;
 
@@ -322,8 +292,6 @@ function Webgazer({ webgazerPlugins }: Props) {
       // WebGazer is complex, so we save the generated code
       trialCode: trialCode,
       columnMapping: mappedColumns,
-      csvJson: csvJson ? [...csvJson] : [],
-      csvColumns: csvColumns ? [...csvColumns] : [],
     };
 
     try {
@@ -349,13 +317,6 @@ function Webgazer({ webgazerPlugins }: Props) {
     if (success) {
       setSelectedTrial(null);
     }
-  };
-
-  const deleteCsv = () => {
-    if (csvJson.length === 0) return;
-    setCsvJson([]);
-    setCsvColumns([]);
-    saveCsvData([], []);
   };
 
   return (
@@ -392,12 +353,6 @@ function Webgazer({ webgazerPlugins }: Props) {
           onSave={saveName}
         />
 
-        {/* CSV and XLSX section */}
-        <CsvUploader
-          onCsvUpload={onHandleCsvUploadWrapped}
-          csvJson={csvJson}
-          onDeleteCSV={deleteCsv}
-        />
         {webGazerPhases.map((phase) => (
           <div key={phase.id} className="input-section p-4 border rounded">
             <h4 className="text-lg font-bold mb-3"> {phase.pluginName} </h4>

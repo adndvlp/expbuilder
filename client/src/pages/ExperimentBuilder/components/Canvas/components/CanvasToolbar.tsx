@@ -33,7 +33,7 @@ function CanvasToolbar({
         zIndex: 10,
       }}
     >
-      {timeline.length > 1 && !openLoop && (
+      {timeline.length >= 1 && !openLoop && (
         <button
           style={{
             ...fabStyle,
