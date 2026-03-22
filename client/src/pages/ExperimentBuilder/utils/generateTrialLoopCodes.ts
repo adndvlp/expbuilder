@@ -140,7 +140,6 @@ async function generateTrialCode(
             fullTrial.parameters.extensionType,
             fullTrial.plugin,
             parameters,
-            fullTrial.columnMapping || {},
           )
         : "";
 

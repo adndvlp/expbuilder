@@ -19,7 +19,6 @@ function ExtensionsConfig({
   extensionType,
   setExtensionType,
   pluginName,
-  columnMapping = {},
   onSave,
 }: Props) {
   let isWebgazer = false;

@@ -6,7 +6,6 @@ export function generateExtensionCode(
   extensionType: string,
   pluginName: string,
   parameters: any[],
-  columnMapping: Record<string, any> = {},
 ): string {
   if (!extensionType) return "";
 
