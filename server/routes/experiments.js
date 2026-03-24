@@ -704,7 +704,8 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     // If fullScreen mode is enabled, inject plugin-fullscreen from CDN.
     // ExperimentBase.ts adds a jsPsychFullscreen trial to the timeline when fullScreen is true,
     // but the plugin is not stored in the trials array so it must be detected server-side.
-    if (experiment.appearanceSettings?.fullScreen) {
+    // Default is true when appearanceSettings has not been saved yet.
+    if (experiment.appearanceSettings?.fullScreen ?? true) {
       $("head").append(
         `<script src="https://unpkg.com/@jspsych/plugin-fullscreen@2.1.0" data-dynamic-plugins="true"></script>`,
       );

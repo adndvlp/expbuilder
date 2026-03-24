@@ -1,6 +1,6 @@
 import "@xyflow/react/dist/style.css";
 import { useState, useEffect } from "react";
-import ReactFlow, { Connection } from "reactflow";
+import ReactFlow from "reactflow";
 import useTrials from "../../hooks/useTrials";
 import TrialNode from "./TrialNode";
 import LoopNode from "./LoopNode";
@@ -535,60 +535,6 @@ function Canvas() {
     }
   };
 
-  // Handler for connecting trials manually
-  const handleConnect = async (connection: Connection) => {
-    if (!connection.source || !connection.target) return;
-
-    // Extract the actual trial IDs from the node IDs
-    const extractTrialId = (nodeId: string): number | string | null => {
-      if (nodeId.startsWith("loop-")) {
-        return nodeId.substring(5);
-      }
-      const segments = nodeId.split("-");
-      const lastSegment = segments[segments.length - 1];
-      const parsed = parseInt(lastSegment);
-      return isNaN(parsed) ? lastSegment : parsed;
-    };
-
-    const sourceId = extractTrialId(connection.source);
-    const targetId = extractTrialId(connection.target);
-
-    if (sourceId === null || targetId === null) {
-      console.error("Invalid connection IDs");
-      return;
-    }
-
-    try {
-      // Find the source in timeline
-      const sourceItem = timeline.find((item) => item.id === sourceId);
-      if (!sourceItem) return;
-
-      if (sourceItem.type === "trial") {
-        const sourceTrial = await getTrial(sourceId);
-        if (!sourceTrial) return;
-
-        const branches = sourceTrial.branches || [];
-        if (!branches.includes(targetId)) {
-          await updateTrial(sourceId, {
-            branches: [...branches, targetId],
-          });
-        }
-      } else {
-        const sourceLoop = await getLoop(sourceId);
-        if (!sourceLoop) return;
-
-        const branches = sourceLoop.branches || [];
-        if (!branches.includes(targetId)) {
-          await updateLoop(sourceId, {
-            branches: [...branches, targetId],
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Error connecting items:", error);
-    }
-  };
-
   const { nodes, edges } = useFlowLayout({
     timeline,
     selectedTrial,
@@ -663,7 +609,6 @@ function Canvas() {
           edges={edges}
           nodeTypes={nodeTypes}
           style={{ background: "transparent", zIndex: -100 }}
-          onConnect={handleConnect}
           onPaneClick={() => {
             setSelectedTrial(null);
             setSelectedLoop(null);

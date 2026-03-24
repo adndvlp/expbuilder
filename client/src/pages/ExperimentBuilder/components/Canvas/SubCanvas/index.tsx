@@ -100,7 +100,6 @@ function LoopSubCanvas({
     addTrialAsParent,
     handleCreateNestedLoop,
     handleAddLoop,
-    handleConnect,
   } = Actions({
     onSelectTrial,
     onSelectLoop,
@@ -560,7 +559,6 @@ function LoopSubCanvas({
           edges={edges}
           nodeTypes={nodeTypes}
           style={{ background: "transparent", zIndex: 2 }}
-          onConnect={handleConnect}
           onPaneClick={() => {
             onSelectTrial(null);
             onSelectLoop(null);

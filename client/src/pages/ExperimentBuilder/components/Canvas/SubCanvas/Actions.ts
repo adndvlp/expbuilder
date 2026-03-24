@@ -1,4 +1,3 @@
-import { Connection } from "reactflow";
 import { generateUniqueName } from "../utils/trialUtils";
 import { Loop, Trial } from "../../ConfigurationPanel/types";
 import { TimelineItem } from "../../../contexts/TrialsContext";
@@ -281,68 +280,11 @@ export default function Actions({
     }
   };
 
-  // Handler to manually connect trials
-  const handleConnect = async (connection: Connection) => {
-    if (!connection.source || !connection.target) return;
-
-    // Extract node IDs
-    const extractId = (nodeId: string): number | string | null => {
-      if (nodeId.startsWith("loop-")) {
-        return nodeId.substring(5);
-      }
-      const segments = nodeId.split("-");
-      const lastSegment = segments[segments.length - 1];
-      const parsed = parseInt(lastSegment);
-      return isNaN(parsed) ? lastSegment : parsed;
-    };
-
-    const sourceId = extractId(connection.source);
-    const targetId = extractId(connection.target);
-
-    if (sourceId === null || targetId === null) {
-      console.error("Invalid connection IDs");
-      return;
-    }
-
-    try {
-      // Find the source in loopTimeline
-      const sourceItem = loopTimeline.find((item) => item.id === sourceId);
-      if (!sourceItem) return;
-
-      if (sourceItem.type === "trial") {
-        const sourceTrial = await getTrial(sourceId);
-        if (!sourceTrial) return;
-
-        const branches = sourceTrial.branches || [];
-        if (!branches.includes(targetId)) {
-          await updateTrial(sourceId, {
-            branches: [...branches, targetId],
-          });
-        }
-      } else {
-        const sourceLoop = await getLoop(sourceId);
-        if (!sourceLoop) return;
-
-        const branches = sourceLoop.branches || [];
-        if (!branches.includes(targetId)) {
-          await updateLoop(sourceId, {
-            branches: [...branches, targetId],
-          });
-        }
-      }
-
-      if (onRefreshMetadata) onRefreshMetadata();
-    } catch (error) {
-      console.error("Error connecting items:", error);
-    }
-  };
-
   return {
     onAddBranch,
     addTrialAsBranch,
     addTrialAsParent,
     handleCreateNestedLoop,
     handleAddLoop,
-    handleConnect,
   };
 }
