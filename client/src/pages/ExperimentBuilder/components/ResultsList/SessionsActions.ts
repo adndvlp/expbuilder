@@ -1,7 +1,7 @@
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { SessionMeta, TabType } from ".";
-import { getDatabase, ref, onValue } from "firebase/database";
-import { initializeApp, getApps } from "firebase/app";
+import { collection, getDocs } from "firebase/firestore";
+import { getFirebaseDb } from "../../../../lib/firebase";
 const API_URL = import.meta.env.VITE_API_URL;
 
 type Props = {
@@ -29,65 +29,36 @@ export default function FetchSessions({
 }: Props) {
   const [allSessions, setAllSessions] = useState<SessionMeta[]>([]);
   const [onlineSessions, setOnlineSessions] = useState<SessionMeta[]>([]);
-  // Fetch online sessions from Firebase Realtime Database
+
+  // Fetch online sessions from Firestore session_metadata subcollection (one-time)
   const fetchOnlineSessions = async () => {
+    if (!experimentID) return;
     try {
-      // Inicializar Firebase si no está inicializado
-      let app;
-      if (getApps().length === 0) {
-        const firebaseConfig = {
-          apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-          authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-          databaseURL:
-            import.meta.env.VITE_FIREBASE_DATABASE_URL ||
-            `https://${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseio.com`,
-          projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-          storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-          messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-          appId: import.meta.env.VITE_FIREBASE_APP_ID,
-        };
-        app = initializeApp(firebaseConfig);
-      } else {
-        app = getApps()[0];
-      }
-
-      const database = getDatabase(app);
-      const sessionsRef = ref(database, `sessions/${experimentID}`);
-
-      // Escuchar cambios en tiempo real
-      onValue(
-        sessionsRef,
-        (snapshot) => {
-          const data = snapshot.val();
-          if (data) {
-            const sessionsList: SessionMeta[] = Object.entries(data).map(
-              ([sessionId, sessionData]) => {
-                const sd = sessionData as Record<string, unknown>;
-                return {
-                  _id: sessionId,
-                  sessionId: sessionId,
-                  createdAt:
-                    (sd.startedAt as string) ||
-                    (sd.createdAt as string) ||
-                    new Date().toISOString(),
-                  state:
-                    (sd.state as "initiated" | "in-progress" | "completed") ||
-                    "initiated",
-                };
-              },
-            );
-            setOnlineSessions(sessionsList);
-          } else {
-            setOnlineSessions([]);
-          }
-        },
-        (error) => {
-          console.error("Error fetching online sessions:", error);
-          setOnlineSessions([]);
-        },
+      const db = await getFirebaseDb();
+      const metadataRef = collection(
+        db,
+        "experiments",
+        experimentID,
+        "session_metadata",
       );
+      const snapshot = await getDocs(metadataRef);
+      const metaSessions: SessionMeta[] = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          _id: doc.id,
+          sessionId: data.sessionId || doc.id,
+          createdAt:
+            data.createdAt || data.completedAt || new Date().toISOString(),
+          state: (data.state as SessionMeta["state"]) || "completed",
+          metadata: data.metadata || {},
+        };
+      });
+      setOnlineSessions(metaSessions);
     } catch (error) {
-      console.error("Error initializing Firebase:", error);
+      console.error(
+        "Error fetching online session metadata from Firestore:",
+        error,
+      );
       setOnlineSessions([]);
     }
   };
@@ -149,30 +120,8 @@ export default function FetchSessions({
 
       setSessions(Array.from(sessionMap.values()));
     } else if (activeTab === "online") {
-      // Online experiments: combinar sesiones de Firebase RT con metadata de db.json
-      const onlineSessionsMap = new Map<string, SessionMeta>();
-
-      // Primero agregar sesiones de Firebase Realtime DB (activas)
-      onlineSessions.forEach((s) => onlineSessionsMap.set(s.sessionId, s));
-
-      // Luego agregar/actualizar con metadata de db.json (persistidas)
-      const dbOnlineSessions = allSessions.filter((s) => s.isOnline === true);
-      dbOnlineSessions.forEach((s) => {
-        const existing = onlineSessionsMap.get(s.sessionId);
-        if (existing) {
-          // Actualizar con metadata de db.json
-          onlineSessionsMap.set(s.sessionId, {
-            ...s,
-            ...existing,
-            metadata: { ...s.metadata, ...existing.metadata },
-          });
-        } else {
-          // Sesión ya finalizada (solo en db.json, no en Firebase)
-          onlineSessionsMap.set(s.sessionId, s);
-        }
-      });
-
-      setSessions(Array.from(onlineSessionsMap.values()));
+      // Online experiments: usar directamente la metadata de Firestore (fuente única)
+      setSessions(onlineSessions);
     }
   }, [activeTab, allSessions, onlineSessions, localActiveSessions]);
 
@@ -299,5 +248,6 @@ export default function FetchSessions({
     toggleSelect,
     toggleSelectAll,
     handleCancelSelect,
+    handleRefresh: fetchSessions,
   };
 }

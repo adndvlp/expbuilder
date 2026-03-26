@@ -78,6 +78,7 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
     toggleSelect,
     toggleSelectAll,
     handleCancelSelect,
+    handleRefresh,
   } = SessionsActions({
     experimentID,
     localActiveSessions,
@@ -141,7 +142,33 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
 
   return (
     <div className="results-container" style={{ marginTop: 25 }}>
-      <h4 className="results-title">{getTitle()}</h4>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          marginBottom: 4,
+        }}
+      >
+        <h4 className="results-title" style={{ margin: 0 }}>
+          {getTitle()}
+        </h4>
+        {activeTab === "online" && (
+          <button
+            className="download-csv-btn"
+            style={{
+              borderRadius: "6px",
+              fontSize: "12px",
+              background:
+                "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+            }}
+            onClick={handleRefresh}
+            disabled={loading}
+          >
+            {loading ? "Loading..." : "↻ Refresh"}
+          </button>
+        )}
+      </div>
       {loading ? (
         <p className="results-text">Loading...</p>
       ) : sessions.length === 0 ? (
@@ -162,19 +189,21 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
               >
                 Cancel selection
               </button>
-              <button
-                className="download-csv-btn"
-                style={{
-                  borderRadius: "6px",
-                  fontSize: "12px",
-                  background:
-                    "linear-gradient(135deg, var(--gold), var(--dark-gold))",
-                }}
-                disabled={selected.length === 0}
-                onClick={handleDownloadSelected}
-              >
-                Download selected
-              </button>
+              {activeTab !== "online" && (
+                <button
+                  className="download-csv-btn"
+                  style={{
+                    borderRadius: "6px",
+                    fontSize: "12px",
+                    background:
+                      "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+                  }}
+                  disabled={selected.length === 0}
+                  onClick={handleDownloadSelected}
+                >
+                  Download selected
+                </button>
+              )}
               <button
                 className="remove-button"
                 style={{ fontSize: "12px" }}
@@ -281,12 +310,14 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
                     </>
                   )}
                   <td>
-                    <button
-                      className="download-csv-btn"
-                      onClick={() => handleDownloadCSV(s.sessionId)}
-                    >
-                      CSV
-                    </button>
+                    {activeTab !== "online" && (
+                      <button
+                        className="download-csv-btn"
+                        onClick={() => handleDownloadCSV(s.sessionId)}
+                      >
+                        CSV
+                      </button>
+                    )}
                     {!selectMode && (
                       <button
                         className="remove-button"
