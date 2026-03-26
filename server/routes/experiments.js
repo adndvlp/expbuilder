@@ -583,20 +583,20 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
       `Publishing experiment: ${experiment.name} as repo: ${sanitizedRepoName}`,
     );
 
-    // Leer el HTML del experimento existente (con código local)
+    // Leer el HTML del experimento existente (con código local), o usar el template si aún no se ha hecho build
     const experimentHtmlPath = path.join(
       experimentsHtmlDir,
       `${experiment.name}.html`,
     );
 
-    if (!fs.existsSync(experimentHtmlPath)) {
-      return res.status(404).json({
-        success: false,
-        error: "Experiment HTML not found. Please build the experiment first.",
-      });
+    let html;
+    if (fs.existsSync(experimentHtmlPath)) {
+      html = fs.readFileSync(experimentHtmlPath, "utf8");
+    } else {
+      // Sin build previo: partir desde el template limpio
+      const templatePath = ensureTemplate("experiment_template.html");
+      html = fs.readFileSync(templatePath, "utf8");
     }
-
-    let html = fs.readFileSync(experimentHtmlPath, "utf8");
     const $ = cheerio.load(html);
 
     // Reemplazar el script generado con código PÚBLICO enviado desde el frontend
@@ -614,11 +614,11 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     // Resolve package.json via __dirname (works in both dev and Electron asar).
     // Falls back to hardcoded values if the source folder was excluded from the build.
     let dynamicName = "jspsych-expbuilder-plugin-dynamic";
-    let dynamicVersion = "1.0.0";
+    let dynamicVersion = "1.0.2";
     try {
       const dynamicPkgPath = path.resolve(
         __dirname,
-        "../dynamicplugin/package.json",
+        "dynamicplugin/package.json",
       );
       const dynamicPkg = JSON.parse(fs.readFileSync(dynamicPkgPath, "utf8"));
       dynamicName = dynamicPkg.name;

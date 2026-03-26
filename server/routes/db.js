@@ -110,22 +110,23 @@ router.post("/api/app/reset", async (req, res) => {
     db.data.sessionResults = [];
     await db.write();
 
-    // 3. Eliminar archivos locales (carpetas de multimedia, exports HTML, etc.)
-    const dirsToDelete = [
-      "uploads",
-      "experiments_html",
-      "trials_previews_html",
-    ];
-    for (const d of dirsToDelete) {
+    // 3. Carpetas fijas (vienen con la app): vaciar contenido, conservar la carpeta
+    for (const d of ["experiments_html", "trials_previews_html"]) {
       const p = path.join(userDataRoot, d);
       if (fs.existsSync(p)) {
-        fs.rmSync(p, { recursive: true, force: true });
+        for (const file of fs.readdirSync(p)) {
+          fs.rmSync(path.join(p, file), { recursive: true, force: true });
+        }
       }
     }
 
-    // También borrar carpetas de datos de experimentos usando sus nombres o IDs
+    // 4. Carpetas creadas en runtime: eliminar completas
+    const runtimeDirs = ["uploads"];
     for (const exp of experiments) {
-      const p = path.join(userDataRoot, exp.name || exp.experimentID);
+      runtimeDirs.push(exp.name || exp.experimentID);
+    }
+    for (const d of runtimeDirs) {
+      const p = path.join(userDataRoot, d);
       if (fs.existsSync(p)) {
         fs.rmSync(p, { recursive: true, force: true });
       }

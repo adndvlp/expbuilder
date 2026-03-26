@@ -2,6 +2,7 @@ import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { SessionMeta, TabType } from ".";
 import { collection, getDocs } from "firebase/firestore";
 import { getFirebaseDb } from "../../../../lib/firebase";
+import { openExternal } from "../../../../lib/openExternal";
 const API_URL = import.meta.env.VITE_API_URL;
 
 type Props = {
@@ -51,6 +52,7 @@ export default function FetchSessions({
             data.createdAt || data.completedAt || new Date().toISOString(),
           state: (data.state as SessionMeta["state"]) || "completed",
           metadata: data.metadata || {},
+          fileUrl: data.fileUrl || undefined,
         };
       });
       setOnlineSessions(metaSessions);
@@ -240,11 +242,26 @@ export default function FetchSessions({
       alert("Failed to download session data");
     }
   };
+
+  // Download online sessions by opening each fileUrl in the system browser
+  const handleDownloadSelectedOnline = () => {
+    const toDownload = sessions.filter(
+      (s) => selected.includes(s.sessionId) && s.fileUrl,
+    );
+    toDownload.forEach((s, i) => {
+      // Stagger opens slightly so the browser doesn't block them as popups
+      setTimeout(() => {
+        openExternal(s.fileUrl!);
+      }, i * 400);
+    });
+  };
+
   return {
     handleDeleteSession,
     handleDownloadCSV,
     handleDeleteSelected,
     handleDownloadSelected,
+    handleDownloadSelectedOnline,
     toggleSelect,
     toggleSelectAll,
     handleCancelSelect,

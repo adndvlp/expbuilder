@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Switch from "react-switch";
 import { useExperimentID } from "../../hooks/useExperimentID";
 import { io, Socket } from "socket.io-client";
+import { openExternal } from "../../../../lib/openExternal";
 import SessionsActions from "./SessionsActions";
 // No usar Firebase, usar endpoints REST locales
 const API_URL = import.meta.env.VITE_API_URL;
@@ -20,6 +21,7 @@ export type SessionMeta = {
     startedAt?: string;
   };
   isOnline?: boolean;
+  fileUrl?: string;
 };
 
 export type TabType = "preview" | "local" | "online";
@@ -75,6 +77,7 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
     handleDownloadCSV,
     handleDeleteSelected,
     handleDownloadSelected,
+    handleDownloadSelectedOnline,
     toggleSelect,
     toggleSelectAll,
     handleCancelSelect,
@@ -204,14 +207,31 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
                   Download selected
                 </button>
               )}
-              <button
-                className="remove-button"
-                style={{ fontSize: "12px" }}
-                disabled={selected.length === 0}
-                onClick={handleDeleteSelected}
-              >
-                Delete selected ({selected.length})
-              </button>
+              {activeTab === "online" && (
+                <button
+                  className="download-csv-btn"
+                  style={{
+                    borderRadius: "6px",
+                    fontSize: "12px",
+                    background:
+                      "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+                  }}
+                  disabled={selected.length === 0}
+                  onClick={handleDownloadSelectedOnline}
+                >
+                  Download selected
+                </button>
+              )}
+              {activeTab !== "online" && (
+                <button
+                  className="remove-button"
+                  style={{ fontSize: "12px" }}
+                  disabled={selected.length === 0}
+                  onClick={handleDeleteSelected}
+                >
+                  Delete selected ({selected.length})
+                </button>
+              )}
             </div>
           )}
           <table className="results-table">
@@ -248,21 +268,39 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
                     <th>Resolution</th>
                   </>
                 )}
-                <th
-                  style={{
-                    minWidth: 220,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                  }}
-                >
-                  <span>Actions</span>
-                  {!selectMode && (
+                {activeTab === "online" && <th>File</th>}
+                {activeTab !== "online" && (
+                  <th
+                    style={{
+                      minWidth: 220,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                    }}
+                  >
+                    <span>Actions</span>
+                    {!selectMode && (
+                      <button
+                        key="select-btn"
+                        className="select-mode-btn"
+                        style={{
+                          marginLeft: 0,
+                          borderRadius: "6px",
+                          background:
+                            "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+                        }}
+                        onClick={() => setSelectMode(true)}
+                      >
+                        Select sessions
+                      </button>
+                    )}
+                  </th>
+                )}
+                {activeTab === "online" && !selectMode && (
+                  <th style={{ minWidth: 120 }}>
                     <button
-                      key="select-btn"
                       className="select-mode-btn"
                       style={{
-                        marginLeft: 0,
                         borderRadius: "6px",
                         background:
                           "linear-gradient(135deg, var(--gold), var(--dark-gold))",
@@ -271,8 +309,8 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
                     >
                       Select sessions
                     </button>
-                  )}
-                </th>
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -309,24 +347,39 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
                       <td>{s.metadata?.screenResolution || "-"}</td>
                     </>
                   )}
-                  <td>
-                    {activeTab !== "online" && (
+                  {activeTab === "online" && (
+                    <td>
+                      {s.fileUrl ? (
+                        <button
+                          className="download-csv-btn"
+                          onClick={() => openExternal(s.fileUrl!)}
+                          style={{ fontSize: "12px" }}
+                        >
+                          Download
+                        </button>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                  )}
+                  {activeTab !== "online" && (
+                    <td>
                       <button
                         className="download-csv-btn"
                         onClick={() => handleDownloadCSV(s.sessionId)}
                       >
                         CSV
                       </button>
-                    )}
-                    {!selectMode && (
-                      <button
-                        className="remove-button"
-                        onClick={() => handleDeleteSession(s.sessionId)}
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </td>
+                      {!selectMode && (
+                        <button
+                          className="remove-button"
+                          onClick={() => handleDeleteSession(s.sessionId)}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
