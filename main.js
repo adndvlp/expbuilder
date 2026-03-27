@@ -166,6 +166,22 @@ ipcMain.handle("save-csv-zip", async (_event, { files, defaultName }) => {
   }
 });
 
+// Handler to save a generic ZIP buffer in the chosen path
+ipcMain.handle("save-zip-file", async (_event, { buffer, defaultName }) => {
+  try {
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      title: "Save backup ZIP",
+      defaultPath: defaultName || "backup.zip",
+      filters: [{ name: "ZIP", extensions: ["zip"] }],
+    });
+    if (canceled || !filePath) return { success: false, error: "Cancelled" };
+    fs.writeFileSync(filePath, Buffer.from(buffer));
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // Handler to save db.json in the chosen path
 ipcMain.handle("save-json-file", async (_event, { content, defaultName }) => {
   try {

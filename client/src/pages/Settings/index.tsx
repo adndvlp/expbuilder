@@ -11,7 +11,13 @@ import DeleteAccount from "./DeleteAccount";
 import ResetAppButton from "./ResetAppButton";
 import FirebaseCredentials from "./FirebaseCredentials";
 import "./index.css";
+
 const API_URL = import.meta.env.VITE_API_URL;
+
+interface Experiment {
+  experimentID: string;
+  name: string;
+}
 
 export default function Settings() {
   const [user, setUser] = useState<User | null>(null);
@@ -25,6 +31,7 @@ export default function Settings() {
     });
     return () => unsubscribe();
   }, []);
+
   const [searchParams, setSearchParams] = useSearchParams();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [notification, setNotification] = useState<{
@@ -32,7 +39,20 @@ export default function Settings() {
     message: string;
   } | null>(null);
 
-  // Manejar notificaciones de OAuth callbacks
+  // Experiments list for export selector
+  const [experiments, setExperiments] = useState<Experiment[]>([]);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [selectedExpIDs, setSelectedExpIDs] = useState<Set<string>>(new Set());
+  const [isExporting, setIsExporting] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/load-experiments`)
+      .then((r) => r.json())
+      .then((data) => setExperiments(data.experiments || []))
+      .catch(() => {});
+  }, []);
+
+  // Handle OAuth callback notifications
   useEffect(() => {
     const status = searchParams.get("status");
     const service = searchParams.get("service");
@@ -51,10 +71,8 @@ export default function Settings() {
         });
       }
 
-      // Limpiar parámetros de URL
       setSearchParams({});
 
-      // Auto-ocultar notificación después de 5 segundos
       const timer = setTimeout(() => {
         setNotification(null);
       }, 5000);
@@ -75,42 +93,114 @@ export default function Settings() {
     }
   };
 
-  // Referencia para el input de importación
   const importInputRef = useRef<HTMLInputElement>(null);
 
-  // Exportar db.json usando Electron (guardar en carpeta elegida)
-  const handleExportDb = async () => {
+  /** Fetches a ZIP from a server response and saves it via Electron save dialog */
+  const saveZipFromResponse = async (response: Response, filename: string) => {
+    const arrayBuffer = await response.arrayBuffer();
+    // @ts-ignore
+    const result = await window.electron.saveZipFile(
+      Array.from(new Uint8Array(arrayBuffer)),
+      filename,
+    );
+    return result;
+  };
+
+  const handleExportAll = async () => {
+    setIsExporting(true);
     try {
-      const res = await fetch(`${API_URL}/api/export-db`);
-      if (!res.ok) throw new Error("Error downloading db.json");
-      const jsonText = await res.text();
-      // @ts-ignore
-      const result = await window.electron.saveJsonFile(jsonText, "db.json");
+      const res = await fetch(`${API_URL}/api/export-all-experiments`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).error || "Error exporting experiments");
+      }
+      const date = new Date().toISOString().slice(0, 10);
+      const result = await saveZipFromResponse(
+        res,
+        `experiments-backup-${date}.zip`,
+      );
       if (result.success) {
         setNotification({
           type: "success",
-          message: "Database exported successfully!",
+          message: "All experiments exported!",
         });
-      } else {
+      } else if (result.error !== "Cancelled") {
         setNotification({
           type: "error",
-          message:
-            "Failed to export database: " + (result.error || "Unknown error"),
+          message: result.error || "Export failed",
         });
       }
-    } catch (err) {
-      setNotification({ type: "error", message: "Failed to export database" });
+    } catch (err: any) {
+      setNotification({
+        type: "error",
+        message: err.message || "Export failed",
+      });
+    } finally {
+      setIsExporting(false);
     }
   };
 
-  // Importar db.json
-  const handleImportDb = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleExportSelected = async () => {
+    if (selectedExpIDs.size === 0) return;
+    setIsExporting(true);
+    try {
+      if (selectedExpIDs.size === 1) {
+        const [expID] = [...selectedExpIDs];
+        const exp = experiments.find((e) => e.experimentID === expID);
+        const res = await fetch(`${API_URL}/api/export-experiment/${expID}`);
+        if (!res.ok) throw new Error("Export failed");
+        const safeName = (exp?.name || expID).replace(/[^a-zA-Z0-9\-_]/g, "_");
+        const result = await saveZipFromResponse(res, `${safeName}-backup.zip`);
+        if (result.success) {
+          setNotification({ type: "success", message: "Experiment exported!" });
+        } else if (result.error !== "Cancelled") {
+          setNotification({
+            type: "error",
+            message: result.error || "Export failed",
+          });
+        }
+      } else {
+        const ids = [...selectedExpIDs].join(",");
+        const res = await fetch(
+          `${API_URL}/api/export-all-experiments?ids=${encodeURIComponent(ids)}`,
+        );
+        if (!res.ok) throw new Error("Export failed");
+        const date = new Date().toISOString().slice(0, 10);
+        const result = await saveZipFromResponse(
+          res,
+          `experiments-backup-${date}.zip`,
+        );
+        if (result.success) {
+          setNotification({
+            type: "success",
+            message: `${selectedExpIDs.size} experiments exported!`,
+          });
+        } else if (result.error !== "Cancelled") {
+          setNotification({
+            type: "error",
+            message: result.error || "Export failed",
+          });
+        }
+      }
+    } catch (err: any) {
+      setNotification({
+        type: "error",
+        message: err.message || "Export failed",
+      });
+    } finally {
+      setIsExporting(false);
+      setShowExportModal(false);
+      setSelectedExpIDs(new Set());
+    }
+  };
+
+  const handleImportZip = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const formData = new FormData();
-    formData.append("dbfile", file);
+    formData.append("zipfile", file);
     try {
-      const res = await fetch(`${API_URL}/api/import-db`, {
+      const res = await fetch(`${API_URL}/api/import-experiments`, {
         method: "POST",
         body: formData,
       });
@@ -118,18 +208,19 @@ export default function Settings() {
       if (data.success) {
         setNotification({
           type: "success",
-          message: "Database imported successfully!",
+          message: `${data.imported} experiment(s) imported successfully!`,
         });
         setTimeout(() => window.location.reload(), 1500);
       } else {
         setNotification({
           type: "error",
-          message: data.error || "Failed to import database",
+          message: data.error || "Failed to import",
         });
       }
-    } catch (err) {
-      setNotification({ type: "error", message: "Failed to import database" });
+    } catch {
+      setNotification({ type: "error", message: "Failed to import" });
     }
+    e.target.value = "";
   };
 
   if (authLoading) {
@@ -152,7 +243,7 @@ export default function Settings() {
 
   return (
     <div className="settings-bg">
-      {/* Botones de navegación */}
+      {/* Navigation */}
       <div
         style={{
           position: "fixed",
@@ -177,9 +268,84 @@ export default function Settings() {
           ←
         </button>
       </div>
+
+      {/* Export selector modal */}
+      {showExportModal && (
+        <div
+          className="backup-modal-overlay"
+          onClick={() => setShowExportModal(false)}
+        >
+          <div className="backup-modal" onClick={(e) => e.stopPropagation()}>
+            <p className="backup-modal-title">Export experiments</p>
+            <p className="backup-modal-subtitle">
+              Each experiment exports as a folder with data.json + media files
+            </p>
+            <div className="backup-modal-list">
+              <label className="backup-modal-select-all">
+                <input
+                  type="checkbox"
+                  checked={
+                    experiments.length > 0 &&
+                    selectedExpIDs.size === experiments.length
+                  }
+                  onChange={(e) =>
+                    setSelectedExpIDs(
+                      e.target.checked
+                        ? new Set(experiments.map((x) => x.experimentID))
+                        : new Set(),
+                    )
+                  }
+                />
+                Select all ({experiments.length})
+              </label>
+              {experiments.map((exp) => (
+                <label key={exp.experimentID} className="backup-modal-item">
+                  <input
+                    type="checkbox"
+                    checked={selectedExpIDs.has(exp.experimentID)}
+                    onChange={(e) => {
+                      const next = new Set(selectedExpIDs);
+                      if (e.target.checked) next.add(exp.experimentID);
+                      else next.delete(exp.experimentID);
+                      setSelectedExpIDs(next);
+                    }}
+                  />
+                  {exp.name || exp.experimentID}
+                </label>
+              ))}
+            </div>
+            <div className="backup-modal-footer">
+              <span className="backup-modal-count">
+                {selectedExpIDs.size} of {experiments.length} selected
+              </span>
+              <div className="backup-modal-buttons">
+                <button
+                  className="backup-modal-cancel"
+                  onClick={() => {
+                    setShowExportModal(false);
+                    setSelectedExpIDs(new Set());
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="backup-modal-export"
+                  onClick={handleExportSelected}
+                  disabled={selectedExpIDs.size === 0 || isExporting}
+                >
+                  {isExporting
+                    ? "Exporting..."
+                    : `Export (${selectedExpIDs.size})`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="settings-container">
         <h1 className="settings-title">Settings</h1>
-        {/* Notificación de OAuth y export/import */}
+
         {notification && (
           <div className={`notification notification-${notification.type}`}>
             {notification.message}
@@ -191,115 +357,126 @@ export default function Settings() {
             </button>
           </div>
         )}
-        {/* Exportar/Importar datos (siempre visible) */}
+
+        {/* Backup & Restore */}
         <div className="settings-section">
           <h2 className="settings-section-title">Backup & Restore</h2>
-          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-            <button
-              onClick={() => importInputRef.current?.click()}
-              className="import-db-btn"
-              style={{
-                padding: "8px 20px",
-                borderRadius: 6,
-                background: "linear-gradient(90deg,#3d92b4 60%,#4fc3f7 100%)",
-                color: "white",
-                border: "none",
-                fontWeight: 600,
-                fontSize: 16,
-                boxShadow: "0 2px 8px rgba(61,146,180,0.08)",
-                cursor: "pointer",
-                transition: "background 0.2s ease",
-              }}
-              onMouseOver={(e) =>
-                (e.currentTarget.style.background =
-                  "linear-gradient(90deg,#4fc3f7 60%,#3d92b4 100%)")
-              }
-              onMouseOut={(e) =>
-                (e.currentTarget.style.background =
-                  "linear-gradient(90deg,#3d92b4 60%,#4fc3f7 100%)")
-              }
-            >
-              <span
-                style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  style={{ verticalAlign: "middle" }}
-                >
+          <input
+            type="file"
+            accept="application/zip,.zip"
+            style={{ display: "none" }}
+            ref={importInputRef}
+            onChange={handleImportZip}
+          />
+          <div className="backup-grid">
+            {/* Import card */}
+            <div className="backup-card backup-card-import">
+              <div className="backup-card-icon">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
                   <path
                     fill="currentColor"
-                    d="M12 7.5a1 1 0 0 1 1 1v10.09l3.3-3.3a1 1 0 1 1 1.4 1.42l-5 5a1 1 0 0 1-1.4 0l-5-5a1 1 0 0 1 1.4-1.42l3.3 3.3V8.5a1 1 0 0 1 1-1Z"
+                    d="M12 3a1 1 0 0 1 1 1v11.586l3.293-3.293a1 1 0 0 1 1.414 1.414l-5 5a1 1 0 0 1-1.414 0l-5-5a1 1 0 1 1 1.414-1.414L11 15.586V4a1 1 0 0 1 1-1Z"
                   />
                   <path
                     fill="currentColor"
-                    d="M5 6a1 1 0 0 1-1-1V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1a1 1 0 1 1-2 0V4H7v1a1 1 0 0 1-1 1Z"
+                    d="M4 19a1 1 0 1 0 0 2h16a1 1 0 1 0 0-2H4Z"
                   />
                 </svg>
-                Import Data
+              </div>
+              <span className="backup-card-label">Import Backup</span>
+              <span className="backup-card-desc">
+                Restore experiments from a .zip backup. Existing experiments
+                with the same ID will be updated.
               </span>
-            </button>
-            <input
-              type="file"
-              accept="application/json"
-              style={{ display: "none" }}
-              ref={importInputRef}
-              onChange={handleImportDb}
-            />
-            <button
-              onClick={handleExportDb}
-              className="export-db-btn"
-              style={{
-                padding: "8px 20px",
-                borderRadius: 6,
-                background: "linear-gradient(90deg,#e57373 60%,#ffb74d 100%)",
-                color: "white",
-                border: "none",
-                fontWeight: 600,
-                fontSize: 16,
-                boxShadow: "0 2px 8px rgba(229,115,115,0.08)",
-                cursor: "pointer",
-                transition: "background 0.2s ease",
-              }}
-              onMouseOver={(e) =>
-                (e.currentTarget.style.background =
-                  "linear-gradient(90deg,#ffb74d 60%,#e57373 100%)")
-              }
-              onMouseOut={(e) =>
-                (e.currentTarget.style.background =
-                  "linear-gradient(90deg,#e57373 60%,#ffb74d 100%)")
-              }
-            >
-              <span
-                style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  style={{ verticalAlign: "middle" }}
+              <div className="backup-card-actions">
+                <button
+                  className="backup-btn backup-btn-primary"
+                  onClick={() => importInputRef.current?.click()}
                 >
+                  <svg width="15" height="15" fill="none" viewBox="0 0 24 24">
+                    <path
+                      fill="currentColor"
+                      d="M12 3a1 1 0 0 1 1 1v11.586l3.293-3.293a1 1 0 0 1 1.414 1.414l-5 5a1 1 0 0 1-1.414 0l-5-5a1 1 0 1 1 1.414-1.414L11 15.586V4a1 1 0 0 1 1-1Z"
+                    />
+                    <path
+                      fill="currentColor"
+                      d="M4 19a1 1 0 1 0 0 2h16a1 1 0 1 0 0-2H4Z"
+                    />
+                  </svg>
+                  Choose .zip file
+                </button>
+              </div>
+            </div>
+
+            {/* Export card */}
+            <div className="backup-card backup-card-export">
+              <div className="backup-card-icon">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
                   <path
                     fill="currentColor"
-                    d="M12 16.5a1 1 0 0 1-1-1V5.41l-3.3 3.3a1 1 0 1 1-1.4-1.42l5-5a1 1 0 0 1 1.4 0l5 5a1 1 0 0 1-1.4 1.42l-3.3-3.3V15.5a1 1 0 0 1-1 1Z"
+                    d="M12 2a1 1 0 0 1 1 1v11.586l3.293-3.293a1 1 0 0 1 1.414 1.414l-5 5a1 1 0 0 1-1.414 0l-5-5a1 1 0 1 1 1.414-1.414L11 14.586V3a1 1 0 0 1 1-1Z"
+                    transform="scale(1,-1) translate(0,-24)"
                   />
                   <path
                     fill="currentColor"
-                    d="M19 18a1 1 0 0 1 1 1v1a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-1a1 1 0 1 1 2 0v1h10v-1a1 1 0 0 1 1-1Z"
+                    d="M11 3a1 1 0 0 1 2 0v11.586l3.293-3.293a1 1 0 0 1 1.414 1.414l-5 5a1 1 0 0 1-1.414 0l-5-5a1 1 0 1 1 1.414-1.414L11 14.586V3Z"
+                    transform="rotate(180 12 12)"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M4 19a1 1 0 1 0 0 2h16a1 1 0 1 0 0-2H4Z"
                   />
                 </svg>
-                Export Data
+              </div>
+              <span className="backup-card-label">Export Experiments</span>
+              <span className="backup-card-desc">
+                Save experiments as a .zip — one folder per experiment with
+                data.json and media files (img/, aud/, vid/).
+                {experiments.length > 0 && (
+                  <>
+                    {" "}
+                    <strong style={{ color: "#e57373" }}>
+                      {experiments.length} experiment
+                      {experiments.length !== 1 ? "s" : ""} available.
+                    </strong>
+                  </>
+                )}
               </span>
-            </button>
-          </div>
-          <div style={{ fontSize: 13, color: "#888", marginTop: 8 }}>
-            Export your data to restore it later if you reinstall the app.
+              <div className="backup-card-actions">
+                <button
+                  className="backup-btn backup-btn-danger"
+                  onClick={handleExportAll}
+                  disabled={isExporting || experiments.length === 0}
+                >
+                  <svg width="15" height="15" fill="none" viewBox="0 0 24 24">
+                    <path
+                      fill="currentColor"
+                      d="M12 2a1 1 0 0 0-1 1v11.586L7.707 11.293a1 1 0 0 0-1.414 1.414l5 5a1 1 0 0 0 1.414 0l5-5a1 1 0 0 0-1.414-1.414L13 14.586V3a1 1 0 0 0-1-1Z"
+                      transform="rotate(180 12 12)"
+                    />
+                    <path
+                      fill="currentColor"
+                      d="M4 19a1 1 0 1 0 0 2h16a1 1 0 1 0 0-2H4Z"
+                    />
+                  </svg>
+                  {isExporting ? "Exporting..." : "Export all"}
+                </button>
+                <button
+                  className="backup-btn backup-btn-secondary"
+                  onClick={() => {
+                    setSelectedExpIDs(new Set());
+                    setShowExportModal(true);
+                  }}
+                  disabled={experiments.length === 0}
+                >
+                  Export selected...
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-        {/* Firebase Credentials - Siempre visible, no requiere autenticación */}
+
+        {/* Firebase Credentials */}
         <div className="settings-section">
           <h2 className="settings-section-title">Firebase Configuration</h2>
           <div style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>
@@ -309,16 +486,14 @@ export default function Settings() {
           <FirebaseCredentials />
         </div>
 
-        {/* Mostrar botón de reinicio desde acá SOLO si no hay usuario autenticado */}
         {!user && (
           <div style={{ marginBottom: 24 }}>
             <ResetAppButton />
           </div>
         )}
 
-        {/* Overlay borroso solo para secciones de usuario hacia abajo */}
+        {/* Blurred sections when not logged in */}
         <div style={{ position: "relative" }}>
-          {/* Información del usuario */}
           <div
             className="settings-section account-info"
             style={!user ? { filter: "blur(4px)", pointerEvents: "none" } : {}}
@@ -332,7 +507,6 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* Sección de Tokens */}
           <div
             className="settings-section"
             style={!user ? { filter: "blur(4px)", pointerEvents: "none" } : {}}
@@ -346,7 +520,6 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* Sección de Seguridad */}
           <div
             className="settings-section"
             style={!user ? { filter: "blur(4px)", pointerEvents: "none" } : {}}
@@ -355,7 +528,6 @@ export default function Settings() {
             <ChangePassword />
           </div>
 
-          {/* Botón de Logout */}
           <div
             className="settings-section logout-section"
             style={!user ? { filter: "blur(4px)", pointerEvents: "none" } : {}}
@@ -370,7 +542,6 @@ export default function Settings() {
             </button>
           </div>
 
-          {/* Zona de Peligro */}
           <div
             className="settings-section logout-section"
             style={!user ? { filter: "blur(1px)", pointerEvents: "none" } : {}}
@@ -380,7 +551,6 @@ export default function Settings() {
             {user && <ResetAppButton />}
           </div>
 
-          {/* Si no hay usuario, mostrar el overlay borroso y el mensaje SOLO sobre estas secciones */}
           {!user && (
             <div
               style={{

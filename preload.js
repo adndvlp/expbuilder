@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld("electron", {
   startOAuthFlow: (config) => ipcRenderer.invoke("start-oauth-flow", config),
   saveCsvZip: (files, defaultName) =>
     ipcRenderer.invoke("save-csv-zip", { files, defaultName }),
+  saveZipFile: (buffer, defaultName) =>
+    ipcRenderer.invoke("save-zip-file", { buffer, defaultName }),
   saveJsonFile: (content, defaultName) =>
     ipcRenderer.invoke("save-json-file", { content, defaultName }),
   readFirebaseConfig: () => ipcRenderer.invoke("read-firebase-config"),
