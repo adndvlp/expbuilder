@@ -175,22 +175,20 @@ export default function FetchSessions({
   const handleDownloadSelected = async () => {
     if (selected.length === 0) return;
     try {
-      // Download all CSVs
-      const files = [];
-      for (const sessionId of selected) {
-        const res = await fetch(
-          `${API_URL}/api/download-session/${sessionId}/${experimentID}`,
-        );
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const csvText = await res.text();
-        files.push({
-          name: `${experimentID}_${sessionId}.csv`,
-          content: csvText,
-        });
-      }
+      // Single request: server reads DB once, builds and returns the ZIP
+      const res = await fetch(`${API_URL}/api/download-sessions-zip`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionIds: selected, experimentID }),
+      });
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const arrayBuffer = await res.arrayBuffer();
       // Call Electron to save the ZIP
       // @ts-expect-error - Electron API not typed
-      const result = await window.electron.saveCsvZip(files, "sessions.zip");
+      const result = await window.electron.saveZipFile(
+        Array.from(new Uint8Array(arrayBuffer)),
+        "sessions.zip",
+      );
       if (result.success) {
         alert("ZIP saved successfully.");
       } else {

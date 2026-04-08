@@ -8,6 +8,7 @@
 import { Router } from "express";
 import { db } from "../utils/db.js";
 import { Parser } from "json2csv";
+import JSZip from "jszip";
 const router = Router();
 
 /**
@@ -384,5 +385,70 @@ router.delete(
     }
   },
 );
+
+/**
+ * Downloads multiple sessions as a single ZIP containing one CSV per session.
+ * Uses a single db.read() to avoid file-locking issues on Windows.
+ * @route POST /api/download-sessions-zip
+ * @param {Object} req.body
+ * @param {string[]} req.body.sessionIds - Array of session IDs to download
+ * @param {string} req.body.experimentID - Experiment ID
+ * @returns {Buffer} 200 - ZIP file
+ * @returns {Object} 400 - Missing parameters
+ * @returns {Object} 500 - Server error
+ */
+router.post("/api/download-sessions-zip", async (req, res) => {
+  try {
+    const { sessionIds, experimentID } = req.body;
+    if (!sessionIds || !Array.isArray(sessionIds) || sessionIds.length === 0) {
+      return res.status(400).json({ error: "sessionIds array required" });
+    }
+    if (!experimentID) {
+      return res.status(400).json({ error: "experimentID required" });
+    }
+
+    await db.read();
+    const zip = new JSZip();
+
+    for (const sessionId of sessionIds) {
+      const doc = db.data.sessionResults.find(
+        (s) => s.experimentID === experimentID && s.sessionId === sessionId,
+      );
+      if (!doc || !doc.data || !doc.data.length) continue;
+
+      const metadata = doc.metadata || {};
+      const dataWithMetadata = doc.data.map((row) => ({
+        ...row,
+        session_browser: metadata.browser || "",
+        session_browser_version: metadata.browserVersion || "",
+        session_os: metadata.os || "",
+        session_screen_resolution: metadata.screenResolution || "",
+        session_language: metadata.language || "",
+        session_started_at: metadata.startedAt || "",
+        session_id: sessionId,
+        session_created_at: doc.createdAt || "",
+        session_state: doc.state || "",
+      }));
+
+      const allFields = Array.from(
+        new Set(dataWithMetadata.flatMap((row) => Object.keys(row))),
+      );
+      const parser = new Parser({ fields: allFields });
+      const csv = parser.parse(dataWithMetadata);
+      zip.file(`${experimentID}_${sessionId}.csv`, csv);
+    }
+
+    const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="sessions.zip"',
+    );
+    res.send(zipBuffer);
+  } catch (err) {
+    console.error("Error creating sessions ZIP:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 export default router;
