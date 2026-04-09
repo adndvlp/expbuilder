@@ -440,10 +440,7 @@ router.post("/api/download-sessions-zip", async (req, res) => {
 
     const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
     res.setHeader("Content-Type", "application/zip");
-    res.setHeader(
-      "Content-Disposition",
-      'attachment; filename="sessions.zip"',
-    );
+    res.setHeader("Content-Disposition", 'attachment; filename="sessions.zip"');
     res.send(zipBuffer);
   } catch (err) {
     console.error("Error creating sessions ZIP:", err);
