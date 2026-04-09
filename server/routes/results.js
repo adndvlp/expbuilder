@@ -6,9 +6,11 @@
  */
 
 import { Router } from "express";
-import { db } from "../utils/db.js";
+import { db, userDataRoot } from "../utils/db.js";
 import { Parser } from "json2csv";
 import JSZip from "jszip";
+import fs from "fs";
+import path from "path";
 const router = Router();
 
 /**
@@ -377,6 +379,44 @@ router.delete(
       }
 
       db.data.sessionResults.splice(sessionIndex, 1);
+
+      // Cascade: delete all participant files for this session
+      db.data.participantFiles ||= [];
+      const toDelete = db.data.participantFiles.filter(
+        (f) =>
+          f.experimentID === req.params.experimentID &&
+          f.sessionId === req.params.sessionId,
+      );
+
+      // Resolve experiment name for disk path
+      let experimentName = req.params.experimentID;
+      const experiment = db.data.experiments?.find(
+        (e) => e.experimentID === req.params.experimentID,
+      );
+      if (experiment?.name) experimentName = experiment.name;
+
+      for (const record of toDelete) {
+        const filePath = path.join(
+          userDataRoot,
+          experimentName,
+          "participant-files",
+          record.filename,
+        );
+        try {
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        } catch {
+          // ignore individual file errors
+        }
+      }
+
+      db.data.participantFiles = db.data.participantFiles.filter(
+        (f) =>
+          !(
+            f.experimentID === req.params.experimentID &&
+            f.sessionId === req.params.sessionId
+          ),
+      );
+
       await db.write();
 
       res.json({ success: true });
@@ -445,6 +485,57 @@ router.post("/api/download-sessions-zip", async (req, res) => {
   } catch (err) {
     console.error("Error creating sessions ZIP:", err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Renames a session ID across sessionResults and participantFiles.
+ * Used when session name tokens include participantId or counter (resolved after save).
+ * @route PATCH /api/rename-session/:experimentID
+ * @param {string} req.body.oldSessionId - Current session ID
+ * @param {string} req.body.newSessionId - New session ID
+ */
+router.patch("/api/rename-session/:experimentID", async (req, res) => {
+  try {
+    const { oldSessionId, newSessionId } = req.body;
+    if (!oldSessionId || !newSessionId)
+      return res.status(400).json({
+        success: false,
+        error: "oldSessionId and newSessionId required",
+      });
+
+    await db.read();
+    const experimentID = req.params.experimentID;
+
+    const session = db.data.sessionResults.find(
+      (s) => s.experimentID === experimentID && s.sessionId === oldSessionId,
+    );
+    if (!session)
+      return res
+        .status(404)
+        .json({ success: false, error: "Session not found" });
+
+    const conflict = db.data.sessionResults.find(
+      (s) => s.experimentID === experimentID && s.sessionId === newSessionId,
+    );
+    if (conflict)
+      return res.status(409).json({
+        success: false,
+        error: "A session with that name already exists",
+      });
+
+    session.sessionId = newSessionId;
+
+    for (const f of db.data.participantFiles) {
+      if (f.experimentID === experimentID && f.sessionId === oldSessionId) {
+        f.sessionId = newSessionId;
+      }
+    }
+
+    await db.write();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

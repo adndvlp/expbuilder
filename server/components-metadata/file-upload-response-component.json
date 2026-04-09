@@ -1,0 +1,69 @@
+{
+  "name": "FileUploadResponseComponent",
+  "parameters": {
+    "name": {
+      "type": "string"
+    },
+    "accept": {
+      "type": "string",
+      "default": "",
+      "pretty_name": "Accepted File Types",
+      "description": "Accepted file types as MIME types or extensions. Empty string = all types."
+    },
+    "multiple": {
+      "type": "boolean",
+      "default": false,
+      "pretty_name": "Allow Multiple Files",
+      "description": "Allow selecting multiple files at once"
+    },
+    "button_label": {
+      "type": "string",
+      "default": "Upload File",
+      "pretty_name": "Button Label",
+      "description": "Label shown on the file selection button"
+    },
+    "max_file_size_mb": {
+      "type": "number",
+      "default": null,
+      "pretty_name": "Max File Size (MB)",
+      "description": "Maximum allowed file size in MB (null = no limit)"
+    },
+    "show_preview": {
+      "type": "boolean",
+      "default": true,
+      "pretty_name": "Show Preview",
+      "description": "Show a preview thumbnail when an image file is selected"
+    },
+    "upload_endpoint": {
+      "type": "string",
+      "default": ""
+    },
+    "coordinates": {
+      "type": "object",
+      "default": "{ x: 0, y: 0 }"
+    },
+    "zIndex": {
+      "type": "number",
+      "default": 0,
+      "pretty_name": "Z-Index",
+      "description": "Layer order — higher values render on top of lower values"
+    }
+  },
+  "data": {
+    "response": {
+      "type": "string"
+    },
+    "file_url": {
+      "type": "string"
+    },
+    "file_size": {
+      "type": "number"
+    },
+    "file_type": {
+      "type": "string"
+    },
+    "rt": {
+      "type": "number"
+    }
+  }
+}

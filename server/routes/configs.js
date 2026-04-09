@@ -71,6 +71,11 @@ router.post("/api/save-config/:experimentID", async (req, res) => {
 
     if (existingIndex !== -1) {
       configDoc.createdAt = db.data.configs[existingIndex].createdAt;
+      // Preserve sessionNameConfig — only copy if it's actual data (not null/undefined)
+      const existingSnc = db.data.configs[existingIndex].sessionNameConfig;
+      if (existingSnc != null && Array.isArray(existingSnc.tokens)) {
+        configDoc.sessionNameConfig = existingSnc;
+      }
       db.data.configs[existingIndex] = configDoc;
     } else {
       db.data.configs.push(configDoc);
@@ -78,6 +83,59 @@ router.post("/api/save-config/:experimentID", async (req, res) => {
 
     await db.write();
     res.json({ success: true, config: configDoc });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Gets the session name configuration for a local experiment.
+ * @route GET /api/session-name-config/:experimentID
+ */
+router.get("/api/session-name-config/:experimentID", async (req, res) => {
+  try {
+    await db.read();
+    const configDoc = db.data.configs.find(
+      (c) => c.experimentID === req.params.experimentID,
+    );
+    const cfg = configDoc?.sessionNameConfig ?? { tokens: [], separator: "_" };
+    res.json(cfg);
+  } catch (error) {
+    res.status(500).json({ tokens: [], separator: "_", error: error.message });
+  }
+});
+
+/**
+ * Saves the session name configuration for a local experiment.
+ * @route POST /api/session-name-config/:experimentID
+ * @param {Object[]} req.body.tokens - Session name tokens
+ * @param {string} req.body.separator - Separator string
+ */
+router.post("/api/session-name-config/:experimentID", async (req, res) => {
+  try {
+    const { tokens, separator } = req.body;
+    await db.read();
+    let configDoc = db.data.configs.find(
+      (c) => c.experimentID === req.params.experimentID,
+    );
+    if (!configDoc) {
+      configDoc = {
+        experimentID: req.params.experimentID,
+        data: {},
+        isDevMode: false,
+        isSaveMode: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      db.data.configs.push(configDoc);
+    }
+    configDoc.sessionNameConfig = {
+      tokens: tokens ?? [],
+      separator: separator ?? "_",
+    };
+    configDoc.updatedAt = new Date().toISOString();
+    await db.write();
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

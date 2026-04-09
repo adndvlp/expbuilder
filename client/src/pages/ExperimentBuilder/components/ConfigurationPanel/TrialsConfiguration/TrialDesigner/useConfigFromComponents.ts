@@ -120,7 +120,8 @@ export default function useConfigComponents({
         comp.type === "InputResponseComponent" ||
         comp.type === "SketchpadComponent" ||
         comp.type === "SurveyComponent" ||
-        comp.type === "AudioResponseComponent";
+        comp.type === "AudioResponseComponent" ||
+        comp.type === "FileUploadResponseComponent";
 
       if (isResponseComponent) {
         responseComponents.push(componentData);

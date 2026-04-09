@@ -13,6 +13,7 @@ type Props = {
   sessions: SessionMeta[];
   setSelected: Dispatch<SetStateAction<string[]>>;
   setLoading: Dispatch<SetStateAction<boolean>>;
+  setOnlineLoading: Dispatch<SetStateAction<boolean>>;
   setSessions: Dispatch<SetStateAction<SessionMeta[]>>;
   setSelectMode: Dispatch<SetStateAction<boolean>>;
 };
@@ -25,15 +26,18 @@ export default function FetchSessions({
   sessions,
   setSelected,
   setLoading,
+  setOnlineLoading,
   setSessions,
   setSelectMode,
 }: Props) {
   const [allSessions, setAllSessions] = useState<SessionMeta[]>([]);
   const [onlineSessions, setOnlineSessions] = useState<SessionMeta[]>([]);
+  const [onlineLoaded, setOnlineLoaded] = useState(false);
 
   // Fetch online sessions from Firestore session_metadata subcollection (one-time)
   const fetchOnlineSessions = async () => {
     if (!experimentID) return;
+    setOnlineLoading(true);
     try {
       const db = await getFirebaseDb();
       const metadataRef = collection(
@@ -63,6 +67,7 @@ export default function FetchSessions({
       );
       setOnlineSessions([]);
     }
+    setOnlineLoading(false);
   };
 
   // Use local endpoint to get sessions
@@ -72,17 +77,22 @@ export default function FetchSessions({
       const res = await fetch(`${API_URL}/api/session-results/${experimentID}`);
       const data = await res.json();
       setAllSessions(data.sessions || []);
-
-      // Fetch online sessions from Firebase
-      await fetchOnlineSessions();
     } catch (error) {
       console.error("Error fetching sessions:", error);
       setAllSessions([]);
     }
     setLoading(false);
+
     setSelected([]);
     setSelectMode(false);
   };
+
+  // Lazy-load online sessions: only hit Firebase when the online tab is first opened
+  useEffect(() => {
+    if (activeTab === "online" && !onlineLoaded) {
+      fetchOnlineSessions().then(() => setOnlineLoaded(true));
+    }
+  }, [activeTab]);
 
   // Filter sessions based on active tab
   useEffect(() => {
@@ -254,6 +264,14 @@ export default function FetchSessions({
     });
   };
 
+  const handleRefresh = () => {
+    if (activeTab === "online") {
+      fetchOnlineSessions();
+    } else {
+      fetchSessions();
+    }
+  };
+
   return {
     handleDeleteSession,
     handleDownloadCSV,
@@ -263,6 +281,6 @@ export default function FetchSessions({
     toggleSelect,
     toggleSelectAll,
     handleCancelSelect,
-    handleRefresh: fetchSessions,
+    handleRefresh,
   };
 }

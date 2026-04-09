@@ -169,6 +169,12 @@ router.delete("/api/delete-experiment/:experimentID", async (req, res) => {
       (s) => s.experimentID !== experimentID,
     );
 
+    // Eliminar participant files relacionados (los archivos en disco se borran con el directorio)
+    db.data.participantFiles ||= [];
+    db.data.participantFiles = db.data.participantFiles.filter(
+      (f) => f.experimentID !== experimentID,
+    );
+
     await db.write();
 
     // Borrar archivos HTML usando el nombre del experimento

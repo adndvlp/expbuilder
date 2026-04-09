@@ -170,7 +170,7 @@ const SurveyjsComponent: React.FC<SurveyjsComponentProps> = ({
 
         {/* Title */}
         <Text
-          text="📋 SurveyJS"
+          text="SurveyJS"
           x={padding}
           y={10}
           width={actualWidth - padding * 2}
@@ -226,7 +226,7 @@ const SurveyjsComponent: React.FC<SurveyjsComponentProps> = ({
 
                 {/* Question icon and text */}
                 <Text
-                  text={`❓ Question ${idx + 1}`}
+                  text={`Q${idx + 1}`}
                   x={padding + 5}
                   y={yPos + 8}
                   width={actualWidth - padding * 2 - 10}

@@ -271,7 +271,9 @@ function ComponentsSection({
                       color: "var(--text-dark)",
                     }}
                   >
-                    <span style={{ fontSize: "16px" }}>🎵</span>
+                    <span style={{ fontSize: "16px", lineHeight: 1 }}>
+                      {"\u266B"}
+                    </span>
                     <span
                       style={{
                         flex: 1,

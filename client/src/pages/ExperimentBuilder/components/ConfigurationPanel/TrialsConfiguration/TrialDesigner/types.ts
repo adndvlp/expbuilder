@@ -10,7 +10,8 @@ export type ComponentType =
   | "InputResponseComponent"
   | "SketchpadComponent"
   | "SurveyComponent"
-  | "AudioResponseComponent";
+  | "AudioResponseComponent"
+  | "FileUploadResponseComponent";
 
 export type TrialComponent = {
   id: string;

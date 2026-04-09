@@ -120,6 +120,9 @@ export default function PublicConfiguration({
     const currentUid = auth.currentUser?.uid ?? "";
 
     return `
+  // --- FileUploadResponseComponent endpoint (Firebase Cloud Function) ---
+  window.JSPSYCH_FILE_UPLOAD_ENDPOINT = '${DATA_API_URL}'.replace('/apiData', '/uploadParticipantFile');
+
   // --- IndexedDB Wrapper para Batching con TTL (3 días) ---
   const TrialDB = {
     dbName: 'jsPsychTrialsDB',

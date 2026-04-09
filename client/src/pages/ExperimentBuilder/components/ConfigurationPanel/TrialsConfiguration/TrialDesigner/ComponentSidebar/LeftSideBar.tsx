@@ -164,6 +164,7 @@ function LeftSideBar({
     { type: "SliderResponseComponent", label: "Slider" },
     { type: "InputResponseComponent", label: "Input" },
     { type: "AudioResponseComponent", label: "Audio" },
+    { type: "FileUploadResponseComponent", label: "File Upload" },
   ];
   return (
     <div

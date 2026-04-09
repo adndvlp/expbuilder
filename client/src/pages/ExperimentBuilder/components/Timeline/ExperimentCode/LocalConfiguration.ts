@@ -44,17 +44,110 @@ export default function LocalConfiguration({
     canvasStyles,
   });
   const progressBar = canvasStyles?.progressBar ?? false;
+
+  type _SessionNameToken = {
+    id: string;
+    type: string;
+    dateFormat: string;
+    timeFormat: string;
+    randomLength: number;
+    customValue: string;
+    counterDigits: number;
+  };
+
   const generateLocalExperiment = async () => {
     // Fetch extensions before generating experiment
     const extensions = await fetchExtensions();
     // Generate codes dynamically from trial/loop data
     const baseCode = isDevMode ? code : await generatedBaseCode();
 
+    // Fetch session name config from local API
+    let sessionNameTokens: _SessionNameToken[] = [];
+    let sessionNameSeparator = "_";
+    if (experimentID) {
+      try {
+        const snRes = await fetch(`/api/session-name-config/${experimentID}`);
+        if (snRes.ok) {
+          const sn = await snRes.json();
+          sessionNameTokens = sn.tokens ?? [];
+          sessionNameSeparator = sn.separator ?? "_";
+        }
+      } catch {
+        // local server unavailable — fall back to UUID
+      }
+    }
+
     return `
+  // --- FileUploadResponseComponent endpoint (local Express server) ---
+  window.JSPSYCH_FILE_UPLOAD_ENDPOINT = '/api/participant-files/${experimentID}';
+
+  // --- Session Name Configuration ---
+  const _SESSION_NAME_TOKENS = ${JSON.stringify(sessionNameTokens)};
+  const _SESSION_NAME_SEPARATOR = ${JSON.stringify(sessionNameSeparator)};
+  function _generateSessionName(participantNumber) {
+    if (!_SESSION_NAME_TOKENS || _SESSION_NAME_TOKENS.length === 0) return null;
+    const _now = new Date();
+    const _pad = (n, len) => String(n).padStart(len != null ? len : 2, '0');
+    const _y = _now.getFullYear();
+    const _mo = _pad(_now.getMonth() + 1);
+    const _d = _pad(_now.getDate());
+    const _h = _pad(_now.getHours());
+    const _mi = _pad(_now.getMinutes());
+    const _s = _pad(_now.getSeconds());
+    const _parts = _SESSION_NAME_TOKENS.map(function(_token) {
+      switch (_token.type) {
+        case 'date': {
+          if (_token.dateFormat === 'YYYYMMDD') return _y + '' + _mo + _d;
+          if (_token.dateFormat === 'DD-MM-YYYY') return _d + '-' + _mo + '-' + _y;
+          if (_token.dateFormat === 'MM-DD-YYYY') return _mo + '-' + _d + '-' + _y;
+          return _y + '-' + _mo + '-' + _d;
+        }
+        case 'time': {
+          if (_token.timeFormat === 'HH-mm') return _h + '-' + _mi;
+          if (_token.timeFormat === 'HHmmss') return _h + '' + _mi + _s;
+          return _h + '-' + _mi + '-' + _s;
+        }
+        case 'randomAlpha': {
+          const _chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+          return Array.from({ length: _token.randomLength || 6 }, function() {
+            return _chars[Math.floor(Math.random() * _chars.length)];
+          }).join('');
+        }
+        case 'customText': return _token.customValue || '';
+        case 'counter': {
+          if (participantNumber == null) return '__CNT__';
+          return _pad(participantNumber, _token.counterDigits || 3);
+        }
+        default: return '';
+      }
+    }).filter(function(p) { return p !== ''; });
+    // Safety net: if no randomAlpha or counter token, append a 6-char random suffix for uniqueness
+    const _hasUnique = _SESSION_NAME_TOKENS.some(function(t) { return t.type === 'randomAlpha' || t.type === 'counter'; });
+    if (!_hasUnique && _parts.length > 0) {
+      const _rc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      _parts.push(Array.from({ length: 6 }, function() { return _rc[Math.floor(Math.random() * _rc.length)]; }).join(''));
+    }
+    return _parts.length > 0 ? _parts.join(_SESSION_NAME_SEPARATOR) : null;
+  }
+  function _sessionNameHasDynamic() {
+    return _SESSION_NAME_TOKENS.some(function(t) { return t.type === 'counter'; });
+  }
+  async function _renameSessionIfNeeded(oldId, newId) {
+    if (!oldId || !newId || oldId === newId) return oldId;
+    try {
+      const _r = await fetch('/api/rename-session/${experimentID}', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldSessionId: oldId, newSessionId: newId })
+      });
+      if (_r.ok) return newId;
+    } catch(e) {}
+    return oldId;
+  }
+
   // --- Recolectar metadata del sistema ---
   const getMetadata = () => {
-    const ua = navigator.userAgent;
-    let browserName = 'Unknown';
+    const ua = navigator.userAgent;    let browserName = 'Unknown';
     let browserVersion = 'Unknown';
     
     if (ua.indexOf('Firefox') > -1) {
@@ -120,12 +213,15 @@ export default function LocalConfiguration({
   let isResuming = false;
 
   if (!trialSessionId) {
-    trialSessionId = crypto.randomUUID
+    trialSessionId = _generateSessionName(null) || (crypto.randomUUID
       ? crypto.randomUUID()
-      : Math.random().toString(36).slice(2, 10);
+      : Math.random().toString(36).slice(2, 10));
   } else {
     isResuming = true;
   }
+
+  // Setear JSPSYCH_SESSION_ID inmediatamente para que FileUpload tenga siempre el sessionId
+  window.JSPSYCH_SESSION_ID = trialSessionId;
 
   let participantNumber;
   let socket;
@@ -166,9 +262,9 @@ export default function LocalConfiguration({
       localStorage.removeItem('jsPsych_currentSessionId');
       localStorage.removeItem('jsPsych_participantNumber');
       // Reinicar variables de sesión para que el experimento arranque limpio
-      trialSessionId = crypto.randomUUID
+      trialSessionId = _generateSessionName(null) || (crypto.randomUUID
         ? crypto.randomUUID()
-        : Math.random().toString(36).slice(2, 10);
+        : Math.random().toString(36).slice(2, 10));
       isResuming = false;
     } else if (!existingJump) {
       // Sin jump pendiente: derivar destino desde el último trial completado
@@ -199,6 +295,14 @@ export default function LocalConfiguration({
     } else {
       _setLoadingMsg('Creating session\u2026');
       participantNumber = await saveSession(trialSessionId);
+      // Rename session once participantNumber is known (dynamic tokens: counter)
+      if (_sessionNameHasDynamic() && typeof participantNumber === 'number' && !isNaN(participantNumber)) {
+        const _finalId = _generateSessionName(participantNumber);
+        if (_finalId && _finalId !== trialSessionId) {
+          trialSessionId = await _renameSessionIfNeeded(trialSessionId, _finalId);
+          window.JSPSYCH_SESSION_ID = trialSessionId;
+        }
+      }
     }
 
     // Si falla con el sessionId existente (sesión huérfana), reintentar con uno nuevo
@@ -206,12 +310,18 @@ export default function LocalConfiguration({
     if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
       localStorage.removeItem('jsPsych_currentSessionId');
       localStorage.removeItem('jsPsych_participantNumber');
-      trialSessionId = crypto.randomUUID
+      trialSessionId = _generateSessionName(null) || (crypto.randomUUID
         ? crypto.randomUUID()
-        : Math.random().toString(36).slice(2, 10);
+        : Math.random().toString(36).slice(2, 10));
       isResuming = false;
       _setLoadingMsg('Creating session\u2026');
       participantNumber = await saveSession(trialSessionId);
+      if (_sessionNameHasDynamic() && typeof participantNumber === 'number' && !isNaN(participantNumber)) {
+        const _finalId = _generateSessionName(participantNumber);
+        if (_finalId && _finalId !== trialSessionId) {
+          trialSessionId = await _renameSessionIfNeeded(trialSessionId, _finalId);
+        }
+      }
     }
 
     if (typeof participantNumber !== "number" || isNaN(participantNumber)) {

@@ -317,6 +317,13 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
           ],
         }),
       },
+      FileUploadResponseComponent: {
+        button_label: v("Choose File"),
+        multiple: v(false),
+        accept: v(""),
+        max_file_size_mb: v(10),
+        show_preview: v(true),
+      },
     };
 
     return defaults[type] ?? {};

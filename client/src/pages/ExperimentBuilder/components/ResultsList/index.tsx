@@ -24,6 +24,17 @@ export type SessionMeta = {
   fileUrl?: string;
 };
 
+export type ParticipantFile = {
+  id: string;
+  sessionId: string | null;
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedAt: string;
+  url: string;
+};
+
 export type TabType = "preview" | "local" | "online";
 
 type ResultsListProps = {
@@ -35,9 +46,18 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
     [],
   );
   const [sessions, setSessions] = useState<SessionMeta[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [onlineLoading, setOnlineLoading] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [selectMode, setSelectMode] = useState(false);
+
+  // Participant files: map of sessionId → file list (null = not yet fetched)
+  const [sessionFiles, setSessionFiles] = useState<
+    Record<string, ParticipantFile[] | null>
+  >({});
+  const [expandedFileSession, setExpandedFileSession] = useState<string | null>(
+    null,
+  );
 
   const experimentID = useExperimentID();
 
@@ -90,9 +110,66 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
     sessions,
     setSelected,
     setLoading,
+    setOnlineLoading,
     setSessions,
     setSelectMode,
   });
+
+  // Pre-load all file records for the experiment whenever sessions change.
+  useEffect(() => {
+    if (!experimentID || sessions.length === 0) return;
+    if (activeTab !== "local" && activeTab !== "preview") return;
+    fetch(`${API_URL}/api/participant-files/${experimentID}`)
+      .then((r) => r.json())
+      .then((all: ParticipantFile[]) => {
+        const grouped: Record<string, ParticipantFile[]> = {};
+        for (const s of sessions) grouped[s.sessionId] = [];
+        for (const f of all) {
+          if (f.sessionId && grouped[f.sessionId] !== undefined) {
+            grouped[f.sessionId].push(f);
+          }
+        }
+        setSessionFiles(grouped);
+      })
+      .catch(() => {});
+  }, [sessions, experimentID, activeTab]);
+
+  // Fetch participant-uploaded files for a session on first expand.
+  const toggleFilesPanel = async (sessionId: string) => {
+    if (expandedFileSession === sessionId) {
+      setExpandedFileSession(null);
+      return;
+    }
+    setExpandedFileSession(sessionId);
+    // Re-fetch this session's files to get latest on expand
+    try {
+      const res = await fetch(
+        `${API_URL}/api/participant-files/${experimentID}?sessionId=${encodeURIComponent(sessionId)}`,
+      );
+      const data: ParticipantFile[] = await res.json();
+      setSessionFiles((prev) => ({ ...prev, [sessionId]: data }));
+    } catch {
+      setSessionFiles((prev) => ({ ...prev, [sessionId]: [] }));
+    }
+  };
+
+  const handleDeleteParticipantFile = async (
+    sessionId: string,
+    fileId: string,
+  ) => {
+    try {
+      await fetch(
+        `${API_URL}/api/participant-files/${experimentID}/${fileId}`,
+        { method: "DELETE" },
+      );
+      setSessionFiles((prev) => ({
+        ...prev,
+        [sessionId]: (prev[sessionId] ?? []).filter((f) => f.id !== fileId),
+      }));
+    } catch {
+      // ignore
+    }
+  };
 
   const getTitle = () => {
     if (activeTab === "preview") return "Preview Results";
@@ -166,13 +243,13 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
                 "linear-gradient(135deg, var(--gold), var(--dark-gold))",
             }}
             onClick={handleRefresh}
-            disabled={loading}
+            disabled={onlineLoading}
           >
-            {loading ? "Loading..." : "↻ Refresh"}
+            {onlineLoading ? "Loading..." : "↻ Refresh"}
           </button>
         )}
       </div>
-      {loading ? (
+      {(activeTab === "online" ? onlineLoading : loading) ? (
         <p className="results-text">Loading...</p>
       ) : sessions.length === 0 ? (
         <p className="results-text">{getEmptyMessage()}</p>
@@ -268,6 +345,9 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
                     <th>Resolution</th>
                   </>
                 )}
+                {(activeTab === "local" || activeTab === "preview") && (
+                  <th>Files</th>
+                )}
                 {activeTab === "online" && <th>File</th>}
                 {activeTab !== "online" && (
                   <th
@@ -346,6 +426,106 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
                       <td>{s.metadata?.os || "-"}</td>
                       <td>{s.metadata?.screenResolution || "-"}</td>
                     </>
+                  )}
+                  {(activeTab === "local" || activeTab === "preview") && (
+                    <td style={{ verticalAlign: "top" }}>
+                      <button
+                        className="download-csv-btn"
+                        style={{ fontSize: "11px" }}
+                        onClick={() => toggleFilesPanel(s.sessionId)}
+                      >
+                        {expandedFileSession === s.sessionId
+                          ? "▲ Close"
+                          : `Files${sessionFiles[s.sessionId] ? ` (${sessionFiles[s.sessionId]!.length})` : ""}`}
+                      </button>
+                      {expandedFileSession === s.sessionId && (
+                        <div
+                          style={{
+                            marginTop: 6,
+                            minWidth: 220,
+                            padding: "6px 8px",
+                            background: "var(--surface, #1e1e1e)",
+                            border: "1px solid var(--border, #333)",
+                            borderRadius: 6,
+                            fontSize: 11,
+                          }}
+                        >
+                          {sessionFiles[s.sessionId] === undefined ? (
+                            <span style={{ color: "#aaa" }}>Loading…</span>
+                          ) : sessionFiles[s.sessionId]!.length === 0 ? (
+                            <span style={{ color: "#aaa" }}>No files</span>
+                          ) : (
+                            <ul
+                              style={{
+                                margin: 0,
+                                padding: 0,
+                                listStyle: "none",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 4,
+                              }}
+                            >
+                              {sessionFiles[s.sessionId]!.map((f) => (
+                                <li
+                                  key={f.id}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                  }}
+                                >
+                                  <a
+                                    href={`${API_URL}${f.url}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    download={f.originalName}
+                                    style={{
+                                      flex: 1,
+                                      color: "var(--gold, #FFD600)",
+                                      textDecoration: "none",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
+                                      maxWidth: 180,
+                                    }}
+                                    title={f.originalName}
+                                  >
+                                    {f.originalName}
+                                  </a>
+                                  <span
+                                    style={{ color: "#888", flexShrink: 0 }}
+                                  >
+                                    {f.sizeBytes < 1024 * 1024
+                                      ? `${Math.round(f.sizeBytes / 1024)} KB`
+                                      : `${(f.sizeBytes / 1024 / 1024).toFixed(1)} MB`}
+                                  </span>
+                                  <button
+                                    style={{
+                                      background: "none",
+                                      border: "none",
+                                      color: "#ef4444",
+                                      cursor: "pointer",
+                                      padding: "0 2px",
+                                      fontSize: 12,
+                                      flexShrink: 0,
+                                    }}
+                                    title="Delete file"
+                                    onClick={() =>
+                                      handleDeleteParticipantFile(
+                                        s.sessionId,
+                                        f.id,
+                                      )
+                                    }
+                                  >
+                                    ✕
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
+                    </td>
                   )}
                   {activeTab === "online" && (
                     <td>

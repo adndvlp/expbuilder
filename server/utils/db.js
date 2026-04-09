@@ -31,6 +31,9 @@ export function ensureDbData() {
   db.data.configs ||= [];
   db.data.pluginConfigs ||= [];
   db.data.sessionResults ||= [];
+  // Index of files uploaded by participants during experiment runs.
+  // Decoupled from the on-disk filename so session renaming never breaks links.
+  db.data.participantFiles ||= [];
 }
 
 // Exportar userDataRoot, dbPath y dbDir para usar en otros módulos

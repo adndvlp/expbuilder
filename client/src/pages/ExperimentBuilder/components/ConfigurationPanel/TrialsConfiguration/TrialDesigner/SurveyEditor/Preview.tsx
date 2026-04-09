@@ -173,7 +173,6 @@ const SurveyPreview: React.FC<SurveyPreviewProps> = ({ surveyJson }) => {
           color: "var(--text-dark)",
         }}
       >
-        <div style={{ fontSize: "48px", marginBottom: "16px" }}>📋</div>
         <div style={{ fontSize: "16px", fontWeight: 500, marginBottom: "8px" }}>
           Preview Area
         </div>

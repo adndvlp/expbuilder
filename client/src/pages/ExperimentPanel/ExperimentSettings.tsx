@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import CustomDomainSettings from "./CustomDomainSettings";
 import AppearanceSettings from "./AppearanceSettings";
+
+const API_URL = import.meta.env.VITE_API_URL ?? "";
 
 type ExperimentSettingsProps = {
   experimentID: string | undefined;
@@ -29,6 +31,35 @@ type CaptchaConfig = {
   siteKey: string;
 };
 
+type SessionNameTokenType =
+  | "date"
+  | "time"
+  | "randomAlpha"
+  | "customText"
+  | "counter";
+
+type SessionNameToken = {
+  id: string;
+  type: SessionNameTokenType;
+  dateFormat: string;
+  timeFormat: string;
+  randomLength: number;
+  customValue: string;
+  counterDigits: number;
+};
+
+const SESSION_TOKEN_CATALOG: Array<{
+  type: SessionNameTokenType;
+  label: string;
+  color: string;
+}> = [
+  { type: "date", label: "Date", color: "#4a90d9" },
+  { type: "time", label: "Time", color: "#9b6dd8" },
+  { type: "randomAlpha", label: "Random ID", color: "#e67e22" },
+  { type: "customText", label: "Custom Text", color: "#e74c3c" },
+  { type: "counter", label: "Participant Number", color: "#16a085" },
+];
+
 function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
   const [config, setConfig] = useState<BatchConfig>({
     useIndexedDB: true,
@@ -47,21 +78,46 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
     siteKey: "",
   });
   const [experimentExists, setExperimentExists] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [sessionNameMessage, setSessionNameMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+  const [sessionNameTokens, setSessionNameTokens] = useState<
+    SessionNameToken[]
+  >([]);
+  const [sessionNameSeparator, setSessionNameSeparator] = useState("_");
+  const [expandedTokenId, setExpandedTokenId] = useState<string | null>(null);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const MAX_TOKENS = 6;
 
   useEffect(() => {
     if (!experimentID) return;
 
-    const loadConfig = async () => {
-      try {
-        const docRef = doc(db, "experiments", experimentID);
-        const docSnap = await getDoc(docRef);
+    // Don't block the UI — set loading false immediately
+    setLoading(false);
 
+    // Load session name config from local API immediately
+    fetch(`${API_URL}/api/session-name-config/${experimentID}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((sn) => {
+        if (sn) {
+          setSessionNameTokens(sn.tokens ?? []);
+          setSessionNameSeparator(sn.separator ?? "_");
+        }
+      })
+      .catch(() => {});
+
+    // Load Firebase config in background — only used when experiment is published
+    const docRef = doc(db, "experiments", experimentID);
+    getDoc(docRef)
+      .then((docSnap) => {
         if (docSnap.exists()) {
           setExperimentExists(true);
           const data = docSnap.data();
@@ -81,16 +137,133 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
             siteKey: data.captchaConfig?.siteKey ?? "",
           });
         }
-      } catch (error) {
-        console.error("Error loading configuration:", error);
-        setMessage({ type: "error", text: "Error loading configuration" });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadConfig();
+      })
+      .catch((error) => {
+        console.error("Error loading Firebase configuration:", error);
+      });
   }, [experimentID]);
+
+  function makeSessionToken(type: SessionNameTokenType): SessionNameToken {
+    return {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+      type,
+      dateFormat: "YYYY-MM-DD",
+      timeFormat: "HH-mm-ss",
+      randomLength: 6,
+      customValue: "",
+      counterDigits: 3,
+    };
+  }
+
+  function previewToken(token: SessionNameToken): string {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const y = now.getFullYear();
+    const mo = pad(now.getMonth() + 1);
+    const d = pad(now.getDate());
+    const h = pad(now.getHours());
+    const mi = pad(now.getMinutes());
+    const s = pad(now.getSeconds());
+    switch (token.type) {
+      case "date":
+        if (token.dateFormat === "YYYYMMDD") return `${y}${mo}${d}`;
+        if (token.dateFormat === "DD-MM-YYYY") return `${d}-${mo}-${y}`;
+        if (token.dateFormat === "MM-DD-YYYY") return `${mo}-${d}-${y}`;
+        return `${y}-${mo}-${d}`;
+      case "time":
+        if (token.timeFormat === "HH-mm") return `${h}-${mi}`;
+        if (token.timeFormat === "HHmmss") return `${h}${mi}${s}`;
+        return `${h}-${mi}-${s}`;
+      case "randomAlpha": {
+        const chars = "aB3k9pQxmN4t7ZvE";
+        return Array.from(
+          { length: token.randomLength },
+          (_, i) => chars[i % chars.length],
+        ).join("");
+      }
+      case "customText":
+        return token.customValue || "text";
+      case "counter":
+        return "1".padStart(token.counterDigits, "0");
+      default:
+        return "";
+    }
+  }
+
+  const addSessionToken = (type: SessionNameTokenType) => {
+    setSessionNameTokens((prev) =>
+      prev.length >= MAX_TOKENS ? prev : [...prev, makeSessionToken(type)],
+    );
+  };
+
+  const removeSessionToken = (id: string) => {
+    setSessionNameTokens((prev) => prev.filter((t) => t.id !== id));
+    if (expandedTokenId === id) setExpandedTokenId(null);
+  };
+
+  const reorderSessionToken = (from: number, to: number) => {
+    if (from === to) return;
+    setSessionNameTokens((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
+
+  const updateSessionToken = (id: string, patch: Partial<SessionNameToken>) => {
+    setSessionNameTokens((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+    );
+  };
+
+  const sessionNamePreview = sessionNameTokens
+    .map((t) => previewToken(t))
+    .join(sessionNameSeparator);
+
+  const handleSaveSessionName = async () => {
+    if (!experimentID) return;
+    // Require at least one randomAlpha token when a custom name is configured
+    if (
+      sessionNameTokens.length > 0 &&
+      !sessionNameTokens.some(
+        (t) => t.type === "randomAlpha" || t.type === "counter",
+      )
+    ) {
+      setSessionNameMessage({
+        type: "error",
+        text: "Debes incluir al menos un componente Random ID o Participant Number para garantizar sesiones únicas.",
+      });
+      return;
+    }
+    setSaving(true);
+    setSessionNameMessage(null);
+    try {
+      const res = await fetch(
+        `${API_URL}/api/session-name-config/${experimentID}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tokens: sessionNameTokens,
+            separator: sessionNameSeparator,
+          }),
+        },
+      );
+      if (!res.ok) throw new Error("Failed to save");
+      setSessionNameMessage({
+        type: "success",
+        text: "Session name configuration saved!",
+      });
+    } catch {
+      setSessionNameMessage({
+        type: "error",
+        text: "Error saving session name configuration",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!experimentID) return;
@@ -109,6 +282,16 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
         },
         { merge: true },
       );
+
+      // Save session name config to local API (local-only for now)
+      await fetch(`${API_URL}/api/session-name-config/${experimentID}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tokens: sessionNameTokens,
+          separator: sessionNameSeparator,
+        }),
+      });
 
       setMessage({
         type: "success",
@@ -369,6 +552,621 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
           </ul>
         </div>
       )}
+
+      {/* Session Name Configuration */}
+      <div style={{ marginBottom: 32, marginTop: 8 }}>
+        <h2
+          style={{ color: "var(--text-dark)", marginBottom: 8, fontSize: 24 }}
+        >
+          Session Name Configuration
+        </h2>
+        <p
+          style={{
+            color: "var(--text-dark)",
+            fontSize: 14,
+            opacity: 0.8,
+            marginBottom: 20,
+          }}
+        >
+          Define how session names are automatically composed for each
+          participant run.
+        </p>
+
+        {/* Available Components */}
+        <div style={{ marginBottom: 20 }}>
+          <p
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: "var(--text-dark)",
+              opacity: 0.55,
+              marginBottom: 10,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+            }}
+          >
+            Available Components
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {SESSION_TOKEN_CATALOG.map((cat) => (
+              <button
+                key={cat.type}
+                onClick={() => addSessionToken(cat.type)}
+                disabled={sessionNameTokens.length >= MAX_TOKENS}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 14px",
+                  borderRadius: 20,
+                  border: `2px solid ${cat.color}33`,
+                  backgroundColor:
+                    sessionNameTokens.length >= MAX_TOKENS
+                      ? "var(--neutral-medium)"
+                      : `${cat.color}15`,
+                  color:
+                    sessionNameTokens.length >= MAX_TOKENS
+                      ? "var(--text-dark)"
+                      : cat.color,
+                  opacity: sessionNameTokens.length >= MAX_TOKENS ? 0.4 : 1,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor:
+                    sessionNameTokens.length >= MAX_TOKENS
+                      ? "not-allowed"
+                      : "pointer",
+                }}
+              >
+                + {cat.label}
+              </button>
+            ))}
+            {sessionNameTokens.length >= MAX_TOKENS && (
+              <span
+                style={{
+                  alignSelf: "center",
+                  fontSize: 12,
+                  color: "var(--text-dark)",
+                  opacity: 0.5,
+                }}
+              >
+                Límite de {MAX_TOKENS} componentes alcanzado
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Formula builder */}
+        <div style={{ marginBottom: 16 }}>
+          <p
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: "var(--text-dark)",
+              opacity: 0.55,
+              marginBottom: 10,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+            }}
+          >
+            Name Formula
+          </p>
+          <div
+            style={{
+              minHeight: 60,
+              padding: 12,
+              border: "2px dashed var(--neutral-mid)",
+              borderRadius: 8,
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 6,
+              backgroundColor: "var(--neutral-light)",
+            }}
+          >
+            {sessionNameTokens.length === 0 ? (
+              <p
+                style={{
+                  width: "100%",
+                  textAlign: "center",
+                  color: "var(--text-dark)",
+                  opacity: 0.35,
+                  fontSize: 14,
+                  margin: 0,
+                }}
+              >
+                Add components above to build the session name
+              </p>
+            ) : (
+              (() => {
+                const items: React.ReactElement[] = [];
+                sessionNameTokens.forEach((token, idx) => {
+                  const meta = SESSION_TOKEN_CATALOG.find(
+                    (c) => c.type === token.type,
+                  )!;
+                  const isDragging = dragIndex === idx;
+                  const isOver = dragOverIndex === idx;
+                  items.push(
+                    <div
+                      key={token.id}
+                      draggable
+                      onDragStart={(e) => {
+                        setDragIndex(idx);
+                        e.dataTransfer.effectAllowed = "move";
+                      }}
+                      onDragEnter={() => setDragOverIndex(idx)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => {
+                        if (dragIndex !== null)
+                          reorderSessionToken(dragIndex, idx);
+                        setDragIndex(null);
+                        setDragOverIndex(null);
+                      }}
+                      onDragEnd={() => {
+                        setDragIndex(null);
+                        setDragOverIndex(null);
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        padding: "5px 10px",
+                        borderRadius: 20,
+                        backgroundColor: `${meta.color}18`,
+                        border: `2px solid ${isOver && !isDragging ? meta.color : `${meta.color}44`}`,
+                        color: meta.color,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: "grab",
+                        opacity: isDragging ? 0.35 : 1,
+                        transition: "opacity 0.15s, border-color 0.15s",
+                      }}
+                    >
+                      <span
+                        onClick={() =>
+                          setExpandedTokenId(
+                            expandedTokenId === token.id ? null : token.id,
+                          )
+                        }
+                        style={{ cursor: "pointer", userSelect: "none" }}
+                      >
+                        {meta.label}
+                      </span>
+                      <button
+                        onClick={() =>
+                          setExpandedTokenId(
+                            expandedTokenId === token.id ? null : token.id,
+                          )
+                        }
+                        title="Options"
+                        style={{
+                          border: "none",
+                          background: "none",
+                          cursor: "pointer",
+                          color: meta.color,
+                          opacity: expandedTokenId === token.id ? 1 : 0.6,
+                          padding: "0 2px",
+                          fontSize: 14,
+                        }}
+                      ></button>
+                      <button
+                        onClick={() => removeSessionToken(token.id)}
+                        title="Remove"
+                        style={{
+                          border: "none",
+                          background: "none",
+                          cursor: "pointer",
+                          color: meta.color,
+                          opacity: 0.7,
+                          padding: "0 2px",
+                          fontSize: 16,
+                          lineHeight: 1,
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>,
+                  );
+                  if (idx < sessionNameTokens.length - 1) {
+                    items.push(
+                      <span
+                        key={`sep-${idx}`}
+                        style={{
+                          color: "var(--text-dark)",
+                          opacity: 0.45,
+                          fontSize: 13,
+                          fontFamily: "monospace",
+                          userSelect: "none",
+                          pointerEvents: "none",
+                        }}
+                      >
+                        {sessionNameSeparator === ""
+                          ? "·"
+                          : sessionNameSeparator}
+                      </span>,
+                    );
+                  }
+                });
+                return items;
+              })()
+            )}
+          </div>
+        </div>
+
+        {/* Separator selector */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            marginBottom: 16,
+            flexWrap: "wrap",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: "var(--text-dark)",
+              opacity: 0.8,
+            }}
+          >
+            Separator:
+          </span>
+          {[
+            { label: "_ underscore", value: "_" },
+            { label: "- hyphen", value: "-" },
+            { label: "none", value: "" },
+          ].map((sep) => (
+            <button
+              key={sep.value === "" ? "none" : sep.value}
+              onClick={() => setSessionNameSeparator(sep.value)}
+              style={{
+                padding: "5px 12px",
+                borderRadius: 6,
+                border: "2px solid",
+                borderColor:
+                  sessionNameSeparator === sep.value
+                    ? "var(--primary-blue)"
+                    : "var(--neutral-mid)",
+                backgroundColor:
+                  sessionNameSeparator === sep.value
+                    ? "var(--primary-blue)"
+                    : "transparent",
+                color:
+                  sessionNameSeparator === sep.value
+                    ? "var(--text-light)"
+                    : "var(--text-dark)",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: sep.value !== "" ? "monospace" : "inherit",
+              }}
+            >
+              {sep.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Token options panel */}
+        {expandedTokenId &&
+          (() => {
+            const token = sessionNameTokens.find(
+              (t) => t.id === expandedTokenId,
+            );
+            if (!token) return null;
+            const meta = SESSION_TOKEN_CATALOG.find(
+              (c) => c.type === token.type,
+            )!;
+            return (
+              <div
+                style={{
+                  padding: 16,
+                  marginBottom: 16,
+                  border: `2px solid ${meta.color}44`,
+                  borderRadius: 8,
+                  backgroundColor: `${meta.color}08`,
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: meta.color,
+                    marginBottom: 12,
+                  }}
+                >
+                  {meta.label} options
+                </p>
+
+                {token.type === "date" && (
+                  <div>
+                    <label
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "var(--text-dark)",
+                        display: "block",
+                        marginBottom: 6,
+                      }}
+                    >
+                      Date format
+                    </label>
+                    <select
+                      value={token.dateFormat}
+                      onChange={(e) =>
+                        updateSessionToken(token.id, {
+                          dateFormat: e.target.value,
+                        })
+                      }
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: 6,
+                        border: "2px solid var(--neutral-mid)",
+                        backgroundColor: "var(--neutral-light)",
+                        color: "var(--text-dark)",
+                        fontSize: 14,
+                      }}
+                    >
+                      <option value="YYYY-MM-DD">
+                        YYYY-MM-DD (e.g. 2026-04-09)
+                      </option>
+                      <option value="DD-MM-YYYY">
+                        DD-MM-YYYY (e.g. 09-04-2026)
+                      </option>
+                      <option value="MM-DD-YYYY">
+                        MM-DD-YYYY (e.g. 04-09-2026)
+                      </option>
+                      <option value="YYYYMMDD">YYYYMMDD (e.g. 20260409)</option>
+                    </select>
+                  </div>
+                )}
+
+                {token.type === "time" && (
+                  <div>
+                    <label
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "var(--text-dark)",
+                        display: "block",
+                        marginBottom: 6,
+                      }}
+                    >
+                      Time format
+                    </label>
+                    <select
+                      value={token.timeFormat}
+                      onChange={(e) =>
+                        updateSessionToken(token.id, {
+                          timeFormat: e.target.value,
+                        })
+                      }
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: 6,
+                        border: "2px solid var(--neutral-mid)",
+                        backgroundColor: "var(--neutral-light)",
+                        color: "var(--text-dark)",
+                        fontSize: 14,
+                      }}
+                    >
+                      <option value="HH-mm">HH-mm (e.g. 14-35)</option>
+                      <option value="HH-mm-ss">HH-mm-ss (e.g. 14-35-22)</option>
+                      <option value="HHmmss">HHmmss (e.g. 143522)</option>
+                    </select>
+                  </div>
+                )}
+
+                {token.type === "randomAlpha" && (
+                  <div>
+                    <label
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "var(--text-dark)",
+                        display: "block",
+                        marginBottom: 6,
+                      }}
+                    >
+                      Length
+                    </label>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                      }}
+                    >
+                      <input
+                        type="range"
+                        min={4}
+                        max={16}
+                        value={token.randomLength}
+                        onChange={(e) =>
+                          updateSessionToken(token.id, {
+                            randomLength: Number(e.target.value),
+                          })
+                        }
+                        style={{ width: 160 }}
+                      />
+                      <span
+                        style={{
+                          fontSize: 14,
+                          color: "var(--text-dark)",
+                          fontFamily: "monospace",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {token.randomLength} chars
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {token.type === "customText" && (
+                  <div>
+                    <label
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "var(--text-dark)",
+                        display: "block",
+                        marginBottom: 6,
+                      }}
+                    >
+                      Text value
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. pilot, exp1, …"
+                      value={token.customValue}
+                      onChange={(e) =>
+                        updateSessionToken(token.id, {
+                          customValue: e.target.value,
+                        })
+                      }
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: 6,
+                        border: "2px solid var(--neutral-mid)",
+                        backgroundColor: "var(--neutral-light)",
+                        color: "var(--text-dark)",
+                        fontSize: 14,
+                        width: 220,
+                      }}
+                    />
+                  </div>
+                )}
+
+                {token.type === "counter" && (
+                  <div>
+                    <label
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "var(--text-dark)",
+                        display: "block",
+                        marginBottom: 6,
+                      }}
+                    >
+                      Number of digits
+                    </label>
+                    <select
+                      value={token.counterDigits}
+                      onChange={(e) =>
+                        updateSessionToken(token.id, {
+                          counterDigits: Number(e.target.value),
+                        })
+                      }
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: 6,
+                        border: "2px solid var(--neutral-mid)",
+                        backgroundColor: "var(--neutral-light)",
+                        color: "var(--text-dark)",
+                        fontSize: 14,
+                      }}
+                    >
+                      {[1, 2, 3, 4, 5, 6].map((n) => (
+                        <option key={n} value={n}>
+                          {n} digit{n > 1 ? "s" : ""} (e.g. {"0".repeat(n - 1)}
+                          1)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+        {/* Preview */}
+        <div>
+          <p
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: "var(--text-dark)",
+              opacity: 0.55,
+              marginBottom: 8,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+            }}
+          >
+            Preview
+          </p>
+          <div
+            style={{
+              padding: "10px 18px",
+              backgroundColor: "#1a1a2e",
+              borderRadius: 8,
+              fontFamily: "monospace",
+              fontSize: 15,
+              color: sessionNamePreview ? "#a6e3a1" : "#6c7086",
+              letterSpacing: "0.05em",
+              display: "inline-block",
+              minWidth: 260,
+            }}
+          >
+            {sessionNamePreview || "add components to see a preview"}
+          </div>
+        </div>
+
+        {/* Save session name button — always visible, no Firebase required */}
+        {sessionNameTokens.length > 0 &&
+          !sessionNameTokens.some(
+            (t) => t.type === "randomAlpha" || t.type === "counter",
+          ) && (
+            <div
+              style={{
+                padding: "10px 14px",
+                marginTop: 12,
+                backgroundColor: "#f39c1220",
+                border: "1px solid #f39c12",
+                borderRadius: 6,
+                fontSize: 13,
+                color: "#f39c12",
+                fontWeight: 600,
+              }}
+            >
+              Debes incluir al menos un componente <strong>Random ID</strong> o{" "}
+              <strong>Participant Number</strong> para garantizar que cada
+              sesión sea única.
+            </div>
+          )}
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+            marginTop: 16,
+          }}
+        >
+          <button
+            onClick={handleSaveSessionName}
+            disabled={saving}
+            className="gradient-btn"
+            style={{
+              opacity: saving ? 0.6 : 1,
+              cursor: saving ? "not-allowed" : "pointer",
+            }}
+          >
+            {saving ? "Saving..." : "Save Session Name"}
+          </button>
+          {sessionNameMessage && (
+            <p
+              style={{
+                color:
+                  sessionNameMessage.type === "success" ? "#4caf50" : "#f44336",
+                fontWeight: "600",
+                fontSize: 14,
+              }}
+            >
+              {sessionNameMessage.text}
+            </p>
+          )}
+        </div>
+      </div>
 
       {/* Recruitment Platform Setting */}
       {experimentExists && (

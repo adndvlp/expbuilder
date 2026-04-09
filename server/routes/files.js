@@ -11,6 +11,7 @@ import path from "path";
 import { __dirname } from "../utils/paths.js";
 import { db, userDataRoot } from "../utils/db.js";
 import fs from "fs";
+import { randomUUID } from "crypto";
 
 const router = Router();
 
@@ -186,6 +187,210 @@ router.delete(
       }
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
+    }
+  },
+);
+
+// ── Participant-uploaded files (collected during experiment runs) ─────────────
+
+/**
+ * Receives files uploaded by participants during an experiment run.
+ * Accepts JSON body with base64-encoded file data for compatibility with both
+ * local (Express) and public (Firebase Cloud Function) execution contexts.
+ *
+ * @route POST /api/participant-files/:experimentID
+ * @param {string} experimentID - Experiment ID (path parameter)
+ * @body {{ files: Array<{ name: string, data: string, type: string, size: number }>, sessionId?: string }}
+ * @returns {Object} 200 - { fileUrl: string, fileUrls: string[], count: number }
+ */
+router.post("/api/participant-files/:experimentID", async (req, res) => {
+  try {
+    const experimentID = req.params.experimentID;
+    const { files, sessionId } = req.body || {};
+
+    if (!Array.isArray(files) || files.length === 0) {
+      return res.status(400).json({ error: "No files received" });
+    }
+
+    let experimentName = experimentID;
+    await db.read();
+    const experiment = db.data.experiments.find(
+      (e) => e.experimentID === experimentID,
+    );
+    if (experiment && experiment.name) {
+      experimentName = experiment.name;
+    }
+
+    const folder = path.join(userDataRoot, experimentName, "participant-files");
+    fs.mkdirSync(folder, { recursive: true });
+
+    const uploadedAt = new Date().toISOString();
+    const fileRecords = [];
+
+    const fileUrls = files.map((file) => {
+      const ts = Date.now();
+      const safeName = (file.name || "upload").replace(/[^a-zA-Z0-9._-]/g, "_");
+      const prefix = sessionId ? `${sessionId}_` : "";
+      const filename = `${prefix}${ts}_${safeName}`;
+      const filePath = path.join(folder, filename);
+
+      // Decode base64 and write to disk
+      const base64Data = file.data.includes(",")
+        ? file.data.split(",")[1]
+        : file.data;
+      fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
+
+      // Build a stable DB record — sessionId is stored separately from the
+      // filename so renaming a session only requires updating this field.
+      fileRecords.push({
+        id: randomUUID(),
+        experimentID,
+        sessionId: sessionId || null,
+        filename,
+        originalName: file.name || "upload",
+        mimeType: file.type || "application/octet-stream",
+        sizeBytes: file.size || 0,
+        uploadedAt,
+      });
+
+      return `participant-files/${encodeURIComponent(filename)}`;
+    });
+
+    db.data.participantFiles ||= [];
+    db.data.participantFiles.push(...fileRecords);
+    await db.write();
+
+    res.json({
+      fileUrl: fileUrls[0],
+      fileUrls,
+      count: fileUrls.length,
+    });
+  } catch (err) {
+    console.error("Error saving participant file:", err);
+    res.status(500).json({ error: err.message || "Error saving file" });
+  }
+});
+
+/**
+ * List participant-uploaded files for an experiment.
+ * Optionally filter by session: ?sessionId=xxx
+ *
+ * @route GET /api/participant-files/:experimentID
+ * @returns {Object[]} { id, sessionId, filename, originalName, mimeType, sizeBytes, uploadedAt, url }[]
+ */
+router.get("/api/participant-files/:experimentID", async (req, res) => {
+  try {
+    const { experimentID } = req.params;
+    const { sessionId } = req.query;
+
+    await db.read();
+    db.data.participantFiles ||= [];
+
+    let records = db.data.participantFiles.filter(
+      (f) => f.experimentID === experimentID,
+    );
+
+    if (sessionId) {
+      records = records.filter((f) => f.sessionId === sessionId);
+    }
+
+    const withUrls = records.map((f) => ({
+      ...f,
+      url: `/api/participant-files-serve/${encodeURIComponent(experimentID)}/${encodeURIComponent(f.filename)}`,
+    }));
+
+    res.json(withUrls);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Serve a participant-uploaded file by its on-disk filename.
+ *
+ * @route GET /api/participant-files-serve/:experimentID/:filename
+ */
+router.get(
+  "/api/participant-files-serve/:experimentID/:filename",
+  async (req, res) => {
+    try {
+      const experimentID = decodeURIComponent(req.params.experimentID);
+      const filename = decodeURIComponent(req.params.filename);
+
+      let experimentName = experimentID;
+      await db.read();
+      const experiment = db.data.experiments.find(
+        (e) => e.experimentID === experimentID,
+      );
+      if (experiment && experiment.name) {
+        experimentName = experiment.name;
+      }
+
+      const filePath = path.join(
+        userDataRoot,
+        experimentName,
+        "participant-files",
+        filename,
+      );
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: "File not found" });
+      }
+
+      res.sendFile(filePath);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  },
+);
+
+/**
+ * Delete a participant-uploaded file record (and the file on disk).
+ *
+ * @route DELETE /api/participant-files/:experimentID/:fileId
+ */
+router.delete(
+  "/api/participant-files/:experimentID/:fileId",
+  async (req, res) => {
+    try {
+      const { experimentID, fileId } = req.params;
+
+      await db.read();
+      db.data.participantFiles ||= [];
+
+      const idx = db.data.participantFiles.findIndex(
+        (f) => f.id === fileId && f.experimentID === experimentID,
+      );
+
+      if (idx === -1) {
+        return res.status(404).json({ error: "File record not found" });
+      }
+
+      const record = db.data.participantFiles[idx];
+
+      let experimentName = experimentID;
+      const experiment = db.data.experiments.find(
+        (e) => e.experimentID === experimentID,
+      );
+      if (experiment && experiment.name) {
+        experimentName = experiment.name;
+      }
+      const filePath = path.join(
+        userDataRoot,
+        experimentName,
+        "participant-files",
+        record.filename,
+      );
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+
+      db.data.participantFiles.splice(idx, 1);
+      await db.write();
+
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
   },
 );

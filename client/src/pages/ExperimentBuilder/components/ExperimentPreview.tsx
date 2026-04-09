@@ -117,6 +117,8 @@ function ExperimentPreview({
               : Math.random().toString(36).slice(2, 10));
 
         const isSaveMode = ${isSaveMode};
+        ${isSaveMode ? `window.JSPSYCH_FILE_UPLOAD_ENDPOINT = '/api/participant-files/${experimentID}';` : ""}
+        if (isSaveMode) { window.JSPSYCH_SESSION_ID = trialSessionId; }
         let participantNumber;
 
           async function initParticipant(trialSessionId) {

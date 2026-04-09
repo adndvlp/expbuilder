@@ -13,6 +13,7 @@ import {
   SketchpadComponent,
   SurveyComponent,
   AudioResponseComponent,
+  FileUploadResponseComponent,
 } from "./VisualComponents";
 
 type Props = {
@@ -325,6 +326,17 @@ const RenderComponent = ({
     case "AudioResponseComponent":
       return (
         <AudioResponseComponent
+          key={comp.id}
+          shapeProps={comp}
+          isSelected={isSelected}
+          onSelect={() => handleSelect(comp.id)}
+          onChange={handleComponentChange}
+        />
+      );
+
+    case "FileUploadResponseComponent":
+      return (
+        <FileUploadResponseComponent
           key={comp.id}
           shapeProps={comp}
           isSelected={isSelected}

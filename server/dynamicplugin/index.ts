@@ -17,6 +17,7 @@ import InputResponseComponent from "./response_components/InputResponseComponent
 import SurveyComponent from "./response_components/SurveyComponent";
 import SketchpadComponent from "./components/SketchpadComponent";
 import AudioResponseComponent from "./response_components/AudioResponseComponent";
+import FileUploadResponseComponent from "./response_components/FileUploadResponseComponent";
 
 const info = <const>{
   name: "DynamicPlugin",
@@ -91,6 +92,7 @@ const RESPONSE_COMPONENT_MAP: Record<string, any> = {
   SurveyComponent,
   SketchpadComponent,
   AudioResponseComponent,
+  FileUploadResponseComponent,
 };
 
 /**
@@ -423,6 +425,28 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             trialData[`${prefix}_audio_url`] = audioResponse.audio_url;
             trialData[`${prefix}_estimated_stimulus_onset`] =
               audioResponse.estimated_stimulus_onset;
+          }
+        }
+
+        // FileUploadResponseComponent - file metadata fields
+        if (config.type === "FileUploadResponseComponent") {
+          if (
+            instance.getFileUrl &&
+            typeof instance.getFileUrl === "function"
+          ) {
+            trialData[`${prefix}_file_url`] = instance.getFileUrl();
+          }
+          if (
+            instance.getFileSize &&
+            typeof instance.getFileSize === "function"
+          ) {
+            trialData[`${prefix}_file_size`] = instance.getFileSize();
+          }
+          if (
+            instance.getFileType &&
+            typeof instance.getFileType === "function"
+          ) {
+            trialData[`${prefix}_file_type`] = instance.getFileType();
           }
         }
       });
