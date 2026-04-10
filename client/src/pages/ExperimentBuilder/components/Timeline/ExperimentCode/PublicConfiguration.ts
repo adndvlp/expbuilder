@@ -53,6 +53,16 @@ export default function PublicConfiguration({
 
   const progressBar = canvasStyles?.progressBar ?? false;
 
+  type _SessionNameToken = {
+    id: string;
+    type: string;
+    dateFormat: string;
+    timeFormat: string;
+    randomLength: number;
+    customValue: string;
+    counterDigits: number;
+  };
+
   const generateExperiment = async (storageOverride?: string) => {
     const useStorage = storageOverride || storage;
 
@@ -112,6 +122,22 @@ export default function PublicConfiguration({
       // Continuar con valores por defecto
     }
 
+    // Fetch session name config from local API (baked in at code-generation time)
+    let sessionNameTokens: _SessionNameToken[] = [];
+    let sessionNameSeparator = "_";
+    if (experimentID) {
+      try {
+        const snRes = await fetch(`/api/session-name-config/${experimentID}`);
+        if (snRes.ok) {
+          const sn = await snRes.json();
+          sessionNameTokens = sn.tokens ?? [];
+          sessionNameSeparator = sn.separator ?? "_";
+        }
+      } catch {
+        // local server unavailable — fall back to UUID
+      }
+    }
+
     // Fetch extensions before generating experiment
     const extensions = await fetchExtensions();
     // Generate codes dynamically from trial/loop data
@@ -122,6 +148,7 @@ export default function PublicConfiguration({
     return `
   // --- FileUploadResponseComponent endpoint (Firebase Cloud Function) ---
   window.JSPSYCH_FILE_UPLOAD_ENDPOINT = '${DATA_API_URL}'.replace('/apiData', '/uploadParticipantFile');
+  window.JSPSYCH_EXPERIMENT_ID = '${experimentID}';
 
   // --- IndexedDB Wrapper para Batching con TTL (3 días) ---
   const TrialDB = {
@@ -360,23 +387,78 @@ export default function PublicConfiguration({
  
   const Uid = "${currentUid}";
 
+  // --- Session Name Configuration ---
+  const _SESSION_NAME_TOKENS = ${JSON.stringify(sessionNameTokens)};
+  const _SESSION_NAME_SEPARATOR = ${JSON.stringify(sessionNameSeparator)};
+  function _generateSessionName(participantNumber) {
+    if (!_SESSION_NAME_TOKENS || _SESSION_NAME_TOKENS.length === 0) return null;
+    const _now = new Date();
+    const _pad = (n, len) => String(n).padStart(len != null ? len : 2, '0');
+    const _y = _now.getFullYear();
+    const _mo = _pad(_now.getMonth() + 1);
+    const _d = _pad(_now.getDate());
+    const _h = _pad(_now.getHours());
+    const _mi = _pad(_now.getMinutes());
+    const _s = _pad(_now.getSeconds());
+    const _parts = _SESSION_NAME_TOKENS.map(function(_token) {
+      switch (_token.type) {
+        case 'date': {
+          if (_token.dateFormat === 'YYYYMMDD') return _y + '' + _mo + _d;
+          if (_token.dateFormat === 'DD-MM-YYYY') return _d + '-' + _mo + '-' + _y;
+          if (_token.dateFormat === 'MM-DD-YYYY') return _mo + '-' + _d + '-' + _y;
+          return _y + '-' + _mo + '-' + _d;
+        }
+        case 'time': {
+          if (_token.timeFormat === 'HH-mm') return _h + '-' + _mi;
+          if (_token.timeFormat === 'HHmmss') return _h + '' + _mi + _s;
+          return _h + '-' + _mi + '-' + _s;
+        }
+        case 'randomAlpha': {
+          const _chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+          return Array.from({ length: _token.randomLength || 6 }, function() {
+            return _chars[Math.floor(Math.random() * _chars.length)];
+          }).join('');
+        }
+        case 'customText': return _token.customValue || '';
+        case 'counter': {
+          if (participantNumber == null) return '__CNT__';
+          return _pad(participantNumber, _token.counterDigits || 3);
+        }
+        default: return '';
+      }
+    }).filter(function(p) { return p !== ''; });
+    const _hasUnique = _SESSION_NAME_TOKENS.some(function(t) { return t.type === 'randomAlpha' || t.type === 'counter'; });
+    if (!_hasUnique && _parts.length > 0) {
+      const _rc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      _parts.push(Array.from({ length: 6 }, function() { return _rc[Math.floor(Math.random() * _rc.length)]; }).join(''));
+    }
+    return _parts.length > 0 ? _parts.join(_SESSION_NAME_SEPARATOR) : null;
+  }
+  function _sessionNameHasDynamic() {
+    return _SESSION_NAME_TOKENS.some(function(t) { return t.type === 'counter'; });
+  }
+
   // Recuperar sessionId de localStorage o crear uno nuevo
   let trialSessionId = localStorage.getItem('jsPsych_currentSessionId');
   let storedParticipantNumber = localStorage.getItem('jsPsych_participantNumber');
   let isResuming = false;
   
   if (!trialSessionId) {
-    trialSessionId = "online_" + (crypto.randomUUID
+    trialSessionId = _generateSessionName(null) || (crypto.randomUUID
       ? crypto.randomUUID()
       : Math.random().toString(36).slice(2, 10));
   } else {
     isResuming = true;
   }
 
+  // Set JSPSYCH_SESSION_ID immediately so file uploads always have the current sessionId
+  window.JSPSYCH_SESSION_ID = trialSessionId;
+
   let participantNumber;
 
   async function createSession() {
     try {
+      const _preSessionName = !_sessionNameHasDynamic() ? _generateSessionName(null) : null;
       const res = await fetch("${DATA_API_URL}", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "*/*" },
@@ -384,7 +466,8 @@ export default function PublicConfiguration({
           experimentID: "${experimentID}",
           sessionId: trialSessionId,
           uid: Uid,
-          batchSize: ${batchConfig.batchSize}
+          batchSize: ${batchConfig.batchSize},
+          ...(_preSessionName ? { sessionName: _preSessionName } : {})
         }),
       });
       
@@ -407,6 +490,16 @@ export default function PublicConfiguration({
       alert('Error creating session: ' + error.message);
       throw error;
     }
+  }
+
+  async function _updateSessionName(sessionId, sessionName) {
+    try {
+      await fetch("${DATA_API_URL}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "updateSessionName", experimentID: "${experimentID}", sessionId, sessionName }),
+      });
+    } catch (e) {}
   }
 
   ${loadingOverlayCode()}
@@ -438,9 +531,10 @@ export default function PublicConfiguration({
       localStorage.removeItem('jsPsych_resumeTrial');
       localStorage.removeItem('jsPsych_currentSessionId');
       localStorage.removeItem('jsPsych_participantNumber');
-      trialSessionId = crypto.randomUUID
+      trialSessionId = _generateSessionName(null) || (crypto.randomUUID
         ? crypto.randomUUID()
-        : Math.random().toString(36).slice(2, 10);
+        : Math.random().toString(36).slice(2, 10));
+      window.JSPSYCH_SESSION_ID = trialSessionId;
       isResuming = false;
     } else if (!existingJump) {
       // Sin jump pendiente: derivar destino desde el último trial completado
@@ -488,7 +582,15 @@ export default function PublicConfiguration({
     // El backend maneja sesiones duplicadas (409) y las retorna correctamente
     _setLoadingMsg('Creating session…');
     participantNumber = await createSession();
-    
+
+    // If session name has counter token, generate final name now that participantNumber is known
+    if (_sessionNameHasDynamic() && typeof participantNumber === 'number' && !isNaN(participantNumber)) {
+      const _finalName = _generateSessionName(participantNumber);
+      if (_finalName) {
+        _updateSessionName(trialSessionId, _finalName);
+      }
+    }
+
     // Guardar sessionId y participantNumber en localStorage para futuras retomas
     localStorage.setItem('jsPsych_currentSessionId', trialSessionId);
     localStorage.setItem('jsPsych_participantNumber', participantNumber.toString());

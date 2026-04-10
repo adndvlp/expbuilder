@@ -102,6 +102,7 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
     toggleSelectAll,
     handleCancelSelect,
     handleRefresh,
+    fetchOnlineSessionFiles,
   } = SessionsActions({
     experimentID,
     localActiveSessions,
@@ -141,15 +142,21 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
       return;
     }
     setExpandedFileSession(sessionId);
-    // Re-fetch this session's files to get latest on expand
-    try {
-      const res = await fetch(
-        `${API_URL}/api/participant-files/${experimentID}?sessionId=${encodeURIComponent(sessionId)}`,
-      );
-      const data: ParticipantFile[] = await res.json();
-      setSessionFiles((prev) => ({ ...prev, [sessionId]: data }));
-    } catch {
-      setSessionFiles((prev) => ({ ...prev, [sessionId]: [] }));
+    if (activeTab === "online") {
+      setSessionFiles((prev) => ({ ...prev, [sessionId]: undefined as unknown as ParticipantFile[] }));
+      const files = await fetchOnlineSessionFiles(sessionId);
+      setSessionFiles((prev) => ({ ...prev, [sessionId]: files }));
+    } else {
+      // Re-fetch this session's files to get latest on expand
+      try {
+        const res = await fetch(
+          `${API_URL}/api/participant-files/${experimentID}?sessionId=${encodeURIComponent(sessionId)}`,
+        );
+        const data: ParticipantFile[] = await res.json();
+        setSessionFiles((prev) => ({ ...prev, [sessionId]: data }));
+      } catch {
+        setSessionFiles((prev) => ({ ...prev, [sessionId]: [] }));
+      }
     }
   };
 
@@ -348,6 +355,7 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
                 {(activeTab === "local" || activeTab === "preview") && (
                   <th>Files</th>
                 )}
+                {activeTab === "online" && <th>Files</th>}
                 {activeTab === "online" && <th>File</th>}
                 {activeTab !== "online" && (
                   <th
@@ -519,6 +527,85 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
                                   >
                                     ✕
                                   </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  )}
+                  {activeTab === "online" && (
+                    <td style={{ verticalAlign: "top" }}>
+                      <button
+                        className="download-csv-btn"
+                        style={{ fontSize: "11px" }}
+                        onClick={() => toggleFilesPanel(s.sessionId)}
+                      >
+                        {expandedFileSession === s.sessionId
+                          ? "▲ Close"
+                          : `Files${sessionFiles[s.sessionId] ? ` (${sessionFiles[s.sessionId]!.length})` : ""}`}
+                      </button>
+                      {expandedFileSession === s.sessionId && (
+                        <div
+                          style={{
+                            marginTop: 6,
+                            minWidth: 220,
+                            padding: "6px 8px",
+                            background: "var(--surface, #1e1e1e)",
+                            border: "1px solid var(--border, #333)",
+                            borderRadius: 6,
+                            fontSize: 11,
+                          }}
+                        >
+                          {sessionFiles[s.sessionId] === undefined ? (
+                            <span style={{ color: "#aaa" }}>Loading…</span>
+                          ) : sessionFiles[s.sessionId]!.length === 0 ? (
+                            <span style={{ color: "#aaa" }}>No files</span>
+                          ) : (
+                            <ul
+                              style={{
+                                margin: 0,
+                                padding: 0,
+                                listStyle: "none",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 4,
+                              }}
+                            >
+                              {sessionFiles[s.sessionId]!.map((f) => (
+                                <li
+                                  key={f.id}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                  }}
+                                >
+                                  <a
+                                    href={f.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    style={{
+                                      flex: 1,
+                                      color: "var(--gold, #FFD600)",
+                                      textDecoration: "none",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
+                                      maxWidth: 180,
+                                    }}
+                                    title={f.originalName}
+                                  >
+                                    {f.originalName}
+                                  </a>
+                                  <span
+                                    style={{ color: "#888", flexShrink: 0 }}
+                                  >
+                                    {f.sizeBytes < 1024 * 1024
+                                      ? `${Math.round(f.sizeBytes / 1024)} KB`
+                                      : `${(f.sizeBytes / 1024 / 1024).toFixed(1)} MB`}
+                                  </span>
                                 </li>
                               ))}
                             </ul>

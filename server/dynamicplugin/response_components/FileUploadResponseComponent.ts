@@ -262,6 +262,8 @@ class FileUploadResponseComponent {
           (window as any).JSPSYCH_SESSION_ID ||
           localStorage.getItem("jsPsych_currentSessionId");
         if (sid) body.sessionId = sid;
+        const eid = (window as any).JSPSYCH_EXPERIMENT_ID;
+        if (eid) body.experimentID = eid;
 
         const res = await fetch(endpoint, {
           method: "POST",

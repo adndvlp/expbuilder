@@ -1,5 +1,5 @@
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
-import { SessionMeta, TabType } from ".";
+import { SessionMeta, TabType, ParticipantFile } from ".";
 import { collection, getDocs } from "firebase/firestore";
 import { getFirebaseDb } from "../../../../lib/firebase";
 import { openExternal } from "../../../../lib/openExternal";
@@ -272,6 +272,40 @@ export default function FetchSessions({
     }
   };
 
+  const fetchOnlineSessionFiles = async (
+    sessionId: string,
+  ): Promise<ParticipantFile[]> => {
+    if (!experimentID) return [];
+    try {
+      const db = await getFirebaseDb();
+      const filesRef = collection(
+        db,
+        "experiments",
+        experimentID,
+        "session_metadata",
+        sessionId,
+        "participant_files",
+      );
+      const snap = await getDocs(filesRef);
+      return snap.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: data.fileId || d.id,
+          sessionId: data.sessionId || null,
+          filename: data.filename || data.originalName || "",
+          originalName: data.originalName || d.id,
+          mimeType: data.mimeType || "",
+          sizeBytes: data.sizeBytes || 0,
+          uploadedAt: data.uploadedAt || new Date().toISOString(),
+          url: data.url || "",
+        };
+      });
+    } catch (e) {
+      console.error("Error fetching online participant files:", e);
+      return [];
+    }
+  };
+
   return {
     handleDeleteSession,
     handleDownloadCSV,
@@ -282,5 +316,6 @@ export default function FetchSessions({
     toggleSelectAll,
     handleCancelSelect,
     handleRefresh,
+    fetchOnlineSessionFiles,
   };
 }
