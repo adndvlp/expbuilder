@@ -7,6 +7,8 @@ import { loadingOverlayCode } from "./LoadingOverlay";
 import { resumeCode } from "./ResumeCode";
 import { CanvasStyles } from "../../ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
 
+const API_URL = import.meta.env.VITE_API_URL ?? "";
+
 type GetTrialFn = (id: string | number) => Promise<Trial | null>;
 type GetLoopTimelineFn = (loopId: string | number) => Promise<TimelineItem[]>;
 type GetLoopFn = (id: string | number) => Promise<Loop | null>;
@@ -66,7 +68,9 @@ export default function LocalConfiguration({
     let sessionNameSeparator = "_";
     if (experimentID) {
       try {
-        const snRes = await fetch(`/api/session-name-config/${experimentID}`);
+        const snRes = await fetch(
+          `${API_URL}/api/session-name-config/${experimentID}`,
+        );
         if (snRes.ok) {
           const sn = await snRes.json();
           sessionNameTokens = sn.tokens ?? [];

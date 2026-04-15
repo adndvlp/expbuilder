@@ -143,7 +143,10 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
     }
     setExpandedFileSession(sessionId);
     if (activeTab === "online") {
-      setSessionFiles((prev) => ({ ...prev, [sessionId]: undefined as unknown as ParticipantFile[] }));
+      setSessionFiles((prev) => ({
+        ...prev,
+        [sessionId]: undefined as unknown as ParticipantFile[],
+      }));
       const files = await fetchOnlineSessionFiles(sessionId);
       setSessionFiles((prev) => ({ ...prev, [sessionId]: files }));
     } else {

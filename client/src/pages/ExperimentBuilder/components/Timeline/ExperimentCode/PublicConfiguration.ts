@@ -9,6 +9,7 @@ import { resumeCode } from "./ResumeCode";
 import { captchaCode } from "./CaptchaCode";
 import { auth } from "../../../../../lib/firebase";
 
+const API_URL = import.meta.env.VITE_API_URL ?? "";
 const DATA_API_URL = import.meta.env.VITE_DATA_API_URL;
 
 type GetTrialFn = (id: string | number) => Promise<Trial | null>;
@@ -127,7 +128,9 @@ export default function PublicConfiguration({
     let sessionNameSeparator = "_";
     if (experimentID) {
       try {
-        const snRes = await fetch(`/api/session-name-config/${experimentID}`);
+        const snRes = await fetch(
+          `${API_URL}/api/session-name-config/${experimentID}`,
+        );
         if (snRes.ok) {
           const sn = await snRes.json();
           sessionNameTokens = sn.tokens ?? [];
