@@ -447,9 +447,17 @@ export default function PublicConfiguration({
   let isResuming = false;
   
   if (!trialSessionId) {
-    trialSessionId = _generateSessionName(null) || (crypto.randomUUID
-      ? crypto.randomUUID()
-      : Math.random().toString(36).slice(2, 10));
+    // If there are counter tokens, use UUID as initial ID (counter needs participantNumber).
+    // Otherwise use the generated name directly.
+    if (_sessionNameHasDynamic()) {
+      trialSessionId = (crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2, 10));
+    } else {
+      trialSessionId = _generateSessionName(null) || (crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2, 10));
+    }
   } else {
     isResuming = true;
   }
@@ -534,9 +542,11 @@ export default function PublicConfiguration({
       localStorage.removeItem('jsPsych_resumeTrial');
       localStorage.removeItem('jsPsych_currentSessionId');
       localStorage.removeItem('jsPsych_participantNumber');
-      trialSessionId = _generateSessionName(null) || (crypto.randomUUID
-        ? crypto.randomUUID()
-        : Math.random().toString(36).slice(2, 10));
+      trialSessionId = _sessionNameHasDynamic()
+        ? (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 10))
+        : (_generateSessionName(null) || (crypto.randomUUID
+            ? crypto.randomUUID()
+            : Math.random().toString(36).slice(2, 10)));
       window.JSPSYCH_SESSION_ID = trialSessionId;
       isResuming = false;
     } else if (!existingJump) {
@@ -590,7 +600,9 @@ export default function PublicConfiguration({
     if (_sessionNameHasDynamic() && typeof participantNumber === 'number' && !isNaN(participantNumber)) {
       const _finalName = _generateSessionName(participantNumber);
       if (_finalName) {
-        _updateSessionName(trialSessionId, _finalName);
+        _updateSessionName(trialSessionId, _finalName); // update Firestore metadata
+        trialSessionId = _finalName;                    // update local variable
+        window.JSPSYCH_SESSION_ID = trialSessionId;     // update global for file uploads
       }
     }
 

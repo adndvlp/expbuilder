@@ -98,7 +98,13 @@ export default function FetchSessions({
   useEffect(() => {
     if (activeTab === "preview") {
       // Preview results: sessionId contains "_result_"
-      setSessions(allSessions.filter((s) => s.sessionId.includes("_result_")));
+      const sorted = allSessions
+        .filter((s) => s.sessionId.includes("_result_"))
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
+      setSessions(sorted);
     } else if (activeTab === "local") {
       // Local experiments: combinar sesiones de DB con sesiones activas de WebSocket
       const dbLocalSessions = allSessions.filter(
@@ -130,10 +136,20 @@ export default function FetchSessions({
         }
       });
 
-      setSessions(Array.from(sessionMap.values()));
+      setSessions(
+        Array.from(sessionMap.values()).sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        ),
+      );
     } else if (activeTab === "online") {
       // Online experiments: usar directamente la metadata de Firestore (fuente única)
-      setSessions(onlineSessions);
+      setSessions(
+        [...onlineSessions].sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        ),
+      );
     }
   }, [activeTab, allSessions, onlineSessions, localActiveSessions]);
 

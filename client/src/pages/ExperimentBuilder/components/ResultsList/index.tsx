@@ -345,7 +345,10 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
   };
 
   return (
-    <div className="results-container" style={{ marginTop: 25 }}>
+    <div
+      className="results-container"
+      style={{ marginTop: 25, flex: 1, minHeight: 0 }}
+    >
       <div
         style={{
           display: "flex",

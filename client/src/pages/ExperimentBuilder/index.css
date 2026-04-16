@@ -337,7 +337,10 @@ button.remove-button:hover {
 }
 
 .results-container {
-  /* no overflow here — the table container handles its own scroll */
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .results-table-container {
@@ -345,7 +348,8 @@ button.remove-button:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
   background: var(--table-bg, #fff);
   margin-bottom: 24px;
-  max-height: calc(100vh - 320px);
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 

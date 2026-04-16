@@ -159,7 +159,16 @@ function ExperimentPanel() {
       </div>
 
       {/* Tab Content */}
-      <div style={{ flex: 1, paddingBottom: 24 }}>
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+          paddingBottom: 24,
+          overflowY: activeTab === "settings" ? "auto" : "hidden",
+        }}
+      >
         {activeTab === "settings" ? (
           <ExperimentSettings experimentID={id} />
         ) : (
