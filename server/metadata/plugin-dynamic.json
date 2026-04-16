@@ -13,10 +13,6 @@
       "type": "boolean",
       "default": false
     },
-    "stimuli_duration": {
-      "type": "number",
-      "default": null
-    },
     "trial_duration": {
       "type": "number",
       "default": null

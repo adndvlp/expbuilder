@@ -227,10 +227,18 @@ class ImageComponent {
     imageContainer.appendChild(stimulusElement);
 
     // Handle stimulus duration
-    if (config.stimulus_duration !== null) {
+    const stimulusDuration =
+      config.stimulus_duration !== null &&
+      config.stimulus_duration !== undefined
+        ? typeof config.stimulus_duration === "object" &&
+          "value" in config.stimulus_duration
+          ? config.stimulus_duration.value
+          : config.stimulus_duration
+        : null;
+    if (stimulusDuration !== null && stimulusDuration !== undefined) {
       this.hideTimeout = this.jsPsych.pluginAPI.setTimeout(() => {
         this.hide();
-      }, config.stimulus_duration);
+      }, stimulusDuration);
     }
 
     this.element = stimulusElement;

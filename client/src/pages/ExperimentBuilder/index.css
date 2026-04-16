@@ -337,7 +337,7 @@ button.remove-button:hover {
 }
 
 .results-container {
-  overflow-y: auto;
+  /* no overflow here — the table container handles its own scroll */
 }
 
 .results-table-container {
@@ -345,6 +345,8 @@ button.remove-button:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
   background: var(--table-bg, #fff);
   margin-bottom: 24px;
+  max-height: calc(100vh - 320px);
+  overflow-y: auto;
 }
 
 .results-table {
@@ -376,6 +378,9 @@ button.remove-button:hover {
   background: var(--table-header-bg, #f3f3f3);
   color: var(--text-dark);
   font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .results-table tr {

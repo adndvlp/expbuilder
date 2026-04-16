@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Switch from "react-switch";
 import { useExperimentID } from "../../hooks/useExperimentID";
 import { io, Socket } from "socket.io-client";
 import { openExternal } from "../../../../lib/openExternal";
 import SessionsActions from "./SessionsActions";
+import { FaFilter } from "react-icons/fa";
+import { MdClose } from "react-icons/md";
 // No usar Firebase, usar endpoints REST locales
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -51,6 +53,39 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
   const [selected, setSelected] = useState<string[]>([]);
   const [selectMode, setSelectMode] = useState(false);
 
+  type Filters = {
+    state: string;
+    browser: string;
+    os: string;
+    resolution: string;
+    datePeriod: string;
+  };
+  const [filters, setFilters] = useState<Filters>({
+    state: "",
+    browser: "",
+    os: "",
+    resolution: "",
+    datePeriod: "",
+  });
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterBtnRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    if (!filterOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        dropdownRef.current?.contains(e.target as Node) ||
+        filterBtnRef.current?.contains(e.target as Node)
+      )
+        return;
+      setFilterOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [filterOpen]);
+
   // Participant files: map of sessionId → file list (null = not yet fetched)
   const [sessionFiles, setSessionFiles] = useState<
     Record<string, ParticipantFile[] | null>
@@ -58,6 +93,17 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
   const [expandedFileSession, setExpandedFileSession] = useState<string | null>(
     null,
   );
+
+  // Reset filters when switching tabs
+  useEffect(() => {
+    setFilters({
+      state: "",
+      browser: "",
+      os: "",
+      resolution: "",
+      datePeriod: "",
+    });
+  }, [activeTab]);
 
   const experimentID = useExperimentID();
 
@@ -181,6 +227,74 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
     }
   };
 
+  // Derived unique filter options from sessions
+  const uniqueBrowsers = [
+    ...new Set(
+      sessions.map((s) => s.metadata?.browser).filter((b): b is string => !!b),
+    ),
+  ];
+  const uniqueOS = [
+    ...new Set(
+      sessions.map((s) => s.metadata?.os).filter((o): o is string => !!o),
+    ),
+  ];
+  const uniqueResolutions = [
+    ...new Set(
+      sessions
+        .map((s) => s.metadata?.screenResolution)
+        .filter((r): r is string => !!r),
+    ),
+  ];
+
+  // Apply column filters
+  const filteredSessions = sessions.filter((s) => {
+    if (filters.state && s.state !== filters.state) return false;
+    if (filters.browser && s.metadata?.browser !== filters.browser)
+      return false;
+    if (filters.os && s.metadata?.os !== filters.os) return false;
+    if (
+      filters.resolution &&
+      s.metadata?.screenResolution !== filters.resolution
+    )
+      return false;
+    if (filters.datePeriod) {
+      const now = new Date();
+      const created = new Date(s.createdAt).getTime();
+      const startOf = (d: Date) => {
+        d.setHours(0, 0, 0, 0);
+        return d.getTime();
+      };
+      if (filters.datePeriod === "today" && created < startOf(new Date(now)))
+        return false;
+      if (filters.datePeriod === "yesterday") {
+        const y = new Date(now);
+        y.setDate(y.getDate() - 1);
+        if (created < startOf(y) || created >= startOf(new Date(now)))
+          return false;
+      }
+      if (filters.datePeriod === "7d" && created < now.getTime() - 7 * 86400000)
+        return false;
+      if (
+        filters.datePeriod === "30d" &&
+        created < now.getTime() - 30 * 86400000
+      )
+        return false;
+      if (
+        filters.datePeriod === "90d" &&
+        created < now.getTime() - 90 * 86400000
+      )
+        return false;
+    }
+    return true;
+  });
+
+  const hasActiveFilters =
+    filters.state ||
+    filters.browser ||
+    filters.os ||
+    filters.resolution ||
+    filters.datePeriod;
+
   const getTitle = () => {
     if (activeTab === "preview") return "Preview Results";
     if (activeTab === "local") return "Local Experiment Sessions";
@@ -258,6 +372,402 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
             {onlineLoading ? "Loading..." : "↻ Refresh"}
           </button>
         )}
+        {(activeTab === "local" || activeTab === "online") &&
+          sessions.length > 0 &&
+          !selectMode && (
+            <button
+              className="select-mode-btn"
+              style={{
+                borderRadius: "6px",
+                fontSize: "12px",
+                background:
+                  "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+              }}
+              onClick={() => setSelectMode(true)}
+            >
+              Select sessions
+            </button>
+          )}
+        {selectMode && (
+          <>
+            <button
+              className="cancel-select-btn"
+              style={{
+                borderRadius: "6px",
+                fontSize: "12px",
+                background:
+                  "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+              }}
+              onClick={handleCancelSelect}
+            >
+              Cancel
+            </button>
+            {activeTab !== "online" && (
+              <button
+                className="download-csv-btn"
+                style={{
+                  borderRadius: "6px",
+                  fontSize: "12px",
+                  background:
+                    "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+                }}
+                disabled={selected.length === 0}
+                onClick={handleDownloadSelected}
+              >
+                Download ({selected.length})
+              </button>
+            )}
+            {activeTab === "online" && (
+              <button
+                className="download-csv-btn"
+                style={{
+                  borderRadius: "6px",
+                  fontSize: "12px",
+                  background:
+                    "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+                }}
+                disabled={selected.length === 0}
+                onClick={handleDownloadSelectedOnline}
+              >
+                Download ({selected.length})
+              </button>
+            )}
+            {activeTab !== "online" && (
+              <button
+                className="remove-button"
+                style={{ fontSize: "12px" }}
+                disabled={selected.length === 0}
+                onClick={handleDeleteSelected}
+              >
+                Delete ({selected.length})
+              </button>
+            )}
+          </>
+        )}
+        {(activeTab === "local" || activeTab === "online") &&
+          sessions.length > 0 && (
+            <div style={{ position: "relative" }} ref={filterBtnRef}>
+              <button
+                className="download-csv-btn"
+                style={{
+                  borderRadius: "6px",
+                  fontSize: "12px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  background: hasActiveFilters
+                    ? "linear-gradient(135deg, var(--dark-gold), var(--gold))"
+                    : "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+                }}
+                onClick={() => {
+                  if (!filterOpen && filterBtnRef.current) {
+                    const rect = filterBtnRef.current.getBoundingClientRect();
+                    setDropdownPos({ top: rect.bottom + 6, left: rect.left });
+                  }
+                  setFilterOpen((o) => !o);
+                }}
+              >
+                <FaFilter size={11} />
+                Filter
+                {hasActiveFilters && (
+                  <span
+                    style={{
+                      background: "rgba(0,0,0,0.3)",
+                      borderRadius: "50%",
+                      width: 16,
+                      height: 16,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 10,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {
+                      [filters.state, filters.browser, filters.os].filter(
+                        Boolean,
+                      ).length
+                    }
+                  </span>
+                )}
+              </button>
+              {filterOpen && (
+                <div
+                  ref={dropdownRef}
+                  style={{
+                    position: "fixed",
+                    top: dropdownPos.top,
+                    left: dropdownPos.left,
+                    zIndex: 9999,
+                    background: "var(--neutral-dark, #1a1a2e)",
+                    border: "1px solid var(--neutral-mid, #444)",
+                    borderRadius: 8,
+                    padding: "14px 16px 10px",
+                    minWidth: 220,
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 10,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "var(--text-dark, #f8f8f8)",
+                      }}
+                    >
+                      Filter sessions
+                    </span>
+                    <button
+                      onClick={() => setFilterOpen(false)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "var(--text-dark, #aaa)",
+                        padding: 0,
+                        lineHeight: 1,
+                      }}
+                    >
+                      <MdClose size={15} />
+                    </button>
+                  </div>
+                  {/* scrollable filters */}
+                  <div
+                    style={{
+                      overflowY: "auto",
+                      maxHeight: 300,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 10,
+                      paddingBottom: 4,
+                    }}
+                  >
+                    <label
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 4,
+                        fontSize: 11,
+                        color: "var(--text-dark, #aaa)",
+                      }}
+                    >
+                      State
+                      <select
+                        value={filters.state}
+                        onChange={(e) =>
+                          setFilters((f) => ({ ...f, state: e.target.value }))
+                        }
+                        style={{
+                          padding: "5px 8px",
+                          borderRadius: 6,
+                          border: "1px solid var(--neutral-mid, #444)",
+                          background: "var(--surface, #23272e)",
+                          color: "var(--text-dark, #f8f8f8)",
+                          fontSize: 12,
+                        }}
+                      >
+                        <option value="">All</option>
+                        <option value="initiated">Initiated</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="abandoned">Abandoned</option>
+                      </select>
+                    </label>
+                    {uniqueBrowsers.length > 0 && (
+                      <label
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 4,
+                          fontSize: 11,
+                          color: "var(--text-dark, #aaa)",
+                        }}
+                      >
+                        Browser
+                        <select
+                          value={filters.browser}
+                          onChange={(e) =>
+                            setFilters((f) => ({
+                              ...f,
+                              browser: e.target.value,
+                            }))
+                          }
+                          style={{
+                            padding: "5px 8px",
+                            borderRadius: 6,
+                            border: "1px solid var(--neutral-mid, #444)",
+                            background: "var(--surface, #23272e)",
+                            color: "var(--text-dark, #f8f8f8)",
+                            fontSize: 12,
+                          }}
+                        >
+                          <option value="">All</option>
+                          {uniqueBrowsers.map((b) => (
+                            <option key={b} value={b}>
+                              {b}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                    {uniqueOS.length > 0 && (
+                      <label
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 4,
+                          fontSize: 11,
+                          color: "var(--text-dark, #aaa)",
+                        }}
+                      >
+                        OS
+                        <select
+                          value={filters.os}
+                          onChange={(e) =>
+                            setFilters((f) => ({ ...f, os: e.target.value }))
+                          }
+                          style={{
+                            padding: "5px 8px",
+                            borderRadius: 6,
+                            border: "1px solid var(--neutral-mid, #444)",
+                            background: "var(--surface, #23272e)",
+                            color: "var(--text-dark, #f8f8f8)",
+                            fontSize: 12,
+                          }}
+                        >
+                          <option value="">All</option>
+                          {uniqueOS.map((o) => (
+                            <option key={o} value={o}>
+                              {o}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                    {uniqueResolutions.length > 0 && (
+                      <label
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 4,
+                          fontSize: 11,
+                          color: "var(--text-dark, #aaa)",
+                        }}
+                      >
+                        Resolution
+                        <select
+                          value={filters.resolution}
+                          onChange={(e) =>
+                            setFilters((f) => ({
+                              ...f,
+                              resolution: e.target.value,
+                            }))
+                          }
+                          style={{
+                            padding: "5px 8px",
+                            borderRadius: 6,
+                            border: "1px solid var(--neutral-mid, #444)",
+                            background: "var(--surface, #23272e)",
+                            color: "var(--text-dark, #f8f8f8)",
+                            fontSize: 12,
+                          }}
+                        >
+                          <option value="">All</option>
+                          {uniqueResolutions.map((r) => (
+                            <option key={r} value={r}>
+                              {r}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                    <label
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 4,
+                        fontSize: 11,
+                        color: "var(--text-dark, #aaa)",
+                      }}
+                    >
+                      Date
+                      <select
+                        value={filters.datePeriod}
+                        onChange={(e) =>
+                          setFilters((f) => ({
+                            ...f,
+                            datePeriod: e.target.value,
+                          }))
+                        }
+                        style={{
+                          padding: "5px 8px",
+                          borderRadius: 6,
+                          border: "1px solid var(--neutral-mid, #444)",
+                          background: "var(--surface, #23272e)",
+                          color: "var(--text-dark, #f8f8f8)",
+                          fontSize: 12,
+                        }}
+                      >
+                        <option value="">All time</option>
+                        <option value="today">Today</option>
+                        <option value="yesterday">Yesterday</option>
+                        <option value="7d">Last 7 days</option>
+                        <option value="30d">Last 30 days</option>
+                        <option value="90d">Last 90 days</option>
+                      </select>
+                    </label>
+                  </div>
+                  {/* end scrollable filters */}
+                  {hasActiveFilters && (
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        paddingTop: 4,
+                        borderTop: "1px solid var(--neutral-mid, #444)",
+                      }}
+                    >
+                      <span style={{ fontSize: 11, color: "#aaa" }}>
+                        {filteredSessions.length} of {sessions.length}
+                      </span>
+                      <button
+                        onClick={() =>
+                          setFilters({
+                            state: "",
+                            browser: "",
+                            os: "",
+                            resolution: "",
+                            datePeriod: "",
+                          })
+                        }
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "var(--danger, #ef4444)",
+                          fontSize: 11,
+                          cursor: "pointer",
+                          padding: 0,
+                        }}
+                      >
+                        Clear all
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
       </div>
       {(activeTab === "online" ? onlineLoading : loading) ? (
         <p className="results-text">Loading...</p>
@@ -265,62 +775,6 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
         <p className="results-text">{getEmptyMessage()}</p>
       ) : (
         <div className="results-table-container">
-          {selectMode && (
-            <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
-              <button
-                className="cancel-select-btn"
-                style={{
-                  borderRadius: "6px",
-                  fontSize: "12px",
-                  background:
-                    "linear-gradient(135deg, var(--gold), var(--dark-gold))",
-                }}
-                onClick={handleCancelSelect}
-              >
-                Cancel selection
-              </button>
-              {activeTab !== "online" && (
-                <button
-                  className="download-csv-btn"
-                  style={{
-                    borderRadius: "6px",
-                    fontSize: "12px",
-                    background:
-                      "linear-gradient(135deg, var(--gold), var(--dark-gold))",
-                  }}
-                  disabled={selected.length === 0}
-                  onClick={handleDownloadSelected}
-                >
-                  Download selected
-                </button>
-              )}
-              {activeTab === "online" && (
-                <button
-                  className="download-csv-btn"
-                  style={{
-                    borderRadius: "6px",
-                    fontSize: "12px",
-                    background:
-                      "linear-gradient(135deg, var(--gold), var(--dark-gold))",
-                  }}
-                  disabled={selected.length === 0}
-                  onClick={handleDownloadSelectedOnline}
-                >
-                  Download selected
-                </button>
-              )}
-              {activeTab !== "online" && (
-                <button
-                  className="remove-button"
-                  style={{ fontSize: "12px" }}
-                  disabled={selected.length === 0}
-                  onClick={handleDeleteSelected}
-                >
-                  Delete selected ({selected.length})
-                </button>
-              )}
-            </div>
-          )}
           <table className="results-table">
             <thead>
               <tr>
@@ -360,52 +814,26 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
                 )}
                 {activeTab === "online" && <th>Files</th>}
                 {activeTab === "online" && <th>File</th>}
-                {activeTab !== "online" && (
-                  <th
-                    style={{
-                      minWidth: 220,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                    }}
-                  >
-                    <span>Actions</span>
-                    {!selectMode && (
-                      <button
-                        key="select-btn"
-                        className="select-mode-btn"
-                        style={{
-                          marginLeft: 0,
-                          borderRadius: "6px",
-                          background:
-                            "linear-gradient(135deg, var(--gold), var(--dark-gold))",
-                        }}
-                        onClick={() => setSelectMode(true)}
-                      >
-                        Select sessions
-                      </button>
-                    )}
-                  </th>
-                )}
-                {activeTab === "online" && !selectMode && (
-                  <th style={{ minWidth: 120 }}>
-                    <button
-                      className="select-mode-btn"
-                      style={{
-                        borderRadius: "6px",
-                        background:
-                          "linear-gradient(135deg, var(--gold), var(--dark-gold))",
-                      }}
-                      onClick={() => setSelectMode(true)}
-                    >
-                      Select sessions
-                    </button>
-                  </th>
-                )}
+                {activeTab !== "online" && <th>Actions</th>}
+                {activeTab === "online" && <th>Actions</th>}
               </tr>
             </thead>
             <tbody>
-              {sessions.map((s) => (
+              {filteredSessions.length === 0 && hasActiveFilters ? (
+                <tr>
+                  <td
+                    colSpan={99}
+                    style={{
+                      textAlign: "center",
+                      padding: 20,
+                      color: "var(--text-dark, #aaa)",
+                    }}
+                  >
+                    No sessions match the current filters.
+                  </td>
+                </tr>
+              ) : null}
+              {filteredSessions.map((s) => (
                 <tr key={s._id}>
                   {selectMode && (
                     <td>

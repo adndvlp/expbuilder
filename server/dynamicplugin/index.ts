@@ -42,12 +42,6 @@ const info = <const>{
       type: ParameterType.BOOL,
       default: false,
     },
-    /** How long to show the stimulus for in milliseconds. If the value is null, then the stimulus will be shown until the participant
-     * makes a response. */
-    stimuli_duration: {
-      type: ParameterType.INT,
-      default: null,
-    },
     /** How long to wait for the participant to make a response before ending the trial in milliseconds. If the participant
      * fails to make a response before this timer is reached, the participant's response will be recorded as null for the trial
      * and the trial will end. If the value of this parameter is null, then the trial will wait for a response indefinitely. */
@@ -121,7 +115,6 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           height: 100vh;
           overflow: auto;
         }
-        .dynamic-image-component,
         #jspsych-html-component-main,
         #jspsych-button-response-main {
           visibility: visible !important;
@@ -466,20 +459,6 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       // Save trial data
       this.jsPsych.finishTrial(trialData);
     };
-
-    // Handle stimuli duration (hide stimuli after duration)
-    if (
-      trial.stimuli_duration !== null &&
-      trial.stimuli_duration !== undefined
-    ) {
-      this.jsPsych.pluginAPI.setTimeout(() => {
-        stimulusComponents.forEach(({ instance }) => {
-          if (instance.hide) {
-            instance.hide();
-          }
-        });
-      }, trial.stimuli_duration);
-    }
 
     // Handle trial duration (end trial after duration)
     if (trial.trial_duration !== null && trial.trial_duration !== undefined) {

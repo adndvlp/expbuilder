@@ -134,6 +134,11 @@ const info = {
       default: null,
       description: "Width of the text block in pixels (null = auto)",
     },
+    /** How long to show the stimulus for in milliseconds. If null, it stays visible for the whole trial. */
+    stimulus_duration: {
+      type: ParameterType.INT,
+      default: null,
+    },
 
     // ── Cloze / inline-input params (only relevant when text contains %%) ──
     /**
@@ -201,6 +206,7 @@ const info = {
 class TextComponent {
   private jsPsych: any;
   private element: HTMLElement | null = null;
+  private hideTimeout: number | null = null;
 
   // ── Cloze state ─────────────────────────────────────────────────────────
   private isClozeMode: boolean = false;
@@ -345,6 +351,13 @@ class TextComponent {
       container.appendChild(this.element);
     }
 
+    const stimulusDuration = this.resolveParam(config.stimulus_duration, null);
+    if (stimulusDuration !== null && stimulusDuration !== undefined) {
+      this.hideTimeout = this.jsPsych.pluginAPI.setTimeout(() => {
+        this.hide();
+      }, stimulusDuration);
+    }
+
     return this.element;
   }
 
@@ -452,6 +465,9 @@ class TextComponent {
   }
 
   destroy(): void {
+    if (this.hideTimeout !== null) {
+      clearTimeout(this.hideTimeout);
+    }
     if (this.element && this.element.parentNode) {
       this.element.parentNode.removeChild(this.element);
     }

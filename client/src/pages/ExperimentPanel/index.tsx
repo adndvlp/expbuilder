@@ -22,9 +22,14 @@ function ExperimentPanel() {
     <div
       style={{
         padding: 32,
+        paddingBottom: 0,
         backgroundColor: "var(--neutral-light)",
-        minHeight: "100vh",
+        height: "100vh",
         width: "100vw",
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
       }}
     >
       <h1 style={{ color: "var(--text-dark)" }}>Experiment Panel</h1>
@@ -54,20 +59,17 @@ function ExperimentPanel() {
         Experiment ID:{" "}
         <span style={{ fontWeight: "normal", fontSize: 18 }}>{id}</span>
       </p>
-      <button
-        className="gradient-btn"
-        style={{ marginTop: 24 }}
-        onClick={() => navigate("/home")}
-      >
-        Go to Home
-      </button>
-      <button
-        className="gradient-btn"
-        onClick={() => navigate(`/home/experiment/${id}/builder`)}
-        style={{ marginTop: 16, marginLeft: 16 }}
-      >
-        Go to Builder
-      </button>
+      <div style={{ display: "flex", gap: 12, marginTop: 24 }}>
+        <button className="gradient-btn" onClick={() => navigate("/home")}>
+          Go to Home
+        </button>
+        <button
+          className="gradient-btn"
+          onClick={() => navigate(`/home/experiment/${id}/builder`)}
+        >
+          Go to Builder
+        </button>
+      </div>
 
       {/* Tabs */}
       <div
@@ -157,11 +159,13 @@ function ExperimentPanel() {
       </div>
 
       {/* Tab Content */}
-      {activeTab === "settings" ? (
-        <ExperimentSettings experimentID={id} />
-      ) : (
-        <ResultsList activeTab={activeTab} />
-      )}
+      <div style={{ flex: 1, paddingBottom: 24 }}>
+        {activeTab === "settings" ? (
+          <ExperimentSettings experimentID={id} />
+        ) : (
+          <ResultsList activeTab={activeTab} />
+        )}
+      </div>
     </div>
   );
 }

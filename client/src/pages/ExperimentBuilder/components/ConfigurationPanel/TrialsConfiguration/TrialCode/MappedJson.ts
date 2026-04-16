@@ -224,7 +224,6 @@ export default function MappedJson({
 
         // Procesar otros parámetros del DynamicPlugin (excluding response_components)
         const additionalDynamicParams = [
-          "stimuli_duration",
           "trial_duration",
           "response_ends_trial",
           "require_response",

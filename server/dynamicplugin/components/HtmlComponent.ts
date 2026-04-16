@@ -27,6 +27,11 @@ const info = {
       default: 0,
       description: "Layer order - higher values render on top of lower values",
     },
+    /** How long to show the stimulus for in milliseconds. If null, it stays visible for the whole trial. */
+    stimulus_duration: {
+      type: ParameterType.INT,
+      default: null,
+    },
   },
   // prettier-ignore
   citations: {
@@ -42,6 +47,7 @@ const info = {
 class HtmlComponent {
   private jsPsych: any;
   private stimulusElement: HTMLElement | null = null;
+  private hideTimeout: number | null = null;
 
   constructor(jsPsych: any) {
     this.jsPsych = jsPsych;
@@ -82,6 +88,20 @@ class HtmlComponent {
     container.appendChild(stimulusElement);
     this.stimulusElement = stimulusElement;
 
+    const stimulusDuration =
+      config.stimulus_duration !== null &&
+      config.stimulus_duration !== undefined
+        ? typeof config.stimulus_duration === "object" &&
+          "value" in config.stimulus_duration
+          ? config.stimulus_duration.value
+          : config.stimulus_duration
+        : null;
+    if (stimulusDuration !== null && stimulusDuration !== undefined) {
+      this.hideTimeout = this.jsPsych.pluginAPI.setTimeout(() => {
+        this.hide();
+      }, stimulusDuration);
+    }
+
     return stimulusElement;
   }
 
@@ -107,6 +127,9 @@ class HtmlComponent {
    * Remove the HTML content from DOM and clean up
    */
   destroy() {
+    if (this.hideTimeout !== null) {
+      clearTimeout(this.hideTimeout);
+    }
     if (this.stimulusElement && this.stimulusElement.parentNode) {
       this.stimulusElement.parentNode.removeChild(this.stimulusElement);
     }
