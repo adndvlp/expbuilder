@@ -1,6 +1,6 @@
 {
   "name": "jspsych-expbuilder-plugin-dynamic",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "DynamicPlugin for jsPsych — composable multi-component trial plugin",
   "main": "dist/index.iife.js",
   "module": "dist/index.es.js",
