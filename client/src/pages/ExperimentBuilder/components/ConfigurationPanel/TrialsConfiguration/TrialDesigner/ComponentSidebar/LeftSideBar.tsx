@@ -165,6 +165,7 @@ function LeftSideBar({
     { type: "InputResponseComponent", label: "Input" },
     { type: "AudioResponseComponent", label: "Audio" },
     { type: "FileUploadResponseComponent", label: "File Upload" },
+    { type: "ClickResponseComponent", label: "Click" },
   ];
   return (
     <div

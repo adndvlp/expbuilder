@@ -1,0 +1,55 @@
+{
+  "name": "ClickResponseComponent",
+  "version": "1.0.0",
+  "parameters": {
+    "name": {
+      "type": "string"
+    },
+    "capture_full_screen": {
+      "type": "boolean",
+      "default": true
+    },
+    "target_selector": {
+      "type": "string",
+      "default": null
+    },
+    "relative_to_element": {
+      "type": "boolean",
+      "default": false
+    },
+    "show_click_marker": {
+      "type": "boolean",
+      "default": false
+    },
+    "marker_color": {
+      "type": "string",
+      "default": "#e74c3c"
+    },
+    "marker_radius": {
+      "type": "number",
+      "default": 8
+    },
+    "coordinates": {
+      "type": "object",
+      "default": "{ x: 0, y: 0 }"
+    },
+    "zIndex": {
+      "type": "number",
+      "default": 10
+    }
+  },
+  "data": {
+    "x": {
+      "type": "number"
+    },
+    "y": {
+      "type": "number"
+    },
+    "is_touch": {
+      "type": "boolean"
+    },
+    "rt": {
+      "type": "number"
+    }
+  }
+}

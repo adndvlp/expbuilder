@@ -10,13 +10,13 @@ const info = {
       type: ParameterType.STRING,
       default: undefined,
     },
-    /** Accepted file types. Use MIME types (e.g. "image/*") or extensions (e.g. ".pdf,.docx"). Empty = all types. */
+    /** Accepted file types. Use MIME types (e.g. "image/*") or extensions (e.g. ".pdf,.docx" or "pdf, docx"). Empty = all types. */
     accept: {
       type: ParameterType.STRING,
       pretty_name: "Accepted File Types",
       default: "",
       description:
-        "Accepted file types as MIME types or extensions. Empty string = all types.",
+        "Accepted file types as MIME types or extensions separated by commas",
     },
     /** Allow the participant to select multiple files at once. */
     multiple: {
@@ -163,7 +163,21 @@ class FileUploadResponseComponent {
     fileInput.type = "file";
     fileInput.id = `jspsych-file-upload-input-${Date.now()}`;
     fileInput.style.display = "none";
-    if (trial.accept) fileInput.accept = trial.accept;
+    if (trial.accept) {
+      // Allow formats like "pdf, docx" or ".pdf, .docx" or "image/*"
+      const formattedAccept = trial.accept
+        .split(",")
+        .map((ext: string) => {
+          ext = ext.trim();
+          // If it's an extension without a dot and not a mime type, add a dot
+          if (ext && !ext.startsWith(".") && !ext.includes("/")) {
+            return `.${ext}`;
+          }
+          return ext;
+        })
+        .join(",");
+      fileInput.accept = formattedAccept;
+    }
     if (trial.multiple) fileInput.multiple = true;
 
     // Visible button that triggers the file picker
@@ -184,6 +198,43 @@ class FileUploadResponseComponent {
     fileInput.addEventListener("change", async () => {
       const files = Array.from(fileInput.files || []);
       if (files.length === 0) return;
+
+      // Validate allowed extensions
+      if (trial.accept) {
+        const allowedExtensions = trial.accept.split(",").map((ext: string) => {
+          ext = ext.trim().toLowerCase();
+          return ext.startsWith(".")
+            ? ext
+            : ext.includes("/")
+              ? ext
+              : `.${ext}`;
+        });
+
+        const invalidFile = files.find((f) => {
+          const fileName = f.name.toLowerCase();
+          const fileType = f.type.toLowerCase();
+
+          return !allowedExtensions.some((ext: string) => {
+            if (ext.includes("/")) {
+              // Handle MIME types like "image/*" or "application/pdf"
+              const [type, subtype] = ext.split("/");
+              if (subtype === "*") {
+                return fileType.startsWith(`${type}/`);
+              }
+              return fileType === ext;
+            } else {
+              // Handle extensions like ".pdf"
+              return fileName.endsWith(ext);
+            }
+          });
+        });
+
+        if (invalidFile) {
+          statusText.textContent = `File type not allowed. Allowed types: ${trial.accept}`;
+          statusText.style.color = "#e74c3c";
+          return;
+        }
+      }
 
       // Validate file sizes
       if (trial.max_file_size_mb) {

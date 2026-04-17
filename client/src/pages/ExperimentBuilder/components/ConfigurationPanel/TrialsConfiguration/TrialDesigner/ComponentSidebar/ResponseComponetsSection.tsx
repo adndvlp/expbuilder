@@ -47,6 +47,7 @@ function ResponseComponetsSection({ componentTypes, addComponent }: Props) {
                 "SurveyComponent",
                 "AudioResponseComponent",
                 "FileUploadResponseComponent",
+                "ClickResponseComponent",
               ].includes(type),
             )
             .map(({ type, label }) => (

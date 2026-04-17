@@ -11,7 +11,8 @@ export type ComponentType =
   | "SketchpadComponent"
   | "SurveyComponent"
   | "AudioResponseComponent"
-  | "FileUploadResponseComponent";
+  | "FileUploadResponseComponent"
+  | "ClickResponseComponent";
 
 export type TrialComponent = {
   id: string;

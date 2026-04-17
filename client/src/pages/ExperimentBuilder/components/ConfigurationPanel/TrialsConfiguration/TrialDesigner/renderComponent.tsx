@@ -14,6 +14,7 @@ import {
   SurveyComponent,
   AudioResponseComponent,
   FileUploadResponseComponent,
+  ClickResponseComponent,
 } from "./VisualComponents";
 
 type Props = {
@@ -337,6 +338,17 @@ const RenderComponent = ({
     case "FileUploadResponseComponent":
       return (
         <FileUploadResponseComponent
+          key={comp.id}
+          shapeProps={comp}
+          isSelected={isSelected}
+          onSelect={() => handleSelect(comp.id)}
+          onChange={handleComponentChange}
+        />
+      );
+
+    case "ClickResponseComponent":
+      return (
+        <ClickResponseComponent
           key={comp.id}
           shapeProps={comp}
           isSelected={isSelected}

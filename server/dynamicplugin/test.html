@@ -45,6 +45,31 @@
     /* create timeline */
     var timeline = [];
 
+    // ClickResponseComponent example
+    const clickTrial = {
+      type: DynamicPlugin,
+      components: [
+        {
+          type: "HtmlComponent",
+          stimulus:
+            "<h2>Click anywhere on the screen</h2><p>Your click coordinates will be recorded.</p>",
+          coordinates: { x: 0, y: -40 },
+        },
+      ],
+      response_components: [
+        {
+          type: "ClickResponseComponent",
+          capture_full_screen: true,
+          show_click_marker: true,
+          marker_color: "#e74c3c",
+          marker_radius: 10,
+          zIndex: 10,
+        },
+      ],
+    };
+
+    timeline.push(clickTrial);
+
     // ============================================
     const inputResponseTrial = {
       type: DynamicPlugin,

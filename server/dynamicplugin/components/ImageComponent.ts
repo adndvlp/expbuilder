@@ -32,8 +32,12 @@ const info = {
       default: true,
     },
 
-    /** How long to show the stimulus for in milliseconds. If the value is null, then the stimulus will be shown until
-     * the participant makes a response. */
+    /** Delay in milliseconds before showing the stimulus. If null, the stimulus appears immediately. */
+    stimulus_onset: {
+      type: ParameterType.INT,
+      default: null,
+    },
+    /** How long to show the stimulus for in milliseconds. If null, the stimulus stays visible for the whole trial. */
     stimulus_duration: {
       type: ParameterType.INT,
       default: null,
@@ -68,6 +72,7 @@ const info = {
 class ImageComponent {
   private jsPsych: any;
   private element: HTMLElement | null = null;
+  private onsetTimeout: number | null = null;
   private hideTimeout: number | null = null;
 
   constructor(jsPsych: any) {
@@ -226,19 +231,26 @@ class ImageComponent {
 
     imageContainer.appendChild(stimulusElement);
 
-    // Handle stimulus duration
-    const stimulusDuration =
-      config.stimulus_duration !== null &&
-      config.stimulus_duration !== undefined
-        ? typeof config.stimulus_duration === "object" &&
-          "value" in config.stimulus_duration
-          ? config.stimulus_duration.value
-          : config.stimulus_duration
-        : null;
-    if (stimulusDuration !== null && stimulusDuration !== undefined) {
+    // Resolve onset and duration
+    const resolveMs = (raw: any): number | null => {
+      if (raw === null || raw === undefined) return null;
+      if (typeof raw === "object" && "value" in raw) return raw.value ?? null;
+      return raw;
+    };
+    const stimulusOnset = resolveMs(config.stimulus_onset);
+    const stimulusDuration = resolveMs(config.stimulus_duration);
+
+    if (stimulusOnset !== null) {
+      stimulusElement.style.visibility = "hidden";
+      this.onsetTimeout = this.jsPsych.pluginAPI.setTimeout(() => {
+        if (this.element) this.element.style.visibility = "visible";
+      }, stimulusOnset);
+    }
+    if (stimulusDuration !== null) {
+      const hideAt = (stimulusOnset ?? 0) + stimulusDuration;
       this.hideTimeout = this.jsPsych.pluginAPI.setTimeout(() => {
         this.hide();
-      }, stimulusDuration);
+      }, hideAt);
     }
 
     this.element = stimulusElement;
@@ -267,6 +279,9 @@ class ImageComponent {
    * Remove the image from DOM and clean up
    */
   destroy() {
+    if (this.onsetTimeout !== null) {
+      clearTimeout(this.onsetTimeout);
+    }
     if (this.hideTimeout !== null) {
       clearTimeout(this.hideTimeout);
     }

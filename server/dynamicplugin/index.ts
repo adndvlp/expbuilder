@@ -11,6 +11,7 @@ import AudioComponent from "./components/AudioComponent";
 
 // Import all response components
 import ButtonResponseComponent from "./response_components/ButtonResponseComponent";
+import ClickResponseComponent from "./response_components/ClickResponseComponent";
 import SliderResponseComponent from "./response_components/SliderResponseComponent";
 import KeyboardResponseComponent from "./response_components/KeyboardResponseComponent";
 import InputResponseComponent from "./response_components/InputResponseComponent";
@@ -80,6 +81,7 @@ const COMPONENT_MAP: Record<string, any> = {
 
 const RESPONSE_COMPONENT_MAP: Record<string, any> = {
   ButtonResponseComponent,
+  ClickResponseComponent,
   SliderResponseComponent,
   KeyboardResponseComponent,
   InputResponseComponent,
@@ -349,10 +351,15 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         const prefix = config.name; // Component name (e.g., "ButtonResponseComponent_1")
 
         // Add type
-        trialData[`${prefix}_type`] = config.type;
+        if (config.type !== "ClickResponseComponent") {
+          trialData[`${prefix}_type`] = config.type;
+        }
 
         // Coordinates and size (same logic as stimulus components)
-        if (config.coordinates !== undefined) {
+        if (
+          config.coordinates !== undefined &&
+          config.type !== "ClickResponseComponent"
+        ) {
           const cx = config.coordinates.x ?? 0;
           const cy = config.coordinates.y ?? 0;
           trialData[`${prefix}_coordinates`] = JSON.stringify({
@@ -371,7 +378,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         // Add response
         if (
           instance.getResponse &&
-          typeof instance.getResponse === "function"
+          typeof instance.getResponse === "function" &&
+          config.type !== "ClickResponseComponent"
         ) {
           const response = instance.getResponse();
           trialData[`${prefix}_response`] = response;
@@ -405,6 +413,20 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             typeof instance.getImageData === "function"
           ) {
             trialData[`${prefix}_png`] = instance.getImageData();
+          }
+        }
+
+        // ClickResponseComponent - response = {x,y}, is_touch separate
+        if (config.type === "ClickResponseComponent") {
+          const clickResponse = instance.getResponse
+            ? instance.getResponse()
+            : null;
+          if (clickResponse && typeof clickResponse === "object") {
+            trialData[`${prefix}_response`] = JSON.stringify({
+              x: clickResponse.x,
+              y: clickResponse.y,
+            });
+            trialData[`${prefix}_is_touch`] = clickResponse.is_touch;
           }
         }
 

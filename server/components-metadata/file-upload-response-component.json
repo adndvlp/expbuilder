@@ -8,7 +8,7 @@
       "type": "string",
       "default": "",
       "pretty_name": "Accepted File Types",
-      "description": "Accepted file types as MIME types or extensions. Empty string = all types."
+      "description": "Accepted file types as MIME types or extensions separated by commas"
     },
     "multiple": {
       "type": "boolean",

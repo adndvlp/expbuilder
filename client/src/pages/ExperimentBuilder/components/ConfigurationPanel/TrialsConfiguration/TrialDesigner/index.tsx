@@ -282,6 +282,12 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
         check_answers: v(false),
         allow_blanks: v(true),
       },
+      FileUploadResponseComponent: {
+        accept: v("pdf, csv"),
+        multiple: v(false),
+        button_label: v("Upload File"),
+        show_preview: v(true),
+      },
       AudioComponent: {
         stimulus: v(""),
       },
@@ -317,12 +323,12 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
           ],
         }),
       },
-      FileUploadResponseComponent: {
-        button_label: v("Choose File"),
-        multiple: v(false),
-        accept: v(""),
-        max_file_size_mb: v(10),
-        show_preview: v(true),
+      ClickResponseComponent: {
+        capture_full_screen: v(true),
+        show_click_marker: v(false),
+        marker_color: v("#e74c3c"),
+        marker_radius: v(8),
+        zIndex: v(10),
       },
     };
 

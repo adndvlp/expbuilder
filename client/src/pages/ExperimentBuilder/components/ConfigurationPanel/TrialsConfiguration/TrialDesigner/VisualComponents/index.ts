@@ -11,3 +11,4 @@ export { default as InputResponseComponent } from "./InputResponseComponent";
 export { default as SurveyComponent } from "./SurveyComponent";
 export { default as AudioResponseComponent } from "./AudioResponseComponent";
 export { default as FileUploadResponseComponent } from "./FileUploadResponseComponent";
+export { default as ClickResponseComponent } from "./ClickResponseComponent";

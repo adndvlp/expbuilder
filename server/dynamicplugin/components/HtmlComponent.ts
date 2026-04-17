@@ -27,6 +27,11 @@ const info = {
       default: 0,
       description: "Layer order - higher values render on top of lower values",
     },
+    /** Delay in milliseconds before showing the stimulus. If null, the stimulus appears immediately. */
+    stimulus_onset: {
+      type: ParameterType.INT,
+      default: null,
+    },
     /** How long to show the stimulus for in milliseconds. If null, it stays visible for the whole trial. */
     stimulus_duration: {
       type: ParameterType.INT,
@@ -47,6 +52,7 @@ const info = {
 class HtmlComponent {
   private jsPsych: any;
   private stimulusElement: HTMLElement | null = null;
+  private onsetTimeout: number | null = null;
   private hideTimeout: number | null = null;
 
   constructor(jsPsych: any) {
@@ -88,18 +94,26 @@ class HtmlComponent {
     container.appendChild(stimulusElement);
     this.stimulusElement = stimulusElement;
 
-    const stimulusDuration =
-      config.stimulus_duration !== null &&
-      config.stimulus_duration !== undefined
-        ? typeof config.stimulus_duration === "object" &&
-          "value" in config.stimulus_duration
-          ? config.stimulus_duration.value
-          : config.stimulus_duration
-        : null;
-    if (stimulusDuration !== null && stimulusDuration !== undefined) {
+    const resolveMs = (raw: any): number | null => {
+      if (raw === null || raw === undefined) return null;
+      if (typeof raw === "object" && "value" in raw) return raw.value ?? null;
+      return raw;
+    };
+    const stimulusOnset = resolveMs(config.stimulus_onset);
+    const stimulusDuration = resolveMs(config.stimulus_duration);
+
+    if (stimulusOnset !== null) {
+      stimulusElement.style.visibility = "hidden";
+      this.onsetTimeout = this.jsPsych.pluginAPI.setTimeout(() => {
+        if (this.stimulusElement)
+          this.stimulusElement.style.visibility = "visible";
+      }, stimulusOnset);
+    }
+    if (stimulusDuration !== null) {
+      const hideAt = (stimulusOnset ?? 0) + stimulusDuration;
       this.hideTimeout = this.jsPsych.pluginAPI.setTimeout(() => {
         this.hide();
-      }, stimulusDuration);
+      }, hideAt);
     }
 
     return stimulusElement;
@@ -127,6 +141,9 @@ class HtmlComponent {
    * Remove the HTML content from DOM and clean up
    */
   destroy() {
+    if (this.onsetTimeout !== null) {
+      clearTimeout(this.onsetTimeout);
+    }
     if (this.hideTimeout !== null) {
       clearTimeout(this.hideTimeout);
     }

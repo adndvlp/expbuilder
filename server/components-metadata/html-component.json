@@ -18,6 +18,10 @@
       "pretty_name": "Z-Index",
       "description": "Layer order - higher values render on top of lower values"
     },
+    "stimulus_onset": {
+      "type": "number",
+      "default": null
+    },
     "stimulus_duration": {
       "type": "number",
       "default": null

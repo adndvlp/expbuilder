@@ -20,6 +20,10 @@
       "type": "boolean",
       "default": true
     },
+    "stimulus_onset": {
+      "type": "number",
+      "default": null
+    },
     "stimulus_duration": {
       "type": "number",
       "default": null

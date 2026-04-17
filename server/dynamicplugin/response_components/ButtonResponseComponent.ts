@@ -357,7 +357,7 @@ class ButtonResponseComponent {
       const buttonElement = this.buttonGroupElement.lastChild as HTMLElement;
       buttonElement.dataset.choice = choice;
       buttonElement.addEventListener("click", () => {
-        this.recordResponse(choice);
+        this.storeButtonResponse(choice);
         if (onResponse) {
           onResponse();
         }
@@ -379,7 +379,7 @@ class ButtonResponseComponent {
   /**
    * Record the button response and RT
    */
-  private recordResponse(choice: string): void {
+  private storeButtonResponse(choice: string): void {
     if (this.response !== null) {
       return; // Already responded
     }

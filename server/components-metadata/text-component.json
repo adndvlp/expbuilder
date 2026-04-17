@@ -105,6 +105,10 @@
       "pretty_name": "Width",
       "description": "Width of the text block in pixels (null = auto)"
     },
+    "stimulus_onset": {
+      "type": "number",
+      "default": null
+    },
     "stimulus_duration": {
       "type": "number",
       "default": null

@@ -121,7 +121,8 @@ export default function useConfigComponents({
         comp.type === "SketchpadComponent" ||
         comp.type === "SurveyComponent" ||
         comp.type === "AudioResponseComponent" ||
-        comp.type === "FileUploadResponseComponent";
+        comp.type === "FileUploadResponseComponent" ||
+        comp.type === "ClickResponseComponent";
 
       if (isResponseComponent) {
         responseComponents.push(componentData);

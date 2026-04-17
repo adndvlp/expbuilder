@@ -134,6 +134,11 @@ const info = {
       default: null,
       description: "Width of the text block in pixels (null = auto)",
     },
+    /** Delay in milliseconds before showing the stimulus. If null, the stimulus appears immediately. */
+    stimulus_onset: {
+      type: ParameterType.INT,
+      default: null,
+    },
     /** How long to show the stimulus for in milliseconds. If null, it stays visible for the whole trial. */
     stimulus_duration: {
       type: ParameterType.INT,
@@ -206,6 +211,7 @@ const info = {
 class TextComponent {
   private jsPsych: any;
   private element: HTMLElement | null = null;
+  private onsetTimeout: number | null = null;
   private hideTimeout: number | null = null;
 
   // ── Cloze state ─────────────────────────────────────────────────────────
@@ -351,11 +357,20 @@ class TextComponent {
       container.appendChild(this.element);
     }
 
+    const stimulusOnset = this.resolveParam(config.stimulus_onset, null);
     const stimulusDuration = this.resolveParam(config.stimulus_duration, null);
-    if (stimulusDuration !== null && stimulusDuration !== undefined) {
+
+    if (stimulusOnset !== null) {
+      this.element.style.visibility = "hidden";
+      this.onsetTimeout = this.jsPsych.pluginAPI.setTimeout(() => {
+        if (this.element) this.element.style.visibility = "visible";
+      }, stimulusOnset);
+    }
+    if (stimulusDuration !== null) {
+      const hideAt = (stimulusOnset ?? 0) + stimulusDuration;
       this.hideTimeout = this.jsPsych.pluginAPI.setTimeout(() => {
         this.hide();
-      }, stimulusDuration);
+      }, hideAt);
     }
 
     return this.element;
@@ -465,6 +480,9 @@ class TextComponent {
   }
 
   destroy(): void {
+    if (this.onsetTimeout !== null) {
+      clearTimeout(this.onsetTimeout);
+    }
     if (this.hideTimeout !== null) {
       clearTimeout(this.hideTimeout);
     }
