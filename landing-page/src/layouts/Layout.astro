@@ -19,6 +19,7 @@
 			rel="stylesheet"
 			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
 		/>
+		<slot name="head" />
 	</head>
 	<body>
 		<canvas id="particle-canvas" aria-hidden="true"></canvas>
@@ -656,6 +657,7 @@
         height: 100%;
         border-right: 1px solid rgba(255, 255, 255, 0.08);
         background: rgba(255, 255, 255, 0.03);
+        z-index: 1;
     }
 
     .mock-canvas {
@@ -664,49 +666,23 @@
         height: 100%;
     }
 
-    .mock-node {
-        position: absolute;
-        width: 92px;
-        height: 56px;
-        border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
-        box-shadow:
-            0 14px 24px -12px rgba(0, 0, 0, 0.8),
-            0 0 0 1px rgba(255, 255, 255, 0.06) inset;
-    }
-
-    .n1 {
-        top: 72px;
-        left: 58px;
-        animation: floatY 6.2s ease-in-out infinite;
-    }
-
-    .n2 {
-        top: 190px;
-        left: 224px;
-        background: linear-gradient(135deg, #f0ca5a, #c08c28);
-        animation: floatY 6.2s ease-in-out infinite 2s;
-    }
-
-    .n3 {
-        top: 108px;
-        left: 332px;
-        animation: floatY 6.2s ease-in-out infinite 3.8s;
-    }
-
-    .mock-lines {
-        position: absolute;
-        inset: 0;
+    #rf-demo {
         width: 100%;
         height: 100%;
-        pointer-events: none;
     }
 
-    .mock-lines path {
-        stroke: rgba(212, 175, 55, 0.72);
-        stroke-dasharray: 7 7;
-        animation: lineFlow 10s linear infinite;
+    #rf-demo .react-flow__handle {
+        background: linear-gradient(135deg, #ffe082 0%, #d4af37 100%) !important;
+        width: 10px !important;
+        height: 10px !important;
+        border: 2px solid #fff !important;
+        box-shadow: 0 0 8px #d4af37, 0 0 4px rgba(0,0,0,0.15) !important;
+    }
+
+    #rf-demo .react-flow__edge .react-flow__edge-path,
+    #rf-demo .react-flow__edge .react-flow__edge-interaction {
+        stroke: #d4af37 !important;
+        stroke-width: 2 !important;
     }
 
     .glow-effect {
@@ -1048,7 +1024,7 @@
         font-size: 0.82rem;
     }
 
-    .btn-footer-action {
+    a.btn-footer-action {
         display: inline-flex;
         align-items: center;
         gap: 0.44rem;
@@ -1056,22 +1032,23 @@
         padding: 0.55rem 1.1rem;
         border-radius: 999px;
         border: 1px solid rgba(212, 175, 55, 0.55);
-        color: #f2d98f !important;
+        color: #f2d98f;
         background: rgba(212, 175, 55, 0.12);
         box-shadow: 0 10px 20px -16px rgba(212, 175, 55, 0.8);
         transition:
-            background 0.65s ease,
-            color 0.65s ease,
-            border-color 0.65s ease,
-            transform 0.65s cubic-bezier(0.22, 1, 0.36, 1),
-            box-shadow 0.65s ease;
+            transform 0.35s ease,
+            border-color 0.35s ease,
+            background 0.35s ease,
+            color 0.35s ease,
+            box-shadow 0.35s ease;
     }
 
-    .btn-footer-action:hover {
+    a.btn-footer-action:hover {
         background: linear-gradient(130deg, #f1ca61, #d5ac3e);
-        color: #ffffff !important;
+        color: #ffffff;
         border-color: rgba(255, 248, 228, 0.65);
         transform: translateY(-2px);
+        box-shadow: 0 14px 28px -12px rgba(212, 175, 55, 0.7);
     }
 
     .project-repo-link {
@@ -1155,27 +1132,6 @@
         }
     }
 
-    @keyframes floatY {
-        0% {
-            transform: translateY(0);
-        }
-        50% {
-            transform: translateY(-15px);
-        }
-        100% {
-            transform: translateY(0);
-        }
-    }
-
-    @keyframes lineFlow {
-        0% {
-            stroke-dashoffset: 0;
-        }
-        100% {
-            stroke-dashoffset: 120;
-        }
-    }
-
     @media (max-width: 1080px) {
         .hero-content {
             grid-template-columns: 1fr;
@@ -1250,25 +1206,6 @@
 
         .mockup-body {
             height: 280px;
-        }
-
-        .mock-node {
-            width: 82px;
-            height: 48px;
-        }
-
-        .n1 {
-            left: 28px;
-        }
-
-        .n2 {
-            left: 154px;
-            top: 166px;
-        }
-
-        .n3 {
-            left: 234px;
-            top: 86px;
         }
 
         .footer-columns {

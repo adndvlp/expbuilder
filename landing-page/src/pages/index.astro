@@ -3,6 +3,12 @@ import Layout from '../layouts/Layout.astro';
 ---
 
 <Layout>
+<Fragment slot="head">
+    <link rel="stylesheet" href="https://unpkg.com/reactflow@11/dist/style.css" />
+    <script is:inline src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script is:inline src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script is:inline src="https://unpkg.com/reactflow@11/dist/umd/index.js"></script>
+</Fragment>
 	<header>
         <nav class="container">
             <div class="logo">ExpBuilder</div>
@@ -33,15 +39,9 @@ import Layout from '../layouts/Layout.astro';
                             <span class="dot green"></span>
                         </div>
                         <div class="mockup-body">
-                            <!-- Abstract representation of the UI -->
                             <div class="mock-sidebar"></div>
                             <div class="mock-canvas">
-                                <div class="mock-node n1"></div>
-                                <div class="mock-node n2"></div>
-                                <div class="mock-node n3"></div>
-                                <svg class="mock-lines">
-                                    <path d="M50 50 L150 150" stroke="#d4af37" stroke-width="2"/>
-                                </svg>
+                                <div id="rf-demo"></div>
                             </div>
                         </div>
                     </div>
@@ -414,5 +414,132 @@ import Layout from '../layouts/Layout.astro';
                 }
             })
             .catch(e => console.log('Could not fetch latest release, using default link'));
+    </script>
+
+    <script is:inline>
+    (function () {
+        function initRFDemo() {
+            if (!window.React || !window.ReactDOM || !window.ReactFlow) return;
+
+            var RF = window.ReactFlow;
+            var ReactFlowComp = RF.ReactFlow;
+            var Handle = RF.Handle;
+            var ReactFlowProvider = RF.ReactFlowProvider;
+            var h = window.React.createElement;
+
+            if (!ReactFlowComp || !Handle) return;
+
+            var handleStyle = {
+                background: 'linear-gradient(135deg,#ffe082,#d4af37)',
+                width: '10px', height: '10px',
+                border: '2px solid #fff',
+                boxShadow: '0 0 8px #d4af37',
+            };
+
+            function TrialDemoNode(props) {
+                return h('div', {
+                    style: {
+                        width: '112px', height: '36px', borderRadius: '8px',
+                        background: '#3d92b4', border: '1px solid rgba(255,255,255,0.28)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#fff', fontSize: '11.5px', fontFamily: '"Inter",sans-serif',
+                        fontWeight: '500', boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
+                        userSelect: 'none', position: 'relative',
+                    }
+                },
+                    h(Handle, { type: 'target', position: 'top', style: handleStyle }),
+                    props.data.label,
+                    h(Handle, { type: 'source', position: 'bottom', style: handleStyle })
+                );
+            }
+
+            function LoopDemoNode(props) {
+                return h('div', {
+                    style: {
+                        width: '112px', height: '36px', borderRadius: '8px',
+                        background: '#1565c0', border: '2px solid #1e88e5',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#fff', fontSize: '11.5px', fontFamily: '"Inter",sans-serif',
+                        fontWeight: '600', boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
+                        userSelect: 'none', position: 'relative', gap: '5px',
+                    }
+                },
+                    h(Handle, { type: 'target', position: 'top', style: handleStyle }),
+                    h('span', { style: { fontSize: '13px', lineHeight: 1 } }, '↺'),
+                    props.data.label,
+                    h(Handle, { type: 'source', position: 'bottom', style: handleStyle })
+                );
+            }
+
+            var nodeTypes = { trialDemo: TrialDemoNode, loopDemo: LoopDemoNode };
+
+            // Layout mirrors the real app: xTrial=250, yStep=100, branchSpacing=200, branchOffset=100
+            // nodeOrigin=[0.5,0.5] so positions are centers
+            var demoNodes = [
+                { id: 'n1', type: 'trialDemo', position: { x: 250, y: 100 }, data: { label: 'Welcome' } },
+                { id: 'n2', type: 'trialDemo', position: { x: 250, y: 200 }, data: { label: 'Instructions' } },
+                // n2 has 2 branches: totalWidth=400, currentX=50
+                // branch A center: 50+100=150   branch B center: 50+300=350
+                { id: 'n3', type: 'trialDemo', position: { x: 150, y: 300 }, data: { label: 'Trial A' } },
+                { id: 'n4', type: 'loopDemo',  position: { x: 350, y: 300 }, data: { label: 'Practice' } },
+                // n4 loop has 2 branches: totalWidth=400, currentX=150
+                // branch 1 center: 150+100=250  branch 2 center: 150+300=450
+                { id: 'n5', type: 'trialDemo', position: { x: 250, y: 400 }, data: { label: 'Stim 1' } },
+                { id: 'n6', type: 'trialDemo', position: { x: 450, y: 400 }, data: { label: 'Stim 2' } },
+            ];
+
+            var demoEdges = [
+                { id: 'e1', source: 'n1', target: 'n2' },
+                { id: 'e2', source: 'n2', target: 'n3' },
+                { id: 'e3', source: 'n2', target: 'n4' },
+                { id: 'e4', source: 'n4', target: 'n5' },
+                { id: 'e5', source: 'n4', target: 'n6' },
+            ];
+
+            var defaultEdgeOptions = {
+                style: { stroke: '#d4af37', strokeWidth: 2 },
+                animated: true,
+            };
+
+            function DemoFlow() {
+                return h(ReactFlowProvider, null,
+                    h(ReactFlowComp, {
+                        nodes: demoNodes,
+                        edges: demoEdges,
+                        nodeTypes: nodeTypes,
+                        fitView: true,
+                        fitViewOptions: { padding: 0.18 },
+                        nodeOrigin: [0.5, 0.5],
+                        proOptions: { hideAttribution: true },
+                        panOnDrag: false,
+                        zoomOnScroll: false,
+                        zoomOnPinch: false,
+                        zoomOnDoubleClick: false,
+                        nodesDraggable: false,
+                        nodesConnectable: false,
+                        elementsSelectable: false,
+                        style: { background: 'transparent' },
+                        defaultEdgeOptions: defaultEdgeOptions,
+                    })
+                );
+            }
+
+            var container = document.getElementById('rf-demo');
+            if (!container) return;
+
+            try {
+                var root = window.ReactDOM.createRoot(container);
+                root.render(h(DemoFlow, null));
+            } catch (e) {
+                window.ReactDOM.render(h(DemoFlow, null), container);
+            }
+        }
+
+        if (document.readyState === 'complete') {
+            initRFDemo();
+        } else {
+            window.addEventListener('load', initRFDemo);
+        }
+    })();
     </script>
 </Layout>
