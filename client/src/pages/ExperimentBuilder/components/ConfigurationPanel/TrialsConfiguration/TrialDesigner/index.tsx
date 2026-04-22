@@ -5,6 +5,7 @@ import { useComponentMetadata } from "../hooks/useComponentMetadata";
 import {
   ComponentType,
   TrialComponent,
+  ScreenLayout,
   KonvaTrialDesignerProps,
 } from "./types";
 import ComponentSidebar from "./ComponentSidebar";
@@ -116,34 +117,61 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     setCanvasStyles,
   });
 
-  // When canvas size changes (device preset switch), proportionally rescale
-  // all component pixel positions AND sizes to maintain their relative layout.
+  // When canvas size changes (device preset switch):
+  // 1. Snapshot current positions into screenLayouts[prevKey] (normalized units)
+  // 2. If screenLayouts[newKey] exists → restore that layout
+  // 3. Otherwise → proportional rescale (original behavior)
   useEffect(() => {
     const prev = prevCanvasSizeRef.current;
     if (
       prev &&
       (prev.width !== CANVAS_WIDTH || prev.height !== CANVAS_HEIGHT)
     ) {
+      const prevKey = `${prev.width}x${prev.height}`;
+      const newKey = `${CANVAS_WIDTH}x${CANVAS_HEIGHT}`;
+
       setComponents((comps) => {
         if (comps.length === 0) return comps;
+
         const rescaled = comps.map((comp) => {
-          // All components store both width AND height as vw (% of canvas width),
-          // so both dimensions rescale relative to CANVAS_WIDTH.
+          // Snapshot current position in normalized units using PREV canvas dims
+          const snapshot: ScreenLayout = {
+            x: Math.max(-100, Math.min(100, ((comp.x - prev.width / 2) / (prev.width / 2)) * 100)),
+            y: Math.max(-100, Math.min(100, ((prev.height / 2 - comp.y) / (prev.height / 2)) * 100)),
+            width:  (comp.width  / prev.width) * 100,
+            height: (comp.height / prev.width) * 100,
+          };
+
+          const updatedLayouts: Record<string, ScreenLayout> = {
+            ...(comp.screenLayouts ?? {}),
+            [prevKey]: snapshot,
+          };
+
+          const saved = updatedLayouts[newKey];
+
+          if (saved) {
+            // Restore saved layout for this screen size
+            return {
+              ...comp,
+              x: CANVAS_WIDTH  / 2 + (saved.x / 100) * (CANVAS_WIDTH  / 2),
+              y: CANVAS_HEIGHT / 2 - (saved.y / 100) * (CANVAS_HEIGHT / 2),
+              width:  (saved.width  / 100) * CANVAS_WIDTH,
+              height: (saved.height / 100) * CANVAS_WIDTH,
+              screenLayouts: updatedLayouts,
+            };
+          }
+
+          // No saved layout → proportional rescale (fallback)
           return {
             ...comp,
-            x: (comp.x / prev.width) * CANVAS_WIDTH,
+            x: (comp.x / prev.width)  * CANVAS_WIDTH,
             y: (comp.y / prev.height) * CANVAS_HEIGHT,
-            width:
-              comp.width > 0
-                ? (comp.width / prev.width) * CANVAS_WIDTH
-                : comp.width,
-            height:
-              comp.height > 0
-                ? (comp.height / prev.width) * CANVAS_WIDTH // vw — same denominator
-                : comp.height,
+            width:  (comp.width  / prev.width) * CANVAS_WIDTH,
+            height: (comp.height / prev.width) * CANVAS_WIDTH,
+            screenLayouts: updatedLayouts,
           };
         });
-        // Trigger autosave with updated positions
+
         if (onAutoSave) {
           const config = generateConfigFromComponents(rescaled);
           setTimeout(() => onAutoSave(config), 100);

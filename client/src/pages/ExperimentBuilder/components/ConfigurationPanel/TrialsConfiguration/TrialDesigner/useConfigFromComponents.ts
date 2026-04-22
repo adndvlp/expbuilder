@@ -57,6 +57,11 @@ export default function useConfigComponents({
         componentData.zIndex = comp.zIndex;
       }
 
+      // Persist per-screen-size layout overrides (already in normalized units)
+      if (comp.screenLayouts && Object.keys(comp.screenLayouts).length > 0) {
+        componentData.screenLayouts = comp.screenLayouts;
+      }
+
       // Apply parameters from component's config
       // Guardar cada propiedad directamente en formato {source, value}
       if (comp.config) {

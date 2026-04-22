@@ -4,8 +4,13 @@ import {
   ComponentType,
   CanvasStyles,
   DEFAULT_CANVAS_STYLES,
+  ScreenLayout,
 } from "./types";
 import { restoreStyleFields } from "./syncConfigToComponent";
+
+function getInitialCanvasSize(): { width: number; height: number } {
+  return { width: window.screen.width, height: window.screen.height };
+}
 
 type Props = {
   isOpen: boolean;
@@ -68,7 +73,8 @@ export default function useLoadComponents({
             key !== "width" &&
             key !== "height" &&
             key !== "rotation" &&
-            key !== "zIndex"
+            key !== "zIndex" &&
+            key !== "screenLayouts"
           ) {
             // Asumir que siempre está en formato {source, value}
             if (
@@ -135,6 +141,7 @@ export default function useLoadComponents({
           rotation: comp.rotation || 0,
           zIndex: comp.zIndex ?? 0,
           config: config,
+          screenLayouts: (comp.screenLayouts as Record<string, ScreenLayout>) ?? undefined,
         };
         loadedComponents.push(restoreStyleFields(base));
       });
@@ -163,7 +170,8 @@ export default function useLoadComponents({
             key !== "width" &&
             key !== "height" &&
             key !== "rotation" &&
-            key !== "zIndex"
+            key !== "zIndex" &&
+            key !== "screenLayouts"
           ) {
             // Si ya está en formato {source, value}, usarlo directamente
             if (
@@ -236,6 +244,7 @@ export default function useLoadComponents({
           rotation: comp.rotation || 0,
           zIndex: comp.zIndex ?? 0,
           config: config,
+          screenLayouts: (comp.screenLayouts as Record<string, ScreenLayout>) ?? undefined,
         };
         loadedComponents.push(restoreStyleFields(base));
       });
@@ -257,8 +266,11 @@ export default function useLoadComponents({
     setCanvasStyles((prev) => {
       const saved = (columnMapping.__canvasStyles?.value ??
         {}) as Partial<CanvasStyles>;
+      // First open (no saved size) → auto-detect user's screen and snap to nearest preset
+      const autoSize = !saved.width && !saved.height ? getInitialCanvasSize() : {};
       return {
         ...DEFAULT_CANVAS_STYLES,
+        ...autoSize,
         ...saved,
         // Keep appearance settings from context (loaded from AppearanceSettings)
         backgroundColor: prev.backgroundColor,

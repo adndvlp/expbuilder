@@ -1,7 +1,73 @@
 {
-  "experiments": [],
-  "trials": [],
-  "configs": [],
+  "experiments": [
+    {
+      "experimentID": "7ce98d18-25bf-436f-a84d-1c87dc39cf13",
+      "name": "kjb",
+      "createdAt": "2026-04-22T21:57:33.703Z",
+      "updatedAt": "2026-04-22T21:57:33.703Z"
+    }
+  ],
+  "trials": [
+    {
+      "experimentID": "7ce98d18-25bf-436f-a84d-1c87dc39cf13",
+      "trials": [
+        {
+          "type": "Trial",
+          "name": "New Trial",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1776895055608,
+          "createdAt": "2026-04-22T21:57:35.608Z",
+          "updatedAt": "2026-04-22T21:57:36.997Z",
+          "branches": [
+            1776895056987
+          ]
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 1",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1776895056987,
+          "createdAt": "2026-04-22T21:57:36.987Z",
+          "updatedAt": "2026-04-22T21:57:36.987Z"
+        }
+      ],
+      "loops": [],
+      "timeline": [
+        {
+          "id": 1776895055608,
+          "type": "trial",
+          "name": "New Trial",
+          "branches": [
+            1776895056987
+          ]
+        },
+        {
+          "id": 1776895056987,
+          "type": "trial",
+          "name": "New Trial 1",
+          "branches": []
+        }
+      ],
+      "createdAt": "2026-04-22T21:57:35.609Z",
+      "updatedAt": "2026-04-22T21:57:36.997Z"
+    }
+  ],
+  "configs": [
+    {
+      "experimentID": "7ce98d18-25bf-436f-a84d-1c87dc39cf13",
+      "data": {
+        "generatedCode": ""
+      },
+      "isDevMode": false,
+      "isSaveMode": false,
+      "createdAt": "2026-04-22T21:57:35.960Z",
+      "updatedAt": "2026-04-22T21:57:35.960Z"
+    }
+  ],
   "pluginConfigs": [],
   "sessionResults": [],
   "participantFiles": []
