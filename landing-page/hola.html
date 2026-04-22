@@ -1,0 +1,795 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta
+      name="description"
+      content="Experiencia digital de vanguardia — diseño, código y movimiento."
+    />
+    <title>Vórtice Digital | El mejor HTML</title>
+    <!-- Fuentes modernas + Font Awesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,500;14..32,700&family=Outfit:wght@400;600;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <style>
+      /* ——— RESET & BASE ——— */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        min-height: 100vh;
+        background: #0b0e14;
+        font-family: "Inter", sans-serif;
+        color: #ffffff;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        overflow-x: hidden;
+      }
+
+      /* ——— CANVAS (PARTÍCULAS INTERACTIVAS) ——— */
+      #particle-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none; /* permite interactuar con el contenido */
+        opacity: 0.9;
+      }
+
+      /* ——— CONTENEDOR PRINCIPAL (por encima del canvas) ——— */
+      .wrapper {
+        position: relative;
+        z-index: 5;
+        max-width: 1300px;
+        margin: 0 auto;
+        padding: 2rem 2rem 3rem;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        backdrop-filter: blur(
+          0
+        ); /* limpio, el glassmorphism está en las tarjetas */
+      }
+
+      /* ——— HEADER / NAV (minimalista) ——— */
+      .top-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0 1.5rem;
+        flex-wrap: wrap;
+      }
+
+      .logo {
+        font-family: "Outfit", sans-serif;
+        font-weight: 700;
+        font-size: 1.8rem;
+        letter-spacing: -0.02em;
+        background: linear-gradient(135deg, #b3e5ff 0%, #a78bfa 70%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        text-shadow: 0 0 20px rgba(167, 139, 250, 0.3);
+      }
+
+      .nav-links {
+        display: flex;
+        gap: 2.5rem;
+      }
+
+      .nav-links a {
+        text-decoration: none;
+        color: #e0e7ff;
+        font-weight: 500;
+        font-size: 1.05rem;
+        transition: all 0.2s ease;
+        letter-spacing: -0.01em;
+        border-bottom: 2px solid transparent;
+        padding-bottom: 4px;
+      }
+
+      .nav-links a:hover {
+        color: white;
+        border-bottom-color: #a78bfa;
+      }
+
+      /* ——— HERO SECTION ——— */
+      .hero {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        margin: 2rem 0 4rem;
+        animation: fadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .badge {
+        display: inline-block;
+        background: rgba(167, 139, 250, 0.15);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        padding: 0.4rem 1.2rem;
+        border-radius: 40px;
+        border: 1px solid rgba(167, 139, 250, 0.3);
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #cbd5ff;
+        margin-bottom: 1.8rem;
+        width: fit-content;
+        box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.3);
+      }
+
+      h1 {
+        font-family: "Outfit", sans-serif;
+        font-weight: 800;
+        font-size: clamp(3.2rem, 12vw, 5.8rem);
+        line-height: 1.1;
+        letter-spacing: -0.03em;
+        max-width: 950px;
+        text-wrap: balance;
+        background: linear-gradient(to right, #ffffff, #e2d9ff, #bdd3ff);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        margin-bottom: 1.5rem;
+        text-shadow: 0 0 30px rgba(120, 100, 220, 0.3);
+      }
+
+      .hero-description {
+        font-size: 1.25rem;
+        max-width: 600px;
+        color: #b9c2da;
+        margin-bottom: 2.5rem;
+        font-weight: 400;
+        line-height: 1.6;
+        backdrop-filter: blur(4px);
+      }
+
+      .cta-group {
+        display: flex;
+        gap: 1.2rem;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 0.9rem 2.2rem;
+        border-radius: 60px;
+        font-weight: 600;
+        font-size: 1.1rem;
+        text-decoration: none;
+        transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        border: 1px solid transparent;
+        cursor: pointer;
+        background: rgba(20, 30, 45, 0.4);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        letter-spacing: -0.01em;
+      }
+
+      .btn-primary {
+        background: linear-gradient(145deg, #5f4bdb, #7c6cf0);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow:
+          0 12px 28px -8px #4f3bcb70,
+          0 0 0 1px rgba(167, 139, 250, 0.2) inset;
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-5px) scale(1.02);
+        box-shadow:
+          0 22px 35px -10px #6d5ac9,
+          0 0 0 1px #b7a4ff inset;
+        background: linear-gradient(145deg, #7465e6, #8f7ff5);
+      }
+
+      .btn-outline {
+        background: transparent;
+        border: 1.5px solid rgba(210, 220, 255, 0.3);
+        color: #eaeefb;
+        backdrop-filter: blur(12px);
+      }
+
+      .btn-outline:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: #a78bfa;
+        transform: translateY(-4px);
+        box-shadow: 0 15px 25px -8px rgba(0, 0, 0, 0.5);
+      }
+
+      /* ——— SECCIÓN CARACTERÍSTICAS (glass cards) ——— */
+      .features {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 2rem;
+        margin: 1rem 0 4rem;
+      }
+
+      .glass-card {
+        background: rgba(18, 28, 40, 0.45);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 36px;
+        padding: 2.2rem 1.8rem;
+        box-shadow:
+          0 25px 40px -18px rgba(0, 0, 0, 0.5),
+          0 0 0 1px rgba(167, 139, 250, 0.1) inset;
+        transition: all 0.35s ease;
+        animation: fadeUp 0.7s ease backwards;
+      }
+
+      .glass-card:nth-child(1) {
+        animation-delay: 0.1s;
+      }
+      .glass-card:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .glass-card:nth-child(3) {
+        animation-delay: 0.3s;
+      }
+
+      .glass-card:hover {
+        transform: translateY(-12px);
+        background: rgba(25, 38, 55, 0.6);
+        border-color: rgba(167, 139, 250, 0.35);
+        box-shadow:
+          0 35px 45px -18px #0f0f1e,
+          0 0 0 1.5px #a78bfa55 inset;
+      }
+
+      .card-icon {
+        font-size: 2.5rem;
+        color: #b4a6ff;
+        margin-bottom: 1.6rem;
+        background: rgba(167, 139, 250, 0.15);
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        transition: 0.2s;
+      }
+
+      .glass-card:hover .card-icon {
+        color: #d6c8ff;
+        background: rgba(167, 139, 250, 0.25);
+        transform: scale(1.02);
+      }
+
+      .glass-card h3 {
+        font-family: "Outfit", sans-serif;
+        font-weight: 600;
+        font-size: 1.7rem;
+        letter-spacing: -0.02em;
+        margin-bottom: 0.8rem;
+        color: #f0f4ff;
+      }
+
+      .glass-card p {
+        color: #b4c0da;
+        font-weight: 400;
+        font-size: 1rem;
+      }
+
+      /* ——— FOOTER ——— */
+      .footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        padding-top: 2.5rem;
+        margin-top: 2rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        color: #9aa7c4;
+      }
+
+      .social-links {
+        display: flex;
+        gap: 1.8rem;
+      }
+
+      .social-links a {
+        color: #cbd5e8;
+        font-size: 1.5rem;
+        transition: all 0.2s;
+      }
+
+      .social-links a:hover {
+        color: #b4a6ff;
+        transform: translateY(-3px);
+        text-shadow: 0 0 15px #a78bfa;
+      }
+
+      .copyright {
+        font-size: 0.95rem;
+        letter-spacing: 0.3px;
+      }
+
+      /* ——— ANIMACIONES ——— */
+      @keyframes fadeUp {
+        0% {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* cursor glow (sutil efecto al mover) — se complementa con canvas */
+      .cursor-glow {
+        position: fixed;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(
+          circle at center,
+          rgba(130, 100, 255, 0.12) 0%,
+          transparent 70%
+        );
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 3;
+        transform: translate(-50%, -50%);
+        transition: opacity 0.2s;
+        opacity: 0;
+        mix-blend-mode: overlay;
+      }
+
+      /* Responsive */
+      @media (max-width: 700px) {
+        .wrapper {
+          padding: 1.5rem 1.5rem 2.5rem;
+        }
+        .top-bar {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 1rem;
+        }
+        .nav-links {
+          gap: 1.8rem;
+        }
+        h1 {
+          line-height: 1.2;
+        }
+        .hero-description {
+          font-size: 1.1rem;
+        }
+        .btn {
+          padding: 0.8rem 1.6rem;
+        }
+        .glass-card {
+          padding: 1.8rem;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .cta-group .btn {
+          width: 100%;
+        }
+        .footer {
+          flex-direction: column-reverse;
+          gap: 1.5rem;
+          align-items: flex-start;
+        }
+      }
+
+      /* ——— ESTILOS PARA EL BORDE MÁGICO ——— */
+      .glow-text {
+        text-shadow: 0 0 30px rgba(160, 130, 255, 0.5);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Canvas para partículas dinámicas -->
+    <canvas id="particle-canvas"></canvas>
+
+    <!-- Efecto de halo que sigue al mouse (opcional, complementa la experiencia) -->
+    <div class="cursor-glow" id="cursorGlow"></div>
+
+    <div class="wrapper">
+      <header class="top-bar">
+        <div class="logo">◈ VÓRTICE</div>
+        <nav class="nav-links">
+          <a href="#">Inicio</a>
+          <a href="#">Proyectos</a>
+          <a href="#">Estudio</a>
+          <a href="#">Contacto</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero">
+          <span class="badge"
+            ><i class="fas fa-bolt" style="margin-right: 8px"></i>DISPONIBLE
+            PARA PROYECTOS · 2026</span
+          >
+          <h1>Diseño que<br />respira <span class="glow-text">código</span></h1>
+          <p class="hero-description">
+            Creamos experiencias digitales inmersivas — donde la estética y el
+            rendimiento convergen. Este es el mejor HTML que puedas imaginar.
+          </p>
+          <div class="cta-group">
+            <a href="#" class="btn btn-primary"
+              ><i class="fas fa-arrow-right"></i> Explorar trabajo</a
+            >
+            <a href="#" class="btn btn-outline"
+              ><i class="far fa-comment"></i> Conversemos</a
+            >
+          </div>
+        </section>
+
+        <section class="features">
+          <div class="glass-card">
+            <div class="card-icon"><i class="fas fa-cube"></i></div>
+            <h3>Diseño 3D</h3>
+            <p>
+              Interfaces con profundidad, glassmorfismo y animaciones fluidas
+              que cautivan.
+            </p>
+          </div>
+          <div class="glass-card">
+            <div class="card-icon"><i class="fas fa-microchip"></i></div>
+            <h3>Rendimiento</h3>
+            <p>
+              Canvas interactivo con partículas optimizadas. 60fps en cada
+              desplazamiento.
+            </p>
+          </div>
+          <div class="glass-card">
+            <div class="card-icon">
+              <i class="fas fa-wand-magic-sparkles"></i>
+            </div>
+            <h3>Interacción</h3>
+            <p>
+              El cursor influye en el fondo. Cada movimiento genera una
+              respuesta visual.
+            </p>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <div class="copyright">
+          © 2026 · Vórtice Digital ·
+          <span style="opacity: 0.7">el mejor HTML</span>
+        </div>
+        <div class="social-links">
+          <a href="#" aria-label="GitHub"><i class="fab fa-github"></i></a>
+          <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+          <a href="#" aria-label="LinkedIn"
+            ><i class="fab fa-linkedin-in"></i
+          ></a>
+          <a href="#" aria-label="Dribbble"><i class="fab fa-dribbble"></i></a>
+        </div>
+      </footer>
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        // ---------- CANVAS DE PARTÍCULAS INTERACTIVAS (ALTA CALIDAD) ----------
+        const canvas = document.getElementById("particle-canvas");
+        const ctx = canvas.getContext("2d");
+
+        let width, height;
+        let particles = [];
+        let mouseX = null,
+          mouseY = null;
+        let mouseRadius = 120;
+        let animationFrame;
+
+        // Configuración visual
+        const PARTICLE_COUNT = 110;
+        const MAX_DISTANCE = 150;
+        const LINE_COLOR = "rgba(170, 150, 255, 0.23)";
+        const DOT_COLOR = "rgba(210, 190, 255, 0.7)";
+        const DOT_HIGHLIGHT = "rgba(230, 210, 255, 0.95)";
+
+        // Velocidad base y variación
+        const BASE_SPEED = 0.25;
+
+        class Particle {
+          constructor() {
+            this.x = Math.random() * width;
+            this.y = Math.random() * height;
+            this.vx = (Math.random() - 0.5) * BASE_SPEED;
+            this.vy = (Math.random() - 0.5) * BASE_SPEED;
+            this.radius = Math.random() * 2.2 + 1.2;
+            this.originalRadius = this.radius;
+          }
+
+          update(mouseInfluence = true) {
+            // Movimiento natural
+            this.x += this.vx;
+            this.y += this.vy;
+
+            // Rebote suave en bordes (con amortiguación)
+            if (this.x < 0 || this.x > width) {
+              this.vx *= -0.98;
+              this.x = Math.min(Math.max(this.x, 0), width);
+            }
+            if (this.y < 0 || this.y > height) {
+              this.vy *= -0.98;
+              this.y = Math.min(Math.max(this.y, 0), height);
+            }
+
+            // Pequeña fricción para que no se disparen
+            this.vx *= 0.998;
+            this.vy *= 0.998;
+
+            // Interacción con el mouse (repulsión/atracción sutil)
+            if (mouseInfluence && mouseX !== null && mouseY !== null) {
+              const dx = this.x - mouseX;
+              const dy = this.y - mouseY;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              const effectiveRadius = mouseRadius;
+
+              if (dist < effectiveRadius) {
+                const force = (effectiveRadius - dist) / effectiveRadius; // 0..1
+                const angle = Math.atan2(dy, dx);
+                // Empuje suave (alejar del cursor)
+                const pushX = Math.cos(angle) * force * 0.9;
+                const pushY = Math.sin(angle) * force * 0.9;
+
+                this.x += pushX;
+                this.y += pushY;
+
+                // Añadir un poco de velocidad para que se disperse
+                this.vx += pushX * 0.05;
+                this.vy += pushY * 0.05;
+
+                // Limitar velocidad máxima
+                const maxSpeed = 1.8;
+                const sp = Math.hypot(this.vx, this.vy);
+                if (sp > maxSpeed) {
+                  this.vx *= maxSpeed / sp;
+                  this.vy *= maxSpeed / sp;
+                }
+
+                // Aumentar ligeramente el radio cerca del mouse (efecto brillo)
+                this.radius = this.originalRadius + force * 1.8;
+              } else {
+                this.radius = this.originalRadius;
+              }
+            } else {
+              this.radius = this.originalRadius;
+            }
+
+            // Limitar velocidad mínima (para que no se queden estáticos)
+            if (Math.abs(this.vx) < 0.08 && Math.abs(this.vy) < 0.08) {
+              this.vx += (Math.random() - 0.5) * 0.12;
+              this.vy += (Math.random() - 0.5) * 0.12;
+            }
+          }
+
+          draw() {
+            ctx.beginPath();
+            // Color variable según cercanía al mouse (efecto sutil)
+            let color = DOT_COLOR;
+            if (mouseX && mouseY) {
+              const dx = this.x - mouseX;
+              const dy = this.y - mouseY;
+              const dist = Math.hypot(dx, dy);
+              if (dist < mouseRadius) {
+                const intensity = 1 - dist / mouseRadius;
+                color = `rgba(230, 210, 255, ${0.5 + intensity * 0.5})`;
+              }
+            }
+            ctx.fillStyle = color;
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Brillo adicional
+            ctx.shadowColor = "#b4a6ff";
+            ctx.shadowBlur = this.radius * 2.5;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+          }
+        }
+
+        function initParticles() {
+          particles = [];
+          for (let i = 0; i < PARTICLE_COUNT; i++) {
+            particles.push(new Particle());
+          }
+        }
+
+        function connectParticles() {
+          for (let i = 0; i < particles.length; i++) {
+            for (let j = i + 1; j < particles.length; j++) {
+              const dx = particles[i].x - particles[j].x;
+              const dy = particles[i].y - particles[j].y;
+              const dist = Math.hypot(dx, dy);
+
+              if (dist < MAX_DISTANCE) {
+                // Opacidad basada en distancia
+                const opacity = (1 - dist / MAX_DISTANCE) * 0.28;
+                // Color de línea con posible realce si está cerca del mouse
+                let lineColor = LINE_COLOR;
+                if (mouseX && mouseY) {
+                  const midX = (particles[i].x + particles[j].x) / 2;
+                  const midY = (particles[i].y + particles[j].y) / 2;
+                  const distToMouse = Math.hypot(midX - mouseX, midY - mouseY);
+                  if (distToMouse < mouseRadius + 40) {
+                    const boost =
+                      0.15 + 0.2 * (1 - distToMouse / (mouseRadius + 40));
+                    lineColor = `rgba(200, 180, 255, ${opacity + boost})`;
+                  } else {
+                    lineColor = `rgba(170, 150, 255, ${opacity})`;
+                  }
+                } else {
+                  lineColor = `rgba(170, 150, 255, ${opacity})`;
+                }
+
+                ctx.beginPath();
+                ctx.moveTo(particles[i].x, particles[i].y);
+                ctx.lineTo(particles[j].x, particles[j].y);
+                ctx.strokeStyle = lineColor;
+                ctx.lineWidth = 0.8;
+                ctx.stroke();
+              }
+            }
+          }
+        }
+
+        function drawScene() {
+          ctx.clearRect(0, 0, width, height);
+
+          // Dibujar conexiones primero (debajo de puntos)
+          connectParticles();
+
+          // Dibujar partículas
+          particles.forEach((p) => p.draw());
+        }
+
+        function updateParticles() {
+          particles.forEach((p) => p.update(true));
+        }
+
+        function resizeCanvas() {
+          width = window.innerWidth;
+          height = window.innerHeight;
+          canvas.width = width;
+          canvas.height = height;
+
+          // Reubicar partículas para que no queden fuera de rango (suave)
+          if (particles.length) {
+            particles.forEach((p) => {
+              p.x = Math.min(width, Math.max(0, p.x));
+              p.y = Math.min(height, Math.max(0, p.y));
+            });
+          } else {
+            initParticles();
+          }
+        }
+
+        function animationLoop() {
+          updateParticles();
+          drawScene();
+          animationFrame = requestAnimationFrame(animationLoop);
+        }
+
+        // Manejo del mouse
+        function handleMouseMove(e) {
+          mouseX = e.clientX;
+          mouseY = e.clientY;
+
+          // Mover el glow del cursor (efecto extra)
+          const glow = document.getElementById("cursorGlow");
+          if (glow) {
+            glow.style.opacity = "1";
+            glow.style.left = e.clientX + "px";
+            glow.style.top = e.clientY + "px";
+          }
+        }
+
+        function handleMouseLeave() {
+          mouseX = null;
+          mouseY = null;
+          const glow = document.getElementById("cursorGlow");
+          if (glow) glow.style.opacity = "0";
+        }
+
+        function handleTouchMove(e) {
+          if (e.touches.length) {
+            mouseX = e.touches[0].clientX;
+            mouseY = e.touches[0].clientY;
+          }
+        }
+
+        function handleTouchEnd() {
+          mouseX = null;
+          mouseY = null;
+        }
+
+        // Inicialización
+        function setup() {
+          resizeCanvas();
+          initParticles();
+
+          window.addEventListener("resize", () => {
+            resizeCanvas();
+          });
+
+          window.addEventListener("mousemove", handleMouseMove);
+          window.addEventListener("mouseleave", handleMouseLeave);
+          window.addEventListener("touchmove", handleTouchMove, {
+            passive: true,
+          });
+          window.addEventListener("touchend", handleTouchEnd);
+
+          animationLoop();
+        }
+
+        // Pequeño ajuste: ocultar glow si el mouse sale de la ventana
+        document.addEventListener("mouseleave", () => {
+          const glow = document.getElementById("cursorGlow");
+          if (glow) glow.style.opacity = "0";
+          mouseX = null;
+          mouseY = null;
+        });
+
+        setup();
+
+        // Efecto extra: si el navegador soporta hover, mejorar la experiencia
+        if (matchMedia("(hover: hover)").matches) {
+          // Ya tenemos mousemove, todo bien.
+        }
+
+        // Cleanup (no necesario en SPA, pero buena práctica)
+        window.addEventListener("beforeunload", () => {
+          if (animationFrame) cancelAnimationFrame(animationFrame);
+        });
+      })();
+    </script>
+
+    <!-- Pequeño script adicional para asegurar que el glow siga al cursor incluso fuera del canvas -->
+    <script>
+      (function secondaryGlow() {
+        // Aseguramos que el glow se mueva y no quede estático al entrar de nuevo
+        const glow = document.getElementById("cursorGlow");
+        if (glow) {
+          window.addEventListener("mousemove", (e) => {
+            glow.style.left = e.clientX + "px";
+            glow.style.top = e.clientY + "px";
+            glow.style.opacity = "1";
+          });
+          window.addEventListener("mouseleave", () => {
+            glow.style.opacity = "0";
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>

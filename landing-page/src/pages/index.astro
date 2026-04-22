@@ -22,8 +22,7 @@ import Layout from '../layouts/Layout.astro';
                     <h1>Design <span class="gradient-text">Professional</span> Experiments in Minutes</h1>
                     <p>The ultimate tool for researchers. Intuitive visual interface, no-code, unlimited power. JsPsych compatible and future-ready.</p>
                     <div class="cta-group">
-                        <a href="#download" class="btn btn-primary"><i class="fab fa-apple"></i> Download Mac (Silicon)</a>
-                        <a href="#download" class="btn btn-secondary"><i class="fab fa-windows"></i> Download Windows</a>
+                        <a href="#download" class="btn btn-primary"><i class="fas fa-download"></i> Download</a>
                     </div>
                 </div>
                 <div class="hero-visual">
@@ -115,14 +114,14 @@ import Layout from '../layouts/Layout.astro';
                     <div class="dl-card mac">
                         <i class="fab fa-apple dl-icon"></i>
                         <h3>macOS</h3>
-                        <div class="dl-arch-group">
+                        <div class="dl-arch-group" data-os="mac" data-arch="arm64">
                             <span class="arch-label">Apple Silicon</span>
                             <div class="btn-group">
                                 <a id="dl-mac-arm-dmg" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-primary">.dmg</a>
                                 <a id="dl-mac-arm-zip" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-secondary">.zip</a>
                             </div>
                         </div>
-                        <div class="dl-arch-group">
+                        <div class="dl-arch-group" data-os="mac" data-arch="x64">
                             <span class="arch-label">Intel (x64)</span>
                             <div class="btn-group">
                                 <a id="dl-mac-intel-dmg" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-primary">.dmg</a>
@@ -133,26 +132,28 @@ import Layout from '../layouts/Layout.astro';
                     <div class="dl-card win">
                         <i class="fab fa-windows dl-icon"></i>
                         <h3>Windows</h3>
-                        <p>Windows 10/11 (x64)</p>
-                        <div class="btn-group">
-                            <a id="dl-win-exe" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-primary"><i class="fas fa-download"></i> .exe</a>
-                            <a id="dl-win-zip" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-secondary">.zip</a>
+                        <div class="dl-arch-group" data-os="windows" data-arch="x64">
+                            <span class="arch-label">x64 (AMD64)</span>
+                            <div class="btn-group">
+                                <a id="dl-win-exe" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-primary"><i class="fas fa-download"></i> .exe</a>
+                                <a id="dl-win-zip" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-secondary">.zip</a>
+                            </div>
                         </div>
                     </div>
                     <div class="dl-card linux">
                         <i class="fab fa-linux dl-icon"></i>
                         <h3>Linux</h3>
-                        <div class="dl-arch-group">
-                            <span class="arch-label">.deb</span>
+                        <div class="dl-arch-group" data-os="linux" data-arch="arm64">
+                            <span class="arch-label">ARM64 (.deb)</span>
                             <div class="btn-group">
-                                <a id="dl-linux-deb-arm" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-primary">ARM64</a>
-                                <a id="dl-linux-deb-amd" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-secondary">AMD64</a>
+                                <a id="dl-linux-deb-arm" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-primary">.deb</a>
                             </div>
                         </div>
-                        <div class="dl-arch-group">
-                            <span class="arch-label">.rpm</span>
+                        <div class="dl-arch-group" data-os="linux" data-arch="x64">
+                            <span class="arch-label">AMD64 (.deb / .rpm)</span>
                             <div class="btn-group">
-                                <a id="dl-linux-rpm-amd" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-secondary full-width">AMD64</a>
+                                <a id="dl-linux-deb-amd" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-secondary">.deb</a>
+                                <a id="dl-linux-rpm-amd" href="https://github.com/adndvlp/expbuilder/releases/latest" class="btn btn-secondary">.rpm</a>
                             </div>
                         </div>
                     </div>
@@ -215,46 +216,147 @@ import Layout from '../layouts/Layout.astro';
         // Set dynamic year
         document.getElementById('year').textContent = new Date().getFullYear();
 
-        // OS Detection Logic
+        // OS + architecture recommendation logic
         function detectOS() {
             const userAgent = window.navigator.userAgent;
             const platform = window.navigator.platform;
-            const macosPlatforms = ['Macintosh', 'MacIntel', 'MacPPC', 'Mac68K'];
-            const windowsPlatforms = ['Win32', 'Win64', 'Windows', 'WinCE'];
-            const iosPlatforms = ['iPhone', 'iPad', 'iPod'];
 
-            let os = null;
-
-            if (macosPlatforms.indexOf(platform) !== -1) {
-                os = 'mac';
-            } else if (iosPlatforms.indexOf(platform) !== -1) {
-                os = 'mac'; // iOS treated as Mac for this purpose (or ignore)
-            } else if (windowsPlatforms.indexOf(platform) !== -1) {
-                os = 'windows';
-            } else if (/Android/.test(userAgent)) {
-                os = 'android';
-            } else if (!os && /Linux/.test(platform)) {
-                os = 'linux';
-            }
-
-            return os;
+            if (/Mac|iPhone|iPad|iPod/i.test(platform)) return 'mac';
+            if (/Win/i.test(platform)) return 'windows';
+            if (/Android/i.test(userAgent)) return 'android';
+            if (/Linux/i.test(platform)) return 'linux';
+            return null;
         }
 
-        const currentOS = detectOS();
-        if (currentOS) {
-            let selector = '';
-            if (currentOS === 'mac') selector = '.dl-card.mac';
-            if (currentOS === 'windows') selector = '.dl-card.win';
-            if (currentOS === 'linux') selector = '.dl-card.linux';
+        function normalizeArch(rawValue) {
+            if (!rawValue) return null;
+            const value = String(rawValue).toLowerCase();
 
-            if (selector) {
-                const card = document.querySelector(selector);
-                if (card) {
-                    card.classList.add('recommended');
-                    card.innerHTML += '<div class="rec-badge">Recommended for You</div>';
+            if (/(arm64|aarch64|armv8)/.test(value)) return 'arm64';
+            if (/(x86_64|x64|amd64|wow64|win64|x86-64)/.test(value)) return 'x64';
+            if (/arm/.test(value)) return 'arm64';
+            if (/(x86|i386|i686|ia32)/.test(value)) return 'x64';
+            return null;
+        }
+
+        function detectWebGLRenderer() {
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (!gl) return '';
+
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                if (!debugInfo) return '';
+
+                const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                return renderer ? String(renderer).toLowerCase() : '';
+            } catch (_error) {
+                return '';
+            }
+        }
+
+        async function detectArch(os) {
+            const { userAgent, platform, userAgentData } = window.navigator;
+            const directMatch = normalizeArch(`${userAgent} ${platform}`);
+            if (directMatch) return directMatch;
+
+            if (userAgentData) {
+                const lowEntropyArch = normalizeArch(userAgentData.architecture);
+                if (lowEntropyArch) return lowEntropyArch;
+
+                if (typeof userAgentData.getHighEntropyValues === 'function') {
+                    try {
+                        const hints = await userAgentData.getHighEntropyValues(['architecture', 'bitness']);
+                        const hintArch = normalizeArch(`${hints.architecture || ''} ${hints.bitness || ''}`);
+                        if (hintArch) return hintArch;
+                    } catch (_error) {
+                        // Ignore and continue with fallback heuristics.
+                    }
                 }
             }
+
+            const renderer = detectWebGLRenderer();
+            const rendererArch = normalizeArch(renderer);
+            if (rendererArch) return rendererArch;
+
+            if (os === 'mac') {
+                if (renderer.includes('apple') && !renderer.includes('intel')) return 'arm64';
+                if (renderer.includes('intel') || renderer.includes('amd') || renderer.includes('radeon')) return 'x64';
+            }
+
+            if (os === 'windows') return 'x64';
+            return null;
         }
+
+        function getOsLabel(os) {
+            const labels = {
+                mac: 'macOS',
+                windows: 'Windows',
+                linux: 'Linux'
+            };
+            return labels[os] || 'Your platform';
+        }
+
+        function getArchLabel(os, arch) {
+            const map = {
+                mac: {
+                    arm64: 'Apple Silicon (ARM64)',
+                    x64: 'Intel / AMD (x64)'
+                },
+                linux: {
+                    arm64: 'ARM64',
+                    x64: 'AMD64 / x64'
+                },
+                windows: {
+                    x64: 'AMD64 / x64'
+                }
+            };
+
+            return map[os] && map[os][arch] ? map[os][arch] : null;
+        }
+
+        function markRecommendedDownload(os, arch) {
+            const cardSelector = {
+                mac: '.dl-card.mac',
+                windows: '.dl-card.win',
+                linux: '.dl-card.linux'
+            };
+
+            const card = document.querySelector(cardSelector[os]);
+            if (!card) return;
+
+            card.classList.add('recommended');
+            const oldBadge = card.querySelector('.rec-badge');
+            if (oldBadge) oldBadge.remove();
+
+            const badge = document.createElement('div');
+            badge.className = 'rec-badge';
+
+            const archLabel = getArchLabel(os, arch);
+            badge.textContent = archLabel
+                ? `Recommended: ${getOsLabel(os)} · ${archLabel}`
+                : `Recommended: ${getOsLabel(os)}`;
+
+            card.appendChild(badge);
+
+            if (!arch) return;
+
+            const archGroups = document.querySelectorAll(`.dl-arch-group[data-os="${os}"][data-arch="${arch}"]`);
+            archGroups.forEach((group) => {
+                group.classList.add('arch-recommended');
+                group.querySelectorAll('.btn').forEach((btn) => {
+                    btn.classList.add('btn-recommended-arch');
+                });
+            });
+        }
+
+        (async () => {
+            const os = detectOS();
+            if (!os || os === 'android') return;
+
+            const arch = await detectArch(os);
+            markRecommendedDownload(os, arch);
+        })();
 
         // Simple intersection observer
         const observer = new IntersectionObserver((entries) => {
