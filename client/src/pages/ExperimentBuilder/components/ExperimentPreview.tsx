@@ -147,7 +147,6 @@ localStorage.removeItem('jsPsych_jumpToTrial');
     throw new Error("participantNumber not assigned");
   }
     const jsPsych = initJsPsych({
-    display_element: document.getElementById('jspsych-container'),
           on_data_update: function (data) {
             if (isSaveMode) {
               fetch("/api/append-result/${experimentID}", {
@@ -195,7 +194,6 @@ localStorage.removeItem('jsPsych_jumpToTrial');
     selectedTrial,
     selectedLoop,
     experimentID,
-    canvasStyles,
   ]);
 
   // Crear URL con parámetros únicos para evitar caché

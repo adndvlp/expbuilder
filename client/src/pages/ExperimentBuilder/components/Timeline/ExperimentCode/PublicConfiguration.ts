@@ -787,10 +787,10 @@ export default function PublicConfiguration({
       });
     }
 
-    const jsPsych = initJsPsych({
-      display_element: document.getElementById('jspsych-container'),
+    // Clean up stale jsPsych wrappers from previous runs (prevents stacking on restarts)
+    document.querySelectorAll('.jspsych-content-wrapper').forEach(el => el.remove());
 
-      
+    const jsPsych = initJsPsych({
       ${progressBar ? `show_progress_bar: true,` : ""} 
 
 

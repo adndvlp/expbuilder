@@ -88,13 +88,9 @@ class ImageComponent {
    * @returns The rendered stimulus element
    */
   render(container: HTMLElement, config: any): HTMLElement {
-    // Helper function to map coordinate values
-    // Coordinate range is [-100, 100], mapped to [-50vw/vh, 50vw/vh]
-    const mapValue = (value: number): number => {
-      if (value > 100) return 50;
-      if (value < -100) return -50;
-      return value * 0.5;
-    };
+    // Design canvas dimensions (same as Konva CANVAS_WIDTH/HEIGHT)
+    const canvasWidth = config.__canvasStyles?.width ?? 1024;
+    const canvasHeight = config.__canvasStyles?.height ?? 768;
 
     // Always use absolute positioning for proper overlapping
     const usePositioning = config.coordinates !== undefined;
@@ -105,17 +101,22 @@ class ImageComponent {
       imageContainer = document.createElement("div");
       imageContainer.style.position = "absolute";
 
+      // Convert jsPsych coords [-100..100] to design-canvas pixels
+      // (same formula as fromJsPsychCoords in Konva)
+      const centerX = canvasWidth / 2;
+      const centerY = canvasHeight / 2;
+
       if (config.coordinates.x !== undefined) {
-        const xValue = mapValue(config.coordinates.x);
-        imageContainer.style.left = `calc(50% + ${xValue}vw)`;
+        const xPixel = centerX + (config.coordinates.x / 100) * (canvasWidth / 2);
+        imageContainer.style.left = xPixel + "px";
       } else {
-        imageContainer.style.left = "50%";
+        imageContainer.style.left = centerX + "px";
       }
       if (config.coordinates.y !== undefined) {
-        const yValue = mapValue(config.coordinates.y);
-        imageContainer.style.top = `calc(50% - ${yValue}vh)`;
+        const yPixel = centerY - (config.coordinates.y / 100) * (canvasHeight / 2);
+        imageContainer.style.top = yPixel + "px";
       } else {
-        imageContainer.style.top = "50%";
+        imageContainer.style.top = centerY + "px";
       }
       imageContainer.style.transform = "translate(-50%, -50%)";
 
@@ -182,10 +183,10 @@ class ImageComponent {
     const drawImage = () => {
       const img = image as HTMLImageElement;
       if (config.render_on_canvas && canvas) {
-        // Canvas path: width drives sizing, height always derived from natural aspect ratio
+        // Canvas path: dimensions in design-canvas pixels
         const pxW =
           config.width !== null
-            ? (config.width / 100) * window.innerWidth
+            ? (config.width / 100) * canvasWidth
             : img.naturalWidth;
         const pxH = img.naturalHeight * (pxW / img.naturalWidth);
         canvas.width = pxW;
@@ -193,16 +194,15 @@ class ImageComponent {
         const ctx = canvas.getContext("2d");
         if (ctx) ctx.drawImage(img, 0, 0, pxW, pxH);
       } else {
-        // img path: both width and height in vw (same unit) → ratio is preserved exactly
+        // img path: dimensions in design-canvas pixels
         if (config.width !== null) {
-          (stimulusElement as HTMLImageElement).style.width =
-            `${config.width}vw`;
+          const pxW = (config.width / 100) * canvasWidth;
+          (stimulusElement as HTMLImageElement).style.width = pxW + "px";
         }
         if (config.height !== null) {
-          (stimulusElement as HTMLImageElement).style.height =
-            `${config.height}vw`;
+          const pxH = (config.height / 100) * canvasWidth;
+          (stimulusElement as HTMLImageElement).style.height = pxH + "px";
         }
-        // If only one dimension is set, let the browser derive the other
         if (config.width !== null && config.height === null) {
           (stimulusElement as HTMLImageElement).style.height = "auto";
         } else if (config.height !== null && config.width === null) {

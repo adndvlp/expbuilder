@@ -227,6 +227,7 @@ export default function MappedJson({
           "trial_duration",
           "response_ends_trial",
           "require_response",
+          "__canvasStyles",
         ];
 
         additionalDynamicParams.forEach((paramKey) => {

@@ -24,6 +24,11 @@ const info = <const>{
   name: "DynamicPlugin",
   version: version,
   parameters: {
+    /** Canvas design dimensions and styles */
+    __canvasStyles: {
+      type: ParameterType.COMPLEX,
+      default: { width: 1024, height: 768 },
+    },
     /** Array of component configurations for stimulus display */
     components: {
       type: ParameterType.COMPLEX,
@@ -154,10 +159,9 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       styleElement.textContent = `
         #jspsych-dynamic-plugin-container {
           position: fixed;
-          inset: 0;
-          width: 100vw;
-          height: 100vh;
-          overflow: auto;
+          top: 50%;
+          left: 50%;
+          overflow: hidden;
         }
         #jspsych-html-component-main,
         #jspsych-button-response-main {
@@ -180,6 +184,26 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     mainContainer.id = "jspsych-dynamic-plugin-container";
     display_element.appendChild(mainContainer);
 
+    // Design canvas dimensions
+    const canvasWidth = trial.__canvasStyles?.width ?? 1024;
+    const canvasHeight = trial.__canvasStyles?.height ?? 768;
+
+    // Scale to fit viewport (same mechanism as ExperimentPreview iframe)
+    const updateScale = () => {
+      const ratio = Math.min(
+        window.innerWidth / canvasWidth,
+        window.innerHeight / canvasHeight,
+        1
+      );
+      mainContainer.style.width = canvasWidth + "px";
+      mainContainer.style.height = canvasHeight + "px";
+      mainContainer.style.transform = "translate(-50%, -50%) scale(" + ratio + ")";
+    };
+    updateScale();
+
+    const resizeObserver = new ResizeObserver(() => updateScale());
+    resizeObserver.observe(document.documentElement);
+
     // Track start time
     const startTime = performance.now();
 
@@ -194,6 +218,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     if (trial.components && trial.components.length > 0) {
       trial.components.forEach((rawConfig: any, idx: number) => {
         const config = resolveScreenLayout(rawConfig);
+        // Inject __canvasStyles so components can compute pixel coords
+        config.__canvasStyles = trial.__canvasStyles;
         const ComponentClass = COMPONENT_MAP[config.type];
         if (ComponentClass) {
           stimulusTypeCounts[config.type] =
@@ -214,6 +240,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     if (trial.response_components && trial.response_components.length > 0) {
       trial.response_components.forEach((rawConfig: any, idx: number) => {
         const config = resolveScreenLayout(rawConfig);
+        config.__canvasStyles = trial.__canvasStyles;
         const ComponentClass = RESPONSE_COMPONENT_MAP[config.type];
         if (ComponentClass) {
           responseTypeCounts[config.type] =
@@ -518,6 +545,9 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       responseComponents.forEach(({ instance }) => {
         if (instance.destroy) instance.destroy();
       });
+
+      // Clean up resize observer
+      resizeObserver.disconnect();
 
       // Clear display
       display_element.innerHTML = "";

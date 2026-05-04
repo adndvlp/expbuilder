@@ -122,8 +122,8 @@ function KonvaCanvas({
 
         <Stage
           ref={stageRef}
-          width={CANVAS_WIDTH}
-          height={CANVAS_HEIGHT}
+          width={CANVAS_WIDTH * stageScale}
+          height={CANVAS_HEIGHT * stageScale}
           scaleX={stageScale}
           scaleY={stageScale}
           onClick={(e) => {

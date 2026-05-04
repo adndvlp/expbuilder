@@ -15,6 +15,7 @@ export default defineConfig({
         globals: {
           jspsych: "jsPsychModule",
         },
+        exports: "default",
       },
     },
   },

@@ -352,8 +352,10 @@ export default function LocalConfiguration({
     // Track pending data saves to ensure all complete before finishing
     const pendingDataSaves = [];
 
+    // Clean up stale jsPsych wrappers from previous runs (prevents stacking on restarts)
+    document.querySelectorAll('.jspsych-content-wrapper').forEach(el => el.remove());
+
     const jsPsych = initJsPsych({
-          display_element: document.getElementById('jspsych-container'),
            ${progressBar ? `show_progress_bar: true,` : ""} 
 
 

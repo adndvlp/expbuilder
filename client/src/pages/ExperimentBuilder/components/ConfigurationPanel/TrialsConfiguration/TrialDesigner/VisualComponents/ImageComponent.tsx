@@ -23,6 +23,8 @@ interface ImageComponentProps {
   onSelect: () => void;
   onChange: (newAttrs: any) => void;
   uploadedFiles?: any[];
+  canvasWidth?: number;
+  canvasHeight?: number;
 }
 
 const ImageComponent: React.FC<ImageComponentProps> = ({
@@ -31,6 +33,8 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
   onSelect,
   onChange,
   uploadedFiles = [],
+  canvasWidth = 1024,
+  canvasHeight = 768,
 }) => {
   const shapeRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
@@ -63,8 +67,60 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
     }
   }, [isSelected, image]);
 
-  // Load placeholder image
+  // Capture natural image dimensions so rescale works on canvas size change
+  useEffect(() => {
+    if (!image || (shapeProps.width !== 0 && shapeProps.height !== 0)) return;
+    onChange({ width: image.width, height: image.height });
+  }, [image]);
+
+  // Sync Konva node when props change (ParameterMapper updates)
+  useEffect(() => {
+    if (!shapeRef.current) return;
+    shapeRef.current.x(shapeProps.x);
+    shapeRef.current.y(shapeProps.y);
+    shapeRef.current.getLayer()?.batchDraw();
+  }, [shapeProps.x, shapeProps.y]);
+
+  // Load placeholder image (must be above snap/log that reference it)
   const [placeholderImg] = useImage(imagePlaceholder);
+
+  // Snap: image edges to viewport edges
+  const SNAP = 8;
+  const dragBoundFunc = (pos: { x: number; y: number }) => {
+    const img = image || placeholderImg;
+    if (!img) return pos;
+    const w = (shapeProps.width && img ? shapeProps.width / img.width : 1) * img.width;
+    const h = (shapeProps.height && img ? shapeProps.height / img.height : 1) * img.height;
+    const halfW = w / 2;
+    const halfH = h / 2;
+
+    // Target positions for each edge alignment
+    // Snap image left edge to viewport left: pos.x = halfW
+    // Snap image right edge to viewport right: pos.x = canvasWidth - halfW
+    // Snap image center to viewport center: pos.x = canvasWidth / 2
+    const snapsX = [halfW, canvasWidth / 2, canvasWidth - halfW];
+    const snapsY = [halfH, canvasHeight / 2, canvasHeight - halfH];
+
+    const snapX = snapsX.find(g => Math.abs(pos.x - g) <= SNAP);
+    const snapY = snapsY.find(g => Math.abs(pos.y - g) <= SNAP);
+    return { x: snapX ?? pos.x, y: snapY ?? pos.y };
+  };
+
+  // Log: image edges distance to viewport edges
+  const dbgImg = image || placeholderImg;
+  if (dbgImg) {
+    const w = (shapeProps.width && dbgImg ? shapeProps.width / dbgImg.width : 1) * dbgImg.width;
+    const h = (shapeProps.height && dbgImg ? shapeProps.height / dbgImg.height : 1) * dbgImg.height;
+    const L = shapeProps.x - w / 2;
+    const T = shapeProps.y - h / 2;
+    const R = L + w;
+    const B = T + h;
+    console.log("[Image edges]",
+      "img:", w.toFixed(1) + "x" + h.toFixed(1),
+      "| L:", L.toFixed(1), "T:", T.toFixed(1), "R:", R.toFixed(1), "B:", B.toFixed(1),
+      "| toVPR:", (canvasWidth - R).toFixed(1), "toVPB:", (canvasHeight - B).toFixed(1),
+      "| snap @", shapeProps.x.toFixed(1) + "," + shapeProps.y.toFixed(1));
+  }
 
   // If no image is loaded, show placeholder image
   if (!image && placeholderImg) {
@@ -87,6 +143,7 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
           }
           rotation={shapeProps.rotation || 0}
           draggable
+          dragBoundFunc={dragBoundFunc}
           onClick={onSelect}
           onTap={onSelect}
           onDragEnd={(e) => {
@@ -141,6 +198,7 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
         }
         rotation={shapeProps.rotation || 0}
         draggable
+        dragBoundFunc={dragBoundFunc}
         onClick={onSelect}
         onTap={onSelect}
         onDragEnd={(e) => {

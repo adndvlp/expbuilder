@@ -210,6 +210,8 @@ const RenderComponent = ({
           onSelect={() => handleSelect(comp.id)}
           onChange={handleComponentChange}
           uploadedFiles={uploadedFiles}
+          canvasWidth={canvasStyles?.width}
+          canvasHeight={canvasStyles?.height}
         />
       );
 

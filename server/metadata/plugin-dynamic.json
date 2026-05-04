@@ -1,6 +1,10 @@
 {
   "name": "DynamicPlugin",
   "parameters": {
+    "__canvasStyles": {
+      "type": "object",
+      "default": "{ width: 1024, height: 768 }"
+    },
     "components": {
       "type": "object_array",
       "default": []
