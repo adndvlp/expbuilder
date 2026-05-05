@@ -192,8 +192,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     const updateScale = () => {
       const ratio = Math.min(
         window.innerWidth / canvasWidth,
-        window.innerHeight / canvasHeight,
-        1
+        window.innerHeight / canvasHeight
       );
       mainContainer.style.width = canvasWidth + "px";
       mainContainer.style.height = canvasHeight + "px";
