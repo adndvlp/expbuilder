@@ -1,5 +1,6 @@
 import { TrialComponent, CanvasStyles } from "./types";
 import { Rect } from "react-konva";
+import { HANDLE_PAD } from "./KonvaCanvas";
 import {
   ImageComponent,
   VideoComponent,
@@ -212,6 +213,7 @@ const RenderComponent = ({
           uploadedFiles={uploadedFiles}
           canvasWidth={canvasStyles?.width}
           canvasHeight={canvasStyles?.height}
+          stageOffset={HANDLE_PAD}
         />
       );
 

@@ -25,6 +25,7 @@ interface ImageComponentProps {
   uploadedFiles?: any[];
   canvasWidth?: number;
   canvasHeight?: number;
+  stageOffset?: number;
 }
 
 const ImageComponent: React.FC<ImageComponentProps> = ({
@@ -35,6 +36,7 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
   uploadedFiles = [],
   canvasWidth = 1024,
   canvasHeight = 768,
+  stageOffset = 0,
 }) => {
   const shapeRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
@@ -98,8 +100,10 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
     // Snap image left edge to viewport left: pos.x = halfW
     // Snap image right edge to viewport right: pos.x = canvasWidth - halfW
     // Snap image center to viewport center: pos.x = canvasWidth / 2
-    const snapsX = [halfW, canvasWidth / 2, canvasWidth - halfW];
-    const snapsY = [halfH, canvasHeight / 2, canvasHeight - halfH];
+    // dragBoundFunc receives absolute stage coords; Group offset (stageOffset)
+    // shifts node absolute coords by stageOffset relative to Group-local coords.
+    const snapsX = [halfW + stageOffset, canvasWidth / 2 + stageOffset, canvasWidth - halfW + stageOffset];
+    const snapsY = [halfH + stageOffset, canvasHeight / 2 + stageOffset, canvasHeight - halfH + stageOffset];
 
     const snapX = snapsX.find(g => Math.abs(pos.x - g) <= SNAP);
     const snapY = snapsY.find(g => Math.abs(pos.y - g) <= SNAP);
