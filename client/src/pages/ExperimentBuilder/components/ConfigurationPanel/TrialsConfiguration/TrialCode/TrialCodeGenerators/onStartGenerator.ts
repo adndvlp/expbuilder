@@ -2,29 +2,27 @@ import { ParamsOverrideCondition } from "../../../types";
 import { generateParamsOverrideCode } from "./paramsOverrideGenerator";
 import { generateBranchCustomParametersCode } from "./branchCustomParamsGenerator";
 
-/**
- * Generates the complete on_start function code
- * Combines params override and branch custom parameters logic
- */
 export function generateOnStartCode(options: {
   paramsOverride?: ParamsOverrideCondition[];
   isInLoop?: boolean;
   getVarName: (baseName: string) => string;
+  customOnStart?: string;
 }): string {
-  const { paramsOverride, isInLoop = false, getVarName } = options;
+  const { paramsOverride, isInLoop = false, getVarName, customOnStart } = options;
 
   const paramsOverrideCode = generateParamsOverrideCode(paramsOverride);
-  const branchCustomParamsCode = generateBranchCustomParametersCode(
-    isInLoop,
-    getVarName
-  );
+  const branchCustomParamsCode = generateBranchCustomParametersCode(isInLoop, getVarName);
+  const trimmedCustom = customOnStart?.trim() || "";
 
-  // If there's no content to generate, return empty string
-  if (!paramsOverrideCode && !branchCustomParamsCode) {
+  if (!paramsOverrideCode && !branchCustomParamsCode && !trimmedCustom) {
     return "";
   }
 
+  const customBlock = trimmedCustom
+    ? `\n      // --- User Custom Code ---\n      ${trimmedCustom}`
+    : "";
+
   return `on_start: function(trial) {${paramsOverrideCode}
-      // Then apply custom parameters from branching conditions (higher priority)${branchCustomParamsCode}
+      // Then apply custom parameters from branching conditions (higher priority)${branchCustomParamsCode}${customBlock}
     },`;
 }

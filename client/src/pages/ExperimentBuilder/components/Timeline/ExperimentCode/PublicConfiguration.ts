@@ -42,7 +42,8 @@ export default function PublicConfiguration({
   getLoop,
   canvasStyles,
 }: Props) {
-  const { isDevMode, code } = useDevMode();
+  const { isDevMode, code, customInitJsPsychParams, customPreInitCode } = useDevMode();
+  const publicParams = customInitJsPsychParams.public;
   const { generatedBaseCode } = ExperimentBase({
     experimentID,
     uploadedFiles,
@@ -148,7 +149,7 @@ export default function PublicConfiguration({
 
     const currentUid = auth.currentUser?.uid ?? "";
 
-    return `
+    const _experimentCode = `
   // --- FileUploadResponseComponent endpoint (Firebase Cloud Function) ---
   window.JSPSYCH_FILE_UPLOAD_ENDPOINT = '${DATA_API_URL}'.replace('/apiData', '/uploadParticipantFile');
   window.JSPSYCH_EXPERIMENT_ID = '${experimentID}';
@@ -790,15 +791,16 @@ export default function PublicConfiguration({
     // Clean up stale jsPsych wrappers from previous runs (prevents stacking on restarts)
     document.querySelectorAll('.jspsych-content-wrapper').forEach(el => el.remove());
 
+    ${customPreInitCode.public?.trim() ? `// --- User code (before initJsPsych) ---\n    ${customPreInitCode.public.trim()}\n\n    ` : ""}// __INIT_JSPSYCH_START__
     const jsPsych = initJsPsych({
-      ${progressBar ? `show_progress_bar: true,` : ""} 
+      ${progressBar ? `show_progress_bar: true,` : ""}
 
 
       on_trial_start: function(trial) {
         const lastTrialData = jsPsych.data.get()
         if (lastTrialData && trial.data) {
         trial.data.prev_response = lastTrialData.response;
-        }
+        }${publicParams.on_trial_start?.trim() ? `\n        // --- User code (on_trial_start) ---\n        ${publicParams.on_trial_start.trim()}` : ""}
       },
 
       ${extensions}
@@ -878,7 +880,7 @@ export default function PublicConfiguration({
           }
         }
 
-        ${branchingEvaluation}
+        ${branchingEvaluation}${publicParams.on_data_update?.trim() ? `\n\n        // --- User code (on_data_update) ---\n        ${publicParams.on_data_update.trim()}` : ""}
       },
 
       on_finish: async function() {
@@ -987,10 +989,18 @@ export default function PublicConfiguration({
         `
             : ""
         }
-        ${recruitmentConfig.platform === "none" ? `_showSuccess();` : ""}
-      }
+        ${recruitmentConfig.platform === "none" ? `_showSuccess();` : ""}${publicParams.on_finish?.trim() ? `\n        // --- User code (on_finish) ---\n        ${publicParams.on_finish.trim()}` : ""}
+      }${(() => {
+    const BUILDER_PARAMS = ["on_trial_start", "on_data_update", "on_finish"];
+    const extraPairs = Object.entries(publicParams)
+      .filter(([k, v]) => !BUILDER_PARAMS.includes(k) && v?.trim())
+      .map(([k, v]) => `      ${k}: ${v.trim()}`)
+      .join(",\n");
+    return extraPairs ? `,\n\n      // --- User-added initJsPsych params ---\n${extraPairs}` : "";
+  })()}
     });
-    
+    // __INIT_JSPSYCH_END__
+
     // Uncomment to see the json results after finishing a session experiment
     // jsPsych.data.displayData('csv');
 
@@ -1015,6 +1025,7 @@ export default function PublicConfiguration({
 
 })();
 `;
+    return _experimentCode;
   };
   return { generateExperiment };
 }

@@ -223,6 +223,10 @@ async function generateTrialCode(
       categoryData: fullTrial.categoryData || [],
       isInLoop: isInLoop,
       parentLoopId: fullTrial.parentLoopId || null,
+      customInitialize: fullTrial.customInitialize,
+      customOnStart: fullTrial.customOnStart,
+      customOnLoad: fullTrial.customOnLoad,
+      customOnFinish: fullTrial.customOnFinish,
     });
 
     console.log(

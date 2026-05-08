@@ -104,6 +104,15 @@ function Dashboard() {
             >
               Settings
             </div>
+            <div
+              className="menu-item"
+              onClick={() => {
+                setMenuOpen(false);
+                navigate("/docs");
+              }}
+            >
+              Documentation
+            </div>
           </div>
         )}
       </div>

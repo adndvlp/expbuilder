@@ -12,6 +12,8 @@ import { useExtensions } from "./Extensions/useExtensions";
 import ExtensionsConfig from "./Extensions";
 import { Trial, Loop } from "../types";
 import TabContent from "./TabContent";
+import TrialCodeInjection from "./TrialCodeInjection";
+import { generateInitializeCode, generateOnStartCode, generateOnLoadCode, generateOnFinishCode } from "./TrialCode/TrialCodeGenerators";
 
 type Props = { pluginName: string };
 
@@ -148,6 +150,39 @@ function TrialsConfig({ pluginName }: Props) {
   // (Run Experiment, Run Demo, Publish) to avoid storing duplicate data
 
   const canSave = !!trialName && !isLoadingTrial;
+
+  const isTrialInLoop = !!selectedTrial?.parentLoopId;
+  const getVarNameForTrial = (baseName: string): string => {
+    if (!selectedTrial?.parentLoopId) return baseName;
+    const sanitized = String(selectedTrial.parentLoopId).replace(/[^a-zA-Z0-9_]/g, "_");
+    return `loop_${sanitized}_${baseName}`;
+  };
+
+  const computeInitializePreview = (userCode: string): string =>
+    generateInitializeCode(userCode) ||
+    `initialize: async function() {\n  // Your code runs here\n},`;
+
+  const computeOnStartPreview = (userCode: string): string =>
+    generateOnStartCode({
+      paramsOverride: selectedTrial?.paramsOverride,
+      isInLoop: isTrialInLoop,
+      getVarName: getVarNameForTrial,
+      customOnStart: userCode,
+    }) || `on_start: function(trial) {\n  // Your code runs here\n},`;
+
+  const computeOnLoadPreview = (userCode: string): string =>
+    generateOnLoadCode(userCode) ||
+    `on_load: function() {\n  // Your code runs here\n},`;
+
+  const computeOnFinishPreview = (userCode: string): string =>
+    generateOnFinishCode({
+      branches: selectedTrial?.branches,
+      branchConditions: selectedTrial?.branchConditions,
+      repeatConditions: selectedTrial?.repeatConditions,
+      isInLoop: isTrialInLoop,
+      getVarName: getVarNameForTrial,
+      customOnFinish: userCode,
+    }) || `on_finish: function(data) {\n  // Your code runs here\n},`;
 
   // Función auxiliar para mostrar indicador de guardado
   const showSaveIndicator = (fieldName?: string) => {
@@ -348,6 +383,47 @@ function TrialsConfig({ pluginName }: Props) {
             onSave={saveColumnMapping}
           />
         )}{" "}
+        {/* Custom Code Injection */}
+        <TrialCodeInjection
+          tabs={[
+            {
+              key: "initialize",
+              label: "initialize",
+              hint: "async setup before trial starts — can return a Promise to delay until ready",
+              fieldKey: "customInitialize",
+              customValue: selectedTrial?.customInitialize ?? "",
+              computePreview: computeInitializePreview,
+            },
+            {
+              key: "onStart",
+              label: "on_start",
+              hint: "runs before trial starts, has access to trial params",
+              fieldKey: "customOnStart",
+              customValue: selectedTrial?.customOnStart ?? "",
+              computePreview: computeOnStartPreview,
+              isBuilderManaged: true,
+            },
+            {
+              key: "onLoad",
+              label: "on_load",
+              hint: "runs once stimulus is displayed and ready",
+              fieldKey: "customOnLoad",
+              customValue: selectedTrial?.customOnLoad ?? "",
+              computePreview: computeOnLoadPreview,
+            },
+            {
+              key: "onFinish",
+              label: "on_finish",
+              hint: "runs after trial ends, has access to data",
+              fieldKey: "customOnFinish",
+              customValue: selectedTrial?.customOnFinish ?? "",
+              computePreview: computeOnFinishPreview,
+              isBuilderManaged: true,
+            },
+          ]}
+          onSave={(field, value) => saveField(field, value)}
+        />
+
         {/* Extensions */}
         <ExtensionsConfig
           parameters={parameters}

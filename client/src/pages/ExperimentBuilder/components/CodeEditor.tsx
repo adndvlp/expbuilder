@@ -2,9 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import Editor, { OnMount } from "@monaco-editor/react";
 import * as monaco from "monaco-editor"; // brings in Monaco’s own types
 import useDevMode from "../hooks/useDevMode";
+import usePlugins from "../hooks/usePlugins";
+import { setupMonacoJsPsychContext, updateCustomPluginContext } from "./monacoJsPsychContext";
 
 const CodeEditor: React.FC = () => {
   const { code, setCode } = useDevMode();
+  const { plugins } = usePlugins();
+
+  useEffect(() => {
+    updateCustomPluginContext(monaco, plugins.map((p) => p.name));
+  }, [plugins]);
   const [saveIndicator, setSaveIndicator] = useState(false);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -21,8 +28,9 @@ const CodeEditor: React.FC = () => {
     return () => mediaQuery.removeEventListener("change", handler);
   }, []);
 
-  const handleEditorDidMount: OnMount = (editor, _monaco) => {
+  const handleEditorDidMount: OnMount = (editor, monacoInst) => {
     editorRef.current = editor;
+    setupMonacoJsPsychContext(monacoInst);
 
     // Configurar los comandos de undo/redo
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyZ, () => {

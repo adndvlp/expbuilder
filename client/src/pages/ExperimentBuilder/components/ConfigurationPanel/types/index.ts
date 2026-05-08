@@ -30,6 +30,8 @@ export interface Loop {
   loopConditions?: LoopCondition[];
   isConditionalLoop?: boolean;
   parentLoopId?: string | number | null; // ID del loop padre para nested loops
+  customOnTimelineStart?: string;
+  customOnTimelineFinish?: string;
 }
 
 export type BranchCondition = {
@@ -121,6 +123,11 @@ export type Trial = {
   repeatConditions?: RepeatCondition[];
 
   paramsOverride?: ParamsOverrideCondition[];
+
+  customInitialize?: string;
+  customOnStart?: string;
+  customOnLoad?: string;
+  customOnFinish?: string;
 
   // Loop context - assigned when trial is inside a loop
   parentLoopId?: string | null;

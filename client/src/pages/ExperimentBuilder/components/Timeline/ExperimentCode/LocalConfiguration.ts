@@ -36,7 +36,8 @@ export default function LocalConfiguration({
   getLoop,
   canvasStyles,
 }: Props) {
-  const { isDevMode, code } = useDevMode();
+  const { isDevMode, code, customCode, customInitJsPsychParams, customPreInitCode } = useDevMode();
+  const localParams = customInitJsPsychParams.local;
   const { generatedBaseCode } = ExperimentBase({
     experimentID,
     uploadedFiles,
@@ -81,7 +82,7 @@ export default function LocalConfiguration({
       }
     }
 
-    return `
+    const _experimentCode = `
   // --- FileUploadResponseComponent endpoint (local Express server) ---
   window.JSPSYCH_FILE_UPLOAD_ENDPOINT = '/api/participant-files/${experimentID}';
 
@@ -355,8 +356,9 @@ export default function LocalConfiguration({
     // Clean up stale jsPsych wrappers from previous runs (prevents stacking on restarts)
     document.querySelectorAll('.jspsych-content-wrapper').forEach(el => el.remove());
 
+    ${customPreInitCode.local?.trim() ? `// --- User code (before initJsPsych) ---\n    ${customPreInitCode.local.trim()}\n\n    ` : ""}// __INIT_JSPSYCH_START__
     const jsPsych = initJsPsych({
-           ${progressBar ? `show_progress_bar: true,` : ""} 
+           ${progressBar ? `show_progress_bar: true,` : ""}
 
 
     ${extensions}
@@ -408,7 +410,7 @@ export default function LocalConfiguration({
         });
       }
       
-      ${branchingEvaluation}
+      ${branchingEvaluation}${localParams.on_data_update?.trim() ? `\n\n      // --- User code (on_data_update) ---\n      ${localParams.on_data_update.trim()}` : ""}
     },
 
   on_finish: async function() {
@@ -453,14 +455,25 @@ export default function LocalConfiguration({
       }),
     });
 
-    _showSuccess();
-  }
+    _showSuccess();${localParams.on_finish?.trim() ? `\n    // --- User code (on_finish) ---\n    ${localParams.on_finish.trim()}` : ""}
+  }${(() => {
+    const BUILDER_PARAMS = ["on_data_update", "on_finish"];
+    const extraPairs = Object.entries(localParams)
+      .filter(([k, v]) => !BUILDER_PARAMS.includes(k) && v?.trim())
+      .map(([k, v]) => `  ${k}: ${v.trim()}`)
+      .join(",\n");
+    const extraBlock = extraPairs ? `,\n\n  // --- User-added initJsPsych params ---\n${extraPairs}` : "";
+    const customBlock = customCode?.trim() ? `,\n\n  // --- Global Custom Code (initJsPsych options) ---\n  ${customCode}` : "";
+    return extraBlock + customBlock;
+  })()}
 });
+    // __INIT_JSPSYCH_END__
 
 ${baseCode}
 
 })();
 `;
+    return _experimentCode;
   };
   return { generateLocalExperiment };
 }

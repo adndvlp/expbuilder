@@ -7,7 +7,9 @@ import {
 } from "../../types";
 import MappedJson from "./MappedJson";
 import {
+  generateInitializeCode,
   generateOnStartCode,
+  generateOnLoadCode,
   generateOnFinishCode,
   generateConditionalFunctionCode,
 } from "./TrialCodeGenerators";
@@ -39,6 +41,10 @@ type Props = {
   categoryData: any[];
   isInLoop?: boolean;
   parentLoopId?: string | null; // ID del loop padre para generar nombres de variables dinámicos
+  customInitialize?: string;
+  customOnStart?: string;
+  customOnLoad?: string;
+  customOnFinish?: string;
 };
 
 export function useTrialCode({
@@ -63,6 +69,10 @@ export function useTrialCode({
   categoryData,
   isInLoop,
   parentLoopId,
+  customInitialize,
+  customOnStart,
+  customOnLoad,
+  customOnFinish,
 }: Props) {
   // Defensive checks for undefined values
 
@@ -480,27 +490,20 @@ data: {
     const pluginTypeForCode =
       pluginName === "plugin-dynamic" ? "DynamicPlugin" : pluginNameImport;
 
-    // Generate on_start code using the modular generator
-    const onStartCode = generateOnStartCode({
-      paramsOverride,
-      isInLoop,
-      getVarName,
-    });
+    const initializeCode = generateInitializeCode(customInitialize);
+    const onStartCode = generateOnStartCode({ paramsOverride, isInLoop, getVarName, customOnStart });
+    const onLoadCode = generateOnLoadCode(customOnLoad);
 
     code += `
     const ${trialNameSanitized}_timeline = {
     type: ${pluginTypeForCode}, ${timelineProps}
+    ${initializeCode}
     ${onStartCode}
+    ${onLoadCode}
     `;
 
     // Generate on_finish code using the modular generator
-    const onFinishCode = generateOnFinishCode({
-      branches,
-      branchConditions,
-      repeatConditions,
-      isInLoop,
-      getVarName,
-    });
+    const onFinishCode = generateOnFinishCode({ branches, branchConditions, repeatConditions, isInLoop, getVarName, customOnFinish });
 
     code += onFinishCode;
 

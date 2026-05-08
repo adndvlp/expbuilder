@@ -14,6 +14,7 @@ import DropboxCallback from "./Settings/Dropbox/DropboxCallback";
 import GithubCallback from "./Settings/Github/GithubCallback";
 import OsfCallback from "./Settings/OsfCallback";
 import ExperimentPanel from "./ExperimentPanel";
+import Docs from "./Docs";
 
 // import ProtectedRoute from "../components/ProtectedRoute";
 
@@ -63,6 +64,10 @@ const router = createHashRouter([
   {
     path: "/oauth/osf/callback",
     element: <OsfCallback />,
+  },
+  {
+    path: "/docs",
+    element: <Docs />,
   },
   {
     path: "/home/experiment/:id",

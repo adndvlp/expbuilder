@@ -16,6 +16,7 @@ import CodeEditor from "./components/CodeEditor";
 import useDevMode from "./hooks/useDevMode";
 import { useNavigate, useParams } from "react-router-dom";
 import { useFileUpload } from "./components/Timeline/useFileUpload";
+import GlobalCustomCode from "./components/GlobalCustomCode";
 
 function ExperimentBuilder() {
   const API_URL = import.meta.env.VITE_API_URL;
@@ -366,6 +367,7 @@ function ExperimentBuilder() {
                     }}
                   >
                     <ExperimentPreview uploadedFiles={uploadedFiles} />
+                    <GlobalCustomCode />
                   </div>
 
                   {/* Barra de redimensionamiento izquierda */}
