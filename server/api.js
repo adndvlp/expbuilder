@@ -16,6 +16,7 @@ import trialsRouter from "./routes/timeline/index.js";
 import tunnelRouter from "./routes/tunnel.js";
 import configsRouter from "./routes/configs.js";
 import dbRouter from "./routes/db.js";
+import agentRouter from "./agent/routes.js";
 
 dotenv.config({ path: path.resolve(__dirname, ".env") });
 
@@ -31,9 +32,17 @@ const io = new Server(httpServer, {
 
 const port = 3000;
 
+const DEV_ORIGINS = ["http://localhost:5173", "http://localhost:5174", "http://localhost:4173"];
 app.use(
   cors({
-    origin: `${process.env.ORIGIN}`,
+    origin: (origin, cb) => {
+      const allowed = process.env.ORIGIN
+        ? [process.env.ORIGIN, ...DEV_ORIGINS]
+        : DEV_ORIGINS;
+      // Electron (no origin) or explicit allowlist
+      if (!origin || allowed.includes(origin)) return cb(null, true);
+      cb(new Error(`CORS: ${origin} not allowed`));
+    },
     credentials: true,
   }),
 );
@@ -57,6 +66,7 @@ app.use("/", configsRouter);
 app.use("/", tunnelRouter);
 app.use("/", resultsRouter);
 app.use("/", dbRouter);
+app.use("/", agentRouter);
 
 // Socket.IO para tracking de sesiones en tiempo real
 const activeSessions = new Map(); // experimentID -> Map(sessionId -> sessionData)
