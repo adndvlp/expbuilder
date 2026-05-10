@@ -133,7 +133,7 @@ export const readTools = {
 
   get_trial: tool({
     description:
-      'Get complete data for one trial. Key fields: plugin (e.g. "plugin-dynamic", "plugin-html-keyboard-response"), columnMapping (source of truth for all parameter values — for DynamicPlugin this contains components[], response_components[] arrays with full component configs including survey_json), branches[], branchConditions[], repeatConditions[], paramsOverride[], customOnStart/Finish/Load/Initialize code, csvFromLoop, parentLoopId. Note: trialCode is generated dynamically at runtime (not stored), except for WebGazer trials.',
+      'Get complete data for one trial. Key fields: plugin (e.g. "plugin-dynamic", "plugin-html-keyboard-response"), columnMapping (source of truth for all parameter values — for DynamicPlugin this contains components[], response_components[] arrays with full component configs including survey_json for SurveyComponent), branches[], branchConditions[], repeatConditions[], paramsOverride[], customOnStart/Finish/Load/Initialize code, csvFromLoop, parentLoopId. Note: trialCode is generated dynamically at runtime via the code generation pipeline (useTrialCode → TrialCodeGenerators, see 13-CODE_GENERATION.md) — not stored in DB, except for WebGazer trials.',
     parameters: z.object({
       experimentID: z.string().describe('Experiment UUID'),
       trialId: z.number().describe('Numeric trial ID from list_trials'),
@@ -243,7 +243,7 @@ export const readTools = {
 
   list_plugins: tool({
     description:
-      'List available plugin types. Returns: native jsPsych plugins (from server/metadata/), custom user plugins (from DB), and DynamicPlugin component types. Useful before creating a trial to know what plugin to use.',
+      'List available plugin types. Returns: native jsPsych plugins (from server/metadata/), custom user plugins (from DB), and DynamicPlugin component types. IMPORTANT: surveys must use DynamicPlugin with SurveyComponent (survey_json) — native survey plugins (plugin-survey-*) are no longer used. Useful before creating a trial to know what plugin to use.',
     parameters: z.object({}),
     execute: async () => {
       await readDb()
@@ -260,9 +260,8 @@ export const readTools = {
         'plugin-maxdiff', 'plugin-mirror-camera', 'plugin-multi-image-keyboard-response',
         'plugin-preload', 'plugin-reconstruction', 'plugin-resize',
         'plugin-same-different-html', 'plugin-same-different-image', 'plugin-serial-reaction-time',
-        'plugin-serial-reaction-time-mouse', 'plugin-sketchpad', 'plugin-survey', 'plugin-survey-html-form',
-        'plugin-survey-likert', 'plugin-survey-multi-choice', 'plugin-survey-multi-select',
-        'plugin-survey-text', 'plugin-video-button-response', 'plugin-video-keyboard-response',
+        'plugin-serial-reaction-time-mouse', 'plugin-sketchpad',
+        'plugin-video-button-response', 'plugin-video-keyboard-response',
         'plugin-video-slider-response', 'plugin-virtual-chinrest', 'plugin-visual-search-circle',
         'plugin-webgazer-calibrate', 'plugin-webgazer-init-camera', 'plugin-webgazer-recalibrate',
         'plugin-webgazer-validate',
@@ -270,6 +269,7 @@ export const readTools = {
       const dynamicComponents = {
         stimulus: ['ImageComponent', 'TextComponent', 'HtmlComponent', 'AudioComponent', 'VideoComponent', 'SketchpadComponent'],
         response: ['ButtonResponseComponent', 'KeyboardResponseComponent', 'SliderResponseComponent', 'ClickResponseComponent', 'InputResponseComponent', 'AudioResponseComponent', 'FileUploadResponseComponent', 'SurveyComponent'],
+        note: 'SurveyComponent is the canonical way to collect survey data. Use survey_json (SurveyJS format) inside a plugin-dynamic trial. See 07-DYNAMIC_PLUGIN.md for full schema and examples.',
       }
       const customPlugins = (db.data.pluginConfigs ?? []).map(p => ({
         name: p.name,
