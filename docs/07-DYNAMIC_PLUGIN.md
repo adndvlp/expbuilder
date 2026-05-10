@@ -103,9 +103,200 @@ Keyboard input. Parameters: `choices` (allowed keys), `coordinates`
 Text input. Parameters: `placeholder`, `input_type` (text/number/email/password), `allow_blanks`, `coordinates`
 
 ### 6. SurveyComponent
-Full survey using SurveyJS. Parameters: `survey_json` (SurveyJS JSON config), `coordinates`
-- Data: Each question response becomes a separate column
-- Uses the custom `SurveyBuilder` UI for visual survey creation
+Full interactive survey using SurveyJS (`survey-core` + `survey-js-ui`). Renders a complete survey form with support for 10 question types, multi-page navigation, validation, and theming.
+
+**Parameters:** `survey_json` (SurveyJS JSON object, NOT string), `survey_function` (optional JS function), `validation_function` (optional), `min_width`, `coordinates`, `zIndex`
+
+**Data output:** Each question response becomes a separate flat column: `SurveyComponent_1_{questionName}`
+
+#### Survey JSON Schema
+
+The `survey_json` parameter accepts a SurveyJS-compatible JSON object:
+
+```json
+{
+  "title": "My Survey",
+  "description": "Please answer the following questions.",
+  "showProgressBar": "top",
+  "completeText": "Submit",
+  "elements": [
+    { "type": "text", "name": "q1", "title": "Your name?", "isRequired": true }
+  ],
+  "themeVariables": {
+    "--sjs-primary-backcolor": "#1ab394",
+    "--sjs-corner-radius": "4px"
+  }
+}
+```
+
+#### Survey-level Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `title` | string | Survey title |
+| `description` | string | Optional instructions |
+| `completeText` | string | Submit button text |
+| `showProgressBar` | string | `"top"`, `"bottom"`, `"both"` |
+| `elements` | Question[] | Array of question objects |
+| `pages` | Page[] | Multi-page: array of `{ name, elements[] }` |
+| `themeVariables` | object | CSS custom properties for styling |
+
+#### Question Types
+
+| Type | Label | Key Properties | Response |
+|------|-------|---------------|----------|
+| `text` | Text Input | `inputType` ("text"/"number"/"email"), `placeholder`, `maxLength` | String |
+| `comment` | Long Text | `rows` (default 4) | String |
+| `radiogroup` | Single Choice | `choices[]`, `displayMode` ("auto"/"buttons") | String |
+| `checkbox` | Multiple Choice | `choices[]`, `showSelectAllItem` | String[] |
+| `dropdown` | Dropdown | `choices[]` | String |
+| `imagepicker` | Image Picker | `choices[]` with `imageLink` per choice, `contentMode` | String |
+| `rating` | Rating Scale | `rateMin`, `rateMax`, `rateValues[]`, `minRateDescription`, `maxRateDescription` | Number |
+| `boolean` | Yes/No | — | Boolean |
+| `image` | Image Display | `imageLink`, `imageWidth`, `imageHeight`, `imageFit`, `contentMode` | No response |
+| `html` | Custom HTML | `html` (HTML string) | No response |
+
+#### Question Object
+
+```typescript
+type Question = {
+  type: string;          // One of the 10 types above
+  name: string;          // Unique identifier → data column name
+  title?: string;        // Question text
+  description?: string;  // Help text
+  isRequired?: boolean;  // Default: false
+  
+  // Choices (radiogroup, checkbox, dropdown, imagepicker)
+  choices?: (string | { value: string; text: string; imageLink?: string })[];
+  displayMode?: "auto" | "buttons";
+  
+  // Rating
+  rateMin?: number;
+  rateMax?: number;
+  rateValues?: { value: string; text: string }[];
+  minRateDescription?: string;
+  maxRateDescription?: string;
+  
+  // Image/Video
+  imageLink?: string;
+  imageWidth?: string | number;
+  imageHeight?: string | number;
+  imageFit?: "none" | "contain" | "cover" | "fill";
+  contentMode?: "auto" | "image" | "video" | "youtube";
+  
+  // HTML
+  html?: string;
+  
+  // Text input
+  inputType?: "text" | "number" | "email" | "password";
+  placeholder?: string;
+  maxLength?: number;
+  
+  // Long text
+  rows?: number;
+};
+```
+
+#### LLM-Ready Examples
+
+**Simple demographics:**
+```json
+{
+  "title": "Demographics",
+  "elements": [
+    { "type": "text", "name": "age", "title": "Your age?", "inputType": "number", "isRequired": true },
+    { "type": "radiogroup", "name": "gender", "title": "Gender?", "isRequired": true,
+      "choices": ["Male", "Female", "Non-binary", "Prefer not to say"] }
+  ]
+}
+```
+
+**Likert scale:**
+```json
+{
+  "title": "Satisfaction",
+  "elements": [
+    { "type": "rating", "name": "satisfaction", "title": "How satisfied?",
+      "rateMin": 1, "rateMax": 7,
+      "minRateDescription": "Very dissatisfied",
+      "maxRateDescription": "Very satisfied",
+      "isRequired": true }
+  ]
+}
+```
+
+**Image picker:**
+```json
+{
+  "title": "Image Selection",
+  "elements": [
+    { "type": "imagepicker", "name": "preferred", "title": "Which do you prefer?",
+      "choices": [
+        { "value": "a", "text": "Option A", "imageLink": "img/a.jpg" },
+        { "value": "b", "text": "Option B", "imageLink": "img/b.jpg" }
+      ]}
+  ]
+}
+```
+
+**Multi-page with theme:**
+```json
+{
+  "title": "Product Feedback",
+  "showProgressBar": "top",
+  "pages": [
+    { "name": "p1", "elements": [
+      { "type": "rating", "name": "ease", "title": "Ease of use?", "rateMin": 1, "rateMax": 5 }
+    ]},
+    { "name": "p2", "elements": [
+      { "type": "checkbox", "name": "features", "title": "Features used?",
+        "choices": ["Search", "Filter", "Export"] },
+      { "type": "comment", "name": "suggestions", "title": "Improvements?", "rows": 4 }
+    ]}
+  ],
+  "themeVariables": { "--sjs-primary-backcolor": "#4a90d9", "--sjs-corner-radius": "8px" }
+}
+```
+
+**Display image + question:**
+```json
+{
+  "title": "Stimulus",
+  "elements": [
+    { "type": "image", "name": "stim", "imageLink": "img/face.jpg",
+      "imageWidth": 400, "imageHeight": 400, "imageFit": "contain" },
+    { "type": "radiogroup", "name": "emotion", "title": "Emotion?",
+      "isRequired": true, "choices": ["Happy", "Sad", "Neutral"] }
+  ]
+}
+```
+
+#### How to Embed via API
+
+```typescript
+// The survey lives inside a DynamicPlugin trial's columnMapping
+await fetch(`/api/trial/${experimentID}/${trialId}`, {
+  method: "PATCH",
+  body: JSON.stringify({
+    columnMapping: {
+      response_components: {
+        source: "typed",
+        value: [{
+          name: { source: "typed", value: "SurveyComponent_1" },
+          type: { source: "typed", value: "SurveyComponent" },
+          survey_json: { source: "typed", value: { /* survey JSON here */ } },
+          coordinates: { source: "typed", value: { x: 0, y: 0 } },
+          min_width: { source: "typed", value: "min(100vw, 800px)" },
+          zIndex: { source: "typed", value: 0 }
+        }]
+      },
+      trial_duration: { source: "typed", value: null },
+      response_ends_trial: { source: "typed", value: true },
+      __canvasStyles: { source: "typed", value: { width: 1024, height: 768 } }
+    }
+  })
+});
+```
 
 ### 7. AudioResponseComponent
 Audio recording. Parameters: `max_duration`, `allow_playback`, `record_button_text`, `stop_button_text`, `coordinates`

@@ -18,6 +18,7 @@ This documentation covers the complete architecture, data model, API, and system
 | [10-EXPERIMENT_CONFIG.md](10-EXPERIMENT_CONFIG.md) | Experiment settings: batch config, recruitment (Prolific/MTurk), CAPTCHA (hCaptcha/reCAPTCHA), session naming, appearance, Cloudflare tunnel |
 | [11-DEVMODE.md](11-DEVMODE.md) | DevMode system, custom code components, jsPsych init overrides, pre-init code, code generation integration |
 | [12-PUBLISH_FLOW.md](12-PUBLISH_FLOW.md) | CSV handling (parse/generate), multimedia file upload/management, complete publish pipeline, local vs public code differences, chat agent tool flow |
+| [13-CODE_GENERATION.md](13-CODE_GENERATION.md) | Full code generation pipeline: generateTrialLoopCodes, useLoopCode, ExperimentBase, execution order, local vs public config comparison |
 
 ## Quick Reference
 
