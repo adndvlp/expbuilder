@@ -192,6 +192,7 @@ interface Window {
   JSPSYCH_FILE_UPLOAD_ENDPOINT?: string;
   JSPSYCH_EXPERIMENT_ID?: string;
   _socketReady?: boolean;
+  [key: string]: any;
 }
 
 // ─── Builder UI helpers ───────────────────────────────────────────────────────

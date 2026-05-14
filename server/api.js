@@ -32,7 +32,7 @@ const io = new Server(httpServer, {
 
 const port = 3000;
 
-const DEV_ORIGINS = ["http://localhost:5173", "http://localhost:5174", "http://localhost:4173"];
+const DEV_ORIGINS = ["http://localhost:5173", "http://localhost:5174", "http://localhost:4173", "http://localhost:3000"];
 app.use(
   cors({
     origin: (origin, cb) => {

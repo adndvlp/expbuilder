@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Editor, { OnMount } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
@@ -165,9 +165,14 @@ export default function GlobalCustomCode() {
   const hasPreInitPublic = !!customPreInitCode.public?.trim();
   const hasAnyPreInit = hasPreInitLocal || hasPreInitPublic;
 
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const flashSave = () => {
-    setSaveIndicator(true);
-    setTimeout(() => setSaveIndicator(false), 1500);
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      setSaveIndicator(true);
+      setTimeout(() => setSaveIndicator(false), 1500);
+    }, 1200);
   };
 
   // Active param state
@@ -247,61 +252,46 @@ export default function GlobalCustomCode() {
     quickSuggestions: !readOnly ? { other: true, strings: true } as const : false as const,
   });
 
+  const hasAnyInit = hasLocalCode || hasPublicCode;
+
   return (
-    <div style={{ marginTop: 12, borderRadius: 8, border: "1px solid var(--neutral-mid)", overflow: "hidden" }}>
-      {/* Card header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--neutral-light)" }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-dark)" }}>initJsPsych</span>
-        <span style={{ display: "flex", gap: 6 }}>
-          {hasLocalCode && <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "rgba(61,146,180,0.15)", color: "var(--primary-blue)", fontWeight: 600 }}>Local ●</span>}
-          {hasPublicCode && <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "rgba(34,197,94,0.12)", color: "#16a34a", fontWeight: 600 }}>Public ●</span>}
-        </span>
-        <span style={{ marginLeft: "auto", fontSize: 10, color: "#22c55e", fontWeight: 600, opacity: saveIndicator ? 1 : 0, transition: "opacity 0.3s" }}>✓ Saved</span>
-      </div>
+    <div style={{ marginTop: 12 }}>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button
+          type="button"
+          onClick={() => setPreInitModalOpen(true)}
+          style={{
+            flex: 1,
+            padding: "8px 14px",
+            border: `1px solid ${hasAnyPreInit ? "#fff" : "var(--neutral-mid)"}`,
+            borderRadius: 6,
+            cursor: "pointer",
+            background: hasAnyPreInit ? "rgba(255,255,255,0.07)" : "var(--neutral-light)",
+            color: hasAnyPreInit ? "#fff" : "var(--text-dark)",
+            fontSize: 12,
+            fontWeight: 500,
+          }}
+        >
+          Before initJsPsych
+        </button>
 
-      {/* Card body — two buttons */}
-      <div style={{ padding: "8px 12px 10px" }}>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            type="button"
-            onClick={() => setModalOpen(true)}
-            style={{
-              flex: 1, padding: "8px 12px",
-              border: `1px solid ${hasLocalCode || hasPublicCode ? "rgba(61,146,180,0.5)" : "var(--neutral-mid)"}`,
-              borderRadius: 6, cursor: "pointer",
-              background: hasLocalCode || hasPublicCode ? "rgba(61,146,180,0.07)" : "var(--neutral-light)",
-              color: "var(--text-dark)", fontSize: 12, fontWeight: 500,
-              display: "flex", alignItems: "center", gap: 6,
-            }}
-          >
-            <span style={{ fontSize: 13 }}>⚙</span>
-            initJsPsych
-            <span style={{ marginLeft: "auto", fontSize: 10, opacity: 0.5, fontFamily: "monospace" }}>params</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setPreInitModalOpen(true)}
-            style={{
-              flex: 1, padding: "8px 12px",
-              border: `1px solid ${hasAnyPreInit ? "rgba(168,85,247,0.5)" : "var(--neutral-mid)"}`,
-              borderRadius: 6, cursor: "pointer",
-              background: hasAnyPreInit ? "rgba(168,85,247,0.07)" : "var(--neutral-light)",
-              color: "var(--text-dark)", fontSize: 12, fontWeight: 500,
-              display: "flex", alignItems: "center", gap: 6,
-            }}
-          >
-            <span style={{ fontSize: 13 }}>▶</span>
-            Before initJsPsych
-            <span style={{ marginLeft: "auto", fontSize: 10, opacity: 0.5, fontFamily: "monospace" }}>
-              {hasPreInitLocal ? "L" : "·"}{hasPreInitPublic ? "P" : "·"}
-            </span>
-          </button>
-        </div>
-
-        <div style={{ marginTop: 8, fontSize: 10, color: "#888", lineHeight: 1.5 }}>
-          Per-param injection into <code>initJsPsych</code>. "Before initJsPsych" runs inside the async IIFE after session setup.
-        </div>
+        <button
+          type="button"
+          onClick={() => setModalOpen(true)}
+          style={{
+            flex: 1,
+            padding: "8px 14px",
+            border: `1px solid ${hasAnyInit ? "#fff" : "var(--neutral-mid)"}`,
+            borderRadius: 6,
+            cursor: "pointer",
+            background: hasAnyInit ? "rgba(255,255,255,0.07)" : "var(--neutral-light)",
+            color: hasAnyInit ? "#fff" : "var(--text-dark)",
+            fontSize: 12,
+            fontWeight: 500,
+          }}
+        >
+          initJsPsych
+        </button>
       </div>
 
       {/* ── initJsPsych params modal ─────────────────────────────────────────── */}

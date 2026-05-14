@@ -16,8 +16,10 @@
     "supertest": "^7.2.2"
   },
   "dependencies": {
+    "@ai-sdk/openai-compatible": "^2.0.47",
     "acorn": "^8.15.0",
     "acorn-walk": "^8.3.4",
+    "ai": "^6.0.177",
     "cheerio": "^1.1.0",
     "cloudinary": "^1.41.3",
     "cors": "^2.8.5",
@@ -122,7 +124,10 @@
         }
       ],
       "icon": "icon/icon.icns",
-      "identity": null
+      "identity": "-",
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
     },
     "win": {
       "target": [

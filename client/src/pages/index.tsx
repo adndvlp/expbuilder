@@ -1,4 +1,5 @@
 import { createHashRouter } from "react-router-dom";
+import AppLayout from "../components/AppLayout";
 import Dashboard from "./Dashboard";
 import ExperimentBuilder from "./ExperimentBuilder";
 import PluginsProvider from "./ExperimentBuilder/providers/PluginsProvider";
@@ -20,72 +21,72 @@ import Docs from "./Docs";
 
 const router = createHashRouter([
   {
-    path: "/",
-    element: <LandingPage />,
+    element: <AppLayout />,
     errorElement: <ErrorDetail />,
-  },
-  {
-    path: "/auth/register",
-    element: <Register />,
-  },
-  {
-    path: "/auth/login",
-    element: <Login />,
-  },
-  {
-    path: "/home",
-    element: (
-      // <ProtectedRoute>
-      <Dashboard />
-      // </ProtectedRoute>
-    ),
-    index: true,
-  },
-  {
-    path: "/settings",
-    element: (
-      // <ProtectedRoute>
-      <Settings />
-      // </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/google-drive-callback",
-    element: <GoogleDriveCallback />,
-  },
-  {
-    path: "/dropbox-callback",
-    element: <DropboxCallback />,
-  },
-  {
-    path: "/github-callback",
-    element: <GithubCallback />,
-  },
-  {
-    path: "/oauth/osf/callback",
-    element: <OsfCallback />,
-  },
-  {
-    path: "/docs",
-    element: <Docs />,
-  },
-  {
-    path: "/home/experiment/:id",
-    element: (
-      // <ProtectedRoute>
-      <ExperimentPanel />
-      // </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/home/experiment/:id/builder",
-    element: (
-      <DevModeProvider>
-        <PluginsProvider>
-          <ExperimentBuilder />
-        </PluginsProvider>
-      </DevModeProvider>
-    ),
+    children: [
+      {
+        path: "/",
+        element: <LandingPage />,
+      },
+      {
+        path: "/auth/register",
+        element: <Register />,
+      },
+      {
+        path: "/auth/login",
+        element: <Login />,
+      },
+      {
+        path: "/home",
+        element: (
+          // <ProtectedRoute>
+          <Dashboard />
+          // </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/settings",
+        element: (
+          // <ProtectedRoute>
+          <Settings />
+          // </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/google-drive-callback",
+        element: <GoogleDriveCallback />,
+      },
+      {
+        path: "/dropbox-callback",
+        element: <DropboxCallback />,
+      },
+      {
+        path: "/github-callback",
+        element: <GithubCallback />,
+      },
+      {
+        path: "/oauth/osf/callback",
+        element: <OsfCallback />,
+      },
+      {
+        path: "/docs",
+        element: <Docs />,
+      },
+      {
+        path: "/home/experiment/:id",
+        element: <ExperimentPanel />,
+      },
+      {
+        path: "/home/experiment/:id/builder",
+        element: (
+          <DevModeProvider>
+            <PluginsProvider>
+              <ExperimentBuilder />
+            </PluginsProvider>
+          </DevModeProvider>
+        ),
+      },
+    ],
   },
 ]);
 

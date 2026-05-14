@@ -1,8 +1,1074 @@
 {
-  "experiments": [],
-  "trials": [],
-  "configs": [],
+  "experiments": [
+    {
+      "experimentID": "b0da8cdd-1d11-43cf-bd87-b6b77809bb5d",
+      "name": "hola",
+      "createdAt": "2026-05-14T13:18:28.550Z",
+      "updatedAt": "2026-05-14T13:18:28.550Z"
+    }
+  ],
+  "trials": [
+    {
+      "experimentID": "b0da8cdd-1d11-43cf-bd87-b6b77809bb5d",
+      "trials": [
+        {
+          "type": "Trial",
+          "name": "New Trial",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1778764711163,
+          "createdAt": "2026-05-14T13:18:31.163Z",
+          "updatedAt": "2026-05-14T15:09:45.636Z",
+          "columnMapping": {
+            "response_components": {
+              "source": "typed",
+              "value": [
+                {
+                  "type": "ButtonResponseComponent",
+                  "coordinates": {
+                    "x": 4.0255694215034055,
+                    "y": -13.867702629735984
+                  },
+                  "width": 8.94697047369103,
+                  "height": 3.8024624513186898,
+                  "zIndex": 1,
+                  "screenLayouts": {
+                    "1024x768": {
+                      "x": 4.0255694215034055,
+                      "y": -13.867702629735978,
+                      "width": 8.94697047369103,
+                      "height": 3.8024624513186898
+                    }
+                  },
+                  "choices": {
+                    "source": "typed",
+                    "value": [
+                      "Si",
+                      "No"
+                    ]
+                  },
+                  "button_color": {
+                    "source": "typed",
+                    "value": "#e7e7e7"
+                  },
+                  "button_text_color": {
+                    "source": "typed",
+                    "value": "#000000"
+                  },
+                  "button_font_size": {
+                    "source": "typed",
+                    "value": 23
+                  },
+                  "button_border_radius": {
+                    "source": "typed",
+                    "value": 3
+                  },
+                  "button_border_color": {
+                    "source": "typed",
+                    "value": "#999999"
+                  },
+                  "button_border_width": {
+                    "source": "typed",
+                    "value": 1
+                  },
+                  "button_padding": {
+                    "source": "typed",
+                    "value": "6px 14px"
+                  },
+                  "name": {
+                    "source": "typed",
+                    "value": "ButtonResponseComponent_1"
+                  },
+                  "_button_font_size_runtime_vw": {
+                    "source": "typed",
+                    "value": 1.597222222222222
+                  }
+                }
+              ]
+            },
+            "__canvasStyles": {
+              "source": "typed",
+              "value": {
+                "backgroundColor": "#ffffff",
+                "width": 1440,
+                "height": 900,
+                "fullScreen": true,
+                "progressBar": false
+              }
+            }
+          },
+          "branches": [
+            1778765034164
+          ]
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 1",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1778765034164,
+          "createdAt": "2026-05-14T13:23:54.164Z",
+          "updatedAt": "2026-05-14T15:10:10.998Z",
+          "columnMapping": {
+            "response_components": {
+              "source": "typed",
+              "value": [
+                {
+                  "type": "ButtonResponseComponent",
+                  "coordinates": {
+                    "x": 2.08410169114834,
+                    "y": -1.4639543586603547
+                  },
+                  "width": 7.588825498139153,
+                  "height": 3.225250836709137,
+                  "zIndex": 1,
+                  "screenLayouts": {
+                    "1024x768": {
+                      "x": 2.0841016911483434,
+                      "y": -1.4639543586603576,
+                      "width": 7.588825498139153,
+                      "height": 3.225250836709137
+                    }
+                  },
+                  "choices": {
+                    "source": "typed",
+                    "value": [
+                      "Si",
+                      "No"
+                    ]
+                  },
+                  "button_color": {
+                    "source": "typed",
+                    "value": "#e7e7e7"
+                  },
+                  "button_text_color": {
+                    "source": "typed",
+                    "value": "#000000"
+                  },
+                  "button_font_size": {
+                    "source": "typed",
+                    "value": 19
+                  },
+                  "button_border_radius": {
+                    "source": "typed",
+                    "value": 3
+                  },
+                  "button_border_color": {
+                    "source": "typed",
+                    "value": "#999999"
+                  },
+                  "button_border_width": {
+                    "source": "typed",
+                    "value": 1
+                  },
+                  "button_padding": {
+                    "source": "typed",
+                    "value": "6px 14px"
+                  },
+                  "name": {
+                    "source": "typed",
+                    "value": "ButtonResponseComponent_1"
+                  },
+                  "_button_font_size_runtime_vw": {
+                    "source": "typed",
+                    "value": 1.3194444444444444
+                  }
+                }
+              ]
+            },
+            "__canvasStyles": {
+              "source": "typed",
+              "value": {
+                "backgroundColor": "#ffffff",
+                "width": 1440,
+                "height": 900,
+                "fullScreen": true,
+                "progressBar": false
+              }
+            }
+          },
+          "branches": [
+            1778771395741
+          ]
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 2",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1778771395741,
+          "createdAt": "2026-05-14T15:09:55.741Z",
+          "updatedAt": "2026-05-14T15:10:06.444Z",
+          "columnMapping": {
+            "response_components": {
+              "source": "typed",
+              "value": [
+                {
+                  "type": "ButtonResponseComponent",
+                  "coordinates": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "zIndex": 1,
+                  "choices": {
+                    "source": "typed",
+                    "value": [
+                      "Si",
+                      "no"
+                    ]
+                  },
+                  "button_color": {
+                    "source": "typed",
+                    "value": "#e7e7e7"
+                  },
+                  "button_text_color": {
+                    "source": "typed",
+                    "value": "#000000"
+                  },
+                  "button_font_size": {
+                    "source": "typed",
+                    "value": 14
+                  },
+                  "button_border_radius": {
+                    "source": "typed",
+                    "value": 3
+                  },
+                  "button_border_color": {
+                    "source": "typed",
+                    "value": "#999999"
+                  },
+                  "button_border_width": {
+                    "source": "typed",
+                    "value": 1
+                  },
+                  "button_padding": {
+                    "source": "typed",
+                    "value": "6px 14px"
+                  },
+                  "name": {
+                    "source": "typed",
+                    "value": "ButtonResponseComponent_1"
+                  },
+                  "_button_font_size_runtime_vw": {
+                    "source": "typed",
+                    "value": 0.9722222222222222
+                  }
+                }
+              ]
+            },
+            "__canvasStyles": {
+              "source": "typed",
+              "value": {
+                "backgroundColor": "#ffffff",
+                "width": 1440,
+                "height": 900,
+                "fullScreen": true,
+                "progressBar": false
+              }
+            }
+          }
+        }
+      ],
+      "loops": [],
+      "timeline": [
+        {
+          "id": 1778764711163,
+          "type": "trial",
+          "name": "New Trial",
+          "branches": [
+            1778765034164
+          ]
+        },
+        {
+          "id": 1778765034164,
+          "type": "trial",
+          "name": "New Trial 1",
+          "branches": [
+            1778771395741
+          ]
+        },
+        {
+          "id": 1778771395741,
+          "type": "trial",
+          "name": "New Trial 2",
+          "branches": []
+        }
+      ],
+      "createdAt": "2026-05-14T13:18:31.164Z",
+      "updatedAt": "2026-05-14T15:10:10.998Z"
+    }
+  ],
+  "configs": [
+    {
+      "experimentID": "b0da8cdd-1d11-43cf-bd87-b6b77809bb5d",
+      "data": {
+        "generatedCode": "const timeline = [];\n\n    // Global preload for all uploaded files from Timeline\n    \n\n    //Full screen\n    \n      timeline.push({\n      type: jsPsychFullscreen,\n      fullscreen_mode: true\n      });\n\n    \n    const test_stimuli_New_Trial = [{components: [],\nresponse_components: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":4.0255694215034055,\"y\":-13.867702629735984}, width: 8.94697047369103, height: 3.8024624513186898, zIndex: 1, screenLayouts: {\"1024x768\":{\"x\":4.0255694215034055,\"y\":-13.867702629735978,\"width\":8.94697047369103,\"height\":3.8024624513186898}}, choices: [\"Si\", \"No\"], button_color: \"#e7e7e7\", button_text_color: \"#000000\", button_font_size: 23, button_border_radius: 3, button_border_color: \"#999999\", button_border_width: 1, button_padding: \"6px 14px\", name: \"ButtonResponseComponent_1\", _button_font_size_runtime_vw: 1.597222222222222 }],\n__canvasStyles: {\"backgroundColor\":\"#ffffff\",\"width\":1440,\"height\":900,\"fullScreen\":true,\"progressBar\":false}}];\n    const New_Trial_timeline = {\n    type: DynamicPlugin, __canvasStyles: jsPsych.timelineVariable(\"__canvasStyles\"),\nresponse_components: jsPsych.timelineVariable(\"response_components\"),\n      data: {\n        rt: \"rt\",\n        trial_id: 1778764711163,\n        builder_id: 1778764711163,\n        trial_name: \"New Trial\",\n        \n        \n        branches: [1778765034164],\n        branchConditions: [undefined] \n        \n      },\n    \n    on_start: function(trial) {\n      // Then apply custom parameters from branching conditions (higher priority)\n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Parse key to check if it's a nested survey question\n            const parts = key.split('::');\n            \n            if (parts.length === 4) {\n              // Format: fieldType::componentName::survey_json::questionName\n              const [fieldType, componentName, propName, questionName] = parts;\n              \n              if (fieldType && componentName && propName === 'survey_json' && questionName) {\n                // Find the component by name in the field array\n                const fieldArray = trial[fieldType];\n                if (Array.isArray(fieldArray)) {\n                  const compIndex = fieldArray.findIndex(c => c.name === componentName);\n                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {\n                    // Find the question in survey_json.elements\n                    const elements = fieldArray[compIndex].survey_json.elements || [];\n                    const questionIndex = elements.findIndex(q => q.name === questionName);\n                    \n                    if (questionIndex !== -1) {\n                      // Apply the override value (from typed or csv)\n                      let valueToSet;\n                      if (param.source === 'typed') {\n                        valueToSet = String(param.value); // Convert to string for SurveyJS\n                      } else if (param.source === 'csv') {\n                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string\n                      }\n                      \n                      if (valueToSet !== undefined && valueToSet !== null) {\n                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;\n                      }\n                    }\n                  }\n                }\n              }\n            } else if (parts.length === 3) {\n              // Format: fieldType::componentName::property (for DynamicPlugin components)\n              const [fieldType, componentName, propName] = parts;\n              \n              if (fieldType && componentName && propName) {\n                // Find the component by name in the field array\n                const fieldArray = trial[fieldType];\n                if (Array.isArray(fieldArray)) {\n                  const compIndex = fieldArray.findIndex(c => c.name === componentName);\n                  if (compIndex !== -1) {\n                    // Apply the override value (from typed or csv)\n                    let valueToSet;\n                    if (param.source === 'typed') {\n                      valueToSet = param.value;\n                    } else if (param.source === 'csv') {\n                      valueToSet = trial[param.value];\n                    }\n                    \n                    if (valueToSet !== undefined && valueToSet !== null) {\n                      fieldArray[compIndex][propName] = valueToSet;\n                    }\n                  }\n                }\n              }\n            } else {\n              // Normal parameter (not nested survey question)\n              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n                trial[key] = param.value;\n              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n                trial[key] = trial[param.value];\n              }\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Branching automático al primer branch (global)\n      console.log('🔄 [GLOBAL BRANCH] Auto-branching to first branch:', 1778765034164);\n      window.nextTrialId = 1778765034164;\n      window.skipRemaining = true;\n      window.branchingActive = true;\n      \n    },};\n    console.log(\"=== PROCEDURE SETUP New_Trial ===\");\n    console.log(\"test_stimuli_New_Trial before procedure:\", test_stimuli_New_Trial);\n    console.log(\"test_stimuli_New_Trial.length:\", test_stimuli_New_Trial ? test_stimuli_New_Trial.length : 'undefined');\n    \n    const New_Trial_procedure = {\n    timeline: \n    [New_Trial_timeline],\n    timeline_variables: test_stimuli_New_Trial,\n    \n    conditional_function: function() {\n      const currentId = 1778764711163;\n      \n      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n      if (jumpToTrial) {\n        if (String(currentId) === String(jumpToTrial)) {\n          // Encontramos el trial objetivo para repeat/jump\n          console.log('🔁 [REPEAT/JUMP] Found target trial', currentId);\n          localStorage.removeItem('jsPsych_jumpToTrial');\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('⏭️ [REPEAT/JUMP] Skipping trial', currentId);\n        return false;\n      }\n      \n      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        console.log('🔍 [SKIP CHECK] Trial', currentId, '| Target:', window.nextTrialId, '| Match:', String(currentId) === String(window.nextTrialId));\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          console.log('✅ [SKIP CHECK] Found target trial! Disabling skip mode');\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('⏭️ [SKIP CHECK] Skipping trial', currentId);\n        return false;\n      }\n      \n      return true;\n    },\n  \n    \n    };\n    timeline.push(New_Trial_procedure);\n  \n\n\n    const test_stimuli_New_Trial_1 = [{components: [],\nresponse_components: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":2.08410169114834,\"y\":-1.4639543586603547}, width: 7.588825498139153, height: 3.225250836709137, zIndex: 1, screenLayouts: {\"1024x768\":{\"x\":2.0841016911483434,\"y\":-1.4639543586603576,\"width\":7.588825498139153,\"height\":3.225250836709137}}, choices: [\"Si\", \"No\"], button_color: \"#e7e7e7\", button_text_color: \"#000000\", button_font_size: 19, button_border_radius: 3, button_border_color: \"#999999\", button_border_width: 1, button_padding: \"6px 14px\", name: \"ButtonResponseComponent_1\", _button_font_size_runtime_vw: 1.3194444444444444 }],\n__canvasStyles: {\"backgroundColor\":\"#ffffff\",\"width\":1440,\"height\":900,\"fullScreen\":true,\"progressBar\":false}}];\n    const New_Trial_1_timeline = {\n    type: DynamicPlugin, __canvasStyles: jsPsych.timelineVariable(\"__canvasStyles\"),\nresponse_components: jsPsych.timelineVariable(\"response_components\"),\n      data: {\n        rt: \"rt\",\n        trial_id: 1778765034164,\n        builder_id: 1778765034164,\n        trial_name: \"New Trial 1\",\n        \n        \n        branches: [1778771395741],\n        branchConditions: [undefined] \n        \n      },\n    \n    on_start: function(trial) {\n      // Then apply custom parameters from branching conditions (higher priority)\n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Parse key to check if it's a nested survey question\n            const parts = key.split('::');\n            \n            if (parts.length === 4) {\n              // Format: fieldType::componentName::survey_json::questionName\n              const [fieldType, componentName, propName, questionName] = parts;\n              \n              if (fieldType && componentName && propName === 'survey_json' && questionName) {\n                // Find the component by name in the field array\n                const fieldArray = trial[fieldType];\n                if (Array.isArray(fieldArray)) {\n                  const compIndex = fieldArray.findIndex(c => c.name === componentName);\n                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {\n                    // Find the question in survey_json.elements\n                    const elements = fieldArray[compIndex].survey_json.elements || [];\n                    const questionIndex = elements.findIndex(q => q.name === questionName);\n                    \n                    if (questionIndex !== -1) {\n                      // Apply the override value (from typed or csv)\n                      let valueToSet;\n                      if (param.source === 'typed') {\n                        valueToSet = String(param.value); // Convert to string for SurveyJS\n                      } else if (param.source === 'csv') {\n                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string\n                      }\n                      \n                      if (valueToSet !== undefined && valueToSet !== null) {\n                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;\n                      }\n                    }\n                  }\n                }\n              }\n            } else if (parts.length === 3) {\n              // Format: fieldType::componentName::property (for DynamicPlugin components)\n              const [fieldType, componentName, propName] = parts;\n              \n              if (fieldType && componentName && propName) {\n                // Find the component by name in the field array\n                const fieldArray = trial[fieldType];\n                if (Array.isArray(fieldArray)) {\n                  const compIndex = fieldArray.findIndex(c => c.name === componentName);\n                  if (compIndex !== -1) {\n                    // Apply the override value (from typed or csv)\n                    let valueToSet;\n                    if (param.source === 'typed') {\n                      valueToSet = param.value;\n                    } else if (param.source === 'csv') {\n                      valueToSet = trial[param.value];\n                    }\n                    \n                    if (valueToSet !== undefined && valueToSet !== null) {\n                      fieldArray[compIndex][propName] = valueToSet;\n                    }\n                  }\n                }\n              }\n            } else {\n              // Normal parameter (not nested survey question)\n              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n                trial[key] = param.value;\n              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n                trial[key] = trial[param.value];\n              }\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      // Branching automático al primer branch (global)\n      console.log('🔄 [GLOBAL BRANCH] Auto-branching to first branch:', 1778771395741);\n      window.nextTrialId = 1778771395741;\n      window.skipRemaining = true;\n      window.branchingActive = true;\n      \n    },};\n    console.log(\"=== PROCEDURE SETUP New_Trial_1 ===\");\n    console.log(\"test_stimuli_New_Trial_1 before procedure:\", test_stimuli_New_Trial_1);\n    console.log(\"test_stimuli_New_Trial_1.length:\", test_stimuli_New_Trial_1 ? test_stimuli_New_Trial_1.length : 'undefined');\n    \n    const New_Trial_1_procedure = {\n    timeline: \n    [New_Trial_1_timeline],\n    timeline_variables: test_stimuli_New_Trial_1,\n    \n    conditional_function: function() {\n      const currentId = 1778765034164;\n      \n      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n      if (jumpToTrial) {\n        if (String(currentId) === String(jumpToTrial)) {\n          // Encontramos el trial objetivo para repeat/jump\n          console.log('🔁 [REPEAT/JUMP] Found target trial', currentId);\n          localStorage.removeItem('jsPsych_jumpToTrial');\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('⏭️ [REPEAT/JUMP] Skipping trial', currentId);\n        return false;\n      }\n      \n      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        console.log('🔍 [SKIP CHECK] Trial', currentId, '| Target:', window.nextTrialId, '| Match:', String(currentId) === String(window.nextTrialId));\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          console.log('✅ [SKIP CHECK] Found target trial! Disabling skip mode');\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('⏭️ [SKIP CHECK] Skipping trial', currentId);\n        return false;\n      }\n      \n      return true;\n    },\n  \n    \n    };\n    timeline.push(New_Trial_1_procedure);\n  \n\n\n    const test_stimuli_New_Trial_2 = [{components: [],\nresponse_components: [{ type: \"ButtonResponseComponent\", coordinates: {\"x\":0,\"y\":0}, zIndex: 1, choices: [\"Si\", \"no\"], button_color: \"#e7e7e7\", button_text_color: \"#000000\", button_font_size: 14, button_border_radius: 3, button_border_color: \"#999999\", button_border_width: 1, button_padding: \"6px 14px\", name: \"ButtonResponseComponent_1\", _button_font_size_runtime_vw: 0.9722222222222222 }],\n__canvasStyles: {\"backgroundColor\":\"#ffffff\",\"width\":1440,\"height\":900,\"fullScreen\":true,\"progressBar\":false}}];\n    const New_Trial_2_timeline = {\n    type: DynamicPlugin, __canvasStyles: jsPsych.timelineVariable(\"__canvasStyles\"),\nresponse_components: jsPsych.timelineVariable(\"response_components\"),\n      data: {\n        rt: \"rt\",\n        trial_id: 1778771395741,\n        builder_id: 1778771395741,\n        trial_name: \"New Trial 2\",\n        \n        \n      },\n    \n    on_start: function(trial) {\n      // Then apply custom parameters from branching conditions (higher priority)\n      // For trials outside loops, use window.branchCustomParameters\n      if (window.branchCustomParameters && typeof window.branchCustomParameters === 'object') {\n        Object.entries(window.branchCustomParameters).forEach(([key, param]) => {\n          if (param && param.source !== 'none') {\n            // Parse key to check if it's a nested survey question\n            const parts = key.split('::');\n            \n            if (parts.length === 4) {\n              // Format: fieldType::componentName::survey_json::questionName\n              const [fieldType, componentName, propName, questionName] = parts;\n              \n              if (fieldType && componentName && propName === 'survey_json' && questionName) {\n                // Find the component by name in the field array\n                const fieldArray = trial[fieldType];\n                if (Array.isArray(fieldArray)) {\n                  const compIndex = fieldArray.findIndex(c => c.name === componentName);\n                  if (compIndex !== -1 && fieldArray[compIndex].survey_json) {\n                    // Find the question in survey_json.elements\n                    const elements = fieldArray[compIndex].survey_json.elements || [];\n                    const questionIndex = elements.findIndex(q => q.name === questionName);\n                    \n                    if (questionIndex !== -1) {\n                      // Apply the override value (from typed or csv)\n                      let valueToSet;\n                      if (param.source === 'typed') {\n                        valueToSet = String(param.value); // Convert to string for SurveyJS\n                      } else if (param.source === 'csv') {\n                        valueToSet = String(trial[param.value]); // Get from CSV column and convert to string\n                      }\n                      \n                      if (valueToSet !== undefined && valueToSet !== null) {\n                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;\n                      }\n                    }\n                  }\n                }\n              }\n            } else if (parts.length === 3) {\n              // Format: fieldType::componentName::property (for DynamicPlugin components)\n              const [fieldType, componentName, propName] = parts;\n              \n              if (fieldType && componentName && propName) {\n                // Find the component by name in the field array\n                const fieldArray = trial[fieldType];\n                if (Array.isArray(fieldArray)) {\n                  const compIndex = fieldArray.findIndex(c => c.name === componentName);\n                  if (compIndex !== -1) {\n                    // Apply the override value (from typed or csv)\n                    let valueToSet;\n                    if (param.source === 'typed') {\n                      valueToSet = param.value;\n                    } else if (param.source === 'csv') {\n                      valueToSet = trial[param.value];\n                    }\n                    \n                    if (valueToSet !== undefined && valueToSet !== null) {\n                      fieldArray[compIndex][propName] = valueToSet;\n                    }\n                  }\n                }\n              }\n            } else {\n              // Normal parameter (not nested survey question)\n              if (param.source === 'typed' && param.value !== undefined && param.value !== null) {\n                trial[key] = param.value;\n              } else if (param.source === 'csv' && param.value !== undefined && param.value !== null) {\n                trial[key] = trial[param.value];\n              }\n            }\n          }\n        });\n        // Clear the custom parameters after applying them\n        window.branchCustomParameters = null;\n      }\n      \n    },\n    \n    on_finish: function(data) {\n      if (window.branchingActive) {\n        jsPsych.abortExperiment('', {});\n      }\n    },};\n    console.log(\"=== PROCEDURE SETUP New_Trial_2 ===\");\n    console.log(\"test_stimuli_New_Trial_2 before procedure:\", test_stimuli_New_Trial_2);\n    console.log(\"test_stimuli_New_Trial_2.length:\", test_stimuli_New_Trial_2 ? test_stimuli_New_Trial_2.length : 'undefined');\n    \n    const New_Trial_2_procedure = {\n    timeline: \n    [New_Trial_2_timeline],\n    timeline_variables: test_stimuli_New_Trial_2,\n    \n    conditional_function: function() {\n      const currentId = 1778771395741;\n      \n      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)\n      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');\n      if (jumpToTrial) {\n        if (String(currentId) === String(jumpToTrial)) {\n          // Encontramos el trial objetivo para repeat/jump\n          console.log('🔁 [REPEAT/JUMP] Found target trial', currentId);\n          localStorage.removeItem('jsPsych_jumpToTrial');\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('⏭️ [REPEAT/JUMP] Skipping trial', currentId);\n        return false;\n      }\n      \n      // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo\n      if (window.skipRemaining) {\n        console.log('🔍 [SKIP CHECK] Trial', currentId, '| Target:', window.nextTrialId, '| Match:', String(currentId) === String(window.nextTrialId));\n        if (String(currentId) === String(window.nextTrialId)) {\n          // Encontramos el trial objetivo\n          console.log('✅ [SKIP CHECK] Found target trial! Disabling skip mode');\n          window.skipRemaining = false;\n          window.nextTrialId = null;\n          return true;\n        }\n        // No es el objetivo, saltar\n        console.log('⏭️ [SKIP CHECK] Skipping trial', currentId);\n        return false;\n      }\n      \n      return true;\n    },\n  \n    \n    };\n    timeline.push(New_Trial_2_procedure);\n  \n\n    jsPsych.run(timeline);\n    \n",
+        "customCode": "",
+        "customInitJsPsychParams": {
+          "local": {
+            "on_data_update": "var respuesta = data.ButtonResponseComponent_1_response;\nif (respuesta === \"Si\") {\n  window.globalScore = (window.globalScore || 0) + 1;\n}\nconsole.log('Score:', window.globalScore, '| Trial:', data.trial_index);                                                                                                              \n",
+            "on_finish": "  console.log('Score final:', window.globalScore);                                                                          \n  alert('Obtuviste: ' + window.globalScore + ' respuestas correctas');"
+          },
+          "public": {}
+        },
+        "customPreInitCode": {
+          "local": "window.globalScore = 0;",
+          "public": ""
+        }
+      },
+      "isDevMode": true,
+      "isSaveMode": false,
+      "createdAt": "2026-05-14T13:18:31.414Z",
+      "updatedAt": "2026-05-14T15:17:01.049Z"
+    }
+  ],
   "pluginConfigs": [],
-  "sessionResults": [],
-  "participantFiles": []
+  "sessionResults": [
+    {
+      "experimentID": "b0da8cdd-1d11-43cf-bd87-b6b77809bb5d",
+      "sessionId": "798dc3bf-4ab4-4330-b470-aefe63f4a3e3",
+      "createdAt": "2026-05-14T13:43:21.070Z",
+      "data": [
+        {
+          "rt": 1069,
+          "trial_id": 1778764711163,
+          "builder_id": 1778764711163,
+          "trial_name": "New Trial",
+          "branches": [
+            1778765034164
+          ],
+          "branchConditions": [
+            null
+          ],
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_coordinates": "{\"x\":749,\"y\":512}",
+          "ButtonResponseComponent_1_size": "{\"width\":327,\"height\":89}",
+          "ButtonResponseComponent_1_response": "Si",
+          "ButtonResponseComponent_1_rt": 1066,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2940
+        },
+        {
+          "rt": 585,
+          "trial_id": 1778765034164,
+          "builder_id": 1778765034164,
+          "trial_name": "New Trial 1",
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_coordinates": "{\"x\":735,\"y\":457}",
+          "ButtonResponseComponent_1_size": "{\"width\":276,\"height\":75}",
+          "ButtonResponseComponent_1_response": "Si",
+          "ButtonResponseComponent_1_rt": 584,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 3539
+        }
+      ],
+      "state": "completed",
+      "lastUpdate": "2026-05-14T13:43:24.680Z",
+      "metadata": {
+        "browser": "Chrome",
+        "browserVersion": "148.0",
+        "os": "macOS",
+        "screenWidth": 1440,
+        "screenHeight": 900,
+        "screenResolution": "1440x900",
+        "viewportWidth": 1440,
+        "viewportHeight": 812,
+        "language": "en-US",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+        "startedAt": "2026-05-14T13:43:21.007Z"
+      }
+    },
+    {
+      "experimentID": "b0da8cdd-1d11-43cf-bd87-b6b77809bb5d",
+      "sessionId": "dcf170f4-7248-4f6c-8183-e79880a8b5a5",
+      "createdAt": "2026-05-14T13:43:51.061Z",
+      "data": [
+        {
+          "success": true,
+          "rt": 503,
+          "trial_type": "fullscreen",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1508
+        },
+        {
+          "rt": 713,
+          "trial_id": 1778764711163,
+          "builder_id": 1778764711163,
+          "trial_name": "New Trial",
+          "branches": [
+            1778765034164
+          ],
+          "branchConditions": [
+            null
+          ],
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_coordinates": "{\"x\":749,\"y\":512}",
+          "ButtonResponseComponent_1_size": "{\"width\":327,\"height\":89}",
+          "ButtonResponseComponent_1_response": "Si",
+          "ButtonResponseComponent_1_rt": 711,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2226
+        },
+        {
+          "rt": 2772,
+          "trial_id": 1778765034164,
+          "builder_id": 1778765034164,
+          "trial_name": "New Trial 1",
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_coordinates": "{\"x\":735,\"y\":457}",
+          "ButtonResponseComponent_1_size": "{\"width\":276,\"height\":75}",
+          "ButtonResponseComponent_1_response": "Si",
+          "ButtonResponseComponent_1_rt": 2771,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 5007
+        }
+      ],
+      "state": "completed",
+      "lastUpdate": "2026-05-14T13:43:56.092Z",
+      "metadata": {
+        "browser": "Chrome",
+        "browserVersion": "148.0",
+        "os": "macOS",
+        "screenWidth": 1440,
+        "screenHeight": 900,
+        "screenResolution": "1440x900",
+        "viewportWidth": 1440,
+        "viewportHeight": 812,
+        "language": "en-US",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+        "startedAt": "2026-05-14T13:43:51.004Z"
+      }
+    },
+    {
+      "experimentID": "b0da8cdd-1d11-43cf-bd87-b6b77809bb5d",
+      "sessionId": "f04f964b-4188-4ed4-96a6-c977aec4c0cb",
+      "createdAt": "2026-05-14T13:44:09.839Z",
+      "data": [
+        {
+          "rt": 942,
+          "trial_id": 1778764711163,
+          "builder_id": 1778764711163,
+          "trial_name": "New Trial",
+          "branches": [
+            1778765034164
+          ],
+          "branchConditions": [
+            null
+          ],
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_coordinates": "{\"x\":749,\"y\":512}",
+          "ButtonResponseComponent_1_size": "{\"width\":327,\"height\":89}",
+          "ButtonResponseComponent_1_response": "Si",
+          "ButtonResponseComponent_1_rt": 940,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 5194
+        },
+        {
+          "rt": 574,
+          "trial_id": 1778765034164,
+          "builder_id": 1778765034164,
+          "trial_name": "New Trial 1",
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_coordinates": "{\"x\":735,\"y\":457}",
+          "ButtonResponseComponent_1_size": "{\"width\":276,\"height\":75}",
+          "ButtonResponseComponent_1_response": "Si",
+          "ButtonResponseComponent_1_rt": 573,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 5776
+        }
+      ],
+      "state": "completed",
+      "lastUpdate": "2026-05-14T13:44:26.358Z",
+      "metadata": {
+        "browser": "Chrome",
+        "browserVersion": "148.0",
+        "os": "macOS",
+        "screenWidth": 1440,
+        "screenHeight": 900,
+        "screenResolution": "1440x900",
+        "viewportWidth": 1440,
+        "viewportHeight": 812,
+        "language": "en-US",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+        "startedAt": "2026-05-14T13:44:20.512Z"
+      }
+    },
+    {
+      "experimentID": "b0da8cdd-1d11-43cf-bd87-b6b77809bb5d",
+      "sessionId": "c8f73288-7447-4d2e-9a64-8c5ab4da5591",
+      "createdAt": "2026-05-14T13:44:41.088Z",
+      "data": [],
+      "state": "abandoned",
+      "lastUpdate": "2026-05-14T13:44:42.021Z",
+      "metadata": {
+        "browser": "Chrome",
+        "browserVersion": "140.0",
+        "os": "macOS",
+        "screenWidth": 1440,
+        "screenHeight": 900,
+        "screenResolution": "1440x900",
+        "viewportWidth": 650,
+        "viewportHeight": 503,
+        "language": "es-419",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) expbuilder/2.3.9 Chrome/140.0.7339.240 Electron/38.3.0 Safari/537.36",
+        "startedAt": "2026-05-14T13:44:41.031Z"
+      }
+    },
+    {
+      "experimentID": "b0da8cdd-1d11-43cf-bd87-b6b77809bb5d",
+      "sessionId": "c63f665b-4ddf-4e20-bc89-7f10013acac5",
+      "createdAt": "2026-05-14T13:48:04.775Z",
+      "data": [
+        {
+          "success": true,
+          "rt": 1831,
+          "trial_type": "fullscreen",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2839
+        },
+        {
+          "rt": 1525,
+          "trial_id": 1778764711163,
+          "builder_id": 1778764711163,
+          "trial_name": "New Trial",
+          "branches": [
+            1778765034164
+          ],
+          "branchConditions": [
+            null
+          ],
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_coordinates": "{\"x\":749,\"y\":512}",
+          "ButtonResponseComponent_1_size": "{\"width\":327,\"height\":89}",
+          "ButtonResponseComponent_1_response": "Si",
+          "ButtonResponseComponent_1_rt": 1523,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 4370
+        },
+        {
+          "rt": 550,
+          "trial_id": 1778765034164,
+          "builder_id": 1778765034164,
+          "trial_name": "New Trial 1",
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_coordinates": "{\"x\":735,\"y\":457}",
+          "ButtonResponseComponent_1_size": "{\"width\":276,\"height\":75}",
+          "ButtonResponseComponent_1_response": "Si",
+          "ButtonResponseComponent_1_rt": 549,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 4935
+        }
+      ],
+      "state": "completed",
+      "lastUpdate": "2026-05-14T13:48:09.740Z",
+      "metadata": {
+        "browser": "Chrome",
+        "browserVersion": "148.0",
+        "os": "macOS",
+        "screenWidth": 1440,
+        "screenHeight": 900,
+        "screenResolution": "1440x900",
+        "viewportWidth": 1440,
+        "viewportHeight": 812,
+        "language": "en-US",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+        "startedAt": "2026-05-14T13:48:04.717Z"
+      }
+    },
+    {
+      "experimentID": "b0da8cdd-1d11-43cf-bd87-b6b77809bb5d",
+      "sessionId": "c72a72d3-1eb5-440e-a3be-9ec39761a719",
+      "createdAt": "2026-05-14T15:08:20.716Z",
+      "data": [
+        {
+          "success": true,
+          "rt": 722,
+          "trial_type": "fullscreen",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1728
+        },
+        {
+          "rt": 609,
+          "trial_id": 1778764711163,
+          "builder_id": 1778764711163,
+          "trial_name": "New Trial",
+          "branches": [
+            1778765034164
+          ],
+          "branchConditions": [
+            null
+          ],
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_coordinates": "{\"x\":749,\"y\":512}",
+          "ButtonResponseComponent_1_size": "{\"width\":327,\"height\":89}",
+          "ButtonResponseComponent_1_response": "Si",
+          "ButtonResponseComponent_1_rt": 608,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2339
+        },
+        {
+          "rt": 1013,
+          "trial_id": 1778765034164,
+          "builder_id": 1778765034164,
+          "trial_name": "New Trial 1",
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_coordinates": "{\"x\":735,\"y\":457}",
+          "ButtonResponseComponent_1_size": "{\"width\":276,\"height\":75}",
+          "ButtonResponseComponent_1_response": "Si",
+          "ButtonResponseComponent_1_rt": 1012,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 3360
+        }
+      ],
+      "state": "completed",
+      "lastUpdate": "2026-05-14T15:08:24.138Z",
+      "metadata": {
+        "browser": "Chrome",
+        "browserVersion": "148.0",
+        "os": "macOS",
+        "screenWidth": 1440,
+        "screenHeight": 900,
+        "screenResolution": "1440x900",
+        "viewportWidth": 1440,
+        "viewportHeight": 812,
+        "language": "en-US",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+        "startedAt": "2026-05-14T15:08:20.649Z"
+      }
+    },
+    {
+      "experimentID": "b0da8cdd-1d11-43cf-bd87-b6b77809bb5d",
+      "sessionId": "283292d4-fac5-49f4-98b1-7df3e858f096",
+      "createdAt": "2026-05-14T15:08:28.917Z",
+      "data": [
+        {
+          "success": true,
+          "rt": 1085,
+          "trial_type": "fullscreen",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 2086
+        },
+        {
+          "rt": 546,
+          "trial_id": 1778764711163,
+          "builder_id": 1778764711163,
+          "trial_name": "New Trial",
+          "branches": [
+            1778765034164
+          ],
+          "branchConditions": [
+            null
+          ],
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_coordinates": "{\"x\":749,\"y\":512}",
+          "ButtonResponseComponent_1_size": "{\"width\":327,\"height\":89}",
+          "ButtonResponseComponent_1_response": "Si",
+          "ButtonResponseComponent_1_rt": 545,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2633
+        },
+        {
+          "rt": 565,
+          "trial_id": 1778765034164,
+          "builder_id": 1778765034164,
+          "trial_name": "New Trial 1",
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_coordinates": "{\"x\":735,\"y\":457}",
+          "ButtonResponseComponent_1_size": "{\"width\":276,\"height\":75}",
+          "ButtonResponseComponent_1_response": "Si",
+          "ButtonResponseComponent_1_rt": 564,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 3200
+        }
+      ],
+      "state": "completed",
+      "lastUpdate": "2026-05-14T15:08:32.132Z",
+      "metadata": {
+        "browser": "Chrome",
+        "browserVersion": "148.0",
+        "os": "macOS",
+        "screenWidth": 1440,
+        "screenHeight": 900,
+        "screenResolution": "1440x900",
+        "viewportWidth": 1440,
+        "viewportHeight": 812,
+        "language": "en-US",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+        "startedAt": "2026-05-14T15:08:28.863Z"
+      }
+    },
+    {
+      "experimentID": "b0da8cdd-1d11-43cf-bd87-b6b77809bb5d",
+      "sessionId": "a0e4bca3-1f38-47ae-980d-6587d9b9cbcc",
+      "createdAt": "2026-05-14T15:09:19.147Z",
+      "data": [
+        {
+          "rt": 576,
+          "trial_id": 1778764711163,
+          "builder_id": 1778764711163,
+          "trial_name": "New Trial",
+          "branches": [
+            1778765034164
+          ],
+          "branchConditions": [
+            null
+          ],
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_coordinates": "{\"x\":749,\"y\":512}",
+          "ButtonResponseComponent_1_size": "{\"width\":327,\"height\":89}",
+          "ButtonResponseComponent_1_response": "No",
+          "ButtonResponseComponent_1_rt": 574,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2302
+        },
+        {
+          "rt": 507,
+          "trial_id": 1778765034164,
+          "builder_id": 1778765034164,
+          "trial_name": "New Trial 1",
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_coordinates": "{\"x\":735,\"y\":457}",
+          "ButtonResponseComponent_1_size": "{\"width\":276,\"height\":75}",
+          "ButtonResponseComponent_1_response": "No",
+          "ButtonResponseComponent_1_rt": 506,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2816
+        }
+      ],
+      "state": "completed",
+      "lastUpdate": "2026-05-14T15:09:22.017Z",
+      "metadata": {
+        "browser": "Chrome",
+        "browserVersion": "148.0",
+        "os": "macOS",
+        "screenWidth": 1440,
+        "screenHeight": 900,
+        "screenResolution": "1440x900",
+        "viewportWidth": 1440,
+        "viewportHeight": 812,
+        "language": "en-US",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+        "startedAt": "2026-05-14T15:09:19.085Z"
+      }
+    },
+    {
+      "experimentID": "b0da8cdd-1d11-43cf-bd87-b6b77809bb5d",
+      "sessionId": "2c21a79d-70ff-43d9-b1d4-4a2ffe66e36d",
+      "createdAt": "2026-05-14T15:09:27.671Z",
+      "data": [
+        {
+          "success": true,
+          "rt": 709,
+          "trial_type": "fullscreen",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 1711
+        },
+        {
+          "rt": 929,
+          "trial_id": 1778764711163,
+          "builder_id": 1778764711163,
+          "trial_name": "New Trial",
+          "branches": [
+            1778765034164
+          ],
+          "branchConditions": [
+            null
+          ],
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_coordinates": "{\"x\":749,\"y\":512}",
+          "ButtonResponseComponent_1_size": "{\"width\":327,\"height\":89}",
+          "ButtonResponseComponent_1_response": "Si",
+          "ButtonResponseComponent_1_rt": 929,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 2642
+        },
+        {
+          "rt": 478,
+          "trial_id": 1778765034164,
+          "builder_id": 1778765034164,
+          "trial_name": "New Trial 1",
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_coordinates": "{\"x\":735,\"y\":457}",
+          "ButtonResponseComponent_1_size": "{\"width\":276,\"height\":75}",
+          "ButtonResponseComponent_1_response": "Si",
+          "ButtonResponseComponent_1_rt": 477,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 3126
+        }
+      ],
+      "state": "completed",
+      "lastUpdate": "2026-05-14T15:09:30.814Z",
+      "metadata": {
+        "browser": "Chrome",
+        "browserVersion": "148.0",
+        "os": "macOS",
+        "screenWidth": 1440,
+        "screenHeight": 900,
+        "screenResolution": "1440x900",
+        "viewportWidth": 1440,
+        "viewportHeight": 812,
+        "language": "en-US",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+        "startedAt": "2026-05-14T15:09:27.617Z"
+      }
+    },
+    {
+      "experimentID": "b0da8cdd-1d11-43cf-bd87-b6b77809bb5d",
+      "sessionId": "7396339f-36eb-45f0-a1e6-babd48f1cf21",
+      "createdAt": "2026-05-14T15:10:16.248Z",
+      "data": [
+        {
+          "success": true,
+          "rt": 4182,
+          "trial_type": "fullscreen",
+          "trial_index": 0,
+          "plugin_version": "2.1.0",
+          "time_elapsed": 5184
+        },
+        {
+          "rt": 930,
+          "trial_id": 1778764711163,
+          "builder_id": 1778764711163,
+          "trial_name": "New Trial",
+          "branches": [
+            1778765034164
+          ],
+          "branchConditions": [
+            null
+          ],
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_coordinates": "{\"x\":749,\"y\":512}",
+          "ButtonResponseComponent_1_size": "{\"width\":327,\"height\":89}",
+          "ButtonResponseComponent_1_response": "Si",
+          "ButtonResponseComponent_1_rt": 929,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 1,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 6117
+        },
+        {
+          "rt": 458,
+          "trial_id": 1778765034164,
+          "builder_id": 1778765034164,
+          "trial_name": "New Trial 1",
+          "branches": [
+            1778771395741
+          ],
+          "branchConditions": [
+            null
+          ],
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_coordinates": "{\"x\":735,\"y\":457}",
+          "ButtonResponseComponent_1_size": "{\"width\":276,\"height\":75}",
+          "ButtonResponseComponent_1_response": "Si",
+          "ButtonResponseComponent_1_rt": 458,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 2,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 6583
+        },
+        {
+          "rt": 580,
+          "trial_id": 1778771395741,
+          "builder_id": 1778771395741,
+          "trial_name": "New Trial 2",
+          "ButtonResponseComponent_1_type": "ButtonResponseComponent",
+          "ButtonResponseComponent_1_coordinates": "{\"x\":720,\"y\":450}",
+          "ButtonResponseComponent_1_size": "{\"width\":130,\"height\":55}",
+          "ButtonResponseComponent_1_response": "Si",
+          "ButtonResponseComponent_1_rt": 580,
+          "trial_type": "DynamicPlugin",
+          "trial_index": 3,
+          "plugin_version": "1.0.0",
+          "time_elapsed": 7167
+        }
+      ],
+      "state": "completed",
+      "lastUpdate": "2026-05-14T15:10:23.432Z",
+      "metadata": {
+        "browser": "Chrome",
+        "browserVersion": "148.0",
+        "os": "macOS",
+        "screenWidth": 1440,
+        "screenHeight": 900,
+        "screenResolution": "1440x900",
+        "viewportWidth": 1440,
+        "viewportHeight": 812,
+        "language": "en-US",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+        "startedAt": "2026-05-14T15:10:16.192Z"
+      }
+    }
+  ],
+  "participantFiles": [],
+  "chat": {
+    "apiKeys": {
+      "nvidia": "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",
+      "deepseek": "sk-ebed9b3d206b4a9da5cff0a3d8ce200b"
+    },
+    "activeProvider": "deepseek",
+    "activeModel": "deepseek-v4-pro",
+    "conversations": [
+      {
+        "id": "g7p2h6mv",
+        "title": "Haz un experimento",
+        "messages": [
+          {
+            "id": "g56ydtru",
+            "role": "user",
+            "content": "Haz un experimento",
+            "timestamp": "2026-05-14T04:19:16.131Z"
+          },
+          {
+            "id": "k23s8egl",
+            "role": "assistant",
+            "content": "",
+            "toolCalls": [],
+            "timestamp": "2026-05-14T04:19:16.131Z",
+            "isStreaming": false
+          },
+          {
+            "id": "o12q3coa",
+            "role": "user",
+            "content": "Haz un experimento",
+            "timestamp": "2026-05-14T04:19:30.936Z"
+          },
+          {
+            "id": "k7y9zrp8",
+            "role": "assistant",
+            "content": "",
+            "toolCalls": [],
+            "timestamp": "2026-05-14T04:19:30.936Z",
+            "isStreaming": false
+          },
+          {
+            "id": "h4axqi1h",
+            "role": "user",
+            "content": "haz un experimento",
+            "timestamp": "2026-05-14T04:25:48.637Z"
+          },
+          {
+            "id": "p368w4tq",
+            "role": "assistant",
+            "content": "",
+            "toolCalls": [],
+            "timestamp": "2026-05-14T04:25:48.638Z",
+            "isStreaming": false
+          },
+          {
+            "id": "wm6b9zzz",
+            "role": "user",
+            "content": "hola",
+            "timestamp": "2026-05-14T13:54:55.149Z"
+          },
+          {
+            "id": "cy16ma73",
+            "role": "assistant",
+            "content": "",
+            "toolCalls": [],
+            "timestamp": "2026-05-14T13:54:55.149Z",
+            "isStreaming": false
+          },
+          {
+            "id": "xruavp62",
+            "role": "user",
+            "content": "Hola",
+            "timestamp": "2026-05-14T14:27:01.017Z"
+          },
+          {
+            "id": "w7tli34m",
+            "role": "assistant",
+            "content": "",
+            "toolCalls": [],
+            "timestamp": "2026-05-14T14:27:01.018Z",
+            "isStreaming": false
+          },
+          {
+            "id": "7o2qiho0",
+            "role": "user",
+            "content": "Hola",
+            "timestamp": "2026-05-14T15:12:21.468Z"
+          },
+          {
+            "id": "rcieo8lb",
+            "role": "assistant",
+            "content": "",
+            "toolCalls": [],
+            "timestamp": "2026-05-14T15:12:21.468Z",
+            "isStreaming": false
+          },
+          {
+            "id": "4uxuxamj",
+            "role": "user",
+            "content": "Hola",
+            "timestamp": "2026-05-14T16:01:31.573Z"
+          },
+          {
+            "id": "3h8ym8cl",
+            "role": "assistant",
+            "content": "",
+            "toolCalls": [],
+            "timestamp": "2026-05-14T16:01:31.573Z",
+            "isStreaming": false
+          },
+          {
+            "id": "5650rba8",
+            "role": "user",
+            "content": "hola",
+            "timestamp": "2026-05-14T16:09:23.626Z"
+          },
+          {
+            "id": "kfu37k0y",
+            "role": "assistant",
+            "content": "",
+            "toolCalls": [],
+            "timestamp": "2026-05-14T16:09:23.626Z",
+            "isStreaming": false
+          }
+        ],
+        "createdAt": "2026-05-14T04:19:16.130Z",
+        "updatedAt": "2026-05-14T16:09:23.627Z"
+      }
+    ]
+  }
 }

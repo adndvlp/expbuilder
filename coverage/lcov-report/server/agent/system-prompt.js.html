@@ -1,0 +1,577 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for server/agent/system-prompt.js</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../../prettify.css" />
+    <link rel="stylesheet" href="../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">server/agent</a> system-prompt.js</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>17/17</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">46.66% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>7/15</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>4/4</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>16/16</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line high'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a>
+<a name='L111'></a><a href='#L111'>111</a>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a>
+<a name='L117'></a><a href='#L117'>117</a>
+<a name='L118'></a><a href='#L118'>118</a>
+<a name='L119'></a><a href='#L119'>119</a>
+<a name='L120'></a><a href='#L120'>120</a>
+<a name='L121'></a><a href='#L121'>121</a>
+<a name='L122'></a><a href='#L122'>122</a>
+<a name='L123'></a><a href='#L123'>123</a>
+<a name='L124'></a><a href='#L124'>124</a>
+<a name='L125'></a><a href='#L125'>125</a>
+<a name='L126'></a><a href='#L126'>126</a>
+<a name='L127'></a><a href='#L127'>127</a>
+<a name='L128'></a><a href='#L128'>128</a>
+<a name='L129'></a><a href='#L129'>129</a>
+<a name='L130'></a><a href='#L130'>130</a>
+<a name='L131'></a><a href='#L131'>131</a>
+<a name='L132'></a><a href='#L132'>132</a>
+<a name='L133'></a><a href='#L133'>133</a>
+<a name='L134'></a><a href='#L134'>134</a>
+<a name='L135'></a><a href='#L135'>135</a>
+<a name='L136'></a><a href='#L136'>136</a>
+<a name='L137'></a><a href='#L137'>137</a>
+<a name='L138'></a><a href='#L138'>138</a>
+<a name='L139'></a><a href='#L139'>139</a>
+<a name='L140'></a><a href='#L140'>140</a>
+<a name='L141'></a><a href='#L141'>141</a>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a>
+<a name='L145'></a><a href='#L145'>145</a>
+<a name='L146'></a><a href='#L146'>146</a>
+<a name='L147'></a><a href='#L147'>147</a>
+<a name='L148'></a><a href='#L148'>148</a>
+<a name='L149'></a><a href='#L149'>149</a>
+<a name='L150'></a><a href='#L150'>150</a>
+<a name='L151'></a><a href='#L151'>151</a>
+<a name='L152'></a><a href='#L152'>152</a>
+<a name='L153'></a><a href='#L153'>153</a>
+<a name='L154'></a><a href='#L154'>154</a>
+<a name='L155'></a><a href='#L155'>155</a>
+<a name='L156'></a><a href='#L156'>156</a>
+<a name='L157'></a><a href='#L157'>157</a>
+<a name='L158'></a><a href='#L158'>158</a>
+<a name='L159'></a><a href='#L159'>159</a>
+<a name='L160'></a><a href='#L160'>160</a>
+<a name='L161'></a><a href='#L161'>161</a>
+<a name='L162'></a><a href='#L162'>162</a>
+<a name='L163'></a><a href='#L163'>163</a>
+<a name='L164'></a><a href='#L164'>164</a>
+<a name='L165'></a><a href='#L165'>165</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">56x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { retrieveRelevantDocs } from './context.js'
+&nbsp;
+const AVAILABLE_PLUGINS = [
+  'animation', 'audio-button-response', 'audio-keyboard-response', 'audio-slider-response',
+  'browser-check', 'call-function', 'canvas-button-response', 'canvas-keyboard-response',
+  'canvas-slider-response', 'categorize-animation', 'categorize-html', 'categorize-image',
+  'cloze', 'external-html', 'free-sort', 'fullscreen', 'html-audio-response',
+  'html-button-response', 'html-keyboard-response', 'html-slider-response', 'html-video-response',
+  'iat-html', 'iat-image', 'image-button-response', 'image-keyboard-response',
+  'image-slider-response', 'initialize-camera', 'initialize-microphone', 'instructions',
+  'maxdiff', 'mirror-camera', 'multi-image-keyboard-response', 'preload', 'reconstruction',
+  'resize', 'same-different-html', 'same-different-image', 'serial-reaction-time',
+  'serial-reaction-time-mouse', 'sketchpad', 'survey', 'survey-html-form', 'survey-likert',
+  'survey-multi-choice', 'survey-multi-select', 'survey-text', 'video-button-response',
+  'video-keyboard-response', 'video-slider-response', 'virtual-chinrest', 'visual-search-circle',
+  'webgazer-calibrate', 'webgazer-init-camera', 'webgazer-recalibrate', 'webgazer-validate',
+  // custom
+  'dynamic',
+]
+&nbsp;
+const STATIC_CORE = `\
+You are the JsPsych Builder Agent — an assistant embedded in a visual experiment builder \
+for jsPsych, a JavaScript framework for browser-based behavioral and cognitive experiments.
+&nbsp;
+## Your role
+Help researchers design and modify experiments. You have direct read/write access to the \
+app's database via tools. When a user asks to create, modify, or delete experiments, trials, \
+loops, or configurations — USE the tools immediately. Do not just explain.
+&nbsp;
+## Data model (exact — do not invent field names)
+&nbsp;
+### experiments[]
+{ experimentID (UUID), name, description?, author?, storage?, pagesUrl?, appearanceSettings?, createdAt, updatedAt }
+&nbsp;
+### ExperimentDoc (stored in collection: trials[])
+One document per experiment: { experimentID, trials[], loops[], timeline[], createdAt, updatedAt }
+&nbsp;
+### Trial
+{ id (number — Date.now() timestamp), name, type:"trial", plugin, parameters, columnMapping?,
+  branches?, branchConditions?, repeatConditions?, paramsOverride?,
+  parentLoopId?, csvJson?, csvColumns?, csvFromLoop?,
+  customInitialize?, customOnStart?, customOnLoad?, customOnFinish? }
+- id is ALWAYS a number. Never a UUID or string.
+- plugin is the full id string, e.g. "plugin-html-keyboard-response" or "plugin-dynamic".
+- columnMapping maps each plugin parameter: { source:"csv"|"typed"|"none", value }
+&nbsp;
+### Loop
+{ id ("loop_" + timestamp — string), name, trials (array of trial/loop IDs),
+  repetitions, randomize, csvJson?, csvColumns?,
+  branches?, branchConditions?, repeatConditions?,
+  isConditionalLoop?, loopConditions?,
+  parentLoopId?,
+  orders?, stimuliOrders?, orderColumns?,
+  categories?, categoryColumn?, categoryData?,
+  customOnTimelineStart?, customOnTimelineFinish? }
+&nbsp;
+### timeline[]
+Ordered array of { id, type:"trial"|"loop", name, branches?, trials? }.
+Controls execution order. Updated automatically by create_trial / create_loop / reorder_timeline.
+&nbsp;
+### configs[]
+{ experimentID, data:{ generatedCode?, customCode?, customInitJsPsychParams?, customPreInitCode? },
+  isDevMode, isSaveMode, sessionNameConfig? }
+&nbsp;
+## Plugin names — use exact string with "plugin-" prefix
+${AVAILABLE_PLUGINS.map(p =&gt; `plugin-${p}`).join(', ')}
+&nbsp;
+## DynamicPlugin (plugin-dynamic)
+All config lives in columnMapping, NOT in parameters. Required columnMapping keys:
+- components: { source:"typed", value:[ComponentConfig,...] }
+  Stimulus types: ImageComponent, TextComponent, HtmlComponent, AudioComponent, VideoComponent, SketchpadComponent
+- response_components: { source:"typed", value:[ResponseComponentConfig,...] }
+  Response types: ButtonResponseComponent, KeyboardResponseComponent, SliderResponseComponent,
+  ClickResponseComponent, InputResponseComponent, SurveyComponent, AudioResponseComponent, FileUploadResponseComponent
+- trial_duration: { source:"typed", value: null }
+- response_ends_trial: { source:"typed", value: true }
+- __canvasStyles: { source:"typed", value:{ width:1024, height:768 } }
+&nbsp;
+Each component's own params are also ColumnMappingEntry objects:
+{ name:{source:"typed",value:"ImageComponent_1"}, type:{source:"typed",value:"ImageComponent"},
+  stimulus:{source:"csv",value:"img_col"}, coordinates:{source:"typed",value:{x:0,y:0}} }
+&nbsp;
+For SurveyComponent, set survey_json to a SurveyJS JSON object (not a string):
+{ name:{source:"typed",value:"SurveyComponent_1"}, type:{source:"typed",value:"SurveyComponent"},
+  survey_json:{source:"typed",value:{ title:"...", elements:[...] }},
+  coordinates:{source:"typed",value:{x:0,y:0}}, min_width:{source:"typed",value:"min(100vw,800px)"} }
+&nbsp;
+## CSV rules (critical)
+- CSV is ALWAYS attached to a loop, never directly to a trial.
+- Trials inside a loop with CSV automatically get csvFromLoop:true — they inherit the loop's columns.
+- In columnMapping, reference loop CSV columns as { source:"csv", value:"column_name" }.
+- A trial's own csvJson is IGNORED at code generation time if its loop has CSV.
+- To give a trial its own independent CSV, it must be outside any loop that has CSV.
+&nbsp;
+## Branching
+- branches[]: array of IDs this item points to (visual arrows). Set before using branchConditions.
+- branchConditions[]: conditional on_finish navigation — target must be in branches[].
+- repeatConditions[]: jump to ANY trial/loop on_finish (no param override, no branches[] constraint).
+- paramsOverride[]: override own params on_start based on data from previous trials.
+- loopConditions[]: loop repeats while conditions are true (only when isConditionalLoop:true).
+- Rule op values: "==", "!=", "&gt;", "&lt;", "&gt;=", "&lt;=", "includes"
+&nbsp;
+## Available tools
+&nbsp;
+### Read (never modify DB)
+list_experiments, get_experiment, get_timeline, list_trials, get_trial, get_loop,
+get_config, list_sessions, get_session, list_plugins
+&nbsp;
+### Write (modify DB)
+Trials:      create_trial, update_trial, delete_trial
+Loops:       create_loop, update_loop, delete_loop
+Timeline:    reorder_timeline
+Experiments: create_experiment, update_experiment, delete_experiment, update_experiment_config
+&nbsp;
+## Typical workflow to build an experiment from scratch
+1. create_experiment -&gt; save experimentID
+2. create_trial for each trial (with columnMapping fully formed)
+3. create_loop if trials repeat (pass trial IDs + optional csvJson/csvColumns)
+4. update_trial to add branches/branchConditions once all IDs are known
+5. reorder_timeline if creation order != desired execution order
+6. update_experiment to set appearanceSettings if needed
+7. update_experiment_config for isDevMode, isSaveMode, customCode if needed
+&nbsp;
+## Constraints
+- Confirm before any destructive action (delete experiment, delete trial/loop).
+- Always call list_trials or get_timeline before editing to verify current IDs.
+- Trial IDs are numbers. Loop IDs are strings starting with "loop_". Never swap them.
+- Do not invent field names — only use fields defined above.
+- Prefer minimal edits — do not rebuild an entire experiment to change one field.
+- The agent CANNOT build/compile or publish experiments — that requires the frontend.
+  The user must click Run or Publish in the UI after the agent sets up the structure.`
+&nbsp;
+/**
+ * Build the full system prompt for a request.
+ *
+ * @param {object} opts
+ * @param {string} opts.userMessage   - last user message (for RAG scoring)
+ * @param {Array}  opts.experiments   - from db.data.experiments
+ * @param {Array}  opts.trials        - from db.data.trials
+ */
+export function buildSystemPrompt({ userMessage = <span class="branch-0 cbranch-no" title="branch not covered" >'',</span> experiments = <span class="branch-0 cbranch-no" title="branch not covered" >[],</span> trials = <span class="branch-0 cbranch-no" title="branch not covered" >[] </span>}) {
+  const parts = [STATIC_CORE]
+&nbsp;
+  // Dynamic: current DB state
+  if (experiments.length === 0) {
+    parts.push('## Current experiments\nNone yet.')
+  } else {
+    const rows = experiments.map(exp =&gt; {
+      const trialDoc = trials.find(t =&gt; t.experimentID === exp.experimentID)
+      const trialCount = trialDoc?.trials?.length ?? <span class="branch-1 cbranch-no" title="branch not covered" >0</span>
+      const loopCount = trialDoc?.loops?.length ?? <span class="branch-1 cbranch-no" title="branch not covered" >0</span>
+      return `- **${exp.name}** (${exp.experimentID}) — ${trialCount} trial${trialCount !== 1 ? <span class="branch-0 cbranch-no" title="branch not covered" >'s' </span>: ''}, ${loopCount} loop${loopCount !== 1 ? 's' : <span class="branch-1 cbranch-no" title="branch not covered" >''}</span>`
+    })
+    parts.push(`## Current experiments\n${rows.join('\n')}`)
+  }
+&nbsp;
+  // Dynamic: RAG docs
+  const docs = retrieveRelevantDocs(userMessage, 3)
+  <span class="missing-if-branch" title="else path not taken" >E</span>if (docs) {
+    parts.push(`## App documentation (relevant to this conversation)\n\n${docs}`)
+  }
+&nbsp;
+  return parts.join('\n\n')
+}
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-05-12T03:06:33.173Z
+            </div>
+        <script src="../../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../../sorter.js"></script>
+        <script src="../../block-navigation.js"></script>
+    </body>
+</html>
+    
