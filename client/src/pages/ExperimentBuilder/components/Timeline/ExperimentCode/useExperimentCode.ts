@@ -177,40 +177,30 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
     };`;
 
   const branchingEvaluation = `// Solo evaluar branching si el trial/loop tiene un trial_id o loop_id válido
-      if ((!data.trial_id || data.trial_id === undefined) && (!data.loop_id || data.loop_id === undefined)) {
-        return;
-      }
-      
-      const lastTrialData = jsPsych.data.getLastTrialData();
-      const trial = lastTrialData.trials ? lastTrialData.trials[0] : null;
-      
-      // Verificar si este trial/loop tiene branches
-      if (!trial || !trial.branches || trial.branches.length === 0) {
-        return; // No tiene branches, no hay nada que hacer
-      }
-      
-      // IMPORTANTE: Si el trial está dentro de un loop (isInLoop = true),
-      // NO activar el branching global. Los trials dentro de loops usan su propio
-      // sistema de branching con variables locales (loopNextTrialId, etc.)
-      if (trial.isInLoop === true) {
-        return;
-      }
-      
-      const nextTrialId = getNextTrialId(lastTrialData);
-      
-      if (nextTrialId) {
-        // Check if nextTrialId is "FINISH_EXPERIMENT"
-        if (nextTrialId === 'FINISH_EXPERIMENT') {
-          console.log('🏁 [BRANCHING] Finishing experiment via branching');
-          jsPsych.abortExperiment('Experiment finished by branching condition', {});
-          return;
-        }
+      if ((data.trial_id !== undefined && data.trial_id !== null) || (data.loop_id !== undefined && data.loop_id !== null)) {
+        const lastTrialData = jsPsych.data.getLastTrialData();
+        const trial = lastTrialData.trials ? lastTrialData.trials[0] : null;
         
-        console.log('🎯 [BRANCHING] Setting global branch target:', nextTrialId);
-        window.nextTrialId = nextTrialId;
-        window.skipRemaining = true;
-        window.branchingActive = true;
-        console.log('🎯 [BRANCHING] Skip remaining activated');
+        // Verificar si este trial/loop tiene branches y no está en un loop local
+        if (trial && trial.branches && trial.branches.length > 0 && trial.isInLoop !== true) {
+          const nextTrialId = getNextTrialId(lastTrialData);
+          
+          if (nextTrialId) {
+            // Check if nextTrialId is "FINISH_EXPERIMENT"
+            if (nextTrialId === 'FINISH_EXPERIMENT') {
+              console.log('🏁 [BRANCHING] Finishing experiment via branching');
+              window.nextTrialId = '1778798102194';
+              window.skipRemaining = true;
+              window.branchingActive = true;
+            } else {
+              console.log('🎯 [BRANCHING] Setting global branch target:', nextTrialId);
+              window.nextTrialId = nextTrialId;
+              window.skipRemaining = true;
+              window.branchingActive = true;
+              console.log('🎯 [BRANCHING] Skip remaining activated');
+            }
+          }
+        }
       }`;
 
   const { getTrial, getLoopTimeline, getLoop } = useTrials();
