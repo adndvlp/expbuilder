@@ -47,11 +47,15 @@ export default function TrialsProvider({ children }: Props) {
     }
   }, [experimentID]);
 
+  // ARCHITECTURE NOTE: `updateState` determines if the fetched data should mutate the UI (`loopTimeline`).
+  // - true (default): Used when manually navigating into a loop via the Canvas "open" button.
+  // - false: Used by background processes (like code generation in ExperimentPreview) to fetch
+  //   loop data purely as a data query, without destroying the user's current visual context.
   const getLoopTimeline = useCallback(
-    async (loopId: string | number): Promise<TimelineItem[]> => {
+    async (loopId: string | number, updateState: boolean = true): Promise<TimelineItem[]> => {
       try {
         // Si es el mismo loop activo, devolver el estado cacheado
-        if (activeLoopId === loopId && loopTimeline.length > 0) {
+        if (activeLoopId === loopId && loopTimeline.length > 0 && updateState) {
           return loopTimeline;
         }
 
@@ -67,8 +71,10 @@ export default function TrialsProvider({ children }: Props) {
         const timeline = data.trialsMetadata || [];
 
         // Guardar en el estado SIEMPRE (independientemente de selectedLoop)
-        setLoopTimeline(timeline);
-        setActiveLoopId(loopId);
+        if (updateState) {
+          setLoopTimeline(timeline);
+          setActiveLoopId(loopId);
+        }
 
         return timeline;
       } catch (error) {

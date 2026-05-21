@@ -62,7 +62,7 @@ type TrialsContextType = {
   getTimeline: () => Promise<void>;
 
   // Método para cargar timeline de trials/loops dentro de un loop
-  getLoopTimeline: (loopId: string | number) => Promise<TimelineItem[]>;
+  getLoopTimeline: (loopId: string | number, updateState?: boolean) => Promise<TimelineItem[]>;
 
   // Método para limpiar loop timeline
   clearLoopTimeline: () => void;

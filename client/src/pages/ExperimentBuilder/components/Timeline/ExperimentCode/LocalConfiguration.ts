@@ -10,7 +10,7 @@ import { CanvasStyles } from "../../ConfigurationPanel/TrialsConfiguration/Trial
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 
 type GetTrialFn = (id: string | number) => Promise<Trial | null>;
-type GetLoopTimelineFn = (loopId: string | number) => Promise<TimelineItem[]>;
+type GetLoopTimelineFn = (loopId: string | number, updateState?: boolean) => Promise<TimelineItem[]>;
 type GetLoopFn = (id: string | number) => Promise<Loop | null>;
 
 type Props = {

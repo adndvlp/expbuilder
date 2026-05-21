@@ -10,7 +10,7 @@ import type { TimelineItem } from "../contexts/TrialsContext";
 import { generateExtensionCode } from "./generateExtensionCode";
 
 type GetTrialFn = (id: string | number) => Promise<Trial | null>;
-type GetLoopTimelineFn = (loopId: string | number) => Promise<TimelineItem[]>;
+type GetLoopTimelineFn = (loopId: string | number, updateState?: boolean) => Promise<TimelineItem[]>;
 type GetLoopFn = (id: string | number) => Promise<Loop | null>;
 
 /**
@@ -293,8 +293,12 @@ async function generateLoopCode(
       return "";
     }
 
-    // Fetch trials metadata within the loop using getLoopTimeline
-    const trialsMetadata = await getLoopTimeline(loop.id);
+    // Fetch trials metadata within the loop using getLoopTimeline.
+    // ARCHITECTURE NOTE: We pass `updateState: false` here because this function is called by 
+    // ExperimentPreview whenever a loop is selected to generate its code. If we update the global 
+    // UI state (loopTimeline) here, it would force the Canvas to render this loop's contents, 
+    // causing an unexpected visual "auto-open" behavior when clicking a nested loop node.
+    const trialsMetadata = await getLoopTimeline(loop.id, false);
 
     // Generate code for each trial/loop in the loop
     const trialsWithCode = (await Promise.all(

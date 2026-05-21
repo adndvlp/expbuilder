@@ -5,7 +5,7 @@ import { CanvasStyles } from "../../ConfigurationPanel/TrialsConfiguration/Trial
 import { lastTrial } from "./FinishTrial";
 
 type GetTrialFn = (id: string | number) => Promise<Trial | null>;
-type GetLoopTimelineFn = (loopId: string | number) => Promise<TimelineItem[]>;
+type GetLoopTimelineFn = (loopId: string | number, updateState?: boolean) => Promise<TimelineItem[]>;
 type GetLoopFn = (id: string | number) => Promise<Loop | null>;
 
 type Props = {
