@@ -15,7 +15,7 @@ import {
   findProvider as findStaticProvider,
   findModel,
 } from "../components/Chat/providers";
-import { findCatalogProvider, prefetchProviders } from "../lib/providerCatalog";
+import { findCatalogProvider, prefetchProviders, loadProviders } from "../lib/providerCatalog";
 
 const API_BASE = "http://localhost:3000";
 
@@ -34,6 +34,7 @@ export interface ToolCall {
   description?: string;
   args: Record<string, unknown>;
   result?: string;
+  error?: string;
   status: "pending" | "running" | "done" | "error";
   durationMs?: number;
 }
@@ -125,18 +126,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       fetch(`${API_BASE}/api/chat/settings`).then((r) => r.json()),
       fetch(`${API_BASE}/api/chat/conversations`).then((r) => r.json()),
     ])
-      .then(([settings, convs]) => {
+      .then(async ([settings, convs]) => {
         if (settings.apiKeys) setApiKeys(settings.apiKeys);
         if (settings.activeProvider && settings.activeModel) {
-          // Wait for catalog to resolve before setting provider
-          setTimeout(() => {
-            const p =
-              findCatalogProvider(settings.activeProvider) ??
-              findStaticProvider(settings.activeProvider);
-            const m = findModel(p, settings.activeModel);
-            setProvider(p);
-            setModel(m);
-          }, 100);
+          // Wait for catalog to finish loading so findCatalogProvider works
+          await loadProviders();
+          const p =
+            findCatalogProvider(settings.activeProvider) ??
+            findStaticProvider(settings.activeProvider);
+          const m = findModel(p, settings.activeModel);
+          setProvider(p);
+          setModel(m);
         }
         if (Array.isArray(convs) && convs.length > 0) {
           // Revive Date strings → Date objects

@@ -7,6 +7,7 @@ import { resolveModel } from './providers/registry.js'
 import { buildSystemPrompt } from './system-prompt.js'
 import { db, ensureDbData } from '../utils/db.js'
 import { readTools } from './tools/read.js'
+import { createTrialTools } from './tools/create.js'
 
 /**
  * Stream a chat completion via SSE.

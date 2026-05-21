@@ -36,7 +36,13 @@ export default function LocalConfiguration({
   getLoop,
   canvasStyles,
 }: Props) {
-  const { isDevMode, code, customCode, customInitJsPsychParams, customPreInitCode } = useDevMode();
+  const {
+    isDevMode,
+    code,
+    customCode,
+    customInitJsPsychParams,
+    customPreInitCode,
+  } = useDevMode();
   const localParams = customInitJsPsychParams.local;
   const { generatedBaseCode } = ExperimentBase({
     experimentID,
@@ -362,6 +368,7 @@ export default function LocalConfiguration({
 
 
     ${extensions}
+    ${localParams.on_trial_start?.trim() ? `on_trial_start: function(trial) {\n      // --- User code (on_trial_start) ---\n      ${localParams.on_trial_start.trim()}\n    },` : ""}
 
     on_data_update: function (data) {
       // Create and track the promise for this data save
@@ -457,13 +464,28 @@ export default function LocalConfiguration({
 
     _showSuccess();${localParams.on_finish?.trim() ? `\n    // --- User code (on_finish) ---\n    ${localParams.on_finish.trim()}` : ""}
   }${(() => {
-    const BUILDER_PARAMS = ["on_data_update", "on_finish"];
+    const BUILDER_PARAMS = ["on_trial_start", "on_data_update", "on_finish"];
+    const FUNCTION_PARAMS: Record<string, string> = {
+      on_trial_finish: "function(data) {\n  ${code}\n}",
+      on_interaction_data_update: "function(data) {\n  ${code}\n}",
+      on_close: "function() {\n  ${code}\n}",
+    };
     const extraPairs = Object.entries(localParams)
       .filter(([k, v]) => !BUILDER_PARAMS.includes(k) && v?.trim())
-      .map(([k, v]) => `  ${k}: ${v.trim()}`)
+      .map(([k, v]) => {
+        const trimmed = v.trim();
+        const fn = FUNCTION_PARAMS[k];
+        return fn
+          ? `  ${k}: ${fn.replace("${code}", trimmed)}`
+          : `  ${k}: ${trimmed}`;
+      })
       .join(",\n");
-    const extraBlock = extraPairs ? `,\n\n  // --- User-added initJsPsych params ---\n${extraPairs}` : "";
-    const customBlock = customCode?.trim() ? `,\n\n  // --- Global Custom Code (initJsPsych options) ---\n  ${customCode}` : "";
+    const extraBlock = extraPairs
+      ? `,\n\n  // --- User-added initJsPsych params ---\n${extraPairs}`
+      : "";
+    const customBlock = customCode?.trim()
+      ? `,\n\n  // --- Global Custom Code (initJsPsych options) ---\n  ${customCode}`
+      : "";
     return extraBlock + customBlock;
   })()}
 });

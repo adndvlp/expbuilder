@@ -992,9 +992,18 @@ export default function PublicConfiguration({
         ${recruitmentConfig.platform === "none" ? `_showSuccess();` : ""}${publicParams.on_finish?.trim() ? `\n        // --- User code (on_finish) ---\n        ${publicParams.on_finish.trim()}` : ""}
       }${(() => {
     const BUILDER_PARAMS = ["on_trial_start", "on_data_update", "on_finish"];
+    const FUNCTION_PARAMS: Record<string, string> = {
+      on_trial_finish: "function(data) {\n        ${code}\n      }",
+      on_interaction_data_update: "function(data) {\n        ${code}\n      }",
+      on_close: "function() {\n        ${code}\n      }",
+    };
     const extraPairs = Object.entries(publicParams)
       .filter(([k, v]) => !BUILDER_PARAMS.includes(k) && v?.trim())
-      .map(([k, v]) => `      ${k}: ${v.trim()}`)
+      .map(([k, v]) => {
+        const trimmed = v.trim();
+        const fn = FUNCTION_PARAMS[k];
+        return fn ? `      ${k}: ${fn.replace("${code}", trimmed)}` : `      ${k}: ${trimmed}`;
+      })
       .join(",\n");
     return extraPairs ? `,\n\n      // --- User-added initJsPsych params ---\n${extraPairs}` : "";
   })()}

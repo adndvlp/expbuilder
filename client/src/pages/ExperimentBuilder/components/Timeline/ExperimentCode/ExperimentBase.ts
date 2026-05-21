@@ -2,6 +2,7 @@ import { UploadedFile } from "./useExperimentCode";
 import { Trial, Loop } from "../../ConfigurationPanel/types";
 import { TimelineItem } from "../../../contexts/TrialsContext";
 import { CanvasStyles } from "../../ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
+import { lastTrial } from "./FinishTrial";
 
 type GetTrialFn = (id: string | number) => Promise<Trial | null>;
 type GetLoopTimelineFn = (loopId: string | number) => Promise<TimelineItem[]>;
@@ -72,6 +73,7 @@ export default function ExperimentBase({
 
     ${allCodes}
 
+    ${lastTrial}
     jsPsych.run(timeline);
     
 `;
