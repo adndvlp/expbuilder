@@ -33,14 +33,16 @@ export function generateOnFinishCode(options: {
         ${getVarName("ShouldBranchOnFinish")} = true;
       } else if (!${getVarName("HasBranches")}) {
         if (window.branchingActive) {
-          jsPsych.abortExperiment('', {});
+          window.nextTrialId = '1778798102194';
+          window.skipRemaining = true;
         }
       }
     },`;
     } else {
       return `on_finish: function(data) {${customBlock}
       if (window.branchingActive) {
-        jsPsych.abortExperiment('', {});
+        window.nextTrialId = '1778798102194';
+        window.skipRemaining = true;
       }
     },`;
     }
@@ -57,7 +59,8 @@ export function generateOnFinishCode(options: {
         ${getVarName("ShouldBranchOnFinish")} = true;
       } else if (!${getVarName("HasBranches")}) {
         if (window.branchingActive) {
-          jsPsych.abortExperiment('', {});
+          window.nextTrialId = '1778798102194';
+          window.skipRemaining = true;
         }
       }
     },`;
