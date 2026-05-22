@@ -38,6 +38,11 @@ export function useFlowLayout({
   onOpenLoop,
   openLoop,
 }: UseFlowLayoutProps) {
+  // Extract primitive IDs for stable memoization
+  const selectedTrialId = selectedTrial?.id;
+  const selectedLoopId = selectedLoop?.id;
+  const openLoopId = openLoop?.id;
+
   const { nodes, edges } = useMemo(() => {
     const nodes: LayoutNode[] = [];
     const edges: LayoutEdge[] = [];
@@ -68,7 +73,7 @@ export function useFlowLayout({
       depth: number = 0,
     ): number => {
       const trialId = `${parentId}-${trial.id}`;
-      const isSelected = selectedTrial && selectedTrial.id === trial.id;
+      const isSelected = selectedTrialId === trial.id;
 
       // Check if this trial has already been rendered
       const existingNodeId = renderedTrials.get(trial.id);
@@ -167,8 +172,8 @@ export function useFlowLayout({
     ): number => {
       const loopId = `${parentId}-${loop.id}`;
       const isSelected =
-        (selectedLoop && selectedLoop.id === loop.id) ||
-        (openLoop && openLoop.id === loop.id);
+        (selectedLoopId === loop.id) ||
+        (openLoopId === loop.id);
 
       // Check if this loop has already been rendered
       const existingNodeId = renderedTrials.get(loop.id);
@@ -267,9 +272,9 @@ export function useFlowLayout({
 
       const isSelected =
         item.type === "trial"
-          ? selectedTrial && selectedTrial.id === item.id
-          : (selectedLoop && selectedLoop.id === item.id) ||
-            (openLoop && openLoop.id === item.id);
+          ? selectedTrialId === item.id
+          : (selectedLoopId === item.id) ||
+            (openLoopId === item.id);
 
       // Mark main sequence items as rendered
       renderedTrials.set(item.id, itemId);
@@ -385,13 +390,12 @@ export function useFlowLayout({
     }
 
     return { nodes, edges };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     timeline,
-    selectedTrial,
-    selectedLoop,
-    openLoop,
-    // DO NOT include callback functions - they cause unnecessary re-renders in React Flow
-    // onSelectTrial, onSelectLoop, onAddBranch are used but not as dependencies
+    selectedTrialId,
+    selectedLoopId,
+    openLoopId,
   ]);
 
   return { nodes, edges };

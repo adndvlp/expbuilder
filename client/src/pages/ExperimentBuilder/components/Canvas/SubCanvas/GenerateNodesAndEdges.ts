@@ -35,6 +35,9 @@ export default function GenerateNodesAndEdges({
   onSelectLoop,
   onOpenNestedLoop,
 }: Props) {
+  const selectedTrialId = selectedTrial?.id;
+  const selectedLoopId = selectedLoop?.id;
+
   // Generate nodes and edges based on loopTimeline
   const { nodes, edges } = useMemo(() => {
     const nodes: any[] = [];
@@ -95,8 +98,8 @@ export default function GenerateNodesAndEdges({
 
       // Create node
       const isSelected = isTrial
-        ? selectedTrial?.id === item.id
-        : selectedLoop?.id === item.id;
+        ? selectedTrialId === item.id
+        : selectedLoopId === item.id;
 
       const handleSelect = async () => {
         if (isTrial) {
@@ -213,16 +216,11 @@ export default function GenerateNodesAndEdges({
     }
 
     return { nodes, edges };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     loopTimeline,
-    selectedTrial,
-    selectedLoop,
-    onSelectTrial,
-    onSelectLoop,
-    onAddBranch,
-    onOpenNestedLoop,
-    getTrial,
-    getLoop,
+    selectedTrialId,
+    selectedLoopId,
     size.width,
   ]);
   return { nodes, edges };
