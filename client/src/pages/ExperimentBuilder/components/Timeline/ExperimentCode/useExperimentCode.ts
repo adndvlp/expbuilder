@@ -189,9 +189,8 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
             // Check if nextTrialId is "FINISH_EXPERIMENT"
             if (nextTrialId === 'FINISH_EXPERIMENT') {
               console.log('🏁 [BRANCHING] Finishing experiment via branching');
-              window.nextTrialId = '1778798102194';
-              window.skipRemaining = true;
-              window.branchingActive = true;
+              jsPsych.abortExperiment('Experiment finished by branching condition', {});
+              return;
             } else {
               console.log('🎯 [BRANCHING] Setting global branch target:', nextTrialId);
               window.nextTrialId = nextTrialId;

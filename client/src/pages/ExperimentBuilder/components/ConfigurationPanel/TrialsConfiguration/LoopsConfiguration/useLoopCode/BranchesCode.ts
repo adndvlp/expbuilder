@@ -142,8 +142,7 @@ function BranchesCode({
     // This loop has no branches, it is a terminal loop
     // If we get here after branching, end the experiment
     if (window.branchingActive) {
-      window.nextTrialId = '1778798102194';
-      window.skipRemaining = true;
+      jsPsych.abortExperiment('', {});
     }
     `
     }
@@ -195,8 +194,7 @@ function BranchesCode({
     // This loop has no branches or repeat conditions, it is a terminal loop
     // If we get here after branching, end the experiment
     if (window.branchingActive) {
-      window.nextTrialId = '1778798102194';
-      window.skipRemaining = true;
+      jsPsych.abortExperiment('', {});
     }
   },`;
   }
