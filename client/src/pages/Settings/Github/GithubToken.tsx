@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { openExternal } from "../../../lib/openExternal";
 import { doc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../../../lib/firebase";
+import { fetchOAuthState } from "../../../lib/oauthState";
 
 // Detectar si estamos en Electron
 const isElectron = !!(window as any).electron?.startOAuthFlow;
@@ -25,9 +26,11 @@ export default function GithubToken() {
 
   const SCOPE = "public_repo delete_repo workflow";
 
-  const oauthUrl = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
-    REDIRECT_URI,
-  )}&scope=${encodeURIComponent(SCOPE)}&state=${user?.uid}`;
+  // T-5: state obtained from backend (server-signed HMAC) at click time.
+  const buildOAuthUrl = (state: string) =>
+    `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
+      REDIRECT_URI,
+    )}&scope=${encodeURIComponent(SCOPE)}&state=${encodeURIComponent(state)}`;
 
   // Cargar estado del token
   useEffect(() => {
@@ -58,6 +61,16 @@ export default function GithubToken() {
   const handleConnect = async () => {
     if (!user) return;
 
+    // T-5: fetch signed state from backend before any redirect.
+    let signedState: string;
+    try {
+      signedState = await fetchOAuthState("github");
+    } catch (err: any) {
+      console.error("Failed to obtain OAuth state:", err);
+      alert(`Could not start OAuth flow: ${err.message}`);
+      return;
+    }
+
     // Si estamos en Electron, usar el flujo nativo
     if (isElectron) {
       setIsConnecting(true);
@@ -66,7 +79,7 @@ export default function GithubToken() {
           provider: "github",
           clientId: CLIENT_ID,
           scope: SCOPE,
-          state: user.uid,
+          state: signedState,
         });
 
         if (result.success) {
@@ -99,8 +112,8 @@ export default function GithubToken() {
         setIsConnecting(false);
       }
     } else {
-      // Flujo web normal (abre en navegador y redirige)
-      openExternal(oauthUrl);
+      // Flujo web normal — usa state firmado.
+      openExternal(buildOAuthUrl(signedState));
     }
   };
 

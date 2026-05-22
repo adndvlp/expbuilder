@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase";
 import { openExternal } from "../../lib/openExternal";
+import { fetchOAuthState } from "../../lib/oauthState";
 
 // Detectar si estamos en Electron
 const isElectron = !!(window as any).electron?.startOAuthFlow;
@@ -33,11 +34,13 @@ export default function OsfToken() {
       : import.meta.env.VITE_OSF_OAUTH_CALLBACK_URL ||
         "https://us-central1-test-e4cf9.cloudfunctions.net/osfOAuthCallback";
 
-  const oauthUrl = `https://accounts.osf.io/oauth2/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
-    REDIRECT_URI,
-  )}&scope=${encodeURIComponent(
-    "osf.full_read osf.full_write",
-  )}&access_type=offline&approval_prompt=auto&state=${user?.uid}`;
+  // T-5: state obtained from backend (signed HMAC) at click time.
+  const buildOAuthUrl = (state: string) =>
+    `https://accounts.osf.io/oauth2/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
+      REDIRECT_URI,
+    )}&scope=${encodeURIComponent(
+      "osf.full_read osf.full_write",
+    )}&access_type=offline&approval_prompt=auto&state=${encodeURIComponent(state)}`;
 
   // Cargar estado del token
   useEffect(() => {
@@ -71,6 +74,16 @@ export default function OsfToken() {
   const handleConnectOAuth = async (retryAttempt = 0) => {
     if (!user) return;
 
+    // T-5: fetch signed state from backend before any redirect.
+    let signedState: string;
+    try {
+      signedState = await fetchOAuthState("osf");
+    } catch (err: any) {
+      console.error("Failed to obtain OAuth state:", err);
+      setError(`Could not start OAuth flow: ${err.message}`);
+      return;
+    }
+
     // Si estamos en Electron, usar el flujo nativo
     if (isElectron) {
       setIsConnecting(true);
@@ -88,7 +101,7 @@ export default function OsfToken() {
           provider: "osf",
           clientId: CLIENT_ID,
           scope: "osf.full_read osf.full_write",
-          state: user.uid,
+          state: signedState,
         });
 
         if (result.success) {
@@ -144,8 +157,8 @@ export default function OsfToken() {
         setIsConnecting(false);
       }
     } else {
-      // Flujo web normal (abre en navegador y redirige)
-      openExternal(oauthUrl);
+      // Flujo web normal — usa state firmado.
+      openExternal(buildOAuthUrl(signedState));
     }
   };
 

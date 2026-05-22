@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { openExternal } from "../../../lib/openExternal";
 import { doc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../../../lib/firebase";
+import { fetchOAuthState } from "../../../lib/oauthState";
 
 // Detectar si estamos en Electron
 const isElectron = !!(window as any).electron?.startOAuthFlow;
@@ -26,11 +27,14 @@ export default function DropboxToken() {
   const RESPONSE_TYPE = "code";
   const SCOPE = "account_info.read files.content.read files.content.write";
 
-  const oauthUrl = `https://www.dropbox.com/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
-    REDIRECT_URI,
-  )}&response_type=${RESPONSE_TYPE}&token_access_type=offline&state=${
-    user?.uid
-  }&scope=${encodeURIComponent(SCOPE)}`;
+  // T-5: OAuth `state` is now obtained from the backend (server-signed HMAC)
+  // immediately before the redirect. Built dynamically in `handleConnect`.
+  const buildOAuthUrl = (state: string) =>
+    `https://www.dropbox.com/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
+      REDIRECT_URI,
+    )}&response_type=${RESPONSE_TYPE}&token_access_type=offline&state=${encodeURIComponent(
+      state,
+    )}&scope=${encodeURIComponent(SCOPE)}`;
 
   // Cargar estado del token
   useEffect(() => {
@@ -61,6 +65,16 @@ export default function DropboxToken() {
   const handleConnect = async () => {
     if (!user) return;
 
+    // T-5: fetch signed state from backend before any redirect.
+    let signedState: string;
+    try {
+      signedState = await fetchOAuthState("dropbox");
+    } catch (err: any) {
+      console.error("Failed to obtain OAuth state:", err);
+      alert(`Could not start OAuth flow: ${err.message}`);
+      return;
+    }
+
     // Si estamos en Electron, usar el flujo nativo
     if (isElectron) {
       setIsConnecting(true);
@@ -69,7 +83,7 @@ export default function DropboxToken() {
           provider: "dropbox",
           clientId: CLIENT_ID,
           scope: SCOPE,
-          state: user.uid,
+          state: signedState,
         });
 
         if (result.success) {
@@ -102,8 +116,8 @@ export default function DropboxToken() {
         setIsConnecting(false);
       }
     } else {
-      // Flujo web normal (abre en navegador y redirige)
-      openExternal(oauthUrl);
+      // Flujo web normal (abre en navegador y redirige) — usa state firmado.
+      openExternal(buildOAuthUrl(signedState));
     }
   };
 

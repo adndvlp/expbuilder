@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { openExternal } from "../../../lib/openExternal";
 import { doc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../../../lib/firebase";
+import { fetchOAuthState } from "../../../lib/oauthState";
 
 // Detectar si estamos en Electron
 const isElectron = !!(window as any).electron?.startOAuthFlow;
@@ -28,11 +29,13 @@ export default function GoogleDriveToken() {
   const SCOPE =
     "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appfolder https://www.googleapis.com/auth/userinfo.email";
 
-  const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
-    REDIRECT_URI,
-  )}&response_type=${RESPONSE_TYPE}&scope=${encodeURIComponent(
-    SCOPE,
-  )}&access_type=offline&prompt=consent&state=${user?.uid}`;
+  // T-5: state from backend (signed HMAC).
+  const buildOAuthUrl = (state: string) =>
+    `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
+      REDIRECT_URI,
+    )}&response_type=${RESPONSE_TYPE}&scope=${encodeURIComponent(
+      SCOPE,
+    )}&access_type=offline&prompt=consent&state=${encodeURIComponent(state)}`;
 
   // Cargar estado del token
   useEffect(() => {
@@ -63,6 +66,16 @@ export default function GoogleDriveToken() {
   const handleConnect = async () => {
     if (!user) return;
 
+    // T-5: fetch signed state from backend before any redirect.
+    let signedState: string;
+    try {
+      signedState = await fetchOAuthState("googledrive");
+    } catch (err: any) {
+      console.error("Failed to obtain OAuth state:", err);
+      alert(`Could not start OAuth flow: ${err.message}`);
+      return;
+    }
+
     // Si estamos en Electron, usar el flujo nativo
     if (isElectron) {
       setIsConnecting(true);
@@ -71,7 +84,7 @@ export default function GoogleDriveToken() {
           provider: "google-drive",
           clientId: CLIENT_ID,
           scope: SCOPE,
-          state: user.uid,
+          state: signedState,
         });
 
         if (result.success) {
@@ -104,8 +117,8 @@ export default function GoogleDriveToken() {
         setIsConnecting(false);
       }
     } else {
-      // Flujo web normal (abre en navegador y redirige)
-      openExternal(oauthUrl);
+      // Flujo web normal — usa state firmado.
+      openExternal(buildOAuthUrl(signedState));
     }
   };
 
