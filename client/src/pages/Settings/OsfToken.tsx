@@ -23,12 +23,15 @@ export default function OsfToken() {
   // OSF OAuth credentials
   const CLIENT_ID = "ee4514d3235d4acb8da4443b3516ede2";
 
-  // REDIRECT_URI dinámico según el entorno
+  // REDIRECT_URI dinámico según el entorno. T-3: prod URL override via
+  // VITE_OSF_OAUTH_CALLBACK_URL — must match the URL registered in the
+  // OSF developer console at https://osf.io/settings/applications.
   const REDIRECT_URI = isElectron
     ? "http://localhost:8888/oauth/osf/callback"
     : import.meta.env.DEV
       ? "http://localhost:5173/oauth/osf/callback"
-      : "https://us-central1-builder-f43c3.cloudfunctions.net/osfOAuthCallback";
+      : import.meta.env.VITE_OSF_OAUTH_CALLBACK_URL ||
+        "https://us-central1-test-e4cf9.cloudfunctions.net/osfOAuthCallback";
 
   const oauthUrl = `https://accounts.osf.io/oauth2/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
     REDIRECT_URI,
