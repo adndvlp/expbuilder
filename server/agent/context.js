@@ -23,7 +23,7 @@ const DOC_FILES = [
 ]
 
 // Always injected regardless of query — core context every agent call needs
-const ANCHOR_IDS = new Set(['02-data-model', '03-api', '05-trials-loops'])
+const ANCHOR_IDS = new Set(['02-data-model'])
 
 // Load file contents once at module init
 const CHUNKS = DOC_FILES.map(({ id, file, keywords }) => {

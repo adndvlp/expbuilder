@@ -19,11 +19,18 @@ function Dashboard() {
 
   const navigate = useNavigate();
 
-  // Load experiments on mount
-  useEffect(() => {
+  const loadExperiments = () => {
     fetch(`${VITE_API}/api/load-experiments`)
       .then((res) => res.json())
       .then((data) => setExperiments(data.experiments || []));
+  };
+
+  // Load experiments on mount + listen for chat changes
+  useEffect(() => {
+    loadExperiments();
+    const handler = () => loadExperiments();
+    window.addEventListener("experiment-data-changed", handler);
+    return () => window.removeEventListener("experiment-data-changed", handler);
   }, []);
 
   // Create experiment

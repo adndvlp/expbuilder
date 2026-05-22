@@ -2,7 +2,7 @@
  * Core chat handler — wraps ai SDK streamText.
  * Streams Server-Sent Events back to the client.
  */
-import { streamText, generateText } from 'ai'
+import { streamText, generateText, stepCountIs } from 'ai'
 import { resolveModel } from './providers/registry.js'
 import { buildSystemPrompt } from './system-prompt.js'
 import { db, ensureDbData } from '../utils/db.js'
@@ -56,14 +56,14 @@ export async function handleChatStream(req, res) {
   }
 
   try {
+    const isLocal = ['ollama', 'lmstudio', 'localai'].includes(providerId)
     const result = streamText({
       model,
       messages,
       system,
       temperature,
       maxTokens,
-      tools: readTools,
-      maxSteps: 10,
+      ...(isLocal ? {} : { tools: { ...readTools, ...createTrialTools }, stopWhen: stepCountIs(10) }),
     })
 
     for await (const chunk of result.textStream) {
@@ -71,7 +71,7 @@ export async function handleChatStream(req, res) {
     }
 
     const usage = await result.usage
-    send('done', { usage })
+    send('done', { usage, toolsUsed: true })
     res.end()
   } catch (err) {
     send('error', { message: err.message ?? String(err) })
@@ -100,7 +100,11 @@ export async function handleChatOnce(req, res) {
   const system = await resolveSystemPrompt(messages)
 
   try {
-    const result = await generateText({ model, messages, system, temperature, maxTokens, tools: readTools, maxSteps: 10 })
+    const isLocal = ['ollama', 'lmstudio', 'localai'].includes(providerId)
+    const result = await generateText({
+      model, messages, system, temperature, maxTokens,
+      ...(isLocal ? {} : { tools: { ...readTools, ...createTrialTools }, stopWhen: stepCountIs(10) }),
+    })
     res.json({ text: result.text, usage: result.usage })
   } catch (err) {
     res.status(500).json({ error: err.message ?? String(err) })

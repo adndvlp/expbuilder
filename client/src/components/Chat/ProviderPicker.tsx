@@ -19,8 +19,10 @@ import {
   FiLoader,
 } from "react-icons/fi";
 
+const API_BASE = import.meta.env.VITE_API_URL;
+
 function isConnected(p: Provider, apiKeys: Record<string, string>) {
-  return p.local || !!apiKeys[p.id]?.trim();
+  return !!apiKeys[p.id]?.trim();
 }
 
 /* ── Badge (header trigger) ───────────────────────────── */
@@ -73,6 +75,47 @@ export function ProviderView({ onClose }: ViewProps) {
   const [keyDraft, setKeyDraft] = useState(apiKeys[activeProvider.id] ?? "");
   const searchRef = useRef<HTMLInputElement>(null);
 
+  // Local provider model fetching
+  const [localModels, setLocalModels] = useState<AIModel[] | null>(null);
+  const [localLoading, setLocalLoading] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [detectedLocals, setDetectedLocals] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (selectedProvider.local) {
+      setLocalLoading(true);
+      setLocalError(null);
+      setLocalModels(null);
+      fetch(`${API_BASE}/api/providers/${selectedProvider.id}/models`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) throw new Error(data.error);
+          const models: AIModel[] = (data.models || []).map((m: any, i: number) => ({
+            id: m.id,
+            name: m.name || m.id,
+            shortName: m.name || m.id,
+            contextK: 128,
+            tier: "balanced" as ModelTier,
+            description: "",
+          }));
+          setLocalModels(models);
+          setDetectedLocals(prev => new Set(prev).add(selectedProvider.id));
+        })
+        .catch(err => {
+          setLocalError(err.message);
+          setDetectedLocals(prev => {
+            const next = new Set(prev);
+            next.delete(selectedProvider.id);
+            return next;
+          });
+        })
+        .finally(() => setLocalLoading(false));
+    } else {
+      setLocalModels(null);
+      setLocalError(null);
+    }
+  }, [selectedProvider.id, selectedProvider.local]);
+
   useEffect(() => {
     searchRef.current?.focus();
   }, []);
@@ -90,12 +133,13 @@ export function ProviderView({ onClose }: ViewProps) {
     const conn: Provider[] = [];
     const rest: Provider[] = [];
     for (const p of filtered) {
-      (isConnected(p, apiKeys) ? conn : rest).push(p);
+      (isConnected(p, apiKeys) || detectedLocals.has(p.id) ? conn : rest).push(p);
     }
     return { connected: conn, others: rest };
-  }, [search, apiKeys, providers]);
+  }, [search, apiKeys, providers, detectedLocals]);
 
   const availableModels = useMemo<AIModel[]>(() => {
+    if (selectedProvider.local) return localModels ?? [];
     if (!isConnected(selectedProvider, apiKeys)) return [];
     const q = search.toLowerCase();
     if (!q) return selectedProvider.models;
@@ -104,7 +148,7 @@ export function ProviderView({ onClose }: ViewProps) {
         m.name.toLowerCase().includes(q) ||
         m.description.toLowerCase().includes(q)
     );
-  }, [selectedProvider, apiKeys, search]);
+  }, [selectedProvider, apiKeys, search, localModels]);
 
   function handleSelectProvider(p: Provider) {
     setSelectedProvider(p);
@@ -191,13 +235,19 @@ export function ProviderView({ onClose }: ViewProps) {
               <div className="pv-detail-name">{selectedProvider.name}</div>
               <div className="pv-detail-sub">
                 {selectedProvider.local
-                  ? "Local model"
+                  ? (localLoading ? "Scanning for models…" : localError ? localError : localModels?.length ? `${localModels.length} model${localModels.length !== 1 ? "s" : ""} found` : "No models found")
                   : providerConnected
                   ? `${selectedProvider.models.length} model${selectedProvider.models.length !== 1 ? "s" : ""}`
                   : "No API key"}
               </div>
             </div>
-            {providerConnected && (
+            {selectedProvider.local ? (
+              localModels && !localError ? (
+                <span className="pv-connected-pill">
+                  <FiCheck size={9} /> Running
+                </span>
+              ) : localError ? null : null
+            ) : providerConnected && (
               <span className="pv-connected-pill">
                 <FiCheck size={9} /> Connected
               </span>
@@ -237,7 +287,58 @@ export function ProviderView({ onClose }: ViewProps) {
 
           {/* Models */}
           <div className="pv-models-wrap">
-            {providerConnected ? (
+            {selectedProvider.local ? (
+              localLoading ? (
+                <div className="pv-loading">
+                  <FiLoader size={14} className="pv-loading-spin" />
+                  <span>Fetching installed models from {selectedProvider.name}…</span>
+                </div>
+              ) : localError ? (
+                <div className="pv-no-key">
+                  <span style={{ opacity: 0.3, fontSize: 36 }}>
+                    <selectedProvider.Icon />
+                  </span>
+                  <p>Could not connect to {selectedProvider.name}.</p>
+                  <p style={{ fontSize: 11, opacity: 0.6 }}>{localError}</p>
+                </div>
+              ) : localModels && localModels.length > 0 ? (
+                <>
+                  <div className="pv-models-label">
+                    {localModels.length} model{localModels.length !== 1 ? "s" : ""}
+                  </div>
+                  <div className="pv-model-list">
+                    {localModels.map((m) => {
+                      const isActive =
+                        m.id === activeModel.id &&
+                        selectedProvider.id === activeProvider.id;
+                      return (
+                        <button
+                          key={m.id}
+                          className={`pv-model-item ${isActive ? "active" : ""}`}
+                          onClick={() => handleSelectModel(m)}
+                        >
+                          <div className="pv-model-top">
+                            <span className="pv-model-name">{m.name}</span>
+                            <span className="pv-model-ctx">{m.contextK}K</span>
+                            {isActive && (
+                              <FiCheck size={11} style={{ color: "#00b87a", flexShrink: 0 }} />
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <div className="pv-no-key">
+                  <span style={{ opacity: 0.3, fontSize: 36 }}>
+                    <selectedProvider.Icon />
+                  </span>
+                  <p>No models found in {selectedProvider.name}.</p>
+                  <p style={{ fontSize: 11, opacity: 0.6 }}>Load a model first, then check again.</p>
+                </div>
+              )
+            ) : providerConnected ? (
               <>
                 <div className="pv-models-label">
                   {availableModels.length} model{availableModels.length !== 1 ? "s" : ""}

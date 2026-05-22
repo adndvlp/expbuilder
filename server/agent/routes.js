@@ -6,6 +6,13 @@ import { db } from '../utils/db.js'
 
 const router = Router()
 
+// Local provider endpoints for fetching real model lists
+const LOCAL_ENDPOINTS = {
+  ollama:   { modelsUrl: 'http://localhost:11434/api/tags', map: (d) => d.models?.map(m => ({ id: m.name, name: m.name })) ?? [] },
+  lmstudio: { modelsUrl: 'http://localhost:1234/v1/models', map: (d) => d.data?.map(m => ({ id: m.id, name: m.id })) ?? [] },
+  localai:  { modelsUrl: 'http://localhost:8080/v1/models', map: (d) => d.data?.map(m => ({ id: m.id, name: m.id })) ?? [] },
+}
+
 /* ── Provider catalog ──────────────────────────────────── */
 
 router.get('/api/providers', async (_req, res) => {
@@ -21,6 +28,23 @@ router.get('/api/providers/catalog', async (_req, res) => {
     res.json(await listCatalogProviders())
   } catch (err) {
     res.status(503).json({ error: err.message })
+  }
+})
+
+router.get('/api/providers/:providerId/models', async (req, res) => {
+  const { providerId } = req.params
+  const local = LOCAL_ENDPOINTS[providerId]
+  if (!local) return res.status(404).json({ error: `Unknown local provider: ${providerId}` })
+  try {
+    const ctrl = new AbortController()
+    const timeout = setTimeout(() => ctrl.abort(), 3000)
+    const r = await fetch(local.modelsUrl, { signal: ctrl.signal })
+    clearTimeout(timeout)
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    const data = await r.json()
+    res.json({ models: local.map(data) })
+  } catch (err) {
+    res.status(503).json({ error: err.message === 'fetch failed' || err.name === 'AbortError' ? `${providerId} not running` : err.message })
   }
 })
 

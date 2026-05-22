@@ -157,10 +157,11 @@ function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
   const rows = csvJson.length > 0 ? csvJson : [{}]
   const hasCsv = csvJson.length > 1
 
-  // Build trial props from columnMapping
+  // Build trial props from columnMapping + parameters fallback
   const buildProps = (row) => {
     const props = {}
     const cm = trial.columnMapping || {}
+    const tp = trial.parameters || {}
 
     if (trial.plugin === 'plugin-dynamic') {
       for (const key of Object.keys(cm)) {
@@ -181,7 +182,8 @@ function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
       }
     } else {
       for (const param of parameters) {
-        props[param.key] = resolveValue(cm[param.key], row, param.key)
+        const cmVal = resolveValue(cm[param.key], row, parameters, param.key)
+        props[param.key] = cmVal !== null && cmVal !== undefined ? cmVal : (tp[param.key] ?? null)
       }
     }
     return props

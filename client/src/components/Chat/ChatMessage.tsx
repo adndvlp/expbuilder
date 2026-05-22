@@ -55,8 +55,35 @@ function formatSize(b: number) {
   return `${(b / 1048576).toFixed(1)} MB`;
 }
 
+function ReasoningBlock({ text, isStreaming }: { text: string; isStreaming: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!text && !isStreaming) return null;
+
+  return (
+    <div className="chat-reasoning" onClick={() => setExpanded(!expanded)}>
+      <div className="chat-reasoning-toggle">
+        <svg
+          className={`chat-reasoning-chevron ${expanded ? "open" : ""}`}
+          width="14" height="14" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
+        >
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+        <span>{isStreaming ? "Thinking…" : "Thought for a bit"}</span>
+      </div>
+      {expanded && text && (
+        <div className="chat-reasoning-content">
+          {text}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ChatMessage({ message }: Props) {
   const isUser = message.role === "user";
+  const hasReasoning = !!(message.reasoning || (message.isStreaming && !message.content));
 
   return (
     <div className={`chat-msg-group ${isUser ? "user" : "assistant"}`}>
@@ -86,6 +113,14 @@ export default function ChatMessage({ message }: Props) {
                 </div>
               ))}
             </div>
+          )}
+
+          {/* Reasoning / thinking section */}
+          {!isUser && (
+            <ReasoningBlock
+              text={message.reasoning ?? ""}
+              isStreaming={!!(message.isStreaming && !message.content)}
+            />
           )}
 
           {/* Content */}
@@ -130,7 +165,7 @@ export default function ChatMessage({ message }: Props) {
               {message.content}
             </ReactMarkdown>
           ) : (
-            message.isStreaming && (
+            message.isStreaming && !message.reasoning && (
               <span style={{ color: "var(--cts)", fontStyle: "italic", fontSize: 13 }}>
                 Typing…
               </span>

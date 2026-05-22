@@ -60,22 +60,22 @@ export const createTrialTools = {
   // ── Create ─────────────────────────────────────────────────────────────────
 
   create_trial: tool({
-    description:
-      'Create a new trial in an experiment. The trial is appended to the main timeline unless parentLoopId is set, in which case it is only added to trials[] (the loop manages its own ordering). Returns the created trial with its auto-generated numeric id (timestamp). Use list_plugins first if unsure which plugin to use.',
+    description: '',
     parameters: z.object({
       experimentID: z.string().describe('Experiment UUID'),
-      name: z.string().describe('Display name for the trial (e.g. "Welcome Screen")'),
-      plugin: z.string().describe('jsPsych plugin id, e.g. "plugin-html-keyboard-response", "plugin-dynamic". Use list_plugins to see all options.'),
-      parameters: z.record(z.any()).optional().describe('Plugin-level parameters object (e.g. { stimulus: "Hello", choices: ["y","n"] }). For DynamicPlugin, leave empty and use columnMapping instead.'),
-      columnMapping: z.record(columnMappingEntrySchema).optional().describe(
-        'Maps each plugin parameter to a source. E.g. { "stimulus": { source: "csv", value: "image_col" }, "trial_duration": { source: "typed", value: 2000 } }. ' +
-        'For DynamicPlugin: columnMapping must include "components" and "response_components" keys whose values are arrays of component config objects.',
-      ),
-      parentLoopId: z.string().optional().describe('Loop ID ("loop_xxx") if this trial lives inside a loop. Omit for top-level trials.'),
-      branches: z.array(z.union([z.string(), z.number()])).optional().describe('IDs of trials/loops this trial connects to (visual arrows). Usually set after creation via update_trial.'),
+      name: z.string().min(1, 'name is required').describe('Trial display name'),
+      plugin: z.string().min(1).describe('Plugin id'),
+      parameters: z.record(z.any()).optional().describe('Plugin params. Auto-converted to columnMapping.'),
+      columnMapping: z.record(columnMappingEntrySchema).optional().describe('{ param: { source:"csv"|"typed"|"none", value } }'),
+      parentLoopId: z.string().optional().describe('Parent loop ID'),
+      branches: z.array(z.union([z.string(), z.number()])).optional().describe('Branch target IDs'),
     }),
     execute: async ({ experimentID, name, plugin, parameters, columnMapping, parentLoopId, branches }) => {
       await readDb()
+      const trimmed = (name ?? '').trim()
+      if (!trimmed || /^undefined$/i.test(trimmed) || /^null$/i.test(trimmed)) {
+        return { error: 'Trial name required. Cannot be empty, "undefined", or "null".' }
+      }
       const exp = db.data.experiments.find(e => e.experimentID === experimentID)
       if (!exp) return { error: `Experiment ${experimentID} not found` }
 
@@ -83,13 +83,24 @@ export const createTrialTools = {
 
       const id = Date.now()
       const now = new Date().toISOString()
+
+      // Convert parameters to columnMapping format for codegen compatibility
+      const finalColumnMapping = { ...(columnMapping || {}) }
+      if (parameters && typeof parameters === 'object') {
+        for (const [key, value] of Object.entries(parameters)) {
+          if (finalColumnMapping[key] === undefined) {
+            finalColumnMapping[key] = { source: 'typed', value }
+          }
+        }
+      }
+
       const newTrial = {
         id,
         name,
         type: 'trial',
         plugin: plugin ?? null,
         parameters: parameters ?? {},
-        ...(columnMapping !== undefined && { columnMapping }),
+        columnMapping: Object.keys(finalColumnMapping).length > 0 ? finalColumnMapping : undefined,
         branches: branches ?? [],
         ...(parentLoopId ? { parentLoopId } : {}),
         createdAt: now,
@@ -176,26 +187,26 @@ export const createTrialTools = {
   // ── Loops ──────────────────────────────────────────────────────────────────
 
   create_loop: tool({
-    description:
-      'Create a new loop that groups existing trials (and/or nested loops). ' +
-      'The grouped trials are pulled out of the main timeline and owned by the loop. ' +
-      'Any trial/loop that previously had one of the grouped items in its branches[] will have those IDs replaced by the new loop ID. ' +
-      'Pass an empty trials[] to create a loop first and add trials later via create_trial with parentLoopId.',
+    description: '',
     parameters: z.object({
       experimentID: z.string().describe('Experiment UUID'),
-      name: z.string().describe('Display name for the loop'),
-      trials: z.array(z.union([z.string(), z.number()])).describe('IDs of trials (numbers) or nested loops (strings starting with "loop_") to group inside this loop. Can be empty.'),
-      repetitions: z.number().int().min(1).optional().default(1).describe('How many times to repeat the loop (ignored when isConditionalLoop=true)'),
-      randomize: z.boolean().optional().default(false).describe('Randomize trial order inside the loop each repetition'),
-      isConditionalLoop: z.boolean().optional().default(false).describe('If true, loop repeats based on loopConditions instead of a fixed repetitions count'),
-      loopConditions: z.array(z.any()).optional().describe('Array of LoopCondition objects. Only used when isConditionalLoop=true.'),
-      parentLoopId: z.string().optional().describe('Parent loop ID if this loop is nested inside another loop'),
-      branches: z.array(z.union([z.string(), z.number()])).optional().describe('IDs of trials/loops this loop connects to after it ends'),
-      csvJson: z.array(z.any()).optional().describe('CSV data rows for timeline_variables. Setting this automatically makes child trials use loop CSV.'),
-      csvColumns: z.array(z.string()).optional().describe('CSV column names matching csvJson rows'),
+      name: z.string().min(1, 'name is required').describe('Loop display name'),
+      trials: z.array(z.union([z.string(), z.number()])).describe('IDs of trials/loops inside loop'),
+      repetitions: z.number().int().min(1).optional().default(1).describe('Repeat count'),
+      randomize: z.boolean().optional().default(false).describe('Randomize order'),
+      isConditionalLoop: z.boolean().optional().default(false).describe('Conditional loop'),
+      loopConditions: z.array(z.any()).optional().describe('Loop condition rules'),
+      parentLoopId: z.string().optional().describe('Nested parent loop'),
+      branches: z.array(z.union([z.string(), z.number()])).optional().describe('Branch targets'),
+      csvJson: z.array(z.any()).optional().describe('CSV rows for timeline_variables'),
+      csvColumns: z.array(z.string()).optional().describe('CSV column names'),
     }),
     execute: async ({ experimentID, name, trials: trialIds, repetitions, randomize, isConditionalLoop, loopConditions, parentLoopId, branches, csvJson, csvColumns }) => {
       await readDb()
+      const trimmed = (name ?? '').trim()
+      if (!trimmed || /^undefined$/i.test(trimmed) || /^null$/i.test(trimmed)) {
+        return { error: 'Loop name required. Cannot be empty, "undefined", or "null".' }
+      }
       const exp = db.data.experiments.find(e => e.experimentID === experimentID)
       if (!exp) return { error: `Experiment ${experimentID} not found` }
 
@@ -614,21 +625,23 @@ export const createTrialTools = {
   // ── Experiments ────────────────────────────────────────────────────────────
 
   create_experiment: tool({
-    description:
-      'Create a new experiment. Returns the created experiment with its UUID. ' +
-      'After creation, use create_trial or create_loop to build its timeline.',
+    description: '',
     parameters: z.object({
-      name: z.string().describe('Experiment display name (must be unique — used as filename)'),
-      description: z.string().optional().describe('Short description of the experiment'),
+      name: z.string().min(1, 'name is required').describe('Experiment name'),
+      description: z.string().optional().describe('Short description'),
       author: z.string().optional().describe('Author name'),
     }),
     execute: async ({ name, description, author }) => {
       await readDb()
+      const trimmed = (name ?? '').trim()
+      if (!trimmed || /^undefined$/i.test(trimmed) || /^null$/i.test(trimmed)) {
+        return { error: 'Experiment name required. Cannot be empty, "undefined", or "null".' }
+      }
       const experimentID = uuidv4()
       const now = new Date().toISOString()
       const experiment = {
         experimentID,
-        name,
+        name: trimmed,
         ...(description !== undefined && { description }),
         ...(author !== undefined && { author }),
         createdAt: now,
@@ -641,21 +654,20 @@ export const createTrialTools = {
   }),
 
   update_experiment: tool({
-    description:
-      'Update metadata fields on an existing experiment (PATCH semantics). ' +
-      'Updatable fields: name, description, author, appearanceSettings ({ backgroundColor, fullScreen, progressBar }). ' +
-      'WARNING: renaming an experiment (changing name) does not rename on-disk HTML/upload files — ' +
-      'the old files remain under the old name. Only safe for experiments that have not been built/run yet.',
+    description: '',
     parameters: z.object({
       experimentID: z.string().describe('Experiment UUID'),
-      updates: z.record(z.any()).describe(
-        'Fields to update. E.g. { "description": "New desc" } or { "appearanceSettings": { "backgroundColor": "#f0f0f0", "fullScreen": true, "progressBar": false } }.',
-      ),
+      updates: z.record(z.any()).describe('Fields to update'),
     }),
     execute: async ({ experimentID, updates }) => {
       await readDb()
       const idx = db.data.experiments.findIndex(e => e.experimentID === experimentID)
       if (idx === -1) return { error: `Experiment ${experimentID} not found` }
+      if (updates.name !== undefined) {
+        const t = (updates.name ?? '').trim()
+        if (!t || /^undefined$/i.test(t) || /^null$/i.test(t)) return { error: 'Name cannot be empty, "undefined", or "null".' }
+        updates.name = t
+      }
       db.data.experiments[idx] = {
         ...db.data.experiments[idx],
         ...updates,
@@ -854,17 +866,18 @@ export const createTrialTools = {
   // ── Custom Plugin ────────────────────────────────────────────────────────────
 
   create_custom_plugin: tool({
-    description:
-      'Save a custom jsPsych plugin. Plugins must implement the jsPsych plugin spec: define an info object with name/version/parameters/data, and a class with a trial(display_element, trial) method. ' +
-      'The plugin becomes available in list_plugins and can be used in create_trial with plugin name matching the info.name value. ' +
-      'If a plugin with the same index already exists, it is overwritten.',
+    description: '',
     parameters: z.object({
-      index: z.number().int().min(0).describe('Plugin slot index (0, 1, 2...). Use 0 for the first custom plugin.'),
-      name: z.string().describe('Plugin name matching jsPsych plugin spec (info.name). E.g. "my-custom-plugin"'),
-      pluginCode: z.string().describe('Full JavaScript source code of the plugin. Must include info object and trial() method.'),
+      index: z.number().int().min(0).describe('Plugin slot index (0+)'),
+      name: z.string().min(1, 'name is required').describe('Plugin name'),
+      pluginCode: z.string().min(1).describe('Plugin JS source code'),
     }),
     execute: async ({ index, name, pluginCode }) => {
       await readDb()
+      const trimmed = (name ?? '').trim()
+      if (!trimmed || /^undefined$/i.test(trimmed) || /^null$/i.test(trimmed)) {
+        return { error: 'Plugin name required. Cannot be empty, "undefined", or "null".' }
+      }
       ensureDbData()
 
       const scripTag = `/plugins/${name}.js`

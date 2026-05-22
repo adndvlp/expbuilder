@@ -17,7 +17,7 @@ import {
 } from "../components/Chat/providers";
 import { findCatalogProvider, prefetchProviders, loadProviders } from "../lib/providerCatalog";
 
-const API_BASE = "http://localhost:3000";
+const API_BASE = import.meta.env.VITE_API_URL;
 
 export interface Attachment {
   id: string;
@@ -43,6 +43,7 @@ export interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  reasoning?: string;
   toolCalls?: ToolCall[];
   attachments?: Attachment[];
   timestamp: Date;
@@ -362,6 +363,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         { role: "user", content },
       ];
 
+      let rawText = "";
+
       (async () => {
         try {
           const res = await fetch(`${API_BASE}/api/chat/stream`, {
@@ -401,15 +404,28 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               if (controller.signal.aborted) break;
               if (event === "delta") {
                 const { text } = JSON.parse(data);
+                rawText += text;
+                const thinkRe = /<think>([\s\S]*?)<\/think>/g;
+                const reasoningParts: string[] = [];
+                const cleaned = rawText.replace(thinkRe, (_, r) => {
+                  reasoningParts.push(r);
+                  return "";
+                });
                 updateConv((c) => ({
                   ...c,
                   messages: c.messages.map((m) =>
                     m.id === assistantId
-                      ? { ...m, content: m.content + text }
+                      ? { ...m, reasoning: reasoningParts.join("\n\n"), content: cleaned }
                       : m
                   ),
                 }));
-              } else if (event === "done" || event === "error") {
+              } else if (event === "done") {
+                const parsed = JSON.parse(data);
+                if (parsed.toolsUsed) {
+                  window.dispatchEvent(new CustomEvent("experiment-data-changed"));
+                }
+                break;
+              } else if (event === "error") {
                 break;
               }
             }

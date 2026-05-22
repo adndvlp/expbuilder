@@ -25,6 +25,7 @@ jest.unstable_mockModule('ai', () => ({
   streamText: mockStreamText,
   generateText: mockGenerateText,
   tool: (def) => def, // pass-through so read.js / create.js initialise correctly
+  stepCountIs: (n) => ({ steps }) => steps.length === n,
 }))
 
 jest.unstable_mockModule('../../agent/providers/registry.js', () => ({
@@ -445,7 +446,7 @@ describe('POST /api/chat/stream — SSE contract (frontend ↔ backend)', () => 
         messages: VALID_PAYLOAD.messages,
         temperature: 0.7,
         maxTokens: 1000,
-        maxSteps: 10,
+        stopWhen: expect.any(Function),
         tools: expect.objectContaining({
           list_experiments: expect.any(Object),
           get_experiment: expect.any(Object),
