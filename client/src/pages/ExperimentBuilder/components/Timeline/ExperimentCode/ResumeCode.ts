@@ -59,7 +59,12 @@ export function resumeCode(): string {
             default:   return false;
           }
         });
-        if (match && i < branches.length) return String(branches[i]);
+        if (match) {
+          if (cond.nextTrialId !== undefined && cond.nextTrialId !== null) {
+            return String(cond.nextTrialId);
+          }
+          if (i < branches.length) return String(branches[i]);
+        }
       }
       return String(branches[0]); // fallback al primero si ninguna condición matchea
     } catch (e) {

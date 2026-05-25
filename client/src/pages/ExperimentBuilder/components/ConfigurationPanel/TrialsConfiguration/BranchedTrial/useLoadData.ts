@@ -40,6 +40,19 @@ export default function useLoadData({
   setRepeatConditions,
 }: Props) {
   const hasLoaded = useRef(false);
+  const requestedTargetIds = useRef<Set<string>>(new Set());
+
+  const requestTargetTrialParameters = (trialId: string | number) => {
+    const targetKey = String(trialId);
+    if (requestedTargetIds.current.has(targetKey)) return;
+    if (targetTrialParameters[trialId]) return;
+
+    requestedTargetIds.current.add(targetKey);
+    loadTargetTrialParameters(trialId).catch(() => {
+      requestedTargetIds.current.delete(targetKey);
+    });
+  };
+
   // Load data fields from the selected trial's plugin
   useEffect(() => {
     const pluginName =
@@ -69,6 +82,7 @@ export default function useLoadData({
   useEffect(() => {
     if (!isOpen) {
       hasLoaded.current = false;
+      requestedTargetIds.current.clear();
       return;
     }
 
@@ -97,7 +111,7 @@ export default function useLoadData({
       // Load parameters for each condition with a nextTrialId
       loadedBranchConditions.forEach((condition: Condition) => {
         if (condition.nextTrialId) {
-          loadTargetTrialParameters(condition.nextTrialId);
+          requestTargetTrialParameters(condition.nextTrialId);
         }
       });
     }
@@ -138,7 +152,7 @@ export default function useLoadData({
         condition.nextTrialId &&
         !targetTrialParameters[condition.nextTrialId]
       ) {
-        loadTargetTrialParameters(condition.nextTrialId);
+        requestTargetTrialParameters(condition.nextTrialId);
       }
     });
   }, [conditions]);

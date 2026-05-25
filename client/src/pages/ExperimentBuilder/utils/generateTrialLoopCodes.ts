@@ -435,7 +435,7 @@ async function generateLoopCode(
       unifiedStimuli,
       loopConditions: fullLoop.loopConditions as unknown as any,
       isConditionalLoop: fullLoop.isConditionalLoop,
-      parentLoopId: null,
+      parentLoopId: fullLoop.parentLoopId ? String(fullLoop.parentLoopId) : null,
     });
 
     return genLoopCode();

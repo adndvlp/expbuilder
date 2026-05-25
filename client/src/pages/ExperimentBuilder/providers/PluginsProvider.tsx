@@ -45,13 +45,17 @@ export default function PluginsProvider({ children }: Props) {
   // Autosave solo si plugins cambian respecto al inicial (como TrialsConfig)
 
   const [initialPlugins, setInitialPlugins] = useState<Plugin[]>([]);
+  const [hasInitialPluginsSnapshot, setHasInitialPluginsSnapshot] =
+    useState(false);
 
   useEffect(() => {
-    if (!isLoading && initialPlugins.length === 0) {
+    if (isLoading) return;
+
+    if (!hasInitialPluginsSnapshot) {
       setInitialPlugins(plugins);
+      setHasInitialPluginsSnapshot(true);
       return;
     }
-    if (isLoading || plugins.length === 0 || isSaving) return;
 
     if (isEqual(plugins, initialPlugins)) return;
 
@@ -92,7 +96,7 @@ export default function PluginsProvider({ children }: Props) {
       clearTimeout(timeoutId);
       setIsSaving(false);
     };
-  }, [plugins, isLoading, initialPlugins]);
+  }, [plugins, isLoading, initialPlugins, hasInitialPluginsSnapshot]);
 
   return (
     <PluginsContext.Provider

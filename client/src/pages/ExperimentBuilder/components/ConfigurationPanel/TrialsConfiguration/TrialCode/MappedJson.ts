@@ -33,6 +33,8 @@ export default function MappedJson({
   const mappedJson = (() => {
     const mapRow = (row?: Record<string, any>) => {
       const result: Record<string, any> = {};
+      const isSyntheticMultipleInputRow =
+        row?.__mappedJsonSyntheticMultipleInputRow === true;
 
       // Lógica especial para DynamicPlugin
       if (pluginName === "plugin-dynamic") {
@@ -309,12 +311,10 @@ export default function MappedJson({
           result[prefixedkey] = mappedValue;
         } else {
           // Parámetro normal, sin procesamiento de archivos
-          result[prefixedkey] = getColumnValue(
-            columnMapping[key],
-            row,
-            undefined,
-            key,
-          );
+          result[prefixedkey] =
+            isSyntheticMultipleInputRow && row && key in row
+              ? row[key]
+              : getColumnValue(columnMapping[key], row, undefined, key);
         }
       });
 
@@ -362,6 +362,7 @@ export default function MappedJson({
         // Generar un trial por cada archivo detectado en el input
         return Array.from({ length: maxTrials }, (_, idx) => {
           const mockRow: Record<string, any> = {};
+          mockRow.__mappedJsonSyntheticMultipleInputRow = true;
 
           // Para cada parámetro con múltiples inputs, usar solo el valor correspondiente al índice actual
           Object.keys(multipleInputsParams).forEach((key) => {

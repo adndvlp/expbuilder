@@ -30,6 +30,7 @@ export default function useLoopCode({
   id,
   branches,
   branchConditions,
+  repeatConditions,
   repetitions,
   randomize,
   orders,
@@ -311,8 +312,10 @@ export default function useLoopCode({
       hasBranchesLoop,
       branches,
       branchConditions,
+      repeatConditions,
       id,
       loopIdSanitized,
+      parentLoopIdSanitized,
     });
 
     code = branchesResult.code;

@@ -37,8 +37,8 @@ export const generatePhaseCode = ({
   const branchConditions = selectedTrial?.branchConditions;
   const repeatConditions = selectedTrial?.repeatConditions;
   const paramsOverride = selectedTrial?.paramsOverride;
-  const isInLoop = (selectedTrial as any)?.isInLoop;
   const parentLoopId = (selectedTrial as any)?.parentLoopId;
+  const isInLoop = Boolean(parentLoopId || (selectedTrial as any)?.isInLoop);
 
   // Helper for dynamic variable names
   const getVarName = (baseName: string): string => {

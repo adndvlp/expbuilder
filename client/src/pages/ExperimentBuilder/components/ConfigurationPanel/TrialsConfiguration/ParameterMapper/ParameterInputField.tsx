@@ -1,6 +1,62 @@
 import React from "react";
 import { ColumnMappingEntry } from ".";
 
+const WEBGAZER_POINT_PRESETS = [
+  {
+    label: "5 points",
+    value: [
+      [20, 20],
+      [80, 20],
+      [50, 50],
+      [20, 80],
+      [80, 80],
+    ],
+  },
+  {
+    label: "9 points",
+    value: [
+      [20, 20],
+      [50, 20],
+      [80, 20],
+      [20, 50],
+      [50, 50],
+      [80, 50],
+      [20, 80],
+      [50, 80],
+      [80, 80],
+    ],
+  },
+  {
+    label: "13 points",
+    value: [
+      [20, 20],
+      [50, 20],
+      [80, 20],
+      [20, 50],
+      [50, 50],
+      [80, 50],
+      [20, 80],
+      [50, 80],
+      [80, 80],
+      [35, 35],
+      [65, 35],
+      [35, 65],
+      [65, 65],
+    ],
+  },
+];
+
+const WEBGAZER_POINT_PRESET_VALUES = WEBGAZER_POINT_PRESETS.map((preset) =>
+  JSON.stringify(preset.value),
+);
+
+function isWebgazerPointsParam(type: string, paramKey: string) {
+  return (
+    type.endsWith("_array") &&
+    (paramKey === "calibration_points" || paramKey === "validation_points")
+  );
+}
+
 type Props = {
   entry: ColumnMappingEntry;
   paramKey: string;
@@ -20,10 +76,20 @@ function ParameterInputField({
   onSave,
   csvColumns,
 }: Props) {
+  const selectedWebgazerPreset =
+    isWebgazerPointsParam(type, paramKey) &&
+    entry.source === "typed" &&
+    Array.isArray(entry.value)
+      ? WEBGAZER_POINT_PRESET_VALUES.find(
+          (presetValue) => presetValue === JSON.stringify(entry.value),
+        )
+      : undefined;
+
   return (
     <select
       value={
-        entry.source === "typed"
+        selectedWebgazerPreset ??
+        (entry.source === "typed"
           ? "type_value"
           : entry.source === "csv" &&
               (typeof entry.value === "string" ||
@@ -34,51 +100,14 @@ function ParameterInputField({
                   paramKey === "validation_points") &&
                 Array.isArray(entry.value)
               ? JSON.stringify(entry.value)
-              : ""
+              : "")
       }
       onChange={(e) => {
         const value = e.target.value;
         // Si es uno de los presets, parsea el string a array
         if (
-          type.endsWith("_array") &&
-          (paramKey === "calibration_points" ||
-            paramKey === "validation_points") &&
-          (value ===
-            JSON.stringify([
-              [20, 20],
-              [80, 20],
-              [50, 50],
-              [20, 80],
-              [80, 80],
-            ]) ||
-            value ===
-              JSON.stringify([
-                [20, 20],
-                [50, 20],
-                [80, 20],
-                [20, 50],
-                [50, 50],
-                [80, 50],
-                [20, 80],
-                [50, 80],
-                [80, 80],
-              ]) ||
-            value ===
-              JSON.stringify([
-                [20, 20],
-                [50, 20],
-                [80, 20],
-                [20, 50],
-                [50, 50],
-                [80, 50],
-                [20, 80],
-                [50, 80],
-                [80, 80],
-                [35, 35],
-                [65, 35],
-                [35, 65],
-                [65, 65],
-              ]))
+          isWebgazerPointsParam(type, paramKey) &&
+          WEBGAZER_POINT_PRESET_VALUES.includes(value)
         ) {
           const newValue = {
             source: "typed" as const,
@@ -152,51 +181,11 @@ function ParameterInputField({
         (paramKey === "calibration_points" ||
           paramKey === "validation_points") && (
           <>
-            <option
-              value={JSON.stringify([
-                [20, 20],
-                [80, 20],
-                [50, 50],
-                [20, 80],
-                [80, 80],
-              ])}
-            >
-              5 points
-            </option>
-            <option
-              value={JSON.stringify([
-                [20, 20],
-                [50, 20],
-                [80, 20],
-                [20, 50],
-                [50, 50],
-                [80, 50],
-                [20, 80],
-                [50, 80],
-                [80, 80],
-              ])}
-            >
-              9 points
-            </option>
-            <option
-              value={JSON.stringify([
-                [20, 20],
-                [50, 20],
-                [80, 20],
-                [20, 50],
-                [50, 50],
-                [80, 50],
-                [20, 80],
-                [50, 80],
-                [80, 80],
-                [35, 35],
-                [65, 35],
-                [35, 65],
-                [65, 65],
-              ])}
-            >
-              13 points
-            </option>
+            {WEBGAZER_POINT_PRESETS.map((preset) => (
+              <option key={preset.label} value={JSON.stringify(preset.value)}>
+                {preset.label}
+              </option>
+            ))}
           </>
         )}
     </select>

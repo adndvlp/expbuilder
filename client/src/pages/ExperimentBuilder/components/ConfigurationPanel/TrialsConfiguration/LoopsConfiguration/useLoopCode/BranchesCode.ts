@@ -8,6 +8,7 @@ type Props = {
   repeatConditions?: RepeatCondition[] | undefined;
   id: string | undefined;
   loopIdSanitized: string;
+  parentLoopIdSanitized?: string | null;
 };
 
 function BranchesCode({
@@ -17,6 +18,7 @@ function BranchesCode({
   branchConditions,
   repeatConditions,
   loopIdSanitized,
+  parentLoopIdSanitized,
   id,
 }: Props) {
   // Branching logic for the loop (same as trials)
@@ -24,6 +26,15 @@ function BranchesCode({
   const hasMultipleBranches = branches && branches.length > 1;
   const hasBranchConditions = branchConditions && branchConditions.length > 0;
   const hasRepeatConditions = repeatConditions && repeatConditions.length > 0;
+  const activateBranchCode = parentLoopIdSanitized
+    ? `
+        loop_${parentLoopIdSanitized}_NextTrialId = branches[0];
+        loop_${parentLoopIdSanitized}_SkipRemaining = true;
+        loop_${parentLoopIdSanitized}_BranchingActive = true;`
+    : `
+        window.nextTrialId = branches[0];
+        window.skipRemaining = true;
+        window.branchingActive = true;`;
 
   if (hasBranches || hasRepeatConditions) {
     // If it has branches or repeat conditions, generate full on_finish
@@ -118,9 +129,7 @@ function BranchesCode({
       // TODO: Implement condition evaluation if necessary
       // For now, follow the first branch
       if (branches.length > 0) {
-        window.nextTrialId = branches[0];
-        window.skipRemaining = true;
-        window.branchingActive = true;
+${activateBranchCode}
         console.log('Loop on_finish: branching to', branches[0]);
       }
     }
@@ -131,9 +140,7 @@ function BranchesCode({
     if (!loop_${loopIdSanitized}_ShouldBranchOnFinish && !loop_${loopIdSanitized}_BranchingActive) {
       const branches = [${branches?.map((b) => (typeof b === "string" ? `"${b}"` : b)) ?? []}];
       if (branches.length > 0) {
-        window.nextTrialId = branches[0];
-        window.skipRemaining = true;
-        window.branchingActive = true;
+${activateBranchCode}
         console.log('Loop on_finish: branching to', branches[0]);
       }
     }
@@ -158,9 +165,7 @@ function BranchesCode({
     if (!loop_${loopIdSanitized}_ShouldBranchOnFinish && !loop_${loopIdSanitized}_BranchingActive) {
       const branches = [${branches?.map((b) => (typeof b === "string" ? `"${b}"` : b)) ?? []}];
       if (branches.length > 0) {
-        window.nextTrialId = branches[0];
-        window.skipRemaining = true;
-        window.branchingActive = true;
+${activateBranchCode}
         console.log('Loop on_finish: branching to', branches[0]);
       }
     }
@@ -178,9 +183,7 @@ function BranchesCode({
       // TODO: Implement condition evaluation if necessary
       // For now, follow the first branch
       if (branches.length > 0) {
-        window.nextTrialId = branches[0];
-        window.skipRemaining = true;
-        window.branchingActive = true;
+${activateBranchCode}
         console.log('Loop on_finish: branching to', branches[0]);
       }
     }

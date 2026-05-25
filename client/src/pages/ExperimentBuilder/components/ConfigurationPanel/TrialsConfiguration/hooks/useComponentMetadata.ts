@@ -21,8 +21,12 @@ export const useComponentMetadata = (componentType: string | null) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isActive = true;
+
     if (!componentType) {
       setMetadata(null);
+      setLoading(false);
+      setError(null);
       return;
     }
 
@@ -45,14 +49,20 @@ export const useComponentMetadata = (componentType: string | null) => {
         return res.json();
       })
       .then((data) => {
+        if (!isActive) return;
         setMetadata(data);
         setLoading(false);
       })
       .catch((err) => {
+        if (!isActive) return;
         console.error("Error loading component metadata:", err);
         setError(err.message);
         setLoading(false);
       });
+
+    return () => {
+      isActive = false;
+    };
   }, [componentType]);
 
   return { metadata, loading, error };
