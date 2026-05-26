@@ -139,61 +139,6 @@ function getBuilderPreview(
 
 // ── Shared mini-components ────────────────────────────────────────────────────
 
-function VariantPill({
-  value,
-  onChange,
-  isLightMode,
-  label,
-}: {
-  value: Variant;
-  onChange: (v: Variant) => void;
-  isLightMode: boolean;
-  label?: string;
-}) {
-  const bg = isLightMode ? "#e0e0e0" : "#1a1a1a";
-  const activeBg = isLightMode ? "#fff" : "#3c3c3c";
-  const activeColor = isLightMode ? "#333" : "#ccc";
-  const inactiveColor = isLightMode ? "#888" : "#555";
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-      {label && (
-        <span style={{ fontSize: 9, color: inactiveColor, marginRight: 2 }}>
-          {label}
-        </span>
-      )}
-      <span
-        style={{
-          display: "flex",
-          gap: 1,
-          background: bg,
-          borderRadius: 4,
-          padding: 2,
-        }}
-      >
-        {(["local", "public"] as Variant[]).map((v) => (
-          <button
-            key={v}
-            type="button"
-            onClick={() => onChange(v)}
-            style={{
-              padding: "1px 7px",
-              border: "none",
-              borderRadius: 3,
-              cursor: "pointer",
-              fontSize: 9,
-              fontWeight: 600,
-              background: value === v ? activeBg : "transparent",
-              color: value === v ? activeColor : inactiveColor,
-            }}
-          >
-            {v === "local" ? "L" : "P"}
-          </button>
-        ))}
-      </span>
-    </span>
-  );
-}
-
 function PreviewTabs({
   value,
   onChange,
@@ -298,13 +243,12 @@ export default function GlobalCustomCode() {
 
   // initJsPsych modal state
   const [activeParam, setActiveParam] = useState<string>(JSPSYCH_PARAMS[0].key);
-  const [editVariant, setEditVariant] = useState<Variant>("local");
+  const [editVariant] = useState<Variant>("local");
   const [rightPreviewVariant, setRightPreviewVariant] =
     useState<Variant>("local");
 
   // Pre-init modal state
-  const [preInitEditVariant, setPreInitEditVariant] =
-    useState<Variant>("local");
+  const [preInitEditVariant] = useState<Variant>("local");
   const [preInitRightVariant, setPreInitRightVariant] =
     useState<Variant>("local");
 

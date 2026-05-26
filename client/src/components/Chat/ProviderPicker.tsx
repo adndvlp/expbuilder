@@ -5,6 +5,7 @@ import {
   TIER_COLORS,
   type Provider,
   type AIModel,
+  type ModelTier,
 } from "./providers";
 import { useProviders } from "../../lib/useProviders";
 import {
@@ -90,7 +91,7 @@ export function ProviderView({ onClose }: ViewProps) {
         .then(r => r.json())
         .then(data => {
           if (data.error) throw new Error(data.error);
-          const models: AIModel[] = (data.models || []).map((m: any, i: number) => ({
+          const models: AIModel[] = (data.models || []).map((m: any) => ({
             id: m.id,
             name: m.name || m.id,
             shortName: m.name || m.id,

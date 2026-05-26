@@ -4,7 +4,7 @@ function injectUserCode(userCode: string | undefined): string {
   return `\n    // --- User code ---\n    ${trimmed}`;
 }
 
-export function getPreInitLocalPreview(eid: string, userCode?: string): string {
+export function getPreInitLocalPreview(_eid: string, userCode?: string): string {
   const userBlock = userCode?.trim()
     ? `\n// --- Your code (runs here, before initJsPsych) ---\n${userCode.trim()}\n`
     : "\n// (your code will run here)\n";
@@ -26,7 +26,7 @@ const jsPsych = initJsPsych({
 // jsPsych.run(timeline);  ← runs after initJsPsych`;
 }
 
-export function getPreInitPublicPreview(eid: string, userCode?: string): string {
+export function getPreInitPublicPreview(_eid: string, userCode?: string): string {
   const userBlock = userCode?.trim()
     ? `\n// --- Your code (runs here, before initJsPsych) ---\n${userCode.trim()}\n`
     : "\n// (your code will run here)\n";
@@ -181,7 +181,7 @@ export function getPublicOnDataUpdatePreview(eid: string, userCode?: string): st
   },`;
 }
 
-export function getPublicOnFinishPreview(eid: string, userCode?: string): string {
+export function getPublicOnFinishPreview(_eid: string, userCode?: string): string {
   return `on_finish: async function() {
     if (localStorage.getItem('jsPsych_jumpToTrial')) {
       if (pendingBatchSaves.length > 0) await Promise.allSettled(pendingBatchSaves);

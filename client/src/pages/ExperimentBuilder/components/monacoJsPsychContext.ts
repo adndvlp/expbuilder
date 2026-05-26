@@ -1,5 +1,3 @@
-import * as monaco from "monaco-editor";
-
 // Full ambient context for all Monaco editors in the builder.
 // Covers: local config, public config, jsPsych bundle globals, Firebase, URL params.
 // Goal: prevent user code from redeclaring builder-owned consts/lets that exist in the HTML.
@@ -247,7 +245,7 @@ function pluginNameToGlobal(name: string): string {
 
 // Call whenever the plugin list changes. Replaces the same extra-lib filename,
 // so Monaco picks up the new globals without duplicating declarations.
-export function updateCustomPluginContext(monacoInst: typeof monaco, pluginNames: string[]): void {
+export function updateCustomPluginContext(monacoInst: any, pluginNames: string[]): void {
   const decls = pluginNames.length
     ? pluginNames.map((n) => `declare const ${pluginNameToGlobal(n)}: any;`).join("\n")
     : "// no custom plugins loaded";
@@ -260,7 +258,7 @@ export function updateCustomPluginContext(monacoInst: typeof monaco, pluginNames
 
 let _contextRegistered = false;
 
-export function setupMonacoJsPsychContext(monacoInst: typeof monaco): void {
+export function setupMonacoJsPsychContext(monacoInst: any): void {
   if (_contextRegistered) return;
   _contextRegistered = true;
 

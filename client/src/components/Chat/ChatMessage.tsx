@@ -83,7 +83,6 @@ function ReasoningBlock({ text, isStreaming }: { text: string; isStreaming: bool
 
 export default function ChatMessage({ message }: Props) {
   const isUser = message.role === "user";
-  const hasReasoning = !!(message.reasoning || (message.isStreaming && !message.content));
 
   return (
     <div className={`chat-msg-group ${isUser ? "user" : "assistant"}`}>

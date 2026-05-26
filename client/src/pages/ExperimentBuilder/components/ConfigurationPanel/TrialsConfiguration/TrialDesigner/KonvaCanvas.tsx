@@ -12,7 +12,6 @@ type Props = {
   CANVAS_WIDTH: number;
   CANVAS_HEIGHT: number;
   stageScale: number;
-  stageKey: number;
   onDrop: (
     e: React.DragEvent<Element>,
     fileUrl: string,
@@ -30,7 +29,6 @@ function KonvaCanvas({
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
   stageScale,
-  stageKey,
   onDrop,
   stageRef,
   setSelectedId,

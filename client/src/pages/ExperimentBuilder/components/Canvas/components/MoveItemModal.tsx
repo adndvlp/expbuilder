@@ -163,7 +163,7 @@ function MoveItemModal({
       </div>
 
       {/* Options: Branch (parallel) or Sequential - only if the destination has branches */}
-      {selectedDest && selectedDest.id && selectedDest.hasBranches && (
+      {selectedDest && selectedDest.hasBranches && (
         <div
           style={{
             width: "100%",

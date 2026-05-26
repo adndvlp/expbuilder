@@ -73,7 +73,7 @@ const ConfigurationPanel: React.FC = () => {
       setMetadataError("");
       setMetadata404(false);
     }
-  }, [selectedTrial, plugins, isSaving]);
+  }, [selectedTrial, isSaving]);
 
   if (selectedLoop) {
     return (

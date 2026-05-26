@@ -221,18 +221,25 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
     .map((t) => previewToken(t))
     .join(sessionNameSeparator);
 
-  const handleSaveSessionName = async () => {
-    if (!experimentID) return;
-    // Require at least one randomAlpha token when a custom name is configured
+  const getSessionNameUniquenessError = () => {
     if (
       sessionNameTokens.length > 0 &&
       !sessionNameTokens.some(
         (t) => t.type === "randomAlpha" || t.type === "counter",
       )
     ) {
+      return "Debes incluir al menos un componente Random ID o Participant Number para garantizar sesiones únicas.";
+    }
+    return null;
+  };
+
+  const handleSaveSessionName = async () => {
+    if (!experimentID) return;
+    const sessionNameError = getSessionNameUniquenessError();
+    if (sessionNameError) {
       setSessionNameMessage({
         type: "error",
-        text: "Debes incluir al menos un componente Random ID o Participant Number para garantizar sesiones únicas.",
+        text: sessionNameError,
       });
       return;
     }
@@ -268,6 +275,19 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
   const handleSave = async () => {
     if (!experimentID) return;
 
+    const sessionNameError = getSessionNameUniquenessError();
+    if (sessionNameError) {
+      setSessionNameMessage({
+        type: "error",
+        text: sessionNameError,
+      });
+      setMessage({
+        type: "error",
+        text: "Session name configuration is invalid.",
+      });
+      return;
+    }
+
     setSaving(true);
     setMessage(null);
 
@@ -284,14 +304,20 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
       );
 
       // Save session name config to local API (local-only for now)
-      await fetch(`${API_URL}/api/session-name-config/${experimentID}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tokens: sessionNameTokens,
-          separator: sessionNameSeparator,
-        }),
-      });
+      const sessionNameRes = await fetch(
+        `${API_URL}/api/session-name-config/${experimentID}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tokens: sessionNameTokens,
+            separator: sessionNameSeparator,
+          }),
+        },
+      );
+      if (!sessionNameRes.ok) {
+        throw new Error("Failed to save session name configuration");
+      }
 
       setMessage({
         type: "success",
