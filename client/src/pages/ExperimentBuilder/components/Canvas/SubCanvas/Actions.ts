@@ -28,7 +28,7 @@ type Props = {
     value: any,
     updateSelectedTrial?: boolean,
   ) => Promise<boolean>;
-  loopId: string | number;
+  loopId: string;
   setShowLoopModal: (value: SetStateAction<boolean>) => void;
   createLoop: (loop: Omit<Loop, "id">) => Promise<Loop>;
   updateTimeline: (timeline: TimelineItem[]) => Promise<boolean>;

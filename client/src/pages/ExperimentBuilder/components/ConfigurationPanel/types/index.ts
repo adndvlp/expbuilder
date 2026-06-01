@@ -29,7 +29,7 @@ export interface Loop {
   repeatConditions?: RepeatCondition[];
   loopConditions?: LoopCondition[];
   isConditionalLoop?: boolean;
-  parentLoopId?: string | number | null; // ID del loop padre para nested loops
+  parentLoopId?: string | null; // ID del loop padre para nested loops
   customOnTimelineStart?: string;
   customOnTimelineFinish?: string;
 }

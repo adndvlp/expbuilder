@@ -262,6 +262,134 @@ describe("dynamic condition column helpers", () => {
     );
   });
 
+  it("renders dynamic plugin property variants for conditional loop rules", () => {
+    const conditions: LoopCondition[] = [
+      {
+        id: 1,
+        rules: [
+          {
+            trialId: 1,
+            fieldType: "response_components",
+            componentIdx: "Component_1",
+            prop: "",
+            column: "",
+            op: "==",
+            value: "",
+          },
+        ],
+      },
+    ];
+
+    const { rerender } = render(
+      <DynamicPluginPropertyColumn
+        rule={conditions[0].rules[0]}
+        comp={{ type: "SurveyComponent", survey_json: { source: "typed", value: {} } }}
+        componentIdx="Component_1"
+        conditionId={1}
+        ruleIdx={0}
+        conditions={conditions}
+        setConditionsWrapper={vi.fn()}
+        getPropValue={getPropValue}
+      />,
+    );
+
+    expect(screen.getByRole("option", { name: "Response" })).toHaveValue("response");
+    expect(screen.getByRole("option", { name: "RT" })).toHaveValue("rt");
+
+    rerender(
+      <DynamicPluginPropertyColumn
+        rule={conditions[0].rules[0]}
+        comp={{ type: "SliderResponseComponent" }}
+        componentIdx="Component_1"
+        conditionId={1}
+        ruleIdx={0}
+        conditions={conditions}
+        setConditionsWrapper={vi.fn()}
+        getPropValue={getPropValue}
+      />,
+    );
+
+    expect(screen.getByRole("option", { name: "Slider Start" })).toHaveValue(
+      "slider_start",
+    );
+
+    rerender(
+      <DynamicPluginPropertyColumn
+        rule={conditions[0].rules[0]}
+        comp={{ type: "SketchpadComponent" }}
+        componentIdx="Component_1"
+        conditionId={1}
+        ruleIdx={0}
+        conditions={conditions}
+        setConditionsWrapper={vi.fn()}
+        getPropValue={getPropValue}
+      />,
+    );
+
+    expect(screen.getByRole("option", { name: "Strokes" })).toHaveValue("strokes");
+    expect(screen.getByRole("option", { name: "PNG" })).toHaveValue("png");
+
+    rerender(
+      <DynamicPluginPropertyColumn
+        rule={conditions[0].rules[0]}
+        comp={{ type: "AudioResponseComponent" }}
+        componentIdx="Component_1"
+        conditionId={1}
+        ruleIdx={0}
+        conditions={conditions}
+        setConditionsWrapper={vi.fn()}
+        getPropValue={getPropValue}
+      />,
+    );
+
+    expect(screen.getByRole("option", { name: "Audio URL" })).toHaveValue(
+      "audio_url",
+    );
+    expect(screen.getByRole("option", { name: "Stimulus Onset" })).toHaveValue(
+      "estimated_stimulus_onset",
+    );
+
+    rerender(
+      <DynamicPluginPropertyColumn
+        rule={conditions[0].rules[0]}
+        comp={{
+          type: "ImageComponent",
+          stimulus: { source: "typed", value: "cat.png" },
+          coordinates: { source: "typed", value: { x: 1, y: 2 } },
+        }}
+        componentIdx="Component_1"
+        conditionId={1}
+        ruleIdx={0}
+        conditions={conditions}
+        setConditionsWrapper={vi.fn()}
+        getPropValue={getPropValue}
+      />,
+    );
+
+    expect(screen.getByRole("option", { name: "Stimulus" })).toHaveValue(
+      "stimulus",
+    );
+    expect(screen.getByRole("option", { name: "Coordinates" })).toHaveValue(
+      "coordinates",
+    );
+
+    rerender(
+      <DynamicPluginPropertyColumn
+        rule={conditions[0].rules[0]}
+        comp={null}
+        componentIdx=""
+        conditionId={1}
+        ruleIdx={0}
+        conditions={conditions}
+        setConditionsWrapper={vi.fn()}
+        getPropValue={getPropValue}
+      />,
+    );
+
+    expect(screen.getByRole("combobox")).toBeDisabled();
+    expect(screen.queryByRole("option", { name: "Response" })).not.toBeInTheDocument();
+  });
+
   it("renders normal ParamsOverride data fields and updates the selected column", () => {
     const conditions: ParamsOverrideCondition[] = [
       {
@@ -309,6 +437,69 @@ describe("dynamic condition column helpers", () => {
         {
           id: 10,
           rules: [{ trialId: 1, column: "response", op: "==", value: "" }],
+          paramsToOverride: {},
+        },
+      ],
+      true,
+    );
+  });
+
+  it("renders dynamic plugin ParamsOverride columns and resets the rule value", () => {
+    const conditions: ParamsOverrideCondition[] = [
+      {
+        id: 10,
+        rules: [{ trialId: 1, column: "", op: "==", value: "old" }],
+        paramsToOverride: {},
+      },
+    ];
+    const setConditionsWrapper = vi.fn();
+
+    renderInTable(
+      <ColumnSelector
+        rule={conditions[0].rules[0]}
+        trialDataFields={{}}
+        loadingData={{}}
+        referencedTrial={dynamicTrial}
+        conditions={conditions}
+        conditionId={10}
+        ruleIdx={0}
+        getPropValue={getPropValue}
+        setConditionsWrapper={setConditionsWrapper}
+      />,
+    );
+
+    expect(screen.getByRole("option", { name: "Image_1 › Stimulus" })).toHaveValue(
+      "Image_1_stimulus",
+    );
+    expect(screen.getByRole("option", { name: "Survey_1 › Age" })).toHaveValue(
+      "Survey_1_age",
+    );
+    expect(screen.getByRole("option", { name: "SurveyResponse_1 › Choice" })).toHaveValue(
+      "SurveyResponse_1_choice",
+    );
+    expect(screen.getByRole("option", { name: "Slider_1 › Slider Start" })).toHaveValue(
+      "Slider_1_slider_start",
+    );
+    expect(screen.getByRole("option", { name: "Audio_1 › Stimulus Onset" })).toHaveValue(
+      "Audio_1_estimated_stimulus_onset",
+    );
+
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "SurveyResponse_1_choice" },
+    });
+
+    expect(setConditionsWrapper).toHaveBeenCalledWith(
+      [
+        {
+          id: 10,
+          rules: [
+            {
+              trialId: 1,
+              column: "SurveyResponse_1_choice",
+              op: "==",
+              value: "",
+            },
+          ],
           paramsToOverride: {},
         },
       ],

@@ -26,7 +26,7 @@ const nodeTypes = {
 };
 
 type SubCanvasProps = {
-  loopId: string | number;
+  loopId: string;
   loopName: string;
   loopTimeline: TimelineItem[];
   onClose: () => void;

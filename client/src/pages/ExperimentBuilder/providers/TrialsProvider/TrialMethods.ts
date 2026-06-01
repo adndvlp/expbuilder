@@ -190,7 +190,7 @@ export default function TrialMethods({
 
         // Optimistic UI: actualizar timeline si es campo name o branches
         if (fieldName === "name" || fieldName === "branches") {
-          setTimeline((prev) =>
+          const updateTimelineItems = (prev: TimelineItem[]) =>
             prev.map((item) =>
               item.id === id && item.type === "trial"
                 ? {
@@ -199,8 +199,13 @@ export default function TrialMethods({
                     branches: updatedTrial.branches || [],
                   }
                 : item,
-            ),
-          );
+            );
+
+          if (updatedTrial.parentLoopId) {
+            setLoopTimeline(updateTimelineItems);
+          } else {
+            setTimeline(updateTimelineItems);
+          }
         }
 
         // Actualizar selectedTrial si es el que está seleccionado y se solicita
@@ -223,7 +228,7 @@ export default function TrialMethods({
         return false;
       }
     },
-    [experimentID, selectedTrial, getTrial],
+    [experimentID, selectedTrial, getTrial, setLoopTimeline, setTimeline],
   );
 
   const deleteTrial = useCallback(

@@ -16,6 +16,33 @@ const dynamicParams = [
     value: [{ type: "ImageComponent", name: "Image_1" }],
   },
 ];
+const richDynamicParams = [
+  {
+    key: "components",
+    type: "complex",
+    value: [
+      { type: "ImageComponent", name: "Image_1" },
+      { type: "TextComponent", name: "Text_1" },
+      { type: "VideoComponent", name: "Video_1" },
+      { type: "AudioComponent", name: "Audio_1" },
+      { type: "HtmlComponent" },
+    ],
+  },
+];
+const unnamedDynamicVisualParams = [
+  {
+    key: "components",
+    type: "complex",
+    value: [{ type: "ImageComponent" }],
+  },
+];
+const audioOnlyDynamicParams = [
+  {
+    key: "components",
+    type: "complex",
+    value: [{ type: "AudioComponent", name: "Audio_1" }],
+  },
+];
 
 function normalize(code: string) {
   return code.replace(/\s+/g, " ").trim();
@@ -108,6 +135,42 @@ describe("useExtensions", () => {
     expect(normalize(result.current.extensions)).toContain(
       "type: jsPsychExtensionWebgazer",
     );
+    expect(normalize(result.current.extensions)).toContain("targets: []");
+  });
+
+  it("targets visual DynamicPlugin components for webgazer", () => {
+    const { result, rerender } = renderHook(
+      ({ params }) => useExtensions("DynamicPlugin", params),
+      { initialProps: { params: richDynamicParams } },
+    );
+
+    act(() => {
+      result.current.setExtensionType("jsPsychExtensionWebgazer");
+    });
+
+    const code = normalize(result.current.extensions);
+
+    expect(code).toContain("#jspsych-dynamic-Image_1-stimulus");
+    expect(code).toContain("#jspsych-text-component-Text_1");
+    expect(code).toContain("#jspsych-dynamic-Video_1-stimulus");
+    expect(code).not.toContain("Audio_1");
+
+    rerender({ params: unnamedDynamicVisualParams });
+
+    expect(normalize(result.current.extensions)).toContain(
+      "#jspsych-dynamic-image-stimulus",
+    );
+  });
+
+  it("emits empty webgazer targets for DynamicPlugin without visual components", () => {
+    const { result } = renderHook(() =>
+      useExtensions("DynamicPlugin", audioOnlyDynamicParams),
+    );
+
+    act(() => {
+      result.current.setExtensionType("jsPsychExtensionWebgazer");
+    });
+
     expect(normalize(result.current.extensions)).toContain("targets: []");
   });
 });

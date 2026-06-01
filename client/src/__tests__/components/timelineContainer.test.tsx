@@ -88,6 +88,12 @@ vi.mock("../../pages/ExperimentBuilder/components/Timeline/FileUploader", () => 
         >
           Delete First Asset
         </button>
+        <button
+          type="button"
+          onClick={() => props.onDeleteMultipleFiles?.(props.uploadedFiles)}
+        >
+          Delete All Assets
+        </button>
       </div>
     );
   },
@@ -176,10 +182,19 @@ function installLocalStorage() {
   });
 }
 
+function installClipboard(writeText = vi.fn(async () => undefined)) {
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: { writeText },
+  });
+  return writeText;
+}
+
 describe("Timeline container", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     installLocalStorage();
+    installClipboard();
     mocks.auth.currentUser = null;
     mocks.authUser = null;
     mocks.firestoreData = {};
@@ -216,7 +231,8 @@ describe("Timeline container", () => {
   });
 
   it("passes files into code generation and FileUploader, then wires build/share/run actions", async () => {
-    const { handleFileUpload, handleDeleteFile } = renderTimeline();
+    const { uploadedFiles, handleFileUpload, handleDeleteFile, handleDeleteMultipleFiles } =
+      renderTimeline();
 
     expect(mocks.experimentCodeUploadedFiles).toEqual([
       { name: "asset.png", url: "/uploads/asset.png", type: "image" },
@@ -228,6 +244,7 @@ describe("Timeline container", () => {
 
     fireEvent.click(screen.getByText("Upload Asset"));
     fireEvent.click(screen.getByText("Delete First Asset"));
+    fireEvent.click(screen.getByText("Delete All Assets"));
 
     expect(handleFileUpload).toHaveBeenCalled();
     expect(handleDeleteFile).toHaveBeenCalledWith({
@@ -235,6 +252,7 @@ describe("Timeline container", () => {
       url: "/uploads/asset.png",
       type: "image",
     });
+    expect(handleDeleteMultipleFiles).toHaveBeenCalledWith(uploadedFiles);
 
     fireEvent.click(screen.getByText("Build Experiment"));
     expect(await screen.findByText("Build success")).toBeInTheDocument();
@@ -247,8 +265,50 @@ describe("Timeline container", () => {
     fireEvent.click(screen.getByText("Share Local Experiment"));
     expect(await screen.findByText("Tunnel ready")).toBeInTheDocument();
     expect(screen.getByText("Copy Tunnel Link")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Copy Tunnel Link"));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      "https://tunnel.test/exp-123",
+    );
+    expect(await screen.findByText("Tunnel link copied!")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Close tunnel"));
     expect(await screen.findByText("Tunnel closed")).toBeInTheDocument();
+  });
+
+  it("runs using a persisted tunnel URL even when experimentUrl is empty", () => {
+    localStorage.setItem("tunnelUrl", "https://stored-tunnel.test");
+
+    renderTimeline();
+
+    fireEvent.click(screen.getByText("Run experiment"));
+
+    expect(mocks.openExternal).toHaveBeenCalledWith(
+      "https://stored-tunnel.test/exp-123",
+    );
+  });
+
+  it("uses cached user tokens without reading Firestore", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(10_000);
+    mocks.authUser = { uid: "user-123" };
+    mocks.auth.currentUser = { uid: "user-123" };
+    localStorage.setItem(
+      "userTokens_user-123",
+      JSON.stringify({
+        tokens: {
+          drive: false,
+          dropbox: true,
+          osf: false,
+          github: true,
+        },
+        ts: 10_000,
+      }),
+    );
+
+    renderTimeline("https://published-source.test/exp-123");
+
+    await waitFor(() => {
+      expect(screen.getByText("Publish to GitHub Pages")).toBeEnabled();
+    });
+    expect(mocks.firestoreGetDoc).not.toHaveBeenCalled();
   });
 
   it("loads connected user tokens and confirms a publish storage choice", async () => {
@@ -278,6 +338,66 @@ describe("Timeline container", () => {
       "dropbox",
       expect.any(Object),
     );
+  });
+
+  it("publishes with the selected storage, shows status and copies the pages link", async () => {
+    mocks.authUser = { uid: "user-123" };
+    mocks.auth.currentUser = { uid: "user-123" };
+    mocks.firestoreData = {
+      googleDriveTokens: { access_token: "drive" },
+      githubTokens: { access_token: "github" },
+    };
+    mocks.publishWithStorage.mockImplementation(
+      async (_uid: string, _storage: string, props: any) => {
+        props.setPublishStatus("Published to GitHub Pages");
+        props.setLastPagesUrl("https://pages.test/exp-123");
+        props.setShowStorageModal(false);
+        props.setIsPublishing(false);
+      },
+    );
+
+    renderTimeline("https://published-source.test/exp-123");
+
+    await waitFor(() => {
+      expect(screen.getByText("Publish to GitHub Pages")).toBeEnabled();
+    });
+    fireEvent.click(screen.getByText("Publish to GitHub Pages"));
+    fireEvent.click(await screen.findByText("Confirm"));
+
+    expect(await screen.findByText("Published to GitHub Pages")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Copy GitHub Pages Link"));
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      "https://pages.test/exp-123",
+    );
+    expect(
+      await screen.findByText("GitHub Pages link copied!"),
+    ).toBeInTheDocument();
+  });
+
+  it("cancels storage selection without publishing", async () => {
+    mocks.authUser = { uid: "user-123" };
+    mocks.auth.currentUser = { uid: "user-123" };
+    mocks.firestoreData = {
+      googleDriveTokens: { access_token: "drive" },
+      dropboxTokens: { access_token: "dropbox" },
+      githubTokens: { access_token: "github" },
+    };
+
+    renderTimeline("https://published-source.test/exp-123");
+
+    await waitFor(() => {
+      expect(screen.getByText("Publish to GitHub Pages")).toBeEnabled();
+    });
+    fireEvent.click(screen.getByText("Publish to GitHub Pages"));
+    expect(await screen.findByText("Select Storage Provider")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Cancel"));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Select Storage Provider")).not.toBeInTheDocument();
+    });
+    expect(mocks.publishWithStorage).not.toHaveBeenCalled();
   });
 
   it("keeps publishing disabled without both GitHub and a storage token", async () => {

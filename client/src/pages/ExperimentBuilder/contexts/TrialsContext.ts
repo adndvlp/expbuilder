@@ -7,6 +7,7 @@ export type TimelineItem = {
   name: string;
   branches?: (string | number)[];
   trials?: (string | number)[]; // Para loops
+  parentLoopId?: string | null;
 };
 
 type TrialsContextType = {
@@ -62,7 +63,7 @@ type TrialsContextType = {
   getTimeline: () => Promise<void>;
 
   // Método para cargar timeline de trials/loops dentro de un loop
-  getLoopTimeline: (loopId: string | number, updateState?: boolean) => Promise<TimelineItem[]>;
+  getLoopTimeline: (loopId: string | number, updateState?: boolean, forceRefresh?: boolean) => Promise<TimelineItem[]>;
 
   // Método para limpiar loop timeline
   clearLoopTimeline: () => void;

@@ -56,6 +56,7 @@ function okJson(payload: unknown): Response {
     ok: true,
     json: vi.fn(async () => payload),
     text: vi.fn(async () => "csv,data"),
+    arrayBuffer: vi.fn(async () => new Uint8Array([1, 2, 3]).buffer),
   } as unknown as Response;
 }
 
@@ -125,6 +126,17 @@ describe("ResultsList container", () => {
       if (
         url ===
           "http://localhost:3000/api/participant-files/exp-123/file-1" &&
+        init?.method === "DELETE"
+      ) {
+        return okJson({ success: true });
+      }
+      if (url === "http://localhost:3000/api/download-sessions-zip") {
+        return okJson({ success: true });
+      }
+      if (
+        String(url).startsWith(
+          "http://localhost:3000/api/session-results/local-1/exp-123",
+        ) &&
         init?.method === "DELETE"
       ) {
         return okJson({ success: true });
@@ -259,5 +271,118 @@ describe("ResultsList container", () => {
     await waitFor(() => {
       expect(mocks.getDocs).toHaveBeenCalledTimes(3);
     });
+  });
+
+  it("renders preview sessions separately from local and online sessions", async () => {
+    render(<ResultsList activeTab="preview" />);
+
+    expect(await screen.findByText("exp_result_preview")).toBeInTheDocument();
+    expect(screen.queryByText("local-1")).not.toBeInTheDocument();
+    expect(screen.queryByText("online_1")).not.toBeInTheDocument();
+    expect(screen.getByText("Preview Results")).toBeInTheDocument();
+  });
+
+  it("filters local sessions and clears active filters", async () => {
+    render(<ResultsList activeTab="local" />);
+
+    expect(await screen.findByText("local-1")).toBeInTheDocument();
+
+    act(() => {
+      mocks.socketHandlers["session-update"]?.({
+        experimentID: "exp-123",
+        sessions: [
+          {
+            _id: "active-local-2",
+            sessionId: "local-2",
+            createdAt: "2026-05-24T12:00:00.000Z",
+            state: "initiated",
+            metadata: {
+              browser: "Safari",
+              os: "iOS",
+              screenResolution: "390x844",
+            },
+          },
+        ],
+      });
+    });
+
+    expect(await screen.findByText("local-2")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Filter"));
+    fireEvent.change(screen.getByLabelText("Browser"), {
+      target: { value: "Safari" },
+    });
+
+    expect(screen.getByText("local-2")).toBeInTheDocument();
+    expect(screen.queryByText("local-1")).not.toBeInTheDocument();
+    expect(screen.getByText("1 of 2")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Clear all"));
+
+    expect(await screen.findByText("local-1")).toBeInTheDocument();
+    expect(screen.getByText("local-2")).toBeInTheDocument();
+  });
+
+  it("selects local sessions for ZIP download and deletion", async () => {
+    const saveZipFile = vi.fn(async () => ({ success: true }));
+    Object.defineProperty(window, "electron", {
+      configurable: true,
+      value: { saveZipFile },
+    });
+    vi.spyOn(window, "alert").mockImplementation(() => {});
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(<ResultsList activeTab="local" />);
+
+    expect(await screen.findByText("local-1")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Select sessions"));
+
+    const switches = screen.getAllByLabelText("toggle switch");
+    fireEvent.click(switches[0]);
+    fireEvent.click(screen.getByText("Download (1)"));
+
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledWith(
+        "http://localhost:3000/api/download-sessions-zip",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            sessionIds: ["local-1"],
+            experimentID: "exp-123",
+          }),
+        }),
+      );
+    });
+    expect(saveZipFile).toHaveBeenCalledWith([1, 2, 3], "sessions.zip");
+
+    fireEvent.click(screen.getByText("Delete (1)"));
+
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledWith(
+        "http://localhost:3000/api/session-results/local-1/exp-123",
+        { method: "DELETE" },
+      );
+    });
+  });
+
+  it("selects online sessions and opens selected online downloads", async () => {
+    render(<ResultsList activeTab="online" />);
+
+    expect(await screen.findByText("online-session-1")).toBeInTheDocument();
+    vi.useFakeTimers();
+
+    fireEvent.click(screen.getByText("Select sessions"));
+    fireEvent.click(screen.getAllByLabelText("toggle switch")[0]);
+    fireEvent.click(screen.getByText("Download (1)"));
+
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(mocks.openExternal).toHaveBeenCalledWith(
+      "https://storage.test/session.csv",
+    );
+
+    vi.useRealTimers();
   });
 });

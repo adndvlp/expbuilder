@@ -32,6 +32,17 @@ vi.mock(
           <button
             type="button"
             onClick={() =>
+              props.setColumnMapping({
+                height: { source: "typed", value: 12 },
+                rotation: { source: "typed", value: 45 },
+              })
+            }
+          >
+            Replace mapping
+          </button>
+          <button
+            type="button"
+            onClick={() =>
               props.onComponentConfigChange("button-1", {
                 name: { source: "typed", value: "ButtonRenamed" },
               })
@@ -212,5 +223,61 @@ describe("KonvaParameterMapper", () => {
     expect(state.getComponents()[0].config).toEqual({
       name: { source: "typed", value: "ButtonRenamed" },
     });
+  });
+
+  it("supports direct object mapping updates without autosave", () => {
+    const { state, generateConfigFromComponents } = renderMapper({
+      onAutoSave: undefined,
+    });
+
+    fireEvent.click(screen.getByText("Replace mapping"));
+
+    expect(state.getComponents()[0]).toEqual(
+      expect.objectContaining({
+        height: 120,
+        rotation: 45,
+        config: {
+          height: { source: "typed", value: 12 },
+          rotation: { source: "typed", value: 45 },
+        },
+      }),
+    );
+    expect(generateConfigFromComponents).not.toHaveBeenCalled();
+  });
+
+  it("passes an empty mapping when selectedId does not exist in components", () => {
+    renderMapper({ selectedId: "missing-component", components: [] });
+
+    expect(mapperMock.props.columnMapping).toEqual({});
+  });
+
+  it("resizes and hides the right parameter panel from the resize handle", () => {
+    const setup = createMapperProps();
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 1000,
+    });
+    const { container } = render(<KonvaParameterMapper {...setup.props} />);
+    const resizeHandle = container.querySelector(
+      '[style*="col-resize"]',
+    ) as HTMLElement;
+
+    fireEvent.mouseOver(resizeHandle);
+    expect(resizeHandle.style.background).toBe("rgb(0, 0, 0)");
+    fireEvent.mouseOut(resizeHandle);
+    expect(resizeHandle.style.background).toBe("transparent");
+
+    fireEvent.mouseDown(resizeHandle);
+    fireEvent.mouseMove(document, { clientX: 500 });
+
+    expect(setup.props.isResizingRight.current).toBe(true);
+    expect(setup.props.setRightPanelWidth).toHaveBeenCalledWith(450);
+    expect(setup.props.setShowRightPanel).toHaveBeenCalledWith(true);
+
+    fireEvent.mouseMove(document, { clientX: 800 });
+    expect(setup.props.setShowRightPanel).toHaveBeenCalledWith(false);
+
+    fireEvent.mouseUp(document);
+    expect(setup.props.isResizingRight.current).toBe(false);
   });
 });

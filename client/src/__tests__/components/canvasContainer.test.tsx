@@ -52,16 +52,51 @@ vi.mock("../../pages/ExperimentBuilder/components/Canvas/SubCanvas", () => ({
   default: ({
     loopId,
     loopName,
+    onRefreshMetadata,
+    onNavigateToLoop,
+    onNavigateToRoot,
     onClose,
+    onSelectTrial,
+    onSelectLoop,
     onOpenNestedLoop,
   }: {
     loopId: string;
     loopName: string;
+    onRefreshMetadata: () => void;
+    onNavigateToLoop: (index: number) => void;
+    onNavigateToRoot: () => void;
     onClose: () => void;
+    onSelectTrial: (trial: any) => void;
+    onSelectLoop: (loop: any) => void;
     onOpenNestedLoop: (id: string) => void;
   }) => (
     <div data-testid="sub-canvas">
       SubCanvas {loopId} {loopName}
+      <button type="button" onClick={onRefreshMetadata}>
+        Refresh Loop
+      </button>
+      <button type="button" onClick={() => onNavigateToLoop(0)}>
+        Navigate First Loop
+      </button>
+      <button type="button" onClick={onNavigateToRoot}>
+        Navigate Root
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          onSelectTrial({ id: 7, type: "trial", name: "Inner Trial" })
+        }
+      >
+        Select Inner Trial
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          onSelectLoop({ id: "loop-child", type: "loop", name: "Child Loop" })
+        }
+      >
+        Select Inner Loop
+      </button>
       <button type="button" onClick={() => onOpenNestedLoop("loop-child")}>
         Open Nested Loop
       </button>
@@ -136,6 +171,13 @@ function installTrialsContext(overrides: Partial<any> = {}) {
     getLoopTimeline: vi.fn(async () => []),
     ...overrides,
   };
+}
+
+function expectTimelineItem(
+  item: Record<string, unknown> | undefined,
+  expected: Record<string, unknown>,
+) {
+  expect(item).toEqual(expect.objectContaining(expected));
 }
 
 describe("Canvas container", () => {
@@ -271,5 +313,165 @@ describe("Canvas container", () => {
       expect.objectContaining({ id: "loop-child" }),
     );
     expect(mocks.trialsContext.setSelectedTrial).toHaveBeenCalledWith(null);
+  });
+
+  it("adds a direct branch when the parent has no existing branches", async () => {
+    render(<Canvas />);
+
+    await act(async () => {
+      await mocks.flowLayoutProps.onAddBranch(3);
+    });
+
+    await waitFor(() => {
+      expect(mocks.trialsContext.createTrial).toHaveBeenCalledWith({
+        type: "Trial",
+        name: "New Trial",
+        plugin: "plugin-dynamic",
+        parameters: {},
+        trialCode: "",
+      });
+    });
+    expect(mocks.trialsContext.getTrial).toHaveBeenCalledWith(3);
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(
+      3,
+      { branches: [99] },
+      expect.objectContaining({ id: 99, name: "New Trial" }),
+    );
+    expect(mocks.trialsContext.setSelectedTrial).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 99 }),
+    );
+  });
+
+  it("inserts a new trial as parent of existing branches", async () => {
+    render(<Canvas />);
+
+    await act(async () => {
+      await mocks.flowLayoutProps.onAddBranch(1);
+    });
+
+    fireEvent.click(screen.getByText("As Parent (Sequential)"));
+
+    await waitFor(() => {
+      expect(mocks.trialsContext.createTrial).toHaveBeenCalledWith({
+        type: "Trial",
+        name: "New Trial",
+        plugin: "plugin-dynamic",
+        parameters: {},
+        trialCode: "",
+        branches: [2],
+      });
+    });
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(
+      1,
+      { branches: [99] },
+      expect.objectContaining({ id: 99, branches: [2] }),
+    );
+
+    const reorderedTimeline =
+      mocks.trialsContext.updateTimeline.mock.calls.at(-1)?.[0];
+    expectTimelineItem(reorderedTimeline?.[0], { id: 1, branches: [99] });
+    expectTimelineItem(reorderedTimeline?.[1], {
+      id: 99,
+      type: "trial",
+      branches: [2],
+    });
+  });
+
+  it("moves a selected trial sequentially and reconnects its previous parent", async () => {
+    installTrialsContext({
+      selectedTrial: makeTrial(2),
+      timeline: [
+        { id: 1, type: "trial", name: "Trial 1", branches: [2] },
+        { id: 2, type: "trial", name: "Trial 2", branches: [] },
+        { id: 3, type: "trial", name: "Trial 3", branches: [] },
+      ],
+    });
+
+    render(<Canvas />);
+
+    fireEvent.click(screen.getByTitle("Move Item"));
+    fireEvent.click(screen.getByText("Trial 3"));
+    fireEvent.click(screen.getByText("Move"));
+
+    await waitFor(() => {
+      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, {
+        branches: [],
+      });
+    });
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(2, {
+      branches: [],
+    });
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(3, {
+      branches: [2],
+    });
+
+    const reorderedTimeline =
+      mocks.trialsContext.updateTimeline.mock.calls.at(-1)?.[0];
+    expect(reorderedTimeline.map((item: any) => item.id)).toEqual([1, 3, 2]);
+  });
+
+  it("moves a selected trial as a parallel branch of a branched destination", async () => {
+    installTrialsContext({
+      selectedTrial: makeTrial(3),
+    });
+
+    render(<Canvas />);
+
+    fireEvent.click(screen.getByTitle("Move Item"));
+    fireEvent.click(screen.getByText("Trial 1"));
+    fireEvent.click(screen.getByText("Branch (Parallel)"));
+    fireEvent.click(screen.getByText("Move"));
+
+    await waitFor(() => {
+      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(3, {
+        branches: [],
+      });
+    });
+    expect(mocks.trialsContext.getTrial).toHaveBeenCalledWith(1);
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, {
+      branches: [2, 3],
+    });
+
+    const reorderedTimeline =
+      mocks.trialsContext.updateTimeline.mock.calls.at(-1)?.[0];
+    expect(reorderedTimeline.map((item: any) => item.id)).toEqual([1, 3, 2]);
+  });
+
+  it("handles open SubCanvas refresh, selection, nested navigation and root close", async () => {
+    render(<Canvas />);
+
+    await act(async () => {
+      await mocks.flowLayoutProps.onOpenLoop("loop-1");
+    });
+
+    fireEvent.click(await screen.findByText("Refresh Loop"));
+    expect(mocks.trialsContext.getLoopTimeline).toHaveBeenLastCalledWith(
+      "loop-1",
+    );
+
+    fireEvent.click(screen.getByText("Select Inner Trial"));
+    expect(mocks.trialsContext.setSelectedTrial).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 7 }),
+    );
+    expect(mocks.trialsContext.setSelectedLoop).toHaveBeenCalledWith(null);
+
+    fireEvent.click(screen.getByText("Select Inner Loop"));
+    expect(mocks.trialsContext.setSelectedLoop).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "loop-child" }),
+    );
+    expect(mocks.trialsContext.setSelectedTrial).toHaveBeenCalledWith(null);
+
+    fireEvent.click(screen.getByText("Open Nested Loop"));
+    await waitFor(() => {
+      expect(mocks.trialsContext.getLoop).toHaveBeenCalledWith("loop-child");
+    });
+
+    fireEvent.click(screen.getByText("Navigate First Loop"));
+    await waitFor(() => {
+      expect(mocks.trialsContext.getLoop).toHaveBeenCalledWith("loop-1");
+    });
+
+    fireEvent.click(screen.getByText("Navigate Root"));
+    expect(mocks.trialsContext.setSelectedLoop).toHaveBeenLastCalledWith(null);
   });
 });

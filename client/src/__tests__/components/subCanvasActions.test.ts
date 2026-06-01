@@ -147,6 +147,59 @@ describe("SubCanvas Actions", () => {
     );
   });
 
+  it("returns the requested parent id for branch handling decisions", async () => {
+    const { api } = createActions();
+
+    await expect(api.onAddBranch(10)).resolves.toBe(10);
+    await expect(api.onAddBranch("missing-parent")).resolves.toBe(
+      "missing-parent",
+    );
+  });
+
+  it("adds a branch trial to a loop parent inside the active loop", async () => {
+    const childLoop = {
+      id: "loop_child",
+      name: "Child Loop",
+      repetitions: 1,
+      randomize: false,
+      orders: false,
+      stimuliOrders: [],
+      orderColumns: [],
+      categories: false,
+      categoryColumn: "",
+      categoryData: [],
+      trials: [12],
+      branches: [10],
+      code: "",
+      parentLoopId: "loop_parent",
+    } as Loop;
+    const { props, api } = createActions({
+      getLoop: vi.fn(async (id: string | number) => {
+        if (id === "loop_parent") {
+          return {
+            id: "loop_parent",
+            name: "Parent Loop",
+            trials: [10, 11, "loop_child"],
+            csvJson: [{ stimulus: "a.png" }],
+          } as Loop;
+        }
+        if (id === "loop_child") return childLoop;
+        return null;
+      }),
+    });
+
+    await api.addTrialAsBranch("loop_child");
+
+    expect(props.updateLoop).toHaveBeenCalledWith(
+      "loop_child",
+      { branches: [10, 99] },
+      expect.objectContaining({ id: 99 }),
+    );
+    expect(props.onSelectTrial).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 99, parentLoopId: "loop_parent" }),
+    );
+  });
+
   it("inserts a new trial as parent of existing branches and rewrites the visual timeline", async () => {
     const { props, api } = createActions();
 
@@ -179,6 +232,64 @@ describe("SubCanvas Actions", () => {
     );
   });
 
+  it("inserts a new trial as parent of existing loop branches without csv propagation", async () => {
+    const childLoop = {
+      id: "loop_child",
+      name: "Child Loop",
+      repetitions: 1,
+      randomize: false,
+      orders: false,
+      stimuliOrders: [],
+      orderColumns: [],
+      categories: false,
+      categoryColumn: "",
+      categoryData: [],
+      trials: [12],
+      branches: [10],
+      code: "",
+      parentLoopId: "loop_parent",
+    } as Loop;
+    const { props, api } = createActions({
+      getLoop: vi.fn(async (id: string | number) => {
+        if (id === "loop_parent") {
+          return {
+            id: "loop_parent",
+            name: "Parent Loop",
+            trials: [10, 11, "loop_child"],
+            csvJson: [],
+          } as Loop;
+        }
+        if (id === "loop_child") return childLoop;
+        return null;
+      }),
+    });
+
+    await api.addTrialAsParent("loop_child");
+
+    expect(props.createTrial).toHaveBeenCalledWith(
+      expect.objectContaining({
+        branches: [10],
+        parentLoopId: "loop_parent",
+      }),
+    );
+    expect(props.updateLoop).toHaveBeenCalledWith(
+      "loop_child",
+      { branches: [99] },
+      expect.objectContaining({ id: 99 }),
+    );
+    expect(props.updateTrialField).not.toHaveBeenCalled();
+    expect(props.updateTimeline).toHaveBeenCalledWith([
+      timeline[0],
+      timeline[1],
+      {
+        id: 99,
+        type: "trial",
+        name: "New Trial 1",
+        branches: [10],
+      },
+    ]);
+  });
+
   it("creates a nested loop from selected loop timeline items", async () => {
     const { props, api } = createActions();
 
@@ -206,6 +317,38 @@ describe("SubCanvas Actions", () => {
     );
     expect(props.setShowLoopModal).toHaveBeenCalledWith(false);
     expect(props.onRefreshMetadata).toHaveBeenCalled();
+  });
+
+  it("creates nested loops without requiring a refresh callback", async () => {
+    const { props, api } = createActions({ onRefreshMetadata: undefined });
+
+    await api.handleAddLoop([10]);
+
+    expect(props.createLoop).toHaveBeenCalledWith(
+      expect.objectContaining({ trials: [10], parentLoopId: "loop_parent" }),
+    );
+    expect(props.onSelectLoop).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "loop_nested" }),
+    );
+    expect(props.setShowLoopModal).toHaveBeenCalledWith(false);
+  });
+
+  it("logs and closes the modal when nested loop creation fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { props, api } = createActions({
+      createLoop: vi.fn(async () => {
+        throw new Error("create failed");
+      }),
+    });
+
+    await api.handleAddLoop([10]);
+
+    expect(console.error).toHaveBeenCalledWith(
+      "Error creating nested loop:",
+      expect.any(Error),
+    );
+    expect(props.setShowLoopModal).toHaveBeenCalledWith(false);
+    expect(props.onSelectLoop).not.toHaveBeenCalled();
   });
 
   it("guards nested loop creation when no items are selected or confirmation is cancelled", async () => {

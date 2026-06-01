@@ -10,7 +10,11 @@ type Props = {
   setTimeline: Dispatch<SetStateAction<TimelineItem[]>>;
   setLoopTimeline: Dispatch<SetStateAction<TimelineItem[]>>;
   getTimeline: () => Promise<void>;
-  getLoopTimeline: (loopId: string | number) => Promise<TimelineItem[]>;
+  getLoopTimeline: (
+    loopId: string | number,
+    updateState?: boolean,
+    forceRefresh?: boolean,
+  ) => Promise<TimelineItem[]>;
   setSelectedLoop: Dispatch<SetStateAction<Loop | null>>;
   selectedLoop: Loop | null;
 };
@@ -172,7 +176,7 @@ export default function LoopMethods({
         console.error("Error creating loop:", error);
         // Si falla, recargar timeline apropiado
         if (isNestedLoop && loop.parentLoopId) {
-          await getLoopTimeline(loop.parentLoopId);
+          await getLoopTimeline(loop.parentLoopId, true, true);
         } else {
           await getTimeline();
         }
@@ -258,13 +262,16 @@ export default function LoopMethods({
                     : newBranchItem.trials !== undefined
                       ? "loop"
                       : "trial";
-                updated.push({
+                const branchItem: TimelineItem = {
                   id: newBranchItem.id,
                   type: itemType as "trial" | "loop",
                   name: newBranchItem.name,
                   branches: newBranchItem.branches || [],
-                  trials: newBranchItem.trials || [],
-                });
+                };
+                if (itemType === "loop") {
+                  branchItem.trials = newBranchItem.trials || [];
+                }
+                updated.push(branchItem);
               } else {
                 // Para otros branches, usar placeholder
                 updated.push({
@@ -404,7 +411,7 @@ export default function LoopMethods({
         console.error("Error updating loop:", error);
         // Si falla, recargar timeline apropiado
         if (selectedLoop?.parentLoopId) {
-          await getLoopTimeline(selectedLoop.parentLoopId);
+          await getLoopTimeline(selectedLoop.parentLoopId, true, true);
         } else {
           await getTimeline();
         }
@@ -585,6 +592,7 @@ export default function LoopMethods({
 
           const firstTrialId = loopToDelete.trials?.[0] || null;
           const loopBranches = loopToDelete.branches || [];
+          let terminalInternalItemId: string | number | null = null;
 
           // 2. Reconectar padres con el PRIMER trial del loop (mantener estructura interna)
           let updated = prev.map((item) => {
@@ -639,10 +647,10 @@ export default function LoopMethods({
             // Actualizar al ÚLTIMO último item para agregar los branches del loop
             // (evita crear múltiples padres para el mismo branch)
             if (lastItems.length > 0) {
-              const lastLastItemId = lastItems[lastItems.length - 1];
+              terminalInternalItemId = lastItems[lastItems.length - 1];
 
               updated = updated.map((item) => {
-                if (item.id === lastLastItemId) {
+                if (item.id === terminalInternalItemId) {
                   const currentBranches = item.branches || [];
                   const newBranches = [...currentBranches];
 
@@ -673,15 +681,28 @@ export default function LoopMethods({
             // IMPORTANTE: Los loops anidados deben dejar de tener parentLoopId
             // porque su padre acaba de ser borrado
             const restoredItems: TimelineItem[] = loopTrialsMetadata.map(
-              (item) => ({
-                id: item.id,
-                type: item.type,
-                name: item.name,
-                branches: item.branches || [],
-                trials: item.trials || [],
-                // Los loops restaurados ya no tienen padre
-                parentLoopId: undefined,
-              }),
+              (item) => {
+                const restoredBranches = [...(item.branches || [])];
+                if (item.id === terminalInternalItemId) {
+                  loopBranches.forEach((branchId) => {
+                    if (!restoredBranches.includes(branchId)) {
+                      restoredBranches.push(branchId);
+                    }
+                  });
+                }
+                const restoredItem: TimelineItem = {
+                  id: item.id,
+                  type: item.type,
+                  name: item.name,
+                  branches: restoredBranches,
+                  // Los loops restaurados ya no tienen padre
+                  parentLoopId: undefined,
+                };
+                if (item.type === "loop") {
+                  restoredItem.trials = item.trials || [];
+                }
+                return restoredItem;
+              },
             );
 
             // Insertar en la posición donde estaba el loop
@@ -740,7 +761,7 @@ export default function LoopMethods({
         console.error("Error deleting loop:", error);
         // Si falla, recargar timeline apropiado
         if (selectedLoop?.parentLoopId) {
-          await getLoopTimeline(selectedLoop.parentLoopId);
+          await getLoopTimeline(selectedLoop.parentLoopId, true, true);
         } else {
           await getTimeline();
         }
@@ -750,6 +771,7 @@ export default function LoopMethods({
     [
       experimentID,
       selectedLoop,
+      timeline,
       getTimeline,
       getLoopTimeline,
       getLoop,

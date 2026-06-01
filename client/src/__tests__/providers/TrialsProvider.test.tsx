@@ -7,6 +7,7 @@ import TrialsProvider from "../../pages/ExperimentBuilder/providers/TrialsProvid
 import {
   loop,
   loopDraft,
+  notOkJson,
   okJson,
   timelineLoop,
   timelineTrial,
@@ -277,6 +278,54 @@ describe("TrialsProvider", () => {
     ]);
   });
 
+  it("updates active loop timeline when a nested trial field changes", async () => {
+    const selected = trial({
+      id: 10,
+      name: "Nested Before",
+      parentLoopId: "loop-1",
+    });
+    const updated = trial({
+      id: 10,
+      name: "Nested After",
+      parentLoopId: "loop-1",
+    });
+    const view = await renderLoadedProvider([
+      timelineLoop({ id: "loop-1", name: "Loop", trials: [10] }),
+    ]);
+
+    queueFetchResponses(
+      okJson({
+        trialsMetadata: [
+          timelineTrial({ id: 10, name: "Nested Before", parentLoopId: "loop-1" }),
+        ],
+      }),
+    );
+
+    await act(async () => {
+      await view.getContext()?.getLoopTimeline("loop-1");
+    });
+
+    act(() => {
+      view.getContext()?.setSelectedTrial(selected);
+    });
+
+    await waitFor(() => {
+      expect(view.getContext()?.selectedTrial).toEqual(selected);
+    });
+
+    queueFetchResponses(okJson({ trial: updated }));
+
+    const result = await act(async () => {
+      return view.getContext()?.updateTrialField(10, "name", "Nested After");
+    });
+
+    expect(result).toBe(true);
+    expect(view.getContext()?.selectedTrial).toEqual(updated);
+    expect(view.getContext()?.loopTimeline).toEqual([
+      timelineTrial({ id: 10, name: "Nested After", parentLoopId: "loop-1" }),
+    ]);
+  });
+
   it("reconnects parent branches to deleted trial children", async () => {
     const view = await renderLoadedProvider([
       timelineTrial({ id: 1, name: "Parent", branches: [2] }),
@@ -364,6 +413,196 @@ describe("TrialsProvider", () => {
     expect(view.getContext()?.selectedLoop).toEqual(updated);
     expect(view.getContext()?.timeline).toEqual([
       timelineLoop({ id: "loop-1", name: "After", trials: [1] }),
+    ]);
+  });
+
+  it("returns null when getLoop receives non-ok responses or network errors", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const view = await renderLoadedProvider();
+
+    queueFetchResponses(notOkJson());
+
+    await expect(view.getContext()?.getLoop("loop-missing")).resolves.toBeNull();
+
+    fetchMock().mockRejectedValueOnce(new Error("offline"));
+
+    await expect(view.getContext()?.getLoop("loop-error")).resolves.toBeNull();
+    expect(console.error).toHaveBeenCalledWith(
+      "Error getting loop:",
+      expect.any(Error),
+    );
+  });
+
+  it("refreshes selected loop state when a granular loop update fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const selected = loop({ id: "loop-1", name: "Before", trials: [1] });
+    const fresh = loop({ id: "loop-1", name: "Fresh from server", trials: [1] });
+    const view = await renderLoadedProvider([
+      timelineLoop({ id: "loop-1", name: "Before", trials: [1] }),
+    ]);
+
+    act(() => {
+      view.getContext()?.setSelectedLoop(selected);
+    });
+
+    await waitFor(() => {
+      expect(view.getContext()?.selectedLoop).toEqual(selected);
+    });
+
+    queueFetchResponses(notOkJson(), okJson({ loop: fresh }));
+
+    const result = await act(async () => {
+      return view.getContext()?.updateLoopField("loop-1", "name", "Broken");
+    });
+
+    expect(result).toBe(false);
+    expect(view.getContext()?.selectedLoop).toEqual(fresh);
+    expect(console.error).toHaveBeenCalledWith(
+      "Error updating name:",
+      expect.any(Error),
+    );
+  });
+
+  it("reloads the parent loop timeline when nested loop creation fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const existingLoopTimeline = [
+      timelineTrial({ id: 10, name: "Existing inner" }),
+    ];
+    const reloadedLoopTimeline = [
+      timelineTrial({ id: 11, name: "Reloaded inner" }),
+    ];
+    const view = await renderLoadedProvider([
+      timelineLoop({ id: "loop-parent", name: "Parent Loop", trials: [10] }),
+    ]);
+
+    queueFetchResponses(okJson({ trialsMetadata: existingLoopTimeline }));
+
+    await act(async () => {
+      await view.getContext()?.getLoopTimeline("loop-parent");
+    });
+
+    await waitFor(() => {
+      expect(view.getContext()?.loopTimeline).toEqual(existingLoopTimeline);
+    });
+
+    queueFetchResponses(
+      notOkJson(),
+      okJson({ trialsMetadata: reloadedLoopTimeline }),
+    );
+
+    let caughtError: unknown;
+    await act(async () => {
+      try {
+        await view.getContext()?.createLoop(
+          loopDraft({
+            name: "Nested draft",
+            parentLoopId: "loop-parent",
+            trials: [10],
+          }),
+        );
+      } catch (error) {
+        caughtError = error;
+      }
+    });
+
+    expect(caughtError).toEqual(expect.any(Error));
+    expect((caughtError as Error).message).toBe("Failed to create loop");
+
+    await waitFor(() => {
+      expect(view.getContext()?.loopTimeline).toEqual(reloadedLoopTimeline);
+    });
+    expect(console.error).toHaveBeenCalledWith(
+      "Error creating loop:",
+      expect.any(Error),
+    );
+  });
+
+  it("updates loop branches with newly created branch items and syncs trial parentLoopId changes", async () => {
+    const view = await renderLoadedProvider([
+      timelineLoop({ id: "loop-1", name: "Loop", trials: [1, 2], branches: [] }),
+    ]);
+    const currentLoop = loop({ id: "loop-1", name: "Loop", trials: [1, 2] });
+    const updatedLoop = loop({
+      id: "loop-1",
+      name: "Loop updated",
+      trials: [2, 3],
+      branches: [50],
+    });
+    const newBranchTrial = trial({ id: 50, name: "Loop branch" });
+
+    queueFetchResponses(
+      okJson({ loop: currentLoop }),
+      okJson({ loop: updatedLoop }),
+      okJson({ trial: trial({ id: 1, parentLoopId: null }) }),
+      okJson({ trial: trial({ id: 3, parentLoopId: "loop-1" }) }),
+    );
+
+    const result = await act(async () => {
+      return view
+        .getContext()
+        ?.updateLoop("loop-1", { name: "Loop updated", trials: [2, 3], branches: [50] }, newBranchTrial);
+    });
+
+    expect(result).toEqual(updatedLoop);
+    expect(view.getContext()?.timeline).toEqual([
+      timelineLoop({
+        id: "loop-1",
+        name: "Loop updated",
+        trials: [2, 3],
+        branches: [50],
+      }),
+      timelineTrial({ id: 50, name: "Loop branch" }),
+    ]);
+    expect(fetchMock()).toHaveBeenCalledWith(
+      `${API_URL}/api/trial/test-exp-123/1`,
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ parentLoopId: null }),
+      }),
+    );
+    expect(fetchMock()).toHaveBeenCalledWith(
+      `${API_URL}/api/trial/test-exp-123/3`,
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ parentLoopId: "loop-1" }),
+      }),
+    );
+  });
+
+  it("deletes a loop by restoring internal trials and reconnecting loop branches to the terminal internal item", async () => {
+    const view = await renderLoadedProvider([
+      timelineTrial({ id: 1, name: "Parent", branches: ["loop-1"] }),
+      timelineLoop({ id: "loop-1", name: "Loop", trials: [10, 11], branches: [99] }),
+      timelineTrial({ id: 99, name: "After loop" }),
+    ]);
+    const loopToDelete = loop({
+      id: "loop-1",
+      name: "Loop",
+      trials: [10, 11],
+      branches: [99],
+    });
+
+    queueFetchResponses(
+      okJson({ loop: loopToDelete }),
+      okJson({
+        trialsMetadata: [
+          timelineTrial({ id: 10, name: "Internal A", branches: [11] }),
+          timelineTrial({ id: 11, name: "Internal B", branches: [] }),
+        ],
+      }),
+      okJson({}),
+    );
+
+    const result = await act(async () => {
+      return view.getContext()?.deleteLoop("loop-1");
+    });
+
+    expect(result).toBe(true);
+    expect(view.getContext()?.timeline).toEqual([
+      timelineTrial({ id: 1, name: "Parent", branches: [10] }),
+      timelineTrial({ id: 10, name: "Internal A", branches: [11], parentLoopId: undefined }),
+      timelineTrial({ id: 11, name: "Internal B", branches: [99], parentLoopId: undefined }),
+      timelineTrial({ id: 99, name: "After loop" }),
     ]);
   });
 

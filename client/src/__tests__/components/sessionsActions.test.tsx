@@ -22,7 +22,9 @@ const API_URL = "http://localhost:3000";
 function okJson(payload: unknown, ok = true): Response {
   return {
     ok,
+    status: ok ? 200 : 500,
     json: vi.fn(async () => payload),
+    text: vi.fn(async () => "csv,data"),
   } as unknown as Response;
 }
 
@@ -102,6 +104,7 @@ describe("SessionsActions", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     delete (window as any).electron;
   });
 
@@ -223,6 +226,57 @@ describe("SessionsActions", () => {
     ]);
   });
 
+  it("clears select all when everything is selected and cancels select mode", () => {
+    const props = createProps({
+      selected: ["local-1", "local-2"],
+      sessions: [sessionsFixture[2], { ...sessionsFixture[2], sessionId: "local-2" }],
+    });
+    const { result } = renderHook(() => SessionsActions(props));
+
+    act(() => {
+      result.current.toggleSelectAll();
+      result.current.handleCancelSelect();
+    });
+
+    expect(props.setSelected).toHaveBeenCalledWith([]);
+    expect(props.setSelectMode).toHaveBeenCalledWith(false);
+  });
+
+  it("deletes one local session only after confirmation", async () => {
+    const props = createProps();
+    const { result } = renderHook(() => SessionsActions(props));
+
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledWith(
+        `${API_URL}/api/session-results/exp-123`,
+      );
+    });
+    fetchMock().mockClear();
+
+    vi.mocked(window.confirm).mockReturnValueOnce(false);
+    await act(async () => {
+      await result.current.handleDeleteSession("local-1");
+    });
+
+    expect(fetchMock()).not.toHaveBeenCalledWith(
+      `${API_URL}/api/session-results/local-1/exp-123`,
+      expect.anything(),
+    );
+
+    vi.mocked(window.confirm).mockReturnValueOnce(true);
+    await act(async () => {
+      await result.current.handleDeleteSession("local-1");
+    });
+
+    expect(fetchMock()).toHaveBeenCalledWith(
+      `${API_URL}/api/session-results/local-1/exp-123`,
+      { method: "DELETE" },
+    );
+    expect(fetchMock()).toHaveBeenCalledWith(
+      `${API_URL}/api/session-results/exp-123`,
+    );
+  });
+
   it("deletes selected local sessions and refreshes the list", async () => {
     const props = createProps({ selected: ["local-1", "local-2"] });
     const { result } = renderHook(() => SessionsActions(props));
@@ -251,6 +305,38 @@ describe("SessionsActions", () => {
     );
     expect(fetchMock()).toHaveBeenCalledWith(
       `${API_URL}/api/session-results/exp-123`,
+    );
+  });
+
+  it("does not delete selected sessions when empty or cancelled", async () => {
+    const emptyProps = createProps({ selected: [] });
+    const empty = renderHook(() => SessionsActions(emptyProps));
+
+    await act(async () => {
+      await empty.result.current.handleDeleteSelected();
+    });
+
+    expect(window.confirm).not.toHaveBeenCalledWith(
+      "Delete 0 selected session(s)?",
+    );
+
+    const props = createProps({ selected: ["local-1"] });
+    const { result } = renderHook(() => SessionsActions(props));
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledWith(
+        `${API_URL}/api/session-results/exp-123`,
+      );
+    });
+    fetchMock().mockClear();
+    vi.mocked(window.confirm).mockReturnValueOnce(false);
+
+    await act(async () => {
+      await result.current.handleDeleteSelected();
+    });
+
+    expect(fetchMock()).not.toHaveBeenCalledWith(
+      `${API_URL}/api/session-results/local-1/exp-123`,
+      expect.anything(),
     );
   });
 
@@ -284,6 +370,85 @@ describe("SessionsActions", () => {
       "sessions.zip",
     );
     expect(window.alert).toHaveBeenCalledWith("ZIP saved successfully.");
+  });
+
+  it("reports ZIP save failures and download errors", async () => {
+    (window as any).electron.saveZipFile = vi.fn(async () => ({
+      success: false,
+      error: "disk full",
+    }));
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === `${API_URL}/api/download-sessions-zip`) {
+        return okArrayBuffer([1, 2, 3]);
+      }
+      return okJson({ sessions: [] });
+    });
+    const props = createProps({ selected: ["local-1"] });
+    const { result, rerender } = renderHook(
+      (hookProps) => SessionsActions(hookProps),
+      { initialProps: props },
+    );
+
+    await act(async () => {
+      await result.current.handleDownloadSelected();
+    });
+
+    expect(window.alert).toHaveBeenCalledWith(
+      "Failed to save ZIP: disk full",
+    );
+
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === `${API_URL}/api/download-sessions-zip`) {
+        return okArrayBuffer([], false);
+      }
+      return okJson({ sessions: [] });
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    rerender(props);
+
+    await act(async () => {
+      await result.current.handleDownloadSelected();
+    });
+
+    expect(window.alert).toHaveBeenCalledWith(
+      "Failed to download selected sessions",
+    );
+  });
+
+  it("downloads an individual CSV and reports CSV download failures", async () => {
+    const createObjectURL = vi.fn(() => "blob:session");
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal("URL", {
+      createObjectURL,
+      revokeObjectURL,
+    });
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
+    const props = createProps();
+    const { result } = renderHook(() => SessionsActions(props));
+
+    await act(async () => {
+      await result.current.handleDownloadCSV("local-1");
+    });
+
+    expect(fetchMock()).toHaveBeenCalledWith(
+      `${API_URL}/api/download-session/local-1/exp-123`,
+    );
+    expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
+    expect(click).toHaveBeenCalled();
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:session");
+
+    fetchMock().mockResolvedValueOnce(okJson({}, false));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await act(async () => {
+      await result.current.handleDownloadCSV("local-1");
+    });
+
+    expect(window.alert).toHaveBeenCalledWith(
+      "Failed to download session data",
+    );
   });
 
   it("opens selected online session file URLs with a stagger", () => {
@@ -323,6 +488,30 @@ describe("SessionsActions", () => {
     });
     expect((window as any).electron.openExternal).toHaveBeenCalledWith(
       "https://storage.test/two.csv",
+    );
+  });
+
+  it("handles online session and online participant-file fetch errors", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(getDocs).mockRejectedValue(new Error("firestore offline"));
+    const props = createProps({ activeTab: "online" });
+    const { result } = renderHook(() => SessionsActions(props));
+
+    await waitFor(() => {
+      expect(props.setOnlineLoading).toHaveBeenCalledWith(false);
+    });
+    expect(props.setSessions).toHaveBeenCalledWith([]);
+    expect(console.error).toHaveBeenCalledWith(
+      "Error fetching online session metadata from Firestore:",
+      expect.any(Error),
+    );
+
+    await expect(
+      result.current.fetchOnlineSessionFiles("online-session-1"),
+    ).resolves.toEqual([]);
+    expect(console.error).toHaveBeenCalledWith(
+      "Error fetching online participant files:",
+      expect.any(Error),
     );
   });
 });

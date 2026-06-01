@@ -8,10 +8,7 @@ import {
 } from "react-icons/fa";
 import logo from "../../../icon/icon.png";
 import unamLogo from "../assets/unam.svg";
-// @ts-ignore
-import fpLogo from "../assets/fp white.png";
-// @ts-ignore
-import labLogo from "../assets/lab.png";
+
 
 function LandingPage() {
   const openLink = (e: React.MouseEvent<HTMLAnchorElement>, url: string) => {
@@ -55,15 +52,7 @@ function LandingPage() {
               style={{ width: 120, height: 120, objectFit: "contain" }}
             />
           </div>
-          <div>
-            <div style={{ marginBottom: "8px" }}>
-              <img
-                className="logo-img"
-                alt="Logo"
-                style={{ width: 120, height: 120, objectFit: "contain" }}
-              />
-            </div>
-          </div>
+          
         </div>
         <h1
           style={{
@@ -161,7 +150,7 @@ function LandingPage() {
             </p>
           </div>
           {/* Institutional Home */}
-          <div style={{ flex: "0 1 auto", minWidth: "200px" }}>
+          <div style={{ flex: "0 1 auto", minWidth: "200px", textAlign: "center" }}>
             <h4
               style={{
                 color: "#e0e0e0",
@@ -182,7 +171,7 @@ function LandingPage() {
                 marginTop: "8px",
                 display: "flex",
                 gap: "24px",
-                alignItems: "center",
+                justifyContent: "center", 
               }}
             >
               <a
@@ -197,42 +186,10 @@ function LandingPage() {
                   src={unamLogo}
                   alt="UNAM"
                   style={{
-                    height: 50,
+                    height: 80,
                     width: "auto",
                     filter: "brightness(0) invert(1)",
                   }}
-                />
-              </a>
-
-              <a
-                href="https://www.psicologia.unam.mx/"
-                onClick={(e) => openLink(e, "https://www.psicologia.unam.mx/")}
-                title="Facultad de Psicología"
-                style={{ transition: "opacity 0.2s", opacity: 0.8 }}
-                onMouseOver={(e) => (e.currentTarget.style.opacity = "1")}
-                onMouseOut={(e) => (e.currentTarget.style.opacity = "0.8")}
-              >
-                <img
-                  src={fpLogo}
-                  alt="Facultad de Psicología"
-                  style={{ height: 50, width: "auto" }}
-                />
-              </a>
-
-              <a
-                href="https://www.labpsicolinguistica.psicol.unam.mx/"
-                onClick={(e) =>
-                  openLink(e, "https://www.labpsicolinguistica.psicol.unam.mx/")
-                }
-                title="Laboratorio de Psicolingüística"
-                style={{ transition: "opacity 0.2s", opacity: 0.8 }}
-                onMouseOver={(e) => (e.currentTarget.style.opacity = "1")}
-                onMouseOut={(e) => (e.currentTarget.style.opacity = "0.8")}
-              >
-                <img
-                  src={labLogo}
-                  alt="Laboratorio de Psicolingüística"
-                  style={{ height: 50, width: "auto" }}
                 />
               </a>
             </div>

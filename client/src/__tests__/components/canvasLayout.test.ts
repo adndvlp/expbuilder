@@ -109,6 +109,85 @@ describe("useFlowLayout", () => {
     expect(onAddBranch).toHaveBeenCalledWith("loop_1");
     expect(onOpenLoop).toHaveBeenCalledWith("loop_1");
   });
+
+  it("renders recursive trial and loop branches without duplicating shared nodes", () => {
+    const timeline = [
+      timelineTrial({ id: 1, name: "Start", branches: [2, "loop_branch"] }),
+      timelineTrial({ id: 2, name: "Branch A", branches: [3] }),
+      timelineTrial({ id: 3, name: "Shared terminal" }),
+      timelineLoop({
+        id: "loop_branch",
+        name: "Loop Branch",
+        branches: [3, "loop_nested"],
+      }),
+      timelineLoop({ id: "loop_nested", name: "Nested Branch Loop", branches: [4] }),
+      timelineTrial({ id: 4, name: "Nested terminal" }),
+    ];
+
+    const { result } = renderHook(() =>
+      useFlowLayout({
+        timeline,
+        selectedTrial: null,
+        selectedLoop: null,
+        onSelectTrial: vi.fn(),
+        onSelectLoop: vi.fn(),
+        onAddBranch: vi.fn(),
+        onOpenLoop: vi.fn(),
+      }),
+    );
+
+    expect(result.current.nodes.map((node) => node.id)).toEqual([
+      "1",
+      "1-2",
+      "1-2-3",
+      "1-loop_branch",
+      "1-loop_branch-loop_nested",
+      "1-loop_branch-loop_nested-4",
+    ]);
+    expect(result.current.edges.map((edge) => [edge.source, edge.target])).toEqual(
+      expect.arrayContaining([
+        ["1", "1-2"],
+        ["1-2", "1-2-3"],
+        ["1", "1-loop_branch"],
+        ["1-loop_branch", "1-2-3"],
+        ["1-loop_branch", "1-loop_branch-loop_nested"],
+        ["1-loop_branch-loop_nested", "1-loop_branch-loop_nested-4"],
+      ]),
+    );
+  });
+
+  it("marks an open loop as selected even without an explicit open-loop handler", () => {
+    const onSelectLoop = vi.fn();
+    const onAddBranch = vi.fn();
+
+    const { result } = renderHook(() =>
+      useFlowLayout({
+        timeline: [timelineLoop({ id: "loop_open", name: "Open Loop" })],
+        selectedTrial: null,
+        selectedLoop: null,
+        openLoop: loop({ id: "loop_open", name: "Open Loop" }),
+        onSelectTrial: vi.fn(),
+        onSelectLoop,
+        onAddBranch,
+      }),
+    );
+
+    const node = result.current.nodes[0];
+
+    expect(node.data.selected).toBe(true);
+    expect(typeof node.data.onAddBranch).toBe("function");
+    expect(node.data.onOpenLoop).toBeUndefined();
+
+    act(() => {
+      node.data.onClick();
+      node.data.onAddBranch();
+    });
+
+    expect(onSelectLoop).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "loop_open", name: "Open Loop" }),
+    );
+    expect(onAddBranch).toHaveBeenCalledWith("loop_open");
+  });
 });
 
 describe("GenerateNodesAndEdges", () => {

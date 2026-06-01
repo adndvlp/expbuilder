@@ -3,10 +3,12 @@ import MappedJson from "../../pages/ExperimentBuilder/components/ConfigurationPa
 import { generateBranchConditionsCode } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/branchConditionsGenerator";
 import { generateConditionalFunctionCode } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/conditionalFunctionGenerator";
 import { generateParamsOverrideCode } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/paramsOverrideGenerator";
+import { generateRepeatConditionsCode } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/repeatConditionsGenerator";
 import type {
   BranchCondition,
   ColumnMappingEntry,
   ParamsOverrideCondition,
+  RepeatCondition,
 } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/types";
 
 function normalize(code: string) {
@@ -153,6 +155,38 @@ describe("generateParamsOverrideCode", () => {
     expect(code).toContain("fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue");
     expect(code).toContain("fieldArray[compIndex][propName] = valueToSet;");
     expect(code).toContain("trial[key] = trial[param.value];");
+  });
+});
+
+describe("generateRepeatConditionsCode", () => {
+  it("returns an empty string without repeat conditions", () => {
+    expect(generateRepeatConditionsCode()).toBe("");
+    expect(generateRepeatConditionsCode([])).toBe("");
+  });
+
+  it("generates repeat condition evaluation for arrays, dynamic columns and numeric operators", () => {
+    const repeatConditions: RepeatCondition[] = [
+      {
+        id: 1,
+        jumpToTrialId: 7,
+        rules: [
+          { column: "choices", op: "==", value: "A" },
+          { column: "", componentIdx: "Survey_1", prop: "score", op: ">=", value: "3" },
+          { column: "rt", op: "<", value: "1000" },
+        ],
+      },
+    ];
+
+    const code = normalize(generateRepeatConditionsCode(repeatConditions));
+
+    expect(code).toContain("const repeatConditionsArray =");
+    expect(code).toContain('"jumpToTrialId":7');
+    expect(code).toContain("Array.isArray(propValue)");
+    expect(code).toContain("return propValue.includes(compareValue);");
+    expect(code).toContain("columnName = rule.componentIdx + '_' + rule.prop;");
+    expect(code).toContain("case '>=':");
+    expect(code).toContain("localStorage.setItem('jsPsych_jumpToTrial', String(condition.jumpToTrialId));");
+    expect(code).toContain("jsPsych.run(timeline);");
   });
 });
 

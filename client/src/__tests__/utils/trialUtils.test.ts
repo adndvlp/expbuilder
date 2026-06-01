@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import {
   isTrial,
   findTrialById,
@@ -7,6 +7,9 @@ import {
   generateUniqueName,
   collectAllBranchIds,
   getTrialIdsInLoops,
+  getAllExistingNames,
+  isAncestor,
+  validateConnection,
 } from "../../pages/ExperimentBuilder/components/Canvas/utils/trialUtils";
 
 const mockTimeline = [
@@ -18,6 +21,10 @@ const mockTimeline = [
   { id: 5, type: "trial", name: "Nested Trial 1", branches: [] },
   { id: 6, type: "trial", name: "Nested Trial 2", branches: [] },
 ];
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("isTrial", () => {
   it("returns true for objects without trials array", () => {
@@ -136,6 +143,21 @@ describe("collectAllBranchIds", () => {
     const result = collectAllBranchIds(timeline);
     expect(result.size).toBe(0);
   });
+
+  it("collects string loop branch ids without trying to parse them as trials", () => {
+    const timeline = [
+      { id: 1, type: "trial", name: "Parent", branches: ["loop_1", "2"] },
+      { id: 2, type: "trial", name: "Child", branches: [3] },
+      { id: 3, type: "trial", name: "Grandchild", branches: [] },
+      { id: "loop_1", type: "loop", name: "Loop", trials: [] },
+    ];
+
+    const result = collectAllBranchIds(timeline);
+
+    expect(result.has("loop_1")).toBe(true);
+    expect(result.has("2")).toBe(true);
+    expect(result.has(3)).toBe(true);
+  });
 });
 
 describe("getTrialIdsInLoops", () => {
@@ -160,5 +182,91 @@ describe("getTrialIdsInLoops", () => {
       { id: "loop_2", type: "loop", name: "L2", trials: [3, 4], branches: [] },
     ];
     expect(getTrialIdsInLoops(timeline)).toEqual([1, 2, 3, 4]);
+  });
+
+  it("ignores loops without a trials array", () => {
+    const timeline = [{ id: "loop_1", type: "loop", name: "L1" }];
+    expect(getTrialIdsInLoops(timeline)).toEqual([]);
+  });
+});
+
+describe("trialUtils API helpers", () => {
+  it("loads timeline names with fallback to an empty list", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce({
+        json: async () => ({ names: ["Trial A", "Loop B"] }),
+      } as Response)
+      .mockResolvedValueOnce({
+        json: async () => ({}),
+      } as Response);
+
+    await expect(getAllExistingNames("exp-1")).resolves.toEqual([
+      "Trial A",
+      "Loop B",
+    ]);
+    await expect(getAllExistingNames("exp-2")).resolves.toEqual([]);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining("/api/timeline-names/exp-1"),
+    );
+  });
+
+  it("returns false and logs when timeline-name and ancestor requests fail", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+
+    await expect(getAllExistingNames("exp-1")).resolves.toEqual([]);
+    await expect(isAncestor(1, "loop_1", "exp-1")).resolves.toBe(false);
+
+    expect(console.error).toHaveBeenCalledWith(
+      "Error fetching timeline names:",
+      expect.any(Error),
+    );
+    expect(console.error).toHaveBeenCalledWith(
+      "Error validating ancestor:",
+      expect.any(Error),
+    );
+  });
+
+  it("validates ancestor and connection responses from the backend", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce({
+        json: async () => ({ isAncestor: true }),
+      } as Response)
+      .mockResolvedValueOnce({
+        json: async () => ({ isValid: false, errorMessage: "Circular" }),
+      } as Response);
+
+    await expect(isAncestor(1, 2, "exp-1")).resolves.toBe(true);
+    await expect(validateConnection(1, 2, "exp-1")).resolves.toEqual({
+      isValid: false,
+      errorMessage: "Circular",
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining("/api/validate-ancestor/exp-1?source=1&target=2"),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining("/api/validate-connection/exp-1?source=1&target=2"),
+    );
+  });
+
+  it("returns invalid connection fallback when validation request fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+
+    await expect(validateConnection(1, 2, "exp-1")).resolves.toEqual({
+      isValid: false,
+      errorMessage: "Error validating connection",
+    });
+
+    expect(console.error).toHaveBeenCalledWith(
+      "Error validating connection:",
+      expect.any(Error),
+    );
   });
 });

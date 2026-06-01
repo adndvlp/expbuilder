@@ -365,6 +365,51 @@ describe("useLoopCode composition", () => {
     expect(code).toContain("jsPsych.run(timeline);");
   });
 
+  it("generates loop repeat conditions together with branch conditions", () => {
+    const genLoopCode = useLoopCode({
+      id: "loop_combo",
+      branches: [10, "loop_next"],
+      branchConditions: [
+        {
+          id: 1,
+          rules: [{ column: "response", op: "==", value: "go" }],
+          nextTrialId: "loop_next",
+        },
+      ],
+      repeatConditions: [
+        {
+          id: 1,
+          rules: [{ componentIdx: "Survey_1", prop: "answer", op: "!=", value: "stop" }],
+          jumpToTrialId: 10,
+        },
+      ],
+      repetitions: 1,
+      randomize: false,
+      orders: false,
+      stimuliOrders: [],
+      categories: false,
+      categoryData: [],
+      trials: [
+        {
+          trialName: "Combo Trial",
+          pluginName: "html-keyboard-response",
+          timelineProps: "const Combo_Trial_timeline = { data: { trial_id: 10 } };",
+          mappedJson: [{ stimulus_Combo_Trial: "A" }],
+        },
+      ],
+      unifiedStimuli: [{ stimulus_Combo_Trial: "A" }],
+    });
+
+    const code = normalize(genLoopCode());
+
+    expect(code).toContain("const repeatConditionsArray =");
+    expect(code).toContain("const loopData = jsPsych.data.get().filter({loop_id: \"loop_combo\"}).values();");
+    expect(code).toContain("columnName = rule.componentIdx + '_' + rule.prop;");
+    expect(code).toContain('const branches = [10,"loop_next"];');
+    expect(code).toContain("const branchConditions =");
+    expect(code).toContain("window.nextTrialId = branches[0];");
+  });
+
   it("propagates nested loop branching to parent loop variables", () => {
     const genLoopCode = useLoopCode({
       id: "loop_child",

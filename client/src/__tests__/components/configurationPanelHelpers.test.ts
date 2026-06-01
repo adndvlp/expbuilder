@@ -309,6 +309,83 @@ describe("ParamsOverride condition helpers", () => {
     expect(loadTrialDataFields).toHaveBeenCalledWith(2);
   });
 
+  it("adds/removes ParamsOverride conditions and rules without mutating unrelated conditions", () => {
+    const conditions: ParamsOverrideCondition[] = [
+      {
+        id: 1,
+        rules: [{ trialId: 1, column: "rt", op: "==", value: "100" }],
+        paramsToOverride: {},
+      },
+      {
+        id: 2,
+        rules: [{ trialId: 2, column: "response", op: "!=", value: "no" }],
+        paramsToOverride: {},
+      },
+    ];
+
+    const withRule = paramsActions.addRuleToCondition(conditions, 1);
+    const withoutRule = paramsActions.removeRuleFromCondition(withRule, 1, 0);
+    const withoutCondition = paramsActions.removeCondition(conditions, 2);
+    const noMatch = paramsActions.addRuleToCondition(conditions, 99);
+
+    expect(withRule[0].rules).toHaveLength(2);
+    expect(withRule[1]).toBe(conditions[1]);
+    expect(withoutRule[0].rules).toEqual([
+      { trialId: "", column: "", op: "==", value: "", prop: "" },
+    ]);
+    expect(withoutCondition).toEqual([conditions[0]]);
+    expect(noMatch).toEqual(conditions);
+  });
+
+  it("updates ParamsOverride rule fields without loading data unless trialId changes to a value", () => {
+    const loadTrialDataFields = vi.fn();
+    const conditions: ParamsOverrideCondition[] = [
+      {
+        id: 1,
+        rules: [{ trialId: 1, column: "rt", op: "==", value: "100" }],
+        paramsToOverride: {},
+      },
+    ];
+
+    const valueUpdated = paramsActions.updateRule(
+      conditions,
+      1,
+      0,
+      "value",
+      "200",
+      loadTrialDataFields,
+    );
+    const trialCleared = paramsActions.updateRule(
+      conditions,
+      1,
+      0,
+      "trialId",
+      "",
+      loadTrialDataFields,
+    );
+    const missingCondition = paramsActions.updateRule(
+      conditions,
+      99,
+      0,
+      "value",
+      "300",
+      loadTrialDataFields,
+    );
+
+    expect(valueUpdated[0].rules[0].value).toBe("200");
+    expect(trialCleared[0].rules[0]).toEqual({
+      trialId: "",
+      column: "",
+      op: "==",
+      value: "100",
+      prop: "",
+      fieldType: "",
+      componentIdx: "",
+    });
+    expect(missingCondition).toEqual(conditions);
+    expect(loadTrialDataFields).not.toHaveBeenCalled();
+  });
+
   it("adds normal and dynamic parameters to override", () => {
     const conditions: ParamsOverrideCondition[] = [
       {
@@ -340,6 +417,34 @@ describe("ParamsOverride condition helpers", () => {
       "::::": { source: "none", value: null },
     });
   });
+
+  it("leaves ParamsOverride params unchanged when no target parameter is available", () => {
+    const conditions: ParamsOverrideCondition[] = [
+      {
+        id: 1,
+        rules: [{ trialId: 1, column: "response", op: "==", value: "" }],
+        paramsToOverride: {
+          stimulus: { source: "typed", value: "old" },
+        },
+      },
+    ];
+
+    const exhausted = paramsActions.addParameterToOverride(
+      conditions,
+      1,
+      [{ key: "stimulus", label: "Stimulus", type: "html_string" }],
+      false,
+    );
+    const missingCondition = paramsActions.removeParameterFromOverride(
+      conditions,
+      99,
+      "stimulus",
+    );
+
+    expect(exhausted[0].paramsToOverride).toEqual(conditions[0].paramsToOverride);
+    expect(missingCondition).toEqual(conditions);
+  });
+
 
   it("updates and removes parameter override values", () => {
     const conditions: ParamsOverrideCondition[] = [
@@ -474,6 +579,88 @@ describe("ConditionalLoop condition helpers", () => {
       componentIdx: "",
     });
     expect(loadTrialDataFields).toHaveBeenCalledWith(2);
+  });
+
+  it("adds/removes ConditionalLoop conditions and rules while preserving unrelated items", () => {
+    const conditions: LoopCondition[] = [
+      {
+        id: 1,
+        rules: [{ trialId: 1, column: "rt", op: "==", value: "100" }],
+      },
+      {
+        id: 2,
+        rules: [{ trialId: 2, column: "response", op: "!=", value: "no" }],
+      },
+    ];
+
+    const withRule = loopActions.addRuleToCondition(conditions, 1);
+    const withoutRule = loopActions.removeRuleFromCondition(withRule, 1, 0);
+    const withoutCondition = loopActions.removeCondition(conditions, 2);
+    const noMatch = loopActions.removeRuleFromCondition(conditions, 99, 0);
+
+    expect(withRule[0].rules).toHaveLength(2);
+    expect(withRule[1]).toBe(conditions[1]);
+    expect(withoutRule[0].rules).toEqual([
+      {
+        trialId: "",
+        column: "",
+        op: "==",
+        value: "",
+        prop: "",
+        fieldType: "",
+        componentIdx: "",
+      },
+    ]);
+    expect(withoutCondition).toEqual([conditions[0]]);
+    expect(noMatch).toEqual(conditions);
+  });
+
+  it("updates ConditionalLoop rule fields without loading data unless trialId changes to a value", () => {
+    const loadTrialDataFields = vi.fn();
+    const conditions: LoopCondition[] = [
+      {
+        id: 1,
+        rules: [{ trialId: 1, column: "rt", op: "==", value: "100" }],
+      },
+    ];
+
+    const valueUpdated = loopActions.updateRule(
+      conditions,
+      1,
+      0,
+      "value",
+      "200",
+      loadTrialDataFields,
+    );
+    const trialCleared = loopActions.updateRule(
+      conditions,
+      1,
+      0,
+      "trialId",
+      "",
+      loadTrialDataFields,
+    );
+    const missingCondition = loopActions.updateRule(
+      conditions,
+      99,
+      0,
+      "value",
+      "300",
+      loadTrialDataFields,
+    );
+
+    expect(valueUpdated[0].rules[0].value).toBe("200");
+    expect(trialCleared[0].rules[0]).toEqual({
+      trialId: "",
+      column: "",
+      op: "==",
+      value: "100",
+      prop: "",
+      fieldType: "",
+      componentIdx: "",
+    });
+    expect(missingCondition).toEqual(conditions);
+    expect(loadTrialDataFields).not.toHaveBeenCalled();
   });
 
   it("resets dependent selectors in ConditionalLoop rule helpers", () => {

@@ -247,6 +247,44 @@ describe("PublishExperiment", () => {
     expect(props.generateExperiment).not.toHaveBeenCalled();
   });
 
+  it("reports missing storage tokens before publishing", async () => {
+    const { props, api } = createPublishHarness({
+      getUserTokens: vi.fn(async () => ({
+        drive: false,
+        dropbox: false,
+        osf: false,
+        github: true,
+      })),
+    });
+
+    await api.handlePublishToGitHub();
+
+    expect(props.setPublishStatus).toHaveBeenCalledWith(
+      "Error: Please connect Google Drive, Dropbox, or OSF in Settings",
+    );
+    expect(props.setAvailableStorages).not.toHaveBeenCalled();
+    expect(props.generateExperiment).not.toHaveBeenCalled();
+  });
+
+  it("reports errors while preparing publish options", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { props, api } = createPublishHarness({
+      getUserTokens: vi.fn(async () => {
+        throw new Error("token lookup failed");
+      }),
+    });
+
+    await api.handlePublishToGitHub();
+
+    expect(props.setPublishStatus).toHaveBeenCalledWith(
+      "Error: token lookup failed",
+    );
+    expect(console.error).toHaveBeenCalledWith(
+      "Error preparing to publish:",
+      expect.any(Error),
+    );
+  });
+
   it("publishes directly with the only available storage and copies the pages URL", async () => {
     const writeText = installClipboard();
     fetchMock().mockResolvedValue(
@@ -284,6 +322,77 @@ describe("PublishExperiment", () => {
       expect.any(Function),
     );
     expect(props.setIsPublishing).toHaveBeenLastCalledWith(false);
+  });
+
+  it("does not call publish API when public code generation returns empty", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { props, api } = createPublishHarness({
+      generateExperiment: vi.fn(async () => ""),
+    });
+
+    await api.publishWithStorage("user-123", "googledrive");
+
+    expect(props.generateExperiment).toHaveBeenCalledWith("googledrive");
+    expect(fetchMock()).not.toHaveBeenCalled();
+    expect(props.setPublishStatus).toHaveBeenCalledWith(
+      "Error: Failed to generate public experiment code",
+    );
+    expect(props.setIsPublishing).toHaveBeenLastCalledWith(false);
+  });
+
+  it("reports HTTP failures from the publish endpoint", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock().mockResolvedValue(okJson({ success: false }, false, 503));
+    const { props, api } = createPublishHarness();
+
+    await api.publishWithStorage("user-123", "dropbox");
+
+    expect(props.setPublishStatus).toHaveBeenCalledWith(
+      "Error: Server responded with status: 503",
+    );
+    expect(props.setIsPublishing).toHaveBeenLastCalledWith(false);
+  });
+
+  it("warns when GitHub token is invalid", async () => {
+    fetchMock().mockResolvedValue(
+      okJson({
+        success: false,
+        message: "GitHub token not found or invalid",
+      }),
+    );
+    const { props, api } = createPublishHarness();
+
+    await api.publishWithStorage("user-123", "osf");
+
+    expect(props.setPublishStatus).toHaveBeenCalledWith(
+      "Warning: GitHub publish failed. Please reconnect your GitHub account in Settings.",
+    );
+    expect(props.setLastPagesUrl).not.toHaveBeenCalled();
+    expect(props.setIsPublishing).toHaveBeenLastCalledWith(false);
+  });
+
+  it("keeps the pages URL when clipboard copy fails after publishing", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    installClipboard(vi.fn(async () => {
+      throw new Error("clipboard denied");
+    }));
+    fetchMock().mockResolvedValue(
+      okJson({ success: true, pagesUrl: "https://pages.test/exp-123" }),
+    );
+    const { props, api } = createPublishHarness();
+
+    await api.publishWithStorage("user-123", "googledrive");
+
+    expect(props.setPublishStatus).toHaveBeenCalledWith(
+      "Published! GitHub Pages URL",
+    );
+    expect(props.setLastPagesUrl).toHaveBeenCalledWith(
+      "https://pages.test/exp-123",
+    );
+    expect(console.error).toHaveBeenCalledWith(
+      "Failed to copy GitHub Pages URL: ",
+      expect.any(Error),
+    );
   });
 });
 
@@ -410,6 +519,105 @@ describe("Timeline Actions", () => {
     );
   });
 
+  it("stops before running when saved config returns success false", async () => {
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === `${API_URL}/api/experiment/exp-123`) {
+        return okJson({ experiment: {} });
+      }
+      if (url === `${API_URL}/api/save-config/exp-123`) {
+        return okJson({ success: false });
+      }
+      return okJson({ success: true });
+    });
+    const { result, props } = renderActions();
+
+    await act(async () => {
+      await result.current.handleRunExperiment();
+    });
+
+    expect(props.setSubmitStatus).toHaveBeenCalledWith(
+      "Failed to save configuration.",
+    );
+    expect(fetchMock()).not.toHaveBeenCalledWith(
+      `${API_URL}/api/run-experiment/exp-123`,
+      expect.anything(),
+    );
+    expect(props.setIsSubmitting).toHaveBeenLastCalledWith(false);
+  });
+
+  it("reports failed run responses after a successful save", async () => {
+    vi.spyOn(window, "alert").mockImplementation(() => {});
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === `${API_URL}/api/experiment/exp-123`) {
+        return okJson({ experiment: {} });
+      }
+      if (url === `${API_URL}/api/save-config/exp-123`) {
+        return okJson({ success: true });
+      }
+      if (url === `${API_URL}/api/run-experiment/exp-123`) {
+        return okJson({ success: false });
+      }
+      return okJson({ success: true });
+    });
+    const { result, props } = renderActions();
+
+    await act(async () => {
+      await result.current.handleRunExperiment();
+    });
+
+    expect(props.setSubmitStatus).toHaveBeenCalledWith(
+      "Saved configuration but failed at running the experiment.",
+    );
+    expect(window.alert).toHaveBeenCalledWith(
+      "Saved configuration but failed at running the experiment.",
+    );
+    expect(props.setIsSubmitting).toHaveBeenLastCalledWith(false);
+  });
+
+  it("surfaces server errors while running an experiment", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === `${API_URL}/api/experiment/exp-123`) {
+        return okJson({ experiment: {} });
+      }
+      if (url === `${API_URL}/api/save-config/exp-123`) {
+        return okJson({ success: true });
+      }
+      if (url === `${API_URL}/api/run-experiment/exp-123`) {
+        return okJson({ success: false }, false, 502);
+      }
+      return okJson({ success: true });
+    });
+    const { result, props } = renderActions();
+
+    await act(async () => {
+      await result.current.handleRunExperiment();
+    });
+
+    expect(props.setSubmitStatus).toHaveBeenCalledWith(
+      "An error occurred: Server responded with status: 502 when running experiment",
+    );
+    expect(console.error).toHaveBeenCalledWith(
+      "Error submitting configuration:",
+      expect.any(Error),
+    );
+  });
+
+  it("does not create a local sharing tunnel when the warning is cancelled", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    const { result, props } = renderActions();
+
+    await act(async () => {
+      await result.current.handleShareLocalExperiment();
+    });
+
+    expect(fetchMock()).not.toHaveBeenCalledWith(
+      `${API_URL}/api/create-tunnel`,
+      expect.anything(),
+    );
+    expect(props.setIsTunnelCreating).not.toHaveBeenCalledWith(true);
+  });
+
   it("creates a local sharing tunnel and persists the tunnel URL", async () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     fetchMock().mockImplementation(async (url: string) => {
@@ -451,6 +659,149 @@ describe("Timeline Actions", () => {
     expect(props.setIsTunnelCreating).toHaveBeenLastCalledWith(false);
   });
 
+  it("keeps a successful tunnel active when clipboard copy fails", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    installClipboard(vi.fn(async () => {
+      throw new Error("clipboard denied");
+    }));
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === `${API_URL}/api/create-tunnel`) {
+        return okJson({ success: true, url: "https://tunnel.test" });
+      }
+      return okJson({ experiment: {} });
+    });
+    const { result, props } = renderActions();
+
+    await act(async () => {
+      await result.current.handleShareLocalExperiment();
+    });
+
+    expect(props.setTunnelActive).toHaveBeenCalledWith(true);
+    expect(props.setTunnelStatus).toHaveBeenCalledWith("Tunnel active");
+    expect(console.error).toHaveBeenCalledWith(
+      "Failed to copy public link: ",
+      expect.any(Error),
+    );
+  });
+
+  it("reports tunnel API failures without marking the tunnel active", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === `${API_URL}/api/create-tunnel`) {
+        return okJson({ success: false, error: "Port unavailable" });
+      }
+      return okJson({ experiment: {} });
+    });
+    const { result, props } = renderActions();
+
+    await act(async () => {
+      await result.current.handleShareLocalExperiment();
+    });
+
+    expect(props.setTunnelStatus).toHaveBeenCalledWith(
+      "Failed: Port unavailable",
+    );
+    expect(props.setTunnelActive).not.toHaveBeenCalledWith(true);
+    expect(props.setIsTunnelCreating).toHaveBeenLastCalledWith(false);
+  });
+
+  it("closes a local tunnel and clears persisted tunnel state", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    localStorage.setItem("tunnelActive", "true");
+    localStorage.setItem("tunnelUrl", "https://tunnel.test");
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === `${API_URL}/api/close-tunnel`) {
+        return okJson({ success: true, message: "Tunnel closed" });
+      }
+      return okJson({ experiment: {} });
+    });
+    const { result, props } = renderActions();
+
+    await act(async () => {
+      await result.current.handleCloseTunnel();
+    });
+
+    expect(fetchMock()).toHaveBeenCalledWith(`${API_URL}/api/close-tunnel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ experimentID: "exp-123" }),
+    });
+    expect(props.setExperimentUrl).toHaveBeenCalledWith(
+      `${API_URL}/exp-123`,
+    );
+    expect(props.setActiveTunnelUrl).toHaveBeenCalledWith("");
+    expect(props.setTunnelActive).toHaveBeenCalledWith(false);
+    expect(localStorage.getItem("tunnelActive")).toBeNull();
+    expect(localStorage.getItem("tunnelUrl")).toBeNull();
+    expect(props.setTunnelStatus).toHaveBeenCalledWith("Tunnel closed");
+  });
+
+  it("does not close a local tunnel when confirmation is cancelled", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    fetchMock().mockResolvedValue(
+      okJson({ experiment: { tunnelUrl: "https://tunnel.test" } }),
+    );
+    const { result, props } = renderActions();
+
+    await act(async () => {
+      await result.current.handleCloseTunnel();
+    });
+
+    expect(fetchMock()).not.toHaveBeenCalledWith(
+      `${API_URL}/api/close-tunnel`,
+      expect.anything(),
+    );
+    expect(props.setTunnelStatus).not.toHaveBeenCalledWith(
+      "Error closing tunnel",
+    );
+  });
+
+  it("restores tunnel and pages URLs from local storage and the saved experiment", async () => {
+    localStorage.setItem("tunnelActive", "true");
+    localStorage.setItem("tunnelUrl", "https://stored-tunnel.test");
+    fetchMock().mockResolvedValue(
+      okJson({
+        experiment: {
+          tunnelUrl: "https://server-tunnel.test",
+          pagesUrl: "https://pages.test/exp-123",
+        },
+      }),
+    );
+    const { props } = renderActions();
+
+    await waitFor(() => {
+      expect(props.setExperimentUrl).toHaveBeenCalledWith(
+        "https://stored-tunnel.test/exp-123",
+      );
+    });
+    await waitFor(() => {
+      expect(props.setActiveTunnelUrl).toHaveBeenCalledWith(
+        "https://server-tunnel.test",
+      );
+    });
+    expect(props.setTunnelActive).toHaveBeenCalledWith(true);
+    expect(props.setLastPagesUrl).toHaveBeenCalledWith(
+      "https://pages.test/exp-123",
+    );
+  });
+
+  it("clears stale local tunnel state when the saved experiment has no tunnel URL", async () => {
+    localStorage.setItem("tunnelActive", "true");
+    localStorage.setItem("tunnelUrl", "https://stored-tunnel.test");
+    fetchMock().mockResolvedValue(okJson({ experiment: {} }));
+    const { props } = renderActions();
+
+    await waitFor(() => {
+      expect(props.setActiveTunnelUrl).toHaveBeenCalledWith("");
+    });
+
+    expect(props.setTunnelActive).toHaveBeenCalledWith(false);
+    expect(localStorage.getItem("tunnelActive")).toBeNull();
+    expect(localStorage.getItem("tunnelUrl")).toBeNull();
+  });
+
   it("copies the latest GitHub Pages URL before tunnel URLs", async () => {
     const { result, props } = renderActions({
       lastPagesUrl: "https://pages.test/exp-123",
@@ -467,5 +818,52 @@ describe("Timeline Actions", () => {
     );
     expect(props.setPagesCopyStatus).toHaveBeenCalledWith("Link copied!");
     expect(props.setTunnelCopyStatus).not.toHaveBeenCalledWith("Link copied!");
+  });
+
+  it("copies the active tunnel URL when there is no pages URL", async () => {
+    const { result, props } = renderActions({
+      isTunnelActive: true,
+    });
+    localStorage.setItem("tunnelUrl", "https://tunnel.test");
+
+    await act(async () => {
+      await result.current.handleCopyLink();
+    });
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      "https://tunnel.test/exp-123",
+    );
+    expect(props.setTunnelCopyStatus).toHaveBeenCalledWith("Link copied!");
+  });
+
+  it("reports copy fallback states when there is no link or clipboard fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const failingClipboard = installClipboard(vi.fn(async () => {
+      throw new Error("clipboard denied");
+    }));
+    const noLink = renderActions();
+
+    await act(async () => {
+      await noLink.result.current.handleCopyLink();
+    });
+
+    expect(noLink.props.setTunnelCopyStatus).toHaveBeenCalledWith(
+      "No published link available.",
+    );
+
+    const pages = renderActions({
+      lastPagesUrl: "https://pages.test/exp-123",
+    });
+
+    await act(async () => {
+      await pages.result.current.handleCopyLink();
+    });
+
+    expect(failingClipboard).toHaveBeenCalledWith(
+      "https://pages.test/exp-123",
+    );
+    expect(pages.props.setPagesCopyStatus).toHaveBeenCalledWith(
+      "Failed to copy link.",
+    );
   });
 });

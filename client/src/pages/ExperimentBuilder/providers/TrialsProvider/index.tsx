@@ -52,10 +52,19 @@ export default function TrialsProvider({ children }: Props) {
   // - false: Used by background processes (like code generation in ExperimentPreview) to fetch
   //   loop data purely as a data query, without destroying the user's current visual context.
   const getLoopTimeline = useCallback(
-    async (loopId: string | number, updateState: boolean = true): Promise<TimelineItem[]> => {
+    async (
+      loopId: string | number,
+      updateState: boolean = true,
+      forceRefresh: boolean = false,
+    ): Promise<TimelineItem[]> => {
       try {
         // Si es el mismo loop activo, devolver el estado cacheado
-        if (activeLoopId === loopId && loopTimeline.length > 0 && updateState) {
+        if (
+          !forceRefresh &&
+          activeLoopId === loopId &&
+          loopTimeline.length > 0 &&
+          updateState
+        ) {
           return loopTimeline;
         }
 
