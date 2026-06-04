@@ -270,6 +270,8 @@ class TextComponent {
     const borderWidth = this.resolveParam(config.border_width, 0);
     const width = this.resolveParam(config.width, null);
     const rotation = this.resolveParam(config.rotation, 0);
+    const canvasStyles = this.resolveParam(config.__canvasStyles, {});
+    const canvasWidth = this.resolveParam(canvasStyles?.width, window.innerWidth);
 
     // Detect cloze mode: text must have at least one %...% pair
     const parts = text.split("%");
@@ -308,6 +310,8 @@ class TextComponent {
     this.element.style.border =
       borderWidth > 0 ? `${borderWidth}px solid ${borderColor}` : "none";
     this.element.style.width = width != null ? `${width}vw` : "max-content";
+    this.element.style.maxWidth =
+      width != null ? "none" : `${Math.max(200, canvasWidth * 0.86)}px`;
     this.element.style.boxSizing = "border-box";
 
     if (this.isClozeMode) {
@@ -352,7 +356,7 @@ class TextComponent {
       this.start_time = performance.now();
     } else {
       // ── Plain text mode (original behaviour) ─────────────────────────────
-      this.element.style.whiteSpace = width != null ? "pre-wrap" : "pre";
+      this.element.style.whiteSpace = "pre-wrap";
       this.element.textContent = text;
       container.appendChild(this.element);
     }
