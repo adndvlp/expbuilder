@@ -1,4 +1,5 @@
 import { ParameterType } from "jspsych";
+import { getResponseRT, setResponseStartTime } from "../utils/PrecisionTiming";
 
 const version = "1.0.0";
 
@@ -125,6 +126,7 @@ class FileUploadResponseComponent {
   private start_time: number | null = null;
   private container: HTMLElement | null = null;
   private isUploading = false;
+  private timing: any = null;
 
   static info = info;
 
@@ -137,7 +139,8 @@ class FileUploadResponseComponent {
     trial: any,
     onResponse?: () => void,
   ): void {
-    this.start_time = performance.now();
+    this.timing = trial.__timing || null;
+    setResponseStartTime(this, this.timing);
 
     // Map coordinate values: -1..1 → -50vw/vh..50vw/vh
     const mapValue = (v: number) => v / 2;
@@ -330,7 +333,7 @@ class FileUploadResponseComponent {
         const data = await res.json();
 
         // Record response data
-        this.rt = Math.round(performance.now() - (this.start_time ?? 0));
+        this.rt = getResponseRT(this, this.timing);
         this.response =
           files.length === 1
             ? files[0].name

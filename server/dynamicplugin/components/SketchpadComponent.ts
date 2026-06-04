@@ -1,4 +1,5 @@
 import { ParameterType } from "jspsych";
+import { getResponseRT, setResponseStartTime } from "../utils/PrecisionTiming";
 
 var version = "2.1.0";
 
@@ -239,7 +240,8 @@ class SketchpadComponent {
   private draw_key_held: boolean = false;
   private current_stroke_color: string = "#000000";
   private background_image: HTMLImageElement | null = null;
-  private start_time: number = 0;
+  private start_time: number | null = 0;
+  private timing: any = null;
 
   constructor(jsPsych: any) {
     this.jsPsych = jsPsych;
@@ -276,7 +278,8 @@ class SketchpadComponent {
 
     this.display = sketchpadContainer;
     this.current_stroke_color = config.stroke_color;
-    this.start_time = performance.now();
+    this.timing = config.__timing || null;
+    setResponseStartTime(this, this.timing);
 
     this.init_display(config);
     this.setup_event_listeners(config);
@@ -519,7 +522,7 @@ class SketchpadComponent {
       y,
       color: this.current_stroke_color,
       action: "start",
-      t: Math.round(performance.now() - this.start_time),
+      t: getResponseRT(this, this.timing, e),
     });
     this.canvas.releasePointerCapture(e.pointerId);
   }
@@ -544,7 +547,7 @@ class SketchpadComponent {
     if (this.is_drawing) {
       this.stroke.push({
         action: "end",
-        t: Math.round(performance.now() - this.start_time),
+        t: getResponseRT(this, this.timing, e),
       });
       this.strokes.push(this.stroke);
       this.set_undo_btn_state(true, {} as any);

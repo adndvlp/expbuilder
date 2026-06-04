@@ -47,6 +47,8 @@ export function useFlowLayout({
     const nodes: LayoutNode[] = [];
     const edges: LayoutEdge[] = [];
     const renderedTrials = new Map<number | string, string>(); // Map trial.id -> nodeId
+    const getTrialNodeId = (id: number | string) => `trial-${id}`;
+    const getLoopNodeId = (id: number | string) => `loop-${id}`;
 
     const { xTrial, yStep, branchHorizontalSpacing, branchVerticalOffset } =
       LAYOUT_CONSTANTS;
@@ -72,7 +74,7 @@ export function useFlowLayout({
       y: number,
       depth: number = 0,
     ): number => {
-      const trialId = `${parentId}-${trial.id}`;
+      const trialId = getTrialNodeId(trial.id);
       const isSelected = selectedTrialId === trial.id;
 
       // Check if this trial has already been rendered
@@ -170,7 +172,7 @@ export function useFlowLayout({
       y: number,
       depth: number = 0,
     ): number => {
-      const loopId = `${parentId}-${loop.id}`;
+      const loopId = getLoopNodeId(loop.id);
       const isSelected =
         (selectedLoopId === loop.id) ||
         (openLoopId === loop.id);
@@ -268,7 +270,9 @@ export function useFlowLayout({
     allBlocks.forEach((item) => {
       // Use item.type to distinguish between trial and loop
       const itemId =
-        item.type === "trial" ? String(item.id) : `loop-${item.id}`;
+        item.type === "trial"
+          ? getTrialNodeId(item.id)
+          : getLoopNodeId(item.id);
 
       const isSelected =
         item.type === "trial"
@@ -379,12 +383,12 @@ export function useFlowLayout({
       // Use .type if available, otherwise use isTrial()
       const currentId =
         allBlocks[i].type === "trial"
-          ? String(allBlocks[i].id)
-          : `loop-${allBlocks[i].id}`;
+          ? getTrialNodeId(allBlocks[i].id)
+          : getLoopNodeId(allBlocks[i].id);
       const nextId =
         allBlocks[i + 1].type === "trial"
-          ? String(allBlocks[i + 1].id)
-          : `loop-${allBlocks[i + 1].id}`;
+          ? getTrialNodeId(allBlocks[i + 1].id)
+          : getLoopNodeId(allBlocks[i + 1].id);
 
       edges.push(createEdge(currentId, nextId));
     }

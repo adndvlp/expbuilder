@@ -1,4 +1,5 @@
 import { ParameterType } from "jspsych";
+import { getResponseRT, setResponseStartTime } from "../utils/PrecisionTiming";
 
 var version = "1.0.0";
 
@@ -117,6 +118,7 @@ class ClickResponseComponent {
   private boundHandler: ((e: Event) => void) | null = null;
   private listenTarget: HTMLElement | EventTarget | null = null;
   private useTouch: boolean = false;
+  private timing: any = null;
 
   static info = info;
 
@@ -144,7 +146,8 @@ class ClickResponseComponent {
     trial: any,
     onResponse?: () => void,
   ): void {
-    this.start_time = performance.now();
+    this.timing = trial.__timing || null;
+    setResponseStartTime(this, this.timing);
     this.useTouch = ClickResponseComponent.isTouchDevice();
 
     // Build an overlay div so the hit area is explicit and controllable.
@@ -231,8 +234,7 @@ class ClickResponseComponent {
         y = Math.round(clientY);
       }
 
-      const end_time = performance.now();
-      this.rt = Math.round(end_time - this.start_time!);
+      this.rt = getResponseRT(this, this.timing, e);
       this.response = { x, y, is_touch: isTouch };
 
       // Show visual marker if requested

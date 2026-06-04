@@ -1,5 +1,9 @@
 import { JsPsych } from "jspsych";
 import { ParameterType } from "jspsych";
+import {
+  getResponseRT,
+  resolveTimingMs,
+} from "../utils/PrecisionTiming";
 
 const version = "1.0.0";
 
@@ -90,6 +94,8 @@ class AudioResponseComponent {
   private stop_event_handler: (() => void) | null = null;
   private start_event_handler: ((e: Event) => void) | null = null;
   private buttonContainer: HTMLElement | null = null;
+  private timing: any = null;
+  private recordingDurationCancel: (() => void) | null = null;
 
   static info = info;
 
@@ -105,6 +111,8 @@ class AudioResponseComponent {
     trial: any,
     onResponse?: () => void,
   ): Promise<void> {
+    this.timing = trial.__timing || null;
+
     // Get the existing recorder (should be initialized by initialize-microphone plugin)
     this.recorder = this.jsPsych.pluginAPI.getMicrophoneRecorder();
 
@@ -117,7 +125,11 @@ class AudioResponseComponent {
     }
 
     this.setupRecordingEvents(display_element, trial, onResponse);
-    this.startRecording();
+    if (this.timing) {
+      this.timing.onStart(() => this.startRecording());
+    } else {
+      this.startRecording();
+    }
   }
 
   private setupRecordingEvents(
@@ -182,7 +194,7 @@ class AudioResponseComponent {
     onResponse?: () => void,
   ): void {
     // Mark when stimulus is shown (recording already started)
-    this.stimulus_start_time = performance.now();
+    this.stimulus_start_time = this.timing?.getOnsetTime?.() ?? performance.now();
 
     // Create button container
     this.buttonContainer = document.createElement("div");
@@ -195,9 +207,12 @@ class AudioResponseComponent {
       doneButton.id = "finish-trial";
       doneButton.textContent = trial.done_button_label || "Continue";
 
-      doneButton.addEventListener("click", () => {
-        const end_time = performance.now();
-        this.rt = Math.round(end_time - this.stimulus_start_time);
+      doneButton.addEventListener("click", (event) => {
+        this.rt = getResponseRT(
+          { start_time: this.stimulus_start_time },
+          this.timing,
+          event,
+        );
         this.stopRecording().then(() => {
           if (trial.allow_playback) {
             this.showPlaybackControls(display_element, trial, onResponse);
@@ -215,11 +230,9 @@ class AudioResponseComponent {
     display_element.appendChild(this.buttonContainer);
 
     // Handle recording_duration timeout
-    if (
-      trial.recording_duration !== null &&
-      trial.recording_duration !== undefined
-    ) {
-      this.jsPsych.pluginAPI.setTimeout(() => {
+    const recordingDuration = resolveTimingMs(trial.recording_duration, null);
+    if (recordingDuration !== null) {
+      const stopAtDuration = () => {
         if (this.recorder && this.recorder.state !== "inactive") {
           this.stopRecording().then(() => {
             if (trial.allow_playback) {
@@ -231,7 +244,13 @@ class AudioResponseComponent {
             }
           });
         }
-      }, trial.recording_duration);
+      };
+      this.recordingDurationCancel = this.timing
+        ? this.timing.scheduleAt(recordingDuration, stopAtDuration)
+        : (() => {
+            const handle = window.setTimeout(stopAtDuration, recordingDuration);
+            return () => window.clearTimeout(handle);
+          })();
     }
   }
 
@@ -327,6 +346,10 @@ class AudioResponseComponent {
   }
 
   destroy(): void {
+    if (this.recordingDurationCancel) {
+      this.recordingDurationCancel();
+      this.recordingDurationCancel = null;
+    }
     if (this.recorder) {
       if (this.data_available_handler) {
         this.recorder.removeEventListener(

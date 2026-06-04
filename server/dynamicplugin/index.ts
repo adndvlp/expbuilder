@@ -4,6 +4,8 @@ const version = "1.0.0";
 
 // Import all component types
 import ImageComponent from "./components/ImageComponent";
+import CanvasImageComponent from "./components/CanvasImageComponent";
+import CanvasTextComponent from "./components/CanvasTextComponent";
 import VideoComponent from "./components/VideoComponent";
 import HtmlComponent from "./components/HtmlComponent";
 import TextComponent from "./components/TextComponent";
@@ -19,6 +21,12 @@ import SurveyComponent from "./response_components/SurveyComponent";
 import SketchpadComponent from "./components/SketchpadComponent";
 import AudioResponseComponent from "./response_components/AudioResponseComponent";
 import FileUploadResponseComponent from "./response_components/FileUploadResponseComponent";
+import {
+  AssetPreloadList,
+  createPrecisionTiming,
+  preloadAssets,
+  resolveTimingMs,
+} from "./utils/PrecisionTiming";
 
 const info = <const>{
   name: "DynamicPlugin",
@@ -63,12 +71,83 @@ const info = <const>{
       type: ParameterType.BOOL,
       default: true,
     },
+    /** If true, image assets referenced by the dynamic trial are loaded before the first visible frame. */
+    preload_assets: {
+      type: ParameterType.BOOL,
+      default: true,
+    },
+    /** Maximum time to wait for each image preload before continuing, in milliseconds. */
+    asset_preload_timeout: {
+      type: ParameterType.INT,
+      default: 10000,
+    },
+    /** If true, save the measured requestAnimationFrame intervals for lag diagnostics. */
+    record_frame_timing: {
+      type: ParameterType.BOOL,
+      default: true,
+    },
+    /** Frame interval, in milliseconds, above which a frame is counted as lagged. */
+    frame_lag_threshold: {
+      type: ParameterType.INT,
+      default: 34,
+    },
+    /** If true, preload assets from upcoming DynamicPlugin trials in the background during the current trial. */
+    prefetch_next_trials: {
+      type: ParameterType.BOOL,
+      default: true,
+    },
+    /** Number of upcoming DynamicPlugin trials to prefetch when jsPsych's timeline is discoverable. */
+    prefetch_trial_count: {
+      type: ParameterType.INT,
+      default: 3,
+    },
+    /** Maximum absolute timing error tolerated before marking the trial as bad. */
+    timing_quality_bad_threshold: {
+      type: ParameterType.INT,
+      default: 50,
+    },
   },
   data: {
     /** The response time in milliseconds for the participant to make a response. The time is measured from when the trial
      * starts until the participant's response. */
     rt: {
       type: ParameterType.INT,
+    },
+    timing_method: {
+      type: ParameterType.STRING,
+    },
+    trial_onset_time: {
+      type: ParameterType.FLOAT,
+    },
+    trial_offset_time: {
+      type: ParameterType.FLOAT,
+    },
+    actual_trial_duration: {
+      type: ParameterType.FLOAT,
+    },
+    frame_count: {
+      type: ParameterType.INT,
+    },
+    long_frame_count: {
+      type: ParameterType.INT,
+    },
+    max_frame_interval: {
+      type: ParameterType.FLOAT,
+    },
+    mean_frame_interval: {
+      type: ParameterType.FLOAT,
+    },
+    frame_intervals: {
+      type: ParameterType.STRING,
+    },
+    stimulus_timing: {
+      type: ParameterType.STRING,
+    },
+    timing_quality: {
+      type: ParameterType.STRING,
+    },
+    timing_quality_reason: {
+      type: ParameterType.STRING,
     },
   },
 };
@@ -78,6 +157,8 @@ type Info = typeof info;
 // Map component type names to their classes
 const COMPONENT_MAP: Record<string, any> = {
   ImageComponent,
+  CanvasImageComponent,
+  CanvasTextComponent,
   VideoComponent,
   HtmlComponent,
   TextComponent,
@@ -138,6 +219,167 @@ function resolveScreenLayout(config: any): any {
   };
 }
 
+function isImageUrl(value: string): boolean {
+  if (!value) return false;
+  try {
+    const url = new URL(value, window.location.href);
+    return /\.(jpg|jpeg|png|gif|bmp|svg|webp)(\?.*)?$/i.test(url.pathname);
+  } catch {
+    return /\.(jpg|jpeg|png|gif|bmp|svg|webp)(\?.*)?$/i.test(value);
+  }
+}
+
+function emptyAssetPreloadList(): AssetPreloadList {
+  return { images: [], audio: [], video: [] };
+}
+
+function mergeAssetPreloadLists(...lists: AssetPreloadList[]): AssetPreloadList {
+  const merged = emptyAssetPreloadList();
+  for (const list of lists) {
+    merged.images.push(...list.images);
+    merged.audio.push(...list.audio);
+    merged.video.push(...list.video);
+  }
+  merged.images = [...new Set(merged.images.filter(Boolean))];
+  merged.audio = [...new Set(merged.audio.filter(Boolean))];
+  merged.video = [...new Set(merged.video.filter(Boolean))];
+  return merged;
+}
+
+function collectAssetPreloadList(components: Array<{ config: any }>): AssetPreloadList {
+  const assets = emptyAssetPreloadList();
+  for (const { config } of components) {
+    if (
+      (config.type === "ImageComponent" ||
+        config.type === "CanvasImageComponent") &&
+      typeof config.stimulus === "string"
+    ) {
+      assets.images.push(config.stimulus);
+    }
+    if (config.type === "AudioComponent" && typeof config.stimulus === "string") {
+      assets.audio.push(config.stimulus);
+    }
+    if (config.type === "VideoComponent" && Array.isArray(config.stimulus)) {
+      assets.video.push(...config.stimulus.filter((src: any) => typeof src === "string"));
+    }
+    if (config.type === "SketchpadComponent" && typeof config.background_image === "string") {
+      assets.images.push(config.background_image);
+    }
+    if (config.type === "ButtonResponseComponent" && Array.isArray(config.choices)) {
+      for (const choice of config.choices) {
+        if (typeof choice === "string" && isImageUrl(choice)) {
+          assets.images.push(choice);
+        }
+      }
+    }
+  }
+  return mergeAssetPreloadLists(assets);
+}
+
+function collectAssetPreloadListFromTrial(trial: any): AssetPreloadList {
+  const configs = [
+    ...(Array.isArray(trial?.components) ? trial.components : []),
+    ...(Array.isArray(trial?.response_components) ? trial.response_components : []),
+  ].map((config: any) => ({ config }));
+  return collectAssetPreloadList(configs);
+}
+
+function flattenTimelineDescriptions(nodes: any[]): any[] {
+  const flat: any[] = [];
+  for (const node of nodes || []) {
+    if (Array.isArray(node?.timeline)) {
+      flat.push(...flattenTimelineDescriptions(node.timeline));
+    } else {
+      flat.push(node);
+    }
+  }
+  return flat;
+}
+
+function collectUpcomingAssetPreloadList(
+  jsPsych: any,
+  trialCount: number,
+): AssetPreloadList {
+  const rootTimeline = jsPsych?.timeline?.description;
+  if (!Array.isArray(rootTimeline)) return emptyAssetPreloadList();
+
+  const flatTrials = flattenTimelineDescriptions(rootTimeline);
+  const currentTrialIndex = jsPsych?.getProgress?.()?.current_trial_global ?? -1;
+  const upcomingTrials = flatTrials.slice(
+    currentTrialIndex + 1,
+    currentTrialIndex + 1 + trialCount,
+  );
+
+  return mergeAssetPreloadLists(
+    ...upcomingTrials.map((trial) => collectAssetPreloadListFromTrial(trial)),
+  );
+}
+
+function attachPrecisionTiming(config: any, timing: ReturnType<typeof createPrecisionTiming>) {
+  Object.defineProperty(config, "__timing", {
+    value: timing,
+    enumerable: false,
+    configurable: true,
+  });
+}
+
+function roundTiming(value: number | null): number | null {
+  return value === null ? null : Math.round(value * 1000) / 1000;
+}
+
+function classifyTimingQuality(
+  timingSummary: any,
+  desiredTrialDuration: number | null,
+  badThreshold: number,
+) {
+  const reasons: string[] = [];
+  const maxFrameInterval = timingSummary.maxFrameInterval ?? 0;
+  const trialDurationError =
+    desiredTrialDuration === null || timingSummary.actualDuration === null
+      ? 0
+      : Math.abs(timingSummary.actualDuration - desiredTrialDuration);
+  const stimulusDurationErrors = timingSummary.stimulusRecords
+    .map((record: any) =>
+      typeof record.duration_error === "number"
+        ? Math.abs(record.duration_error)
+        : 0,
+    );
+  const maxStimulusDurationError =
+    stimulusDurationErrors.length > 0 ? Math.max(...stimulusDurationErrors) : 0;
+
+  if (timingSummary.longFrameCount > 0) {
+    reasons.push(`${timingSummary.longFrameCount} long frame(s)`);
+  }
+  if (maxFrameInterval >= badThreshold) {
+    reasons.push(`max frame ${roundTiming(maxFrameInterval)}ms`);
+  }
+  if (trialDurationError >= badThreshold) {
+    reasons.push(`trial duration error ${roundTiming(trialDurationError)}ms`);
+  }
+  if (maxStimulusDurationError >= badThreshold) {
+    reasons.push(
+      `stimulus duration error ${roundTiming(maxStimulusDurationError)}ms`,
+    );
+  }
+
+  if (
+    maxFrameInterval >= badThreshold ||
+    trialDurationError >= badThreshold ||
+    maxStimulusDurationError >= badThreshold
+  ) {
+    return { quality: "bad", reason: reasons.join("; ") };
+  }
+
+  if (timingSummary.longFrameCount > 0 || trialDurationError > 1) {
+    return {
+      quality: "warning",
+      reason: reasons.length > 0 ? reasons.join("; ") : "minor timing drift",
+    };
+  }
+
+  return { quality: "ok", reason: "" };
+}
+
 /**
  * **DynamicPlugin**
  *
@@ -182,6 +424,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     // Create main container for all components
     const mainContainer = document.createElement("div");
     mainContainer.id = "jspsych-dynamic-plugin-container";
+    mainContainer.style.visibility = "hidden";
     display_element.appendChild(mainContainer);
 
     // Design canvas dimensions
@@ -203,13 +446,16 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     const resizeObserver = new ResizeObserver(() => updateScale());
     resizeObserver.observe(document.documentElement);
 
-    // Track start time
-    const startTime = performance.now();
+    const timing = createPrecisionTiming({
+      recordFrameTiming: trial.record_frame_timing !== false,
+      longFrameThreshold: resolveTimingMs(trial.frame_lag_threshold, 34) ?? 34,
+    });
 
     // Store component instances and rendered elements
     const stimulusComponents: any[] = [];
     const responseComponents: any[] = [];
     let hasResponded = false;
+    let trialEnded = false;
 
     // Instantiate all components first
     const stimulusTypeCounts: Record<string, number> = {};
@@ -219,6 +465,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         const config = resolveScreenLayout(rawConfig);
         // Inject __canvasStyles so components can compute pixel coords
         config.__canvasStyles = trial.__canvasStyles;
+        attachPrecisionTiming(config, timing);
         const ComponentClass = COMPONENT_MAP[config.type];
         if (ComponentClass) {
           stimulusTypeCounts[config.type] =
@@ -240,6 +487,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       trial.response_components.forEach((rawConfig: any, idx: number) => {
         const config = resolveScreenLayout(rawConfig);
         config.__canvasStyles = trial.__canvasStyles;
+        attachPrecisionTiming(config, timing);
         const ComponentClass = RESPONSE_COMPONENT_MAP[config.type];
         if (ComponentClass) {
           responseTypeCounts[config.type] =
@@ -262,58 +510,62 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       (a, b) => (a.config.zIndex ?? 0) - (b.config.zIndex ?? 0),
     );
 
-    // Pass onResponse callback to ALL components so they can end the trial if needed
-    allComponents.forEach((comp) => {
-      const { instance, config } = comp;
-      const _prevLen = mainContainer.children.length;
-      instance.render(mainContainer, config, () => {
-        if (!hasResponded && trial.response_ends_trial) {
-          if (trial.require_response) {
-            // Clear previous highlights
-            responseComponents.forEach(({ instance: ri }) => {
-              if (typeof (ri as any).clearValidationError === "function") {
-                (ri as any).clearValidationError();
-              }
-            });
-            // Check every response component is satisfied
-            const allValid = responseComponents.every(
-              ({ instance: ri, config: rc }) =>
-                typeof (ri as any).isValid === "function"
-                  ? (ri as any).isValid(rc)
-                  : true,
-            );
-            if (!allValid) {
-              // Reset triggering components (button/keyboard) so user can interact again
+    const renderAllComponents = () => {
+      // Pass onResponse callback to ALL components so they can end the trial if needed
+      allComponents.forEach((comp) => {
+        const { instance, config } = comp;
+        const _prevLen = mainContainer.children.length;
+        const renderedElement = instance.render(mainContainer, config, () => {
+          if (!hasResponded && trial.response_ends_trial) {
+            if (trial.require_response) {
+              // Clear previous highlights
               responseComponents.forEach(({ instance: ri }) => {
-                if (typeof (ri as any).reset === "function") {
-                  (ri as any).reset();
+                if (typeof (ri as any).clearValidationError === "function") {
+                  (ri as any).clearValidationError();
                 }
               });
-              // Highlight still-invalid components
-              responseComponents.forEach(({ instance: ri, config: rc }) => {
-                if (
-                  typeof (ri as any).isValid === "function" &&
-                  !(ri as any).isValid(rc)
-                ) {
-                  if (typeof (ri as any).showValidationError === "function") {
-                    (ri as any).showValidationError();
+              // Check every response component is satisfied
+              const allValid = responseComponents.every(
+                ({ instance: ri, config: rc }) =>
+                  typeof (ri as any).isValid === "function"
+                    ? (ri as any).isValid(rc)
+                    : true,
+              );
+              if (!allValid) {
+                // Reset triggering components (button/keyboard) so user can interact again
+                responseComponents.forEach(({ instance: ri }) => {
+                  if (typeof (ri as any).reset === "function") {
+                    (ri as any).reset();
                   }
-                }
-              });
-              return; // Block trial end
+                });
+                // Highlight still-invalid components
+                responseComponents.forEach(({ instance: ri, config: rc }) => {
+                  if (
+                    typeof (ri as any).isValid === "function" &&
+                    !(ri as any).isValid(rc)
+                  ) {
+                    if (typeof (ri as any).showValidationError === "function") {
+                      (ri as any).showValidationError();
+                    }
+                  }
+                });
+                return; // Block trial end
+              }
             }
+            hasResponded = true;
+            recordAllPendingResponses();
+            endTrial();
           }
-          hasResponded = true;
-          recordAllPendingResponses();
-          endTrial();
-        }
+        });
+        // Capture the topmost new child appended during render (synchronous DOM op)
+        comp.renderedEl =
+          mainContainer.children.length > _prevLen
+            ? (mainContainer.lastElementChild as HTMLElement)
+            : renderedElement instanceof HTMLElement
+              ? renderedElement
+              : null;
       });
-      // Capture the topmost new child appended during render (synchronous DOM op)
-      comp.renderedEl =
-        mainContainer.children.length > _prevLen
-          ? (mainContainer.lastElementChild as HTMLElement)
-          : null;
-    });
+    };
 
     // Function to record all pending responses before ending trial
     const recordAllPendingResponses = () => {
@@ -341,13 +593,37 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     };
 
     // Function to end the trial and collect data
-    const endTrial = () => {
+    const endTrial = (offsetTime = performance.now()) => {
+      if (trialEnded) return;
+      trialEnded = true;
+
       // Calculate response time
-      const rt = Math.round(performance.now() - startTime);
+      const onsetTime = timing.getOnsetTime() ?? offsetTime;
+      const rt = Math.round(offsetTime - onsetTime);
+      const timingSummary = timing.getSummary(offsetTime);
+      const desiredTrialDuration = resolveTimingMs(trial.trial_duration, null);
+      const timingQuality = classifyTimingQuality(
+        timingSummary,
+        desiredTrialDuration,
+        resolveTimingMs(trial.timing_quality_bad_threshold, 50) ?? 50,
+      );
+      timing.stop();
 
       // Create flat data structure (like PsychoPy) instead of nested arrays
       const trialData: any = {
         rt: rt,
+        timing_method: "performance.now + requestAnimationFrame",
+        trial_onset_time: timingSummary.onsetTime,
+        trial_offset_time: timingSummary.offsetTime,
+        actual_trial_duration: roundTiming(timingSummary.actualDuration),
+        frame_count: timingSummary.frameCount,
+        long_frame_count: timingSummary.longFrameCount,
+        max_frame_interval: roundTiming(timingSummary.maxFrameInterval),
+        mean_frame_interval: roundTiming(timingSummary.meanFrameInterval),
+        frame_intervals: JSON.stringify(timingSummary.frameIntervals),
+        stimulus_timing: JSON.stringify(timingSummary.stimulusRecords),
+        timing_quality: timingQuality.quality,
+        timing_quality_reason: timingQuality.reason,
       };
 
       // Add stimulus components data as individual columns
@@ -555,15 +831,56 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       this.jsPsych.finishTrial(trialData);
     };
 
-    // Handle trial duration (end trial after duration)
-    if (trial.trial_duration !== null && trial.trial_duration !== undefined) {
-      this.jsPsych.pluginAPI.setTimeout(() => {
-        if (!hasResponded) {
-          hasResponded = true;
-          recordAllPendingResponses();
-        }
-        endTrial();
-      }, trial.trial_duration);
+    const startPresentation = () => {
+      if (trialEnded) return;
+
+      renderAllComponents();
+      timing.onStart(() => {
+        mainContainer.style.visibility = "visible";
+      });
+
+      // Handle trial duration on measured animation frames.
+      const trialDuration = resolveTimingMs(trial.trial_duration, null);
+      if (trialDuration !== null) {
+        timing.scheduleAt(trialDuration, (timestamp) => {
+          if (trialEnded) return;
+          if (!hasResponded) {
+            hasResponded = true;
+            recordAllPendingResponses();
+          }
+          endTrial(timestamp);
+        });
+      }
+
+      timing.start();
+
+      if (trial.prefetch_next_trials !== false) {
+        const upcomingAssets = collectUpcomingAssetPreloadList(
+          this.jsPsych,
+          resolveTimingMs(trial.prefetch_trial_count, 3) ?? 3,
+        );
+        preloadAssets(
+          this.jsPsych,
+          upcomingAssets,
+          resolveTimingMs(trial.asset_preload_timeout, 10000) ?? 10000,
+        ).catch((error) => {
+          console.warn("DynamicPlugin upcoming asset prefetch failed:", error);
+        });
+      }
+    };
+
+    if (trial.preload_assets !== false) {
+      preloadAssets(
+        this.jsPsych,
+        collectAssetPreloadList(allComponents),
+        resolveTimingMs(trial.asset_preload_timeout, 10000) ?? 10000,
+      )
+        .catch((error) => {
+          console.warn("DynamicPlugin asset preload failed:", error);
+        })
+        .then(startPresentation);
+    } else {
+      startPresentation();
     }
   }
 }

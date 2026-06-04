@@ -1,4 +1,5 @@
 import { ParameterType } from "jspsych";
+import { getResponseRT, setResponseStartTime } from "../utils/PrecisionTiming";
 
 var version = "2.2.0";
 
@@ -173,6 +174,7 @@ class InputResponseComponent {
   private solutions: string[][];
   private inputCount: number;
   private inputElements: HTMLInputElement[];
+  private timing: any = null;
 
   static info = info;
 
@@ -214,6 +216,8 @@ class InputResponseComponent {
     trial: any,
     onResponse?: () => void,
   ): void {
+    this.timing = trial.__timing || null;
+
     // Helper to map coordinate values
     const mapValue = (value: number): number => {
       if (value < -100) return -50;
@@ -298,8 +302,7 @@ class InputResponseComponent {
       this.inputElements[0].focus();
     }
 
-    // Start timing
-    this.start_time = performance.now();
+    setResponseStartTime(this, this.timing);
   }
 
   /**
@@ -366,8 +369,7 @@ class InputResponseComponent {
     }
 
     // Record valid response
-    const end_time = performance.now();
-    this.rt = Math.round(end_time - this.start_time!);
+    this.rt = getResponseRT(this, this.timing);
     this.response = answers;
 
     return true; // Successfully recorded

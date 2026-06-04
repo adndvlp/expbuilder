@@ -247,6 +247,7 @@ const RenderComponent = ({
           isSelected={isSelected}
           onSelect={() => handleSelect(comp.id)}
           onChange={handleComponentChange}
+          canvasWidth={canvasStyles?.width}
         />
       );
 

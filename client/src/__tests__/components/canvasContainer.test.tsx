@@ -447,6 +447,8 @@ describe("Canvas container", () => {
     fireEvent.click(await screen.findByText("Refresh Loop"));
     expect(mocks.trialsContext.getLoopTimeline).toHaveBeenLastCalledWith(
       "loop-1",
+      true,
+      true,
     );
 
     fireEvent.click(screen.getByText("Select Inner Trial"));

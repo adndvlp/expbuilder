@@ -27,15 +27,15 @@ describe("useFlowLayout", () => {
     );
 
     expect(result.current.nodes.map((node) => node.id)).toEqual([
-      "1",
-      "1-2",
+      "trial-1",
+      "trial-2",
       "loop-loop_1",
-      "4",
+      "trial-4",
     ]);
     expect(result.current.edges.map((edge) => [edge.source, edge.target])).toEqual([
-      ["1", "1-2"],
-      ["1", "loop-loop_1"],
-      ["loop-loop_1", "4"],
+      ["trial-1", "trial-2"],
+      ["trial-1", "loop-loop_1"],
+      ["loop-loop_1", "trial-4"],
     ]);
   });
 
@@ -137,23 +137,65 @@ describe("useFlowLayout", () => {
     );
 
     expect(result.current.nodes.map((node) => node.id)).toEqual([
-      "1",
-      "1-2",
-      "1-2-3",
-      "1-loop_branch",
-      "1-loop_branch-loop_nested",
-      "1-loop_branch-loop_nested-4",
+      "trial-1",
+      "trial-2",
+      "trial-3",
+      "loop-loop_branch",
+      "loop-loop_nested",
+      "trial-4",
     ]);
     expect(result.current.edges.map((edge) => [edge.source, edge.target])).toEqual(
       expect.arrayContaining([
-        ["1", "1-2"],
-        ["1-2", "1-2-3"],
-        ["1", "1-loop_branch"],
-        ["1-loop_branch", "1-2-3"],
-        ["1-loop_branch", "1-loop_branch-loop_nested"],
-        ["1-loop_branch-loop_nested", "1-loop_branch-loop_nested-4"],
+        ["trial-1", "trial-2"],
+        ["trial-2", "trial-3"],
+        ["trial-1", "loop-loop_branch"],
+        ["loop-loop_branch", "trial-3"],
+        ["loop-loop_branch", "loop-loop_nested"],
+        ["loop-loop_nested", "trial-4"],
       ]),
     );
+  });
+
+  it("keeps branch node identity stable when the branch moves to a different parent", () => {
+    const beforeMove = [
+      timelineTrial({ id: 1, name: "Old Parent", branches: [2] }),
+      timelineTrial({ id: 2, name: "Moved Branch" }),
+      timelineTrial({ id: 3, name: "New Parent" }),
+    ];
+    const afterMove = [
+      timelineTrial({ id: 1, name: "Old Parent" }),
+      timelineTrial({ id: 3, name: "New Parent", branches: [2] }),
+      timelineTrial({ id: 2, name: "Moved Branch" }),
+    ];
+
+    const { result, rerender } = renderHook(
+      ({ timeline }) =>
+        useFlowLayout({
+          timeline,
+          selectedTrial: null,
+          selectedLoop: null,
+          onSelectTrial: vi.fn(),
+          onSelectLoop: vi.fn(),
+          onAddBranch: vi.fn(),
+          onOpenLoop: vi.fn(),
+        }),
+      { initialProps: { timeline: beforeMove } },
+    );
+
+    expect(result.current.nodes.map((node) => node.id)).toContain("trial-2");
+    expect(result.current.edges.map((edge) => [edge.source, edge.target])).toContainEqual([
+      "trial-1",
+      "trial-2",
+    ]);
+
+    rerender({ timeline: afterMove });
+
+    expect(result.current.nodes.map((node) => node.id)).toContain("trial-2");
+    expect(result.current.edges.map((edge) => [edge.source, edge.target])).toContainEqual([
+      "trial-3",
+      "trial-2",
+    ]);
+    expect(result.current.nodes.map((node) => node.id)).not.toContain("trial-3-2");
   });
 
   it("marks an open loop as selected even without an explicit open-loop handler", () => {

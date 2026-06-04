@@ -1,6 +1,7 @@
 import "survey-js-ui";
 import { ParameterType } from "jspsych";
 import { Model } from "survey-core";
+import { getResponseRT } from "../utils/PrecisionTiming";
 
 var version = "4.0.0";
 
@@ -94,6 +95,7 @@ class SurveyjsComponent {
   private response: any = {};
   private rt: number = 0;
   private startTime: number = 0;
+  private timing: any = null;
 
   constructor(jsPsych: any) {
     this.jsPsych = jsPsych;
@@ -113,6 +115,8 @@ class SurveyjsComponent {
   }
 
   render(display_element: HTMLElement, trial: any, onResponse?: () => void) {
+    this.timing = trial.__timing || null;
+
     // Helper to map coordinate values
     const mapValue = (value: number): number => {
       if (value < -100) return -50;
@@ -180,7 +184,7 @@ class SurveyjsComponent {
           sender.mergeData({ [question.name]: question.defaultValue ?? null });
         }
       }
-      this.rt = Math.round(performance.now() - this.startTime);
+      this.rt = getResponseRT({ start_time: this.startTime }, this.timing);
       this.response = sender.data;
 
       // Call onResponse callback to finish the trial
@@ -193,7 +197,13 @@ class SurveyjsComponent {
       trial.min_width || "min(100vw, 800px)",
     );
     this.survey.render(survey_container);
-    this.startTime = performance.now();
+    if (this.timing) {
+      this.timing.onStart((timestamp: number) => {
+        this.startTime = timestamp;
+      });
+    } else {
+      this.startTime = performance.now();
+    }
   }
 
   getResponse() {

@@ -73,7 +73,6 @@ function LoopSubCanvas({
     updateTrialField,
     updateLoop,
     timeline,
-    updateTimeline,
   } = useTrials();
 
   const [showBranchedModal, setShowBranchedModal] = useState(false);
@@ -115,7 +114,6 @@ function LoopSubCanvas({
     createTrial,
     setShowLoopModal,
     createLoop,
-    updateTimeline,
   });
 
   // Wrapper for onAddBranch that shows the modal
@@ -307,44 +305,22 @@ function LoopSubCanvas({
 
       console.log(`✓ Moved ${itemToMove.name} to ${destinationItem.name}`);
 
-      // ========== STEP 3: REORDER TIMELINE ==========
-      // Items in a loop are also in the main timeline, so we need to reorder there too
-      const newTimeline = [...timeline];
-
-      // Remove the moved item from its current position
-      const movedItemIndex = newTimeline.findIndex(
-        (item) => item.id === itemToMove.id,
-      );
-      if (movedItemIndex !== -1) {
-        newTimeline.splice(movedItemIndex, 1);
+      // ========== STEP 3: UPDATE LOOP DIRECT CHILDREN ==========
+      // SubCanvas content belongs to loop.trials, not the root timeline.
+      const parentLoop = await getLoop(loopId);
+      if (parentLoop?.trials) {
+        const nextTrials = parentLoop.trials.filter(
+          (id) => id !== itemToMove.id,
+        );
+        if (nextTrials.length !== parentLoop.trials.length) {
+          await updateLoop(loopId, { trials: nextTrials });
+          if (itemToMove.type === "trial") {
+            await updateTrial(itemToMove.id, { parentLoopId: String(loopId) });
+          } else {
+            await updateLoop(itemToMove.id, { parentLoopId: String(loopId) });
+          }
+        }
       }
-
-      // Find the destination's position (after removal)
-      const destIndex = newTimeline.findIndex(
-        (item) => item.id === destinationId,
-      );
-
-      // Insert the moved item right after the destination
-      if (destIndex !== -1) {
-        newTimeline.splice(destIndex + 1, 0, {
-          id: itemToMove.id,
-          type: itemToMove.type,
-          name: itemToMove.name,
-          branches: [], // Will be updated by the backend
-        });
-      } else {
-        // If destination not found, append at the end
-        newTimeline.push({
-          id: itemToMove.id,
-          type: itemToMove.type,
-          name: itemToMove.name,
-          branches: [],
-        });
-      }
-
-      // Update the timeline in the backend
-      await updateTimeline(newTimeline);
-      console.log("✓ Timeline reordered");
 
       // Refresh metadata to update the loop SubCanvas view
       if (onRefreshMetadata) {

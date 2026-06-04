@@ -11,6 +11,7 @@ import {
   restoreStyleFields,
   syncConfigToComponent,
 } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/syncConfigToComponent";
+import { getTextNaturalSize } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/textSizing";
 
 const canvasStyles: CanvasStyles = {
   ...DEFAULT_CANVAS_STYLES,
@@ -212,6 +213,40 @@ describe("syncConfigToComponent", () => {
         buttonFontSize: 18,
       }),
     );
+  });
+});
+
+describe("getTextNaturalSize", () => {
+  it("keeps short placeholder text at the default visual size", () => {
+    expect(
+      getTextNaturalSize({
+        text: "Text",
+        fontSize: 16,
+        canvasWidth: 1440,
+      }),
+    ).toEqual({ width: 200, height: 40 });
+  });
+
+  it("expands long text without requiring a manual resize", () => {
+    const size = getTextNaturalSize({
+      text: "In this task, you will see five arrows on the screen, like the example below.",
+      fontSize: 16,
+      canvasWidth: 1440,
+    });
+
+    expect(size.width).toBeGreaterThan(600);
+    expect(size.height).toBe(40);
+  });
+
+  it("caps very long text to the canvas and grows vertically for wrapped lines", () => {
+    const size = getTextNaturalSize({
+      text: "word ".repeat(120),
+      fontSize: 20,
+      canvasWidth: 500,
+    });
+
+    expect(size.width).toBe(430);
+    expect(size.height).toBeGreaterThan(40);
   });
 });
 

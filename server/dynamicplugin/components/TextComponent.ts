@@ -1,4 +1,9 @@
 import { ParameterType } from "jspsych";
+import {
+  getResponseRT,
+  scheduleStimulusVisibility,
+  setResponseStartTime,
+} from "../utils/PrecisionTiming";
 
 var version = "1.0.0";
 
@@ -211,8 +216,7 @@ const info = {
 class TextComponent {
   private jsPsych: any;
   private element: HTMLElement | null = null;
-  private onsetTimeout: number | null = null;
-  private hideTimeout: number | null = null;
+  private cancelVisibilitySchedule: (() => void) | null = null;
 
   // ── Cloze state ─────────────────────────────────────────────────────────
   private isClozeMode: boolean = false;
@@ -352,8 +356,7 @@ class TextComponent {
         this.inputElements[0].focus();
       }
 
-      // Start timing
-      this.start_time = performance.now();
+      setResponseStartTime(this, config.__timing);
     } else {
       // ── Plain text mode (original behaviour) ─────────────────────────────
       this.element.style.whiteSpace = "pre-wrap";
@@ -361,21 +364,11 @@ class TextComponent {
       container.appendChild(this.element);
     }
 
-    const stimulusOnset = this.resolveParam(config.stimulus_onset, null);
-    const stimulusDuration = this.resolveParam(config.stimulus_duration, null);
-
-    if (stimulusOnset !== null) {
-      this.element.style.visibility = "hidden";
-      this.onsetTimeout = this.jsPsych.pluginAPI.setTimeout(() => {
-        if (this.element) this.element.style.visibility = "visible";
-      }, stimulusOnset);
-    }
-    if (stimulusDuration !== null) {
-      const hideAt = (stimulusOnset ?? 0) + stimulusDuration;
-      this.hideTimeout = this.jsPsych.pluginAPI.setTimeout(() => {
-        this.hide();
-      }, hideAt);
-    }
+    this.cancelVisibilitySchedule = scheduleStimulusVisibility(
+      this.element,
+      config,
+      config.__timing,
+    );
 
     return this.element;
   }
@@ -452,7 +445,7 @@ class TextComponent {
     const answers = this.collectCurrentResponse(config);
     if (answers === null) return false;
 
-    this.rt = Math.round(performance.now() - this.start_time!);
+    this.rt = getResponseRT(this, config.__timing);
     this.response = answers;
     return true;
   }
@@ -484,12 +477,7 @@ class TextComponent {
   }
 
   destroy(): void {
-    if (this.onsetTimeout !== null) {
-      clearTimeout(this.onsetTimeout);
-    }
-    if (this.hideTimeout !== null) {
-      clearTimeout(this.hideTimeout);
-    }
+    if (this.cancelVisibilitySchedule) this.cancelVisibilitySchedule();
     if (this.element && this.element.parentNode) {
       this.element.parentNode.removeChild(this.element);
     }

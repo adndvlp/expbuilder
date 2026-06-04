@@ -11,29 +11,6 @@
     },
     "activeProvider": "lmstudio",
     "activeModel": "qwen/qwen3-coder-30b",
-    "conversations": [
-      {
-        "id": "9mvj10ay",
-        "title": "hola",
-        "messages": [
-          {
-            "id": "f6jya0q4",
-            "role": "user",
-            "content": "hola",
-            "timestamp": "2026-05-28T02:28:47.725Z"
-          },
-          {
-            "id": "bo112d9p",
-            "role": "assistant",
-            "content": "",
-            "toolCalls": [],
-            "timestamp": "2026-05-28T02:28:47.725Z",
-            "isStreaming": false
-          }
-        ],
-        "createdAt": "2026-05-28T02:28:47.725Z",
-        "updatedAt": "2026-05-28T02:28:47.726Z"
-      }
-    ]
+    "conversations": []
   }
 }

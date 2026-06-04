@@ -208,31 +208,39 @@ class VideoComponent {
       videoElement.addEventListener(
         "loadeddata",
         () => {
-          // Try with audio first
-          const playPromise = videoElement.play();
-          if (playPromise !== undefined) {
-            playPromise.catch((error) => {
-              console.warn("Autoplay with audio failed, trying muted:", error);
-              // If autoplay with audio fails, try muted
-              videoElement.muted = true;
-              videoElement
-                .play()
-                .then(() => {
-                  console.log("Playing muted - click video to unmute");
-                  // Add click listener to unmute
-                  videoElement.addEventListener(
-                    "click",
-                    () => {
-                      videoElement.muted = false;
-                    },
-                    { once: true },
-                  );
-                })
-                .catch((err) => {
-                  console.error("Autoplay failed completely:", err);
-                  videoElement.controls = true;
-                });
-            });
+          const startPlayback = () => {
+            // Try with audio first
+            const playPromise = videoElement.play();
+            if (playPromise !== undefined) {
+              playPromise.catch((error) => {
+                console.warn("Autoplay with audio failed, trying muted:", error);
+                // If autoplay with audio fails, try muted
+                videoElement.muted = true;
+                videoElement
+                  .play()
+                  .then(() => {
+                    console.log("Playing muted - click video to unmute");
+                    // Add click listener to unmute
+                    videoElement.addEventListener(
+                      "click",
+                      () => {
+                        videoElement.muted = false;
+                      },
+                      { once: true },
+                    );
+                  })
+                  .catch((err) => {
+                    console.error("Autoplay failed completely:", err);
+                    videoElement.controls = true;
+                  });
+              });
+            }
+          };
+
+          if (config.__timing) {
+            config.__timing.onStart(startPlayback);
+          } else {
+            startPlayback();
           }
         },
         { once: true },

@@ -1,4 +1,5 @@
 import { ParameterType } from "jspsych";
+import { getResponseRT, setResponseStartTime } from "../utils/PrecisionTiming";
 
 var version = "2.1.0";
 
@@ -53,9 +54,11 @@ class KeyboardResponseComponent {
   private jsPsych: any;
   private response: string | null;
   private rt: number | null;
-  private keyboardListener: any;
+  private keyboardListener: ((e: KeyboardEvent) => void) | null;
+  private rootElement: HTMLElement | null = null;
   private _trial: any = null;
   private _onResponse: (() => void) | null = null;
+  private _timing: any = null;
 
   static info = info;
 
@@ -76,21 +79,75 @@ class KeyboardResponseComponent {
   ): void {
     this._trial = trial;
     this._onResponse = onResponse || null;
+    this._timing = trial.__timing || null;
+    setResponseStartTime(this, this._timing);
+
     // Only setup keyboard listener if choices are allowed
     if (trial.choices !== "NO_KEYS") {
-      this.keyboardListener = this.jsPsych.pluginAPI.getKeyboardResponse({
-        callback_function: (info: any) => {
-          this.recordResponse(info);
-          if (onResponse) {
-            onResponse();
-          }
-        },
-        valid_responses: trial.choices,
-        rt_method: "performance",
-        persist: false,
-        allow_held_key: false,
-      });
+      if (this._timing) {
+        this._timing.onStart(() => this.activateKeyboardListener());
+      } else {
+        this.activateKeyboardListener();
+      }
     }
+  }
+
+  private activateKeyboardListener(): void {
+    if (!this._trial || this.keyboardListener !== null) return;
+
+    this.rootElement =
+      this.jsPsych.getDisplayContainerElement?.() ||
+      this.jsPsych.getDisplayElement?.() ||
+      document.body;
+
+    const settings = this.jsPsych.getInitSettings?.() || {};
+    const caseSensitive = settings.case_sensitive_responses === true;
+    const minimumValidRt = Number(settings.minimum_valid_rt ?? 0);
+    const validResponses = this.normalizeChoices(this._trial.choices, caseSensitive);
+
+    this.keyboardListener = (event: KeyboardEvent) => {
+      if (this.response !== null) return;
+      if (event.repeat) return;
+
+      const comparableKey = caseSensitive ? event.key : event.key.toLowerCase();
+      if (!this.isResponseValid(validResponses, comparableKey)) return;
+
+      const rt = getResponseRT(this, this._timing, event);
+      if (rt < minimumValidRt) return;
+
+      event.preventDefault();
+      this.recordResponse({ key: event.key, rt });
+      this.destroyKeyboardListener();
+      if (this._onResponse) {
+        this._onResponse();
+      }
+    };
+
+    this.rootElement.addEventListener("keydown", this.keyboardListener);
+  }
+
+  private normalizeChoices(choices: any, caseSensitive: boolean): any {
+    if (choices === "ALL_KEYS" || choices === "NO_KEYS") return choices;
+    const flatChoices = Array.isArray(choices) ? choices.flat() : [choices];
+    return caseSensitive
+      ? flatChoices
+      : flatChoices.map((choice: string) =>
+          typeof choice === "string" ? choice.toLowerCase() : choice,
+        );
+  }
+
+  private isResponseValid(validResponses: any, key: string): boolean {
+    if (validResponses === "ALL_KEYS") return true;
+    if (validResponses === "NO_KEYS") return false;
+    return validResponses.includes(key);
+  }
+
+  private destroyKeyboardListener(): void {
+    if (this.keyboardListener !== null && this.rootElement !== null) {
+      this.rootElement.removeEventListener("keydown", this.keyboardListener);
+    }
+    this.keyboardListener = null;
+    this.rootElement = null;
   }
 
   /**
@@ -130,18 +187,8 @@ class KeyboardResponseComponent {
     this.response = null;
     this.rt = null;
     if (this._trial && this._trial.choices !== "NO_KEYS") {
-      this.keyboardListener = this.jsPsych.pluginAPI.getKeyboardResponse({
-        callback_function: (info: any) => {
-          this.recordResponse(info);
-          if (this._onResponse) {
-            this._onResponse();
-          }
-        },
-        valid_responses: this._trial.choices,
-        rt_method: "performance",
-        persist: false,
-        allow_held_key: false,
-      });
+      this.destroyKeyboardListener();
+      this.activateKeyboardListener();
     }
   }
 
@@ -149,9 +196,7 @@ class KeyboardResponseComponent {
    * Cleanup: cancel keyboard listener
    */
   destroy(): void {
-    if (this.keyboardListener !== null) {
-      this.jsPsych.pluginAPI.cancelKeyboardResponse(this.keyboardListener);
-    }
+    this.destroyKeyboardListener();
   }
 }
 

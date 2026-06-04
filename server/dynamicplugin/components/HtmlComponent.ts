@@ -1,4 +1,5 @@
 import { ParameterType } from "jspsych";
+import { scheduleStimulusVisibility } from "../utils/PrecisionTiming";
 
 var version = "2.1.0";
 
@@ -52,8 +53,7 @@ const info = {
 class HtmlComponent {
   private jsPsych: any;
   private stimulusElement: HTMLElement | null = null;
-  private onsetTimeout: number | null = null;
-  private hideTimeout: number | null = null;
+  private cancelVisibilitySchedule: (() => void) | null = null;
 
   constructor(jsPsych: any) {
     this.jsPsych = jsPsych;
@@ -94,27 +94,11 @@ class HtmlComponent {
     container.appendChild(stimulusElement);
     this.stimulusElement = stimulusElement;
 
-    const resolveMs = (raw: any): number | null => {
-      if (raw === null || raw === undefined) return null;
-      if (typeof raw === "object" && "value" in raw) return raw.value ?? null;
-      return raw;
-    };
-    const stimulusOnset = resolveMs(config.stimulus_onset);
-    const stimulusDuration = resolveMs(config.stimulus_duration);
-
-    if (stimulusOnset !== null) {
-      stimulusElement.style.visibility = "hidden";
-      this.onsetTimeout = this.jsPsych.pluginAPI.setTimeout(() => {
-        if (this.stimulusElement)
-          this.stimulusElement.style.visibility = "visible";
-      }, stimulusOnset);
-    }
-    if (stimulusDuration !== null) {
-      const hideAt = (stimulusOnset ?? 0) + stimulusDuration;
-      this.hideTimeout = this.jsPsych.pluginAPI.setTimeout(() => {
-        this.hide();
-      }, hideAt);
-    }
+    this.cancelVisibilitySchedule = scheduleStimulusVisibility(
+      stimulusElement,
+      config,
+      config.__timing,
+    );
 
     return stimulusElement;
   }
@@ -141,12 +125,7 @@ class HtmlComponent {
    * Remove the HTML content from DOM and clean up
    */
   destroy() {
-    if (this.onsetTimeout !== null) {
-      clearTimeout(this.onsetTimeout);
-    }
-    if (this.hideTimeout !== null) {
-      clearTimeout(this.hideTimeout);
-    }
+    if (this.cancelVisibilitySchedule) this.cancelVisibilitySchedule();
     if (this.stimulusElement && this.stimulusElement.parentNode) {
       this.stimulusElement.parentNode.removeChild(this.stimulusElement);
     }

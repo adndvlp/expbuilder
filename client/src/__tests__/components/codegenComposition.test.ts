@@ -365,6 +365,55 @@ describe("useLoopCode composition", () => {
     expect(code).toContain("jsPsych.run(timeline);");
   });
 
+  it("checks a newly requested loop branch target before suppressing remaining wrappers", () => {
+    const genLoopCode = useLoopCode({
+      id: "loop_chain",
+      branches: undefined,
+      branchConditions: undefined,
+      repetitions: 1,
+      randomize: false,
+      orders: false,
+      stimuliOrders: [],
+      categories: false,
+      categoryData: [],
+      trials: [
+        {
+          trialName: "Trial A",
+          pluginName: "html-keyboard-response",
+          timelineProps: "const Trial_A_timeline = { data: { trial_id: 1 } };",
+          mappedJson: [{ stimulus_Trial_A: "A" }],
+        },
+        {
+          trialName: "Trial C",
+          pluginName: "html-keyboard-response",
+          timelineProps: "const Trial_C_timeline = { data: { trial_id: 3 } };",
+          mappedJson: [{ stimulus_Trial_C: "C" }],
+        },
+        {
+          trialName: "Trial B",
+          pluginName: "html-keyboard-response",
+          timelineProps: "const Trial_B_timeline = { data: { trial_id: 2 } };",
+          mappedJson: [{ stimulus_Trial_B: "B" }],
+        },
+      ],
+      unifiedStimuli: [
+        {
+          stimulus_Trial_A: "A",
+          stimulus_Trial_C: "C",
+          stimulus_Trial_B: "B",
+        },
+      ],
+    });
+
+    const code = normalize(genLoopCode());
+    const skipCheckIndex = code.indexOf("if (loop_loop_chain_SkipRemaining)");
+    const targetExecutedIndex = code.indexOf("if (loop_loop_chain_TargetExecuted)");
+
+    expect(skipCheckIndex).toBeGreaterThan(-1);
+    expect(targetExecutedIndex).toBeGreaterThan(-1);
+    expect(skipCheckIndex).toBeLessThan(targetExecutedIndex);
+  });
+
   it("generates loop repeat conditions together with branch conditions", () => {
     const genLoopCode = useLoopCode({
       id: "loop_combo",

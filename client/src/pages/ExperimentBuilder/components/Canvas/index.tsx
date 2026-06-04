@@ -170,7 +170,7 @@ function Canvas() {
   const handleRefreshLoopMetadata = async () => {
     if (!openLoop) return;
     try {
-      await getLoopTimeline(openLoop.id);
+      await getLoopTimeline(openLoop.id, true, true);
     } catch (error) {
       console.error("Error refreshing loop metadata:", error);
     }

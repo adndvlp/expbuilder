@@ -200,7 +200,7 @@ describe("SubCanvas Actions", () => {
     );
   });
 
-  it("inserts a new trial as parent of existing branches and rewrites the visual timeline", async () => {
+  it("inserts a new trial as parent of existing branches without touching the root timeline", async () => {
     const { props, api } = createActions();
 
     await api.addTrialAsParent(10);
@@ -217,16 +217,7 @@ describe("SubCanvas Actions", () => {
       { branches: [99] },
       expect.objectContaining({ id: 99 }),
     );
-    expect(props.updateTimeline).toHaveBeenCalledWith([
-      timeline[0],
-      timeline[1],
-      {
-        id: 99,
-        type: "trial",
-        name: "New Trial 1",
-        branches: [11],
-      },
-    ]);
+    expect(props.updateTimeline).not.toHaveBeenCalled();
     expect(props.onSelectTrial).toHaveBeenCalledWith(
       expect.objectContaining({ id: 99, branches: [11] }),
     );
@@ -278,16 +269,7 @@ describe("SubCanvas Actions", () => {
       expect.objectContaining({ id: 99 }),
     );
     expect(props.updateTrialField).not.toHaveBeenCalled();
-    expect(props.updateTimeline).toHaveBeenCalledWith([
-      timeline[0],
-      timeline[1],
-      {
-        id: 99,
-        type: "trial",
-        name: "New Trial 1",
-        branches: [10],
-      },
-    ]);
+    expect(props.updateTimeline).not.toHaveBeenCalled();
   });
 
   it("creates a nested loop from selected loop timeline items", async () => {

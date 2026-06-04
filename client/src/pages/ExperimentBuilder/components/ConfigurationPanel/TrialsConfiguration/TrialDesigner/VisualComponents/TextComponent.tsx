@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { Rect, Text, Transformer, Group } from "react-konva";
 import Konva from "konva";
+import { getTextNaturalSize } from "../textSizing";
 
 interface TrialComponent {
   id: string;
@@ -30,6 +31,7 @@ interface TextComponentProps {
   isSelected: boolean;
   onSelect: () => void;
   onChange: (newAttrs: any) => void;
+  canvasWidth?: number;
 }
 
 const NATURAL_W = 200;
@@ -40,6 +42,7 @@ const TextComponent: React.FC<TextComponentProps> = ({
   isSelected,
   onSelect,
   onChange,
+  canvasWidth,
 }) => {
   const groupRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
@@ -87,6 +90,7 @@ const TextComponent: React.FC<TextComponentProps> = ({
     shapeProps.textBorderColor ?? getConfigValue("border_color", "transparent");
   const borderWidth =
     shapeProps.textBorderWidth ?? getConfigValue("border_width", 0);
+  const lineHeight = getConfigValue("line_height", 1.5);
 
   const displayText = getConfigValue("text", "Text");
 
@@ -94,9 +98,21 @@ const TextComponent: React.FC<TextComponentProps> = ({
   const textParts: string[] = String(displayText).split("%");
   const isClozeMode = textParts.length >= 3 && textParts.length % 2 === 1;
 
-  // Natural → effective sizing
-  const effectiveWidth = shapeProps.width > 0 ? shapeProps.width : NATURAL_W;
-  const effectiveHeight = shapeProps.height > 0 ? shapeProps.height : NATURAL_H;
+  // Natural -> effective sizing. Text without an explicit resize should grow
+  // with the typed content instead of staying trapped in the default 200px box.
+  const naturalTextSize = getTextNaturalSize({
+    text: String(displayText),
+    fontSize,
+    lineHeight,
+    canvasWidth,
+    maxWidth: shapeProps.width > 0 ? shapeProps.width : undefined,
+  });
+  const effectiveWidth =
+    shapeProps.width > 0 ? shapeProps.width : naturalTextSize.width || NATURAL_W;
+  const effectiveHeight =
+    shapeProps.height > 0
+      ? shapeProps.height
+      : naturalTextSize.height || NATURAL_H;
 
   // Derive Konva font style string ("normal", "bold", "italic", "bold italic")
   const konvaFontStyle =
@@ -250,6 +266,7 @@ const TextComponent: React.FC<TextComponentProps> = ({
             fill={fontColor}
             align={textAlign}
             verticalAlign="middle"
+            lineHeight={lineHeight}
             padding={4}
             wrap="word"
             ellipsis

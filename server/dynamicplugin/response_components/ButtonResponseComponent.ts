@@ -1,4 +1,9 @@
 import { ParameterType } from "jspsych";
+import {
+  getResponseRT,
+  resolveTimingMs,
+  setResponseStartTime,
+} from "../utils/PrecisionTiming";
 
 var version = "2.2.0";
 
@@ -184,6 +189,7 @@ class ButtonResponseComponent {
   private start_time: number | null;
   private buttonGroupElement: HTMLElement | null;
   private enableTimeout: any;
+  private timing: any = null;
 
   static info = info;
 
@@ -288,6 +294,8 @@ class ButtonResponseComponent {
     trial: any,
     onResponse?: () => void,
   ): void {
+    this.timing = trial.__timing || null;
+
     // Helper to map coordinate values
     const mapValue = (value: number): number => {
       if (value < -100) return -50;
@@ -356,36 +364,35 @@ class ButtonResponseComponent {
       this.buttonGroupElement.insertAdjacentHTML("beforeend", html);
       const buttonElement = this.buttonGroupElement.lastChild as HTMLElement;
       buttonElement.dataset.choice = choice;
-      buttonElement.addEventListener("click", () => {
-        this.storeButtonResponse(choice);
+      buttonElement.addEventListener("click", (event) => {
+        this.storeButtonResponse(choice, event);
         if (onResponse) {
           onResponse();
         }
       });
     }
 
-    // Start timing
-    this.start_time = performance.now();
+    setResponseStartTime(this, this.timing);
 
     // Handle enable_button_after delay
-    if (trial.enable_button_after > 0) {
+    const enableButtonAfter = resolveTimingMs(trial.enable_button_after, 0) ?? 0;
+    if (enableButtonAfter > 0) {
       this.disableButtons();
-      this.enableTimeout = this.jsPsych.pluginAPI.setTimeout(() => {
-        this.enableButtons();
-      }, trial.enable_button_after);
+      this.enableTimeout = this.timing
+        ? this.timing.scheduleAt(enableButtonAfter, () => this.enableButtons())
+        : window.setTimeout(() => this.enableButtons(), enableButtonAfter);
     }
   }
 
   /**
    * Record the button response and RT
    */
-  private storeButtonResponse(choice: string): void {
+  private storeButtonResponse(choice: string, event?: Event): void {
     if (this.response !== null) {
       return; // Already responded
     }
 
-    const end_time = performance.now();
-    this.rt = Math.round(end_time - this.start_time!);
+    this.rt = getResponseRT(this, this.timing, event);
     this.response = choice;
 
     // Disable all buttons after response
@@ -463,7 +470,11 @@ class ButtonResponseComponent {
    */
   destroy(): void {
     if (this.enableTimeout) {
-      this.jsPsych.pluginAPI.clearTimeout(this.enableTimeout);
+      if (typeof this.enableTimeout === "function") {
+        this.enableTimeout();
+      } else {
+        window.clearTimeout(this.enableTimeout);
+      }
     }
 
     if (this.buttonGroupElement) {

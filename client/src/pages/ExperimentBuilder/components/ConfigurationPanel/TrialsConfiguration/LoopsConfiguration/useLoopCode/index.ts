@@ -143,6 +143,17 @@ export default function useLoopCode({
           return false;
         }
         
+        // If loopSkipRemaining is active, check if this is the target item
+        if (loop_${loopIdSanitized}_SkipRemaining) {
+          if (String(currentId) === String(loop_${loopIdSanitized}_NextTrialId)) {
+            // Found the target item inside the loop
+            loop_${loopIdSanitized}_TargetExecuted = true;
+            return true;
+          }
+          // Not the target, skip
+          return false;
+        }
+
         // If the target item has already been executed, skip all remaining items in this iteration
         if (loop_${loopIdSanitized}_TargetExecuted) {
           ${
@@ -157,17 +168,6 @@ export default function useLoopCode({
           loop_${loopIdSanitized}_IterationComplete = false;`
               : ""
           }
-          return false;
-        }
-        
-        // If loopSkipRemaining is active, check if this is the target item
-        if (loop_${loopIdSanitized}_SkipRemaining) {
-          if (String(currentId) === String(loop_${loopIdSanitized}_NextTrialId)) {
-            // Found the target item inside the loop
-            loop_${loopIdSanitized}_TargetExecuted = true;
-            return true;
-          }
-          // Not the target, skip
           return false;
         }
         

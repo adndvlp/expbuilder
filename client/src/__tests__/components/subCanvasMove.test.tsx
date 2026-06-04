@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import LoopSubCanvas from "../../pages/ExperimentBuilder/components/Canvas/SubCanvas";
-import type { Trial } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/types";
+import type { Loop, Trial } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/types";
 import type { TimelineItem } from "../../pages/ExperimentBuilder/contexts/TrialsContext";
 
 const mocks = vi.hoisted(() => ({
@@ -128,7 +128,24 @@ function installTrialsContext() {
     createTrial: vi.fn(),
     createLoop: vi.fn(),
     getTrial: vi.fn(async (id: string | number) => trials.get(id) || null),
-    getLoop: vi.fn(async () => null),
+    getLoop: vi.fn(async (id: string | number) =>
+      id === "loop_parent"
+        ? ({
+            id: "loop_parent",
+            name: "Parent Loop",
+            repetitions: 1,
+            randomize: false,
+            orders: false,
+            stimuliOrders: [],
+            orderColumns: [],
+            categories: false,
+            categoryColumn: "",
+            categoryData: [],
+            trials: [10, 11, 12],
+            code: "",
+          } as Loop)
+        : null,
+    ),
     updateTrial: vi.fn(async (id: string | number, patch: Partial<Trial>) => ({
       ...(trials.get(id) as Trial),
       ...patch,
@@ -194,12 +211,13 @@ describe("SubCanvas move flow", () => {
       });
     });
 
-    expect(mocks.trialsContext.updateTimeline).toHaveBeenCalledWith([
-      { id: 10, type: "trial", name: "Parent", branches: [11, 12] },
-      { id: 12, type: "trial", name: "Destination", branches: [] },
-      { id: 11, type: "trial", name: "Move Me", branches: [] },
-      { id: 13, type: "trial", name: "Child", branches: [] },
-    ]);
+    expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith("loop_parent", {
+      trials: [10, 12],
+    });
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(11, {
+      parentLoopId: "loop_parent",
+    });
+    expect(mocks.trialsContext.updateTimeline).not.toHaveBeenCalled();
     expect(onRefreshMetadata).toHaveBeenCalled();
   });
 
@@ -240,5 +258,13 @@ describe("SubCanvas move flow", () => {
         branches: [11],
       });
     });
+
+    expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith("loop_parent", {
+      trials: [10, 12],
+    });
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(11, {
+      parentLoopId: "loop_parent",
+    });
+    expect(mocks.trialsContext.updateTimeline).not.toHaveBeenCalled();
   });
 });

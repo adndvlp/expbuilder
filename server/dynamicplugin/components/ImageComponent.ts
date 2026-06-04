@@ -1,4 +1,5 @@
 import { ParameterType } from "jspsych";
+import { scheduleStimulusVisibility } from "../utils/PrecisionTiming";
 
 var version = "2.2.0";
 
@@ -72,8 +73,7 @@ const info = {
 class ImageComponent {
   private jsPsych: any;
   private element: HTMLElement | null = null;
-  private onsetTimeout: number | null = null;
-  private hideTimeout: number | null = null;
+  private cancelVisibilitySchedule: (() => void) | null = null;
 
   constructor(jsPsych: any) {
     this.jsPsych = jsPsych;
@@ -231,29 +231,12 @@ class ImageComponent {
 
     imageContainer.appendChild(stimulusElement);
 
-    // Resolve onset and duration
-    const resolveMs = (raw: any): number | null => {
-      if (raw === null || raw === undefined) return null;
-      if (typeof raw === "object" && "value" in raw) return raw.value ?? null;
-      return raw;
-    };
-    const stimulusOnset = resolveMs(config.stimulus_onset);
-    const stimulusDuration = resolveMs(config.stimulus_duration);
-
-    if (stimulusOnset !== null) {
-      stimulusElement.style.visibility = "hidden";
-      this.onsetTimeout = this.jsPsych.pluginAPI.setTimeout(() => {
-        if (this.element) this.element.style.visibility = "visible";
-      }, stimulusOnset);
-    }
-    if (stimulusDuration !== null) {
-      const hideAt = (stimulusOnset ?? 0) + stimulusDuration;
-      this.hideTimeout = this.jsPsych.pluginAPI.setTimeout(() => {
-        this.hide();
-      }, hideAt);
-    }
-
     this.element = stimulusElement;
+    this.cancelVisibilitySchedule = scheduleStimulusVisibility(
+      stimulusElement,
+      config,
+      config.__timing,
+    );
     return stimulusElement;
   }
 
@@ -279,12 +262,7 @@ class ImageComponent {
    * Remove the image from DOM and clean up
    */
   destroy() {
-    if (this.onsetTimeout !== null) {
-      clearTimeout(this.onsetTimeout);
-    }
-    if (this.hideTimeout !== null) {
-      clearTimeout(this.hideTimeout);
-    }
+    if (this.cancelVisibilitySchedule) this.cancelVisibilitySchedule();
     if (this.element && this.element.parentNode) {
       this.element.parentNode.removeChild(this.element);
     }
