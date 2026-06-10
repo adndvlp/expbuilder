@@ -25,7 +25,7 @@ function ComponentsSection({
   const [audioExpanded, setAudioExpanded] = useState(false);
   return (
     <div key={type}>
-      {type === "ImageComponent" && (
+      {(type === "ImageComponent" || type === "CanvasImageComponent") && (
         <>
           <button
             onClick={() => setImageExpanded(!imageExpanded)}
@@ -79,7 +79,7 @@ function ComponentsSection({
                     draggable
                     onDragStart={(e) => {
                       e.dataTransfer.setData("fileUrl", imgUrl);
-                      e.dataTransfer.setData("type", "ImageComponent");
+                      e.dataTransfer.setData("type", type);
                     }}
                     style={{
                       cursor: "grab",
@@ -292,6 +292,7 @@ function ComponentsSection({
         </>
       )}
       {type !== "ImageComponent" &&
+        type !== "CanvasImageComponent" &&
         type !== "VideoComponent" &&
         type !== "AudioComponent" && (
           <GenericComponents

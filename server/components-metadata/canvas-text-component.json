@@ -1,0 +1,90 @@
+{
+  "name": "CanvasTextComponent",
+  "version": "1.0.0",
+  "parameters": {
+    "name": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string",
+      "default": "Text",
+      "pretty_name": "Text",
+      "description": "Short text to draw into the trial canvas."
+    },
+    "coordinates": {
+      "type": "object",
+      "default": "{ x: 0, y: 0 }",
+      "pretty_name": "Coordinates"
+    },
+    "zIndex": {
+      "type": "number",
+      "default": 0,
+      "pretty_name": "Z-Index"
+    },
+    "rotation": {
+      "type": "number",
+      "default": 0,
+      "pretty_name": "Rotation"
+    },
+    "font_color": {
+      "type": "string",
+      "default": "#000000",
+      "pretty_name": "Font Color"
+    },
+    "font_size": {
+      "type": "number",
+      "default": 48,
+      "pretty_name": "Font Size"
+    },
+    "font_family": {
+      "type": "string",
+      "default": "sans-serif",
+      "pretty_name": "Font Family"
+    },
+    "font_weight": {
+      "type": "string",
+      "default": "normal",
+      "pretty_name": "Font Weight"
+    },
+    "font_style": {
+      "type": "string",
+      "default": "normal",
+      "pretty_name": "Font Style"
+    },
+    "text_align": {
+      "type": "string",
+      "default": "center",
+      "pretty_name": "Text Align"
+    },
+    "line_height": {
+      "type": "number",
+      "default": 1.2,
+      "pretty_name": "Line Height"
+    },
+    "background_color": {
+      "type": "string",
+      "default": null,
+      "pretty_name": "Background Color"
+    },
+    "stimulus_onset": {
+      "type": "number",
+      "default": null,
+      "pretty_name": "Stimulus Onset"
+    },
+    "stimulus_duration": {
+      "type": "number",
+      "default": null,
+      "pretty_name": "Stimulus Duration"
+    },
+    "clear_before_draw": {
+      "type": "boolean",
+      "default": true,
+      "pretty_name": "Clear Before Draw"
+    },
+    "clear_on_offset": {
+      "type": "boolean",
+      "default": true,
+      "pretty_name": "Clear On Offset"
+    }
+  }
+}

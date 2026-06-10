@@ -1,9 +1,11 @@
 export type ComponentType =
   | "ImageComponent"
+  | "CanvasImageComponent"
   | "VideoComponent"
   | "AudioComponent"
   | "HtmlComponent"
   | "TextComponent"
+  | "CanvasTextComponent"
   | "ButtonResponseComponent"
   | "KeyboardResponseComponent"
   | "SliderResponseComponent"

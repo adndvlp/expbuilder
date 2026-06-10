@@ -87,7 +87,7 @@ export default function handleDrop({
         source: "typed",
         value: newZIndex,
       },
-      ...(type === "ImageComponent" && {
+      ...((type === "ImageComponent" || type === "CanvasImageComponent") && {
         stimulus: {
           source: "typed",
           value: `${fileUrl}`,

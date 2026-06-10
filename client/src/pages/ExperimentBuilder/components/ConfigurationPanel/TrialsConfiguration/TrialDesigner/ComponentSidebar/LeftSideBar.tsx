@@ -87,7 +87,11 @@ function LeftSideBar({
     let width = 200;
     let height = 50;
 
-    if (type === "ImageComponent" || type === "VideoComponent") {
+    if (
+      type === "ImageComponent" ||
+      type === "CanvasImageComponent" ||
+      type === "VideoComponent"
+    ) {
       width = 300;
       height = 300;
     } else if (type === "SliderResponseComponent") {
@@ -100,6 +104,7 @@ function LeftSideBar({
     } else if (
       type === "ButtonResponseComponent" ||
       type === "TextComponent" ||
+      type === "CanvasTextComponent" ||
       type === "HtmlComponent"
     ) {
       // Natural sizing: let the visual component decide its own initial size
@@ -153,9 +158,11 @@ function LeftSideBar({
 
   const componentTypes: { type: ComponentType; label: string }[] = [
     { type: "ImageComponent", label: "Image" },
+    { type: "CanvasImageComponent", label: "Canvas Image" },
     { type: "VideoComponent", label: "Video" },
     { type: "AudioComponent", label: "Audio" },
     { type: "TextComponent", label: "Text" },
+    { type: "CanvasTextComponent", label: "Canvas Text" },
     { type: "HtmlComponent", label: "HTML" },
     { type: "SketchpadComponent", label: "Sketchpad" },
     { type: "SurveyComponent", label: "Survey" },
@@ -224,10 +231,12 @@ function LeftSideBar({
                 .filter(({ type }) =>
                   [
                     "ImageComponent",
+                    "CanvasImageComponent",
                     "VideoComponent",
                     "AudioComponent",
                     "HtmlComponent",
                     "TextComponent",
+                    "CanvasTextComponent",
                   ].includes(type),
                 )
                 .map(({ type, label }) => (

@@ -135,7 +135,9 @@ class CanvasImageComponent {
     }
 
     if (configuredHeight !== null) {
-      drawHeight = (Number(configuredHeight) / 100) * canvasHeight;
+      // Builder stores image height in the same percent-of-canvas-width units
+      // used by ImageComponent, so CanvasImage must use the same conversion.
+      drawHeight = (Number(configuredHeight) / 100) * canvasWidth;
       if (configuredWidth === null && maintainAspectRatio) {
         drawWidth = sourceSize.width * (drawHeight / sourceSize.height);
       }

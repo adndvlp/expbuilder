@@ -127,7 +127,7 @@ const RenderComponent = ({
           // Sync font_size to config when TextComponent is resized (Canva-style)
           if (
             newAttrs.textFontSize !== undefined &&
-            c.type === "TextComponent"
+            (c.type === "TextComponent" || c.type === "CanvasTextComponent")
           ) {
             updated.config = {
               ...updated.config,
@@ -203,6 +203,7 @@ const RenderComponent = ({
   };
   switch (comp.type) {
     case "ImageComponent":
+    case "CanvasImageComponent":
       return (
         <ImageComponent
           key={comp.id}
@@ -240,6 +241,7 @@ const RenderComponent = ({
       );
 
     case "TextComponent":
+    case "CanvasTextComponent":
       return (
         <TextComponent
           key={comp.id}
