@@ -177,48 +177,6 @@ const RESPONSE_COMPONENT_MAP: Record<string, any> = {
   FileUploadResponseComponent,
 };
 
-/**
- * Picks the saved per-screen layout that best matches the current viewport.
- * Uses width-axis Manhattan distance with a 200px threshold so narrow
- * viewports never pick a desktop layout and vice-versa.
- * Falls back to the default saved layout when no close match exists.
- */
-function resolveScreenLayout(config: any): any {
-  if (!config.screenLayouts || typeof config.screenLayouts !== "object") {
-    return config;
-  }
-
-  const entries = Object.entries(config.screenLayouts) as [string, any][];
-  if (entries.length === 0) return config;
-
-  const vw = window.innerWidth;
-  const WIDTH_THRESHOLD = 200;
-
-  let bestMatch: any = null;
-  let bestDist = Infinity;
-
-  for (const [key, layout] of entries) {
-    const [w] = key.split("x").map(Number);
-    const dist = Math.abs(w - vw);
-    if (dist < WIDTH_THRESHOLD && dist < bestDist) {
-      bestDist = dist;
-      bestMatch = layout;
-    }
-  }
-
-  if (!bestMatch) return config;
-
-  return {
-    ...config,
-    coordinates:
-      bestMatch.x !== undefined && bestMatch.y !== undefined
-        ? { x: bestMatch.x, y: bestMatch.y }
-        : config.coordinates,
-    width:  bestMatch.width  !== undefined ? bestMatch.width  : config.width,
-    height: bestMatch.height !== undefined ? bestMatch.height : config.height,
-  };
-}
-
 function isImageUrl(value: string): boolean {
   if (!value) return false;
   try {
@@ -462,7 +420,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
 
     if (trial.components && trial.components.length > 0) {
       trial.components.forEach((rawConfig: any, idx: number) => {
-        const config = resolveScreenLayout(rawConfig);
+        const config = { ...rawConfig };
         // Inject __canvasStyles so components can compute pixel coords
         config.__canvasStyles = trial.__canvasStyles;
         attachPrecisionTiming(config, timing);
@@ -485,7 +443,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
 
     if (trial.response_components && trial.response_components.length > 0) {
       trial.response_components.forEach((rawConfig: any, idx: number) => {
-        const config = resolveScreenLayout(rawConfig);
+        const config = { ...rawConfig };
         config.__canvasStyles = trial.__canvasStyles;
         attachPrecisionTiming(config, timing);
         const ComponentClass = RESPONSE_COMPONENT_MAP[config.type];

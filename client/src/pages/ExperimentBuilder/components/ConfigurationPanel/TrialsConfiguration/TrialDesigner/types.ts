@@ -16,13 +16,6 @@ export type ComponentType =
   | "FileUploadResponseComponent"
   | "ClickResponseComponent";
 
-export type ScreenLayout = {
-  x: number;       // jsPsych normalized -100..+100
-  y: number;       // jsPsych normalized -100..+100
-  width: number;   // vw % (0 = auto)
-  height: number;  // vw % (0 = auto)
-};
-
 export type TrialComponent = {
   id: string;
   type: ComponentType;
@@ -32,9 +25,6 @@ export type TrialComponent = {
   height: number;
   rotation?: number;
   zIndex?: number;
-  // Per-screen-size layout overrides. Key = "WIDTHxHEIGHT" (e.g. "1440x763").
-  // Populated when user switches device presets in the designer.
-  screenLayouts?: Record<string, ScreenLayout>;
   // Button style fields (synced from config, like x/y/rotation)
   buttonColor?: string;
   buttonTextColor?: string;

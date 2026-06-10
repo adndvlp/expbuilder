@@ -4,7 +4,6 @@ import {
   ComponentType,
   CanvasStyles,
   DEFAULT_CANVAS_STYLES,
-  ScreenLayout,
 } from "./types";
 import { restoreStyleFields } from "./syncConfigToComponent";
 
@@ -73,8 +72,7 @@ export default function useLoadComponents({
             key !== "width" &&
             key !== "height" &&
             key !== "rotation" &&
-            key !== "zIndex" &&
-            key !== "screenLayouts"
+            key !== "zIndex"
           ) {
             // Asumir que siempre está en formato {source, value}
             if (
@@ -141,7 +139,6 @@ export default function useLoadComponents({
           rotation: comp.rotation || 0,
           zIndex: comp.zIndex ?? 0,
           config: config,
-          screenLayouts: (comp.screenLayouts as Record<string, ScreenLayout>) ?? undefined,
         };
         loadedComponents.push(restoreStyleFields(base));
       });
@@ -170,8 +167,7 @@ export default function useLoadComponents({
             key !== "width" &&
             key !== "height" &&
             key !== "rotation" &&
-            key !== "zIndex" &&
-            key !== "screenLayouts"
+            key !== "zIndex"
           ) {
             // Si ya está en formato {source, value}, usarlo directamente
             if (
@@ -244,7 +240,6 @@ export default function useLoadComponents({
           rotation: comp.rotation || 0,
           zIndex: comp.zIndex ?? 0,
           config: config,
-          screenLayouts: (comp.screenLayouts as Record<string, ScreenLayout>) ?? undefined,
         };
         loadedComponents.push(restoreStyleFields(base));
       });
