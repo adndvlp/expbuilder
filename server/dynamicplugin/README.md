@@ -11,8 +11,8 @@ The current timing implementation uses:
 - `requestAnimationFrame()` for visual onset, duration, trial duration, and
   frame interval measurement;
 - cached preload for current-trial assets;
-- `ImageBitmap` preparation, `CanvasImageComponent`, and `CanvasTextComponent`
-  for timing-critical visual stimuli;
+- `ImageBitmap` preparation and Canvas rendering for timing-critical
+  `ImageComponent` and plain `TextComponent` stimuli;
 - background prefetch for upcoming DynamicPlugin trial assets;
 - per-trial and per-stimulus timing diagnostics.
 

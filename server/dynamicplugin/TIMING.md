@@ -11,7 +11,7 @@ The DynamicPlugin now follows this pipeline:
 ```txt
 collect current-trial assets
 preload current-trial images/audio/video with cache
-prepare image bitmaps for canvas stimuli when supported
+prepare image bitmaps for canvas-rendered images when supported
 build trial DOM while hidden
 requestAnimationFrame()
 mark trial onset from the frame timestamp
@@ -39,21 +39,28 @@ keyboard, mouse, touch, or hardware polling limits.
   DynamicPlugin orchestration, preload/prefetch, trial onset, trial duration,
   frame logging, timing quality classification, and result fields.
 
-- `components/CanvasImageComponent.ts`
-- `components/CanvasTextComponent.ts`
-  Canvas-based drawing for timing-critical image and short-text stimuli.
-
-- `components/HtmlComponent.ts`
 - `components/ImageComponent.ts`
 - `components/TextComponent.ts`
-  Visual stimulus onset/duration scheduling via measured animation frames.
+  Canvas-based drawing for timing-critical images and plain text, with
+  visual stimulus onset/duration scheduling via measured animation frames.
+
+- `components/CanvasImageComponent.ts`
+- `components/CanvasTextComponent.ts`
+  Legacy compatibility components kept for existing saved configurations.
+
+- `components/HtmlComponent.ts`
+  DOM/iframe rendering for arbitrary HTML with animation-frame onset/duration
+  scheduling.
 
 - `response_components/KeyboardResponseComponent.ts`
   Keyboard RT measured against the actual trial onset.
 
-- `response_components/ButtonResponseComponent.ts`
 - `response_components/ClickResponseComponent.ts`
 - `response_components/SliderResponseComponent.ts`
+- `response_components/ButtonResponseComponent.ts`
+  Canvas-rendered visuals with DOM overlays retained for real browser
+  interaction.
+
 - `response_components/InputResponseComponent.ts`
 - `response_components/SurveyComponent.ts`
 - `response_components/FileUploadResponseComponent.ts`
@@ -93,12 +100,14 @@ Visual component timing parameters are also frame-scheduled:
 - `stimulus_duration`
 
 This currently applies to `HtmlComponent`, `ImageComponent`, `TextComponent`,
-`CanvasImageComponent`, and `CanvasTextComponent`.
+and the legacy `CanvasImageComponent` / `CanvasTextComponent`.
 
 ## Canvas rendering
 
-Use canvas components for timing-critical visual stimuli where the trial should
-avoid DOM layout and CSS visibility changes at onset.
+The current runtime uses a shared `CanvasStage` for timing-critical visual
+drawing. Use ordinary `ImageComponent` and `TextComponent`; separate
+`CanvasImageComponent` and `CanvasTextComponent` files remain only for existing
+saved configurations.
 
 Image example:
 
@@ -107,7 +116,7 @@ Image example:
   type: DynamicPlugin,
   components: [
     {
-      type: "CanvasImageComponent",
+      type: "ImageComponent",
       name: "critical_image",
       stimulus: "armadillo.png",
       coordinates: { x: 0, y: 0 },
@@ -129,7 +138,7 @@ Short text example:
   type: DynamicPlugin,
   components: [
     {
-      type: "CanvasTextComponent",
+      type: "TextComponent",
       name: "critical_word",
       text: "RED",
       font_size: 64,
@@ -164,12 +173,23 @@ Canvas rendering is appropriate for:
 - simple priming stimuli;
 - validation stimuli such as black/white squares.
 
-Use DOM components for instructions, forms, surveys, and interactive controls.
+Interactive components use a hybrid path when needed:
+
+- `ButtonResponseComponent` draws standard button visuals into Canvas and keeps
+  transparent native buttons on top for click, focus, keyboard, and
+  accessibility behavior. Custom `button_html` uses the DOM path.
+- `SliderResponseComponent` draws slider visuals into Canvas and keeps a
+  transparent native range input on top for real browser interaction.
+- `ClickResponseComponent` keeps a DOM capture layer but draws the optional
+  response marker in Canvas.
+
+Use DOM/native rendering for instructions, forms, surveys, arbitrary HTML,
+text/file inputs, audio/video controls, and microphone/file workflows.
 
 Canvas notes:
 
-- A single full-trial canvas stage is shared by `CanvasImageComponent` instances
-  and `CanvasTextComponent` instances in the same trial.
+- A single full-trial canvas stage is shared by canvas-rendered visual
+  components in the same trial.
 - `clear_before_draw` defaults to `true`.
 - `clear_on_offset` defaults to `true`.
 - If `preload_assets` is disabled and the bitmap is not ready at onset, the
@@ -291,7 +311,7 @@ trial and preloads them.
 Current-trial asset discovery includes:
 
 - `ImageComponent.stimulus`
-- `CanvasImageComponent.stimulus`
+- `CanvasImageComponent.stimulus` for legacy saved configs
 - `AudioComponent.stimulus`
 - `VideoComponent.stimulus`
 - `SketchpadComponent.background_image`

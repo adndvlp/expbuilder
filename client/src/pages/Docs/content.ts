@@ -604,13 +604,141 @@ Custom plugin that renders visual trials created in the **Trial Designer**. Repl
 
 Source code: \`server/dynamicplugin/index.ts\`. Runs as a jsPsych plugin (\`type: DynamicPlugin\`).
 
+## Runtime Timing Model
+
+DynamicPlugin's timing path is designed for browser-based visual experiments:
+
+\`\`\`txt
+preload current-trial assets
+prepare decoded image bitmaps when supported
+build the trial while hidden
+requestAnimationFrame()
+use the frame timestamp as trial onset
+show/draw visual stimuli on scheduled animation frames
+measure real frame intervals
+save desired-vs-actual timing diagnostics
+prefetch upcoming DynamicPlugin assets in the background
+\`\`\`
+
+The timing system uses \`performance.now()\`/event timestamps for RT and \`requestAnimationFrame()\` for visual onset, stimulus duration, trial duration, and frame logging. It does not assume that every frame is \`16.667 ms\`; every reported frame interval is measured from the browser's animation-frame timestamps.
+
+The main diagnostic fields are:
+
+| Field | Meaning |
+|---|---|
+| \`timing_method\` | Reports \`performance.now + requestAnimationFrame\` |
+| \`trial_onset_time\` | First animation-frame timestamp used as trial onset |
+| \`actual_trial_duration\` | Observed trial duration from onset to offset |
+| \`frame_intervals\` | JSON array of measured frame durations |
+| \`mean_frame_interval\` | Mean observed frame duration |
+| \`max_frame_interval\` | Largest observed frame duration |
+| \`long_frame_count\` | Number of frames above the lag threshold |
+| \`stimulus_timing\` | Desired-vs-actual onset, offset, duration, and error for visual stimuli |
+| \`timing_quality\` | \`ok\`, \`warning\`, or \`bad\` |
+
+## Canvas Rendering Path
+
+The current runtime uses a shared \`CanvasStage\` for timing-critical visual drawing:
+
+| Component | Runtime rendering path |
+|---|---|
+| \`ImageComponent\` | Preloads/decodes the image, prepares an \`ImageBitmap\` when available, and draws the image into Canvas at onset. |
+| \`TextComponent\` | Plain text is drawn into Canvas. Cloze/input text still uses DOM because it needs real inputs. |
+| \`ButtonResponseComponent\` | Standard button visuals are drawn into Canvas; transparent native buttons remain on top for click, focus, keyboard, and accessibility behavior. Custom \`button_html\` falls back to DOM. |
+| \`SliderResponseComponent\` | Slider visuals are drawn into Canvas; a transparent native \`input[type=range]\` remains on top for real browser interaction. |
+| \`ClickResponseComponent\` | Click/touch capture uses a DOM overlay; the optional response marker is drawn into Canvas. |
+| \`SketchpadComponent\` | Uses its own drawing canvas because the participant draws into it. |
+| \`HtmlComponent\`, \`SurveyComponent\`, \`InputResponseComponent\`, \`FileUploadResponseComponent\`, audio/video controls | Stay DOM/native because they require complex HTML, browser form controls, media controls, files, microphone, or SurveyJS. |
+
+This means Canvas is used where it improves visual presentation timing and reduces HTML/CSS/layout work at stimulus onset. It is not used as a replacement for real browser input controls when the control must remain interactive.
+
+## Empirical Timing Validation
+
+Internal empirical validation compared Canvas image presentation against the older DOM image path under the same browser/device conditions.
+
+Test design:
+
+| Test detail | Value |
+|---|---|
+| Trials | 500 per renderer |
+| Durations | 50, 100, 250, 500, 1000 ms |
+| Repetitions | 100 per duration |
+| Metric | Requested duration vs \`stimulus_timing.actual_duration\` |
+| Diagnostics | \`duration_error\`, frame intervals, long frames, bad trials |
+
+Observed result:
+
+| Renderer | Exact trials | ±1 frame | ≥2 frame errors | Bad trials | Long frames | Mean error | SD |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Canvas image path | 86.6% | 13.4% | 0% | 0 | 0 | +2.48 ms | 5.58 ms |
+| DOM image path | 83.2% | 16.8% | 0% | 0 | 0 | +2.94 ms | 6.13 ms |
+
+Interpretation:
+
+\`\`\`txt
+Under the tested browser/device conditions, Canvas image presentation stayed
+within ±1 refresh frame across 500 trials, with no 2+ frame errors, no bad
+trials, and slightly lower mean error/variance than DOM image presentation.
+\`\`\`
+
+This is an empirical internal validation of browser-reported visual presentation timing. It is not a physical validation of pixel onset on the display.
+
+## Comparison Scope
+
+DynamicPlugin should be compared carefully:
+
+| System | Strength |
+|---|---|
+| PsychoPy | Stronger physical/local control because it runs as desktop software with OpenGL/GPU presentation and closer control of the display environment. |
+| lab.js | Browser-based, optimized around animation-frame timing, preloading, Canvas-based screens, and published external timing validation. |
+| DynamicPlugin | Browser-based, uses animation-frame timing, preloading/prefetching, Canvas rendering for critical visual paths, and internal per-trial timing diagnostics. |
+
+The correct claim is:
+
+\`\`\`txt
+DynamicPlugin + Canvas is architecturally comparable to lab.js for browser-based
+visual presentation timing, and internal tests showed presentation errors within
+±1 frame for the tested image timings.
+\`\`\`
+
+The stronger claim is not supported yet:
+
+\`\`\`txt
+DynamicPlugin is physically equal or superior to lab.js or PsychoPy.
+\`\`\`
+
+That would require external hardware validation.
+
+## Timing Limits
+
+DynamicPlugin records what the browser can observe. It cannot directly control or measure:
+
+- physical pixel onset measured by a photodiode;
+- monitor scanout and display processing;
+- keyboard polling rate;
+- mouse/touch hardware sampling rate;
+- OS/browser event queue delays;
+- browser timer resolution reductions;
+- background-tab throttling;
+- CPU/GPU contention;
+- participant hardware and drivers.
+
+For physical validation, use an external setup:
+
+\`\`\`txt
+photodiode on screen
+instrumented key/button
+microcontroller or oscilloscope
+compare physical onset/response against saved DynamicPlugin timing fields
+\`\`\`
+
 ## Stimulus Components (6)
 
 Stimulus components are rendered but do not capture the participant's response.
 
 ### TextComponent
 
-Static text with full styling.
+Static text with full styling. Plain text is rendered through the Canvas path at runtime; cloze/input text uses DOM because the participant must type into real inputs.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -632,7 +760,7 @@ Static text with full styling.
 
 ### ImageComponent
 
-Static image.
+Static image. At runtime this is rendered through the shared Canvas path, with preloading and bitmap preparation when the browser supports it.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -704,7 +832,7 @@ Response components capture the participant's response and determine when the tr
 
 ### ButtonResponseComponent
 
-Clickable buttons with flexible layout.
+Clickable buttons with flexible layout. Standard button visuals are drawn in Canvas, with transparent native buttons overlaid for real interaction. Custom \`button_html\` uses the DOM path.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -741,7 +869,7 @@ Data: \`KeyboardResponseComponent_N_response\` (key), \`KeyboardResponseComponen
 
 ### SliderResponseComponent
 
-Range-type slider with labels.
+Range-type slider with labels. The visual slider is drawn in Canvas, with a transparent native range input overlaid for real interaction.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -784,7 +912,7 @@ Data: \`InputResponseComponent_N_response\` (text), \`InputResponseComponent_N_r
 
 ### ClickResponseComponent
 
-Captures click/touch coordinates in the viewport.
+Captures click/touch coordinates in the viewport. The capture layer is DOM-based; the optional response marker is drawn in Canvas.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -841,20 +969,21 @@ Components use normalized coordinates:
 - \`zIndex\`: stacking control (higher = on top)
 - \`rotation\`: rotation degrees (0–360)
 
-## Screen Layouts (responsive)
+## Canvas Size and Scaling
 
-Each trial can have multiple layouts for different viewports. The DynamicPlugin detects the viewport width and applies the corresponding layout:
+The Trial Designer stores a fixed design canvas in \`__canvasStyles\`:
 
 \`\`\`js
-// Example screenLayouts saved in the configuration:
-"screenLayouts": {
-  "375x725":  { "x": 10, "y": 20, "width": 30, "height": 8 },
-  "768x725":  { "x": 20, "y": 15, "width": 25, "height": 6 },
-  "1440x763": { "x": 40, "y": 30, "width": 20, "height": 5 }
+"__canvasStyles": {
+  "backgroundColor": "#ffffff",
+  "width": 1440,
+  "height": 900,
+  "fullScreen": true,
+  "progressBar": false
 }
 \`\`\`
 
-When the participant changes devices or resizes the window, the layout adjusts automatically based on the nearest breakpoint. Layouts are created and managed from the **CanvasStylesBar** in the Trial Designer.
+Component positions are saved as normalized coordinates. Width and height are saved as percentages relative to the design canvas width, so the runtime can recreate the visual layout at the participant's viewport size without saving separate per-device layout maps.
 
 ## stimulus_onset / stimulus_duration
 
