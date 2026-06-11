@@ -1,4 +1,5 @@
 import { ParameterType } from "jspsych";
+import { getCanvasStage, CanvasStage } from "../renderer/CanvasStage";
 import { getResponseRT, setResponseStartTime } from "../utils/PrecisionTiming";
 
 var version = "1.0.0";
@@ -114,7 +115,9 @@ class ClickResponseComponent {
   private rt: number | null = null;
   private start_time: number | null = null;
   private overlayElement: HTMLElement | null = null;
-  private markerElement: HTMLElement | null = null;
+  private stage: CanvasStage | null = null;
+  private removeMarkerDrawable: (() => void) | null = null;
+  private markerDrawableId: string = "";
   private boundHandler: ((e: Event) => void) | null = null;
   private listenTarget: HTMLElement | EventTarget | null = null;
   private useTouch: boolean = false;
@@ -149,6 +152,9 @@ class ClickResponseComponent {
     this.timing = trial.__timing || null;
     setResponseStartTime(this, this.timing);
     this.useTouch = ClickResponseComponent.isTouchDevice();
+    this.markerDrawableId = trial.name
+      ? `click-marker-${trial.name}`
+      : "click-marker";
 
     // Build an overlay div so the hit area is explicit and controllable.
     // When capture_full_screen is true it covers the full viewport.
@@ -263,20 +269,46 @@ class ClickResponseComponent {
   private showMarker(clientX: number, clientY: number, trial: any): void {
     const color = trial.marker_color ?? "#e74c3c";
     const radius = trial.marker_radius ?? 8;
+    const displayElement = this.overlayElement?.parentElement;
 
-    const marker = document.createElement("div");
-    marker.style.position = "fixed";
-    marker.style.left = `${clientX}px`;
-    marker.style.top = `${clientY}px`;
-    marker.style.width = `${radius * 2}px`;
-    marker.style.height = `${radius * 2}px`;
-    marker.style.borderRadius = "50%";
-    marker.style.background = color;
-    marker.style.transform = "translate(-50%, -50%)";
-    marker.style.pointerEvents = "none";
-    marker.style.zIndex = "9999";
-    document.body.appendChild(marker);
-    this.markerElement = marker;
+    if (!displayElement) return;
+
+    if (!this.stage) {
+      const canvasStyles = trial.__canvasStyles ?? {};
+      this.stage = getCanvasStage(displayElement, {
+        width: canvasStyles.width ?? 1024,
+        height: canvasStyles.height ?? 768,
+        backgroundColor: "transparent",
+        zIndex: trial.zIndex ?? 10,
+      });
+    }
+
+    const containerRect = this.stage?.canvas.getBoundingClientRect();
+
+    if (!this.stage || !containerRect) return;
+
+    const x =
+      ((clientX - containerRect.left) / containerRect.width) * this.stage.width;
+    const y =
+      ((clientY - containerRect.top) / containerRect.height) * this.stage.height;
+    const scale =
+      this.stage.width > 0 && containerRect.width > 0
+        ? this.stage.width / containerRect.width
+        : 1;
+    const stageRadius = radius * scale;
+
+    this.removeMarkerDrawable?.();
+    this.removeMarkerDrawable = this.stage.registerDrawable({
+      id: this.markerDrawableId,
+      zIndex: trial.zIndex ?? 10,
+      visible: true,
+      draw: (ctx) => {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, y, stageRadius, 0, Math.PI * 2);
+        ctx.fill();
+      },
+    });
   }
 
   // ── Public getters ────────────────────────────────────────────
@@ -310,10 +342,8 @@ class ClickResponseComponent {
   reset(): void {
     this.response = null;
     this.rt = null;
-    if (this.markerElement) {
-      this.markerElement.remove();
-      this.markerElement = null;
-    }
+    this.removeMarkerDrawable?.();
+    this.removeMarkerDrawable = null;
   }
 
   destroy(): void {
@@ -324,14 +354,13 @@ class ClickResponseComponent {
         this.boundHandler,
       );
     }
-    if (this.markerElement) {
-      this.markerElement.remove();
-      this.markerElement = null;
-    }
+    this.removeMarkerDrawable?.();
+    this.removeMarkerDrawable = null;
     if (this.overlayElement) {
       this.overlayElement.remove();
       this.overlayElement = null;
     }
+    this.stage = null;
   }
 }
 

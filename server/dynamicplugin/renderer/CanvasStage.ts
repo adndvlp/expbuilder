@@ -5,6 +5,13 @@ type CanvasStageOptions = {
   zIndex?: number;
 };
 
+type CanvasDrawable = {
+  id: string;
+  zIndex?: number;
+  visible?: boolean;
+  draw: (ctx: CanvasRenderingContext2D) => void;
+};
+
 const CANVAS_STAGE_KEY = "__dynamicCanvasStage";
 
 export class CanvasStage {
@@ -14,6 +21,7 @@ export class CanvasStage {
   width: number;
   height: number;
   backgroundColor: string;
+  private drawables = new Map<string, Required<CanvasDrawable>>();
 
   constructor(parent: HTMLElement, options: CanvasStageOptions) {
     this.dpr = window.devicePixelRatio || 1;
@@ -38,7 +46,7 @@ export class CanvasStage {
     parent.appendChild(this.canvas);
 
     const ctx = this.canvas.getContext("2d", {
-      alpha: false,
+      alpha: true,
       desynchronized: true,
     } as CanvasRenderingContext2DSettings);
 
@@ -56,8 +64,61 @@ export class CanvasStage {
   }
 
   clear(backgroundColor = this.backgroundColor) {
+    if (!backgroundColor || backgroundColor === "transparent") {
+      this.ctx.clearRect(0, 0, this.width, this.height);
+      return;
+    }
+
     this.ctx.fillStyle = backgroundColor;
     this.ctx.fillRect(0, 0, this.width, this.height);
+  }
+
+  registerDrawable(drawable: CanvasDrawable) {
+    this.drawables.set(drawable.id, {
+      id: drawable.id,
+      zIndex: drawable.zIndex ?? 0,
+      visible: drawable.visible ?? false,
+      draw: drawable.draw,
+    });
+    this.render();
+
+    return () => {
+      this.removeDrawable(drawable.id);
+    };
+  }
+
+  updateDrawable(drawable: CanvasDrawable) {
+    const existing = this.drawables.get(drawable.id);
+    this.drawables.set(drawable.id, {
+      id: drawable.id,
+      zIndex: drawable.zIndex ?? existing?.zIndex ?? 0,
+      visible: drawable.visible ?? existing?.visible ?? false,
+      draw: drawable.draw,
+    });
+    this.render();
+  }
+
+  setDrawableVisibility(id: string, visible: boolean) {
+    const drawable = this.drawables.get(id);
+    if (!drawable || drawable.visible === visible) return;
+    drawable.visible = visible;
+    this.render();
+  }
+
+  removeDrawable(id: string) {
+    if (!this.drawables.delete(id)) return;
+    this.render();
+  }
+
+  render() {
+    this.clear(this.backgroundColor);
+    const visibleDrawables = [...this.drawables.values()]
+      .filter((drawable) => drawable.visible)
+      .sort((a, b) => a.zIndex - b.zIndex);
+
+    for (const drawable of visibleDrawables) {
+      drawable.draw(this.ctx);
+    }
   }
 
   drawImage(

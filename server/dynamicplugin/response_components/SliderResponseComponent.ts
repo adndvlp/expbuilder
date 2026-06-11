@@ -1,4 +1,5 @@
 import { ParameterType } from "jspsych";
+import { getCanvasStage, CanvasStage } from "../renderer/CanvasStage";
 import { getResponseRT, setResponseStartTime } from "../utils/PrecisionTiming";
 
 var version = "2.1.1";
@@ -84,14 +85,29 @@ const info = {
   },
 };
 
+type SliderLayout = {
+  centerX: number;
+  centerY: number;
+  width: number;
+  height: number;
+  trackX: number;
+  trackY: number;
+  trackWidth: number;
+  thumbRadius: number;
+  min: number;
+  max: number;
+  labels: string[];
+  requireMovement: boolean;
+  zIndex: number;
+};
+
+let sliderComponentCounter = 0;
+
 /**
  * SliderResponseComponent
  *
- * Component for collecting slider responses. Follows the "sketchpad pattern":
- * - Does NOT call finishTrial()
- * - Stores response data internally (this.response, this.rt, this.slider_start)
- * - Exposes data via getters (getResponse(), getRT(), getSliderStart())
- * - Parent plugin orchestrates trial completion
+ * Canvas-rendered slider visuals with a transparent native range input overlaid
+ * for pointer, keyboard, focus, and value behavior.
  */
 class SliderResponseComponent {
   private jsPsych: any;
@@ -103,6 +119,11 @@ class SliderResponseComponent {
   private sliderElement: HTMLInputElement | null;
   private hasMoved: boolean;
   private timing: any = null;
+  private stage: CanvasStage | null = null;
+  private removeDrawable: (() => void) | null = null;
+  private drawableId = "";
+  private layout: SliderLayout | null = null;
+  private validationError = false;
 
   static info = info;
 
@@ -117,6 +138,168 @@ class SliderResponseComponent {
     this.hasMoved = false;
   }
 
+  private resolveParam(raw: any, fallback: any): any {
+    if (raw === undefined || raw === null) return fallback;
+    if (
+      typeof raw === "object" &&
+      "value" in raw &&
+      (raw.source === "typed" || raw.source === "csv")
+    ) {
+      return raw.value !== undefined && raw.value !== null
+        ? raw.value
+        : fallback;
+    }
+    return raw;
+  }
+
+  private getCanvasSize(trial: any) {
+    const canvasStyles = this.resolveParam(trial.__canvasStyles, {});
+    return {
+      width: this.resolveParam(canvasStyles?.width, 1024),
+      height: this.resolveParam(canvasStyles?.height, 768),
+    };
+  }
+
+  private getLabels(raw: any): string[] {
+    const labels = this.resolveParam(raw, []);
+    if (Array.isArray(labels)) return labels.map((label) => String(label));
+    if (typeof labels === "string" && labels.trim()) {
+      return labels.split(",").map((label) => label.trim());
+    }
+    return [];
+  }
+
+  private createLayout(trial: any): SliderLayout {
+    const { width: canvasWidth, height: canvasHeight } = this.getCanvasSize(trial);
+    const configuredWidth = this.resolveParam(trial.width, null);
+    const configuredHeight = this.resolveParam(trial.height, null);
+    const configuredSliderWidth = this.resolveParam(trial.slider_width, null);
+    const width =
+      configuredWidth != null
+        ? (Number(configuredWidth) / 100) * canvasWidth
+        : configuredSliderWidth != null
+          ? Number(configuredSliderWidth)
+          : 300;
+    const height =
+      configuredHeight != null
+        ? (Number(configuredHeight) / 100) * canvasWidth
+        : 120;
+    const coordinates = this.resolveParam(trial.coordinates, { x: 0, y: 0 });
+    const centerX =
+      canvasWidth / 2 + ((coordinates?.x ?? 0) / 100) * (canvasWidth / 2);
+    const centerY =
+      canvasHeight / 2 - ((coordinates?.y ?? 0) / 100) * (canvasHeight / 2);
+    const padding = Math.max(10, Math.min(40, width * 0.14));
+
+    return {
+      centerX,
+      centerY,
+      width,
+      height,
+      trackX: padding,
+      trackY: height * 0.4,
+      trackWidth: Math.max(1, width - padding * 2),
+      thumbRadius: Math.max(5, Math.min(10, height * 0.07)),
+      min: Number(this.resolveParam(trial.min, 0)),
+      max: Number(this.resolveParam(trial.max, 100)),
+      labels: this.getLabels(trial.labels),
+      requireMovement: Boolean(this.resolveParam(trial.require_movement, false)),
+      zIndex: Number(this.resolveParam(trial.zIndex, 0)),
+    };
+  }
+
+  private getCurrentNormalizedValue(): number {
+    if (!this.layout) return 0.5;
+    const value = this.sliderElement
+      ? this.sliderElement.valueAsNumber
+      : this.slider_start;
+    const range = this.layout.max - this.layout.min;
+    if (!Number.isFinite(value) || range === 0) return 0.5;
+    return Math.max(0, Math.min(1, (value - this.layout.min) / range));
+  }
+
+  private updateOverlay(layout: SliderLayout) {
+    if (!this.sliderContainer || !this.sliderElement) return;
+
+    this.sliderContainer.style.left = `${layout.centerX}px`;
+    this.sliderContainer.style.top = `${layout.centerY}px`;
+    this.sliderContainer.style.width = `${layout.width}px`;
+    this.sliderContainer.style.height = `${layout.height}px`;
+    this.sliderContainer.style.transform = "translate(-50%, -50%)";
+    this.sliderContainer.style.zIndex = String(layout.zIndex);
+
+    this.sliderElement.style.left = `${layout.trackX}px`;
+    this.sliderElement.style.top = `${layout.trackY - layout.thumbRadius * 2}px`;
+    this.sliderElement.style.width = `${layout.trackWidth}px`;
+    this.sliderElement.style.height = `${layout.thumbRadius * 4}px`;
+  }
+
+  private drawLayout(ctx: CanvasRenderingContext2D, layout: SliderLayout) {
+    const valuePosition = this.getCurrentNormalizedValue();
+    const thumbX = layout.trackX + layout.trackWidth * valuePosition;
+    const thumbY = layout.trackY;
+    const originX = -layout.width / 2;
+    const originY = -layout.height / 2;
+
+    ctx.save();
+    ctx.translate(layout.centerX + originX, layout.centerY + originY);
+
+    if (this.validationError) {
+      ctx.strokeStyle = "#e74c3c";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 4]);
+      ctx.strokeRect(0, 0, layout.width, layout.height);
+      ctx.setLineDash([]);
+    }
+
+    ctx.strokeStyle = "#9333ea";
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(layout.trackX, layout.trackY);
+    ctx.lineTo(layout.trackX + layout.trackWidth, layout.trackY);
+    ctx.stroke();
+
+    ctx.fillStyle = "#9333ea";
+    ctx.beginPath();
+    ctx.arc(thumbX, thumbY, layout.thumbRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    if (layout.labels.length >= 2) {
+      ctx.font = "12px sans-serif";
+      ctx.fillStyle = "#6b21a8";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+
+      layout.labels.forEach((label, index) => {
+        const ratio =
+          layout.labels.length === 1
+            ? 0
+            : index / Math.max(1, layout.labels.length - 1);
+        const x = layout.trackX + layout.trackWidth * ratio;
+        ctx.fillText(label, x, layout.trackY + layout.thumbRadius + 8);
+      });
+    }
+
+    if (layout.requireMovement) {
+      ctx.font = "italic 11px sans-serif";
+      ctx.fillStyle = "#9333ea";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText("(movement required)", layout.width / 2, layout.height - 8);
+    }
+
+    ctx.restore();
+  }
+
+  private renderCanvas() {
+    this.stage?.render();
+  }
+
   /**
    * Render the slider and submit button into the display element
    */
@@ -124,80 +307,84 @@ class SliderResponseComponent {
     display_element: HTMLElement,
     trial: any,
     onResponse?: () => void,
-  ): void {
+  ): HTMLElement {
     this.timing = trial.__timing || null;
+    this.validationError = false;
+    this.response = null;
+    this.rt = null;
+    this.hasMoved = false;
 
-    // Helper to map coordinate values
-    const mapValue = (value: number): number => {
-      if (value < -100) return -50;
-      if (value > 100) return 50;
-      return value * 0.5;
-    };
+    const { width: canvasWidth, height: canvasHeight } = this.getCanvasSize(trial);
+    const zIndex = Number(this.resolveParam(trial.zIndex, 0));
+    this.drawableId = trial.name
+      ? `slider-${trial.name}`
+      : `slider-${++sliderComponentCounter}`;
 
-    const half_thumb_width = 7.5;
+    this.stage = getCanvasStage(display_element, {
+      width: canvasWidth,
+      height: canvasHeight,
+      backgroundColor: "transparent",
+      zIndex,
+    });
+
+    this.layout = this.createLayout(trial);
 
     // Store slider_start for data collection
-    this.slider_start = trial.slider_start;
+    this.slider_start = Number(this.resolveParam(trial.slider_start, 50));
 
-    // Create slider container with coordinates
     this.sliderContainer = document.createElement("div");
     this.sliderContainer.classList.add("jspsych-slider-response-container");
     this.sliderContainer.style.position = "absolute";
-    this.sliderContainer.style.margin = "0 auto 0 auto";
+    this.sliderContainer.style.margin = "0";
+    this.sliderContainer.style.background = "transparent";
+    this.sliderContainer.style.pointerEvents = "auto";
+    this.sliderContainer.style.boxSizing = "border-box";
 
-    // Use default coordinates if not provided
-    const coordinates = trial.coordinates || { x: 0, y: 0 };
-    const xVw = mapValue(coordinates.x);
-    const yVh = mapValue(coordinates.y);
-    this.sliderContainer.style.left = `calc(50% + ${xVw}vw)`;
-    this.sliderContainer.style.top = `calc(50% - ${yVh}vh)`;
-    this.sliderContainer.style.transform = "translate(-50%, -50%)";
+    this.sliderElement = document.createElement("input");
+    this.sliderElement.type = "range";
+    this.sliderElement.className = "jspsych-slider";
+    this.sliderElement.id = "jspsych-slider-response-component";
+    this.sliderElement.value = String(this.slider_start);
+    this.sliderElement.min = String(this.layout.min);
+    this.sliderElement.max = String(this.layout.max);
+    this.sliderElement.step = String(this.resolveParam(trial.step, 1));
+    this.sliderElement.style.position = "absolute";
+    this.sliderElement.style.margin = "0";
+    this.sliderElement.style.padding = "0";
+    this.sliderElement.style.opacity = "0";
+    this.sliderElement.style.cursor = "pointer";
+    this.sliderElement.style.pointerEvents = "auto";
 
+    this.sliderContainer.appendChild(this.sliderElement);
     display_element.appendChild(this.sliderContainer);
+    this.updateOverlay(this.layout);
 
-    if (trial.slider_width !== null && trial.slider_width !== undefined) {
-      this.sliderContainer.style.width = trial.slider_width + "px";
+    const trackMovement = () => {
+      this.hasMoved = true;
+      this.renderCanvas();
+    };
+
+    this.sliderElement.addEventListener("mousedown", trackMovement);
+    this.sliderElement.addEventListener("touchstart", trackMovement);
+    this.sliderElement.addEventListener("change", trackMovement);
+    this.sliderElement.addEventListener("input", trackMovement);
+
+    if (!this.layout.requireMovement) {
+      this.hasMoved = true;
     }
 
-    // Build slider HTML
-    let html = `<input type="range" class="jspsych-slider" value="${trial.slider_start}" min="${trial.min}" max="${trial.max}" step="${trial.step}" id="jspsych-slider-response-component"></input>`;
-
-    // Add labels if provided
-    html += `<div style="margin-bottom: 2em">`;
-    for (let j = 0; j < trial.labels.length; j++) {
-      const label_width_perc = 100 / (trial.labels.length - 1);
-      const percent_of_range = j * (100 / (trial.labels.length - 1));
-      const percent_dist_from_center = ((percent_of_range - 50) / 50) * 100;
-      const offset = (percent_dist_from_center * half_thumb_width) / 100;
-
-      html += `<div style="border: 1px solid transparent; display: inline-block; position: absolute; left:calc(${percent_of_range}% - (${label_width_perc}% / 2) - ${offset}px); text-align: center; width: ${label_width_perc}%;">`;
-      html += `<span style="text-align: center; font-size: 80%;">${trial.labels[j]}</span>`;
-      html += "</div>";
-    }
-    html += "</div>";
-
-    this.sliderContainer.innerHTML = html;
-
-    // Get slider element reference
-    this.sliderElement = this.sliderContainer.querySelector(
-      "#jspsych-slider-response-component",
-    ) as HTMLInputElement;
-
-    // Track movement if required
-    if (trial.require_movement) {
-      const trackMovement = () => {
-        this.hasMoved = true;
-      };
-
-      this.sliderElement.addEventListener("mousedown", trackMovement);
-      this.sliderElement.addEventListener("touchstart", trackMovement);
-      this.sliderElement.addEventListener("change", trackMovement);
-      this.sliderElement.addEventListener("input", trackMovement);
-    } else {
-      this.hasMoved = true; // Not required, so always valid
-    }
+    this.removeDrawable?.();
+    this.removeDrawable = this.stage.registerDrawable({
+      id: this.drawableId,
+      zIndex,
+      visible: true,
+      draw: (ctx) => {
+        if (this.layout) this.drawLayout(ctx, this.layout);
+      },
+    });
 
     setResponseStartTime(this, this.timing);
+    return this.sliderContainer;
   }
 
   /**
@@ -209,7 +396,7 @@ class SliderResponseComponent {
     }
 
     // Check if movement is required but hasn't happened
-    if (trial.require_movement && !this.hasMoved) {
+    if (this.resolveParam(trial.require_movement, false) && !this.hasMoved) {
       return false; // Can't record yet
     }
 
@@ -239,7 +426,7 @@ class SliderResponseComponent {
    * Check if response is currently valid (without recording it)
    */
   isValid(trial: any): boolean {
-    if (trial.require_movement && !this.hasMoved) {
+    if (this.resolveParam(trial.require_movement, false) && !this.hasMoved) {
       return false;
     }
     return true;
@@ -261,25 +448,51 @@ class SliderResponseComponent {
 
   /** Highlight the slider container to indicate a response is required */
   showValidationError(): void {
+    this.validationError = true;
     if (this.sliderContainer) {
       this.sliderContainer.classList.add("jspsych-require-response-error");
     }
+    this.renderCanvas();
   }
 
   /** Remove validation error highlight */
   clearValidationError(): void {
+    this.validationError = false;
     if (this.sliderContainer) {
       this.sliderContainer.classList.remove("jspsych-require-response-error");
     }
+    this.renderCanvas();
+  }
+
+  getRenderedSize(): { width: number; height: number } | null {
+    if (this.sliderContainer) {
+      const rect = this.sliderContainer.getBoundingClientRect();
+      return {
+        width: rect.width,
+        height: rect.height,
+      };
+    }
+    return this.layout
+      ? {
+          width: this.layout.width,
+          height: this.layout.height,
+        }
+      : null;
   }
 
   /**
    * Cleanup: remove elements from DOM
    */
   destroy(): void {
+    this.removeDrawable?.();
+    this.removeDrawable = null;
     if (this.sliderContainer) {
       this.sliderContainer.remove();
+      this.sliderContainer = null;
     }
+    this.sliderElement = null;
+    this.stage = null;
+    this.layout = null;
   }
 }
 

@@ -1,5 +1,11 @@
 import { ParameterType } from "jspsych";
-import { scheduleStimulusVisibility } from "../utils/PrecisionTiming";
+import { getCanvasStage, CanvasStage } from "../renderer/CanvasStage";
+import {
+  CanvasBitmapSource,
+  createPrecisionTiming,
+  preloadBitmap,
+  resolveTimingMs,
+} from "../utils/PrecisionTiming";
 
 var version = "2.2.0";
 
@@ -66,14 +72,36 @@ const info = {
   },
 };
 
+type DrawRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+let imageComponentCounter = 0;
+
 /**
- * ImageComponent - Renders an image stimulus
- * This component only handles image display, not responses
+ * ImageComponent - Renders an image stimulus on the shared canvas stage.
+ * The public component type/config stays the same; only the runtime renderer
+ * changes from a DOM <img> to a retained canvas drawable.
  */
 class ImageComponent {
   private jsPsych: any;
+  private stage: CanvasStage | null = null;
   private element: HTMLElement | null = null;
-  private cancelVisibilitySchedule: (() => void) | null = null;
+  private source: CanvasBitmapSource | null = null;
+  private sourcePromise: Promise<CanvasBitmapSource> | null = null;
+  private cancelSchedule: Array<() => void> = [];
+  private removeDrawable: (() => void) | null = null;
+  private deferredRafHandle: number | null = null;
+  private drawableId = "";
+  private drawRect: DrawRect | null = null;
+  private drawn = false;
+  private prepared = false;
+  private visible = false;
+  private offsetReached = false;
+  private destroyed = false;
 
   constructor(jsPsych: any) {
     this.jsPsych = jsPsych;
@@ -81,199 +109,296 @@ class ImageComponent {
 
   static info = info;
 
-  /**
-   * Render the image to the display element
-   * @param container - The HTML element to render into
-   * @param config - Configuration for the image
-   * @returns The rendered stimulus element
-   */
-  render(container: HTMLElement, config: any): HTMLElement {
-    // Design canvas dimensions (same as Konva CANVAS_WIDTH/HEIGHT)
-    const canvasWidth = config.__canvasStyles?.width ?? 1024;
-    const canvasHeight = config.__canvasStyles?.height ?? 768;
-
-    // Always use absolute positioning for proper overlapping
-    const usePositioning = config.coordinates !== undefined;
-
-    // Create positioning container
-    let imageContainer: HTMLElement;
-    if (usePositioning) {
-      imageContainer = document.createElement("div");
-      imageContainer.style.position = "absolute";
-
-      // Convert jsPsych coords [-100..100] to design-canvas pixels
-      // (same formula as fromJsPsychCoords in Konva)
-      const centerX = canvasWidth / 2;
-      const centerY = canvasHeight / 2;
-
-      if (config.coordinates.x !== undefined) {
-        const xPixel = centerX + (config.coordinates.x / 100) * (canvasWidth / 2);
-        imageContainer.style.left = xPixel + "px";
-      } else {
-        imageContainer.style.left = centerX + "px";
-      }
-      if (config.coordinates.y !== undefined) {
-        const yPixel = centerY - (config.coordinates.y / 100) * (canvasHeight / 2);
-        imageContainer.style.top = yPixel + "px";
-      } else {
-        imageContainer.style.top = centerY + "px";
-      }
-      imageContainer.style.transform = "translate(-50%, -50%)";
-
-      container.appendChild(imageContainer);
-    } else {
-      imageContainer = container;
+  private resolveParam(raw: any, fallback: any): any {
+    if (raw === undefined || raw === null) return fallback;
+    if (typeof raw === "object" && "value" in raw) {
+      return raw.value !== undefined && raw.value !== null ? raw.value : fallback;
     }
-
-    const calculateImageDimensions = (
-      image: HTMLImageElement,
-    ): [number, number] => {
-      let width: number;
-      let height: number;
-
-      if (config.height !== null) {
-        height = config.height;
-        if (config.width == null && config.maintain_aspect_ratio) {
-          width = image.naturalWidth * (config.height / image.naturalHeight);
-        } else {
-          width = image.naturalWidth;
-        }
-      } else {
-        height = image.naturalHeight;
-        width = image.naturalWidth;
-      }
-
-      if (config.width !== null) {
-        width = config.width;
-        if (config.height == null && config.maintain_aspect_ratio) {
-          height = image.naturalHeight * (config.width / image.naturalWidth);
-        }
-      }
-
-      return [width, height];
-    };
-
-    let stimulusElement: HTMLElement;
-    let canvas: HTMLCanvasElement | null = null;
-    const image = config.render_on_canvas
-      ? new Image()
-      : document.createElement("img");
-
-    // Add ID to image element for WebGazer tracking
-    if (!config.render_on_canvas) {
-      (image as HTMLImageElement).id = config.name
-        ? `jspsych-dynamic-${config.name}-stimulus`
-        : "jspsych-dynamic-image-stimulus";
-      (image as HTMLImageElement).className = "dynamic-image-component";
-    }
-
-    if (config.render_on_canvas) {
-      canvas = document.createElement("canvas");
-      canvas.id = config.name
-        ? `jspsych-dynamic-${config.name}-stimulus`
-        : "jspsych-dynamic-image-stimulus";
-      canvas.className = "dynamic-image-component";
-      canvas.style.margin = "0";
-      canvas.style.padding = "0";
-      stimulusElement = canvas;
-    } else {
-      stimulusElement = image as HTMLImageElement;
-    }
-
-    const drawImage = () => {
-      const img = image as HTMLImageElement;
-      if (config.render_on_canvas && canvas) {
-        // Canvas path: dimensions in design-canvas pixels
-        const pxW =
-          config.width !== null
-            ? (config.width / 100) * canvasWidth
-            : img.naturalWidth;
-        const pxH = img.naturalHeight * (pxW / img.naturalWidth);
-        canvas.width = pxW;
-        canvas.height = pxH;
-        const ctx = canvas.getContext("2d");
-        if (ctx) ctx.drawImage(img, 0, 0, pxW, pxH);
-      } else {
-        // img path: dimensions in design-canvas pixels
-        if (config.width !== null) {
-          const pxW = (config.width / 100) * canvasWidth;
-          (stimulusElement as HTMLImageElement).style.width = pxW + "px";
-        }
-        if (config.height !== null) {
-          const pxH = (config.height / 100) * canvasWidth;
-          (stimulusElement as HTMLImageElement).style.height = pxH + "px";
-        }
-        if (config.width !== null && config.height === null) {
-          (stimulusElement as HTMLImageElement).style.height = "auto";
-        } else if (config.height !== null && config.width === null) {
-          (stimulusElement as HTMLImageElement).style.width = "auto";
-        }
-      }
-    };
-
-    let hasImageBeenDrawn = false;
-    (image as HTMLImageElement).onload = () => {
-      if (!hasImageBeenDrawn) {
-        drawImage();
-        hasImageBeenDrawn = true;
-      }
-    };
-
-    (image as HTMLImageElement).src = config.stimulus;
-
-    if (
-      (image as HTMLImageElement).complete &&
-      (image as HTMLImageElement).naturalWidth !== 0
-    ) {
-      drawImage();
-      hasImageBeenDrawn = true;
-    }
-
-    imageContainer.appendChild(stimulusElement);
-
-    this.element = stimulusElement;
-    this.cancelVisibilitySchedule = scheduleStimulusVisibility(
-      stimulusElement,
-      config,
-      config.__timing,
-    );
-    return stimulusElement;
+    return raw;
   }
 
-  /**
-   * Hide the image stimulus
-   */
+  private getSourceSize(source: CanvasBitmapSource) {
+    if ("naturalWidth" in source) {
+      return {
+        width: source.naturalWidth,
+        height: source.naturalHeight,
+      };
+    }
+    return {
+      width: source.width,
+      height: source.height,
+    };
+  }
+
+  private computeDrawRect(config: any, source: CanvasBitmapSource): DrawRect | null {
+    const canvasStyles = this.resolveParam(config.__canvasStyles, {});
+    const canvasWidth = this.resolveParam(canvasStyles?.width, 1024);
+    const canvasHeight = this.resolveParam(canvasStyles?.height, 768);
+    const sourceSize = this.getSourceSize(source);
+
+    if (sourceSize.width <= 0 || sourceSize.height <= 0) return null;
+
+    const maintainAspectRatio = this.resolveParam(
+      config.maintain_aspect_ratio,
+      true,
+    );
+    const configuredWidth = this.resolveParam(config.width, null);
+    const configuredHeight = this.resolveParam(config.height, null);
+
+    let drawWidth = sourceSize.width;
+    let drawHeight = sourceSize.height;
+
+    if (configuredWidth !== null) {
+      drawWidth = (Number(configuredWidth) / 100) * canvasWidth;
+      if (configuredHeight === null && maintainAspectRatio) {
+        drawHeight = sourceSize.height * (drawWidth / sourceSize.width);
+      }
+    }
+
+    if (configuredHeight !== null) {
+      // Builder stores image height in the same percent-of-canvas-width units
+      // used by ImageComponent's old DOM path, so keep that conversion.
+      drawHeight = (Number(configuredHeight) / 100) * canvasWidth;
+      if (configuredWidth === null && maintainAspectRatio) {
+        drawWidth = sourceSize.width * (drawHeight / sourceSize.height);
+      }
+    }
+
+    const coordinates = this.resolveParam(config.coordinates, { x: 0, y: 0 });
+    const centerX =
+      canvasWidth / 2 + ((coordinates?.x ?? 0) / 100) * (canvasWidth / 2);
+    const centerY =
+      canvasHeight / 2 - ((coordinates?.y ?? 0) / 100) * (canvasHeight / 2);
+
+    return {
+      x: centerX - drawWidth / 2,
+      y: centerY - drawHeight / 2,
+      width: drawWidth,
+      height: drawHeight,
+    };
+  }
+
+  private getStageScale() {
+    if (!this.stage) return { x: 1, y: 1 };
+    const rect = this.stage.canvas.getBoundingClientRect();
+    return {
+      x: this.stage.width > 0 ? rect.width / this.stage.width : 1,
+      y: this.stage.height > 0 ? rect.height / this.stage.height : 1,
+    };
+  }
+
+  private updateTrackingElement(rect: DrawRect, zIndex: number) {
+    if (!this.element) return;
+    this.element.style.left = `${rect.x}px`;
+    this.element.style.top = `${rect.y}px`;
+    this.element.style.width = `${rect.width}px`;
+    this.element.style.height = `${rect.height}px`;
+    this.element.style.zIndex = String(zIndex);
+    this.element.style.visibility = "visible";
+  }
+
+  private prepareDrawable(config: any, zIndex: number): boolean {
+    if (this.destroyed || !this.source || !this.stage) return false;
+    if (this.prepared) return true;
+
+    const rect = this.computeDrawRect(config, this.source);
+    if (!rect) return false;
+
+    this.drawRect = rect;
+    this.updateTrackingElement(rect, zIndex);
+    this.removeDrawable?.();
+    this.removeDrawable = this.stage.registerDrawable({
+      id: this.drawableId,
+      zIndex,
+      visible: false,
+      draw: (ctx) => {
+        if (!this.source || !this.drawRect) return;
+        ctx.drawImage(
+          this.source,
+          this.drawRect.x,
+          this.drawRect.y,
+          this.drawRect.width,
+          this.drawRect.height,
+        );
+      },
+    });
+    this.prepared = true;
+    return true;
+  }
+
+  render(container: HTMLElement, config: any): HTMLElement {
+    const canvasStyles = this.resolveParam(config.__canvasStyles, {});
+    const canvasWidth = this.resolveParam(canvasStyles?.width, 1024);
+    const canvasHeight = this.resolveParam(canvasStyles?.height, 768);
+    const zIndex = resolveTimingMs(config.zIndex, 0) ?? 0;
+
+    this.destroyed = false;
+    this.offsetReached = false;
+    this.drawn = false;
+    this.prepared = false;
+    this.visible = false;
+    this.drawRect = null;
+    this.drawableId = config.name
+      ? `image-${config.name}`
+      : `image-${++imageComponentCounter}`;
+
+    this.stage = getCanvasStage(container, {
+      width: canvasWidth,
+      height: canvasHeight,
+      backgroundColor: "transparent",
+      zIndex,
+    });
+
+    this.element = document.createElement("div");
+    this.element.id = config.name
+      ? `jspsych-dynamic-${config.name}-stimulus`
+      : "jspsych-dynamic-image-stimulus";
+    this.element.className = "dynamic-image-component";
+    this.element.setAttribute("aria-hidden", "true");
+    this.element.style.position = "absolute";
+    this.element.style.left = "0";
+    this.element.style.top = "0";
+    this.element.style.width = "0";
+    this.element.style.height = "0";
+    this.element.style.margin = "0";
+    this.element.style.padding = "0";
+    this.element.style.background = "transparent";
+    this.element.style.pointerEvents = "none";
+    this.element.style.visibility = "hidden";
+    this.element.style.zIndex = String(zIndex);
+    container.appendChild(this.element);
+
+    const stimulus = this.resolveParam(config.stimulus, "");
+    if (stimulus) {
+      this.sourcePromise = preloadBitmap(stimulus).then((source) => {
+        this.source = source;
+        this.prepareDrawable(config, zIndex);
+        return source;
+      });
+    }
+
+    const timing = config.__timing as
+      | ReturnType<typeof createPrecisionTiming>
+      | undefined;
+    const stimulusOnset = resolveTimingMs(config.stimulus_onset, null);
+    const stimulusDuration = resolveTimingMs(config.stimulus_duration, null);
+    const stimulusTiming = timing?.registerStimulus?.(
+      config.name || config.type || this.drawableId,
+      stimulusOnset,
+      stimulusDuration,
+    );
+
+    const draw = (timestamp: number) => {
+      if (this.destroyed || this.offsetReached) return;
+
+      if (!this.prepareDrawable(config, zIndex)) {
+        this.sourcePromise?.then(() => {
+          if (this.destroyed || this.offsetReached) return;
+          this.deferredRafHandle = requestAnimationFrame((frameTimestamp) => {
+            this.deferredRafHandle = null;
+            draw(frameTimestamp);
+          });
+        });
+        return;
+      }
+
+      this.drawn = true;
+      this.visible = true;
+      this.stage?.setDrawableVisibility(this.drawableId, true);
+      stimulusTiming?.markOnset(timestamp);
+    };
+
+    const hide = (timestamp: number) => {
+      if (this.destroyed) return;
+      this.offsetReached = true;
+      this.visible = false;
+      this.stage?.setDrawableVisibility(this.drawableId, false);
+      if (this.drawn) {
+        stimulusTiming?.markOffset(timestamp);
+      }
+    };
+
+    if (timing) {
+      if (stimulusOnset === null) {
+        timing.onStart(draw);
+      } else {
+        this.cancelSchedule.push(timing.scheduleAt(stimulusOnset, draw));
+      }
+
+      if (stimulusDuration !== null) {
+        this.cancelSchedule.push(
+          timing.scheduleAt((stimulusOnset ?? 0) + stimulusDuration, hide),
+        );
+      }
+    } else {
+      const drawDelay = stimulusOnset ?? 0;
+      const drawHandle = window.setTimeout(
+        () => draw(performance.now()),
+        drawDelay,
+      );
+      this.cancelSchedule.push(() => window.clearTimeout(drawHandle));
+
+      if (stimulusDuration !== null) {
+        const hideHandle = window.setTimeout(
+          () => hide(performance.now()),
+          drawDelay + stimulusDuration,
+        );
+        this.cancelSchedule.push(() => window.clearTimeout(hideHandle));
+      }
+    }
+
+    return this.stage.canvas;
+  }
+
   hide() {
+    this.visible = false;
     if (this.element) {
       this.element.style.visibility = "hidden";
     }
+    this.stage?.setDrawableVisibility(this.drawableId, false);
   }
 
-  /**
-   * Show the image stimulus (if it was hidden)
-   */
   show() {
+    if (!this.drawn) return;
+    this.visible = true;
     if (this.element) {
       this.element.style.visibility = "visible";
     }
+    this.stage?.setDrawableVisibility(this.drawableId, true);
   }
 
-  /**
-   * Remove the image from DOM and clean up
-   */
   destroy() {
-    if (this.cancelVisibilitySchedule) this.cancelVisibilitySchedule();
+    this.destroyed = true;
+    this.cancelSchedule.forEach((cancel) => cancel());
+    this.cancelSchedule = [];
+    if (this.deferredRafHandle !== null) {
+      cancelAnimationFrame(this.deferredRafHandle);
+      this.deferredRafHandle = null;
+    }
+    this.removeDrawable?.();
+    this.removeDrawable = null;
     if (this.element && this.element.parentNode) {
       this.element.parentNode.removeChild(this.element);
     }
     this.element = null;
+    this.stage = null;
+    this.source = null;
+    this.sourcePromise = null;
+    this.drawRect = null;
+    this.prepared = false;
   }
 
-  /**
-   * Get the rendered element
-   */
+  getRenderedSize(): { width: number; height: number } | null {
+    if (!this.drawRect) return null;
+    const scale = this.getStageScale();
+    return {
+      width: this.drawRect.width * scale.x,
+      height: this.drawRect.height * scale.y,
+    };
+  }
+
   getElement(): HTMLElement | null {
-    return this.element;
+    return this.element ?? this.stage?.canvas ?? null;
   }
 }
 

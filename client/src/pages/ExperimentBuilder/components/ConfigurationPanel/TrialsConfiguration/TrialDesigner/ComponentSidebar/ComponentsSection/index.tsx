@@ -25,7 +25,7 @@ function ComponentsSection({
   const [audioExpanded, setAudioExpanded] = useState(false);
   return (
     <div key={type}>
-      {(type === "ImageComponent" || type === "CanvasImageComponent") && (
+      {type === "ImageComponent" && (
         <>
           <button
             onClick={() => setImageExpanded(!imageExpanded)}
@@ -292,7 +292,6 @@ function ComponentsSection({
         </>
       )}
       {type !== "ImageComponent" &&
-        type !== "CanvasImageComponent" &&
         type !== "VideoComponent" &&
         type !== "AudioComponent" && (
           <GenericComponents

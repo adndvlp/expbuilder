@@ -383,6 +383,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     const mainContainer = document.createElement("div");
     mainContainer.id = "jspsych-dynamic-plugin-container";
     mainContainer.style.visibility = "hidden";
+    mainContainer.style.background =
+      trial.__canvasStyles?.backgroundColor ?? "transparent";
     display_element.appendChild(mainContainer);
 
     // Design canvas dimensions
@@ -613,8 +615,20 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           });
         }
 
-        // Size via element captured at render time
-        if (comp.renderedEl) {
+        // Size via component-provided rendered size when canvas rendering is used,
+        // otherwise fall back to the DOM element captured at render time.
+        if (
+          instance.getRenderedSize &&
+          typeof instance.getRenderedSize === "function"
+        ) {
+          const renderedSize = instance.getRenderedSize();
+          if (renderedSize) {
+            trialData[`${prefix}_size`] = JSON.stringify({
+              width: Math.round(renderedSize.width),
+              height: Math.round(renderedSize.height),
+            });
+          }
+        } else if (comp.renderedEl) {
           const _r = comp.renderedEl.getBoundingClientRect();
           trialData[`${prefix}_size`] = JSON.stringify({
             width: Math.round(_r.width),

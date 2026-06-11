@@ -49,15 +49,6 @@ const COMPONENT_STYLE_MAPS: Partial<
     border_color: "textBorderColor",
     border_width: "textBorderWidth",
   },
-  CanvasTextComponent: {
-    font_color: "textFontColor",
-    font_size: "textFontSize",
-    font_family: "textFontFamily",
-    font_weight: "textFontWeight",
-    font_style: "textFontStyle",
-    text_align: "textAlign",
-    background_color: "textBackgroundColor",
-  },
   InputResponseComponent: {
     input_font_color: "inputFontColor",
     input_font_size: "inputFontSize",

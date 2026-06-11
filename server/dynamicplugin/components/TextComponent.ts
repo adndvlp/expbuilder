@@ -1,6 +1,9 @@
 import { ParameterType } from "jspsych";
+import { getCanvasStage, CanvasStage } from "../renderer/CanvasStage";
 import {
+  createPrecisionTiming,
   getResponseRT,
+  resolveTimingMs,
   scheduleStimulusVisibility,
   setResponseStartTime,
 } from "../utils/PrecisionTiming";
@@ -204,19 +207,50 @@ const info = {
   },
 };
 
+type Padding = {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+};
+
+type TextLayout = {
+  centerX: number;
+  centerY: number;
+  width: number;
+  height: number;
+  rotation: number;
+  lines: string[];
+  font: string;
+  fontColor: string;
+  textAlign: CanvasTextAlign;
+  lineHeightPx: number;
+  padding: Padding;
+  backgroundColor: string;
+  borderRadius: number;
+  borderColor: string;
+  borderWidth: number;
+};
+
+let textComponentCounter = 0;
+
 /**
- * TextComponent - Renders a styled text block at a given position.
- * Supports coordinates, rotation, and full style customisation.
- *
- * Cloze mode: when the `text` parameter contains %% markers the component
- * automatically embeds inline `<input>` fields and records participant answers,
- * following the same "sketchpad pattern" used by response components
- * (no finishTrial – data exposed via getResponse() / getRT()).
+ * TextComponent - Renders text stimuli. Plain text is rendered on the shared
+ * canvas stage. Cloze/input text stays DOM-based because it is interactive.
  */
 class TextComponent {
   private jsPsych: any;
   private element: HTMLElement | null = null;
+  private stage: CanvasStage | null = null;
   private cancelVisibilitySchedule: (() => void) | null = null;
+  private cancelSchedule: Array<() => void> = [];
+  private removeDrawable: (() => void) | null = null;
+  private drawableId = "";
+  private layout: TextLayout | null = null;
+  private prepared = false;
+  private drawn = false;
+  private offsetReached = false;
+  private destroyed = false;
 
   // ── Cloze state ─────────────────────────────────────────────────────────
   private isClozeMode: boolean = false;
@@ -250,7 +284,358 @@ class TextComponent {
     return raw;
   }
 
+  private isTransparent(color: string | null | undefined): boolean {
+    if (!color) return true;
+    const normalized = String(color).trim().toLowerCase();
+    return (
+      normalized === "transparent" ||
+      normalized === "none" ||
+      normalized === "rgba(0,0,0,0)" ||
+      normalized === "rgba(0, 0, 0, 0)"
+    );
+  }
+
+  private parseCssPx(raw: string | number | null | undefined): number {
+    if (raw === null || raw === undefined) return 0;
+    if (typeof raw === "number") return Number.isFinite(raw) ? raw : 0;
+    const match = String(raw).trim().match(/^(-?\d+(?:\.\d+)?)/);
+    return match ? Number(match[1]) : 0;
+  }
+
+  private parsePadding(raw: any): Padding {
+    const value = String(this.resolveParam(raw, "0px")).trim();
+    const parts = value.split(/\s+/).map((part) => this.parseCssPx(part));
+    const [top = 0, right = top, bottom = top, left = right] =
+      parts.length === 1
+        ? [parts[0], parts[0], parts[0], parts[0]]
+        : parts.length === 2
+          ? [parts[0], parts[1], parts[0], parts[1]]
+          : parts.length === 3
+            ? [parts[0], parts[1], parts[2], parts[1]]
+            : [parts[0], parts[1], parts[2], parts[3]];
+
+    return { top, right, bottom, left };
+  }
+
+  private roundedRectPath(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius: number,
+  ) {
+    const r = Math.max(0, Math.min(radius, width / 2, height / 2));
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + width - r, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+    ctx.lineTo(x + width, y + height - r);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+    ctx.lineTo(x + r, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  private wrapLine(
+    ctx: CanvasRenderingContext2D,
+    line: string,
+    maxWidth: number,
+  ): string[] {
+    if (!line) return [""];
+    if (!maxWidth || ctx.measureText(line).width <= maxWidth) return [line];
+
+    const words = line.split(/(\s+)/);
+    const lines: string[] = [];
+    let current = "";
+
+    for (const word of words) {
+      const next = current + word;
+      if (current && ctx.measureText(next).width > maxWidth) {
+        lines.push(current.trimEnd());
+        current = word.trimStart();
+      } else {
+        current = next;
+      }
+    }
+
+    if (current) lines.push(current.trimEnd());
+    return lines.length > 0 ? lines : [line];
+  }
+
+  private createTextLayout(config: any): TextLayout | null {
+    if (!this.stage) return null;
+
+    const canvasStyles = this.resolveParam(config.__canvasStyles, {});
+    const canvasWidth = this.resolveParam(canvasStyles?.width, 1024);
+    const canvasHeight = this.resolveParam(canvasStyles?.height, 768);
+    const text = String(this.resolveParam(config.text, "Text"));
+    const fontSizeVw = this.resolveParam(config._font_size_runtime_vw, null);
+    const configuredFontSize = this.resolveParam(config.font_size, 16);
+    const fontSize =
+      configuredFontSize != null
+        ? Number(configuredFontSize)
+        : fontSizeVw != null
+          ? (Number(fontSizeVw) / 100) * canvasWidth
+          : 16;
+    const fontFamily = this.resolveParam(config.font_family, "sans-serif");
+    const fontWeight = this.resolveParam(config.font_weight, "normal");
+    const fontStyle = this.resolveParam(config.font_style, "normal");
+    const font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+    const lineHeight = Number(this.resolveParam(config.line_height, 1.5));
+    const lineHeightPx = Math.max(1, fontSize * lineHeight);
+    const padding = this.parsePadding(config.padding);
+    const configuredWidth = this.resolveParam(config.width, null);
+    const explicitWidth =
+      configuredWidth != null ? (Number(configuredWidth) / 100) * canvasWidth : null;
+    const maxBlockWidth = explicitWidth ?? Math.max(200, canvasWidth * 0.86);
+    const maxTextWidth = Math.max(
+      1,
+      maxBlockWidth - padding.left - padding.right,
+    );
+
+    this.stage.ctx.save();
+    this.stage.ctx.font = font;
+    const lines = text
+      .split(/\r?\n/)
+      .flatMap((line) => this.wrapLine(this.stage!.ctx, line, maxTextWidth));
+    const measuredTextWidth = Math.max(
+      1,
+      ...lines.map((line) => this.stage!.ctx.measureText(line).width),
+    );
+    this.stage.ctx.restore();
+
+    const blockWidth =
+      explicitWidth ?? measuredTextWidth + padding.left + padding.right;
+    const blockHeight =
+      lines.length * lineHeightPx + padding.top + padding.bottom;
+    const coordinates = this.resolveParam(config.coordinates, { x: 0, y: 0 });
+    const centerX =
+      canvasWidth / 2 + ((coordinates?.x ?? 0) / 100) * (canvasWidth / 2);
+    const centerY =
+      canvasHeight / 2 - ((coordinates?.y ?? 0) / 100) * (canvasHeight / 2);
+
+    return {
+      centerX,
+      centerY,
+      width: blockWidth,
+      height: blockHeight,
+      rotation: Number(this.resolveParam(config.rotation, 0)),
+      lines,
+      font,
+      fontColor: this.resolveParam(config.font_color, "#000000"),
+      textAlign: this.resolveParam(config.text_align, "center") as CanvasTextAlign,
+      lineHeightPx,
+      padding,
+      backgroundColor: this.resolveParam(config.background_color, "transparent"),
+      borderRadius: Number(this.resolveParam(config.border_radius, 0)),
+      borderColor: this.resolveParam(config.border_color, "transparent"),
+      borderWidth: Number(this.resolveParam(config.border_width, 0)),
+    };
+  }
+
+  private updateTrackingElement(layout: TextLayout, zIndex: number) {
+    if (!this.element) return;
+    this.element.style.left = `${layout.centerX}px`;
+    this.element.style.top = `${layout.centerY}px`;
+    this.element.style.width = `${layout.width}px`;
+    this.element.style.height = `${layout.height}px`;
+    this.element.style.transform = `translate(-50%, -50%) rotate(${layout.rotation}deg)`;
+    this.element.style.zIndex = String(zIndex);
+    this.element.style.visibility = "visible";
+  }
+
+  private drawLayout(ctx: CanvasRenderingContext2D, layout: TextLayout) {
+    const originX = -layout.width / 2;
+    const originY = -layout.height / 2;
+
+    ctx.save();
+    ctx.translate(layout.centerX, layout.centerY);
+    ctx.rotate((layout.rotation * Math.PI) / 180);
+
+    if (!this.isTransparent(layout.backgroundColor)) {
+      ctx.fillStyle = layout.backgroundColor;
+      this.roundedRectPath(
+        ctx,
+        originX,
+        originY,
+        layout.width,
+        layout.height,
+        layout.borderRadius,
+      );
+      ctx.fill();
+    }
+
+    if (layout.borderWidth > 0 && !this.isTransparent(layout.borderColor)) {
+      ctx.strokeStyle = layout.borderColor;
+      ctx.lineWidth = layout.borderWidth;
+      this.roundedRectPath(
+        ctx,
+        originX + layout.borderWidth / 2,
+        originY + layout.borderWidth / 2,
+        layout.width - layout.borderWidth,
+        layout.height - layout.borderWidth,
+        layout.borderRadius,
+      );
+      ctx.stroke();
+    }
+
+    ctx.font = layout.font;
+    ctx.fillStyle = layout.fontColor;
+    ctx.textAlign = layout.textAlign;
+    ctx.textBaseline = "middle";
+
+    const textX =
+      layout.textAlign === "left"
+        ? originX + layout.padding.left
+        : layout.textAlign === "right"
+          ? originX + layout.width - layout.padding.right
+          : 0;
+    const firstLineY =
+      originY + layout.padding.top + layout.lineHeightPx / 2;
+
+    layout.lines.forEach((line, index) => {
+      ctx.fillText(line, textX, firstLineY + index * layout.lineHeightPx);
+    });
+
+    ctx.restore();
+  }
+
+  private prepareCanvasText(config: any, zIndex: number): boolean {
+    if (this.destroyed || !this.stage || this.prepared) return this.prepared;
+
+    const layout = this.createTextLayout(config);
+    if (!layout) return false;
+
+    this.layout = layout;
+    this.updateTrackingElement(layout, zIndex);
+    this.removeDrawable?.();
+    this.removeDrawable = this.stage.registerDrawable({
+      id: this.drawableId,
+      zIndex,
+      visible: false,
+      draw: (ctx) => {
+        if (this.layout) this.drawLayout(ctx, this.layout);
+      },
+    });
+    this.prepared = true;
+    return true;
+  }
+
+  private renderCanvasText(container: HTMLElement, config: any): HTMLElement {
+    const canvasStyles = this.resolveParam(config.__canvasStyles, {});
+    const canvasWidth = this.resolveParam(canvasStyles?.width, 1024);
+    const canvasHeight = this.resolveParam(canvasStyles?.height, 768);
+    const zIndex = resolveTimingMs(config.zIndex, 0) ?? 0;
+
+    this.destroyed = false;
+    this.offsetReached = false;
+    this.drawn = false;
+    this.prepared = false;
+    this.layout = null;
+    this.drawableId = config.name
+      ? `text-${config.name}`
+      : `text-${++textComponentCounter}`;
+
+    this.stage = getCanvasStage(container, {
+      width: canvasWidth,
+      height: canvasHeight,
+      backgroundColor: "transparent",
+      zIndex,
+    });
+
+    this.element = document.createElement("div");
+    this.element.id = config.name
+      ? `jspsych-text-component-${config.name}`
+      : "jspsych-text-component";
+    this.element.className = "dynamic-text-component";
+    this.element.setAttribute("aria-hidden", "true");
+    this.element.style.position = "absolute";
+    this.element.style.left = "0";
+    this.element.style.top = "0";
+    this.element.style.width = "0";
+    this.element.style.height = "0";
+    this.element.style.margin = "0";
+    this.element.style.padding = "0";
+    this.element.style.background = "transparent";
+    this.element.style.pointerEvents = "none";
+    this.element.style.visibility = "hidden";
+    this.element.style.zIndex = String(zIndex);
+    container.appendChild(this.element);
+
+    this.prepareCanvasText(config, zIndex);
+
+    const timing = config.__timing as
+      | ReturnType<typeof createPrecisionTiming>
+      | undefined;
+    const stimulusOnset = resolveTimingMs(config.stimulus_onset, null);
+    const stimulusDuration = resolveTimingMs(config.stimulus_duration, null);
+    const stimulusTiming = timing?.registerStimulus?.(
+      config.name || config.type || this.drawableId,
+      stimulusOnset,
+      stimulusDuration,
+    );
+
+    const draw = (timestamp: number) => {
+      if (this.destroyed || this.offsetReached) return;
+      if (!this.prepareCanvasText(config, zIndex)) return;
+      this.drawn = true;
+      this.stage?.setDrawableVisibility(this.drawableId, true);
+      stimulusTiming?.markOnset(timestamp);
+    };
+
+    const hide = (timestamp: number) => {
+      if (this.destroyed) return;
+      this.offsetReached = true;
+      this.stage?.setDrawableVisibility(this.drawableId, false);
+      if (this.drawn) {
+        stimulusTiming?.markOffset(timestamp);
+      }
+    };
+
+    if (timing) {
+      if (stimulusOnset === null) {
+        timing.onStart(draw);
+      } else {
+        this.cancelSchedule.push(timing.scheduleAt(stimulusOnset, draw));
+      }
+
+      if (stimulusDuration !== null) {
+        this.cancelSchedule.push(
+          timing.scheduleAt((stimulusOnset ?? 0) + stimulusDuration, hide),
+        );
+      }
+    } else {
+      const drawDelay = stimulusOnset ?? 0;
+      const drawHandle = window.setTimeout(
+        () => draw(performance.now()),
+        drawDelay,
+      );
+      this.cancelSchedule.push(() => window.clearTimeout(drawHandle));
+
+      if (stimulusDuration !== null) {
+        const hideHandle = window.setTimeout(
+          () => hide(performance.now()),
+          drawDelay + stimulusDuration,
+        );
+        this.cancelSchedule.push(() => window.clearTimeout(hideHandle));
+      }
+    }
+
+    return this.element;
+  }
+
   render(container: HTMLElement, config: any): HTMLElement {
+    const text = this.resolveParam(config.text, "Text");
+    const parts = String(text).split("%");
+    this.isClozeMode = parts.length >= 3 && parts.length % 2 === 1;
+
+    if (!this.isClozeMode) {
+      return this.renderCanvasText(container, config);
+    }
+
     const mapValue = (value: number): number => {
       if (value < -100) return -50;
       if (value > 100) return 50;
@@ -258,7 +643,6 @@ class TextComponent {
     };
 
     // Resolve all params
-    const text = this.resolveParam(config.text, "Text");
     const fontColor = this.resolveParam(config.font_color, "#000000");
     const fontSizeVw = this.resolveParam(config._font_size_runtime_vw, null);
     const fontSize = this.resolveParam(config.font_size, 16);
@@ -276,10 +660,6 @@ class TextComponent {
     const rotation = this.resolveParam(config.rotation, 0);
     const canvasStyles = this.resolveParam(config.__canvasStyles, {});
     const canvasWidth = this.resolveParam(canvasStyles?.width, window.innerWidth);
-
-    // Detect cloze mode: text must have at least one %...% pair
-    const parts = text.split("%");
-    this.isClozeMode = parts.length >= 3 && parts.length % 2 === 1;
 
     // Create element
     this.element = document.createElement("div");
@@ -317,53 +697,43 @@ class TextComponent {
     this.element.style.maxWidth =
       width != null ? "none" : `${Math.max(200, canvasWidth * 0.86)}px`;
     this.element.style.boxSizing = "border-box";
+    this.element.style.whiteSpace = "nowrap";
 
-    if (this.isClozeMode) {
-      // nowrap keeps text and inline inputs on the same line
-      this.element.style.whiteSpace = "nowrap";
+    // ── Cloze mode: same logic as InputResponseComponent ────────────────
+    const caseSensitive = this.resolveParam(config.case_sensitivity, true);
+    this.solutions = this.parseSolutions(parts, caseSensitive);
 
-      // ── Cloze mode: same logic as InputResponseComponent ────────────────
-      const caseSensitive = this.resolveParam(config.case_sensitivity, true);
-      this.solutions = this.parseSolutions(parts, caseSensitive);
-
-      let html = "";
-      let solution_counter = 0;
-      for (let i = 0; i < parts.length; i++) {
-        if (i % 2 === 0) {
-          html += parts[i];
-        } else {
-          // No CSS class – all layout via inline styles so nothing overrides
-          html += `<input type="text" id="input${solution_counter}" value="" style="display:inline;font:inherit;color:inherit;vertical-align:baseline;width:10ch;box-sizing:content-box;">`;
-          solution_counter++;
-        }
+    let html = "";
+    let solution_counter = 0;
+    for (let i = 0; i < parts.length; i++) {
+      if (i % 2 === 0) {
+        html += parts[i];
+      } else {
+        // No CSS class – all layout via inline styles so nothing overrides
+        html += `<input type="text" id="input${solution_counter}" value="" style="display:inline;font:inherit;color:inherit;vertical-align:baseline;width:10ch;box-sizing:content-box;">`;
+        solution_counter++;
       }
-
-      this.element.innerHTML = html;
-      container.appendChild(this.element);
-
-      // Collect input element references
-      this.inputElements = [];
-      for (let i = 0; i < this.solutions.length; i++) {
-        const input = document.getElementById(`input${i}`) as HTMLInputElement;
-        if (input) {
-          this.inputElements.push(input);
-        }
-      }
-
-      // Autofocus first input if enabled
-      const autofocus = this.resolveParam(config.autofocus, true);
-      if (autofocus && this.inputElements.length > 0) {
-        this.inputElements[0].focus();
-      }
-
-      setResponseStartTime(this, config.__timing);
-    } else {
-      // ── Plain text mode (original behaviour) ─────────────────────────────
-      this.element.style.whiteSpace = "pre-wrap";
-      this.element.textContent = text;
-      container.appendChild(this.element);
     }
 
+    this.element.innerHTML = html;
+    container.appendChild(this.element);
+
+    // Collect input element references
+    this.inputElements = [];
+    for (let i = 0; i < this.solutions.length; i++) {
+      const input = document.getElementById(`input${i}`) as HTMLInputElement;
+      if (input) {
+        this.inputElements.push(input);
+      }
+    }
+
+    // Autofocus first input if enabled
+    const autofocus = this.resolveParam(config.autofocus, true);
+    if (autofocus && this.inputElements.length > 0) {
+      this.inputElements[0].focus();
+    }
+
+    setResponseStartTime(this, config.__timing);
     this.cancelVisibilitySchedule = scheduleStimulusVisibility(
       this.element,
       config,
@@ -469,19 +839,52 @@ class TextComponent {
   }
 
   hide(): void {
-    if (this.element) this.element.style.visibility = "hidden";
+    if (this.isClozeMode) {
+      if (this.element) this.element.style.visibility = "hidden";
+      return;
+    }
+    this.stage?.setDrawableVisibility(this.drawableId, false);
   }
 
   show(): void {
-    if (this.element) this.element.style.visibility = "visible";
+    if (this.isClozeMode) {
+      if (this.element) this.element.style.visibility = "visible";
+      return;
+    }
+    if (this.drawn) {
+      this.stage?.setDrawableVisibility(this.drawableId, true);
+    }
   }
 
   destroy(): void {
     if (this.cancelVisibilitySchedule) this.cancelVisibilitySchedule();
+    this.cancelSchedule.forEach((cancel) => cancel());
+    this.cancelSchedule = [];
+    this.removeDrawable?.();
+    this.removeDrawable = null;
     if (this.element && this.element.parentNode) {
       this.element.parentNode.removeChild(this.element);
     }
     this.element = null;
+    this.stage = null;
+    this.layout = null;
+    this.prepared = false;
+    this.destroyed = true;
+  }
+
+  getRenderedSize(): { width: number; height: number } | null {
+    if (!this.layout) return null;
+    const rect = this.element?.getBoundingClientRect();
+    if (rect) {
+      return {
+        width: rect.width,
+        height: rect.height,
+      };
+    }
+    return {
+      width: this.layout.width,
+      height: this.layout.height,
+    };
   }
 }
 

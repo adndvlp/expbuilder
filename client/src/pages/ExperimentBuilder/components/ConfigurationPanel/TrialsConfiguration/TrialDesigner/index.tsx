@@ -253,31 +253,11 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
         border_color: v("transparent"),
         border_width: v(0),
       },
-      CanvasTextComponent: {
-        text: v("Text"),
-        font_color: v("#000000"),
-        font_size: v(48),
-        font_family: v("sans-serif"),
-        font_weight: v("normal"),
-        font_style: v("normal"),
-        text_align: v("center"),
-        line_height: v(1.2),
-        background_color: v(null),
-        clear_before_draw: v(true),
-        clear_on_offset: v(true),
-      },
       HtmlComponent: {
         stimulus: v("<p>HTML</p>"),
       },
       ImageComponent: {
         stimulus: v(""),
-      },
-      CanvasImageComponent: {
-        stimulus: v(""),
-        maintain_aspect_ratio: v(true),
-        background_color: v(null),
-        clear_before_draw: v(true),
-        clear_on_offset: v(true),
       },
       SliderResponseComponent: {
         min: v(0),
