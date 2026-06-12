@@ -27,6 +27,8 @@ import {
   preloadAssets,
   resolveTimingMs,
 } from "./utils/PrecisionTiming";
+import ResponseTimingManager from "./utils/ResponseTimingManager";
+import { getCanvasStages, StageMetrics } from "./renderer/CanvasStage";
 
 const info = <const>{
   name: "DynamicPlugin",
@@ -106,12 +108,76 @@ const info = <const>{
       type: ParameterType.INT,
       default: 50,
     },
+    /** Rendering backend for timing-critical visual components. */
+    render_backend: {
+      type: ParameterType.STRING,
+      default: "webgl-strict",
+    },
+    /** If true, save CPU-side renderer commit diagnostics. */
+    record_render_timing: {
+      type: ParameterType.BOOL,
+      default: true,
+    },
+    /** Controls how much diagnostic time-series data is saved. */
+    diagnostics_level: {
+      type: ParameterType.STRING,
+      default: "debug",
+    },
+    /** If true, use WebGL disjoint timer queries when the browser exposes them. */
+    record_gpu_timing: {
+      type: ParameterType.BOOL,
+      default: true,
+    },
+    response_timing_enabled: {
+      type: ParameterType.BOOL,
+      default: false,
+    },
+    response_required: {
+      type: ParameterType.BOOL,
+      default: false,
+    },
+    response_anchor_component_id: {
+      type: ParameterType.STRING,
+      default: null,
+    },
+    response_anchor_component: {
+      type: ParameterType.STRING,
+      default: null,
+    },
+    response_allowed_from: {
+      type: ParameterType.COMPLEX,
+      default: "anchor_onset",
+    },
+    premature_response_policy: {
+      type: ParameterType.STRING,
+      default: "end_invalid",
+    },
+    response_timing_quality_mode: {
+      type: ParameterType.STRING,
+      default: "normal",
+    },
+    minimum_valid_rt_ms: {
+      type: ParameterType.FLOAT,
+      default: null,
+    },
+    response_calibration_profile: {
+      type: ParameterType.COMPLEX,
+      default: null,
+    },
+    response_expected_delay_ms: {
+      type: ParameterType.FLOAT,
+      default: null,
+    },
+    external_reference_id: {
+      type: ParameterType.STRING,
+      default: null,
+    },
   },
   data: {
     /** The response time in milliseconds for the participant to make a response. The time is measured from when the trial
      * starts until the participant's response. */
     rt: {
-      type: ParameterType.INT,
+      type: ParameterType.FLOAT,
     },
     timing_method: {
       type: ParameterType.STRING,
@@ -125,16 +191,25 @@ const info = <const>{
     actual_trial_duration: {
       type: ParameterType.FLOAT,
     },
+    duration_error: {
+      type: ParameterType.FLOAT,
+    },
     frame_count: {
       type: ParameterType.INT,
     },
     long_frame_count: {
       type: ParameterType.INT,
     },
+    dropped_frame_count: {
+      type: ParameterType.INT,
+    },
     max_frame_interval: {
       type: ParameterType.FLOAT,
     },
     mean_frame_interval: {
+      type: ParameterType.FLOAT,
+    },
+    frame_interval_estimate: {
       type: ParameterType.FLOAT,
     },
     frame_intervals: {
@@ -148,6 +223,240 @@ const info = <const>{
     },
     timing_quality_reason: {
       type: ParameterType.STRING,
+    },
+    visual_timing_quality: {
+      type: ParameterType.STRING,
+    },
+    response_timing_quality: {
+      type: ParameterType.STRING,
+    },
+    response_timing_quality_reason: {
+      type: ParameterType.STRING,
+    },
+    diagnostics_level: {
+      type: ParameterType.STRING,
+    },
+    render_backend_requested: {
+      type: ParameterType.STRING,
+    },
+    render_backend: {
+      type: ParameterType.STRING,
+    },
+    visual_backend: {
+      type: ParameterType.STRING,
+    },
+    visual_all_commits_rAF: {
+      type: ParameterType.BOOL,
+    },
+    commit_outside_raf_count: {
+      type: ParameterType.INT,
+    },
+    render_backend_fallback: {
+      type: ParameterType.BOOL,
+    },
+    render_backend_error: {
+      type: ParameterType.STRING,
+    },
+    buffer_strategy: {
+      type: ParameterType.STRING,
+    },
+    commit_count: {
+      type: ParameterType.INT,
+    },
+    commit_durations: {
+      type: ParameterType.STRING,
+    },
+    mean_commit_duration: {
+      type: ParameterType.FLOAT,
+    },
+    max_commit_duration: {
+      type: ParameterType.FLOAT,
+    },
+    draw_call_count: {
+      type: ParameterType.INT,
+    },
+    texture_uploads_during_trial: {
+      type: ParameterType.INT,
+    },
+    legacy_drawables_during_trial: {
+      type: ParameterType.INT,
+    },
+    legacy_texture_uploads_during_trial: {
+      type: ParameterType.INT,
+    },
+    buffer_uploads_during_trial: {
+      type: ParameterType.INT,
+    },
+    shader_compiles_during_trial: {
+      type: ParameterType.INT,
+    },
+    webgl_context_lost_count: {
+      type: ParameterType.INT,
+    },
+    gpu_timer_available: {
+      type: ParameterType.BOOL,
+    },
+    gpu_draw_durations: {
+      type: ParameterType.STRING,
+    },
+    mean_gpu_draw_duration: {
+      type: ParameterType.FLOAT,
+    },
+    max_gpu_draw_duration: {
+      type: ParameterType.FLOAT,
+    },
+    gpu_pending_query_count: {
+      type: ParameterType.INT,
+    },
+    gpu_disjoint_count: {
+      type: ParameterType.INT,
+    },
+    dom_interactive_components: {
+      type: ParameterType.STRING,
+    },
+    dom_visual_components: {
+      type: ParameterType.INT,
+    },
+    dom_visual_component_names: {
+      type: ParameterType.STRING,
+    },
+    rt_raw: {
+      type: ParameterType.FLOAT,
+    },
+    rt_corrected: {
+      type: ParameterType.FLOAT,
+    },
+    response_timing_enabled: {
+      type: ParameterType.BOOL,
+    },
+    response_required: {
+      type: ParameterType.BOOL,
+    },
+    response_anchor_component_id: {
+      type: ParameterType.STRING,
+    },
+    response_anchor_component: {
+      type: ParameterType.STRING,
+    },
+    response_start_anchor: {
+      type: ParameterType.STRING,
+    },
+    stimulus_actual_onset_abs: {
+      type: ParameterType.FLOAT,
+    },
+    response_allowed_from: {
+      type: ParameterType.STRING,
+    },
+    response_allowed_from_abs: {
+      type: ParameterType.FLOAT,
+    },
+    premature_response_policy: {
+      type: ParameterType.STRING,
+    },
+    response_timing_quality_mode: {
+      type: ParameterType.STRING,
+    },
+    minimum_valid_rt_ms: {
+      type: ParameterType.FLOAT,
+    },
+    response_before_anchor: {
+      type: ParameterType.BOOL,
+    },
+    response_before_anchor_time: {
+      type: ParameterType.FLOAT,
+    },
+    response_timeout: {
+      type: ParameterType.BOOL,
+    },
+    response_timeout_ms: {
+      type: ParameterType.FLOAT,
+    },
+    response_time: {
+      type: ParameterType.FLOAT,
+    },
+    response_now_at_handler: {
+      type: ParameterType.FLOAT,
+    },
+    response_timestamp_source: {
+      type: ParameterType.STRING,
+    },
+    response_event_lag: {
+      type: ParameterType.FLOAT,
+    },
+    response_bias_correction_ms: {
+      type: ParameterType.FLOAT,
+    },
+    response_calibration_profile_id: {
+      type: ParameterType.STRING,
+    },
+    response_calibration_match_status: {
+      type: ParameterType.STRING,
+    },
+    response_event_type: {
+      type: ParameterType.STRING,
+    },
+    response_device: {
+      type: ParameterType.STRING,
+    },
+    response_key: {
+      type: ParameterType.STRING,
+    },
+    response_code: {
+      type: ParameterType.STRING,
+    },
+    response_repeat: {
+      type: ParameterType.BOOL,
+    },
+    response_is_trusted: {
+      type: ParameterType.BOOL,
+    },
+    response_valid: {
+      type: ParameterType.BOOL,
+    },
+    response_invalid_reason: {
+      type: ParameterType.STRING,
+    },
+    response_client_x: {
+      type: ParameterType.FLOAT,
+    },
+    response_client_y: {
+      type: ParameterType.FLOAT,
+    },
+    response_canvas_x: {
+      type: ParameterType.FLOAT,
+    },
+    response_canvas_y: {
+      type: ParameterType.FLOAT,
+    },
+    device_pixel_ratio: {
+      type: ParameterType.FLOAT,
+    },
+    canvas_bounding_rect: {
+      type: ParameterType.STRING,
+    },
+    response_target_component: {
+      type: ParameterType.STRING,
+    },
+    document_hidden_during_trial: {
+      type: ParameterType.BOOL,
+    },
+    window_blur_during_trial: {
+      type: ParameterType.BOOL,
+    },
+    response_expected_delay_ms: {
+      type: ParameterType.FLOAT,
+    },
+    external_reference_id: {
+      type: ParameterType.STRING,
+    },
+    response_error_ms: {
+      type: ParameterType.FLOAT,
+    },
+    response_listener_attached: {
+      type: ParameterType.BOOL,
+    },
+    response_listener_removed: {
+      type: ParameterType.BOOL,
     },
   },
 };
@@ -281,32 +590,238 @@ function attachPrecisionTiming(config: any, timing: ReturnType<typeof createPrec
   });
 }
 
+function attachResponseTiming(config: any, responseTiming: ResponseTimingManager) {
+  Object.defineProperty(config, "__responseTiming", {
+    value: responseTiming,
+    enumerable: false,
+    configurable: true,
+  });
+}
+
+function getStableComponentId(config: any, fallback: string) {
+  const raw =
+    config.component_id ??
+    config.componentId ??
+    config.builder_id ??
+    config.builderId ??
+    config.id ??
+    config.uuid ??
+    fallback;
+  return String(resolveRawValue(raw) ?? fallback);
+}
+
 function roundTiming(value: number | null): number | null {
   return value === null ? null : Math.round(value * 1000) / 1000;
+}
+
+function resolveRawValue(value: any) {
+  return value && typeof value === "object" && "value" in value
+    ? value.value
+    : value;
+}
+
+function componentLabel(config: any) {
+  return config.name ? `${config.name}:${config.type}` : String(config.type);
+}
+
+function isClozeTextComponent(config: any) {
+  const text = String(resolveRawValue(config.text) ?? "");
+  const parts = text.split("%");
+  return parts.length >= 3 && parts.length % 2 === 1;
+}
+
+function auditDomLayers(stimulusComponents: any[], responseComponents: any[]) {
+  const domInteractiveComponents = responseComponents.map(({ config }) =>
+    componentLabel(config),
+  );
+  const domVisualComponentNames: string[] = [];
+
+  for (const { config } of stimulusComponents) {
+    if (config.type === "TextComponent" && isClozeTextComponent(config)) {
+      domInteractiveComponents.push(componentLabel(config));
+      continue;
+    }
+
+    if (config.type === "HtmlComponent" || config.type === "VideoComponent") {
+      domVisualComponentNames.push(componentLabel(config));
+    }
+  }
+
+  return {
+    dom_interactive_components: domInteractiveComponents,
+    dom_visual_components: domVisualComponentNames.length,
+    dom_visual_component_names: domVisualComponentNames,
+  };
+}
+
+type DiagnosticsLevel = "summary" | "stimulus" | "frame" | "debug";
+
+function normalizeDiagnosticsLevel(raw: any): DiagnosticsLevel {
+  const value = String(resolveRawValue(raw) ?? "debug").toLowerCase();
+  if (
+    value === "summary" ||
+    value === "stimulus" ||
+    value === "frame" ||
+    value === "debug"
+  ) {
+    return value;
+  }
+  return "debug";
+}
+
+function getDiagnosticsOptions(trial: any) {
+  const level = normalizeDiagnosticsLevel(trial.diagnostics_level);
+  const recordFrameTiming = trial.record_frame_timing !== false;
+  const recordRenderTiming = trial.record_render_timing !== false;
+  const recordGpuTiming = trial.record_gpu_timing !== false;
+
+  return {
+    level,
+    includeStimulusTiming: level !== "summary",
+    includeFrameIntervals:
+      recordFrameTiming && (level === "frame" || level === "debug"),
+    includeRenderSeries: recordRenderTiming && level === "debug",
+    includeGpuSeries: recordRenderTiming && recordGpuTiming && level === "debug",
+  };
+}
+
+function aggregateRenderMetrics(
+  stageMetrics: StageMetrics[],
+  requestedBackend: string,
+) {
+  const commitDurations = stageMetrics.flatMap(
+    (metrics) => metrics.commit_durations,
+  );
+  const gpuDrawDurations = stageMetrics.flatMap(
+    (metrics) => metrics.gpu_draw_durations,
+  );
+  const mean = (values: number[]) =>
+    values.length > 0
+      ? values.reduce((sum, value) => sum + value, 0) / values.length
+      : null;
+  const max = (values: number[]) =>
+    values.length > 0 ? Math.max(...values) : null;
+  const renderBackends = [...new Set(stageMetrics.map((m) => m.render_backend))];
+  const bufferStrategies = [
+    ...new Set(stageMetrics.map((m) => m.buffer_strategy)),
+  ];
+
+  return {
+    render_backend_requested: requestedBackend,
+    render_backend: renderBackends.join("+") || "none",
+    visual_backend: renderBackends.join("+") || "none",
+    visual_all_commits_rAF: stageMetrics.every(
+      (metrics) => metrics.visual_all_commits_rAF,
+    ),
+    commit_outside_raf_count: stageMetrics.reduce(
+      (sum, metrics) => sum + metrics.commit_outside_raf_count,
+      0,
+    ),
+    render_backend_fallback: stageMetrics.some(
+      (metrics) => metrics.render_backend_fallback,
+    ),
+    render_backend_error: stageMetrics
+      .map((metrics) => metrics.render_backend_error)
+      .filter(Boolean)
+      .join("; "),
+    buffer_strategy: bufferStrategies.join("+") || "none",
+    commit_count: stageMetrics.reduce(
+      (sum, metrics) => sum + metrics.commit_count,
+      0,
+    ),
+    commit_durations: commitDurations.map(roundTiming),
+    mean_commit_duration: roundTiming(mean(commitDurations)),
+    max_commit_duration: roundTiming(max(commitDurations)),
+    draw_call_count: stageMetrics.reduce(
+      (sum, metrics) => sum + metrics.draw_call_count,
+      0,
+    ),
+    texture_uploads_during_trial: stageMetrics.reduce(
+      (sum, metrics) => sum + metrics.texture_uploads_during_trial,
+      0,
+    ),
+    legacy_drawables_during_trial: stageMetrics.reduce(
+      (sum, metrics) => sum + metrics.legacy_drawables_during_trial,
+      0,
+    ),
+    legacy_texture_uploads_during_trial: stageMetrics.reduce(
+      (sum, metrics) => sum + metrics.legacy_texture_uploads_during_trial,
+      0,
+    ),
+    buffer_uploads_during_trial: stageMetrics.reduce(
+      (sum, metrics) => sum + metrics.buffer_uploads_during_trial,
+      0,
+    ),
+    shader_compiles_during_trial: stageMetrics.reduce(
+      (sum, metrics) => sum + metrics.shader_compiles_during_trial,
+      0,
+    ),
+    webgl_context_lost_count: stageMetrics.reduce(
+      (sum, metrics) => sum + metrics.webgl_context_lost_count,
+      0,
+    ),
+    gpu_timer_available: stageMetrics.some(
+      (metrics) => metrics.gpu_timer_available,
+    ),
+    gpu_draw_durations: gpuDrawDurations.map(roundTiming),
+    mean_gpu_draw_duration: roundTiming(mean(gpuDrawDurations)),
+    max_gpu_draw_duration: roundTiming(max(gpuDrawDurations)),
+    gpu_pending_query_count: stageMetrics.reduce(
+      (sum, metrics) => sum + metrics.gpu_pending_query_count,
+      0,
+    ),
+    gpu_disjoint_count: stageMetrics.reduce(
+      (sum, metrics) => sum + metrics.gpu_disjoint_count,
+      0,
+    ),
+  };
+}
+
+function mergeQuality(
+  visualQuality: { quality: string; reason: string },
+  responseQuality: string,
+  responseReason: string,
+) {
+  const rank: Record<string, number> = { ok: 0, warning: 1, bad: 2 };
+  const visualRank = rank[visualQuality.quality] ?? 0;
+  const responseRank = rank[responseQuality] ?? 0;
+  const quality = responseRank > visualRank ? responseQuality : visualQuality.quality;
+  const reasons = [visualQuality.reason, responseReason].filter(Boolean);
+  return { quality, reason: reasons.join("; ") };
 }
 
 function classifyTimingQuality(
   timingSummary: any,
   desiredTrialDuration: number | null,
   badThreshold: number,
+  renderMetrics?: ReturnType<typeof aggregateRenderMetrics>,
+  domAudit?: ReturnType<typeof auditDomLayers>,
 ) {
   const reasons: string[] = [];
   const maxFrameInterval = timingSummary.maxFrameInterval ?? 0;
+  const frameMs =
+    timingSummary.frameIntervalEstimate ??
+    timingSummary.meanFrameInterval ??
+    1000 / 60;
+  const halfFrame = frameMs / 2;
   const trialDurationError =
     desiredTrialDuration === null || timingSummary.actualDuration === null
       ? 0
       : Math.abs(timingSummary.actualDuration - desiredTrialDuration);
-  const stimulusDurationErrors = timingSummary.stimulusRecords
-    .map((record: any) =>
-      typeof record.duration_error === "number"
-        ? Math.abs(record.duration_error)
-        : 0,
-    );
-  const maxStimulusDurationError =
-    stimulusDurationErrors.length > 0 ? Math.max(...stimulusDurationErrors) : 0;
+  const stimulusTimingErrors = timingSummary.stimulusRecords.flatMap(
+    (record: any) =>
+      ["onset_error", "offset_error", "duration_error"].map((field) =>
+        typeof record[field] === "number" ? Math.abs(record[field]) : 0,
+      ),
+  );
+  const maxStimulusTimingError =
+    stimulusTimingErrors.length > 0 ? Math.max(...stimulusTimingErrors) : 0;
 
   if (timingSummary.longFrameCount > 0) {
     reasons.push(`${timingSummary.longFrameCount} long frame(s)`);
+  }
+  if (timingSummary.droppedFrameCount > 0) {
+    reasons.push(`${timingSummary.droppedFrameCount} dropped frame(s)`);
   }
   if (maxFrameInterval >= badThreshold) {
     reasons.push(`max frame ${roundTiming(maxFrameInterval)}ms`);
@@ -314,24 +829,105 @@ function classifyTimingQuality(
   if (trialDurationError >= badThreshold) {
     reasons.push(`trial duration error ${roundTiming(trialDurationError)}ms`);
   }
-  if (maxStimulusDurationError >= badThreshold) {
+  if (maxStimulusTimingError >= badThreshold) {
     reasons.push(
-      `stimulus duration error ${roundTiming(maxStimulusDurationError)}ms`,
+      `stimulus timing error ${roundTiming(maxStimulusTimingError)}ms`,
+    );
+  }
+  if (renderMetrics?.render_backend_fallback) {
+    reasons.push("render backend fallback");
+  }
+  if (renderMetrics?.visual_all_commits_rAF === false) {
+    reasons.push(
+      `${renderMetrics.commit_outside_raf_count} visual commit(s) outside rAF`,
+    );
+  }
+  if ((renderMetrics?.texture_uploads_during_trial ?? 0) > 0) {
+    reasons.push(
+      `${renderMetrics?.texture_uploads_during_trial} texture upload(s) during trial`,
+    );
+  }
+  if ((renderMetrics?.legacy_drawables_during_trial ?? 0) > 0) {
+    reasons.push(
+      `${renderMetrics?.legacy_drawables_during_trial} legacy drawable(s) during trial`,
+    );
+  }
+  if ((renderMetrics?.legacy_texture_uploads_during_trial ?? 0) > 0) {
+    reasons.push(
+      `${renderMetrics?.legacy_texture_uploads_during_trial} legacy texture upload(s) during trial`,
+    );
+  }
+  if ((renderMetrics?.buffer_uploads_during_trial ?? 0) > 0) {
+    reasons.push(
+      `${renderMetrics?.buffer_uploads_during_trial} buffer upload(s) during trial`,
+    );
+  }
+  if ((renderMetrics?.shader_compiles_during_trial ?? 0) > 0) {
+    reasons.push(
+      `${renderMetrics?.shader_compiles_during_trial} shader compile/link operation(s) during trial`,
+    );
+  }
+  if ((renderMetrics?.webgl_context_lost_count ?? 0) > 0) {
+    reasons.push(`${renderMetrics?.webgl_context_lost_count} WebGL context loss event(s)`);
+  }
+  if ((domAudit?.dom_visual_components ?? 0) > 0) {
+    reasons.push(
+      `${domAudit?.dom_visual_components} DOM visual component(s) outside VisualRenderer`,
     );
   }
 
   if (
     maxFrameInterval >= badThreshold ||
     trialDurationError >= badThreshold ||
-    maxStimulusDurationError >= badThreshold
+    maxStimulusTimingError >= badThreshold ||
+    renderMetrics?.render_backend_fallback ||
+    renderMetrics?.visual_all_commits_rAF === false ||
+    (renderMetrics?.texture_uploads_during_trial ?? 0) > 0 ||
+    (renderMetrics?.legacy_drawables_during_trial ?? 0) > 0 ||
+    (renderMetrics?.legacy_texture_uploads_during_trial ?? 0) > 0 ||
+    (renderMetrics?.buffer_uploads_during_trial ?? 0) > 0 ||
+    (renderMetrics?.shader_compiles_during_trial ?? 0) > 0 ||
+    (renderMetrics?.webgl_context_lost_count ?? 0) > 0
   ) {
     return { quality: "bad", reason: reasons.join("; ") };
   }
 
-  if (timingSummary.longFrameCount > 0 || trialDurationError > 1) {
+  const renderCommitWarning =
+    typeof renderMetrics?.max_commit_duration === "number" &&
+    renderMetrics.max_commit_duration > halfFrame;
+  const gpuWarning =
+    typeof renderMetrics?.max_gpu_draw_duration === "number" &&
+    renderMetrics.max_gpu_draw_duration > halfFrame;
+
+  if (
+    timingSummary.longFrameCount > 0 ||
+    timingSummary.droppedFrameCount > 0 ||
+    trialDurationError > halfFrame ||
+    maxStimulusTimingError > halfFrame ||
+    renderCommitWarning ||
+    gpuWarning ||
+    (domAudit?.dom_visual_components ?? 0) > 0 ||
+    (renderMetrics?.gpu_disjoint_count ?? 0) > 0
+  ) {
+    if (renderCommitWarning) {
+      reasons.push(
+        `renderer commit ${roundTiming(renderMetrics!.max_commit_duration)}ms`,
+      );
+    }
+    if (gpuWarning) {
+      reasons.push(
+        `GPU draw ${roundTiming(renderMetrics!.max_gpu_draw_duration)}ms`,
+      );
+    }
+    if ((renderMetrics?.gpu_disjoint_count ?? 0) > 0) {
+      reasons.push(`${renderMetrics?.gpu_disjoint_count} GPU disjoint event(s)`);
+    }
     return {
       quality: "warning",
-      reason: reasons.length > 0 ? reasons.join("; ") : "minor timing drift",
+      reason:
+        reasons.length > 0
+          ? reasons.join("; ")
+          : `timing drift above half frame (${roundTiming(halfFrame)}ms)`,
     };
   }
 
@@ -362,6 +958,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           top: 50%;
           left: 50%;
           overflow: hidden;
+          text-align: left;
         }
         #jspsych-html-component-main,
         #jspsych-button-response-main {
@@ -416,6 +1013,19 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     const responseComponents: any[] = [];
     let hasResponded = false;
     let trialEnded = false;
+    const responseTiming = new ResponseTimingManager({
+      trial,
+      timing,
+      container: mainContainer,
+      canvasWidth,
+      canvasHeight,
+      onFinish: (timestamp) => {
+        if (trialEnded || trial.response_ends_trial === false) return;
+        hasResponded = true;
+        recordAllPendingResponses();
+        endTrial(typeof timestamp === "number" ? timestamp : performance.now());
+      },
+    });
 
     // Instantiate all components first
     const stimulusTypeCounts: Record<string, number> = {};
@@ -425,7 +1035,10 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         const config = { ...rawConfig };
         // Inject __canvasStyles so components can compute pixel coords
         config.__canvasStyles = trial.__canvasStyles;
+        config.__renderBackend = trial.render_backend || "webgl-strict";
+        config.__recordGpuTiming = trial.record_gpu_timing !== false;
         attachPrecisionTiming(config, timing);
+        attachResponseTiming(config, responseTiming);
         const ComponentClass = COMPONENT_MAP[config.type];
         if (ComponentClass) {
           stimulusTypeCounts[config.type] =
@@ -433,6 +1046,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           if (!config.name) {
             config.name = `${config.type}_${stimulusTypeCounts[config.type]}`;
           }
+          config.__componentId = getStableComponentId(config, config.name);
           const instance = new ComponentClass(this.jsPsych);
           stimulusComponents.push({ instance, config });
         } else {
@@ -447,7 +1061,10 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       trial.response_components.forEach((rawConfig: any, idx: number) => {
         const config = { ...rawConfig };
         config.__canvasStyles = trial.__canvasStyles;
+        config.__renderBackend = trial.render_backend || "webgl-strict";
+        config.__recordGpuTiming = trial.record_gpu_timing !== false;
         attachPrecisionTiming(config, timing);
+        attachResponseTiming(config, responseTiming);
         const ComponentClass = RESPONSE_COMPONENT_MAP[config.type];
         if (ComponentClass) {
           responseTypeCounts[config.type] =
@@ -455,6 +1072,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           if (!config.name) {
             config.name = `${config.type}_${responseTypeCounts[config.type]}`;
           }
+          config.__componentId = getStableComponentId(config, config.name);
           const instance = new ComponentClass(this.jsPsych);
           responseComponents.push({ instance, config });
         } else {
@@ -552,39 +1170,137 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       });
     };
 
+    const getFirstRecordedRT = (): number | null => {
+      const allResponseSources = [...responseComponents, ...stimulusComponents];
+      const rts = allResponseSources
+        .map(({ instance }) =>
+          instance.getRT && typeof instance.getRT === "function"
+            ? instance.getRT()
+            : null,
+        )
+        .filter((rt): rt is number => typeof rt === "number");
+
+      return rts.length > 0 ? Math.min(...rts) : null;
+    };
+
     // Function to end the trial and collect data
     const endTrial = (offsetTime = performance.now()) => {
       if (trialEnded) return;
       trialEnded = true;
 
-      // Calculate response time
-      const onsetTime = timing.getOnsetTime() ?? offsetTime;
-      const rt = Math.round(offsetTime - onsetTime);
       const timingSummary = timing.getSummary(offsetTime);
       const desiredTrialDuration = resolveTimingMs(trial.trial_duration, null);
-      const timingQuality = classifyTimingQuality(
+      const trialDurationError =
+        desiredTrialDuration === null || timingSummary.actualDuration === null
+          ? null
+          : timingSummary.actualDuration - desiredTrialDuration;
+      const diagnostics = getDiagnosticsOptions(trial);
+      for (const stage of getCanvasStages(mainContainer)) {
+        stage.setTrialActive(false);
+      }
+      const renderMetrics = aggregateRenderMetrics(
+        getCanvasStages(mainContainer).map((stage) => stage.getMetrics()),
+        String(trial.render_backend || "webgl-strict"),
+      );
+      const domAudit = auditDomLayers(stimulusComponents, responseComponents);
+      const visualTimingQuality = classifyTimingQuality(
         timingSummary,
         desiredTrialDuration,
         resolveTimingMs(trial.timing_quality_bad_threshold, 50) ?? 50,
+        renderMetrics,
+        domAudit,
+      );
+      responseTiming.finishWithoutResponse(
+        typeof offsetTime === "number" ? offsetTime : null,
+      );
+      responseTiming.detach();
+      const responseTimingData = responseTiming.getData();
+      const responseRT = responseTiming.enabled
+        ? responseTimingData.rt
+        : getFirstRecordedRT();
+      const timingQuality = mergeQuality(
+        visualTimingQuality,
+        responseTimingData.response_timing_quality,
+        responseTimingData.response_timing_quality_reason,
       );
       timing.stop();
 
       // Create flat data structure (like PsychoPy) instead of nested arrays
       const trialData: any = {
-        rt: rt,
-        timing_method: "performance.now + requestAnimationFrame",
+        timing_method: "performance.now + requestAnimationFrame frame-nearest scheduler",
         trial_onset_time: timingSummary.onsetTime,
         trial_offset_time: timingSummary.offsetTime,
         actual_trial_duration: roundTiming(timingSummary.actualDuration),
+        duration_error: roundTiming(trialDurationError),
         frame_count: timingSummary.frameCount,
         long_frame_count: timingSummary.longFrameCount,
+        dropped_frame_count: timingSummary.droppedFrameCount,
         max_frame_interval: roundTiming(timingSummary.maxFrameInterval),
         mean_frame_interval: roundTiming(timingSummary.meanFrameInterval),
-        frame_intervals: JSON.stringify(timingSummary.frameIntervals),
-        stimulus_timing: JSON.stringify(timingSummary.stimulusRecords),
+        frame_interval_estimate: roundTiming(timingSummary.frameIntervalEstimate),
         timing_quality: timingQuality.quality,
         timing_quality_reason: timingQuality.reason,
+        visual_timing_quality: visualTimingQuality.quality,
+        response_timing_quality: responseTimingData.response_timing_quality,
+        response_timing_quality_reason:
+          responseTimingData.response_timing_quality_reason,
+        diagnostics_level: diagnostics.level,
+        render_backend_requested: renderMetrics.render_backend_requested,
+        render_backend: renderMetrics.render_backend,
+        visual_backend: renderMetrics.visual_backend,
+        visual_all_commits_rAF: renderMetrics.visual_all_commits_rAF,
+        commit_outside_raf_count: renderMetrics.commit_outside_raf_count,
+        render_backend_fallback: renderMetrics.render_backend_fallback,
+        render_backend_error: renderMetrics.render_backend_error,
+        buffer_strategy: renderMetrics.buffer_strategy,
+        commit_count: renderMetrics.commit_count,
+        mean_commit_duration: renderMetrics.mean_commit_duration,
+        max_commit_duration: renderMetrics.max_commit_duration,
+        draw_call_count: renderMetrics.draw_call_count,
+        texture_uploads_during_trial:
+          renderMetrics.texture_uploads_during_trial,
+        legacy_drawables_during_trial:
+          renderMetrics.legacy_drawables_during_trial,
+        legacy_texture_uploads_during_trial:
+          renderMetrics.legacy_texture_uploads_during_trial,
+        buffer_uploads_during_trial:
+          renderMetrics.buffer_uploads_during_trial,
+        shader_compiles_during_trial:
+          renderMetrics.shader_compiles_during_trial,
+        webgl_context_lost_count: renderMetrics.webgl_context_lost_count,
+        gpu_timer_available: renderMetrics.gpu_timer_available,
+        mean_gpu_draw_duration: renderMetrics.mean_gpu_draw_duration,
+        max_gpu_draw_duration: renderMetrics.max_gpu_draw_duration,
+        gpu_pending_query_count: renderMetrics.gpu_pending_query_count,
+        gpu_disjoint_count: renderMetrics.gpu_disjoint_count,
+        dom_interactive_components: JSON.stringify(
+          domAudit.dom_interactive_components,
+        ),
+        dom_visual_components: domAudit.dom_visual_components,
+        dom_visual_component_names: JSON.stringify(
+          domAudit.dom_visual_component_names,
+        ),
+        ...responseTimingData,
+        rt: responseTiming.enabled ? responseTimingData.rt : responseRT,
       };
+
+      if (diagnostics.includeStimulusTiming) {
+        trialData.stimulus_timing = JSON.stringify(timingSummary.stimulusRecords);
+      }
+
+      if (diagnostics.includeFrameIntervals) {
+        trialData.frame_intervals = JSON.stringify(timingSummary.frameIntervals);
+      }
+
+      if (diagnostics.includeRenderSeries) {
+        trialData.commit_durations = JSON.stringify(renderMetrics.commit_durations);
+      }
+
+      if (diagnostics.includeGpuSeries) {
+        trialData.gpu_draw_durations = JSON.stringify(
+          renderMetrics.gpu_draw_durations,
+        );
+      }
 
       // Add stimulus components data as individual columns
       stimulusComponents.forEach((comp) => {
@@ -807,8 +1523,17 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       if (trialEnded) return;
 
       renderAllComponents();
+      responseTiming.attach();
       timing.onStart(() => {
         mainContainer.style.visibility = "visible";
+        for (const stage of getCanvasStages(mainContainer)) {
+          stage.setTrialActive(true);
+        }
+      });
+      timing.onFrameCommit((timestamp) => {
+        for (const stage of getCanvasStages(mainContainer)) {
+          stage.commit(timestamp, true);
+        }
       });
 
       // Handle trial duration on measured animation frames.

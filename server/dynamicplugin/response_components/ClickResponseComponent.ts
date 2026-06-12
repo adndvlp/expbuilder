@@ -84,7 +84,7 @@ const info = {
     },
     /** The response time in milliseconds from component render to the click/touch. */
     rt: {
-      type: ParameterType.INT,
+      type: ParameterType.FLOAT,
     },
   },
 };
@@ -122,6 +122,7 @@ class ClickResponseComponent {
   private listenTarget: HTMLElement | EventTarget | null = null;
   private useTouch: boolean = false;
   private timing: any = null;
+  private unregisterResponseTiming: (() => void) | null = null;
 
   static info = info;
 
@@ -203,6 +204,50 @@ class ClickResponseComponent {
       this.listenTarget = this.overlayElement;
     }
 
+    if (
+      trial.__responseTiming?.enabled &&
+      this.listenTarget instanceof HTMLElement
+    ) {
+      this.unregisterResponseTiming =
+        trial.__responseTiming.registerPointerTarget({
+          componentId: trial.__componentId ?? null,
+          componentName: trial.name ?? null,
+          label: "click",
+          element: this.listenTarget,
+          onResponse: (response: any) => {
+            if (response.response_valid !== true || this.response !== null) {
+              return false;
+            }
+
+            const clientX = Number(response.response_client_x ?? 0);
+            const clientY = Number(response.response_client_y ?? 0);
+            const isTouch =
+              response.response_device === "touch" ||
+              response.response_device === "pen";
+
+            let x: number;
+            let y: number;
+
+            if (trial.relative_to_element && this.listenTarget instanceof Element) {
+              const rect = this.listenTarget.getBoundingClientRect();
+              x = Math.round(clientX - rect.left);
+              y = Math.round(clientY - rect.top);
+            } else {
+              x = Math.round(clientX);
+              y = Math.round(clientY);
+            }
+
+            this.rt = response.rt_raw;
+            this.response = { x, y, is_touch: isTouch };
+
+            if (trial.show_click_marker !== false && trial.show_click_marker) {
+              this.showMarker(clientX, clientY, trial);
+            }
+          },
+        });
+      return;
+    }
+
     // Build the unified handler
     this.boundHandler = (e: Event) => {
       if (this.response !== null) return; // Already captured
@@ -280,6 +325,8 @@ class ClickResponseComponent {
         height: canvasStyles.height ?? 768,
         backgroundColor: "transparent",
         zIndex: trial.zIndex ?? 10,
+        backend: trial.__renderBackend ?? "webgl-strict",
+        recordGpuTiming: trial.__recordGpuTiming !== false,
       });
     }
 
@@ -347,6 +394,10 @@ class ClickResponseComponent {
   }
 
   destroy(): void {
+    if (this.unregisterResponseTiming) {
+      this.unregisterResponseTiming();
+      this.unregisterResponseTiming = null;
+    }
     if (this.boundHandler && this.listenTarget) {
       const eventType = this.useTouch ? "touchstart" : "click";
       (this.listenTarget as HTMLElement).removeEventListener(

@@ -5,6 +5,7 @@ import {
   getResponseRT,
   preloadBitmap,
   resolveTimingMs,
+  scheduleFrameEvent,
   setResponseStartTime,
 } from "../utils/PrecisionTiming";
 
@@ -166,7 +167,7 @@ const info = {
     },
     /** The response time in milliseconds for the participant to make a response. The time is measured from when the stimulus first appears on the screen until the participant's response. */
     rt: {
-      type: ParameterType.INT,
+      type: ParameterType.FLOAT,
     },
   },
   // prettier-ignore
@@ -239,6 +240,10 @@ class ButtonResponseComponent {
   private buttonsEnabled = true;
   private validationError = false;
   private useDomFallback = false;
+  private responseTiming: any = null;
+  private responseTimingUnregisters: Array<() => void> = [];
+  private componentId: string | null = null;
+  private componentName: string | null = null;
 
   static info = info;
 
@@ -516,7 +521,25 @@ class ButtonResponseComponent {
         (this as any).onResponseCallback();
       }
     });
+    this.registerButtonPointerTarget(button, cell.choice);
     return button;
+  }
+
+  private registerButtonPointerTarget(button: HTMLElement, choice: string) {
+    if (!this.responseTiming?.enabled) return;
+    const unregister = this.responseTiming.registerPointerTarget({
+      componentId: this.componentId,
+      componentName: this.componentName,
+      label: choice,
+      element: button,
+      onResponse: (response: any) => {
+        if (!this.buttonsEnabled || response.response_valid !== true) {
+          return false;
+        }
+        this.storeButtonResponse(choice, response.event, response);
+      },
+    });
+    this.responseTimingUnregisters.push(unregister);
   }
 
   private updateOverlay(layout: ButtonLayout) {
@@ -633,6 +656,8 @@ class ButtonResponseComponent {
       height: canvasHeight,
       backgroundColor: "transparent",
       zIndex,
+      backend: this.resolveParam(trial.__renderBackend, "webgl-strict"),
+      recordGpuTiming: this.resolveParam(trial.__recordGpuTiming, true),
     });
 
     this.layout = this.createLayout(trial);
@@ -787,6 +812,7 @@ class ButtonResponseComponent {
           onResponse();
         }
       });
+      this.registerButtonPointerTarget(buttonElement, choice);
     }
   }
 
@@ -799,6 +825,9 @@ class ButtonResponseComponent {
     onResponse?: () => void,
   ): HTMLElement | void {
     this.timing = trial.__timing || null;
+    this.responseTiming = trial.__responseTiming || null;
+    this.componentId = trial.__componentId ?? null;
+    this.componentName = trial.name ?? null;
     (this as any).onResponseCallback = onResponse;
     this.drawableId = trial.name
       ? `button-${trial.name}`
@@ -821,7 +850,7 @@ class ButtonResponseComponent {
       this.disableButtons();
       this.enableTimeout = this.timing
         ? this.timing.scheduleAt(enableButtonAfter, () => this.enableButtons())
-        : window.setTimeout(() => this.enableButtons(), enableButtonAfter);
+        : scheduleFrameEvent(enableButtonAfter, () => this.enableButtons());
     }
 
     return this.buttonGroupElement ?? undefined;
@@ -830,12 +859,15 @@ class ButtonResponseComponent {
   /**
    * Record the button response and RT
    */
-  private storeButtonResponse(choice: string, event?: Event): void {
+  private storeButtonResponse(choice: string, event?: Event, timingResponse?: any): void {
     if (this.response !== null) {
       return; // Already responded
     }
 
-    this.rt = getResponseRT(this, this.timing, event);
+    this.rt =
+      typeof timingResponse?.rt_raw === "number"
+        ? timingResponse.rt_raw
+        : getResponseRT(this, this.timing, event);
     this.response = choice;
 
     // Disable all buttons after response
@@ -936,6 +968,10 @@ class ButtonResponseComponent {
    * Cleanup: remove event listeners and timeouts
    */
   destroy(): void {
+    for (const unregister of this.responseTimingUnregisters) {
+      unregister();
+    }
+    this.responseTimingUnregisters = [];
     if (this.enableTimeout) {
       if (typeof this.enableTimeout === "function") {
         this.enableTimeout();

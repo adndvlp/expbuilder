@@ -5,6 +5,7 @@ import {
   createPrecisionTiming,
   preloadBitmap,
   resolveTimingMs,
+  scheduleFrameEvent,
 } from "../utils/PrecisionTiming";
 
 var version = "2.2.0";
@@ -207,20 +208,17 @@ class ImageComponent {
     this.drawRect = rect;
     this.updateTrackingElement(rect, zIndex);
     this.removeDrawable?.();
-    this.removeDrawable = this.stage.registerDrawable({
+    this.stage.preloadTexture(this.drawableId, this.source);
+    this.removeDrawable = this.stage.registerSprite({
       id: this.drawableId,
       zIndex,
       visible: false,
-      draw: (ctx) => {
-        if (!this.source || !this.drawRect) return;
-        ctx.drawImage(
-          this.source,
-          this.drawRect.x,
-          this.drawRect.y,
-          this.drawRect.width,
-          this.drawRect.height,
-        );
-      },
+      textureKey: this.drawableId,
+      source: this.source,
+      x: rect.x,
+      y: rect.y,
+      width: rect.width,
+      height: rect.height,
     });
     this.prepared = true;
     return true;
@@ -247,6 +245,8 @@ class ImageComponent {
       height: canvasHeight,
       backgroundColor: "transparent",
       zIndex,
+      backend: this.resolveParam(config.__renderBackend, "webgl-strict"),
+      recordGpuTiming: this.resolveParam(config.__recordGpuTiming, true),
     });
 
     this.element = document.createElement("div");
@@ -286,6 +286,7 @@ class ImageComponent {
       config.name || config.type || this.drawableId,
       stimulusOnset,
       stimulusDuration,
+      config.__componentId ?? config.builder_id ?? config.id ?? null,
     );
 
     const draw = (timestamp: number) => {
@@ -304,17 +305,21 @@ class ImageComponent {
 
       this.drawn = true;
       this.visible = true;
-      this.stage?.setDrawableVisibility(this.drawableId, true);
-      stimulusTiming?.markOnset(timestamp);
+      this.stage?.setDrawableVisibility(this.drawableId, true, (commitInfo) => {
+        stimulusTiming?.markOnset(timestamp, commitInfo);
+      });
     };
 
     const hide = (timestamp: number) => {
       if (this.destroyed) return;
       this.offsetReached = true;
       this.visible = false;
-      this.stage?.setDrawableVisibility(this.drawableId, false);
       if (this.drawn) {
-        stimulusTiming?.markOffset(timestamp);
+        this.stage?.setDrawableVisibility(this.drawableId, false, (commitInfo) => {
+          stimulusTiming?.markOffset(timestamp, commitInfo);
+        });
+      } else {
+        this.stage?.setDrawableVisibility(this.drawableId, false);
       }
     };
 
@@ -332,18 +337,12 @@ class ImageComponent {
       }
     } else {
       const drawDelay = stimulusOnset ?? 0;
-      const drawHandle = window.setTimeout(
-        () => draw(performance.now()),
-        drawDelay,
-      );
-      this.cancelSchedule.push(() => window.clearTimeout(drawHandle));
+      this.cancelSchedule.push(scheduleFrameEvent(drawDelay, draw));
 
       if (stimulusDuration !== null) {
-        const hideHandle = window.setTimeout(
-          () => hide(performance.now()),
-          drawDelay + stimulusDuration,
+        this.cancelSchedule.push(
+          scheduleFrameEvent(drawDelay + stimulusDuration, hide),
         );
-        this.cancelSchedule.push(() => window.clearTimeout(hideHandle));
       }
     }
 

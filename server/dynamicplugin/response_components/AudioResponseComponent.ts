@@ -3,6 +3,7 @@ import { ParameterType } from "jspsych";
 import {
   getResponseRT,
   resolveTimingMs,
+  scheduleFrameEvent,
 } from "../utils/PrecisionTiming";
 
 const version = "1.0.0";
@@ -58,11 +59,11 @@ const info = {
     },
     /** The response time in milliseconds. */
     rt: {
-      type: ParameterType.INT,
+      type: ParameterType.FLOAT,
     },
     /** Estimate of when the stimulus appeared relative to the start of the audio recording. */
     estimated_stimulus_onset: {
-      type: ParameterType.INT,
+      type: ParameterType.FLOAT,
     },
     /** A URL to a copy of the audio data. */
     audio_url: {
@@ -247,10 +248,7 @@ class AudioResponseComponent {
       };
       this.recordingDurationCancel = this.timing
         ? this.timing.scheduleAt(recordingDuration, stopAtDuration)
-        : (() => {
-            const handle = window.setTimeout(stopAtDuration, recordingDuration);
-            return () => window.clearTimeout(handle);
-          })();
+        : scheduleFrameEvent(recordingDuration, stopAtDuration);
     }
   }
 
@@ -330,9 +328,10 @@ class AudioResponseComponent {
     return {
       response: this.response,
       audio_url: this.audio_url,
-      estimated_stimulus_onset: Math.round(
-        this.stimulus_start_time - this.recorder_start_time,
-      ),
+      estimated_stimulus_onset:
+        Math.round(
+          (this.stimulus_start_time - this.recorder_start_time) * 1000,
+        ) / 1000,
     };
   }
 

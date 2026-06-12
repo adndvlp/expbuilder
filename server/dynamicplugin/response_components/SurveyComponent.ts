@@ -75,7 +75,7 @@ const info = {
     },
     /** The response time in milliseconds for the participant to make a response. The time is measured from when the questions first appear on the screen until the participant's response(s) are submitted. */
     rt: {
-      type: ParameterType.INT,
+      type: ParameterType.FLOAT,
     },
   },
   // prettier-ignore
@@ -131,6 +131,7 @@ class SurveyjsComponent {
     surveyContainer.style.maxHeight = "90vh";
     surveyContainer.style.overflowY = "auto";
     surveyContainer.style.overflowX = "hidden";
+    surveyContainer.style.zIndex = String(trial.zIndex ?? 0);
 
     const xVw = mapValue(trial.coordinates.x);
     const yVh = mapValue(trial.coordinates.y);

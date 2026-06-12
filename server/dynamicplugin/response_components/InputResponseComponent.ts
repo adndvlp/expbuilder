@@ -146,7 +146,7 @@ const info = {
     },
     /** The response time in milliseconds for the participant to make a response. The time is measured from when the component is rendered. */
     rt: {
-      type: ParameterType.INT,
+      type: ParameterType.FLOAT,
     },
   },
   // prettier-ignore
@@ -248,6 +248,7 @@ class InputResponseComponent {
     this.clozeContainer = document.createElement("div");
     this.clozeContainer.style.position = "absolute";
     this.clozeContainer.style.width = "max-content";
+    this.clozeContainer.style.zIndex = String(trial.zIndex ?? 0);
 
     const coordinates = trial.coordinates || { x: 0, y: 0 };
     const xVw = mapValue(coordinates.x);
@@ -255,10 +256,6 @@ class InputResponseComponent {
     this.clozeContainer.style.left = `calc(50% + ${xVw}vw)`;
     this.clozeContainer.style.top = `calc(50% - ${yVh}vh)`;
     this.clozeContainer.style.transform = "translate(-50%, -50%)";
-
-    if (trial.zIndex !== undefined) {
-      this.clozeContainer.style.zIndex = String(trial.zIndex);
-    }
 
     display_element.appendChild(this.clozeContainer);
 

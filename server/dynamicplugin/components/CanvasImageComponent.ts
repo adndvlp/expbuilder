@@ -5,6 +5,7 @@ import {
   createPrecisionTiming,
   preloadBitmap,
   resolveTimingMs,
+  scheduleFrameEvent,
 } from "../utils/PrecisionTiming";
 
 var version = "1.0.0";
@@ -77,11 +78,14 @@ class CanvasImageComponent {
   private source: CanvasBitmapSource | null = null;
   private sourcePromise: Promise<CanvasBitmapSource> | null = null;
   private cancelSchedule: Array<() => void> = [];
+  private removeDrawable: (() => void) | null = null;
   private deferredRafHandle: number | null = null;
   private drawn = false;
   private offsetReached = false;
   private destroyed = false;
+  private prepared = false;
   private lastDrawRect: DrawRect | null = null;
+  private drawableId = "";
 
   constructor(jsPsych: any) {
     this.jsPsych = jsPsych;
@@ -157,6 +161,30 @@ class CanvasImageComponent {
     };
   }
 
+  private prepareSprite(config: any): boolean {
+    if (this.destroyed || !this.source || !this.stage) return false;
+    if (this.prepared) return true;
+
+    const rect = this.computeDrawRect(config, this.source);
+    if (!rect) return false;
+    this.removeDrawable?.();
+    this.stage.preloadTexture(this.drawableId, this.source);
+    this.removeDrawable = this.stage.registerSprite({
+      id: this.drawableId,
+      textureKey: this.drawableId,
+      source: this.source,
+      x: rect.x,
+      y: rect.y,
+      width: rect.width,
+      height: rect.height,
+      zIndex: resolveTimingMs(config.zIndex, 0) ?? 0,
+      visible: false,
+    });
+    this.lastDrawRect = rect;
+    this.prepared = true;
+    return true;
+  }
+
   render(container: HTMLElement, config: any): HTMLElement {
     const canvasWidth = this.resolveParam(config.__canvasStyles?.width, 1024);
     const canvasHeight = this.resolveParam(config.__canvasStyles?.height, 768);
@@ -167,18 +195,25 @@ class CanvasImageComponent {
     this.destroyed = false;
     this.offsetReached = false;
     this.drawn = false;
+    this.prepared = false;
     this.lastDrawRect = null;
+    this.drawableId = config.name
+      ? `canvas-image-${config.name}`
+      : "canvas-image";
     this.stage = getCanvasStage(container, {
       width: canvasWidth,
       height: canvasHeight,
       backgroundColor,
       zIndex: resolveTimingMs(config.zIndex, 0) ?? 0,
+      backend: this.resolveParam(config.__renderBackend, "webgl-strict"),
+      recordGpuTiming: this.resolveParam(config.__recordGpuTiming, true),
     });
 
     const stimulus = this.resolveParam(config.stimulus, "");
     if (stimulus) {
       this.sourcePromise = preloadBitmap(stimulus).then((source) => {
         this.source = source;
+        this.prepareSprite(config);
         return source;
       });
     }
@@ -192,6 +227,7 @@ class CanvasImageComponent {
       config.name || config.type || "canvas-image",
       stimulusOnset,
       stimulusDuration,
+      config.__componentId ?? config.builder_id ?? config.id ?? null,
     );
 
     const draw = (timestamp: number) => {
@@ -208,26 +244,22 @@ class CanvasImageComponent {
         return;
       }
 
-      const rect = this.computeDrawRect(config, this.source);
-      if (!rect || !this.stage) return;
-
-      if (this.resolveParam(config.clear_before_draw, true)) {
-        this.stage.clear(backgroundColor);
-      }
-      this.stage.drawImage(this.source, rect.x, rect.y, rect.width, rect.height);
-      this.lastDrawRect = rect;
+      if (!this.prepareSprite(config) || !this.stage) return;
       this.drawn = true;
-      stimulusTiming?.markOnset(timestamp);
+      this.stage.setDrawableVisibility(this.drawableId, true, (commitInfo) => {
+        stimulusTiming?.markOnset(timestamp, commitInfo);
+      });
     };
 
     const clear = (timestamp: number) => {
       if (this.destroyed) return;
       this.offsetReached = true;
-      if (this.stage && this.resolveParam(config.clear_on_offset, true)) {
-        this.stage.clear(backgroundColor);
-      }
       if (this.drawn) {
-        stimulusTiming?.markOffset(timestamp);
+        this.stage?.setDrawableVisibility(this.drawableId, false, (commitInfo) => {
+          stimulusTiming?.markOffset(timestamp, commitInfo);
+        });
+      } else {
+        this.stage?.setDrawableVisibility(this.drawableId, false);
       }
     };
 
@@ -245,18 +277,12 @@ class CanvasImageComponent {
       }
     } else {
       const drawDelay = stimulusOnset ?? 0;
-      const drawHandle = window.setTimeout(
-        () => draw(performance.now()),
-        drawDelay,
-      );
-      this.cancelSchedule.push(() => window.clearTimeout(drawHandle));
+      this.cancelSchedule.push(scheduleFrameEvent(drawDelay, draw));
 
       if (stimulusDuration !== null) {
-        const clearHandle = window.setTimeout(
-          () => clear(performance.now()),
-          drawDelay + stimulusDuration,
+        this.cancelSchedule.push(
+          scheduleFrameEvent(drawDelay + stimulusDuration, clear),
         );
-        this.cancelSchedule.push(() => window.clearTimeout(clearHandle));
       }
     }
 
@@ -265,22 +291,13 @@ class CanvasImageComponent {
 
   hide() {
     if (this.stage) {
-      this.stage.clear();
+      this.stage.setDrawableVisibility(this.drawableId, false);
     }
   }
 
   show() {
-    if (this.source && this.stage) {
-      const rect = this.lastDrawRect;
-      if (rect) {
-        this.stage.drawImage(
-          this.source,
-          rect.x,
-          rect.y,
-          rect.width,
-          rect.height,
-        );
-      }
+    if (this.source && this.stage && this.lastDrawRect) {
+      this.stage.setDrawableVisibility(this.drawableId, true);
     }
   }
 
@@ -293,9 +310,12 @@ class CanvasImageComponent {
       this.deferredRafHandle = null;
     }
     this.stage = null;
+    this.removeDrawable?.();
+    this.removeDrawable = null;
     this.source = null;
     this.sourcePromise = null;
     this.lastDrawRect = null;
+    this.prepared = false;
   }
 
   getElement(): HTMLElement | null {

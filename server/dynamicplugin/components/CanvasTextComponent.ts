@@ -1,6 +1,10 @@
 import { ParameterType } from "jspsych";
 import { getCanvasStage, CanvasStage } from "../renderer/CanvasStage";
-import { createPrecisionTiming, resolveTimingMs } from "../utils/PrecisionTiming";
+import {
+  createPrecisionTiming,
+  resolveTimingMs,
+  scheduleFrameEvent,
+} from "../utils/PrecisionTiming";
 
 var version = "1.0.0";
 
@@ -82,8 +86,10 @@ const info = {
 class CanvasTextComponent {
   private stage: CanvasStage | null = null;
   private cancelSchedule: Array<() => void> = [];
+  private removeDrawable: (() => void) | null = null;
   private drawn = false;
   private destroyed = false;
+  private drawableId = "";
 
   static info = info;
 
@@ -95,6 +101,69 @@ class CanvasTextComponent {
     return raw;
   }
 
+  private prepareTexture(
+    config: any,
+    canvasWidth: number,
+    canvasHeight: number,
+    zIndex: number,
+  ): boolean {
+    if (!this.stage) return false;
+
+    const textureCanvas = document.createElement("canvas");
+    const dpr = window.devicePixelRatio || 1;
+    textureCanvas.width = Math.round(canvasWidth * dpr);
+    textureCanvas.height = Math.round(canvasHeight * dpr);
+    const ctx = textureCanvas.getContext("2d", { alpha: true });
+    if (!ctx) return false;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+    const text = String(this.resolveParam(config.text, "Text"));
+    const coordinates = this.resolveParam(config.coordinates, { x: 0, y: 0 });
+    const centerX =
+      canvasWidth / 2 + ((coordinates?.x ?? 0) / 100) * (canvasWidth / 2);
+    const centerY =
+      canvasHeight / 2 - ((coordinates?.y ?? 0) / 100) * (canvasHeight / 2);
+    const fontStyle = this.resolveParam(config.font_style, "normal");
+    const fontWeight = this.resolveParam(config.font_weight, "normal");
+    const fontSize = Number(this.resolveParam(config.font_size, 48));
+    const fontFamily = this.resolveParam(config.font_family, "sans-serif");
+    const fontColor = this.resolveParam(config.font_color, "#000000");
+    const textAlign = this.resolveParam(config.text_align, "center");
+    const lineHeight = Number(this.resolveParam(config.line_height, 1.2));
+    const rotation = Number(this.resolveParam(config.rotation, 0));
+    const lines = text.split(/\r?\n/);
+    const lineStep = fontSize * lineHeight;
+    const firstLineY = -((lines.length - 1) * lineStep) / 2;
+
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.fillStyle = fontColor;
+    ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+    ctx.textAlign = textAlign as CanvasTextAlign;
+    ctx.textBaseline = "middle";
+    lines.forEach((line, index) => {
+      ctx.fillText(line, 0, firstLineY + index * lineStep);
+    });
+    ctx.restore();
+
+    this.removeDrawable?.();
+    this.stage.preloadTexture(this.drawableId, textureCanvas);
+    this.removeDrawable = this.stage.registerSprite({
+      id: this.drawableId,
+      textureKey: this.drawableId,
+      source: textureCanvas,
+      x: 0,
+      y: 0,
+      width: canvasWidth,
+      height: canvasHeight,
+      zIndex,
+      visible: false,
+    });
+    return true;
+  }
+
   render(container: HTMLElement, config: any): HTMLElement {
     const canvasWidth = this.resolveParam(config.__canvasStyles?.width, 1024);
     const canvasHeight = this.resolveParam(config.__canvasStyles?.height, 768);
@@ -104,12 +173,17 @@ class CanvasTextComponent {
 
     this.destroyed = false;
     this.drawn = false;
+    this.drawableId = config.name ? `canvas-text-${config.name}` : "canvas-text";
     this.stage = getCanvasStage(container, {
       width: canvasWidth,
       height: canvasHeight,
       backgroundColor,
       zIndex: resolveTimingMs(config.zIndex, 0) ?? 0,
+      backend: this.resolveParam(config.__renderBackend, "webgl-strict"),
+      recordGpuTiming: this.resolveParam(config.__recordGpuTiming, true),
     });
+    const zIndex = resolveTimingMs(config.zIndex, 0) ?? 0;
+    this.prepareTexture(config, canvasWidth, canvasHeight, zIndex);
 
     const timing = config.__timing as
       | ReturnType<typeof createPrecisionTiming>
@@ -120,56 +194,25 @@ class CanvasTextComponent {
       config.name || config.type || "canvas-text",
       stimulusOnset,
       stimulusDuration,
+      config.__componentId ?? config.builder_id ?? config.id ?? null,
     );
 
     const draw = (timestamp: number) => {
       if (this.destroyed || !this.stage) return;
-
-      const text = String(this.resolveParam(config.text, "Text"));
-      const coordinates = this.resolveParam(config.coordinates, { x: 0, y: 0 });
-      const centerX =
-        canvasWidth / 2 + ((coordinates?.x ?? 0) / 100) * (canvasWidth / 2);
-      const centerY =
-        canvasHeight / 2 - ((coordinates?.y ?? 0) / 100) * (canvasHeight / 2);
-      const fontStyle = this.resolveParam(config.font_style, "normal");
-      const fontWeight = this.resolveParam(config.font_weight, "normal");
-      const fontSize = Number(this.resolveParam(config.font_size, 48));
-      const fontFamily = this.resolveParam(config.font_family, "sans-serif");
-      const fontColor = this.resolveParam(config.font_color, "#000000");
-      const textAlign = this.resolveParam(config.text_align, "center");
-      const lineHeight = Number(this.resolveParam(config.line_height, 1.2));
-      const rotation = Number(this.resolveParam(config.rotation, 0));
-      const lines = text.split(/\r?\n/);
-      const lineStep = fontSize * lineHeight;
-      const firstLineY = -((lines.length - 1) * lineStep) / 2;
-
-      if (this.resolveParam(config.clear_before_draw, true)) {
-        this.stage.clear(backgroundColor);
-      }
-
-      this.stage.ctx.save();
-      this.stage.ctx.translate(centerX, centerY);
-      this.stage.ctx.rotate((rotation * Math.PI) / 180);
-      this.stage.ctx.fillStyle = fontColor;
-      this.stage.ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
-      this.stage.ctx.textAlign = textAlign as CanvasTextAlign;
-      this.stage.ctx.textBaseline = "middle";
-      lines.forEach((line, index) => {
-        this.stage?.ctx.fillText(line, 0, firstLineY + index * lineStep);
-      });
-      this.stage.ctx.restore();
-
       this.drawn = true;
-      stimulusTiming?.markOnset(timestamp);
+      this.stage.setDrawableVisibility(this.drawableId, true, (commitInfo) => {
+        stimulusTiming?.markOnset(timestamp, commitInfo);
+      });
     };
 
     const clear = (timestamp: number) => {
       if (this.destroyed) return;
-      if (this.stage && this.resolveParam(config.clear_on_offset, true)) {
-        this.stage.clear(backgroundColor);
-      }
       if (this.drawn) {
-        stimulusTiming?.markOffset(timestamp);
+        this.stage?.setDrawableVisibility(this.drawableId, false, (commitInfo) => {
+          stimulusTiming?.markOffset(timestamp, commitInfo);
+        });
+      } else {
+        this.stage?.setDrawableVisibility(this.drawableId, false);
       }
     };
 
@@ -187,18 +230,12 @@ class CanvasTextComponent {
       }
     } else {
       const drawDelay = stimulusOnset ?? 0;
-      const drawHandle = window.setTimeout(
-        () => draw(performance.now()),
-        drawDelay,
-      );
-      this.cancelSchedule.push(() => window.clearTimeout(drawHandle));
+      this.cancelSchedule.push(scheduleFrameEvent(drawDelay, draw));
 
       if (stimulusDuration !== null) {
-        const clearHandle = window.setTimeout(
-          () => clear(performance.now()),
-          drawDelay + stimulusDuration,
+        this.cancelSchedule.push(
+          scheduleFrameEvent(drawDelay + stimulusDuration, clear),
         );
-        this.cancelSchedule.push(() => window.clearTimeout(clearHandle));
       }
     }
 
@@ -207,7 +244,7 @@ class CanvasTextComponent {
 
   hide() {
     if (this.stage) {
-      this.stage.clear();
+      this.stage.setDrawableVisibility(this.drawableId, false);
     }
   }
 
@@ -215,6 +252,8 @@ class CanvasTextComponent {
     this.destroyed = true;
     this.cancelSchedule.forEach((cancel) => cancel());
     this.cancelSchedule = [];
+    this.removeDrawable?.();
+    this.removeDrawable = null;
     this.stage = null;
   }
 

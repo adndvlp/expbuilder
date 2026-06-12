@@ -70,7 +70,7 @@ const info = {
     },
     /** The response time in milliseconds for the participant to make a response. The time is measured from when the component is rendered. */
     rt: {
-      type: ParameterType.INT,
+      type: ParameterType.FLOAT,
     },
     /** The starting value of the slider. */
     slider_start: {
@@ -325,6 +325,8 @@ class SliderResponseComponent {
       height: canvasHeight,
       backgroundColor: "transparent",
       zIndex,
+      backend: this.resolveParam(trial.__renderBackend, "webgl-strict"),
+      recordGpuTiming: this.resolveParam(trial.__recordGpuTiming, true),
     });
 
     this.layout = this.createLayout(trial);

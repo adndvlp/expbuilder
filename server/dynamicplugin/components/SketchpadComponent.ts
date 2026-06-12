@@ -267,6 +267,7 @@ class SketchpadComponent {
     const sketchpadContainer = document.createElement("div");
     sketchpadContainer.id = "jspsych-sketchpad-container";
     sketchpadContainer.style.position = "absolute";
+    sketchpadContainer.style.zIndex = String(config.zIndex ?? 0);
 
     const xVw = mapValue(config.coordinates.x);
     const yVh = mapValue(config.coordinates.y);

@@ -31,7 +31,7 @@ const info = {
     },
     /** The response time in milliseconds for the participant to make a response. The time is measured from when the component is rendered. */
     rt: {
-      type: ParameterType.INT,
+      type: ParameterType.FLOAT,
     },
   },
   // prettier-ignore
@@ -59,6 +59,7 @@ class KeyboardResponseComponent {
   private _trial: any = null;
   private _onResponse: (() => void) | null = null;
   private _timing: any = null;
+  private unregisterResponseTiming: (() => void) | null = null;
 
   static info = info;
 
@@ -84,6 +85,31 @@ class KeyboardResponseComponent {
 
     // Only setup keyboard listener if choices are allowed
     if (trial.choices !== "NO_KEYS") {
+      if (trial.__responseTiming?.enabled) {
+        const settings = this.jsPsych.getInitSettings?.() || {};
+        const caseSensitive = settings.case_sensitive_responses === true;
+        const minimumValidRt = Number(
+          trial.minimum_valid_rt_ms ?? settings.minimum_valid_rt ?? 0,
+        );
+        this.unregisterResponseTiming =
+          trial.__responseTiming.registerKeyboardTarget({
+            componentId: trial.__componentId ?? null,
+            componentName: trial.name ?? null,
+            choices: trial.choices,
+            caseSensitive,
+            minimumValidRtMs: Number.isFinite(minimumValidRt)
+              ? minimumValidRt
+              : null,
+            onResponse: (response: any) => {
+              if (response.response_valid !== true) return;
+              this.recordResponse({
+                key: response.response_key,
+                rt: response.rt_raw,
+              });
+            },
+          });
+        return;
+      }
       if (this._timing) {
         this._timing.onStart(() => this.activateKeyboardListener());
       } else {
@@ -187,6 +213,7 @@ class KeyboardResponseComponent {
     this.response = null;
     this.rt = null;
     if (this._trial && this._trial.choices !== "NO_KEYS") {
+      if (this.unregisterResponseTiming) return;
       this.destroyKeyboardListener();
       this.activateKeyboardListener();
     }
@@ -196,6 +223,10 @@ class KeyboardResponseComponent {
    * Cleanup: cancel keyboard listener
    */
   destroy(): void {
+    if (this.unregisterResponseTiming) {
+      this.unregisterResponseTiming();
+      this.unregisterResponseTiming = null;
+    }
     this.destroyKeyboardListener();
   }
 }

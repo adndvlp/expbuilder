@@ -89,7 +89,7 @@ const info = {
     },
     /** Response time in milliseconds from component render to successful upload. */
     rt: {
-      type: ParameterType.INT,
+      type: ParameterType.FLOAT,
     },
   },
 };

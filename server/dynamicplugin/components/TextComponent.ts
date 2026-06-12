@@ -4,6 +4,7 @@ import {
   createPrecisionTiming,
   getResponseRT,
   resolveTimingMs,
+  scheduleFrameEvent,
   scheduleStimulusVisibility,
   setResponseStartTime,
 } from "../utils/PrecisionTiming";
@@ -197,7 +198,7 @@ const info = {
     },
     /** Time from render to recordResponse in milliseconds (only when %% is used). */
     rt: {
-      type: ParameterType.INT,
+      type: ParameterType.FLOAT,
     },
   },
   citations: {
@@ -215,6 +216,8 @@ type Padding = {
 };
 
 type TextLayout = {
+  canvasWidth: number;
+  canvasHeight: number;
   centerX: number;
   centerY: number;
   width: number;
@@ -418,6 +421,8 @@ class TextComponent {
       canvasHeight / 2 - ((coordinates?.y ?? 0) / 100) * (canvasHeight / 2);
 
     return {
+      canvasWidth,
+      canvasHeight,
       centerX,
       centerY,
       width: blockWidth,
@@ -512,13 +517,26 @@ class TextComponent {
     this.layout = layout;
     this.updateTrackingElement(layout, zIndex);
     this.removeDrawable?.();
-    this.removeDrawable = this.stage.registerDrawable({
+    const textureCanvas = document.createElement("canvas");
+    const dpr = window.devicePixelRatio || 1;
+    textureCanvas.width = Math.round(layout.canvasWidth * dpr);
+    textureCanvas.height = Math.round(layout.canvasHeight * dpr);
+    const textureCtx = textureCanvas.getContext("2d", { alpha: true });
+    if (!textureCtx) return false;
+    textureCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    textureCtx.clearRect(0, 0, layout.canvasWidth, layout.canvasHeight);
+    this.drawLayout(textureCtx, layout);
+    this.stage.preloadTexture(this.drawableId, textureCanvas);
+    this.removeDrawable = this.stage.registerSprite({
       id: this.drawableId,
       zIndex,
       visible: false,
-      draw: (ctx) => {
-        if (this.layout) this.drawLayout(ctx, this.layout);
-      },
+      textureKey: this.drawableId,
+      source: textureCanvas,
+      x: 0,
+      y: 0,
+      width: layout.canvasWidth,
+      height: layout.canvasHeight,
     });
     this.prepared = true;
     return true;
@@ -544,6 +562,8 @@ class TextComponent {
       height: canvasHeight,
       backgroundColor: "transparent",
       zIndex,
+      backend: this.resolveParam(config.__renderBackend, "webgl-strict"),
+      recordGpuTiming: this.resolveParam(config.__recordGpuTiming, true),
     });
 
     this.element = document.createElement("div");
@@ -576,22 +596,27 @@ class TextComponent {
       config.name || config.type || this.drawableId,
       stimulusOnset,
       stimulusDuration,
+      config.__componentId ?? config.builder_id ?? config.id ?? null,
     );
 
     const draw = (timestamp: number) => {
       if (this.destroyed || this.offsetReached) return;
       if (!this.prepareCanvasText(config, zIndex)) return;
       this.drawn = true;
-      this.stage?.setDrawableVisibility(this.drawableId, true);
-      stimulusTiming?.markOnset(timestamp);
+      this.stage?.setDrawableVisibility(this.drawableId, true, (commitInfo) => {
+        stimulusTiming?.markOnset(timestamp, commitInfo);
+      });
     };
 
     const hide = (timestamp: number) => {
       if (this.destroyed) return;
       this.offsetReached = true;
-      this.stage?.setDrawableVisibility(this.drawableId, false);
       if (this.drawn) {
-        stimulusTiming?.markOffset(timestamp);
+        this.stage?.setDrawableVisibility(this.drawableId, false, (commitInfo) => {
+          stimulusTiming?.markOffset(timestamp, commitInfo);
+        });
+      } else {
+        this.stage?.setDrawableVisibility(this.drawableId, false);
       }
     };
 
@@ -609,18 +634,12 @@ class TextComponent {
       }
     } else {
       const drawDelay = stimulusOnset ?? 0;
-      const drawHandle = window.setTimeout(
-        () => draw(performance.now()),
-        drawDelay,
-      );
-      this.cancelSchedule.push(() => window.clearTimeout(drawHandle));
+      this.cancelSchedule.push(scheduleFrameEvent(drawDelay, draw));
 
       if (stimulusDuration !== null) {
-        const hideHandle = window.setTimeout(
-          () => hide(performance.now()),
-          drawDelay + stimulusDuration,
+        this.cancelSchedule.push(
+          scheduleFrameEvent(drawDelay + stimulusDuration, hide),
         );
-        this.cancelSchedule.push(() => window.clearTimeout(hideHandle));
       }
     }
 

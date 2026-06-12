@@ -83,6 +83,7 @@ class HtmlComponent {
     stimulusElement.className = "dynamic-html-component-stimulus";
     stimulusElement.style.position = "absolute";
     stimulusElement.style.width = "max-content";
+    stimulusElement.style.zIndex = String(config.zIndex ?? 0);
 
     const xVw = mapValue(config.coordinates.x);
     const yVh = mapValue(config.coordinates.y);

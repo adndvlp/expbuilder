@@ -120,6 +120,7 @@ class VideoComponent {
     stimulusWrapper.id = "jspsych-dynamic-video-component-wrapper";
     stimulusWrapper.className = "dynamic-video-component-wrapper";
     stimulusWrapper.style.position = "absolute";
+    stimulusWrapper.style.zIndex = String(config.zIndex ?? 0);
 
     const xVw = mapValue(config.coordinates.x);
     const yVh = mapValue(config.coordinates.y);

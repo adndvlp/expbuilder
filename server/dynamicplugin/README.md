@@ -8,13 +8,21 @@ multiple visual/audio components and response components inside one trial.
 The current timing implementation uses:
 
 - `performance.now()` and event timestamps for response timing;
-- `requestAnimationFrame()` for visual onset, duration, trial duration, and
-  frame interval measurement;
+- `requestAnimationFrame()` with nearest-frame scheduling for visual onset,
+  stimulus duration, trial duration, and frame interval measurement;
 - cached preload for current-trial assets;
-- `ImageBitmap` preparation and Canvas rendering for timing-critical
+- `ImageBitmap` preparation and WebGL textures for timing-critical
   `ImageComponent` and plain `TextComponent` stimuli;
+- rAF-only visual commits during active trials;
+- explicit DOM interactive-layer auditing for inputs, surveys, uploads, and
+  cloze text;
 - background prefetch for upcoming DynamicPlugin trial assets;
-- per-trial and per-stimulus timing diagnostics.
+- decimal RT from the actual visual trial onset;
+- per-trial and per-stimulus timing diagnostics, including duration error,
+  dropped-frame estimates, render commit metrics, GPU timer metrics when
+  available, and quality flags.
+- `diagnostics_level` controls whether trials save summary-only data or full
+  debug arrays.
 
 Read the full timing documentation here:
 
