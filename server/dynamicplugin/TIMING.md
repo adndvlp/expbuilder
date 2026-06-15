@@ -36,8 +36,8 @@ keyboard, mouse, touch, or hardware polling limits.
 
 - `utils/ResponseTimingManager.ts`
   Critical response timing manager. It installs native capture-phase keyboard
-  and pointer listeners, anchors RT to the committed onset of an explicit visual
-  stimulus, normalizes event timestamps, records event-loop lag, and exports
+  and pointer listeners, anchors RT to the measured visual trial onset,
+  normalizes event timestamps, records event-loop lag, and exports
   response quality/calibration diagnostics.
 
 - `renderer/CanvasStage.ts`
@@ -100,11 +100,11 @@ These parameters were added to `DynamicPlugin.info.parameters`.
 | `record_render_timing` | `true` | Save CPU-side render commit diagnostics. |
 | `diagnostics_level` | `"debug"` | Controls diagnostic arrays: `summary`, `stimulus`, `frame`, or `debug`. |
 | `record_gpu_timing` | `true` | Use WebGL disjoint timer queries when available. |
-| `response_timing_enabled` | `false` | Enable critical response timing from the committed visual onset of an explicit anchor stimulus. |
+| `response_timing_enabled` | `false` | Enable critical response timing from the measured visual trial onset. |
 | `response_required` | `false` | If enabled, no valid response before trial end is saved as timeout/bad. If false, no response is allowed without marking timeout bad. |
-| `response_anchor_component_id` | `null` | Stable component ID for the stimulus whose committed visual onset anchors RT. Preferred over name. |
-| `response_anchor_component` | `null` | Human-readable anchor stimulus name, used as fallback when no ID is supplied. |
-| `response_allowed_from` | `"anchor_onset"` | Earliest valid response anchor. Use `"anchor_onset"`, `"trial_onset"`, or `{ "from": "anchor_onset" | "trial_onset", "at_ms": number }`. |
+| `response_anchor_component_id` | `null` | Legacy/ignored for RT calculation. RT is anchored to trial onset. |
+| `response_anchor_component` | `null` | Legacy/ignored for RT calculation. RT is anchored to trial onset. |
+| `response_allowed_from` | `"trial_onset"` | Earliest valid response anchor. `"anchor_onset"` and `"trial_onset"` both resolve to trial onset; object values can add a delay. |
 | `premature_response_policy` | `"end_invalid"` | What to do with responses before `response_allowed_from`: `"end_invalid"` or `"ignore"`. |
 | `response_timing_quality_mode` | `"normal"` | Event-lag thresholds: `"normal"` uses >8 ms warning and >16.7 ms bad; `"strict"` uses >4 ms warning and >8 ms bad. |
 | `minimum_valid_rt_ms` | `null` | Optional lower RT bound. Responses below this are invalid. |
@@ -338,14 +338,15 @@ These fields are added to trial data.
 | `dom_visual_components` | number | visual stimulus components rendered via DOM instead of the VisualRenderer. Strict timing runs should report `0`. |
 | `dom_visual_component_names` | JSON string | names/types of DOM visual components found in the trial. |
 | `rt` | number | Raw critical RT alias when `response_timing_enabled` is true; otherwise legacy first component RT. Never stores corrected RT. |
-| `rt_raw` | number | `response_time - stimulus_actual_onset_abs`, in decimal ms. |
+| `rt_raw` | number | `response_time - response_anchor_time_abs`, in decimal ms. |
 | `rt_corrected` | number | Bias-corrected RT only when a calibration profile fully matches; otherwise `null`. |
 | `response_timing_enabled` | boolean | Whether critical response timing was active. |
 | `response_required` | boolean | Whether a missing response should become timeout/bad. |
-| `response_anchor_component_id` | string | Stable anchor component ID used for lookup. |
-| `response_anchor_component` | string | Anchor component name used for lookup fallback. |
-| `response_start_anchor` | string | Anchor source, currently `stimulus_onset_commit` when resolved. |
-| `stimulus_actual_onset_abs` | number | Absolute rAF timestamp of the anchor stimulus commit. |
+| `response_anchor_component_id` | string | Legacy/ignored for RT calculation. |
+| `response_anchor_component` | string | Legacy/ignored for RT calculation. |
+| `response_start_anchor` | string | Anchor source, currently `trial_onset`. |
+| `response_anchor_time_abs` | number | Absolute rAF timestamp used as RT zero, currently equal to `trial_onset_time`. |
+| `stimulus_actual_onset_abs` | number | Deprecated for response timing; kept as `null` for compatibility. Stimulus onsets remain available in `stimulus_timing`. |
 | `response_allowed_from` | string | Serialized allowed-from policy. |
 | `response_allowed_from_abs` | number | Resolved absolute timestamp after applying the allowed-from policy. |
 | `premature_response_policy` | string | `end_invalid` or `ignore`. |
@@ -472,12 +473,12 @@ for keyboard, click, and standard button responses.
 The critical RT equation is:
 
 ```txt
-rt = rt_raw = response_time - stimulus_actual_onset_abs
+rt = rt_raw = response_time - response_anchor_time_abs
 ```
 
-`stimulus_actual_onset_abs` is the rAF timestamp from the renderer commit where
-the anchor stimulus became visible. This is stricter than measuring from a
-logical trial start or component render time.
+`response_anchor_time_abs` is the rAF timestamp used as the visual trial onset.
+This avoids component render-time RTs and keeps all responses anchored to the
+same trial clock.
 
 Critical response timing uses:
 
@@ -497,13 +498,11 @@ Example:
   type: DynamicPlugin,
   response_timing_enabled: true,
   response_required: true,
-  response_anchor_component_id: "prime_image_01",
-  response_allowed_from: "anchor_onset",
+  response_allowed_from: "trial_onset",
   minimum_valid_rt_ms: 100,
   components: [
     {
       type: "ImageComponent",
-      component_id: "prime_image_01",
       name: "prime",
       stimulus: "prime.png",
       stimulus_onset: 0,

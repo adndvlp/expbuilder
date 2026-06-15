@@ -146,7 +146,7 @@ const info = <const>{
     },
     response_allowed_from: {
       type: ParameterType.COMPLEX,
-      default: "anchor_onset",
+      default: "trial_onset",
     },
     premature_response_policy: {
       type: ParameterType.STRING,
@@ -343,6 +343,9 @@ const info = <const>{
     },
     response_start_anchor: {
       type: ParameterType.STRING,
+    },
+    response_anchor_time_abs: {
+      type: ParameterType.FLOAT,
     },
     stimulus_actual_onset_abs: {
       type: ParameterType.FLOAT,

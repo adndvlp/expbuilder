@@ -132,7 +132,7 @@ export class ResponseTimingManager {
   private pointerTargets: PointerTarget[] = [];
   private keyboardTargets: KeyboardTarget[] = [];
   private data: Record<string, any>;
-  private responseAllowedFrom: ResponseAllowedFrom = "anchor_onset";
+  private responseAllowedFrom: ResponseAllowedFrom = "trial_onset";
   private responseRecorded = false;
   private hiddenDuringTrial = false;
   private blurDuringTrial = false;
@@ -237,6 +237,7 @@ export class ResponseTimingManager {
       response_anchor_component_id: this.data.response_anchor_component_id,
       response_anchor_component: this.data.response_anchor_component,
       response_start_anchor: this.data.response_start_anchor,
+      response_anchor_time_abs: this.data.response_anchor_time_abs,
       stimulus_actual_onset_abs: this.data.stimulus_actual_onset_abs,
       response_allowed_from: this.data.response_allowed_from,
       response_allowed_from_abs: this.data.response_allowed_from_abs,
@@ -388,9 +389,9 @@ export class ResponseTimingManager {
 
     const anchor = this.resolveAnchor();
     if (!anchor.ok) {
-      if (anchor.reason === "anchor_without_onset_commit") {
+      if (anchor.reason === "before_anchor") {
         if (this.getPrematurePolicy() === "ignore") return false;
-        this.recordBeforeAnchor(timestamp.response_time, anchor.reason);
+        this.recordBeforeAnchor(timestamp.response_time);
         this.finishIfNeeded(true);
         return false;
       }
@@ -409,7 +410,7 @@ export class ResponseTimingManager {
       return false;
     }
 
-    const rtRaw = round3(timestamp.response_time - anchor.stimulusActualOnsetAbs);
+    const rtRaw = round3(timestamp.response_time - anchor.anchorTimeAbs);
     const minimumValidRt = this.getMinimumValidRt(details.minimumValidRtMs);
     if (
       typeof rtRaw === "number" &&
@@ -454,34 +455,26 @@ export class ResponseTimingManager {
   private resolveAnchor():
     | {
         ok: true;
-        stimulusActualOnsetAbs: number;
+        anchorTimeAbs: number;
         allowedFromAbs: number | null;
       }
     | { ok: false; reason: ResponseInvalidReason } {
-    const componentId = this.data.response_anchor_component_id;
-    const componentName = this.data.response_anchor_component;
-    if (!componentId && !componentName) return { ok: false, reason: "missing_anchor" };
-
-    const record =
-      this.timing?.findStimulusRecord?.(componentId, componentName) ?? null;
-    if (!record) return { ok: false, reason: "missing_anchor" };
-
-    this.data.response_anchor_component_id =
-      record.component_id ?? componentId ?? null;
-    this.data.response_anchor_component = record.name ?? componentName ?? "";
-
-    if (typeof record.actual_onset_abs !== "number") {
-      return { ok: false, reason: "anchor_without_onset_commit" };
+    const trialOnset = this.timing?.getOnsetTime?.() ?? null;
+    if (typeof trialOnset !== "number") {
+      return { ok: false, reason: "before_anchor" };
     }
 
-    const allowedFromAbs = this.resolveAllowedFromAbs(record.actual_onset_abs);
-    this.data.stimulus_actual_onset_abs = round3(record.actual_onset_abs);
-    this.data.response_start_anchor = "stimulus_onset_commit";
+    const allowedFromAbs = this.resolveAllowedFromAbs(trialOnset);
+    this.data.response_anchor_component_id = null;
+    this.data.response_anchor_component = "";
+    this.data.response_start_anchor = "trial_onset";
+    this.data.response_anchor_time_abs = round3(trialOnset);
+    this.data.stimulus_actual_onset_abs = null;
     this.data.response_allowed_from_abs = round3(allowedFromAbs);
 
     return {
       ok: true,
-      stimulusActualOnsetAbs: record.actual_onset_abs,
+      anchorTimeAbs: trialOnset,
       allowedFromAbs,
     };
   }
@@ -838,7 +831,7 @@ export class ResponseTimingManager {
         ? allowedFrom
         : allowedFrom && typeof allowedFrom === "object"
           ? allowedFrom
-          : "anchor_onset";
+          : "trial_onset";
     this.responseAllowedFrom = normalizedAllowedFrom;
     const qualityMode =
       normalizeString(this.trial.response_timing_quality_mode, "normal") ===
@@ -857,6 +850,7 @@ export class ResponseTimingManager {
       response_anchor_component:
         normalizeString(this.trial.response_anchor_component, "") || null,
       response_start_anchor: "",
+      response_anchor_time_abs: null,
       stimulus_actual_onset_abs: null,
       response_allowed_from:
         typeof normalizedAllowedFrom === "object"

@@ -17,8 +17,7 @@ The current timing implementation uses:
 - explicit DOM interactive-layer auditing for inputs, surveys, uploads, and
   cloze text;
 - background prefetch for upcoming DynamicPlugin trial assets;
-- optional critical RT from the committed visual onset of an explicit anchor
-  stimulus;
+- optional critical RT from the measured visual trial onset;
 - native capture-phase `keydown`/`pointerdown` response timing with event-lag
   diagnostics;
 - per-trial and per-stimulus timing diagnostics, including duration error,
@@ -27,12 +26,11 @@ The current timing implementation uses:
 - `diagnostics_level` controls whether trials save summary-only data or full
   debug arrays.
 
-For critical RT trials, enable `response_timing_enabled`, set
-`response_anchor_component_id` or `response_anchor_component`, and read
-`rt`/`rt_raw` as:
+For critical RT trials, enable `response_timing_enabled` and read `rt`/`rt_raw`
+as:
 
 ```txt
-response_time - stimulus_actual_onset_abs
+response_time - response_anchor_time_abs
 ```
 
 `rt_corrected` is saved separately only when a compatible calibration profile
