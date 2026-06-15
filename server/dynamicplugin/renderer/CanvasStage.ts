@@ -1,4 +1,4 @@
-export type RenderBackendRequest = "webgl-strict" | "canvas2d-buffered";
+export type RenderBackendRequest = "webgl-strict";
 
 type CanvasStageOptions = {
   width: number;
@@ -7,13 +7,6 @@ type CanvasStageOptions = {
   zIndex?: number;
   backend?: RenderBackendRequest;
   recordGpuTiming?: boolean;
-};
-
-type CanvasDrawable = {
-  id: string;
-  zIndex?: number;
-  visible?: boolean;
-  draw: (ctx: CanvasRenderingContext2D) => void;
 };
 
 type SpriteDrawable = {
@@ -43,7 +36,6 @@ type RectDrawable = {
 type RgbaColor = [number, number, number, number];
 
 type StageDrawable =
-  | (Required<CanvasDrawable> & { kind: "canvas" })
   | (Required<SpriteDrawable> & { kind: "sprite"; opacity: number })
   | (Required<RectDrawable> & { kind: "rect"; colorRgba: RgbaColor });
 
@@ -63,8 +55,6 @@ type PendingVisibilityCommit = {
 export type StageMetrics = {
   render_backend_requested: RenderBackendRequest;
   render_backend: string;
-  render_backend_fallback: boolean;
-  render_backend_error: string;
   buffer_strategy: string;
   visual_all_commits_rAF: boolean;
   commit_outside_raf_count: number;
@@ -74,8 +64,6 @@ export type StageMetrics = {
   max_commit_duration: number | null;
   draw_call_count: number;
   texture_uploads_during_trial: number;
-  legacy_drawables_during_trial: number;
-  legacy_texture_uploads_during_trial: number;
   buffer_uploads_during_trial: number;
   shader_compiles_during_trial: number;
   webgl_context_lost_count: number;
@@ -103,14 +91,10 @@ function createBaseMetrics(
   requested: RenderBackendRequest,
   backend: string,
   bufferStrategy: string,
-  fallback = false,
-  error = "",
 ): StageMetrics {
   return {
     render_backend_requested: requested,
     render_backend: backend,
-    render_backend_fallback: fallback,
-    render_backend_error: error,
     buffer_strategy: bufferStrategy,
     visual_all_commits_rAF: true,
     commit_outside_raf_count: 0,
@@ -120,8 +104,6 @@ function createBaseMetrics(
     max_commit_duration: null,
     draw_call_count: 0,
     texture_uploads_during_trial: 0,
-    legacy_drawables_during_trial: 0,
-    legacy_texture_uploads_during_trial: 0,
     buffer_uploads_during_trial: 0,
     shader_compiles_during_trial: 0,
     webgl_context_lost_count: 0,
@@ -153,10 +135,7 @@ function createVisibleCanvas(
 ): { canvas: HTMLCanvasElement; dpr: number } {
   const dpr = window.devicePixelRatio || 1;
   const canvas = document.createElement("canvas");
-  canvas.id =
-    options.backend === "webgl-strict"
-      ? "jspsych-dynamic-webgl-stage"
-      : "jspsych-dynamic-canvas-stage";
+  canvas.id = "jspsych-dynamic-webgl-stage";
   canvas.className = "dynamic-canvas-stage";
   canvas.style.position = "absolute";
   canvas.style.left = "0";
@@ -174,7 +153,6 @@ function createVisibleCanvas(
 
 abstract class BaseStage {
   canvas: HTMLCanvasElement;
-  ctx: CanvasRenderingContext2D;
   dpr: number;
   width: number;
   height: number;
@@ -191,8 +169,6 @@ abstract class BaseStage {
     options: CanvasStageOptions,
     backend: string,
     bufferStrategy: string,
-    fallback = false,
-    error = "",
   ) {
     const visible = createVisibleCanvas(parent, options);
     this.canvas = visible.canvas;
@@ -201,21 +177,10 @@ abstract class BaseStage {
     this.height = options.height;
     this.backgroundColor = options.backgroundColor || "#ffffff";
     this.backgroundRgba = parseCssColor(this.backgroundColor);
-    const scratch = document.createElement("canvas");
-    scratch.width = Math.round(this.width * this.dpr);
-    scratch.height = Math.round(this.height * this.dpr);
-    const scratchCtx = scratch.getContext("2d", { alpha: true });
-    if (!scratchCtx) {
-      throw new Error("Could not create scratch 2D canvas context");
-    }
-    scratchCtx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    this.ctx = scratchCtx;
     this.metrics = createBaseMetrics(
-      options.backend ?? "canvas2d-buffered",
+      "webgl-strict",
       backend,
       bufferStrategy,
-      fallback,
-      error,
     );
   }
 
@@ -225,33 +190,6 @@ abstract class BaseStage {
 
   setTrialActive(active: boolean) {
     this.trialActive = active;
-  }
-
-  registerDrawable(drawable: CanvasDrawable) {
-    this.drawables.set(drawable.id, {
-      kind: "canvas",
-      id: drawable.id,
-      zIndex: drawable.zIndex ?? 0,
-      visible: drawable.visible ?? false,
-      draw: drawable.draw,
-    });
-    this.markDirty();
-
-    return () => {
-      this.removeDrawable(drawable.id);
-    };
-  }
-
-  updateDrawable(drawable: CanvasDrawable) {
-    const existing = this.drawables.get(drawable.id);
-    this.drawables.set(drawable.id, {
-      kind: "canvas",
-      id: drawable.id,
-      zIndex: drawable.zIndex ?? existing?.zIndex ?? 0,
-      visible: drawable.visible ?? existing?.visible ?? false,
-      draw: drawable.draw,
-    });
-    this.markDirty();
   }
 
   registerSprite(sprite: SpriteDrawable) {
@@ -313,16 +251,6 @@ abstract class BaseStage {
   removeDrawable(id: string) {
     if (!this.drawables.delete(id)) return;
     this.markDirty();
-  }
-
-  drawImage(
-    source: CanvasImageSource,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-  ) {
-    this.ctx.drawImage(source, x, y, width, height);
   }
 
   render() {
@@ -422,97 +350,6 @@ abstract class BaseStage {
 
   protected pollGpuQueries() {
     // Implemented by WebGLStage.
-  }
-}
-
-export class Canvas2DStage extends BaseStage {
-  private visibleCtx: CanvasRenderingContext2D;
-  private textureSources = new Map<string, CanvasImageSource>();
-
-  constructor(
-    parent: HTMLElement,
-    options: CanvasStageOptions,
-    fallback = false,
-    error = "",
-  ) {
-    super(
-      parent,
-      { ...options, backend: options.backend ?? "canvas2d-buffered" },
-      "canvas2d",
-      "canvas2d-buffered",
-      fallback,
-      error,
-    );
-    const visibleCtx = this.canvas.getContext("2d", { alpha: true });
-    if (!visibleCtx) {
-      throw new Error("Could not create visible 2D canvas context");
-    }
-    visibleCtx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    this.visibleCtx = visibleCtx;
-    this.clearVisible();
-  }
-
-  preloadTexture(key: string, source: CanvasImageSource) {
-    this.textureSources.set(key, source);
-    return null;
-  }
-
-  clear(backgroundColor = this.backgroundColor) {
-    if (!backgroundColor || backgroundColor === "transparent") {
-      this.visibleCtx.clearRect(0, 0, this.width, this.height);
-      return;
-    }
-    this.visibleCtx.fillStyle = backgroundColor;
-    this.visibleCtx.fillRect(0, 0, this.width, this.height);
-  }
-
-  protected getTextureSource(key: string) {
-    return this.textureSources.get(key);
-  }
-
-  protected renderFrame() {
-    this.clearVisible();
-    let drawCalls = 0;
-    for (const drawable of this.getVisibleDrawables()) {
-      if (drawable.kind === "canvas") {
-        drawable.draw(this.visibleCtx);
-        drawCalls += 1;
-      } else if (drawable.kind === "sprite") {
-        const source = drawable.source ?? this.textureSources.get(drawable.textureKey);
-        if (source) {
-          this.visibleCtx.save();
-          this.visibleCtx.globalAlpha = drawable.opacity;
-          this.visibleCtx.drawImage(
-            source,
-            drawable.x,
-            drawable.y,
-            drawable.width,
-            drawable.height,
-          );
-          this.visibleCtx.restore();
-          drawCalls += 1;
-        }
-      } else if (drawable.kind === "rect") {
-        this.visibleCtx.fillStyle = drawable.color;
-        this.visibleCtx.fillRect(
-          drawable.x,
-          drawable.y,
-          drawable.width,
-          drawable.height,
-        );
-        drawCalls += 1;
-      }
-    }
-    return drawCalls;
-  }
-
-  private clearVisible() {
-    if (!this.backgroundColor || this.backgroundColor === "transparent") {
-      this.visibleCtx.clearRect(0, 0, this.width, this.height);
-      return;
-    }
-    this.visibleCtx.fillStyle = this.backgroundColor;
-    this.visibleCtx.fillRect(0, 0, this.width, this.height);
   }
 }
 
@@ -641,16 +478,6 @@ class WebGLStage extends BaseStage {
           drawable.height,
           drawable.colorRgba,
         );
-        drawCalls += 1;
-      } else if (drawable.kind === "canvas") {
-        // Legacy drawables remain supported for non-critical overlays only.
-        const source = this.renderLegacyDrawable(drawable);
-        const texture = this.uploadTexture(source, true);
-        this.drawTexturedQuad(texture, 0, 0, this.width, this.height, [1, 1, 1, 1]);
-        gl.deleteTexture(texture);
-        if (this.trialActive) {
-          this.metrics.legacy_drawables_during_trial += 1;
-        }
         drawCalls += 1;
       }
     }
@@ -792,7 +619,7 @@ class WebGLStage extends BaseStage {
     return texture;
   }
 
-  private uploadTexture(source: CanvasImageSource, legacy = false) {
+  private uploadTexture(source: CanvasImageSource) {
     const gl = this.gl;
     const texture = gl.createTexture();
     if (!texture) throw new Error("Could not create WebGL texture");
@@ -812,9 +639,6 @@ class WebGLStage extends BaseStage {
     );
     if (this.trialActive) {
       this.metrics.texture_uploads_during_trial += 1;
-      if (legacy) {
-        this.metrics.legacy_texture_uploads_during_trial += 1;
-      }
     }
     return texture;
   }
@@ -842,17 +666,6 @@ class WebGLStage extends BaseStage {
     gl.uniform1i(this.uniformTexture, 0);
     gl.uniform4f(this.uniformColor, color[0], color[1], color[2], color[3]);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
-  }
-
-  private renderLegacyDrawable(drawable: Required<CanvasDrawable>) {
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(this.width * this.dpr);
-    canvas.height = Math.round(this.height * this.dpr);
-    const ctx = canvas.getContext("2d", { alpha: true });
-    if (!ctx) return canvas;
-    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    drawable.draw(ctx);
-    return canvas;
   }
 
   private clearGl() {
@@ -900,9 +713,12 @@ export function getCanvasStage(
   parent: HTMLElement,
   options: CanvasStageOptions,
 ): CanvasStage {
-  const requested = options.backend ?? "canvas2d-buffered";
+  const requested = options.backend ?? "webgl-strict";
+  if (requested !== "webgl-strict") {
+    throw new Error(`Unsupported Dynamic visual renderer: ${requested}`);
+  }
   const registry = getStageRegistry(parent);
-  const key = requested === "webgl-strict" ? "webgl-strict" : "canvas2d-buffered";
+  const key = "webgl-strict";
   const existing = registry.get(key);
   if (existing) {
     if (options.zIndex !== undefined) {
@@ -913,21 +729,7 @@ export function getCanvasStage(
     return existing;
   }
 
-  let stage: CanvasStage;
-  if (requested === "webgl-strict") {
-    try {
-      stage = new WebGLStage(parent, options);
-    } catch (error) {
-      stage = new Canvas2DStage(
-        parent,
-        { ...options, backend: requested },
-        true,
-        error instanceof Error ? error.message : String(error),
-      );
-    }
-  } else {
-    stage = new Canvas2DStage(parent, options);
-  }
+  const stage: CanvasStage = new WebGLStage(parent, options);
   registry.set(key, stage);
   return stage;
 }

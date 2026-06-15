@@ -1,5 +1,4 @@
 import { ParameterType } from "jspsych";
-import { getCanvasStage, CanvasStage } from "../renderer/CanvasStage";
 import { getResponseRT, setResponseStartTime } from "../utils/PrecisionTiming";
 
 var version = "2.1.1";
@@ -106,8 +105,7 @@ let sliderComponentCounter = 0;
 /**
  * SliderResponseComponent
  *
- * Canvas-rendered slider visuals with a transparent native range input overlaid
- * for pointer, keyboard, focus, and value behavior.
+ * Native range input positioned inside Dynamic's interactive DOM layer.
  */
 class SliderResponseComponent {
   private jsPsych: any;
@@ -119,9 +117,6 @@ class SliderResponseComponent {
   private sliderElement: HTMLInputElement | null;
   private hasMoved: boolean;
   private timing: any = null;
-  private stage: CanvasStage | null = null;
-  private removeDrawable: (() => void) | null = null;
-  private drawableId = "";
   private layout: SliderLayout | null = null;
   private validationError = false;
 
@@ -208,16 +203,6 @@ class SliderResponseComponent {
     };
   }
 
-  private getCurrentNormalizedValue(): number {
-    if (!this.layout) return 0.5;
-    const value = this.sliderElement
-      ? this.sliderElement.valueAsNumber
-      : this.slider_start;
-    const range = this.layout.max - this.layout.min;
-    if (!Number.isFinite(value) || range === 0) return 0.5;
-    return Math.max(0, Math.min(1, (value - this.layout.min) / range));
-  }
-
   private updateOverlay(layout: SliderLayout) {
     if (!this.sliderContainer || !this.sliderElement) return;
 
@@ -234,72 +219,6 @@ class SliderResponseComponent {
     this.sliderElement.style.height = `${layout.thumbRadius * 4}px`;
   }
 
-  private drawLayout(ctx: CanvasRenderingContext2D, layout: SliderLayout) {
-    const valuePosition = this.getCurrentNormalizedValue();
-    const thumbX = layout.trackX + layout.trackWidth * valuePosition;
-    const thumbY = layout.trackY;
-    const originX = -layout.width / 2;
-    const originY = -layout.height / 2;
-
-    ctx.save();
-    ctx.translate(layout.centerX + originX, layout.centerY + originY);
-
-    if (this.validationError) {
-      ctx.strokeStyle = "#e74c3c";
-      ctx.lineWidth = 2;
-      ctx.setLineDash([8, 4]);
-      ctx.strokeRect(0, 0, layout.width, layout.height);
-      ctx.setLineDash([]);
-    }
-
-    ctx.strokeStyle = "#9333ea";
-    ctx.lineWidth = 3;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(layout.trackX, layout.trackY);
-    ctx.lineTo(layout.trackX + layout.trackWidth, layout.trackY);
-    ctx.stroke();
-
-    ctx.fillStyle = "#9333ea";
-    ctx.beginPath();
-    ctx.arc(thumbX, thumbY, layout.thumbRadius, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    if (layout.labels.length >= 2) {
-      ctx.font = "12px sans-serif";
-      ctx.fillStyle = "#6b21a8";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "top";
-
-      layout.labels.forEach((label, index) => {
-        const ratio =
-          layout.labels.length === 1
-            ? 0
-            : index / Math.max(1, layout.labels.length - 1);
-        const x = layout.trackX + layout.trackWidth * ratio;
-        ctx.fillText(label, x, layout.trackY + layout.thumbRadius + 8);
-      });
-    }
-
-    if (layout.requireMovement) {
-      ctx.font = "italic 11px sans-serif";
-      ctx.fillStyle = "#9333ea";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "bottom";
-      ctx.fillText("(movement required)", layout.width / 2, layout.height - 8);
-    }
-
-    ctx.restore();
-  }
-
-  private renderCanvas() {
-    this.stage?.render();
-  }
-
   /**
    * Render the slider and submit button into the display element
    */
@@ -314,20 +233,9 @@ class SliderResponseComponent {
     this.rt = null;
     this.hasMoved = false;
 
-    const { width: canvasWidth, height: canvasHeight } = this.getCanvasSize(trial);
-    const zIndex = Number(this.resolveParam(trial.zIndex, 0));
-    this.drawableId = trial.name
+    const componentId = trial.name
       ? `slider-${trial.name}`
       : `slider-${++sliderComponentCounter}`;
-
-    this.stage = getCanvasStage(display_element, {
-      width: canvasWidth,
-      height: canvasHeight,
-      backgroundColor: "transparent",
-      zIndex,
-      backend: this.resolveParam(trial.__renderBackend, "webgl-strict"),
-      recordGpuTiming: this.resolveParam(trial.__recordGpuTiming, true),
-    });
 
     this.layout = this.createLayout(trial);
 
@@ -335,12 +243,14 @@ class SliderResponseComponent {
     this.slider_start = Number(this.resolveParam(trial.slider_start, 50));
 
     this.sliderContainer = document.createElement("div");
+    this.sliderContainer.id = componentId;
     this.sliderContainer.classList.add("jspsych-slider-response-container");
     this.sliderContainer.style.position = "absolute";
     this.sliderContainer.style.margin = "0";
     this.sliderContainer.style.background = "transparent";
     this.sliderContainer.style.pointerEvents = "auto";
     this.sliderContainer.style.boxSizing = "border-box";
+    this.sliderContainer.style.border = "0";
 
     this.sliderElement = document.createElement("input");
     this.sliderElement.type = "range";
@@ -353,17 +263,49 @@ class SliderResponseComponent {
     this.sliderElement.style.position = "absolute";
     this.sliderElement.style.margin = "0";
     this.sliderElement.style.padding = "0";
-    this.sliderElement.style.opacity = "0";
+    this.sliderElement.style.opacity = "1";
     this.sliderElement.style.cursor = "pointer";
     this.sliderElement.style.pointerEvents = "auto";
+    this.sliderElement.style.accentColor = "#9333ea";
 
     this.sliderContainer.appendChild(this.sliderElement);
+    if (this.layout.labels.length >= 2) {
+      const labels = document.createElement("div");
+      labels.style.position = "absolute";
+      labels.style.left = `${this.layout.trackX}px`;
+      labels.style.top = `${this.layout.trackY + this.layout.thumbRadius * 2 + 6}px`;
+      labels.style.width = `${this.layout.trackWidth}px`;
+      labels.style.display = "flex";
+      labels.style.justifyContent = "space-between";
+      labels.style.fontSize = "12px";
+      labels.style.color = "#6b21a8";
+      labels.style.pointerEvents = "none";
+      for (const label of this.layout.labels) {
+        const span = document.createElement("span");
+        span.textContent = label;
+        labels.appendChild(span);
+      }
+      this.sliderContainer.appendChild(labels);
+    }
+    if (this.layout.requireMovement) {
+      const note = document.createElement("div");
+      note.textContent = "movement required";
+      note.style.position = "absolute";
+      note.style.left = "0";
+      note.style.right = "0";
+      note.style.bottom = "0";
+      note.style.fontSize = "11px";
+      note.style.fontStyle = "italic";
+      note.style.color = "#9333ea";
+      note.style.textAlign = "center";
+      note.style.pointerEvents = "none";
+      this.sliderContainer.appendChild(note);
+    }
     display_element.appendChild(this.sliderContainer);
     this.updateOverlay(this.layout);
 
     const trackMovement = () => {
       this.hasMoved = true;
-      this.renderCanvas();
     };
 
     this.sliderElement.addEventListener("mousedown", trackMovement);
@@ -374,16 +316,6 @@ class SliderResponseComponent {
     if (!this.layout.requireMovement) {
       this.hasMoved = true;
     }
-
-    this.removeDrawable?.();
-    this.removeDrawable = this.stage.registerDrawable({
-      id: this.drawableId,
-      zIndex,
-      visible: true,
-      draw: (ctx) => {
-        if (this.layout) this.drawLayout(ctx, this.layout);
-      },
-    });
 
     setResponseStartTime(this, this.timing);
     return this.sliderContainer;
@@ -453,8 +385,9 @@ class SliderResponseComponent {
     this.validationError = true;
     if (this.sliderContainer) {
       this.sliderContainer.classList.add("jspsych-require-response-error");
+      this.sliderContainer.style.outline = "2px dashed #e74c3c";
+      this.sliderContainer.style.outlineOffset = "4px";
     }
-    this.renderCanvas();
   }
 
   /** Remove validation error highlight */
@@ -462,8 +395,9 @@ class SliderResponseComponent {
     this.validationError = false;
     if (this.sliderContainer) {
       this.sliderContainer.classList.remove("jspsych-require-response-error");
+      this.sliderContainer.style.outline = "";
+      this.sliderContainer.style.outlineOffset = "";
     }
-    this.renderCanvas();
   }
 
   getRenderedSize(): { width: number; height: number } | null {
@@ -486,14 +420,11 @@ class SliderResponseComponent {
    * Cleanup: remove elements from DOM
    */
   destroy(): void {
-    this.removeDrawable?.();
-    this.removeDrawable = null;
     if (this.sliderContainer) {
       this.sliderContainer.remove();
       this.sliderContainer = null;
     }
     this.sliderElement = null;
-    this.stage = null;
     this.layout = null;
   }
 }

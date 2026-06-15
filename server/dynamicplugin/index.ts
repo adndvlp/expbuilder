@@ -4,8 +4,6 @@ const version = "1.0.0";
 
 // Import all component types
 import ImageComponent from "./components/ImageComponent";
-import CanvasImageComponent from "./components/CanvasImageComponent";
-import CanvasTextComponent from "./components/CanvasTextComponent";
 import VideoComponent from "./components/VideoComponent";
 import HtmlComponent from "./components/HtmlComponent";
 import TextComponent from "./components/TextComponent";
@@ -130,19 +128,11 @@ const info = <const>{
     },
     response_timing_enabled: {
       type: ParameterType.BOOL,
-      default: false,
+      default: true,
     },
     response_required: {
       type: ParameterType.BOOL,
       default: false,
-    },
-    response_anchor_component_id: {
-      type: ParameterType.STRING,
-      default: null,
-    },
-    response_anchor_component: {
-      type: ParameterType.STRING,
-      default: null,
     },
     response_allowed_from: {
       type: ParameterType.COMPLEX,
@@ -254,12 +244,6 @@ const info = <const>{
     commit_outside_raf_count: {
       type: ParameterType.INT,
     },
-    render_backend_fallback: {
-      type: ParameterType.BOOL,
-    },
-    render_backend_error: {
-      type: ParameterType.STRING,
-    },
     buffer_strategy: {
       type: ParameterType.STRING,
     },
@@ -279,12 +263,6 @@ const info = <const>{
       type: ParameterType.INT,
     },
     texture_uploads_during_trial: {
-      type: ParameterType.INT,
-    },
-    legacy_drawables_during_trial: {
-      type: ParameterType.INT,
-    },
-    legacy_texture_uploads_during_trial: {
       type: ParameterType.INT,
     },
     buffer_uploads_during_trial: {
@@ -335,21 +313,6 @@ const info = <const>{
     response_required: {
       type: ParameterType.BOOL,
     },
-    response_anchor_component_id: {
-      type: ParameterType.STRING,
-    },
-    response_anchor_component: {
-      type: ParameterType.STRING,
-    },
-    response_start_anchor: {
-      type: ParameterType.STRING,
-    },
-    response_anchor_time_abs: {
-      type: ParameterType.FLOAT,
-    },
-    stimulus_actual_onset_abs: {
-      type: ParameterType.FLOAT,
-    },
     response_allowed_from: {
       type: ParameterType.STRING,
     },
@@ -365,10 +328,10 @@ const info = <const>{
     minimum_valid_rt_ms: {
       type: ParameterType.FLOAT,
     },
-    response_before_anchor: {
+    response_before_trial_onset: {
       type: ParameterType.BOOL,
     },
-    response_before_anchor_time: {
+    response_before_trial_onset_time: {
       type: ParameterType.FLOAT,
     },
     response_timeout: {
@@ -472,8 +435,6 @@ type Info = typeof info;
 // Map component type names to their classes
 const COMPONENT_MAP: Record<string, any> = {
   ImageComponent,
-  CanvasImageComponent,
-  CanvasTextComponent,
   VideoComponent,
   HtmlComponent,
   TextComponent,
@@ -523,8 +484,7 @@ function collectAssetPreloadList(components: Array<{ config: any }>): AssetPrelo
   const assets = emptyAssetPreloadList();
   for (const { config } of components) {
     if (
-      (config.type === "ImageComponent" ||
-        config.type === "CanvasImageComponent") &&
+      config.type === "ImageComponent" &&
       typeof config.stimulus === "string"
     ) {
       assets.images.push(config.stimulus);
@@ -723,13 +683,6 @@ function aggregateRenderMetrics(
       (sum, metrics) => sum + metrics.commit_outside_raf_count,
       0,
     ),
-    render_backend_fallback: stageMetrics.some(
-      (metrics) => metrics.render_backend_fallback,
-    ),
-    render_backend_error: stageMetrics
-      .map((metrics) => metrics.render_backend_error)
-      .filter(Boolean)
-      .join("; "),
     buffer_strategy: bufferStrategies.join("+") || "none",
     commit_count: stageMetrics.reduce(
       (sum, metrics) => sum + metrics.commit_count,
@@ -744,14 +697,6 @@ function aggregateRenderMetrics(
     ),
     texture_uploads_during_trial: stageMetrics.reduce(
       (sum, metrics) => sum + metrics.texture_uploads_during_trial,
-      0,
-    ),
-    legacy_drawables_during_trial: stageMetrics.reduce(
-      (sum, metrics) => sum + metrics.legacy_drawables_during_trial,
-      0,
-    ),
-    legacy_texture_uploads_during_trial: stageMetrics.reduce(
-      (sum, metrics) => sum + metrics.legacy_texture_uploads_during_trial,
       0,
     ),
     buffer_uploads_during_trial: stageMetrics.reduce(
@@ -843,9 +788,6 @@ function classifyTimingQuality(
       `stimulus timing error ${roundTiming(maxStimulusTimingError)}ms`,
     );
   }
-  if (renderMetrics?.render_backend_fallback) {
-    reasons.push("render backend fallback");
-  }
   if (renderMetrics?.visual_all_commits_rAF === false) {
     reasons.push(
       `${renderMetrics.commit_outside_raf_count} visual commit(s) outside rAF`,
@@ -854,16 +796,6 @@ function classifyTimingQuality(
   if ((renderMetrics?.texture_uploads_during_trial ?? 0) > 0) {
     reasons.push(
       `${renderMetrics?.texture_uploads_during_trial} texture upload(s) during trial`,
-    );
-  }
-  if ((renderMetrics?.legacy_drawables_during_trial ?? 0) > 0) {
-    reasons.push(
-      `${renderMetrics?.legacy_drawables_during_trial} legacy drawable(s) during trial`,
-    );
-  }
-  if ((renderMetrics?.legacy_texture_uploads_during_trial ?? 0) > 0) {
-    reasons.push(
-      `${renderMetrics?.legacy_texture_uploads_during_trial} legacy texture upload(s) during trial`,
     );
   }
   if ((renderMetrics?.buffer_uploads_during_trial ?? 0) > 0) {
@@ -889,11 +821,8 @@ function classifyTimingQuality(
     maxFrameInterval >= badThreshold ||
     trialDurationError >= badThreshold ||
     maxStimulusTimingError >= badThreshold ||
-    renderMetrics?.render_backend_fallback ||
     renderMetrics?.visual_all_commits_rAF === false ||
     (renderMetrics?.texture_uploads_during_trial ?? 0) > 0 ||
-    (renderMetrics?.legacy_drawables_during_trial ?? 0) > 0 ||
-    (renderMetrics?.legacy_texture_uploads_during_trial ?? 0) > 0 ||
     (renderMetrics?.buffer_uploads_during_trial ?? 0) > 0 ||
     (renderMetrics?.shader_compiles_during_trial ?? 0) > 0 ||
     (renderMetrics?.webgl_context_lost_count ?? 0) > 0
@@ -1141,19 +1070,6 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       });
     };
 
-    const getFirstRecordedRT = (): number | null => {
-      const allResponseSources = [...responseComponents, ...stimulusComponents];
-      const rts = allResponseSources
-        .map(({ instance }) =>
-          instance.getRT && typeof instance.getRT === "function"
-            ? instance.getRT()
-            : null,
-        )
-        .filter((rt): rt is number => typeof rt === "number");
-
-      return rts.length > 0 ? Math.min(...rts) : null;
-    };
-
     const clearResponseValidationErrors = () => {
       responseComponents.forEach(({ instance: ri }) => {
         if (typeof (ri as any).clearValidationError === "function") {
@@ -1251,9 +1167,6 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       );
       responseTiming.detach();
       const responseTimingData = responseTiming.getData();
-      const responseRT = responseTiming.enabled
-        ? responseTimingData.rt
-        : getFirstRecordedRT();
       const timingQuality = mergeQuality(
         visualTimingQuality,
         responseTimingData.response_timing_quality,
@@ -1287,8 +1200,6 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         visual_backend: renderMetrics.visual_backend,
         visual_all_commits_rAF: renderMetrics.visual_all_commits_rAF,
         commit_outside_raf_count: renderMetrics.commit_outside_raf_count,
-        render_backend_fallback: renderMetrics.render_backend_fallback,
-        render_backend_error: renderMetrics.render_backend_error,
         buffer_strategy: renderMetrics.buffer_strategy,
         commit_count: renderMetrics.commit_count,
         mean_commit_duration: renderMetrics.mean_commit_duration,
@@ -1296,10 +1207,6 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         draw_call_count: renderMetrics.draw_call_count,
         texture_uploads_during_trial:
           renderMetrics.texture_uploads_during_trial,
-        legacy_drawables_during_trial:
-          renderMetrics.legacy_drawables_during_trial,
-        legacy_texture_uploads_during_trial:
-          renderMetrics.legacy_texture_uploads_during_trial,
         buffer_uploads_during_trial:
           renderMetrics.buffer_uploads_during_trial,
         shader_compiles_during_trial:
@@ -1318,7 +1225,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           domAudit.dom_visual_component_names,
         ),
         ...responseTimingData,
-        rt: responseTiming.enabled ? responseTimingData.rt : responseRT,
+        rt: responseTimingData.rt,
       };
 
       if (diagnostics.includeStimulusTiming) {
@@ -1410,9 +1317,6 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             trialData[`${prefix}_response`] = response;
           }
 
-          if (instance.getRT && typeof instance.getRT === "function") {
-            trialData[`${prefix}_rt`] = instance.getRT();
-          }
         }
       });
 
@@ -1465,11 +1369,6 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         ) {
           const response = instance.getResponse();
           trialData[`${prefix}_response`] = response;
-        }
-
-        // Add RT
-        if (instance.getRT && typeof instance.getRT === "function") {
-          trialData[`${prefix}_rt`] = instance.getRT();
         }
 
         // SliderResponseComponent - slider_start

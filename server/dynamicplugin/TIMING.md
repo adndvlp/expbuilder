@@ -32,7 +32,7 @@ keyboard, mouse, touch, or hardware polling limits.
 
 - `utils/PrecisionTiming.ts`
   TimingEngine and preload utilities, including nearest-frame scheduling,
-  frame diagnostics, legacy response RT helpers, and image bitmap caching.
+  frame diagnostics and image bitmap caching.
 
 - `utils/ResponseTimingManager.ts`
   Critical response timing manager. It installs native capture-phase keyboard
@@ -41,9 +41,8 @@ keyboard, mouse, touch, or hardware polling limits.
   response quality/calibration diagnostics.
 
 - `renderer/CanvasStage.ts`
-  Shared stage abstraction. Timing-critical images/text use WebGL retained
-  sprites and GPU textures by default; Canvas 2D remains for fallback and
-  non-critical overlays.
+  WebGL stage abstraction. Timing-critical images/text use retained sprites and
+  GPU textures. If WebGL is not available, the renderer fails explicitly.
 
 - `index.ts`
   DynamicPlugin orchestration, preload/prefetch, trial onset, trial duration,
@@ -53,10 +52,6 @@ keyboard, mouse, touch, or hardware polling limits.
 - `components/TextComponent.ts`
   WebGL sprite/texture rendering for timing-critical images and plain text,
   with onset/offset confirmed by the renderer commit for that animation frame.
-
-- `components/CanvasImageComponent.ts`
-- `components/CanvasTextComponent.ts`
-  Legacy compatibility components kept for existing saved configurations.
 
 - `components/HtmlComponent.ts`
   DOM/iframe rendering for arbitrary HTML with animation-frame onset/duration
@@ -68,8 +63,8 @@ keyboard, mouse, touch, or hardware polling limits.
 - `response_components/ClickResponseComponent.ts`
 - `response_components/SliderResponseComponent.ts`
 - `response_components/ButtonResponseComponent.ts`
-  Canvas-rendered visuals with DOM overlays retained for real browser
-  interaction.
+  Pointer/click/button/slider interaction using native events, hit testing, and
+  DOM interactive controls where browser-native interaction is required.
 
 - `response_components/InputResponseComponent.ts`
 - `response_components/SurveyComponent.ts`
@@ -100,11 +95,9 @@ These parameters were added to `DynamicPlugin.info.parameters`.
 | `record_render_timing` | `true` | Save CPU-side render commit diagnostics. |
 | `diagnostics_level` | `"debug"` | Controls diagnostic arrays: `summary`, `stimulus`, `frame`, or `debug`. |
 | `record_gpu_timing` | `true` | Use WebGL disjoint timer queries when available. |
-| `response_timing_enabled` | `false` | Enable critical response timing from the measured visual trial onset. |
+| `response_timing_enabled` | `true` | Use Dynamic's native response timing manager. Setting this to false disables response timing and leaves `rt`/`rt_raw` null. |
 | `response_required` | `false` | If enabled, no valid response before trial end is saved as timeout/bad. If false, no response is allowed without marking timeout bad. |
-| `response_anchor_component_id` | `null` | Legacy/ignored for RT calculation. RT is anchored to trial onset. |
-| `response_anchor_component` | `null` | Legacy/ignored for RT calculation. RT is anchored to trial onset. |
-| `response_allowed_from` | `"trial_onset"` | Earliest valid response anchor. `"anchor_onset"` and `"trial_onset"` both resolve to trial onset; object values can add a delay. |
+| `response_allowed_from` | `"trial_onset"` | Earliest valid response time. Use `"trial_onset"` or `{ from: "trial_onset", at_ms: number }`. |
 | `premature_response_policy` | `"end_invalid"` | What to do with responses before `response_allowed_from`: `"end_invalid"` or `"ignore"`. |
 | `response_timing_quality_mode` | `"normal"` | Event-lag thresholds: `"normal"` uses >8 ms warning and >16.7 ms bad; `"strict"` uses >4 ms warning and >8 ms bad. |
 | `minimum_valid_rt_ms` | `null` | Optional lower RT bound. Responses below this are invalid. |
@@ -124,15 +117,13 @@ Visual component timing parameters are also frame-scheduled:
 - `stimulus_onset`
 - `stimulus_duration`
 
-This currently applies to `HtmlComponent`, `ImageComponent`, `TextComponent`,
-and the legacy `CanvasImageComponent` / `CanvasTextComponent`.
+This currently applies to `HtmlComponent`, `ImageComponent`, and
+`TextComponent`.
 
 ## WebGL rendering
 
 The current runtime uses a WebGL stage for timing-critical visual drawing.
-Use ordinary `ImageComponent` and `TextComponent`; separate
-`CanvasImageComponent` and `CanvasTextComponent` files remain only for existing
-saved configurations.
+Use ordinary `ImageComponent` and `TextComponent`.
 
 Critical image flow:
 
@@ -307,15 +298,13 @@ These fields are added to trial data.
 | `timing_quality_reason` | string | human-readable reason when quality is not clean. |
 | `visual_timing_quality` | string | visual/render timing quality before response timing is merged. |
 | `response_timing_quality` | string | critical response timing quality. |
-| `response_timing_quality_reason` | string | response timing quality reasons such as timestamp fallback, event lag, timeout, hidden/blur, or missing anchor. |
+| `response_timing_quality_reason` | string | response timing quality reasons such as timestamp fallback, event lag, timeout, hidden/blur, or response before trial onset. |
 | `diagnostics_level` | string | normalized diagnostic payload level used for this trial. |
 | `render_backend_requested` | string | requested renderer backend, usually `webgl-strict`. |
 | `render_backend` | string | actual renderer backend(s) used. |
 | `visual_backend` | string | visual renderer backend alias for audit exports. |
 | `visual_all_commits_rAF` | boolean | false if any visual commit happened outside the rAF commit callback while the trial was active. |
 | `commit_outside_raf_count` | number | number of visual commits outside the rAF commit callback during the active trial. Should be `0`. |
-| `render_backend_fallback` | boolean | true when WebGL was requested but Canvas fallback was used. |
-| `render_backend_error` | string | renderer initialization error when fallback was needed. |
 | `buffer_strategy` | string | renderer strategy, e.g. `webgl-retained-sprites`. |
 | `commit_count` | number | number of renderer commits. |
 | `commit_durations` | JSON string | CPU-side renderer commit durations in ms; saved only at `debug` level when `record_render_timing` is enabled. |
@@ -323,8 +312,6 @@ These fields are added to trial data.
 | `max_commit_duration` | number | max CPU-side renderer commit duration. |
 | `draw_call_count` | number | total draw calls issued by stages. |
 | `texture_uploads_during_trial` | number | WebGL texture uploads after the trial clock started. Should be `0` for reliable critical trials. |
-| `legacy_drawables_during_trial` | number | legacy `draw(ctx)` drawables rendered during the active trial. Should be `0`. |
-| `legacy_texture_uploads_during_trial` | number | temporary legacy canvas-to-texture uploads during the active trial. Should be `0`. |
 | `buffer_uploads_during_trial` | number | WebGL buffer uploads after the trial clock started. Should be `0` for reliable critical trials. |
 | `shader_compiles_during_trial` | number | shader compile/link operations after the trial clock started. Should be `0`. |
 | `webgl_context_lost_count` | number | WebGL context loss events during the trial. |
@@ -337,22 +324,17 @@ These fields are added to trial data.
 | `dom_interactive_components` | JSON string | DOM components intentionally kept in the interactive layer. |
 | `dom_visual_components` | number | visual stimulus components rendered via DOM instead of the VisualRenderer. Strict timing runs should report `0`. |
 | `dom_visual_component_names` | JSON string | names/types of DOM visual components found in the trial. |
-| `rt` | number | Raw critical RT alias when `response_timing_enabled` is true; otherwise legacy first component RT. Never stores corrected RT. |
-| `rt_raw` | number | `response_time - response_anchor_time_abs`, in decimal ms. |
+| `rt` | number | Raw RT alias. Always equals `rt_raw` when a valid response is recorded. Never stores corrected RT. |
+| `rt_raw` | number | `response_time - trial_onset_time`, in decimal ms. |
 | `rt_corrected` | number | Bias-corrected RT only when a calibration profile fully matches; otherwise `null`. |
 | `response_timing_enabled` | boolean | Whether critical response timing was active. |
 | `response_required` | boolean | Whether a missing response should become timeout/bad. |
-| `response_anchor_component_id` | string | Legacy/ignored for RT calculation. |
-| `response_anchor_component` | string | Legacy/ignored for RT calculation. |
-| `response_start_anchor` | string | Anchor source, currently `trial_onset`. |
-| `response_anchor_time_abs` | number | Absolute rAF timestamp used as RT zero, currently equal to `trial_onset_time`. |
-| `stimulus_actual_onset_abs` | number | Deprecated for response timing; kept as `null` for compatibility. Stimulus onsets remain available in `stimulus_timing`. |
 | `response_allowed_from` | string | Serialized allowed-from policy. |
 | `response_allowed_from_abs` | number | Resolved absolute timestamp after applying the allowed-from policy. |
 | `premature_response_policy` | string | `end_invalid` or `ignore`. |
 | `minimum_valid_rt_ms` | number | Lower RT bound used for the trial. |
-| `response_before_anchor` | boolean | True when a response was invalidated before the allowed anchor. |
-| `response_before_anchor_time` | number | Absolute response timestamp for the premature response. |
+| `response_before_trial_onset` | boolean | True when a response was invalidated before the trial onset existed. |
+| `response_before_trial_onset_time` | number | Absolute response timestamp for the premature response. |
 | `response_timeout` | boolean | True when a required response was missing by trial end. |
 | `response_timeout_ms` | number | Time from `response_allowed_from_abs` to trial offset when timeout occurred. |
 | `response_time` | number | Normalized response timestamp. |
@@ -369,7 +351,7 @@ These fields are added to trial data.
 | `response_repeat` | boolean | Keyboard repeat flag. Repeats are ignored. |
 | `response_is_trusted` | boolean | Native event `isTrusted`. |
 | `response_valid` | boolean/null | `true` valid response, `false` invalid response, `null` no response when not required. |
-| `response_invalid_reason` | string | Closed reason such as `missing_anchor`, `before_anchor`, `timeout`, or `below_minimum_rt`. Premature responses before an anchor commit are reported as `before_anchor`; `response_timing_quality_reason` may also include `anchor_without_onset_commit` as detail. |
+| `response_invalid_reason` | string | Closed reason such as `before_trial_onset`, `timeout`, or `below_minimum_rt`. |
 | `response_client_x` / `response_client_y` | number | Raw viewport coordinates for pointer responses. |
 | `response_canvas_x` / `response_canvas_y` | number | Pointer coordinates normalized into the Dynamic canvas coordinate space. |
 | `device_pixel_ratio` | number | Browser `window.devicePixelRatio`. |
@@ -466,19 +448,18 @@ millisecond target when that frame is closer. Any error is recorded in:
 
 ## Critical RT measurement
 
-When `response_timing_enabled` is `true`, DynamicPlugin uses
-`ResponseTimingManager` instead of component-local browser click/keydown timing
-for keyboard, click, and standard button responses.
+DynamicPlugin uses one central `ResponseTimingManager` for keyboard, click, and
+standard button responses.
 
 The critical RT equation is:
 
 ```txt
-rt = rt_raw = response_time - response_anchor_time_abs
+rt = rt_raw = response_time - trial_onset_time
 ```
 
-`response_anchor_time_abs` is the rAF timestamp used as the visual trial onset.
-This avoids component render-time RTs and keeps all responses anchored to the
-same trial clock.
+`trial_onset_time` is the first measured `requestAnimationFrame()` timestamp for
+the trial. This avoids component render-time RTs and keeps all responses anchored
+to the same trial clock.
 
 Critical response timing uses:
 
@@ -496,7 +477,6 @@ Example:
 ```js
 {
   type: DynamicPlugin,
-  response_timing_enabled: true,
   response_required: true,
   response_allowed_from: "trial_onset",
   minimum_valid_rt_ms: 100,
@@ -519,9 +499,6 @@ Example:
 }
 ```
 
-If `response_timing_enabled` is false, legacy response components still report
-their component RTs. The plugin-level `rt` remains the first recorded legacy RT.
-
 `rt_corrected` is never copied into `rt`. It is only saved when a calibration
 profile matches the current browser family, browser major version, OS family,
 input device, and display refresh estimate closely enough. Partial or mismatch
@@ -537,7 +514,6 @@ trial and preloads them.
 Current-trial asset discovery includes:
 
 - `ImageComponent.stimulus`
-- `CanvasImageComponent.stimulus` for legacy saved configs
 - `AudioComponent.stimulus`
 - `VideoComponent.stimulus`
 - `SketchpadComponent.background_image`
@@ -589,10 +565,9 @@ Values:
 - `duration_error` is not used for visual quality when
   `trial_ended_by_response` is `true`; response-terminated RT trials are
   expected to end before the nominal `trial_duration`.
-- `bad`: also assigned when WebGL falls back unexpectedly, uploads textures
-  or buffers during a trial, compiles shaders during a trial, loses context,
-  uses a legacy drawable during a trial, uploads a legacy texture during a
-  trial, or commits visual output outside the rAF commit callback.
+- `bad`: also assigned when the renderer uploads textures or buffers during a
+  trial, compiles shaders during a trial, loses context, or commits visual output
+  outside the rAF commit callback.
 
 The reason is stored in `timing_quality_reason`, for example:
 

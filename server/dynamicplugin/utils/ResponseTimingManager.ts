@@ -1,9 +1,7 @@
 type TimingQuality = "ok" | "warning" | "bad";
 
 type ResponseInvalidReason =
-  | "missing_anchor"
-  | "anchor_without_onset_commit"
-  | "before_anchor"
+  | "before_trial_onset"
   | "keyboard_repeat"
   | "timeout"
   | "document_hidden"
@@ -14,9 +12,8 @@ type ResponseInvalidReason =
   | "";
 
 type ResponseAllowedFrom =
-  | "anchor_onset"
   | "trial_onset"
-  | { from: "trial_onset" | "anchor_onset"; at_ms: number };
+  | { from: "trial_onset"; at_ms: number };
 
 type ResponseTimingMode = "normal" | "strict";
 
@@ -155,7 +152,7 @@ export class ResponseTimingManager {
     this.canvasWidth = options.canvasWidth;
     this.canvasHeight = options.canvasHeight;
     this.onFinish = options.onFinish;
-    this.enabled = resolveRawValue(this.trial.response_timing_enabled) === true;
+    this.enabled = resolveRawValue(this.trial.response_timing_enabled) !== false;
     this.data = this.createInitialData();
   }
 
@@ -234,18 +231,13 @@ export class ResponseTimingManager {
       rt_corrected: this.data.rt_corrected,
       response_timing_enabled: this.data.response_timing_enabled,
       response_required: this.data.response_required,
-      response_anchor_component_id: this.data.response_anchor_component_id,
-      response_anchor_component: this.data.response_anchor_component,
-      response_start_anchor: this.data.response_start_anchor,
-      response_anchor_time_abs: this.data.response_anchor_time_abs,
-      stimulus_actual_onset_abs: this.data.stimulus_actual_onset_abs,
       response_allowed_from: this.data.response_allowed_from,
       response_allowed_from_abs: this.data.response_allowed_from_abs,
       premature_response_policy: this.data.premature_response_policy,
       response_timing_quality_mode: this.data.response_timing_quality_mode,
       minimum_valid_rt_ms: this.data.minimum_valid_rt_ms,
-      response_before_anchor: this.data.response_before_anchor,
-      response_before_anchor_time: this.data.response_before_anchor_time,
+      response_before_trial_onset: this.data.response_before_trial_onset,
+      response_before_trial_onset_time: this.data.response_before_trial_onset_time,
       response_timeout: this.data.response_timeout,
       response_timeout_ms: this.data.response_timeout_ms,
       response_time: this.data.response_time,
@@ -389,9 +381,9 @@ export class ResponseTimingManager {
 
     const anchor = this.resolveAnchor();
     if (!anchor.ok) {
-      if (anchor.reason === "before_anchor") {
+      if (anchor.reason === "before_trial_onset") {
         if (this.getPrematurePolicy() === "ignore") return false;
-        this.recordBeforeAnchor(timestamp.response_time);
+        this.recordBeforeTrialOnset(timestamp.response_time);
         this.finishIfNeeded(true);
         return false;
       }
@@ -405,7 +397,7 @@ export class ResponseTimingManager {
       timestamp.response_time < anchor.allowedFromAbs
     ) {
       if (this.getPrematurePolicy() === "ignore") return false;
-      this.recordBeforeAnchor(timestamp.response_time, "before_anchor");
+      this.recordBeforeTrialOnset(timestamp.response_time);
       this.finishIfNeeded(true);
       return false;
     }
@@ -461,15 +453,10 @@ export class ResponseTimingManager {
     | { ok: false; reason: ResponseInvalidReason } {
     const trialOnset = this.timing?.getOnsetTime?.() ?? null;
     if (typeof trialOnset !== "number") {
-      return { ok: false, reason: "before_anchor" };
+      return { ok: false, reason: "before_trial_onset" };
     }
 
     const allowedFromAbs = this.resolveAllowedFromAbs(trialOnset);
-    this.data.response_anchor_component_id = null;
-    this.data.response_anchor_component = "";
-    this.data.response_start_anchor = "trial_onset";
-    this.data.response_anchor_time_abs = round3(trialOnset);
-    this.data.stimulus_actual_onset_abs = null;
     this.data.response_allowed_from_abs = round3(allowedFromAbs);
 
     return {
@@ -484,24 +471,19 @@ export class ResponseTimingManager {
     const trialOnset = this.timing?.getOnsetTime?.() ?? null;
 
     if (allowed === "trial_onset") return trialOnset;
-    if (allowed === "anchor_onset") return anchorAbs;
     if (allowed && typeof allowed === "object") {
       const atMs = Number(allowed.at_ms ?? 0);
       if (allowed.from === "trial_onset") {
         return typeof trialOnset === "number" ? trialOnset + atMs : null;
       }
-      if (allowed.from === "anchor_onset") return anchorAbs + atMs;
     }
     return anchorAbs;
   }
 
-  private recordBeforeAnchor(responseTime: number, detail?: ResponseInvalidReason) {
-    this.data.response_before_anchor = true;
-    this.data.response_before_anchor_time = round3(responseTime);
-    if (detail && detail !== "before_anchor") {
-      this.responseQualityReasonDetails.push(detail);
-    }
-    this.recordInvalid("before_anchor", null, null, null);
+  private recordBeforeTrialOnset(responseTime: number) {
+    this.data.response_before_trial_onset = true;
+    this.data.response_before_trial_onset_time = round3(responseTime);
+    this.recordInvalid("before_trial_onset", null, null, null);
   }
 
   private recordInvalid(
@@ -733,9 +715,7 @@ export class ResponseTimingManager {
     let quality: TimingQuality = "ok";
 
     if (
-      invalidReason === "missing_anchor" ||
-      invalidReason === "anchor_without_onset_commit" ||
-      invalidReason === "before_anchor" ||
+      invalidReason === "before_trial_onset" ||
       invalidReason === "timeout" ||
       invalidReason === "document_hidden" ||
       invalidReason === "window_blur" ||
@@ -797,8 +777,8 @@ export class ResponseTimingManager {
       rt: null,
       rt_raw: null,
       rt_corrected: null,
-      response_before_anchor: false,
-      response_before_anchor_time: null,
+      response_before_trial_onset: false,
+      response_before_trial_onset_time: null,
       response_time: null,
       response_now_at_handler: null,
       response_timestamp_source: "",
@@ -827,7 +807,7 @@ export class ResponseTimingManager {
   private createInitialData() {
     const allowedFrom = resolveRawValue(this.trial.response_allowed_from);
     const normalizedAllowedFrom: ResponseAllowedFrom =
-      allowedFrom === "trial_onset" || allowedFrom === "anchor_onset"
+      allowedFrom === "trial_onset"
         ? allowedFrom
         : allowedFrom && typeof allowedFrom === "object"
           ? allowedFrom
@@ -845,13 +825,6 @@ export class ResponseTimingManager {
       rt_corrected: null,
       response_timing_enabled: this.enabled,
       response_required: this.isResponseRequired(),
-      response_anchor_component_id:
-        normalizeString(this.trial.response_anchor_component_id, "") || null,
-      response_anchor_component:
-        normalizeString(this.trial.response_anchor_component, "") || null,
-      response_start_anchor: "",
-      response_anchor_time_abs: null,
-      stimulus_actual_onset_abs: null,
       response_allowed_from:
         typeof normalizedAllowedFrom === "object"
           ? JSON.stringify(normalizedAllowedFrom)
@@ -861,8 +834,8 @@ export class ResponseTimingManager {
       response_timing_quality_mode: qualityMode,
       minimum_valid_rt_ms:
         resolveRawValue(this.trial.minimum_valid_rt_ms) ?? null,
-      response_before_anchor: false,
-      response_before_anchor_time: null,
+      response_before_trial_onset: false,
+      response_before_trial_onset_time: null,
       response_timeout: false,
       response_timeout_ms: null,
       response_time: null,

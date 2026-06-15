@@ -224,8 +224,7 @@ let buttonComponentCounter = 0;
  * ButtonResponseComponent
  *
  * Standard text buttons use retained WebGL textures plus canvas-coordinate
- * hitboxes when critical response timing is enabled. Custom HTML, image
- * buttons, and legacy response timing use the DOM path.
+ * hitboxes. Custom HTML and image buttons use the interactive DOM layer.
  */
 class ButtonResponseComponent {
   private jsPsych: any;
@@ -242,7 +241,7 @@ class ButtonResponseComponent {
   private imageSources = new Map<string, CanvasBitmapSource>();
   private buttonsEnabled = true;
   private validationError = false;
-  private useDomFallback = false;
+  private useDomLayer = false;
   private responseTiming: any = null;
   private responseTimingUnregisters: Array<() => void> = [];
   private componentId: string | null = null;
@@ -878,7 +877,7 @@ class ButtonResponseComponent {
     }
   }
 
-  private renderDomFallback(
+  private renderDomLayer(
     display_element: HTMLElement,
     trial: any,
     onResponse?: () => void,
@@ -974,13 +973,13 @@ class ButtonResponseComponent {
     this.buttonsEnabled = true;
     this.validationError = false;
     const choices = this.getChoices(trial);
-    this.useDomFallback =
+    this.useDomLayer =
       !this.responseTiming?.enabled ||
       typeof this.resolveParam(trial.button_html, null) === "function" ||
       choices.some((choice) => this.isImageUrl(choice));
 
-    if (this.useDomFallback) {
-      this.renderDomFallback(display_element, trial, onResponse);
+    if (this.useDomLayer) {
+      this.renderDomLayer(display_element, trial, onResponse);
     } else {
       this.prepareCanvasButtons(display_element, trial);
     }
