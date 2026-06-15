@@ -33,7 +33,17 @@ type PointerTarget = {
   componentId: string | null;
   componentName: string | null;
   label?: string | null;
-  element: HTMLElement;
+  element?: HTMLElement;
+  canvasX?: number;
+  canvasY?: number;
+  width?: number;
+  height?: number;
+  hitTest?: (point: {
+    clientX: number;
+    clientY: number;
+    canvasX: number | null;
+    canvasY: number | null;
+  }) => boolean;
   onResponse?: (response: ResponseTimingResult) => boolean | void;
 };
 
@@ -114,7 +124,10 @@ export class ResponseTimingManager {
   private container: HTMLElement;
   private canvasWidth: number;
   private canvasHeight: number;
-  private onFinish?: (timestamp?: number | null) => void;
+  private onFinish?: (
+    timestamp?: number | null,
+    options?: { force: boolean },
+  ) => boolean | void;
   private controller: AbortController | null = null;
   private pointerTargets: PointerTarget[] = [];
   private keyboardTargets: KeyboardTarget[] = [];
@@ -123,6 +136,7 @@ export class ResponseTimingManager {
   private responseRecorded = false;
   private hiddenDuringTrial = false;
   private blurDuringTrial = false;
+  private responseQualityReasonDetails: string[] = [];
 
   constructor(options: {
     trial: any;
@@ -130,7 +144,10 @@ export class ResponseTimingManager {
     container: HTMLElement;
     canvasWidth: number;
     canvasHeight: number;
-    onFinish?: (timestamp?: number | null) => void;
+    onFinish?: (
+      timestamp?: number | null,
+      options?: { force: boolean },
+    ) => boolean | void;
   }) {
     this.trial = options.trial;
     this.timing = options.timing;
@@ -304,10 +321,15 @@ export class ResponseTimingManager {
   private handlePointerDown = (event: PointerEvent) => {
     if (!this.enabled || this.responseRecorded) return;
 
-    const target = this.findPointerTarget(event.clientX, event.clientY);
+    const coordinates = this.computePointerCoordinates(event.clientX, event.clientY);
+    const target = this.findPointerTarget(
+      event.clientX,
+      event.clientY,
+      coordinates.canvasX,
+      coordinates.canvasY,
+    );
     if (!target) return;
 
-    const coordinates = this.computePointerCoordinates(event.clientX, event.clientY);
     const accepted = this.tryRecordResponse(event, {
       eventType: "pointerdown",
       device: event.pointerType || "pointer",
@@ -444,6 +466,10 @@ export class ResponseTimingManager {
       this.timing?.findStimulusRecord?.(componentId, componentName) ?? null;
     if (!record) return { ok: false, reason: "missing_anchor" };
 
+    this.data.response_anchor_component_id =
+      record.component_id ?? componentId ?? null;
+    this.data.response_anchor_component = record.name ?? componentName ?? "";
+
     if (typeof record.actual_onset_abs !== "number") {
       return { ok: false, reason: "anchor_without_onset_commit" };
     }
@@ -476,10 +502,13 @@ export class ResponseTimingManager {
     return anchorAbs;
   }
 
-  private recordBeforeAnchor(responseTime: number, reason: ResponseInvalidReason) {
+  private recordBeforeAnchor(responseTime: number, detail?: ResponseInvalidReason) {
     this.data.response_before_anchor = true;
     this.data.response_before_anchor_time = round3(responseTime);
-    this.recordInvalid(reason, null, null, null);
+    if (detail && detail !== "before_anchor") {
+      this.responseQualityReasonDetails.push(detail);
+    }
+    this.recordInvalid("before_anchor", null, null, null);
   }
 
   private recordInvalid(
@@ -546,17 +575,41 @@ export class ResponseTimingManager {
     };
   }
 
-  private findPointerTarget(clientX: number, clientY: number) {
+  private findPointerTarget(
+    clientX: number,
+    clientY: number,
+    canvasX: number | null,
+    canvasY: number | null,
+  ) {
     for (let index = this.pointerTargets.length - 1; index >= 0; index -= 1) {
       const target = this.pointerTargets[index];
-      const rect = target.element.getBoundingClientRect();
+      if (target.hitTest?.({ clientX, clientY, canvasX, canvasY })) {
+        return target;
+      }
       if (
-        clientX >= rect.left &&
-        clientX <= rect.right &&
-        clientY >= rect.top &&
-        clientY <= rect.bottom
+        typeof canvasX === "number" &&
+        typeof canvasY === "number" &&
+        typeof target.canvasX === "number" &&
+        typeof target.canvasY === "number" &&
+        typeof target.width === "number" &&
+        typeof target.height === "number" &&
+        canvasX >= target.canvasX &&
+        canvasX <= target.canvasX + target.width &&
+        canvasY >= target.canvasY &&
+        canvasY <= target.canvasY + target.height
       ) {
         return target;
+      }
+      if (target.element) {
+        const rect = target.element.getBoundingClientRect();
+        if (
+          clientX >= rect.left &&
+          clientX <= rect.right &&
+          clientY >= rect.top &&
+          clientY <= rect.bottom
+        ) {
+          return target;
+        }
       }
     }
     return null;
@@ -670,6 +723,11 @@ export class ResponseTimingManager {
     if (this.data.response_invalid_reason) {
       reasons.push(this.data.response_invalid_reason);
     }
+    for (const detail of this.responseQualityReasonDetails) {
+      if (detail && !reasons.includes(detail)) {
+        reasons.push(detail);
+      }
+    }
     return reasons;
   }
 
@@ -729,20 +787,47 @@ export class ResponseTimingManager {
 
   private finishIfNeeded(force = false) {
     if (force || this.trial.response_ends_trial !== false) {
+      const finished = this.onFinish?.(this.data.response_time, { force });
+      if (finished === false) {
+        this.clearRecordedResponse();
+        return;
+      }
       this.detach();
-      this.onFinish?.(this.data.response_time);
     }
   }
 
   private clearRecordedResponse() {
     this.responseRecorded = false;
+    this.responseQualityReasonDetails = [];
     this.data = {
       ...this.data,
       rt: null,
       rt_raw: null,
       rt_corrected: null,
+      response_before_anchor: false,
+      response_before_anchor_time: null,
+      response_time: null,
+      response_now_at_handler: null,
+      response_timestamp_source: "",
+      response_event_lag: null,
+      response_bias_correction_ms: null,
+      response_calibration_profile_id: "",
+      response_calibration_match_status: "none",
+      response_event_type: "",
+      response_device: "",
+      response_key: "",
+      response_code: "",
+      response_repeat: false,
+      response_is_trusted: null,
       response_valid: null,
       response_invalid_reason: "",
+      response_client_x: null,
+      response_client_y: null,
+      response_canvas_x: null,
+      response_canvas_y: null,
+      canvas_bounding_rect: "",
+      response_target_component: "",
+      response_error_ms: null,
     };
   }
 

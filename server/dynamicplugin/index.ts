@@ -194,6 +194,9 @@ const info = <const>{
     duration_error: {
       type: ParameterType.FLOAT,
     },
+    trial_ended_by_response: {
+      type: ParameterType.BOOL,
+    },
     frame_count: {
       type: ParameterType.INT,
     },
@@ -796,6 +799,7 @@ function classifyTimingQuality(
   badThreshold: number,
   renderMetrics?: ReturnType<typeof aggregateRenderMetrics>,
   domAudit?: ReturnType<typeof auditDomLayers>,
+  options: { ignoreTrialDurationError?: boolean } = {},
 ) {
   const reasons: string[] = [];
   const maxFrameInterval = timingSummary.maxFrameInterval ?? 0;
@@ -805,7 +809,9 @@ function classifyTimingQuality(
     1000 / 60;
   const halfFrame = frameMs / 2;
   const trialDurationError =
-    desiredTrialDuration === null || timingSummary.actualDuration === null
+    options.ignoreTrialDurationError ||
+    desiredTrialDuration === null ||
+    timingSummary.actualDuration === null
       ? 0
       : Math.abs(timingSummary.actualDuration - desiredTrialDuration);
   const stimulusTimingErrors = timingSummary.stimulusRecords.flatMap(
@@ -1013,18 +1019,19 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     const responseComponents: any[] = [];
     let hasResponded = false;
     let trialEnded = false;
+    let trialEndedByResponse = false;
+    let handleParticipantResponse: (
+      offsetTime?: number | null,
+      options?: { force?: boolean },
+    ) => boolean = () => false;
     const responseTiming = new ResponseTimingManager({
       trial,
       timing,
       container: mainContainer,
       canvasWidth,
       canvasHeight,
-      onFinish: (timestamp) => {
-        if (trialEnded || trial.response_ends_trial === false) return;
-        hasResponded = true;
-        recordAllPendingResponses();
-        endTrial(typeof timestamp === "number" ? timestamp : performance.now());
-      },
+      onFinish: (timestamp, options) =>
+        handleParticipantResponse(timestamp, options),
     });
 
     // Instantiate all components first
@@ -1094,46 +1101,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         const { instance, config } = comp;
         const _prevLen = mainContainer.children.length;
         const renderedElement = instance.render(mainContainer, config, () => {
-          if (!hasResponded && trial.response_ends_trial) {
-            if (trial.require_response) {
-              // Clear previous highlights
-              responseComponents.forEach(({ instance: ri }) => {
-                if (typeof (ri as any).clearValidationError === "function") {
-                  (ri as any).clearValidationError();
-                }
-              });
-              // Check every response component is satisfied
-              const allValid = responseComponents.every(
-                ({ instance: ri, config: rc }) =>
-                  typeof (ri as any).isValid === "function"
-                    ? (ri as any).isValid(rc)
-                    : true,
-              );
-              if (!allValid) {
-                // Reset triggering components (button/keyboard) so user can interact again
-                responseComponents.forEach(({ instance: ri }) => {
-                  if (typeof (ri as any).reset === "function") {
-                    (ri as any).reset();
-                  }
-                });
-                // Highlight still-invalid components
-                responseComponents.forEach(({ instance: ri, config: rc }) => {
-                  if (
-                    typeof (ri as any).isValid === "function" &&
-                    !(ri as any).isValid(rc)
-                  ) {
-                    if (typeof (ri as any).showValidationError === "function") {
-                      (ri as any).showValidationError();
-                    }
-                  }
-                });
-                return; // Block trial end
-              }
-            }
-            hasResponded = true;
-            recordAllPendingResponses();
-            endTrial();
-          }
+          handleParticipantResponse();
         });
         // Capture the topmost new child appended during render (synchronous DOM op)
         comp.renderedEl =
@@ -1183,6 +1151,70 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       return rts.length > 0 ? Math.min(...rts) : null;
     };
 
+    const clearResponseValidationErrors = () => {
+      responseComponents.forEach(({ instance: ri }) => {
+        if (typeof (ri as any).clearValidationError === "function") {
+          (ri as any).clearValidationError();
+        }
+      });
+    };
+
+    const allRequiredResponsesValid = () =>
+      responseComponents.every(({ instance: ri, config: rc }) =>
+        typeof (ri as any).isValid === "function"
+          ? (ri as any).isValid(rc)
+          : true,
+      );
+
+    const resetResponseComponents = () => {
+      responseComponents.forEach(({ instance: ri }) => {
+        if (typeof (ri as any).reset === "function") {
+          (ri as any).reset();
+        }
+      });
+    };
+
+    const showResponseValidationErrors = () => {
+      responseComponents.forEach(({ instance: ri, config: rc }) => {
+        if (
+          typeof (ri as any).isValid === "function" &&
+          !(ri as any).isValid(rc) &&
+          typeof (ri as any).showValidationError === "function"
+        ) {
+          (ri as any).showValidationError();
+        }
+      });
+    };
+
+    handleParticipantResponse = (
+      offsetTime: number | null = null,
+      options: { force?: boolean } = {},
+    ) => {
+      const forceEnd = options.force === true;
+      if (
+        trialEnded ||
+        hasResponded ||
+        (!forceEnd && trial.response_ends_trial === false)
+      ) {
+        return false;
+      }
+
+      if (trial.require_response && !forceEnd) {
+        clearResponseValidationErrors();
+        if (!allRequiredResponsesValid()) {
+          resetResponseComponents();
+          showResponseValidationErrors();
+          return false;
+        }
+      }
+
+      hasResponded = true;
+      trialEndedByResponse = true;
+      recordAllPendingResponses();
+      endTrial(typeof offsetTime === "number" ? offsetTime : performance.now());
+      return true;
+    };
+
     // Function to end the trial and collect data
     const endTrial = (offsetTime = performance.now()) => {
       if (trialEnded) return;
@@ -1209,6 +1241,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         resolveTimingMs(trial.timing_quality_bad_threshold, 50) ?? 50,
         renderMetrics,
         domAudit,
+        { ignoreTrialDurationError: trialEndedByResponse },
       );
       responseTiming.finishWithoutResponse(
         typeof offsetTime === "number" ? offsetTime : null,
@@ -1232,6 +1265,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         trial_offset_time: timingSummary.offsetTime,
         actual_trial_duration: roundTiming(timingSummary.actualDuration),
         duration_error: roundTiming(trialDurationError),
+        trial_ended_by_response: trialEndedByResponse,
         frame_count: timingSummary.frameCount,
         long_frame_count: timingSummary.longFrameCount,
         dropped_frame_count: timingSummary.droppedFrameCount,
@@ -1401,7 +1435,18 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             y: Math.round(window.innerHeight * (0.5 - cy / 200)),
           });
         }
-        if (comp.renderedEl) {
+        if (
+          instance.getRenderedSize &&
+          typeof instance.getRenderedSize === "function"
+        ) {
+          const renderedSize = instance.getRenderedSize();
+          if (renderedSize) {
+            trialData[`${prefix}_size`] = JSON.stringify({
+              width: Math.round(renderedSize.width),
+              height: Math.round(renderedSize.height),
+            });
+          }
+        } else if (comp.renderedEl) {
           const _r = comp.renderedEl.getBoundingClientRect();
           trialData[`${prefix}_size`] = JSON.stringify({
             width: Math.round(_r.width),

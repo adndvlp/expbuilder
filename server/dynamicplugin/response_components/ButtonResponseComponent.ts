@@ -216,13 +216,16 @@ type ButtonLayout = {
   imageButtonHeight: number;
 };
 
+type ButtonVisualState = "normal" | "disabled" | "validation";
+
 let buttonComponentCounter = 0;
 
 /**
  * ButtonResponseComponent
  *
- * Canvas-rendered visual buttons with transparent DOM buttons overlaid for
- * response events. Custom button_html falls back to the previous DOM path.
+ * Standard text buttons use retained WebGL textures plus canvas-coordinate
+ * hitboxes when critical response timing is enabled. Custom HTML, image
+ * buttons, and legacy response timing use the DOM path.
  */
 class ButtonResponseComponent {
   private jsPsych: any;
@@ -244,6 +247,7 @@ class ButtonResponseComponent {
   private responseTimingUnregisters: Array<() => void> = [];
   private componentId: string | null = null;
   private componentName: string | null = null;
+  private buttonSpriteIds: Record<ButtonVisualState, string> | null = null;
 
   static info = info;
 
@@ -558,7 +562,37 @@ class ButtonResponseComponent {
     }
   }
 
-  private drawLayout(ctx: CanvasRenderingContext2D, layout: ButtonLayout) {
+  private getFittedFont(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    layout: ButtonLayout,
+    width: number,
+    height: number,
+  ) {
+    const maxWidth = Math.max(1, width - layout.padding.left - layout.padding.right);
+    const maxHeight = Math.max(1, height - layout.padding.top - layout.padding.bottom);
+    let fontSize = Math.max(1, Math.min(layout.fontSize, maxHeight * 0.82));
+
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      ctx.font = `${fontSize}px sans-serif`;
+      if (ctx.measureText(text).width <= maxWidth || fontSize <= 4) break;
+      fontSize *= Math.max(0.5, maxWidth / Math.max(1, ctx.measureText(text).width));
+    }
+
+    return `${Math.max(1, fontSize)}px sans-serif`;
+  }
+
+  private drawLayout(
+    ctx: CanvasRenderingContext2D,
+    layout: ButtonLayout,
+    state: {
+      buttonsEnabled?: boolean;
+      validationError?: boolean;
+    } = {},
+  ) {
+    const buttonsEnabled = state.buttonsEnabled ?? this.buttonsEnabled;
+    const validationError = state.validationError ?? this.validationError;
+
     ctx.save();
     ctx.translate(layout.centerX, layout.centerY);
     ctx.rotate((layout.rotation * Math.PI) / 180);
@@ -570,7 +604,7 @@ class ButtonResponseComponent {
       const width = Math.max(1, cell.width - inset * 2);
       const height = Math.max(1, cell.height - inset * 2);
       const oldAlpha = ctx.globalAlpha;
-      ctx.globalAlpha = this.buttonsEnabled ? 1 : 0.55;
+      ctx.globalAlpha = buttonsEnabled ? 1 : 0.55;
 
       ctx.fillStyle = layout.backgroundColor;
       this.roundedRectPath(ctx, x, y, width, height, layout.borderRadius);
@@ -622,7 +656,7 @@ class ButtonResponseComponent {
           );
         }
       } else {
-        ctx.font = layout.font;
+        ctx.font = this.getFittedFont(ctx, cell.choice, layout, width, height);
         ctx.fillStyle = layout.textColor;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
@@ -637,7 +671,7 @@ class ButtonResponseComponent {
       ctx.globalAlpha = oldAlpha;
     }
 
-    if (this.validationError) {
+    if (validationError) {
       ctx.strokeStyle = "#e74c3c";
       ctx.lineWidth = 2;
       ctx.setLineDash([8, 4]);
@@ -646,6 +680,102 @@ class ButtonResponseComponent {
     }
 
     ctx.restore();
+  }
+
+  private getRotatedGroupBounds(layout: ButtonLayout) {
+    const margin = Math.max(4, layout.borderWidth + 3);
+    const halfWidth = layout.width / 2 + margin;
+    const halfHeight = layout.height / 2 + margin;
+    const radians = (layout.rotation * Math.PI) / 180;
+    const cos = Math.cos(radians);
+    const sin = Math.sin(radians);
+    const corners = [
+      { x: -halfWidth, y: -halfHeight },
+      { x: halfWidth, y: -halfHeight },
+      { x: -halfWidth, y: halfHeight },
+      { x: halfWidth, y: halfHeight },
+    ].map((point) => ({
+      x: layout.centerX + point.x * cos - point.y * sin,
+      y: layout.centerY + point.x * sin + point.y * cos,
+    }));
+    const xs = corners.map((point) => point.x);
+    const ys = corners.map((point) => point.y);
+    const left = Math.floor(Math.min(...xs));
+    const top = Math.floor(Math.min(...ys));
+    const right = Math.ceil(Math.max(...xs));
+    const bottom = Math.ceil(Math.max(...ys));
+    return {
+      left,
+      top,
+      width: Math.max(1, right - left),
+      height: Math.max(1, bottom - top),
+    };
+  }
+
+  private renderLayoutTexture(layout: ButtonLayout, state: ButtonVisualState) {
+    const bounds = this.getRotatedGroupBounds(layout);
+    const dpr = window.devicePixelRatio || 1;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.ceil(bounds.width * dpr));
+    canvas.height = Math.max(1, Math.ceil(bounds.height * dpr));
+    const ctx = canvas.getContext("2d", { alpha: true });
+    if (!ctx) return null;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, bounds.width, bounds.height);
+    ctx.translate(-bounds.left, -bounds.top);
+    this.drawLayout(ctx, layout, {
+      buttonsEnabled: state !== "disabled",
+      validationError: state === "validation",
+    });
+    return { canvas, bounds };
+  }
+
+  private updateButtonVisualState() {
+    if (!this.stage || !this.buttonSpriteIds) return;
+    const visibleState: ButtonVisualState = this.validationError
+      ? "validation"
+      : this.buttonsEnabled
+        ? "normal"
+        : "disabled";
+    for (const state of Object.keys(this.buttonSpriteIds) as ButtonVisualState[]) {
+      this.stage.setDrawableVisibility(
+        this.buttonSpriteIds[state],
+        state === visibleState,
+      );
+    }
+  }
+
+  private registerButtonCanvasTarget(cell: ButtonCell) {
+    if (!this.responseTiming?.enabled || !this.layout) return;
+    const layout = this.layout;
+    const unregister = this.responseTiming.registerPointerTarget({
+      componentId: this.componentId,
+      componentName: this.componentName,
+      label: cell.choice,
+      hitTest: ({ canvasX, canvasY }: { canvasX: number | null; canvasY: number | null }) => {
+        if (typeof canvasX !== "number" || typeof canvasY !== "number") {
+          return false;
+        }
+        const radians = (-layout.rotation * Math.PI) / 180;
+        const dx = canvasX - layout.centerX;
+        const dy = canvasY - layout.centerY;
+        const localX = dx * Math.cos(radians) - dy * Math.sin(radians);
+        const localY = dx * Math.sin(radians) + dy * Math.cos(radians);
+        return (
+          localX >= cell.x &&
+          localX <= cell.x + cell.width &&
+          localY >= cell.y &&
+          localY <= cell.y + cell.height
+        );
+      },
+      onResponse: (response: any) => {
+        if (!this.buttonsEnabled || response.response_valid !== true) {
+          return false;
+        }
+        this.storeButtonResponse(cell.choice, response.event, response);
+      },
+    });
+    this.responseTimingUnregisters.push(unregister);
   }
 
   private prepareCanvasButtons(displayElement: HTMLElement, trial: any) {
@@ -663,31 +793,40 @@ class ButtonResponseComponent {
     this.layout = this.createLayout(trial);
     if (!this.layout) return;
 
-    this.buttonGroupElement = document.createElement("div");
-    this.buttonGroupElement.id = "jspsych-button-response-component-btngroup";
-    this.buttonGroupElement.style.position = "absolute";
-    this.buttonGroupElement.style.background = "transparent";
-    this.buttonGroupElement.style.pointerEvents = "auto";
-    this.buttonGroupElement.style.boxSizing = "border-box";
-    displayElement.appendChild(this.buttonGroupElement);
-    this.updateOverlay(this.layout);
-
     this.removeDrawable?.();
-    this.removeDrawable = this.stage.registerDrawable({
-      id: this.drawableId,
-      zIndex,
-      visible: true,
-      draw: (ctx) => {
-        if (this.layout) this.drawLayout(ctx, this.layout);
-      },
-    });
+    const removers: Array<() => void> = [];
+    const spriteIds = {} as Record<ButtonVisualState, string>;
+    const states: ButtonVisualState[] = ["normal", "disabled", "validation"];
+
+    for (const state of states) {
+      const texture = this.renderLayoutTexture(this.layout, state);
+      if (!texture) continue;
+      const textureKey = `${this.drawableId}-${state}-texture`;
+      const spriteId = `${this.drawableId}-${state}`;
+      this.stage.preloadTexture(textureKey, texture.canvas);
+      removers.push(
+        this.stage.registerSprite({
+          id: spriteId,
+          textureKey,
+          source: texture.canvas,
+          x: texture.bounds.left,
+          y: texture.bounds.top,
+          width: texture.bounds.width,
+          height: texture.bounds.height,
+          zIndex,
+          visible: state === "normal",
+        }),
+      );
+      spriteIds[state] = spriteId;
+    }
+
+    this.buttonSpriteIds = spriteIds;
+    this.removeDrawable = () => {
+      for (const remove of removers) remove();
+    };
 
     for (const cell of this.layout.cells) {
-      if (!cell.isImage || this.imageSources.has(cell.choice)) continue;
-      preloadBitmap(cell.choice).then((source) => {
-        this.imageSources.set(cell.choice, source);
-        this.stage?.render();
-      });
+      this.registerButtonCanvasTarget(cell);
     }
   }
 
@@ -834,7 +973,11 @@ class ButtonResponseComponent {
       : `button-${++buttonComponentCounter}`;
     this.buttonsEnabled = true;
     this.validationError = false;
-    this.useDomFallback = typeof this.resolveParam(trial.button_html, null) === "function";
+    const choices = this.getChoices(trial);
+    this.useDomFallback =
+      !this.responseTiming?.enabled ||
+      typeof this.resolveParam(trial.button_html, null) === "function" ||
+      choices.some((choice) => this.isImageUrl(choice));
 
     if (this.useDomFallback) {
       this.renderDomFallback(display_element, trial, onResponse);
@@ -878,9 +1021,10 @@ class ButtonResponseComponent {
    * Disable all buttons
    */
   private disableButtons(): void {
-    if (!this.buttonGroupElement) return;
-
     this.buttonsEnabled = false;
+    this.updateButtonVisualState();
+
+    if (!this.buttonGroupElement) return;
     const buttons = this.buttonGroupElement.querySelectorAll("button");
     buttons.forEach((button) => {
       button.setAttribute("disabled", "disabled");
@@ -892,9 +1036,10 @@ class ButtonResponseComponent {
    * Enable all buttons
    */
   private enableButtons(): void {
-    if (!this.buttonGroupElement) return;
-
     this.buttonsEnabled = true;
+    this.updateButtonVisualState();
+
+    if (!this.buttonGroupElement) return;
     const buttons = this.buttonGroupElement.querySelectorAll("button");
     buttons.forEach((button) => {
       button.removeAttribute("disabled");
@@ -924,6 +1069,7 @@ class ButtonResponseComponent {
   /** Highlight the button group to indicate a response is required */
   showValidationError(): void {
     this.validationError = true;
+    this.updateButtonVisualState();
     if (this.buttonGroupElement) {
       this.buttonGroupElement.classList.add("jspsych-require-response-error");
     }
@@ -933,6 +1079,7 @@ class ButtonResponseComponent {
   /** Remove validation error highlight */
   clearValidationError(): void {
     this.validationError = false;
+    this.updateButtonVisualState();
     if (this.buttonGroupElement) {
       this.buttonGroupElement.classList.remove(
         "jspsych-require-response-error",
@@ -982,6 +1129,7 @@ class ButtonResponseComponent {
 
     this.removeDrawable?.();
     this.removeDrawable = null;
+    this.buttonSpriteIds = null;
     if (this.buttonGroupElement) {
       this.buttonGroupElement.remove();
     }

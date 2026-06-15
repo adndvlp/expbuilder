@@ -32,7 +32,13 @@ keyboard, mouse, touch, or hardware polling limits.
 
 - `utils/PrecisionTiming.ts`
   TimingEngine and preload utilities, including nearest-frame scheduling,
-  frame diagnostics, response RT helpers, and image bitmap caching.
+  frame diagnostics, legacy response RT helpers, and image bitmap caching.
+
+- `utils/ResponseTimingManager.ts`
+  Critical response timing manager. It installs native capture-phase keyboard
+  and pointer listeners, anchors RT to the committed onset of an explicit visual
+  stimulus, normalizes event timestamps, records event-loop lag, and exports
+  response quality/calibration diagnostics.
 
 - `renderer/CanvasStage.ts`
   Shared stage abstraction. Timing-critical images/text use WebGL retained
@@ -94,6 +100,17 @@ These parameters were added to `DynamicPlugin.info.parameters`.
 | `record_render_timing` | `true` | Save CPU-side render commit diagnostics. |
 | `diagnostics_level` | `"debug"` | Controls diagnostic arrays: `summary`, `stimulus`, `frame`, or `debug`. |
 | `record_gpu_timing` | `true` | Use WebGL disjoint timer queries when available. |
+| `response_timing_enabled` | `false` | Enable critical response timing from the committed visual onset of an explicit anchor stimulus. |
+| `response_required` | `false` | If enabled, no valid response before trial end is saved as timeout/bad. If false, no response is allowed without marking timeout bad. |
+| `response_anchor_component_id` | `null` | Stable component ID for the stimulus whose committed visual onset anchors RT. Preferred over name. |
+| `response_anchor_component` | `null` | Human-readable anchor stimulus name, used as fallback when no ID is supplied. |
+| `response_allowed_from` | `"anchor_onset"` | Earliest valid response anchor. Use `"anchor_onset"`, `"trial_onset"`, or `{ "from": "anchor_onset" | "trial_onset", "at_ms": number }`. |
+| `premature_response_policy` | `"end_invalid"` | What to do with responses before `response_allowed_from`: `"end_invalid"` or `"ignore"`. |
+| `response_timing_quality_mode` | `"normal"` | Event-lag thresholds: `"normal"` uses >8 ms warning and >16.7 ms bad; `"strict"` uses >4 ms warning and >8 ms bad. |
+| `minimum_valid_rt_ms` | `null` | Optional lower RT bound. Responses below this are invalid. |
+| `response_calibration_profile` | `null` | Optional benchmark-derived bias profile. Bias correction is applied only on a matched browser/OS/input/display profile. |
+| `response_expected_delay_ms` | `null` | External benchmark expected delay, used to compute `response_error_ms`. |
+| `external_reference_id` | `null` | ID for the external benchmark run/device/reference. |
 
 Existing parameters still work:
 
@@ -205,9 +222,10 @@ WebGL critical rendering is appropriate for:
 
 Interactive components use a hybrid path when needed:
 
-- `ButtonResponseComponent` draws standard button visuals into Canvas and keeps
-  transparent native buttons on top for click, focus, keyboard, and
-  accessibility behavior. Custom `button_html` uses the DOM path.
+- `ButtonResponseComponent` uses a WebGL retained texture plus canvas-coordinate
+  hitboxes when `response_timing_enabled` is true and the button is a standard
+  text button. Custom `button_html`, image buttons, and non-critical response
+  timing use the DOM interactive path.
 - `SliderResponseComponent` draws slider visuals into Canvas and keeps a
   transparent native range input on top for real browser interaction.
 - `ClickResponseComponent` keeps a DOM capture layer but draws the optional
@@ -276,6 +294,7 @@ These fields are added to trial data.
 | `trial_offset_time` | number | timestamp used when the trial ended. |
 | `actual_trial_duration` | number | observed duration from onset to offset, in ms. |
 | `duration_error` | number | `actual_trial_duration - trial_duration`, or `null` when no duration was requested. |
+| `trial_ended_by_response` | boolean | true when the trial ended because a participant response was accepted or invalidated. In that case `duration_error` is still saved but ignored for visual timing quality. |
 | `frame_count` | number | number of measured frame intervals. |
 | `long_frame_count` | number | number of frame intervals above `frame_lag_threshold`. |
 | `dropped_frame_count` | number | estimated missed frames from intervals longer than the measured baseline frame. |
@@ -286,6 +305,9 @@ These fields are added to trial data.
 | `stimulus_timing` | JSON string | desired-vs-actual timing records for visual stimuli; saved at `stimulus`, `frame`, and `debug` levels. |
 | `timing_quality` | string | `ok`, `warning`, or `bad`. |
 | `timing_quality_reason` | string | human-readable reason when quality is not clean. |
+| `visual_timing_quality` | string | visual/render timing quality before response timing is merged. |
+| `response_timing_quality` | string | critical response timing quality. |
+| `response_timing_quality_reason` | string | response timing quality reasons such as timestamp fallback, event lag, timeout, hidden/blur, or missing anchor. |
 | `diagnostics_level` | string | normalized diagnostic payload level used for this trial. |
 | `render_backend_requested` | string | requested renderer backend, usually `webgl-strict`. |
 | `render_backend` | string | actual renderer backend(s) used. |
@@ -315,6 +337,50 @@ These fields are added to trial data.
 | `dom_interactive_components` | JSON string | DOM components intentionally kept in the interactive layer. |
 | `dom_visual_components` | number | visual stimulus components rendered via DOM instead of the VisualRenderer. Strict timing runs should report `0`. |
 | `dom_visual_component_names` | JSON string | names/types of DOM visual components found in the trial. |
+| `rt` | number | Raw critical RT alias when `response_timing_enabled` is true; otherwise legacy first component RT. Never stores corrected RT. |
+| `rt_raw` | number | `response_time - stimulus_actual_onset_abs`, in decimal ms. |
+| `rt_corrected` | number | Bias-corrected RT only when a calibration profile fully matches; otherwise `null`. |
+| `response_timing_enabled` | boolean | Whether critical response timing was active. |
+| `response_required` | boolean | Whether a missing response should become timeout/bad. |
+| `response_anchor_component_id` | string | Stable anchor component ID used for lookup. |
+| `response_anchor_component` | string | Anchor component name used for lookup fallback. |
+| `response_start_anchor` | string | Anchor source, currently `stimulus_onset_commit` when resolved. |
+| `stimulus_actual_onset_abs` | number | Absolute rAF timestamp of the anchor stimulus commit. |
+| `response_allowed_from` | string | Serialized allowed-from policy. |
+| `response_allowed_from_abs` | number | Resolved absolute timestamp after applying the allowed-from policy. |
+| `premature_response_policy` | string | `end_invalid` or `ignore`. |
+| `minimum_valid_rt_ms` | number | Lower RT bound used for the trial. |
+| `response_before_anchor` | boolean | True when a response was invalidated before the allowed anchor. |
+| `response_before_anchor_time` | number | Absolute response timestamp for the premature response. |
+| `response_timeout` | boolean | True when a required response was missing by trial end. |
+| `response_timeout_ms` | number | Time from `response_allowed_from_abs` to trial offset when timeout occurred. |
+| `response_time` | number | Normalized response timestamp. |
+| `response_now_at_handler` | number | `performance.now()` when the event handler ran. |
+| `response_timestamp_source` | string | `event.timeStamp` or `performance.now_fallback`. |
+| `response_event_lag` | number | `response_now_at_handler - response_time`; high values indicate event-loop delay. |
+| `response_bias_correction_ms` | number | Calibration bias subtracted from `rt_raw` when profile match is `matched`. |
+| `response_calibration_profile_id` | string | Calibration profile ID. |
+| `response_calibration_match_status` | string | `matched`, `partial`, `mismatch`, or `none`. |
+| `response_event_type` | string | Native event type, e.g. `keydown` or `pointerdown`. |
+| `response_device` | string | `keyboard`, `mouse`, `touch`, `pen`, or browser pointer type. |
+| `response_key` | string | Keyboard `event.key`. |
+| `response_code` | string | Keyboard `event.code`. |
+| `response_repeat` | boolean | Keyboard repeat flag. Repeats are ignored. |
+| `response_is_trusted` | boolean | Native event `isTrusted`. |
+| `response_valid` | boolean/null | `true` valid response, `false` invalid response, `null` no response when not required. |
+| `response_invalid_reason` | string | Closed reason such as `missing_anchor`, `before_anchor`, `timeout`, or `below_minimum_rt`. Premature responses before an anchor commit are reported as `before_anchor`; `response_timing_quality_reason` may also include `anchor_without_onset_commit` as detail. |
+| `response_client_x` / `response_client_y` | number | Raw viewport coordinates for pointer responses. |
+| `response_canvas_x` / `response_canvas_y` | number | Pointer coordinates normalized into the Dynamic canvas coordinate space. |
+| `device_pixel_ratio` | number | Browser `window.devicePixelRatio`. |
+| `canvas_bounding_rect` | JSON string | Canvas/container rect used for pointer coordinate normalization. |
+| `response_target_component` | string | Button/click target component or label. |
+| `document_hidden_during_trial` | boolean | True if the document became hidden while the response manager was active. |
+| `window_blur_during_trial` | boolean | True if the window blurred while the response manager was active. |
+| `response_expected_delay_ms` | number | Benchmark expected delay. |
+| `external_reference_id` | string | Benchmark external reference ID. |
+| `response_error_ms` | number | `rt_raw - response_expected_delay_ms` when expected delay is provided. |
+| `response_listener_attached` | boolean | True after native listeners were installed. |
+| `response_listener_removed` | boolean | True after native listeners were aborted/removed. |
 
 ### `stimulus_timing` schema
 
@@ -322,12 +388,15 @@ These fields are added to trial data.
 
 ```ts
 {
+  component_id: string | null;
   name: string;
   desired_onset: number;
   desired_duration: number | null;
   desired_offset: number | null;
   actual_onset: number | null;
+  actual_onset_abs: number | null;
   actual_offset: number | null;
+  actual_offset_abs: number | null;
   actual_duration: number | null;
   onset_error: number | null;
   offset_error: number | null;
@@ -394,32 +463,70 @@ millisecond target when that frame is closer. Any error is recorded in:
 - `stimulus_timing[].duration_error`
 - `frame_intervals`
 
-## How RT is measured
+## Critical RT measurement
 
-Responses are anchored to the same trial onset.
+When `response_timing_enabled` is `true`, DynamicPlugin uses
+`ResponseTimingManager` instead of component-local browser click/keydown timing
+for keyboard, click, and standard button responses.
 
-For keyboard responses:
+The critical RT equation is:
 
-- `KeyboardResponseComponent` registers its keydown listener on the trial onset.
-- It uses `event.timeStamp` when it is comparable to `performance.now()`.
-- Otherwise it falls back to `performance.now()`.
-- RT is `response_time - trial_onset`.
-- RT is stored as decimal milliseconds, for example `324.483`, not rounded to
-  an integer.
+```txt
+rt = rt_raw = response_time - stimulus_actual_onset_abs
+```
 
-For other response components, RT is also measured against the same onset:
+`stimulus_actual_onset_abs` is the rAF timestamp from the renderer commit where
+the anchor stimulus became visible. This is stricter than measuring from a
+logical trial start or component render time.
 
-- buttons
-- clicks/touches
-- sliders
-- inputs
-- surveys
-- file uploads
-- sketchpad strokes
-- audio-response button presses
+Critical response timing uses:
 
-This reduces the earlier problem where component RTs started during DOM render
-instead of the first visible frame.
+- native `keydown` and `pointerdown` listeners on `window`;
+- capture phase, so the event is observed before component bubble handlers;
+- `event.timeStamp` when it shares the `performance.now()` time origin;
+- `performance.now()` fallback only when the event timestamp is not comparable;
+- `response_event_lag = performance.now() - event.timeStamp`;
+- `pointerdown`, not `click`, for pointer RT;
+- hit testing for button/click targets;
+- optional calibration bias saved separately as `rt_corrected`.
+
+Example:
+
+```js
+{
+  type: DynamicPlugin,
+  response_timing_enabled: true,
+  response_required: true,
+  response_anchor_component_id: "prime_image_01",
+  response_allowed_from: "anchor_onset",
+  minimum_valid_rt_ms: 100,
+  components: [
+    {
+      type: "ImageComponent",
+      component_id: "prime_image_01",
+      name: "prime",
+      stimulus: "prime.png",
+      stimulus_onset: 0,
+      stimulus_duration: 100
+    }
+  ],
+  response_components: [
+    {
+      type: "KeyboardResponseComponent",
+      choices: ["f", "j"]
+    }
+  ],
+  trial_duration: 1500
+}
+```
+
+If `response_timing_enabled` is false, legacy response components still report
+their component RTs. The plugin-level `rt` remains the first recorded legacy RT.
+
+`rt_corrected` is never copied into `rt`. It is only saved when a calibration
+profile matches the current browser family, browser major version, OS family,
+input device, and display refresh estimate closely enough. Partial or mismatch
+profiles are reported but not applied.
 
 ## Preload and prefetch
 
@@ -480,6 +587,9 @@ Values:
   the VisualRenderer.
 - `bad`: frame interval, trial duration error, or stimulus duration error meets
   or exceeds `timing_quality_bad_threshold`.
+- `duration_error` is not used for visual quality when
+  `trial_ended_by_response` is `true`; response-terminated RT trials are
+  expected to end before the nominal `trial_duration`.
 - `bad`: also assigned when WebGL falls back unexpectedly, uploads textures
   or buffers during a trial, compiles shaders during a trial, loses context,
   uses a legacy drawable during a trial, uploads a legacy texture during a

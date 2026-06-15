@@ -88,9 +88,12 @@ class KeyboardResponseComponent {
       if (trial.__responseTiming?.enabled) {
         const settings = this.jsPsych.getInitSettings?.() || {};
         const caseSensitive = settings.case_sensitive_responses === true;
-        const minimumValidRt = Number(
-          trial.minimum_valid_rt_ms ?? settings.minimum_valid_rt ?? 0,
-        );
+        const configuredMinimumValidRt =
+          trial.minimum_valid_rt_ms ?? settings.minimum_valid_rt ?? null;
+        const minimumValidRt =
+          configuredMinimumValidRt === null || configuredMinimumValidRt === undefined
+            ? null
+            : Number(configuredMinimumValidRt);
         this.unregisterResponseTiming =
           trial.__responseTiming.registerKeyboardTarget({
             componentId: trial.__componentId ?? null,
