@@ -35,9 +35,6 @@
   "data": {
     "response": {
       "type": "object"
-    },
-    "rt": {
-      "type": "number"
     }
   }
 }

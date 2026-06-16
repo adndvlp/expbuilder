@@ -13,9 +13,6 @@
   "data": {
     "response": {
       "type": "string"
-    },
-    "rt": {
-      "type": "number"
     }
   }
 }

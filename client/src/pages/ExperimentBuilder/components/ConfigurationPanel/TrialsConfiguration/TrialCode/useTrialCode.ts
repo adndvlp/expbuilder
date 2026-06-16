@@ -151,10 +151,25 @@ export function useTrialCode({
         .join("\n");
 
       const hasBranches = branches && branches.length > 0;
+      const dynamicPassthroughParams = [
+        "trial_duration",
+        "response_ends_trial",
+        "require_response",
+        "dynamic_csv_diagnostics",
+        "__canvasStyles",
+      ];
+      const dynamicParamProps = dynamicPassthroughParams
+        .filter((key) => columnMapping[key] && columnMapping[key].source !== "none")
+        .map((key) => {
+          const propKey = isInLoop ? `${key}_${trialNameSanitized}` : key;
+          return `${key}: jsPsych.timelineVariable("${propKey}"),`;
+        })
+        .join("\n");
 
       // If no data, don't use timelineVariable
       if (!hasData && !isInLoop) {
-        return `data: {
+        return `${dynamicParamProps}
+data: {
         ${dataProps}
         trial_id: ${id},
         builder_id: ${id},
@@ -172,6 +187,7 @@ export function useTrialCode({
 
       return `components: jsPsych.timelineVariable("${componentsKey}"),
 response_components: jsPsych.timelineVariable("${responseComponentsKey}"),
+${dynamicParamProps}
 data: {
         ${dataProps}
         trial_id: ${id},

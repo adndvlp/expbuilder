@@ -162,6 +162,50 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
           visibleParameters.map(({ label, key, type }) => {
             const entry = columnMapping[key] || { source: "none" };
 
+            // ── Special: Dynamic CSV diagnostics → controlled per trial ──
+            if (key === "dynamic_csv_diagnostics") {
+              const DYNAMIC_CSV_DIAGNOSTIC_OPTIONS = [
+                { value: "off", label: "Off - clean CSV" },
+                { value: "summary", label: "Summary - quality fields" },
+                { value: "full", label: "Full - benchmark/debug" },
+              ];
+              const currentMode =
+                (entry.source === "typed" ? (entry.value as string) : null) ??
+                "off";
+              return (
+                <div key={key} style={{ gridColumn: "1 / -1" }}>
+                  <label
+                    className="mb-2 mt-3 block text-sm font-medium"
+                    style={componentMode ? { color: "var(--text-dark)" } : {}}
+                  >
+                    Dynamic CSV Audit Data
+                  </label>
+                  <select
+                    className="w-full p-2 border rounded mt-1"
+                    value={currentMode}
+                    onChange={(e) => {
+                      const newValue = {
+                        source: "typed" as const,
+                        value: e.target.value,
+                      };
+                      setColumnMapping((prev) => ({
+                        ...prev,
+                        [key]: newValue,
+                      }));
+                      if (onSave) setTimeout(() => onSave(key, newValue), 100);
+                    }}
+                    style={{ color: "var(--text-dark)" }}
+                  >
+                    {DYNAMIC_CSV_DIAGNOSTIC_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              );
+            }
+
             // ── Special: input_type → always show as a select dropdown ──
             if (key === "input_type") {
               const INPUT_TYPE_OPTIONS = [

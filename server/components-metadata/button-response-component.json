@@ -68,7 +68,7 @@
       "type": "number",
       "default": 3,
       "pretty_name": "Button Border Radius",
-      "description": "Corner radius of the buttons in pixels"
+      "description": "Corner radius of the buttons"
     },
     "button_border_color": {
       "type": "string",
@@ -80,7 +80,7 @@
       "type": "number",
       "default": 1,
       "pretty_name": "Button Border Width",
-      "description": "Border width of the buttons in pixels"
+      "description": "Border width of the buttons"
     },
     "button_padding": {
       "type": "string",
@@ -104,9 +104,6 @@
   "data": {
     "response": {
       "type": "string"
-    },
-    "rt": {
-      "type": "number"
     }
   }
 }

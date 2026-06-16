@@ -48,9 +48,6 @@
     "response": {
       "type": "number"
     },
-    "rt": {
-      "type": "number"
-    },
     "slider_start": {
       "type": "number"
     }

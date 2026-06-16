@@ -1,5 +1,6 @@
 {
   "name": "DynamicPlugin",
+  "version": "1.0.0",
   "parameters": {
     "__canvasStyles": {
       "type": "object",
@@ -24,6 +25,12 @@
     "response_ends_trial": {
       "type": "boolean",
       "default": true
+    },
+    "dynamic_csv_diagnostics": {
+      "type": "string",
+      "default": "off",
+      "pretty_name": "Dynamic CSV Audit Data",
+      "description": "off = normal CSV only, summary = aggregate quality fields, full = benchmark/debug arrays"
     }
   },
   "data": {

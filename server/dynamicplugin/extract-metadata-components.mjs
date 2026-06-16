@@ -11,6 +11,19 @@ const pluginFile = path.resolve(__dirname, "./index.ts");
 const metadataDir = path.join(__dirname, "../metadata");
 const outputDir = path.join(__dirname, "../components-metadata");
 
+const publicDynamicPluginParameters = new Set([
+  "__canvasStyles",
+  "components",
+  "response_components",
+  "require_response",
+  "trial_duration",
+  "response_ends_trial",
+  "dynamic_csv_diagnostics",
+]);
+
+const publicDynamicPluginData = new Set(["rt"]);
+const componentDataToOmit = new Set(["rt"]);
+
 // Mapeo base de tipos de ParameterType a tipos simplificados
 const typeMap = {
   AUDIO: "string",
@@ -48,7 +61,9 @@ function extractInfoObject(content) {
   if (nameMatch) info.name = nameMatch[1];
 
   // Extraer version (puede estar en diferentes formatos)
-  let versionMatch = content.match(/var\s+version\s*=\s*["']([^"']+)["']/);
+  let versionMatch = content.match(
+    /(?:const|let|var)\s+version\s*=\s*["']([^"']+)["']/
+  );
   if (!versionMatch) {
     // Intentar extraer de import
     versionMatch = infoContent.match(/version:\s*version/);
@@ -173,6 +188,33 @@ function extractParameters(paramsContent) {
   return parameters;
 }
 
+function filterKeys(source = {}, allowedKeys) {
+  return Object.fromEntries(
+    Object.entries(source).filter(([key]) => allowedKeys.has(key))
+  );
+}
+
+function omitKeys(source = {}, omittedKeys) {
+  return Object.fromEntries(
+    Object.entries(source).filter(([key]) => !omittedKeys.has(key))
+  );
+}
+
+function normalizePluginMetadata(info) {
+  return {
+    ...info,
+    parameters: filterKeys(info.parameters, publicDynamicPluginParameters),
+    data: filterKeys(info.data, publicDynamicPluginData),
+  };
+}
+
+function normalizeComponentMetadata(info) {
+  return {
+    ...info,
+    data: omitKeys(info.data, componentDataToOmit),
+  };
+}
+
 async function extractComponentInfo(filePath, componentName) {
   try {
     const content = await fs.readFile(filePath, "utf-8");
@@ -202,7 +244,8 @@ async function extractAllComponents() {
   // Process main plugin (DynamicPlugin)
   console.log("\n🔧 Processing main plugin...");
   try {
-    const info = await extractComponentInfo(pluginFile, "DynamicPlugin");
+    const rawInfo = await extractComponentInfo(pluginFile, "DynamicPlugin");
+    const info = rawInfo ? normalizePluginMetadata(rawInfo) : null;
 
     if (info) {
       const json = JSON.stringify(info, null, 2);
@@ -229,7 +272,8 @@ async function extractAllComponents() {
     const stats = await fs.stat(tsFile);
     if (!stats.isFile()) continue;
 
-    const info = await extractComponentInfo(tsFile, componentName);
+    const rawInfo = await extractComponentInfo(tsFile, componentName);
+    const info = rawInfo ? normalizeComponentMetadata(rawInfo) : null;
 
     if (info) {
       // Convert ComponentName to component-name format
@@ -260,7 +304,8 @@ async function extractAllComponents() {
     const stats = await fs.stat(tsFile);
     if (!stats.isFile()) continue;
 
-    const info = await extractComponentInfo(tsFile, componentName);
+    const rawInfo = await extractComponentInfo(tsFile, componentName);
+    const info = rawInfo ? normalizeComponentMetadata(rawInfo) : null;
 
     if (info) {
       // Convert ComponentName to component-name format

@@ -98,9 +98,6 @@
   "data": {
     "response": {
       "type": "string_array"
-    },
-    "rt": {
-      "type": "number"
     }
   }
 }

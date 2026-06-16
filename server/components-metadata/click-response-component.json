@@ -47,9 +47,6 @@
     },
     "is_touch": {
       "type": "boolean"
-    },
-    "rt": {
-      "type": "number"
     }
   }
 }

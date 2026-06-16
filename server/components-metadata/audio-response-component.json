@@ -1,5 +1,6 @@
 {
   "name": "AudioResponseComponent",
+  "version": "1.0.0",
   "parameters": {
     "name": {
       "type": "string"
@@ -36,9 +37,6 @@
   "data": {
     "response": {
       "type": "string"
-    },
-    "rt": {
-      "type": "number"
     },
     "estimated_stimulus_onset": {
       "type": "number"

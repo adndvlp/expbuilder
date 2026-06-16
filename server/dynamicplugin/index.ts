@@ -71,6 +71,14 @@ const info = <const>{
       type: ParameterType.BOOL,
       default: true,
     },
+    /** Controls whether Dynamic timing and response audit fields are written to the trial data. */
+    dynamic_csv_diagnostics: {
+      type: ParameterType.STRING,
+      pretty_name: "Dynamic CSV Audit Data",
+      default: "off",
+      description:
+        "off = normal CSV only, summary = aggregate quality fields, full = benchmark/debug arrays",
+    },
     /** If true, image assets referenced by the dynamic trial are loaded before the first visible frame. */
     preload_assets: {
       type: ParameterType.BOOL,
@@ -84,7 +92,7 @@ const info = <const>{
     /** If true, save the measured requestAnimationFrame intervals for lag diagnostics. */
     record_frame_timing: {
       type: ParameterType.BOOL,
-      default: true,
+      default: false,
     },
     /** Frame interval, in milliseconds, above which a frame is counted as lagged. */
     frame_lag_threshold: {
@@ -114,17 +122,17 @@ const info = <const>{
     /** If true, save CPU-side renderer commit diagnostics. */
     record_render_timing: {
       type: ParameterType.BOOL,
-      default: true,
+      default: false,
     },
     /** Controls how much diagnostic time-series data is saved. */
     diagnostics_level: {
       type: ParameterType.STRING,
-      default: "debug",
+      default: "off",
     },
     /** If true, use WebGL disjoint timer queries when the browser exposes them. */
     record_gpu_timing: {
       type: ParameterType.BOOL,
-      default: true,
+      default: false,
     },
     response_timing_enabled: {
       type: ParameterType.BOOL,
@@ -620,11 +628,13 @@ function auditDomLayers(stimulusComponents: any[], responseComponents: any[]) {
   };
 }
 
-type DiagnosticsLevel = "summary" | "stimulus" | "frame" | "debug";
+type DiagnosticsLevel = "off" | "summary" | "stimulus" | "frame" | "debug";
 
 function normalizeDiagnosticsLevel(raw: any): DiagnosticsLevel {
-  const value = String(resolveRawValue(raw) ?? "debug").toLowerCase();
+  const value = String(resolveRawValue(raw) ?? "off").toLowerCase();
+  if (value === "full") return "debug";
   if (
+    value === "off" ||
     value === "summary" ||
     value === "stimulus" ||
     value === "frame" ||
@@ -632,18 +642,26 @@ function normalizeDiagnosticsLevel(raw: any): DiagnosticsLevel {
   ) {
     return value;
   }
-  return "debug";
+  return "off";
 }
 
 function getDiagnosticsOptions(trial: any) {
-  const level = normalizeDiagnosticsLevel(trial.diagnostics_level);
-  const recordFrameTiming = trial.record_frame_timing !== false;
-  const recordRenderTiming = trial.record_render_timing !== false;
-  const recordGpuTiming = trial.record_gpu_timing !== false;
+  const level = normalizeDiagnosticsLevel(
+    trial.dynamic_csv_diagnostics ?? trial.diagnostics_level,
+  );
+  const enabled = level !== "off";
+  const recordFrameTiming = enabled && trial.record_frame_timing !== false;
+  const recordRenderTiming = enabled && trial.record_render_timing !== false;
+  const recordGpuTiming =
+    level === "debug" && trial.record_gpu_timing !== false;
 
   return {
     level,
-    includeStimulusTiming: level !== "summary",
+    recordFrameTiming,
+    recordRenderTiming,
+    recordGpuTiming,
+    includeSummary: level !== "off",
+    includeStimulusTiming: level !== "off" && level !== "summary",
     includeFrameIntervals:
       recordFrameTiming && (level === "frame" || level === "debug"),
     includeRenderSeries: recordRenderTiming && level === "debug",
@@ -941,8 +959,9 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     const resizeObserver = new ResizeObserver(() => updateScale());
     resizeObserver.observe(document.documentElement);
 
+    const initialDiagnostics = getDiagnosticsOptions(trial);
     const timing = createPrecisionTiming({
-      recordFrameTiming: trial.record_frame_timing !== false,
+      recordFrameTiming: initialDiagnostics.recordFrameTiming,
       longFrameThreshold: resolveTimingMs(trial.frame_lag_threshold, 34) ?? 34,
     });
 
@@ -1174,59 +1193,68 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       );
       timing.stop();
 
-      // Create flat data structure (like PsychoPy) instead of nested arrays
+      // Keep normal exports compact unless Dynamic diagnostics are explicitly enabled.
       const trialData: any = {
-        timing_method: "performance.now + requestAnimationFrame frame-nearest scheduler",
-        trial_onset_time: timingSummary.onsetTime,
-        trial_offset_time: timingSummary.offsetTime,
-        actual_trial_duration: roundTiming(timingSummary.actualDuration),
-        duration_error: roundTiming(trialDurationError),
-        trial_ended_by_response: trialEndedByResponse,
-        frame_count: timingSummary.frameCount,
-        long_frame_count: timingSummary.longFrameCount,
-        dropped_frame_count: timingSummary.droppedFrameCount,
-        max_frame_interval: roundTiming(timingSummary.maxFrameInterval),
-        mean_frame_interval: roundTiming(timingSummary.meanFrameInterval),
-        frame_interval_estimate: roundTiming(timingSummary.frameIntervalEstimate),
-        timing_quality: timingQuality.quality,
-        timing_quality_reason: timingQuality.reason,
-        visual_timing_quality: visualTimingQuality.quality,
-        response_timing_quality: responseTimingData.response_timing_quality,
-        response_timing_quality_reason:
-          responseTimingData.response_timing_quality_reason,
-        diagnostics_level: diagnostics.level,
-        render_backend_requested: renderMetrics.render_backend_requested,
-        render_backend: renderMetrics.render_backend,
-        visual_backend: renderMetrics.visual_backend,
-        visual_all_commits_rAF: renderMetrics.visual_all_commits_rAF,
-        commit_outside_raf_count: renderMetrics.commit_outside_raf_count,
-        buffer_strategy: renderMetrics.buffer_strategy,
-        commit_count: renderMetrics.commit_count,
-        mean_commit_duration: renderMetrics.mean_commit_duration,
-        max_commit_duration: renderMetrics.max_commit_duration,
-        draw_call_count: renderMetrics.draw_call_count,
-        texture_uploads_during_trial:
-          renderMetrics.texture_uploads_during_trial,
-        buffer_uploads_during_trial:
-          renderMetrics.buffer_uploads_during_trial,
-        shader_compiles_during_trial:
-          renderMetrics.shader_compiles_during_trial,
-        webgl_context_lost_count: renderMetrics.webgl_context_lost_count,
-        gpu_timer_available: renderMetrics.gpu_timer_available,
-        mean_gpu_draw_duration: renderMetrics.mean_gpu_draw_duration,
-        max_gpu_draw_duration: renderMetrics.max_gpu_draw_duration,
-        gpu_pending_query_count: renderMetrics.gpu_pending_query_count,
-        gpu_disjoint_count: renderMetrics.gpu_disjoint_count,
-        dom_interactive_components: JSON.stringify(
-          domAudit.dom_interactive_components,
-        ),
-        dom_visual_components: domAudit.dom_visual_components,
-        dom_visual_component_names: JSON.stringify(
-          domAudit.dom_visual_component_names,
-        ),
-        ...responseTimingData,
         rt: responseTimingData.rt,
       };
+
+      if (diagnostics.includeSummary) {
+        Object.assign(trialData, {
+          timing_method:
+            "performance.now + requestAnimationFrame frame-nearest scheduler",
+          trial_onset_time: timingSummary.onsetTime,
+          trial_offset_time: timingSummary.offsetTime,
+          actual_trial_duration: roundTiming(timingSummary.actualDuration),
+          duration_error: roundTiming(trialDurationError),
+          trial_ended_by_response: trialEndedByResponse,
+          frame_count: timingSummary.frameCount,
+          long_frame_count: timingSummary.longFrameCount,
+          dropped_frame_count: timingSummary.droppedFrameCount,
+          max_frame_interval: roundTiming(timingSummary.maxFrameInterval),
+          mean_frame_interval: roundTiming(timingSummary.meanFrameInterval),
+          frame_interval_estimate: roundTiming(
+            timingSummary.frameIntervalEstimate,
+          ),
+          timing_quality: timingQuality.quality,
+          timing_quality_reason: timingQuality.reason,
+          visual_timing_quality: visualTimingQuality.quality,
+          response_timing_quality: responseTimingData.response_timing_quality,
+          response_timing_quality_reason:
+            responseTimingData.response_timing_quality_reason,
+          diagnostics_level: diagnostics.level,
+          render_backend_requested: renderMetrics.render_backend_requested,
+          render_backend: renderMetrics.render_backend,
+          visual_backend: renderMetrics.visual_backend,
+          visual_all_commits_rAF: renderMetrics.visual_all_commits_rAF,
+          commit_outside_raf_count: renderMetrics.commit_outside_raf_count,
+          buffer_strategy: renderMetrics.buffer_strategy,
+          commit_count: renderMetrics.commit_count,
+          mean_commit_duration: renderMetrics.mean_commit_duration,
+          max_commit_duration: renderMetrics.max_commit_duration,
+          draw_call_count: renderMetrics.draw_call_count,
+          texture_uploads_during_trial:
+            renderMetrics.texture_uploads_during_trial,
+          buffer_uploads_during_trial:
+            renderMetrics.buffer_uploads_during_trial,
+          shader_compiles_during_trial:
+            renderMetrics.shader_compiles_during_trial,
+          webgl_context_lost_count: renderMetrics.webgl_context_lost_count,
+          gpu_timer_available: renderMetrics.gpu_timer_available,
+          mean_gpu_draw_duration: renderMetrics.mean_gpu_draw_duration,
+          max_gpu_draw_duration: renderMetrics.max_gpu_draw_duration,
+          gpu_pending_query_count: renderMetrics.gpu_pending_query_count,
+          gpu_disjoint_count: renderMetrics.gpu_disjoint_count,
+          dom_interactive_components: JSON.stringify(
+            domAudit.dom_interactive_components,
+          ),
+          dom_visual_components: domAudit.dom_visual_components,
+          dom_visual_component_names: JSON.stringify(
+            domAudit.dom_visual_component_names,
+          ),
+          ...responseTimingData,
+          rt: responseTimingData.rt,
+        });
+      }
 
       if (diagnostics.includeStimulusTiming) {
         trialData.stimulus_timing = JSON.stringify(timingSummary.stimulusRecords);
