@@ -380,6 +380,10 @@ class ButtonResponseComponent {
   private createLayout(trial: any): ButtonLayout | null {
     if (!this.stage) return null;
 
+    const measurementCanvas = document.createElement("canvas");
+    const measurementCtx = measurementCanvas.getContext("2d");
+    if (!measurementCtx) return null;
+
     const choices = this.getChoices(trial);
     const { width: canvasWidth, height: canvasHeight } = this.getCanvasSize(trial);
     const layoutMode = this.resolveParam(trial.button_layout, "grid");
@@ -423,20 +427,20 @@ class ButtonResponseComponent {
       this.resolveParam(trial.image_button_height, 150),
     );
 
-    this.stage.ctx.save();
-    this.stage.ctx.font = font;
+    measurementCtx.save();
+    measurementCtx.font = font;
     const naturalButtonWidth = Math.max(
       80,
       ...choices.map((choice) =>
         this.isImageUrl(choice)
           ? imageButtonWidth + padding.left + padding.right + 10
-          : this.stage!.ctx.measureText(choice).width +
+          : measurementCtx.measureText(choice).width +
             padding.left +
             padding.right +
             2,
       ),
     );
-    this.stage.ctx.restore();
+    measurementCtx.restore();
 
     const naturalButtonHeight = Math.max(
       34,

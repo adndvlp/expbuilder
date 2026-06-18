@@ -238,8 +238,8 @@ type TextLayout = {
 let textComponentCounter = 0;
 
 /**
- * TextComponent - Renders text stimuli. Plain text is rendered on the shared
- * canvas stage. Cloze/input text stays DOM-based because it is interactive.
+ * TextComponent - Renders plain text as a prebuilt WebGL texture.
+ * Cloze/input text stays DOM-based because it is interactive.
  */
 class TextComponent {
   private jsPsych: any;
@@ -371,6 +371,10 @@ class TextComponent {
   private createTextLayout(config: any): TextLayout | null {
     if (!this.stage) return null;
 
+    const measurementCanvas = document.createElement("canvas");
+    const measurementCtx = measurementCanvas.getContext("2d");
+    if (!measurementCtx) return null;
+
     const canvasStyles = this.resolveParam(config.__canvasStyles, {});
     const canvasWidth = this.resolveParam(canvasStyles?.width, 1024);
     const canvasHeight = this.resolveParam(canvasStyles?.height, 768);
@@ -399,16 +403,16 @@ class TextComponent {
       maxBlockWidth - padding.left - padding.right,
     );
 
-    this.stage.ctx.save();
-    this.stage.ctx.font = font;
+    measurementCtx.save();
+    measurementCtx.font = font;
     const lines = text
       .split(/\r?\n/)
-      .flatMap((line) => this.wrapLine(this.stage!.ctx, line, maxTextWidth));
+      .flatMap((line) => this.wrapLine(measurementCtx, line, maxTextWidth));
     const measuredTextWidth = Math.max(
       1,
-      ...lines.map((line) => this.stage!.ctx.measureText(line).width),
+      ...lines.map((line) => measurementCtx.measureText(line).width),
     );
-    this.stage.ctx.restore();
+    measurementCtx.restore();
 
     const blockWidth =
       explicitWidth ?? measuredTextWidth + padding.left + padding.right;
