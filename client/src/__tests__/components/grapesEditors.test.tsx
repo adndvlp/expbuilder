@@ -4,6 +4,7 @@ import juice from "juice";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import GrapesButtonEditor from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/GrapesEditors/GrapesButtonEditor";
 import GrapesHtmlEditor from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/GrapesEditors/GrapesHtmlEditor";
+import { makeGrapesHtmlPortable } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/GrapesEditors/portableHtml";
 
 vi.mock("juice", () => ({
   default: {
@@ -48,6 +49,21 @@ describe("Grapes editors", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it("makes built-in Grapes blocks independent from app CSS and icon fonts", () => {
+    const portable = makeGrapesHtmlPortable(
+      '<i class="fa fa-star" style="color:var(--primary-blue)"></i><button style="background:var(--gold);color:var(--text-dark)">Click</button><div style="background:var(--neutral-light);border-color:var(--neutral-mid)"></div>',
+    );
+
+    expect(portable).toContain("&#9733;");
+    expect(portable).toContain("#3d92b4");
+    expect(portable).toContain("#d4af37");
+    expect(portable).toContain("#333333");
+    expect(portable).toContain("#f8f9fa");
+    expect(portable).toContain("#dddddd");
+    expect(portable).not.toContain("fa-star");
+    expect(portable).not.toContain("var(--");
   });
 
   it("does not initialize GrapesJS while the HTML editor is closed", () => {

@@ -2,6 +2,11 @@ import React from "react";
 import { ComponentType, TrialComponent, CanvasStyles } from "./types";
 import { Stage, Layer, Rect, Group } from "react-konva";
 import type Konva from "konva";
+import ExperimentalHtmlSceneLayer from "./experimentalScene/ExperimentalHtmlSceneLayer";
+import {
+  EXPERIMENTAL_HTML_SCENE_ENABLED,
+  HtmlSceneMetrics,
+} from "./experimentalScene/sceneModel";
 
 // Extra canvas space (in stage coords) so Transformer handles at node edges
 // are never clipped by the canvas boundary.
@@ -18,9 +23,15 @@ type Props = {
     type: ComponentType,
   ) => void;
   stageRef: React.RefObject<Konva.Stage | null>;
+  selectedId: string | null;
   setSelectedId: React.Dispatch<React.SetStateAction<string | null>>;
   components: TrialComponent[];
-  onRenderComponent: (comp: TrialComponent) => void;
+  uploadedFiles?: any[];
+  onRenderComponent: (
+    comp: TrialComponent,
+    metrics: HtmlSceneMetrics,
+    setActiveDomId: React.Dispatch<React.SetStateAction<string | null>>,
+  ) => React.ReactNode;
   canvasStyles: CanvasStyles;
 };
 
@@ -31,11 +42,17 @@ function KonvaCanvas({
   stageScale,
   onDrop,
   stageRef,
+  selectedId,
   setSelectedId,
   components,
+  uploadedFiles = [],
   onRenderComponent,
   canvasStyles,
 }: Props) {
+  const [htmlSceneMetrics, setHtmlSceneMetrics] =
+    React.useState<HtmlSceneMetrics>({});
+  const [activeDomId, setActiveDomId] = React.useState<string | null>(null);
+
   return (
     <div
       ref={canvasContainerRef}
@@ -45,7 +62,7 @@ function KonvaCanvas({
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        padding: "16px",
+        padding: 0,
         overflow: "auto",
         background: "var(--neutral-light)",
         position: "relative",
@@ -56,6 +73,17 @@ function KonvaCanvas({
           position: "relative",
           width: `${CANVAS_WIDTH * stageScale}px`,
           height: `${CANVAS_HEIGHT * stageScale}px`,
+        }}
+        onPointerDownCapture={(event) => {
+          if (!activeDomId) return;
+          const target = event.target as Element | null;
+          const activeNode = target?.closest?.("[data-scene-node-id]");
+          if (
+            !activeNode ||
+            (activeNode as HTMLElement).dataset.sceneNodeId !== activeDomId
+          ) {
+            setActiveDomId(null);
+          }
         }}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
@@ -79,57 +107,71 @@ function KonvaCanvas({
             pointerEvents: "none",
           }}
         >
-          {/* Grid background */}
-          <div
-            style={{
-              position: "absolute",
-              width: "100%",
-              height: "100%",
-              backgroundImage: `
-                    linear-gradient(var(--neutral-mid) 1px, transparent 1px),
-                    linear-gradient(90deg, var(--neutral-mid) 1px, transparent 1px)
-                  `,
-              backgroundSize: `${20 * stageScale}px ${20 * stageScale}px`,
-              pointerEvents: "none",
-            }}
-          />
+          {!EXPERIMENTAL_HTML_SCENE_ENABLED && (
+            <div
+              style={{
+                position: "absolute",
+                width: "100%",
+                height: "100%",
+                backgroundImage: `
+                      linear-gradient(var(--neutral-mid) 1px, transparent 1px),
+                      linear-gradient(90deg, var(--neutral-mid) 1px, transparent 1px)
+                    `,
+                backgroundSize: `${20 * stageScale}px ${20 * stageScale}px`,
+                pointerEvents: "none",
+              }}
+            />
+          )}
 
           {/* Center crosshair */}
-          <div
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              width: "20px",
-              height: "20px",
-              margin: "-10px 0 0 -10px",
-              border: "2px solid #ff6b6b",
-              borderRadius: "50%",
-              pointerEvents: "none",
-            }}
-          >
+          {!EXPERIMENTAL_HTML_SCENE_ENABLED && (
             <div
               style={{
                 position: "absolute",
                 top: "50%",
-                left: "-100vw",
-                width: "200vw",
-                height: "1px",
-                background: "rgba(255, 107, 107, 0.3)",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
                 left: "50%",
-                top: "-100vh",
-                width: "1px",
-                height: "200vh",
-                background: "rgba(255, 107, 107, 0.3)",
+                width: "20px",
+                height: "20px",
+                margin: "-10px 0 0 -10px",
+                border: "2px solid #ff6b6b",
+                borderRadius: "50%",
+                pointerEvents: "none",
               }}
-            />
-          </div>
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "-100vw",
+                  width: "200vw",
+                  height: "1px",
+                  background: "rgba(255, 107, 107, 0.3)",
+                }}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  top: "-100vh",
+                  width: "1px",
+                  height: "200vh",
+                  background: "rgba(255, 107, 107, 0.3)",
+                }}
+              />
+            </div>
+          )}
         </div>
+
+        <ExperimentalHtmlSceneLayer
+          components={components}
+          canvasStyles={canvasStyles}
+          stageScale={stageScale}
+          metrics={htmlSceneMetrics}
+          uploadedFiles={uploadedFiles}
+          onMetricsChange={setHtmlSceneMetrics}
+          selectedId={selectedId}
+          activeDomId={activeDomId}
+        />
 
         {/*
           Stage layer: offset by -HANDLE_PAD*stageScale so canvas pixel 0 sits
@@ -145,6 +187,7 @@ function KonvaCanvas({
             left: -HANDLE_PAD * stageScale,
             top: -HANDLE_PAD * stageScale,
             overflow: "visible",
+            zIndex: 4,
           }}
         >
           <Stage
@@ -155,6 +198,7 @@ function KonvaCanvas({
             scaleY={stageScale}
             onClick={(e) => {
               if (e.target === e.target.getStage()) {
+                setActiveDomId(null);
                 setSelectedId(null);
               }
             }}
@@ -166,13 +210,15 @@ function KonvaCanvas({
                   y={0}
                   width={CANVAS_WIDTH}
                   height={CANVAS_HEIGHT}
-                  fill={canvasStyles.backgroundColor}
+                  fill="rgba(0,0,0,0)"
                   cornerRadius={8 / stageScale}
                   listening={false}
                 />
                 {[...components]
                   .sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
-                  .map((comp) => onRenderComponent(comp))}
+                  .map((comp) =>
+                    onRenderComponent(comp, htmlSceneMetrics, setActiveDomId),
+                  )}
               </Group>
             </Layer>
           </Stage>

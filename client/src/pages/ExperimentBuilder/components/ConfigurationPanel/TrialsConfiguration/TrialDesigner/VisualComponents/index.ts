@@ -1,14 +1,12 @@
 export { default as ImageComponent } from "./ImageComponent";
 export { default as VideoComponent } from "./VideoComponent";
 export { default as AudioComponent } from "./AudioComponent";
-export { default as HtmlComponent } from "./HtmlComponent";
 export { default as TextComponent } from "./TextComponent";
 export { default as SketchpadComponent } from "./SketchpadComponent";
 export { default as ButtonResponseComponent } from "./ButtonResponseComponent";
 export { default as KeyboardResponseComponent } from "./KeyboardResponseComponent";
 export { default as SliderResponseComponent } from "./SliderResponseComponent";
 export { default as InputResponseComponent } from "./InputResponseComponent";
-export { default as SurveyComponent } from "./SurveyComponent";
 export { default as AudioResponseComponent } from "./AudioResponseComponent";
 export { default as FileUploadResponseComponent } from "./FileUploadResponseComponent";
 export { default as ClickResponseComponent } from "./ClickResponseComponent";

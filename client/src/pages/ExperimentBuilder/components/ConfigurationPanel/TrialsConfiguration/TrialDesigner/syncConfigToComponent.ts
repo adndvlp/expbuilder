@@ -82,7 +82,13 @@ export function syncConfigToComponent(
     updated.y = canvasCoords.y;
   }
 
-  if (newConfig.width?.value !== undefined) {
+  const syncBoxSize =
+    comp.type !== "HtmlComponent" &&
+    comp.type !== "SurveyComponent" &&
+    comp.type !== "SketchpadComponent" &&
+    comp.type !== "FileUploadResponseComponent";
+
+  if (syncBoxSize && newConfig.width?.value !== undefined) {
     // Config stores width/height as vw% (0-100) relative to canvasWidth.
     // Convert back to pixels when canvasWidth is available.
     updated.width =
@@ -91,7 +97,7 @@ export function syncConfigToComponent(
         : newConfig.width.value;
   }
 
-  if (newConfig.height?.value !== undefined) {
+  if (syncBoxSize && newConfig.height?.value !== undefined) {
     // Height also uses vw% (same denominator as width, see renderComponent.tsx)
     updated.height =
       canvasWidth > 0

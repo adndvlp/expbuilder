@@ -4,6 +4,7 @@ import grapesjs from "grapesjs";
 import "grapesjs/dist/css/grapes.min.css";
 import "./grapesjs-theme.css";
 import Modal from "../../ParameterMapper/Modal";
+import { makeGrapesHtmlPortable } from "./portableHtml";
 
 interface GrapesHtmlEditorProps {
   isOpen: boolean;
@@ -48,7 +49,7 @@ const GrapesHtmlEditor: React.FC<GrapesHtmlEditorProps> = ({
     let html = grapesInstance.current.getHtml({});
     html = html.replace(/<\/?body[^>]*>/gi, "");
     const css = grapesInstance.current.getCss({});
-    return juice.inlineContent(html, css);
+    return makeGrapesHtmlPortable(juice.inlineContent(html, css));
   };
 
   const triggerAutoSave = () => {
@@ -225,56 +226,56 @@ const GrapesHtmlEditor: React.FC<GrapesHtmlEditorProps> = ({
       category: "Media",
       attributes: { class: "fa fa-star" },
       content:
-        '<i class="fa fa-star" style="font-size:2em;color:var(--primary-blue);"></i>',
+        '<span aria-hidden="true" style="font-size:2em;color:#3d92b4;line-height:1;">&#9733;</span>',
     });
     bm.add("button", {
       label: "Button",
       category: "Controls",
       attributes: { class: "fa fa-hand-pointer-o" },
       content:
-        '<button style="padding:10px 20px;border-radius:6px;background:var(--gold);color:var(--text-dark);border:none;font-weight:600;">Click me</button>',
+        '<button style="padding:10px 20px;border-radius:6px;background:#d4af37;color:#333333;border:none;font-weight:600;">Click me</button>',
     });
     bm.add("card", {
       label: "Card",
       category: "Layout",
       attributes: { class: "fa fa-id-card" },
       content:
-        '<div style="padding:20px;background:var(--neutral-light);border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);"><h3>Card Title</h3><p>Card content...</p></div>',
+        '<div style="padding:20px;background:#f8f9fa;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);"><h3>Card Title</h3><p>Card content...</p></div>',
     });
     bm.add("section", {
       label: "Section",
       category: "Layout",
       attributes: { class: "fa fa-square-o" },
       content:
-        '<section style="padding:20px;background:var(--neutral-light);border-radius:8px;"><h2>Section Title</h2><p>Section content...</p></section>',
+        '<section style="padding:20px;background:#f8f9fa;border-radius:8px;"><h2>Section Title</h2><p>Section content...</p></section>',
     });
     bm.add("column", {
       label: "2 Columns",
       category: "Layout",
       attributes: { class: "fa fa-columns" },
       content:
-        '<div style="display:flex;gap:16px;"><div style="flex:1;padding:10px;background:var(--neutral-mid);border-radius:6px;">Column 1</div><div style="flex:1;padding:10px;background:var(--neutral-mid);border-radius:6px;">Column 2</div></div>',
+        '<div style="display:flex;gap:16px;"><div style="flex:1;padding:10px;background:#dddddd;border-radius:6px;">Column 1</div><div style="flex:1;padding:10px;background:#dddddd;border-radius:6px;">Column 2</div></div>',
     });
     bm.add("background", {
       label: "Background",
       category: "Decor",
       attributes: { class: "fa fa-paint-brush" },
       content:
-        '<div style="width:100%;height:100px;background:linear-gradient(90deg,var(--primary-blue),var(--gold));border-radius:8px;"></div>',
+        '<div style="width:100%;height:100px;background:linear-gradient(90deg,#3d92b4,#d4af37);border-radius:8px;"></div>',
     });
     bm.add("rectangle", {
       label: "Rectangle",
       category: "Shapes",
       attributes: { class: "fa fa-square" },
       content:
-        '<div style="width:100px;height:60px;background:var(--primary-blue);border-radius:8px;"></div>',
+        '<div style="width:100px;height:60px;background:#3d92b4;border-radius:8px;"></div>',
     });
     bm.add("circle", {
       label: "Circle",
       category: "Shapes",
       attributes: { class: "fa fa-circle" },
       content:
-        '<div style="width:60px;height:60px;background:var(--gold);border-radius:50%;"></div>',
+        '<div style="width:60px;height:60px;background:#d4af37;border-radius:50%;"></div>',
     });
 
     // Hook events for autosave
@@ -283,11 +284,7 @@ const GrapesHtmlEditor: React.FC<GrapesHtmlEditorProps> = ({
 
   const handleSave = () => {
     if (grapesInstance.current) {
-      let html = grapesInstance.current.getHtml({});
-      html = html.replace(/<\/?body[^>]*>/gi, "");
-      const css = grapesInstance.current.getCss({});
-      const inlinedHtml = juice.inlineContent(html, css);
-      onChange(inlinedHtml);
+      onChange(getProcessedHtml());
       onClose();
     }
   };

@@ -19,6 +19,7 @@ import useHandleResize from "./useHandleResize";
 import CanvasStylesBar from "./CanvasStylesBar";
 import ExperimentPreview from "../../../ExperimentPreview";
 import useCanvasStyles from "../../../../hooks/useCanvasStyles";
+import { HtmlSceneMetrics } from "./experimentalScene/sceneModel";
 
 const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   isOpen,
@@ -75,8 +76,8 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       if (!canvasContainerRef.current) return;
 
       const container = canvasContainerRef.current;
-      const availableWidth = container.clientWidth - 32; // padding
-      const availableHeight = container.clientHeight - 32;
+      const availableWidth = container.clientWidth;
+      const availableHeight = container.clientHeight;
 
       // Calculate scale to fit canvas in available space
       const scaleX = availableWidth / CANVAS_WIDTH;
@@ -148,7 +149,11 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [CANVAS_WIDTH, CANVAS_HEIGHT]);
 
-  const onRenderComponent = (comp: TrialComponent) => {
+  const onRenderComponent = (
+    comp: TrialComponent,
+    htmlSceneMetrics: HtmlSceneMetrics,
+    setActiveDomId?: React.Dispatch<React.SetStateAction<string | null>>,
+  ) => {
     return renderComponent({
       comp,
       setComponents,
@@ -160,6 +165,8 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       components,
       uploadedFiles,
       canvasStyles,
+      htmlSceneMetrics,
+      setActiveDomId,
     });
   };
 
@@ -418,9 +425,11 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             CANVAS_WIDTH={CANVAS_WIDTH}
             stageScale={stageScale}
             stageRef={stageRef}
+            selectedId={selectedId}
             onDrop={onDrop}
             setSelectedId={setSelectedId}
             components={components}
+            uploadedFiles={uploadedFiles}
             onRenderComponent={onRenderComponent}
             canvasStyles={canvasStyles}
           />

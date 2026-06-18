@@ -97,6 +97,14 @@ function LeftSideBar({
       // Natural sizing: let canvas_width/canvas_height from config define the size
       width = 0;
       height = 0;
+    } else if (type === "SurveyComponent") {
+      // Natural sizing: let Survey min_width/runtime layout define the size
+      width = 0;
+      height = 0;
+    } else if (type === "FileUploadResponseComponent") {
+      // Natural sizing: backend renders this from DOM controls.
+      width = 0;
+      height = 0;
     } else if (
       type === "ButtonResponseComponent" ||
       type === "TextComponent" ||

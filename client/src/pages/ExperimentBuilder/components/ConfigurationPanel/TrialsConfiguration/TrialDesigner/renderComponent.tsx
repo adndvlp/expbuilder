@@ -5,18 +5,21 @@ import {
   ImageComponent,
   VideoComponent,
   AudioComponent,
-  HtmlComponent,
   TextComponent,
   ButtonResponseComponent,
   KeyboardResponseComponent,
   SliderResponseComponent,
   InputResponseComponent,
   SketchpadComponent,
-  SurveyComponent,
   AudioResponseComponent,
   FileUploadResponseComponent,
   ClickResponseComponent,
 } from "./VisualComponents";
+import EditorHitBox from "./experimentalScene/EditorHitBox";
+import {
+  HtmlSceneMetrics,
+  isHtmlSceneComponent,
+} from "./experimentalScene/sceneModel";
 
 type Props = {
   comp: TrialComponent;
@@ -37,6 +40,8 @@ type Props = {
   components: TrialComponent[];
   uploadedFiles?: any[];
   canvasStyles?: CanvasStyles;
+  htmlSceneMetrics?: HtmlSceneMetrics;
+  setActiveDomId?: React.Dispatch<React.SetStateAction<string | null>>;
 };
 
 const RenderComponent = ({
@@ -50,20 +55,27 @@ const RenderComponent = ({
   components,
   uploadedFiles = [],
   canvasStyles,
+  htmlSceneMetrics = {},
+  setActiveDomId,
 }: Props) => {
   const isSelected = comp.id === selectedId;
 
   const handleComponentChange = (newAttrs: any) => {
+    const { __transient, ...attrs } = newAttrs;
+
     setComponents((prevComponents) => {
       const updatedComponents = prevComponents.map((c) => {
         if (c.id === comp.id) {
-          const updated = { ...c, ...newAttrs };
+          const updated = { ...c, ...attrs };
 
           // Sync coordinates to config if x/y changed
-          if (newAttrs.x !== undefined || newAttrs.y !== undefined) {
+          if (
+            !__transient &&
+            (attrs.x !== undefined || attrs.y !== undefined)
+          ) {
             const coords = toJsPsychCoords(
-              newAttrs.x ?? updated.x,
-              newAttrs.y ?? updated.y,
+              attrs.x ?? updated.x,
+              attrs.y ?? updated.y,
             );
             updated.config = {
               ...updated.config,
@@ -75,10 +87,10 @@ const RenderComponent = ({
           }
 
           // Sync width to config if changed and has valid value
-          if (newAttrs.width !== undefined && newAttrs.width > 0) {
+          if (!__transient && attrs.width !== undefined && attrs.width > 0) {
             const configWidth = canvasStyles
-              ? (newAttrs.width / canvasStyles.width) * 100
-              : newAttrs.width;
+              ? (attrs.width / canvasStyles.width) * 100
+              : attrs.width;
             updated.config = {
               ...updated.config,
               width: {
@@ -89,10 +101,10 @@ const RenderComponent = ({
           }
 
           // Sync height to config if changed and has valid value
-          if (newAttrs.height !== undefined && newAttrs.height > 0) {
+          if (!__transient && attrs.height !== undefined && attrs.height > 0) {
             const configHeight = canvasStyles
-              ? (newAttrs.height / canvasStyles.width) * 100 // vw units — same denominator as width
-              : newAttrs.height;
+              ? (attrs.height / canvasStyles.width) * 100 // vw units — same denominator as width
+              : attrs.height;
             updated.config = {
               ...updated.config,
               height: {
@@ -103,51 +115,68 @@ const RenderComponent = ({
           }
 
           // Sync rotation to config if changed
-          if (newAttrs.rotation !== undefined) {
+          if (!__transient && attrs.rotation !== undefined) {
             updated.config = {
               ...updated.config,
               rotation: {
                 source: "typed",
-                value: newAttrs.rotation,
+                value: attrs.rotation,
               },
             };
           }
 
           // Sync zIndex to config if changed
-          if (newAttrs.zIndex !== undefined) {
+          if (!__transient && attrs.zIndex !== undefined) {
             updated.config = {
               ...updated.config,
               zIndex: {
                 source: "typed",
-                value: newAttrs.zIndex,
+                value: attrs.zIndex,
               },
             };
           }
 
           // Sync font_size to config when TextComponent is resized (Canva-style)
           if (
-            newAttrs.textFontSize !== undefined &&
+            !__transient &&
+            attrs.textFontSize !== undefined &&
             c.type === "TextComponent"
           ) {
             updated.config = {
               ...updated.config,
               font_size: {
                 source: "typed",
-                value: newAttrs.textFontSize,
+                value: attrs.textFontSize,
               },
             };
           }
 
           // Sync button_font_size to config when ButtonResponseComponent is resized
           if (
-            newAttrs.buttonFontSize !== undefined &&
+            !__transient &&
+            attrs.buttonFontSize !== undefined &&
             c.type === "ButtonResponseComponent"
           ) {
             updated.config = {
               ...updated.config,
               button_font_size: {
                 source: "typed",
-                value: newAttrs.buttonFontSize,
+                value: attrs.buttonFontSize,
+              },
+            };
+          }
+
+          // Sync input_font_size to config when InputResponseComponent is resized
+          if (
+            !__transient &&
+            attrs.inputFontSize !== undefined &&
+            c.type === "InputResponseComponent"
+          ) {
+            updated.config = {
+              ...updated.config,
+              input_font_size: {
+                source: "typed",
+                value: attrs.inputFontSize,
               },
             };
           }
@@ -158,7 +187,7 @@ const RenderComponent = ({
       });
 
       // Trigger autosave
-      if (onAutoSave) {
+      if (!__transient && onAutoSave) {
         const config = generateConfigFromComponents(updatedComponents);
         setTimeout(() => onAutoSave(config), 100);
       }
@@ -201,6 +230,22 @@ const RenderComponent = ({
   const handleSelect = (id: string) => {
     setSelectedId(id);
   };
+
+  if (isHtmlSceneComponent(comp.type)) {
+    return (
+      <EditorHitBox
+        key={comp.id}
+        shapeProps={comp}
+        canvasStyles={canvasStyles}
+        metric={htmlSceneMetrics[comp.id]}
+        isSelected={isSelected}
+        onSelect={() => handleSelect(comp.id)}
+        onChange={handleComponentChange}
+        onActivateDom={() => setActiveDomId?.(comp.id)}
+      />
+    );
+  }
+
   switch (comp.type) {
     case "ImageComponent":
       return (
@@ -220,17 +265,6 @@ const RenderComponent = ({
     case "ButtonResponseComponent":
       return (
         <ButtonResponseComponent
-          key={comp.id}
-          shapeProps={comp}
-          isSelected={isSelected}
-          onSelect={() => handleSelect(comp.id)}
-          onChange={handleComponentChange}
-        />
-      );
-
-    case "HtmlComponent":
-      return (
-        <HtmlComponent
           key={comp.id}
           shapeProps={comp}
           isSelected={isSelected}
@@ -310,17 +344,6 @@ const RenderComponent = ({
     case "SketchpadComponent":
       return (
         <SketchpadComponent
-          key={comp.id}
-          shapeProps={comp}
-          isSelected={isSelected}
-          onSelect={() => handleSelect(comp.id)}
-          onChange={handleComponentChange}
-        />
-      );
-
-    case "SurveyComponent":
-      return (
-        <SurveyComponent
           key={comp.id}
           shapeProps={comp}
           isSelected={isSelected}

@@ -6,9 +6,13 @@ import "survey-core/survey-core.min.css";
 
 interface SurveyPreviewProps {
   surveyJson: Record<string, unknown>;
+  displayMode?: boolean;
 }
 
-const SurveyPreview: React.FC<SurveyPreviewProps> = ({ surveyJson }) => {
+const SurveyPreview: React.FC<SurveyPreviewProps> = ({
+  surveyJson,
+  displayMode = true,
+}) => {
   const [survey, setSurvey] = useState<Model | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -120,8 +124,9 @@ const SurveyPreview: React.FC<SurveyPreviewProps> = ({ surveyJson }) => {
       // Crear el modelo de la encuesta (forzar recreación para aplicar nuevos temas)
       const model = new Model(sanitized);
 
-      // Modo de visualización (no guarda respuestas)
-      model.mode = "display";
+      if (displayMode) {
+        model.mode = "display";
+      }
 
       // Aplicar tema personalizado del usuario
       const customTheme =
@@ -142,7 +147,7 @@ const SurveyPreview: React.FC<SurveyPreviewProps> = ({ surveyJson }) => {
       setError(err instanceof Error ? err.message : "Invalid survey JSON");
       setSurvey(null);
     }
-  }, [surveyJson]);
+  }, [displayMode, surveyJson]);
 
   if (error) {
     return (

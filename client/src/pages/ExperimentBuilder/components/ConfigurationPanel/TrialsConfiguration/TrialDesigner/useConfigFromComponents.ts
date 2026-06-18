@@ -1,4 +1,5 @@
 import { TrialComponent, CanvasStyles } from "./types";
+import { makeGrapesHtmlPortable } from "./GrapesEditors/portableHtml";
 
 type Props = {
   toJsPsychCoords: (
@@ -28,20 +29,21 @@ export default function useConfigComponents({
         coordinates: coords,
       };
 
-      // Only save width/height if > 0 (meaning it was explicitly resized)
-      // 0 means "use component's calculated/default size"
-      //
-      // All components store both width AND height as vw units
-      // (both divided by canvasStyles.width) so the sizing defined in Konva is
-      // preserved exactly on any screen size at runtime.
+      const exportsEditorBoxSize =
+        comp.type !== "HtmlComponent" &&
+        comp.type !== "SurveyComponent" &&
+        comp.type !== "SketchpadComponent" &&
+        comp.type !== "FileUploadResponseComponent";
 
-      if (comp.width > 0) {
+      // Only export editor box size for components whose backend uses width/height.
+      // HTML, Survey, Sketchpad, and FileUpload size from runtime parameters/DOM.
+      if (exportsEditorBoxSize && comp.width > 0) {
         componentData.width = canvasStyles
           ? (comp.width / canvasStyles.width) * 100
           : comp.width;
       }
 
-      if (comp.height > 0) {
+      if (exportsEditorBoxSize && comp.height > 0) {
         componentData.height = canvasStyles
           ? (comp.height / canvasStyles.width) * 100 // vw units — same denominator as width
           : comp.height;
@@ -70,9 +72,17 @@ export default function useConfigComponents({
             key !== "zIndex"
           ) {
             // Guardar directamente en formato {source, value}
+            const value =
+              comp.type === "HtmlComponent" &&
+              key === "stimulus" &&
+              entry.source === "typed" &&
+              typeof entry.value === "string"
+                ? makeGrapesHtmlPortable(entry.value)
+                : entry.value;
+
             componentData[key] = {
               source: entry.source,
-              value: entry.value,
+              value,
             };
           }
         });
@@ -82,7 +92,9 @@ export default function useConfigComponents({
       // (same strategy as width/height: divide by canvas width to get a vw percentage)
       if (comp.type === "TextComponent" && canvasStyles) {
         const fontSizePx =
-          (comp.config?.font_size?.value as number | undefined) ?? 16;
+          comp.textFontSize ??
+          (comp.config?.font_size?.value as number | undefined) ??
+          16;
         componentData._font_size_runtime_vw = {
           source: "typed",
           value: (fontSizePx / canvasStyles.width) * 100,
@@ -91,7 +103,9 @@ export default function useConfigComponents({
 
       if (comp.type === "ButtonResponseComponent" && canvasStyles) {
         const bfsPx =
-          (comp.config?.button_font_size?.value as number | undefined) ?? 14;
+          comp.buttonFontSize ??
+          (comp.config?.button_font_size?.value as number | undefined) ??
+          14;
         componentData._button_font_size_runtime_vw = {
           source: "typed",
           value: (bfsPx / canvasStyles.width) * 100,
@@ -100,14 +114,16 @@ export default function useConfigComponents({
 
       if (comp.type === "InputResponseComponent" && canvasStyles) {
         const ifsPx =
-          (comp.config?.input_font_size?.value as number | undefined) ?? 16;
+          comp.inputFontSize ??
+          (comp.config?.input_font_size?.value as number | undefined) ??
+          16;
         componentData._input_font_size_runtime_vw = {
           source: "typed",
           value: (ifsPx / canvasStyles.width) * 100,
         };
         // Derive width and height from fontSize so runtime always matches canvas.
         // Canvas: box width = inputWidth (if user resized) or 10*fontSize*0.55 ; box height = fontSize*1.5
-        const canvasWidth = (comp as any).inputWidth ?? 10 * ifsPx * 0.55;
+        const canvasWidth = comp.inputWidth ?? 10 * ifsPx * 0.55;
         componentData.width = (canvasWidth / canvasStyles.width) * 100;
         componentData.height = ((ifsPx * 1.5) / canvasStyles.width) * 100;
       }

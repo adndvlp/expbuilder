@@ -49,6 +49,7 @@ export type TrialComponent = {
   inputBorderColor?: string;
   inputBorderWidth?: number;
   inputBorderRadius?: number;
+  inputWidth?: number;
   config: Record<string, any>;
 };
 

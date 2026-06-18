@@ -11,6 +11,15 @@ function getInitialCanvasSize(): { width: number; height: number } {
   return { width: window.screen.width, height: window.screen.height };
 }
 
+function importsEditorBoxSize(type: string): boolean {
+  return (
+    type !== "HtmlComponent" &&
+    type !== "SurveyComponent" &&
+    type !== "SketchpadComponent" &&
+    type !== "FileUploadResponseComponent"
+  );
+}
+
 type Props = {
   isOpen: boolean;
   columnMapping: Record<string, any>;
@@ -92,13 +101,15 @@ export default function useLoadComponents({
             value: comp.coordinates,
           };
         }
-        if (comp.width) {
+        const restoreBoxSize = importsEditorBoxSize(comp.type);
+
+        if (restoreBoxSize && comp.width) {
           config.width = {
             source: "typed",
             value: comp.width,
           };
         }
-        if (comp.height) {
+        if (restoreBoxSize && comp.height) {
           config.height = {
             source: "typed",
             value: comp.height,
@@ -117,15 +128,14 @@ export default function useLoadComponents({
           };
         }
 
-        // Use explicit width/height if saved, otherwise 0 (let component decide its size).
-        // All components store both width AND height as vw % (same denominator = CANVAS_WIDTH)
-        // so we reverse both using CANVAS_WIDTH.
+        // Restore editor box size only for components whose backend consumes it.
+        // HTML, Survey, Sketchpad, and FileUpload use runtime sizing.
         const numericWidth =
-          typeof comp.width === "number"
+          restoreBoxSize && typeof comp.width === "number"
             ? (comp.width / 100) * CANVAS_WIDTH
             : 0;
         const numericHeight =
-          typeof comp.height === "number"
+          restoreBoxSize && typeof comp.height === "number"
             ? (comp.height / 100) * CANVAS_WIDTH // vw units — same denominator as width
             : 0;
 
@@ -193,13 +203,15 @@ export default function useLoadComponents({
             value: comp.coordinates,
           };
         }
-        if (comp.width) {
+        const restoreBoxSize = importsEditorBoxSize(comp.type);
+
+        if (restoreBoxSize && comp.width) {
           config.width = {
             source: "typed",
             value: comp.width,
           };
         }
-        if (comp.height) {
+        if (restoreBoxSize && comp.height) {
           config.height = {
             source: "typed",
             value: comp.height,
@@ -218,15 +230,14 @@ export default function useLoadComponents({
           };
         }
 
-        // Use explicit width/height if saved, otherwise 0 (let component decide its size).
-        // All components store both width AND height as vw % (same denominator = CANVAS_WIDTH)
-        // so we reverse both using CANVAS_WIDTH.
+        // Restore editor box size only for components whose backend consumes it.
+        // HTML, Survey, Sketchpad, and FileUpload use runtime sizing.
         const numericWidth =
-          typeof comp.width === "number"
+          restoreBoxSize && typeof comp.width === "number"
             ? (comp.width / 100) * CANVAS_WIDTH
             : 0;
         const numericHeight =
-          typeof comp.height === "number"
+          restoreBoxSize && typeof comp.height === "number"
             ? (comp.height / 100) * CANVAS_WIDTH // vw units — same denominator as width
             : 0;
 
