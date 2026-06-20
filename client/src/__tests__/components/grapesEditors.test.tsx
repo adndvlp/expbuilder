@@ -16,6 +16,10 @@ type EditorMock = ReturnType<typeof createEditorMock>;
 
 function createEditorMock() {
   const handlers: Record<string, () => void> = {};
+  const canvasBody = document.createElement("body");
+  const canvasWrapper = document.createElement("div");
+  canvasWrapper.id = "wrapper";
+  canvasBody.appendChild(canvasWrapper);
   const blockManager = {
     add: vi.fn(),
     remove: vi.fn(),
@@ -24,6 +28,11 @@ function createEditorMock() {
   };
   return {
     handlers,
+    canvasBody,
+    canvasWrapper,
+    Canvas: {
+      getBody: vi.fn(() => canvasBody),
+    },
     BlockManager: blockManager,
     getHtml: vi.fn(() => "<body><div>Saved</div></body>"),
     getCss: vi.fn(() => ".saved{color:red;}"),
@@ -100,7 +109,7 @@ describe("Grapes editors", () => {
     expect(grapesjs.init).toHaveBeenCalledWith(
       expect.objectContaining({
         components: "<p>Initial</p>",
-        height: "500px",
+        height: "100%",
         storageManager: false,
       }),
     );
@@ -112,6 +121,13 @@ describe("Grapes editors", () => {
       "button",
       expect.objectContaining({ category: "Controls" }),
     );
+    expect(editor.canvasBody.style.width).toBe("100%");
+    expect(editor.canvasBody.style.minHeight).toBe("100vh");
+    expect(editor.canvasWrapper.style.width).toBe("100%");
+    expect(editor.canvasWrapper.style.minHeight).toBe("100vh");
+    expect(editor.canvasWrapper.style.padding).toBe("32px");
+    expect(editor.canvasBody.style.fontSize).toBe("18px");
+    expect(editor.canvasBody.style.lineHeight).toBe("1.6em");
     expect(editor.on).toHaveBeenCalledWith("update", expect.any(Function));
 
     act(() => {
@@ -151,10 +167,17 @@ describe("Grapes editors", () => {
     expect(grapesjs.init).toHaveBeenCalledWith(
       expect.objectContaining({
         components: expect.stringContaining("{{choice}}"),
-        height: "500px",
+        height: "100%",
         storageManager: false,
       }),
     );
+    expect(editor.canvasBody.style.width).toBe("100%");
+    expect(editor.canvasBody.style.minHeight).toBe("100vh");
+    expect(editor.canvasWrapper.style.width).toBe("100%");
+    expect(editor.canvasWrapper.style.minHeight).toBe("100vh");
+    expect(editor.canvasWrapper.style.padding).toBe("32px");
+    expect(editor.canvasBody.style.fontSize).toBe("18px");
+    expect(editor.canvasBody.style.lineHeight).toBe("1.6em");
     expect(screen.getByText(/Button Template Mode:/)).toBeInTheDocument();
     expect(editor.BlockManager.getAll).toHaveBeenCalled();
     expect(editor.BlockManager.remove).toHaveBeenCalledWith("column1");

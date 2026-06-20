@@ -233,6 +233,10 @@ export default function ExperimentalHtmlSceneLayer({
       }}
     >
       <style>{`
+        [data-html-scene-overlay] .dynamic-html-component-stimulus * {
+          all: revert;
+        }
+
         [data-html-scene-overlay] .dynamic-runtime-copy .jspsych-btn {
           display: inline-block;
           padding: 8px 12px;

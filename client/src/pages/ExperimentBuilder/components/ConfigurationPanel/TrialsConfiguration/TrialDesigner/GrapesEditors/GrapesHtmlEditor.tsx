@@ -77,7 +77,7 @@ const GrapesHtmlEditor: React.FC<GrapesHtmlEditorProps> = ({
     grapesInstance.current = grapesjs.init({
       container: editorRef.current,
       fromElement: false,
-      height: "500px",
+      height: "100%",
       width: "100%",
       storageManager: false,
       plugins: [], // Si tienes plugins npm, impórtalos arriba y agrégalos aquí
@@ -160,6 +160,37 @@ const GrapesHtmlEditor: React.FC<GrapesHtmlEditorProps> = ({
         ],
       },
     });
+
+    const applyRuntimeCanvasContext = () => {
+      const body = grapesInstance.current?.Canvas?.getBody?.();
+      if (!body) return;
+
+      Object.assign(body.style, {
+        margin: "0",
+        width: "100%",
+        minWidth: "100%",
+        minHeight: "100vh",
+        color: "#000000",
+        fontFamily: '"Open Sans", "Arial", sans-serif',
+        fontSize: "18px",
+        lineHeight: "1.6em",
+        textAlign: "left",
+      });
+
+      const wrapper = body.querySelector("#wrapper") as HTMLElement | null;
+      if (wrapper) {
+        Object.assign(wrapper.style, {
+          width: "100%",
+          minWidth: "100%",
+          minHeight: "100vh",
+          padding: "32px",
+          boxSizing: "border-box",
+        });
+      }
+    };
+
+    grapesInstance.current.on("load", applyRuntimeCanvasContext);
+    applyRuntimeCanvasContext();
 
     // Add Canva/Word-like blocks
     const bm = grapesInstance.current.BlockManager;
@@ -292,7 +323,13 @@ const GrapesHtmlEditor: React.FC<GrapesHtmlEditorProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <div
-        style={{ minWidth: "90vw", minHeight: "85vh", position: "relative" }}
+        style={{
+          width: "100vw",
+          height: "100vh",
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+        }}
       >
         {/* Save Indicator */}
         <div
@@ -318,9 +355,21 @@ const GrapesHtmlEditor: React.FC<GrapesHtmlEditorProps> = ({
         </div>
         <div
           ref={editorRef}
-          style={{ border: "1px solid #ccc", borderRadius: 8 }}
+          style={{
+            flex: 1,
+            minHeight: 0,
+            border: "1px solid #ccc",
+            borderRadius: 8,
+            overflow: "hidden",
+          }}
         />
-        <div style={{ marginTop: 16, textAlign: "right" }}>
+        <div
+          style={{
+            flexShrink: 0,
+            padding: "12px 16px",
+            textAlign: "right",
+          }}
+        >
           <button
             onClick={handleSave}
             style={{

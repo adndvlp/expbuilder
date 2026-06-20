@@ -4,6 +4,7 @@ import grapesjs from "grapesjs";
 import "grapesjs/dist/css/grapes.min.css";
 import "./grapesjs-theme.css";
 import Modal from "../../ParameterMapper/Modal";
+import { makeGrapesHtmlPortable } from "./portableHtml";
 
 interface GrapesButtonEditorProps {
   isOpen: boolean;
@@ -48,7 +49,7 @@ const GrapesButtonEditor: React.FC<GrapesButtonEditorProps> = ({
     let html = grapesInstance.current.getHtml({});
     html = html.replace(/<\/?body[^>]*>/gi, "");
     const css = grapesInstance.current.getCss({});
-    return juice.inlineContent(html, css);
+    return makeGrapesHtmlPortable(juice.inlineContent(html, css));
   };
 
   const triggerAutoSave = () => {
@@ -77,13 +78,13 @@ const GrapesButtonEditor: React.FC<GrapesButtonEditorProps> = ({
     grapesInstance.current = grapesjs.init({
       container: editorRef.current,
       fromElement: false,
-      height: "500px",
+      height: "100%",
       width: "100%",
       storageManager: false,
       plugins: [],
       components:
         value ||
-        '<button style="padding:10px 20px;border-radius:6px;background:var(--gold);color:var(--text-dark);border:none;font-weight:600;cursor:pointer;">{{choice}}</button>',
+        '<button style="padding:10px 20px;border-radius:6px;background:#d4af37;color:#333333;border:none;font-weight:600;cursor:pointer;">{{choice}}</button>',
       styleManager: {
         sectors: [
           {
@@ -148,6 +149,37 @@ const GrapesButtonEditor: React.FC<GrapesButtonEditorProps> = ({
         ],
       },
     });
+
+    const applyRuntimeCanvasContext = () => {
+      const body = grapesInstance.current?.Canvas?.getBody?.();
+      if (!body) return;
+
+      Object.assign(body.style, {
+        margin: "0",
+        width: "100%",
+        minWidth: "100%",
+        minHeight: "100vh",
+        color: "#000000",
+        fontFamily: '"Open Sans", "Arial", sans-serif',
+        fontSize: "18px",
+        lineHeight: "1.6em",
+        textAlign: "left",
+      });
+
+      const wrapper = body.querySelector("#wrapper") as HTMLElement | null;
+      if (wrapper) {
+        Object.assign(wrapper.style, {
+          width: "100%",
+          minWidth: "100%",
+          minHeight: "100vh",
+          padding: "32px",
+          boxSizing: "border-box",
+        });
+      }
+    };
+
+    grapesInstance.current.on("load", applyRuntimeCanvasContext);
+    applyRuntimeCanvasContext();
 
     // Only add button block - restrict to button component only
     const bm = grapesInstance.current.BlockManager;
@@ -220,11 +252,7 @@ const GrapesButtonEditor: React.FC<GrapesButtonEditorProps> = ({
 
   const handleSave = () => {
     if (grapesInstance.current) {
-      let html = grapesInstance.current.getHtml({});
-      html = html.replace(/<\/?body[^>]*>/gi, "");
-      const css = grapesInstance.current.getCss({});
-      const inlinedHtml = juice.inlineContent(html, css);
-      onChange(inlinedHtml);
+      onChange(getProcessedHtml());
       onClose();
     }
   };
@@ -232,7 +260,13 @@ const GrapesButtonEditor: React.FC<GrapesButtonEditorProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <div
-        style={{ minWidth: "70vw", minHeight: "520px", position: "relative" }}
+        style={{
+          width: "100vw",
+          height: "100vh",
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+        }}
       >
         {/* Save Indicator */}
         <div
@@ -283,9 +317,21 @@ const GrapesButtonEditor: React.FC<GrapesButtonEditorProps> = ({
         </div>
         <div
           ref={editorRef}
-          style={{ border: "1px solid #ccc", borderRadius: 8 }}
+          style={{
+            flex: 1,
+            minHeight: 0,
+            border: "1px solid #ccc",
+            borderRadius: 8,
+            overflow: "hidden",
+          }}
         />
-        <div style={{ marginTop: 16, textAlign: "right" }}>
+        <div
+          style={{
+            flexShrink: 0,
+            padding: "12px 16px",
+            textAlign: "right",
+          }}
+        >
           <button
             onClick={handleSave}
             style={{
