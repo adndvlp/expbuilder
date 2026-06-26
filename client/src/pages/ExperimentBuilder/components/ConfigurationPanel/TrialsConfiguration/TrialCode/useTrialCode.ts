@@ -40,6 +40,7 @@ type Props = {
   categories: boolean;
   categoryData: any[];
   isInLoop?: boolean;
+  isMergePoint?: boolean;
   parentLoopId?: string | null; // ID del loop padre para generar nombres de variables dinámicos
   customInitialize?: string;
   customOnStart?: string;
@@ -68,6 +69,7 @@ export function useTrialCode({
   categories,
   categoryData,
   isInLoop,
+  isMergePoint,
   parentLoopId,
   customInitialize,
   customOnStart,
@@ -519,7 +521,7 @@ data: {
     `;
 
     // Generate on_finish code using the modular generator
-    const onFinishCode = generateOnFinishCode({ branches, branchConditions, repeatConditions, isInLoop, getVarName, customOnFinish });
+    const onFinishCode = generateOnFinishCode({ branches, branchConditions, repeatConditions, isInLoop, isMergePoint, getVarName, customOnFinish });
 
     code += onFinishCode;
 

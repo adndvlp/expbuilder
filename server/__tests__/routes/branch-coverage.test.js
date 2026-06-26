@@ -459,15 +459,9 @@ describe('validate-connection cycle detection', () => {
       timeline: [],
     })
     await db.write()
-    // T1→T2. Try connecting 2→1. isAncestor(target=1, source=2) checks T2.branches for 1
-    // T2.branches=[], no 1 → false. But isAncestor works differently...
-    // Actually: isAncestor(1,2) checks T2.branches for 1 → []
-    // We need target's branches chain to contain source
-    // T1.branches=[2]. isAncestor(2,1): T1.branches=[2] contains 2 → true
     const res = await request(app)
-      .get('/api/validate-connection/E1?source=1&target=2')
+      .get('/api/validate-connection/E1?source=2&target=1')
       .expect(200)
-    // isAncestor(target=2, source=1): T1.branches has 2 → true → cycle
     expect(res.body.isValid).toBe(false)
   })
 })

@@ -1,6 +1,5 @@
 import { TrialComponent, CanvasStyles } from "./types";
 import { Rect } from "react-konva";
-import { HANDLE_PAD } from "./KonvaCanvas";
 import {
   ImageComponent,
   VideoComponent,
@@ -20,6 +19,7 @@ import {
   HtmlSceneMetrics,
   isHtmlSceneComponent,
 } from "./experimentalScene/sceneModel";
+import { CanvasGuide, SnapBox, SnapResult } from "./editorGuides";
 
 type Props = {
   comp: TrialComponent;
@@ -42,6 +42,10 @@ type Props = {
   canvasStyles?: CanvasStyles;
   htmlSceneMetrics?: HtmlSceneMetrics;
   setActiveDomId?: React.Dispatch<React.SetStateAction<string | null>>;
+  editingTextId?: string | null;
+  onEditTextStart?: (id: string) => void;
+  onSnap?: (box: SnapBox) => SnapResult;
+  onGuidesChange?: (guides: CanvasGuide[]) => void;
 };
 
 const RenderComponent = ({
@@ -57,6 +61,10 @@ const RenderComponent = ({
   canvasStyles,
   htmlSceneMetrics = {},
   setActiveDomId,
+  editingTextId,
+  onEditTextStart,
+  onSnap,
+  onGuidesChange,
 }: Props) => {
   const isSelected = comp.id === selectedId;
 
@@ -231,6 +239,23 @@ const RenderComponent = ({
     setSelectedId(id);
   };
 
+  if (comp.type === "TextComponent" && (isSelected || editingTextId === comp.id)) {
+    return (
+      <TextComponent
+        key={comp.id}
+        shapeProps={comp}
+        isSelected={isSelected}
+        onSelect={() => handleSelect(comp.id)}
+        onChange={handleComponentChange}
+        canvasWidth={canvasStyles?.width}
+        isEditing={editingTextId === comp.id}
+        onEditStart={() => onEditTextStart?.(comp.id)}
+        onSnap={onSnap}
+        onGuidesChange={onGuidesChange}
+      />
+    );
+  }
+
   if (isHtmlSceneComponent(comp.type)) {
     return (
       <EditorHitBox
@@ -242,6 +267,9 @@ const RenderComponent = ({
         onSelect={() => handleSelect(comp.id)}
         onChange={handleComponentChange}
         onActivateDom={() => setActiveDomId?.(comp.id)}
+        onEditText={() => onEditTextStart?.(comp.id)}
+        onSnap={onSnap}
+        onGuidesChange={onGuidesChange}
       />
     );
   }
@@ -256,9 +284,8 @@ const RenderComponent = ({
           onSelect={() => handleSelect(comp.id)}
           onChange={handleComponentChange}
           uploadedFiles={uploadedFiles}
-          canvasWidth={canvasStyles?.width}
-          canvasHeight={canvasStyles?.height}
-          stageOffset={HANDLE_PAD}
+          onSnap={onSnap}
+          onGuidesChange={onGuidesChange}
         />
       );
 
@@ -270,18 +297,8 @@ const RenderComponent = ({
           isSelected={isSelected}
           onSelect={() => handleSelect(comp.id)}
           onChange={handleComponentChange}
-        />
-      );
-
-    case "TextComponent":
-      return (
-        <TextComponent
-          key={comp.id}
-          shapeProps={comp}
-          isSelected={isSelected}
-          onSelect={() => handleSelect(comp.id)}
-          onChange={handleComponentChange}
-          canvasWidth={canvasStyles?.width}
+          onSnap={onSnap}
+          onGuidesChange={onGuidesChange}
         />
       );
 
@@ -294,6 +311,8 @@ const RenderComponent = ({
           onSelect={() => handleSelect(comp.id)}
           onChange={handleComponentChange}
           uploadedFiles={uploadedFiles}
+          onSnap={onSnap}
+          onGuidesChange={onGuidesChange}
         />
       );
 
@@ -305,6 +324,8 @@ const RenderComponent = ({
           isSelected={isSelected}
           onSelect={() => handleSelect(comp.id)}
           onChange={handleComponentChange}
+          onSnap={onSnap}
+          onGuidesChange={onGuidesChange}
         />
       );
 
@@ -316,6 +337,8 @@ const RenderComponent = ({
           isSelected={isSelected}
           onSelect={() => handleSelect(comp.id)}
           onChange={handleComponentChange}
+          onSnap={onSnap}
+          onGuidesChange={onGuidesChange}
         />
       );
 
@@ -327,6 +350,8 @@ const RenderComponent = ({
           isSelected={isSelected}
           onSelect={() => handleSelect(comp.id)}
           onChange={handleComponentChange}
+          onSnap={onSnap}
+          onGuidesChange={onGuidesChange}
         />
       );
 
@@ -338,6 +363,8 @@ const RenderComponent = ({
           isSelected={isSelected}
           onSelect={() => handleSelect(comp.id)}
           onChange={handleComponentChange}
+          onSnap={onSnap}
+          onGuidesChange={onGuidesChange}
         />
       );
 
@@ -349,6 +376,8 @@ const RenderComponent = ({
           isSelected={isSelected}
           onSelect={() => handleSelect(comp.id)}
           onChange={handleComponentChange}
+          onSnap={onSnap}
+          onGuidesChange={onGuidesChange}
         />
       );
 
@@ -360,6 +389,8 @@ const RenderComponent = ({
           isSelected={isSelected}
           onSelect={() => handleSelect(comp.id)}
           onChange={handleComponentChange}
+          onSnap={onSnap}
+          onGuidesChange={onGuidesChange}
         />
       );
 
@@ -371,6 +402,8 @@ const RenderComponent = ({
           isSelected={isSelected}
           onSelect={() => handleSelect(comp.id)}
           onChange={handleComponentChange}
+          onSnap={onSnap}
+          onGuidesChange={onGuidesChange}
         />
       );
 
@@ -382,6 +415,8 @@ const RenderComponent = ({
           isSelected={isSelected}
           onSelect={() => handleSelect(comp.id)}
           onChange={handleComponentChange}
+          onSnap={onSnap}
+          onGuidesChange={onGuidesChange}
         />
       );
 

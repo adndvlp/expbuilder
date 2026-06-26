@@ -24,6 +24,8 @@ type Props = {
   loopConditions?: LoopCondition[];
   isConditionalLoop?: boolean;
   parentLoopId?: string | null; // Parent loop ID if this is a nested loop
+  mergePointIds?: (string | number)[];
+  isMergePoint?: boolean;
 };
 
 export default function useLoopCode({
@@ -42,6 +44,8 @@ export default function useLoopCode({
   loopConditions,
   isConditionalLoop,
   parentLoopId,
+  mergePointIds = [],
+  isMergePoint = false,
 }: Props) {
   const sanitizeName = (name: string) => {
     return name.replace(/[^a-zA-Z0-9_]/g, "_");
@@ -118,10 +122,21 @@ export default function useLoopCode({
         const timelineRef = isLoopData(item)
           ? `${sanitizeName(loopId)}_procedure`
           : `${itemNameSanitized}_timeline`;
+        const rawItemId = isLoopData(item)
+          ? loopId
+          : (item as any).id ?? null;
+        const isMergePointItem =
+          rawItemId !== null &&
+          mergePointIds.some(
+            (mergePointId) => String(mergePointId) === String(rawItemId),
+          );
 
-        const itemId = isLoopData(item)
-          ? `"${sanitizeName(loopId)}"`
-          : `${timelineRef}.data.trial_id`;
+        const itemId =
+          rawItemId !== null
+            ? JSON.stringify(rawItemId)
+            : isLoopData(item)
+              ? `"${sanitizeName(loopId)}"`
+              : `${timelineRef}.data.trial_id`;
 
         return `
     const ${itemNameSanitized}_wrapper = {
@@ -175,6 +190,24 @@ export default function useLoopCode({
         return true;
       },
       on_timeline_finish: function() {
+        const currentId = ${itemId};
+        ${
+          isMergePointItem
+            ? `
+        // This shared branch target has completed. Clear branch state so later
+        // wrappers in the same loop can continue normally.
+        if (loop_${loopIdSanitized}_SkipRemaining && String(currentId) === String(loop_${loopIdSanitized}_NextTrialId)) {
+          loop_${loopIdSanitized}_NextTrialId = null;
+          loop_${loopIdSanitized}_SkipRemaining = false;
+          loop_${loopIdSanitized}_TargetExecuted = false;
+          loop_${loopIdSanitized}_BranchingActive = false;
+          loop_${loopIdSanitized}_BranchCustomParameters = null;
+          loop_${loopIdSanitized}_IterationComplete = false;
+          loop_${loopIdSanitized}_ShouldBranchOnFinish = false;
+          return;
+        }`
+            : ""
+        }
         ${
           isLastItem
             ? `
@@ -316,6 +349,7 @@ export default function useLoopCode({
       id,
       loopIdSanitized,
       parentLoopIdSanitized,
+      isMergePoint,
     });
 
     code = branchesResult.code;

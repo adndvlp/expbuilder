@@ -545,7 +545,7 @@ function LoopSubCanvas({
 
       {showBranchedModal && (
         <BranchedTrial
-          selectedTrial={selectedTrial}
+          selectedTrial={selectedTrial || selectedLoop}
           onClose={() => setShowBranchedModal(false)}
           isOpen={showBranchedModal}
         />

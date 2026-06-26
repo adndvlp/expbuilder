@@ -2,11 +2,14 @@ import React from "react";
 import { ComponentType, TrialComponent, CanvasStyles } from "./types";
 import { Stage, Layer, Rect, Group } from "react-konva";
 import type Konva from "konva";
+import AlignmentGuidesLayer from "./AlignmentGuidesLayer";
 import ExperimentalHtmlSceneLayer from "./experimentalScene/ExperimentalHtmlSceneLayer";
 import {
   EXPERIMENTAL_HTML_SCENE_ENABLED,
   HtmlSceneMetrics,
 } from "./experimentalScene/sceneModel";
+import { CanvasGuide } from "./editorGuides";
+import TextEditingOverlay from "./TextEditingOverlay";
 
 // Extra canvas space (in stage coords) so Transformer handles at node edges
 // are never clipped by the canvas boundary.
@@ -27,6 +30,11 @@ type Props = {
   setSelectedId: React.Dispatch<React.SetStateAction<string | null>>;
   components: TrialComponent[];
   uploadedFiles?: any[];
+  activeGuides: CanvasGuide[];
+  onGuidesChange: (guides: CanvasGuide[]) => void;
+  editingTextId: string | null;
+  onCommitTextEdit: (id: string, text: string) => void;
+  onCancelTextEdit: () => void;
   onRenderComponent: (
     comp: TrialComponent,
     metrics: HtmlSceneMetrics,
@@ -46,12 +54,19 @@ function KonvaCanvas({
   setSelectedId,
   components,
   uploadedFiles = [],
+  activeGuides,
+  onGuidesChange,
+  editingTextId,
+  onCommitTextEdit,
+  onCancelTextEdit,
   onRenderComponent,
   canvasStyles,
 }: Props) {
   const [htmlSceneMetrics, setHtmlSceneMetrics] =
     React.useState<HtmlSceneMetrics>({});
   const [activeDomId, setActiveDomId] = React.useState<string | null>(null);
+  const editingTextComponent =
+    components.find((component) => component.id === editingTextId) ?? null;
 
   return (
     <div
@@ -74,6 +89,9 @@ function KonvaCanvas({
           width: `${CANVAS_WIDTH * stageScale}px`,
           height: `${CANVAS_HEIGHT * stageScale}px`,
         }}
+        onPointerLeave={() => onGuidesChange([])}
+        onPointerUpCapture={() => onGuidesChange([])}
+        onPointerCancel={() => onGuidesChange([])}
         onPointerDownCapture={(event) => {
           if (!activeDomId) return;
           const target = event.target as Element | null;
@@ -171,6 +189,18 @@ function KonvaCanvas({
           onMetricsChange={setHtmlSceneMetrics}
           selectedId={selectedId}
           activeDomId={activeDomId}
+          editingTextId={editingTextId}
+        />
+
+        <TextEditingOverlay
+          component={editingTextComponent}
+          stageScale={stageScale}
+          canvasWidth={CANVAS_WIDTH}
+          onCommit={(text) => {
+            if (!editingTextComponent) return;
+            onCommitTextEdit(editingTextComponent.id, text);
+          }}
+          onCancel={onCancelTextEdit}
         />
 
         {/*
@@ -200,6 +230,7 @@ function KonvaCanvas({
               if (e.target === e.target.getStage()) {
                 setActiveDomId(null);
                 setSelectedId(null);
+                onGuidesChange([]);
               }
             }}
           >
@@ -219,6 +250,10 @@ function KonvaCanvas({
                   .map((comp) =>
                     onRenderComponent(comp, htmlSceneMetrics, setActiveDomId),
                   )}
+                <AlignmentGuidesLayer
+                  guides={activeGuides}
+                  stageScale={stageScale}
+                />
               </Group>
             </Layer>
           </Stage>

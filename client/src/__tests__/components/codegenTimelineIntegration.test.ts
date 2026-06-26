@@ -146,6 +146,62 @@ describe("generateTrialLoopCodes integration", () => {
     expect(getLoopTimeline).toHaveBeenCalledWith("loop_1", false);
   });
 
+  it("marks top-level shared branch targets as merge points in generated code", async () => {
+    globalThis.fetch = vi.fn(async (url: string) => {
+      if (String(url).includes("/api/trials-metadata/experiment-merge")) {
+        return {
+          ok: true,
+          json: async () => ({
+            timeline: [
+              timelineTrial({ id: 1, name: "Randomizer", branches: [2, 3] }),
+              timelineTrial({ id: 2, name: "Control", branches: [4] }),
+              timelineTrial({ id: 3, name: "Intervention", branches: [4] }),
+              timelineTrial({ id: 4, name: "Shared Target" }),
+              timelineTrial({ id: 5, name: "After Merge" }),
+            ],
+          }),
+        } as Response;
+      }
+      return {
+        ok: true,
+        json: async () => ({}),
+      } as Response;
+    }) as unknown as typeof fetch;
+
+    const getTrial = vi.fn(async (id: string | number) =>
+      trial({
+        id: Number(id),
+        name:
+          id === 4
+            ? "Shared Target"
+            : id === 5
+              ? "After Merge"
+              : `Trial ${id}`,
+        plugin: "plugin-html-keyboard-response",
+        branches: id === 1 ? [2, 3] : id === 2 || id === 3 ? [4] : [],
+        columnMapping: {
+          stimulus: { source: "typed", value: `Stimulus ${id}` },
+        },
+      }),
+    );
+
+    const codes = await generateAllCodes(
+      "experiment-merge",
+      [],
+      getTrial,
+      vi.fn(),
+      vi.fn(),
+    );
+    const sharedTargetCode = normalize(
+      codes.find((code) => code.includes("Shared_Target_timeline")) || "",
+    );
+
+    expect(sharedTargetCode).toContain("window.nextTrialId = null;");
+    expect(sharedTargetCode).toContain("window.skipRemaining = false;");
+    expect(sharedTargetCode).toContain("window.branchingActive = false;");
+    expect(sharedTargetCode).not.toContain("jsPsych.abortExperiment");
+  });
+
   it("generates the parent loop when previewing a trial that belongs to a loop", async () => {
     const parentLoop = loop({
       id: "loop_flanker",

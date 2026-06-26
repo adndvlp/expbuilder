@@ -9,6 +9,7 @@ import {
 import Konva from "konva";
 import useImage from "use-image";
 import imagePlaceholder from "../../../../../../../assets/image.png";
+import { snapKonvaNode, SnapHandlers } from "../snapKonvaNode";
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface TrialComponent {
@@ -30,7 +31,7 @@ interface TrialComponent {
   config: Record<string, any>;
 }
 
-interface ButtonResponseComponentProps {
+interface ButtonResponseComponentProps extends SnapHandlers {
   shapeProps: TrialComponent;
   isSelected: boolean;
   onSelect: () => void;
@@ -42,6 +43,8 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
   isSelected,
   onSelect,
   onChange,
+  onSnap,
+  onGuidesChange,
 }) => {
   const groupRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
@@ -287,11 +290,30 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
         draggable
         onClick={onSelect}
         onTap={onSelect}
+        onDragMove={(e) => {
+          snapKonvaNode({
+            node: e.target,
+            id: shapeProps.id,
+            width: effectiveWidth,
+            height: effectiveHeight,
+            onSnap,
+            onGuidesChange,
+          });
+        }}
         onDragEnd={(e) => {
+          const snapped = snapKonvaNode({
+            node: e.target,
+            id: shapeProps.id,
+            width: effectiveWidth,
+            height: effectiveHeight,
+            onSnap,
+            onGuidesChange,
+          });
+          onGuidesChange?.([]);
           onChange({
             ...shapeProps,
-            x: e.target.x(),
-            y: e.target.y(),
+            x: snapped.x,
+            y: snapped.y,
           });
         }}
         onTransformEnd={() => {
@@ -306,13 +328,24 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
             6,
             Math.round(buttonFontSize * scaleY),
           );
+          const nextWidth = Math.max(50, effectiveWidth * scaleX);
+          const nextHeight = Math.max(20, effectiveHeight * scaleY);
+          const snapped = snapKonvaNode({
+            node,
+            id: shapeProps.id,
+            width: nextWidth,
+            height: nextHeight,
+            onSnap,
+            onGuidesChange,
+          });
+          onGuidesChange?.([]);
           // Use effectiveWidth/Height so scaling from natural size works correctly
           onChange({
             ...shapeProps,
-            x: node.x(),
-            y: node.y(),
-            width: Math.max(50, effectiveWidth * scaleX),
-            height: Math.max(20, effectiveHeight * scaleY),
+            x: snapped.x,
+            y: snapped.y,
+            width: nextWidth,
+            height: nextHeight,
             rotation: node.rotation(),
             buttonFontSize: newButtonFontSize,
           });

@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { Rect, Text, Transformer, Group } from "react-konva";
 import Konva from "konva";
+import { snapKonvaNode, SnapHandlers } from "../snapKonvaNode";
 
 interface TrialComponent {
   id: string;
@@ -13,7 +14,7 @@ interface TrialComponent {
   config: Record<string, any>;
 }
 
-interface KeyboardResponseComponentProps {
+interface KeyboardResponseComponentProps extends SnapHandlers {
   shapeProps: TrialComponent;
   isSelected: boolean;
   onSelect: () => void;
@@ -25,6 +26,8 @@ const KeyboardResponseComponent: React.FC<KeyboardResponseComponentProps> = ({
   isSelected,
   onSelect,
   onChange,
+  onSnap,
+  onGuidesChange,
 }) => {
   const groupRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
@@ -77,11 +80,30 @@ const KeyboardResponseComponent: React.FC<KeyboardResponseComponentProps> = ({
         draggable
         onClick={onSelect}
         onTap={onSelect}
+        onDragMove={(e) => {
+          snapKonvaNode({
+            node: e.target,
+            id: shapeProps.id,
+            width: effectiveWidth,
+            height: effectiveHeight,
+            onSnap,
+            onGuidesChange,
+          });
+        }}
         onDragEnd={(e) => {
+          const snapped = snapKonvaNode({
+            node: e.target,
+            id: shapeProps.id,
+            width: effectiveWidth,
+            height: effectiveHeight,
+            onSnap,
+            onGuidesChange,
+          });
+          onGuidesChange?.([]);
           onChange({
             ...shapeProps,
-            x: e.target.x(),
-            y: e.target.y(),
+            x: snapped.x,
+            y: snapped.y,
           });
         }}
         onTransformEnd={() => {
@@ -91,13 +113,24 @@ const KeyboardResponseComponent: React.FC<KeyboardResponseComponentProps> = ({
 
           node.scaleX(1);
           node.scaleY(1);
+          const nextWidth = Math.max(60, effectiveWidth * scaleX);
+          const nextHeight = Math.max(24, effectiveHeight * scaleY);
+          const snapped = snapKonvaNode({
+            node,
+            id: shapeProps.id,
+            width: nextWidth,
+            height: nextHeight,
+            onSnap,
+            onGuidesChange,
+          });
+          onGuidesChange?.([]);
 
           onChange({
             ...shapeProps,
-            x: node.x(),
-            y: node.y(),
-            width: Math.max(60, effectiveWidth * scaleX),
-            height: Math.max(24, effectiveHeight * scaleY),
+            x: snapped.x,
+            y: snapped.y,
+            width: nextWidth,
+            height: nextHeight,
             rotation: node.rotation(),
           });
         }}
@@ -110,8 +143,8 @@ const KeyboardResponseComponent: React.FC<KeyboardResponseComponentProps> = ({
           y={0}
           width={effectiveWidth}
           height={effectiveHeight}
-          fill={isSelected ? "#f3e8ff" : "#faf5ff"}
-          stroke={isSelected ? "#9333ea" : "#c084fc"}
+          fill={isSelected ? "#e0f2fe" : "#f0f9ff"}
+          stroke={isSelected ? "#0ea5e9" : "#7dd3fc"}
           strokeWidth={isSelected ? 2 : 1}
           cornerRadius={6}
         />
@@ -129,7 +162,7 @@ const KeyboardResponseComponent: React.FC<KeyboardResponseComponentProps> = ({
             effectiveHeight * 0.5,
             Math.max(8, Math.round(14 * (effectiveWidth / NATURAL_W))),
           )}
-          fill="#6b21a8"
+          fill="#0f172a"
           fontStyle="bold"
         />
       </Group>

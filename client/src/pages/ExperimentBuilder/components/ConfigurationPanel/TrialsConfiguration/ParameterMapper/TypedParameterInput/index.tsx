@@ -1,4 +1,5 @@
 import Switch from "react-switch";
+import type { CSSProperties } from "react";
 import { BiEdit } from "react-icons/bi";
 import { ColumnMappingEntry } from "..";
 import ObjectInput from "./ObjectInput";
@@ -8,6 +9,10 @@ import ColorInput from "./ColorInput";
 import FunctionInput from "./FunctionInput";
 import WebgazerInput from "./WebgazerInput";
 import ArrayInput from "./ArrayInput";
+import VisualStyleInput, {
+  isVisualColorParameter,
+  isVisualStyleParameter,
+} from "./VisualStyleInput";
 
 type Props = {
   paramKey: string;
@@ -25,6 +30,18 @@ type Props = {
     React.SetStateAction<Record<string, string>>
   >;
   label: string;
+  componentMode?: boolean;
+};
+
+const INSPECTOR_TEXT_INPUT_STYLE: CSSProperties = {
+  width: "100%",
+  border: "1px solid #475569",
+  borderRadius: 8,
+  background: "#111827",
+  color: "#f8fafc",
+  padding: "10px 12px",
+  outline: "none",
+  boxSizing: "border-box",
 };
 
 function index({
@@ -39,6 +56,7 @@ function index({
   localInputValues,
   setLocalInputValues,
   label,
+  componentMode = false,
 }: Props) {
   return (
     <>
@@ -115,6 +133,27 @@ function index({
             </button>
           </div>
         </>
+      ) : type === "string" && isVisualColorParameter(paramKey) ? (
+        <ColorInput
+          onSave={onSave}
+          localInputValues={localInputValues}
+          setColumnMapping={setColumnMapping}
+          paramKey={paramKey}
+          entry={entry}
+          label={label}
+          setLocalInputValues={setLocalInputValues}
+        />
+      ) : isVisualStyleParameter(paramKey, type) ? (
+        <VisualStyleInput
+          onSave={onSave}
+          localInputValues={localInputValues}
+          setColumnMapping={setColumnMapping}
+          paramKey={paramKey}
+          type={type}
+          entry={entry}
+          label={label}
+          setLocalInputValues={setLocalInputValues}
+        />
       ) : type === "number" ? (
         <input
           type="number"
@@ -259,21 +298,25 @@ function index({
           setLocalInputValues={setLocalInputValues}
           setColumnMapping={setColumnMapping}
         />
-      ) : type === "string" && paramKey.endsWith("_color") ? (
-        <ColorInput
-          onSave={onSave}
-          localInputValues={localInputValues}
-          setColumnMapping={setColumnMapping}
-          paramKey={paramKey}
-          entry={entry}
-          label={label}
-          setLocalInputValues={setLocalInputValues}
-        />
       ) : type === "string" && paramKey === "text" ? (
         <textarea
           rows={4}
-          className="w-full p-2 border rounded mt-2 resize-y"
-          style={{ fontFamily: "inherit", fontSize: 13 }}
+          className={
+            componentMode
+              ? "resize-y"
+              : "w-full p-2 border rounded mt-2 resize-y"
+          }
+          style={
+            componentMode
+              ? {
+                  ...INSPECTOR_TEXT_INPUT_STYLE,
+                  minHeight: 98,
+                  fontFamily: "inherit",
+                  fontSize: 13,
+                  lineHeight: 1.45,
+                }
+              : { fontFamily: "inherit", fontSize: 13 }
+          }
           value={
             localInputValues[paramKey] ??
             (typeof entry.value === "string" ? entry.value : "")

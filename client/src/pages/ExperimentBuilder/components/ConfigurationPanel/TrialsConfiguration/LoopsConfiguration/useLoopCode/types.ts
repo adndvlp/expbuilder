@@ -1,4 +1,5 @@
 export type Trial = {
+  id?: string | number;
   trialName: string;
   pluginName: string;
   timelineProps: string;

@@ -67,3 +67,28 @@ export function getTextNaturalSize({
 
   return { width, height };
 }
+
+export function getTextHeightForWidth({
+  text,
+  fontSize = 16,
+  lineHeight = DEFAULT_LINE_HEIGHT,
+  width,
+}: TextSizeOptions & { width: number }) {
+  const safeText = text.length > 0 ? text : "Text";
+  const safeFontSize = Number.isFinite(fontSize) && fontSize > 0 ? fontSize : 16;
+  const safeLineHeight =
+    Number.isFinite(lineHeight) && lineHeight > 0
+      ? lineHeight
+      : DEFAULT_LINE_HEIGHT;
+  const usableWidth = Math.max(1, width - HORIZONTAL_PADDING);
+  const lines = safeText.split(/\r?\n/);
+  const visualLineCount = lines.reduce((count, line) => {
+    const estimated = estimateLineTextWidth(line, safeFontSize);
+    return count + Math.max(1, Math.ceil(estimated / usableWidth));
+  }, 0);
+
+  return Math.max(
+    MIN_TEXT_HEIGHT,
+    Math.ceil(visualLineCount * safeFontSize * safeLineHeight + VERTICAL_PADDING),
+  );
+}

@@ -1,16 +1,23 @@
 import { useState } from "react";
 import useTrials from "../../../../hooks/useTrials";
 import { loadPluginParameters } from "../../utils/pluginParameterLoader";
-import { BranchCondition, RepeatCondition } from "../../types";
+import { BranchCondition, Loop, RepeatCondition, Trial } from "../../types";
 import { Condition, Props, Parameter } from "./types";
 import Modal from "../ParameterMapper/Modal";
 import useLoadData from "./useLoadData";
 import BranchedTrialLayout from "./BranchedTrialLayout";
 import { FaTimes } from "react-icons/fa";
+import {
+  idsEqual,
+  includesId,
+  isForwardSameScopeTarget,
+  itemIdKey,
+} from "../../../../utils/branchGraphUtils";
 
 function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
   const {
-    updateTrialField,
+    updateTrial,
+    updateLoop,
     getTrial,
     getLoop,
     timeline,
@@ -178,16 +185,55 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
     return allTrials;
   };
 
-  /**
-   * Helper function to check if a trialId is in the branches array
-   * Branches are trials within the same scope that can have their parameters overridden
-   */
-  const isInBranches = (trialId: string | number | null): boolean => {
-    if (!trialId || !selectedTrial?.branches) return false;
-    return selectedTrial.branches.some(
-      (branchId: string | number) => String(branchId) === String(trialId),
+  const getTopLevelLoopTrialIds = () =>
+    new Set(
+      timeline
+        .filter((item) => item.type === "loop")
+        .flatMap((loop) => loop.trials || [])
+        .map((id) => itemIdKey(id)),
     );
+
+  const getBranchScopeTimeline = () =>
+    selectedTrial?.parentLoopId ? loopTimeline : timeline;
+
+  const isBranchTarget = (trialId: string | number | null): boolean => {
+    if (!trialId || !selectedTrial) return false;
+
+    if (includesId(selectedTrial.branches, trialId)) {
+      return true;
+    }
+
+    const scopeTimeline = getBranchScopeTimeline();
+    const target = scopeTimeline.find((item) => idsEqual(item.id, trialId));
+    if (!target) return false;
+
+    if (
+      !selectedTrial.parentLoopId &&
+      target.type === "trial" &&
+      (target.parentLoopId ||
+        getTopLevelLoopTrialIds().has(itemIdKey(target.id)))
+    ) {
+      return false;
+    }
+
+    return isForwardSameScopeTarget(scopeTimeline, selectedTrial.id, trialId);
   };
+
+  const appendBranchTarget = (
+    branchIds: (string | number)[],
+    branchId: string | number,
+  ) => {
+    if (!includesId(branchIds, branchId)) {
+      branchIds.push(branchId);
+    }
+  };
+
+  const areSameBranchTargets = (
+    a: (string | number)[] = [],
+    b: (string | number)[] = [],
+  ) =>
+    a.length === b.length &&
+    a.every((branchId, index) => idsEqual(branchId, b[index]));
 
   /**
    * Save conditions to the trial
@@ -204,9 +250,11 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
     // Separate conditions into branch conditions and repeat conditions
     const branchConditions: BranchCondition[] = [];
     const repeatConditionsToSave: RepeatCondition[] = [];
+    const branchTargets: (string | number)[] = [];
 
     currentConditions.forEach((condition) => {
-      if (condition.nextTrialId && isInBranches(condition.nextTrialId)) {
+      if (condition.nextTrialId && isBranchTarget(condition.nextTrialId)) {
+        appendBranchTarget(branchTargets, condition.nextTrialId);
         // It's a branch condition (within scope)
         branchConditions.push({
           id: condition.id,
@@ -228,14 +276,36 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
     // The conditions array from state already contains ALL conditions (both branch and jump)
 
     // Update backend and selectedTrial
-    Promise.all([
-      updateTrialField(selectedTrial.id, "branchConditions", branchConditions),
-      updateTrialField(
-        selectedTrial.id,
-        "repeatConditions",
-        repeatConditionsToSave,
-      ),
-    ]).catch((error) => {
+    const hadSavedConditions =
+      Boolean(selectedTrial.branchConditions?.length) ||
+      Boolean(selectedTrial.repeatConditions?.length);
+    const shouldSyncBranches = currentConditions.length > 0 || hadSavedConditions;
+
+    const saveBranchingConfiguration = async () => {
+      const updates: {
+        branches?: (string | number)[];
+        branchConditions: BranchCondition[];
+        repeatConditions: RepeatCondition[];
+      } = {
+        branchConditions,
+        repeatConditions: repeatConditionsToSave,
+      };
+
+      if (
+        shouldSyncBranches &&
+        !areSameBranchTargets(selectedTrial.branches || [], branchTargets)
+      ) {
+        updates.branches = branchTargets;
+      }
+
+      if ("trials" in selectedTrial) {
+        await updateLoop(selectedTrial.id, updates as Partial<Loop>);
+      } else {
+        await updateTrial(selectedTrial.id, updates as Partial<Trial>);
+      }
+    };
+
+    saveBranchingConfiguration().catch((error) => {
       console.error("Error saving conditions:", error);
     });
 

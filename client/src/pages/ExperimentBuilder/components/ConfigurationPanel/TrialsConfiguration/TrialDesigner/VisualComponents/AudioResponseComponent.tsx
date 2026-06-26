@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { Rect, Text, Transformer, Group, Circle } from "react-konva";
 import Konva from "konva";
+import { snapKonvaNode, SnapHandlers } from "../snapKonvaNode";
 
 interface TrialComponent {
   id: string;
@@ -13,7 +14,7 @@ interface TrialComponent {
   config: Record<string, any>;
 }
 
-interface AudioResponseComponentProps {
+interface AudioResponseComponentProps extends SnapHandlers {
   shapeProps: TrialComponent;
   isSelected: boolean;
   onSelect: () => void;
@@ -25,6 +26,8 @@ const AudioResponseComponent: React.FC<AudioResponseComponentProps> = ({
   isSelected,
   onSelect,
   onChange,
+  onSnap,
+  onGuidesChange,
 }) => {
   const groupRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
@@ -81,11 +84,30 @@ const AudioResponseComponent: React.FC<AudioResponseComponentProps> = ({
         draggable
         onClick={onSelect}
         onTap={onSelect}
+        onDragMove={(e) => {
+          snapKonvaNode({
+            node: e.target,
+            id: shapeProps.id,
+            width: effectiveWidth,
+            height: effectiveHeight,
+            onSnap,
+            onGuidesChange,
+          });
+        }}
         onDragEnd={(e) => {
+          const snapped = snapKonvaNode({
+            node: e.target,
+            id: shapeProps.id,
+            width: effectiveWidth,
+            height: effectiveHeight,
+            onSnap,
+            onGuidesChange,
+          });
+          onGuidesChange?.([]);
           onChange({
             ...shapeProps,
-            x: e.target.x(),
-            y: e.target.y(),
+            x: snapped.x,
+            y: snapped.y,
           });
         }}
         onTransformEnd={() => {
@@ -95,13 +117,24 @@ const AudioResponseComponent: React.FC<AudioResponseComponentProps> = ({
 
           node.scaleX(1);
           node.scaleY(1);
+          const nextWidth = Math.max(80, effectiveWidth * scaleX);
+          const nextHeight = Math.max(80, effectiveHeight * scaleY);
+          const snapped = snapKonvaNode({
+            node,
+            id: shapeProps.id,
+            width: nextWidth,
+            height: nextHeight,
+            onSnap,
+            onGuidesChange,
+          });
+          onGuidesChange?.([]);
 
           onChange({
             ...shapeProps,
-            x: node.x(),
-            y: node.y(),
-            width: Math.max(80, effectiveWidth * scaleX),
-            height: Math.max(80, effectiveHeight * scaleY),
+            x: snapped.x,
+            y: snapped.y,
+            width: nextWidth,
+            height: nextHeight,
             rotation: node.rotation(),
           });
         }}

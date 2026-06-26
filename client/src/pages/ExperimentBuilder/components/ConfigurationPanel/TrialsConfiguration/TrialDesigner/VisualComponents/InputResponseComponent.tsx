@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { Rect, Text, Transformer, Group, Circle, Line } from "react-konva";
 import Konva from "konva";
+import { snapKonvaNode, SnapHandlers } from "../snapKonvaNode";
 
 interface TrialComponent {
   id: string;
@@ -23,7 +24,7 @@ interface TrialComponent {
   config: Record<string, any>;
 }
 
-interface InputResponseComponentProps {
+interface InputResponseComponentProps extends SnapHandlers {
   shapeProps: TrialComponent;
   isSelected: boolean;
   onSelect: () => void;
@@ -35,6 +36,8 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
   isSelected,
   onSelect,
   onChange,
+  onSnap,
+  onGuidesChange,
 }) => {
   const groupRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
@@ -271,8 +274,27 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
         onTap={onSelect}
         offsetX={effectiveWidth / 2}
         offsetY={drawHeight / 2}
+        onDragMove={(e) => {
+          snapKonvaNode({
+            node: e.target,
+            id: shapeProps.id,
+            width: effectiveWidth,
+            height: drawHeight,
+            onSnap,
+            onGuidesChange,
+          });
+        }}
         onDragEnd={(e) => {
-          onChange({ ...shapeProps, x: e.target.x(), y: e.target.y() });
+          const snapped = snapKonvaNode({
+            node: e.target,
+            id: shapeProps.id,
+            width: effectiveWidth,
+            height: drawHeight,
+            onSnap,
+            onGuidesChange,
+          });
+          onGuidesChange?.([]);
+          onChange({ ...shapeProps, x: snapped.x, y: snapped.y });
         }}
         onTransformEnd={() => {
           const node = groupRef.current;
@@ -282,11 +304,22 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
           node.scaleY(1);
           // Vertical scale → font size (same as TextComponent cloze)
           const newFontSize = Math.max(1, Math.round(fontSize * scaleY));
+          const nextWidth = Math.max(40, effectiveWidth * scaleX);
+          const nextHeight = newFontSize * 1.5;
+          const snapped = snapKonvaNode({
+            node,
+            id: shapeProps.id,
+            width: nextWidth,
+            height: nextHeight,
+            onSnap,
+            onGuidesChange,
+          });
+          onGuidesChange?.([]);
           onChange({
             ...shapeProps,
-            x: node.x(),
-            y: node.y(),
-            inputWidth: Math.max(40, effectiveWidth * scaleX), // explicit resize
+            x: snapped.x,
+            y: snapped.y,
+            inputWidth: nextWidth, // explicit resize
             // height is NOT stored — always derived from inputFontSize
             inputFontSize: newFontSize,
             rotation: node.rotation(),

@@ -1,41 +1,20 @@
 import React, { useRef, useEffect } from "react";
 import { Rect, Text, Transformer, Group } from "react-konva";
 import Konva from "konva";
-import { getTextNaturalSize } from "../textSizing";
+import { TrialComponent } from "../types";
+import { getTextComponentModel } from "../textComponentModel";
+import { snapKonvaNode, SnapHandlers } from "../snapKonvaNode";
+import { getTextHeightForWidth } from "../textSizing";
 
-interface TrialComponent {
-  id: string;
-  type: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  rotation?: number;
-  zIndex?: number;
-  // Text style fields (synced from config, like x/y/rotation)
-  textFontColor?: string;
-  textFontSize?: number;
-  textFontFamily?: string;
-  textFontWeight?: string;
-  textFontStyle?: string;
-  textAlign?: string;
-  textBackgroundColor?: string;
-  textBorderRadius?: number;
-  textBorderColor?: string;
-  textBorderWidth?: number;
-  config: Record<string, any>;
-}
-
-interface TextComponentProps {
+interface TextComponentProps extends SnapHandlers {
   shapeProps: TrialComponent;
   isSelected: boolean;
   onSelect: () => void;
   onChange: (newAttrs: any) => void;
   canvasWidth?: number;
+  isEditing?: boolean;
+  onEditStart?: () => void;
 }
-
-const NATURAL_W = 200;
-const NATURAL_H = 40;
 
 const TextComponent: React.FC<TextComponentProps> = ({
   shapeProps,
@@ -43,101 +22,54 @@ const TextComponent: React.FC<TextComponentProps> = ({
   onSelect,
   onChange,
   canvasWidth,
+  isEditing = false,
+  onEditStart,
+  onSnap,
+  onGuidesChange,
 }) => {
   const groupRef = useRef<any>(null);
+  const resizeBoxRef = useRef<Konva.Rect>(null);
   const trRef = useRef<Konva.Transformer>(null);
+  const latestTransformRef = useRef<any>(null);
 
-  // Extract the actual value from the config structure
-  const getConfigValue = (key: string, defaultValue: any = null) => {
-    const config = shapeProps.config[key];
-    if (!config) return defaultValue;
-    if (typeof config === "object" && config !== null && "source" in config) {
-      const v =
-        config.value !== undefined && config.value !== null
-          ? config.value
-          : defaultValue;
-      return v;
-    }
-    return config !== undefined && config !== null ? config : defaultValue;
-  };
+  const {
+    text: displayText,
+    fontColor,
+    fontSize,
+    fontFamily,
+    textAlign,
+    backgroundColor,
+    borderRadius,
+    borderColor,
+    borderWidth,
+    lineHeight,
+    effectiveWidth,
+    effectiveHeight,
+    drawWidth,
+    drawHeight,
+    isClozeMode,
+    konvaFontStyle,
+  } = getTextComponentModel(shapeProps, canvasWidth);
 
   useEffect(() => {
-    if (isSelected && trRef.current && groupRef.current) {
-      trRef.current.nodes([groupRef.current]);
+    if (isSelected && trRef.current && resizeBoxRef.current) {
+      trRef.current.nodes([resizeBoxRef.current]);
       trRef.current.getLayer()?.batchDraw();
     }
-  }, [isSelected]);
-
-  // Style props – read from synced top-level fields first, then config
-  const fontColor =
-    shapeProps.textFontColor ?? getConfigValue("font_color", "#000000");
-  const fontSize = shapeProps.textFontSize ?? getConfigValue("font_size", 16);
-  const fontFamily =
-    shapeProps.textFontFamily ?? getConfigValue("font_family", "sans-serif");
-  const fontWeight =
-    shapeProps.textFontWeight ?? getConfigValue("font_weight", "normal");
-  const fontStyle =
-    shapeProps.textFontStyle ?? getConfigValue("font_style", "normal");
-  const textAlign =
-    shapeProps.textAlign ??
-    (getConfigValue("text_align", "center") as "left" | "center" | "right");
-  const bgColor =
-    shapeProps.textBackgroundColor ??
-    getConfigValue("background_color", "transparent");
-  const borderRadius =
-    shapeProps.textBorderRadius ?? getConfigValue("border_radius", 0);
-  const borderColor =
-    shapeProps.textBorderColor ?? getConfigValue("border_color", "transparent");
-  const borderWidth =
-    shapeProps.textBorderWidth ?? getConfigValue("border_width", 0);
-  const lineHeight = getConfigValue("line_height", 1.5);
-
-  const displayText = getConfigValue("text", "Text");
-
-  // Detect cloze mode (same rule as runtime: at least one %…% pair)
-  const textParts: string[] = String(displayText).split("%");
-  const isClozeMode = textParts.length >= 3 && textParts.length % 2 === 1;
-
-  // Natural -> effective sizing. Text without an explicit resize should grow
-  // with the typed content instead of staying trapped in the default 200px box.
-  const naturalTextSize = getTextNaturalSize({
-    text: String(displayText),
-    fontSize,
-    lineHeight,
-    canvasWidth,
-    maxWidth: shapeProps.width > 0 ? shapeProps.width : undefined,
-  });
-  const effectiveWidth =
-    shapeProps.width > 0 ? shapeProps.width : naturalTextSize.width || NATURAL_W;
-  const effectiveHeight =
-    shapeProps.height > 0
-      ? shapeProps.height
-      : naturalTextSize.height || NATURAL_H;
-
-  // Derive Konva font style string ("normal", "bold", "italic", "bold italic")
-  const konvaFontStyle =
-    [
-      fontStyle === "italic" ? "italic" : "",
-      fontWeight === "bold" ? "bold" : "",
-    ]
-      .filter(Boolean)
-      .join(" ") || "normal";
-
-  const clampedFontSize = Math.min(effectiveHeight * 0.7, fontSize);
+  }, [isSelected, drawHeight, drawWidth]);
 
   // ── Cloze: measure segments and build inline layout ──────────────────────
   // Use the actual fontSize (not clamped) for width estimation so the
   // segment positions match what the browser renders at runtime.
   const charW = fontSize * 0.55;
   const blankW = 10 * charW; // matches runtime `width:10ch`
+  const textParts: string[] = String(displayText).split("%");
 
   type ClozeSegment =
     | { kind: "text"; text: string; x: number }
     | { kind: "blank"; x: number; w: number };
 
   const clozeSegments: ClozeSegment[] = [];
-  let totalClozeWidth = effectiveWidth;
-
   if (isClozeMode) {
     let cursorX = 8; // horizontal padding
     for (let i = 0; i < textParts.length; i++) {
@@ -151,15 +83,106 @@ const TextComponent: React.FC<TextComponentProps> = ({
         cursorX += blankW + charW * 0.5; // small gap after blank
       }
     }
-    // Content-driven width (like `max-content` in runtime)
-    totalClozeWidth = cursorX + 8;
   }
 
-  // In cloze mode use content-derived width and let height fit the fontSize.
-  const drawWidth = isClozeMode ? totalClozeWidth : effectiveWidth;
-  const drawHeight = isClozeMode
-    ? Math.max(effectiveHeight, fontSize * 1.6)
-    : effectiveHeight;
+  const snapNode = (node: Konva.Node) => {
+    return snapKonvaNode({
+      node,
+      id: shapeProps.id,
+      width: drawWidth,
+      height: drawHeight,
+      onSnap,
+      onGuidesChange,
+    });
+  };
+
+  const handleClick = (event: Konva.KonvaEventObject<MouseEvent>) => {
+    event.cancelBubble = true;
+    if (isSelected) {
+      event.evt.preventDefault();
+      onEditStart?.();
+      return;
+    }
+    onSelect();
+  };
+
+  const handleDblClick = (event: Konva.KonvaEventObject<MouseEvent>) => {
+    event.cancelBubble = true;
+    event.evt.preventDefault();
+    onSelect();
+    onEditStart?.();
+  };
+
+  const getResizeMode = () => {
+    const anchor = trRef.current?.getActiveAnchor?.() ?? "";
+    return {
+      horizontalOnly: anchor === "middle-left" || anchor === "middle-right",
+      verticalOnly: anchor === "top-center" || anchor === "bottom-center",
+    };
+  };
+
+  const buildTransformUpdate = (node: Konva.Rect, transient: boolean) => {
+    const scaleX = node.scaleX();
+    const scaleY = node.scaleY();
+    const { horizontalOnly, verticalOnly } = getResizeMode();
+    const nextWidth = Math.max(40, node.width() * scaleX);
+    const shouldScaleFont =
+      !horizontalOnly && !verticalOnly && Math.abs(scaleY - 1) > 0.01;
+    const nextFontSize = shouldScaleFont
+      ? Math.max(1, Math.round(fontSize * scaleY))
+      : fontSize;
+    const wrappedHeight = isClozeMode
+      ? Math.max(20, node.height() * scaleY)
+      : getTextHeightForWidth({
+          text: String(displayText),
+          fontSize: nextFontSize,
+          lineHeight,
+          width: nextWidth,
+        });
+    const nextHeight = verticalOnly
+      ? Math.max(20, node.height() * scaleY)
+      : wrappedHeight;
+
+    node.scaleX(1);
+    node.scaleY(1);
+    node.width(nextWidth);
+    node.height(nextHeight);
+    node.offsetX(nextWidth / 2);
+    node.offsetY(nextHeight / 2);
+    node.x(shapeProps.x);
+    node.y(shapeProps.y);
+
+    return {
+      ...shapeProps,
+      x: shapeProps.x,
+      y: shapeProps.y,
+      width: nextWidth,
+      height: nextHeight,
+      rotation: node.rotation(),
+      ...(shouldScaleFont ? { textFontSize: nextFontSize } : {}),
+      ...(transient ? { __transient: true } : {}),
+    };
+  };
+
+  const handleTransform = () => {
+    const node = resizeBoxRef.current;
+    if (!node) return;
+    const update = buildTransformUpdate(node, true);
+    latestTransformRef.current = update;
+    onChange(update);
+  };
+
+  const handleTransformEnd = () => {
+    const node = resizeBoxRef.current;
+    if (!node) return;
+    const update = {
+      ...(latestTransformRef.current ?? buildTransformUpdate(node, false)),
+      __transient: undefined,
+    };
+    latestTransformRef.current = null;
+    onGuidesChange?.([]);
+    onChange(update);
+  };
 
   return (
     <>
@@ -169,49 +192,41 @@ const TextComponent: React.FC<TextComponentProps> = ({
         y={shapeProps.y}
         rotation={shapeProps.rotation || 0}
         draggable
-        onClick={onSelect}
+        visible={!isEditing}
+        onClick={handleClick}
         onTap={onSelect}
+        onDblClick={handleDblClick}
         offsetX={drawWidth / 2}
         offsetY={drawHeight / 2}
-        onDragEnd={(e) => {
-          onChange({ ...shapeProps, x: e.target.x(), y: e.target.y() });
+        onDragMove={(e) => {
+          snapNode(e.target);
         }}
-        onTransformEnd={() => {
-          const node = groupRef.current;
-          const scaleX = node.scaleX();
-          const scaleY = node.scaleY();
-          node.scaleX(1);
-          node.scaleY(1);
-          const newFontSize = Math.max(1, Math.round(fontSize * scaleY));
-          onChange({
-            ...shapeProps,
-            x: node.x(),
-            y: node.y(),
-            width: Math.max(40, effectiveWidth * scaleX),
-            height: Math.max(20, effectiveHeight * scaleY),
-            rotation: node.rotation(),
-            textFontSize: newFontSize,
-          });
+        onDragEnd={(e) => {
+          const snapped = snapNode(e.target);
+          onGuidesChange?.([]);
+          onChange({ ...shapeProps, x: snapped.x, y: snapped.y });
         }}
       >
         {/* Background / border rect — hidden in cloze mode unless user configured a border/bg */}
-        {(!isClozeMode || bgColor !== "transparent" || borderWidth > 0) && (
+        {(!isClozeMode ||
+          backgroundColor !== "transparent" ||
+          borderWidth > 0) && (
           <Rect
             x={0}
             y={0}
             width={drawWidth}
             height={drawHeight}
-            fill={bgColor === "transparent" ? "transparent" : bgColor}
+            fill={
+              backgroundColor === "transparent"
+                ? "transparent"
+                : backgroundColor
+            }
             stroke={
-              isSelected && !isClozeMode
-                ? "#1d4ed8"
-                : borderWidth > 0
-                  ? borderColor
-                  : "transparent"
+              borderWidth > 0
+                ? borderColor
+                : "transparent"
             }
-            strokeWidth={
-              isSelected && !isClozeMode ? 2 : borderWidth > 0 ? borderWidth : 0
-            }
+            strokeWidth={borderWidth > 0 ? borderWidth : 0}
             cornerRadius={borderRadius}
             dash={[]}
           />
@@ -228,7 +243,7 @@ const TextComponent: React.FC<TextComponentProps> = ({
                   y={0}
                   height={drawHeight}
                   text={seg.text}
-                  fontSize={clampedFontSize}
+                  fontSize={fontSize}
                   fontFamily={fontFamily}
                   fontStyle={konvaFontStyle}
                   fill={fontColor}
@@ -260,7 +275,7 @@ const TextComponent: React.FC<TextComponentProps> = ({
             width={effectiveWidth}
             height={effectiveHeight}
             text={String(displayText)}
-            fontSize={clampedFontSize}
+            fontSize={fontSize}
             fontFamily={fontFamily}
             fontStyle={konvaFontStyle}
             fill={fontColor}
@@ -269,15 +284,45 @@ const TextComponent: React.FC<TextComponentProps> = ({
             lineHeight={lineHeight}
             padding={4}
             wrap="word"
-            ellipsis
           />
         )}
       </Group>
 
-      {isSelected && (
+      {isSelected && !isEditing && (
+        <Rect
+          ref={resizeBoxRef}
+          x={shapeProps.x}
+          y={shapeProps.y}
+          width={drawWidth}
+          height={drawHeight}
+          rotation={shapeProps.rotation || 0}
+          offsetX={drawWidth / 2}
+          offsetY={drawHeight / 2}
+          fill="rgba(0,0,0,0.001)"
+          stroke="#1d4ed8"
+          strokeWidth={2}
+          draggable
+          onClick={handleClick}
+          onTap={onSelect}
+          onDblClick={handleDblClick}
+          onDragMove={(e) => {
+            snapNode(e.target);
+          }}
+          onDragEnd={(e) => {
+            const snapped = snapNode(e.target);
+            onGuidesChange?.([]);
+            onChange({ ...shapeProps, x: snapped.x, y: snapped.y });
+          }}
+          onTransform={handleTransform}
+          onTransformEnd={handleTransformEnd}
+        />
+      )}
+
+      {isSelected && !isEditing && (
         <Transformer
           ref={trRef}
           flipEnabled={false}
+          rotateEnabled
           boundBoxFunc={(oldBox, newBox) => {
             if (Math.abs(newBox.width) < 40 || Math.abs(newBox.height) < 20)
               return oldBox;

@@ -8,6 +8,7 @@ import useLoopCode from "../components/ConfigurationPanel/TrialsConfiguration/Lo
 import { Trial, Loop } from "../components/ConfigurationPanel/types";
 import type { TimelineItem } from "../contexts/TrialsContext";
 import { generateExtensionCode } from "./generateExtensionCode";
+import { getMergePointIds, isMergePoint } from "./branchGraphUtils";
 
 type GetTrialFn = (id: string | number) => Promise<Trial | null>;
 type GetLoopTimelineFn = (loopId: string | number, updateState?: boolean) => Promise<TimelineItem[]>;
@@ -40,6 +41,7 @@ export async function generateAllCodes(
 
     const data = await response.json();
     const timeline: TimelineItem[] = data.timeline || [];
+    const topLevelMergePointIds = getMergePointIds(timeline);
 
     const codes: string[] = [];
 
@@ -51,6 +53,9 @@ export async function generateAllCodes(
           uploadedFiles,
           experimentID,
           getTrial,
+          false,
+          undefined,
+          isMergePoint(topLevelMergePointIds, item.id),
         );
         if (result.code) codes.push(result.code);
       } else if (item.type === "loop") {
@@ -62,6 +67,7 @@ export async function generateAllCodes(
           getTrial,
           getLoopTimeline,
           getLoop,
+          topLevelMergePointIds,
         );
         if (code) codes.push(code);
       }
@@ -95,6 +101,7 @@ async function generateTrialCode(
   getTrial: GetTrialFn,
   isInLoop: boolean = false,
   loopCsvJson?: Record<string, any>[],
+  isMergePointInScope: boolean = false,
 ): Promise<GeneratedTrialResult> {
   try {
     // Fetch full trial data using getTrial
@@ -222,6 +229,7 @@ async function generateTrialCode(
       categories: fullTrial.categories || false,
       categoryData: fullTrial.categoryData || [],
       isInLoop: isInLoop,
+      isMergePoint: isMergePointInScope,
       parentLoopId: fullTrial.parentLoopId || null,
       customInitialize: fullTrial.customInitialize,
       customOnStart: fullTrial.customOnStart,
@@ -283,6 +291,7 @@ async function generateLoopCode(
   getTrial: GetTrialFn,
   getLoopTimeline: GetLoopTimelineFn,
   getLoop: GetLoopFn,
+  parentScopeMergePointIds: Set<string> = new Set(),
 ): Promise<string> {
   try {
     // Fetch full loop data (including loopConditions and isConditionalLoop)
@@ -299,6 +308,7 @@ async function generateLoopCode(
     // UI state (loopTimeline) here, it would force the Canvas to render this loop's contents, 
     // causing an unexpected visual "auto-open" behavior when clicking a nested loop node.
     const trialsMetadata = await getLoopTimeline(loop.id, false);
+    const loopMergePointIds = getMergePointIds(trialsMetadata);
 
     // Generate code for each trial/loop in the loop
     const trialsWithCode = (await Promise.all(
@@ -325,9 +335,11 @@ async function generateLoopCode(
             getTrial,
             true, // isInLoop = true
             fullLoop?.csvJson,
+            isMergePoint(loopMergePointIds, item.id),
           );
 
           return {
+            id: fullTrial.id,
             trialName: fullTrial.name,
             pluginName: fullTrial.plugin,
             timelineProps: trialResult.code,
@@ -361,6 +373,7 @@ async function generateLoopCode(
             getTrial,
             getLoopTimeline,
             getLoop,
+            loopMergePointIds,
           );
 
           console.log(
@@ -436,6 +449,8 @@ async function generateLoopCode(
       loopConditions: fullLoop.loopConditions as unknown as any,
       isConditionalLoop: fullLoop.isConditionalLoop,
       parentLoopId: fullLoop.parentLoopId ? String(fullLoop.parentLoopId) : null,
+      mergePointIds: Array.from(loopMergePointIds),
+      isMergePoint: isMergePoint(parentScopeMergePointIds, fullLoop.id),
     });
 
     return genLoopCode();

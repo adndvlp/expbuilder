@@ -9,6 +9,12 @@ import useAutoSaveHandlers from "./useAutoSaveHandlers";
 import useParameterModals from "./useParameterModals";
 import ParameterInputField from "./ParameterInputField";
 import TypedParameterInput from "./TypedParameterInput";
+import {
+  getVisualDefaultValue,
+  getVisualStylePriority,
+  isVisualStyleParameter,
+  shouldSpanVisualControl,
+} from "./TypedParameterInput/VisualStyleInput";
 
 type UploadedFile = { name: string; url: string; type: string };
 
@@ -41,6 +47,43 @@ type ParameterMapperProps = {
   ) => void;
   // Autoguardado
   onSave?: (key: string, value: any) => void; // Se llama con key y value para evitar closures
+};
+
+const INSPECTOR_PANEL_STYLE: React.CSSProperties = {
+  color: "#e5edf3",
+  padding: "12px 16px 24px",
+};
+
+const INSPECTOR_GRID_STYLE: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr)",
+  gap: 0,
+};
+
+const INSPECTOR_FIELD_STYLE: React.CSSProperties = {
+  gridColumn: "1 / -1",
+  padding: "10px 0 14px",
+  borderBottom: "1px solid rgba(148, 163, 184, 0.16)",
+};
+
+const INSPECTOR_LABEL_STYLE: React.CSSProperties = {
+  display: "block",
+  margin: "0 0 8px",
+  color: "#dbe7ef",
+  fontSize: 12,
+  fontWeight: 700,
+  lineHeight: "16px",
+};
+
+const INSPECTOR_SELECT_STYLE: React.CSSProperties = {
+  width: "100%",
+  height: 38,
+  border: "1px solid #475569",
+  borderRadius: 8,
+  background: "#111827",
+  color: "#f8fafc",
+  padding: "0 10px",
+  outline: "none",
 };
 
 const ParameterMapper: React.FC<ParameterMapperProps> = ({
@@ -80,6 +123,15 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
     if (CLOZE_ONLY_KEYS.has(key) && inputTypeValue !== "text") return false;
     return true;
   });
+
+  const orderedVisibleParameters = componentMode
+    ? [...visibleParameters].sort((a, b) => {
+        const aPriority = getVisualStylePriority(a.key);
+        const bPriority = getVisualStylePriority(b.key);
+        if (aPriority !== bPriority) return aPriority - bPriority;
+        return visibleParameters.indexOf(a) - visibleParameters.indexOf(b);
+      })
+    : visibleParameters;
 
   const parametersRef = useRef<Parameter[]>([]);
 
@@ -127,7 +179,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
   return (
     <div
       className={componentMode ? "" : "mb-4 p-4 border rounded bg-gray-50"}
-      style={componentMode ? { color: "var(--text-dark)" } : {}}
+      style={componentMode ? INSPECTOR_PANEL_STYLE : {}}
     >
       {/* Header - Only show in normal mode */}
       {!componentMode && (
@@ -156,11 +208,28 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
       )}
 
       {/* Parameter form */}
-      <div className="mb-2 grid grid-cols-2 gap-2">
-        {visibleParameters &&
-          visibleParameters.length > 0 &&
-          visibleParameters.map(({ label, key, type }) => {
-            const entry = columnMapping[key] || { source: "none" };
+      <div
+        className={componentMode ? "" : "mb-2 grid grid-cols-2 gap-2"}
+        style={componentMode ? INSPECTOR_GRID_STYLE : undefined}
+      >
+        {orderedVisibleParameters &&
+          orderedVisibleParameters.length > 0 &&
+          orderedVisibleParameters.map(({ label, key, type }) => {
+            const rawEntry = columnMapping[key] || { source: "none" };
+            const isVisualStyle =
+              componentMode && isVisualStyleParameter(key, type);
+            const entry =
+              isVisualStyle && rawEntry.source !== "typed"
+                ? {
+                    source: "typed" as const,
+                    value: getVisualDefaultValue(key, type),
+                  }
+                : rawEntry;
+            const spanFull =
+              componentMode &&
+              (key === "text" ||
+                key === "coordinates" ||
+                (isVisualStyle && shouldSpanVisualControl(key)));
 
             // ── Special: Dynamic CSV diagnostics → controlled per trial ──
             if (key === "dynamic_csv_diagnostics") {
@@ -173,15 +242,26 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                 (entry.source === "typed" ? (entry.value as string) : null) ??
                 "off";
               return (
-                <div key={key} style={{ gridColumn: "1 / -1" }}>
+                <div
+                  key={key}
+                  style={
+                    componentMode
+                      ? INSPECTOR_FIELD_STYLE
+                      : { gridColumn: "1 / -1" }
+                  }
+                >
                   <label
-                    className="mb-2 mt-3 block text-sm font-medium"
-                    style={componentMode ? { color: "var(--text-dark)" } : {}}
+                    className={
+                      componentMode ? "" : "mb-2 mt-3 block text-sm font-medium"
+                    }
+                    style={componentMode ? INSPECTOR_LABEL_STYLE : {}}
                   >
                     Dynamic CSV Audit Data
                   </label>
                   <select
-                    className="w-full p-2 border rounded mt-1"
+                    className={
+                      componentMode ? "" : "w-full p-2 border rounded mt-1"
+                    }
                     value={currentMode}
                     onChange={(e) => {
                       const newValue = {
@@ -194,7 +274,11 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                       }));
                       if (onSave) setTimeout(() => onSave(key, newValue), 100);
                     }}
-                    style={{ color: "var(--text-dark)" }}
+                    style={
+                      componentMode
+                        ? INSPECTOR_SELECT_STYLE
+                        : { color: "var(--text-dark)" }
+                    }
                   >
                     {DYNAMIC_CSV_DIAGNOSTIC_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -220,15 +304,26 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                 (entry.source === "typed" ? (entry.value as string) : null) ??
                 "text";
               return (
-                <div key={key} style={{ gridColumn: "1 / -1" }}>
+                <div
+                  key={key}
+                  style={
+                    componentMode
+                      ? INSPECTOR_FIELD_STYLE
+                      : { gridColumn: "1 / -1" }
+                  }
+                >
                   <label
-                    className="mb-2 mt-3 block text-sm font-medium"
-                    style={componentMode ? { color: "var(--text-dark)" } : {}}
+                    className={
+                      componentMode ? "" : "mb-2 mt-3 block text-sm font-medium"
+                    }
+                    style={componentMode ? INSPECTOR_LABEL_STYLE : {}}
                   >
                     {label}
                   </label>
                   <select
-                    className="w-full p-2 border rounded mt-1"
+                    className={
+                      componentMode ? "" : "w-full p-2 border rounded mt-1"
+                    }
                     value={currentType}
                     onChange={(e) => {
                       const newValue = {
@@ -241,7 +336,11 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                       }));
                       if (onSave) setTimeout(() => onSave(key, newValue), 100);
                     }}
-                    style={{ color: "var(--text-dark)" }}
+                    style={
+                      componentMode
+                        ? INSPECTOR_SELECT_STYLE
+                        : { color: "var(--text-dark)" }
+                    }
                   >
                     {INPUT_TYPE_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -254,25 +353,39 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
             }
 
             return (
-              <div key={key}>
+              <div
+                key={key}
+                style={
+                  componentMode
+                    ? INSPECTOR_FIELD_STYLE
+                    : spanFull
+                      ? { gridColumn: "1 / -1" }
+                      : undefined
+                }
+              >
                 <label
-                  className="mb-2 mt-3 block text-sm font-medium"
-                  style={componentMode ? { color: "var(--text-dark)" } : {}}
+                  className={
+                    componentMode ? "" : "mb-2 mt-3 block text-sm font-medium"
+                  }
+                  style={componentMode ? INSPECTOR_LABEL_STYLE : {}}
                 >
                   {label}
                 </label>
 
-                <ParameterInputField
-                  entry={entry}
-                  key={`${key}-field`}
-                  paramKey={key}
-                  type={type}
-                  setColumnMapping={setColumnMapping}
-                  csvColumns={csvColumns}
-                  onSave={onSave}
-                />
+                {!isVisualStyle && (
+                  <ParameterInputField
+                    entry={entry}
+                    key={`${key}-field`}
+                    paramKey={key}
+                    type={type}
+                    setColumnMapping={setColumnMapping}
+                    csvColumns={csvColumns}
+                    onSave={onSave}
+                    componentMode={componentMode}
+                  />
+                )}
 
-                {entry.source === "typed" && (
+                {(isVisualStyle || entry.source === "typed") && (
                   <TypedParameterInput
                     key={`${key}-input`}
                     paramKey={key}
@@ -286,6 +399,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
                     localInputValues={localInputValues}
                     setLocalInputValues={setLocalInputValues}
                     label={label}
+                    componentMode={componentMode}
                   />
                 )}
               </div>

@@ -9,6 +9,7 @@ type Props = {
   id: string | undefined;
   loopIdSanitized: string;
   parentLoopIdSanitized?: string | null;
+  isMergePoint?: boolean;
 };
 
 function BranchesCode({
@@ -19,6 +20,7 @@ function BranchesCode({
   repeatConditions,
   loopIdSanitized,
   parentLoopIdSanitized,
+  isMergePoint = false,
   id,
 }: Props) {
   // Branching logic for the loop (same as trials)
@@ -149,7 +151,17 @@ ${activateBranchCode}
     // This loop has no branches, it is a terminal loop
     // If we get here after branching, end the experiment
     if (window.branchingActive) {
+      ${
+        isMergePoint
+          ? `
+      window.nextTrialId = null;
+      window.skipRemaining = false;
+      window.branchingActive = false;
+      window.branchCustomParameters = null;`
+          : `
       jsPsych.abortExperiment('', {});
+      `
+      }
     }
     `
     }
@@ -197,7 +209,17 @@ ${activateBranchCode}
     // This loop has no branches or repeat conditions, it is a terminal loop
     // If we get here after branching, end the experiment
     if (window.branchingActive) {
+      ${
+        isMergePoint
+          ? `
+      window.nextTrialId = null;
+      window.skipRemaining = false;
+      window.branchingActive = false;
+      window.branchCustomParameters = null;`
+          : `
       jsPsych.abortExperiment('', {});
+      `
+      }
     }
   },`;
   }

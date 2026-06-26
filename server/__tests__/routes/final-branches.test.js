@@ -126,10 +126,8 @@ describe('validate-connection recursive isAncestor traversal', () => {
     expect(res.body.isValid).toBe(true)
   })
 
-  test('detects recursive ancestor in validate-connection', async () => {
+  test('allows redundant recursive connection when source already reaches target', async () => {
     const { app, db } = await freshApp()
-    // isAncestor(target, source): isAncestor('loop_1', 1)
-    // checks T1.branches for 'loop_1'. T1.branches=['loop_1'] → true → invalid connection
     db.data.trials.push({
       experimentID: 'E1',
       trials: [
@@ -143,6 +141,25 @@ describe('validate-connection recursive isAncestor traversal', () => {
     await db.write()
     const res = await request(app)
       .get('/api/validate-connection/E1?source=1&target=loop_1')
+      .expect(200)
+    expect(res.body.isValid).toBe(true)
+  })
+
+  test('detects recursive cycle in validate-connection', async () => {
+    const { app, db } = await freshApp()
+    db.data.trials.push({
+      experimentID: 'E1',
+      trials: [
+        { id: 1, name: 'T1', branches: ['loop_1'] },
+      ],
+      loops: [
+        { id: 'loop_1', name: 'L1', branches: [] },
+      ],
+      timeline: [],
+    })
+    await db.write()
+    const res = await request(app)
+      .get('/api/validate-connection/E1?source=loop_1&target=1')
       .expect(200)
     expect(res.body.isValid).toBe(false)
   })

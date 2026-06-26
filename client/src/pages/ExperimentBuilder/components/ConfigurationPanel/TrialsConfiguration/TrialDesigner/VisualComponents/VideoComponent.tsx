@@ -4,6 +4,7 @@ import Konva from "konva";
 import useImage from "use-image";
 import videoPlaceholder from "../../../../../../../assets/video.png";
 import { mapFileToUrl } from "../../../../../utils/mapFileToUrl";
+import { snapKonvaNode, SnapHandlers } from "../snapKonvaNode";
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface TrialComponent {
@@ -17,7 +18,7 @@ interface TrialComponent {
   config: Record<string, any>;
 }
 
-interface VideoComponentProps {
+interface VideoComponentProps extends SnapHandlers {
   shapeProps: TrialComponent;
   isSelected: boolean;
   onSelect: () => void;
@@ -31,6 +32,8 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
   onSelect,
   onChange,
   uploadedFiles = [],
+  onSnap,
+  onGuidesChange,
 }) => {
   const shapeRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
@@ -102,6 +105,9 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
 
   // If no video is loaded, show placeholder image
   if (!videoImage && placeholderImg) {
+    const displayWidth = shapeProps.width || placeholderImg.width;
+    const displayHeight = shapeProps.height || placeholderImg.height;
+
     return (
       <>
         <KonvaImage
@@ -123,11 +129,30 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
           draggable
           onClick={onSelect}
           onTap={onSelect}
+          onDragMove={(e) => {
+            snapKonvaNode({
+              node: e.target,
+              id: shapeProps.id,
+              width: displayWidth,
+              height: displayHeight,
+              onSnap,
+              onGuidesChange,
+            });
+          }}
           onDragEnd={(e) => {
+            const snapped = snapKonvaNode({
+              node: e.target,
+              id: shapeProps.id,
+              width: displayWidth,
+              height: displayHeight,
+              onSnap,
+              onGuidesChange,
+            });
+            onGuidesChange?.([]);
             onChange({
               ...shapeProps,
-              x: e.target.x(),
-              y: e.target.y(),
+              x: snapped.x,
+              y: snapped.y,
             });
           }}
           onTransformEnd={() => {
@@ -135,12 +160,23 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
             if (!placeholderImg) return;
             const scaleX = node.scaleX();
             const scaleY = node.scaleY();
+            const nextWidth = Math.max(5, placeholderImg.width * scaleX);
+            const nextHeight = Math.max(5, placeholderImg.height * scaleY);
+            const snapped = snapKonvaNode({
+              node,
+              id: shapeProps.id,
+              width: nextWidth,
+              height: nextHeight,
+              onSnap,
+              onGuidesChange,
+            });
+            onGuidesChange?.([]);
             onChange({
               ...shapeProps,
-              x: node.x(),
-              y: node.y(),
-              width: Math.max(5, placeholderImg.width * scaleX),
-              height: Math.max(5, placeholderImg.height * scaleY),
+              x: snapped.x,
+              y: snapped.y,
+              width: nextWidth,
+              height: nextHeight,
               rotation: node.rotation(),
             });
           }}
@@ -161,6 +197,9 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
       </>
     );
   }
+
+  const displayWidth = videoImage ? shapeProps.width || videoImage.width : 160;
+  const displayHeight = videoImage ? shapeProps.height || videoImage.height : 120;
 
   return (
     <>
@@ -183,11 +222,30 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
         draggable
         onClick={onSelect}
         onTap={onSelect}
+        onDragMove={(e) => {
+          snapKonvaNode({
+            node: e.target,
+            id: shapeProps.id,
+            width: displayWidth,
+            height: displayHeight,
+            onSnap,
+            onGuidesChange,
+          });
+        }}
         onDragEnd={(e) => {
+          const snapped = snapKonvaNode({
+            node: e.target,
+            id: shapeProps.id,
+            width: displayWidth,
+            height: displayHeight,
+            onSnap,
+            onGuidesChange,
+          });
+          onGuidesChange?.([]);
           onChange({
             ...shapeProps,
-            x: e.target.x(),
-            y: e.target.y(),
+            x: snapped.x,
+            y: snapped.y,
           });
         }}
         onTransformEnd={() => {
@@ -195,12 +253,23 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
           if (!videoImage) return;
           const scaleX = node.scaleX();
           const scaleY = node.scaleY();
+          const nextWidth = Math.max(5, videoImage.width * scaleX);
+          const nextHeight = Math.max(5, videoImage.height * scaleY);
+          const snapped = snapKonvaNode({
+            node,
+            id: shapeProps.id,
+            width: nextWidth,
+            height: nextHeight,
+            onSnap,
+            onGuidesChange,
+          });
+          onGuidesChange?.([]);
           onChange({
             ...shapeProps,
-            x: node.x(),
-            y: node.y(),
-            width: Math.max(5, videoImage.width * scaleX),
-            height: Math.max(5, videoImage.height * scaleY),
+            x: snapped.x,
+            y: snapped.y,
+            width: nextWidth,
+            height: nextHeight,
             rotation: node.rotation(),
           });
         }}

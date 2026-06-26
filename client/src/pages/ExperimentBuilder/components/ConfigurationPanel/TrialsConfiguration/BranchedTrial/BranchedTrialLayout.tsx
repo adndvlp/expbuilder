@@ -36,6 +36,9 @@ function BranchedTrialLayout({
   getAvailableTrials,
 }: Props) {
   const [activeTab, setActiveTab] = useState<"branch" | "params">("branch");
+  const canUseParamsOverride =
+    selectedTrial && !("trials" in selectedTrial);
+
   return (
     <>
       {/* Tab Navigation */}
@@ -87,47 +90,50 @@ function BranchedTrialLayout({
           >
             Branch & Jump Conditions
           </button>
-          <button
-            onClick={() => setActiveTab("params")}
-            style={{
-              padding: "12px 24px",
-              borderRadius: "8px 8px 0 0",
-              fontWeight: 600,
-              fontSize: "14px",
-              border: "none",
-              cursor: "pointer",
-              transition: "all 0.3s ease",
-              backgroundColor:
-                activeTab === "params"
-                  ? "var(--primary-blue)"
-                  : "var(--neutral-light)",
-              color:
-                activeTab === "params"
-                  ? "var(--text-light)"
-                  : "var(--text-dark)",
-              borderBottom:
-                activeTab === "params" ? "3px solid var(--gold)" : "none",
-              opacity: activeTab === "params" ? 1 : 0.7,
-              boxShadow:
-                activeTab === "params"
-                  ? "0 4px 12px rgba(61, 146, 180, 0.3)"
-                  : "none",
-            }}
-            onMouseEnter={(e) => {
-              if (activeTab !== "params") {
-                e.currentTarget.style.opacity = "1";
-                e.currentTarget.style.backgroundColor = "var(--neutral-mid)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (activeTab !== "params") {
-                e.currentTarget.style.opacity = "0.7";
-                e.currentTarget.style.backgroundColor = "var(--neutral-light)";
-              }
-            }}
-          >
-            Params Override
-          </button>
+          {canUseParamsOverride && (
+            <button
+              onClick={() => setActiveTab("params")}
+              style={{
+                padding: "12px 24px",
+                borderRadius: "8px 8px 0 0",
+                fontWeight: 600,
+                fontSize: "14px",
+                border: "none",
+                cursor: "pointer",
+                transition: "all 0.3s ease",
+                backgroundColor:
+                  activeTab === "params"
+                    ? "var(--primary-blue)"
+                    : "var(--neutral-light)",
+                color:
+                  activeTab === "params"
+                    ? "var(--text-light)"
+                    : "var(--text-dark)",
+                borderBottom:
+                  activeTab === "params" ? "3px solid var(--gold)" : "none",
+                opacity: activeTab === "params" ? 1 : 0.7,
+                boxShadow:
+                  activeTab === "params"
+                    ? "0 4px 12px rgba(61, 146, 180, 0.3)"
+                    : "none",
+              }}
+              onMouseEnter={(e) => {
+                if (activeTab !== "params") {
+                  e.currentTarget.style.opacity = "1";
+                  e.currentTarget.style.backgroundColor = "var(--neutral-mid)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeTab !== "params") {
+                  e.currentTarget.style.opacity = "0.7";
+                  e.currentTarget.style.backgroundColor =
+                    "var(--neutral-light)";
+                }
+              }}
+            >
+              Params Override
+            </button>
+          )}
         </div>
       </div>
       {/* Scrollable Content */}

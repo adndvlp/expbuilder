@@ -2,19 +2,21 @@ import { useEffect, useRef } from "react";
 import { Group, Rect, Transformer } from "react-konva";
 import Konva from "konva";
 import { CanvasStyles, TrialComponent } from "../types";
+import { SnapHandlers, snapKonvaNode } from "../snapKonvaNode";
 import {
   getConfigValue,
   getHtmlSceneNode,
   HtmlSceneNodeMetric,
 } from "./sceneModel";
 
-type Props = {
+type Props = SnapHandlers & {
   shapeProps: TrialComponent;
   canvasStyles?: CanvasStyles;
   isSelected: boolean;
   onSelect: () => void;
   onChange: (newAttrs: any) => void;
   onActivateDom?: () => void;
+  onEditText?: () => void;
   metric?: HtmlSceneNodeMetric;
 };
 
@@ -30,6 +32,9 @@ export default function EditorHitBox({
   onSelect,
   onChange,
   onActivateDom,
+  onEditText,
+  onSnap,
+  onGuidesChange,
   metric,
 }: Props) {
   const groupRef = useRef<Konva.Group>(null);
@@ -72,9 +77,18 @@ export default function EditorHitBox({
   };
 
   const handleDragMove = (event: Konva.KonvaEventObject<DragEvent>) => {
+    const snapped = snapKonvaNode({
+      node: event.target,
+      id: shapeProps.id,
+      width: node.width,
+      height: node.height,
+      onSnap,
+      onGuidesChange,
+    });
+
     pendingDragRef.current = {
-      x: event.target.x(),
-      y: event.target.y(),
+      x: snapped.x,
+      y: snapped.y,
     };
 
     if (dragFrameRef.current === null) {
@@ -89,9 +103,19 @@ export default function EditorHitBox({
     }
     pendingDragRef.current = null;
 
+    const snapped = snapKonvaNode({
+      node: event.target,
+      id: shapeProps.id,
+      width: node.width,
+      height: node.height,
+      onSnap,
+      onGuidesChange,
+    });
+    onGuidesChange?.([]);
+
     onChange({
-      x: event.target.x(),
-      y: event.target.y(),
+      x: snapped.x,
+      y: snapped.y,
     });
   };
 
@@ -99,7 +123,11 @@ export default function EditorHitBox({
     event.cancelBubble = true;
     event.evt.preventDefault();
     onSelect();
-    onActivateDom?.();
+    if (shapeProps.type === "TextComponent") {
+      onEditText?.();
+    } else {
+      onActivateDom?.();
+    }
   };
 
   const handleTransformEnd = () => {
@@ -199,6 +227,26 @@ export default function EditorHitBox({
       update.width = Math.max(150, node.width * scaleX);
       update.height = Math.max(80, node.height * scaleY);
     }
+
+    const snapWidth =
+      typeof update.width === "number" && update.width > 0
+        ? update.width
+        : Math.max(20, node.width * scaleX);
+    const snapHeight =
+      typeof update.height === "number" && update.height > 0
+        ? update.height
+        : Math.max(20, node.height * scaleY);
+    const snapped = snapKonvaNode({
+      node: group,
+      id: shapeProps.id,
+      width: snapWidth,
+      height: snapHeight,
+      onSnap,
+      onGuidesChange,
+    });
+    update.x = snapped.x;
+    update.y = snapped.y;
+    onGuidesChange?.([]);
 
     onChange(update);
   };

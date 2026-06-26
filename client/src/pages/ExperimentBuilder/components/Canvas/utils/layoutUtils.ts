@@ -1,4 +1,10 @@
 import { findItemById } from "./trialUtils";
+import {
+  findGraphItem,
+  getIncomingParentMap,
+  itemIdKey,
+} from "../../../utils/branchGraphUtils";
+import type { BranchGraphItem } from "../../../utils/branchGraphUtils";
 
 export const LAYOUT_CONSTANTS = {
   xTrial: 250,
@@ -115,4 +121,86 @@ export function createEdge(
     target,
     type: edgeType,
   };
+}
+
+export function alignMergePointNodes<T extends BranchGraphItem>({
+  nodes,
+  items,
+  mergePointIds,
+  branchVerticalOffset,
+  getNodeId,
+}: {
+  nodes: LayoutNode[];
+  items: T[];
+  mergePointIds: Set<string>;
+  branchVerticalOffset: number;
+  getNodeId: (item: T) => string;
+}) {
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const parentMap = getIncomingParentMap(items);
+
+  const moveBranchSubtree = (
+    item: T,
+    dx: number,
+    dy: number,
+    visited: Set<string>,
+  ) => {
+    (item.branches || []).forEach((branchId) => {
+      const branchKey = itemIdKey(branchId);
+      if (visited.has(branchKey)) return;
+
+      // Shared children get their own centering pass.
+      if ((parentMap.get(branchKey)?.length || 0) > 1) return;
+
+      const branchItem = findGraphItem(items, branchId);
+      if (!branchItem) return;
+
+      const branchNode = nodeById.get(getNodeId(branchItem));
+      if (branchNode) {
+        branchNode.position = {
+          x: branchNode.position.x + dx,
+          y: branchNode.position.y + dy,
+        };
+      }
+
+      visited.add(branchKey);
+      moveBranchSubtree(branchItem, dx, dy, visited);
+    });
+  };
+
+  const mergeItems = Array.from(mergePointIds)
+    .map((mergeId) => findGraphItem(items, mergeId))
+    .filter((item): item is T => Boolean(item))
+    .sort((a, b) => {
+      const aNode = nodeById.get(getNodeId(a));
+      const bNode = nodeById.get(getNodeId(b));
+      return (aNode?.position.y || 0) - (bNode?.position.y || 0);
+    });
+
+  mergeItems.forEach((item) => {
+    const mergeNode = nodeById.get(getNodeId(item));
+    if (!mergeNode) return;
+
+    const parentNodes = (parentMap.get(itemIdKey(item.id)) || [])
+      .map((parentId) => findGraphItem(items, parentId))
+      .filter((parent): parent is T => Boolean(parent))
+      .map((parent) => nodeById.get(getNodeId(parent)))
+      .filter((node): node is LayoutNode => Boolean(node));
+
+    if (parentNodes.length < 2) return;
+
+    const centeredX =
+      parentNodes.reduce((sum, node) => sum + node.position.x, 0) /
+      parentNodes.length;
+    const centeredY =
+      Math.max(...parentNodes.map((node) => node.position.y)) +
+      branchVerticalOffset;
+    const dx = centeredX - mergeNode.position.x;
+    const dy = centeredY - mergeNode.position.y;
+
+    if (dx === 0 && dy === 0) return;
+
+    mergeNode.position = { x: centeredX, y: centeredY };
+    moveBranchSubtree(item, dx, dy, new Set([itemIdKey(item.id)]));
+  });
 }

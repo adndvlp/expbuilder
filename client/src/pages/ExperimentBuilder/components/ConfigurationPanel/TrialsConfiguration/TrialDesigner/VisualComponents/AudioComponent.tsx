@@ -3,6 +3,7 @@ import { Image as KonvaImage, Transformer } from "react-konva";
 import Konva from "konva";
 import useImage from "use-image";
 import speakerPlaceholder from "../../../../../../../assets/audio.png";
+import { snapKonvaNode, SnapHandlers } from "../snapKonvaNode";
 
 type TrialComponent = {
   id: string;
@@ -15,7 +16,7 @@ type TrialComponent = {
   config: Record<string, any>;
 };
 
-type AudioComponentProps = {
+type AudioComponentProps = SnapHandlers & {
   shapeProps: TrialComponent;
   isSelected: boolean;
   onSelect: () => void;
@@ -27,11 +28,15 @@ const AudioComponent: React.FC<AudioComponentProps> = ({
   isSelected,
   onSelect,
   onChange,
+  onSnap,
+  onGuidesChange,
 }) => {
   const imgRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
 
   const [speakerImg] = useImage(speakerPlaceholder);
+  const displayWidth = speakerImg ? shapeProps.width || speakerImg.width : 80;
+  const displayHeight = speakerImg ? shapeProps.height || speakerImg.height : 80;
 
   return (
     <>
@@ -54,11 +59,30 @@ const AudioComponent: React.FC<AudioComponentProps> = ({
         draggable
         onClick={onSelect}
         onTap={onSelect}
+        onDragMove={(e) => {
+          snapKonvaNode({
+            node: e.target,
+            id: shapeProps.id,
+            width: displayWidth,
+            height: displayHeight,
+            onSnap,
+            onGuidesChange,
+          });
+        }}
         onDragEnd={(e) => {
+          const snapped = snapKonvaNode({
+            node: e.target,
+            id: shapeProps.id,
+            width: displayWidth,
+            height: displayHeight,
+            onSnap,
+            onGuidesChange,
+          });
+          onGuidesChange?.([]);
           onChange({
             ...shapeProps,
-            x: e.target.x(),
-            y: e.target.y(),
+            x: snapped.x,
+            y: snapped.y,
           });
         }}
         onTransformEnd={() => {
@@ -67,13 +91,24 @@ const AudioComponent: React.FC<AudioComponentProps> = ({
 
           const scaleX = node.scaleX();
           const scaleY = node.scaleY();
+          const nextWidth = Math.max(5, speakerImg.width * scaleX);
+          const nextHeight = Math.max(5, speakerImg.height * scaleY);
+          const snapped = snapKonvaNode({
+            node,
+            id: shapeProps.id,
+            width: nextWidth,
+            height: nextHeight,
+            onSnap,
+            onGuidesChange,
+          });
+          onGuidesChange?.([]);
 
           onChange({
             ...shapeProps,
-            x: node.x(),
-            y: node.y(),
-            width: Math.max(5, speakerImg.width * scaleX),
-            height: Math.max(5, speakerImg.height * scaleY),
+            x: snapped.x,
+            y: snapped.y,
+            width: nextWidth,
+            height: nextHeight,
             rotation: node.rotation(),
           });
         }}

@@ -4,6 +4,7 @@ import Konva from "konva";
 import useImage from "use-image";
 import imagePlaceholder from "../../../../../../../assets/image.png";
 import { mapFileToUrl } from "../../../../../utils/mapFileToUrl";
+import { snapKonvaNode, SnapHandlers } from "../snapKonvaNode";
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface TrialComponent {
@@ -17,15 +18,12 @@ interface TrialComponent {
   config: Record<string, any>;
 }
 
-interface ImageComponentProps {
+interface ImageComponentProps extends SnapHandlers {
   shapeProps: TrialComponent;
   isSelected: boolean;
   onSelect: () => void;
   onChange: (newAttrs: any) => void;
   uploadedFiles?: any[];
-  canvasWidth?: number;
-  canvasHeight?: number;
-  stageOffset?: number;
 }
 
 const ImageComponent: React.FC<ImageComponentProps> = ({
@@ -34,9 +32,8 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
   onSelect,
   onChange,
   uploadedFiles = [],
-  canvasWidth = 1024,
-  canvasHeight = 768,
-  stageOffset = 0,
+  onSnap,
+  onGuidesChange,
 }) => {
   const shapeRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
@@ -83,51 +80,14 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
     shapeRef.current.getLayer()?.batchDraw();
   }, [shapeProps.x, shapeProps.y]);
 
-  // Load placeholder image (must be above snap/log that reference it)
+  // Load placeholder image
   const [placeholderImg] = useImage(imagePlaceholder);
-
-  // Snap: image edges to viewport edges
-  const SNAP = 8;
-  const dragBoundFunc = (pos: { x: number; y: number }) => {
-    const img = image || placeholderImg;
-    if (!img) return pos;
-    const w = (shapeProps.width && img ? shapeProps.width / img.width : 1) * img.width;
-    const h = (shapeProps.height && img ? shapeProps.height / img.height : 1) * img.height;
-    const halfW = w / 2;
-    const halfH = h / 2;
-
-    // Target positions for each edge alignment
-    // Snap image left edge to viewport left: pos.x = halfW
-    // Snap image right edge to viewport right: pos.x = canvasWidth - halfW
-    // Snap image center to viewport center: pos.x = canvasWidth / 2
-    // dragBoundFunc receives absolute stage coords; Group offset (stageOffset)
-    // shifts node absolute coords by stageOffset relative to Group-local coords.
-    const snapsX = [halfW + stageOffset, canvasWidth / 2 + stageOffset, canvasWidth - halfW + stageOffset];
-    const snapsY = [halfH + stageOffset, canvasHeight / 2 + stageOffset, canvasHeight - halfH + stageOffset];
-
-    const snapX = snapsX.find(g => Math.abs(pos.x - g) <= SNAP);
-    const snapY = snapsY.find(g => Math.abs(pos.y - g) <= SNAP);
-    return { x: snapX ?? pos.x, y: snapY ?? pos.y };
-  };
-
-  // Log: image edges distance to viewport edges
-  const dbgImg = image || placeholderImg;
-  if (dbgImg) {
-    const w = (shapeProps.width && dbgImg ? shapeProps.width / dbgImg.width : 1) * dbgImg.width;
-    const h = (shapeProps.height && dbgImg ? shapeProps.height / dbgImg.height : 1) * dbgImg.height;
-    const L = shapeProps.x - w / 2;
-    const T = shapeProps.y - h / 2;
-    const R = L + w;
-    const B = T + h;
-    console.log("[Image edges]",
-      "img:", w.toFixed(1) + "x" + h.toFixed(1),
-      "| L:", L.toFixed(1), "T:", T.toFixed(1), "R:", R.toFixed(1), "B:", B.toFixed(1),
-      "| toVPR:", (canvasWidth - R).toFixed(1), "toVPB:", (canvasHeight - B).toFixed(1),
-      "| snap @", shapeProps.x.toFixed(1) + "," + shapeProps.y.toFixed(1));
-  }
 
   // If no image is loaded, show placeholder image
   if (!image && placeholderImg) {
+    const displayWidth = shapeProps.width || placeholderImg.width;
+    const displayHeight = shapeProps.height || placeholderImg.height;
+
     return (
       <>
         <KonvaImage
@@ -147,14 +107,32 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
           }
           rotation={shapeProps.rotation || 0}
           draggable
-          dragBoundFunc={dragBoundFunc}
           onClick={onSelect}
           onTap={onSelect}
+          onDragMove={(e) => {
+            snapKonvaNode({
+              node: e.target,
+              id: shapeProps.id,
+              width: displayWidth,
+              height: displayHeight,
+              onSnap,
+              onGuidesChange,
+            });
+          }}
           onDragEnd={(e) => {
+            const snapped = snapKonvaNode({
+              node: e.target,
+              id: shapeProps.id,
+              width: displayWidth,
+              height: displayHeight,
+              onSnap,
+              onGuidesChange,
+            });
+            onGuidesChange?.([]);
             onChange({
               ...shapeProps,
-              x: e.target.x(),
-              y: e.target.y(),
+              x: snapped.x,
+              y: snapped.y,
             });
           }}
           onTransformEnd={() => {
@@ -162,12 +140,23 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
             if (!placeholderImg) return;
             const scaleX = node.scaleX();
             const scaleY = node.scaleY();
+            const nextWidth = Math.max(5, placeholderImg.width * scaleX);
+            const nextHeight = Math.max(5, placeholderImg.height * scaleY);
+            const snapped = snapKonvaNode({
+              node,
+              id: shapeProps.id,
+              width: nextWidth,
+              height: nextHeight,
+              onSnap,
+              onGuidesChange,
+            });
+            onGuidesChange?.([]);
             onChange({
               ...shapeProps,
-              x: node.x(),
-              y: node.y(),
-              width: Math.max(5, placeholderImg.width * scaleX),
-              height: Math.max(5, placeholderImg.height * scaleY),
+              x: snapped.x,
+              y: snapped.y,
+              width: nextWidth,
+              height: nextHeight,
               rotation: node.rotation(),
             });
           }}
@@ -189,6 +178,9 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
     );
   }
 
+  const displayWidth = image ? shapeProps.width || image.width : 160;
+  const displayHeight = image ? shapeProps.height || image.height : 120;
+
   return (
     <>
       <KonvaImage
@@ -202,14 +194,32 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
         }
         rotation={shapeProps.rotation || 0}
         draggable
-        dragBoundFunc={dragBoundFunc}
         onClick={onSelect}
         onTap={onSelect}
+        onDragMove={(e) => {
+          snapKonvaNode({
+            node: e.target,
+            id: shapeProps.id,
+            width: displayWidth,
+            height: displayHeight,
+            onSnap,
+            onGuidesChange,
+          });
+        }}
         onDragEnd={(e) => {
+          const snapped = snapKonvaNode({
+            node: e.target,
+            id: shapeProps.id,
+            width: displayWidth,
+            height: displayHeight,
+            onSnap,
+            onGuidesChange,
+          });
+          onGuidesChange?.([]);
           onChange({
             ...shapeProps,
-            x: e.target.x(),
-            y: e.target.y(),
+            x: snapped.x,
+            y: snapped.y,
           });
         }}
         onTransformEnd={() => {
@@ -217,12 +227,23 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
           if (!image) return;
           const scaleX = node.scaleX();
           const scaleY = node.scaleY();
+          const nextWidth = Math.max(5, image.width * scaleX);
+          const nextHeight = Math.max(5, image.height * scaleY);
+          const snapped = snapKonvaNode({
+            node,
+            id: shapeProps.id,
+            width: nextWidth,
+            height: nextHeight,
+            onSnap,
+            onGuidesChange,
+          });
+          onGuidesChange?.([]);
           onChange({
             ...shapeProps,
-            x: node.x(),
-            y: node.y(),
-            width: Math.max(5, image.width * scaleX),
-            height: Math.max(5, image.height * scaleY),
+            x: snapped.x,
+            y: snapped.y,
+            width: nextWidth,
+            height: nextHeight,
             rotation: node.rotation(),
           });
         }}

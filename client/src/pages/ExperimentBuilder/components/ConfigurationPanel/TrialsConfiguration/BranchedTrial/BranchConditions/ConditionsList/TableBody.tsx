@@ -146,10 +146,10 @@ function TableBody({
                       }}
                     >
                       <option style={{ textAlign: "center" }} value="">
-                        Select trial
+                        Select target
                       </option>
                       {branchTrials.length > 0 && (
-                        <optgroup label="Branches (Same Scope)">
+                        <optgroup label="Branch targets">
                           {branchTrials.map((trial) => (
                             <option key={trial.id} value={trial.id}>
                               {trial.name} {trial.isLoop ? "(Loop)" : ""}

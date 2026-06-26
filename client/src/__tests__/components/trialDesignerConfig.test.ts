@@ -5,13 +5,25 @@ import type {
   CanvasStyles,
   TrialComponent,
 } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
+import {
+  applyComponentConfigPatch,
+  typedValue,
+} from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/componentConfigUpdates";
+import {
+  snapBoxToGuides,
+  snapComponentBox,
+} from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/editorGuides";
 import useConfigComponents from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/useConfigFromComponents";
 import useLoadComponents from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/useLoadComponents";
 import {
   restoreStyleFields,
   syncConfigToComponent,
 } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/syncConfigToComponent";
-import { getTextNaturalSize } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/textSizing";
+import {
+  getTextHeightForWidth,
+  getTextNaturalSize,
+} from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/textSizing";
+import { getTextComponentModel } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/textComponentModel";
 
 const canvasStyles: CanvasStyles = {
   ...DEFAULT_CANVAS_STYLES,
@@ -96,9 +108,6 @@ describe("useConfigFromComponents", () => {
         font_size: { source: "typed", value: 20 },
         font_color: { source: "typed", value: "#ff0000" },
         _font_size_runtime_vw: { source: "typed", value: 2 },
-        screenLayouts: {
-          "1440x900": { x: 10, y: 20, width: 30, height: 9 },
-        },
       }),
     ]);
     expect(config.response_components.value).toEqual([
@@ -247,6 +256,185 @@ describe("getTextNaturalSize", () => {
 
     expect(size.width).toBe(430);
     expect(size.height).toBeGreaterThan(40);
+  });
+
+  it("increases text box height when a fixed width forces wrapping", () => {
+    const wideHeight = getTextHeightForWidth({
+      text: "Thanks for your time You can close this window",
+      fontSize: 65,
+      lineHeight: 1.5,
+      width: 900,
+    });
+    const narrowHeight = getTextHeightForWidth({
+      text: "Thanks for your time You can close this window",
+      fontSize: 65,
+      lineHeight: 1.5,
+      width: 360,
+    });
+
+    expect(narrowHeight).toBeGreaterThan(wideHeight);
+  });
+
+  it("does not let stale saved text height clip wrapped text", () => {
+    const component: TrialComponent = {
+      id: "text-1",
+      type: "TextComponent",
+      x: 500,
+      y: 350,
+      width: 420,
+      height: 60,
+      config: {
+        text: {
+          source: "typed",
+          value: "Thanks for your time\nYou can close this window",
+        },
+        font_size: { source: "typed", value: 65 },
+        line_height: { source: "typed", value: 1.5 },
+      },
+    };
+
+    const model = getTextComponentModel(component, canvasStyles.width);
+
+    expect(model.effectiveHeight).toBeGreaterThan(component.height);
+    expect(model.drawHeight).toBe(model.effectiveHeight);
+  });
+});
+
+describe("editor guides and visual config updates", () => {
+  it("snaps moving boxes to the canvas center and returns guide lines", () => {
+    const snapped = snapBoxToGuides({
+      box: {
+        id: "text-1",
+        x: 497,
+        y: 352,
+        width: 120,
+        height: 40,
+      },
+      targets: [],
+      canvasWidth: 1000,
+      canvasHeight: 700,
+    });
+
+    expect(snapped.x).toBe(500);
+    expect(snapped.y).toBe(350);
+    expect(snapped.guides).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          orientation: "vertical",
+          position: 500,
+          from: 0,
+          to: 700,
+        }),
+        expect.objectContaining({
+          orientation: "horizontal",
+          position: 350,
+          from: 0,
+          to: 1000,
+        }),
+      ]),
+    );
+  });
+
+  it("snaps component edges and centers to other components", () => {
+    const moving: TrialComponent = {
+      id: "moving",
+      type: "TextComponent",
+      x: 246,
+      y: 120,
+      width: 100,
+      height: 40,
+      config: {
+        text: { source: "typed", value: "Moving" },
+        font_size: { source: "typed", value: 16 },
+      },
+    };
+    const target: TrialComponent = {
+      id: "target",
+      type: "TextComponent",
+      x: 300,
+      y: 120,
+      width: 100,
+      height: 40,
+      config: {
+        text: { source: "typed", value: "Target" },
+        font_size: { source: "typed", value: 16 },
+      },
+    };
+
+    const snapped = snapComponentBox(
+      {
+        id: moving.id,
+        x: moving.x,
+        y: moving.y,
+        width: moving.width,
+        height: moving.height,
+      },
+      [moving, target],
+      canvasStyles,
+    );
+
+    expect(snapped.x).toBe(250);
+    expect(snapped.y).toBe(120);
+    expect(snapped.guides).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          orientation: "vertical",
+          position: 250,
+        }),
+        expect.objectContaining({
+          orientation: "horizontal",
+          position: 100,
+        }),
+      ]),
+    );
+  });
+
+  it("does not snap when all anchors are outside the threshold", () => {
+    const snapped = snapBoxToGuides({
+      box: {
+        id: "text-1",
+        x: 480,
+        y: 320,
+        width: 120,
+        height: 40,
+      },
+      targets: [],
+      canvasWidth: 1000,
+      canvasHeight: 700,
+    });
+
+    expect(snapped).toEqual({ x: 480, y: 320, guides: [] });
+  });
+
+  it("applies typed config patches and restores top-level text fields", () => {
+    const component: TrialComponent = {
+      id: "text-1",
+      type: "TextComponent",
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+      config: {
+        text: { source: "typed", value: "Old" },
+        font_color: { source: "typed", value: "#000000" },
+      },
+    };
+
+    const updated = applyComponentConfigPatch(
+      component,
+      {
+        text: typedValue("New"),
+        font_color: typedValue("#ff00ff"),
+      },
+      { textFontColor: "#ff00ff" },
+    );
+
+    expect(updated.config.text).toEqual({ source: "typed", value: "New" });
+    expect(updated.config.font_color).toEqual({
+      source: "typed",
+      value: "#ff00ff",
+    });
+    expect(updated.textFontColor).toBe("#ff00ff");
   });
 });
 

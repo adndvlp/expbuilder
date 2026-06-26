@@ -287,7 +287,7 @@ describe("TypedParameterInput children", () => {
       />,
     );
 
-    const textInput = screen.getByPlaceholderText("e.g. #9333ea");
+    const textInput = screen.getByPlaceholderText("e.g. #0ea5e9");
     const colorInput = screen.getByTitle("Value");
 
     fireEvent.change(textInput, { target: { value: "#abcdef" } });

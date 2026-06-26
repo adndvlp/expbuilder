@@ -294,8 +294,10 @@ router.get("/api/validate-connection/:experimentID", async (req, res) => {
       return false;
     };
 
-    // Verificar si target es ancestro de source (crearía un ciclo)
-    if (isAncestor(target, source)) {
+    // Verificar si source ya es alcanzable desde target.
+    // Si target -> ... -> source, agregar source -> target crearía un ciclo.
+    // Si source -> ... -> target, la conexión es redundante pero no circular.
+    if (isAncestor(source, target)) {
       return res.json({
         isValid: false,
         errorMessage:

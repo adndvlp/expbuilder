@@ -215,13 +215,8 @@ describe('GET /api/validate-connection/:experimentID', () => {
     expect(res.body.isValid).toBe(true)
   })
 
-  test('detects invalid connection when target already branches to source', async () => {
+  test('allows redundant connection when source already reaches target', async () => {
     const { app, db } = await freshApp()
-    // T1.branches=[2] means T1 → T2
-    // Trying source=1, target=2: isAncestor(target=2, source=1)
-    // T1.branches=[2] includes 2? No, target is 2 (T2), source is 1 (T1)
-    // isAncestor(2, 1): T1.branches includes 2 → true
-    // So connection 1→2 is invalid (target=2 is downstream from source=1 via T1.branches)
     db.data.trials.push({
       experimentID: 'E1',
       trials: [
@@ -234,6 +229,24 @@ describe('GET /api/validate-connection/:experimentID', () => {
     await db.write()
     const res = await request(app)
       .get('/api/validate-connection/E1?source=1&target=2')
+      .expect(200)
+    expect(res.body.isValid).toBe(true)
+  })
+
+  test('detects invalid connection when target can already reach source', async () => {
+    const { app, db } = await freshApp()
+    db.data.trials.push({
+      experimentID: 'E1',
+      trials: [
+        { id: 1, name: 'T1', branches: [2] },
+        { id: 2, name: 'T2', branches: [] },
+      ],
+      loops: [],
+      timeline: [],
+    })
+    await db.write()
+    const res = await request(app)
+      .get('/api/validate-connection/E1?source=2&target=1')
       .expect(200)
     expect(res.body.isValid).toBe(false)
   })

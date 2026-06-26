@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import Konva from "konva";
 import Modal from "../ParameterMapper/Modal";
 import { useComponentMetadata } from "../hooks/useComponentMetadata";
@@ -20,6 +20,16 @@ import CanvasStylesBar from "./CanvasStylesBar";
 import ExperimentPreview from "../../../ExperimentPreview";
 import useCanvasStyles from "../../../../hooks/useCanvasStyles";
 import { HtmlSceneMetrics } from "./experimentalScene/sceneModel";
+import {
+  CanvasGuide,
+  SnapBox,
+  snapComponentBox,
+} from "./editorGuides";
+import {
+  applyComponentConfigPatch,
+  ConfigPatch,
+  typedValue,
+} from "./componentConfigUpdates";
 
 const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   isOpen,
@@ -33,6 +43,8 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
 }) => {
   const [components, setComponents] = useState<TrialComponent[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
+  const [activeGuides, setActiveGuides] = useState<CanvasGuide[]>([]);
   const { canvasStyles, setCanvasStyles } = useCanvasStyles();
   const [isDemoRunning, setIsDemoRunning] = useState(false);
 
@@ -45,6 +57,18 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   const selectedComponent = components.find((c) => c.id === selectedId);
   const { metadata: componentMetadata, loading: metadataLoading } =
     useComponentMetadata(selectedComponent?.type || null);
+
+  useEffect(() => {
+    if (!editingTextId) return;
+    const stillExists = components.some((component) => component.id === editingTextId);
+    if (!stillExists || selectedId !== editingTextId) {
+      setEditingTextId(null);
+    }
+  }, [components, editingTextId, selectedId]);
+
+  useEffect(() => {
+    setActiveGuides([]);
+  }, [selectedId]);
 
   const [leftPanelWidth, setLeftPanelWidth] = useState(280);
   const [rightPanelWidth, setRightPanelWidth] = useState(400);
@@ -167,6 +191,10 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       canvasStyles,
       htmlSceneMetrics,
       setActiveDomId,
+      editingTextId,
+      onEditTextStart: setEditingTextId,
+      onSnap: handleSnap,
+      onGuidesChange: setActiveGuides,
     });
   };
 
@@ -192,6 +220,43 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     canvasStyles,
   });
 
+  const handleSnap = useCallback(
+    (box: SnapBox) => snapComponentBox(box, components, canvasStyles),
+    [components, canvasStyles],
+  );
+
+  const patchTextComponent = useCallback(
+    (
+      id: string,
+      patch: ConfigPatch,
+      visualPatch: Partial<TrialComponent> = {},
+    ) => {
+      setComponents((prevComponents) => {
+        const updatedComponents = prevComponents.map((component) =>
+          component.id === id
+            ? applyComponentConfigPatch(component, patch, visualPatch)
+            : component,
+        );
+
+        if (onAutoSave) {
+          const config = generateConfigFromComponents(updatedComponents);
+          setTimeout(() => onAutoSave(config), 100);
+        }
+
+        return updatedComponents;
+      });
+    },
+    [generateConfigFromComponents, onAutoSave],
+  );
+
+  const commitTextEdit = useCallback(
+    (id: string, text: string) => {
+      patchTextComponent(id, { text: typedValue(text) });
+      setEditingTextId(null);
+    },
+    [patchTextComponent],
+  );
+
   useHandleResize({
     isResizingLeft,
     setShowLeftPanel,
@@ -204,6 +269,10 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) {
+        if (editingTextId) {
+          setEditingTextId(null);
+          return;
+        }
         onClose();
       }
     };
@@ -212,7 +281,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       document.addEventListener("keydown", handleEscape);
       return () => document.removeEventListener("keydown", handleEscape);
     }
-  }, [isOpen, onClose]);
+  }, [editingTextId, isOpen, onClose]);
 
   const onDrop = (e: React.DragEvent, fileUrl: string, type: ComponentType) => {
     handleDrop({
@@ -430,6 +499,11 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             setSelectedId={setSelectedId}
             components={components}
             uploadedFiles={uploadedFiles}
+            activeGuides={activeGuides}
+            onGuidesChange={setActiveGuides}
+            editingTextId={editingTextId}
+            onCommitTextEdit={commitTextEdit}
+            onCancelTextEdit={() => setEditingTextId(null)}
             onRenderComponent={onRenderComponent}
             canvasStyles={canvasStyles}
           />

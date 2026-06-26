@@ -5,10 +5,17 @@ import {
   createLoopNode,
   createEdge,
   calculateBranchWidth,
+  alignMergePointNodes,
 } from "../utils/layoutUtils";
 import { Loop, Trial } from "../../ConfigurationPanel/types";
 import { TimelineItem } from "../../../contexts/TrialsContext";
 import { Size } from "../hooks/useResizable";
+import {
+  collectBranchIds,
+  getMergePointIds,
+  getNextSequentialItem,
+  isMergePoint,
+} from "../../../utils/branchGraphUtils";
 
 type Props = {
   loopTimeline: TimelineItem[];
@@ -48,31 +55,10 @@ export default function GenerateNodesAndEdges({
 
     const xTrial = size.width / 3.1;
 
-    // Collect all branch IDs (recursively)
-    const collectAllBranchIds = (
-      items: TimelineItem[],
-    ): Set<number | string> => {
-      const branchIds = new Set<number | string>();
-
-      const collectBranches = (item: TimelineItem) => {
-        if (item.branches && item.branches.length > 0) {
-          item.branches.forEach((branchId) => {
-            branchIds.add(branchId);
-            const branchItem = items.find((i) => i.id === branchId);
-            if (branchItem) {
-              collectBranches(branchItem);
-            }
-          });
-        }
-      };
-
-      items.forEach(collectBranches);
-      return branchIds;
-    };
-
-    const branchItemIds = collectAllBranchIds(loopTimeline);
+    const branchItemIds = collectBranchIds(loopTimeline);
+    const mergePointIds = getMergePointIds(loopTimeline);
     const mainItems = loopTimeline.filter(
-      (item) => !branchItemIds.has(item.id),
+      (item) => !branchItemIds.has(String(item.id)),
     );
 
     // Recursive function to render an item and its branches
@@ -198,10 +184,23 @@ export default function GenerateNodesAndEdges({
       }
     });
 
+    alignMergePointNodes({
+      nodes,
+      items: loopTimeline,
+      mergePointIds,
+      branchVerticalOffset,
+      getNodeId: (item) =>
+        item.type === "trial" ? `trial-${item.id}` : `loop-${item.id}`,
+    });
+
     // Add edges between main items (vertical sequence)
     for (let i = 0; i < mainItems.length - 1; i++) {
       const currentItem = mainItems[i];
       const nextItem = mainItems[i + 1];
+
+      if (currentItem.branches && currentItem.branches.length > 0) {
+        continue;
+      }
 
       const currentNodeId =
         currentItem.type === "trial"
@@ -215,7 +214,36 @@ export default function GenerateNodesAndEdges({
       edges.push(createEdge(currentNodeId, nextNodeId));
     }
 
-    return { nodes, edges };
+    loopTimeline.forEach((item) => {
+      if (
+        !isMergePoint(mergePointIds, item.id) ||
+        (item.branches && item.branches.length > 0)
+      ) {
+        return;
+      }
+
+      const nextItem = getNextSequentialItem(
+        loopTimeline,
+        item.id,
+        branchItemIds,
+      );
+      if (!nextItem) return;
+
+      const currentNodeId =
+        item.type === "trial" ? `trial-${item.id}` : `loop-${item.id}`;
+      const nextNodeId =
+        nextItem.type === "trial"
+          ? `trial-${nextItem.id}`
+          : `loop-${nextItem.id}`;
+
+      edges.push(createEdge(currentNodeId, nextNodeId));
+    });
+
+    const dedupedEdges = Array.from(
+      new Map(edges.map((edge) => [edge.id, edge])).values(),
+    );
+
+    return { nodes, edges: dedupedEdges };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     loopTimeline,

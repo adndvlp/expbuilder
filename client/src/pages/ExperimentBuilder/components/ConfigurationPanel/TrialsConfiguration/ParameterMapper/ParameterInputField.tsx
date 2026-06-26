@@ -66,6 +66,7 @@ type Props = {
   ) => void;
   onSave?: ((key: string, value: any) => void) | undefined;
   csvColumns: string[];
+  componentMode?: boolean;
 };
 
 function ParameterInputField({
@@ -75,6 +76,7 @@ function ParameterInputField({
   setColumnMapping,
   onSave,
   csvColumns,
+  componentMode = false,
 }: Props) {
   const selectedWebgazerPreset =
     isWebgazerPointsParam(type, paramKey) &&
@@ -165,7 +167,21 @@ function ParameterInputField({
           };
         });
       }}
-      className="w-full p-2 border rounded"
+      className={componentMode ? "" : "w-full p-2 border rounded"}
+      style={
+        componentMode
+          ? {
+              width: "100%",
+              height: 38,
+              border: "1px solid #475569",
+              borderRadius: 8,
+              background: "#111827",
+              color: "#f8fafc",
+              padding: "0 10px",
+              outline: "none",
+            }
+          : undefined
+      }
     >
       <option value="">Default value</option>
       <option value="type_value">Type value</option>

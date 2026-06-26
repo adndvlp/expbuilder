@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import GenerateNodesAndEdges from "../../pages/ExperimentBuilder/components/Canvas/SubCanvas/GenerateNodesAndEdges";
 import { useFlowLayout } from "../../pages/ExperimentBuilder/components/Canvas/hooks/useFlowLayout";
+import { LAYOUT_CONSTANTS } from "../../pages/ExperimentBuilder/components/Canvas/utils/layoutUtils";
 import { loop, timelineLoop, timelineTrial, trial } from "../helpers/trialFactories";
 
 describe("useFlowLayout", () => {
@@ -34,7 +35,6 @@ describe("useFlowLayout", () => {
     ]);
     expect(result.current.edges.map((edge) => [edge.source, edge.target])).toEqual([
       ["trial-1", "trial-2"],
-      ["trial-1", "loop-loop_1"],
       ["loop-loop_1", "trial-4"],
     ]);
   });
@@ -156,6 +156,110 @@ describe("useFlowLayout", () => {
     );
   });
 
+  it("continues from a shared terminal branch target to the next top-level item", () => {
+    const timeline = [
+      timelineTrial({ id: 1, name: "Randomizer", branches: [2, 3] }),
+      timelineTrial({ id: 2, name: "Control", branches: [4] }),
+      timelineTrial({ id: 3, name: "Intervention", branches: [4] }),
+      timelineTrial({ id: 4, name: "Post-test" }),
+      timelineTrial({ id: 5, name: "End" }),
+    ];
+
+    const { result } = renderHook(() =>
+      useFlowLayout({
+        timeline,
+        selectedTrial: null,
+        selectedLoop: null,
+        onSelectTrial: vi.fn(),
+        onSelectLoop: vi.fn(),
+        onAddBranch: vi.fn(),
+        onOpenLoop: vi.fn(),
+      }),
+    );
+
+    expect(result.current.nodes.map((node) => node.id)).toEqual([
+      "trial-1",
+      "trial-2",
+      "trial-4",
+      "trial-3",
+      "trial-5",
+    ]);
+    expect(result.current.edges.map((edge) => [edge.source, edge.target])).toEqual(
+      expect.arrayContaining([
+        ["trial-1", "trial-2"],
+        ["trial-1", "trial-3"],
+        ["trial-2", "trial-4"],
+        ["trial-3", "trial-4"],
+        ["trial-4", "trial-5"],
+      ]),
+    );
+    expect(result.current.edges.map((edge) => [edge.source, edge.target])).not.toContainEqual([
+      "trial-1",
+      "trial-5",
+    ]);
+
+    const nodesById = new Map(result.current.nodes.map((node) => [node.id, node]));
+    const control = nodesById.get("trial-2")!;
+    const intervention = nodesById.get("trial-3")!;
+    const postTest = nodesById.get("trial-4")!;
+
+    expect(postTest.position.x).toBeCloseTo(
+      (control.position.x + intervention.position.x) / 2,
+    );
+    expect(postTest.position.y).toBe(
+      Math.max(control.position.y, intervention.position.y) +
+        LAYOUT_CONSTANTS.branchVerticalOffset,
+    );
+  });
+
+  it("centers a shared loop merge target under branch parents", () => {
+    const timeline = [
+      timelineTrial({ id: 1, name: "Welcome" }),
+      timelineTrial({ id: 2, name: "Consent", branches: [3, 4] }),
+      timelineTrial({ id: 3, name: "Instructions", branches: ["loop_1"] }),
+      timelineTrial({ id: 4, name: "Final1", branches: ["loop_1"] }),
+      timelineLoop({ id: "loop_1", name: "Loop 1" }),
+      timelineTrial({ id: 5, name: "Final2" }),
+    ];
+
+    const { result } = renderHook(() =>
+      useFlowLayout({
+        timeline,
+        selectedTrial: null,
+        selectedLoop: null,
+        onSelectTrial: vi.fn(),
+        onSelectLoop: vi.fn(),
+        onAddBranch: vi.fn(),
+        onOpenLoop: vi.fn(),
+      }),
+    );
+
+    expect(result.current.edges.map((edge) => [edge.source, edge.target])).toEqual(
+      expect.arrayContaining([
+        ["trial-2", "trial-3"],
+        ["trial-2", "trial-4"],
+        ["trial-3", "loop-loop_1"],
+        ["trial-4", "loop-loop_1"],
+        ["loop-loop_1", "trial-5"],
+      ]),
+    );
+
+    const nodesById = new Map(result.current.nodes.map((node) => [node.id, node]));
+    const instructions = nodesById.get("trial-3")!;
+    const final1 = nodesById.get("trial-4")!;
+    const mergeLoop = nodesById.get("loop-loop_1")!;
+    const final2 = nodesById.get("trial-5")!;
+
+    expect(mergeLoop.position.x).toBeCloseTo(
+      (instructions.position.x + final1.position.x) / 2,
+    );
+    expect(mergeLoop.position.y).toBe(
+      Math.max(instructions.position.y, final1.position.y) +
+        LAYOUT_CONSTANTS.branchVerticalOffset,
+    );
+    expect(final2.position.x).toBeCloseTo(mergeLoop.position.x);
+  });
+
   it("keeps branch node identity stable when the branch moves to a different parent", () => {
     const beforeMove = [
       timelineTrial({ id: 1, name: "Old Parent", branches: [2] }),
@@ -265,8 +369,59 @@ describe("GenerateNodesAndEdges", () => {
     expect(result.current.edges.map((edge) => [edge.source, edge.target])).toEqual([
       ["trial-10", "trial-11"],
       ["trial-10", "loop-loop_2"],
-      ["trial-10", "trial-12"],
     ]);
+  });
+
+  it("continues from a shared terminal branch target inside SubCanvas", () => {
+    const loopTimeline = [
+      timelineTrial({ id: 10, name: "Randomizer", branches: [11, 12] }),
+      timelineTrial({ id: 11, name: "Loop Control", branches: [13] }),
+      timelineTrial({ id: 12, name: "Loop Intervention", branches: [13] }),
+      timelineTrial({ id: 13, name: "Loop Post-test" }),
+      timelineTrial({ id: 14, name: "Loop End" }),
+    ];
+
+    const { result } = renderHook(() =>
+      GenerateNodesAndEdges({
+        loopTimeline,
+        size: { width: 620, height: 320 },
+        selectedTrial: null,
+        selectedLoop: null,
+        onSelectTrial: vi.fn(),
+        onSelectLoop: vi.fn(),
+        onOpenNestedLoop: vi.fn(),
+        getTrial: vi.fn(),
+        getLoop: vi.fn(),
+        onAddBranch: vi.fn(),
+      }),
+    );
+
+    expect(result.current.edges.map((edge) => [edge.source, edge.target])).toEqual(
+      expect.arrayContaining([
+        ["trial-10", "trial-11"],
+        ["trial-10", "trial-12"],
+        ["trial-11", "trial-13"],
+        ["trial-12", "trial-13"],
+        ["trial-13", "trial-14"],
+      ]),
+    );
+    expect(result.current.edges.map((edge) => [edge.source, edge.target])).not.toContainEqual([
+      "trial-10",
+      "trial-14",
+    ]);
+
+    const nodesById = new Map(result.current.nodes.map((node) => [node.id, node]));
+    const control = nodesById.get("trial-11")!;
+    const intervention = nodesById.get("trial-12")!;
+    const postTest = nodesById.get("trial-13")!;
+
+    expect(postTest.position.x).toBeCloseTo(
+      (control.position.x + intervention.position.x) / 2,
+    );
+    expect(postTest.position.y).toBe(
+      Math.max(control.position.y, intervention.position.y) +
+        LAYOUT_CONSTANTS.branchVerticalOffset,
+    );
   });
 
   it("fetches full trial data before selecting SubCanvas trial nodes", async () => {

@@ -27,6 +27,7 @@ type Props = {
   onMetricsChange: (metrics: HtmlSceneMetrics) => void;
   selectedId?: string | null;
   activeDomId?: string | null;
+  editingTextId?: string | null;
 };
 
 function resolveAssetUrl(value: string, uploadedFiles: any[]) {
@@ -52,12 +53,14 @@ function RuntimeCopyNode({
   uploadedFiles,
   isSelected,
   isDomActive,
+  isTextEditing,
   onMeasure,
 }: {
   node: HtmlSceneNode;
   uploadedFiles: any[];
   isSelected: boolean;
   isDomActive: boolean;
+  isTextEditing: boolean;
   onMeasure: (id: string, metric: HtmlSceneNodeMetric) => void;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -118,6 +121,9 @@ function RuntimeCopyNode({
     };
   }, [node.id, onMeasure, serializedComponent]);
 
+  const hideRuntimeText =
+    node.type === "TextComponent" && (isSelected || isTextEditing);
+
   return (
     <div
       data-scene-node-id={node.id}
@@ -133,8 +139,9 @@ function RuntimeCopyNode({
         boxSizing: "border-box",
         overflow: "visible",
         zIndex: node.zIndex,
+        opacity: hideRuntimeText ? 0 : 1,
         outline: isDomActive
-          ? "2px solid rgba(147, 51, 234, 0.55)"
+          ? "2px solid rgba(14, 165, 233, 0.55)"
           : isSelected
             ? "2px solid rgba(29, 78, 216, 0.45)"
             : "none",
@@ -171,6 +178,7 @@ export default function ExperimentalHtmlSceneLayer({
   onMetricsChange,
   selectedId,
   activeDomId,
+  editingTextId,
 }: Props) {
   const metricsRef = useRef(metrics);
   metricsRef.current = metrics;
@@ -332,6 +340,7 @@ export default function ExperimentalHtmlSceneLayer({
           uploadedFiles={uploadedFiles}
           isSelected={selectedId === node.id}
           isDomActive={activeDomId === node.id}
+          isTextEditing={editingTextId === node.id}
           onMeasure={handleMeasure}
         />
       ))}

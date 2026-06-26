@@ -3,7 +3,6 @@ import { Trial, Loop } from "../../ConfigurationPanel/types";
 import {
   isTrial,
   findItemById,
-  collectAllBranchIds,
   getTrialIdsInLoops,
 } from "../utils/trialUtils";
 import {
@@ -14,7 +13,15 @@ import {
   createTrialNode,
   createLoopNode,
   createEdge,
+  alignMergePointNodes,
 } from "../utils/layoutUtils";
+import {
+  collectBranchIds,
+  getMergePointIds,
+  getNextSequentialItem,
+  isMergePoint,
+  itemIdKey,
+} from "../../../utils/branchGraphUtils";
 
 interface UseFlowLayoutProps {
   timeline: any[];
@@ -53,16 +60,26 @@ export function useFlowLayout({
     const { xTrial, yStep, branchHorizontalSpacing, branchVerticalOffset } =
       LAYOUT_CONSTANTS;
 
-    const trialIdsInLoops = getTrialIdsInLoops(timeline);
-    const branchIds = collectAllBranchIds(timeline);
+    const trialIdsInLoops = new Set(
+      getTrialIdsInLoops(timeline).map((id) => itemIdKey(id)),
+    );
+    const branchIds = collectBranchIds(timeline);
+    const mergePointIds = getMergePointIds(timeline);
+    const excludedSequentialIds = new Set<string>([
+      ...branchIds,
+      ...trialIdsInLoops,
+    ]);
 
     const allBlocks = timeline.filter((item) => {
       // Use the "type" property of the timeline to distinguish
       if (item.type === "trial") {
-        return !trialIdsInLoops.includes(item.id) && !branchIds.has(item.id);
+        return (
+          !trialIdsInLoops.has(itemIdKey(item.id)) &&
+          !branchIds.has(itemIdKey(item.id))
+        );
       } else {
         // For loops, only exclude if it is in branchIds
-        return !branchIds.has(item.id);
+        return !branchIds.has(itemIdKey(item.id));
       }
     });
 
@@ -378,8 +395,21 @@ export function useFlowLayout({
       }
     });
 
+    alignMergePointNodes({
+      nodes,
+      items: timeline,
+      mergePointIds,
+      branchVerticalOffset,
+      getNodeId: (item) =>
+        item.type === "trial" ? getTrialNodeId(item.id) : getLoopNodeId(item.id),
+    });
+
     // Create vertical edges between main sequence trials
     for (let i = 0; i < allBlocks.length - 1; i++) {
+      if (allBlocks[i].branches && allBlocks[i].branches.length > 0) {
+        continue;
+      }
+
       // Use .type if available, otherwise use isTrial()
       const currentId =
         allBlocks[i].type === "trial"
@@ -393,7 +423,36 @@ export function useFlowLayout({
       edges.push(createEdge(currentId, nextId));
     }
 
-    return { nodes, edges };
+    timeline.forEach((item) => {
+      if (
+        !isMergePoint(mergePointIds, item.id) ||
+        (item.branches && item.branches.length > 0)
+      ) {
+        return;
+      }
+
+      const nextItem = getNextSequentialItem(
+        timeline,
+        item.id,
+        excludedSequentialIds,
+      );
+      if (!nextItem) return;
+
+      const currentNodeId =
+        item.type === "trial" ? getTrialNodeId(item.id) : getLoopNodeId(item.id);
+      const nextNodeId =
+        nextItem.type === "trial"
+          ? getTrialNodeId(nextItem.id)
+          : getLoopNodeId(nextItem.id);
+
+      edges.push(createEdge(currentNodeId, nextNodeId));
+    });
+
+    const dedupedEdges = Array.from(
+      new Map(edges.map((edge) => [edge.id, edge])).values(),
+    );
+
+    return { nodes, edges: dedupedEdges };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     timeline,
