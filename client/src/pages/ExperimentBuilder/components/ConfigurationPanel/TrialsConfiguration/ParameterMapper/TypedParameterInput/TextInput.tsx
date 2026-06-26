@@ -1,4 +1,4 @@
-import { Dispatch, SetStateAction } from "react";
+import type { CSSProperties, Dispatch, SetStateAction } from "react";
 import { ColumnMappingEntry } from "..";
 
 type Props = {
@@ -11,6 +11,20 @@ type Props = {
   label: string;
   onSave: ((key: string, value: any) => void) | undefined;
   setLocalInputValues: Dispatch<SetStateAction<Record<string, string>>>;
+  componentMode?: boolean;
+};
+
+const INSPECTOR_INPUT_STYLE: CSSProperties = {
+  width: "100%",
+  height: 36,
+  marginTop: 8,
+  border: "1px solid #3d5066",
+  borderRadius: 8,
+  background: "#0e1724",
+  color: "#f8fafc",
+  padding: "0 10px",
+  outline: "none",
+  boxSizing: "border-box",
 };
 
 function TextInput({
@@ -21,11 +35,13 @@ function TextInput({
   onSave,
   label,
   setLocalInputValues,
+  componentMode = false,
 }: Props) {
   return (
     <input
       type="text"
-      className="w-full p-2 border rounded mt-2"
+      className={componentMode ? "" : "w-full p-2 border rounded mt-2"}
+      style={componentMode ? INSPECTOR_INPUT_STYLE : undefined}
       placeholder={`Type a value for ${label.toLowerCase()}`}
       value={
         localInputValues[paramKey] ??

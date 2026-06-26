@@ -172,10 +172,10 @@ function ParameterInputField({
         componentMode
           ? {
               width: "100%",
-              height: 38,
-              border: "1px solid #475569",
+              height: 36,
+              border: "1px solid #3d5066",
               borderRadius: 8,
-              background: "#111827",
+              background: "#0e1724",
               color: "#f8fafc",
               padding: "0 10px",
               outline: "none",

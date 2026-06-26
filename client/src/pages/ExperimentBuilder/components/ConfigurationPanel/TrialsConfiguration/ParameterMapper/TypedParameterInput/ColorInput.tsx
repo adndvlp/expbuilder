@@ -31,10 +31,10 @@ function supportsTransparent(paramKey: string) {
 
 const fieldStyle: CSSProperties = {
   width: "100%",
-  height: 38,
-  border: "1px solid #475569",
+  height: 36,
+  border: "1px solid #3d5066",
   borderRadius: 8,
-  background: "#111827",
+  background: "#0e1724",
   color: "#f8fafc",
   padding: "0 10px",
   outline: "none",
@@ -43,10 +43,10 @@ const fieldStyle: CSSProperties = {
 
 function swatchStyle(color: string, active: boolean): CSSProperties {
   return {
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
     border: active ? "2px solid #38bdf8" : "1px solid #64748b",
-    borderRadius: 7,
+    borderRadius: 6,
     background: color,
     boxShadow: active ? "0 0 0 2px rgba(56, 189, 248, 0.22)" : "none",
     cursor: "pointer",
@@ -88,8 +88,8 @@ function ColorInput({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "42px minmax(0, 1fr)",
-          gap: 8,
+          gridTemplateColumns: "36px minmax(0, 1fr)",
+          gap: 7,
           alignItems: "center",
         }}
       >
@@ -106,12 +106,12 @@ function ColorInput({
           }}
           onBlur={(e) => commit(e.target.value)}
           style={{
-            width: 38,
-            height: 38,
+            width: 36,
+            height: 36,
             padding: 2,
             border: "1px solid #64748b",
             borderRadius: 8,
-            background: "#111827",
+            background: "#0e1724",
             cursor: "pointer",
             flexShrink: 0,
           }}
@@ -137,7 +137,7 @@ function ColorInput({
           display: "flex",
           flexWrap: "wrap",
           gap: 8,
-          marginTop: 10,
+          marginTop: 9,
         }}
       >
         {COLOR_SWATCHES.map((color) => (
@@ -172,7 +172,7 @@ function ColorInput({
                 position: "absolute",
                 left: 5,
                 right: 5,
-                top: 13,
+                top: 11,
                 height: 2,
                 borderRadius: 999,
                 background: "#ef4444",

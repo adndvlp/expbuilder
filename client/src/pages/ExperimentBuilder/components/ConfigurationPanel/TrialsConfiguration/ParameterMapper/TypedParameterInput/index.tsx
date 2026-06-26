@@ -35,13 +35,20 @@ type Props = {
 
 const INSPECTOR_TEXT_INPUT_STYLE: CSSProperties = {
   width: "100%",
-  border: "1px solid #475569",
+  border: "1px solid #3d5066",
   borderRadius: 8,
-  background: "#111827",
+  background: "#0e1724",
   color: "#f8fafc",
   padding: "10px 12px",
   outline: "none",
   boxSizing: "border-box",
+};
+
+const INSPECTOR_SINGLE_LINE_INPUT_STYLE: CSSProperties = {
+  ...INSPECTOR_TEXT_INPUT_STYLE,
+  height: 36,
+  marginTop: 8,
+  padding: "0 10px",
 };
 
 function index({
@@ -159,7 +166,8 @@ function index({
           type="number"
           min={0}
           step="any"
-          className="w-full p-2 border rounded mt-2"
+          className={componentMode ? "" : "w-full p-2 border rounded mt-2"}
+          style={componentMode ? INSPECTOR_SINGLE_LINE_INPUT_STYLE : undefined}
           value={
             localInputValues[paramKey] ??
             (typeof entry.value === "string" || typeof entry.value === "number"
@@ -310,7 +318,7 @@ function index({
             componentMode
               ? {
                   ...INSPECTOR_TEXT_INPUT_STYLE,
-                  minHeight: 98,
+                  minHeight: 92,
                   fontFamily: "inherit",
                   fontSize: 13,
                   lineHeight: 1.45,
@@ -351,6 +359,7 @@ function index({
           entry={entry}
           label={label}
           setLocalInputValues={setLocalInputValues}
+          componentMode={componentMode}
         />
       )}
     </>

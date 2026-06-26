@@ -120,10 +120,10 @@ function KonvaParameterMapper({
     <div
       style={{
         width: `${rightPanelWidth}px`,
-        borderLeft: "2px solid var(--neutral-mid)",
+        borderLeft: "1px solid #3a4652",
         display: "flex",
         flexDirection: "column",
-        background: "var(--neutral-light)",
+        background: "#20262e",
         position: "relative",
         overflowY: "auto",
       }}
@@ -131,11 +131,11 @@ function KonvaParameterMapper({
       <h3
         style={{
           margin: "0",
-          padding: "12px 16px",
+          padding: "12px 18px",
           fontSize: "16px",
           fontWeight: 700,
           background: "var(--light-blue)",
-          borderBottom: "2px solid var(--neutral-mid)",
+          borderBottom: "1px solid #3a4652",
           color: "var(--text-light)",
         }}
       >
@@ -145,9 +145,9 @@ function KonvaParameterMapper({
       <div
         style={{
           flex: 1,
-          padding: "16px",
+          padding: 0,
           overflowY: "auto",
-          color: "var(--text-dark)",
+          color: "#e5edf3",
         }}
       >
         {/* Show component parameters if a component is selected */}
@@ -155,31 +155,40 @@ function KonvaParameterMapper({
           <div>
             <div
               style={{
-                marginBottom: "16px",
-                paddingBottom: "12px",
-                borderBottom: "1px solid #e5e7eb",
+                margin: "14px 16px 8px",
+                padding: "0 0 14px",
+                borderBottom: "1px solid rgba(148, 163, 184, 0.22)",
               }}
             >
-              <h4
+              <div
                 style={{
                   margin: 0,
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  color: "var(--text-dark)",
+                  color: "#95a8b8",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  lineHeight: "16px",
                 }}
               >
                 Selected Component
-              </h4>
-              <p
+              </div>
+              <div
                 style={{
-                  margin: "4px 0 0",
-                  fontSize: "16px",
-                  fontWeight: 700,
-                  color: "var(--text-dark)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  minHeight: 30,
+                  marginTop: 6,
+                  padding: "4px 10px",
+                  border: "1px solid rgba(56, 189, 248, 0.38)",
+                  borderRadius: 8,
+                  background: "rgba(14, 116, 144, 0.16)",
+                  color: "#f8fafc",
+                  fontSize: 18,
+                  fontWeight: 800,
+                  lineHeight: "22px",
                 }}
               >
                 {selectedComponent.type.replace(/Component$/, "")}
-              </p>
+              </div>
             </div>
 
             {metadataLoading ? (
@@ -187,7 +196,7 @@ function KonvaParameterMapper({
                 style={{
                   textAlign: "center",
                   padding: "20px",
-                  color: "var(--text-dark)",
+                  color: "#cbd5e1",
                 }}
               >
                 Loading component parameters...
@@ -235,14 +244,14 @@ function KonvaParameterMapper({
             style={{
               textAlign: "center",
               padding: "40px 20px",
-              color: "var(--text-dark)",
+              color: "#cbd5e1",
             }}
           >
             <div style={{ fontSize: "48px", marginBottom: "12px" }}></div>
             <p
               style={{
                 margin: 0,
-                color: "var(--text-dark)",
+                color: "#cbd5e1",
               }}
             >
               Select a component from the canvas to edit its parameters

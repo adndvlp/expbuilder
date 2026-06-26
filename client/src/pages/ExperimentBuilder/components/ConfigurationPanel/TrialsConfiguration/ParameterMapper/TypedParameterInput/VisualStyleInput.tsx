@@ -181,8 +181,8 @@ function commitValue({
   });
 }
 
-const CONTROL_BORDER = "#475569";
-const CONTROL_BG = "#111827";
+const CONTROL_BORDER = "#3d5066";
+const CONTROL_BG = "#0e1724";
 const CONTROL_TEXT = "#f8fafc";
 const CONTROL_MUTED = "#cbd5e1";
 const CONTROL_ACTIVE_BG = "#164e63";
@@ -190,7 +190,7 @@ const CONTROL_ACTIVE_BORDER = "#38bdf8";
 
 const fieldStyle: CSSProperties = {
   width: "100%",
-  height: 38,
+  height: 36,
   border: `1px solid ${CONTROL_BORDER}`,
   borderRadius: 8,
   background: CONTROL_BG,
@@ -202,8 +202,8 @@ const fieldStyle: CSSProperties = {
 
 function buttonStyle(active: boolean): CSSProperties {
   return {
-    width: 38,
-    height: 38,
+    width: 36,
+    height: 36,
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
@@ -211,8 +211,8 @@ function buttonStyle(active: boolean): CSSProperties {
       ? `1px solid ${CONTROL_ACTIVE_BORDER}`
       : `1px solid ${CONTROL_BORDER}`,
     borderRadius: 8,
-    background: active ? CONTROL_ACTIVE_BG : "#f8fafc",
-    color: active ? "#e0f2fe" : "#0f172a",
+    background: active ? CONTROL_ACTIVE_BG : "#172233",
+    color: active ? "#e0f2fe" : CONTROL_MUTED,
     cursor: "pointer",
     padding: 0,
     flexShrink: 0,
@@ -229,7 +229,7 @@ function segmentedButtonStyle(
 ): CSSProperties {
   return {
     ...buttonStyle(active),
-    width: 40,
+    width: 38,
     borderRadius:
       total === 1
         ? 8
@@ -320,7 +320,7 @@ function VisualStyleInput({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 8,
+          gap: 6,
           width: "100%",
           minWidth: 0,
         }}
