@@ -453,9 +453,33 @@ export async function generateSingleTrialCode(
   uploadedFiles: UploadedFile[],
   experimentID: string,
   getTrial: GetTrialFn,
+  getLoopTimeline?: GetLoopTimelineFn,
+  getLoop?: GetLoopFn,
 ): Promise<string> {
+  const fullTrial = await getTrial(trial.id);
+
+  if (!fullTrial) {
+    console.error(`Failed to fetch trial ${trial.id}`);
+    return "";
+  }
+
+  if (fullTrial.parentLoopId && getLoopTimeline && getLoop) {
+    const parentLoop = await getLoop(fullTrial.parentLoopId);
+
+    if (parentLoop) {
+      return generateLoopCode(
+        parentLoop,
+        experimentID,
+        uploadedFiles,
+        getTrial,
+        getLoopTimeline,
+        getLoop,
+      );
+    }
+  }
+
   const result = await generateTrialCode(
-    trial,
+    fullTrial,
     uploadedFiles,
     experimentID,
     getTrial,

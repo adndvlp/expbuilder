@@ -95,6 +95,8 @@ function ExperimentPreview({
             uploadedFiles,
             experimentID || "",
             getTrial,
+            getLoopTimeline,
+            getLoop,
           );
         } else if (selectedLoop) {
           generatedCode = await generateSingleLoopCode(

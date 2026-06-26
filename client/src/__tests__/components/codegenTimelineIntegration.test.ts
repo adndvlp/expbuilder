@@ -146,6 +146,59 @@ describe("generateTrialLoopCodes integration", () => {
     expect(getLoopTimeline).toHaveBeenCalledWith("loop_1", false);
   });
 
+  it("generates the parent loop when previewing a trial that belongs to a loop", async () => {
+    const parentLoop = loop({
+      id: "loop_flanker",
+      name: "Flanker Loop",
+      trials: [10],
+      csvJson: [
+        { Flanker: ">>>>>", CorrectResponse: "ArrowRight" },
+        { Flanker: "<<<<<", CorrectResponse: "ArrowLeft" },
+      ],
+    });
+    const loopTrial = trial({
+      id: 10,
+      name: "Task",
+      plugin: "plugin-dynamic",
+      parentLoopId: "loop_flanker",
+      csvFromLoop: true,
+      columnMapping: {
+        components: {
+          source: "typed",
+          value: [
+            {
+              type: "TextComponent",
+              text: { source: "csv", value: "Flanker" },
+            },
+          ],
+        },
+        response_components: { source: "typed", value: [] },
+      },
+    });
+    const getTrial = vi.fn(async () => loopTrial);
+    const getLoop = vi.fn(async () => parentLoop);
+    const getLoopTimeline = vi.fn(async () => [
+      timelineTrial({ id: 10, name: "Task" }),
+    ]);
+
+    const code = await generateSingleTrialCode(
+      { id: 10 } as Trial,
+      [],
+      "experiment-1",
+      getTrial,
+      getLoopTimeline,
+      getLoop,
+    );
+
+    expect(getLoop).toHaveBeenCalledWith("loop_flanker");
+    expect(getLoopTimeline).toHaveBeenCalledWith("loop_flanker", false);
+    expect(code).toContain("const test_stimuli_loop_flanker = [");
+    expect(code).toContain('"text": ">>>>>"');
+    expect(code).toContain('"text": "<<<<<"');
+    expect(code).toContain("timeline.push(loop_flanker_procedure)");
+    expect(code).not.toContain('text: {"source":"csv","value":"Flanker"}');
+  });
+
   it("returns empty code when the full trial is missing or has no plugin", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
 
