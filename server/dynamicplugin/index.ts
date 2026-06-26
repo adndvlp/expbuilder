@@ -1399,6 +1399,15 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           trialData[`${prefix}_response`] = response;
         }
 
+        // KeyboardResponseComponent - correctness score
+        if (
+          config.type === "KeyboardResponseComponent" &&
+          instance.getCorrect &&
+          typeof instance.getCorrect === "function"
+        ) {
+          trialData[`${prefix}_correct`] = instance.getCorrect();
+        }
+
         // SliderResponseComponent - slider_start
         if (
           config.type === "SliderResponseComponent" &&

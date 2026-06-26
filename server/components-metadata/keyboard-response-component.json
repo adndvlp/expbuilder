@@ -1,6 +1,6 @@
 {
   "name": "KeyboardResponseComponent",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "parameters": {
     "name": {
       "type": "string"
@@ -8,11 +8,20 @@
     "choices": {
       "type": "string_array",
       "default": "ALL_KEYS"
+    },
+    "correct_response": {
+      "type": "string_array",
+      "default": null,
+      "pretty_name": "Correct Response",
+      "description": "Key or keys considered correct. Used to save whether the keyboard response was correct."
     }
   },
   "data": {
     "response": {
       "type": "string"
+    },
+    "correct": {
+      "type": "boolean"
     }
   }
 }

@@ -1,7 +1,7 @@
 import { ParameterType } from "jspsych";
 import { getResponseRT, setResponseStartTime } from "../utils/PrecisionTiming";
 
-var version = "2.1.0";
+var version = "2.1.1";
 
 const info = {
   name: "KeyboardResponseComponent",
@@ -23,6 +23,17 @@ const info = {
       type: ParameterType.KEYS,
       default: "ALL_KEYS",
     },
+    /**
+     * Key or keys that should be scored as correct. Leave null to skip
+     * correctness scoring. This can be assigned from CSV per trial.
+     */
+    correct_response: {
+      type: ParameterType.KEYS,
+      pretty_name: "Correct Response",
+      default: null,
+      description:
+        "Key or keys considered correct. Used to save whether the keyboard response was correct.",
+    },
   },
   data: {
     /** Indicates which key the participant pressed. */
@@ -32,6 +43,10 @@ const info = {
     /** The response time in milliseconds for the participant to make a response. The time is measured from when the component is rendered. */
     rt: {
       type: ParameterType.FLOAT,
+    },
+    /** Whether the participant's response matched `correct_response`. */
+    correct: {
+      type: ParameterType.BOOL,
     },
   },
   // prettier-ignore
@@ -71,6 +86,72 @@ class KeyboardResponseComponent {
   }
 
   /**
+   * Resolve a parameter value that may be stored as a raw value OR as the
+   * ParameterMapper envelope `{source: "typed"|"csv", value: ...}`.
+   */
+  private resolveParam(raw: any, fallback: any): any {
+    if (raw === undefined || raw === null) return fallback;
+    if (
+      typeof raw === "object" &&
+      "value" in raw &&
+      (raw.source === "typed" || raw.source === "csv")
+    ) {
+      return raw.value !== undefined && raw.value !== null
+        ? raw.value
+        : fallback;
+    }
+    return raw;
+  }
+
+  private normalizeCorrectResponses(
+    correctResponse: any,
+    caseSensitive: boolean,
+  ): string[] | null {
+    const resolvedCorrectResponse = this.resolveParam(correctResponse, null);
+    if (
+      resolvedCorrectResponse === null ||
+      resolvedCorrectResponse === undefined ||
+      resolvedCorrectResponse === ""
+    ) {
+      return null;
+    }
+
+    const flatCorrectResponses = Array.isArray(resolvedCorrectResponse)
+      ? resolvedCorrectResponse.flat()
+      : [resolvedCorrectResponse];
+    const normalizedCorrectResponses = flatCorrectResponses
+      .filter(
+        (response) =>
+          response !== null && response !== undefined && response !== "",
+      )
+      .map((response) => String(response))
+      .map((response) =>
+        caseSensitive ? response : response.toLowerCase(),
+      );
+
+    return normalizedCorrectResponses.length > 0
+      ? normalizedCorrectResponses
+      : null;
+  }
+
+  private scoreResponse(response: string | null | undefined): boolean | null {
+    const settings = this.jsPsych.getInitSettings?.() || {};
+    const caseSensitive = settings.case_sensitive_responses === true;
+    const correctResponses = this.normalizeCorrectResponses(
+      this._trial?.correct_response,
+      caseSensitive,
+    );
+
+    if (correctResponses === null) return null;
+    if (response === null || response === undefined) return false;
+
+    const comparableResponse = caseSensitive
+      ? response
+      : response.toLowerCase();
+    return correctResponses.includes(comparableResponse);
+  }
+
+  /**
    * Activate keyboard listening for responses
    */
   render(
@@ -81,10 +162,11 @@ class KeyboardResponseComponent {
     this._trial = trial;
     this._onResponse = onResponse || null;
     this._timing = trial.__timing || null;
+    const choices = this.resolveParam(trial.choices, "ALL_KEYS");
     setResponseStartTime(this, this._timing);
 
     // Only setup keyboard listener if choices are allowed
-    if (trial.choices !== "NO_KEYS") {
+    if (choices !== "NO_KEYS") {
       if (trial.__responseTiming?.enabled) {
         const settings = this.jsPsych.getInitSettings?.() || {};
         const caseSensitive = settings.case_sensitive_responses === true;
@@ -98,7 +180,7 @@ class KeyboardResponseComponent {
           trial.__responseTiming.registerKeyboardTarget({
             componentId: trial.__componentId ?? null,
             componentName: trial.name ?? null,
-            choices: trial.choices,
+            choices,
             caseSensitive,
             minimumValidRtMs: Number.isFinite(minimumValidRt)
               ? minimumValidRt
@@ -132,7 +214,10 @@ class KeyboardResponseComponent {
     const settings = this.jsPsych.getInitSettings?.() || {};
     const caseSensitive = settings.case_sensitive_responses === true;
     const minimumValidRt = Number(settings.minimum_valid_rt ?? 0);
-    const validResponses = this.normalizeChoices(this._trial.choices, caseSensitive);
+    const validResponses = this.normalizeChoices(
+      this.resolveParam(this._trial.choices, "ALL_KEYS"),
+      caseSensitive,
+    );
 
     this.keyboardListener = (event: KeyboardEvent) => {
       if (this.response !== null) return;
@@ -186,9 +271,12 @@ class KeyboardResponseComponent {
     if (this.response !== null) {
       return; // Already responded
     }
+    if (!info || typeof info.key !== "string") {
+      return;
+    }
 
     this.response = info.key;
-    this.rt = info.rt;
+    this.rt = typeof info.rt === "number" ? info.rt : null;
   }
 
   /**
@@ -205,9 +293,17 @@ class KeyboardResponseComponent {
     return this.rt;
   }
 
+  /**
+   * Get whether the keyboard response matched correct_response.
+   * Returns null when no correct_response is configured.
+   */
+  getCorrect(): boolean | null {
+    return this.scoreResponse(this.response);
+  }
+
   /** True once a key has been pressed (always true when choices === "NO_KEYS") */
   isValid(trial: any): boolean {
-    if (trial.choices === "NO_KEYS") return true;
+    if (this.resolveParam(trial.choices, "ALL_KEYS") === "NO_KEYS") return true;
     return this.response !== null;
   }
 
@@ -215,7 +311,10 @@ class KeyboardResponseComponent {
   reset(): void {
     this.response = null;
     this.rt = null;
-    if (this._trial && this._trial.choices !== "NO_KEYS") {
+    if (
+      this._trial &&
+      this.resolveParam(this._trial.choices, "ALL_KEYS") !== "NO_KEYS"
+    ) {
       if (this.unregisterResponseTiming) return;
       this.destroyKeyboardListener();
       this.activateKeyboardListener();
