@@ -1,12 +1,13 @@
 import { useState } from "react";
 import useTrials from "../../../../hooks/useTrials";
 import { loadPluginParameters } from "../../utils/pluginParameterLoader";
-import { BranchCondition, Loop, RepeatCondition, Trial } from "../../types";
+import { Loop, Trial } from "../../types";
 import { Condition, Props, Parameter } from "./types";
 import Modal from "../ParameterMapper/Modal";
 import useLoadData from "./useLoadData";
 import BranchedTrialLayout from "./BranchedTrialLayout";
 import { FaTimes } from "react-icons/fa";
+import { buildBranchingSaveUpdates } from "./branchingSaveUtils";
 import {
   idsEqual,
   includesId,
@@ -219,85 +220,25 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
     return isForwardSameScopeTarget(scopeTimeline, selectedTrial.id, trialId);
   };
 
-  const appendBranchTarget = (
-    branchIds: (string | number)[],
-    branchId: string | number,
-  ) => {
-    if (!includesId(branchIds, branchId)) {
-      branchIds.push(branchId);
-    }
-  };
-
-  const areSameBranchTargets = (
-    a: (string | number)[] = [],
-    b: (string | number)[] = [],
-  ) =>
-    a.length === b.length &&
-    a.every((branchId, index) => idsEqual(branchId, b[index]));
-
   /**
    * Save conditions to the trial
    *
    * This function separates conditions into two categories:
-   * 1. branchConditions: Conditions where nextTrialId is in branches[] (same scope, can override params)
-   * 2. repeatConditions: Conditions where nextTrialId is NOT in branches[] (jump to any trial, no param override)
+   * 1. branchConditions: Conditions where nextTrialId points to a branch target in scope.
+   * 2. repeatConditions: Conditions where nextTrialId is outside the branch scope.
    */
   const handleSaveConditions = (conditionsToSave?: Condition[]) => {
     if (!selectedTrial) return;
 
     const currentConditions = conditionsToSave || conditions;
-
-    // Separate conditions into branch conditions and repeat conditions
-    const branchConditions: BranchCondition[] = [];
-    const repeatConditionsToSave: RepeatCondition[] = [];
-    const branchTargets: (string | number)[] = [];
-
-    currentConditions.forEach((condition) => {
-      if (condition.nextTrialId && isBranchTarget(condition.nextTrialId)) {
-        appendBranchTarget(branchTargets, condition.nextTrialId);
-        // It's a branch condition (within scope)
-        branchConditions.push({
-          id: condition.id,
-          rules: condition.rules,
-          nextTrialId: condition.nextTrialId,
-          customParameters: condition.customParameters,
-        });
-      } else if (condition.nextTrialId) {
-        // It's a jump/repeat condition (outside scope)
-        repeatConditionsToSave.push({
-          id: condition.id,
-          rules: condition.rules,
-          jumpToTrialId: condition.nextTrialId,
-        });
-      }
+    const updates = buildBranchingSaveUpdates({
+      conditions: currentConditions,
+      existingBranches: selectedTrial.branches || [],
+      isBranchTarget,
     });
 
-    // Note: Don't add existing repeatConditions again - they're already included in currentConditions
-    // The conditions array from state already contains ALL conditions (both branch and jump)
-
     // Update backend and selectedTrial
-    const hadSavedConditions =
-      Boolean(selectedTrial.branchConditions?.length) ||
-      Boolean(selectedTrial.repeatConditions?.length);
-    const shouldSyncBranches = currentConditions.length > 0 || hadSavedConditions;
-
     const saveBranchingConfiguration = async () => {
-      const updates: {
-        branches?: (string | number)[];
-        branchConditions: BranchCondition[];
-        repeatConditions: RepeatCondition[];
-      } = {
-        branchConditions,
-        repeatConditions: repeatConditionsToSave,
-      };
-
-      if (
-        shouldSyncBranches &&
-        !areSameBranchTargets(selectedTrial.branches || [], branchTargets)
-      ) {
-        updates.branches = branchTargets;
-      }
-
       if ("trials" in selectedTrial) {
         await updateLoop(selectedTrial.id, updates as Partial<Loop>);
       } else {
