@@ -116,22 +116,30 @@ const INSPECTOR_SECTION_BODY_STYLE: React.CSSProperties = {
 
 const INSPECTOR_SECTION_ORDER = [
   "configuration",
-  "layout",
   "typography",
+  "layout",
   "appearance",
   "box",
-  "content",
 ] as const;
 
 type InspectorSection = (typeof INSPECTOR_SECTION_ORDER)[number];
 
 const INSPECTOR_SECTION_LABELS: Record<InspectorSection, string> = {
-  content: "Content",
+  configuration: "Configuration",
   typography: "Typography",
+  layout: "Layout",
   appearance: "Appearance",
   box: "Box",
-  layout: "Layout",
-  configuration: "Configuration",
+};
+
+const PRIMARY_CONFIGURATION_ORDER: Record<string, number> = {
+  text: 0,
+  choices: 0,
+  html: 0,
+  stimulus: 0,
+  button_html: 10,
+  input_type: 20,
+  name: 30,
 };
 
 function getInspectorSection(paramKey: string): InspectorSection {
@@ -141,26 +149,23 @@ function getInspectorSection(paramKey: string): InspectorSection {
     paramKey === "y" ||
     paramKey === "width" ||
     paramKey === "height" ||
-    paramKey === "padding" ||
     paramKey === "rotation" ||
     paramKey === "z_index" ||
     paramKey === "zIndex" ||
+    paramKey === "image_button_width" ||
+    paramKey === "image_button_height" ||
+    paramKey === "button_layout" ||
+    paramKey === "grid_rows" ||
+    paramKey === "grid_columns" ||
     paramKey.includes("position")
   ) {
     return "layout";
   }
 
   if (
-    paramKey === "text" ||
-    paramKey === "choices" ||
-    paramKey === "input_type" ||
-    paramKey === "button_html" ||
-    paramKey === "html"
-  ) {
-    return "content";
-  }
-
-  if (
+    paramKey === "padding" ||
+    paramKey === "button_padding" ||
+    paramKey === "input_padding" ||
     paramKey.includes("border_width") ||
     paramKey.includes("border_radius") ||
     paramKey === "stroke_width" ||
@@ -171,6 +176,7 @@ function getInspectorSection(paramKey: string): InspectorSection {
 
   if (
     paramKey.includes("font") ||
+    paramKey === "button_text_color" ||
     paramKey === "text_align" ||
     paramKey === "line_height"
   ) {
@@ -180,6 +186,21 @@ function getInspectorSection(paramKey: string): InspectorSection {
   if (paramKey.includes("color")) return "appearance";
 
   return "configuration";
+}
+
+function getInspectorParameterPriority(paramKey: string) {
+  const primaryPriority = PRIMARY_CONFIGURATION_ORDER[paramKey];
+  if (primaryPriority !== undefined) return primaryPriority;
+
+  const visualPriority = getVisualStylePriority(paramKey);
+  if (visualPriority !== 1000) return 100 + visualPriority;
+
+  return 1000;
+}
+
+function getInspectorParameterLabel(paramKey: string, label: string) {
+  if (paramKey === "text") return "Content";
+  return label;
 }
 
 function shouldFillInspectorRow(paramKey: string) {
@@ -233,8 +254,8 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
 
   const orderedVisibleParameters = componentMode
     ? [...visibleParameters].sort((a, b) => {
-        const aPriority = getVisualStylePriority(a.key);
-        const bPriority = getVisualStylePriority(b.key);
+        const aPriority = getInspectorParameterPriority(a.key);
+        const bPriority = getInspectorParameterPriority(b.key);
         if (aPriority !== bPriority) return aPriority - bPriority;
         return visibleParameters.indexOf(a) - visibleParameters.indexOf(b);
       })
@@ -288,6 +309,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
     key,
     type,
   }: Parameter): React.ReactNode => {
+    const displayLabel = getInspectorParameterLabel(key, label);
     const rawEntry = columnMapping[key] || { source: "none" };
     const isVisualStyle = componentMode && isVisualStyleParameter(key, type);
     const entry =
@@ -380,7 +402,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
             }
             style={componentMode ? INSPECTOR_LABEL_STYLE : {}}
           >
-            {label}
+            {displayLabel}
           </label>
           <select
             className={componentMode ? "" : "w-full p-2 border rounded mt-1"}
@@ -418,7 +440,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
           className={componentMode ? "" : "mb-2 mt-3 block text-sm font-medium"}
           style={componentMode ? INSPECTOR_LABEL_STYLE : {}}
         >
-          {label}
+          {displayLabel}
         </label>
 
         {!isVisualStyle && (
@@ -447,7 +469,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
             onSave={onSave}
             localInputValues={localInputValues}
             setLocalInputValues={setLocalInputValues}
-            label={label}
+            label={displayLabel}
             componentMode={componentMode}
           />
         )}

@@ -547,17 +547,38 @@ function isImageUrl(value: string): boolean {
   }
 }
 
+function splitPreviewChoice(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+  return trimmed.includes(",")
+    ? trimmed
+        .split(",")
+        .map((choice) => choice.trim())
+        .filter(Boolean)
+    : [trimmed];
+}
+
+function normalizePreviewChoices(value: unknown) {
+  const choices = Array.isArray(value)
+    ? value.flatMap((choice) => splitPreviewChoice(String(choice)))
+    : splitPreviewChoice(String(value ?? ""));
+
+  return choices.length > 0 ? choices : ["Button"];
+}
+
 export function renderPreviewButtonComponent(
   container: HTMLElement,
   config: any,
   context: RenderContext = {},
 ) {
   const choicesRaw = resolvePreviewParam(config.choices, ["Button"]);
-  const choices = Array.isArray(choicesRaw)
-    ? choicesRaw.map((choice) => String(choice))
-    : [String(choicesRaw ?? "Button")];
-  const columns = Math.max(1, Number(resolvePreviewParam(config.grid_columns, 1)) || 1);
+  const choices = normalizePreviewChoices(choicesRaw);
   const rows = Math.max(1, Number(resolvePreviewParam(config.grid_rows, 1)) || 1);
+  const configuredColumns = Number(resolvePreviewParam(config.grid_columns, 0));
+  const columns =
+    Number.isFinite(configuredColumns) && configuredColumns > 0
+      ? Math.max(1, configuredColumns)
+      : Math.max(1, Math.ceil(choices.length / rows));
   const padding = parsePadding(config.button_padding, "6px 14px");
   const fontSize = Number(resolvePreviewParam(config.button_font_size, 14));
   const imageButtonWidth = Number(resolvePreviewParam(config.image_button_width, 150));
@@ -1319,9 +1340,7 @@ function resolveComponentConfig(
   }
 
   if (component.type === "ButtonResponseComponent") {
-    const choices = Array.isArray(config.choices)
-      ? config.choices
-      : [config.choices ?? "Button"];
+    const choices = normalizePreviewChoices(config.choices ?? "Button");
     config.choices = choices.map((choice: unknown) => {
       const value = String(choice);
       return isImageUrl(value) ? resolveAsset(value) : value;

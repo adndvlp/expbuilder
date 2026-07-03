@@ -240,6 +240,7 @@ function index({
             paramKey={paramKey}
             entry={entry}
             type={type}
+            componentMode={componentMode}
           />
         )
       ) : type.endsWith("_array") &&
@@ -305,6 +306,7 @@ function index({
           paramKey={paramKey}
           setLocalInputValues={setLocalInputValues}
           setColumnMapping={setColumnMapping}
+          componentMode={componentMode}
         />
       ) : type === "string" && paramKey === "text" ? (
         <textarea

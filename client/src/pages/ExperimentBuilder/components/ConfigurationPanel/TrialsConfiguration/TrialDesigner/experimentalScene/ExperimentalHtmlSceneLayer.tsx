@@ -48,6 +48,28 @@ function resolveAssetUrl(value: string, uploadedFiles: any[]) {
   return url;
 }
 
+function getRuntimeRenderSignature(node: HtmlSceneNode) {
+  const { component } = node;
+  const {
+    coordinates: _coordinates,
+    rotation: _rotation,
+    zIndex: _zIndex,
+    ...contentConfig
+  } = component.config || {};
+
+  return JSON.stringify({
+    id: component.id,
+    type: component.type,
+    config: contentConfig,
+    width: component.width,
+    height: component.height,
+    inputWidth: component.inputWidth,
+    inputFontSize: component.inputFontSize,
+    textFontSize: component.textFontSize,
+    buttonFontSize: component.buttonFontSize,
+  });
+}
+
 function RuntimeCopyNode({
   node,
   uploadedFiles,
@@ -64,9 +86,9 @@ function RuntimeCopyNode({
   onMeasure: (id: string, metric: HtmlSceneNodeMetric) => void;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
-  const serializedComponent = useMemo(
-    () => JSON.stringify(node.component),
-    [node.component],
+  const renderSignature = useMemo(
+    () => getRuntimeRenderSignature(node),
+    [node],
   );
 
   useLayoutEffect(() => {
@@ -85,7 +107,7 @@ function RuntimeCopyNode({
   }, [
     node.id,
     node.canvasStyles,
-    serializedComponent,
+    renderSignature,
     uploadedFiles,
   ]);
 
@@ -119,7 +141,7 @@ function RuntimeCopyNode({
       cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, [node.id, onMeasure, serializedComponent]);
+  }, [node.id, onMeasure, renderSignature]);
 
   const hideRuntimeText =
     node.type === "TextComponent" && (isSelected || isTextEditing);

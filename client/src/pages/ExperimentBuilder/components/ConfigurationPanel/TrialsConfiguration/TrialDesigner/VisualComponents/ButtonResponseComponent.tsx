@@ -88,7 +88,34 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
     return value;
   };
 
-  const choices = getConfigValue("choices", ["Button"]);
+  const splitChoiceString = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    return trimmed.includes(",")
+      ? trimmed
+          .split(",")
+          .map((choice) => choice.trim())
+          .filter(Boolean)
+      : [trimmed];
+  };
+
+  const normalizeChoices = (value: any) => {
+    const normalized = Array.isArray(value)
+      ? value.flatMap((choice) =>
+          typeof choice === "string"
+            ? splitChoiceString(choice)
+            : [String(choice)],
+        )
+      : typeof value === "string"
+        ? splitChoiceString(value)
+        : value == null
+          ? []
+          : [String(value)];
+
+    return normalized.length > 0 ? normalized : ["Button"];
+  };
+
+  const choices = normalizeChoices(getConfigValue("choices", ["Button"]));
   const gridRows = getConfigValue("grid_rows", 1);
   const gridColumns = getConfigValue("grid_columns", null);
   const imageButtonWidth = getConfigValue("image_button_width", 150);

@@ -1,4 +1,5 @@
 import { Dispatch, SetStateAction } from "react";
+import type { CSSProperties } from "react";
 import { ColumnMappingEntry } from "..";
 
 type Props = {
@@ -10,6 +11,28 @@ type Props = {
   setColumnMapping: Dispatch<
     SetStateAction<Record<string, ColumnMappingEntry>>
   >;
+  componentMode?: boolean;
+};
+
+const INSPECTOR_LABEL_STYLE: CSSProperties = {
+  display: "block",
+  margin: "0 0 7px",
+  color: "#c8d3dc",
+  fontSize: 12,
+  fontWeight: 700,
+  lineHeight: "16px",
+};
+
+const INSPECTOR_INPUT_STYLE: CSSProperties = {
+  width: "100%",
+  height: 36,
+  border: "1px solid #3d5066",
+  borderRadius: 8,
+  background: "#0e1724",
+  color: "#f8fafc",
+  padding: "0 10px",
+  outline: "none",
+  boxSizing: "border-box",
 };
 
 function ObjectCoordsInput({
@@ -19,16 +42,24 @@ function ObjectCoordsInput({
   setLocalInputValues,
   setColumnMapping,
   paramKey,
+  componentMode = false,
 }: Props) {
   return (
     <>
-      <label className="block mt-2">x:</label>
+      <label
+        className={componentMode ? "" : "block mt-2"}
+        style={componentMode ? INSPECTOR_LABEL_STYLE : undefined}
+      >
+        x:
+      </label>
       <input
-        type="number"
+        type={componentMode ? "text" : "number"}
+        inputMode={componentMode ? "decimal" : undefined}
         min={-100}
         max={100}
         step="any"
-        className="w-full p-2 border rounded mt-1"
+        className={componentMode ? "" : "w-full p-2 border rounded mt-1"}
+        style={componentMode ? INSPECTOR_INPUT_STYLE : undefined}
         value={
           localInputValues[`${paramKey}_x`] ??
           (entry.value &&
@@ -75,13 +106,23 @@ function ObjectCoordsInput({
         }}
       />
 
-      <label className="block mt-2">y:</label>
+      <label
+        className={componentMode ? "" : "block mt-2"}
+        style={{
+          ...(componentMode ? INSPECTOR_LABEL_STYLE : {}),
+          marginTop: componentMode ? 10 : undefined,
+        }}
+      >
+        y:
+      </label>
       <input
-        type="number"
+        type={componentMode ? "text" : "number"}
+        inputMode={componentMode ? "decimal" : undefined}
         min={-100}
         max={100}
         step="any"
-        className="w-full p-2 border rounded mt-1"
+        className={componentMode ? "" : "w-full p-2 border rounded mt-1"}
+        style={componentMode ? INSPECTOR_INPUT_STYLE : undefined}
         value={
           localInputValues[`${paramKey}_y`] ??
           (entry.value &&
