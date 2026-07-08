@@ -144,6 +144,127 @@ describe("Timeline file uploads", () => {
         body: expect.any(FormData),
       },
     );
+    const uploadBody = fetchMock().mock.calls[1][1]?.body as FormData;
+    expect(uploadBody.get("compressOversizedMedia")).toBe("false");
+  });
+
+  it("asks to compress oversized media files and sends the compression flag", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    fetchMock()
+      .mockResolvedValueOnce(okJson({ files: [] }))
+      .mockResolvedValueOnce(
+        okJson({
+          success: true,
+          files: [
+            {
+              originalName: "blue.png",
+              storedName: "blue.webp",
+              url: "img/blue.webp",
+              type: "img",
+              compressed: true,
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(okJson({ files: initialFiles }));
+
+    const { result } = renderHook(() => useFileUpload({ folder: "img" }));
+
+    await waitFor(() => {
+      expect(result.current.uploadedFiles).toEqual([]);
+    });
+
+    const file = new File(["image"], "blue.png", { type: "image/png" });
+    Object.defineProperty(file, "size", { value: 101 * 1024 * 1024 });
+
+    await act(async () => {
+      await result.current.handleFileUpload({
+        target: { files: [file] },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+    });
+
+    expect(window.confirm).toHaveBeenCalledWith(
+      expect.stringContaining("blue.png"),
+    );
+    const uploadBody = fetchMock().mock.calls[1][1]?.body as FormData;
+    expect(uploadBody.get("compressOversizedMedia")).toBe("true");
+  });
+
+  it("refreshes converted media when the upload request is interrupted", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+    const convertedFiles = [
+      { name: "movie.webm", url: "vid/movie.webm", type: "vid" },
+    ];
+    fetchMock()
+      .mockResolvedValueOnce(okJson({ files: [] }))
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce(okJson({ files: convertedFiles }));
+
+    const { result } = renderHook(() => useFileUpload({ folder: "all" }));
+
+    await waitFor(() => {
+      expect(result.current.uploadedFiles).toEqual([]);
+    });
+
+    const file = new File(["video"], "movie.mp4", { type: "video/mp4" });
+    Object.defineProperty(file, "size", { value: 101 * 1024 * 1024 });
+
+    await act(async () => {
+      await result.current.handleFileUpload({
+        target: { files: [file] },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+    });
+
+    expect(result.current.uploadedFiles).toEqual(convertedFiles);
+    expect(alertSpy).not.toHaveBeenCalledWith("Failed to fetch");
+  });
+
+  it("polls upload jobs and refreshes files after background conversion", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const convertedFiles = [
+      { name: "movie.webm", url: "vid/movie.webm", type: "vid" },
+    ];
+    fetchMock()
+      .mockResolvedValueOnce(okJson({ files: [] }))
+      .mockResolvedValueOnce(
+        okJson(
+          {
+            success: true,
+            processing: true,
+            processingJobs: [{ id: "job-1", status: "processing" }],
+          },
+          true,
+          202,
+        ),
+      )
+      .mockResolvedValueOnce(
+        okJson({
+          success: true,
+          job: { id: "job-1", status: "completed", warnings: [] },
+        }),
+      )
+      .mockResolvedValueOnce(okJson({ files: convertedFiles }));
+
+    const { result } = renderHook(() => useFileUpload({ folder: "all" }));
+
+    await waitFor(() => {
+      expect(result.current.uploadedFiles).toEqual([]);
+    });
+
+    const file = new File(["video"], "movie.mp4", { type: "video/mp4" });
+    Object.defineProperty(file, "size", { value: 101 * 1024 * 1024 });
+
+    await act(async () => {
+      await result.current.handleFileUpload({
+        target: { files: [file] },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+    });
+
+    expect(fetchMock()).toHaveBeenCalledWith(
+      `${API_URL}/api/upload-jobs/job-1`,
+    );
+    expect(result.current.uploadedFiles).toEqual(convertedFiles);
   });
 
   it("deletes one or many uploaded files and removes them from local state", async () => {
@@ -350,6 +471,41 @@ describe("PublishExperiment", () => {
     expect(props.setPublishStatus).toHaveBeenCalledWith(
       "Error: Server responded with status: 503",
     );
+    expect(props.setIsPublishing).toHaveBeenLastCalledWith(false);
+  });
+
+  it("shows GitHub file size publish errors from the API response", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock().mockResolvedValue(
+      okJson(
+        {
+          success: false,
+          code: "GITHUB_FILE_TOO_LARGE",
+          message:
+            "GitHub no acepta archivos mayores a 100 MiB: vid/demo.mp4 (142.3 MiB).",
+          oversizedFiles: [
+            {
+              url: "vid/demo.mp4",
+              filename: "demo.mp4",
+              sizeBytes: 149_212_365,
+            },
+          ],
+        },
+        false,
+        413,
+      ),
+    );
+    const { props, api } = createPublishHarness();
+
+    await api.publishWithStorage("user-123", "dropbox");
+
+    expect(props.setPublishStatus).toHaveBeenCalledWith(
+      "Error: GitHub no acepta archivos mayores a 100 MiB: vid/demo.mp4 (142.3 MiB).",
+    );
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(props.setPublishStatus).not.toHaveBeenCalledWith("");
     expect(props.setIsPublishing).toHaveBeenLastCalledWith(false);
   });
 

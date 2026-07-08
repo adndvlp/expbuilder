@@ -16,6 +16,8 @@ import { getPluginScriptsFromTrials } from "../utils/plugin-scripts.js";
 import * as cheerio from "cheerio";
 
 const router = Router();
+const GITHUB_FILE_LIMIT_BYTES =
+  Number(process.env.GITHUB_FILE_LIMIT_BYTES) || 100 * 1024 * 1024;
 
 // Directorios para archivos HTML de experimentos y previews
 const experimentsHtmlDir = path.join(userDataRoot, "experiments_html");
@@ -24,6 +26,21 @@ if (!fs.existsSync(experimentsHtmlDir))
   fs.mkdirSync(experimentsHtmlDir, { recursive: true });
 if (!fs.existsSync(trialsPreviewsHtmlDir))
   fs.mkdirSync(trialsPreviewsHtmlDir, { recursive: true });
+
+function formatSizeMiB(sizeBytes) {
+  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MiB`;
+}
+
+function buildOversizedMediaMessage(files) {
+  const fileList = files
+    .map((file) => `${file.url} (${formatSizeMiB(file.sizeBytes)})`)
+    .join(", ");
+  return `GitHub no acepta archivos mayores a 100 MiB: ${fileList}. Comprime o reemplaza estos archivos antes de publicar.`;
+}
+
+function isPublishableMediaFile(filename) {
+  return filename !== ".DS_Store" && !filename.startsWith(".upload-");
+}
 
 /**
  * Gets all experiments sorted by creation date (newest first).
@@ -674,14 +691,26 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     const uploadsBase = path.join(userDataRoot, experiment.name);
     const mediaTypes = ["img", "vid", "aud"];
     let mediaFiles = [];
+    const oversizedFiles = [];
 
     for (const type of mediaTypes) {
       const typeDir = path.join(uploadsBase, type);
       if (fs.existsSync(typeDir)) {
-        const files = fs.readdirSync(typeDir);
+        const files = fs.readdirSync(typeDir).filter(isPublishableMediaFile);
         for (const filename of files) {
           const filePath = path.join(typeDir, filename);
           try {
+            const sizeBytes = fs.statSync(filePath).size;
+            if (sizeBytes > GITHUB_FILE_LIMIT_BYTES) {
+              oversizedFiles.push({
+                type,
+                filename,
+                url: `${type}/${encodeURIComponent(filename)}`,
+                sizeBytes,
+              });
+              continue;
+            }
+
             const fileBuffer = fs.readFileSync(filePath);
             const base64Content = fileBuffer.toString("base64");
             mediaFiles.push({
@@ -694,6 +723,17 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
           }
         }
       }
+    }
+
+    if (oversizedFiles.length > 0) {
+      const message = buildOversizedMediaMessage(oversizedFiles);
+      return res.status(413).json({
+        success: false,
+        code: "GITHUB_FILE_TOO_LARGE",
+        message,
+        error: message,
+        oversizedFiles,
+      });
     }
 
     // If the experiment has uploaded media, inject plugin-preload from CDN.

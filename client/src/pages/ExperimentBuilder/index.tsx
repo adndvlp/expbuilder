@@ -37,6 +37,7 @@ function ExperimentBuilder() {
     uploadedFiles,
     fileInputRef,
     folderInputRef,
+    uploadStatus,
     handleFileUpload,
     handleDeleteFile,
     handleDeleteMultipleFiles,
@@ -143,6 +144,7 @@ function ExperimentBuilder() {
                     uploadedFiles={uploadedFiles}
                     fileInputRef={fileInputRef}
                     folderInputRef={folderInputRef}
+                    uploadStatus={uploadStatus}
                     handleFileUpload={handleFileUpload}
                     handleDeleteFile={handleDeleteFile}
                     handleDeleteMultipleFiles={handleDeleteMultipleFiles}

@@ -8,52 +8,363 @@
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
-import { __dirname } from "../utils/paths.js";
 import { db, userDataRoot } from "../utils/db.js";
 import fs from "fs";
 import { randomUUID } from "crypto";
+import sharp from "sharp";
+import ffmpegPath from "ffmpeg-static";
+import { spawn } from "child_process";
 
 const router = Router();
+const uploadJobs = new Map();
 
-const storage = multer.diskStorage({
-  destination: async function (req, file, cb) {
-    try {
-      const experimentID = req.body.experimentID || req.params.experimentID;
-      const ext = path.extname(file.originalname).toLowerCase();
-      let type = null;
-      if (/\.(png|jpg|jpeg|gif|svg|webp|bmp)$/i.test(ext)) type = "img";
-      else if (/\.(mp3|wav|ogg|m4a|flac|aac)$/i.test(ext)) type = "aud";
-      else if (/\.(mp4|webm|mov|avi|mkv)$/i.test(ext)) type = "vid";
-      else type = "others";
+const GITHUB_FILE_LIMIT_BYTES =
+  Number(process.env.GITHUB_FILE_LIMIT_BYTES) || 100 * 1024 * 1024;
+const tempUploadDir = path.join(userDataRoot, "_tmp_uploads");
+fs.mkdirSync(tempUploadDir, { recursive: true });
 
-      if (!type) {
-        // Reject the file if it is not of the allowed types
-        return cb(new Error("File type not allowed"), null);
-      }
+const upload = multer({ dest: tempUploadDir });
 
-      // Get the experiment name
-      let experimentName = experimentID;
-      await db.read();
-      const experiment = db.data.experiments.find(
-        (e) => e.experimentID === experimentID,
-      );
-      if (experiment && experiment.name) {
-        experimentName = experiment.name;
-      }
+const mediaExtensionPatterns = {
+  img: /\.(png|jpg|jpeg|gif|svg|webp|bmp)$/i,
+  aud: /\.(mp3|wav|ogg|m4a|flac|aac)$/i,
+  vid: /\.(mp4|webm|mov|avi|mkv)$/i,
+};
 
-      const folder = path.join(userDataRoot, experimentName, type);
-      fs.mkdirSync(folder, { recursive: true });
-      cb(null, folder);
-    } catch (err) {
-      cb(err, null);
+function getMediaType(filename) {
+  const ext = path.extname(filename).toLowerCase();
+  if (mediaExtensionPatterns.img.test(ext)) return "img";
+  if (mediaExtensionPatterns.aud.test(ext)) return "aud";
+  if (mediaExtensionPatterns.vid.test(ext)) return "vid";
+  return "others";
+}
+
+async function getExperimentName(experimentID) {
+  let experimentName = experimentID;
+  await db.read();
+  const experiment = db.data.experiments.find(
+    (e) => e.experimentID === experimentID,
+  );
+  if (experiment && experiment.name) {
+    experimentName = experiment.name;
+  }
+  return experimentName;
+}
+
+function getCompressedFilename(originalName, type) {
+  const extensionByType = {
+    img: ".webp",
+    aud: ".ogg",
+    vid: ".webm",
+  };
+  const parsed = path.parse(path.basename(originalName));
+  return `${parsed.name}${extensionByType[type]}`;
+}
+
+function getUniqueFilename(folder, filename) {
+  const parsed = path.parse(filename);
+  let candidate = filename;
+  let suffix = 1;
+
+  while (fs.existsSync(path.join(folder, candidate))) {
+    candidate = `${parsed.name}-${suffix}${parsed.ext}`;
+    suffix += 1;
+  }
+
+  return candidate;
+}
+
+function moveFile(source, destination) {
+  try {
+    fs.renameSync(source, destination);
+  } catch (err) {
+    if (err.code !== "EXDEV") throw err;
+    fs.copyFileSync(source, destination);
+    fs.unlinkSync(source);
+  }
+}
+
+function removeFileIfExists(filePath) {
+  if (filePath && fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+}
+
+function isVisibleUploadedFile(filename) {
+  return filename !== ".DS_Store" && !filename.startsWith(".upload-");
+}
+
+function serializeUploadJob(job) {
+  return {
+    id: job.id,
+    status: job.status,
+    progress: job.progress || 0,
+    originalName: job.originalName,
+    storedName: job.result?.storedName || job.storedName,
+    url: job.result?.url || job.url,
+    type: job.type,
+    originalSizeBytes: job.originalSizeBytes,
+    storedSizeBytes: job.result?.storedSizeBytes,
+    compressed: true,
+    error: job.error,
+    warnings: job.warnings || [],
+    startedAt: job.startedAt,
+    updatedAt: job.updatedAt,
+  };
+}
+
+function updateUploadJob(jobId, updates) {
+  const previous = uploadJobs.get(jobId);
+  if (!previous) return;
+  uploadJobs.set(jobId, {
+    ...previous,
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+function timestampToSeconds(timestamp) {
+  const [hours, minutes, seconds] = timestamp.split(":");
+  return Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds);
+}
+
+function runFfmpeg(args, onProgress) {
+  return new Promise((resolve, reject) => {
+    if (!ffmpegPath) {
+      reject(new Error("ffmpeg binary not available"));
+      return;
     }
-  },
-  filename: function (req, file, cb) {
-    cb(null, file.originalname);
-  },
-});
 
-const upload = multer({ storage });
+    const ffmpeg = spawn(ffmpegPath, args);
+    let stderr = "";
+    let durationSeconds = 0;
+
+    ffmpeg.stderr.on("data", (chunk) => {
+      const text = chunk.toString();
+      stderr += text;
+      if (stderr.length > 50000) {
+        stderr = stderr.slice(-50000);
+      }
+
+      const durationMatch =
+        durationSeconds === 0
+          ? stderr.match(/Duration:\s+(\d{2}:\d{2}:\d{2}(?:\.\d+)?)/)
+          : null;
+      if (durationMatch) {
+        durationSeconds = timestampToSeconds(durationMatch[1]);
+      }
+
+      const timeMatches = [...text.matchAll(/time=(\d{2}:\d{2}:\d{2}(?:\.\d+)?)/g)];
+      const latestTime = timeMatches.at(-1);
+      if (durationSeconds > 0 && latestTime) {
+        const currentSeconds = timestampToSeconds(latestTime[1]);
+        const progress = Math.min(
+          99,
+          Math.max(1, Math.round((currentSeconds / durationSeconds) * 100)),
+        );
+        onProgress?.(progress);
+      }
+    });
+    ffmpeg.on("error", reject);
+    ffmpeg.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(stderr.trim() || `ffmpeg exited with code ${code}`));
+      }
+    });
+  });
+}
+
+async function compressFile(inputPath, outputPath, type, onProgress) {
+  if (type === "img") {
+    await sharp(inputPath).webp({ quality: 80, effort: 4 }).toFile(outputPath);
+    onProgress?.(100);
+    return;
+  }
+
+  if (type === "aud") {
+    await runFfmpeg([
+      "-y",
+      "-nostdin",
+      "-i",
+      inputPath,
+      "-vn",
+      "-c:a",
+      "libopus",
+      "-compression_level",
+      "0",
+      "-b:a",
+      "96k",
+      outputPath,
+    ], onProgress);
+    return;
+  }
+
+  if (type === "vid") {
+    await runFfmpeg([
+      "-y",
+      "-nostdin",
+      "-i",
+      inputPath,
+      "-c:v",
+      "libvpx",
+      "-deadline",
+      "realtime",
+      "-cpu-used",
+      "8",
+      "-b:v",
+      "1200k",
+      "-maxrate",
+      "1600k",
+      "-bufsize",
+      "2400k",
+      "-threads",
+      "0",
+      "-c:a",
+      "libopus",
+      "-compression_level",
+      "0",
+      "-b:a",
+      "96k",
+      outputPath,
+    ], onProgress);
+  }
+}
+
+function createStoragePlan(file, experimentName, shouldCompress) {
+  const originalName = path.basename(file.originalname);
+  const originalSizeBytes = file.size;
+  const originalType = getMediaType(originalName);
+  const compressible = ["img", "aud", "vid"].includes(originalType);
+  const compress =
+    shouldCompress &&
+    compressible &&
+    originalSizeBytes > GITHUB_FILE_LIMIT_BYTES;
+  const type = originalType;
+  const folder = path.join(userDataRoot, experimentName, type);
+  fs.mkdirSync(folder, { recursive: true });
+
+  const storedName = getUniqueFilename(
+    folder,
+    compress ? getCompressedFilename(originalName, type) : originalName,
+  );
+  const destination = path.join(folder, storedName);
+
+  return {
+    originalName,
+    originalSizeBytes,
+    type,
+    compress,
+    folder,
+    storedName,
+    destination,
+  };
+}
+
+async function storeUploadedFile(
+  file,
+  experimentName,
+  shouldCompress,
+  plan,
+  onProgress,
+) {
+  const storagePlan =
+    plan || createStoragePlan(file, experimentName, shouldCompress);
+  let finalStoredName = storagePlan.storedName;
+  let finalDestination = storagePlan.destination;
+  let tempDestination = null;
+
+  try {
+    if (storagePlan.compress) {
+      tempDestination = path.join(
+        storagePlan.folder,
+        `.upload-${randomUUID()}${path.extname(storagePlan.storedName)}`,
+      );
+      await compressFile(
+        file.path,
+        tempDestination,
+        storagePlan.type,
+        onProgress,
+      );
+      finalStoredName = getUniqueFilename(
+        storagePlan.folder,
+        storagePlan.storedName,
+      );
+      finalDestination = path.join(storagePlan.folder, finalStoredName);
+      moveFile(tempDestination, finalDestination);
+      removeFileIfExists(file.path);
+    } else {
+      moveFile(file.path, finalDestination);
+    }
+  } catch (err) {
+    removeFileIfExists(file.path);
+    removeFileIfExists(tempDestination);
+    removeFileIfExists(finalDestination);
+    throw err;
+  }
+
+  const storedSizeBytes = fs.statSync(finalDestination).size;
+  return {
+    originalName: storagePlan.originalName,
+    storedName: finalStoredName,
+    name: finalStoredName,
+    url: `${storagePlan.type}/${encodeURIComponent(finalStoredName)}`,
+    type: storagePlan.type,
+    originalSizeBytes: storagePlan.originalSizeBytes,
+    storedSizeBytes,
+    compressed: storagePlan.compress,
+  };
+}
+
+function startUploadJob(file, experimentName, plan) {
+  const jobId = randomUUID();
+  const now = new Date().toISOString();
+  const job = {
+    id: jobId,
+    status: "processing",
+    progress: 0,
+    originalName: plan.originalName,
+    storedName: plan.storedName,
+    url: `${plan.type}/${encodeURIComponent(plan.storedName)}`,
+    type: plan.type,
+    originalSizeBytes: plan.originalSizeBytes,
+    warnings: [],
+    startedAt: now,
+    updatedAt: now,
+  };
+  uploadJobs.set(jobId, job);
+
+  storeUploadedFile(file, experimentName, true, plan, (progress) => {
+    updateUploadJob(jobId, { progress });
+  })
+    .then((result) => {
+      const warnings = [];
+      if (result.storedSizeBytes > GITHUB_FILE_LIMIT_BYTES) {
+        warnings.push({
+          code: "COMPRESSED_FILE_STILL_TOO_LARGE",
+          filename: result.storedName,
+          url: result.url,
+          sizeBytes: result.storedSizeBytes,
+          message: `${result.storedName} is still larger than 100 MiB after compression.`,
+        });
+      }
+      updateUploadJob(jobId, {
+        status: "completed",
+        progress: 100,
+        result,
+        warnings,
+      });
+    })
+    .catch((err) => {
+      updateUploadJob(jobId, {
+        status: "failed",
+        error: err.message || "Failed to process uploaded file",
+      });
+    });
+
+  return serializeUploadJob(job);
+}
 
 /**
  * Uploads multimedia files for an experiment.
@@ -76,21 +387,72 @@ router.post(
       if (!req.files || req.files.length === 0) {
         return res.status(400).json({ error: "No files uploaded" });
       }
-      let experimentName = experimentID;
-      await db.read();
-      const experiment = db.data.experiments.find(
-        (e) => e.experimentID === experimentID,
-      );
-      if (experiment && experiment.name) {
-        experimentName = experiment.name;
+      const experimentName = await getExperimentName(experimentID);
+      const shouldCompress = req.body.compressOversizedMedia === "true";
+      const storedFiles = [];
+      const processingJobs = [];
+      const warnings = [];
+      const errors = [];
+
+      for (const file of req.files) {
+        try {
+          const plan = createStoragePlan(file, experimentName, shouldCompress);
+          if (plan.compress && ["aud", "vid"].includes(plan.type)) {
+            processingJobs.push(startUploadJob(file, experimentName, plan));
+            continue;
+          }
+
+          const storedFile = await storeUploadedFile(
+            file,
+            experimentName,
+            shouldCompress,
+            plan,
+          );
+          storedFiles.push(storedFile);
+
+          if (
+            storedFile.compressed &&
+            storedFile.storedSizeBytes > GITHUB_FILE_LIMIT_BYTES
+          ) {
+            warnings.push({
+              code: "COMPRESSED_FILE_STILL_TOO_LARGE",
+              filename: storedFile.storedName,
+              url: storedFile.url,
+              sizeBytes: storedFile.storedSizeBytes,
+              message: `${storedFile.storedName} is still larger than 100 MiB after compression.`,
+            });
+          }
+        } catch (err) {
+          errors.push({
+            code: "MEDIA_COMPRESSION_FAILED",
+            filename: file.originalname,
+            message: err.message || "Failed to process uploaded file",
+          });
+        }
       }
-      const fileUrls = req.files.map((file) => {
-        const type = path.basename(path.dirname(file.path));
-        return `${type}/${encodeURIComponent(file.filename)}`;
-      });
-      res.json({
+
+      if (
+        storedFiles.length === 0 &&
+        processingJobs.length === 0 &&
+        errors.length > 0
+      ) {
+        return res.status(500).json({
+          success: false,
+          error: "No files could be uploaded",
+          errors,
+        });
+      }
+
+      const fileUrls = storedFiles.map((file) => file.url);
+      res.status(processingJobs.length > 0 ? 202 : errors.length > 0 ? 207 : 200).json({
+        success: errors.length === 0,
+        processing: processingJobs.length > 0,
         fileUrls,
-        count: req.files.length,
+        count: storedFiles.length + processingJobs.length,
+        files: storedFiles,
+        processingJobs,
+        warnings,
+        errors,
       });
     } catch (err) {
       console.error("Error uploading files:", err);
@@ -98,6 +460,21 @@ router.post(
     }
   },
 );
+
+router.get("/api/upload-jobs/:jobId", (req, res) => {
+  const job = uploadJobs.get(req.params.jobId);
+  if (!job) {
+    return res.status(404).json({
+      success: false,
+      error: "Upload job not found",
+    });
+  }
+
+  res.json({
+    success: true,
+    job: serializeUploadJob(job),
+  });
+});
 
 /**
  * Lista archivos de un experimento filtrados por tipo.
@@ -129,22 +506,28 @@ router.get("/api/list-files/:type/:experimentID", async (req, res) => {
       types.forEach((t) => {
         const dir = path.join(userDataRoot, experimentName, t);
         if (fs.existsSync(dir)) {
-          const typeFiles = fs.readdirSync(dir).map((filename) => ({
-            name: filename,
-            url: `${t}/${encodeURIComponent(filename)}`,
-            type: t,
-          }));
+          const typeFiles = fs
+            .readdirSync(dir)
+            .filter(isVisibleUploadedFile)
+            .map((filename) => ({
+              name: filename,
+              url: `${t}/${encodeURIComponent(filename)}`,
+              type: t,
+            }));
           files = files.concat(typeFiles);
         }
       });
     } else {
       const dir = path.join(userDataRoot, experimentName, type);
       if (fs.existsSync(dir)) {
-        files = fs.readdirSync(dir).map((filename) => ({
-          name: filename,
-          url: `${type}/${encodeURIComponent(filename)}`,
-          type,
-        }));
+        files = fs
+          .readdirSync(dir)
+          .filter(isVisibleUploadedFile)
+          .map((filename) => ({
+            name: filename,
+            url: `${type}/${encodeURIComponent(filename)}`,
+            type,
+          }));
       }
     }
     res.json({ files });
