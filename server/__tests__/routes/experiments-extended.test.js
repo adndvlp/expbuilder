@@ -142,6 +142,10 @@ describe('POST /api/trials-preview/:experimentID', () => {
 })
 
 describe('POST /api/publish-experiment/:experimentID', () => {
+  afterEach(() => {
+    delete process.env.GITHUB_FILE_LIMIT_BYTES
+  })
+
   test('400 when uid missing', async () => {
     const { app } = await freshApp()
     await request(app)
@@ -164,6 +168,40 @@ describe('POST /api/publish-experiment/:experimentID', () => {
       .post('/api/publish-experiment/E1')
       .send({ uid: 'u1', generatedPublicCode: 'code' })
       .expect(404)
+  })
+
+  test('413 when media files exceed GitHub file size limit', async () => {
+    process.env.GITHUB_FILE_LIMIT_BYTES = '1'
+    const { app, db, tmpDir } = await freshApp()
+    db.data.experiments.push({
+      experimentID: 'E1',
+      name: 'PublishExp',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    await db.write()
+    const videoDir = path.join(tmpDir, 'PublishExp', 'vid')
+    fs.mkdirSync(videoDir, { recursive: true })
+    fs.writeFileSync(path.join(videoDir, 'demo.mp4'), 'large')
+
+    const res = await request(app)
+      .post('/api/publish-experiment/E1')
+      .send({ uid: 'u1', generatedPublicCode: 'jsPsych.run(timeline);' })
+      .expect(413)
+
+    expect(res.body).toMatchObject({
+      success: false,
+      code: 'GITHUB_FILE_TOO_LARGE',
+    })
+    expect(res.body.message).toContain('GitHub no acepta archivos mayores')
+    expect(res.body.message).toContain('vid/demo.mp4')
+    expect(res.body.oversizedFiles).toEqual([
+      expect.objectContaining({
+        type: 'vid',
+        filename: 'demo.mp4',
+        url: 'vid/demo.mp4',
+      }),
+    ])
   })
 })
 

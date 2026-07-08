@@ -114,6 +114,85 @@ describe('POST /api/participant-files/:experimentID', () => {
   })
 })
 
+describe('POST /api/upload-files/:experimentID', () => {
+  const imageBuffer = Buffer.from(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1" fill="blue"/></svg>',
+  )
+
+  afterEach(() => {
+    delete process.env.GITHUB_FILE_LIMIT_BYTES
+  })
+
+  test('stores oversized image as webp when compression is requested', async () => {
+    process.env.GITHUB_FILE_LIMIT_BYTES = '1'
+    const { app, tmpDir } = await freshApp()
+
+    const res = await request(app)
+      .post('/api/upload-files/E1')
+      .field('compressOversizedMedia', 'true')
+      .attach('files', imageBuffer, 'blue.svg')
+      .expect(200)
+
+    expect(res.body.fileUrls).toEqual(['img/blue.webp'])
+    expect(res.body.files[0]).toMatchObject({
+      originalName: 'blue.svg',
+      storedName: 'blue.webp',
+      url: 'img/blue.webp',
+      type: 'img',
+      compressed: true,
+    })
+    expect(fs.existsSync(path.join(tmpDir, 'E1', 'img', 'blue.webp'))).toBe(true)
+    expect(fs.existsSync(path.join(tmpDir, 'E1', 'img', 'blue.svg'))).toBe(false)
+  })
+
+  test('stores oversized image unchanged when compression is declined', async () => {
+    process.env.GITHUB_FILE_LIMIT_BYTES = '1'
+    const { app, tmpDir } = await freshApp()
+
+    const res = await request(app)
+      .post('/api/upload-files/E1')
+      .field('compressOversizedMedia', 'false')
+      .attach('files', imageBuffer, 'blue.svg')
+      .expect(200)
+
+    expect(res.body.fileUrls).toEqual(['img/blue.svg'])
+    expect(res.body.files[0]).toMatchObject({
+      originalName: 'blue.svg',
+      storedName: 'blue.svg',
+      url: 'img/blue.svg',
+      type: 'img',
+      compressed: false,
+    })
+    expect(fs.existsSync(path.join(tmpDir, 'E1', 'img', 'blue.svg'))).toBe(true)
+  })
+
+  test('returns a processing job for oversized video compression', async () => {
+    process.env.GITHUB_FILE_LIMIT_BYTES = '1'
+    const { app } = await freshApp()
+
+    const res = await request(app)
+      .post('/api/upload-files/E1')
+      .field('compressOversizedMedia', 'true')
+      .attach('files', Buffer.from('not-a-real-video'), 'demo.mp4')
+      .expect(202)
+
+    expect(res.body).toMatchObject({
+      success: true,
+      processing: true,
+      count: 1,
+    })
+    expect(res.body.processingJobs).toEqual([
+      expect.objectContaining({
+        status: 'processing',
+        originalName: 'demo.mp4',
+        storedName: 'demo.webm',
+        url: 'vid/demo.webm',
+        type: 'vid',
+      }),
+    ])
+  })
+})
+
 describe('GET /api/participant-files/:experimentID', () => {
   test('returns empty when no files', async () => {
     const { app } = await freshApp()

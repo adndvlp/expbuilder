@@ -10,6 +10,7 @@ type FileUploaderProps = {
   onDeleteMultipleFiles?: (files: UploadedFile[]) => Promise<void>;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   folderInputRef: React.RefObject<HTMLInputElement | null>;
+  uploadStatus?: string;
   accept?: string;
 };
 
@@ -20,6 +21,7 @@ const FileUploader = ({
   onDeleteMultipleFiles,
   fileInputRef,
   folderInputRef,
+  uploadStatus,
   accept = "image/*",
 }: FileUploaderProps) => {
   const [copiedFile, setCopiedFile] = useState<string | null>(null);
@@ -109,6 +111,18 @@ const FileUploader = ({
           onChange={onFileUpload}
           style={{ borderColor: "var(--text-dark)" }}
         />
+        {uploadStatus && (
+          <p
+            style={{
+              margin: "8px 0 0",
+              fontSize: 12,
+              color: "#3d6f82",
+              fontWeight: 500,
+            }}
+          >
+            {uploadStatus}
+          </p>
+        )}
         <div className="mt-4">
           {uploadedFiles.filter(
             (file) => file.name.split("/").pop() !== ".DS_Store",

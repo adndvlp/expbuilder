@@ -2,6 +2,60 @@ import { Dispatch, SetStateAction } from "react";
 import { auth } from "../../../../lib/firebase";
 const API_URL = import.meta.env.VITE_API_URL;
 
+type PublishErrorFile = {
+  url?: string;
+  filename?: string;
+  sizeBytes?: number;
+};
+
+type PublishResponse = {
+  success?: boolean;
+  message?: string;
+  error?: string;
+  code?: string;
+  repoUrl?: string;
+  pagesUrl?: string;
+  oversizedFiles?: PublishErrorFile[];
+};
+
+function formatSizeMiB(sizeBytes?: number) {
+  if (!sizeBytes) return "";
+  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MiB`;
+}
+
+function buildPublishErrorMessage(
+  result: PublishResponse | null,
+  status: number,
+) {
+  if (result?.code === "GITHUB_FILE_TOO_LARGE") {
+    if (result.message || result.error) return result.message || result.error;
+
+    const files =
+      result.oversizedFiles
+        ?.map((file) =>
+          [file.url || file.filename, formatSizeMiB(file.sizeBytes)]
+            .filter(Boolean)
+            .join(" "),
+        )
+        .join(", ") || "one or more media files";
+    return `GitHub no acepta archivos mayores a 100 MiB: ${files}. Comprime o reemplaza estos archivos antes de publicar.`;
+  }
+
+  return (
+    result?.message ||
+    result?.error ||
+    `Server responded with status: ${status}`
+  );
+}
+
+async function readPublishResponse(response: Response) {
+  try {
+    return (await response.json()) as PublishResponse;
+  } catch {
+    return null;
+  }
+}
+
 type Props = {
   experimentID: string | undefined;
   setLastPagesUrl: Dispatch<SetStateAction<string>>;
@@ -75,6 +129,7 @@ export default function PublishExperiment({
     setShowStorageModal(false);
     setIsPublishing(true);
     setPublishStatus("Generating public code...");
+    let keepPublishStatus = false;
 
     try {
       // Generar código público para GitHub Pages con el storage seleccionado
@@ -101,26 +156,28 @@ export default function PublishExperiment({
         },
       );
 
+      const result = await readPublishResponse(response);
+
       if (!response.ok) {
-        throw new Error(`Server responded with status: ${response.status}`);
+        keepPublishStatus = result?.code === "GITHUB_FILE_TOO_LARGE";
+        throw new Error(buildPublishErrorMessage(result, response.status));
       }
 
-      const result = await response.json();
-
       if (
-        !result.success &&
-        result.message?.includes("GitHub token not found or invalid")
+        !result?.success &&
+        result?.message?.includes("GitHub token not found or invalid")
       ) {
         setPublishStatus(
           "Warning: GitHub publish failed. Please reconnect your GitHub account in Settings.",
         );
         return;
       }
-      if (result.success) {
+      if (result?.success) {
+        const pagesUrl = result.pagesUrl || "";
         setPublishStatus(`Published! GitHub Pages URL`);
-        setLastPagesUrl(result.pagesUrl || "");
+        setLastPagesUrl(pagesUrl);
         try {
-          await navigator.clipboard.writeText(result.pagesUrl);
+          await navigator.clipboard.writeText(pagesUrl);
           setTimeout(() => {
             setPublishStatus((prev) => prev + " copied to clipboard");
           }, 100);
@@ -128,7 +185,9 @@ export default function PublishExperiment({
           console.error("Failed to copy GitHub Pages URL: ", err);
         }
       } else {
-        setPublishStatus(`Error: ${result.message || "Failed to publish"}`);
+        setPublishStatus(
+          `Error: ${result?.message || result?.error || "Failed to publish"}`,
+        );
       }
     } catch (error) {
       console.error("Error publishing to GitHub:", error);
@@ -137,7 +196,9 @@ export default function PublishExperiment({
       );
     } finally {
       setIsPublishing(false);
-      setTimeout(() => setPublishStatus(""), 5000);
+      if (!keepPublishStatus) {
+        setTimeout(() => setPublishStatus(""), 5000);
+      }
     }
   };
   return { handlePublishToGitHub, publishWithStorage };

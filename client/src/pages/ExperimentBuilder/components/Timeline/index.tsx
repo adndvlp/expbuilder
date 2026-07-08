@@ -16,6 +16,7 @@ type TimelineProps = {
   uploadedFiles: UploadedFile[];
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   folderInputRef: React.RefObject<HTMLInputElement | null>;
+  uploadStatus?: string;
   handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
   handleDeleteFile: (file: UploadedFile) => Promise<void>;
   handleDeleteMultipleFiles?: (files: UploadedFile[]) => Promise<void>;
@@ -25,6 +26,7 @@ function Timeline({
   uploadedFiles,
   fileInputRef,
   folderInputRef,
+  uploadStatus,
   handleFileUpload,
   handleDeleteFile,
   handleDeleteMultipleFiles,
@@ -477,6 +479,7 @@ function Timeline({
           onDeleteMultipleFiles={handleDeleteMultipleFiles}
           fileInputRef={fileInputRef}
           folderInputRef={folderInputRef}
+          uploadStatus={uploadStatus}
           accept={accept}
         />
       </div>
