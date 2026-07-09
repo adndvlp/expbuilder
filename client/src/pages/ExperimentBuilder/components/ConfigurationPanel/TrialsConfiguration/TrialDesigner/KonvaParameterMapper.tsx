@@ -21,6 +21,7 @@ type Props = {
   generateConfigFromComponents: (
     comps: TrialComponent[],
   ) => Record<string, any>;
+  onRecordHistory: () => void;
   isResizingRight: React.RefObject<boolean>;
   setShowRightPanel: React.Dispatch<React.SetStateAction<boolean>>;
   setRightPanelWidth: React.Dispatch<React.SetStateAction<number>>;
@@ -40,6 +41,7 @@ function KonvaParameterMapper({
   canvasWidth,
   onAutoSave,
   generateConfigFromComponents,
+  onRecordHistory,
   isResizingRight,
   setShowRightPanel,
   setRightPanelWidth,
@@ -79,6 +81,8 @@ function KonvaParameterMapper({
     (updateFn: any) => {
       if (!selectedId) return;
 
+      onRecordHistory();
+
       setComponents((prevComponents) => {
         const updatedComponents = prevComponents.map((comp) => {
           if (comp.id !== selectedId) return comp;
@@ -111,6 +115,7 @@ function KonvaParameterMapper({
       selectedId,
       onAutoSave,
       setComponents,
+      onRecordHistory,
       fromJsPsychCoords,
       generateConfigFromComponents,
       canvasWidth,
@@ -222,6 +227,7 @@ function KonvaParameterMapper({
                 selectedComponentId={selectedId}
                 uploadedFiles={uploadedFiles}
                 onComponentConfigChange={(compId, config) => {
+                  onRecordHistory();
                   setComponents((prev) =>
                     prev.map((c) => (c.id === compId ? { ...c, config } : c)),
                   );

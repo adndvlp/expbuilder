@@ -32,6 +32,7 @@ type Props = {
     y: number;
   };
   selectedId: string | null;
+  selectedIds?: string[];
   onAutoSave: ((config: any) => void) | undefined;
   generateConfigFromComponents: (
     comps: TrialComponent[],
@@ -44,6 +45,7 @@ type Props = {
   setActiveDomId?: React.Dispatch<React.SetStateAction<string | null>>;
   editingTextId?: string | null;
   onEditTextStart?: (id: string) => void;
+  onRecordHistory?: () => void;
   onSnap?: (box: SnapBox) => SnapResult;
   onGuidesChange?: (guides: CanvasGuide[]) => void;
 };
@@ -53,6 +55,7 @@ const RenderComponent = ({
   setComponents,
   toJsPsychCoords,
   selectedId,
+  selectedIds = [],
   onAutoSave,
   generateConfigFromComponents,
   setSelectedId,
@@ -63,13 +66,18 @@ const RenderComponent = ({
   setActiveDomId,
   editingTextId,
   onEditTextStart,
+  onRecordHistory,
   onSnap,
   onGuidesChange,
 }: Props) => {
-  const isSelected = comp.id === selectedId;
+  const isSelected = comp.id === selectedId || selectedIds.includes(comp.id);
 
   const handleComponentChange = (newAttrs: any) => {
     const { __transient, ...attrs } = newAttrs;
+
+    if (!__transient) {
+      onRecordHistory?.();
+    }
 
     setComponents((prevComponents) => {
       const updatedComponents = prevComponents.map((c) => {
@@ -209,6 +217,8 @@ const RenderComponent = ({
     const newY = e.target.y();
     const coords = toJsPsychCoords(newX, newY);
 
+    onRecordHistory?.();
+
     const updatedComponents = components.map((comp) => {
       if (comp.id === id) {
         // Update config with new coordinates
@@ -239,7 +249,10 @@ const RenderComponent = ({
     setSelectedId(id);
   };
 
-  if (comp.type === "TextComponent" && (isSelected || editingTextId === comp.id)) {
+  if (
+    comp.type === "TextComponent" &&
+    (isSelected || editingTextId === comp.id)
+  ) {
     return (
       <TextComponent
         key={comp.id}

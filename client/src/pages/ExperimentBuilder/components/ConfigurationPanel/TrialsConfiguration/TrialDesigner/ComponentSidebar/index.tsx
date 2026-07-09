@@ -23,7 +23,9 @@ type Props = {
   setComponents: React.Dispatch<React.SetStateAction<TrialComponent[]>>;
   getDefaultConfig: (_type: ComponentType) => Record<string, any>;
   selectedId: string | null;
+  selectedIds: string[];
   setSelectedId: React.Dispatch<React.SetStateAction<string | null>>;
+  setSelectedIds: React.Dispatch<React.SetStateAction<string[]>>;
   components: TrialComponent[];
 };
 
@@ -40,7 +42,9 @@ function ComponentSidebar({
   setComponents,
   getDefaultConfig,
   selectedId,
+  selectedIds,
   setSelectedId,
+  setSelectedIds,
   components,
 }: Props) {
   const experimentID = useExperimentID();
@@ -79,7 +83,9 @@ function ComponentSidebar({
       {showLeftPanel && (
         <LeftSideBar
           selectedId={selectedId}
+          selectedIds={selectedIds}
           setSelectedId={setSelectedId}
+          setSelectedIds={setSelectedIds}
           setComponents={setComponents}
           components={components}
           setLeftPanelWidth={setLeftPanelWidth}

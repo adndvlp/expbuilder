@@ -13,23 +13,38 @@ import renderComponent from "./renderComponent";
 import useLoadComponents from "./useLoadComponents";
 import handleDrop from "./useHandleDrop";
 import ActionButtons from "./ActionButtons";
-import KonvaCanvas from "./KonvaCanvas";
+import KonvaCanvas, { CanvasContextMenuRequest } from "./KonvaCanvas";
 import KonvaParameterMapper from "./KonvaParameterMapper";
 import useHandleResize from "./useHandleResize";
 import CanvasStylesBar from "./CanvasStylesBar";
+import CanvasContextMenu, { CanvasContextMenuState } from "./CanvasContextMenu";
 import ExperimentPreview from "../../../ExperimentPreview";
 import useCanvasStyles from "../../../../hooks/useCanvasStyles";
 import { HtmlSceneMetrics } from "./experimentalScene/sceneModel";
-import {
-  CanvasGuide,
-  SnapBox,
-  snapComponentBox,
-} from "./editorGuides";
+import { CanvasGuide, SnapBox, snapComponentBox } from "./editorGuides";
 import {
   applyComponentConfigPatch,
   ConfigPatch,
   typedValue,
 } from "./componentConfigUpdates";
+import {
+  buildPastedComponents,
+  cloneTrialComponents,
+  getSelectedTrialComponents,
+} from "./designerComponentClipboard";
+
+const MAX_HISTORY_ENTRIES = 80;
+
+function isEditableShortcutTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+
+  return Boolean(
+    target.closest(
+      'input, textarea, select, [contenteditable="true"], [role="textbox"]',
+    ),
+  );
+}
 
 const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   isOpen,
@@ -42,13 +57,34 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   uploadedFiles = [],
 }) => {
   const [components, setComponents] = useState<TrialComponent[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const selectedId = selectedIds[0] ?? null;
+  const setSelectedId = useCallback<
+    React.Dispatch<React.SetStateAction<string | null>>
+  >((value) => {
+    setSelectedIds((prevSelectedIds) => {
+      const prevSelectedId = prevSelectedIds[0] ?? null;
+      const nextSelectedId =
+        typeof value === "function" ? value(prevSelectedId) : value;
+
+      return nextSelectedId ? [nextSelectedId] : [];
+    });
+  }, []);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [activeGuides, setActiveGuides] = useState<CanvasGuide[]>([]);
+  const [contextMenu, setContextMenu] = useState<CanvasContextMenuState | null>(
+    null,
+  );
+  const [clipboardCount, setClipboardCount] = useState(0);
+  const [historyCount, setHistoryCount] = useState(0);
   const { canvasStyles, setCanvasStyles } = useCanvasStyles();
   const [isDemoRunning, setIsDemoRunning] = useState(false);
 
   const stageRef = useRef<Konva.Stage>(null);
+  const componentsRef = useRef<TrialComponent[]>([]);
+  const clipboardComponentsRef = useRef<TrialComponent[]>([]);
+  const historyRef = useRef<TrialComponent[][]>([]);
+  const pasteCountRef = useRef(0);
   // Track previous canvas size to rescale component positions on resize
   const prevCanvasSizeRef = useRef<{ width: number; height: number } | null>(
     null,
@@ -59,8 +95,35 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     useComponentMetadata(selectedComponent?.type || null);
 
   useEffect(() => {
+    componentsRef.current = components;
+    setSelectedIds((prevSelectedIds) => {
+      const existingIds = new Set(components.map((component) => component.id));
+      const nextSelectedIds = prevSelectedIds.filter((id) =>
+        existingIds.has(id),
+      );
+
+      return nextSelectedIds.length === prevSelectedIds.length
+        ? prevSelectedIds
+        : nextSelectedIds;
+    });
+  }, [components]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    clipboardComponentsRef.current = [];
+    historyRef.current = [];
+    pasteCountRef.current = 0;
+    setClipboardCount(0);
+    setHistoryCount(0);
+    setContextMenu(null);
+  }, [isOpen]);
+
+  useEffect(() => {
     if (!editingTextId) return;
-    const stillExists = components.some((component) => component.id === editingTextId);
+    const stillExists = components.some(
+      (component) => component.id === editingTextId,
+    );
     if (!stillExists || selectedId !== editingTextId) {
       setEditingTextId(null);
     }
@@ -155,9 +218,9 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
         const rescaled = comps.map((comp) => {
           return {
             ...comp,
-            x: (comp.x / prev.width)  * CANVAS_WIDTH,
+            x: (comp.x / prev.width) * CANVAS_WIDTH,
             y: (comp.y / prev.height) * CANVAS_HEIGHT,
-            width:  (comp.width  / prev.width) * CANVAS_WIDTH,
+            width: (comp.width / prev.width) * CANVAS_WIDTH,
             height: (comp.height / prev.width) * CANVAS_WIDTH,
           };
         });
@@ -183,6 +246,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       setComponents,
       toJsPsychCoords,
       selectedId,
+      selectedIds,
       onAutoSave,
       generateConfigFromComponents,
       setSelectedId,
@@ -193,32 +257,234 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       setActiveDomId,
       editingTextId,
       onEditTextStart: setEditingTextId,
+      onRecordHistory: pushHistory,
       onSnap: handleSnap,
       onGuidesChange: setActiveGuides,
     });
   };
 
-  const toJsPsychCoords = (x: number, y: number) => {
-    const centerX = CANVAS_WIDTH / 2;
-    const centerY = CANVAS_HEIGHT / 2;
+  const toJsPsychCoords = useCallback(
+    (x: number, y: number) => {
+      const centerX = CANVAS_WIDTH / 2;
+      const centerY = CANVAS_HEIGHT / 2;
 
-    return {
-      x: Math.max(
-        -100,
-        Math.min(100, ((x - centerX) / (CANVAS_WIDTH / 2)) * 100),
-      ),
-      y: Math.max(
-        -100,
-        Math.min(100, ((centerY - y) / (CANVAS_HEIGHT / 2)) * 100),
-      ),
-    };
-  };
+      return {
+        x: Math.max(
+          -100,
+          Math.min(100, ((x - centerX) / (CANVAS_WIDTH / 2)) * 100),
+        ),
+        y: Math.max(
+          -100,
+          Math.min(100, ((centerY - y) / (CANVAS_HEIGHT / 2)) * 100),
+        ),
+      };
+    },
+    [CANVAS_HEIGHT, CANVAS_WIDTH],
+  );
 
   const generateConfigFromComponents = useConfigComponents({
     toJsPsychCoords,
     columnMapping,
     canvasStyles,
   });
+
+  const autoSaveComponents = useCallback(
+    (nextComponents: TrialComponent[]) => {
+      if (!onAutoSave) return;
+
+      const config = generateConfigFromComponents(nextComponents);
+      setTimeout(() => onAutoSave(config), 100);
+    },
+    [generateConfigFromComponents, onAutoSave],
+  );
+
+  const pushHistory = useCallback((snapshot = componentsRef.current) => {
+    historyRef.current = [
+      ...historyRef.current,
+      cloneTrialComponents(snapshot),
+    ].slice(-MAX_HISTORY_ENTRIES);
+    setHistoryCount(historyRef.current.length);
+  }, []);
+
+  const setComponentsWithHistory: React.Dispatch<
+    React.SetStateAction<TrialComponent[]>
+  > = useCallback(
+    (value) => {
+      const prevComponents = componentsRef.current;
+      const nextComponents =
+        typeof value === "function"
+          ? (value as (prev: TrialComponent[]) => TrialComponent[])(
+              prevComponents,
+            )
+          : value;
+
+      if (nextComponents === prevComponents) return;
+
+      pushHistory(prevComponents);
+      componentsRef.current = nextComponents;
+      setComponents(nextComponents);
+    },
+    [pushHistory],
+  );
+
+  const setComponentsWithHistoryAndAutoSave: React.Dispatch<
+    React.SetStateAction<TrialComponent[]>
+  > = useCallback(
+    (value) => {
+      const prevComponents = componentsRef.current;
+      const nextComponents =
+        typeof value === "function"
+          ? (value as (prev: TrialComponent[]) => TrialComponent[])(
+              prevComponents,
+            )
+          : value;
+
+      if (nextComponents === prevComponents) return;
+
+      pushHistory(prevComponents);
+      componentsRef.current = nextComponents;
+      setComponents(nextComponents);
+      autoSaveComponents(nextComponents);
+    },
+    [autoSaveComponents, pushHistory],
+  );
+
+  const getSelectedIdsForCommand = useCallback(() => {
+    if (selectedIds.length > 0) return selectedIds;
+    return selectedId ? [selectedId] : [];
+  }, [selectedId, selectedIds]);
+
+  const copySelectedComponents = useCallback(() => {
+    const idsToCopy = getSelectedIdsForCommand();
+    if (idsToCopy.length === 0) return false;
+
+    const selectedComponents = getSelectedTrialComponents(
+      componentsRef.current,
+      idsToCopy,
+    );
+    if (selectedComponents.length === 0) return false;
+
+    clipboardComponentsRef.current = cloneTrialComponents(selectedComponents);
+    pasteCountRef.current = 0;
+    setClipboardCount(selectedComponents.length);
+    return true;
+  }, [getSelectedIdsForCommand]);
+
+  const deleteSelectedComponents = useCallback(() => {
+    const idsToDelete = getSelectedIdsForCommand();
+    if (idsToDelete.length === 0) return false;
+
+    const selectedIdSet = new Set(idsToDelete);
+    const prevComponents = componentsRef.current;
+    const nextComponents = prevComponents.filter(
+      (component) => !selectedIdSet.has(component.id),
+    );
+    if (nextComponents.length === prevComponents.length) return false;
+
+    pushHistory(prevComponents);
+    componentsRef.current = nextComponents;
+    setComponents(nextComponents);
+    setSelectedIds([]);
+    setEditingTextId(null);
+    autoSaveComponents(nextComponents);
+    return true;
+  }, [autoSaveComponents, getSelectedIdsForCommand, pushHistory]);
+
+  const pasteClipboardComponents = useCallback(
+    (pasteAt?: { x: number; y: number }) => {
+      if (clipboardComponentsRef.current.length === 0) return false;
+
+      pasteCountRef.current += 1;
+      const prevComponents = componentsRef.current;
+      const pastedComponents = buildPastedComponents({
+        clipboardComponents: clipboardComponentsRef.current,
+        existingComponents: prevComponents,
+        canvasWidth: CANVAS_WIDTH,
+        canvasHeight: CANVAS_HEIGHT,
+        toJsPsychCoords,
+        pasteAt,
+        pasteCount: pasteCountRef.current,
+      });
+
+      if (pastedComponents.length === 0) return false;
+
+      const nextComponents = [...prevComponents, ...pastedComponents];
+      pushHistory(prevComponents);
+      componentsRef.current = nextComponents;
+      setComponents(nextComponents);
+      setSelectedIds(pastedComponents.map((component) => component.id));
+      setEditingTextId(null);
+      autoSaveComponents(nextComponents);
+      return true;
+    },
+    [
+      CANVAS_HEIGHT,
+      CANVAS_WIDTH,
+      autoSaveComponents,
+      pushHistory,
+      toJsPsychCoords,
+    ],
+  );
+
+  const cutSelectedComponents = useCallback(() => {
+    if (!copySelectedComponents()) return false;
+    return deleteSelectedComponents();
+  }, [copySelectedComponents, deleteSelectedComponents]);
+
+  const selectAllComponents = useCallback(() => {
+    const nextSelectedIds = componentsRef.current.map(
+      (component) => component.id,
+    );
+    if (nextSelectedIds.length === 0) return false;
+
+    setSelectedIds(nextSelectedIds);
+    setEditingTextId(null);
+    return true;
+  }, []);
+
+  const undoLastChange = useCallback(() => {
+    const previousComponents = historyRef.current.pop();
+    if (!previousComponents) return false;
+
+    const restoredComponents = cloneTrialComponents(previousComponents);
+    historyRef.current = [...historyRef.current];
+    setHistoryCount(historyRef.current.length);
+    componentsRef.current = restoredComponents;
+    setComponents(restoredComponents);
+    setSelectedIds((prevSelectedIds) => {
+      const restoredIdSet = new Set(
+        restoredComponents.map((component) => component.id),
+      );
+      return prevSelectedIds.filter((id) => restoredIdSet.has(id));
+    });
+    setEditingTextId(null);
+    autoSaveComponents(restoredComponents);
+    return true;
+  }, [autoSaveComponents]);
+
+  const handleCanvasContextMenu = useCallback(
+    (request: CanvasContextMenuRequest) => {
+      if (editingTextId) return;
+
+      if (request.componentId) {
+        const componentId = request.componentId;
+        setSelectedIds((prevSelectedIds) =>
+          prevSelectedIds.includes(componentId)
+            ? prevSelectedIds
+            : [componentId],
+        );
+      }
+
+      setContextMenu({
+        x: request.clientX,
+        y: request.clientY,
+        canvasX: request.canvasX,
+        canvasY: request.canvasY,
+        componentId: request.componentId,
+      });
+    },
+    [editingTextId],
+  );
 
   const handleSnap = useCallback(
     (box: SnapBox) => snapComponentBox(box, components, canvasStyles),
@@ -251,10 +517,11 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
 
   const commitTextEdit = useCallback(
     (id: string, text: string) => {
+      pushHistory();
       patchTextComponent(id, { text: typedValue(text) });
       setEditingTextId(null);
     },
-    [patchTextComponent],
+    [patchTextComponent, pushHistory],
   );
 
   useHandleResize({
@@ -269,6 +536,10 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) {
+        if (contextMenu) {
+          setContextMenu(null);
+          return;
+        }
         if (editingTextId) {
           setEditingTextId(null);
           return;
@@ -281,7 +552,70 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       document.addEventListener("keydown", handleEscape);
       return () => document.removeEventListener("keydown", handleEscape);
     }
-  }, [editingTextId, isOpen, onClose]);
+  }, [contextMenu, editingTextId, isOpen, onClose]);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+
+    const closeContextMenu = () => setContextMenu(null);
+    window.addEventListener("click", closeContextMenu);
+    window.addEventListener("blur", closeContextMenu);
+    window.addEventListener("resize", closeContextMenu);
+    window.addEventListener("scroll", closeContextMenu, true);
+
+    return () => {
+      window.removeEventListener("click", closeContextMenu);
+      window.removeEventListener("blur", closeContextMenu);
+      window.removeEventListener("resize", closeContextMenu);
+      window.removeEventListener("scroll", closeContextMenu, true);
+    };
+  }, [contextMenu]);
+
+  useEffect(() => {
+    if (!isOpen || isDemoRunning || editingTextId) return;
+
+    const handleKeyboardCommand = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      if (isEditableShortcutTarget(event.target)) return;
+
+      const key = event.key.toLowerCase();
+      if (key === "c") {
+        if (copySelectedComponents()) {
+          event.preventDefault();
+        }
+      } else if (key === "x") {
+        if (cutSelectedComponents()) {
+          event.preventDefault();
+        }
+      } else if (key === "v") {
+        if (pasteClipboardComponents()) {
+          event.preventDefault();
+        }
+      } else if (key === "z") {
+        if (undoLastChange()) {
+          event.preventDefault();
+        }
+      } else if (key === "a") {
+        if (selectAllComponents()) {
+          event.preventDefault();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyboardCommand);
+    return () => {
+      document.removeEventListener("keydown", handleKeyboardCommand);
+    };
+  }, [
+    copySelectedComponents,
+    cutSelectedComponents,
+    editingTextId,
+    isDemoRunning,
+    isOpen,
+    pasteClipboardComponents,
+    selectAllComponents,
+    undoLastChange,
+  ]);
 
   const onDrop = (e: React.DragEvent, fileUrl: string, type: ComponentType) => {
     handleDrop({
@@ -290,7 +624,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       type,
       stageRef,
       components,
-      setComponents,
+      setComponents: setComponentsWithHistory,
       setSelectedId,
       toJsPsychCoords,
       getDefaultConfig,
@@ -407,22 +741,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   // Wrapper for setComponents to trigger autosave from Sidebar
   const setComponentsWrapper: React.Dispatch<
     React.SetStateAction<TrialComponent[]>
-  > = (value) => {
-    setComponents((prev) => {
-      const nextComponents =
-        typeof value === "function"
-          ? (value as (prev: TrialComponent[]) => TrialComponent[])(prev)
-          : value;
-
-      // Trigger autosave
-      if (onAutoSave) {
-        const config = generateConfigFromComponents(nextComponents);
-        setTimeout(() => onAutoSave(config), 100);
-      }
-
-      return nextComponents;
-    });
-  };
+  > = setComponentsWithHistoryAndAutoSave;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
@@ -483,7 +802,9 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             setComponents={setComponentsWrapper}
             getDefaultConfig={getDefaultConfig}
             selectedId={selectedId}
+            selectedIds={selectedIds}
             setSelectedId={setSelectedId}
+            setSelectedIds={setSelectedIds}
             components={components}
           />
 
@@ -504,6 +825,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             editingTextId={editingTextId}
             onCommitTextEdit={commitTextEdit}
             onCancelTextEdit={() => setEditingTextId(null)}
+            onCanvasContextMenu={handleCanvasContextMenu}
             onRenderComponent={onRenderComponent}
             canvasStyles={canvasStyles}
           />
@@ -522,6 +844,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
               canvasWidth={CANVAS_WIDTH}
               onAutoSave={onAutoSave}
               generateConfigFromComponents={generateConfigFromComponents}
+              onRecordHistory={pushHistory}
               isResizingRight={isResizingRight}
               setShowRightPanel={setShowRightPanel}
               setRightPanelWidth={setRightPanelWidth}
@@ -554,6 +877,27 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
             </button>
           )}
         </div>
+
+        <CanvasContextMenu
+          state={contextMenu}
+          canCopy={selectedIds.length > 0}
+          canPaste={clipboardCount > 0}
+          canUndo={historyCount > 0}
+          hasComponents={components.length > 0}
+          onCopy={copySelectedComponents}
+          onCut={cutSelectedComponents}
+          onPaste={() =>
+            pasteClipboardComponents(
+              contextMenu
+                ? { x: contextMenu.canvasX, y: contextMenu.canvasY }
+                : undefined,
+            )
+          }
+          onDelete={deleteSelectedComponents}
+          onSelectAll={selectAllComponents}
+          onUndo={undoLastChange}
+          onClose={() => setContextMenu(null)}
+        />
 
         <ActionButtons
           onAutoSave={onAutoSave}

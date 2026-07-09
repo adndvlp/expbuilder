@@ -15,6 +15,52 @@ import TextEditingOverlay from "./TextEditingOverlay";
 // are never clipped by the canvas boundary.
 export const HANDLE_PAD = 10;
 
+export type CanvasContextMenuRequest = {
+  clientX: number;
+  clientY: number;
+  canvasX: number;
+  canvasY: number;
+  componentId: string | null;
+};
+
+function getComponentHitBox(
+  component: TrialComponent,
+  htmlSceneMetrics: HtmlSceneMetrics,
+) {
+  const metric = htmlSceneMetrics[component.id];
+  const width = component.width || metric?.width || 160;
+  const height = component.height || metric?.height || 64;
+
+  return {
+    left: component.x - width / 2,
+    right: component.x + width / 2,
+    top: component.y - height / 2,
+    bottom: component.y + height / 2,
+  };
+}
+
+function findTopComponentAtPoint(
+  components: TrialComponent[],
+  htmlSceneMetrics: HtmlSceneMetrics,
+  point: { x: number; y: number },
+): string | null {
+  const sortedComponents = [...components].sort(
+    (a, b) => (b.zIndex ?? 0) - (a.zIndex ?? 0),
+  );
+
+  const hitComponent = sortedComponents.find((component) => {
+    const box = getComponentHitBox(component, htmlSceneMetrics);
+    return (
+      point.x >= box.left &&
+      point.x <= box.right &&
+      point.y >= box.top &&
+      point.y <= box.bottom
+    );
+  });
+
+  return hitComponent?.id ?? null;
+}
+
 type Props = {
   canvasContainerRef: React.RefObject<HTMLDivElement | null>;
   CANVAS_WIDTH: number;
@@ -35,6 +81,7 @@ type Props = {
   editingTextId: string | null;
   onCommitTextEdit: (id: string, text: string) => void;
   onCancelTextEdit: () => void;
+  onCanvasContextMenu: (request: CanvasContextMenuRequest) => void;
   onRenderComponent: (
     comp: TrialComponent,
     metrics: HtmlSceneMetrics,
@@ -59,6 +106,7 @@ function KonvaCanvas({
   editingTextId,
   onCommitTextEdit,
   onCancelTextEdit,
+  onCanvasContextMenu,
   onRenderComponent,
   canvasStyles,
 }: Props) {
@@ -92,6 +140,26 @@ function KonvaCanvas({
         onPointerLeave={() => onGuidesChange([])}
         onPointerUpCapture={() => onGuidesChange([])}
         onPointerCancel={() => onGuidesChange([])}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          const rect = event.currentTarget.getBoundingClientRect();
+          const point = {
+            x: (event.clientX - rect.left) / stageScale,
+            y: (event.clientY - rect.top) / stageScale,
+          };
+
+          onCanvasContextMenu({
+            clientX: event.clientX,
+            clientY: event.clientY,
+            canvasX: point.x,
+            canvasY: point.y,
+            componentId: findTopComponentAtPoint(
+              components,
+              htmlSceneMetrics,
+              point,
+            ),
+          });
+        }}
         onPointerDownCapture={(event) => {
           if (!activeDomId) return;
           const target = event.target as Element | null;

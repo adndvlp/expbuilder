@@ -5,6 +5,7 @@ import { ComponentType, TrialComponent } from "../types";
 
 type Props = {
   selectedId: string | null;
+  selectedIds: string[];
   isResizingLeft: RefObject<boolean>;
   leftPanelWidth: number;
   setShowLeftPanel: Dispatch<SetStateAction<boolean>>;
@@ -20,6 +21,7 @@ type Props = {
   };
   components: TrialComponent[];
   setSelectedId: Dispatch<SetStateAction<string | null>>;
+  setSelectedIds: Dispatch<SetStateAction<string[]>>;
   images: string[];
   audios: string[];
   videos: string[];
@@ -30,7 +32,9 @@ type Props = {
 function LeftSideBar({
   isResizingLeft,
   selectedId,
+  selectedIds,
   setSelectedId,
+  setSelectedIds,
   leftPanelWidth,
   setShowLeftPanel,
   setLeftPanelWidth,
@@ -153,10 +157,14 @@ function LeftSideBar({
 
   // Handle delete
   const handleDelete = () => {
-    if (selectedId) {
-      setComponents(components.filter((comp) => comp.id !== selectedId));
-      setSelectedId(null);
-    }
+    const idsToDelete =
+      selectedIds.length > 0 ? selectedIds : selectedId ? [selectedId] : [];
+    if (idsToDelete.length === 0) return;
+
+    const selectedIdSet = new Set(idsToDelete);
+    setComponents(components.filter((comp) => !selectedIdSet.has(comp.id)));
+    setSelectedIds([]);
+    setSelectedId(null);
   };
 
   const componentTypes: { type: ComponentType; label: string }[] = [
