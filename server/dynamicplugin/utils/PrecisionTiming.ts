@@ -49,6 +49,7 @@ const MIN_FRAME_INTERVAL_MS = 0.25;
 const round3 = (value: number): number => Math.round(value * 1000) / 1000;
 const imagePreloadCache = new Map<string, Promise<void>>();
 const bitmapPreloadCache = new Map<string, Promise<CanvasBitmapSource>>();
+const bitmapSourceCache = new Map<string, CanvasBitmapSource>();
 const audioPreloadCache = new Map<string, Promise<void>>();
 const videoPreloadCache = new Map<string, Promise<void>>();
 
@@ -160,6 +161,22 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     }
     lastFrameTime = timestamp;
     runDueEvents(timestamp);
+    if (!running) return;
+    runFrameCommitCallbacks(timestamp);
+    if (!running) return;
+    rafHandle = requestAnimationFrame(tick);
+  };
+
+  const startAt = (timestamp: number) => {
+    if (onsetTime !== null || rafHandle !== null) return;
+    onsetTime = timestamp;
+    lastFrameTime = timestamp;
+    latestFrameTime = timestamp;
+    running = true;
+    for (const callback of [...startCallbacks]) {
+      callback(timestamp);
+    }
+    runDueEvents(timestamp);
     runFrameCommitCallbacks(timestamp);
     rafHandle = requestAnimationFrame(tick);
   };
@@ -167,16 +184,8 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
   const start = () => {
     if (onsetTime !== null || rafHandle !== null) return;
     rafHandle = requestAnimationFrame((timestamp) => {
-      onsetTime = timestamp;
-      lastFrameTime = timestamp;
-      latestFrameTime = timestamp;
-      running = true;
-      for (const callback of [...startCallbacks]) {
-        callback(timestamp);
-      }
-      runDueEvents(timestamp);
-      runFrameCommitCallbacks(timestamp);
-      rafHandle = requestAnimationFrame(tick);
+      rafHandle = null;
+      startAt(timestamp);
     });
   };
 
@@ -407,6 +416,7 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
 
   return {
     start,
+    startAt,
     stop,
     onStart,
     onFrameCommit,
@@ -610,7 +620,9 @@ export function preloadBitmap(
             image.naturalWidth !== 0
           ) {
             try {
-              resolve(await window.createImageBitmap(image));
+              const bitmap = await window.createImageBitmap(image);
+              bitmapSourceCache.set(url, bitmap);
+              resolve(bitmap);
               return;
             } catch {
               // Fall back to the decoded image element when bitmap creation
@@ -618,6 +630,7 @@ export function preloadBitmap(
             }
           }
 
+          bitmapSourceCache.set(url, image);
           resolve(image);
         };
 
@@ -636,6 +649,10 @@ export function preloadBitmap(
   }
 
   return bitmapPreloadCache.get(url)!;
+}
+
+export function getPreloadedBitmap(url: string): CanvasBitmapSource | null {
+  return bitmapSourceCache.get(url) ?? null;
 }
 
 function preloadWithJsPsych(

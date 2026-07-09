@@ -28,6 +28,88 @@ import {
 import ResponseTimingManager from "./utils/ResponseTimingManager";
 import { getCanvasStages, StageMetrics } from "./renderer/CanvasStage";
 
+const DYNAMIC_CONTAINER_ID = "jspsych-dynamic-plugin-container";
+const DYNAMIC_VISUAL_BRIDGE_ID = "jspsych-dynamic-visual-bridge";
+
+let preservedVisualBridge: HTMLElement | null = null;
+let preservedVisualBridgeObserver: MutationObserver | null = null;
+let preservedVisualHandoffTimestamp: number | null = null;
+
+function removePreservedVisualBridge() {
+  preservedVisualBridgeObserver?.disconnect();
+  preservedVisualBridgeObserver = null;
+  preservedVisualBridge?.remove();
+  preservedVisualBridge = null;
+  preservedVisualHandoffTimestamp = null;
+}
+
+function consumePreservedVisualHandoffTimestamp() {
+  const timestamp = preservedVisualBridge
+    ? preservedVisualHandoffTimestamp
+    : null;
+  preservedVisualHandoffTimestamp = null;
+  return timestamp;
+}
+
+function monitorPreservedVisualBridge(displayElement: HTMLElement) {
+  preservedVisualBridgeObserver?.disconnect();
+  preservedVisualBridgeObserver = new MutationObserver(() => {
+    if (!preservedVisualBridge) return;
+    if (displayElement.childNodes.length === 0) return;
+    if (displayElement.querySelector(`#${DYNAMIC_CONTAINER_ID}`)) return;
+    removePreservedVisualBridge();
+  });
+  preservedVisualBridgeObserver.observe(displayElement, {
+    childList: true,
+    subtree: true,
+  });
+}
+
+function preserveCanvasVisualBridge(
+  mainContainer: HTMLElement,
+  displayElement: HTMLElement,
+  handoffTimestamp: number | null,
+) {
+  const canvases = getCanvasStages(mainContainer)
+    .map((stage) => stage.canvas)
+    .filter((canvas) => canvas.parentNode !== null);
+
+  removePreservedVisualBridge();
+  if (canvases.length === 0) return;
+
+  const bridge = document.createElement("div");
+  bridge.id = DYNAMIC_VISUAL_BRIDGE_ID;
+  bridge.setAttribute("aria-hidden", "true");
+  bridge.style.position = "fixed";
+  bridge.style.left = "0";
+  bridge.style.top = "0";
+  bridge.style.width = "100vw";
+  bridge.style.height = "100vh";
+  bridge.style.margin = "0";
+  bridge.style.padding = "0";
+  bridge.style.overflow = "hidden";
+  bridge.style.pointerEvents = "none";
+  bridge.style.zIndex = "2147483647";
+
+  for (const canvas of canvases) {
+    const rect = canvas.getBoundingClientRect();
+    canvas.style.position = "fixed";
+    canvas.style.left = `${rect.left}px`;
+    canvas.style.top = `${rect.top}px`;
+    canvas.style.width = `${rect.width}px`;
+    canvas.style.height = `${rect.height}px`;
+    canvas.style.margin = "0";
+    canvas.style.transform = "none";
+    canvas.style.pointerEvents = "none";
+    bridge.appendChild(canvas);
+  }
+
+  document.body.appendChild(bridge);
+  preservedVisualBridge = bridge;
+  preservedVisualHandoffTimestamp = handoffTimestamp;
+  monitorPreservedVisualBridge(displayElement);
+}
+
 const info = <const>{
   name: "DynamicPlugin",
   version: version,
@@ -934,7 +1016,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
 
     // Create main container for all components
     const mainContainer = document.createElement("div");
-    mainContainer.id = "jspsych-dynamic-plugin-container";
+    mainContainer.id = DYNAMIC_CONTAINER_ID;
     mainContainer.style.visibility = "hidden";
     mainContainer.style.background =
       trial.__canvasStyles?.backgroundColor ?? "transparent";
@@ -1484,6 +1566,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         }
       });
 
+      preserveCanvasVisualBridge(mainContainer, display_element, offsetTime);
+
       // Clean up components
       stimulusComponents.forEach(({ instance }) => {
         if (instance.destroy) instance.destroy();
@@ -1518,6 +1602,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         for (const stage of getCanvasStages(mainContainer)) {
           stage.commit(timestamp, true);
         }
+        removePreservedVisualBridge();
       });
 
       // Handle trial duration on measured animation frames.
@@ -1533,7 +1618,19 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         });
       }
 
-      timing.start();
+      const handoffTimestamp = consumePreservedVisualHandoffTimestamp();
+      if (
+        typeof handoffTimestamp === "number" &&
+        performance.now() - handoffTimestamp <= timing.getFrameIntervalEstimate()
+      ) {
+        queueMicrotask(() => {
+          if (!trialEnded) {
+            timing.startAt(handoffTimestamp);
+          }
+        });
+      } else {
+        timing.start();
+      }
 
       if (trial.prefetch_next_trials !== false) {
         const upcomingAssets = collectUpcomingAssetPreloadList(

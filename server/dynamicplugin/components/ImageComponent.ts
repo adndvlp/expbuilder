@@ -3,6 +3,7 @@ import { getCanvasStage, CanvasStage } from "../renderer/CanvasStage";
 import {
   CanvasBitmapSource,
   createPrecisionTiming,
+  getPreloadedBitmap,
   preloadBitmap,
   resolveTimingMs,
   scheduleFrameEvent,
@@ -270,11 +271,18 @@ class ImageComponent {
 
     const stimulus = this.resolveParam(config.stimulus, "");
     if (stimulus) {
-      this.sourcePromise = preloadBitmap(stimulus).then((source) => {
-        this.source = source;
+      const cachedSource = getPreloadedBitmap(stimulus);
+      if (cachedSource) {
+        this.source = cachedSource;
         this.prepareDrawable(config, zIndex);
-        return source;
-      });
+        this.sourcePromise = Promise.resolve(cachedSource);
+      } else {
+        this.sourcePromise = preloadBitmap(stimulus).then((source) => {
+          this.source = source;
+          this.prepareDrawable(config, zIndex);
+          return source;
+        });
+      }
     }
 
     const timing = config.__timing as
