@@ -355,24 +355,23 @@ describe('list_plugins', () => {
   })
 })
 
-// ── list_files (regression: userDataRoot was missing from imports) ─────────────
+// ── exported tool contract ───────────────────────────────────────────────────
 
-describe('list_files', () => {
-  test('returns error when experiment not found', async () => {
+describe('readTools contract', () => {
+  test('exposes the documented read-only tools', async () => {
     const { readTools, tmpDir } = await freshSetup()
-    const result = await readTools.list_files.execute({ experimentID: 'MISSING' })
-    expect(result.error).toMatch(/not found/)
-    cleanup(tmpDir)
-  })
-
-  test('returns empty file lists for experiment with no uploads', async () => {
-    const { readTools, tmpDir } = await freshSetup((data) => {
-      data.experiments.push({ experimentID: 'e1', name: 'MyExp', createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-01T00:00:00.000Z' })
-    })
-    const result = await readTools.list_files.execute({ experimentID: 'e1' })
-    expect(result.files.img).toEqual([])
-    expect(result.files.aud).toEqual([])
-    expect(result.files.vid).toEqual([])
+    expect(Object.keys(readTools).sort()).toEqual([
+      'get_config',
+      'get_experiment',
+      'get_loop',
+      'get_session',
+      'get_timeline',
+      'get_trial',
+      'list_experiments',
+      'list_plugins',
+      'list_sessions',
+      'list_trials',
+    ])
     cleanup(tmpDir)
   })
 })

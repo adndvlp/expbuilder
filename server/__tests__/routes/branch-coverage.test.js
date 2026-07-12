@@ -471,42 +471,62 @@ describe('trials error handlers', () => {
   test('trials-metadata returns 500 on error', async () => {
     const { app, db } = await freshApp()
     const origRead = db.read
-    db.read = async () => { throw new Error('mock') }
-    const res = await request(app).get('/api/trials-metadata/E1').expect(500)
+    try {
+      db.read = async () => { throw new Error('mock') }
+      await request(app).get('/api/trials-metadata/E1').expect(500)
+    } finally {
+      db.read = origRead
+    }
   })
 
   test('trials-extensions returns 500 on error', async () => {
     const { app, db } = await freshApp()
     const origRead = db.read
-    db.read = async () => { throw new Error('mock') }
-    const res = await request(app).get('/api/trials-extensions/E1').expect(500)
+    try {
+      db.read = async () => { throw new Error('mock') }
+      await request(app).get('/api/trials-extensions/E1').expect(500)
+    } finally {
+      db.read = origRead
+    }
   })
 
   test('POST trial returns 500 on error', async () => {
     const { app, db } = await freshApp()
     const origWrite = db.write
-    db.write = async () => { throw new Error('mock') }
-    const res = await request(app)
-      .post('/api/trial/E1')
-      .send({ name: 'T', plugin: 'p' })
-      .expect(500)
+    try {
+      db.write = async () => { throw new Error('mock') }
+      await request(app)
+        .post('/api/trial/E1')
+        .send({ name: 'T', plugin: 'p' })
+        .expect(500)
+    } finally {
+      db.write = origWrite
+    }
   })
 
   test('GET trial returns 500 on error', async () => {
     const { app, db } = await freshApp()
     const origRead = db.read
-    db.read = async () => { throw new Error('mock') }
-    const res = await request(app).get('/api/trial/E1/1').expect(500)
+    try {
+      db.read = async () => { throw new Error('mock') }
+      await request(app).get('/api/trial/E1/1').expect(500)
+    } finally {
+      db.read = origRead
+    }
   })
 
   test('PATCH trial returns 500 on error', async () => {
     const { app, db } = await freshApp()
     const origRead = db.read
-    db.read = async () => { throw new Error('mock') }
-    const res = await request(app)
-      .patch('/api/trial/E1/1')
-      .send({ name: 'X' })
-      .expect(500)
+    try {
+      db.read = async () => { throw new Error('mock') }
+      await request(app)
+        .patch('/api/trial/E1/1')
+        .send({ name: 'X' })
+        .expect(500)
+    } finally {
+      db.read = origRead
+    }
   })
 
   test('DELETE trial returns 500 on error', async () => {

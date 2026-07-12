@@ -66,6 +66,57 @@ describe('agent catalog', () => {
     expect(result[0].models[0].contextK).toBe(128)
   })
 
+  test('listProviders fills default provider and model fields', async () => {
+    const { listProviders } = await import('../../agent/catalog.js')
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        minimal: {
+          models: {
+            m1: {},
+          },
+        },
+      }),
+    })
+    const [provider] = await listProviders()
+    expect(provider).toEqual({
+      id: 'minimal',
+      name: 'minimal',
+      npm: null,
+      env: [],
+      api: null,
+      models: [{
+        id: 'm1',
+        name: 'm1',
+        contextK: null,
+        outputK: null,
+        attachment: false,
+        reasoning: false,
+        tool_call: false,
+        cost: null,
+      }],
+    })
+  })
+
+  test('getCatalog falls back to stale cache after fetch failure', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    const { getCatalog } = await import('../../agent/catalog.js')
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ cached: { name: 'Cached', models: {} } }),
+      })
+      .mockRejectedValueOnce(new Error('offline'))
+
+    await getCatalog()
+    const now = Date.now
+    jest.spyOn(Date, 'now').mockReturnValue(now() + (6 * 60 * 1000))
+    await expect(getCatalog()).resolves.toEqual({ cached: { name: 'Cached', models: {} } })
+    expect(warn).toHaveBeenCalledWith('[catalog] fetch failed, using stale cache:', 'offline')
+    Date.now.mockRestore()
+    warn.mockRestore()
+  })
+
   test('getCatalog throws on non-ok response when no cache', async () => {
     const { getCatalog } = await import('../../agent/catalog.js')
     mockFetch.mockResolvedValueOnce({ ok: false, status: 500 })

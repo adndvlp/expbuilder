@@ -76,6 +76,19 @@ describe('GET /api/tunnel-settings/:experimentID', () => {
     expect(res.body.settings.hostname).toBe('myexp.example.com')
     expect(res.body.settings.persistent).toBe(true)
   })
+
+  test('returns 500 when the database read fails', async () => {
+    const { app, db } = await freshApp()
+    const originalRead = db.read
+    db.read = jest.fn().mockRejectedValue(new Error('read failed'))
+    try {
+      await request(app)
+        .get('/api/tunnel-settings/E2')
+        .expect(500, { success: false, error: 'read failed' })
+    } finally {
+      db.read = originalRead
+    }
+  })
 })
 
 describe('PUT /api/tunnel-settings/:experimentID', () => {
@@ -105,6 +118,24 @@ describe('PUT /api/tunnel-settings/:experimentID', () => {
     expect(res.body.settings.persistent).toBe(true)
   })
 
+  test('saves default tunnel settings when request body is omitted', async () => {
+    const { app, db } = await freshApp()
+    db.data.experiments.push({
+      experimentID: 'E-defaults',
+      name: 'Exp Defaults',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    await db.write()
+
+    await request(app)
+      .put('/api/tunnel-settings/E-defaults')
+      .expect(200, {
+        success: true,
+        settings: { hostname: '', persistent: false },
+      })
+  })
+
   test('normalizes hostname (strips protocol and trailing slash)', async () => {
     const { app, db } = await freshApp()
     db.data.experiments.push({
@@ -119,6 +150,27 @@ describe('PUT /api/tunnel-settings/:experimentID', () => {
       .send({ hostname: 'https://myexp.example.com/' })
       .expect(200)
     expect(res.body.settings.hostname).toBe('myexp.example.com')
+  })
+
+  test('returns 500 when saving tunnel settings fails', async () => {
+    const { app, db } = await freshApp()
+    db.data.experiments.push({
+      experimentID: 'E5',
+      name: 'Exp5',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    await db.write()
+    const originalWrite = db.write
+    db.write = jest.fn().mockRejectedValue(new Error('write failed'))
+    try {
+      await request(app)
+        .put('/api/tunnel-settings/E5')
+        .send({ hostname: 'test.example.com' })
+        .expect(500, { success: false, error: 'write failed' })
+    } finally {
+      db.write = originalWrite
+    }
   })
 })
 

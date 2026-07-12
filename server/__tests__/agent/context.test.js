@@ -32,11 +32,9 @@ describe('agent context', () => {
     const { retrieveRelevantDocs } = await import('../../agent/context.js')
     const result = retrieveRelevantDocs('branching conditions and repeat/jump logic', 1)
     expect(typeof result).toBe('string')
-    // Should include anchors + at most topK candidates
-    // Anchors always included: 02-data-model, 03-api, 05-trials-loops
+    // Anchors always include the data model; topK limits scored docs.
     expect(result).toMatch(/DATA_MODEL/)
-    expect(result).toMatch(/API/)
-    expect(result).toMatch(/TRIALS_AND_LOOPS/)
     expect(result).toMatch(/BRANCHING/)
+    expect(result).not.toMatch(/DYNAMIC_PLUGIN/)
   })
 })

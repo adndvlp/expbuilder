@@ -4,6 +4,7 @@ import os from 'os'
 import express from 'express'
 import request from 'supertest'
 import { jest } from '@jest/globals'
+import JSZip from 'jszip'
 
 const freshApp = async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'exp-db2-'))
@@ -130,5 +131,126 @@ describe('POST /api/app/reset', () => {
     // Fixed dirs should exist but be empty
     expect(fs.existsSync(experimentsHtmlDir)).toBe(true)
     expect(fs.readdirSync(experimentsHtmlDir)).toHaveLength(0)
+  })
+})
+
+describe('POST /api/import-experiments structured ZIP', () => {
+  test('imports experiment data and restores allowed media files', async () => {
+    const { app, db, tmpDir } = await freshApp()
+    const zip = new JSZip()
+    const folder = zip.folder('Imported Exp')
+    folder.file('data.json', JSON.stringify({
+      experiment: {
+        experimentID: 'E1',
+        name: 'Imported Exp',
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z',
+      },
+      trials: {
+        experimentID: 'E1',
+        trials: [{ id: 1, name: 'T1' }],
+        loops: [],
+        timeline: [{ id: 1, type: 'trial', name: 'T1' }],
+      },
+      config: {
+        experimentID: 'E1',
+        data: { generatedCode: 'timeline.push({})' },
+        isDevMode: true,
+        isSaveMode: false,
+      },
+      sessionResults: [
+        {
+          experimentID: 'E1',
+          sessionId: 's1',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          data: [{ rt: 100 }],
+          state: 'completed',
+          lastUpdate: '2024-01-01T00:00:00.000Z',
+          metadata: {},
+        },
+      ],
+    }))
+    folder.folder('img').file('stimulus.png', 'image-bytes')
+    folder.folder('aud').file('.hidden.wav', 'ignored')
+    folder.folder('badtype').file('ignored.txt', 'ignored')
+    folder.file('../escape.txt', 'ignored')
+
+    const buffer = await zip.generateAsync({ type: 'nodebuffer' })
+    const res = await request(app)
+      .post('/api/import-experiments')
+      .attach('zipfile', buffer, 'backup.zip')
+      .expect(200)
+
+    expect(res.body).toEqual({ success: true, imported: 1 })
+    await db.read()
+    expect(db.data.experiments[0].experimentID).toBe('E1')
+    expect(db.data.trials[0].trials[0].name).toBe('T1')
+    expect(db.data.configs[0].isDevMode).toBe(true)
+    expect(db.data.sessionResults[0].sessionId).toBe('s1')
+    expect(fs.readFileSync(path.join(tmpDir, 'Imported Exp', 'img', 'stimulus.png'), 'utf8')).toBe('image-bytes')
+    expect(fs.existsSync(path.join(tmpDir, 'Imported Exp', 'aud', '.hidden.wav'))).toBe(false)
+    expect(fs.existsSync(path.join(tmpDir, 'Imported Exp', 'badtype'))).toBe(false)
+  })
+
+  test('overwrites existing experiment docs and skips malformed folders', async () => {
+    const { app, db } = await freshApp()
+    db.data.experiments.push({
+      experimentID: 'E1',
+      name: 'Old Name',
+      createdAt: '2023-01-01T00:00:00.000Z',
+      updatedAt: '2023-01-01T00:00:00.000Z',
+    })
+    db.data.trials.push({ experimentID: 'E1', trials: [], loops: [], timeline: [] })
+    db.data.configs.push({ experimentID: 'E1', data: {}, isDevMode: false })
+    db.data.sessionResults.push({
+      experimentID: 'E1',
+      sessionId: 'old',
+      createdAt: '2023-01-01T00:00:00.000Z',
+      data: [],
+      state: 'completed',
+      lastUpdate: '2023-01-01T00:00:00.000Z',
+      metadata: {},
+    })
+    await db.write()
+
+    const zip = new JSZip()
+    zip.folder('NoData').file('readme.txt', 'ignored')
+    zip.folder('BadJson').file('data.json', '{bad json')
+    zip.folder('NoId').file('data.json', JSON.stringify({ experiment: { name: 'No ID' } }))
+    zip.folder('Replacement').file('data.json', JSON.stringify({
+      experiment: {
+        experimentID: 'E1',
+        name: 'New Name',
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z',
+      },
+      trials: { experimentID: 'E1', trials: [{ id: 2, name: 'New Trial' }], loops: [], timeline: [] },
+      config: { experimentID: 'E1', data: { ok: true }, isDevMode: false },
+      sessionResults: [
+        {
+          experimentID: 'E1',
+          sessionId: 'new',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          data: [],
+          state: 'completed',
+          lastUpdate: '2024-01-01T00:00:00.000Z',
+          metadata: {},
+        },
+      ],
+    }))
+
+    const buffer = await zip.generateAsync({ type: 'nodebuffer' })
+    await request(app)
+      .post('/api/import-experiments')
+      .attach('zipfile', buffer, 'backup.zip')
+      .expect(200)
+
+    await db.read()
+    expect(db.data.experiments).toHaveLength(1)
+    expect(db.data.experiments[0].name).toBe('New Name')
+    expect(db.data.trials[0].trials[0].name).toBe('New Trial')
+    expect(db.data.configs[0].data).toEqual({ ok: true })
+    expect(db.data.sessionResults).toHaveLength(1)
+    expect(db.data.sessionResults[0].sessionId).toBe('new')
   })
 })

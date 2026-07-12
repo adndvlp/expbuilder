@@ -39,6 +39,26 @@ describe('agent system-prompt', () => {
     expect(typeof result).toBe('string')
   })
 
+  test('buildSystemPrompt formats singular and plural trial/loop counts', async () => {
+    const { buildSystemPrompt } = await import('../../agent/system-prompt.js')
+    const result = await buildSystemPrompt({
+      userMessage: 'show current experiments',
+      experiments: [
+        { experimentID: 'E1', name: 'Single' },
+        { experimentID: 'E2', name: 'Plural' },
+        { experimentID: 'E3', name: 'No Doc' },
+      ],
+      trials: [
+        { experimentID: 'E1', trials: [{ id: 1 }], loops: [{ id: 'loop_1' }] },
+        { experimentID: 'E2', trials: [{ id: 1 }, { id: 2 }], loops: [{ id: 'loop_1' }, { id: 'loop_2' }] },
+      ],
+    })
+
+    expect(result).toContain('- **Single** (E1) — 1 trial, 1 loop')
+    expect(result).toContain('- **Plural** (E2) — 2 trials, 2 loops')
+    expect(result).toContain('- **No Doc** (E3)')
+  })
+
   test('buildSystemPrompt handles missing userMessage gracefully', async () => {
     const { buildSystemPrompt } = await import('../../agent/system-prompt.js')
     const result = await buildSystemPrompt({
