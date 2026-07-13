@@ -4,12 +4,11 @@ import { Stage, Layer, Rect, Group } from "react-konva";
 import type Konva from "konva";
 import AlignmentGuidesLayer from "./AlignmentGuidesLayer";
 import ExperimentalHtmlSceneLayer from "./experimentalScene/ExperimentalHtmlSceneLayer";
-import {
-  EXPERIMENTAL_HTML_SCENE_ENABLED,
-  HtmlSceneMetrics,
-} from "./experimentalScene/sceneModel";
+import { HtmlSceneMetrics } from "./experimentalScene/sceneModel";
 import { CanvasGuide } from "./editorGuides";
 import TextEditingOverlay from "./TextEditingOverlay";
+import CanvasBackdrop from "./KonvaCanvas/CanvasBackdrop";
+import { findTopComponentAtPoint } from "./KonvaCanvas/hitTesting";
 
 // Extra canvas space (in stage coords) so Transformer handles at node edges
 // are never clipped by the canvas boundary.
@@ -22,44 +21,6 @@ export type CanvasContextMenuRequest = {
   canvasY: number;
   componentId: string | null;
 };
-
-function getComponentHitBox(
-  component: TrialComponent,
-  htmlSceneMetrics: HtmlSceneMetrics,
-) {
-  const metric = htmlSceneMetrics[component.id];
-  const width = component.width || metric?.width || 160;
-  const height = component.height || metric?.height || 64;
-
-  return {
-    left: component.x - width / 2,
-    right: component.x + width / 2,
-    top: component.y - height / 2,
-    bottom: component.y + height / 2,
-  };
-}
-
-function findTopComponentAtPoint(
-  components: TrialComponent[],
-  htmlSceneMetrics: HtmlSceneMetrics,
-  point: { x: number; y: number },
-): string | null {
-  const sortedComponents = [...components].sort(
-    (a, b) => (b.zIndex ?? 0) - (a.zIndex ?? 0),
-  );
-
-  const hitComponent = sortedComponents.find((component) => {
-    const box = getComponentHitBox(component, htmlSceneMetrics);
-    return (
-      point.x >= box.left &&
-      point.x <= box.right &&
-      point.y >= box.top &&
-      point.y <= box.bottom
-    );
-  });
-
-  return hitComponent?.id ?? null;
-}
 
 type Props = {
   canvasContainerRef: React.RefObject<HTMLDivElement | null>;
@@ -180,77 +141,10 @@ function KonvaCanvas({
           }
         }}
       >
-        {/* Visual clip layer: border, bg, grid, crosshair clipped to rounded rect */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            border: "2px solid var(--neutral-mid)",
-            borderRadius: "8px",
-            overflow: "hidden",
-            background: canvasStyles.backgroundColor,
-            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-            pointerEvents: "none",
-          }}
-        >
-          {/* v8 ignore start -- legacy Konva grid is disabled while the HTML scene is enabled. */}
-          {!EXPERIMENTAL_HTML_SCENE_ENABLED && (
-            <div
-              style={{
-                position: "absolute",
-                width: "100%",
-                height: "100%",
-                backgroundImage: `
-                      linear-gradient(var(--neutral-mid) 1px, transparent 1px),
-                      linear-gradient(90deg, var(--neutral-mid) 1px, transparent 1px)
-                    `,
-                backgroundSize: `${20 * stageScale}px ${20 * stageScale}px`,
-                pointerEvents: "none",
-              }}
-            />
-          )}
-          {/* v8 ignore stop */}
-
-          {/* Center crosshair */}
-          {/* v8 ignore start -- legacy Konva crosshair is disabled while the HTML scene is enabled. */}
-          {!EXPERIMENTAL_HTML_SCENE_ENABLED && (
-            <div
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                width: "20px",
-                height: "20px",
-                margin: "-10px 0 0 -10px",
-                border: "2px solid #ff6b6b",
-                borderRadius: "50%",
-                pointerEvents: "none",
-              }}
-            >
-              <div
-                style={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "-100vw",
-                  width: "200vw",
-                  height: "1px",
-                  background: "rgba(255, 107, 107, 0.3)",
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  left: "50%",
-                  top: "-100vh",
-                  width: "1px",
-                  height: "200vh",
-                  background: "rgba(255, 107, 107, 0.3)",
-                }}
-              />
-            </div>
-          )}
-          {/* v8 ignore stop */}
-        </div>
+        <CanvasBackdrop
+          backgroundColor={canvasStyles.backgroundColor}
+          stageScale={stageScale}
+        />
 
         <ExperimentalHtmlSceneLayer
           components={components}

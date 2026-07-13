@@ -8,6 +8,8 @@ import { FaTimes } from "react-icons/fa";
 import { DynamicPluginPropertyColumn } from "../../LoopsConfiguration/ConditionalLoop/DynamicPluginPropertyColumn";
 import { RuleValueInput } from "../../LoopsConfiguration/ConditionalLoop/RuleValueInput";
 import { updateFieldType, updateComponentIdx } from "../ruleUpdateHelpers";
+import TrialSelector from "./TrialSelector";
+import { getPropValue } from "../utils/getPropValue";
 
 type Props = {
   rule: ParamsOverrideRule;
@@ -56,19 +58,6 @@ export function RuleRow({
   const fieldType = rule.fieldType || "";
   const componentIdx = rule.componentIdx ?? "";
 
-  // Helper to get prop value
-  const getPropValue = (prop: unknown): unknown => {
-    if (
-      prop &&
-      typeof prop === "object" &&
-      "source" in prop &&
-      "value" in prop
-    ) {
-      return (prop as { value: unknown }).value;
-    }
-    return prop;
-  };
-
   // Safely access columnMapping
   const columnMapping = referencedTrial?.columnMapping;
   const compArr =
@@ -86,57 +75,33 @@ export function RuleRow({
 
   return (
     <>
-      {/* Trial Selection */}
-      <td className="px-2 py-2">
-        <select
-          value={rule.trialId}
-          onChange={(e) => {
-            const newTrialId = e.target.value;
-            setConditionsWrapper(
-              conditions.map((c) =>
-                c.id === conditionId
-                  ? {
-                      ...c,
-                      rules: c.rules.map(
-                        (r: ParamsOverrideRule, idx: number) =>
-                          idx === ruleIdx
-                            ? {
-                                ...r,
-                                trialId: newTrialId,
-                                column: "",
-                                value: "",
-                              }
-                            : r,
-                      ),
-                    }
-                  : c,
-              ),
-              true,
-            );
-          }}
-          className="border rounded px-2 py-1 w-full text-xs transition focus:ring-2 focus:ring-blue-400"
-          style={{
-            color: "var(--text-dark)",
-            backgroundColor: "var(--neutral-light)",
-            borderColor: "var(--neutral-mid)",
-          }}
-        >
-          <option value="">Select trial...</option>
-          {referencedTrial && (
-            <option value={referencedTrial.id}>{referencedTrial.name}</option>
-          )}
-          {availableTrials
-            .filter(
-              (t) =>
-                t.id !== rule.trialId && String(t.id) !== String(rule.trialId),
-            )
-            .map((trial) => (
-              <option key={trial.id} value={trial.id}>
-                {trial.name}
-              </option>
-            ))}
-        </select>
-      </td>
+      <TrialSelector
+        availableTrials={availableTrials}
+        referencedTrial={referencedTrial}
+        rule={rule}
+        onSelect={(newTrialId) =>
+          setConditionsWrapper(
+            conditions.map((condition) =>
+              condition.id === conditionId
+                ? {
+                    ...condition,
+                    rules: condition.rules.map((item, index) =>
+                      index === ruleIdx
+                        ? {
+                            ...item,
+                            trialId: newTrialId,
+                            column: "",
+                            value: "",
+                          }
+                        : item,
+                    ),
+                  }
+                : condition,
+            ),
+            true,
+          )
+        }
+      />
 
       {/* Column selector - CHANGE TO MATCH ConditionalLoop structure */}
       {isDynamicPlugin ? (

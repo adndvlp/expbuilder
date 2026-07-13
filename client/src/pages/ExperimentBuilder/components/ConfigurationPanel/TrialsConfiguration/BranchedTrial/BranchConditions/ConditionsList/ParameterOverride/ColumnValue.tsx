@@ -1,6 +1,7 @@
 import { ColumnMappingEntry } from "../../../../../types";
 import { ParameterInput } from "../../../../ParameterMapper/ParameterInput";
 import { Condition, Parameter } from "../../../types";
+import OverrideSourceSelect from "./components/OverrideSourceSelect";
 
 type Props = {
   isTargetDynamic: boolean;
@@ -88,50 +89,14 @@ function ColumnValue({
       (comp?.type !== "SurveyComponent" ||
         (propName === "survey_json" && questionName)) ? (
         <div className="flex flex-col gap-1 w-full">
-          <select
-            value={
-              paramValue.source === "typed"
-                ? "type_value"
-                : paramValue.source === "csv"
-                  ? String(paramValue.value)
-                  : ""
+          <OverrideSourceSelect
+            csvColumns={csvColumns}
+            value={paramValue}
+            getInitialTypedValue={() => ""}
+            onChange={(source, value) =>
+              updateCustomParameter(condition.id, paramKey, source, value)
             }
-            onChange={(e) => {
-              const value = e.target.value;
-              const source =
-                value === "type_value"
-                  ? "typed"
-                  : value === ""
-                    ? "none"
-                    : "csv";
-              let initialValue = null;
-              if (source === "typed") {
-                initialValue = "";
-              } else if (source === "csv") {
-                initialValue = value;
-              }
-              updateCustomParameter(
-                condition.id,
-                paramKey,
-                source,
-                initialValue,
-              );
-            }}
-            className="w-full border rounded px-2 py-1.5 text-xs"
-            style={{
-              color: "var(--text-dark)",
-              backgroundColor: "var(--neutral-light)",
-              borderColor: "var(--neutral-mid)",
-            }}
-          >
-            <option value="">Default</option>
-            <option value="type_value">Type value</option>
-            {csvColumns.map((col) => (
-              <option key={col} value={col}>
-                {col}
-              </option>
-            ))}
-          </select>
+          />
 
           {paramValue.source === "typed" && (
             <div>
@@ -216,57 +181,22 @@ function ColumnValue({
         </div>
       ) : !isTargetDynamic && param && paramValue ? (
         <div className="flex flex-col gap-1 w-full">
-          <select
-            value={
-              paramValue.source === "typed"
-                ? "type_value"
-                : paramValue.source === "csv"
-                  ? String(paramValue.value)
-                  : ""
+          <OverrideSourceSelect
+            csvColumns={csvColumns}
+            value={paramValue}
+            getInitialTypedValue={() =>
+              param.type === "boolean"
+                ? false
+                : param.type === "number"
+                  ? 0
+                  : param.type.endsWith("_array")
+                    ? []
+                    : ""
             }
-            onChange={(e) => {
-              const value = e.target.value;
-              const source =
-                value === "type_value"
-                  ? "typed"
-                  : value === ""
-                    ? "none"
-                    : "csv";
-              let initialValue = null;
-              if (source === "typed") {
-                initialValue =
-                  param.type === "boolean"
-                    ? false
-                    : param.type === "number"
-                      ? 0
-                      : param.type.endsWith("_array")
-                        ? []
-                        : "";
-              } else if (source === "csv") {
-                initialValue = value;
-              }
-              updateCustomParameter(
-                condition.id,
-                paramKey,
-                source,
-                initialValue,
-              );
-            }}
-            className="w-full border rounded px-2 py-1.5 text-xs"
-            style={{
-              color: "var(--text-dark)",
-              backgroundColor: "var(--neutral-light)",
-              borderColor: "var(--neutral-mid)",
-            }}
-          >
-            <option value="">Default</option>
-            <option value="type_value">Type value</option>
-            {csvColumns.map((col) => (
-              <option key={col} value={col}>
-                {col}
-              </option>
-            ))}
-          </select>
+            onChange={(source, value) =>
+              updateCustomParameter(condition.id, paramKey, source, value)
+            }
+          />
 
           {paramValue.source === "typed" && (
             <div>

@@ -1,0 +1,255 @@
+/* ── Right: detail ── */
+.pv-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* Provider header */
+.pv-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--cborder);
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.pv-detail-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ct);
+  line-height: 1.2;
+}
+
+.pv-detail-sub {
+  font-size: 10.5px;
+  color: var(--ctm);
+}
+
+.pv-connected-pill {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--teal);
+  background: var(--teal-d);
+  border: 1px solid rgba(0, 184, 122, 0.2);
+  border-radius: 20px;
+  padding: 2px 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* API key block */
+.pv-key-block {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--cborder);
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.pv-key-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--cts);
+  margin-bottom: 6px;
+}
+
+.pv-key-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--cs2);
+  border: 1px solid var(--cborder);
+  border-radius: var(--r-xs);
+  padding: 6px 9px;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.pv-key-row:focus-within {
+  border-color: rgba(212, 175, 55, 0.4);
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.08);
+}
+
+.pv-key-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 11.5px;
+  color: var(--ct);
+  font-family: "JetBrains Mono", monospace;
+  caret-color: var(--gold);
+  min-width: 0;
+}
+
+.pv-key-input::placeholder {
+  color: var(--cts);
+  font-family: inherit;
+}
+
+.pv-key-btn {
+  border: none;
+  background: transparent;
+  color: var(--ctm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 4px;
+  transition: all 0.12s;
+  flex-shrink: 0;
+}
+
+.pv-key-btn:hover {
+  color: var(--ct);
+}
+.pv-key-btn.save {
+  color: var(--teal);
+  background: var(--teal-d);
+}
+.pv-key-btn.save:hover {
+  background: var(--teal);
+  color: #fff;
+}
+
+.pv-key-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 10.5px;
+  color: var(--cts);
+}
+
+/* Models */
+.pv-models-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.pv-models-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--cts);
+  padding: 8px 14px 3px;
+  flex-shrink: 0;
+}
+
+.pv-model-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2px 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.pv-model-list::-webkit-scrollbar {
+  width: 3px;
+}
+.pv-model-list::-webkit-scrollbar-thumb {
+  background: var(--cs3);
+  border-radius: 2px;
+}
+
+.pv-model-item {
+  padding: 8px 10px;
+  border-radius: var(--r-xs);
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: all 0.12s;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pv-model-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--cborder);
+}
+.pv-model-item.active {
+  background: var(--gold-d);
+  border-color: rgba(212, 175, 55, 0.2);
+}
+
+.pv-model-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pv-model-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ct);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pv-model-tier {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 1px 6px;
+  border-radius: 20px;
+  border: 1px solid;
+  flex-shrink: 0;
+}
+
+.pv-model-ctx {
+  font-size: 10px;
+  color: var(--cts);
+  font-family: "JetBrains Mono", monospace;
+  flex-shrink: 0;
+}
+
+.pv-model-desc {
+  font-size: 11px;
+  color: var(--ctm);
+  line-height: 1.4;
+}
+
+/* Not connected placeholder */
+.pv-no-key {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+}
+
+.pv-no-key p {
+  font-size: 12px;
+  color: var(--cts);
+  line-height: 1.55;
+  margin: 0;
+  max-width: 200px;
+}

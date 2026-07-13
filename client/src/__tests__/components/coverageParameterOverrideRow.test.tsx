@@ -1,12 +1,20 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { ParameterOverrideRow } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/ParamsOverride/ParameterOverrideRow";
+import {
+  conditionWith,
+  dynamicTrial,
+  renderRow,
+} from "./coverageParameterOverrideRow/testHarness";
 
 const metadata = vi.hoisted(() => ({
   byType: {
     SurveyComponent: {
       parameters: {
-        survey_json: { pretty_name: "Survey JSON", type: "object", default: {} },
+        survey_json: {
+          pretty_name: "Survey JSON",
+          type: "object",
+          default: {},
+        },
         raw_label: { type: "string", default: "" },
       },
     },
@@ -42,87 +50,6 @@ vi.mock(
     ),
   }),
 );
-
-function conditionWith(paramKey: string, value: unknown = "medium") {
-  return {
-    id: 1,
-    paramsToOverride: {
-      [paramKey]: { source: "typed", value },
-    },
-  } as any;
-}
-
-function dynamicTrial() {
-  return {
-    id: "dynamic",
-    columnMapping: {
-      components: {
-        value: [
-          {
-            name: { source: "typed", value: "survey" },
-            type: "SurveyComponent",
-            survey_json: {
-              source: "typed",
-              value: {
-                elements: [
-                  { name: "q1", title: "Question 1" },
-                  { name: "q2" },
-                ],
-              },
-            },
-          },
-          { name: "text", type: "TextComponent" },
-          { type: "TextComponent" },
-        ],
-      },
-      response_components: {
-        value: [{ name: "keyboard", type: "TextComponent" }],
-      },
-    },
-  } as any;
-}
-
-function renderRow(overrides: Record<string, unknown> = {}) {
-  const paramKey = (overrides.paramKey as string) || "difficulty";
-  const condition =
-    (overrides.condition as any) ||
-    conditionWith(paramKey, overrides.value ?? "medium");
-  const conditions =
-    (overrides.conditions as any) || [
-      condition,
-      { id: 2, paramsToOverride: { keep: { source: "typed", value: "keep" } } },
-    ];
-  const props = {
-    paramKey,
-    condition,
-    conditionId: 1,
-    currentTrialParameters: [
-      { key: "difficulty", label: "Difficulty", type: "string" },
-      { key: "enabled", name: "Enabled by name", type: "boolean" },
-      { key: "duration", type: "number" },
-      { key: "tags", label: "Tags", type: "string_array" },
-    ],
-    getCurrentTrialCsvColumns: vi.fn(() => ["score", "answer"]),
-    setConditionsWrapper: vi.fn(),
-    conditions,
-    hasDynamicTrial: false,
-    currentTrial: null,
-    hasSurveyJsonParam: false,
-    ...overrides,
-  };
-
-  render(
-    <table>
-      <tbody>
-        <tr>
-          <ParameterOverrideRow {...(props as any)} />
-        </tr>
-      </tbody>
-    </table>,
-  );
-
-  return props;
-}
 
 describe("ParameterOverrideRow coverage", () => {
   it("renames, removes and updates normal parameter overrides", () => {
@@ -218,7 +145,11 @@ describe("ParameterOverrideRow coverage", () => {
           [paramKey]: { source: "none", value: null },
         },
       };
-      const props = renderRow({ paramKey, condition, conditions: [{ id: 1 } as any] });
+      const props = renderRow({
+        paramKey,
+        condition,
+        conditions: [{ id: 1 } as any],
+      });
       const sourceSelect = screen.getAllByRole("combobox").at(-1)!;
 
       fireEvent.change(sourceSelect, { target: { value: "type_value" } });
@@ -253,7 +184,10 @@ describe("ParameterOverrideRow coverage", () => {
       condition,
       conditions: [
         condition,
-        { id: 2, paramsToOverride: { untouched: { source: "typed", value: true } } },
+        {
+          id: 2,
+          paramsToOverride: { untouched: { source: "typed", value: true } },
+        },
       ],
       hasDynamicTrial: true,
       currentTrial: dynamicTrial(),
@@ -282,7 +216,10 @@ describe("ParameterOverrideRow coverage", () => {
       target: { value: "updated" },
     });
 
-    expect(props.setConditionsWrapper).toHaveBeenCalledWith(expect.any(Array), true);
+    expect(props.setConditionsWrapper).toHaveBeenCalledWith(
+      expect.any(Array),
+      true,
+    );
 
     const textKey = "components::text::text";
     const textProps = renderRow({
@@ -310,9 +247,9 @@ describe("ParameterOverrideRow coverage", () => {
       currentTrial: dynamicTrial(),
       hasSurveyJsonParam: true,
     });
-    expect(screen.getAllByPlaceholderText("Enter value to set").at(-1)).toHaveValue(
-      "",
-    );
+    expect(
+      screen.getAllByPlaceholderText("Enter value to set").at(-1),
+    ).toHaveValue("");
   });
 
   it("renders dynamic fallbacks for malformed keys and missing metadata", () => {
@@ -345,9 +282,9 @@ describe("ParameterOverrideRow coverage", () => {
       currentTrial: surveyWithoutElements,
       hasSurveyJsonParam: true,
     });
-    expect(screen.getAllByRole("option", { name: "Select question" }).at(-1)).toHaveValue(
-      "",
-    );
+    expect(
+      screen.getAllByRole("option", { name: "Select question" }).at(-1),
+    ).toHaveValue("");
 
     renderRow({
       paramKey: "components::a::b::c::d",

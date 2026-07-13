@@ -1,0 +1,25 @@
+export const pluginEditorOptions = {
+  automaticLayout: true,
+  minimap: { enabled: false },
+  fontSize: 14,
+  lineNumbers: "on" as const,
+  wordWrap: "off" as const,
+  folding: true,
+  bracketPairColorization: { enabled: true },
+  colorDecorators: true,
+  suggest: {
+    showKeywords: true,
+    showSnippets: true,
+    showFunctions: true,
+    showConstants: true,
+    showVariables: true,
+  },
+  quickSuggestions: {
+    other: true,
+    comments: true,
+    strings: true,
+  },
+  tabCompletion: "on" as const,
+  acceptSuggestionOnEnter: "on" as const,
+  snippetSuggestions: "top" as const,
+};

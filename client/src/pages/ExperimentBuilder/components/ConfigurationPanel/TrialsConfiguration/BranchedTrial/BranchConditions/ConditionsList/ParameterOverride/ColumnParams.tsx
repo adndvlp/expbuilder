@@ -1,5 +1,6 @@
 import { ColumnMappingEntry } from "../../../../../types";
 import { Condition, Parameter } from "../../../types";
+import { changeCustomParameter } from "./services/changeCustomParameter";
 
 type Props = {
   isTargetDynamic: boolean;
@@ -62,34 +63,21 @@ function ColumnParams({
             onChange={(e) => {
               const newFieldType = e.target.value;
               if (newFieldType === "") {
-                // Remove parameter
-                const newParams = { ...condition.customParameters };
-                delete newParams[paramKey];
-                setConditions(
-                  conditions.map((c) =>
-                    c.id === condition.id
-                      ? { ...c, customParameters: newParams }
-                      : c,
-                  ),
-                  true,
-                );
+                changeCustomParameter({
+                  condition,
+                  conditions,
+                  oldKey: paramKey,
+                  setConditions,
+                });
               } else {
-                // Change field type
-                const newParams = { ...condition.customParameters };
-                delete newParams[paramKey];
-                const newKey = `${newFieldType}::::`;
-                newParams[newKey] = {
-                  source: "none",
-                  value: null,
-                };
-                setConditions(
-                  conditions.map((c) =>
-                    c.id === condition.id
-                      ? { ...c, customParameters: newParams }
-                      : c,
-                  ),
-                  true,
-                );
+                changeCustomParameter({
+                  condition,
+                  conditions,
+                  newKey: `${newFieldType}::::`,
+                  oldKey: paramKey,
+                  setConditions,
+                  value: { source: "none", value: null },
+                });
               }
             }}
             className="w-full border rounded px-2 py-1.5 text-xs"
@@ -118,21 +106,14 @@ function ColumnParams({
             value={componentIdx}
             onChange={(e) => {
               const newCompName = e.target.value;
-              const newParams = { ...condition.customParameters };
-              delete newParams[paramKey];
-              const newKey = `${fieldType}::${newCompName}::`;
-              newParams[newKey] = {
-                source: "none",
-                value: null,
-              };
-              setConditions(
-                conditions.map((c) =>
-                  c.id === condition.id
-                    ? { ...c, customParameters: newParams }
-                    : c,
-                ),
-                true,
-              );
+              changeCustomParameter({
+                condition,
+                conditions,
+                newKey: `${fieldType}::${newCompName}::`,
+                oldKey: paramKey,
+                setConditions,
+                value: { source: "none", value: null },
+              });
             }}
             className="w-full border rounded px-2 py-1.5 text-xs"
             style={{
@@ -167,21 +148,14 @@ function ColumnParams({
             value={propName}
             onChange={(e) => {
               const newProp = e.target.value;
-              const newParams = { ...condition.customParameters };
-              delete newParams[paramKey];
-              const newKey = `${fieldType}::${componentIdx}::${newProp}`;
-              newParams[newKey] = {
-                source: "none",
-                value: null,
-              };
-              setConditions(
-                conditions.map((c) =>
-                  c.id === condition.id
-                    ? { ...c, customParameters: newParams }
-                    : c,
-                ),
-                true,
-              );
+              changeCustomParameter({
+                condition,
+                conditions,
+                newKey: `${fieldType}::${componentIdx}::${newProp}`,
+                oldKey: paramKey,
+                setConditions,
+                value: { source: "none", value: null },
+              });
             }}
             className="w-full border rounded px-2 py-1.5 text-xs"
             style={{
@@ -216,21 +190,14 @@ function ColumnParams({
               value={questionName}
               onChange={(e) => {
                 const newQuestion = e.target.value;
-                const newParams = { ...condition.customParameters };
-                delete newParams[paramKey];
-                const newKey = `${fieldType}::${componentIdx}::${propName}::${newQuestion}`;
-                newParams[newKey] = {
-                  source: "none",
-                  value: null,
-                };
-                setConditions(
-                  conditions.map((c) =>
-                    c.id === condition.id
-                      ? { ...c, customParameters: newParams }
-                      : c,
-                  ),
-                  true,
-                );
+                changeCustomParameter({
+                  condition,
+                  conditions,
+                  newKey: `${fieldType}::${componentIdx}::${propName}::${newQuestion}`,
+                  oldKey: paramKey,
+                  setConditions,
+                  value: { source: "none", value: null },
+                });
               }}
               className="w-full border rounded px-2 py-1.5 text-xs"
               style={{
@@ -269,30 +236,21 @@ function ColumnParams({
             onChange={(e) => {
               const newParamKey = e.target.value;
               if (newParamKey === "") {
-                // Remove parameter
-                const newParams = { ...condition.customParameters };
-                delete newParams[paramKey];
-                setConditions(
-                  conditions.map((c) =>
-                    c.id === condition.id
-                      ? { ...c, customParameters: newParams }
-                      : c,
-                  ),
-                  true,
-                );
+                changeCustomParameter({
+                  condition,
+                  conditions,
+                  oldKey: paramKey,
+                  setConditions,
+                });
               } else {
-                // Change parameter
-                const newParams = { ...condition.customParameters };
-                delete newParams[paramKey];
-                newParams[newParamKey] = paramValue;
-                setConditions(
-                  conditions.map((c) =>
-                    c.id === condition.id
-                      ? { ...c, customParameters: newParams }
-                      : c,
-                  ),
-                  true,
-                );
+                changeCustomParameter({
+                  condition,
+                  conditions,
+                  newKey: newParamKey,
+                  oldKey: paramKey,
+                  setConditions,
+                  value: paramValue,
+                });
               }
             }}
             className="w-full border rounded px-2 py-1.5 text-sm"

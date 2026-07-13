@@ -5,6 +5,9 @@ import "grapesjs/dist/css/grapes.min.css";
 import "./grapesjs-theme.css";
 import Modal from "../../ParameterMapper/Modal";
 import { makeGrapesHtmlPortable } from "./portableHtml";
+import { HTML_EDITOR_STYLE_MANAGER } from "./GrapesHtmlEditor/editorConfig";
+import { registerHtmlBlocks } from "./GrapesHtmlEditor/registerBlocks";
+import { applyRuntimeCanvasContext } from "./GrapesHtmlEditor/runtimeCanvas";
 
 interface GrapesHtmlEditorProps {
   isOpen: boolean;
@@ -74,232 +77,14 @@ const GrapesHtmlEditor: React.FC<GrapesHtmlEditorProps> = ({
       storageManager: false,
       plugins: [], // Si tienes plugins npm, impórtalos arriba y agrégalos aquí
       components: value || "<div>Type or design here</div>",
-      styleManager: {
-        sectors: [
-          {
-            name: "Text",
-            open: true,
-            buildProps: ["text-align"],
-            properties: [
-              {
-                property: "text-align",
-                type: "radio",
-                defaults: "left",
-                list: [
-                  {
-                    id: "left",
-                    value: "left",
-                    className: "fa fa-align-left",
-                    title: "Left",
-                  },
-                  {
-                    id: "center",
-                    value: "center",
-                    className: "fa fa-align-center",
-                    title: "Center",
-                  },
-                  {
-                    id: "right",
-                    value: "right",
-                    className: "fa fa-align-right",
-                    title: "Right",
-                  },
-                  {
-                    id: "justify",
-                    value: "justify",
-                    className: "fa fa-align-justify",
-                    title: "Justify",
-                  },
-                ],
-              },
-            ],
-          },
-          {
-            name: "Typography",
-            open: false,
-            buildProps: [
-              "font-family",
-              "font-size",
-              "font-weight",
-              "color",
-              "letter-spacing",
-              "line-height",
-              "text-shadow",
-            ],
-          },
-          {
-            name: "Background",
-            open: false,
-            buildProps: [
-              "background",
-              "background-color",
-              "background-image",
-              "background-repeat",
-              "background-position",
-              "background-size",
-            ],
-          },
-          {
-            name: "Border",
-            open: false,
-            buildProps: ["border", "border-radius", "box-shadow"],
-          },
-          {
-            name: "Spacing",
-            open: false,
-            buildProps: ["margin", "padding"],
-          },
-        ],
-      },
+      styleManager: HTML_EDITOR_STYLE_MANAGER,
     });
 
-    const applyRuntimeCanvasContext = () => {
-      const body = grapesInstance.current?.Canvas?.getBody?.();
-      if (!body) return;
-
-      Object.assign(body.style, {
-        margin: "0",
-        width: "100%",
-        minWidth: "100%",
-        minHeight: "100vh",
-        color: "#000000",
-        fontFamily: '"Open Sans", "Arial", sans-serif',
-        fontSize: "18px",
-        lineHeight: "1.6em",
-        textAlign: "left",
-      });
-
-      const wrapper = body.querySelector("#wrapper") as HTMLElement | null;
-      if (wrapper) {
-        Object.assign(wrapper.style, {
-          width: "100%",
-          minWidth: "100%",
-          minHeight: "100vh",
-          padding: "32px",
-          boxSizing: "border-box",
-        });
-      }
-    };
-
-    grapesInstance.current.on("load", applyRuntimeCanvasContext);
-    applyRuntimeCanvasContext();
-
-    // Add Canva/Word-like blocks
-    const bm = grapesInstance.current.BlockManager;
-    bm.add("title", {
-      label: "Title",
-      category: "Text",
-      attributes: { class: "fa fa-header" },
-      content:
-        '<h1 style="font-size:2.5em;font-weight:bold;margin:0 0 10px;">Title</h1>',
-    });
-    bm.add("subtitle", {
-      label: "Subtitle",
-      category: "Text",
-      attributes: { class: "fa fa-header" },
-      content:
-        '<h2 style="font-size:1.5em;font-weight:600;margin:0 0 8px;">Subtitle</h2>',
-    });
-    bm.add("paragraph", {
-      label: "Paragraph",
-      category: "Text",
-      attributes: { class: "fa fa-paragraph" },
-      content:
-        '<p style="font-size:1em;line-height:1.6;">Write your paragraph here...</p>',
-    });
-    bm.add("text", {
-      label: "Text",
-      category: "Text",
-      attributes: { class: "fa fa-text-width" },
-      content: '<div style="padding:10px;">Insert your text</div>',
-    });
-    bm.add("list-ul", {
-      label: "Bulleted List",
-      category: "Text",
-      attributes: { class: "fa fa-list-ul" },
-      content:
-        '<ul style="padding-left:20px;"><li>Item 1</li><li>Item 2</li></ul>',
-    });
-    bm.add("list-ol", {
-      label: "Numbered List",
-      category: "Text",
-      attributes: { class: "fa fa-list-ol" },
-      content:
-        '<ol style="padding-left:20px;"><li>Item 1</li><li>Item 2</li></ol>',
-    });
-    bm.add("table", {
-      label: "Table",
-      category: "Layout",
-      attributes: { class: "fa fa-table" },
-      content:
-        '<table style="width:100%;border-collapse:collapse;"><tr><th>Header 1</th><th>Header 2</th></tr><tr><td>Cell 1</td><td>Cell 2</td></tr></table>',
-    });
-    bm.add("image", {
-      label: "Image",
-      category: "Media",
-      attributes: { class: "fa fa-image" },
-      content: {
-        type: "image",
-        src: "https://via.placeholder.com/350x150",
-        style: { width: "100%" },
-      },
-    });
-    bm.add("icon", {
-      label: "Icon",
-      category: "Media",
-      attributes: { class: "fa fa-star" },
-      content:
-        '<span aria-hidden="true" style="font-size:2em;color:#3d92b4;line-height:1;">&#9733;</span>',
-    });
-    bm.add("button", {
-      label: "Button",
-      category: "Controls",
-      attributes: { class: "fa fa-hand-pointer-o" },
-      content:
-        '<button style="padding:10px 20px;border-radius:6px;background:#d4af37;color:#333333;border:none;font-weight:600;">Click me</button>',
-    });
-    bm.add("card", {
-      label: "Card",
-      category: "Layout",
-      attributes: { class: "fa fa-id-card" },
-      content:
-        '<div style="padding:20px;background:#f8f9fa;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);"><h3>Card Title</h3><p>Card content...</p></div>',
-    });
-    bm.add("section", {
-      label: "Section",
-      category: "Layout",
-      attributes: { class: "fa fa-square-o" },
-      content:
-        '<section style="padding:20px;background:#f8f9fa;border-radius:8px;"><h2>Section Title</h2><p>Section content...</p></section>',
-    });
-    bm.add("column", {
-      label: "2 Columns",
-      category: "Layout",
-      attributes: { class: "fa fa-columns" },
-      content:
-        '<div style="display:flex;gap:16px;"><div style="flex:1;padding:10px;background:#dddddd;border-radius:6px;">Column 1</div><div style="flex:1;padding:10px;background:#dddddd;border-radius:6px;">Column 2</div></div>',
-    });
-    bm.add("background", {
-      label: "Background",
-      category: "Decor",
-      attributes: { class: "fa fa-paint-brush" },
-      content:
-        '<div style="width:100%;height:100px;background:linear-gradient(90deg,#3d92b4,#d4af37);border-radius:8px;"></div>',
-    });
-    bm.add("rectangle", {
-      label: "Rectangle",
-      category: "Shapes",
-      attributes: { class: "fa fa-square" },
-      content:
-        '<div style="width:100px;height:60px;background:#3d92b4;border-radius:8px;"></div>',
-    });
-    bm.add("circle", {
-      label: "Circle",
-      category: "Shapes",
-      attributes: { class: "fa fa-circle" },
-      content:
-        '<div style="width:60px;height:60px;background:#d4af37;border-radius:50%;"></div>',
-    });
+    const applyCanvasContext = () =>
+      applyRuntimeCanvasContext(grapesInstance.current);
+    grapesInstance.current.on("load", applyCanvasContext);
+    applyCanvasContext();
+    registerHtmlBlocks(grapesInstance.current.BlockManager);
 
     // Hook events for autosave
     grapesInstance.current.on("update", triggerAutoSave);

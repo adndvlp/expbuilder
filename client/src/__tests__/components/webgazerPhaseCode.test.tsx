@@ -1,103 +1,10 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { useState } from "react";
-import { generatePhaseCode } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/Webgazer/generatePhaseCode";
-import type {
-  ColumnMapping,
-  Trial,
-} from "../../pages/ExperimentBuilder/components/ConfigurationPanel/types";
-
-vi.mock(
-  "../../pages/ExperimentBuilder/components/ConfigurationPanel/hooks/usePluginParameters",
-  () => ({
-    usePluginParameters: vi.fn((pluginName: string) => {
-      const metadata: Record<
-        string,
-        {
-          parameters: Array<{ key: string; label: string; type: string; default?: unknown }>;
-          data: Array<{ key: string; label: string; type: string }>;
-        }
-      > = {
-        "plugin-webgazer-init-camera": {
-          parameters: [
-            { key: "message", label: "Message", type: "html_string", default: "" },
-            { key: "button_html", label: "Button HTML", type: "function", default: "" },
-          ],
-          data: [{ key: "phase", label: "Phase", type: "string" }],
-        },
-        "plugin-webgazer-validate": {
-          parameters: [
-            {
-              key: "validation_points",
-              label: "Validation Points",
-              type: "number_array",
-              default: [],
-            },
-          ],
-          data: [{ key: "percent_in_roi", label: "Percent ROI", type: "number_array" }],
-        },
-        "plugin-webgazer-recalibrate": {
-          parameters: [],
-          data: [],
-        },
-      };
-
-      return {
-        parameters: metadata[pluginName]?.parameters ?? [],
-        data: metadata[pluginName]?.data ?? [],
-        loading: false,
-        error: null,
-      };
-    }),
-  }),
-);
-
-function normalize(code: string) {
-  return code.replace(/\s+/g, " ").trim();
-}
-
-function useWebgazerPhaseHarness({
-  pluginName,
-  instructions = [],
-  initialMapping = {},
-  initialCsvJson = [],
-  selectedTrial = null,
-}: {
-  pluginName: string;
-  instructions?: Array<{ key: string; label: string; type: string; default?: unknown }>;
-  initialMapping?: ColumnMapping;
-  initialCsvJson?: any[];
-  selectedTrial?: Trial | null;
-}) {
-  const [csvJson, setCsvJson] = useState(initialCsvJson);
-  const [csvColumns, setCsvColumns] = useState<string[]>([]);
-  const [trialName, setTrialName] = useState("");
-  const [columnMapping, setColumnMapping] =
-    useState<ColumnMapping>(initialMapping);
-  const [isLoadingTrial, setIsLoadingTrial] = useState(false);
-
-  const phase = generatePhaseCode({
-    pluginName,
-    instructions,
-    csvJson,
-    setCsvJson,
-    selectedTrial,
-    setTrialName,
-    setCsvColumns,
-    columnMapping,
-    setColumnMapping,
-    setIsLoadingTrial,
-  });
-
-  return {
-    phase,
-    csvJson,
-    csvColumns,
-    trialName,
-    columnMapping,
-    isLoadingTrial,
-  };
-}
+import type { Trial } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/types";
+import {
+  normalize,
+  useWebgazerPhaseHarness,
+} from "./webgazerPhaseCode/testHarness";
 
 describe("generatePhaseCode for WebGazer phases", () => {
   afterEach(() => {
@@ -156,7 +63,9 @@ describe("generatePhaseCode for WebGazer phases", () => {
     expect(code).toContain(
       'stimulus: jsPsych.timelineVariable("plugin_webgazer_init_camera_instructions")',
     );
-    expect(code).toContain("button_html: (choice) => `<button>${choice}</button>`");
+    expect(code).toContain(
+      "button_html: (choice) => `<button>${choice}</button>`",
+    );
     expect(code).toContain(
       "plugin_webgazer_init_camera_instructions, plugin_webgazer_init_camera_timeline",
     );
@@ -190,7 +99,9 @@ describe("generatePhaseCode for WebGazer phases", () => {
     ]);
     expect(code).toContain("type: jsPsychWebgazerValidate");
     expect(code).toContain("data: { task: 'validate' }");
-    expect(code).toContain("on_finish: function(data) { delete data.raw_gaze; }");
+    expect(code).toContain(
+      "on_finish: function(data) { delete data.raw_gaze; }",
+    );
   });
 
   it("restores selected trial state and clears the loading flag after the delay", () => {
@@ -351,7 +262,9 @@ describe("generatePhaseCode for WebGazer phases", () => {
     expect(code).toContain("const plugin_webgazer_recalibrate_instructions =");
     expect(code).toContain('stimulus: "<p>Look again</p>"');
     expect(code).toContain('choices: ["Retry"]');
-    expect(code).toContain("plugin_webgazer_recalibrate_instructions, plugin_webgazer_calibrate_procedure");
+    expect(code).toContain(
+      "plugin_webgazer_recalibrate_instructions, plugin_webgazer_calibrate_procedure",
+    );
 
     const { result: fallbackResult } = renderHook(() =>
       useWebgazerPhaseHarness({

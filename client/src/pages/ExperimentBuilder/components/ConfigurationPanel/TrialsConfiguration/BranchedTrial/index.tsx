@@ -3,10 +3,8 @@ import useTrials from "../../../../hooks/useTrials";
 import { loadPluginParameters } from "../../utils/pluginParameterLoader";
 import { Loop, Trial } from "../../types";
 import { Condition, Props, Parameter } from "./types";
-import Modal from "../ParameterMapper/Modal";
 import useLoadData from "./useLoadData";
 import BranchedTrialLayout from "./BranchedTrialLayout";
-import { FaTimes } from "react-icons/fa";
 import { buildBranchingSaveUpdates } from "./branchingSaveUtils";
 import {
   idsEqual,
@@ -14,6 +12,7 @@ import {
   isForwardSameScopeTarget,
   itemIdKey,
 } from "../../../../utils/branchGraphUtils";
+import BranchedTrialModalFrame from "./components/BranchedTrialModalFrame";
 
 function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
   const {
@@ -260,106 +259,27 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose || (() => {})}>
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "24px",
-        }}
-      >
-        <div
-          style={{
-            minWidth: "900px",
-            maxWidth: "1100px",
-            minHeight: "60vh",
-            maxHeight: "85vh",
-            display: "flex",
-            flexDirection: "column",
-            position: "relative",
-            backgroundColor: "var(--background)",
-            borderRadius: "12px",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-          }}
-        >
-          {/* Save Indicator */}
-          <div
-            style={{
-              opacity: saveIndicator ? 1 : 0,
-              transition: "opacity 0.3s",
-              color: "white",
-              fontWeight: "600",
-              position: "absolute",
-              top: "10px",
-              right: "10px",
-              zIndex: 10000,
-              backgroundColor: "rgba(34, 197, 94, 0.95)",
-              padding: "6px 12px",
-              borderRadius: "6px",
-              fontSize: "12px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-              border: "1px solid white",
-              pointerEvents: "none",
-            }}
-          >
-            ✓ Saved
-          </div>
-          {/* Close Button */}
-          <button
-            onClick={onClose}
-            style={{
-              position: "absolute",
-              top: "16px",
-              right: "16px",
-              width: "40px",
-              height: "40px",
-              borderRadius: "50%",
-              border: "2px solid var(--neutral-mid)",
-              backgroundColor: "var(--background)",
-              color: "var(--text-dark)",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "all 0.2s ease",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--primary-blue)";
-              e.currentTarget.style.color = "white";
-              e.currentTarget.style.borderColor = "var(--primary-blue)";
-              e.currentTarget.style.transform = "scale(1.1)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--background)";
-              e.currentTarget.style.color = "var(--text-dark)";
-              e.currentTarget.style.borderColor = "var(--neutral-mid)";
-              e.currentTarget.style.transform = "scale(1)";
-            }}
-          >
-            <FaTimes size={18} />
-          </button>
-          <BranchedTrialLayout
-            data={data}
-            conditions={conditions}
-            selectedTrial={selectedTrial}
-            error={error}
-            loading={loading}
-            targetTrialParameters={targetTrialParameters}
-            targetTrialCsvColumns={targetTrialCsvColumns}
-            onClose={onClose}
-            handleSaveConditions={handleSaveConditions}
-            setConditions={setConditions}
-            loadTargetTrialParameters={loadTargetTrialParameters}
-            findTrialByIdSync={findTrialByIdSync}
-            getAvailableTrials={getAvailableTrials}
-          />
-        </div>
-      </div>
-    </Modal>
+    <BranchedTrialModalFrame
+      isOpen={isOpen}
+      onClose={onClose}
+      saveIndicator={saveIndicator}
+    >
+      <BranchedTrialLayout
+        data={data}
+        conditions={conditions}
+        selectedTrial={selectedTrial}
+        error={error}
+        loading={loading}
+        targetTrialParameters={targetTrialParameters}
+        targetTrialCsvColumns={targetTrialCsvColumns}
+        onClose={onClose}
+        handleSaveConditions={handleSaveConditions}
+        setConditions={setConditions}
+        loadTargetTrialParameters={loadTargetTrialParameters}
+        findTrialByIdSync={findTrialByIdSync}
+        getAvailableTrials={getAvailableTrials}
+      />
+    </BranchedTrialModalFrame>
   );
 }
 

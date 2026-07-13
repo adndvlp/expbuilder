@@ -1,6 +1,7 @@
 import { ParamsOverrideCondition, Parameter, LoadedTrial } from "./types";
-import { ParameterInput } from "../ParameterMapper/ParameterInput";
 import { useComponentMetadata } from "../hooks/useComponentMetadata";
+import ParameterTargetSelector from "./ParameterOverrideRow/ParameterTargetSelector";
+import OverrideValueCell from "./ParameterOverrideRow/OverrideValueCell";
 
 type Props = {
   paramKey: string;
@@ -166,277 +167,34 @@ export function ParameterOverrideRow({
 
   return (
     <>
-      {hasDynamicTrial ? (
-        <>
-          {/* Field Type */}
-          <td
-            className="px-2 py-2"
-            style={{
-              backgroundColor: "rgba(255, 209, 102, 0.05)",
-              borderLeft: "2px solid var(--gold)",
-            }}
-          >
-            <select
-              value={fieldType}
-              onChange={(e) => {
-                const newFieldType = e.target.value;
-                if (newFieldType === "") {
-                  removeParameter();
-                } else {
-                  changeParameterKey(`${newFieldType}::::`);
-                }
-              }}
-              className="w-full border rounded px-2 py-1.5 text-xs"
-              style={{
-                color: "var(--text-dark)",
-                backgroundColor: "var(--neutral-light)",
-                borderColor: "var(--gold)",
-              }}
-            >
-              <option value="">Remove</option>
-              <option value="components">Stimulus</option>
-              <option value="response_components">Response</option>
-            </select>
-          </td>
-
-          {/* Component */}
-          <td
-            className="px-2 py-2"
-            style={{ backgroundColor: "rgba(255, 209, 102, 0.05)" }}
-          >
-            <select
-              value={componentIdx}
-              onChange={(e) => {
-                const newComponentIdx = e.target.value;
-                changeParameterKey(`${fieldType}::${newComponentIdx}::`);
-              }}
-              disabled={!fieldType}
-              className="w-full border rounded px-2 py-1.5 text-xs"
-              style={{
-                color: "var(--text-dark)",
-                backgroundColor: "var(--neutral-light)",
-                borderColor: "var(--gold)",
-              }}
-            >
-              <option value="">Select component</option>
-              {(compArr as Array<{ name?: unknown }>).map((c) => {
-                const name = String(getPropValue(c.name) || "");
-                return (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                );
-              })}
-            </select>
-          </td>
-
-          {/* Parameter */}
-          <td
-            className="px-2 py-2"
-            style={{ backgroundColor: "rgba(255, 209, 102, 0.05)" }}
-          >
-            <select
-              value={actualParamKey}
-              onChange={(e) => {
-                const newParamKey = e.target.value;
-                if (newParamKey) {
-                  changeParameterKey(
-                    `${fieldType}::${componentIdx}::${newParamKey}`,
-                  );
-                }
-              }}
-              disabled={!componentIdx}
-              className="w-full border rounded px-2 py-1.5 text-xs"
-              style={{
-                color: "var(--text-dark)",
-                backgroundColor: "var(--neutral-light)",
-                borderColor: "var(--gold)",
-              }}
-            >
-              <option value="">Select property</option>
-              {availableParams.map((p) => (
-                <option key={p.key} value={p.key}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-          </td>
-
-          {/* Question (only for SurveyComponent with survey_json) */}
-          {hasSurveyJsonParam && (
-            <td
-              className="px-2 py-2"
-              style={{ backgroundColor: "rgba(255, 209, 102, 0.05)" }}
-            >
-              {comp &&
-              comp.type === "SurveyComponent" &&
-              actualParamKey === "survey_json" ? (
-                <select
-                  value={questionName}
-                  onChange={(e) => {
-                    const newQuestion = e.target.value;
-                    changeParameterKey(
-                      `${fieldType}::${componentIdx}::${actualParamKey}::${newQuestion}`,
-                    );
-                  }}
-                  className="w-full border rounded px-2 py-1.5 text-xs"
-                  style={{
-                    color: "var(--text-dark)",
-                    backgroundColor: "var(--neutral-light)",
-                    borderColor: "var(--gold)",
-                  }}
-                  disabled={!actualParamKey}
-                >
-                  <option value="">Select question</option>
-                  {(
-                    getPropValue(comp.survey_json) as
-                      | { elements?: Array<{ name: string; title?: string }> }
-                      | undefined
-                  )?.elements?.map((q) => (
-                    <option key={q.name} value={q.name}>
-                      {q.title || q.name}
-                    </option>
-                  )) || []}
-                </select>
-              ) : (
-                <span className="text-xs text-gray-400 px-2">-</span>
-              )}
-            </td>
-          )}
-        </>
-      ) : (
-        <td
-          className="px-2 py-2"
-          style={{
-            backgroundColor: "rgba(255, 209, 102, 0.05)",
-            borderLeft: "2px solid var(--gold)",
-          }}
-        >
-          <select
-            value={paramKey}
-            onChange={(e) => changeParameterKey(e.target.value)}
-            className="w-full border rounded px-2 py-1.5 text-sm"
-            style={{
-              color: "var(--text-dark)",
-              backgroundColor: "var(--neutral-light)",
-              borderColor: "var(--gold)",
-            }}
-          >
-            <option value="">Remove parameter</option>
-            {currentTrialParameters.map((p) => (
-              <option key={p.key} value={p.key}>
-                {p.label || p.name || p.key}
-              </option>
-            ))}
-          </select>
-        </td>
-      )}
-
-      {/* Value Column */}
-      <td
-        className="px-2 py-2"
-        style={{
-          backgroundColor: "rgba(255, 209, 102, 0.05)",
-        }}
-      >
-        {((hasDynamicTrial &&
-          fieldType &&
-          componentIdx &&
-          actualParamKey &&
-          (comp?.type !== "SurveyComponent" ||
-            actualParamKey !== "survey_json" ||
-            questionName)) ||
-          (!hasDynamicTrial && paramKey)) && (
-          <div className="flex flex-col gap-1 w-full">
-            <select
-              value={
-                paramValue.source === "typed"
-                  ? "type_value"
-                  : paramValue.source === "csv"
-                    ? String(paramValue.value || "")
-                    : ""
-              }
-              onChange={(e) => {
-                const value = e.target.value;
-                const source =
-                  value === "type_value"
-                    ? "typed"
-                    : value === ""
-                      ? "none"
-                      : "csv";
-                let initialValue = null;
-                if (source === "typed") {
-                  initialValue =
-                    param?.type === "boolean"
-                      ? false
-                      : param?.type === "number"
-                        ? 0
-                        : param?.type?.endsWith("_array")
-                          ? []
-                          : "";
-                } else if (source === "csv") {
-                  initialValue = value;
-                }
-                updateParameterOverride(source, initialValue);
-              }}
-              className="w-full border rounded px-2 py-1.5 text-xs"
-              style={{
-                color: "var(--text-dark)",
-                backgroundColor: "var(--neutral-light)",
-                borderColor: "var(--neutral-mid)",
-              }}
-            >
-              <option value="">Default</option>
-              <option value="type_value">Type value</option>
-              {csvColumns.map((col) => (
-                <option key={col} value={col}>
-                  {col}
-                </option>
-              ))}
-            </select>
-
-            {paramValue.source === "typed" && param && (
-              <div>
-                {/* Special case: SurveyComponent question override */}
-                {comp &&
-                comp.type === "SurveyComponent" &&
-                actualParamKey === "survey_json" &&
-                questionName ? (
-                  <input
-                    type="text"
-                    className="w-full border rounded px-2 py-1.5 text-xs"
-                    placeholder="Enter value to set"
-                    value={
-                      typeof paramValue.value === "string" ||
-                      typeof paramValue.value === "number"
-                        ? paramValue.value
-                        : ""
-                    }
-                    onChange={(e) =>
-                      updateParameterOverride("typed", e.target.value)
-                    }
-                    style={{
-                      color: "var(--text-dark)",
-                      backgroundColor: "var(--neutral-light)",
-                      borderColor: "var(--neutral-mid)",
-                    }}
-                  />
-                ) : (
-                  <ParameterInput
-                    paramKey={param.key}
-                    paramLabel={param.label || param.key}
-                    paramType={param.type}
-                    value={paramValue.value}
-                    onChange={(newValue) => {
-                      updateParameterOverride("typed", newValue);
-                    }}
-                  />
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </td>
+      <ParameterTargetSelector
+        actualParamKey={actualParamKey}
+        availableParams={availableParams}
+        changeParameterKey={changeParameterKey}
+        comp={comp}
+        compArr={compArr}
+        componentIdx={componentIdx}
+        currentTrialParameters={currentTrialParameters}
+        fieldType={fieldType}
+        getPropValue={getPropValue}
+        hasDynamicTrial={hasDynamicTrial}
+        hasSurveyJsonParam={hasSurveyJsonParam}
+        questionName={questionName}
+        removeParameter={removeParameter}
+      />
+      <OverrideValueCell
+        actualParamKey={actualParamKey}
+        comp={comp}
+        componentIdx={componentIdx}
+        csvColumns={csvColumns}
+        fieldType={fieldType}
+        hasDynamicTrial={hasDynamicTrial}
+        param={param}
+        paramKey={paramKey}
+        paramValue={paramValue}
+        questionName={questionName}
+        updateParameterOverride={updateParameterOverride}
+      />
     </>
   );
 }

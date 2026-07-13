@@ -16,7 +16,7 @@ test.describe("Landing Page", () => {
 
   test("displays the tagline", async ({ page }) => {
     await expect(
-      page.getByText(/Create, manage, and launch behavioral experiments/i)
+      page.getByText(/Create, manage, and launch behavioral experiments/i),
     ).toBeVisible();
   });
 
@@ -37,7 +37,7 @@ test.describe("Landing Page", () => {
     await expect(landing.uNamLogo).toBeVisible();
   });
 
-  test("displays copyright with current year", async ({ page }) => {
+  test("displays copyright with current year", async () => {
     const currentYear = new Date().getFullYear().toString();
     await expect(landing.footer).toContainText(currentYear);
   });
@@ -56,16 +56,16 @@ test.describe("Landing Page", () => {
   test("has gradient background", async ({ page }) => {
     // The gradient is on the outermost div with minHeight style
     const container = page.locator('div[style*="min-height: 100vh"]').first();
-    const styles = await container.evaluate((el) =>
-      window.getComputedStyle(el).background
+    const styles = await container.evaluate(
+      (el) => window.getComputedStyle(el).background,
     );
     expect(styles).toContain("linear-gradient");
   });
 
   test("Get Started button has hover effects", async () => {
     await landing.getStartedButton.hover();
-    const bg = await landing.getStartedButton.evaluate((el) =>
-      window.getComputedStyle(el).background
+    const bg = await landing.getStartedButton.evaluate(
+      (el) => window.getComputedStyle(el).background,
     );
     expect(bg).toBeDefined();
   });

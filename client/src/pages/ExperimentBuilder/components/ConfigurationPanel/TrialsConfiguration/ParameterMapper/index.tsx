@@ -7,211 +7,24 @@ import SurveyBuilder from "../TrialDesigner/SurveyEditor";
 import isEqual from "lodash.isequal";
 import useAutoSaveHandlers from "./useAutoSaveHandlers";
 import useParameterModals from "./useParameterModals";
-import ParameterInputField from "./ParameterInputField";
-import TypedParameterInput from "./TypedParameterInput";
+import type { Parameter, ParameterMapperProps } from "./types";
+export type { ColumnMappingEntry, Parameter } from "./types";
 import {
-  getVisualDefaultValue,
-  getVisualStylePriority,
-  isVisualStyleParameter,
-} from "./TypedParameterInput/VisualStyleInput";
-
-type UploadedFile = { name: string; url: string; type: string };
-
-export type Parameter = {
-  label: string;
-  key: string;
-  type: string;
-};
-
-export type ColumnMappingEntry = {
-  source: "csv" | "typed" | "none";
-  value: any;
-};
-
-type ParameterMapperProps = {
-  parameters: Parameter[];
-  columnMapping: Record<string, ColumnMappingEntry>;
-  setColumnMapping: React.Dispatch<
-    React.SetStateAction<Record<string, ColumnMappingEntry>>
-  >;
-  csvColumns: string[];
-  pluginName: string;
-  uploadedFiles?: UploadedFile[];
-  // New props for component mode
-  componentMode?: boolean; // If true, renders only component parameters without mode toggle
-  selectedComponentId?: string | null; // ID of selected component in Konva
-  onComponentConfigChange?: (
-    componentId: string,
-    config: Record<string, any>,
-  ) => void;
-  // Autoguardado
-  onSave?: (key: string, value: any) => void; // Se llama con key y value para evitar closures
-};
-
-const INSPECTOR_PANEL_STYLE: React.CSSProperties = {
-  color: "#e5edf3",
-  padding: "8px 16px 24px",
-};
-
-const INSPECTOR_GRID_STYLE: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr)",
-  gap: 12,
-};
-
-const INSPECTOR_FIELD_STYLE: React.CSSProperties = {
-  minWidth: 0,
-};
-
-const INSPECTOR_LABEL_STYLE: React.CSSProperties = {
-  display: "block",
-  margin: "0 0 7px",
-  color: "#c8d3dc",
-  fontSize: 12,
-  fontWeight: 700,
-  lineHeight: "16px",
-};
-
-const INSPECTOR_SELECT_STYLE: React.CSSProperties = {
-  width: "100%",
-  height: 36,
-  border: "1px solid #3d5066",
-  borderRadius: 8,
-  background: "#0e1724",
-  color: "#f8fafc",
-  padding: "0 10px",
-  outline: "none",
-};
-
-const INSPECTOR_SECTION_STYLE: React.CSSProperties = {
-  padding: "12px",
-  border: "1px solid rgba(120, 144, 170, 0.24)",
-  borderRadius: 8,
-  background: "rgba(15, 23, 34, 0.58)",
-};
-
-const INSPECTOR_SECTION_HEADER_STYLE: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  marginBottom: 12,
-  paddingBottom: 8,
-  borderBottom: "1px solid rgba(148, 163, 184, 0.16)",
-};
-
-const INSPECTOR_SECTION_TITLE_STYLE: React.CSSProperties = {
-  margin: 0,
-  color: "#f8fafc",
-  fontSize: 13,
-  fontWeight: 800,
-  lineHeight: "18px",
-};
-
-const INSPECTOR_SECTION_BODY_STYLE: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-  gap: "12px 10px",
-};
-
-const INSPECTOR_SECTION_ORDER = [
-  "configuration",
-  "typography",
-  "layout",
-  "appearance",
-  "box",
-] as const;
-
-type InspectorSection = (typeof INSPECTOR_SECTION_ORDER)[number];
-
-const INSPECTOR_SECTION_LABELS: Record<InspectorSection, string> = {
-  configuration: "Configuration",
-  typography: "Typography",
-  layout: "Layout",
-  appearance: "Appearance",
-  box: "Box",
-};
-
-const PRIMARY_CONFIGURATION_ORDER: Record<string, number> = {
-  text: 0,
-  choices: 0,
-  html: 0,
-  stimulus: 0,
-  button_html: 10,
-  input_type: 20,
-  name: 30,
-};
-
-function getInspectorSection(paramKey: string): InspectorSection {
-  if (
-    paramKey === "coordinates" ||
-    paramKey === "x" ||
-    paramKey === "y" ||
-    paramKey === "width" ||
-    paramKey === "height" ||
-    paramKey === "rotation" ||
-    paramKey === "z_index" ||
-    paramKey === "zIndex" ||
-    paramKey === "image_button_width" ||
-    paramKey === "image_button_height" ||
-    paramKey === "button_layout" ||
-    paramKey === "grid_rows" ||
-    paramKey === "grid_columns" ||
-    paramKey.includes("position")
-  ) {
-    return "layout";
-  }
-
-  if (
-    paramKey === "padding" ||
-    paramKey === "button_padding" ||
-    paramKey === "input_padding" ||
-    paramKey.includes("border_width") ||
-    paramKey.includes("border_radius") ||
-    paramKey === "stroke_width" ||
-    paramKey === "marker_radius"
-  ) {
-    return "box";
-  }
-
-  if (
-    paramKey.includes("font") ||
-    paramKey === "button_text_color" ||
-    paramKey === "text_align" ||
-    paramKey === "line_height"
-  ) {
-    return "typography";
-  }
-
-  if (paramKey.includes("color")) return "appearance";
-
-  return "configuration";
-}
-
-function getInspectorParameterPriority(paramKey: string) {
-  const primaryPriority = PRIMARY_CONFIGURATION_ORDER[paramKey];
-  if (primaryPriority !== undefined) return primaryPriority;
-
-  const visualPriority = getVisualStylePriority(paramKey);
-  if (visualPriority !== 1000) return 100 + visualPriority;
-
-  return 1000;
-}
-
-function getInspectorParameterLabel(paramKey: string, label: string) {
-  if (paramKey === "text") return "Content";
-  return label;
-}
-
-function shouldFillInspectorRow(paramKey: string) {
-  return (
-    paramKey === "text" ||
-    paramKey === "choices" ||
-    paramKey === "coordinates" ||
-    paramKey.includes("color") ||
-    paramKey.includes("font_family") ||
-    paramKey === "text_align"
-  );
-}
+  getInspectorParameterPriority,
+  getInspectorSection,
+  sectionLabels as INSPECTOR_SECTION_LABELS,
+  sectionOrder as INSPECTOR_SECTION_ORDER,
+  type InspectorSection,
+} from "./inspector/parameterLayout";
+import {
+  gridStyle as INSPECTOR_GRID_STYLE,
+  panelStyle as INSPECTOR_PANEL_STYLE,
+  sectionBodyStyle as INSPECTOR_SECTION_BODY_STYLE,
+  sectionHeaderStyle as INSPECTOR_SECTION_HEADER_STYLE,
+  sectionStyle as INSPECTOR_SECTION_STYLE,
+  sectionTitleStyle as INSPECTOR_SECTION_TITLE_STYLE,
+} from "./inspector/styles";
+import ParameterControl from "./components/ParameterControl";
 
 const ParameterMapper: React.FC<ParameterMapperProps> = ({
   parameters = [],
@@ -303,171 +116,22 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parameters]);
 
-  const renderParameterControl = ({
-    label,
-    key,
-    type,
-  }: Parameter): React.ReactNode => {
-    const displayLabel = getInspectorParameterLabel(key, label);
-    const rawEntry = columnMapping[key] || { source: "none" };
-    const isVisualStyle = componentMode && isVisualStyleParameter(key, type);
-    const entry =
-      isVisualStyle && rawEntry.source !== "typed"
-        ? {
-            source: "typed" as const,
-            value: getVisualDefaultValue(key, type),
-          }
-        : rawEntry;
-    const fieldStyle = componentMode
-      ? {
-          ...INSPECTOR_FIELD_STYLE,
-          gridColumn: shouldFillInspectorRow(key) ? "1 / -1" : undefined,
-        }
-      : undefined;
-
-    // ── Special: Dynamic CSV diagnostics → controlled per trial ──
-    if (key === "dynamic_csv_diagnostics") {
-      const DYNAMIC_CSV_DIAGNOSTIC_OPTIONS = [
-        { value: "off", label: "Off - clean CSV" },
-        { value: "summary", label: "Summary - quality fields" },
-        { value: "full", label: "Full - benchmark/debug" },
-      ];
-      const currentMode =
-        (entry.source === "typed" ? (entry.value as string) : null) ?? "off";
-      return (
-        <div key={key} style={fieldStyle}>
-          <label
-            className={
-              componentMode ? "" : "mb-2 mt-3 block text-sm font-medium"
-            }
-            style={componentMode ? INSPECTOR_LABEL_STYLE : {}}
-          >
-            Dynamic CSV Audit Data
-          </label>
-          <select
-            className={componentMode ? "" : "w-full p-2 border rounded mt-1"}
-            value={currentMode}
-            onChange={(e) => {
-              const newValue = {
-                source: "typed" as const,
-                value: e.target.value,
-              };
-              setColumnMapping((prev) => ({
-                ...prev,
-                [key]: newValue,
-              }));
-              if (onSave) setTimeout(() => onSave(key, newValue), 100);
-            }}
-            style={
-              componentMode
-                ? INSPECTOR_SELECT_STYLE
-                : { color: "var(--text-dark)" }
-            }
-          >
-            {DYNAMIC_CSV_DIAGNOSTIC_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      );
-    }
-
-    // ── Special: input_type → always show as a select dropdown ──
-    if (key === "input_type") {
-      const INPUT_TYPE_OPTIONS = [
-        { value: "text", label: "Text" },
-        { value: "date", label: "Date (calendar)" },
-        { value: "time", label: "Time (clock)" },
-        { value: "datetime-local", label: "Date & Time" },
-        { value: "number", label: "Number" },
-        { value: "password", label: "Password" },
-      ];
-      const currentType =
-        (entry.source === "typed" ? (entry.value as string) : null) ?? "text";
-      return (
-        <div key={key} style={fieldStyle}>
-          <label
-            className={
-              componentMode ? "" : "mb-2 mt-3 block text-sm font-medium"
-            }
-            style={componentMode ? INSPECTOR_LABEL_STYLE : {}}
-          >
-            {displayLabel}
-          </label>
-          <select
-            className={componentMode ? "" : "w-full p-2 border rounded mt-1"}
-            value={currentType}
-            onChange={(e) => {
-              const newValue = {
-                source: "typed" as const,
-                value: e.target.value,
-              };
-              setColumnMapping((prev) => ({
-                ...prev,
-                [key]: newValue,
-              }));
-              if (onSave) setTimeout(() => onSave(key, newValue), 100);
-            }}
-            style={
-              componentMode
-                ? INSPECTOR_SELECT_STYLE
-                : { color: "var(--text-dark)" }
-            }
-          >
-            {INPUT_TYPE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      );
-    }
-
-    return (
-      <div key={key} style={fieldStyle}>
-        <label
-          className={componentMode ? "" : "mb-2 mt-3 block text-sm font-medium"}
-          style={componentMode ? INSPECTOR_LABEL_STYLE : {}}
-        >
-          {displayLabel}
-        </label>
-
-        {!isVisualStyle && (
-          <ParameterInputField
-            entry={entry}
-            key={`${key}-field`}
-            paramKey={key}
-            type={type}
-            setColumnMapping={setColumnMapping}
-            csvColumns={csvColumns}
-            onSave={onSave}
-            componentMode={componentMode}
-          />
-        )}
-
-        {(isVisualStyle || entry.source === "typed") && (
-          <TypedParameterInput
-            key={`${key}-input`}
-            paramKey={key}
-            type={type}
-            entry={entry}
-            setColumnMapping={setColumnMapping}
-            openHtmlModal={openHtmlModal}
-            openButtonModal={openButtonModal}
-            openSurveyModal={openSurveyModal}
-            onSave={onSave}
-            localInputValues={localInputValues}
-            setLocalInputValues={setLocalInputValues}
-            label={displayLabel}
-            componentMode={componentMode}
-          />
-        )}
-      </div>
-    );
-  };
+  const renderParameterControl = (parameter: Parameter) => (
+    <ParameterControl
+      key={parameter.key}
+      parameter={parameter}
+      columnMapping={columnMapping}
+      componentMode={componentMode}
+      csvColumns={csvColumns}
+      localInputValues={localInputValues}
+      onSave={onSave}
+      openButtonModal={openButtonModal}
+      openHtmlModal={openHtmlModal}
+      openSurveyModal={openSurveyModal}
+      setColumnMapping={setColumnMapping}
+      setLocalInputValues={setLocalInputValues}
+    />
+  );
 
   const renderInspectorSections = () => {
     const sectionItems = new Map<InspectorSection, React.ReactNode[]>(

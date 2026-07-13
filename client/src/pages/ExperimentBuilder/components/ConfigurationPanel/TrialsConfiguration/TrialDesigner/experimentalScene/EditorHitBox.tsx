@@ -1,24 +1,9 @@
 import { useEffect, useRef } from "react";
 import { Group, Rect, Transformer } from "react-konva";
 import Konva from "konva";
-import { CanvasStyles, TrialComponent } from "../types";
-import { SnapHandlers, snapKonvaNode } from "../snapKonvaNode";
-import {
-  getConfigValue,
-  getHtmlSceneNode,
-  HtmlSceneNodeMetric,
-} from "./sceneModel";
-
-type Props = SnapHandlers & {
-  shapeProps: TrialComponent;
-  canvasStyles?: CanvasStyles;
-  isSelected: boolean;
-  onSelect: () => void;
-  onChange: (newAttrs: any) => void;
-  onActivateDom?: () => void;
-  onEditText?: () => void;
-  metric?: HtmlSceneNodeMetric;
-};
+import { snapKonvaNode } from "../snapKonvaNode";
+import { getConfigValue, getHtmlSceneNode } from "./sceneModel";
+import type { EditorHitBoxProps as Props } from "./EditorHitBox/types";
 
 function numberOr(value: any, fallback: number): number {
   const numeric = Number(value);

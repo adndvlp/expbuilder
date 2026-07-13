@@ -1,24 +1,20 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useCsvData } from "../Csv/useCsvData";
 import useTrials from "../../../../hooks/useTrials";
 import TrialMetaConfig from "../TrialMetaConfig";
 import ParameterMapper from "../ParameterMapper";
 import TrialActions from "../TrialActions";
 import InstructionsConfig from "./Instructions";
-import { generatePhaseCode } from "./generatePhaseCode";
 import { useColumnMapping } from "../hooks/useColumnMapping";
 import InstructionsArrays from "./InstructionsArrays";
+import SaveIndicator from "../components/SaveIndicator";
+import { useWebgazerPhases } from "./hooks/useWebgazerPhases";
 
 type Props = { webgazerPlugins: string[] };
 
 function Webgazer({ webgazerPlugins }: Props) {
   // Basic trial configuration
   // these are the replacement of pluginName
-  const initCamera = webgazerPlugins[1];
-  const calibrateWebgazer = webgazerPlugins[0];
-  const validateWebgazer = webgazerPlugins[3];
-  const recalibrateWebGazer = webgazerPlugins[2];
-
   const {
     initCameraInstructions,
     calibrateInstructions,
@@ -44,155 +40,31 @@ function Webgazer({ webgazerPlugins }: Props) {
   const [trialName, setTrialName] = useState<string>("");
   const { columnMapping, setColumnMapping } = useColumnMapping({});
 
-  const initCameraPhase = generatePhaseCode({
-    pluginName: initCamera,
-    instructions: initCameraInstructions,
-    csvJson,
-    selectedTrial,
-    setTrialName,
-    setCsvJson,
-    setCsvColumns,
+  const {
+    includeInstructions: include_instructions,
+    mappedColumns,
+    minimumPercentAcceptable,
+    phases: webGazerPhases,
+    recalibratePhase,
+    recalibratePlugin: recalibrateWebGazer,
+    trialCode,
+  } = useWebgazerPhases({
     columnMapping,
-    setColumnMapping,
-    setIsLoadingTrial,
-  });
-  const calibratePhase = generatePhaseCode({
-    pluginName: calibrateWebgazer,
-    instructions: calibrateInstructions,
     csvJson,
+    instructions: [
+      initCameraInstructions,
+      calibrateInstructions,
+      validateInstructions,
+      recalibrateInstructions,
+    ],
+    plugins: webgazerPlugins,
     selectedTrial,
-    setTrialName,
-    setCsvJson,
-    setCsvColumns,
-    columnMapping, // checar copias de los mapeos anidados en todas las fases
     setColumnMapping,
-    setIsLoadingTrial,
-  });
-  const validatePhase = generatePhaseCode({
-    pluginName: validateWebgazer,
-    instructions: validateInstructions,
-    csvJson,
-    selectedTrial,
-    setTrialName,
-    setCsvJson,
     setCsvColumns,
-    columnMapping,
-    setColumnMapping,
-    setIsLoadingTrial,
-  });
-  const recalibratePhase = generatePhaseCode({
-    pluginName: recalibrateWebGazer,
-    instructions: recalibrateInstructions,
-    csvJson,
-    selectedTrial,
-    setTrialName,
     setCsvJson,
-    setCsvColumns,
-    columnMapping,
-    setColumnMapping,
     setIsLoadingTrial,
+    setTrialName,
   });
-
-  // No necesitamos useTrialPersistence, usaremos directamente deleteTrial del contexto
-  // const { handleDeleteTrial } = useTrialPersistence({ ... });
-
-  const webGazerPhases = [
-    {
-      id: "initializeCamera",
-      pluginName: initCamera,
-      data: initCameraPhase.data,
-      columnMapping: initCameraPhase.columnMapping,
-      setColumnMapping: initCameraPhase.setColumnMapping,
-      includeInstructions: initCameraPhase.includeInstructions,
-      setIncludeInstructions: initCameraPhase.setIncludeInstructions,
-      fieldGroups: initCameraPhase.fieldGroups,
-      trialCode: initCameraPhase.trialCode,
-    },
-    {
-      id: "Calibrate",
-      pluginName: calibrateWebgazer,
-      data: calibratePhase.data,
-      columnMapping: calibratePhase.columnMapping,
-      setColumnMapping: calibratePhase.setColumnMapping,
-      includeInstructions: calibratePhase.includeInstructions,
-      setIncludeInstructions: calibratePhase.setIncludeInstructions,
-      fieldGroups: calibratePhase.fieldGroups,
-      trialCode: calibratePhase.trialCode,
-    },
-    {
-      id: "Validate",
-      pluginName: validateWebgazer,
-      data: validatePhase.data,
-      columnMapping: validatePhase.columnMapping,
-      setColumnMapping: validatePhase.setColumnMapping,
-      includeInstructions: validatePhase.includeInstructions,
-      setIncludeInstructions: validatePhase.setIncludeInstructions,
-      fieldGroups: validatePhase.fieldGroups,
-      trialCode: validatePhase.trialCode,
-    },
-    {
-      id: "Recalibrate",
-      pluginName: recalibrateWebGazer,
-      columnMapping: recalibratePhase.columnMapping, // no existe
-      setColumnMapping: recalibratePhase.setColumnMapping, // no existe
-      includeInstructions: recalibratePhase.includeInstructions,
-      setIncludeInstructions: recalibratePhase.setIncludeInstructions,
-      fieldGroups: recalibratePhase.fieldGroups,
-      trialCode: recalibratePhase.trialCode,
-    },
-  ];
-
-  const minimumPercentAcceptable = recalibratePhase.minimumPercentAcceptable;
-
-  type InstructionsConfig = {
-    [pluginName: string]: boolean;
-  };
-
-  const include_instructions: InstructionsConfig = useMemo(() => {
-    return {
-      [initCamera]: initCameraPhase.includeInstructions,
-      [calibrateWebgazer]: calibratePhase.includeInstructions,
-      [validateWebgazer]: validatePhase.includeInstructions,
-      [recalibrateWebGazer]: recalibratePhase.includeInstructions,
-    };
-  }, [
-    initCameraPhase.includeInstructions,
-    calibratePhase.includeInstructions,
-    validatePhase.includeInstructions,
-    recalibratePhase.includeInstructions,
-    initCamera,
-    calibrateWebgazer,
-    validateWebgazer,
-    recalibrateWebGazer,
-  ]);
-
-  const mappedColumns = useMemo(() => {
-    return {
-      ...initCameraPhase.columnMapping,
-      ...calibratePhase.columnMapping,
-      ...validatePhase.columnMapping,
-      ...recalibratePhase.columnMapping,
-    };
-  }, [
-    initCameraPhase.columnMapping,
-    calibratePhase.columnMapping,
-    validatePhase.columnMapping,
-    recalibratePhase.columnMapping,
-  ]);
-
-  const trialCode = useMemo(() => {
-    return (
-      initCameraPhase.trialCode +
-      calibratePhase.trialCode +
-      validatePhase.trialCode +
-      recalibratePhase.trialCode
-    );
-  }, [
-    initCameraPhase.trialCode,
-    calibratePhase.trialCode,
-    validatePhase.trialCode,
-    recalibratePhase.trialCode,
-  ]);
 
   // Note: trialCode is saved to DB on every change
   // generateTrialLoopCodes will use the saved code instead of regenerating it
@@ -320,26 +192,7 @@ function Webgazer({ webgazerPlugins }: Props) {
 
   return (
     <div id="plugin-config">
-      <div
-        style={{
-          opacity: saveIndicator ? 1 : 0,
-          transition: "opacity 0.3s",
-          color: "green",
-          fontWeight: "500",
-          position: "fixed",
-          top: "20px",
-          right: "20px",
-          zIndex: 1000,
-          backgroundColor: "rgba(255, 255, 255, 0.9)",
-          padding: "6px 12px",
-          borderRadius: "4px",
-          fontSize: "14px",
-          boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-          border: "1px solid #22c55e",
-        }}
-      >
-        ✓ Saved {savingField ? `(${savingField})` : "Trial"}
-      </div>
+      <SaveIndicator field={savingField} visible={saveIndicator} />
       <div className="mb-1 input-section p-4 border rounded">
         <h4 className="text-lg font-bold mb-3">WebGazer</h4>
 

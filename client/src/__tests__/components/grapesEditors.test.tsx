@@ -5,47 +5,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import GrapesButtonEditor from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/GrapesEditors/GrapesButtonEditor";
 import GrapesHtmlEditor from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/GrapesEditors/GrapesHtmlEditor";
 import { makeGrapesHtmlPortable } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/GrapesEditors/portableHtml";
+import { createEditorMock, mockNextEditor } from "./grapesEditors/testHarness";
 
 vi.mock("juice", () => ({
   default: {
-    inlineContent: vi.fn((html: string, css: string) => `inlined:${html}|${css}`),
+    inlineContent: vi.fn(
+      (html: string, css: string) => `inlined:${html}|${css}`,
+    ),
   },
 }));
-
-type EditorMock = ReturnType<typeof createEditorMock>;
-
-function createEditorMock() {
-  const handlers: Record<string, () => void> = {};
-  const canvasBody = document.createElement("body");
-  const canvasWrapper = document.createElement("div");
-  canvasWrapper.id = "wrapper";
-  canvasBody.appendChild(canvasWrapper);
-  const blockManager = {
-    add: vi.fn(),
-    remove: vi.fn(),
-    get: vi.fn((id: string) => ({ id })),
-    getAll: vi.fn(() => [{ id: "column1" }, { id: "image" }]),
-  };
-  return {
-    handlers,
-    canvasBody,
-    canvasWrapper,
-    Canvas: {
-      getBody: vi.fn(() => canvasBody),
-    },
-    BlockManager: blockManager,
-    getHtml: vi.fn(() => "<body><div>Saved</div></body>"),
-    getCss: vi.fn(() => ".saved{color:red;}"),
-    destroy: vi.fn(),
-    on: vi.fn((event: string, cb: () => void) => {
-      handlers[event] = cb;
-    }),
-  };
-}
-
-function mockNextEditor(editor: EditorMock) {
-  vi.mocked(grapesjs.init).mockReturnValue(editor as any);
-}
 
 describe("Grapes editors", () => {
   beforeEach(() => {
@@ -77,11 +45,7 @@ describe("Grapes editors", () => {
 
   it("does not initialize GrapesJS while the HTML editor is closed", () => {
     render(
-      <GrapesHtmlEditor
-        isOpen={false}
-        onClose={vi.fn()}
-        onChange={vi.fn()}
-      />,
+      <GrapesHtmlEditor isOpen={false} onClose={vi.fn()} onChange={vi.fn()} />,
     );
 
     expect(grapesjs.init).not.toHaveBeenCalled();
@@ -162,17 +126,13 @@ describe("Grapes editors", () => {
 
   it("uses default HTML content and tolerates missing canvas nodes", () => {
     const editor = createEditorMock();
-    editor.Canvas.getBody.mockReturnValueOnce(null).mockReturnValueOnce(
-      document.createElement("body"),
-    );
+    editor.Canvas.getBody
+      .mockReturnValueOnce(null)
+      .mockReturnValueOnce(document.createElement("body"));
     mockNextEditor(editor);
 
     const { unmount } = render(
-      <GrapesHtmlEditor
-        isOpen
-        onClose={vi.fn()}
-        onChange={vi.fn()}
-      />,
+      <GrapesHtmlEditor isOpen onClose={vi.fn()} onChange={vi.fn()} />,
     );
 
     expect(grapesjs.init).toHaveBeenCalledWith(
@@ -196,13 +156,7 @@ describe("Grapes editors", () => {
     const onChange = vi.fn();
     const onClose = vi.fn();
 
-    render(
-      <GrapesButtonEditor
-        isOpen
-        onClose={onClose}
-        onChange={onChange}
-      />,
-    );
+    render(<GrapesButtonEditor isOpen onClose={onClose} onChange={onChange} />);
 
     expect(grapesjs.init).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -259,9 +213,9 @@ describe("Grapes editors", () => {
 
   it("uses default button content and tolerates missing canvas or block entries", () => {
     const editor = createEditorMock();
-    editor.Canvas.getBody.mockReturnValueOnce(null).mockReturnValueOnce(
-      document.createElement("body"),
-    );
+    editor.Canvas.getBody
+      .mockReturnValueOnce(null)
+      .mockReturnValueOnce(document.createElement("body"));
     editor.BlockManager.getAll.mockReturnValue([{ id: "column1" }]);
     editor.BlockManager.get.mockImplementation((id: string) =>
       id === "image" ? undefined : { id },
@@ -269,11 +223,7 @@ describe("Grapes editors", () => {
     mockNextEditor(editor);
 
     const { unmount } = render(
-      <GrapesButtonEditor
-        isOpen
-        onClose={vi.fn()}
-        onChange={vi.fn()}
-      />,
+      <GrapesButtonEditor isOpen onClose={vi.fn()} onChange={vi.fn()} />,
     );
 
     expect(grapesjs.init).toHaveBeenCalledWith(

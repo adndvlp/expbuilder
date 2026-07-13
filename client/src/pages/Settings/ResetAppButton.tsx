@@ -36,7 +36,7 @@ const ResetAppButton: React.FC = () => {
       } else {
         alert("Ocurrió un error borrando la app: " + data.error);
       }
-    } catch (e) {
+    } catch {
       alert("Error crítico conectando con el servidor");
     } finally {
       setLoading(false);

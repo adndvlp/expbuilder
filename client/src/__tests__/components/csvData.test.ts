@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import Papa from "papaparse";
 import * as ExcelJS from "exceljs";
 import { useCsvData } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/Csv/useCsvData";
+import { fileEvent, makeWorksheet } from "./csvData/fixtures";
 
 vi.mock("papaparse", () => ({
   default: {
@@ -17,46 +18,6 @@ vi.mock("exceljs", () => ({
     Formula: 6,
   },
 }));
-
-function fileEvent(file?: File) {
-  return {
-    target: {
-      files: file ? [file] : [],
-    },
-  } as unknown as React.ChangeEvent<HTMLInputElement>;
-}
-
-function makeWorksheet() {
-  const dateValue = new Date("2026-05-24T00:00:00.000Z");
-  const headerRow = {
-    eachCell: (callback: (cell: any, colNumber: number) => void) => {
-      callback({ text: "stimulus" }, 1);
-      callback({ text: "duration" }, 2);
-      callback({ text: "when" }, 3);
-      callback({ text: "score" }, 4);
-    },
-  };
-  const dataRow = {
-    eachCell: (callback: (cell: any, colNumber: number) => void) => {
-      callback({ text: "A", value: "A", type: 3 }, 1);
-      callback({ text: "500", value: 500, type: 2 }, 2);
-      callback({ text: "5/24/2026", value: dateValue, type: ExcelJS.ValueType.Date }, 3);
-      callback({ text: "=1+1", value: { formula: "1+1" }, result: 2, type: ExcelJS.ValueType.Formula }, 4);
-    },
-  };
-  const emptyRow = {
-    eachCell: () => {},
-  };
-
-  return {
-    getRow: vi.fn(() => headerRow),
-    eachRow: vi.fn((callback: (row: any, rowNumber: number) => void) => {
-      callback(headerRow, 1);
-      callback(dataRow, 2);
-      callback(emptyRow, 3);
-    }),
-  };
-}
 
 describe("useCsvData", () => {
   afterEach(() => {
@@ -145,7 +106,9 @@ describe("useCsvData", () => {
     const { result } = renderHook(() => useCsvData());
 
     await act(async () => {
-      await result.current.handleCsvUpload(fileEvent(new File(["x"], "bad.csv")));
+      await result.current.handleCsvUpload(
+        fileEvent(new File(["x"], "bad.csv")),
+      );
     });
 
     expect(alertSpy).toHaveBeenCalledWith("Error at reading the CSV: bad csv");
@@ -156,14 +119,12 @@ describe("useCsvData", () => {
   it("loads XLSX first worksheet rows and skips empty rows", async () => {
     const worksheet = makeWorksheet();
     const load = vi.fn().mockResolvedValue(undefined);
-    vi.mocked(ExcelJS.Workbook).mockImplementation(
-      function WorkbookMock() {
-        return {
-          xlsx: { load },
-          getWorksheet: vi.fn(() => worksheet),
-        } as any;
-      } as any,
-    );
+    vi.mocked(ExcelJS.Workbook).mockImplementation(function WorkbookMock() {
+      return {
+        xlsx: { load },
+        getWorksheet: vi.fn(() => worksheet),
+      } as any;
+    } as any);
     const onDataLoaded = vi.fn();
     const { result } = renderHook(() => useCsvData());
 
@@ -214,9 +175,19 @@ describe("useCsvData", () => {
     const dataRow = {
       eachCell: (callback: (cell: any, colNumber: number) => void) => {
         callback({ text: "", value: null, type: 3 }, 1);
-        callback({ text: "fallback", result: undefined, type: ExcelJS.ValueType.Formula }, 2);
+        callback(
+          {
+            text: "fallback",
+            result: undefined,
+            type: ExcelJS.ValueType.Formula,
+          },
+          2,
+        );
         callback({ text: "", value: null, type: 3 }, 3);
-        callback({ text: "zero", result: 0, type: ExcelJS.ValueType.Formula }, 4);
+        callback(
+          { text: "zero", result: 0, type: ExcelJS.ValueType.Formula },
+          4,
+        );
         callback({ text: "no header", value: "no header", type: 3 }, 5);
       },
     };
@@ -227,14 +198,12 @@ describe("useCsvData", () => {
         callback(dataRow, 2);
       }),
     };
-    vi.mocked(ExcelJS.Workbook).mockImplementation(
-      function WorkbookMock() {
-        return {
-          xlsx: { load: vi.fn().mockResolvedValue(undefined) },
-          getWorksheet: vi.fn(() => worksheet),
-        } as any;
-      } as any,
-    );
+    vi.mocked(ExcelJS.Workbook).mockImplementation(function WorkbookMock() {
+      return {
+        xlsx: { load: vi.fn().mockResolvedValue(undefined) },
+        getWorksheet: vi.fn(() => worksheet),
+      } as any;
+    } as any);
     const { result } = renderHook(() => useCsvData());
 
     await act(async () => {
@@ -256,14 +225,12 @@ describe("useCsvData", () => {
 
   it("alerts when XLSX has no first worksheet", async () => {
     const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
-    vi.mocked(ExcelJS.Workbook).mockImplementation(
-      function WorkbookMock() {
-        return {
-          xlsx: { load: vi.fn().mockResolvedValue(undefined) },
-          getWorksheet: vi.fn(() => undefined),
-        } as any;
-      } as any,
-    );
+    vi.mocked(ExcelJS.Workbook).mockImplementation(function WorkbookMock() {
+      return {
+        xlsx: { load: vi.fn().mockResolvedValue(undefined) },
+        getWorksheet: vi.fn(() => undefined),
+      } as any;
+    } as any);
     const { result } = renderHook(() => useCsvData());
 
     await act(async () => {
@@ -272,23 +239,25 @@ describe("useCsvData", () => {
       );
     });
 
-    expect(alertSpy).toHaveBeenCalledWith("No worksheet found in the Excel file");
+    expect(alertSpy).toHaveBeenCalledWith(
+      "No worksheet found in the Excel file",
+    );
     expect(result.current.csvJson).toEqual([]);
     expect(result.current.csvColumns).toEqual([]);
   });
 
   it("alerts when XLSX loading fails", async () => {
     const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
     const error = new Error("bad workbook");
-    vi.mocked(ExcelJS.Workbook).mockImplementation(
-      function WorkbookMock() {
-        return {
-          xlsx: { load: vi.fn().mockRejectedValue(error) },
-          getWorksheet: vi.fn(),
-        } as any;
-      } as any,
-    );
+    vi.mocked(ExcelJS.Workbook).mockImplementation(function WorkbookMock() {
+      return {
+        xlsx: { load: vi.fn().mockRejectedValue(error) },
+        getWorksheet: vi.fn(),
+      } as any;
+    } as any);
     const { result } = renderHook(() => useCsvData());
 
     await act(async () => {
@@ -311,7 +280,9 @@ describe("useCsvData", () => {
     const { result } = renderHook(() => useCsvData());
 
     await act(async () => {
-      await result.current.handleCsvUpload(fileEvent(new File(["x"], "data.txt")));
+      await result.current.handleCsvUpload(
+        fileEvent(new File(["x"], "data.txt")),
+      );
     });
 
     expect(alertSpy).toHaveBeenCalledWith(

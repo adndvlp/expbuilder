@@ -1,23 +1,13 @@
 import { useState } from "react";
-
-type Props = {
-  onConfirm: (destinationId: number | string, addAsBranch: boolean) => void;
-  onClose: () => void;
-  itemName?: string;
-  availableDestinations: {
-    id: number | string;
-    name: string;
-    type: "trial" | "loop";
-    hasBranches: boolean;
-  }[];
-};
+import MoveDestinationList from "./MoveDestinationList";
+import { MoveItemModalProps } from "./MoveItemModal.types";
 
 function MoveItemModal({
   onConfirm,
   onClose,
   itemName,
   availableDestinations,
-}: Props) {
+}: MoveItemModalProps) {
   const [selectedDestination, setSelectedDestination] = useState<
     number | string | null
   >(null);
@@ -80,85 +70,11 @@ function MoveItemModal({
         Select a destination:
       </p>
 
-      {/* List of destinations */}
-      <div
-        style={{
-          width: "100%",
-          maxHeight: "240px",
-          overflowY: "auto",
-          marginBottom: 16,
-          border: "1px solid rgba(255, 255, 255, 0.2)",
-          borderRadius: "8px",
-          padding: "8px",
-        }}
-      >
-        {availableDestinations.length === 0 ? (
-          <p
-            style={{
-              color: "#fff",
-              opacity: 0.6,
-              textAlign: "center",
-              padding: "16px",
-            }}
-          >
-            No available destinations
-          </p>
-        ) : (
-          availableDestinations.map((dest) => (
-            <div
-              key={dest.id}
-              onClick={() => setSelectedDestination(dest.id)}
-              style={{
-                padding: "12px 16px",
-                marginBottom: "6px",
-                borderRadius: "6px",
-                cursor: "pointer",
-                background:
-                  selectedDestination === dest.id
-                    ? "rgba(76, 175, 80, 0.25)"
-                    : "rgba(255, 255, 255, 0.05)",
-                border: `2px solid ${
-                  selectedDestination === dest.id
-                    ? "rgba(76, 175, 80, 0.6)"
-                    : "rgba(255, 255, 255, 0.15)"
-                }`,
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                if (selectedDestination !== dest.id) {
-                  e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (selectedDestination !== dest.id) {
-                  e.currentTarget.style.background =
-                    "rgba(255, 255, 255, 0.05)";
-                }
-              }}
-            >
-              <div
-                style={{
-                  color: "#fff",
-                  fontSize: 15,
-                  fontWeight: 600,
-                }}
-              >
-                {dest.name}
-              </div>
-              <div
-                style={{
-                  color: "#fff",
-                  fontSize: 12,
-                  opacity: 0.7,
-                  marginTop: "2px",
-                }}
-              >
-                {dest.type === "trial" ? "Trial" : "Loop"}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+      <MoveDestinationList
+        destinations={availableDestinations}
+        selectedDestination={selectedDestination}
+        setSelectedDestination={setSelectedDestination}
+      />
 
       {/* Options: Branch (parallel) or Sequential - only if the destination has branches */}
       {selectedDest && selectedDest.hasBranches && (

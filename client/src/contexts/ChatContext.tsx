@@ -1,106 +1,31 @@
 import {
   createContext,
-  useContext,
-  useState,
   useCallback,
+  useContext,
   useRef,
-  useEffect,
-  ReactNode,
+  useState,
+  type ReactNode,
 } from "react";
-import {
-  type Provider,
-  type AIModel,
-  DEFAULT_PROVIDER,
-  DEFAULT_MODEL,
-  findProvider as findStaticProvider,
-  findModel,
-} from "../components/Chat/providers";
-import { findCatalogProvider, prefetchProviders, loadProviders } from "../lib/providerCatalog";
+import { streamChat } from "./chat/services/streamChat";
+import type {
+  Attachment,
+  ChatContextType,
+  Conversation,
+  Message,
+} from "./chat/types";
+import { useChatPersistence } from "./chat/hooks/useChatPersistence";
 
-const API_BASE = import.meta.env.VITE_API_URL;
-
-export interface Attachment {
-  id: string;
-  name: string;
-  type: string;
-  url: string;
-  size: number;
-  file?: File;
-}
-
-export interface ToolCall {
-  id: string;
-  name: string;
-  description?: string;
-  args: Record<string, unknown>;
-  result?: string;
-  error?: string;
-  status: "pending" | "running" | "done" | "error";
-  durationMs?: number;
-}
-
-export interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  reasoning?: string;
-  toolCalls?: ToolCall[];
-  attachments?: Attachment[];
-  timestamp: Date;
-  isStreaming?: boolean;
-}
-
-export interface Conversation {
-  id: string;
-  title: string;
-  messages: Message[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-interface ChatContextType {
-  isOpen: boolean;
-  open: () => void;
-  close: () => void;
-  toggle: () => void;
-  conversations: Conversation[];
-  activeConvId: string | null;
-  activeConversation: Conversation | null;
-  newConversation: () => void;
-  selectConversation: (id: string) => void;
-  deleteConversation: (id: string) => void;
-  renameConversation: (id: string, title: string) => void;
-  sendMessage: (content: string, attachments?: Attachment[]) => void;
-  isThinking: boolean;
-  abortStream: () => void;
-  // Provider / model selection
-  provider: Provider;
-  model: AIModel;
-  setProviderAndModel: (providerId: string, modelId: string) => void;
-  apiKeys: Record<string, string>;
-  setApiKey: (providerId: string, key: string) => void;
-}
+export type {
+  Attachment,
+  ChatContextType,
+  Conversation,
+  Message,
+  ToolCall,
+} from "./chat/types";
+export { parseSSEChunk } from "./chat/utils/sse";
 
 const ChatContext = createContext<ChatContextType | null>(null);
-
 const uid = () => Math.random().toString(36).slice(2, 10);
-
-/** Parse a single SSE line pair into { event, data } */
-export function parseSSEChunk(chunk: string): Array<{ event: string; data: string }> {
-  const events: Array<{ event: string; data: string }> = [];
-  const blocks = chunk.split("\n\n");
-  for (const block of blocks) {
-    if (!block.trim()) continue;
-    let event = "message";
-    let data = "";
-    for (const line of block.split("\n")) {
-      if (line.startsWith("event: ")) event = line.slice(7).trim();
-      else if (line.startsWith("data: ")) data = line.slice(6).trim();
-    }
-    if (data) events.push({ event, data });
-  }
-  return events;
-}
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -108,140 +33,35 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const loadedRef = useRef(false); // skip persist before initial load completes
-
-  // Provider / model state
-  const [provider, setProvider] = useState<Provider>(DEFAULT_PROVIDER);
-  const [model, setModel] = useState<AIModel>(DEFAULT_MODEL);
-  const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
-
-  // ── Persistence ────────────────────────────────────────
-
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const convTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Load saved state on mount + prefetch provider catalog
-  useEffect(() => {
-    prefetchProviders();
-    Promise.all([
-      fetch(`${API_BASE}/api/chat/settings`).then((r) => r.json()),
-      fetch(`${API_BASE}/api/chat/conversations`).then((r) => r.json()),
-    ])
-      .then(async ([settings, convs]) => {
-        if (settings.apiKeys) setApiKeys(settings.apiKeys);
-        if (settings.activeProvider && settings.activeModel) {
-          // Wait for catalog to finish loading so findCatalogProvider works
-          await loadProviders();
-          const p =
-            findCatalogProvider(settings.activeProvider) ??
-            findStaticProvider(settings.activeProvider);
-          const m = findModel(p, settings.activeModel);
-          setProvider(p);
-          setModel(m);
-        }
-        if (Array.isArray(convs) && convs.length > 0) {
-          // Revive Date strings → Date objects
-          const revived = convs.map((c: Conversation) => ({
-            ...c,
-            createdAt: new Date(c.createdAt),
-            updatedAt: new Date(c.updatedAt),
-            messages: c.messages.map((m) => ({
-              ...m,
-              timestamp: new Date(m.timestamp),
-            })),
-          }));
-          setConversations(revived);
-          setActiveConvId(revived[0]!.id);
-        }
-      })
-      .catch(() => {})
-      .finally(() => { loadedRef.current = true; });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Debounced save: settings (apiKeys, provider, model)
-  const persistSettings = useCallback(
-    (newApiKeys: Record<string, string>, providerId: string, modelId: string) => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => {
-        fetch(`${API_BASE}/api/chat/settings`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            apiKeys: newApiKeys,
-            activeProvider: providerId,
-            activeModel: modelId,
-          }),
-        }).catch(() => {});
-      }, 500);
-    },
-    []
-  );
-
-  // Debounced save: conversations (1s delay — avoids hammering on stream)
-  const persistConversations = useCallback((convs: Conversation[]) => {
-    if (convTimerRef.current) clearTimeout(convTimerRef.current);
-    convTimerRef.current = setTimeout(() => {
-      fetch(`${API_BASE}/api/chat/conversations`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(convs),
-      }).catch(() => {});
-    }, 1000);
-  }, []);
-
-  // Persist conversations whenever they change (after initial load)
-  useEffect(() => {
-    if (!loadedRef.current) return;
-    persistConversations(conversations);
-  }, [conversations, persistConversations]);
-
-  // ── State setters with persistence ─────────────────────
-
-  const setProviderAndModel = useCallback(
-    (providerId: string, modelId: string) => {
-      const p = findCatalogProvider(providerId) ?? findStaticProvider(providerId);
-      const m = findModel(p, modelId);
-      setProvider(p);
-      setModel(m);
-      persistSettings(apiKeys, providerId, modelId);
-    },
-    [apiKeys, persistSettings]
-  );
-
-  const setApiKey = useCallback(
-    (providerId: string, key: string) => {
-      setApiKeys((prev) => {
-        const next = { ...prev, [providerId]: key };
-        persistSettings(next, provider.id, model.id);
-        return next;
-      });
-    },
-    [provider.id, model.id, persistSettings]
-  );
+  const { provider, model, apiKeys, setProviderAndModel, setApiKey } =
+    useChatPersistence({
+      conversations,
+      setConversations,
+      setActiveConvId,
+    });
 
   const activeConversation =
-    conversations.find((c) => c.id === activeConvId) ?? null;
-
+    conversations.find((conversation) => conversation.id === activeConvId) ??
+    null;
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => setIsOpen(false), []);
-  const toggle = useCallback(() => setIsOpen((v) => !v), []);
+  const toggle = useCallback(() => setIsOpen((visible) => !visible), []);
 
   const newConversation = useCallback(() => {
-    setConversations((prev) => {
-      const active = prev.find((c) => c.id === activeConvId);
-      if (active && active.messages.length === 0) {
-        // Active conversation already empty — reuse it, don't create another
-        return prev;
-      }
-      const conv: Conversation = {
+    setConversations((previous) => {
+      const active = previous.find(
+        (conversation) => conversation.id === activeConvId,
+      );
+      if (active && active.messages.length === 0) return previous;
+      const conversation: Conversation = {
         id: uid(),
         title: "New conversation",
         messages: [],
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      setActiveConvId(conv.id);
-      return [conv, ...prev];
+      setActiveConvId(conversation.id);
+      return [conversation, ...previous];
     });
   }, [activeConvId]);
 
@@ -251,101 +71,107 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const deleteConversation = useCallback(
     (id: string) => {
-      setConversations((prev) => prev.filter((c) => c.id !== id));
-      if (activeConvId === id) {
-        setActiveConvId(null);
-      }
+      setConversations((previous) =>
+        previous.filter((conversation) => conversation.id !== id),
+      );
+      if (activeConvId === id) setActiveConvId(null);
     },
-    [activeConvId]
+    [activeConvId],
   );
 
   const renameConversation = useCallback((id: string, title: string) => {
-    setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, title, updatedAt: new Date() } : c))
+    setConversations((previous) =>
+      previous.map((conversation) =>
+        conversation.id === id
+          ? { ...conversation, title, updatedAt: new Date() }
+          : conversation,
+      ),
     );
   }, []);
 
   const abortStream = useCallback(() => {
     abortRef.current?.abort();
     setIsThinking(false);
-    setConversations((prev) =>
-      prev.map((conv) =>
-        conv.id !== activeConvId
-          ? conv
+    setConversations((previous) =>
+      previous.map((conversation) =>
+        conversation.id !== activeConvId
+          ? conversation
           : {
-              ...conv,
-              messages: conv.messages.map((m) =>
-                m.isStreaming ? { ...m, isStreaming: false } : m
+              ...conversation,
+              messages: conversation.messages.map((message) =>
+                message.isStreaming
+                  ? { ...message, isStreaming: false }
+                  : message,
               ),
-            }
-      )
+            },
+      ),
     );
   }, [activeConvId]);
 
   const sendMessage = useCallback(
     (content: string, attachments?: Attachment[]) => {
       if (!content.trim() || isThinking) return;
+      let conversationId = activeConvId;
 
-      let convId = activeConvId;
-
-      if (!convId) {
-        const conv: Conversation = {
+      if (!conversationId) {
+        const conversation: Conversation = {
           id: uid(),
           title: content.slice(0, 40) + (content.length > 40 ? "…" : ""),
           messages: [],
           createdAt: new Date(),
           updatedAt: new Date(),
         };
-        setConversations((prev) => [conv, ...prev]);
-        setActiveConvId(conv.id);
-        convId = conv.id;
+        setConversations((previous) => [conversation, ...previous]);
+        setActiveConvId(conversation.id);
+        conversationId = conversation.id;
       }
 
-      const userMsg: Message = {
+      const userMessage: Message = {
         id: uid(),
         role: "user",
         content,
         attachments,
         timestamp: new Date(),
       };
-
-      const updateConv = (updater: (conv: Conversation) => Conversation) => {
-        setConversations((prev) =>
-          prev.map((c) => (c.id === convId ? updater(c) : c))
+      const updateConversation = (
+        updater: (conversation: Conversation) => Conversation,
+      ) => {
+        setConversations((previous) =>
+          previous.map((conversation) =>
+            conversation.id === conversationId
+              ? updater(conversation)
+              : conversation,
+          ),
         );
       };
+      const currentConversation = conversations.find(
+        (conversation) => conversation.id === conversationId,
+      );
+      const historyMessages = (currentConversation?.messages ?? []).map(
+        (message) => ({ role: message.role, content: message.content }),
+      );
 
-      // Snapshot current messages before state update for API payload.
-      const currentConversation = conversations.find((c) => c.id === convId);
-      const historyMessages: { role: string; content: string }[] = (
-        currentConversation?.messages ?? []
-      ).map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
-
-      setConversations((prev) => {
-        return prev.map((c) =>
-          c.id === convId
+      setConversations((previous) =>
+        previous.map((conversation) =>
+          conversation.id === conversationId
             ? {
-                ...c,
-                messages: [...c.messages, userMsg],
+                ...conversation,
+                messages: [...conversation.messages, userMessage],
                 title:
-                  c.messages.length === 0
+                  conversation.messages.length === 0
                     ? content.slice(0, 40) + (content.length > 40 ? "…" : "")
-                    : c.title,
+                    : conversation.title,
                 updatedAt: new Date(),
               }
-            : c
-        );
-      });
+            : conversation,
+        ),
+      );
 
       setIsThinking(true);
       const controller = new AbortController();
       abortRef.current = controller;
-
       const assistantId = uid();
-      const assistantMsg: Message = {
+      const assistantMessage: Message = {
         id: assistantId,
         role: "assistant",
         content: "",
@@ -353,110 +179,60 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         timestamp: new Date(),
         isStreaming: true,
       };
-
-      updateConv((c) => ({
-        ...c,
-        messages: [...c.messages, assistantMsg],
+      updateConversation((conversation) => ({
+        ...conversation,
+        messages: [...conversation.messages, assistantMessage],
         updatedAt: new Date(),
       }));
 
-      const apiMessages = [
-        ...historyMessages,
-        { role: "user", content },
-      ];
-
-      let rawText = "";
-
-      (async () => {
-        try {
-          const res = await fetch(`${API_BASE}/api/chat/stream`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              providerId: provider.id,
-              modelId: model.id,
-              apiKey: apiKeys[provider.id] ?? undefined,
-              messages: apiMessages,
-            }),
-            signal: controller.signal,
-          });
-
-          if (!res.ok) {
-            const err = await res.json().catch(() => ({ error: res.statusText }));
-            throw new Error(err.error ?? res.statusText);
-          }
-
-          const reader = res.body!.getReader();
-          const decoder = new TextDecoder();
-          let buffer = "";
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-
-            // Split BEFORE parsing — only process complete \n\n-terminated blocks
-            const lastDouble = buffer.lastIndexOf("\n\n");
-            if (lastDouble < 0) continue;
-            const complete = buffer.slice(0, lastDouble + 2);
-            buffer = buffer.slice(lastDouble + 2);
-            const events = parseSSEChunk(complete);
-
-            for (const { event, data } of events) {
-              if (controller.signal.aborted) break;
-              if (event === "delta") {
-                const { text } = JSON.parse(data);
-                rawText += text;
-                const thinkRe = /<think>([\s\S]*?)<\/think>/g;
-                const reasoningParts: string[] = [];
-                const cleaned = rawText.replace(thinkRe, (_, r) => {
-                  reasoningParts.push(r);
-                  return "";
-                });
-                updateConv((c) => ({
-                  ...c,
-                  messages: c.messages.map((m) =>
-                    m.id === assistantId
-                      ? { ...m, reasoning: reasoningParts.join("\n\n"), content: cleaned }
-                      : m
-                  ),
-                }));
-              } else if (event === "done") {
-                const parsed = JSON.parse(data);
-                if (parsed.toolsUsed) {
-                  window.dispatchEvent(new CustomEvent("experiment-data-changed"));
-                }
-                break;
-              } else if (event === "error") {
-                break;
-              }
-            }
-          }
-        } catch (err: unknown) {
-          if ((err as Error).name === "AbortError") return;
-          const msg = err instanceof Error ? err.message : String(err);
-          updateConv((c) => ({
-            ...c,
-            messages: c.messages.map((m) =>
-              m.id === assistantId
-                ? { ...m, content: `Error: ${msg}`, isStreaming: false }
-                : m
+      void streamChat({
+        providerId: provider.id,
+        modelId: model.id,
+        apiKey: apiKeys[provider.id] ?? undefined,
+        messages: [...historyMessages, { role: "user", content }],
+        signal: controller.signal,
+        onDelta: ({ content: nextContent, reasoning }) => {
+          updateConversation((conversation) => ({
+            ...conversation,
+            messages: conversation.messages.map((message) =>
+              message.id === assistantId
+                ? { ...message, reasoning, content: nextContent }
+                : message,
             ),
           }));
-        } finally {
-          if (!controller.signal.aborted) {
-            updateConv((c) => ({
-              ...c,
-              messages: c.messages.map((m) =>
-                m.id === assistantId ? { ...m, isStreaming: false } : m
-              ),
-            }));
-            setIsThinking(false);
-          }
-        }
-      })();
+        },
+      })
+        .catch((error: unknown) => {
+          if ((error as Error).name === "AbortError") return;
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          updateConversation((conversation) => ({
+            ...conversation,
+            messages: conversation.messages.map((message) =>
+              message.id === assistantId
+                ? {
+                    ...message,
+                    content: `Error: ${errorMessage}`,
+                    isStreaming: false,
+                  }
+                : message,
+            ),
+          }));
+        })
+        .finally(() => {
+          if (controller.signal.aborted) return;
+          updateConversation((conversation) => ({
+            ...conversation,
+            messages: conversation.messages.map((message) =>
+              message.id === assistantId
+                ? { ...message, isStreaming: false }
+                : message,
+            ),
+          }));
+          setIsThinking(false);
+        });
     },
-    [activeConvId, conversations, isThinking, provider, model, apiKeys]
+    [activeConvId, conversations, isThinking, provider, model, apiKeys],
   );
 
   return (
@@ -489,7 +265,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 }
 
 export function useChat() {
-  const ctx = useContext(ChatContext);
-  if (!ctx) throw new Error("useChat must be inside ChatProvider");
-  return ctx;
+  const context = useContext(ChatContext);
+  if (!context) throw new Error("useChat must be inside ChatProvider");
+  return context;
 }

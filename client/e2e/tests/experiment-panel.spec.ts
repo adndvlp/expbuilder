@@ -50,29 +50,29 @@ test.describe("Experiment Panel Page", () => {
 
   test("switches to Preview Results tab", async () => {
     await panel.previewTab.click();
-    const bg = await panel.previewTab.evaluate((el) =>
-      window.getComputedStyle(el).background,
+    const bg = await panel.previewTab.evaluate(
+      (el) => window.getComputedStyle(el).background,
     );
     expect(bg).toContain("linear-gradient");
   });
 
   test("switches to Online Experiments tab", async () => {
     await panel.onlineTab.click();
-    const bg = await panel.onlineTab.evaluate((el) =>
-      window.getComputedStyle(el).background,
+    const bg = await panel.onlineTab.evaluate(
+      (el) => window.getComputedStyle(el).background,
     );
     expect(bg).toContain("linear-gradient");
   });
 
   test("switches to Settings tab", async () => {
     await panel.settingsTab.click();
-    const bg = await panel.settingsTab.evaluate((el) =>
-      window.getComputedStyle(el).background,
+    const bg = await panel.settingsTab.evaluate(
+      (el) => window.getComputedStyle(el).background,
     );
     expect(bg).toContain("linear-gradient");
   });
 
-  test("handles navigation to any experiment panel", async ({ page }) => {
+  test("handles navigation to any experiment panel", async () => {
     await panel.goto("exp-999");
     await expect(panel.experimentId).toContainText("exp-999");
   });

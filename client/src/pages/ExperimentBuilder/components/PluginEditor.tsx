@@ -2,18 +2,9 @@ import { Editor } from "@monaco-editor/react";
 import { useEffect, useRef, useState } from "react";
 import useTrials from "../hooks/useTrials";
 import usePlugins from "../hooks/usePlugins";
+import { pluginEditorOptions } from "./PluginEditor/editorOptions";
+import { Plugin, PluginEditorProps } from "./PluginEditor/types";
 const API_URL = import.meta.env.VITE_API_URL;
-
-interface Plugin {
-  name: string;
-  scripTag: string;
-  pluginCode: string;
-  index: number;
-}
-
-interface PluginEditorProps {
-  selectedPluginName?: string;
-}
 
 const PluginEditor: React.FC<PluginEditorProps> = ({ selectedPluginName }) => {
   const { plugins, setPlugins } = usePlugins();
@@ -24,7 +15,7 @@ const PluginEditor: React.FC<PluginEditorProps> = ({ selectedPluginName }) => {
 
   const [isLightMode, setIsLightMode] = useState(
     window.matchMedia &&
-      window.matchMedia("(prefers-color-scheme: light)").matches
+      window.matchMedia("(prefers-color-scheme: light)").matches,
   );
 
   useEffect(() => {
@@ -235,33 +226,7 @@ const PluginEditor: React.FC<PluginEditorProps> = ({ selectedPluginName }) => {
                 value={(localPlugin || plugin).pluginCode}
                 theme={isLightMode ? "vs-light" : "vs-dark"}
                 onChange={(value) => handleChange("pluginCode", value || "")}
-                options={{
-                  automaticLayout: true,
-                  minimap: { enabled: false },
-                  fontSize: 14,
-                  lineNumbers: "on",
-                  wordWrap: "off",
-                  folding: true,
-                  bracketPairColorization: {
-                    enabled: true,
-                  },
-                  colorDecorators: true,
-                  suggest: {
-                    showKeywords: true,
-                    showSnippets: true,
-                    showFunctions: true,
-                    showConstants: true,
-                    showVariables: true,
-                  },
-                  quickSuggestions: {
-                    other: true,
-                    comments: true,
-                    strings: true,
-                  },
-                  tabCompletion: "on",
-                  acceptSuggestionOnEnter: "on",
-                  snippetSuggestions: "top",
-                }}
+                options={pluginEditorOptions}
                 height="100vh"
               />
             </div>

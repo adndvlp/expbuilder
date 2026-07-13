@@ -2,7 +2,12 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import KonvaParameterMapper from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/KonvaParameterMapper";
-import type { TrialComponent } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
+import {
+  createMapperProps,
+  otherComponent,
+  renderMapper,
+  selectedComponent,
+} from "./trialDesignerParameterMapper/testHarness";
 
 const mapperMock = vi.hoisted(() => ({
   props: undefined as any,
@@ -56,94 +61,6 @@ vi.mock(
   }),
 );
 
-function createSetComponents(initial: TrialComponent[]) {
-  let current = initial;
-  const setComponents = vi.fn((update: React.SetStateAction<TrialComponent[]>) => {
-    current = typeof update === "function" ? update(current) : update;
-  });
-
-  return {
-    setComponents,
-    getComponents: () => current,
-  };
-}
-
-const selectedComponent: TrialComponent = {
-  id: "button-1",
-  type: "ButtonResponseComponent",
-  x: 100,
-  y: 100,
-  width: 0,
-  height: 0,
-  zIndex: 2,
-  config: {
-    name: { source: "typed", value: "Button_1" },
-    choices: { source: "typed", value: ["Continue"] },
-  },
-};
-
-const otherComponent: TrialComponent = {
-  id: "text-1",
-  type: "TextComponent",
-  x: 20,
-  y: 30,
-  width: 100,
-  height: 40,
-  zIndex: 1,
-  config: {
-    text: { source: "typed", value: "Other" },
-  },
-};
-
-function createMapperProps(
-  overrides: Partial<React.ComponentProps<typeof KonvaParameterMapper>> = {},
-) {
-  const state = createSetComponents(
-    overrides.components ?? [selectedComponent, otherComponent],
-  );
-  const onAutoSave = vi.fn();
-  const generateConfigFromComponents = vi.fn(() => ({ components: "config" }));
-  const onRecordHistory = vi.fn();
-  const props: React.ComponentProps<typeof KonvaParameterMapper> = {
-    rightPanelWidth: 320,
-    selectedId: "button-1",
-    selectedComponent,
-    metadataLoading: false,
-    componentMetadata: {
-      name: "button-response-component",
-      version: "1.0.0",
-      parameters: {
-        choices: { type: "string_array", pretty_name: "Choice Labels" },
-        button_color: { type: "string" },
-      },
-    },
-    components: state.getComponents(),
-    setComponents: state.setComponents,
-    fromJsPsychCoords: vi.fn(() => ({ x: 321, y: 123 })),
-    canvasWidth: 1000,
-    onAutoSave,
-    generateConfigFromComponents,
-    onRecordHistory,
-    isResizingRight: { current: false },
-    setShowRightPanel: vi.fn(),
-    setRightPanelWidth: vi.fn(),
-    csvColumns: ["stimulus"],
-    uploadedFiles: [{ name: "img.png", url: "uploads/img/img.png", type: "img" }],
-    ...overrides,
-  };
-
-  return { props, state, onAutoSave, generateConfigFromComponents };
-}
-
-function renderMapper(overrides: Partial<React.ComponentProps<typeof KonvaParameterMapper>> = {}) {
-  const setup = createMapperProps(overrides);
-
-  return {
-    ...render(<KonvaParameterMapper {...setup.props} />),
-    ...setup,
-  };
-}
-
 describe("KonvaParameterMapper", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -164,30 +81,28 @@ describe("KonvaParameterMapper", () => {
     });
 
     expect(
-      screen.getByText("Select a component from the canvas to edit its parameters"),
+      screen.getByText(
+        "Select a component from the canvas to edit its parameters",
+      ),
     ).toBeInTheDocument();
 
     const loadingSetup = createMapperProps({
       metadataLoading: true,
       componentMetadata: null,
     });
-    rerender(
-      <KonvaParameterMapper
-        {...loadingSetup.props}
-      />,
-    );
-    expect(screen.getByText("Loading component parameters...")).toBeInTheDocument();
+    rerender(<KonvaParameterMapper {...loadingSetup.props} />);
+    expect(
+      screen.getByText("Loading component parameters..."),
+    ).toBeInTheDocument();
 
     const errorSetup = createMapperProps({
       metadataLoading: false,
       componentMetadata: null,
     });
-    rerender(
-      <KonvaParameterMapper
-        {...errorSetup.props}
-      />,
-    );
-    expect(screen.getByText("Error loading component metadata")).toBeInTheDocument();
+    rerender(<KonvaParameterMapper {...errorSetup.props} />);
+    expect(
+      screen.getByText("Error loading component metadata"),
+    ).toBeInTheDocument();
   });
 
   it("passes component metadata into ParameterMapper and syncs mapping changes to the visual component", () => {
@@ -223,7 +138,9 @@ describe("KonvaParameterMapper", () => {
         }),
       }),
     );
-    expect(generateConfigFromComponents).toHaveBeenCalledWith(state.getComponents());
+    expect(generateConfigFromComponents).toHaveBeenCalledWith(
+      state.getComponents(),
+    );
 
     act(() => {
       vi.advanceTimersByTime(100);

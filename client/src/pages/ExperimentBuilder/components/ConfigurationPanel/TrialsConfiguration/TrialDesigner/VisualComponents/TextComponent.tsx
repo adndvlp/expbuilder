@@ -5,6 +5,7 @@ import { TrialComponent } from "../types";
 import { getTextComponentModel } from "../textComponentModel";
 import { snapKonvaNode, SnapHandlers } from "../snapKonvaNode";
 import { getTextHeightForWidth } from "../textSizing";
+import ClozeText from "./Text/ClozeText";
 
 interface TextComponentProps extends SnapHandlers {
   shapeProps: TrialComponent;
@@ -57,33 +58,6 @@ const TextComponent: React.FC<TextComponentProps> = ({
       trRef.current.getLayer()?.batchDraw();
     }
   }, [isSelected, drawHeight, drawWidth]);
-
-  // ── Cloze: measure segments and build inline layout ──────────────────────
-  // Use the actual fontSize (not clamped) for width estimation so the
-  // segment positions match what the browser renders at runtime.
-  const charW = fontSize * 0.55;
-  const blankW = 10 * charW; // matches runtime `width:10ch`
-  const textParts: string[] = String(displayText).split("%");
-
-  type ClozeSegment =
-    | { kind: "text"; text: string; x: number }
-    | { kind: "blank"; x: number; w: number };
-
-  const clozeSegments: ClozeSegment[] = [];
-  if (isClozeMode) {
-    let cursorX = 8; // horizontal padding
-    for (let i = 0; i < textParts.length; i++) {
-      if (i % 2 === 0) {
-        if (textParts[i].length > 0) {
-          clozeSegments.push({ kind: "text", text: textParts[i], x: cursorX });
-          cursorX += textParts[i].length * charW;
-        }
-      } else {
-        clozeSegments.push({ kind: "blank", x: cursorX, w: blankW });
-        cursorX += blankW + charW * 0.5; // small gap after blank
-      }
-    }
-  }
 
   const snapNode = (node: Konva.Node) => {
     return snapKonvaNode({
@@ -221,11 +195,7 @@ const TextComponent: React.FC<TextComponentProps> = ({
                 ? "transparent"
                 : backgroundColor
             }
-            stroke={
-              borderWidth > 0
-                ? borderColor
-                : "transparent"
-            }
+            stroke={borderWidth > 0 ? borderColor : "transparent"}
             strokeWidth={borderWidth > 0 ? borderWidth : 0}
             cornerRadius={borderRadius}
             dash={[]}
@@ -234,39 +204,14 @@ const TextComponent: React.FC<TextComponentProps> = ({
 
         {isClozeMode ? (
           // ── Cloze mode: render text segments + blank boxes inline ────────
-          <>
-            {clozeSegments.map((seg, i) =>
-              seg.kind === "text" ? (
-                <Text
-                  key={i}
-                  x={seg.x}
-                  y={0}
-                  height={drawHeight}
-                  text={seg.text}
-                  fontSize={fontSize}
-                  fontFamily={fontFamily}
-                  fontStyle={konvaFontStyle}
-                  fill={fontColor}
-                  verticalAlign="middle"
-                  listening={false}
-                />
-              ) : (
-                <React.Fragment key={i}>
-                  {/* Input box — matches runtime style */}
-                  <Rect
-                    x={seg.x}
-                    y={drawHeight / 2 - fontSize * 0.75}
-                    width={seg.w}
-                    height={fontSize * 1.5}
-                    fill="white"
-                    stroke="#888"
-                    strokeWidth={1}
-                    cornerRadius={2}
-                  />
-                </React.Fragment>
-              ),
-            )}
-          </>
+          <ClozeText
+            drawHeight={drawHeight}
+            fontColor={fontColor}
+            fontFamily={fontFamily}
+            fontSize={fontSize}
+            fontStyle={konvaFontStyle}
+            text={String(displayText)}
+          />
         ) : (
           // ── Plain text mode ───────────────────────────────────────────────
           <Text

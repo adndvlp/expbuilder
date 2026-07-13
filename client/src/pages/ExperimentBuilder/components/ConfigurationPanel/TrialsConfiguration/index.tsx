@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import useTrials from "../../../hooks/useTrials";
 import { usePluginParameters } from "../hooks/usePluginParameters";
-import Switch from "react-switch";
 import TrialMetaConfig from "./TrialMetaConfig";
 import ParameterMapper from "./ParameterMapper";
 import TrialActions from "./TrialActions";
@@ -10,10 +9,12 @@ import { useCsvData } from "./Csv/useCsvData";
 import { useColumnMapping } from "./hooks/useColumnMapping";
 import { useExtensions } from "./Extensions/useExtensions";
 import ExtensionsConfig from "./Extensions";
-import { Trial, Loop } from "../types";
 import TabContent from "./TabContent";
-import TrialCodeInjection from "./TrialCodeInjection";
-import { generateInitializeCode, generateOnStartCode, generateOnLoadCode, generateOnFinishCode } from "./TrialCode/TrialCodeGenerators";
+import LoopCsvIndicator from "./components/LoopCsvIndicator";
+import SaveIndicator from "./components/SaveIndicator";
+import TrialLifecycleCode from "./components/TrialLifecycleCode";
+import { useParentLoop } from "./hooks/useParentLoop";
+import { getLoopCsvData } from "./services/getLoopCsvData";
 
 type Props = { pluginName: string };
 
@@ -62,17 +63,6 @@ function TrialsConfig({ pluginName }: Props) {
     }
   };
 
-  async function getLoopCsvData(trial: Trial) {
-    // CSV columns come from the parent loop only
-    if (trial.parentLoopId) {
-      const parentLoop = await getLoop(trial.parentLoopId);
-      if (parentLoop) {
-        return { csvColumns: parentLoop.csvColumns || [] };
-      }
-    }
-    return { csvColumns: [] };
-  }
-
   // Persistir/traer datos del trial
   useEffect(() => {
     const loadTrialData = async () => {
@@ -106,8 +96,10 @@ function TrialsConfig({ pluginName }: Props) {
         setColumnMapping(selectedTrial.columnMapping || {});
 
         // Priority to loop CSV columns if exists
-        const { csvColumns: effectiveCsvColumns } =
-          await getLoopCsvData(selectedTrial);
+        const { csvColumns: effectiveCsvColumns } = await getLoopCsvData(
+          selectedTrial,
+          getLoop,
+        );
 
         setCsvColumns(effectiveCsvColumns);
 
@@ -122,22 +114,7 @@ function TrialsConfig({ pluginName }: Props) {
     // eslint-disable-next-line
   }, [selectedTrial]);
 
-  // Detect parent loop context automatically using parentLoopId
-  const [parentLoop, setParentLoop] = useState<Loop | null>(null);
-
-  useEffect(() => {
-    const loadParentLoop = async () => {
-      if (!selectedTrial?.parentLoopId) {
-        setParentLoop(null);
-        return;
-      }
-
-      const loop = await getLoop(selectedTrial.parentLoopId);
-      setParentLoop(loop);
-    };
-
-    loadParentLoop();
-  }, [selectedTrial?.parentLoopId]);
+  const parentLoop = useParentLoop(selectedTrial, getLoop);
 
   // Detect if this is the dynamic plugin
   const isDynamicPlugin = pluginName === "plugin-dynamic";
@@ -149,39 +126,6 @@ function TrialsConfig({ pluginName }: Props) {
   // (Run Experiment, Run Demo, Publish) to avoid storing duplicate data
 
   const canSave = !!trialName && !isLoadingTrial;
-
-  const isTrialInLoop = !!selectedTrial?.parentLoopId;
-  const getVarNameForTrial = (baseName: string): string => {
-    if (!selectedTrial?.parentLoopId) return baseName;
-    const sanitized = String(selectedTrial.parentLoopId).replace(/[^a-zA-Z0-9_]/g, "_");
-    return `loop_${sanitized}_${baseName}`;
-  };
-
-  const computeInitializePreview = (userCode: string): string =>
-    generateInitializeCode(userCode) ||
-    `initialize: async function() {\n  // Your code runs here\n},`;
-
-  const computeOnStartPreview = (userCode: string): string =>
-    generateOnStartCode({
-      paramsOverride: selectedTrial?.paramsOverride,
-      isInLoop: isTrialInLoop,
-      getVarName: getVarNameForTrial,
-      customOnStart: userCode,
-    }) || `on_start: function(trial) {\n  // Your code runs here\n},`;
-
-  const computeOnLoadPreview = (userCode: string): string =>
-    generateOnLoadCode(userCode) ||
-    `on_load: function() {\n  // Your code runs here\n},`;
-
-  const computeOnFinishPreview = (userCode: string): string =>
-    generateOnFinishCode({
-      branches: selectedTrial?.branches,
-      branchConditions: selectedTrial?.branchConditions,
-      repeatConditions: selectedTrial?.repeatConditions,
-      isInLoop: isTrialInLoop,
-      getVarName: getVarNameForTrial,
-      customOnFinish: userCode,
-    }) || `on_finish: function(data) {\n  // Your code runs here\n},`;
 
   // Función auxiliar para mostrar indicador de guardado
   const showSaveIndicator = (fieldName?: string) => {
@@ -215,8 +159,8 @@ function TrialsConfig({ pluginName }: Props) {
       value !== undefined
         ? { ...selectedTrial.columnMapping, [key]: value }
         : (() => {
-            const { [key]: removed, ...rest } =
-              selectedTrial.columnMapping || {};
+            const rest = { ...(selectedTrial.columnMapping || {}) };
+            delete rest[key];
             return rest;
           })();
     await saveField("columnMapping", updatedMapping);
@@ -282,26 +226,7 @@ function TrialsConfig({ pluginName }: Props) {
           <h4 className="text-lg font-bold mb-3"> {pluginName} </h4>
         )}
         {/* Indicador de guardado */}
-        <div
-          style={{
-            opacity: saveIndicator ? 1 : 0,
-            transition: "opacity 0.3s",
-            color: "green",
-            fontWeight: "500",
-            position: "fixed",
-            top: "20px",
-            right: "20px",
-            zIndex: 1000,
-            backgroundColor: "rgba(255, 255, 255, 0.9)",
-            padding: "6px 12px",
-            borderRadius: "4px",
-            fontSize: "14px",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-            border: "1px solid #22c55e",
-          }}
-        >
-          ✓ Saved {savingField ? `(${savingField})` : "Trial"}
-        </div>
+        <SaveIndicator field={savingField} visible={saveIndicator} />
         {/* Trial name */}
         <TrialMetaConfig
           trialName={trialName}
@@ -311,40 +236,7 @@ function TrialsConfig({ pluginName }: Props) {
           onSave={trialName ? saveName : undefined}
         />
         {/* CSV info - CSV is managed at loop level only */}
-        {parentLoop && (parentLoop.csvJson?.length ?? 0) > 0 && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              marginBottom: "16px",
-              padding: "12px 16px",
-              backgroundColor: "var(--neutral-light)",
-              borderRadius: "8px",
-              border: "1px solid var(--neutral-mid)",
-            }}
-          >
-            <Switch
-              checked={true}
-              onChange={() => {}}
-              disabled={true}
-              onColor="#f1c40f"
-              offColor="#cccccc"
-              onHandleColor="#ffffff"
-              offHandleColor="#ffffff"
-              handleDiameter={24}
-              uncheckedIcon={false}
-              checkedIcon={false}
-              height={20}
-              width={44}
-            />
-            <label
-              style={{ margin: 0, fontWeight: 500, color: "var(--text-dark)" }}
-            >
-              Using CSV from loop
-            </label>
-          </div>
-        )}
+        <LoopCsvIndicator parentLoop={parentLoop} />
         {/* Branched Trial moved to Canvas modal */}
         {/* Parameter section */}
         {isDynamicPlugin ? (
@@ -374,46 +266,10 @@ function TrialsConfig({ pluginName }: Props) {
           />
         )}{" "}
         {/* Custom Code Injection */}
-        <TrialCodeInjection
-          tabs={[
-            {
-              key: "initialize",
-              label: "initialize",
-              hint: "async setup before trial starts — can return a Promise to delay until ready",
-              fieldKey: "customInitialize",
-              customValue: selectedTrial?.customInitialize ?? "",
-              computePreview: computeInitializePreview,
-            },
-            {
-              key: "onStart",
-              label: "on_start",
-              hint: "runs before trial starts, has access to trial params",
-              fieldKey: "customOnStart",
-              customValue: selectedTrial?.customOnStart ?? "",
-              computePreview: computeOnStartPreview,
-              isBuilderManaged: true,
-            },
-            {
-              key: "onLoad",
-              label: "on_load",
-              hint: "runs once stimulus is displayed and ready",
-              fieldKey: "customOnLoad",
-              customValue: selectedTrial?.customOnLoad ?? "",
-              computePreview: computeOnLoadPreview,
-            },
-            {
-              key: "onFinish",
-              label: "on_finish",
-              hint: "runs after trial ends, has access to data",
-              fieldKey: "customOnFinish",
-              customValue: selectedTrial?.customOnFinish ?? "",
-              computePreview: computeOnFinishPreview,
-              isBuilderManaged: true,
-            },
-          ]}
+        <TrialLifecycleCode
+          trial={selectedTrial}
           onSave={(field, value) => saveField(field, value)}
         />
-
         {/* Extensions */}
         <ExtensionsConfig
           parameters={parameters}

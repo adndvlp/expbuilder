@@ -9,7 +9,7 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-import { useExperimentID, fetchExperimentNameByID } from "../../pages/ExperimentBuilder/hooks/useExperimentID";
+import { fetchExperimentNameByID } from "../../pages/ExperimentBuilder/hooks/useExperimentID";
 import { useParams } from "react-router-dom";
 
 describe("useExperimentID", () => {

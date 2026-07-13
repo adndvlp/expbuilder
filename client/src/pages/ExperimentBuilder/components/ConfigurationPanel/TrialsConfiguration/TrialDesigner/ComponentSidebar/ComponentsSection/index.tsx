@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ComponentType } from "../../types";
 import GenericComponents from "./GenericComponents";
+import MediaSectionToggle from "./MediaSectionToggle";
 const API_URL = import.meta.env.VITE_API_URL;
 
 type Props = {
@@ -27,27 +28,11 @@ function ComponentsSection({
     <div key={type}>
       {type === "ImageComponent" && (
         <>
-          <button
-            onClick={() => setImageExpanded(!imageExpanded)}
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              background: "linear-gradient(135deg, #ffffff 0%, #dbeafe 100%)",
-              color: "#1e40af",
-              border: "1px solid #93c5fd",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: "13px",
-              fontWeight: 600,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "8px",
-            }}
-          >
-            <span>{label}</span>
-            <span>{imageExpanded ? "▼" : "▶"}</span>
-          </button>
+          <MediaSectionToggle
+            expanded={imageExpanded}
+            label={label}
+            onToggle={() => setImageExpanded(!imageExpanded)}
+          />
           {imageExpanded && (
             <div
               style={{
@@ -108,27 +93,11 @@ function ComponentsSection({
 
       {type === "VideoComponent" && (
         <>
-          <button
-            onClick={() => setVideoExpanded(!videoExpanded)}
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              background: "linear-gradient(135deg, #ffffff 0%, #dbeafe 100%)",
-              color: "#1e40af",
-              border: "1px solid #93c5fd",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: "13px",
-              fontWeight: 600,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "8px",
-            }}
-          >
-            <span>{label}</span>
-            <span>{videoExpanded ? "▼" : "▶"}</span>
-          </button>
+          <MediaSectionToggle
+            expanded={videoExpanded}
+            label={label}
+            onToggle={() => setVideoExpanded(!videoExpanded)}
+          />
           {videoExpanded && (
             <div
               style={{
@@ -207,27 +176,11 @@ function ComponentsSection({
 
       {type === "AudioComponent" && (
         <>
-          <button
-            onClick={() => setAudioExpanded(!audioExpanded)}
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              background: "linear-gradient(135deg, #ffffff 0%, #dbeafe 100%)",
-              color: "#1e40af",
-              border: "1px solid #93c5fd",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: "13px",
-              fontWeight: 600,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "8px",
-            }}
-          >
-            <span>{label}</span>
-            <span>{audioExpanded ? "▼" : "▶"}</span>
-          </button>
+          <MediaSectionToggle
+            expanded={audioExpanded}
+            label={label}
+            onToggle={() => setAudioExpanded(!audioExpanded)}
+          />
           {audioExpanded && (
             <div
               style={{

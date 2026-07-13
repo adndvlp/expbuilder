@@ -1,0 +1,253 @@
+import { LocalExperimentCodeOptions } from "./localCodeTypes";
+
+export function buildLocalRuntime({
+  experimentID,
+  evaluateCondition,
+  branchingEvaluation,
+  baseCode,
+  customCode,
+  customPreInitCode,
+  extensions,
+  localParams,
+  progressBar,
+}: LocalExperimentCodeOptions) {
+  return `
+  (async () => {
+
+    // Leer datos de retoma ANTES de cualquier limpieza
+    const resumeRaw = localStorage.getItem('jsPsych_resumeTrial');
+    const existingJump = localStorage.getItem('jsPsych_jumpToTrial');
+
+    // Guard contra bucle infinito: si la última recarga fue un intento de jump
+    // y el key sigue intacto (ningún trial lo consumió), borrar todo y empezar limpio.
+    const comingFromJumpReload = sessionStorage.getItem('jsPsych_jumpReload') === '1';
+    sessionStorage.removeItem('jsPsych_jumpReload');
+    if (comingFromJumpReload && existingJump) {
+      localStorage.removeItem('jsPsych_jumpToTrial');
+      localStorage.removeItem('jsPsych_resumeTrial');
+      localStorage.removeItem('jsPsych_currentSessionId');
+      localStorage.removeItem('jsPsych_participantNumber');
+      // Reinicar variables de sesión para que el experimento arranque limpio
+      trialSessionId = _generateSessionName(null) || (crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2, 10));
+      isResuming = false;
+    } else if (!existingJump) {
+      // Sin jump pendiente: derivar destino desde el último trial completado
+      localStorage.removeItem('jsPsych_jumpToTrial');
+      const jumpTarget = _resolveResumeBranch(resumeRaw);
+      localStorage.removeItem('jsPsych_resumeTrial');
+      if (jumpTarget) localStorage.setItem('jsPsych_jumpToTrial', jumpTarget);
+    } else {
+      // Jump ya establecido por repeat/jump — preservarlo, solo limpiar resume
+      localStorage.removeItem('jsPsych_resumeTrial');
+    }
+
+    // Esperar a que Socket.IO esté listo
+    await waitForSocket();
+    socket = io();
+    
+    if (isResuming) {
+      // Sesión existente (retoma o repeat/jump): recuperar participantNumber del localStorage
+      // para evitar crear una sesión duplicada en el backend
+      const storedPN = localStorage.getItem('jsPsych_participantNumber');
+      if (storedPN && !isNaN(Number(storedPN))) {
+        participantNumber = Number(storedPN);
+      } else {
+        // Número de participante perdido — recrear sesión como nueva
+        _setLoadingMsg('Creating session\u2026');
+        participantNumber = await saveSession(trialSessionId);
+      }
+    } else {
+      _setLoadingMsg('Creating session\u2026');
+      participantNumber = await saveSession(trialSessionId);
+      // Rename session once participantNumber is known (dynamic tokens: counter)
+      if (_sessionNameHasDynamic() && typeof participantNumber === 'number' && !isNaN(participantNumber)) {
+        const _finalId = _generateSessionName(participantNumber);
+        if (_finalId && _finalId !== trialSessionId) {
+          trialSessionId = await _renameSessionIfNeeded(trialSessionId, _finalId);
+          window.JSPSYCH_SESSION_ID = trialSessionId;
+        }
+      }
+    }
+
+    // Si falla con el sessionId existente (sesión huérfana), reintentar con uno nuevo
+    // IMPORTANTE: NO borrar jsPsych_resumeTrial aquí para no perder el punto de retoma
+    if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
+      localStorage.removeItem('jsPsych_currentSessionId');
+      localStorage.removeItem('jsPsych_participantNumber');
+      trialSessionId = _generateSessionName(null) || (crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2, 10));
+      isResuming = false;
+      _setLoadingMsg('Creating session\u2026');
+      participantNumber = await saveSession(trialSessionId);
+      if (_sessionNameHasDynamic() && typeof participantNumber === 'number' && !isNaN(participantNumber)) {
+        const _finalId = _generateSessionName(participantNumber);
+        if (_finalId && _finalId !== trialSessionId) {
+          trialSessionId = await _renameSessionIfNeeded(trialSessionId, _finalId);
+        }
+      }
+    }
+
+    if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
+      alert("The participant number is not assigned. Please, wait.");
+      throw new Error("participantNumber not assigned");
+    }
+
+    // Guardar sessionId en localStorage para futuras retomas
+    localStorage.setItem('jsPsych_currentSessionId', trialSessionId);
+    localStorage.setItem('jsPsych_participantNumber', participantNumber.toString());
+
+    // Conectar sesión con el servidor via WebSocket
+    socket.emit('join-experiment', {
+      experimentID: '${experimentID}',
+      sessionId: trialSessionId,
+      state: isResuming ? 'resumed' : 'initiated',
+      metadata: metadata
+    });
+
+    ${evaluateCondition}
+
+    _hideLoading();
+
+    // Track pending data saves to ensure all complete before finishing
+    const pendingDataSaves = [];
+
+    // Clean up stale jsPsych wrappers from previous runs (prevents stacking on restarts)
+    document.querySelectorAll('.jspsych-content-wrapper').forEach(el => el.remove());
+
+    ${customPreInitCode.local?.trim() ? `// --- User code (before initJsPsych) ---\n    ${customPreInitCode.local.trim()}\n\n    ` : ""}// __INIT_JSPSYCH_START__
+    const jsPsych = initJsPsych({
+           ${progressBar ? `show_progress_bar: true,` : ""}
+
+
+    ${extensions}
+    ${localParams.on_trial_start?.trim() ? `on_trial_start: function(trial) {\n      // --- User code (on_trial_start) ---\n      ${localParams.on_trial_start.trim()}\n    },` : ""}
+
+    on_data_update: function (data) {
+      // Create and track the promise for this data save
+      const savePromise = fetch("/api/append-result/${experimentID}", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Accept: "*/*" },
+        body: JSON.stringify({
+          sessionId: trialSessionId,
+          response: data,
+        }),
+      })
+      .then(res => {
+        if (!res.ok) {
+          console.error('Error saving trial data:', res.statusText);
+        }
+        return res;
+      })
+      .catch(error => {
+        console.error('Error in on_data_update:', error);
+      })
+      .finally(() => {
+        // Remove from pending once complete
+        const index = pendingDataSaves.indexOf(savePromise);
+        if (index > -1) {
+          pendingDataSaves.splice(index, 1);
+        }
+      });
+      
+      pendingDataSaves.push(savePromise);
+
+      // 🔄 SISTEMA DE RETOMA: Guardar branches + datos del trial para evaluar al reanudar
+      if (data.builder_id !== undefined && data.builder_id !== null) {
+        localStorage.setItem('jsPsych_resumeTrial', JSON.stringify({
+          branches: data.branches || [],
+          branchConditions: data.branchConditions || [],
+          trialData: data
+        }));
+      }
+      
+      // Actualizar estado a 'in-progress' en la primera actualización
+      if (data.trial_index === 0 && socket) {
+        socket.emit('update-session-state', {
+          experimentID: '${experimentID}',
+          sessionId: trialSessionId,
+          state: 'in-progress'
+        });
+      }
+      
+      ${branchingEvaluation}${localParams.on_data_update?.trim() ? `\n\n      // --- User code (on_data_update) ---\n      ${localParams.on_data_update.trim()}` : ""}
+    },
+
+  on_finish: async function() {
+    // Si hay un repeat/jump pendiente, recargar para ejecutarlo
+    if (localStorage.getItem('jsPsych_jumpToTrial')) {
+      if (pendingDataSaves.length > 0) await Promise.allSettled(pendingDataSaves);
+      sessionStorage.setItem('jsPsych_jumpReload', '1');
+      window.location.reload();
+      return;
+    }
+
+    _showLoading('Saving your data\u2026');
+    await new Promise(r => setTimeout(r, 0));
+
+    // Limpiar datos de retoma ya que el experimento terminó correctamente
+    localStorage.removeItem('jsPsych_resumeTrial');
+    localStorage.removeItem('jsPsych_currentSessionId');
+    localStorage.removeItem('jsPsych_participantNumber');
+
+    // Wait for all pending data saves to complete
+    if (pendingDataSaves.length > 0) {
+      _setLoadingMsg('Uploading data\u2026');
+      await Promise.allSettled(pendingDataSaves);
+    }
+    
+    _setLoadingMsg('Finishing up\u2026');
+
+    // Marcar como completado
+    if (socket) {
+      socket.emit('update-session-state', {
+        experimentID: '${experimentID}',
+        sessionId: trialSessionId,
+        state: 'completed'
+      });
+    }
+    
+    await fetch("/api/complete-session/${experimentID}", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "*/*" },
+      body: JSON.stringify({
+        sessionId: trialSessionId,
+      }),
+    });
+
+    _showSuccess();${localParams.on_finish?.trim() ? `\n    // --- User code (on_finish) ---\n    ${localParams.on_finish.trim()}` : ""}
+  }${(() => {
+    const BUILDER_PARAMS = ["on_trial_start", "on_data_update", "on_finish"];
+    const FUNCTION_PARAMS: Record<string, string> = {
+      on_trial_finish: "function(data) {\n  ${code}\n}",
+      on_interaction_data_update: "function(data) {\n  ${code}\n}",
+      on_close: "function() {\n  ${code}\n}",
+    };
+    const extraPairs = Object.entries(localParams)
+      .filter(([k, v]) => !BUILDER_PARAMS.includes(k) && v?.trim())
+      .map(([k, v]) => {
+        const trimmed = v.trim();
+        const fn = FUNCTION_PARAMS[k];
+        return fn
+          ? `  ${k}: ${fn.replace("${code}", trimmed)}`
+          : `  ${k}: ${trimmed}`;
+      })
+      .join(",\n");
+    const extraBlock = extraPairs
+      ? `,\n\n  // --- User-added initJsPsych params ---\n${extraPairs}`
+      : "";
+    const customBlock = customCode?.trim()
+      ? `,\n\n  // --- Global Custom Code (initJsPsych options) ---\n  ${customCode}`
+      : "";
+    return extraBlock + customBlock;
+  })()}
+});
+    // __INIT_JSPSYCH_END__
+
+${baseCode}
+
+})();
+`;
+}

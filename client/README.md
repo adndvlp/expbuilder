@@ -80,6 +80,9 @@ npm run build
 # Build Preview
 npm run preview
 
+# Module size invariant
+npm run check:max-lines
+
 # Linting
 npm run lint
 ```
@@ -288,7 +291,7 @@ In development, many components log important actions.
 2. Use JSDoc for complex functions
 3. Follow the existing folder structure
 4. Add tests when possible
-5. Keep components small and reusable
+5. Keep maintained modules at ≤300 lines (`npm run check:max-lines`)
 
 ## License
 

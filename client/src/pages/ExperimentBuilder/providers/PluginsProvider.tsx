@@ -30,7 +30,7 @@ export default function PluginsProvider({ children }: Props) {
         const res = await fetch(`${API_URL}/api/load-plugins`);
         const data = await res.json();
         if (isMounted) setPlugins(data.plugins || []);
-      } catch (err) {
+      } catch {
         if (isMounted) setPlugins([]);
       } finally {
         setIsLoading(false);

@@ -1,0 +1,166 @@
+.settings-section-title {
+  margin-bottom: 20px;
+  font-size: 22px;
+  font-weight: 600;
+  color: #2c3e50;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 12px;
+}
+
+.account-info {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.account-info-item {
+  margin-bottom: 12px;
+  font-size: 16px;
+  color: #495057;
+  line-height: 1.6;
+}
+
+.account-info-item strong {
+  color: #212529;
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.tokens-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.token-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  transition: all 0.2s ease;
+}
+
+.token-item:hover {
+  background: #e9ecef;
+  border-color: #ced4da;
+}
+
+.token-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.token-name {
+  font-size: 16px;
+  font-weight: 500;
+  color: #343a40;
+}
+
+.token-status {
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.token-status.connected {
+  color: #28a745;
+  background: #d4edda;
+}
+
+.token-status.not-connected {
+  color: #ffc107;
+  background: #fff3cd;
+}
+
+.token-button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.token-button.connect {
+  background: #d4af37;
+  color: white;
+}
+
+.token-button.connect:hover {
+  background: #b7950b;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(183, 149, 11, 0.25);
+}
+
+.token-button.disconnect {
+  background: #dc3545;
+  color: white;
+}
+
+.token-button.disconnect:hover:not(:disabled) {
+  background: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+.token-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.logout-section {
+  background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+  border-color: #f8d7da;
+}
+
+.logout-button {
+  padding: 14px 28px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
+}
+
+.logout-button:hover:not(:disabled) {
+  background: #c82333;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.logout-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.logout-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.loading-message {
+  padding: 20px;
+  text-align: center;
+  color: #6c757d;
+  font-size: 16px;
+}
+
+.not-logged-in {
+  padding: 60px 20px;
+  text-align: center;
+  font-size: 18px;
+  color: #6c757d;
+}

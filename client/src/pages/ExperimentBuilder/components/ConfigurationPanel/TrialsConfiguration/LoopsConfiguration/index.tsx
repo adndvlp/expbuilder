@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import Switch from "react-switch";
 import OrdersAndCategories from "../OrdersAndCategories";
 import CsvUploader from "../Csv/CsvUploader";
 import { useCsvData } from "../Csv/useCsvData";
 import { useOrdersAndCategories } from "../OrdersAndCategories/useOrdersAndCategories";
 import { Loop, LoopCondition } from "../../types";
 import useTrials from "../../../../hooks/useTrials";
-import ConditionalLoop from "./ConditionalLoop";
+import LoopBasicsSection from "./components/LoopBasicsSection";
+import LoopConditionsSection from "./components/LoopConditionsSection";
+import LoopActions from "./components/LoopActions";
+import LoopHeader from "./components/LoopHeader";
 
 type Props = { loop?: Loop };
 
@@ -118,11 +120,9 @@ function LoopsConfig({ loop }: Props) {
       false,
     );
 
-    // Propagar CSV a todos los trials del loop
     if (loop.trials && loop.trials.length > 0) {
       const hasCsv = finalJson.length > 0;
 
-      // Actualizar cada trial con el flag csvFromLoop
       for (const trialId of loop.trials) {
         await updateTrialField(
           trialId,
@@ -152,7 +152,6 @@ function LoopsConfig({ loop }: Props) {
   ) => {
     if (!loop) return;
 
-    // Use updateLoop for 1 PATCH with all fields
     const updatedLoop = await updateLoop(loop.id, {
       orders: ord,
       orderColumns: ordCols,
@@ -195,7 +194,6 @@ function LoopsConfig({ loop }: Props) {
     }
   };
 
-  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -236,30 +234,12 @@ function LoopsConfig({ loop }: Props) {
   return (
     <div id="loop-config">
       <div className="mb-1 input-section p-4 border rounded">
-        <h4 className="text-lg font-bold mb-3">{loop?.name || "Loop"}</h4>
-        <div className="mb-2">
-          <div
-            style={{
-              opacity: saveIndicator ? 1 : 0,
-              transition: "opacity 0.3s",
-              color: "green",
-              fontWeight: "500",
-              position: "fixed",
-              top: "20px",
-              right: "20px",
-              zIndex: 1000,
-              backgroundColor: "rgba(255, 255, 255, 0.9)",
-              padding: "6px 12px",
-              borderRadius: "4px",
-              fontSize: "14px",
-              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-              border: "1px solid #22c55e",
-            }}
-          >
-            ✓ Saved {savingField ? `(${savingField})` : "Loop"}
-          </div>
-          <strong>Trials in loop:</strong> {loop?.trials?.length || 0} trial(s)
-        </div>
+        <LoopHeader
+          loopName={loop?.name}
+          saveIndicator={saveIndicator}
+          savingField={savingField}
+          trialCount={loop?.trials?.length || 0}
+        />
 
         <CsvUploader
           onCsvUpload={onHandleCsvUploadWrapped}
@@ -285,151 +265,32 @@ function LoopsConfig({ loop }: Props) {
           onSave={saveLoopOrders}
         />
 
-        {/* Repetitions y Randomize */}
-        <div className="mb-2 p-4 border rounded bg-gray-50">
-          <div className="flex items-center mb-3">
-            <div className="font-bold mr-2 mb-2">Repetitions</div>
-            <input
-              type="number"
-              value={repetitions}
-              min={1}
-              step={1}
-              onChange={(e) => {
-                const val = Math.max(
-                  1,
-                  Math.floor(Number(e.target.value)) || 1,
-                );
-                setRepetitions(val);
-              }}
-              onBlur={() => saveField("repetitions", repetitions)}
-              className="mr-2"
-              placeholder="1"
-              style={{ width: "100%" }}
-            />
-          </div>
-          <div className="flex items-center" style={{ gap: "12px" }}>
-            <Switch
-              checked={randomize}
-              onChange={(checked) => {
-                setRandomize(checked);
-                saveField("randomize", checked);
-              }}
-              onColor="#f1c40f"
-              onHandleColor="#ffffff"
-              handleDiameter={24}
-              uncheckedIcon={false}
-              checkedIcon={false}
-              height={20}
-              width={44}
-            />
-            <div className="font-bold">Randomize</div>
-          </div>
-        </div>
+        <LoopBasicsSection
+          randomize={randomize}
+          repetitions={repetitions}
+          saveField={saveField}
+          setRandomize={setRandomize}
+          setRepetitions={setRepetitions}
+        />
+        <LoopConditionsSection
+          conditions={loopConditions}
+          isConditional={isConditionalLoop}
+          loop={loop}
+          onSaveConditions={handleSaveLoopConditions}
+          saveField={saveField}
+          setConditions={setLoopConditions}
+          setIsConditional={setIsConditionalLoop}
+          setShowModal={setShowConditionalModal}
+          showModal={showConditionalModal}
+          showSaveIndicator={showSaveIndicator}
+          updateLoop={updateLoop}
+        />
 
-        {/* Loop Conditions Section */}
-        <div className="mb-2 p-4 border rounded bg-gray-50">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <div className="font-bold mb-1">Loop Conditions</div>
-              <p className="text-sm text-gray-600">
-                Make this loop repeat based on trial data
-              </p>
-            </div>
-            <Switch
-              checked={isConditionalLoop}
-              onChange={(checked) => {
-                setIsConditionalLoop(checked);
-                if (!checked) {
-                  setLoopConditions([]);
-                  if (loop) {
-                    // Guardar ambos campos cuando se desactiva
-                    updateLoop(loop.id, {
-                      isConditionalLoop: false,
-                      loopConditions: [],
-                    }).then(() => showSaveIndicator("loop conditions"));
-                  }
-                } else {
-                  saveField("isConditionalLoop", checked);
-                }
-              }}
-              onColor="#f1c40f"
-              onHandleColor="#ffffff"
-              handleDiameter={24}
-              uncheckedIcon={false}
-              checkedIcon={false}
-              height={20}
-              width={44}
-            />
-          </div>
-
-          {isConditionalLoop && (
-            <div className="mt-3">
-              <button
-                onClick={() => setShowConditionalModal(true)}
-                className="w-full p-3 rounded font-medium transition"
-                style={{
-                  background:
-                    "linear-gradient(135deg, var(--primary-blue), var(--light-blue))",
-                  color: "var(--text-light)",
-                }}
-              >
-                {loopConditions.length > 0
-                  ? `Edit Loop Conditions (${loopConditions.length})`
-                  : "Configure Loop Conditions"}
-              </button>
-              {loopConditions.length > 0 && (
-                <div className="mt-2 text-sm text-gray-600">
-                  <strong>Active conditions:</strong> {loopConditions.length}{" "}
-                  condition(s) configured
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Conditional Loop Modal */}
-        {showConditionalModal && loop && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 9999,
-            }}
-            onClick={() => setShowConditionalModal(false)}
-          >
-            <div onClick={(e) => e.stopPropagation()}>
-              <ConditionalLoop
-                loop={loop as any}
-                onClose={() => setShowConditionalModal(false)}
-                onSave={handleSaveLoopConditions}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Save and Delete Loop */}
-        <button
-          onClick={handleSave}
-          className="mt-4 save-button mb-4 w-full p-3 bg-green-600 hover:bg-green-700 font-medium rounded"
-          disabled={!canSave}
-        >
-          Save loop
-        </button>
-
-        <br />
-        <button
-          className="w-full p-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded remove-button"
-          onClick={handleRemoveLoop}
-        >
-          Delete loop
-        </button>
+        <LoopActions
+          canSave={canSave}
+          onDelete={handleRemoveLoop}
+          onSave={handleSave}
+        />
       </div>
     </div>
   );

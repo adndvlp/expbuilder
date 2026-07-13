@@ -1,35 +1,17 @@
 import React, { useRef, useEffect } from "react";
-import {
-  Rect,
-  Text,
-  Transformer,
-  Group,
-  Image as KonvaImage,
-} from "react-konva";
+import { Rect, Transformer, Group } from "react-konva";
 import Konva from "konva";
 import useImage from "use-image";
 import imagePlaceholder from "../../../../../../../assets/image.png";
 import { snapKonvaNode, SnapHandlers } from "../snapKonvaNode";
-const API_URL = import.meta.env.VITE_API_URL;
-
-interface TrialComponent {
-  id: string;
-  type: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  rotation?: number;
-  zIndex?: number;
-  // Button style fields (synced from config, like x/y/rotation)
-  buttonColor?: string;
-  buttonTextColor?: string;
-  buttonFontSize?: number;
-  buttonBorderRadius?: number;
-  buttonBorderColor?: string;
-  buttonBorderWidth?: number;
-  config: Record<string, any>;
-}
+import type { TrialComponent } from "../types";
+import ButtonContent from "./ButtonResponse/ButtonContent";
+import {
+  getButtonConfigValue,
+  NATURAL_BUTTON_HEIGHT,
+  NATURAL_BUTTON_WIDTH,
+  normalizeChoices,
+} from "./ButtonResponse/buttonModel";
 
 interface ButtonResponseComponentProps extends SnapHandlers {
   shapeProps: TrialComponent;
@@ -49,66 +31,8 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
   const groupRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
 
-  // Natural size of a single button cell (matches .jspsych-btn defaults:
-  // "Button" text ~46px + 2*14px padding + 2*1px border ≈ 76px wide, 14px line-height + 2*6px padding + 2px border ≈ 34px tall)
-  const NATURAL_BTN_W = 80;
-  const NATURAL_BTN_H = 34;
-
-  // Extract the actual value from the config structure
-  const getConfigValue = (key: string, defaultValue: any = null) => {
-    const config = shapeProps.config[key];
-    if (config == null) return defaultValue;
-
-    // Handle nested config structure with source/value
-    if (typeof config === "object" && config !== null && "source" in config) {
-      if (config.source === "typed" || config.source === "csv") {
-        let value =
-          config.value !== undefined && config.value !== null
-            ? config.value
-            : defaultValue;
-
-        // Special handling for choices: ensure it's always an array
-        if (key === "choices" && value !== null && !Array.isArray(value)) {
-          value = [String(value)];
-        }
-
-        return value;
-      }
-      return defaultValue;
-    }
-
-    // Direct value
-    let value = config;
-
-    // Special handling for choices: ensure it's always an array
-    if (key === "choices" && value !== null && !Array.isArray(value)) {
-      value = [String(value)];
-    }
-
-    return value;
-  };
-
-  const splitChoiceString = (value: string) => {
-    const trimmed = value.trim();
-    if (!trimmed) return [];
-    return trimmed.includes(",")
-      ? trimmed
-          .split(",")
-          .map((choice) => choice.trim())
-          .filter(Boolean)
-      : [trimmed];
-  };
-
-  const normalizeChoices = (value: any[]) => {
-    const normalized = value.flatMap((choice) =>
-      typeof choice === "string"
-        ? splitChoiceString(choice)
-        : [String(choice)],
-    );
-
-    return normalized.length > 0 ? normalized : ["Button"];
-  };
-
+  const getConfigValue = (key: string, defaultValue?: any) =>
+    getButtonConfigValue(shapeProps, key, defaultValue);
   const choices = normalizeChoices(getConfigValue("choices", ["Button"]));
   const gridRows = getConfigValue("grid_rows", 1);
   const gridColumns = getConfigValue("grid_columns", null);
@@ -135,18 +59,6 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
 
   // Load placeholder image
   const [placeholderImg] = useImage(imagePlaceholder);
-
-  // Helper to check if a string is an image URL
-  const isImageUrl = (str: string): boolean => {
-    if (!str) return false;
-    try {
-      const url = new URL(str);
-      const path = url.pathname.toLowerCase();
-      return /\.(jpg|jpeg|png|gif|bmp|svg|webp)(\?.*)?$/i.test(path);
-    } catch {
-      return /\.(jpg|jpeg|png|gif|bmp|svg|webp)$/i.test(str.toLowerCase());
-    }
-  };
 
   // Helper to check if choice is from CSV (placeholder needed)
   const isChoiceFromCSV = (): boolean => {
@@ -175,104 +87,14 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
   // ── Natural size (like ImageComponent's intrinsic image size) ────────
   // When width/height == 0 (freshly dropped, not yet resized), derive the
   // natural size from the grid + per-button natural dimensions.
-  const naturalWidth = NATURAL_BTN_W * parsedGridColumns;
-  const naturalHeight = NATURAL_BTN_H * parsedGridRows;
+  const naturalWidth = NATURAL_BUTTON_WIDTH * parsedGridColumns;
+  const naturalHeight = NATURAL_BUTTON_HEIGHT * parsedGridRows;
   const effectiveWidth = shapeProps.width > 0 ? shapeProps.width : naturalWidth;
   const effectiveHeight =
     shapeProps.height > 0 ? shapeProps.height : naturalHeight;
 
   const buttonWidth = effectiveWidth / parsedGridColumns;
   const buttonHeight = effectiveHeight / parsedGridRows;
-
-  // Component to render a single button (text or image)
-  const ButtonContent: React.FC<{
-    choice: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    index: number;
-  }> = ({ choice, x, y, width, height, index }) => {
-    const isFromCSV = isChoiceFromCSV();
-    const isImage = isImageUrl(choice);
-
-    // Prepare image URL
-    let imageUrl = choice;
-    if (isImage && !imageUrl.startsWith("http")) {
-      imageUrl = `${API_URL}/${imageUrl}`;
-    }
-
-    const [image] = useImage(isImage && imageUrl ? imageUrl : "");
-
-    // Show image or placeholder
-    if (isImage || isFromCSV) {
-      const imgToShow = image || placeholderImg;
-      const imgWidth = Math.min(width - 12, imageButtonWidth);
-      const imgHeight = Math.min(height - 12, imageButtonHeight);
-
-      return (
-        <>
-          <Rect
-            key={`button-${index}-rect`}
-            x={x}
-            y={y}
-            width={width - 4}
-            height={height - 4}
-            fill={buttonColor}
-            stroke={buttonBorderColor}
-            strokeWidth={buttonBorderWidth}
-            cornerRadius={buttonBorderRadius}
-            shadowBlur={2}
-            shadowOpacity={0.3}
-          />
-          {imgToShow && (
-            <KonvaImage
-              key={`button-${index}-img`}
-              image={imgToShow}
-              x={x + (width - 4) / 2}
-              y={y + (height - 4) / 2}
-              width={imgWidth}
-              height={imgHeight}
-              offsetX={imgWidth / 2}
-              offsetY={imgHeight / 2}
-            />
-          )}
-        </>
-      );
-    }
-
-    // Text button
-    return (
-      <>
-        <Rect
-          key={`button-${index}-rect`}
-          x={x}
-          y={y}
-          width={width - 4}
-          height={height - 4}
-          fill={buttonColor}
-          stroke={buttonBorderColor}
-          strokeWidth={buttonBorderWidth}
-          cornerRadius={buttonBorderRadius}
-          shadowBlur={2}
-          shadowOpacity={0.3}
-        />
-        <Text
-          key={`button-${index}-text`}
-          text={String(choice)}
-          x={x}
-          y={y}
-          width={width - 4}
-          height={height - 4}
-          align="center"
-          verticalAlign="middle"
-          fontSize={Math.min(height * 0.4, buttonFontSize)}
-          fill={buttonTextColor}
-          fontStyle="bold"
-        />
-      </>
-    );
-  };
 
   // Render buttons in grid
   const renderButtons = () => {
@@ -293,6 +115,16 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
           width={buttonWidth}
           height={buttonHeight}
           index={index}
+          color={buttonColor}
+          textColor={buttonTextColor}
+          fontSize={buttonFontSize}
+          borderRadius={buttonBorderRadius}
+          borderColor={buttonBorderColor}
+          borderWidth={buttonBorderWidth}
+          imageButtonWidth={imageButtonWidth}
+          imageButtonHeight={imageButtonHeight}
+          isFromCsv={isChoiceFromCSV()}
+          placeholderImage={placeholderImg}
         />,
       );
     });

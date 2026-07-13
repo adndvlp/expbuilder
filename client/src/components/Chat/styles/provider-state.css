@@ -1,0 +1,81 @@
+/* ── Provider catalog loading ─────────────────────────── */
+.pv-loading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  color: var(--cts);
+  font-size: 11px;
+  opacity: 0.6;
+}
+.pv-loading-spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Reasoning / thinking collapsible block ────────────── */
+
+.chat-reasoning {
+  margin-bottom: 10px;
+  user-select: none;
+}
+
+.chat-reasoning-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--cts);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid transparent;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.chat-reasoning-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--cborder);
+}
+
+.chat-reasoning-chevron {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+  color: var(--gold);
+}
+
+.chat-reasoning-chevron.open {
+  transform: rotate(90deg);
+}
+
+.chat-reasoning-content {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--gold);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--cts);
+  opacity: 0.85;
+  white-space: pre-wrap;
+  max-height: 260px;
+  overflow-y: auto;
+  animation: fade-slip 0.2s ease forwards;
+}
+
+@keyframes fade-slip {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

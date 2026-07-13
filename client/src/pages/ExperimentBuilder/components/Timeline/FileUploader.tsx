@@ -1,18 +1,7 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import Switch from "react-switch";
-
-type UploadedFile = { name: string; url: string; type: string };
-
-type FileUploaderProps = {
-  uploadedFiles: UploadedFile[];
-  onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onDeleteFile: (file: UploadedFile) => void;
-  onDeleteMultipleFiles?: (files: UploadedFile[]) => Promise<void>;
-  fileInputRef: React.RefObject<HTMLInputElement | null>;
-  folderInputRef: React.RefObject<HTMLInputElement | null>;
-  uploadStatus?: string;
-  accept?: string;
-};
+import FileUploadInputs from "./components/FileUploadInputs";
+import { FileUploaderProps, UploadedFile } from "./types";
 
 const FileUploader = ({
   uploadedFiles,
@@ -92,37 +81,13 @@ const FileUploader = ({
     >
       <h4 className="font-bold mb-3">Files</h4>
       <div className="mb-4">
-        <label className="block mb-1 font-medium">Upload file(s):</label>
-        <input
-          ref={fileInputRef}
-          className="mb-2"
-          type="file"
+        <FileUploadInputs
+          fileInputRef={fileInputRef}
+          folderInputRef={folderInputRef}
           accept={accept}
-          onChange={onFileUpload}
-          multiple
-          style={{ borderColor: "var(--text-dark)" }}
+          uploadStatus={uploadStatus}
+          onFileUpload={onFileUpload}
         />
-        <label className="block mb-1 font-medium mt-3">Upload folder:</label>
-        <input
-          ref={folderInputRef}
-          className="mb-2"
-          type="file"
-          accept={accept}
-          onChange={onFileUpload}
-          style={{ borderColor: "var(--text-dark)" }}
-        />
-        {uploadStatus && (
-          <p
-            style={{
-              margin: "8px 0 0",
-              fontSize: 12,
-              color: "#3d6f82",
-              fontWeight: 500,
-            }}
-          >
-            {uploadStatus}
-          </p>
-        )}
         <div className="mt-4">
           {uploadedFiles.filter(
             (file) => file.name.split("/").pop() !== ".DS_Store",

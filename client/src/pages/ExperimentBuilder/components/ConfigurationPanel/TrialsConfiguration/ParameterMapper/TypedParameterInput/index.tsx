@@ -1,7 +1,4 @@
-import Switch from "react-switch";
-import type { CSSProperties } from "react";
 import { BiEdit } from "react-icons/bi";
-import { ColumnMappingEntry } from "..";
 import ObjectInput from "./ObjectInput";
 import ObjectCoordsInput from "./ObjectCoordsInput";
 import TextInput from "./TextInput";
@@ -13,43 +10,10 @@ import VisualStyleInput, {
   isVisualColorParameter,
   isVisualStyleParameter,
 } from "./VisualStyleInput";
-
-type Props = {
-  paramKey: string;
-  type: string;
-  entry: ColumnMappingEntry;
-  setColumnMapping: React.Dispatch<
-    React.SetStateAction<Record<string, ColumnMappingEntry>>
-  >;
-  onSave?: ((key: string, value: any) => void) | undefined;
-  openHtmlModal: (key: string) => void;
-  openButtonModal: (key: string) => void;
-  openSurveyModal: (key: string) => void;
-  localInputValues: Record<string, string>;
-  setLocalInputValues: React.Dispatch<
-    React.SetStateAction<Record<string, string>>
-  >;
-  label: string;
-  componentMode?: boolean;
-};
-
-const INSPECTOR_TEXT_INPUT_STYLE: CSSProperties = {
-  width: "100%",
-  border: "1px solid #3d5066",
-  borderRadius: 8,
-  background: "#0e1724",
-  color: "#f8fafc",
-  padding: "10px 12px",
-  outline: "none",
-  boxSizing: "border-box",
-};
-
-const INSPECTOR_SINGLE_LINE_INPUT_STYLE: CSSProperties = {
-  ...INSPECTOR_TEXT_INPUT_STYLE,
-  height: 36,
-  marginTop: 8,
-  padding: "0 10px",
-};
+import BooleanInput from "./BooleanInput";
+import NumberInput from "./NumberInput";
+import { inspectorTextInputStyle as INSPECTOR_TEXT_INPUT_STYLE } from "./styles";
+import type { TypedParameterInputProps as Props } from "./types";
 
 function index({
   paramKey,
@@ -68,34 +32,12 @@ function index({
   return (
     <>
       {type === "boolean" ? (
-        <div className="mt-2 flex items-center gap-3">
-          <Switch
-            checked={entry.value === true}
-            onChange={(checked) => {
-              const newValue = {
-                source: "typed" as const,
-                value: checked,
-              };
-              setColumnMapping((prev) => ({
-                ...prev,
-                [paramKey]: newValue,
-              }));
-              if (onSave) {
-                setTimeout(() => onSave(paramKey, newValue), 100);
-              }
-            }}
-            onColor="#3d92b4"
-            onHandleColor="#ffffff"
-            handleDiameter={24}
-            uncheckedIcon={false}
-            checkedIcon={false}
-            height={20}
-            width={44}
-          />
-          <span style={{ fontWeight: 500, color: "var(--text-dark)" }}>
-            {entry.value === true ? "True" : "False"}
-          </span>
-        </div>
+        <BooleanInput
+          entry={entry}
+          onSave={onSave}
+          paramKey={paramKey}
+          setColumnMapping={setColumnMapping}
+        />
       ) : type === "html_string" ? (
         <>
           <div className="mt-2 flex items-center gap-2">
@@ -162,43 +104,14 @@ function index({
           setLocalInputValues={setLocalInputValues}
         />
       ) : type === "number" ? (
-        <input
-          type="number"
-          min={0}
-          step="any"
-          className={componentMode ? "" : "w-full p-2 border rounded mt-2"}
-          style={componentMode ? INSPECTOR_SINGLE_LINE_INPUT_STYLE : undefined}
-          value={
-            localInputValues[paramKey] ??
-            (typeof entry.value === "string" || typeof entry.value === "number"
-              ? entry.value
-              : "")
-          }
-          onChange={(e) => {
-            setLocalInputValues((prev) => ({
-              ...prev,
-              [paramKey]: e.target.value,
-            }));
-          }}
-          onBlur={(e) => {
-            const rawValue = Number(e.target.value);
-            const newValue = {
-              source: "typed" as const,
-              value: rawValue,
-            };
-            setColumnMapping((prev) => ({
-              ...prev,
-              [paramKey]: newValue,
-            }));
-            if (onSave) {
-              setTimeout(() => onSave(paramKey, newValue), 100);
-            }
-            setLocalInputValues((prev) => {
-              const newState = { ...prev };
-              delete newState[paramKey];
-              return newState;
-            });
-          }}
+        <NumberInput
+          componentMode={componentMode}
+          entry={entry}
+          localInputValues={localInputValues}
+          onSave={onSave}
+          paramKey={paramKey}
+          setColumnMapping={setColumnMapping}
+          setLocalInputValues={setLocalInputValues}
         />
       ) : type.endsWith("_array") &&
         paramKey !== "calibration_points" &&

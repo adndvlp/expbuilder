@@ -1,16 +1,8 @@
-import { Dispatch, SetStateAction, useCallback } from "react";
+import { useCallback } from "react";
 import { Trial } from "../../components/ConfigurationPanel/types";
 import { TimelineItem } from "../../contexts/TrialsContext";
+import { TrialMethodsProps } from "./types";
 const API_URL = import.meta.env.VITE_API_URL;
-
-type Props = {
-  experimentID: string | undefined;
-  setTimeline: Dispatch<SetStateAction<TimelineItem[]>>;
-  setLoopTimeline: Dispatch<SetStateAction<TimelineItem[]>>;
-  getTimeline: () => Promise<void>;
-  selectedTrial: Trial | null;
-  setSelectedTrial: (trial: Trial | null) => void;
-};
 
 export default function TrialMethods({
   selectedTrial,
@@ -19,7 +11,7 @@ export default function TrialMethods({
   setLoopTimeline,
   getTimeline,
   setSelectedTrial,
-}: Props) {
+}: TrialMethodsProps) {
   const createTrial = useCallback(
     async (trial: Omit<Trial, "id">): Promise<Trial> => {
       try {

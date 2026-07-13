@@ -6,6 +6,11 @@ import {
   generateOnStartCode,
   generateOnFinishCode,
 } from "../TrialCode/TrialCodeGenerators";
+import {
+  generateTrialProps,
+  stringifyWithFunctions,
+  toCamelCase,
+} from "./services/phaseCodeFormatting";
 
 type PhaseProps = {
   pluginName: string;
@@ -119,84 +124,7 @@ export const generatePhaseCode = ({
     }
   })();
 
-  const generateTrialProps = (params: any[], data: any): string => {
-    const paramProps = params
-      .map(({ key }: { key: string }) => {
-        return `${key}: jsPsych.timelineVariable("${key}"),`;
-      })
-      .join("\n");
-
-    const dataProps = data
-      .map(({ key }: { key: string }) => {
-        return `${key}: "${key}",`;
-      })
-      .join("\n");
-
-    if (pluginName !== "plugin-webgazer-validate") {
-      return `
-    ${paramProps}
-    data: {
-      ${dataProps}
-    },`;
-    } else {
-      return `${paramProps}
-    data: {
-      task: 'validate'
-    },
-    on_finish: function(data) { delete data.raw_gaze; },`;
-    }
-  };
-
-  function toCamelCase(str: string): string {
-    return str
-      .replace(/^plugin/, "jsPsych") // elimina el prefijo "plugin-" y agrega "jsPsych"
-      .split("-") // divide el string por guiones
-      .map((word, index) =>
-        index === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1),
-      )
-      .join("");
-  }
-
   const pluginNameImport = toCamelCase(pluginName);
-
-  function stringifyWithFunctions(
-    params: { key: string; type: string }[],
-    values: Record<string, any>,
-  ) {
-    const allKeys = [
-      ...params.map((p) => p.key),
-      ...Object.keys(values).filter((k) => !params.some((p) => p.key === k)),
-    ];
-    return (
-      "{" +
-      allKeys
-        .map((key) => {
-          const val = values[key];
-          // Check if this is a function parameter or if value looks like a function
-          const paramType = params.find((p) => p.key === key)?.type;
-          const isFunction =
-            paramType === "function" || paramType === "FUNCTION";
-          const looksLikeFunction =
-            typeof val === "string" &&
-            val.trim() &&
-            (val.trim().startsWith("(") ||
-              val.trim().startsWith("function") ||
-              val.trim().match(/^[a-zA-Z_$][a-zA-Z0-9_$]*\s*=>/));
-
-          // If it's a function type or looks like a function, output it without quotes
-          if (
-            (isFunction || looksLikeFunction) &&
-            typeof val === "string" &&
-            val.trim()
-          ) {
-            return `${key}: ${val}`;
-          }
-          return `${key}: ${JSON.stringify(val)}`;
-        })
-        .join(",\n") +
-      "}"
-    );
-  }
 
   const pluginNameRefactor = pluginName.replace(/-/g, "_");
 
@@ -237,7 +165,7 @@ export const generatePhaseCode = ({
     };`;
       }
     }
-    const timelineProps = generateTrialProps(parameters, data);
+    const timelineProps = generateTrialProps(pluginName, parameters, data);
 
     const testStimuliCodeInit = mappedJson.map((row) =>
       stringifyWithFunctions(parameters, row),

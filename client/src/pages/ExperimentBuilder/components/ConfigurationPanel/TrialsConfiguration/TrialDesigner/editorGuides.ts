@@ -1,5 +1,6 @@
 import { CanvasStyles, TrialComponent } from "./types";
-import { getConfigValue, getTextComponentModel } from "./textComponentModel";
+import { getComponentSnapBox } from "./editorGuides/getComponentSnapBox";
+export { getComponentSnapBox } from "./editorGuides/getComponentSnapBox";
 
 export type GuideOrientation = "vertical" | "horizontal";
 
@@ -34,95 +35,6 @@ type Anchor = {
 
 const DEFAULT_SNAP_THRESHOLD = 6;
 
-function finiteOr(value: any, fallback: number): number {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : fallback;
-}
-
-function getChoicesCount(component: TrialComponent): number {
-  const choices = getConfigValue(component, "choices", ["Button"]);
-  return Array.isArray(choices) ? choices.length : 1;
-}
-
-export function getComponentSnapBox(
-  component: TrialComponent,
-  canvasStyles?: CanvasStyles,
-): SnapBox {
-  if (component.type === "TextComponent") {
-    const model = getTextComponentModel(component, canvasStyles?.width);
-    return {
-      id: component.id,
-      x: component.x,
-      y: component.y,
-      width: model.drawWidth,
-      height: model.drawHeight,
-      rotation: component.rotation ?? 0,
-    };
-  }
-
-  if (component.type === "ButtonResponseComponent") {
-    const rows = Math.max(1, finiteOr(getConfigValue(component, "grid_rows", 1), 1));
-    const configuredColumns = finiteOr(
-      getConfigValue(component, "grid_columns", 0),
-      0,
-    );
-    const columns =
-      configuredColumns > 0
-        ? configuredColumns
-        : Math.ceil(getChoicesCount(component) / rows);
-    return {
-      id: component.id,
-      x: component.x,
-      y: component.y,
-      width: component.width > 0 ? component.width : 80 * Math.max(1, columns),
-      height: component.height > 0 ? component.height : 34 * rows,
-      rotation: component.rotation ?? 0,
-    };
-  }
-
-  if (component.type === "InputResponseComponent") {
-    const fontSize = finiteOr(
-      component.inputFontSize ?? getConfigValue(component, "input_font_size", 16),
-      16,
-    );
-    return {
-      id: component.id,
-      x: component.x,
-      y: component.y,
-      width: component.inputWidth ?? 10 * fontSize * 0.55,
-      height: fontSize * 1.5,
-      rotation: component.rotation ?? 0,
-    };
-  }
-
-  if (component.type === "SliderResponseComponent") {
-    return {
-      id: component.id,
-      x: component.x,
-      y: component.y,
-      width: component.width > 0 ? component.width : 300,
-      height: component.height > 0 ? component.height : 120,
-      rotation: component.rotation ?? 0,
-    };
-  }
-
-  const fallbackSize =
-    component.type === "KeyboardResponseComponent"
-      ? { width: 220, height: 48 }
-      : component.type === "ImageComponent" || component.type === "VideoComponent"
-        ? { width: 160, height: 120 }
-        : { width: 200, height: 80 };
-
-  return {
-    id: component.id,
-    x: component.x,
-    y: component.y,
-    width: component.width > 0 ? component.width : fallbackSize.width,
-    height: component.height > 0 ? component.height : fallbackSize.height,
-    rotation: component.rotation ?? 0,
-  };
-}
-
 function edges(box: SnapBox) {
   const halfW = box.width / 2;
   const halfH = box.height / 2;
@@ -154,10 +66,7 @@ function yAnchors(box: SnapBox): Anchor[] {
   ];
 }
 
-function targetXAnchors(
-  targets: SnapBox[],
-  canvasWidth: number,
-): Anchor[] {
+function targetXAnchors(targets: SnapBox[], canvasWidth: number): Anchor[] {
   return [
     { value: 0, key: "canvas-left" },
     { value: canvasWidth / 2, key: "canvas-center-x" },
@@ -166,10 +75,7 @@ function targetXAnchors(
   ];
 }
 
-function targetYAnchors(
-  targets: SnapBox[],
-  canvasHeight: number,
-): Anchor[] {
+function targetYAnchors(targets: SnapBox[], canvasHeight: number): Anchor[] {
   return [
     { value: 0, key: "canvas-top" },
     { value: canvasHeight / 2, key: "canvas-center-y" },
@@ -183,14 +89,12 @@ function pickSnap(
   targetAnchors: Anchor[],
   threshold: number,
 ) {
-  let best:
-    | {
-        delta: number;
-        distance: number;
-        target: Anchor;
-        moving: Anchor;
-      }
-    | null = null;
+  let best: {
+    delta: number;
+    distance: number;
+    target: Anchor;
+    moving: Anchor;
+  } | null = null;
 
   for (const moving of movingAnchors) {
     for (const target of targetAnchors) {
@@ -298,7 +202,12 @@ export function snapBoxToGuides({
   }
   if (ySnap) {
     guides.push(
-      horizontalGuide(ySnap.target.value, snappedBox, ySnap.target, canvasWidth),
+      horizontalGuide(
+        ySnap.target.value,
+        snappedBox,
+        ySnap.target,
+        canvasWidth,
+      ),
     );
   }
 

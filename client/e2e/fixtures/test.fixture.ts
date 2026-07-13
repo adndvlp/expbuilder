@@ -13,9 +13,6 @@ export const test = base.extend({
     await page.addInitScript(() => {
       // Stub the dynamic import of firebase/auth and firebase/firestore
       // to prevent emulator connections
-      const originalDefineProperty = Object.defineProperty;
-      const originalSetTimeout = window.setTimeout;
-
       // Mark as production to skip emulator connections in firebase.ts
       // This is a hack but prevents the emulator connection attempts
       try {
@@ -23,7 +20,7 @@ export const test = base.extend({
         if (typeof import.meta !== "undefined" && import.meta.env) {
           // Cannot override import.meta.env at runtime in Vite
         }
-      } catch (_) {}
+      } catch {}
     });
 
     // Set up all mock routes before the page loads

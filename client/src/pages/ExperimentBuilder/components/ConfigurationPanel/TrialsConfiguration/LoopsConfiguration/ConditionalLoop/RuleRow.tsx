@@ -1,5 +1,4 @@
-import { LoopConditionRule, LoopCondition, LoadedItem } from "./types";
-import { DataDefinition } from "../../../types";
+import { LoopConditionRule } from "./types";
 import { FaTimes } from "react-icons/fa";
 import {
   updateTrialSelection,
@@ -8,33 +7,8 @@ import {
 } from "./ruleUpdateHelpers";
 import { DynamicPluginPropertyColumn } from "./DynamicPluginPropertyColumn";
 import { RuleValueInput } from "./RuleValueInput";
-
-type Props = {
-  rule: LoopConditionRule;
-  ruleIdx: number;
-  conditionId: number;
-  condition: LoopCondition;
-  availableTrials: Array<{ id: string | number; name: string }>;
-  updateRule: (
-    conditionId: number,
-    ruleIdx: number,
-    field: string,
-    value: string | number,
-    shouldSave?: boolean,
-  ) => void;
-  removeRuleFromCondition: (conditionId: number, ruleIdx: number) => void;
-  findTrialByIdSync: (trialId: string | number | null) => LoadedItem | null;
-  loadTrialOrLoop: (trialId: string | number) => Promise<LoadedItem | null>;
-  loadTrialDataFields: (trialId: string | number) => Promise<void>;
-  trialDataFields: Record<string, DataDefinition[]>;
-  loadingData: Record<string, boolean>;
-  canRemove: boolean;
-  setConditionsWrapper: (
-    conditions: LoopCondition[],
-    shouldSave?: boolean,
-  ) => void;
-  conditions: LoopCondition[];
-};
+import type { RuleRowProps as Props } from "./ruleRowTypes";
+import { getPropValue, getRuleComponentContext } from "./ruleComponentContext";
 
 export function RuleRow({
   rule,
@@ -57,43 +31,8 @@ export function RuleRow({
   const dataFields = rule.trialId ? trialDataFields[rule.trialId] || [] : [];
   const isLoadingField = rule.trialId ? loadingData[rule.trialId] : false;
 
-  // Check if the selected item is a trial (has plugin) or a loop
-  const isTrial = selectedTrial && "plugin" in selectedTrial;
-
-  // Helper to get prop value
-  const getPropValue = (prop: unknown): unknown => {
-    if (
-      prop &&
-      typeof prop === "object" &&
-      "source" in prop &&
-      "value" in prop
-    ) {
-      return (prop as { value: unknown }).value;
-    }
-    return prop;
-  };
-
-  // For dynamic plugins, get component data
-  const isDynamicPlugin = isTrial && selectedTrial?.plugin === "plugin-dynamic";
-  const fieldType = rule.fieldType || "";
-  const componentIdx = rule.componentIdx ?? "";
-
-  // Safely access columnMapping
-  const columnMapping = (
-    selectedTrial as { columnMapping?: Record<string, unknown> }
-  )?.columnMapping;
-  const compArr =
-    isDynamicPlugin && fieldType && columnMapping
-      ? ((columnMapping[fieldType] as { value?: unknown[] })?.value as
-          | unknown[]
-          | undefined) || []
-      : [];
-  const comp =
-    componentIdx !== "" && compArr.length > 0
-      ? (compArr as Array<{ name?: unknown }>).find(
-          (c) => getPropValue(c.name) === componentIdx,
-        )
-      : null;
+  const { comp, compArr, componentIdx, fieldType, isDynamicPlugin } =
+    getRuleComponentContext(selectedTrial, rule);
 
   return (
     <tr

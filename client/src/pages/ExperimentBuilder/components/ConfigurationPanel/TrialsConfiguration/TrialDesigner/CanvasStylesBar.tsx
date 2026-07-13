@@ -1,46 +1,9 @@
 import React, { useState } from "react";
-import { FaMobileAlt, FaTabletAlt, FaLaptop, FaDesktop } from "react-icons/fa";
 import { CanvasStyles } from "./types";
-
-const DEVICE_PRESETS = [
-  {
-    icon: FaMobileAlt,
-    label: "Mobile",
-    description: "375 × 725",
-    width: 375,
-    height: 725,
-  },
-  {
-    icon: (props: any) => (
-      <FaMobileAlt style={{ transform: "rotate(-90deg)" }} {...props} />
-    ),
-    label: "Mobile",
-    description: "725 × 375",
-    width: 725,
-    height: 375,
-  },
-  {
-    icon: FaTabletAlt,
-    label: "Tablet",
-    description: "768 × 725",
-    width: 768,
-    height: 725,
-  },
-  {
-    icon: FaLaptop,
-    label: "Laptop",
-    description: "1440 × 763",
-    width: 1440,
-    height: 763,
-  },
-  {
-    icon: FaDesktop,
-    label: "Desktop",
-    description: "2560 × 1450",
-    width: 2560,
-    height: 1450,
-  },
-];
+import {
+  DEVICE_PRESETS,
+  type DevicePreset,
+} from "./canvasStyles/devicePresets";
 
 type Props = {
   canvasStyles: CanvasStyles;
@@ -64,11 +27,11 @@ function CanvasStylesBar({
   const [customW, setCustomW] = useState(String(canvasStyles.width));
   const [customH, setCustomH] = useState(String(canvasStyles.height));
 
-  const isDeviceActive = (preset: (typeof DEVICE_PRESETS)[number]) =>
+  const isDeviceActive = (preset: DevicePreset) =>
     canvasStyles.width === preset.width &&
     canvasStyles.height === preset.height;
 
-  const handleDeviceSelect = (preset: (typeof DEVICE_PRESETS)[number]) => {
+  const handleDeviceSelect = (preset: DevicePreset) => {
     setShowCustomSize(false);
     setCanvasStyles((prev) => ({
       ...prev,

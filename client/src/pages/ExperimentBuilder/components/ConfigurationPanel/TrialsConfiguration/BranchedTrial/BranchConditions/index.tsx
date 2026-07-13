@@ -17,7 +17,6 @@ import { Dispatch, SetStateAction, useMemo } from "react";
 import { Condition, Parameter } from "../types";
 import useTrials from "../../../../../hooks/useTrials";
 import { DataDefinition, Loop, Trial } from "../../../types";
-import { FaClipboardList } from "react-icons/fa";
 import ConditionsList from "./ConditionsList";
 import useAvailableColumns from "./useAvailableColumns";
 import useBranchConditions from "./useBranchConditions";
@@ -28,6 +27,8 @@ import {
   isForwardSameScopeTarget,
   itemIdKey,
 } from "../../../../../utils/branchGraphUtils";
+import AddConditionButton from "./components/AddConditionButton";
+import ConditionsEmptyState from "./components/ConditionsEmptyState";
 
 type Props = {
   conditions: Condition[];
@@ -198,69 +199,7 @@ function BranchConditions({
       <Descriptions />
       {/* Conditions list */}
       {conditions.length === 0 ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "48px 24px",
-            borderRadius: "16px",
-            border: "2px dashed var(--neutral-mid)",
-            backgroundColor: "var(--background)",
-          }}
-        >
-          <div
-            style={{
-              width: "64px",
-              height: "64px",
-              margin: "0 auto 16px",
-              borderRadius: "50%",
-              backgroundColor: "var(--neutral-light)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "var(--primary-blue)",
-            }}
-          >
-            <FaClipboardList size={32} />
-          </div>
-          <p
-            style={{
-              marginBottom: "24px",
-              fontSize: "18px",
-              fontWeight: 600,
-              color: "var(--text-dark)",
-            }}
-          >
-            No conditions configured
-          </p>
-          <button
-            onClick={addCondition}
-            style={{
-              padding: "12px 32px",
-              borderRadius: "10px",
-              fontWeight: 700,
-              fontSize: "14px",
-              border: "none",
-              cursor: "pointer",
-              transition: "all 0.3s ease",
-              background:
-                "linear-gradient(135deg, var(--gold), var(--dark-gold))",
-              color: "var(--text-light)",
-              boxShadow: "0 4px 12px rgba(212, 175, 55, 0.3)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.boxShadow =
-                "0 6px 16px rgba(212, 175, 55, 0.4)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow =
-                "0 4px 12px rgba(212, 175, 55, 0.3)";
-            }}
-          >
-            + Add first condition
-          </button>
-        </div>
+        <ConditionsEmptyState onAdd={addCondition} />
       ) : (
         <ConditionsList
           conditions={conditions}
@@ -285,42 +224,7 @@ function BranchConditions({
       )}
 
       {/* Button to add more conditions (OR) */}
-      {conditions.length > 0 && (
-        <button
-          onClick={addCondition}
-          style={{
-            width: "100%",
-            marginTop: "24px",
-            padding: "14px 32px",
-            borderRadius: "12px",
-            fontSize: "14px",
-            fontWeight: 700,
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "10px",
-            transition: "all 0.3s ease",
-            background:
-              "linear-gradient(135deg, var(--primary-blue), var(--light-blue))",
-            color: "white",
-            boxShadow: "0 4px 12px rgba(61, 146, 180, 0.3)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateY(-2px)";
-            e.currentTarget.style.boxShadow =
-              "0 6px 16px rgba(61, 146, 180, 0.4)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow =
-              "0 4px 12px rgba(61, 146, 180, 0.3)";
-          }}
-        >
-          <span style={{ fontSize: "18px" }}>+</span> Add condition (OR)
-        </button>
-      )}
+      {conditions.length > 0 && <AddConditionButton onClick={addCondition} />}
     </>
   );
 }

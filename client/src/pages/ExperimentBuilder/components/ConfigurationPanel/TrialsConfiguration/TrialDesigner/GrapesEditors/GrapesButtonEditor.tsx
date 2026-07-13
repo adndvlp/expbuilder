@@ -5,6 +5,12 @@ import "grapesjs/dist/css/grapes.min.css";
 import "./grapesjs-theme.css";
 import Modal from "../../ParameterMapper/Modal";
 import { makeGrapesHtmlPortable } from "./portableHtml";
+import {
+  BUTTON_EDITOR_STYLE_MANAGER,
+  DEFAULT_BUTTON_TEMPLATE,
+} from "./GrapesButtonEditor/editorConfig";
+import { registerButtonBlocks } from "./GrapesButtonEditor/registerBlocks";
+import { applyRuntimeCanvasContext } from "./GrapesHtmlEditor/runtimeCanvas";
 
 interface GrapesButtonEditorProps {
   isOpen: boolean;
@@ -73,169 +79,15 @@ const GrapesButtonEditor: React.FC<GrapesButtonEditorProps> = ({
       width: "100%",
       storageManager: false,
       plugins: [],
-      components:
-        value ||
-        '<button style="padding:10px 20px;border-radius:6px;background:#d4af37;color:#333333;border:none;font-weight:600;cursor:pointer;">{{choice}}</button>',
-      styleManager: {
-        sectors: [
-          {
-            name: "Text",
-            open: true,
-            buildProps: ["text-align"],
-            properties: [
-              {
-                property: "text-align",
-                type: "radio",
-                defaults: "center",
-                list: [
-                  {
-                    id: "left",
-                    value: "left",
-                    className: "fa fa-align-left",
-                    title: "Left",
-                  },
-                  {
-                    id: "center",
-                    value: "center",
-                    className: "fa fa-align-center",
-                    title: "Center",
-                  },
-                  {
-                    id: "right",
-                    value: "right",
-                    className: "fa fa-align-right",
-                    title: "Right",
-                  },
-                ],
-              },
-            ],
-          },
-          {
-            name: "Typography",
-            open: true,
-            buildProps: [
-              "font-family",
-              "font-size",
-              "font-weight",
-              "color",
-              "letter-spacing",
-            ],
-          },
-          {
-            name: "Button Styling",
-            open: true,
-            buildProps: [
-              "background",
-              "background-color",
-              "border",
-              "border-radius",
-              "box-shadow",
-            ],
-          },
-          {
-            name: "Spacing",
-            open: true,
-            buildProps: ["margin", "padding", "width", "height"],
-          },
-        ],
-      },
+      components: value || DEFAULT_BUTTON_TEMPLATE,
+      styleManager: BUTTON_EDITOR_STYLE_MANAGER,
     });
 
-    const applyRuntimeCanvasContext = () => {
-      const body = grapesInstance.current?.Canvas?.getBody?.();
-      if (!body) return;
-
-      Object.assign(body.style, {
-        margin: "0",
-        width: "100%",
-        minWidth: "100%",
-        minHeight: "100vh",
-        color: "#000000",
-        fontFamily: '"Open Sans", "Arial", sans-serif',
-        fontSize: "18px",
-        lineHeight: "1.6em",
-        textAlign: "left",
-      });
-
-      const wrapper = body.querySelector("#wrapper") as HTMLElement | null;
-      if (wrapper) {
-        Object.assign(wrapper.style, {
-          width: "100%",
-          minWidth: "100%",
-          minHeight: "100vh",
-          padding: "32px",
-          boxSizing: "border-box",
-        });
-      }
-    };
-
-    grapesInstance.current.on("load", applyRuntimeCanvasContext);
-    applyRuntimeCanvasContext();
-
-    // Only add button block - restrict to button component only
-    const bm = grapesInstance.current.BlockManager;
-
-    // Clear default blocks
-    bm.getAll().forEach((block: any) => bm.remove(block.id));
-
-    // Add button block
-    bm.add("button", {
-      label: "Button",
-      category: "Controls",
-      attributes: { class: "fa fa-hand-pointer-o" },
-      content:
-        '<button style="padding:10px 20px;border-radius:6px;background:#3b82f6;color:white;border:none;font-weight:600;cursor:pointer;">New Button</button>',
-    });
-
-    // Add container blocks for layout
-    bm.add("flex-container", {
-      label: "Flex Container",
-      category: "Layout",
-      attributes: { class: "fa fa-square-o" },
-      content:
-        '<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;padding:10px;border:1px dashed #ccc;">Drop buttons here</div>',
-    });
-
-    bm.add("grid-container", {
-      label: "Grid Container",
-      category: "Layout",
-      attributes: { class: "fa fa-th" },
-      content:
-        '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:10px;padding:10px;border:1px dashed #ccc;">Drop buttons here</div>',
-    });
-
-    bm.add("text", {
-      label: "Text",
-      category: "Basic",
-      attributes: { class: "fa fa-text-width" },
-      content:
-        '<span style="display:inline-block;padding:5px;">Add text</span>',
-    });
-
-    bm.add("divider", {
-      label: "Divider",
-      category: "Basic",
-      attributes: { class: "fa fa-minus" },
-      content:
-        '<hr style="border:none;border-top:1px solid #ccc;margin:10px 0;">',
-    });
-
-    // Remove all default blocks except button
-    const defaultBlocks = [
-      "column1",
-      "column2",
-      "column3",
-      "column3-7",
-      "link",
-      "image",
-      "video",
-      "map",
-    ];
-    defaultBlocks.forEach((blockId) => {
-      if (bm.get(blockId)) {
-        bm.remove(blockId);
-      }
-    });
+    const applyCanvasContext = () =>
+      applyRuntimeCanvasContext(grapesInstance.current);
+    grapesInstance.current.on("load", applyCanvasContext);
+    applyCanvasContext();
+    registerButtonBlocks(grapesInstance.current.BlockManager);
 
     // Hook events for autosave
     grapesInstance.current.on("update", triggerAutoSave);

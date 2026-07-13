@@ -2,6 +2,7 @@ import ResponseComponetsSection from "./ResponseComponetsSection";
 import ComponentsSection from "./ComponentsSection";
 import { Dispatch, RefObject, SetStateAction, useState } from "react";
 import { ComponentType, TrialComponent } from "../types";
+import { componentTypes } from "./componentCatalog";
 
 type Props = {
   selectedId: string | null;
@@ -95,7 +96,7 @@ function LeftSideBar({
     if (type === "ImageComponent" || type === "VideoComponent") {
       width = 300;
       height = 300;
-    /* v8 ignore stop */
+      /* v8 ignore stop */
     } else if (type === "SliderResponseComponent") {
       width = 250;
       height = 100;
@@ -168,22 +169,6 @@ function LeftSideBar({
     setSelectedId(null);
   };
 
-  const componentTypes: { type: ComponentType; label: string }[] = [
-    { type: "ImageComponent", label: "Image" },
-    { type: "VideoComponent", label: "Video" },
-    { type: "AudioComponent", label: "Audio" },
-    { type: "TextComponent", label: "Text" },
-    { type: "HtmlComponent", label: "HTML" },
-    { type: "SketchpadComponent", label: "Sketchpad" },
-    { type: "SurveyComponent", label: "Survey" },
-    { type: "ButtonResponseComponent", label: "Button" },
-    { type: "KeyboardResponseComponent", label: "Keyboard" },
-    { type: "SliderResponseComponent", label: "Slider" },
-    { type: "InputResponseComponent", label: "Input" },
-    { type: "AudioResponseComponent", label: "Audio" },
-    { type: "FileUploadResponseComponent", label: "File Upload" },
-    { type: "ClickResponseComponent", label: "Click" },
-  ];
   return (
     <div
       style={{

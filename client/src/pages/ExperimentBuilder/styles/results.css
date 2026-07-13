@@ -1,0 +1,157 @@
+.results-container {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.results-table-container {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  background: var(--table-bg, #fff);
+  margin-bottom: 24px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  background: inherit;
+}
+
+.results-text,
+.results-title {
+  color: var(--text-dark);
+  margin-bottom: 12px;
+}
+
+.results-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.results-table th,
+.results-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--neutral-mid);
+  text-align: left;
+}
+
+.results-table th {
+  background: var(--table-header-bg, #f3f3f3);
+  color: var(--text-dark);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.results-table tr {
+  background: var(--table-row-bg, #fff);
+  transition: background 0.2s;
+}
+
+.results-table tr:hover {
+  background: var(--neutral-light);
+  color: var(--text-dark);
+}
+
+.results-table td {
+  color: var(--text-dark);
+}
+
+.results-table .download-csv-btn {
+  background: linear-gradient(135deg, var(--gold), var(--dark-gold));
+  color: var(--text-light);
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  margin-right: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(183, 149, 11, 0.08);
+}
+.results-table .download-csv-btn:hover {
+  background: linear-gradient(135deg, var(--dark-gold), var(--gold));
+  transform: translateY(-2px);
+}
+
+.results-table .remove-button {
+  background-color: var(--danger);
+  color: var(--text-light);
+  border: none;
+  padding: 8px 14px;
+  font-size: 14px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.results-table .remove-button:hover {
+  background-color: #600004;
+}
+
+@media (prefers-color-scheme: dark) {
+  .logo-img {
+    content: url("/src/assets/fp white.png");
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary-blue: #3d92b4;
+    --dark-blue: #3e6879;
+    --light-blue: #3e7d96;
+    --gold: #d09700;
+    --light-gold: #a68c3b;
+    --dark-gold: #a17500;
+    --neutral-dark: #1a1a2e;
+    --neutral-light: #23272e;
+    --neutral-mid: #444;
+    --danger: #cf000b;
+    --text-light: #e0e0e0;
+    --text-dark: #f8f8f8;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  input,
+  select,
+  textarea {
+    color: var(--text-dark);
+    background-color: var(--neutral-light);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  input,
+  select,
+  textarea {
+    color: var(--text-light);
+    background-color: var(--neutral-light);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .results-table-container {
+    background: var(--neutral-dark);
+  }
+  .results-table th {
+    background: var(--table-header-bg, #2d2d39);
+    color: var(--text-light);
+  }
+  .results-table tr,
+  .results-table td {
+    background: var(--neutral-dark);
+    color: var(--text-light);
+  }
+  .results-table tr:hover {
+    background: #23232b;
+    color: var(--text-light);
+  }
+}

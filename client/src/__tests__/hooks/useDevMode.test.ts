@@ -1,8 +1,11 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { renderHook } from "@testing-library/react";
 import React from "react";
 import DevModeContext from "../../pages/ExperimentBuilder/contexts/DevModeContext";
-import type { CustomInitJsPsychParams, CustomPreInitCode } from "../../pages/ExperimentBuilder/contexts/DevModeContext";
+import type {
+  CustomInitJsPsychParams,
+  CustomPreInitCode,
+} from "../../pages/ExperimentBuilder/contexts/DevModeContext";
 import useDevMode from "../../pages/ExperimentBuilder/hooks/useDevMode";
 
 const wrapper = ({ children }: { children: React.ReactNode }) => {
@@ -15,7 +18,10 @@ const wrapper = ({ children }: { children: React.ReactNode }) => {
     setCode: vi.fn(),
     customCode: "",
     setCustomCode: vi.fn(),
-    customInitJsPsychParams: { local: {}, public: {} } as CustomInitJsPsychParams,
+    customInitJsPsychParams: {
+      local: {},
+      public: {},
+    } as CustomInitJsPsychParams,
     setCustomInitJsPsychParam: vi.fn(),
     customPreInitCode: { local: "", public: "" } as CustomPreInitCode,
     setCustomPreInitCode: vi.fn(),
@@ -34,7 +40,7 @@ describe("useDevMode", () => {
 
   it("throws error when used outside provider", () => {
     expect(() => renderHook(() => useDevMode())).toThrow(
-      "useDevMode must be used within a DevModeProvider"
+      "useDevMode must be used within a DevModeProvider",
     );
   });
 

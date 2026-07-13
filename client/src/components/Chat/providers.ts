@@ -1,4 +1,3 @@
-import type { IconType } from "react-icons";
 import {
   SiOpenai,
   SiAnthropic,
@@ -7,29 +6,9 @@ import {
   SiPerplexity,
 } from "react-icons/si";
 import { FiServer, FiZap, FiCpu } from "react-icons/fi";
+import type { AIModel, ModelTier, Provider } from "./types/providers";
 
-export type ModelTier = "fast" | "balanced" | "powerful";
-
-export interface AIModel {
-  id: string;
-  name: string;
-  shortName: string;
-  contextK: number;
-  description: string;
-  tier: ModelTier;
-}
-
-export interface Provider {
-  id: string;
-  name: string;
-  Icon: IconType;
-  color: string;           // accent color for this provider
-  requiresKey: boolean;
-  keyPlaceholder?: string;
-  keyPrefix?: string;      // e.g. "sk-ant-" for display masking
-  local?: boolean;         // Ollama = no API key
-  models: AIModel[];
-}
+export type { AIModel, ModelTier, Provider } from "./types/providers";
 
 export const PROVIDERS: Provider[] = [
   {
