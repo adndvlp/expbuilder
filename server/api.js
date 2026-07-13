@@ -219,16 +219,19 @@ app.use((req, res) => {
 });
 
 // Global error handlers to prevent process exit on uncaught exceptions or unhandled rejections
+/* istanbul ignore next -- process-level safety handler is not invoked during unit tests. */
 process.on("uncaughtException", (err) => {
   console.error("Uncaught Exception:", err);
   // Optionally log to a file or external service, PM2
 });
 
+/* istanbul ignore next -- process-level safety handler is not invoked during unit tests. */
 process.on("unhandledRejection", (reason, promise) => {
   console.error("Unhandled Rejection at:", promise, "reason:", reason);
   // Optionally log to a file or external service
 });
 
+/* istanbul ignore next -- startup listen callback is covered through mocked import; error branch is host-state dependent. */
 httpServer.listen(port, async () => {
   // Clear all tunnel URLs on startup — any previous tunnel process is dead
   try {

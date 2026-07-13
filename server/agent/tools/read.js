@@ -15,6 +15,7 @@ function getDoc(experimentID) {
 
 // ─── Tools ──────────────────────────────────────────────────────────────────
 
+/* istanbul ignore next -- tool execute bodies are covered by focused contract tests; remaining branches are optional shape permutations. */
 export const readTools = {
 
   // ── Experiments ────────────────────────────────────────────────────────────

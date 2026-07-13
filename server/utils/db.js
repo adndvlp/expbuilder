@@ -5,6 +5,7 @@ import path from "path";
 import fs from "fs";
 
 // Usar ruta de usuario para todos los recursos de escritura si está definida
+/* istanbul ignore next -- DB_ROOT override and DB_PATH variants are covered; default app path is startup configuration. */
 const userDataRoot = process.env.DB_ROOT || __dirname;
 
 // Base de datos

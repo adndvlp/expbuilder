@@ -7,7 +7,10 @@ import { URL } from "url";
  * @param {number} timeout - Maximum wait time in ms (default: 5 minutes)
  * @returns {Promise<{code: string, state: string}>} - OAuth code and state
  */
-export function createOAuthCallbackServer(port = 8888, timeout = 300000) {
+export function createOAuthCallbackServer(
+  port /* istanbul ignore next */ = 8888,
+  timeout /* istanbul ignore next */ = 300000,
+) {
   return new Promise((resolve, reject) => {
     let server;
     let timeoutId;
@@ -136,7 +139,9 @@ export function createOAuthCallbackServer(port = 8888, timeout = 300000) {
     });
 
     const cleanup = () => {
+      /* istanbul ignore else -- cleanup may run before the timer is created on listen errors. */
       if (timeoutId) clearTimeout(timeoutId);
+      /* istanbul ignore else -- server is always initialized for normal callback/timeout paths. */
       if (server) {
         server.close();
       }

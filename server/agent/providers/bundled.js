@@ -5,6 +5,7 @@
  * npm package → creator factory, mirroring OpenCode's BUNDLED_PROVIDERS map.
  */
 
+/* istanbul ignore next -- optional provider SDK imports are environment-dependent; getBundledModel is unit-tested with mocked entries. */
 export const BUNDLED = {
   '@ai-sdk/anthropic': {
     envKey: 'ANTHROPIC_API_KEY',

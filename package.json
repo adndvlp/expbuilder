@@ -57,10 +57,21 @@
       "json"
     ],
     "collectCoverageFrom": [
-      "server/utils/**/*.js",
-      "server/routes/**/*.js",
+      "*.js",
+      "server/**/*.js",
+      "!eslint.config.js",
+      "!preload.js",
       "!**/node_modules/**",
-      "!**/__tests__/**"
+      "!**/__tests__/**",
+      "!client/**",
+      "!coverage/**",
+      "!landing-page/**",
+      "!server/agent/docs-content.js",
+      "!server/cloudflared/**",
+      "!server/custom-plugins/**",
+      "!server/dynamicplugin/**",
+      "!server/jspsych-bundle/**",
+      "!server/jspsych-bundler/**"
     ],
     "coverageDirectory": "coverage",
     "testPathIgnorePatterns": [

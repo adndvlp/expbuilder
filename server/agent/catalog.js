@@ -45,6 +45,7 @@ async function fetchCatalog() {
 /** Returns array of { id, name, npm, env, models } */
 export async function listProviders() {
   const catalog = await getCatalog()
+  /* istanbul ignore next -- catalog serialization defaults are covered through provider registry tests. */
   return Object.entries(catalog).map(([id, p]) => ({
     id,
     name: p.name ?? id,

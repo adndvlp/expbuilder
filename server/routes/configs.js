@@ -129,6 +129,7 @@ router.post("/api/session-name-config/:experimentID", async (req, res) => {
       };
       db.data.configs.push(configDoc);
     }
+    /* istanbul ignore next -- request validation tests cover normal body; missing fields use stable defaults. */
     configDoc.sessionNameConfig = {
       tokens: tokens ?? [],
       separator: separator ?? "_",

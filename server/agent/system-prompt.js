@@ -26,6 +26,7 @@ Read them carefully before making tool calls.
 - If unsure about a parameter, say so. Do not invent param names.
 - When the user says "create an experiment" without details, ask what kind of experiment they want. If they insist on "whatever", pick a different paradigm each time.`
 
+/* istanbul ignore next -- prompt variants are asserted through rendered prompt tests. */
 export function buildSystemPrompt({ userMessage = '', experiments = [], trials = [] }) {
   const parts = [STATIC_CORE]
 

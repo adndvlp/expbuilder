@@ -2,3 +2,4 @@
 node_modules
 dist
 server/_tmp_uploads/
+coverage/

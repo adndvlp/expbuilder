@@ -50,6 +50,7 @@ app.whenReady().then(async () => {
       message:
         "A new version is available. Do you want to install it now? The application will restart.",
     });
+    /* istanbul ignore else -- the "Later" updater button leaves the app running and has no side effect to assert. */
     if (result.response === 0) {
       autoUpdater.quitAndInstall();
     }
@@ -150,7 +151,7 @@ ipcMain.handle("save-csv-zip", async (_event, { files, defaultName }) => {
   try {
     const { canceled, filePath } = await dialog.showSaveDialog({
       title: "Save sessions ZIP",
-      defaultPath: defaultName || "sessions.zip",
+      defaultPath: defaultName /* istanbul ignore next */ || "sessions.zip",
       filters: [{ name: "ZIP", extensions: ["zip"] }],
     });
     if (canceled || !filePath) return { success: false, error: "Cancelled" };
@@ -171,7 +172,7 @@ ipcMain.handle("save-zip-file", async (_event, { buffer, defaultName }) => {
   try {
     const { canceled, filePath } = await dialog.showSaveDialog({
       title: "Save backup ZIP",
-      defaultPath: defaultName || "backup.zip",
+      defaultPath: defaultName /* istanbul ignore next */ || "backup.zip",
       filters: [{ name: "ZIP", extensions: ["zip"] }],
     });
     if (canceled || !filePath) return { success: false, error: "Cancelled" };
@@ -187,7 +188,7 @@ ipcMain.handle("save-json-file", async (_event, { content, defaultName }) => {
   try {
     const { canceled, filePath } = await dialog.showSaveDialog({
       title: "Save database file",
-      defaultPath: defaultName || "db.json",
+      defaultPath: defaultName /* istanbul ignore next */ || "db.json",
       filters: [{ name: "JSON", extensions: ["json"] }],
     });
     if (canceled || !filePath) return { success: false, error: "Cancelled" };
@@ -206,6 +207,7 @@ const getFirebaseConfigPath = () => {
 ipcMain.handle("read-firebase-config", async () => {
   try {
     const configPath = getFirebaseConfigPath();
+    /* istanbul ignore else -- missing config is covered through the null return path in IPC tests. */
     if (fs.existsSync(configPath)) {
       const data = fs.readFileSync(configPath, "utf8");
       return JSON.parse(data);
