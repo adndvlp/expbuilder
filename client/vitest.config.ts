@@ -19,5 +19,16 @@ export default defineConfig({
       VITE_FIREBASE_APP_ID: "1:000000000000:web:0000000000000000000000",
       VITE_DATA_API_URL: "http://localhost:3000/api/data",
     },
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/__tests__/**", "src/**/*.d.ts"],
+      thresholds: {
+        lines: 100,
+        statements: 100,
+        functions: 100,
+        branches: 100,
+      },
+    },
   },
 });
