@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import AddTrialModal from "../../pages/ExperimentBuilder/components/Canvas/components/AddTrialModal";
 import LoopBreadcrumb from "../../pages/ExperimentBuilder/components/Canvas/components/LoopBreadcrumb";
 import MoveItemModal from "../../pages/ExperimentBuilder/components/Canvas/components/MoveItemModal";
+import LoopRangeModal from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/LoopRangeModal";
 
 describe("Canvas modals", () => {
   it("confirms AddTrialModal choices as sequential parent or branch", () => {
@@ -69,7 +70,12 @@ describe("Canvas modals", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Root"));
+    const rootButton = screen.getByText("Root").closest("button")!;
+    fireEvent.mouseEnter(rootButton);
+    expect(rootButton).toHaveStyle({ background: "rgba(255, 255, 255, 0.15)" });
+    fireEvent.mouseLeave(rootButton);
+    expect(rootButton).toHaveStyle({ background: "transparent" });
+    fireEvent.click(rootButton);
     fireEvent.click(screen.getByText("Outer loop"));
     fireEvent.click(screen.getByText("Inner loop"));
 
@@ -122,6 +128,51 @@ describe("Canvas modals", () => {
     expect(onNavigate).toHaveBeenNthCalledWith(3, 4);
   });
 
+  it("renders an active root breadcrumb without changing hover state", () => {
+    const onNavigateToRoot = vi.fn();
+    render(
+      <LoopBreadcrumb
+        loopStack={[]}
+        onNavigate={vi.fn()}
+        onNavigateToRoot={onNavigateToRoot}
+      />,
+    );
+
+    const rootButton = screen.getByText("Root").closest("button")!;
+    expect(rootButton).toHaveStyle({
+      background: "rgba(255, 255, 255, 0.2)",
+      border: "1px solid rgba(255, 255, 255, 0.3)",
+    });
+    fireEvent.mouseEnter(rootButton);
+    fireEvent.mouseLeave(rootButton);
+    fireEvent.click(rootButton);
+
+    expect(rootButton).toHaveStyle({ background: "rgba(255, 255, 255, 0.2)" });
+    expect(onNavigateToRoot).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses expanded ellipsis spacing and keeps the active loop hover unchanged", () => {
+    render(
+      <LoopBreadcrumb
+        loopStack={[
+          { id: "loop-1", name: "First" },
+          { id: "loop-2", name: "Second" },
+          { id: "loop-3", name: "Third" },
+          { id: "loop-4", name: "Active" },
+        ]}
+        onNavigate={vi.fn()}
+        onNavigateToRoot={vi.fn()}
+      />,
+    );
+
+    const ellipsis = screen.getByText("...").parentElement!;
+    const activeButton = screen.getByText("Active");
+    expect(ellipsis).toHaveStyle({ gap: "8px" });
+    fireEvent.mouseEnter(activeButton);
+    fireEvent.mouseLeave(activeButton);
+    expect(activeButton).toHaveStyle({ background: "rgba(255, 255, 255, 0.2)" });
+  });
+
   it("keeps MoveItemModal disabled until a destination is selected", () => {
     const onConfirm = vi.fn();
 
@@ -140,7 +191,11 @@ describe("Canvas modals", () => {
 
     fireEvent.click(screen.getByText("Move"));
 
-    expect(screen.getByText("Move")).toBeDisabled();
+    const moveButton = screen.getByText("Move");
+    expect(moveButton).toBeDisabled();
+    fireEvent.mouseEnter(moveButton);
+    fireEvent.mouseLeave(moveButton);
+    expect(moveButton).not.toHaveStyle({ transform: "translateY(-1px)" });
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
@@ -193,6 +248,7 @@ describe("Canvas modals", () => {
 
     fireEvent.click(trialDestination);
     fireEvent.mouseEnter(trialDestination);
+    fireEvent.mouseLeave(trialDestination);
     expect(trialDestination).toHaveStyle({ background: "rgba(76, 175, 80, 0.25)" });
 
     const moveButton = screen.getByText("Move");
@@ -246,5 +302,48 @@ describe("Canvas modals", () => {
     fireEvent.click(screen.getByText("Move"));
 
     expect(onConfirm).toHaveBeenCalledWith("loop-1", true);
+  });
+
+  it("auto-includes recursive LoopRangeModal branches and allows deselecting manual choices", () => {
+    const onConfirm = vi.fn();
+    const onClose = vi.fn();
+
+    render(
+      <LoopRangeModal
+        timeline={[
+          { id: 1, type: "trial", name: "Trial 1", branches: [2, "missing"] },
+          { id: 2, type: "trial", name: "Trial 2", branches: [1] },
+          { id: "loop-a", type: "loop", name: "Loop A", branches: [] },
+        ]}
+        onConfirm={onConfirm}
+        onClose={onClose}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Trial 1"));
+    expect(screen.getByText("(auto-included)")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Confirm (3 items)"));
+    expect(onConfirm).toHaveBeenCalledWith([1, 2, "missing"]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByLabelText("Trial 1"));
+    expect(screen.getByText("Confirm (0 items)")).toBeDisabled();
+    fireEvent.click(screen.getByText("Cancel"));
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it("confirms a loop range when no close callback is provided", () => {
+    const onConfirm = vi.fn();
+    render(
+      <LoopRangeModal
+        timeline={[{ id: 1, type: "trial", name: "Trial 1", branches: [] }]}
+        onConfirm={onConfirm}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Trial 1"));
+    fireEvent.click(screen.getByText("Confirm (1 items)"));
+
+    expect(onConfirm).toHaveBeenCalledWith([1]);
   });
 });

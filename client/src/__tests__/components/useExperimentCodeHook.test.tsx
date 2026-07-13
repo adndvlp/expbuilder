@@ -19,10 +19,11 @@ const mocks = vi.hoisted(() => ({
   publicGenerator: vi.fn(async () => "public-code"),
   baseGenerator: vi.fn(async () => "base-code"),
   fetchExperimentNameByID: vi.fn(async () => "Named Experiment"),
+  experimentID: "exp-123",
 }));
 
 vi.mock("../../pages/ExperimentBuilder/hooks/useExperimentID", () => ({
-  useExperimentID: () => "exp-123",
+  useExperimentID: () => mocks.experimentID,
   fetchExperimentNameByID: mocks.fetchExperimentNameByID,
 }));
 
@@ -70,6 +71,7 @@ describe("useExperimentCode", () => {
     mocks.localProps = undefined;
     mocks.publicProps = undefined;
     mocks.baseProps = undefined;
+    mocks.experimentID = "exp-123";
     globalThis.fetch = vi.fn(async (url: string) => {
       if (url.includes("/api/trials-extensions/")) {
         return {
@@ -131,6 +133,26 @@ describe("useExperimentCode", () => {
     expect(extensions).toBe(
       "extensions: [{ type: jsPsychExtensionMouseTracking }, { type: jsPsychExtensionWebgazer }],",
     );
+  });
+
+  it("returns no extension code when the experiment has no extensions", async () => {
+    globalThis.fetch = vi.fn(async () => ({
+      json: async () => ({ extensions: [] }),
+    })) as unknown as typeof fetch;
+
+    renderHook(() => useExperimentCode());
+
+    await expect(mocks.localProps.fetchExtensions()).resolves.toBe("");
+  });
+
+  it("skips experiment name and extensions lookups without an experiment id", async () => {
+    mocks.experimentID = "";
+
+    renderHook(() => useExperimentCode());
+
+    expect(mocks.fetchExperimentNameByID).not.toHaveBeenCalled();
+    await expect(mocks.localProps.fetchExtensions()).resolves.toBe("");
+    expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
   it("falls back to no extensions when the extensions request fails", async () => {

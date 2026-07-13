@@ -42,6 +42,29 @@ describe("ExperimentBuilder peripheral providers", () => {
     vi.restoreAllMocks();
   });
 
+  it("throws provider hook errors outside their required providers", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    expect(() => renderHook(() => usePlugins())).toThrow(
+      "usePlugins must be used within a PluginsProvider",
+    );
+    expect(() => renderHook(() => useUrl())).toThrow(
+      "useUrl must be used within a UrlProvider",
+    );
+
+    const { result } = renderHook(() => useCanvasStyles());
+    act(() => {
+      result.current.setCanvasStyles((prev) => prev);
+    });
+    expect(result.current.canvasStyles).toEqual({
+      backgroundColor: "#ffffff",
+      width: 1024,
+      height: 768,
+      fullScreen: true,
+      progressBar: false,
+    });
+  });
+
   it("loads plugins and autosaves the first plugin added after an empty initial load", async () => {
     const plugin = {
       name: "plugin-custom",
@@ -143,6 +166,67 @@ describe("ExperimentBuilder peripheral providers", () => {
     expect(result.current.metadataError).toBe("Cannot extract parameters");
   });
 
+  it("falls back to an empty plugin list when loading plugins fails", async () => {
+    fetchMock().mockRejectedValueOnce(new Error("load plugins failed"));
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <PluginsProvider>{children}</PluginsProvider>
+    );
+    const { result } = renderHook(() => usePlugins(), { wrapper });
+
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledWith(`${API_URL}/api/load-plugins`);
+    });
+    await flushEffects();
+
+    expect(result.current.plugins).toEqual([]);
+  });
+
+  it("logs plugin autosave failures", async () => {
+    const error = new Error("save plugin failed");
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const plugin = {
+      name: "plugin-custom",
+      scripTag: "jsPsychCustom",
+      pluginCode: "class CustomPlugin {}",
+      index: 0,
+    };
+
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === `${API_URL}/api/load-plugins`) {
+        return okJson({ plugins: [] });
+      }
+      throw error;
+    });
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <PluginsProvider>{children}</PluginsProvider>
+    );
+    const { result } = renderHook(() => usePlugins(), { wrapper });
+
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledWith(`${API_URL}/api/load-plugins`);
+    });
+    await flushEffects();
+
+    vi.useFakeTimers();
+
+    act(() => {
+      result.current.setPlugins([plugin]);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(consoleError).toHaveBeenCalledWith(
+      "Error saving plugin config:",
+      error,
+    );
+  });
+
   it("loads appearance settings into CanvasStylesProvider and keeps defaults for omitted fields", async () => {
     fetchMock().mockResolvedValue(
       okJson({
@@ -175,6 +259,58 @@ describe("ExperimentBuilder peripheral providers", () => {
     );
   });
 
+  it("keeps canvas style defaults when appearance fields are omitted", async () => {
+    fetchMock().mockResolvedValue(
+      okJson({
+        success: true,
+        settings: {
+          progressBar: true,
+        },
+      }),
+    );
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <CanvasStylesProvider experimentID="exp-style">
+        {children}
+      </CanvasStylesProvider>
+    );
+    const { result } = renderHook(() => useCanvasStyles(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.canvasStyles).toEqual({
+        backgroundColor: "#ffffff",
+        width: 1024,
+        height: 768,
+        fullScreen: true,
+        progressBar: true,
+      });
+    });
+  });
+
+  it("ignores unsuccessful appearance settings responses", async () => {
+    fetchMock().mockResolvedValue(okJson({ success: false }));
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <CanvasStylesProvider experimentID="exp-style">
+        {children}
+      </CanvasStylesProvider>
+    );
+    const { result } = renderHook(() => useCanvasStyles(), { wrapper });
+
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledWith(
+        `${API_URL}/api/appearance-settings/exp-style`,
+      );
+    });
+    expect(result.current.canvasStyles).toEqual({
+      backgroundColor: "#ffffff",
+      width: 1024,
+      height: 768,
+      fullScreen: true,
+      progressBar: false,
+    });
+  });
+
   it("does not request appearance settings without an experiment id", () => {
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <CanvasStylesProvider>{children}</CanvasStylesProvider>
@@ -188,6 +324,26 @@ describe("ExperimentBuilder peripheral providers", () => {
       height: 768,
       fullScreen: true,
       progressBar: false,
+    });
+  });
+
+  it("warns when appearance settings fail to load", async () => {
+    const error = new Error("appearance down");
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    fetchMock().mockRejectedValue(error);
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <CanvasStylesProvider experimentID="exp-style">
+        {children}
+      </CanvasStylesProvider>
+    );
+    renderHook(() => useCanvasStyles(), { wrapper });
+
+    await waitFor(() => {
+      expect(warn).toHaveBeenCalledWith(
+        "Could not load appearance settings:",
+        error,
+      );
     });
   });
 
@@ -327,6 +483,64 @@ describe("ExperimentBuilder peripheral providers", () => {
           isSaveMode: true,
         }),
       },
+    );
+  });
+
+  it("logs DevModeProvider load failures", async () => {
+    const error = new Error("load failed");
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock().mockRejectedValueOnce(error);
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <DevModeProvider>{children}</DevModeProvider>
+    );
+    renderHook(() => useDevMode(), { wrapper });
+
+    await waitFor(() => {
+      expect(consoleError).toHaveBeenCalledWith("Error loading config:", error);
+    });
+  });
+
+  it("logs DevModeProvider save failures after the debounce", async () => {
+    vi.useFakeTimers();
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === `${API_URL}/api/load-config/test-exp-123`) {
+        return okJson({
+          config: {
+            generatedCode: "",
+            customCode: "",
+          },
+          isDevMode: false,
+          isSaveMode: false,
+        });
+      }
+      return okJson({ success: false }, false);
+    });
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <DevModeProvider>{children}</DevModeProvider>
+    );
+    const { result } = renderHook(() => useDevMode(), { wrapper });
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    act(() => {
+      result.current.setCode("const willFail = true;");
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(consoleError).toHaveBeenCalledWith(
+      "Error saving dev mode:",
+      expect.any(Error),
     );
   });
 });

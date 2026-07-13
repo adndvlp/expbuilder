@@ -195,6 +195,86 @@ describe("SessionsActions", () => {
     });
   });
 
+  it("uses fallback metadata while loading and sorting online sessions", async () => {
+    vi.mocked(getDocs).mockResolvedValue({
+      docs: [
+        {
+          id: "online-completed-at",
+          data: () => ({
+            completedAt: "2026-05-24T12:00:00.000Z",
+          }),
+        },
+        {
+          id: "online-defaults",
+          data: () => ({}),
+        },
+      ],
+    } as any);
+    const props = createProps({ activeTab: "online" });
+
+    renderHook(() => SessionsActions(props));
+
+    await waitFor(() => {
+      expect(props.setSessions).toHaveBeenCalledWith([
+        {
+          _id: "online-defaults",
+          sessionId: "online-defaults",
+          createdAt: expect.any(String),
+          state: "completed",
+          metadata: {},
+          fileUrl: undefined,
+        },
+        {
+          _id: "online-completed-at",
+          sessionId: "online-completed-at",
+          createdAt: "2026-05-24T12:00:00.000Z",
+          state: "completed",
+          metadata: {},
+          fileUrl: undefined,
+        },
+      ]);
+    });
+  });
+
+  it("skips online session loading and participant files without an experiment id", async () => {
+    const props = createProps({ activeTab: "online", experimentID: undefined });
+    const { result } = renderHook(() => SessionsActions(props));
+
+    await waitFor(() => {
+      expect(props.setSessions).toHaveBeenCalledWith([]);
+    });
+
+    await expect(
+      result.current.fetchOnlineSessionFiles("online-session-1"),
+    ).resolves.toEqual([]);
+    expect(getDocs).not.toHaveBeenCalled();
+    expect(props.setOnlineLoading).not.toHaveBeenCalledWith(true);
+  });
+
+  it("handles local session fetch failures and empty payloads", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock().mockRejectedValueOnce(new Error("local fetch failed"));
+    const props = createProps();
+
+    renderHook(() => SessionsActions(props));
+
+    await waitFor(() => {
+      expect(console.error).toHaveBeenCalledWith(
+        "Error fetching sessions:",
+        expect.any(Error),
+      );
+      expect(props.setLoading).toHaveBeenCalledWith(false);
+    });
+
+    fetchMock().mockResolvedValueOnce(okJson({}));
+    const emptyProps = createProps({ activeTab: "preview" });
+    renderHook(() => SessionsActions(emptyProps));
+
+    await waitFor(() => {
+      expect(emptyProps.setSessions).toHaveBeenCalledWith([]);
+    });
+  });
+
   it("toggles individual and all session selection", () => {
     const props = createProps({
       selected: ["local-1"],
@@ -277,6 +357,29 @@ describe("SessionsActions", () => {
     );
   });
 
+  it("logs individual delete failures", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const props = createProps();
+    const { result } = renderHook(() => SessionsActions(props));
+
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledWith(
+        `${API_URL}/api/session-results/exp-123`,
+      );
+    });
+    fetchMock().mockClear();
+    fetchMock().mockRejectedValueOnce(new Error("delete failed"));
+
+    await act(async () => {
+      await result.current.handleDeleteSession("local-1");
+    });
+
+    expect(console.error).toHaveBeenCalledWith(
+      "Error deleting session:",
+      expect.any(Error),
+    );
+  });
+
   it("deletes selected local sessions and refreshes the list", async () => {
     const props = createProps({ selected: ["local-1", "local-2"] });
     const { result } = renderHook(() => SessionsActions(props));
@@ -305,6 +408,29 @@ describe("SessionsActions", () => {
     );
     expect(fetchMock()).toHaveBeenCalledWith(
       `${API_URL}/api/session-results/exp-123`,
+    );
+  });
+
+  it("logs selected delete failures", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const props = createProps({ selected: ["local-1"] });
+    const { result } = renderHook(() => SessionsActions(props));
+
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledWith(
+        `${API_URL}/api/session-results/exp-123`,
+      );
+    });
+    fetchMock().mockClear();
+    fetchMock().mockRejectedValueOnce(new Error("delete selected failed"));
+
+    await act(async () => {
+      await result.current.handleDeleteSelected();
+    });
+
+    expect(console.error).toHaveBeenCalledWith(
+      "Error deleting sessions:",
+      expect.any(Error),
     );
   });
 
@@ -372,6 +498,27 @@ describe("SessionsActions", () => {
     expect(window.alert).toHaveBeenCalledWith("ZIP saved successfully.");
   });
 
+  it("does not download a ZIP when no local sessions are selected", async () => {
+    const props = createProps({ selected: [] });
+    const { result } = renderHook(() => SessionsActions(props));
+
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledWith(
+        `${API_URL}/api/session-results/exp-123`,
+      );
+    });
+    fetchMock().mockClear();
+
+    await act(async () => {
+      await result.current.handleDownloadSelected();
+    });
+
+    expect(fetchMock()).not.toHaveBeenCalledWith(
+      `${API_URL}/api/download-sessions-zip`,
+      expect.anything(),
+    );
+  });
+
   it("reports ZIP save failures and download errors", async () => {
     (window as any).electron.saveZipFile = vi.fn(async () => ({
       success: false,
@@ -395,6 +542,18 @@ describe("SessionsActions", () => {
 
     expect(window.alert).toHaveBeenCalledWith(
       "Failed to save ZIP: disk full",
+    );
+
+    (window as any).electron.saveZipFile = vi.fn(async () => ({
+      success: false,
+    }));
+
+    await act(async () => {
+      await result.current.handleDownloadSelected();
+    });
+
+    expect(window.alert).toHaveBeenCalledWith(
+      "Failed to save ZIP: Unknown error",
     );
 
     fetchMock().mockImplementation(async (url: string) => {
@@ -489,6 +648,92 @@ describe("SessionsActions", () => {
     expect((window as any).electron.openExternal).toHaveBeenCalledWith(
       "https://storage.test/two.csv",
     );
+  });
+
+  it("refreshes online and local sessions on demand", async () => {
+    vi.mocked(getDocs).mockResolvedValue({ docs: [] } as any);
+    const onlineProps = createProps({ activeTab: "online" });
+    const online = renderHook(() => SessionsActions(onlineProps));
+
+    await waitFor(() => {
+      expect(onlineProps.setOnlineLoading).toHaveBeenCalledWith(false);
+    });
+    vi.mocked(getDocs).mockClear();
+
+    await act(async () => {
+      online.result.current.handleRefresh();
+    });
+
+    expect(getDocs).toHaveBeenCalled();
+
+    const localProps = createProps({ activeTab: "local" });
+    const local = renderHook(() => SessionsActions(localProps));
+
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledWith(
+        `${API_URL}/api/session-results/exp-123`,
+      );
+    });
+    fetchMock().mockClear();
+
+    await act(async () => {
+      local.result.current.handleRefresh();
+    });
+
+    expect(fetchMock()).toHaveBeenCalledWith(
+      `${API_URL}/api/session-results/exp-123`,
+    );
+  });
+
+  it("maps online participant files and their fallback fields", async () => {
+    vi.mocked(getDocs).mockResolvedValueOnce({
+      docs: [
+        {
+          id: "file-doc",
+          data: () => ({
+            fileId: "file-1",
+            sessionId: "online-session-1",
+            filename: "data.csv",
+            originalName: "original.csv",
+            mimeType: "text/csv",
+            sizeBytes: 42,
+            uploadedAt: "2026-05-24T12:30:00.000Z",
+            url: "https://storage.test/data.csv",
+          }),
+        },
+        {
+          id: "fallback-doc",
+          data: () => ({}),
+        },
+      ],
+    } as any);
+    const props = createProps();
+    const { result } = renderHook(() => SessionsActions(props));
+
+    await expect(
+      result.current.fetchOnlineSessionFiles("online-session-1"),
+    ).resolves.toEqual([
+      {
+        id: "file-1",
+        sessionId: "online-session-1",
+        filename: "data.csv",
+        originalName: "original.csv",
+        mimeType: "text/csv",
+        sizeBytes: 42,
+        uploadedAt: "2026-05-24T12:30:00.000Z",
+        url: "https://storage.test/data.csv",
+      },
+      {
+        id: "fallback-doc",
+        sessionId: null,
+        filename: "",
+        originalName: "fallback-doc",
+        mimeType: "",
+        sizeBytes: 0,
+        uploadedAt: expect.any(String),
+        url: "",
+      },
+    ]);
   });
 
   it("handles online session and online participant-file fetch errors", async () => {

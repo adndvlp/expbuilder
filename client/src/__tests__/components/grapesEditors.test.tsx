@@ -132,6 +132,7 @@ describe("Grapes editors", () => {
 
     act(() => {
       editor.handlers.update();
+      editor.handlers.update();
       vi.advanceTimersByTime(1000);
     });
 
@@ -139,12 +140,51 @@ describe("Grapes editors", () => {
       "inlined:<div>Saved</div>|.saved{color:red;}",
     );
 
+    act(() => {
+      vi.advanceTimersByTime(1500);
+    });
+
+    const saveButton = screen.getByText("Save HTML");
+    fireEvent.mouseOver(saveButton);
+    expect(saveButton).toHaveStyle({ background: "var(--dark-gold)" });
+    fireEvent.mouseOut(saveButton);
+    expect(saveButton).toHaveStyle({ background: "var(--gold)" });
     fireEvent.click(screen.getByText("Save HTML"));
 
     expect(onChange).toHaveBeenCalledWith(
       "inlined:<div>Saved</div>|.saved{color:red;}",
     );
     expect(onClose).toHaveBeenCalledTimes(1);
+
+    unmount();
+    expect(editor.destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses default HTML content and tolerates missing canvas nodes", () => {
+    const editor = createEditorMock();
+    editor.Canvas.getBody.mockReturnValueOnce(null).mockReturnValueOnce(
+      document.createElement("body"),
+    );
+    mockNextEditor(editor);
+
+    const { unmount } = render(
+      <GrapesHtmlEditor
+        isOpen
+        onClose={vi.fn()}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(grapesjs.init).toHaveBeenCalledWith(
+      expect.objectContaining({
+        components: "<div>Type or design here</div>",
+      }),
+    );
+
+    act(() => {
+      editor.handlers.load();
+      editor.handlers.update();
+    });
 
     unmount();
     expect(editor.destroy).toHaveBeenCalledTimes(1);
@@ -191,12 +231,65 @@ describe("Grapes editors", () => {
       expect.objectContaining({ category: "Layout" }),
     );
 
-    fireEvent.click(screen.getByText("Save Button"));
+    const saveButton = screen.getByText("Save Button");
+    fireEvent.mouseOver(saveButton);
+    expect(saveButton).toHaveStyle({ background: "var(--dark-gold)" });
+    fireEvent.mouseOut(saveButton);
+    expect(saveButton).toHaveStyle({ background: "var(--gold)" });
+    fireEvent.click(saveButton);
 
     expect(onChange).toHaveBeenCalledWith(
       "inlined:<div>Saved</div>|.saved{color:red;}",
     );
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not initialize GrapesJS while the button editor is closed", () => {
+    render(
+      <GrapesButtonEditor
+        isOpen={false}
+        onClose={vi.fn()}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(grapesjs.init).not.toHaveBeenCalled();
+    expect(screen.queryByText("Save Button")).not.toBeInTheDocument();
+  });
+
+  it("uses default button content and tolerates missing canvas or block entries", () => {
+    const editor = createEditorMock();
+    editor.Canvas.getBody.mockReturnValueOnce(null).mockReturnValueOnce(
+      document.createElement("body"),
+    );
+    editor.BlockManager.getAll.mockReturnValue([{ id: "column1" }]);
+    editor.BlockManager.get.mockImplementation((id: string) =>
+      id === "image" ? undefined : { id },
+    );
+    mockNextEditor(editor);
+
+    const { unmount } = render(
+      <GrapesButtonEditor
+        isOpen
+        onClose={vi.fn()}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(grapesjs.init).toHaveBeenCalledWith(
+      expect.objectContaining({
+        components: expect.stringContaining("{{choice}}"),
+      }),
+    );
+
+    act(() => {
+      editor.handlers.load();
+      editor.handlers.update();
+    });
+
+    expect(editor.BlockManager.remove).not.toHaveBeenCalledWith("image");
+    unmount();
+    expect(editor.destroy).toHaveBeenCalledTimes(1);
   });
 
   it("debounces button editor autosave and cleans up pending timers", () => {
@@ -226,6 +319,10 @@ describe("Grapes editors", () => {
       vi.advanceTimersByTime(1);
     });
     expect(onAutoSave).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      vi.advanceTimersByTime(1500);
+    });
 
     unmount();
     expect(editor.destroy).toHaveBeenCalledTimes(1);

@@ -52,6 +52,48 @@ describe("DevModeProvider", () => {
     });
   });
 
+  it("keeps defaults when the load response has no config", async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({}),
+    } as Response);
+    const { getContext } = renderDevModeProvider();
+
+    await waitFor(() => {
+      expect(getContext()).toMatchObject({
+        code: "",
+        customCode: "",
+        isDevMode: false,
+        isSaveMode: false,
+      });
+    });
+  });
+
+  it("defaults missing custom code and save mode from a loaded config", async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          config: {
+            generatedCode: "// loaded",
+            customInitJsPsychParams: { local: {}, public: {} },
+            customPreInitCode: { local: "", public: "" },
+          },
+          isDevMode: true,
+        }),
+    } as Response);
+    const { getContext } = renderDevModeProvider();
+
+    await waitFor(() => {
+      expect(getContext()).toMatchObject({
+        code: "// loaded",
+        customCode: "",
+        isDevMode: true,
+        isSaveMode: false,
+      });
+    });
+  });
+
   it("provides dev mode toggle", async () => {
     const { getContext } = renderDevModeProvider();
 

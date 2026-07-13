@@ -120,6 +120,47 @@ describe("Survey Builder action hooks", () => {
     });
   });
 
+  it("updates an image link on a string choice without changing its text", () => {
+    const updateQuestion = vi.fn();
+    const { result } = renderHook(() =>
+      useChoiceActions({ questions: baseQuestions, updateQuestion }),
+    );
+
+    result.current.updateChoice(1, 0, "imageLink", "choice.png");
+
+    expect(updateQuestion).toHaveBeenCalledWith(1, {
+      choices: [
+        {
+          value: "old",
+          text: "old",
+          imageLink: "choice.png",
+        },
+      ],
+    });
+  });
+
+  it("handles questions without choices and ignores an invalid update", () => {
+    const updateQuestion = vi.fn();
+    const questions: Question[] = [
+      { type: "radiogroup", name: "empty", title: "Empty" },
+    ];
+    const { result } = renderHook(() =>
+      useChoiceActions({ questions, updateQuestion }),
+    );
+
+    result.current.addChoice(0);
+    expect(updateQuestion).toHaveBeenLastCalledWith(0, {
+      choices: [{ value: "", text: "", imageLink: "" }],
+    });
+
+    result.current.removeChoice(0, 0);
+    expect(updateQuestion).toHaveBeenLastCalledWith(0, { choices: [] });
+
+    updateQuestion.mockClear();
+    result.current.updateChoice(0, 0, "text", "missing");
+    expect(updateQuestion).not.toHaveBeenCalled();
+  });
+
   it("updates object choices while preserving image links and syncing text value", () => {
     const updateQuestion = vi.fn();
     const questions: Question[] = [
@@ -181,5 +222,26 @@ describe("Survey Builder action hooks", () => {
     expect(updateQuestion).toHaveBeenLastCalledWith(0, {
       rateValues: [{ value: "Disagree", text: "Disagree" }],
     });
+  });
+
+  it("updates and removes rating values when the collection is absent", () => {
+    const updateQuestion = vi.fn();
+    const questions: Question[] = [{ type: "rating", name: "empty-rating" }];
+    const { result } = renderHook(() =>
+      useRateValueActions({ questions, updateQuestion }),
+    );
+
+    result.current.addRateValue(0);
+    expect(updateQuestion).toHaveBeenCalledWith(0, {
+      rateValues: [{ value: "", text: "" }],
+    });
+
+    result.current.updateRateValue(0, 0, "First");
+    expect(updateQuestion).toHaveBeenCalledWith(0, {
+      rateValues: [{ value: "First", text: "First" }],
+    });
+
+    result.current.removeRateValue(0, 0);
+    expect(updateQuestion).toHaveBeenLastCalledWith(0, { rateValues: [] });
   });
 });

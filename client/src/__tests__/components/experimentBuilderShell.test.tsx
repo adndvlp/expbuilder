@@ -256,4 +256,61 @@ describe("ExperimentBuilder shell", () => {
     expect(mocks.setDevMode).toHaveBeenCalledWith(true);
     expect(mocks.setSaveMode).toHaveBeenCalledWith(true);
   });
+
+  it("resizes timeline and config panels while keeping them visible", () => {
+    const { container } = render(<ExperimentBuilder />);
+    const resizeHandles = container.querySelectorAll<HTMLElement>(
+      'div[style*="col-resize"]',
+    );
+
+    fireEvent.mouseDown(resizeHandles[0]);
+    fireEvent.mouseMove(document, { clientX: 320 });
+    fireEvent.mouseUp(document);
+
+    expect(container.querySelector<HTMLElement>(".timeline-container")).toHaveStyle(
+      { width: "320px" },
+    );
+
+    fireEvent.mouseDown(resizeHandles[1]);
+    fireEvent.mouseMove(document, { clientX: 700 });
+    fireEvent.mouseUp(document);
+
+    expect(
+      container.querySelector<HTMLElement>(".config-panel-container"),
+    ).toHaveStyle({ width: "500px" });
+  });
+
+  it("hides and restores timeline and config panels through resize handles", () => {
+    const { container } = render(<ExperimentBuilder />);
+    let resizeHandles = container.querySelectorAll<HTMLElement>(
+      'div[style*="col-resize"]',
+    );
+
+    fireEvent.mouseDown(resizeHandles[0]);
+    fireEvent.mouseMove(document, { clientX: 120 });
+    fireEvent.mouseUp(document);
+
+    expect(screen.queryByTestId("timeline")).not.toBeInTheDocument();
+
+    const timelineToggle = Array.from(
+      container.querySelectorAll<HTMLElement>(".canvas-header div"),
+    ).find((node) => node.style.left === "0px");
+    fireEvent.click(timelineToggle!);
+    expect(screen.getByTestId("timeline")).toBeInTheDocument();
+
+    resizeHandles = container.querySelectorAll<HTMLElement>(
+      'div[style*="col-resize"]',
+    );
+    fireEvent.mouseDown(resizeHandles[1]);
+    fireEvent.mouseMove(document, { clientX: 900 });
+    fireEvent.mouseUp(document);
+
+    expect(screen.queryByTestId("configuration-panel")).not.toBeInTheDocument();
+
+    const configToggle = Array.from(
+      container.querySelectorAll<HTMLElement>(".canvas-header div"),
+    ).find((node) => node.style.right === "0px");
+    fireEvent.click(configToggle!);
+    expect(screen.getByTestId("configuration-panel")).toBeInTheDocument();
+  });
 });

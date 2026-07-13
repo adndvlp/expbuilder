@@ -158,6 +158,14 @@ describe("collectAllBranchIds", () => {
     expect(result.has("2")).toBe(true);
     expect(result.has(3)).toBe(true);
   });
+
+  it("keeps branch ids that do not resolve to timeline trials", () => {
+    const result = collectAllBranchIds([
+      { id: 1, type: "trial", branches: [99] },
+    ]);
+
+    expect(result).toEqual(new Set([99]));
+  });
 });
 
 describe("getTrialIdsInLoops", () => {
@@ -253,6 +261,14 @@ describe("trialUtils API helpers", () => {
       2,
       expect.stringContaining("/api/validate-connection/exp-1?source=1&target=2"),
     );
+  });
+
+  it("defaults missing ancestor response flags to false", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      json: async () => ({}),
+    } as Response);
+
+    await expect(isAncestor(1, 2, "exp-1")).resolves.toBe(false);
   });
 
   it("returns invalid connection fallback when validation request fails", async () => {

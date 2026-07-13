@@ -82,12 +82,28 @@ const selectedComponent: TrialComponent = {
   },
 };
 
+const otherComponent: TrialComponent = {
+  id: "text-1",
+  type: "TextComponent",
+  x: 20,
+  y: 30,
+  width: 100,
+  height: 40,
+  zIndex: 1,
+  config: {
+    text: { source: "typed", value: "Other" },
+  },
+};
+
 function createMapperProps(
   overrides: Partial<React.ComponentProps<typeof KonvaParameterMapper>> = {},
 ) {
-  const state = createSetComponents([selectedComponent]);
+  const state = createSetComponents(
+    overrides.components ?? [selectedComponent, otherComponent],
+  );
   const onAutoSave = vi.fn();
   const generateConfigFromComponents = vi.fn(() => ({ components: "config" }));
+  const onRecordHistory = vi.fn();
   const props: React.ComponentProps<typeof KonvaParameterMapper> = {
     rightPanelWidth: 320,
     selectedId: "button-1",
@@ -107,6 +123,7 @@ function createMapperProps(
     canvasWidth: 1000,
     onAutoSave,
     generateConfigFromComponents,
+    onRecordHistory,
     isResizingRight: { current: false },
     setShowRightPanel: vi.fn(),
     setRightPanelWidth: vi.fn(),
@@ -251,6 +268,25 @@ describe("KonvaParameterMapper", () => {
     expect(mapperMock.props.columnMapping).toEqual({});
   });
 
+  it("starts and updates a selected component whose config is absent", () => {
+    const configlessComponent = {
+      ...selectedComponent,
+      config: undefined as any,
+    };
+    const { state } = renderMapper({
+      selectedComponent: configlessComponent,
+      components: [configlessComponent, otherComponent],
+    });
+
+    expect(mapperMock.props.columnMapping).toEqual({});
+    fireEvent.click(screen.getByText("Change mapping"));
+    expect(state.getComponents()[0].config).toEqual(
+      expect.objectContaining({
+        coordinates: { source: "typed", value: { x: 10, y: 20 } },
+      }),
+    );
+  });
+
   it("resizes and hides the right parameter panel from the resize handle", () => {
     const setup = createMapperProps();
     Object.defineProperty(window, "innerWidth", {
@@ -279,5 +315,8 @@ describe("KonvaParameterMapper", () => {
 
     fireEvent.mouseUp(document);
     expect(setup.props.isResizingRight.current).toBe(false);
+
+    fireEvent.mouseMove(document, { clientX: 400 });
+    expect(setup.props.setRightPanelWidth).toHaveBeenCalledTimes(1);
   });
 });

@@ -14,6 +14,7 @@ const fieldGroups = {
     { key: "survey_json", label: "Survey", type: "object", default: {} },
     { key: "button_html", label: "Button HTML", type: "function", default: "" },
     { key: "calibration_points", label: "Calibration", type: "number_array", default: [] },
+    { key: "validation_points", label: "Validation", type: "number_array", default: [] },
   ],
 };
 
@@ -31,6 +32,10 @@ describe("useCsvMapper", () => {
     expect(getColumnValue(undefined, undefined, undefined, "trial_duration")).toBe(
       1000,
     );
+    expect(getColumnValue(undefined, undefined, undefined, "unknown_key")).toBe(
+      "",
+    );
+    expect(getColumnValue(undefined, undefined, undefined)).toBe("");
     expect(
       getColumnValue(
         { source: "none", value: null },
@@ -55,14 +60,30 @@ describe("useCsvMapper", () => {
         "response_ends_trial",
       ),
     ).toBe(false);
+    expect(
+      getColumnValue({ source: "typed", value: null }, undefined, undefined),
+    ).toBe("");
+    expect(
+      getColumnValue(
+        { source: "typed", value: null },
+        undefined,
+        undefined,
+        "stimulus",
+      ),
+    ).toBe("<p>Default</p>");
   });
 
   it("casts CSV scalar values by parameter type", () => {
     const { getColumnValue } = setup();
     const row = {
       duration_col: "2500",
+      invalid_duration_col: "fast",
       boolean_col: "0",
+      boolean_true_col: "1",
+      boolean_raw_col: "maybe",
       button_col: "(choice) => `<button>${choice}</button>`",
+      stimulus_col: "<strong>Hello</strong>",
+      0: "numeric column stimulus",
     };
 
     expect(
@@ -75,6 +96,14 @@ describe("useCsvMapper", () => {
     ).toBe(2500);
     expect(
       getColumnValue(
+        { source: "csv", value: "invalid_duration_col" },
+        row,
+        undefined,
+        "trial_duration",
+      ),
+    ).toBe("fast");
+    expect(
+      getColumnValue(
         { source: "csv", value: "boolean_col" },
         row,
         undefined,
@@ -83,12 +112,39 @@ describe("useCsvMapper", () => {
     ).toBe(false);
     expect(
       getColumnValue(
+        { source: "csv", value: "boolean_true_col" },
+        row,
+        undefined,
+        "response_ends_trial",
+      ),
+    ).toBe(true);
+    expect(
+      getColumnValue(
+        { source: "csv", value: "boolean_raw_col" },
+        row,
+        undefined,
+        "response_ends_trial",
+      ),
+    ).toBe("maybe");
+    expect(
+      getColumnValue(
         { source: "csv", value: "button_col" },
         row,
         undefined,
         "button_html",
       ),
     ).toBe("(choice) => `<button>${choice}</button>`");
+    expect(
+      getColumnValue(
+        { source: "csv", value: "stimulus_col" },
+        row,
+        undefined,
+        "stimulus",
+      ),
+    ).toBe("<strong>Hello</strong>");
+    expect(
+      getColumnValue({ source: "csv", value: 0 }, row, undefined, "stimulus"),
+    ).toBe("numeric column stimulus");
   });
 
   it("casts CSV arrays while preserving uncastable items", () => {
@@ -97,6 +153,7 @@ describe("useCsvMapper", () => {
       choices_col: "left, right, space",
       numbers_col: "1, 2.5, bad",
       flags_col: "true, 0, maybe",
+      raw_numbers_col: [1, 2, 3],
     };
 
     expect(
@@ -123,13 +180,25 @@ describe("useCsvMapper", () => {
         "flags",
       ),
     ).toEqual([true, false, "maybe"]);
+    expect(
+      getColumnValue(
+        { source: "csv", value: "raw_numbers_col" },
+        row,
+        undefined,
+        "numbers",
+      ),
+    ).toEqual([1, 2, 3]);
   });
 
   it("parses CSV object fields as coordinates or JSON", () => {
     const { getColumnValue } = setup();
     const row = {
       coord_col: "12.5, 33",
+      invalid_coord_col: "12.5, nope",
+      short_coord_col: "12.5",
       survey_col: '{"title":"Survey","elements":[{"name":"q1"}]}',
+      invalid_survey_col: "{not json",
+      raw_survey_col: { title: "Already parsed" },
     };
 
     expect(
@@ -148,12 +217,45 @@ describe("useCsvMapper", () => {
         "survey_json",
       ),
     ).toEqual({ title: "Survey", elements: [{ name: "q1" }] });
+    expect(
+      getColumnValue(
+        { source: "csv", value: "invalid_coord_col" },
+        row,
+        undefined,
+        "coordinates",
+      ),
+    ).toBe("12.5, nope");
+    expect(
+      getColumnValue(
+        { source: "csv", value: "short_coord_col" },
+        row,
+        undefined,
+        "coordinates",
+      ),
+    ).toBe(12.5);
+    expect(
+      getColumnValue(
+        { source: "csv", value: "invalid_survey_col" },
+        row,
+        undefined,
+        "survey_json",
+      ),
+    ).toBe("{not json");
+    expect(
+      getColumnValue(
+        { source: "csv", value: "raw_survey_col" },
+        row,
+        undefined,
+        "survey_json",
+      ),
+    ).toEqual({ title: "Already parsed" });
   });
 
   it("parses WebGazer point CSV strings into coordinate arrays", () => {
     const { getColumnValue } = setup();
     const row = {
       points_col: "[20,20], [80,20], [50,50]",
+      mixed_points_col: "[left,2], [3,right]",
     };
 
     expect(
@@ -168,6 +270,17 @@ describe("useCsvMapper", () => {
       [80, 20],
       [50, 50],
     ]);
+    expect(
+      getColumnValue(
+        { source: "csv", value: "mixed_points_col" },
+        row,
+        undefined,
+        "validation_points",
+      ),
+    ).toEqual([
+      ["left", 2],
+      [3, "right"],
+    ]);
   });
 
   it("uses field defaults when a mapped CSV column is missing from the row", () => {
@@ -181,5 +294,52 @@ describe("useCsvMapper", () => {
         "choices",
       ),
     ).toEqual(["space"]);
+    expect(
+      getColumnValue(
+        { source: "csv", value: "present_col" },
+        { present_col: "raw" },
+        undefined,
+        "missing_param",
+      ),
+    ).toBe("raw");
+  });
+
+  it("falls back when CSV mapping cannot be resolved", () => {
+    const { getColumnValue } = setup();
+
+    expect(
+      getColumnValue(
+        { source: "csv", value: "duration_col" },
+        undefined,
+        "fallback",
+        "trial_duration",
+      ),
+    ).toBe("fallback");
+    expect(
+      getColumnValue(
+        { source: "csv", value: "duration_col" },
+        { duration_col: "100" },
+        undefined,
+      ),
+    ).toBe("");
+    expect(
+      getColumnValue(
+        { source: "csv", value: true },
+        { true: "unused" },
+        "fallback",
+        "stimulus",
+      ),
+    ).toBe("fallback");
+    expect(
+      getColumnValue(
+        { source: "plugin" as any, value: "duration_col" },
+        {},
+        undefined,
+        "trial_duration",
+      ),
+    ).toBe(1000);
+    expect(
+      getColumnValue({ source: "plugin" as any, value: "duration_col" }),
+    ).toBe("");
   });
 });

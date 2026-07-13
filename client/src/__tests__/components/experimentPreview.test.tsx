@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ExperimentPreview from "../../pages/ExperimentBuilder/components/ExperimentPreview";
 
@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   generateSingleTrialCode: vi.fn(async () => "const singleTrial = {};"),
   generateSingleLoopCode: vi.fn(async () => "const singleLoop = {};"),
   trialUrl: "http://localhost:3000/test-exp-123/preview",
+  experimentID: "test-exp-123" as string | undefined,
   version: 1,
   devMode: {
     isDevMode: true,
@@ -48,7 +49,7 @@ vi.mock("../../pages/ExperimentBuilder/hooks/useDevMode", () => ({
 }));
 
 vi.mock("../../pages/ExperimentBuilder/hooks/useExperimentID", () => ({
-  useExperimentID: () => "test-exp-123",
+  useExperimentID: () => mocks.experimentID,
 }));
 
 vi.mock("../../pages/ExperimentBuilder/hooks/useTrials", () => ({
@@ -97,6 +98,7 @@ describe("ExperimentPreview", () => {
     mocks.trialsContext.selectedTrial = null;
     mocks.trialsContext.selectedLoop = null;
     mocks.version = 1;
+    mocks.experimentID = "test-exp-123";
   });
 
   afterEach(() => {
@@ -170,6 +172,8 @@ describe("ExperimentPreview", () => {
         [],
         "test-exp-123",
         mocks.getTrial,
+        mocks.getLoopTimeline,
+        mocks.getLoop,
       );
     });
 
@@ -214,6 +218,116 @@ describe("ExperimentPreview", () => {
     const body = requestBodyFromLastPreviewPost();
     expect(body.generatedCode).toContain('"Practice Loop_result_"');
     expect(body.generatedCode).toContain("const singleLoop = {};");
+  });
+
+  it("uses an empty experiment id for a selected trial when the route id is absent", async () => {
+    mocks.devMode = { isDevMode: false, isSaveMode: false, code: "" };
+    mocks.experimentID = undefined;
+    mocks.trialsContext.selectedTrial = {
+      id: 7,
+      name: "Route-less Trial",
+      plugin: "plugin-html-keyboard-response",
+    };
+
+    render(<ExperimentPreview autoStart />);
+
+    await waitFor(() => {
+      expect(mocks.generateSingleTrialCode).toHaveBeenCalledWith(
+        mocks.trialsContext.selectedTrial,
+        [],
+        "",
+        mocks.getTrial,
+        mocks.getLoopTimeline,
+        mocks.getLoop,
+      );
+    });
+  });
+
+  it("uses an empty experiment id for a selected loop when the route id is absent", async () => {
+    mocks.devMode = { isDevMode: false, isSaveMode: false, code: "" };
+    mocks.experimentID = undefined;
+    mocks.trialsContext.selectedLoop = {
+      id: "loop-no-route",
+      name: "Route-less Loop",
+    };
+
+    render(<ExperimentPreview autoStart />);
+
+    await waitFor(() => {
+      expect(mocks.generateSingleLoopCode).toHaveBeenCalledWith(
+        mocks.trialsContext.selectedLoop,
+        "",
+        [],
+        mocks.getTrial,
+        mocks.getLoopTimeline,
+        mocks.getLoop,
+      );
+    });
+  });
+
+  it("waits for a rendered iframe wrapper before measuring canvas scale", async () => {
+    render(
+      <ExperimentPreview
+        canvasStyles={{ width: 640, height: 480, backgroundColor: "#ffffff" }}
+      />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByTitle("Experiment Preview")).not.toBeInTheDocument();
+  });
+
+  it("falls back to the full local preview when no trial or loop is selected outside dev mode", async () => {
+    mocks.devMode = {
+      isDevMode: false,
+      isSaveMode: false,
+      code: "",
+    };
+
+    render(<ExperimentPreview autoStart />);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mocks.generateSingleTrialCode).not.toHaveBeenCalled();
+    expect(mocks.generateSingleLoopCode).not.toHaveBeenCalled();
+    expect(mocks.generateLocalExperiment).toHaveBeenCalled();
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:3000/api/trials-preview/test-exp-123",
+      expect.any(Object),
+    );
+  });
+
+  it("skips posting when a selected trial generator returns empty code", async () => {
+    mocks.devMode = {
+      isDevMode: false,
+      isSaveMode: false,
+      code: "",
+    };
+    mocks.trialsContext.selectedTrial = {
+      id: 5,
+      name: "Empty Trial",
+      plugin: "plugin-html-keyboard-response",
+    };
+    mocks.generateSingleTrialCode.mockResolvedValueOnce("");
+
+    render(<ExperimentPreview autoStart />);
+
+    await waitFor(() => {
+      expect(mocks.generateSingleTrialCode).toHaveBeenCalled();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(globalThis.fetch).not.toHaveBeenCalledWith(
+      "http://localhost:3000/api/trials-preview/test-exp-123",
+      expect.any(Object),
+    );
   });
 
   it("toggles the preview iframe with Run Demo and Stop Demo", async () => {

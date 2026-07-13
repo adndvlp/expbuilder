@@ -156,6 +156,53 @@ describe("useFlowLayout", () => {
     );
   });
 
+  it("skips missing and legacy branch references", () => {
+    const timeline = [
+      timelineTrial({ id: 1, name: "Root", branches: [999, 2, "loop_branch"] }),
+      timelineTrial({ id: 2, name: "Nested Trial", branches: [998, 3] }),
+      { id: 3, name: "Legacy Child", branches: [] },
+      timelineLoop({
+        id: "loop_branch",
+        name: "Loop Branch",
+        branches: [997, "legacy_loop_child"],
+      }),
+      {
+        id: "legacy_loop_child",
+        name: "Legacy Loop Child",
+        trials: [],
+        branches: [],
+      },
+      timelineTrial({ id: 10, name: "Sequential Trial" }),
+      timelineLoop({ id: "loop_11", name: "Sequential Loop" }),
+    ];
+
+    const { result } = renderHook(() =>
+      useFlowLayout({
+        timeline,
+        selectedTrial: null,
+        selectedLoop: null,
+        onSelectTrial: vi.fn(),
+        onSelectLoop: vi.fn(),
+        onAddBranch: vi.fn(),
+      }),
+    );
+
+    expect(result.current.nodes.map((node) => node.id)).toEqual(
+      expect.arrayContaining([
+        "trial-1",
+        "trial-2",
+        "loop-loop_branch",
+        "trial-10",
+        "loop-loop_11",
+      ]),
+    );
+    expect(result.current.nodes.map((node) => node.id)).not.toContain("trial-999");
+    expect(result.current.edges.map((edge) => [edge.source, edge.target])).toContainEqual([
+      "trial-10",
+      "loop-loop_11",
+    ]);
+  });
+
   it("continues from a shared terminal branch target to the next top-level item", () => {
     const timeline = [
       timelineTrial({ id: 1, name: "Randomizer", branches: [2, 3] }),
@@ -210,6 +257,33 @@ describe("useFlowLayout", () => {
       Math.max(control.position.y, intervention.position.y) +
         LAYOUT_CONSTANTS.branchVerticalOffset,
     );
+  });
+
+  it("continues from a shared trial merge target to a following loop", () => {
+    const timeline = [
+      timelineTrial({ id: 1, name: "Split", branches: [2, 3] }),
+      timelineTrial({ id: 2, name: "Path A", branches: [4] }),
+      timelineTrial({ id: 3, name: "Path B", branches: [4] }),
+      timelineTrial({ id: 4, name: "Shared Trial" }),
+      timelineLoop({ id: "loop_after", name: "Loop After Merge" }),
+    ];
+
+    const { result } = renderHook(() =>
+      useFlowLayout({
+        timeline,
+        selectedTrial: null,
+        selectedLoop: null,
+        onSelectTrial: vi.fn(),
+        onSelectLoop: vi.fn(),
+        onAddBranch: vi.fn(),
+        onOpenLoop: vi.fn(),
+      }),
+    );
+
+    expect(result.current.edges.map((edge) => [edge.source, edge.target])).toContainEqual([
+      "trial-4",
+      "loop-loop_after",
+    ]);
   });
 
   it("centers a shared loop merge target under branch parents", () => {
@@ -333,6 +407,84 @@ describe("useFlowLayout", () => {
       expect.objectContaining({ id: "loop_open", name: "Open Loop" }),
     );
     expect(onAddBranch).toHaveBeenCalledWith("loop_open");
+  });
+
+  it("wires callbacks for selected trial branch nodes", () => {
+    const onSelectTrial = vi.fn();
+    const onAddBranch = vi.fn();
+    const selectedTrial = trial({ id: 2, name: "Branch Trial" });
+
+    const { result } = renderHook(() =>
+      useFlowLayout({
+        timeline: [
+          timelineTrial({ id: 1, name: "Parent", branches: [2] }),
+          timelineTrial({ id: 2, name: "Branch Trial" }),
+        ],
+        selectedTrial,
+        selectedLoop: null,
+        onSelectTrial,
+        onSelectLoop: vi.fn(),
+        onAddBranch,
+        onOpenLoop: vi.fn(),
+      }),
+    );
+
+    const node = result.current.nodes.find((item) => item.id === "trial-2")!;
+
+    expect(node.data.selected).toBe(true);
+    expect(typeof node.data.onAddBranch).toBe("function");
+
+    act(() => {
+      node.data.onClick();
+      node.data.onAddBranch();
+    });
+
+    expect(onSelectTrial).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 2, name: "Branch Trial" }),
+    );
+    expect(onAddBranch).toHaveBeenCalledWith(2);
+  });
+
+  it("wires callbacks for selected loop branch nodes", () => {
+    const onSelectLoop = vi.fn();
+    const onAddBranch = vi.fn();
+    const onOpenLoop = vi.fn();
+    const selectedLoop = loop({ id: "loop_branch", name: "Branch Loop" });
+
+    const { result } = renderHook(() =>
+      useFlowLayout({
+        timeline: [
+          timelineTrial({ id: 1, name: "Parent", branches: ["loop_branch"] }),
+          timelineLoop({ id: "loop_branch", name: "Branch Loop" }),
+        ],
+        selectedTrial: null,
+        selectedLoop,
+        onSelectTrial: vi.fn(),
+        onSelectLoop,
+        onAddBranch,
+        onOpenLoop,
+      }),
+    );
+
+    const node = result.current.nodes.find(
+      (item) => item.id === "loop-loop_branch",
+    )!;
+
+    expect(node.data.selected).toBe(true);
+    expect(typeof node.data.onAddBranch).toBe("function");
+    expect(typeof node.data.onOpenLoop).toBe("function");
+
+    act(() => {
+      node.data.onClick();
+      node.data.onAddBranch();
+      node.data.onOpenLoop();
+    });
+
+    expect(onSelectLoop).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "loop_branch", name: "Branch Loop" }),
+    );
+    expect(onAddBranch).toHaveBeenCalledWith("loop_branch");
+    expect(onOpenLoop).toHaveBeenCalledWith("loop_branch");
   });
 });
 
@@ -464,6 +616,7 @@ describe("GenerateNodesAndEdges", () => {
   it("fetches full loop data and opens nested loops from SubCanvas loop nodes", async () => {
     const onSelectLoop = vi.fn();
     const onOpenNestedLoop = vi.fn();
+    const onAddBranch = vi.fn();
     const getLoop = vi.fn(async () =>
       loop({ id: "loop_2", name: "Full Nested Loop" }),
     );
@@ -479,7 +632,7 @@ describe("GenerateNodesAndEdges", () => {
         onOpenNestedLoop,
         getTrial: vi.fn(),
         getLoop,
-        onAddBranch: vi.fn(),
+        onAddBranch,
       }),
     );
 
@@ -487,10 +640,12 @@ describe("GenerateNodesAndEdges", () => {
 
     expect(node.id).toBe("loop-loop_2");
     expect(node.data.selected).toBe(true);
+    expect(typeof node.data.onAddBranch).toBe("function");
     expect(typeof node.data.onOpenLoop).toBe("function");
 
     await act(async () => {
       await node.data.onClick();
+      node.data.onAddBranch();
       node.data.onOpenLoop();
     });
 
@@ -498,6 +653,185 @@ describe("GenerateNodesAndEdges", () => {
     expect(onSelectLoop).toHaveBeenCalledWith(
       expect.objectContaining({ id: "loop_2", name: "Full Nested Loop" }),
     );
+    expect(onAddBranch).toHaveBeenCalledWith("loop_2");
     expect(onOpenNestedLoop).toHaveBeenCalledWith("loop_2");
+  });
+
+  it("connects sequential top-level trial and loop combinations inside SubCanvas timelines", () => {
+    const { result } = renderHook(() =>
+      GenerateNodesAndEdges({
+        loopTimeline: [
+          timelineTrial({ id: 9, name: "Intro" }),
+          timelineTrial({ id: 10, name: "Practice" }),
+          timelineLoop({ id: "loop_a", name: "Loop A" }),
+          timelineLoop({ id: "loop_b", name: "Loop B" }),
+        ],
+        size: { width: 620, height: 320 },
+        selectedTrial: null,
+        selectedLoop: null,
+        onSelectTrial: vi.fn(),
+        onSelectLoop: vi.fn(),
+        onOpenNestedLoop: undefined,
+        getTrial: vi.fn(),
+        getLoop: vi.fn(),
+        onAddBranch: vi.fn(),
+      }),
+    );
+
+    expect(result.current.nodes.map((node) => node.id)).toEqual([
+      "trial-9",
+      "trial-10",
+      "loop-loop_a",
+      "loop-loop_b",
+    ]);
+    expect(result.current.nodes.at(-1)?.data.onOpenLoop).toBeUndefined();
+    expect(result.current.edges.map((edge) => [edge.source, edge.target])).toEqual(
+      expect.arrayContaining([
+        ["trial-9", "trial-10"],
+        ["trial-10", "loop-loop_a"],
+        ["loop-loop_a", "loop-loop_b"],
+      ]),
+    );
+  });
+
+  it("keeps terminal SubCanvas merge points without adding a continuation edge", () => {
+    const { result } = renderHook(() =>
+      GenerateNodesAndEdges({
+        loopTimeline: [
+          timelineTrial({ id: 10, name: "Branch A", branches: [12] }),
+          timelineTrial({ id: 11, name: "Branch B", branches: [12] }),
+          timelineTrial({ id: 12, name: "Terminal Merge" }),
+        ],
+        size: { width: 620, height: 320 },
+        selectedTrial: null,
+        selectedLoop: null,
+        onSelectTrial: vi.fn(),
+        onSelectLoop: vi.fn(),
+        onOpenNestedLoop: vi.fn(),
+        getTrial: vi.fn(),
+        getLoop: vi.fn(),
+        onAddBranch: vi.fn(),
+      }),
+    );
+
+    expect(result.current.edges.map((edge) => [edge.source, edge.target])).toEqual(
+      expect.arrayContaining([
+        ["trial-10", "trial-12"],
+        ["trial-11", "trial-12"],
+      ]),
+    );
+    expect(result.current.edges.map((edge) => [edge.source, edge.target])).not.toContainEqual([
+      "trial-12",
+      expect.any(String),
+    ]);
+  });
+
+  it("does not select SubCanvas nodes when full trial or loop lookup misses", async () => {
+    const onSelectTrial = vi.fn();
+    const onSelectLoop = vi.fn();
+
+    const { result } = renderHook(() =>
+      GenerateNodesAndEdges({
+        loopTimeline: [
+          timelineTrial({ id: 10, name: "Missing Trial" }),
+          timelineLoop({ id: "missing_loop", name: "Missing Loop" }),
+        ],
+        size: { width: 620, height: 320 },
+        selectedTrial: null,
+        selectedLoop: null,
+        onSelectTrial,
+        onSelectLoop,
+        onOpenNestedLoop: vi.fn(),
+        getTrial: vi.fn(async () => null),
+        getLoop: vi.fn(async () => null),
+        onAddBranch: vi.fn(),
+      }),
+    );
+
+    await act(async () => {
+      await result.current.nodes[0].data.onClick();
+      await result.current.nodes[1].data.onClick();
+    });
+
+    expect(onSelectTrial).not.toHaveBeenCalled();
+    expect(onSelectLoop).not.toHaveBeenCalled();
+  });
+
+  it("ignores missing SubCanvas branch targets", () => {
+    const { result } = renderHook(() =>
+      GenerateNodesAndEdges({
+        loopTimeline: [
+          timelineTrial({ id: 10, name: "Parent", branches: [999] }),
+          timelineTrial({ id: 11, name: "After Missing Branch" }),
+        ],
+        size: { width: 620, height: 320 },
+        selectedTrial: null,
+        selectedLoop: null,
+        onSelectTrial: vi.fn(),
+        onSelectLoop: vi.fn(),
+        onOpenNestedLoop: vi.fn(),
+        getTrial: vi.fn(),
+        getLoop: vi.fn(),
+        onAddBranch: vi.fn(),
+      }),
+    );
+
+    expect(result.current.nodes.map((node) => node.id)).toEqual([
+      "trial-10",
+      "trial-11",
+    ]);
+    expect(result.current.edges).toHaveLength(0);
+  });
+
+  it("continues from shared SubCanvas loop merge targets to following loops", () => {
+    const { result } = renderHook(() =>
+      GenerateNodesAndEdges({
+        loopTimeline: [
+          timelineTrial({ id: 10, name: "Branch A", branches: ["merge_loop"] }),
+          timelineTrial({ id: 11, name: "Branch B", branches: ["merge_loop"] }),
+          timelineLoop({ id: "merge_loop", name: "Shared Loop" }),
+          timelineLoop({ id: "after_loop", name: "After Loop" }),
+        ],
+        size: { width: 620, height: 320 },
+        selectedTrial: null,
+        selectedLoop: null,
+        onSelectTrial: vi.fn(),
+        onSelectLoop: vi.fn(),
+        onOpenNestedLoop: vi.fn(),
+        getTrial: vi.fn(),
+        getLoop: vi.fn(),
+        onAddBranch: vi.fn(),
+      }),
+    );
+
+    expect(result.current.edges.map((edge) => [edge.source, edge.target])).toEqual(
+      expect.arrayContaining([
+        ["trial-10", "loop-merge_loop"],
+        ["trial-11", "loop-merge_loop"],
+        ["loop-merge_loop", "loop-after_loop"],
+      ]),
+    );
+  });
+
+  it("deduplicates repeated top-level SubCanvas item ids without adding parent edges", () => {
+    const { result } = renderHook(() =>
+      GenerateNodesAndEdges({
+        loopTimeline: [
+          timelineTrial({ id: 10, name: "Repeated" }),
+          timelineTrial({ id: 10, name: "Repeated Again" }),
+        ],
+        size: { width: 620, height: 320 },
+        selectedTrial: null,
+        selectedLoop: null,
+        onSelectTrial: vi.fn(),
+        onSelectLoop: vi.fn(),
+        onOpenNestedLoop: vi.fn(),
+        getTrial: vi.fn(),
+        getLoop: vi.fn(),
+        onAddBranch: vi.fn(),
+      }),
+    );
+
+    expect(result.current.nodes.map((node) => node.id)).toEqual(["trial-10"]);
   });
 });

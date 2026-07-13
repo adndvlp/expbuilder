@@ -56,11 +56,12 @@ describe("FileUploader", () => {
   });
 
   it("renders upload inputs, filters .DS_Store and forwards upload changes", () => {
-    const { props, container } = renderUploader();
+    const { props, container } = renderUploader({ uploadStatus: "Uploading..." });
 
     expect(screen.getByText("first.png")).toBeInTheDocument();
     expect(screen.getByText("second.png")).toBeInTheDocument();
     expect(screen.queryByText(".DS_Store")).not.toBeInTheDocument();
+    expect(screen.getByText("Uploading...")).toBeInTheDocument();
 
     const [fileInput, folderInput] = Array.from(
       container.querySelectorAll<HTMLInputElement>('input[type="file"]'),
@@ -94,6 +95,20 @@ describe("FileUploader", () => {
     expect(screen.getByText("first.png")).toBeInTheDocument();
   });
 
+  it("logs clipboard copy failures", async () => {
+    const error = new Error("clipboard unavailable");
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    installClipboard(vi.fn(async () => Promise.reject(error)));
+    renderUploader();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("first.png"));
+      await Promise.resolve();
+    });
+
+    expect(consoleError).toHaveBeenCalledWith("Failed to copy: ", error);
+  });
+
   it("deletes one file outside multi-select mode", () => {
     const { props } = renderUploader();
 
@@ -121,6 +136,49 @@ describe("FileUploader", () => {
     expect(window.confirm).toHaveBeenCalledWith("Delete 1 selected file(s)?");
     expect(props.onDeleteMultipleFiles).toHaveBeenCalledWith([files[0]]);
     expect(screen.getByText("Select multiple files")).toBeInTheDocument();
+  });
+
+  it("toggles individual selections and cancels multi-select mode", () => {
+    const { props } = renderUploader();
+
+    fireEvent.click(screen.getByText("Select multiple files"));
+
+    const switches = screen.getAllByLabelText("toggle switch");
+    fireEvent.click(switches[1]);
+    expect(screen.getByText("Delete selected (1)")).toBeInTheDocument();
+
+    fireEvent.click(switches[1]);
+    expect(screen.getByText("Delete selected (0)")).toBeDisabled();
+
+    fireEvent.click(screen.getByText("Cancel selection"));
+    expect(screen.getByText("Select multiple files")).toBeInTheDocument();
+    expect(props.onDeleteFile).not.toHaveBeenCalled();
+  });
+
+  it("selects all visible files and clears the select-all state", () => {
+    renderUploader();
+
+    fireEvent.click(screen.getByText("Select multiple files"));
+
+    const selectAll = screen.getAllByLabelText("toggle switch")[0];
+    fireEvent.click(selectAll);
+    expect(screen.getByText("Delete selected (2)")).toBeInTheDocument();
+
+    fireEvent.click(selectAll);
+    expect(screen.getByText("Delete selected (0)")).toBeDisabled();
+  });
+
+  it("keeps selected files when bulk deletion is not confirmed", () => {
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    const { props } = renderUploader();
+
+    fireEvent.click(screen.getByText("Select multiple files"));
+    fireEvent.click(screen.getAllByLabelText("toggle switch")[1]);
+    fireEvent.click(screen.getByText("Delete selected (1)"));
+
+    expect(window.confirm).toHaveBeenCalledWith("Delete 1 selected file(s)?");
+    expect(props.onDeleteMultipleFiles).not.toHaveBeenCalled();
+    expect(screen.getByText("Delete selected (1)")).toBeInTheDocument();
   });
 
   it("falls back to deleting selected files one by one without a bulk callback", () => {

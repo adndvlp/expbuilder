@@ -112,10 +112,24 @@ describe("Auth flows", () => {
     expect(routerMocks.navigate).toHaveBeenCalledWith("/home");
   });
 
+  it("completes login when Firebase returns no user payload", async () => {
+    vi.mocked(signInWithEmailAndPassword).mockResolvedValueOnce(null as any);
+    const { container } = render(<Login />);
+
+    fillAuthForm(container, ["user@test.dev", "secret"]);
+    fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
+
+    await waitFor(() => {
+      expect(routerMocks.navigate).toHaveBeenCalledWith("/home");
+    });
+    expect(localStorage.setItem).not.toHaveBeenCalled();
+  });
+
   it("maps Firebase login errors to field messages", async () => {
     vi.mocked(signInWithEmailAndPassword)
       .mockRejectedValueOnce({ code: "auth/user-not-found" })
-      .mockRejectedValueOnce({ code: "auth/wrong-password" });
+      .mockRejectedValueOnce({ code: "auth/wrong-password" })
+      .mockRejectedValueOnce(new Error("Network unavailable"));
 
     const { container, rerender } = render(<Login />);
 
@@ -127,6 +141,20 @@ describe("Auth flows", () => {
     fillAuthForm(container, ["user@test.dev", "bad-secret"]);
     fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
     expect(await screen.findByText("Incorrect password")).toBeInTheDocument();
+
+    rerender(<Login />);
+    fillAuthForm(container, ["user@test.dev", "secret"]);
+    fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
+    expect(await screen.findByText("Network unavailable")).toBeInTheDocument();
+
+    vi.mocked(signInWithEmailAndPassword).mockRejectedValueOnce({
+      code: "auth/internal-error",
+      message: "",
+    });
+    rerender(<Login />);
+    fillAuthForm(container, ["user@test.dev", "secret"]);
+    fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
+    expect(await screen.findByText("Login failed")).toBeInTheDocument();
   });
 
   it("validates registration locally before creating a Firebase user", () => {
@@ -186,7 +214,8 @@ describe("Auth flows", () => {
   it("maps registration Firebase errors to field messages", async () => {
     vi.mocked(createUserWithEmailAndPassword)
       .mockRejectedValueOnce({ code: "auth/email-already-in-use" })
-      .mockRejectedValueOnce({ code: "auth/weak-password" });
+      .mockRejectedValueOnce({ code: "auth/weak-password" })
+      .mockRejectedValueOnce(new Error("Registration unavailable"));
 
     const { container, rerender } = render(<Register />);
 
@@ -206,6 +235,28 @@ describe("Auth flows", () => {
     ]);
     fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
     expect(await screen.findByText("Password is too weak")).toBeInTheDocument();
+
+    rerender(<Register />);
+    fillAuthForm(container, [
+      "new@test.dev",
+      "long-enough-password",
+      "long-enough-password",
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
+    expect(await screen.findByText("Registration unavailable")).toBeInTheDocument();
+
+    vi.mocked(createUserWithEmailAndPassword).mockRejectedValueOnce({
+      code: "auth/internal-error",
+      message: "",
+    });
+    rerender(<Register />);
+    fillAuthForm(container, [
+      "new@test.dev",
+      "long-enough-password",
+      "long-enough-password",
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
+    expect(await screen.findByText("Registration failed")).toBeInTheDocument();
   });
 
   it("renders protected children or redirects based on auth state", async () => {

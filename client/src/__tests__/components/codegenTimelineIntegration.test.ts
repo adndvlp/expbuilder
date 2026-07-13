@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   generateAllCodes,
+  getPluginDefaultValue,
   generateSingleLoopCode,
   generateSingleTrialCode,
+  resolveColumnValue,
 } from "../../pages/ExperimentBuilder/utils/generateTrialLoopCodes";
 import type {
   Loop,
@@ -56,13 +58,56 @@ describe("generateTrialLoopCodes integration", () => {
     })) as unknown as typeof fetch;
   });
 
+  it("resolves defaults and typed or CSV column values", () => {
+    const parameters = [
+      { key: "without_default" },
+      { key: "count", type: "number", default: 5 },
+    ];
+
+    expect(getPluginDefaultValue(parameters, "without_default")).toBe("");
+    expect(getPluginDefaultValue(parameters, "missing")).toBe("");
+    expect(resolveColumnValue(parameters, undefined)).toBe("");
+    expect(resolveColumnValue(parameters, { source: "none" })).toBe("");
+    expect(resolveColumnValue(parameters, { source: "typed", value: null })).toBe(
+      "",
+    );
+    expect(
+      resolveColumnValue(
+        parameters,
+        { source: "csv", value: 0 },
+        { 0: "7" },
+        undefined,
+        "count",
+      ),
+    ).toBe(7);
+    expect(
+      resolveColumnValue(
+        parameters,
+        { source: "csv", value: {} },
+        { count: "9" },
+        undefined,
+        "count",
+      ),
+    ).toBe(5);
+    expect(
+      resolveColumnValue(
+        parameters,
+        { source: "unsupported" },
+        undefined,
+        undefined,
+        "count",
+      ),
+    ).toBe(5);
+  });
+
   it("generates a single trial by fetching full trial data and plugin metadata", async () => {
     const fullTrial = trial({
       id: 1,
       name: "Generated Trial",
       plugin: "plugin-html-keyboard-response",
+      csvJson: [{ StimulusColumn: "<p>Hello</p>" }],
       columnMapping: {
-        stimulus: { source: "typed", value: "<p>Hello</p>" },
+        stimulus: { source: "csv", value: "StimulusColumn" },
         choices: { source: "typed", value: ["y", "n"] },
       },
     });
@@ -144,6 +189,33 @@ describe("generateTrialLoopCodes integration", () => {
     expect(normalize(codes[0])).toContain("timeline.push(Top_Trial_procedure)");
     expect(normalize(codes[1])).toContain("const loop_1_procedure = {");
     expect(getLoopTimeline).toHaveBeenCalledWith("loop_1", false);
+  });
+
+  it("handles missing timelines and top-level items that produce no code", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          timeline: [
+            timelineLoop({ id: "missing-loop", name: "Missing loop" }),
+            { id: "group", type: "group", name: "Unsupported group" },
+          ],
+        }),
+      } as Response) as unknown as typeof fetch;
+
+    const getLoop = vi.fn(async () => null);
+
+    await expect(
+      generateAllCodes("experiment-empty", [], vi.fn(), vi.fn(), getLoop),
+    ).resolves.toEqual([]);
+    await expect(
+      generateAllCodes("experiment-items", [], vi.fn(), vi.fn(), getLoop),
+    ).resolves.toEqual([]);
+
+    expect(getLoop).toHaveBeenCalledWith("missing-loop");
   });
 
   it("marks top-level shared branch targets as merge points in generated code", async () => {
@@ -355,6 +427,40 @@ describe("generateTrialLoopCodes integration", () => {
     expect(code).toBe(savedCode);
   });
 
+  it("returns empty saved WebGazer code when none exists", async () => {
+    const code = await generateSingleTrialCode(
+      { id: 22 } as Trial,
+      [],
+      "experiment-1",
+      vi.fn(async () =>
+        trial({ id: 22, name: "WebGazer empty", plugin: "webgazer" }),
+      ),
+    );
+
+    expect(code).toBe("");
+  });
+
+  it("falls back to trial generation when parent loop metadata is missing", async () => {
+    const fullTrial = trial({
+      id: 23,
+      name: "Orphaned trial",
+      plugin: "plugin-html-keyboard-response",
+      parentLoopId: "missing-parent",
+      columnMapping: undefined,
+    });
+
+    const code = await generateSingleTrialCode(
+      { id: 23 } as Trial,
+      [],
+      "experiment-1",
+      vi.fn(async () => fullTrial),
+      vi.fn(async () => []),
+      vi.fn(async () => null),
+    );
+
+    expect(code).toContain("Orphaned_trial");
+  });
+
   it("generates loop code with updateState=false loop fetches and unified child stimuli", async () => {
     const fullLoop = loop({
       id: "loop_1",
@@ -498,5 +604,39 @@ describe("generateTrialLoopCodes integration", () => {
     expect(code).not.toContain(
       "const branches = [99]; if (branches.length > 0) { window.nextTrialId = branches[0];",
     );
+  });
+
+  it("handles an empty nested loop entry in its parent loop", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const parentLoop = loop({
+      id: "parent-empty-child",
+      name: "Parent empty child",
+      trials: ["empty-child"],
+    });
+    const childLoop = loop({
+      id: "empty-child",
+      name: "Empty child",
+      trials: [],
+      parentLoopId: "parent-empty-child",
+    });
+    const getLoop = vi.fn(async (id: string | number) =>
+      id === "parent-empty-child" ? parentLoop : childLoop,
+    );
+    const getLoopTimeline = vi.fn(async (id: string | number) =>
+      id === "parent-empty-child"
+        ? [timelineLoop({ id: "empty-child", name: "Empty child" })]
+        : [],
+    );
+
+    const code = await generateSingleLoopCode(
+      { id: "parent-empty-child" } as Loop,
+      "experiment-1",
+      [],
+      vi.fn(),
+      getLoopTimeline,
+      getLoop,
+    );
+
+    expect(code).toBe("");
   });
 });

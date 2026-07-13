@@ -240,6 +240,328 @@ describe("useTrialCode composition", () => {
     expect(code).toContain("data.customFinish = true;");
     expect(code).toContain("window.nextTrialId = 6;");
   });
+
+  it("generates explicit DynamicPlugin props for loop trials with passthrough params", () => {
+    const { genTrialCode } = useTrialCode({
+      id: 6,
+      branches: ["trial-next", 9],
+      branchConditions: [],
+      pluginName: "DynamicPlugin",
+      parameters: [
+        { key: "trial_duration", type: "number" },
+        { key: "response_ends_trial", type: "boolean" },
+      ],
+      data: [{ key: "response" }],
+      getColumnValue,
+      columnMapping: {
+        trial_duration: { source: "typed", value: 1500 },
+        response_ends_trial: { source: "typed", value: false },
+      },
+      uploadedFiles: [],
+      csvJson: [],
+      trialName: "Loop Dynamic",
+      includesExtensions: false,
+      extensions: "",
+      orders: false,
+      stimuliOrders: undefined as any,
+      categories: false,
+      categoryData: undefined as any,
+      isInLoop: true,
+    });
+
+    const code = normalize(genTrialCode());
+
+    expect(code).toContain("type: DynamicPlugin");
+    expect(code).toContain('components: jsPsych.timelineVariable("components_Loop_Dynamic")');
+    expect(code).toContain(
+      'response_components: jsPsych.timelineVariable("response_components_Loop_Dynamic")',
+    );
+    expect(code).toContain(
+      'trial_duration: jsPsych.timelineVariable("trial_duration_Loop_Dynamic")',
+    );
+    expect(code).toContain(
+      'response_ends_trial: jsPsych.timelineVariable("response_ends_trial_Loop_Dynamic")',
+    );
+    expect(code).toContain('response: "response_Loop_Dynamic"');
+    expect(code).toContain("branches: [\"trial-next\", 9]");
+    expect(code).toContain("NextTrialId = branches[0];");
+    expect(code).not.toContain("timeline.push(Loop_Dynamic_procedure)");
+  });
+
+  it("generates explicit DynamicPlugin defaults without timeline variables when it has no mapped data", () => {
+    const { genTrialCode } = useTrialCode({
+      id: 7,
+      branches: ["fallback", 10],
+      branchConditions: [],
+      pluginName: "DynamicPlugin",
+      parameters: [],
+      data: [{ key: "rt" }],
+      getColumnValue,
+      columnMapping: {},
+      uploadedFiles: [],
+      csvJson: [],
+      trialName: "Dynamic Empty",
+      includesExtensions: false,
+      extensions: "",
+      orders: false,
+      stimuliOrders: [],
+      categories: false,
+      categoryData: [],
+    });
+
+    const code = normalize(genTrialCode());
+
+    expect(code).toContain("type: DynamicPlugin");
+    expect(code).toContain('rt: "rt"');
+    expect(code).toContain("branches: [\"fallback\", 10]");
+    expect(code).not.toContain("components: jsPsych.timelineVariable");
+    expect(code).not.toContain("timeline_variables:");
+  });
+
+  it("omits DynamicPlugin branch metadata when empty defaults have no branches", () => {
+    const { genTrialCode } = useTrialCode({
+      id: 71,
+      branches: [],
+      branchConditions: [],
+      pluginName: "DynamicPlugin",
+      parameters: [],
+      data: [],
+      getColumnValue,
+      columnMapping: {},
+      uploadedFiles: [],
+      csvJson: [],
+      trialName: "Dynamic No Branches",
+      includesExtensions: false,
+      extensions: "",
+      orders: false,
+      stimuliOrders: [],
+      categories: false,
+      categoryData: [],
+    });
+
+    const code = normalize(genTrialCode());
+
+    expect(code).toContain("type: DynamicPlugin");
+    expect(code).not.toContain("branches:");
+    expect(code).not.toContain("timeline_variables:");
+  });
+
+  it("generates top-level explicit DynamicPlugin variables without branch metadata", () => {
+    const { genTrialCode } = useTrialCode({
+      id: 72,
+      branches: [],
+      branchConditions: [],
+      pluginName: "DynamicPlugin",
+      parameters: [
+        { key: "trial_duration", type: "number" },
+        { key: "__canvasStyles", type: "complex" },
+      ],
+      data: [{ key: "rt" }],
+      getColumnValue,
+      columnMapping: {
+        trial_duration: { source: "typed", value: 500 },
+        __canvasStyles: { source: "typed", value: { color: "red" } },
+      },
+      uploadedFiles: [],
+      csvJson: [],
+      trialName: "Dynamic Variables",
+      includesExtensions: false,
+      extensions: "",
+      orders: false,
+      stimuliOrders: [],
+      categories: false,
+      categoryData: [],
+    });
+
+    const code = normalize(genTrialCode());
+
+    expect(code).toContain('components: jsPsych.timelineVariable("components")');
+    expect(code).toContain(
+      'response_components: jsPsych.timelineVariable("response_components")',
+    );
+    expect(code).toContain('trial_duration: jsPsych.timelineVariable("trial_duration")');
+    expect(code).toContain('__canvasStyles: jsPsych.timelineVariable("__canvasStyles")');
+    expect(code).toContain('rt: "rt"');
+    expect(code).not.toContain("branches:");
+  });
+
+  it("generates a data-only normal plugin branch when no mapped values exist", () => {
+    const { genTrialCode } = useTrialCode({
+      id: 8,
+      branches: ["branch-a", 11],
+      branchConditions: [],
+      pluginName: "",
+      parameters: [],
+      data: [{ key: "response" }],
+      getColumnValue,
+      columnMapping: {},
+      uploadedFiles: [],
+      csvJson: [],
+      trialName: "No Plugin",
+      includesExtensions: false,
+      extensions: "",
+      orders: false,
+      stimuliOrders: [],
+      categories: false,
+      categoryData: [],
+    });
+
+    const code = normalize(genTrialCode());
+
+    expect(code).toContain("const No_Plugin_timeline = { type:");
+    expect(code).toContain('response: "response"');
+    expect(code).toContain("branches: [\"branch-a\", 11]");
+    expect(code).not.toContain("timeline_variables:");
+  });
+
+  it("omits normal plugin branch metadata when data-only defaults have no branches", () => {
+    const { genTrialCode } = useTrialCode({
+      id: 81,
+      branches: [],
+      branchConditions: [],
+      pluginName: "html-keyboard-response",
+      parameters: [],
+      data: [],
+      getColumnValue,
+      columnMapping: {},
+      uploadedFiles: [],
+      csvJson: [],
+      trialName: "Plain No Branches",
+      includesExtensions: false,
+      extensions: "",
+      orders: false,
+      stimuliOrders: [],
+      categories: false,
+      categoryData: [],
+    });
+
+    const code = normalize(genTrialCode());
+
+    expect(code).toContain("type: htmlKeyboardResponse");
+    expect(code).not.toContain("branches:");
+    expect(code).not.toContain("timeline_variables:");
+  });
+
+  it("formats string branch ids in normal plugin timeline-variable data", () => {
+    const { genTrialCode } = useTrialCode({
+      id: 82,
+      branches: ["string-target"],
+      branchConditions: [],
+      pluginName: "html-keyboard-response",
+      parameters: [{ key: "stimulus", type: "html_string" }],
+      data: [],
+      getColumnValue,
+      columnMapping: {
+        stimulus: { source: "typed", value: "Prompt" },
+      },
+      uploadedFiles: [],
+      csvJson: [],
+      trialName: "String Branch",
+      includesExtensions: false,
+      extensions: "",
+      orders: false,
+      stimuliOrders: [],
+      categories: false,
+      categoryData: [],
+    });
+
+    const code = normalize(genTrialCode());
+
+    expect(code).toContain("branches: [\"string-target\"]");
+    expect(code).toContain("window.nextTrialId = \"string-target\";");
+  });
+
+  it("serializes function-valued parameters and component button callbacks without quotes", () => {
+    const buttonHtml = function buttonHtml(choice: string) {
+      return `<button>${choice}</button>`;
+    };
+    const { genTrialCode } = useTrialCode({
+      id: 9,
+      branches: [],
+      branchConditions: [],
+      pluginName: "html-button-response",
+      parameters: [
+        { key: "on_finish", type: "function" },
+        { key: "button_html", type: "FUNCTION" },
+        { key: "components", type: "complex" },
+      ],
+      data: [],
+      getColumnValue,
+      columnMapping: {
+        on_finish: {
+          source: "typed",
+          value: "function(data) { data.serialized = true; }",
+        },
+        button_html: {
+          source: "typed",
+          value: "(choice) => `<button>${choice}</button>`",
+        },
+        components: {
+          source: "typed",
+          value: [
+            { type: "button", button_html: buttonHtml },
+            {
+              type: "button",
+              button_html: "choice => `<button>${choice}</button>`",
+            },
+            { type: "button", button_html: "<button>%choice%</button>" },
+            { type: "button", button_html: "" },
+            { type: "label", text: "Plain text" },
+          ],
+        },
+      },
+      uploadedFiles: [],
+      csvJson: [],
+      trialName: "Function Trial",
+      includesExtensions: false,
+      extensions: "",
+      orders: false,
+      stimuliOrders: [],
+      categories: false,
+      categoryData: [],
+    });
+
+    const code = normalize(genTrialCode());
+
+    expect(code).toContain(
+      "on_finish: function(data) { data.serialized = true; }",
+    );
+    expect(code).toContain("button_html: (choice) => `<button>${choice}</button>`");
+    expect(code).toMatch(/button_html: function buttonHtml\d?\(choice\)/);
+    expect(code).toContain("button_html: choice => `<button>${choice}</button>`");
+    expect(code).toContain('button_html: "<button>%choice%</button>"');
+    expect(code).toContain('button_html: ""');
+    expect(code).toContain('text: "Plain text"');
+  });
+
+  it("adds extensions to both the timeline and top-level procedure", () => {
+    const { genTrialCode } = useTrialCode({
+      id: 10,
+      branches: [],
+      branchConditions: [],
+      pluginName: "html-keyboard-response",
+      parameters: [{ key: "stimulus", type: "html_string" }],
+      data: [],
+      getColumnValue,
+      columnMapping: {
+        stimulus: { source: "typed", value: "<p>Tracked</p>" },
+      },
+      uploadedFiles: [],
+      csvJson: [],
+      trialName: "Extension Trial",
+      includesExtensions: true,
+      extensions: "[{ type: jsPsychExtensionWebgazer }]",
+      orders: false,
+      stimuliOrders: [],
+      categories: false,
+      categoryData: [],
+    });
+
+    const code = normalize(genTrialCode());
+
+    expect(code).toContain("extensions: [{ type: jsPsychExtensionWebgazer }] };");
+    expect(code).toContain("timeline.push(Extension_Trial_procedure)");
+  });
 });
 
 describe("useLoopCode composition", () => {
@@ -512,6 +834,79 @@ describe("useLoopCode composition", () => {
     expect(code).toContain("window.nextTrialId = branches[0];");
   });
 
+  it("generates repeat conditions with automatic loop branching", () => {
+    const genLoopCode = useLoopCode({
+      id: "loop_repeat_branch",
+      branches: [10, "fallback_branch"],
+      branchConditions: [],
+      repeatConditions: [
+        {
+          id: 1,
+          rules: [{ prop: "response", op: "==", value: "retry" }],
+          jumpToTrialId: 10,
+        },
+      ],
+      repetitions: 1,
+      randomize: false,
+      orders: false,
+      stimuliOrders: [],
+      categories: false,
+      categoryData: [],
+      trials: [
+        {
+          trialName: "Repeat Branch Trial",
+          pluginName: "html-keyboard-response",
+          timelineProps:
+            "const Repeat_Branch_Trial_timeline = { data: { trial_id: 10 } };",
+          mappedJson: [{ stimulus_Repeat_Branch_Trial: "A" }],
+        },
+      ],
+      unifiedStimuli: [{ stimulus_Repeat_Branch_Trial: "A" }],
+    });
+
+    const code = normalize(genLoopCode());
+
+    expect(code).toContain("const repeatConditionsArray =");
+    expect(code).toContain('const branches = [10,"fallback_branch"];');
+    expect(code).toContain("window.nextTrialId = branches[0];");
+  });
+
+  it("generates conditional loop branching without repeat conditions", () => {
+    const genLoopCode = useLoopCode({
+      id: "loop_branch_only",
+      branches: [10, "branch_b"],
+      branchConditions: [
+        {
+          id: 1,
+          rules: [{ column: "response", op: "==", value: "go" }],
+          nextTrialId: "branch_b",
+        },
+      ],
+      repetitions: 1,
+      randomize: false,
+      orders: false,
+      stimuliOrders: [],
+      categories: false,
+      categoryData: [],
+      trials: [
+        {
+          trialName: "Branch Only Trial",
+          pluginName: "html-keyboard-response",
+          timelineProps:
+            "const Branch_Only_Trial_timeline = { data: { trial_id: 10 } };",
+          mappedJson: [{ stimulus_Branch_Only_Trial: "A" }],
+        },
+      ],
+      unifiedStimuli: [{ stimulus_Branch_Only_Trial: "A" }],
+    });
+
+    const code = normalize(genLoopCode());
+
+    expect(code).toContain('const branches = [10,"branch_b"];');
+    expect(code).toContain("const branchConditions =");
+    expect(code).toContain("window.nextTrialId = branches[0];");
+  });
+
   it("propagates nested loop branching to parent loop variables", () => {
     const genLoopCode = useLoopCode({
       id: "loop_child",
@@ -541,5 +936,72 @@ describe("useLoopCode composition", () => {
     expect(code).toContain("loop_loop_parent_SkipRemaining = true;");
     expect(code).toContain("loop_loop_parent_BranchingActive = true;");
     expect(code).not.toContain("window.nextTrialId = branches[0];");
+  });
+
+  it("recursively generates nested loop items without precomputed timeline props", () => {
+    const genLoopCode = useLoopCode({
+      id: "parent_loop",
+      branches: undefined,
+      branchConditions: undefined,
+      repetitions: 1,
+      randomize: false,
+      orders: false,
+      stimuliOrders: [],
+      categories: false,
+      categoryData: [],
+      trials: [
+        {
+          isLoop: true,
+          loopId: "precomputed_loop",
+          loopName: "Precomputed Loop",
+          timelineProps: "const precomputed_loop_procedure = { timeline: [] };",
+          items: [],
+        } as any,
+        {
+          isLoop: true,
+          loopId: "nested_loop",
+          loopName: "Nested Loop",
+          items: [
+            {
+              id: 2,
+              trialName: "Nested Trial",
+              pluginName: "html-keyboard-response",
+              timelineProps:
+                "const Nested_Trial_timeline = { data: { trial_id: 2 } };",
+              mappedJson: [{ stimulus_Nested_Trial: "Nested" }],
+            },
+          ],
+        } as any,
+      ],
+      unifiedStimuli: [],
+    });
+
+    const code = normalize(genLoopCode());
+
+    expect(code).toContain("const nested_loop_procedure =");
+    expect(code).toContain("const precomputed_loop_procedure = { timeline: [] };");
+    expect(code).toContain("const parent_loop_procedure =");
+    expect(code).toContain("timeline: [Precomputed_Loop_wrapper, Nested_Loop_wrapper]");
+  });
+
+  it("uses main and Loop fallbacks when the loop id is absent", () => {
+    const genLoopCode = useLoopCode({
+      id: undefined,
+      branches: [],
+      branchConditions: [],
+      repetitions: 1,
+      randomize: false,
+      orders: false,
+      stimuliOrders: [],
+      categories: false,
+      categoryData: [],
+      trials: [],
+      unifiedStimuli: [],
+    });
+
+    const code = normalize(genLoopCode());
+
+    expect(code).toContain("Branching logic variables for loop main");
+    expect(code).toContain("let loop_Loop_NextTrialId = null;");
   });
 });

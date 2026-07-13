@@ -148,6 +148,67 @@ describe("Settings account actions", () => {
     ).toBeInTheDocument();
   });
 
+  it("closes the change password modal after a successful timeout", async () => {
+    vi.useFakeTimers();
+    render(<ChangePassword />);
+
+    fireEvent.click(screen.getByText("Change Password"));
+    fireEvent.change(screen.getByLabelText("New Password"), {
+      target: { value: "secret1" },
+    });
+    fireEvent.change(screen.getByLabelText("Confirm Password"), {
+      target: { value: "secret1" },
+    });
+
+    await act(async () => {
+      fireEvent.click(getLastButton("Change Password"));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("Password changed successfully!")).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    expect(screen.queryByLabelText("New Password")).not.toBeInTheDocument();
+  });
+
+  it("closes the change password modal from close and overlay actions", () => {
+    render(<ChangePassword />);
+
+    fireEvent.click(screen.getByText("Change Password"));
+    const modalContent = screen.getByLabelText("New Password").closest(".modal-content")!;
+    fireEvent.click(modalContent);
+    expect(screen.getByLabelText("New Password")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("×"));
+    expect(screen.queryByLabelText("New Password")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Change Password"));
+    fireEvent.click(screen.getByLabelText("New Password").closest(".modal-overlay")!);
+    expect(screen.queryByLabelText("New Password")).not.toBeInTheDocument();
+  });
+
+  it("surfaces generic change password failures", async () => {
+    vi.mocked(updatePassword).mockRejectedValueOnce(new Error("network failed"));
+
+    render(<ChangePassword />);
+
+    fireEvent.click(screen.getByText("Change Password"));
+    fireEvent.change(screen.getByLabelText("New Password"), {
+      target: { value: "secret1" },
+    });
+    fireEvent.change(screen.getByLabelText("Confirm Password"), {
+      target: { value: "secret1" },
+    });
+    fireEvent.click(getLastButton("Change Password"));
+
+    expect(
+      await screen.findByText("Failed to change password. Please try again."),
+    ).toBeInTheDocument();
+  });
+
   it("deletes the Firestore user doc, Firebase user and local user cache", async () => {
     localStorage.setItem("user", "cached-user");
 
@@ -170,6 +231,41 @@ describe("Settings account actions", () => {
     expect(routerMocks.navigate).toHaveBeenCalledWith("/auth/login");
   });
 
+  it("closes the delete modal from cancel, close and overlay actions", () => {
+    render(<DeleteAccount />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete Account" }));
+    const modalContent = screen.getByText("Are you sure?").closest(".modal-content")!;
+    fireEvent.click(modalContent);
+    expect(screen.getByText("Are you sure?")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Cancel"));
+    expect(screen.queryByText("Are you sure?")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete Account" }));
+    fireEvent.click(screen.getByText("×"));
+    expect(screen.queryByText("Are you sure?")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete Account" }));
+    fireEvent.click(screen.getByText("Are you sure?").closest(".modal-overlay")!);
+    expect(screen.queryByText("Are you sure?")).not.toBeInTheDocument();
+  });
+
+  it("does not call delete APIs when there is no current user", async () => {
+    (auth as any).currentUser = null;
+
+    render(<DeleteAccount />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete Account" }));
+    fireEvent.click(getLastButton("Delete Account"));
+
+    await waitFor(() => {
+      expect(deleteDoc).not.toHaveBeenCalled();
+      expect(deleteUser).not.toHaveBeenCalled();
+    });
+    expect(routerMocks.navigate).not.toHaveBeenCalled();
+  });
+
   it("keeps the delete modal open and explains recent-login failures", async () => {
     vi.mocked(deleteUser).mockRejectedValueOnce({
       code: "auth/requires-recent-login",
@@ -184,6 +280,23 @@ describe("Settings account actions", () => {
 
     expect(window.alert).toHaveBeenCalledWith(
       "Please log out and log in again to delete your account.",
+    );
+    expect(routerMocks.navigate).not.toHaveBeenCalled();
+    expect(screen.getByText("Are you sure?")).toBeInTheDocument();
+  });
+
+  it("shows a generic alert when account deletion fails for another reason", async () => {
+    vi.mocked(deleteDoc).mockRejectedValueOnce(new Error("firestore failed"));
+
+    render(<DeleteAccount />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete Account" }));
+    await act(async () => {
+      fireEvent.click(getLastButton("Delete Account"));
+    });
+
+    expect(window.alert).toHaveBeenCalledWith(
+      "Failed to delete account. Please try again.",
     );
     expect(routerMocks.navigate).not.toHaveBeenCalled();
     expect(screen.getByText("Are you sure?")).toBeInTheDocument();

@@ -142,6 +142,12 @@ describe("useBranchConditions", () => {
           stimulus: { source: "typed", value: "old" },
         },
       },
+      {
+        id: 2,
+        nextTrialId: 2,
+        rules: [{ column: "rt", op: ">", value: "500" }],
+        customParameters: {},
+      },
     ];
     const setConditionsWrapper = vi.fn();
 
@@ -172,6 +178,7 @@ describe("useBranchConditions", () => {
             choices: { source: "none", value: null },
           },
         },
+        conditions[1],
       ],
       true,
     );
@@ -249,6 +256,185 @@ describe("useBranchConditions", () => {
       true,
     );
     expect(loadTargetTrialParameters).toHaveBeenCalledWith("3");
+  });
+
+  it("adds/removes conditions and rules and updates rule fields", () => {
+    vi.spyOn(Date, "now").mockReturnValue(777);
+    const loadTargetTrialParameters = vi.fn();
+    const setConditionsWrapper = vi.fn();
+    const conditions: Condition[] = [
+      {
+        id: 1,
+        nextTrialId: 2,
+        rules: [
+          { column: "response", op: "==", value: "yes" },
+          { column: "rt", op: ">", value: 100 },
+        ],
+        customParameters: {},
+      },
+      {
+        id: 2,
+        nextTrialId: null,
+        rules: [{ column: "score", op: "==", value: "ok" }],
+        customParameters: {},
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      useBranchConditions({
+        loadTargetTrialParameters,
+        setConditionsWrapper,
+        conditions,
+        targetTrialParameters: {},
+      }),
+    );
+
+    act(() => {
+      result.current.addCondition();
+    });
+    expect(setConditionsWrapper).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 777,
+          rules: [{ column: "", op: "==", value: "" }],
+          nextTrialId: null,
+        }),
+      ]),
+    );
+
+    act(() => {
+      result.current.removeCondition(2);
+    });
+    expect(setConditionsWrapper).toHaveBeenCalledWith([conditions[0]]);
+
+    act(() => {
+      result.current.addRuleToCondition(1);
+    });
+    expect(setConditionsWrapper).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rules: [...conditions[0].rules, { column: "", op: "==", value: "" }],
+        }),
+      ]),
+    );
+
+    act(() => {
+      result.current.removeRuleFromCondition(1, 0);
+    });
+    expect(setConditionsWrapper).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rules: [{ column: "rt", op: ">", value: 100 }],
+        }),
+      ]),
+    );
+
+    act(() => {
+      result.current.updateRule(1, 1, "value", 250, false);
+    });
+    expect(setConditionsWrapper).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rules: [
+            conditions[0].rules[0],
+            { column: "rt", op: ">", value: 250 },
+          ],
+        }),
+      ]),
+      false,
+    );
+  });
+
+  it("does not add unavailable normal custom parameters or load blank targets", () => {
+    const loadTargetTrialParameters = vi.fn();
+    const setConditionsWrapper = vi.fn();
+    const conditions: Condition[] = [
+      {
+        id: 1,
+        nextTrialId: 2,
+        rules: [{ column: "response", op: "==", value: "yes" }],
+        customParameters: {
+          stimulus: { source: "typed", value: "old" },
+        },
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      useBranchConditions({
+        loadTargetTrialParameters,
+        setConditionsWrapper,
+        conditions,
+        targetTrialParameters: {
+          2: [{ key: "stimulus", label: "Stimulus", type: "html_string" }],
+        },
+      }),
+    );
+
+    act(() => {
+      result.current.addCustomParameter(1, false);
+    });
+    expect(setConditionsWrapper).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          customParameters: {
+            stimulus: { source: "typed", value: "old" },
+          },
+        }),
+      ],
+      true,
+    );
+
+    act(() => {
+      result.current.updateNextTrial(1, "");
+    });
+    expect(loadTargetTrialParameters).not.toHaveBeenCalled();
+  });
+
+  it("handles missing target metadata and preserves unrelated conditions", () => {
+    const loadTargetTrialParameters = vi.fn();
+    const setConditionsWrapper = vi.fn();
+    const conditions: Condition[] = [
+      {
+        id: 1,
+        nextTrialId: null,
+        rules: [{ column: "response", op: "==", value: "yes" }],
+        customParameters: undefined as any,
+      },
+      {
+        id: 2,
+        nextTrialId: 3,
+        rules: [{ column: "rt", op: ">", value: 100 }],
+        customParameters: {},
+      },
+    ];
+    const { result } = renderHook(() =>
+      useBranchConditions({
+        loadTargetTrialParameters,
+        setConditionsWrapper,
+        conditions,
+        targetTrialParameters: {},
+      }),
+    );
+
+    act(() => {
+      result.current.addCustomParameter(1, false);
+      result.current.updateNextTrial(1, "");
+    });
+
+    expect(setConditionsWrapper).toHaveBeenNthCalledWith(
+      1,
+      [expect.objectContaining({ id: 1, customParameters: {} }), conditions[1]],
+      true,
+    );
+    expect(setConditionsWrapper).toHaveBeenNthCalledWith(
+      2,
+      [
+        expect.objectContaining({ id: 1, nextTrialId: "", customParameters: {} }),
+        conditions[1],
+      ],
+      true,
+    );
+    expect(loadTargetTrialParameters).not.toHaveBeenCalled();
   });
 });
 
@@ -449,6 +635,14 @@ describe("ParamsOverride condition helpers", () => {
       "300",
       loadTrialDataFields,
     );
+    const missingRule = paramsActions.updateRule(
+      conditions,
+      1,
+      99,
+      "value",
+      "400",
+      loadTrialDataFields,
+    );
 
     expect(valueUpdated[0].rules[0].value).toBe("200");
     expect(trialCleared[0].rules[0]).toEqual({
@@ -461,6 +655,7 @@ describe("ParamsOverride condition helpers", () => {
       componentIdx: "",
     });
     expect(missingCondition).toEqual(conditions);
+    expect(missingRule).toEqual(conditions);
     expect(loadTrialDataFields).not.toHaveBeenCalled();
   });
 
@@ -485,6 +680,12 @@ describe("ParamsOverride condition helpers", () => {
       false,
     );
     const dynamic = paramsActions.addParameterToOverride(conditions, 1, [], true);
+    const missingCondition = paramsActions.addParameterToOverride(
+      conditions,
+      99,
+      [],
+      true,
+    );
 
     expect(normal[0].paramsToOverride).toEqual({
       stimulus: { source: "typed", value: "old" },
@@ -494,6 +695,7 @@ describe("ParamsOverride condition helpers", () => {
       stimulus: { source: "typed", value: "old" },
       "::::": { source: "none", value: null },
     });
+    expect(missingCondition).toEqual(conditions);
   });
 
   it("leaves ParamsOverride params unchanged when no target parameter is available", () => {
@@ -545,12 +747,36 @@ describe("ParamsOverride condition helpers", () => {
       1,
       "stimulus",
     );
+    const missingCondition = paramsActions.updateParameterOverride(
+      conditions,
+      99,
+      "stimulus",
+      "typed",
+      "ignored",
+    );
+    const initialized = paramsActions.updateParameterOverride(
+      [
+        {
+          id: 2,
+          rules: [{ trialId: 1, column: "response", op: "==", value: "" }],
+          paramsToOverride: undefined,
+        } as unknown as ParamsOverrideCondition,
+      ],
+      2,
+      "choices",
+      "typed",
+      ["yes", "no"],
+    );
 
     expect(updated[0].paramsToOverride.stimulus).toEqual({
       source: "typed",
       value: "new stimulus",
     });
     expect(removed[0].paramsToOverride).toEqual({});
+    expect(missingCondition).toEqual(conditions);
+    expect(initialized[0].paramsToOverride).toEqual({
+      choices: { source: "typed", value: ["yes", "no"] },
+    });
   });
 
   it("resets dynamic selectors in ParamsOverride rule helpers", () => {
@@ -698,7 +924,10 @@ describe("ConditionalLoop condition helpers", () => {
     const conditions: LoopCondition[] = [
       {
         id: 1,
-        rules: [{ trialId: 1, column: "rt", op: "==", value: "100" }],
+        rules: [
+          { trialId: 1, column: "rt", op: "==", value: "100" },
+          { trialId: 2, column: "response", op: "!=", value: "no" },
+        ],
       },
     ];
 
@@ -728,6 +957,7 @@ describe("ConditionalLoop condition helpers", () => {
     );
 
     expect(valueUpdated[0].rules[0].value).toBe("200");
+    expect(valueUpdated[0].rules[1]).toBe(conditions[0].rules[1]);
     expect(trialCleared[0].rules[0]).toEqual({
       trialId: "",
       column: "",

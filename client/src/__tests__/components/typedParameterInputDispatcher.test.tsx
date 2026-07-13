@@ -71,6 +71,7 @@ type HarnessProps = {
   openHtmlModal?: (key: string) => void;
   openButtonModal?: (key: string) => void;
   openSurveyModal?: (key: string) => void;
+  componentMode?: boolean;
 };
 
 function Harness({
@@ -81,6 +82,7 @@ function Harness({
   openHtmlModal = vi.fn(),
   openButtonModal = vi.fn(),
   openSurveyModal = vi.fn(),
+  componentMode = false,
 }: HarnessProps) {
   const [mapping, setMapping] = useState<Record<string, ColumnMappingEntry>>({
     [paramKey]: entry,
@@ -102,6 +104,7 @@ function Harness({
         localInputValues={localInputValues}
         setLocalInputValues={setLocalInputValues}
         label="Stimulus"
+        componentMode={componentMode}
       />
       <output data-testid="mapping">{JSON.stringify(effectiveEntry)}</output>
       <output data-testid="locals">{JSON.stringify(localInputValues)}</output>
@@ -141,6 +144,23 @@ describe("TypedParameterInput dispatcher", () => {
       source: "typed",
       value: true,
     });
+  });
+
+  it("updates booleans without an autosave callback", () => {
+    render(
+      <Harness
+        paramKey="show_progress_bar"
+        type="boolean"
+        entry={{ source: "typed", value: true }}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("switch true"));
+
+    expect(screen.getByTestId("mapping")).toHaveTextContent(
+      JSON.stringify({ source: "typed", value: false }),
+    );
+    expect(screen.getByText("False")).toBeInTheDocument();
   });
 
   it("routes modal-backed inputs to the correct editor callbacks", () => {
@@ -193,12 +213,82 @@ describe("TypedParameterInput dispatcher", () => {
     expect(openHtmlModal).toHaveBeenCalledWith("choices");
   });
 
+  it("renders modal-backed preview fallbacks and truncation states", () => {
+    const { rerender } = render(
+      <Harness
+        paramKey="stimulus"
+        type="html_string"
+        entry={{ source: "typed", value: { html: "<p>Object</p>" } }}
+      />,
+    );
+    expect(screen.getByPlaceholderText("Click edit to add HTML content")).toHaveValue("");
+
+    rerender(
+      <Harness
+        paramKey="survey_json"
+        type="object"
+        entry={{ source: "typed", value: "not-survey" }}
+      />,
+    );
+    expect(screen.getByDisplayValue("Click edit to design survey")).toBeInTheDocument();
+
+    rerender(
+      <Harness
+        paramKey="survey_json"
+        type="object"
+        entry={{ source: "typed", value: {} }}
+      />,
+    );
+    expect(screen.getByDisplayValue("Survey: Empty")).toBeInTheDocument();
+
+    const longHtml = `<p>${"A".repeat(70)}</p>`;
+    rerender(
+      <Harness
+        paramKey="choices"
+        type="html_string_array"
+        entry={{ source: "typed", value: [longHtml] }}
+      />,
+    );
+    expect(screen.getByDisplayValue(/A{20}.*\.\.\./)).toBeInTheDocument();
+
+    rerender(
+      <Harness
+        paramKey="choices"
+        type="html_string_array"
+        entry={{ source: "typed", value: [] }}
+      />,
+    );
+    expect(screen.getByPlaceholderText("Click edit to add HTML content (array)")).toHaveValue("");
+
+    const longButton = `<button>${"Go".repeat(40)}</button>`;
+    rerender(
+      <Harness
+        paramKey="button_html"
+        type="function"
+        entry={{ source: "typed", value: longButton }}
+      />,
+    );
+    expect(screen.getByDisplayValue(/GoGo.*\.\.\./)).toBeInTheDocument();
+
+    rerender(
+      <Harness
+        paramKey="button_html"
+        type="function"
+        entry={{ source: "typed", value: 123 }}
+      />,
+    );
+    expect(screen.getByPlaceholderText("Click edit to design button template")).toHaveValue("");
+  });
+
   it("commits primitive number and multiline text values on blur", () => {
+    vi.useFakeTimers();
+    const onSave = vi.fn();
     const { rerender } = render(
       <Harness
         paramKey="trial_duration"
         type="number"
         entry={{ source: "typed", value: 100 }}
+        onSave={onSave}
       />,
     );
 
@@ -212,6 +302,11 @@ describe("TypedParameterInput dispatcher", () => {
     expect(screen.getByTestId("mapping")).toHaveTextContent(
       JSON.stringify({ source: "typed", value: 250.5 }),
     );
+    vi.advanceTimersByTime(100);
+    expect(onSave).toHaveBeenCalledWith("trial_duration", {
+      source: "typed",
+      value: 250.5,
+    });
     expect(screen.getByTestId("locals")).toHaveTextContent("{}");
 
     rerender(
@@ -219,6 +314,7 @@ describe("TypedParameterInput dispatcher", () => {
         paramKey="text"
         type="string"
         entry={{ source: "typed", value: "old text" }}
+        onSave={onSave}
       />,
     );
     const textarea = screen.getByPlaceholderText("Enter text content...");
@@ -227,6 +323,51 @@ describe("TypedParameterInput dispatcher", () => {
 
     expect(screen.getByTestId("mapping")).toHaveTextContent(
       JSON.stringify({ source: "typed", value: "new\ntext" }),
+    );
+    vi.advanceTimersByTime(100);
+    expect(onSave).toHaveBeenCalledWith("text", {
+      source: "typed",
+      value: "new\ntext",
+    });
+  });
+
+  it("uses component-mode primitive inputs and fallback display values", () => {
+    const { rerender } = render(
+      <Harness
+        paramKey="trial_duration"
+        type="number"
+        entry={{ source: "typed", value: { invalid: true } }}
+        componentMode
+      />,
+    );
+
+    const numberInput = screen.getByRole("spinbutton");
+    expect(numberInput).toHaveValue(null);
+    expect(numberInput).toHaveAttribute("type", "number");
+
+    fireEvent.change(numberInput, { target: { value: "12" } });
+    fireEvent.blur(numberInput);
+
+    expect(screen.getByTestId("mapping")).toHaveTextContent(
+      JSON.stringify({ source: "typed", value: 12 }),
+    );
+
+    rerender(
+      <Harness
+        paramKey="text"
+        type="string"
+        entry={{ source: "typed", value: { invalid: true } }}
+        componentMode
+      />,
+    );
+
+    const textarea = screen.getByPlaceholderText("Enter text content...");
+    expect(textarea).toHaveValue("");
+    fireEvent.change(textarea, { target: { value: "component text" } });
+    fireEvent.blur(textarea);
+
+    expect(screen.getByTestId("mapping")).toHaveTextContent(
+      JSON.stringify({ source: "typed", value: "component text" }),
     );
   });
 
@@ -239,6 +380,9 @@ describe("TypedParameterInput dispatcher", () => {
     rerender(<Harness paramKey="calibration_points" type="object_array" />);
     expect(screen.getByTestId("webgazer-input")).toHaveTextContent("calibration_points");
 
+    rerender(<Harness paramKey="validation_points" type="object_array" />);
+    expect(screen.getByTestId("webgazer-input")).toHaveTextContent("validation_points");
+
     rerender(<Harness paramKey="metadata" type="object" />);
     expect(screen.getByTestId("object-input")).toHaveTextContent("metadata");
 
@@ -250,6 +394,15 @@ describe("TypedParameterInput dispatcher", () => {
 
     rerender(<Harness paramKey="background_color" type="string" />);
     expect(screen.getByTestId("color-input")).toHaveTextContent("background_color");
+
+    rerender(
+      <Harness
+        paramKey="font_size"
+        type="number"
+        entry={{ source: "typed", value: 18 }}
+      />,
+    );
+    expect(screen.getByDisplayValue("18")).toBeInTheDocument();
 
     rerender(<Harness paramKey="prompt" type="string" />);
     expect(screen.getByTestId("text-input")).toHaveTextContent("prompt");

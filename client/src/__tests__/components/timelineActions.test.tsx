@@ -1,11 +1,18 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, render, renderHook, waitFor } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import DevModeContext from "../../pages/ExperimentBuilder/contexts/DevModeContext";
 import Actions from "../../pages/ExperimentBuilder/components/Timeline/Actions";
 import PublishExperiment from "../../pages/ExperimentBuilder/components/Timeline/PublishExperiment";
-import { useFileUpload } from "../../pages/ExperimentBuilder/components/Timeline/useFileUpload";
-import type { UploadedFile } from "../../pages/ExperimentBuilder/components/Timeline/useFileUpload";
+import {
+  fileUploadTestUtils,
+  useFileUpload,
+  waitForExpectedCompressedFiles,
+  waitForUploadJobs,
+} from "../../pages/ExperimentBuilder/components/Timeline/useFileUpload";
+import type {
+  UploadedFile,
+} from "../../pages/ExperimentBuilder/components/Timeline/useFileUpload";
 import { auth } from "../../lib/firebase";
 
 const API_URL = "http://localhost:3000";
@@ -61,7 +68,160 @@ describe("Timeline file uploads", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it("covers helper fallbacks for compressed media and job progress", () => {
+    expect(
+      fileUploadTestUtils.getCompressedExtension(
+        new File(["video"], "clip.mov", { type: "text/plain" }),
+      ),
+    ).toBe(".webm");
+    expect(
+      fileUploadTestUtils.getCompressedExtension(
+        new File(["notes"], "notes.txt", { type: "text/plain" }),
+      ),
+    ).toBe("");
+    expect(
+      fileUploadTestUtils.getExpectedCompressedFiles([
+        new File(["notes"], "notes.txt", { type: "text/plain" }),
+      ]),
+    ).toEqual([]);
+    expect(
+      fileUploadTestUtils.describeJobProgress([
+        { id: "job-done", status: "completed", storedName: "done.webm" },
+      ]),
+    ).toBe("Converting done.webm... 100%");
+    expect(
+      fileUploadTestUtils.describeJobProgress([
+        { id: "job-low", status: "processing", progress: -10 },
+        { id: "job-high", status: "processing", progress: 120 },
+      ]),
+    ).toBe("Converting 2 media files... 50%");
+  });
+
+  it("polls expected compressed files until a match or a miss", async () => {
+    const loadUploadedFiles = vi
+      .fn<() => Promise<UploadedFile[]>>()
+      .mockResolvedValueOnce([{ name: "clip.tmp", url: "vid/clip.tmp", type: "vid" }])
+      .mockResolvedValueOnce([{ name: "clip-2.webm", url: "vid/clip-2.webm", type: "vid" }]);
+
+    await expect(
+      waitForExpectedCompressedFiles(
+        [{ baseName: "clip", extension: ".webm" }],
+        loadUploadedFiles,
+        { attempts: 2, delayMs: 0 },
+      ),
+    ).resolves.toBe(true);
+    expect(loadUploadedFiles).toHaveBeenNthCalledWith(1, true);
+    expect(loadUploadedFiles).toHaveBeenCalledTimes(2);
+
+    await expect(
+      waitForExpectedCompressedFiles([], loadUploadedFiles),
+    ).resolves.toBe(false);
+
+    const missLoader = vi.fn(async () => [] as UploadedFile[]);
+    await expect(
+      waitForExpectedCompressedFiles(
+        [{ baseName: "missing", extension: ".ogg" }],
+        missLoader,
+        { attempts: 2, delayMs: 0 },
+      ),
+    ).resolves.toBe(false);
+    expect(missLoader).toHaveBeenCalledTimes(2);
+  });
+
+  it("waits for upload jobs and ignores warnings without messages", async () => {
+    fetchMock().mockResolvedValueOnce(
+      okJson({
+        job: {
+          id: "job-done",
+          status: "completed",
+          warnings: [{}],
+        },
+      }),
+    );
+    const loadUploadedFiles = vi.fn(async () => [] as UploadedFile[]);
+    const setUploadStatus = vi.fn();
+
+    await expect(
+      waitForUploadJobs(
+        [{ id: "job-done", status: "processing" }],
+        loadUploadedFiles,
+        setUploadStatus,
+        { attempts: 1, delayMs: 0 },
+      ),
+    ).resolves.toEqual([]);
+
+    expect(loadUploadedFiles).toHaveBeenCalledWith(true);
+    expect(setUploadStatus).toHaveBeenCalledWith("Converting media...");
+  });
+
+  it("reports upload jobs that disappear while polling", async () => {
+    fetchMock().mockResolvedValueOnce(okJson({}, false, 404));
+    const loadUploadedFiles = vi.fn(async () => [] as UploadedFile[]);
+
+    await expect(
+      waitForUploadJobs(
+        [{ id: "job-missing", status: "processing" }],
+        loadUploadedFiles,
+        vi.fn(),
+        { attempts: 1, delayMs: 0 },
+      ),
+    ).rejects.toThrow("Upload job job-missing not found");
+    expect(loadUploadedFiles).not.toHaveBeenCalled();
+  });
+
+  it("reports failed upload jobs without backend error details", async () => {
+    fetchMock().mockResolvedValueOnce(
+      okJson({
+        job: {
+          id: "job-failed",
+          status: "failed",
+          originalName: "broken.mp4",
+        },
+      }),
+    );
+
+    await expect(
+      waitForUploadJobs(
+        [{ id: "job-failed", status: "processing" }],
+        vi.fn(async () => [] as UploadedFile[]),
+        vi.fn(),
+        { attempts: 1, delayMs: 0 },
+      ),
+    ).rejects.toMatchObject({
+      name: "UploadJobFailedError",
+      message: "broken.mp4: Conversion failed",
+    });
+  });
+
+  it("reports upload jobs that remain pending after the polling limit", async () => {
+    fetchMock().mockResolvedValueOnce(
+      okJson({
+        job: {
+          id: "different-job",
+          status: "processing",
+          progress: 10,
+        },
+      }),
+    );
+    const loadUploadedFiles = vi.fn(async () => [] as UploadedFile[]);
+    const setUploadStatus = vi.fn();
+
+    await expect(
+      waitForUploadJobs(
+        [{ id: "job-stuck", status: "processing", progress: 5 }],
+        loadUploadedFiles,
+        setUploadStatus,
+        { attempts: 1, delayMs: 0 },
+      ),
+    ).rejects.toThrow(
+      "Conversion is still processing. The file list will update when it finishes.",
+    );
+    expect(loadUploadedFiles).toHaveBeenCalledWith(true);
+    expect(setUploadStatus).toHaveBeenCalledWith("Converting media... 5%");
   });
 
   it("loads uploaded files and reuses the in-memory folder cache", async () => {
@@ -82,6 +242,37 @@ describe("Timeline file uploads", () => {
     expect(fetchMock()).toHaveBeenCalledWith(
       `${API_URL}/api/list-files/img/test-exp-123`,
     );
+  });
+
+  it("marks the folder input ref as a directory picker", async () => {
+    fetchMock().mockResolvedValueOnce(okJson({ files: [] }));
+
+    function FolderInputHarness() {
+      const upload = useFileUpload({ folder: "img" });
+      return <input data-testid="folder-input" ref={upload.folderInputRef} />;
+    }
+
+    const { getByTestId } = render(<FolderInputHarness />);
+
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      const input = getByTestId("folder-input");
+      expect(input.getAttribute("webkitdirectory")).toBe("");
+      expect(input.getAttribute("directory")).toBe("");
+    });
+  });
+
+  it("uses an empty list when the folder response omits files", async () => {
+    fetchMock().mockResolvedValueOnce(okJson({}));
+
+    const { result } = renderHook(() => useFileUpload({ folder: "img" }));
+
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledTimes(1);
+    });
+    expect(result.current.uploadedFiles).toEqual([]);
   });
 
   it("refreshes uploaded files after the cache expires", async () => {
@@ -148,6 +339,158 @@ describe("Timeline file uploads", () => {
     expect(uploadBody.get("compressOversizedMedia")).toBe("false");
   });
 
+  it("ignores empty file upload events", async () => {
+    fetchMock().mockResolvedValueOnce(okJson({ files: [] }));
+
+    const { result } = renderHook(() => useFileUpload({ folder: "img" }));
+
+    await waitFor(() => {
+      expect(result.current.uploadedFiles).toEqual([]);
+    });
+
+    await act(async () => {
+      await result.current.handleFileUpload({
+        target: { files: [] },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+    });
+
+    expect(fetchMock()).toHaveBeenCalledTimes(1);
+  });
+
+  it("surfaces structured upload errors from the backend", async () => {
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock()
+      .mockResolvedValueOnce(okJson({ files: [] }))
+      .mockResolvedValueOnce(
+        okJson(
+          {
+            errors: [
+              { filename: "bad.png", message: "Unsupported dimensions" },
+              { message: "Missing filename metadata" },
+            ],
+          },
+          false,
+        ),
+      );
+
+    const { result } = renderHook(() => useFileUpload({ folder: "img" }));
+
+    await waitFor(() => {
+      expect(result.current.uploadedFiles).toEqual([]);
+    });
+
+    await act(async () => {
+      await result.current.handleFileUpload({
+        target: {
+          files: [new File(["bad"], "bad.png", { type: "image/png" })],
+        },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      "bad.png: Unsupported dimensions\nMissing filename metadata",
+    );
+  });
+
+  it("surfaces simple upload error payloads and post-upload warnings", async () => {
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock()
+      .mockResolvedValueOnce(okJson({ files: [] }))
+      .mockResolvedValueOnce(okJson({ error: "Upload rejected" }, false))
+      .mockResolvedValueOnce(
+        okJson({
+          success: true,
+          warnings: [{ message: "Large file renamed" }],
+          errors: [{ filename: "late.png", message: "Late warning" }],
+        }),
+      )
+      .mockResolvedValueOnce(okJson({ files: initialFiles }));
+
+    const { result } = renderHook(() => useFileUpload({ folder: "img" }));
+
+    await waitFor(() => {
+      expect(result.current.uploadedFiles).toEqual([]);
+    });
+
+    await act(async () => {
+      await result.current.handleFileUpload({
+        target: {
+          files: [new File(["bad"], "bad.png", { type: "image/png" })],
+        },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith("Upload rejected");
+
+    await act(async () => {
+      await result.current.handleFileUpload({
+        target: {
+          files: [new File(["ok"], "ok.png", { type: "image/png" })],
+        },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith("Large file renamed");
+    expect(alertSpy).toHaveBeenCalledWith("late.png: Late warning");
+  });
+
+  it("surfaces message upload errors and generic non-Error rejections", async () => {
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock()
+      .mockResolvedValueOnce(okJson({ files: [] }))
+      .mockResolvedValueOnce(okJson({ message: "Message rejected" }, false))
+      .mockRejectedValueOnce("string failure");
+
+    const { result } = renderHook(() => useFileUpload({ folder: "img" }));
+
+    await waitFor(() => {
+      expect(result.current.uploadedFiles).toEqual([]);
+    });
+
+    const file = new File(["bad"], "bad.png", { type: "image/png" });
+    await act(async () => {
+      await result.current.handleFileUpload({
+        target: { files: [file] },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+    });
+    await act(async () => {
+      await result.current.handleFileUpload({
+        target: { files: [file] },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith("Message rejected");
+    expect(alertSpy).toHaveBeenCalledWith("Error uploading files");
+    expect(consoleError).toHaveBeenCalledWith("string failure");
+  });
+
+  it("falls back to the default upload error for empty error payloads", async () => {
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock()
+      .mockResolvedValueOnce(okJson({ files: [] }))
+      .mockResolvedValueOnce(okJson({}, false));
+
+    const { result } = renderHook(() => useFileUpload({ folder: "img" }));
+
+    await waitFor(() => {
+      expect(result.current.uploadedFiles).toEqual([]);
+    });
+
+    await act(async () => {
+      await result.current.handleFileUpload({
+        target: {
+          files: [new File(["bad"], "bad.png", { type: "image/png" })],
+        },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith("Error uploading files");
+  });
+
   it("asks to compress oversized media files and sends the compression flag", async () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     fetchMock()
@@ -188,6 +531,38 @@ describe("Timeline file uploads", () => {
     );
     const uploadBody = fetchMock().mock.calls[1][1]?.body as FormData;
     expect(uploadBody.get("compressOversizedMedia")).toBe("true");
+  });
+
+  it("detects oversized media by extension and summarizes long confirm lists", async () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    fetchMock()
+      .mockResolvedValueOnce(okJson({ files: [] }))
+      .mockResolvedValueOnce(okJson({ success: true }))
+      .mockResolvedValueOnce(okJson({ files: [] }));
+
+    const { result } = renderHook(() => useFileUpload({ folder: "all" }));
+
+    await waitFor(() => {
+      expect(result.current.uploadedFiles).toEqual([]);
+    });
+
+    const files = Array.from({ length: 6 }, (_, index) => {
+      const file = new File(["video"], `movie-${index}.mov`, {
+        type: "text/plain",
+      });
+      Object.defineProperty(file, "size", { value: 101 * 1024 * 1024 });
+      return file;
+    });
+
+    await act(async () => {
+      await result.current.handleFileUpload({
+        target: { files },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+    });
+
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining("...and 1 more"));
+    const uploadBody = fetchMock().mock.calls[1][1]?.body as FormData;
+    expect(uploadBody.get("compressOversizedMedia")).toBe("false");
   });
 
   it("refreshes converted media when the upload request is interrupted", async () => {
@@ -267,6 +642,201 @@ describe("Timeline file uploads", () => {
     expect(result.current.uploadedFiles).toEqual(convertedFiles);
   });
 
+  it("continues polling upload jobs after an in-progress result", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const convertedFiles = [
+      { name: "clip.ogg", url: "aud/clip.ogg", type: "aud" },
+    ];
+    fetchMock()
+      .mockResolvedValueOnce(okJson({ files: [] }))
+      .mockResolvedValueOnce(
+        okJson({
+          success: true,
+          processingJobs: [
+            {
+              id: "job-audio",
+              status: "processing",
+              progress: 20,
+              storedName: "clip.ogg",
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        okJson({
+          job: {
+            id: "job-audio",
+            status: "processing",
+            progress: 45,
+            storedName: "clip.ogg",
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        okJson({
+          job: {
+            id: "job-audio",
+            status: "completed",
+            storedName: "clip.ogg",
+          },
+        }),
+      )
+      .mockResolvedValueOnce(okJson({ files: convertedFiles }));
+
+    const { result } = renderHook(() => useFileUpload({ folder: "all" }));
+
+    await waitFor(() => {
+      expect(result.current.uploadedFiles).toEqual([]);
+    });
+
+    const file = new File(["audio"], "clip.wav", { type: "audio/wav" });
+    Object.defineProperty(file, "size", { value: 101 * 1024 * 1024 });
+
+    await act(async () => {
+      await result.current.handleFileUpload({
+        target: { files: [file] },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+    });
+
+    expect(fetchMock()).toHaveBeenCalledWith(
+      `${API_URL}/api/upload-jobs/job-audio`,
+    );
+    expect(result.current.uploadedFiles).toEqual(convertedFiles);
+  });
+
+  it("alerts upload job warnings and failed conversions", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock()
+      .mockResolvedValueOnce(okJson({ files: [] }))
+      .mockResolvedValueOnce(
+        okJson({
+          success: true,
+          processingJobs: [{ id: "job-warning", status: "processing" }],
+        }),
+      )
+      .mockResolvedValueOnce(
+        okJson({
+          job: {
+            id: "job-warning",
+            status: "completed",
+            warnings: [{ message: "Audio was normalized" }],
+          },
+        }),
+      )
+      .mockResolvedValueOnce(okJson({ files: initialFiles }))
+      .mockResolvedValueOnce(
+        okJson({
+          success: true,
+          processingJobs: [
+            {
+              id: "job-failed",
+              status: "processing",
+              originalName: "broken.mp4",
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        okJson({
+          job: {
+            id: "job-failed",
+            status: "failed",
+            originalName: "broken.mp4",
+            error: "Codec not supported",
+          },
+        }),
+      )
+      .mockResolvedValueOnce(okJson({ files: initialFiles }));
+
+    const { result } = renderHook(() => useFileUpload({ folder: "all" }));
+
+    await waitFor(() => {
+      expect(result.current.uploadedFiles).toEqual([]);
+    });
+
+    const file = new File(["video"], "movie.mp4", { type: "video/mp4" });
+    Object.defineProperty(file, "size", { value: 101 * 1024 * 1024 });
+
+    await act(async () => {
+      await result.current.handleFileUpload({
+        target: { files: [file] },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith("Audio was normalized");
+
+    await act(async () => {
+      await result.current.handleFileUpload({
+        target: { files: [file] },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith("broken.mp4: Codec not supported");
+  });
+
+  it("reports polling errors when interrupted conversion cannot be confirmed", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock()
+      .mockResolvedValueOnce(okJson({ files: [] }))
+      .mockRejectedValueOnce(new TypeError("upload interrupted"))
+      .mockRejectedValueOnce(new Error("poll failed"));
+
+    const { result } = renderHook(() => useFileUpload({ folder: "all" }));
+
+    await waitFor(() => {
+      expect(result.current.uploadedFiles).toEqual([]);
+    });
+
+    const file = new File(["video"], "movie.mp4", { type: "video/mp4" });
+    Object.defineProperty(file, "size", { value: 101 * 1024 * 1024 });
+
+    await act(async () => {
+      await result.current.handleFileUpload({
+        target: { files: [file] },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+    });
+
+    expect(consoleError).toHaveBeenCalledWith(
+      "Error polling converted files:",
+      expect.any(Error),
+    );
+    expect(alertSpy).toHaveBeenCalledWith("upload interrupted");
+  });
+
+  it("alerts when interrupted conversion polling finishes without converted files", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock()
+      .mockResolvedValueOnce(okJson({ files: [] }))
+      .mockRejectedValueOnce(new TypeError("upload interrupted"))
+      .mockResolvedValue(okJson({ files: [] }));
+
+    const { result } = renderHook(() => useFileUpload({ folder: "all" }));
+
+    await waitFor(() => {
+      expect(result.current.uploadedFiles).toEqual([]);
+    });
+
+    vi.useFakeTimers();
+    const file = new File(["video"], "movie.mp4", { type: "video/mp4" });
+    Object.defineProperty(file, "size", { value: 101 * 1024 * 1024 });
+
+    await act(async () => {
+      const uploadPromise = result.current.handleFileUpload({
+        target: { files: [file] },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+      await vi.runAllTimersAsync();
+      await uploadPromise;
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith("upload interrupted");
+  });
+
   it("deletes one or many uploaded files and removes them from local state", async () => {
     fetchMock()
       .mockResolvedValueOnce(okJson({ files: initialFiles }))
@@ -297,6 +867,30 @@ describe("Timeline file uploads", () => {
       { method: "DELETE" },
     );
     expect(result.current.uploadedFiles).toEqual([]);
+  });
+
+  it("rethrows delete-multiple failures", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock()
+      .mockResolvedValueOnce(okJson({ files: initialFiles }))
+      .mockRejectedValueOnce(new Error("delete failed"));
+
+    const { result } = renderHook(() => useFileUpload({ folder: "img" }));
+
+    await waitFor(() => {
+      expect(result.current.uploadedFiles).toEqual(initialFiles);
+    });
+
+    await act(async () => {
+      await expect(
+        result.current.handleDeleteMultipleFiles([initialFiles[0]]),
+      ).rejects.toThrow("delete failed");
+    });
+
+    expect(consoleError).toHaveBeenCalledWith(
+      "Error deleting multiple files:",
+      expect.any(Error),
+    );
   });
 });
 
@@ -406,6 +1000,19 @@ describe("PublishExperiment", () => {
     );
   });
 
+  it("reports unknown preparation errors from non-Error rejections", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { props, api } = createPublishHarness({
+      getUserTokens: vi.fn(async () => {
+        throw "token lookup failed";
+      }),
+    });
+
+    await api.handlePublishToGitHub();
+
+    expect(props.setPublishStatus).toHaveBeenCalledWith("Error: Unknown error");
+  });
+
   it("publishes directly with the only available storage and copies the pages URL", async () => {
     const writeText = installClipboard();
     fetchMock().mockResolvedValue(
@@ -442,6 +1049,16 @@ describe("PublishExperiment", () => {
     expect(props.setPublishStatus).toHaveBeenCalledWith(
       expect.any(Function),
     );
+    const clipboardUpdater = props.setPublishStatus.mock.calls.find(
+      ([value]) => typeof value === "function",
+    )?.[0] as ((prev: string) => string) | undefined;
+    expect(clipboardUpdater?.("Published! GitHub Pages URL")).toBe(
+      "Published! GitHub Pages URL copied to clipboard",
+    );
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(props.setPublishStatus).toHaveBeenCalledWith("");
     expect(props.setIsPublishing).toHaveBeenLastCalledWith(false);
   });
 
@@ -509,6 +1126,72 @@ describe("PublishExperiment", () => {
     expect(props.setIsPublishing).toHaveBeenLastCalledWith(false);
   });
 
+  it("builds GitHub file size publish errors from oversized file metadata", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock()
+      .mockResolvedValueOnce(
+        okJson(
+          {
+            success: false,
+            code: "GITHUB_FILE_TOO_LARGE",
+            error: "Repository rejected a large file",
+          },
+          false,
+          413,
+        ),
+      )
+      .mockResolvedValueOnce(
+        okJson(
+          {
+            success: false,
+            code: "GITHUB_FILE_TOO_LARGE",
+            oversizedFiles: [
+              {
+                url: "vid/huge.mp4",
+                sizeBytes: 157_286_400,
+              },
+              {
+                filename: "audio.wav",
+              },
+            ],
+          },
+          false,
+          413,
+        ),
+      )
+      .mockResolvedValueOnce(
+        okJson(
+          {
+            success: false,
+            code: "GITHUB_FILE_TOO_LARGE",
+          },
+          false,
+          413,
+        ),
+      );
+    const { props, api } = createPublishHarness();
+
+    await api.publishWithStorage("user-123", "dropbox");
+    expect(props.setPublishStatus).toHaveBeenCalledWith(
+      "Error: Repository rejected a large file",
+    );
+
+    await api.publishWithStorage("user-123", "dropbox");
+    expect(props.setPublishStatus).toHaveBeenCalledWith(
+      "Error: GitHub no acepta archivos mayores a 100 MiB: vid/huge.mp4 150.0 MiB, audio.wav. Comprime o reemplaza estos archivos antes de publicar.",
+    );
+
+    await api.publishWithStorage("user-123", "dropbox");
+    expect(props.setPublishStatus).toHaveBeenCalledWith(
+      "Error: GitHub no acepta archivos mayores a 100 MiB: one or more media files. Comprime o reemplaza estos archivos antes de publicar.",
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(props.setPublishStatus).not.toHaveBeenCalledWith("");
+  });
+
   it("warns when GitHub token is invalid", async () => {
     fetchMock().mockResolvedValue(
       okJson({
@@ -548,6 +1231,68 @@ describe("PublishExperiment", () => {
     expect(console.error).toHaveBeenCalledWith(
       "Failed to copy GitHub Pages URL: ",
       expect.any(Error),
+    );
+  });
+
+  it("reports successful HTTP responses that did not publish", async () => {
+    fetchMock()
+      .mockResolvedValueOnce(okJson({ success: false, message: "Publish failed" }))
+      .mockResolvedValueOnce(okJson({ success: false, error: "Backend error" }))
+      .mockResolvedValueOnce(okJson({ success: false }));
+    const { props, api } = createPublishHarness();
+
+    await api.publishWithStorage("user-123", "googledrive");
+    expect(props.setPublishStatus).toHaveBeenCalledWith("Error: Publish failed");
+
+    await api.publishWithStorage("user-123", "googledrive");
+    expect(props.setPublishStatus).toHaveBeenCalledWith("Error: Backend error");
+
+    await api.publishWithStorage("user-123", "googledrive");
+    expect(props.setPublishStatus).toHaveBeenCalledWith("Error: Failed to publish");
+  });
+
+  it("handles successful publishing without a pages URL", async () => {
+    const writeText = installClipboard();
+    fetchMock().mockResolvedValue(okJson({ success: true }));
+    const { props, api } = createPublishHarness();
+
+    await api.publishWithStorage("user-123", "googledrive");
+
+    expect(props.setLastPagesUrl).toHaveBeenCalledWith("");
+    expect(writeText).toHaveBeenCalledWith("");
+  });
+
+  it("handles unreadable publish responses and non-Error publish failures", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock().mockResolvedValueOnce({
+      ok: false,
+      status: 502,
+      json: vi.fn(async () => {
+        throw new Error("invalid json");
+      }),
+    } as unknown as Response);
+    const { props, api } = createPublishHarness();
+
+    await api.publishWithStorage("user-123", "googledrive");
+
+    expect(props.setPublishStatus).toHaveBeenCalledWith(
+      "Error: Server responded with status: 502",
+    );
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(props.setPublishStatus).toHaveBeenCalledWith("");
+
+    const { props: rejectedProps, api: rejectedApi } = createPublishHarness({
+      generateExperiment: vi.fn(async () => {
+        throw "publish failed";
+      }),
+    });
+
+    await rejectedApi.publishWithStorage("user-123", "googledrive");
+
+    expect(rejectedProps.setPublishStatus).toHaveBeenCalledWith(
+      "Error: Unknown error",
     );
   });
 });
@@ -759,6 +1504,49 @@ describe("Timeline Actions", () => {
     );
   });
 
+  it("surfaces save-config HTTP errors before running an experiment", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === `${API_URL}/api/experiment/exp-123`) {
+        return okJson({ experiment: {} });
+      }
+      if (url === `${API_URL}/api/save-config/exp-123`) {
+        return okJson({ success: false }, false, 503);
+      }
+      return okJson({ success: true });
+    });
+    const { result, props } = renderActions();
+
+    await act(async () => {
+      await result.current.handleRunExperiment();
+    });
+
+    expect(props.setSubmitStatus).toHaveBeenCalledWith(
+      "An error occurred: Server responded with status: 503",
+    );
+    expect(fetchMock()).not.toHaveBeenCalledWith(
+      `${API_URL}/api/run-experiment/exp-123`,
+      expect.anything(),
+    );
+  });
+
+  it("reports unknown non-Error failures while generating an experiment", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { result, props } = renderActions({
+      generateLocalExperiment: vi.fn(async () => {
+        throw "generation failed";
+      }),
+    });
+
+    await act(async () => {
+      await result.current.handleRunExperiment();
+    });
+
+    expect(props.setSubmitStatus).toHaveBeenCalledWith(
+      "An error occurred: Unknown error",
+    );
+  });
+
   it("does not create a local sharing tunnel when the warning is cancelled", async () => {
     vi.spyOn(window, "confirm").mockReturnValue(false);
     const { result, props } = renderActions();
@@ -863,6 +1651,67 @@ describe("Timeline Actions", () => {
     expect(props.setIsTunnelCreating).toHaveBeenLastCalledWith(false);
   });
 
+  it("clears tunnel failure statuses after API and connection errors", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === `${API_URL}/api/create-tunnel`) {
+        return okJson({ success: false });
+      }
+      return okJson({ experiment: {} });
+    });
+    const apiFailure = renderActions();
+
+    await act(async () => {
+      await apiFailure.result.current.handleShareLocalExperiment();
+    });
+    expect(apiFailure.props.setTunnelStatus).toHaveBeenCalledWith(
+      "Failed: Unknown error",
+    );
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(apiFailure.props.setTunnelStatus).toHaveBeenCalledWith("");
+
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === `${API_URL}/api/create-tunnel`) {
+        throw new Error("offline");
+      }
+      return okJson({ experiment: {} });
+    });
+    const connectionFailure = renderActions();
+
+    await act(async () => {
+      await connectionFailure.result.current.handleShareLocalExperiment();
+    });
+    expect(connectionFailure.props.setTunnelStatus).toHaveBeenCalledWith(
+      "Connection error: offline",
+    );
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(connectionFailure.props.setTunnelStatus).toHaveBeenCalledWith("");
+  });
+
+  it("reports unknown non-Error tunnel connection failures", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === `${API_URL}/api/create-tunnel`) throw "offline";
+      return okJson({ experiment: {} });
+    });
+    const { result, props } = renderActions();
+
+    await act(async () => {
+      await result.current.handleShareLocalExperiment();
+    });
+
+    expect(props.setTunnelStatus).toHaveBeenCalledWith(
+      "Connection error: Unknown error",
+    );
+  });
+
   it("closes a local tunnel and clears persisted tunnel state", async () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     localStorage.setItem("tunnelActive", "true");
@@ -892,6 +1741,44 @@ describe("Timeline Actions", () => {
     expect(localStorage.getItem("tunnelActive")).toBeNull();
     expect(localStorage.getItem("tunnelUrl")).toBeNull();
     expect(props.setTunnelStatus).toHaveBeenCalledWith("Tunnel closed");
+  });
+
+  it("reports close-tunnel API failures and request errors", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === `${API_URL}/api/close-tunnel`) {
+        return okJson({ success: false, message: "Still open" });
+      }
+      return okJson({ experiment: {} });
+    });
+    const apiFailure = renderActions();
+
+    await act(async () => {
+      await apiFailure.result.current.handleCloseTunnel();
+    });
+
+    expect(apiFailure.props.setTunnelStatus).toHaveBeenCalledWith(
+      "Error closing tunnel",
+    );
+    expect(console.error).toHaveBeenCalledWith("Still open");
+
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === `${API_URL}/api/close-tunnel`) {
+        throw new Error("close offline");
+      }
+      return okJson({ experiment: {} });
+    });
+    const requestFailure = renderActions();
+
+    await act(async () => {
+      await requestFailure.result.current.handleCloseTunnel();
+    });
+
+    expect(console.error).toHaveBeenCalledWith(
+      "Error closing tunnel:",
+      expect.any(Error),
+    );
   });
 
   it("does not close a local tunnel when confirmation is cancelled", async () => {
@@ -958,6 +1845,28 @@ describe("Timeline Actions", () => {
     expect(localStorage.getItem("tunnelUrl")).toBeNull();
   });
 
+  it("ignores saved experiment responses without an experiment", async () => {
+    fetchMock().mockResolvedValue(okJson({}));
+    const { props } = renderActions();
+
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledWith(
+        `${API_URL}/api/experiment/exp-123`,
+      );
+    });
+
+    expect(props.setActiveTunnelUrl).not.toHaveBeenCalled();
+    expect(props.setLastPagesUrl).not.toHaveBeenCalled();
+  });
+
+  it("skips saved experiment lookup when experimentID is unavailable", () => {
+    renderActions({ experimentID: undefined });
+
+    expect(fetchMock()).not.toHaveBeenCalledWith(
+      `${API_URL}/api/experiment/undefined`,
+    );
+  });
+
   it("copies the latest GitHub Pages URL before tunnel URLs", async () => {
     const { result, props } = renderActions({
       lastPagesUrl: "https://pages.test/exp-123",
@@ -992,6 +1901,18 @@ describe("Timeline Actions", () => {
     expect(props.setTunnelCopyStatus).toHaveBeenCalledWith("Link copied!");
   });
 
+  it("reports no link when an active tunnel has no persisted URL", async () => {
+    const { result, props } = renderActions({ isTunnelActive: true });
+
+    await act(async () => {
+      await result.current.handleCopyLink();
+    });
+
+    expect(props.setTunnelCopyStatus).toHaveBeenCalledWith(
+      "No published link available.",
+    );
+  });
+
   it("reports copy fallback states when there is no link or clipboard fails", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const failingClipboard = installClipboard(vi.fn(async () => {
@@ -1021,5 +1942,54 @@ describe("Timeline Actions", () => {
     expect(pages.props.setPagesCopyStatus).toHaveBeenCalledWith(
       "Failed to copy link.",
     );
+  });
+
+  it("clears successful tunnel, close and copy statuses after their timers", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === `${API_URL}/api/create-tunnel`) {
+        return okJson({ success: true, url: "https://tunnel.test" });
+      }
+      if (url === `${API_URL}/api/close-tunnel`) {
+        return okJson({ success: true, message: "Tunnel closed" });
+      }
+      return okJson({ experiment: {} });
+    });
+    const tunnel = renderActions({ isTunnelActive: true });
+
+    await act(async () => {
+      await tunnel.result.current.handleShareLocalExperiment();
+    });
+    act(() => {
+      vi.advanceTimersByTime(4000);
+    });
+    expect(tunnel.props.setTunnelStatus).toHaveBeenCalledWith("");
+
+    await act(async () => {
+      await tunnel.result.current.handleCloseTunnel();
+    });
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(tunnel.props.setTunnelStatus).toHaveBeenCalledWith("");
+
+    localStorage.setItem("tunnelUrl", "https://tunnel.test");
+    await act(async () => {
+      await tunnel.result.current.handleCopyLink();
+    });
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(tunnel.props.setTunnelCopyStatus).toHaveBeenCalledWith("");
+
+    const noLink = renderActions();
+    await act(async () => {
+      await noLink.result.current.handleCopyLink();
+    });
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(noLink.props.setTunnelCopyStatus).toHaveBeenCalledWith("");
   });
 });

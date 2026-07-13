@@ -24,6 +24,7 @@ describe("fetchOAuthState", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
     (auth as any).currentUser = null;
   });
 
@@ -61,11 +62,45 @@ describe("fetchOAuthState", () => {
     await expect(fetchOAuthState("osf")).rejects.toThrow("Invalid provider");
   });
 
+  it("falls back to the HTTP status when backend error JSON cannot be read", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      json: vi.fn(async () => {
+        throw new Error("invalid json");
+      }),
+    } as unknown as Response);
+
+    await expect(fetchOAuthState("github")).rejects.toThrow(
+      "Failed to fetch OAuth state (HTTP 503)",
+    );
+  });
+
   it("rejects malformed successful responses without a state string", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ success: true }));
 
     await expect(fetchOAuthState("googledrive")).rejects.toThrow(
       "OAuth state endpoint returned no state",
+    );
+  });
+
+  it("uses the deployed Functions endpoint outside development", async () => {
+    vi.resetModules();
+    vi.stubEnv("DEV", "");
+    const { auth: productionAuth } = await import("../../lib/firebase");
+    (productionAuth as any).currentUser = {
+      getIdToken: vi.fn(async () => "production-token"),
+    };
+    const { fetchOAuthState: fetchProductionOAuthState } = await import(
+      "../../lib/oauthState"
+    );
+
+    await expect(fetchProductionOAuthState("github")).resolves.toBe(
+      "signed-state",
+    );
+    expect(fetch).toHaveBeenCalledWith(
+      "https://us-central1-test-e4cf9.cloudfunctions.net/createOAuthStateEndpoint",
+      expect.any(Object),
     );
   });
 });

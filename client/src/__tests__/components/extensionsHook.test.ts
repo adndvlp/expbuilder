@@ -43,6 +43,7 @@ const audioOnlyDynamicParams = [
     value: [{ type: "AudioComponent", name: "Audio_1" }],
   },
 ];
+const emptyDynamicParams = [{ key: "components", value: [] }];
 
 function normalize(code: string) {
   return code.replace(/\s+/g, " ").trim();
@@ -165,6 +166,18 @@ describe("useExtensions", () => {
   it("emits empty webgazer targets for DynamicPlugin without visual components", () => {
     const { result } = renderHook(() =>
       useExtensions("DynamicPlugin", audioOnlyDynamicParams),
+    );
+
+    act(() => {
+      result.current.setExtensionType("jsPsychExtensionWebgazer");
+    });
+
+    expect(normalize(result.current.extensions)).toContain("targets: []");
+  });
+
+  it("emits empty webgazer targets for DynamicPlugin with no component entries", () => {
+    const { result } = renderHook(() =>
+      useExtensions("DynamicPlugin", emptyDynamicParams),
     );
 
     act(() => {

@@ -26,12 +26,14 @@ function TypedInputHarness({
   type = "string",
   initialValue,
   onSave,
+  componentMode = false,
 }: {
   kind: InputKind;
   paramKey?: string;
   type?: string;
   initialValue: unknown;
   onSave?: (key: string, value: unknown) => void;
+  componentMode?: boolean;
 }) {
   const [mapping, setMapping] = useState<Mapping>({
     [paramKey]: { source: "typed", value: initialValue },
@@ -51,9 +53,13 @@ function TypedInputHarness({
 
   return (
     <>
-      {kind === "array" && <ArrayInput {...common} type={type} />}
+      {kind === "array" && (
+        <ArrayInput {...common} type={type} componentMode={componentMode} />
+      )}
       {kind === "color" && <ColorInput {...common} />}
-      {kind === "coords" && <ObjectCoordsInput {...common} />}
+      {kind === "coords" && (
+        <ObjectCoordsInput {...common} componentMode={componentMode} />
+      )}
       {kind === "function" && <FunctionInput {...common} />}
       {kind === "object" && (
         <ObjectInput
@@ -63,7 +69,7 @@ function TypedInputHarness({
           setColumnMapping={setMapping}
         />
       )}
-      {kind === "text" && <TextInput {...common} />}
+      {kind === "text" && <TextInput {...common} componentMode={componentMode} />}
       {kind === "webgazer" && <WebgazerInput {...common} />}
       <output data-testid="mapping">{JSON.stringify(mapping)}</output>
       <output data-testid="locals">{JSON.stringify(localInputValues)}</output>
@@ -113,6 +119,41 @@ describe("TypedParameterInput children", () => {
       source: "typed",
       value: "new text",
     });
+  });
+
+  it("renders numeric text in component mode and commits without onSave", () => {
+    render(
+      <TypedInputHarness
+        kind="text"
+        initialValue={123}
+        paramKey="numeric_label"
+        componentMode
+      />,
+    );
+
+    const input = screen.getByPlaceholderText("Type a value for value");
+    expect(input).toHaveValue("123");
+    expect(input.className).toBe("");
+    expect(input).toHaveStyle({ height: "36px", width: "100%" });
+
+    fireEvent.change(input, { target: { value: "456" } });
+    fireEvent.blur(input);
+    expect(readMapping().numeric_label).toEqual({
+      source: "typed",
+      value: "456",
+    });
+  });
+
+  it("renders an empty text value for non-scalar entries", () => {
+    render(
+      <TypedInputHarness
+        kind="text"
+        initialValue={{ nested: true }}
+        paramKey="object_label"
+      />,
+    );
+
+    expect(screen.getByPlaceholderText("Type a value for value")).toHaveValue("");
   });
 
   it("casts typed arrays by base type", () => {
@@ -166,6 +207,64 @@ describe("TypedParameterInput children", () => {
     });
   });
 
+  it("updates string arrays immediately in component mode", () => {
+    render(
+      <TypedInputHarness
+        kind="array"
+        type="string_array"
+        paramKey="choices"
+        initialValue={["old", "value"]}
+        componentMode
+      />,
+    );
+
+    const input = screen.getByPlaceholderText("Comma-separated values for value");
+    expect(input).toHaveValue("old, value");
+
+    fireEvent.change(input, { target: { value: " alpha, beta  gamma " } });
+
+    expect(readMapping().choices).toEqual({
+      source: "typed",
+      value: ["alpha", "beta gamma"],
+    });
+    expect(readLocals()).toEqual({ choices: " alpha, beta  gamma " });
+  });
+
+  it("uses a string entry when an array input blurs without local edits", () => {
+    render(
+      <TypedInputHarness
+        kind="array"
+        type="string_array"
+        paramKey="choices"
+        initialValue="alpha, beta"
+      />,
+    );
+
+    const input = screen.getByPlaceholderText("Comma-separated values for value");
+    expect(input).toHaveValue("alpha, beta");
+    fireEvent.blur(input);
+
+    expect(readMapping().choices).toEqual({
+      source: "typed",
+      value: ["alpha", "beta"],
+    });
+  });
+
+  it("renders an empty array input for non-array entry values", () => {
+    render(
+      <TypedInputHarness
+        kind="array"
+        type="string_array"
+        paramKey="choices"
+        initialValue={42}
+      />,
+    );
+
+    expect(
+      screen.getByPlaceholderText("Comma-separated values for value"),
+    ).toHaveValue("");
+  });
+
   it("commits function source as a string", () => {
     vi.useFakeTimers();
     const onSave = vi.fn();
@@ -196,6 +295,23 @@ describe("TypedParameterInput children", () => {
       source: "typed",
       value: "(choice) => `<button>${choice}</button>`",
     });
+  });
+
+  it("renders and commits an empty function for non-string values without onSave", () => {
+    render(
+      <TypedInputHarness
+        kind="function"
+        paramKey="callback"
+        initialValue={{ invalid: true }}
+      />,
+    );
+
+    const input = screen.getByPlaceholderText("Type a function for value");
+    expect(input).toHaveValue("");
+    fireEvent.blur(input);
+
+    expect(readMapping().callback).toEqual({ source: "typed", value: "" });
+    expect(readLocals()).toEqual({});
   });
 
   it("parses object literals and keeps invalid object text as a string", () => {
@@ -237,6 +353,22 @@ describe("TypedParameterInput children", () => {
     });
   });
 
+  it("renders and commits an empty object for scalar values without onSave", () => {
+    render(
+      <TypedInputHarness
+        kind="object"
+        paramKey="options"
+        initialValue={42}
+      />,
+    );
+
+    const textarea = screen.getByPlaceholderText(/Type an object/);
+    expect(textarea).toHaveValue("");
+    fireEvent.blur(textarea);
+
+    expect(readMapping().options).toEqual({ source: "typed", value: "" });
+  });
+
   it("clamps coordinate values to the supported range", () => {
     vi.useFakeTimers();
     const onSave = vi.fn();
@@ -274,6 +406,62 @@ describe("TypedParameterInput children", () => {
     });
   });
 
+  it("edits coordinates in component mode with fallback defaults and no autosave callback", () => {
+    render(
+      <TypedInputHarness
+        kind="coords"
+        paramKey="coordinates"
+        initialValue="not-coordinates"
+        componentMode
+      />,
+    );
+
+    const [xInput, yInput] = screen.getAllByRole("textbox");
+    expect(xInput).toHaveAttribute("type", "text");
+    expect(xInput).toHaveAttribute("inputmode", "decimal");
+    expect(xInput).toHaveValue("0");
+    expect(yInput).toHaveValue("0");
+
+    fireEvent.change(xInput, { target: { value: "-250" } });
+    expect(readLocals()).toEqual({ coordinates_x: "-250" });
+    fireEvent.blur(xInput);
+
+    expect(readMapping().coordinates).toEqual({
+      source: "typed",
+      value: { x: -100, y: 0 },
+    });
+    expect(readLocals()).toEqual({});
+
+    fireEvent.change(yInput, { target: { value: "42" } });
+    fireEvent.blur(yInput);
+
+    expect(readMapping().coordinates).toEqual({
+      source: "typed",
+      value: { x: -100, y: 42 },
+    });
+    expect(readLocals()).toEqual({});
+  });
+
+  it("uses fallback coordinate state when y is edited before any valid coordinate value exists", () => {
+    render(
+      <TypedInputHarness
+        kind="coords"
+        paramKey="coordinates"
+        initialValue={null}
+      />,
+    );
+
+    const [, yInput] = screen.getAllByRole("spinbutton");
+    fireEvent.change(yInput, { target: { value: "12" } });
+    fireEvent.blur(yInput);
+
+    expect(readMapping().coordinates).toEqual({
+      source: "typed",
+      value: { x: 0, y: 12 },
+    });
+    expect(readLocals()).toEqual({});
+  });
+
   it("commits color values from text input and native color swatch", () => {
     vi.useFakeTimers();
     const onSave = vi.fn();
@@ -306,10 +494,38 @@ describe("TypedParameterInput children", () => {
       value: "#123456",
     });
 
+    fireEvent.click(screen.getByRole("button", { name: "Value transparent" }));
+    expect(readMapping().background_color).toEqual({
+      source: "typed",
+      value: "transparent",
+    });
+
     act(() => vi.advanceTimersByTime(100));
     expect(onSave).toHaveBeenLastCalledWith("background_color", {
       source: "typed",
-      value: "#123456",
+      value: "transparent",
+    });
+  });
+
+  it("defaults non-string border colors and commits without onSave", () => {
+    render(
+      <TypedInputHarness
+        kind="color"
+        paramKey="border_color"
+        initialValue={null}
+      />,
+    );
+
+    const textInput = screen.getByPlaceholderText("e.g. #0ea5e9");
+    expect(textInput).toHaveValue("#000000");
+    expect(
+      screen.getByRole("button", { name: "Value transparent" }),
+    ).toBeInTheDocument();
+    fireEvent.blur(textInput);
+
+    expect(readMapping().border_color).toEqual({
+      source: "typed",
+      value: "#000000",
     });
   });
 
@@ -356,6 +572,62 @@ describe("TypedParameterInput children", () => {
         [20, 20],
         [80, 20],
       ],
+    });
+  });
+
+  it("leaves WebGazer input unchanged when blur happens before local edits", () => {
+    render(
+      <TypedInputHarness
+        kind="webgazer"
+        paramKey="calibration_points"
+        initialValue="not-an-array"
+      />,
+    );
+
+    const input = screen.getByPlaceholderText("Escribe value");
+    expect(input).toHaveValue("");
+
+    fireEvent.blur(input);
+    expect(readMapping().calibration_points).toEqual({
+      source: "typed",
+      value: "not-an-array",
+    });
+
+    fireEvent.change(input, { target: { value: "   " } });
+    fireEvent.blur(input);
+
+    expect(readMapping().calibration_points).toEqual({
+      source: "typed",
+      value: [],
+    });
+  });
+
+  it("saves an empty WebGazer point array after trimming whitespace", () => {
+    vi.useFakeTimers();
+    const onSave = vi.fn();
+
+    render(
+      <TypedInputHarness
+        kind="webgazer"
+        paramKey="calibration_points"
+        initialValue={[[50, 50]]}
+        onSave={onSave}
+      />,
+    );
+
+    const input = screen.getByPlaceholderText("Escribe value");
+    fireEvent.change(input, { target: { value: " " } });
+    fireEvent.blur(input);
+
+    expect(readMapping().calibration_points).toEqual({
+      source: "typed",
+      value: [],
+    });
+
+    act(() => vi.advanceTimersByTime(100));
+    expect(onSave).toHaveBeenCalledWith("calibration_points", {
+      source: "typed",
+      value: [],
     });
   });
 

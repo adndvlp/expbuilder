@@ -89,6 +89,50 @@ describe("SurveyBuilder shell", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("initializes from object values", () => {
+    render(
+      <SurveyBuilder
+        isOpen
+        onClose={vi.fn()}
+        onChange={vi.fn()}
+        value={{
+          title: "Object survey",
+          elements: [{ type: "boolean", name: "accepted" }],
+        }}
+      />,
+    );
+
+    expect(screen.getByText("builder:Object survey")).toBeInTheDocument();
+    expect(screen.getByTestId("survey-preview")).toHaveTextContent(
+      "Object survey",
+    );
+  });
+
+  it("uses the default survey for empty string and object values", () => {
+    const stringView = render(
+      <SurveyBuilder
+        isOpen
+        onClose={vi.fn()}
+        onChange={vi.fn()}
+        value="   "
+      />,
+    );
+
+    expect(screen.getByText("builder:My Survey")).toBeInTheDocument();
+    stringView.unmount();
+
+    render(
+      <SurveyBuilder
+        isOpen
+        onClose={vi.fn()}
+        onChange={vi.fn()}
+        value={{}}
+      />,
+    );
+
+    expect(screen.getByText("builder:My Survey")).toBeInTheDocument();
+  });
+
   it("falls back for invalid JSON, cancels, and debounces autosave", () => {
     vi.useFakeTimers();
     const onClose = vi.fn();
@@ -108,6 +152,7 @@ describe("SurveyBuilder shell", () => {
 
     fireEvent.click(screen.getByText("Change survey"));
     expect(onAutoSave).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText("Change survey"));
 
     act(() => {
       vi.advanceTimersByTime(999);
@@ -121,6 +166,12 @@ describe("SurveyBuilder shell", () => {
       title: "Changed survey",
       elements: [{ type: "text", name: "q1" }],
     });
+    expect(screen.getByText("✓ Saved")).toHaveStyle({ opacity: "1" });
+
+    act(() => {
+      vi.advanceTimersByTime(1500);
+    });
+    expect(screen.getByText("✓ Saved")).toHaveStyle({ opacity: "0" });
 
     fireEvent.click(screen.getByText("Cancel"));
     expect(onClose).toHaveBeenCalledTimes(1);

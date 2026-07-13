@@ -3,6 +3,7 @@ import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import CustomSurveyEditor from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/SurveyEditor/Builder";
 import QuestionEditor from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/SurveyEditor/Builder/QuestionEditor";
+import ThemeCustomization from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/SurveyEditor/Builder/ThemeCustomization";
 import type {
   ChoiceItem,
   Question,
@@ -190,6 +191,38 @@ describe("Survey Builder components", () => {
     expect(onChange).toHaveBeenCalled();
   });
 
+  it("creates each theme variable when no theme object exists", () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <ThemeCustomization surveyJson={{}} onChange={onChange} />,
+    );
+    const colorInputs = container.querySelectorAll<HTMLInputElement>(
+      'input[type="color"]',
+    );
+
+    fireEvent.change(colorInputs[0], { target: { value: "#111111" } });
+    fireEvent.change(colorInputs[1], { target: { value: "#222222" } });
+    fireEvent.change(colorInputs[2], { target: { value: "#333333" } });
+
+    expect(onChange).toHaveBeenNthCalledWith(1, {
+      themeVariables: { "--sjs-primary-backcolor": "#111111" },
+    });
+    expect(onChange).toHaveBeenNthCalledWith(2, {
+      themeVariables: { "--sjs-general-forecolor": "#222222" },
+    });
+    expect(onChange).toHaveBeenNthCalledWith(3, {
+      themeVariables: { "--sjs-general-backcolor-dim": "#333333" },
+    });
+  });
+
+  it("shows an empty state when the survey has no elements field", () => {
+    render(<SurveyHarness initial={{ title: "No elements yet" }} />);
+
+    expect(
+      screen.getByText('No questions yet. Click "Add Question" to start.'),
+    ).toBeInTheDocument();
+  });
+
   it("toggles, moves and deletes questions through CustomSurveyEditor", () => {
     render(
       <SurveyHarness
@@ -220,6 +253,56 @@ describe("Survey Builder components", () => {
     const afterDelete = JSON.parse(screen.getByTestId("survey-json").textContent || "{}");
 
     expect(afterDelete.elements).toHaveLength(1);
+  });
+
+  it("routes nested choice and rating updates through CustomSurveyEditor", () => {
+    render(
+      <SurveyHarness
+        initial={{
+          elements: [
+            {
+              type: "radiogroup",
+              name: "choice_question",
+              title: "Choice question",
+              choices: ["A"],
+            },
+            {
+              type: "rating",
+              name: "rating_question",
+              title: "Rating question",
+              rateMin: 1,
+              rateMax: 5,
+            },
+          ],
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Choice question"));
+    fireEvent.change(screen.getByPlaceholderText("Enter your question"), {
+      target: { value: "Updated choice question" },
+    });
+    fireEvent.click(screen.getByText("Add Option"));
+    fireEvent.change(screen.getByDisplayValue("A"), {
+      target: { value: "Option A" },
+    });
+    fireEvent.click(screen.getAllByTitle("Remove option")[0]);
+
+    fireEvent.click(screen.getByText("Rating question"));
+    fireEvent.click(screen.getByText("Add Value"));
+    fireEvent.change(screen.getByPlaceholderText("Value 1 label"), {
+      target: { value: "Neutral" },
+    });
+    fireEvent.click(screen.getByTitle("Remove value"));
+
+    const updated = JSON.parse(
+      screen.getByTestId("survey-json").textContent || "{}",
+    );
+    expect(updated.elements[0].title).toBe("Updated choice question");
+    expect(updated.elements[0].choices).toEqual([
+      { value: "", text: "", imageLink: "" },
+    ]);
+    expect(updated.elements[1].rateValues).toEqual([]);
   });
 
   it("edits choice questions, required state and action buttons", () => {
@@ -266,6 +349,26 @@ describe("Survey Builder components", () => {
     expect(onMove).toHaveBeenCalledWith("up");
     expect(onMove).toHaveBeenCalledWith("down");
     expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts choice questions without options from an empty state", () => {
+    render(
+      <QuestionHarness
+        initial={{
+          type: "radiogroup",
+          name: "q_empty_choices",
+          title: "Empty choices",
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText('No options yet. Click "Add Option" to start.'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Add Option"));
+
+    expect(screen.getByPlaceholderText("Option 1")).toBeInTheDocument();
   });
 
   it("edits image-picker choices and media display settings from uploaded files", () => {
@@ -365,6 +468,13 @@ describe("Survey Builder components", () => {
       />,
     );
 
+    fireEvent.change(screen.getByPlaceholderText("<p>Your HTML content...</p>"), {
+      target: { value: "<p>Typed HTML</p>" },
+    });
+    expect(screen.getByTestId("question-json")).toHaveTextContent(
+      "<p>Typed HTML</p>",
+    );
+
     fireEvent.click(screen.getByText("Visual Editor"));
     expect(screen.getByRole("dialog", { name: "Design HTML Content" })).toBeInTheDocument();
     fireEvent.click(screen.getByText("Apply visual HTML"));
@@ -373,5 +483,83 @@ describe("Survey Builder components", () => {
     expect(screen.getByTestId("question-json")).toHaveTextContent(
       "<section>Visual HTML</section>",
     );
+  });
+
+  it("defaults missing rating bounds and preserves zero bounds", () => {
+    const { rerender } = render(
+      <QuestionHarness
+        initial={{
+          type: "rating",
+          name: "q_default_rating",
+          title: "Default rating",
+        }}
+      />,
+    );
+
+    expect(screen.getByDisplayValue("1")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("5")).toBeInTheDocument();
+
+    rerender(
+      <QuestionHarness
+        key="zero-rating"
+        initial={{
+          type: "rating",
+          name: "q_zero_rating",
+          title: "Zero rating",
+          rateMin: 0,
+          rateMax: 0,
+        }}
+      />,
+    );
+
+    const bounds = screen.getAllByRole("spinbutton");
+    expect(bounds[0]).toHaveValue(0);
+    expect(bounds[1]).toHaveValue(0);
+  });
+
+  it("renders empty question title and HTML values", () => {
+    const { rerender } = render(
+      <QuestionHarness
+        initial={{
+          type: "html",
+          name: "q_empty_html",
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByPlaceholderText("<p>Your HTML content...</p>"),
+    ).toHaveValue("");
+
+    rerender(
+      <QuestionHarness
+        key="empty-title"
+        initial={{
+          type: "text",
+          name: "q_empty_title",
+        }}
+      />,
+    );
+
+    expect(screen.getByPlaceholderText("Enter your question")).toHaveValue("");
+  });
+
+  it("edits comment row count", () => {
+    render(
+      <QuestionHarness
+        initial={{
+          type: "comment",
+          name: "q_comment",
+          title: "Explain",
+          rows: 3,
+        }}
+      />,
+    );
+
+    fireEvent.change(screen.getByDisplayValue("3"), {
+      target: { value: "8" },
+    });
+
+    expect(screen.getByTestId("question-json")).toHaveTextContent('"rows":8');
   });
 });

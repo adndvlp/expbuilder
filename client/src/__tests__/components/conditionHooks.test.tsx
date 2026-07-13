@@ -73,6 +73,7 @@ describe("condition state hooks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
     installTrialsContext();
     mocks.loadPluginParameters.mockImplementation(async (pluginName: string) => ({
       parameters:
@@ -121,6 +122,7 @@ describe("condition state hooks", () => {
       name: "Trial 2",
       plugin: "plugin-previous",
     });
+    expect(result.current.findTrialByIdSync("missing")).toBeNull();
     expect(result.current.getAvailableTrials()).toEqual([
       { id: 1, name: "Loop Intro" },
       { id: 2, name: "Loop Prime" },
@@ -180,6 +182,241 @@ describe("condition state hooks", () => {
     expect(result.current.saveIndicator).toBe(false);
   });
 
+  it("handles missing ParamsOverride trial data and disables optional autosave", async () => {
+    const { result } = renderHook(() => useParamsOverride(null));
+
+    await waitFor(() => {
+      expect(result.current.currentTrialParameters).toEqual([]);
+    });
+
+    expect(result.current.conditions).toEqual([]);
+    expect(result.current.getAvailableTrials()).toEqual([]);
+    expect(result.current.getAvailableTrialsForCondition(404)).toEqual([]);
+    expect(result.current.getCurrentTrialCsvColumns()).toEqual([]);
+    expect(result.current.findTrialByIdSync(null)).toBeNull();
+
+    await act(async () => {
+      await result.current.handleSaveConditions();
+    });
+    expect(mocks.trialsContext.updateTrial).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.setConditionsWrapper([], false);
+    });
+    expect(result.current.conditions).toEqual([]);
+  });
+
+  it("reports current parameter loading failures", async () => {
+    const error = new Error("metadata failed");
+    const selectedTrial = {
+      id: 3,
+      name: "Current",
+      plugin: "plugin-current",
+      paramsOverride: [],
+    };
+    mocks.loadPluginParameters.mockImplementationOnce(() => {
+      throw error;
+    });
+
+    renderHook(() => useParamsOverride(selectedTrial));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(console.error).toHaveBeenCalledWith(
+      "Error loading current trial parameters:",
+      error,
+    );
+  });
+
+  it("covers ParamsOverride trial lookup guards and load failures", async () => {
+    const selectedTrial = {
+      id: 3,
+      name: "Current",
+      plugin: "plugin-current",
+      paramsOverride: [],
+    };
+    const getTrial = vi
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 5, name: "No Plugin" })
+      .mockResolvedValueOnce({
+        id: 6,
+        name: "Broken Metadata",
+        plugin: "plugin-broken",
+      });
+    installTrialsContext({ getTrial });
+    mocks.loadPluginParameters.mockImplementation(async (pluginName: string) => {
+      if (pluginName === "plugin-broken") {
+        throw new Error("trial metadata failed");
+      }
+      return { parameters: currentParameters, data: previousData };
+    });
+
+    const { result } = renderHook(() => useParamsOverride(selectedTrial));
+
+    await act(async () => {
+      await result.current.loadTrialDataFields(4);
+      await result.current.loadTrialDataFields(5);
+      await result.current.loadTrialDataFields(6);
+    });
+
+    expect(console.log).toHaveBeenCalledWith(
+      "Trial not found or has no plugin:",
+      4,
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      "Trial not found or has no plugin:",
+      5,
+    );
+    expect(console.error).toHaveBeenCalledWith(
+      "Error loading trial data fields:",
+      expect.any(Error),
+    );
+    expect(result.current.loadingData[6]).toBe(false);
+  });
+
+  it("returns main timeline trials and excludes string-matched used ids", async () => {
+    const paramsOverride: ParamsOverrideCondition[] = [
+      {
+        id: 7,
+        rules: [{ trialId: "1", column: "response", op: "==", value: "yes" }],
+        paramsToOverride: {},
+      },
+    ];
+    const selectedTrial = {
+      id: 3,
+      name: "Current",
+      plugin: "plugin-current",
+      paramsOverride,
+    };
+
+    const { result, rerender } = renderHook(
+      ({ trial }) => useParamsOverride(trial),
+      { initialProps: { trial: selectedTrial as any } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.conditions).toEqual(paramsOverride);
+    });
+
+    expect(result.current.getAvailableTrials()).toEqual([
+      { id: 1, name: "Intro" },
+      { id: 2, name: "Prime" },
+    ]);
+    expect(result.current.getAvailableTrialsForCondition(7)).toEqual([
+      { id: 2, name: "Prime" },
+    ]);
+    expect(result.current.getCurrentTrialCsvColumns()).toEqual([]);
+
+    rerender({
+      trial: {
+        id: 99,
+        name: "Missing Main",
+        plugin: "plugin-current",
+        paramsOverride: [],
+      } as any,
+    });
+    expect(result.current.getAvailableTrials()).toEqual([]);
+
+    rerender({
+      trial: {
+        id: 99,
+        name: "Missing Loop",
+        plugin: "plugin-current",
+        parentLoopId: "loop_1",
+        paramsOverride: [],
+      } as any,
+    });
+    expect(result.current.getAvailableTrials()).toEqual([]);
+  });
+
+  it("covers cached data loads, string id matching and triggerSave defaults", async () => {
+    const paramsOverride: ParamsOverrideCondition[] = [
+      {
+        id: 8,
+        rules: [{ column: "response", op: "==", value: "yes" } as any],
+        paramsToOverride: {},
+      },
+    ];
+    const selectedTrial = {
+      id: "3",
+      name: "Current String Id",
+      plugin: "plugin-current",
+      paramsOverride,
+    };
+
+    const { result } = renderHook(() => useParamsOverride(selectedTrial));
+
+    await waitFor(() => {
+      expect(result.current.conditions).toEqual(paramsOverride);
+    });
+
+    expect(result.current.getAvailableTrials()).toEqual([
+      { id: 1, name: "Intro" },
+      { id: 2, name: "Prime" },
+    ]);
+
+    await act(async () => {
+      await result.current.loadTrialDataFields(2);
+    });
+    expect(mocks.trialsContext.getTrial).toHaveBeenCalledWith(2);
+
+    await act(async () => {
+      await result.current.loadTrialDataFields(2);
+    });
+    expect(mocks.trialsContext.getTrial).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      result.current.triggerSave();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith("3", {
+      paramsOverride,
+    });
+  });
+
+  it("handles ParamsOverride saves with null updates and thrown errors", async () => {
+    vi.useFakeTimers();
+    const selectedTrial = {
+      id: 3,
+      name: "Current",
+      plugin: "plugin-current",
+      paramsOverride: [],
+    };
+    const updateTrial = vi
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockRejectedValueOnce(new Error("save failed"));
+    installTrialsContext({ updateTrial });
+
+    const { result } = renderHook(() => useParamsOverride(selectedTrial));
+
+    await act(async () => {
+      await result.current.handleSaveConditions([]);
+    });
+
+    expect(mocks.trialsContext.setSelectedTrial).not.toHaveBeenCalled();
+    expect(result.current.saveIndicator).toBe(true);
+
+    act(() => {
+      vi.advanceTimersByTime(1500);
+    });
+    expect(result.current.saveIndicator).toBe(false);
+
+    await act(async () => {
+      await result.current.handleSaveConditions([]);
+    });
+
+    expect(console.error).toHaveBeenCalledWith(
+      "Error saving params override conditions:",
+      expect.any(Error),
+    );
+  });
+
   it("loads ConditionalLoop conditions, filters used targets and loads loop/trial metadata", async () => {
     const loopCondition: LoopCondition = {
       id: 1,
@@ -229,6 +466,119 @@ describe("condition state hooks", () => {
       name: "Trial 2",
       plugin: "plugin-previous",
     });
+  });
+
+  it("covers ConditionalLoop guards, cached lookups and explicit saves", async () => {
+    const getTrial = vi.fn(async (id: string | number) => {
+      if (id === 404) return null;
+      if (id === 405) throw new Error("lookup failed");
+      if (id === 406) return { id, name: "No Plugin" };
+      if (id === 407) return { id, name: "Broken Metadata", plugin: "plugin-broken" };
+      return {
+        id,
+        name: `Trial ${id}`,
+        plugin: "plugin-previous",
+      };
+    });
+    installTrialsContext({ getTrial });
+    mocks.loadPluginParameters.mockImplementation(async (pluginName: string) => {
+      if (pluginName === "plugin-broken") {
+        throw new Error("metadata failed");
+      }
+      return { parameters: currentParameters, data: previousData };
+    });
+    const loop = {
+      id: "loop_1",
+      name: "Parent Loop",
+    } as Loop;
+    const onSave = vi.fn();
+
+    const { result } = renderHook(() => useConditionalLoop(loop, onSave));
+
+    await waitFor(() => {
+      expect(result.current.conditions).toEqual([]);
+    });
+
+    await act(async () => {
+      await result.current.loadTrialDataFields(4);
+    });
+    await waitFor(() => {
+      expect(result.current.trialDataFields[4]).toEqual(previousData);
+    });
+
+    expect(result.current.findTrialByIdSync(null)).toBeNull();
+    expect(result.current.findTrialByIdSync(4)).toEqual(
+      expect.objectContaining({ id: 4, plugin: "plugin-previous" }),
+    );
+    expect(result.current.findTrialByIdSync(999)).toBeNull();
+    expect(result.current.getAvailableTrials(999)).toEqual([
+      { id: 1, name: "Loop Intro" },
+      { id: 2, name: "Loop Prime" },
+      { id: 3, name: "Loop Current" },
+      { id: "loop_2", name: "Nested Loop" },
+    ]);
+
+    await act(async () => {
+      await result.current.loadTrialDataFields(4);
+    });
+    expect(getTrial).toHaveBeenCalledWith(4);
+    expect(getTrial.mock.calls.filter(([id]) => id === 4)).toHaveLength(1);
+
+    await expect(result.current.loadTrialOrLoop(4)).resolves.toEqual(
+      expect.objectContaining({ id: 4, plugin: "plugin-previous" }),
+    );
+    await expect(result.current.loadTrialOrLoop(404)).resolves.toBeNull();
+    await expect(result.current.loadTrialOrLoop(405)).resolves.toBeNull();
+
+    await act(async () => {
+      await result.current.loadTrialDataFields(406);
+      await result.current.loadTrialDataFields(407);
+    });
+
+    expect(console.log).toHaveBeenCalledWith(
+      "Trial/Loop not found:",
+      404,
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      "Trial not found or has no plugin:",
+      406,
+    );
+    expect(console.error).toHaveBeenCalledWith(
+      "Error loading trial/loop:",
+      expect.any(Error),
+    );
+    expect(console.error).toHaveBeenCalledWith(
+      "Error loading trial data fields:",
+      expect.any(Error),
+    );
+
+    act(() => {
+      result.current.triggerSave();
+      result.current.setConditionsWrapper([], false);
+    });
+
+    expect(onSave).toHaveBeenCalledWith([]);
+  });
+
+  it("handles a ConditionalLoop without an id, target or active timeline", async () => {
+    const loopCondition: LoopCondition = {
+      id: 9,
+      rules: [{ column: "response", op: "==", value: "yes" } as any],
+    };
+    const loop = {
+      id: "",
+      name: "Detached Loop",
+      loopConditions: [loopCondition],
+    } as Loop;
+
+    const { result } = renderHook(() => useConditionalLoop(loop, vi.fn()));
+
+    await waitFor(() => {
+      expect(result.current.conditions).toEqual([loopCondition]);
+    });
+
+    expect(mocks.trialsContext.getLoopTimeline).not.toHaveBeenCalled();
+    expect(result.current.getAvailableTrials(9)).toEqual([]);
   });
 
   it("autosaves ConditionalLoop updates through the provided onSave callback", () => {

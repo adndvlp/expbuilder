@@ -55,6 +55,13 @@ describe("PromptModal", () => {
     );
 
     expect(screen.getByRole("button", { name: "Confirm" })).toBeDisabled();
+    fireEvent.submit(container.querySelector("form")!);
+    fireEvent.keyDown(container.querySelector(".prompt-modal-content")!, {
+      key: "ArrowDown",
+    });
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(onCancel).not.toHaveBeenCalled();
+
     fireEvent.change(screen.getByPlaceholderText("Enter name"), {
       target: { value: "  Memory Task  " },
     });
@@ -163,6 +170,35 @@ describe("Dashboard", () => {
     expect(await screen.findByText("New Study")).toBeInTheDocument();
   });
 
+  it("closes the create experiment prompt without creating when cancelled", async () => {
+    render(<Dashboard />);
+
+    await screen.findByText("Memory Task");
+    fireEvent.click(screen.getByText("+ Create experiment"));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByPlaceholderText("Enter experiment name")).not.toBeInTheDocument();
+    expect(fetchMock()).not.toHaveBeenCalledWith(
+      "http://localhost:3000/api/create-experiment",
+      expect.anything(),
+    );
+  });
+
+  it("does not delete experiments when confirmation is cancelled", async () => {
+    vi.mocked(window.confirm).mockReturnValueOnce(false);
+
+    render(<Dashboard />);
+
+    await screen.findByText("Memory Task");
+    fireEvent.click(screen.getAllByText("Delete")[0]);
+
+    expect(fetchMock()).not.toHaveBeenCalledWith(
+      "http://localhost:3000/api/delete-experiment/exp-1",
+      expect.anything(),
+    );
+    expect(screen.getByText("Memory Task")).toBeInTheDocument();
+  });
+
   it("deletes experiments with the authenticated uid without triggering navigation", async () => {
     render(<Dashboard />);
 
@@ -182,9 +218,81 @@ describe("Dashboard", () => {
         },
       );
     });
-    expect(screen.queryByText("Memory Task")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText("Memory Task")).not.toBeInTheDocument();
+    });
     expect(routerMocks.navigate).not.toHaveBeenCalledWith(
       "/home/experiment/exp-1",
     );
+  });
+
+  it("handles an empty experiment response and unsuccessful creation", async () => {
+    globalThis.fetch = vi.fn(async (url: string) => {
+      if (url === "http://localhost:3000/api/load-experiments") {
+        return okJson({});
+      }
+      if (url === "http://localhost:3000/api/create-experiment") {
+        return okJson({ success: false });
+      }
+      return okJson({});
+    }) as unknown as typeof fetch;
+
+    render(<Dashboard />);
+
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledWith(
+        "http://localhost:3000/api/load-experiments",
+      );
+    });
+    expect(screen.queryByText("Memory Task")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("+ Create experiment"));
+    fireEvent.change(screen.getByPlaceholderText("Enter experiment name"), {
+      target: { value: "Rejected Study" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledWith(
+        "http://localhost:3000/api/create-experiment",
+        expect.any(Object),
+      );
+    });
+    expect(screen.queryByText("Rejected Study")).not.toBeInTheDocument();
+  });
+
+  it("keeps an experiment when unauthenticated deletion fails", async () => {
+    (auth as any).currentUser = null;
+    globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === "http://localhost:3000/api/load-experiments") {
+        return okJson({
+          experiments: [{ experimentID: "exp-fail", name: "Keep Study" }],
+        });
+      }
+      if (
+        url === "http://localhost:3000/api/delete-experiment/exp-fail" &&
+        init?.method === "DELETE"
+      ) {
+        return okJson({ success: false }, false);
+      }
+      return okJson({});
+    }) as unknown as typeof fetch;
+
+    render(<Dashboard />);
+
+    expect(await screen.findByText("Keep Study")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Delete"));
+
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledWith(
+        "http://localhost:3000/api/delete-experiment/exp-fail",
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        },
+      );
+    });
+    expect(screen.getByText("Keep Study")).toBeInTheDocument();
   });
 });

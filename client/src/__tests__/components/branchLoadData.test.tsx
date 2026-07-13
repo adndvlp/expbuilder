@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import useLoadData from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/BranchedTrial/useLoadData";
@@ -119,6 +119,42 @@ describe("BranchedTrial useLoadData", () => {
     expect(result.current.loading).toBe(false);
   });
 
+  it("clears data without loading plugin metadata when the selected trial has no plugin", async () => {
+    const loadPluginParameters = vi.fn(async () => ({
+      parameters: [],
+      data: [{ key: "unused", label: "Unused", type: "string" }],
+    }));
+
+    const { result } = renderHook(() =>
+      useLoadDataHarness({
+        selectedTrial: { id: "loop-trial", trials: [] },
+        loadPluginParameters,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.data).toEqual([]);
+    });
+    expect(result.current.error).toBeNull();
+    expect(loadPluginParameters).not.toHaveBeenCalled();
+  });
+
+  it("opens without a selected trial without mutating conditions", async () => {
+    const getLoopTimeline = vi.fn(async () => []);
+
+    const { result } = renderHook(() =>
+      useLoadDataHarness({
+        selectedTrial: null,
+        getLoopTimeline,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.conditions).toEqual([]);
+    });
+    expect(getLoopTimeline).not.toHaveBeenCalled();
+  });
+
   it("merges branch and repeat conditions when the modal opens", async () => {
     const branchConditions: BranchCondition[] = [
       {
@@ -173,6 +209,42 @@ describe("BranchedTrial useLoadData", () => {
     expect(result.current.repeatConditions).toEqual(repeatConditions);
   });
 
+  it("keeps existing custom parameters and ignores branch conditions without a next trial", async () => {
+    const loadTargetTrialParameters = vi.fn(async () => {});
+    const getLoopTimeline = vi.fn(async () => []);
+
+    const { result } = renderHook(() =>
+      useLoadDataHarness({
+        selectedTrial: {
+          id: 10,
+          plugin: "plugin-html-keyboard-response",
+          branchConditions: [
+            {
+              id: 1,
+              rules: [{ column: "response", op: "==", value: "left" }],
+              customParameters: { stimulus: "custom" },
+            },
+          ],
+        },
+        loadTargetTrialParameters,
+        getLoopTimeline,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.conditions).toEqual([
+        {
+          id: 1,
+          rules: [{ column: "response", op: "==", value: "left" }],
+          customParameters: { stimulus: "custom" },
+        },
+      ]);
+    });
+    expect(loadTargetTrialParameters).not.toHaveBeenCalled();
+    expect(getLoopTimeline).not.toHaveBeenCalled();
+    expect(result.current.repeatConditions).toEqual([]);
+  });
+
   it("loads target parameters when conditions change and skips already loaded targets", async () => {
     const loadTargetTrialParameters = vi.fn(async () => {});
     const targetTrialParameters = {
@@ -203,6 +275,75 @@ describe("BranchedTrial useLoadData", () => {
       expect(loadTargetTrialParameters).toHaveBeenCalledWith(3);
     });
     expect(loadTargetTrialParameters).not.toHaveBeenCalledWith(2);
+  });
+
+  it("skips target requests that are already loaded from branch conditions", async () => {
+    const loadTargetTrialParameters = vi.fn(async () => {});
+    const targetTrialParameters = {
+      2: [{ key: "stimulus", label: "Stimulus", type: "html_string" }],
+    };
+
+    renderHook(() =>
+      useLoadDataHarness({
+        selectedTrial: {
+          id: 10,
+          plugin: "plugin-html-keyboard-response",
+          branchConditions: [
+            {
+              id: 1,
+              rules: [{ column: "response", op: "==", value: "left" }],
+              nextTrialId: 2,
+            },
+          ],
+        },
+        targetTrialParameters,
+        loadTargetTrialParameters,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(loadTargetTrialParameters).not.toHaveBeenCalled();
+    });
+  });
+
+  it("allows retrying target parameter requests after a failed load", async () => {
+    const loadTargetTrialParameters = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("target failed"))
+      .mockResolvedValueOnce(undefined);
+
+    const { result } = renderHook(() =>
+      useLoadDataHarness({
+        selectedTrial: { id: 10, plugin: "plugin-html-keyboard-response" },
+        initialConditions: [
+          {
+            id: 1,
+            rules: [{ column: "response", op: "==", value: "left" }],
+            nextTrialId: 4,
+          },
+        ],
+        loadTargetTrialParameters,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(loadTargetTrialParameters).toHaveBeenCalledTimes(1);
+    });
+    await Promise.resolve();
+
+    act(() => {
+      result.current.setConditions([
+        {
+          id: 2,
+          rules: [{ column: "response", op: "==", value: "right" }],
+          nextTrialId: 4,
+        },
+      ]);
+    });
+
+    await waitFor(() => {
+      expect(loadTargetTrialParameters).toHaveBeenCalledTimes(2);
+    });
   });
 
   it("resets its open guard when the modal closes and reloads on reopen", async () => {

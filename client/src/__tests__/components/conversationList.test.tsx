@@ -64,6 +64,7 @@ describe("ConversationList", () => {
       activeConvId: "today",
       conversations: [
         conv("today", "Today chat", "2026-05-25T08:00:00.000Z"),
+        conv("today-2", "Second today chat", "2026-05-25T07:00:00.000Z"),
         conv("yesterday", "Yesterday chat", "2026-05-24T08:00:00.000Z"),
         conv("week", "Week chat", "2026-05-22T08:00:00.000Z"),
         conv("earlier", "Earlier chat", "2026-05-01T08:00:00.000Z"),
@@ -73,6 +74,7 @@ describe("ConversationList", () => {
     render(<ConversationList />);
 
     expect(screen.getByText("Today")).toBeInTheDocument();
+    expect(screen.getByText("Second today chat")).toBeInTheDocument();
     expect(screen.getByText("Yesterday")).toBeInTheDocument();
     expect(screen.getByText("This week")).toBeInTheDocument();
     expect(screen.getByText("Earlier")).toBeInTheDocument();
@@ -106,6 +108,8 @@ describe("ConversationList", () => {
     });
 
     const input = screen.getByDisplayValue("Today chat");
+    fireEvent.click(input);
+    expect(mocks.selectConversation).not.toHaveBeenCalled();
     fireEvent.change(input, { target: { value: "  Renamed today  " } });
     fireEvent.keyDown(input, { key: "Enter" });
 

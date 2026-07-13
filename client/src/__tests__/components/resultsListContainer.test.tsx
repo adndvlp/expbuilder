@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   socketHandlers: {} as Record<string, (...args: any[]) => void>,
   socketEmit: vi.fn(),
   socketDisconnect: vi.fn(),
+  experimentID: "exp-123" as string | null,
   collection: vi.fn((...segments: unknown[]) => segments.slice(1).join("/")),
   getDocs: vi.fn(),
   openExternal: vi.fn(),
@@ -31,7 +32,7 @@ vi.mock("../../lib/openExternal", () => ({
 }));
 
 vi.mock("../../pages/ExperimentBuilder/hooks/useExperimentID", () => ({
-  useExperimentID: () => "exp-123",
+  useExperimentID: () => mocks.experimentID,
 }));
 
 vi.mock("react-switch", () => ({
@@ -110,6 +111,7 @@ describe("ResultsList container", () => {
     vi.clearAllMocks();
     vi.spyOn(console, "log").mockImplementation(() => {});
     mocks.socketHandlers = {};
+    mocks.experimentID = "exp-123";
     globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
       if (url === "http://localhost:3000/api/session-results/exp-123") {
         return okJson({ sessions: sessionsFixture });
@@ -187,10 +189,11 @@ describe("ResultsList container", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("renders local sessions, merges websocket updates, and manages participant files", async () => {
-    render(<ResultsList activeTab="local" />);
+    const { unmount } = render(<ResultsList activeTab="local" />);
 
     expect(await screen.findByText("local-1")).toBeInTheDocument();
     expect(screen.queryByText("exp_result_preview")).not.toBeInTheDocument();
@@ -199,6 +202,24 @@ describe("ResultsList container", () => {
       mocks.socketHandlers.connect?.();
     });
     expect(mocks.socketEmit).toHaveBeenCalledWith("listen-experiment", "exp-123");
+    act(() => {
+      mocks.socketHandlers.disconnect?.();
+    });
+    expect(console.log).toHaveBeenCalledWith("WebSocket disconnected");
+
+    act(() => {
+      mocks.socketHandlers["session-update"]?.({
+        experimentID: "another-experiment",
+        sessions: [
+          {
+            _id: "ignored-session",
+            sessionId: "ignored-session",
+            createdAt: "2026-05-24T11:00:00.000Z",
+          },
+        ],
+      });
+    });
+    expect(screen.queryByText("ignored-session")).not.toBeInTheDocument();
 
     act(() => {
       mocks.socketHandlers["session-update"]?.({
@@ -241,6 +262,39 @@ describe("ResultsList container", () => {
     });
     await waitFor(() => {
       expect(screen.queryByText("response.png")).not.toBeInTheDocument();
+    });
+
+    unmount();
+    expect(mocks.socketDisconnect).toHaveBeenCalled();
+  });
+
+  it("skips websocket setup when the experiment id is unavailable", () => {
+    mocks.experimentID = null;
+
+    render(<ResultsList activeTab="local" />);
+
+    expect(mocks.socketHandlers).toEqual({});
+    expect(mocks.socketEmit).not.toHaveBeenCalled();
+  });
+
+  it("ignores participant file preload failures", async () => {
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === "http://localhost:3000/api/session-results/exp-123") {
+        return okJson({ sessions: sessionsFixture });
+      }
+      if (url === "http://localhost:3000/api/participant-files/exp-123") {
+        throw new Error("preload failed");
+      }
+      return okJson({ success: true });
+    });
+
+    render(<ResultsList activeTab="local" />);
+
+    expect(await screen.findByText("local-1")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledWith(
+        "http://localhost:3000/api/participant-files/exp-123",
+      );
     });
   });
 
@@ -323,6 +377,384 @@ describe("ResultsList container", () => {
     expect(screen.getByText("local-2")).toBeInTheDocument();
   });
 
+  it("filters local sessions by mismatched OS, resolution, and 90-day window", async () => {
+    render(<ResultsList activeTab="local" />);
+
+    expect(await screen.findByText("local-1")).toBeInTheDocument();
+
+    act(() => {
+      mocks.socketHandlers["session-update"]?.({
+        experimentID: "exp-123",
+        sessions: [
+          {
+            _id: "active-recent",
+            sessionId: "local-recent",
+            createdAt: "2026-07-09T12:00:00.000Z",
+            state: "completed",
+            metadata: {
+              browser: "Safari",
+              os: "iOS",
+              screenResolution: "390x844",
+            },
+          },
+          {
+            _id: "active-old",
+            sessionId: "local-old",
+            createdAt: "2025-01-01T12:00:00.000Z",
+            state: "completed",
+            metadata: {
+              browser: "Firefox",
+              os: "Linux",
+              screenResolution: "800x600",
+            },
+          },
+        ],
+      });
+    });
+
+    expect(await screen.findByText("local-recent")).toBeInTheDocument();
+    expect(screen.getByText("local-old")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Filter"));
+    fireEvent.change(screen.getByLabelText("OS"), {
+      target: { value: "iOS" },
+    });
+
+    expect(screen.getByText("local-recent")).toBeInTheDocument();
+    expect(screen.queryByText("local-1")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Clear all"));
+    fireEvent.change(screen.getByLabelText("Resolution"), {
+      target: { value: "390x844" },
+    });
+
+    expect(screen.getByText("local-recent")).toBeInTheDocument();
+    expect(screen.queryByText("local-old")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Clear all"));
+    fireEvent.change(screen.getByLabelText("Date"), {
+      target: { value: "90d" },
+    });
+
+    expect(screen.getByText("local-recent")).toBeInTheDocument();
+    expect(screen.queryByText("local-old")).not.toBeInTheDocument();
+  });
+
+  it("closes the filter dropdown and applies state, OS, resolution, and date filters", async () => {
+    render(<ResultsList activeTab="local" />);
+
+    expect(await screen.findByText("local-1")).toBeInTheDocument();
+
+    act(() => {
+      mocks.socketHandlers["session-update"]?.({
+        experimentID: "exp-123",
+        sessions: [
+          {
+            _id: "active-local-abandoned",
+            sessionId: "local-abandoned",
+            createdAt: "2026-05-24T12:00:00.000Z",
+            state: "abandoned",
+            metadata: {
+              browser: "Safari",
+              os: "iOS",
+              screenResolution: "390x844",
+            },
+          },
+          {
+            _id: "active-local-nostate",
+            sessionId: "local-no-state",
+            createdAt: "2026-05-20T12:00:00.000Z",
+            metadata: {
+              browser: "Firefox",
+              os: "Linux",
+              screenResolution: "1366x768",
+            },
+          },
+        ],
+      });
+    });
+
+    expect(await screen.findByText("local-abandoned")).toBeInTheDocument();
+    expect(screen.getByText("Abandoned")).toBeInTheDocument();
+    expect(screen.getByText("local-no-state")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Filter"));
+    expect(screen.getByText("Filter sessions")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Filter"));
+    expect(screen.queryByText("Filter sessions")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Filter"));
+    fireEvent.mouseDown(screen.getByText("Filter sessions"));
+    expect(screen.getByText("Filter sessions")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("State"), {
+      target: { value: "abandoned" },
+    });
+    fireEvent.change(screen.getByLabelText("OS"), {
+      target: { value: "iOS" },
+    });
+    fireEvent.change(screen.getByLabelText("Resolution"), {
+      target: { value: "390x844" },
+    });
+
+    expect(screen.getByText("local-abandoned")).toBeInTheDocument();
+    expect(screen.queryByText("local-no-state")).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Date"), {
+      target: { value: "today" },
+    });
+    expect(
+      await screen.findByText("No sessions match the current filters."),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Date"), {
+      target: { value: "yesterday" },
+    });
+    fireEvent.change(screen.getByLabelText("Date"), {
+      target: { value: "7d" },
+    });
+    fireEvent.change(screen.getByLabelText("Date"), {
+      target: { value: "30d" },
+    });
+    fireEvent.change(screen.getByLabelText("Date"), {
+      target: { value: "90d" },
+    });
+
+    fireEvent.click(screen.getByText("Clear all"));
+    expect(await screen.findByText("local-no-state")).toBeInTheDocument();
+
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByText("Filter sessions")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Filter"));
+    const closeButton = screen
+      .getByText("Filter sessions")
+      .parentElement?.querySelector("button");
+    fireEvent.click(closeButton!);
+
+    expect(screen.queryByText("Filter sessions")).not.toBeInTheDocument();
+  });
+
+  it("keeps only yesterday's sessions and renders unknown state and metadata fallbacks", async () => {
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    render(<ResultsList activeTab="local" />);
+
+    expect(await screen.findByText("local-1")).toBeInTheDocument();
+
+    act(() => {
+      mocks.socketHandlers["session-update"]?.({
+        experimentID: "exp-123",
+        sessions: [
+          {
+            _id: "unknown-yesterday",
+            sessionId: "unknown-yesterday",
+            createdAt: yesterday.toISOString(),
+            state: "unexpected",
+          },
+          {
+            _id: "completed-today",
+            sessionId: "completed-today",
+            createdAt: today.toISOString(),
+            state: "completed",
+          },
+        ],
+      });
+    });
+
+    expect(await screen.findByText("unknown-yesterday")).toBeInTheDocument();
+    expect(screen.getByText("Unknown")).toBeInTheDocument();
+    expect(screen.getAllByText("-").length).toBeGreaterThanOrEqual(3);
+
+    fireEvent.click(screen.getByText("Filter"));
+    fireEvent.change(screen.getByLabelText("Date"), {
+      target: { value: "yesterday" },
+    });
+
+    expect(screen.getByText("unknown-yesterday")).toBeInTheDocument();
+    expect(screen.queryByText("completed-today")).not.toBeInTheDocument();
+  });
+
+  it("shows the local file loading state while the request is pending", async () => {
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === "http://localhost:3000/api/session-results/exp-123") {
+        return okJson({ sessions: sessionsFixture });
+      }
+      if (String(url).includes("/api/participant-files/exp-123")) {
+        return new Promise<Response>(() => {});
+      }
+      return okJson({ success: true });
+    });
+
+    render(<ResultsList activeTab="local" />);
+
+    expect(await screen.findByText("local-1")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Files" }));
+
+    expect(await screen.findByText("Loading…")).toBeInTheDocument();
+  });
+
+  it("formats local participant file sizes in megabytes", async () => {
+    const largeFile = { ...localFiles[0], sizeBytes: 2 * 1024 * 1024 };
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === "http://localhost:3000/api/session-results/exp-123") {
+        return okJson({ sessions: sessionsFixture });
+      }
+      if (String(url).includes("/api/participant-files/exp-123")) {
+        return okJson([largeFile]);
+      }
+      return okJson({ success: true });
+    });
+
+    render(<ResultsList activeTab="local" />);
+
+    expect(await screen.findByText("local-1")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Files (1)" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Files (1)" }));
+
+    expect(await screen.findByText("2.0 MB")).toBeInTheDocument();
+  });
+
+  it("renders online sessions without metadata, files, or a result URL", async () => {
+    mocks.getDocs.mockImplementation(async (collectionPath: string) => {
+      if (String(collectionPath).includes("participant_files")) {
+        return { docs: [] };
+      }
+      return {
+        docs: [
+          {
+            id: "online-empty-doc",
+            data: () => ({
+              sessionId: "online-empty",
+              createdAt: "2026-05-24T12:00:00.000Z",
+              state: "completed",
+            }),
+          },
+        ],
+      };
+    });
+
+    render(<ResultsList activeTab="online" />);
+
+    expect(await screen.findByText("online-empty")).toBeInTheDocument();
+    expect(screen.getAllByText("-").length).toBeGreaterThanOrEqual(4);
+    fireEvent.click(screen.getByRole("button", { name: "Files" }));
+
+    expect(await screen.findByText("No files")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "▲ Close" }));
+    expect(screen.getByRole("button", { name: "Files (0)" })).toBeInTheDocument();
+  });
+
+  it("formats online participant file sizes in megabytes", async () => {
+    mocks.getDocs.mockImplementation(async (collectionPath: string) => {
+      if (String(collectionPath).includes("participant_files")) {
+        return {
+          docs: [
+            {
+              id: "large-online-file",
+              data: () => ({
+                fileId: "large-online-file",
+                sessionId: "online-large",
+                filename: "large.bin",
+                originalName: "large.bin",
+                mimeType: "application/octet-stream",
+                sizeBytes: 3 * 1024 * 1024,
+                uploadedAt: "2026-05-24T12:01:00.000Z",
+                url: "https://storage.test/large.bin",
+              }),
+            },
+          ],
+        };
+      }
+      return {
+        docs: [
+          {
+            id: "online-large-doc",
+            data: () => ({
+              sessionId: "online-large",
+              createdAt: "2026-05-24T12:00:00.000Z",
+              state: "completed",
+            }),
+          },
+        ],
+      };
+    });
+
+    render(<ResultsList activeTab="online" />);
+
+    expect(await screen.findByText("online-large")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Files" }));
+
+    expect(await screen.findByText("3.0 MB")).toBeInTheDocument();
+  });
+
+  it("handles local file fetch failures and row-level CSV and delete actions", async () => {
+    vi.spyOn(window, "alert").mockImplementation(() => {});
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: vi.fn(() => "blob:csv"),
+      revokeObjectURL: vi.fn(),
+    });
+
+    render(<ResultsList activeTab="local" />);
+
+    expect(await screen.findByText("local-1")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText("Files (1)")).toBeInTheDocument();
+    });
+
+    fetchMock().mockImplementation(async (url: string, init?: RequestInit) => {
+      if (
+        url ===
+        "http://localhost:3000/api/participant-files/exp-123?sessionId=local-1"
+      ) {
+        throw new Error("files unavailable");
+      }
+      if (url === "http://localhost:3000/api/download-session/local-1/exp-123") {
+        return okJson({ success: true });
+      }
+      if (
+        String(url).startsWith(
+          "http://localhost:3000/api/session-results/local-1/exp-123",
+        ) &&
+        init?.method === "DELETE"
+      ) {
+        return okJson({ success: true });
+      }
+      if (url === "http://localhost:3000/api/session-results/exp-123") {
+        return okJson({ sessions: sessionsFixture });
+      }
+      return okJson({ success: true });
+    });
+
+    fireEvent.click(screen.getByText("Files (1)"));
+
+    expect(await screen.findByText("No files")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("▲ Close"));
+    expect(screen.queryByText("No files")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("CSV"));
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledWith(
+        "http://localhost:3000/api/download-session/local-1/exp-123",
+      );
+    });
+
+    fireEvent.click(screen.getByText("Delete"));
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledWith(
+        "http://localhost:3000/api/session-results/local-1/exp-123",
+        { method: "DELETE" },
+      );
+    });
+  });
+
   it("selects local sessions for ZIP download and deletion", async () => {
     const saveZipFile = vi.fn(async () => ({ success: true }));
     Object.defineProperty(window, "electron", {
@@ -338,7 +770,7 @@ describe("ResultsList container", () => {
     fireEvent.click(screen.getByText("Select sessions"));
 
     const switches = screen.getAllByLabelText("toggle switch");
-    fireEvent.click(switches[0]);
+    fireEvent.click(switches[1]);
     fireEvent.click(screen.getByText("Download (1)"));
 
     await waitFor(() => {
@@ -372,7 +804,7 @@ describe("ResultsList container", () => {
     vi.useFakeTimers();
 
     fireEvent.click(screen.getByText("Select sessions"));
-    fireEvent.click(screen.getAllByLabelText("toggle switch")[0]);
+    fireEvent.click(screen.getAllByLabelText("toggle switch")[1]);
     fireEvent.click(screen.getByText("Download (1)"));
 
     act(() => {

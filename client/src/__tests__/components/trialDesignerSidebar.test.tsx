@@ -22,11 +22,13 @@ function okJson(payload: unknown, ok = true): Response {
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((res) => {
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
     resolve = res;
+    reject = rej;
   });
 
-  return { promise, resolve };
+  return { promise, resolve, reject };
 }
 
 function fetchMock() {
@@ -35,10 +37,12 @@ function fetchMock() {
 
 const defaultSidebarProps = {
   selectedId: null,
+  selectedIds: [],
   isResizingLeft: { current: false },
   leftPanelWidth: 280,
   setShowLeftPanel: vi.fn(),
   setLeftPanelWidth: vi.fn(),
+  setSelectedIds: vi.fn(),
   CANVAS_WIDTH: 1000,
   CANVAS_HEIGHT: 600,
   toJsPsychCoords: vi.fn(() => ({ x: 12, y: -5 })),
@@ -163,6 +167,23 @@ describe("TrialDesigner component metadata and sidebar", () => {
     expect(result.current.metadata?.name).toBe("video-component");
   });
 
+  it("ignores stale component metadata errors after unmount", async () => {
+    const lateError = createDeferred<Response>();
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock().mockReturnValue(lateError.promise);
+
+    const { unmount } = renderHook(() => useComponentMetadata("ImageComponent"));
+
+    unmount();
+
+    await act(async () => {
+      lateError.reject(new Error("late metadata failure"));
+      await Promise.resolve();
+    });
+
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
   it("clears component metadata when no component is selected", async () => {
     fetchMock().mockResolvedValue(
       okJson({
@@ -256,6 +277,76 @@ describe("TrialDesigner component metadata and sidebar", () => {
 
     fireEvent.click(screen.getAllByText("Audio")[0]);
     expect(await screen.findByText("tone.mp3")).toBeInTheDocument();
+  });
+
+  it("logs media loading failures and reopens the hidden component panel", async () => {
+    const setShowLeftPanel = vi.fn();
+    const mediaError = new Error("media unavailable");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock().mockRejectedValue(mediaError);
+
+    render(
+      <ComponentSidebar
+        {...defaultSidebarProps}
+        setLeftPanelWidth={vi.fn()}
+        leftPanelWidth={280}
+        setShowLeftPanel={setShowLeftPanel}
+        showLeftPanel={false}
+        isOpen={true}
+        setComponents={vi.fn()}
+        setSelectedId={vi.fn()}
+        components={[]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "›" }));
+    expect(setShowLeftPanel).toHaveBeenCalledWith(true);
+
+    await waitFor(() => {
+      expect(console.error).toHaveBeenCalledWith(
+        "Error loading images:",
+        mediaError,
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        "Error loading videos:",
+        mediaError,
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        "Error loading audios:",
+        mediaError,
+      );
+    });
+  });
+
+  it("skips closed sidebar loads and defaults missing media lists to empty", async () => {
+    fetchMock().mockResolvedValue(okJson({}));
+    const props = {
+      ...defaultSidebarProps,
+      setLeftPanelWidth: vi.fn(),
+      leftPanelWidth: 280,
+      setShowLeftPanel: vi.fn(),
+      showLeftPanel: true,
+      setComponents: vi.fn(),
+      setSelectedId: vi.fn(),
+      components: [],
+    };
+    const { rerender } = render(
+      <ComponentSidebar {...props} isOpen={false} />,
+    );
+
+    expect(fetchMock()).not.toHaveBeenCalled();
+
+    rerender(<ComponentSidebar {...props} isOpen />);
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledTimes(3);
+    });
+
+    fireEvent.click(screen.getByText("Image"));
+    expect(screen.getByText("No images")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Video"));
+    expect(screen.getByText("No videos")).toBeInTheDocument();
+    fireEvent.click(screen.getAllByText("Audio")[0]);
+    expect(screen.getByText("No audio")).toBeInTheDocument();
   });
 
   it("adds new sidebar components with unique names, coordinates and z-index", () => {
@@ -481,6 +572,104 @@ describe("TrialDesigner component metadata and sidebar", () => {
       const [selectedId, setSelectedId] = useState<string | null>(
         "selected-button",
       );
+      const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+      return (
+        <>
+          <LeftSideBar
+            {...defaultSidebarProps}
+            selectedId={selectedId}
+            selectedIds={selectedIds}
+            setSelectedId={setSelectedId}
+            setSelectedIds={setSelectedIds}
+            components={components}
+            setComponents={setComponents}
+          />
+          <pre data-testid="state">
+            {JSON.stringify({ components, selectedId })}
+          </pre>
+        </>
+      );
+    }
+
+    render(<Harness />);
+
+    fireEvent.click(screen.getByText("Delete Selected"));
+
+    const state = JSON.parse(screen.getByTestId("state").textContent || "{}");
+    expect(state).toEqual({ components: [], selectedId: null });
+  });
+
+  it("resizes, hides and restores the left sidebar handle state", () => {
+    const isResizingLeft = { current: false };
+    const setShowLeftPanel = vi.fn();
+    const setLeftPanelWidth = vi.fn();
+
+    const { container } = render(
+      <LeftSideBar
+        {...defaultSidebarProps}
+        isResizingLeft={isResizingLeft}
+        setShowLeftPanel={setShowLeftPanel}
+        setLeftPanelWidth={setLeftPanelWidth}
+        selectedId={null}
+        setSelectedId={vi.fn()}
+        components={[]}
+        setComponents={vi.fn()}
+      />,
+    );
+
+    const resizeHandle = container.querySelector<HTMLElement>(
+      'div[style*="col-resize"]',
+    )!;
+    fireEvent.mouseOver(resizeHandle);
+    expect(resizeHandle).toHaveStyle({ background: "#000" });
+    fireEvent.mouseOut(resizeHandle);
+    expect(resizeHandle.style.background).toBe("transparent");
+
+    fireEvent.mouseDown(resizeHandle);
+    expect(isResizingLeft.current).toBe(true);
+
+    fireEvent.mouseMove(document, { clientX: 360 });
+    expect(setLeftPanelWidth).toHaveBeenCalledWith(340);
+    expect(setShowLeftPanel).toHaveBeenCalledWith(true);
+
+    fireEvent.mouseMove(document, { clientX: 120 });
+    expect(setShowLeftPanel).toHaveBeenCalledWith(false);
+
+    fireEvent.mouseUp(document);
+    expect(isResizingLeft.current).toBe(false);
+
+    fireEvent.mouseMove(document, { clientX: 500 });
+    expect(setLeftPanelWidth).toHaveBeenCalledTimes(1);
+  });
+
+  it("adds sidebar component types with their expected default dimensions", () => {
+    let now = 2000;
+    vi.spyOn(Date, "now").mockImplementation(() => now++);
+
+    function Harness() {
+      const [components, setComponents] = useState<TrialComponent[]>([
+        {
+          id: "existing",
+          type: "TextComponent",
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0,
+          zIndex: 2,
+          config: {},
+        },
+        {
+          id: "existing-without-z-index",
+          type: "AudioComponent",
+          x: 0,
+          y: 0,
+          width: 200,
+          height: 50,
+          config: {},
+        },
+      ]);
+      const [selectedId, setSelectedId] = useState<string | null>(null);
 
       return (
         <>
@@ -500,9 +689,90 @@ describe("TrialDesigner component metadata and sidebar", () => {
 
     render(<Harness />);
 
+    fireEvent.click(screen.getByRole("button", { name: /Stimulus/ }));
+    expect(screen.queryByText("Image")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Stimulus/ }));
+
+    for (const label of [
+      "Slider",
+      "Sketchpad",
+      "Survey",
+      "File Upload",
+      "Button",
+      "Text",
+      "HTML",
+      "Input",
+    ]) {
+      fireEvent.click(screen.getByText(label));
+    }
+
+    const state = JSON.parse(screen.getByTestId("state").textContent || "{}");
+    const byType = Object.fromEntries(
+      state.components.map((component: TrialComponent) => [
+        component.type,
+        component,
+      ]),
+    );
+
+    expect(byType.SliderResponseComponent).toMatchObject({
+      width: 250,
+      height: 100,
+    });
+    expect(byType.InputResponseComponent).toMatchObject({
+      width: 200,
+      height: 50,
+    });
+    for (const type of [
+      "SketchpadComponent",
+      "SurveyComponent",
+      "FileUploadResponseComponent",
+      "ButtonResponseComponent",
+      "TextComponent",
+      "HtmlComponent",
+    ]) {
+      expect(byType[type]).toMatchObject({ width: 0, height: 0 });
+    }
+    expect(state.selectedId).toMatch(/^InputResponseComponent-/);
+    expect(byType.InputResponseComponent.config.zIndex.value).toBe(10);
+  });
+
+  it("deletes all selected sidebar components when multi-selection is active", () => {
+    function Harness() {
+      const [components, setComponents] = useState<TrialComponent[]>([
+        { id: "a", type: "TextComponent", x: 0, y: 0, width: 0, height: 0, config: {} },
+        { id: "b", type: "TextComponent", x: 0, y: 0, width: 0, height: 0, config: {} },
+        { id: "c", type: "TextComponent", x: 0, y: 0, width: 0, height: 0, config: {} },
+      ]);
+      const [selectedId, setSelectedId] = useState<string | null>(null);
+      const [selectedIds, setSelectedIds] = useState<string[]>(["a", "c"]);
+
+      return (
+        <>
+          <LeftSideBar
+            {...defaultSidebarProps}
+            selectedId={selectedId}
+            selectedIds={selectedIds}
+            setSelectedId={setSelectedId}
+            setSelectedIds={setSelectedIds}
+            components={components}
+            setComponents={setComponents}
+          />
+          <pre data-testid="state">
+            {JSON.stringify({ components, selectedId, selectedIds })}
+          </pre>
+        </>
+      );
+    }
+
+    render(<Harness />);
+
     fireEvent.click(screen.getByText("Delete Selected"));
 
     const state = JSON.parse(screen.getByTestId("state").textContent || "{}");
-    expect(state).toEqual({ components: [], selectedId: null });
+    expect(state.components.map((component: TrialComponent) => component.id)).toEqual([
+      "b",
+    ]);
+    expect(state.selectedId).toBeNull();
+    expect(state.selectedIds).toEqual([]);
   });
 });

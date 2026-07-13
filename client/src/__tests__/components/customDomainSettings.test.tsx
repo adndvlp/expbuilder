@@ -70,6 +70,35 @@ describe("CustomDomainSettings", () => {
     expect(screen.getByDisplayValue("new.example.com")).toBeInTheDocument();
   });
 
+  it("uses defaults for partial loaded settings and handles load failures", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock().mockResolvedValueOnce(
+      okJson({
+        success: true,
+        settings: {},
+      }),
+    );
+
+    render(<CustomDomainSettings experimentID="exp-123" />);
+
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledWith(
+        "http://localhost:3000/api/tunnel-settings/exp-123",
+      );
+    });
+    expect(screen.queryByLabelText("Keep tunnel always on")).not.toBeInTheDocument();
+
+    fetchMock().mockRejectedValueOnce(new Error("load failed"));
+    render(<CustomDomainSettings experimentID="exp-456" />);
+
+    await waitFor(() => {
+      expect(consoleError).toHaveBeenCalledWith(
+        "Error loading tunnel settings:",
+        expect.any(Error),
+      );
+    });
+  });
+
   it("forces persistent false when saving an empty hostname", async () => {
     fetchMock()
       .mockResolvedValueOnce(okJson({ success: false }))
@@ -134,6 +163,49 @@ describe("CustomDomainSettings", () => {
     expect(await screen.findByText("Cannot save tunnel")).toBeInTheDocument();
   });
 
+  it("updates persistence and shows generic save and clear errors", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock()
+      .mockResolvedValueOnce(
+        okJson({
+          success: true,
+          settings: { hostname: "old.example.com", persistent: false },
+        }),
+      )
+      .mockResolvedValueOnce(okJson({ success: false }))
+      .mockResolvedValueOnce(okJson({ success: false }))
+      .mockRejectedValueOnce(new Error("save failed"))
+      .mockRejectedValueOnce(new Error("clear failed"));
+
+    render(<CustomDomainSettings experimentID="exp-123" />);
+
+    const persistent = await screen.findByLabelText("Keep tunnel always on");
+    fireEvent.click(persistent);
+    expect(persistent).toBeChecked();
+
+    fireEvent.click(screen.getByText("Save Settings"));
+    expect(await screen.findByText("Error saving settings.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Clear"));
+    expect(await screen.findByText("Error clearing settings.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Save Settings"));
+    await waitFor(() => {
+      expect(consoleError).toHaveBeenCalledWith(
+        "Error saving tunnel settings:",
+        expect.any(Error),
+      );
+    });
+
+    fireEvent.click(screen.getByText("Clear"));
+    await waitFor(() => {
+      expect(consoleError).toHaveBeenCalledWith(
+        "Error clearing tunnel settings:",
+        expect.any(Error),
+      );
+    });
+  });
+
   it("does not fetch or save without an experiment id", () => {
     render(<CustomDomainSettings experimentID={undefined} />);
 
@@ -141,6 +213,7 @@ describe("CustomDomainSettings", () => {
       target: { value: "example.com" },
     });
     fireEvent.click(screen.getByText("Save Settings"));
+    fireEvent.click(screen.getByText("Clear"));
 
     expect(fetchMock()).not.toHaveBeenCalled();
   });

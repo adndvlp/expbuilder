@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import ResetAppButton from "../../pages/Settings/ResetAppButton";
+import ResetAppButton, {
+  resolveResetApiUrl,
+} from "../../pages/Settings/ResetAppButton";
 import { auth } from "../../lib/firebase";
 
 function okJson(payload: unknown): Response {
@@ -14,6 +16,8 @@ function fetchMock() {
   return vi.mocked(globalThis.fetch);
 }
 
+const originalLocation = window.location;
+
 describe("ResetAppButton", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -26,10 +30,18 @@ describe("ResetAppButton", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     (auth as any).currentUser = null;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: originalLocation,
+    });
   });
 
   it("opens and cancels the destructive confirmation without sending requests", () => {
+    expect(resolveResetApiUrl("")).toBe("http://localhost:3000");
+    expect(resolveResetApiUrl("https://api.test")).toBe("https://api.test");
+
     render(<ResetAppButton />);
 
     fireEvent.click(screen.getByText("Delete all my data"));
@@ -85,6 +97,45 @@ describe("ResetAppButton", () => {
             deleteRepos: true,
           }),
         }),
+      );
+    });
+  });
+
+  it("clears browser storage and reloads after a successful reset", async () => {
+    const reload = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { reload },
+    });
+    fetchMock().mockResolvedValueOnce(okJson({ success: true }));
+    const localClear = vi.fn();
+    const sessionClear = vi.fn();
+    vi.stubGlobal("localStorage", { clear: localClear });
+    vi.stubGlobal("sessionStorage", { clear: sessionClear });
+
+    render(<ResetAppButton />);
+
+    fireEvent.click(screen.getByText("Delete all my data"));
+    fireEvent.click(screen.getByText("Yes, permanently delete"));
+
+    await waitFor(() => {
+      expect(localClear).toHaveBeenCalled();
+      expect(sessionClear).toHaveBeenCalled();
+      expect(reload).toHaveBeenCalled();
+    });
+  });
+
+  it("alerts when the reset request cannot reach the server", async () => {
+    fetchMock().mockRejectedValueOnce(new Error("offline"));
+
+    render(<ResetAppButton />);
+
+    fireEvent.click(screen.getByText("Delete all my data"));
+    fireEvent.click(screen.getByText("Yes, permanently delete"));
+
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith(
+        "Error crítico conectando con el servidor",
       );
     });
   });

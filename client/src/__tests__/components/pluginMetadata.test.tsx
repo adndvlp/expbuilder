@@ -13,11 +13,13 @@ function createResponse(payload: unknown, ok = true): Response {
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((res) => {
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
     resolve = res;
+    reject = rej;
   });
 
-  return { promise, resolve };
+  return { promise, resolve, reject };
 }
 
 describe("plugin metadata loading", () => {
@@ -312,5 +314,20 @@ describe("plugin metadata loading", () => {
     expect(result.current.data).toEqual([
       { key: "fast_data", label: "Fast Data", type: "number" },
     ]);
+  });
+
+  it("ignores loader errors after the hook unmounts", async () => {
+    const pendingResponse = createDeferred<Response>();
+    globalThis.fetch = vi.fn(() => pendingResponse.promise) as unknown as typeof fetch;
+    const { unmount } = renderHook(() =>
+      usePluginParameters("plugin-unmounted"),
+    );
+
+    unmount();
+    await act(async () => {
+      pendingResponse.reject(new Error("late failure"));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
   });
 });

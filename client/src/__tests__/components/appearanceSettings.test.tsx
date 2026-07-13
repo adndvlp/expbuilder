@@ -44,13 +44,18 @@ describe("AppearanceSettings", () => {
       )
       .mockResolvedValueOnce(okJson({ success: true }));
 
-    render(<AppearanceSettings experimentID="exp-123" />);
+    const { container } = render(<AppearanceSettings experimentID="exp-123" />);
 
     await waitFor(() => {
       expect(screen.getAllByDisplayValue("#123456")).toHaveLength(2);
     });
 
-    const colorTextInput = screen.getAllByDisplayValue("#123456")[1];
+    const colorPicker = container.querySelector<HTMLInputElement>(
+      'input[type="color"]',
+    )!;
+    fireEvent.change(colorPicker, { target: { value: "#654321" } });
+
+    const colorTextInput = screen.getAllByDisplayValue("#654321")[1];
     fireEvent.change(colorTextInput, { target: { value: "#abcdef" } });
 
     const switches = screen.getAllByLabelText("toggle switch");
@@ -99,6 +104,34 @@ describe("AppearanceSettings", () => {
         "http://localhost:3000/api/appearance-settings/exp-456",
       );
     });
+
+    fireEvent.click(screen.getByText("Save Appearance"));
+
+    expect(await screen.findByText("Error saving settings.")).toBeInTheDocument();
+  });
+
+  it("uses appearance defaults and the generic API error message", async () => {
+    fetchMock()
+      .mockResolvedValueOnce(
+        okJson({
+          success: true,
+          settings: {
+            backgroundColor: null,
+            fullScreen: null,
+            progressBar: null,
+          },
+        }),
+      )
+      .mockResolvedValueOnce(okJson({ success: false }));
+
+    render(<AppearanceSettings experimentID="exp-defaults" />);
+
+    await waitFor(() => {
+      expect(screen.getAllByDisplayValue("#ffffff")).toHaveLength(2);
+    });
+    const switches = screen.getAllByLabelText("toggle switch");
+    expect(switches[0]).toHaveAttribute("data-checked", "true");
+    expect(switches[1]).toHaveAttribute("data-checked", "false");
 
     fireEvent.click(screen.getByText("Save Appearance"));
 

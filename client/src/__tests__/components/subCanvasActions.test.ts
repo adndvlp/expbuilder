@@ -200,6 +200,110 @@ describe("SubCanvas Actions", () => {
     );
   });
 
+  it("does not select a branch trial when the requested parent is missing", async () => {
+    const { props, api } = createActions();
+
+    await api.addTrialAsBranch("missing-parent");
+
+    expect(props.createTrial).toHaveBeenCalled();
+    expect(props.updateTrial).not.toHaveBeenCalled();
+    expect(props.updateLoop).not.toHaveBeenCalled();
+    expect(props.onSelectTrial).not.toHaveBeenCalled();
+  });
+
+  it("creates a branch without CSV propagation when trial metadata is missing", async () => {
+    const { props, api } = createActions({
+      getTrial: vi.fn(async () => null),
+      getLoop: vi.fn(async () => ({
+        id: "loop_parent",
+        name: "Parent Loop",
+        trials: [10, 11],
+        csvJson: [],
+      }) as Loop),
+    });
+
+    await api.addTrialAsBranch(10);
+
+    expect(props.updateTrialField).not.toHaveBeenCalled();
+    expect(props.updateTrial).not.toHaveBeenCalled();
+    expect(props.onSelectTrial).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 99 }),
+    );
+  });
+
+  it("uses an empty branch list when adding to a trial without branches", async () => {
+    const { props, api } = createActions({
+      getTrial: vi.fn(async () => ({
+        id: 10,
+        name: "Loop Start",
+        branches: undefined,
+      }) as unknown as Trial),
+    });
+
+    await api.addTrialAsBranch(10);
+
+    expect(props.updateTrial).toHaveBeenCalledWith(
+      10,
+      { branches: [99] },
+      expect.objectContaining({ id: 99 }),
+    );
+  });
+
+  it("handles loop branch parents with absent metadata or branches", async () => {
+    const childWithoutBranches = {
+      id: "loop_child",
+      name: "Child Loop",
+      trials: [12],
+      branches: undefined,
+      parentLoopId: "loop_parent",
+    } as unknown as Loop;
+    const parentLoop = {
+      id: "loop_parent",
+      name: "Parent Loop",
+      trials: [10, 11, "loop_child"],
+      csvJson: [],
+    } as Loop;
+    const withBranchesFallback = createActions({
+      getLoop: vi.fn(async (id: string | number) =>
+        id === "loop_parent" ? parentLoop : childWithoutBranches,
+      ),
+    });
+
+    await withBranchesFallback.api.addTrialAsBranch("loop_child");
+    expect(withBranchesFallback.props.updateLoop).toHaveBeenCalledWith(
+      "loop_child",
+      { branches: [99] },
+      expect.objectContaining({ id: 99 }),
+    );
+
+    const missingChild = createActions({
+      getLoop: vi.fn(async (id: string | number) =>
+        id === "loop_parent" ? parentLoop : null,
+      ),
+    });
+    await missingChild.api.addTrialAsBranch("loop_child");
+
+    expect(missingChild.props.updateLoop).not.toHaveBeenCalled();
+    expect(missingChild.props.onSelectTrial).toHaveBeenCalled();
+  });
+
+  it("logs branch creation failures", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { props, api } = createActions({
+      createTrial: vi.fn(async () => {
+        throw new Error("trial create failed");
+      }),
+    });
+
+    await api.addTrialAsBranch(10);
+
+    expect(console.error).toHaveBeenCalledWith(
+      "Error adding branch:",
+      expect.any(Error),
+    );
+    expect(props.onSelectTrial).not.toHaveBeenCalled();
+  });
+
   it("inserts a new trial as parent of existing branches without touching the root timeline", async () => {
     const { props, api } = createActions();
 
@@ -272,6 +376,96 @@ describe("SubCanvas Actions", () => {
     expect(props.updateTimeline).not.toHaveBeenCalled();
   });
 
+  it("does not create a parent trial when the requested parent is missing", async () => {
+    const { props, api } = createActions();
+
+    await api.addTrialAsParent("missing-parent");
+
+    expect(props.createTrial).not.toHaveBeenCalled();
+    expect(props.onSelectTrial).not.toHaveBeenCalled();
+  });
+
+  it("uses empty branches for parent trials with missing metadata or branch arrays", async () => {
+    const withoutBranches = createActions({
+      getTrial: vi.fn(async () => ({
+        id: 10,
+        name: "Loop Start",
+        branches: undefined,
+      }) as unknown as Trial),
+    });
+    await withoutBranches.api.addTrialAsParent(10);
+    expect(withoutBranches.props.createTrial).toHaveBeenCalledWith(
+      expect.objectContaining({ branches: [] }),
+    );
+
+    const missingTrial = createActions({ getTrial: vi.fn(async () => null) });
+    await missingTrial.api.addTrialAsParent(10);
+    expect(missingTrial.props.createTrial).toHaveBeenCalledWith(
+      expect.objectContaining({ branches: [] }),
+    );
+    expect(missingTrial.props.updateTrial).toHaveBeenCalledWith(
+      10,
+      { branches: [99] },
+      expect.objectContaining({ id: 99 }),
+    );
+  });
+
+  it("uses empty branches for loop parents with missing metadata or branch arrays", async () => {
+    const parentLoop = {
+      id: "loop_parent",
+      name: "Parent Loop",
+      trials: [10, 11, "loop_child"],
+      csvJson: [],
+    } as Loop;
+    const childWithoutBranches = {
+      id: "loop_child",
+      name: "Child Loop",
+      trials: [12],
+      branches: undefined,
+    } as unknown as Loop;
+    const withoutBranches = createActions({
+      getLoop: vi.fn(async (id: string | number) =>
+        id === "loop_parent" ? parentLoop : childWithoutBranches,
+      ),
+    });
+    await withoutBranches.api.addTrialAsParent("loop_child");
+    expect(withoutBranches.props.createTrial).toHaveBeenCalledWith(
+      expect.objectContaining({ branches: [] }),
+    );
+
+    const missingChild = createActions({
+      getLoop: vi.fn(async (id: string | number) =>
+        id === "loop_parent" ? parentLoop : null,
+      ),
+    });
+    await missingChild.api.addTrialAsParent("loop_child");
+    expect(missingChild.props.createTrial).toHaveBeenCalledWith(
+      expect.objectContaining({ branches: [] }),
+    );
+    expect(missingChild.props.updateLoop).toHaveBeenCalledWith(
+      "loop_child",
+      { branches: [99] },
+      expect.objectContaining({ id: 99 }),
+    );
+  });
+
+  it("logs add-parent failures", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { props, api } = createActions({
+      createTrial: vi.fn(async () => {
+        throw new Error("parent create failed");
+      }),
+    });
+
+    await api.addTrialAsParent(10);
+
+    expect(console.error).toHaveBeenCalledWith(
+      "Error adding trial as parent:",
+      expect.any(Error),
+    );
+    expect(props.onSelectTrial).not.toHaveBeenCalled();
+  });
+
   it("creates a nested loop from selected loop timeline items", async () => {
     const { props, api } = createActions();
 
@@ -315,6 +509,22 @@ describe("SubCanvas Actions", () => {
     expect(props.setShowLoopModal).toHaveBeenCalledWith(false);
   });
 
+  it("adds a nested loop when the parent has no trials array", async () => {
+    const { props, api } = createActions({
+      getLoop: vi.fn(async () => ({
+        id: "loop_parent",
+        name: "Parent Loop",
+        trials: undefined,
+      }) as unknown as Loop),
+    });
+
+    await api.handleAddLoop([10]);
+
+    expect(props.updateLoop).toHaveBeenCalledWith("loop_parent", {
+      trials: ["loop_nested"],
+    });
+  });
+
   it("logs and closes the modal when nested loop creation fails", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const { props, api } = createActions({
@@ -330,6 +540,17 @@ describe("SubCanvas Actions", () => {
       expect.any(Error),
     );
     expect(props.setShowLoopModal).toHaveBeenCalledWith(false);
+    expect(props.onSelectLoop).not.toHaveBeenCalled();
+  });
+
+  it("does not create a nested loop when the parent loop cannot be loaded", async () => {
+    const { props, api } = createActions({
+      getLoop: vi.fn(async () => null),
+    });
+
+    await api.handleAddLoop([10]);
+
+    expect(props.createLoop).not.toHaveBeenCalled();
     expect(props.onSelectLoop).not.toHaveBeenCalled();
   });
 

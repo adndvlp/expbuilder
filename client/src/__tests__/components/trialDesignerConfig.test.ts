@@ -1,4 +1,5 @@
 import { renderHook, waitFor } from "@testing-library/react";
+import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_CANVAS_STYLES } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
 import type {
@@ -10,6 +11,7 @@ import {
   typedValue,
 } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/componentConfigUpdates";
 import {
+  getComponentSnapBox,
   snapBoxToGuides,
   snapComponentBox,
 } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/editorGuides";
@@ -23,7 +25,10 @@ import {
   getTextHeightForWidth,
   getTextNaturalSize,
 } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/textSizing";
-import { getTextComponentModel } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/textComponentModel";
+import {
+  getConfigValue,
+  getTextComponentModel,
+} from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/textComponentModel";
 
 const canvasStyles: CanvasStyles = {
   ...DEFAULT_CANVAS_STYLES,
@@ -150,6 +155,168 @@ describe("useConfigFromComponents", () => {
     expect(config.components).toBeUndefined();
     expect(config.response_components).toBeUndefined();
   });
+
+  it("serializes input response runtime font and box dimensions", () => {
+    const inputComponent: TrialComponent = {
+      id: "input-1",
+      type: "InputResponseComponent",
+      x: 300,
+      y: 200,
+      width: 500,
+      height: 80,
+      inputFontSize: 22,
+      inputWidth: 240,
+      config: {
+        placeholder: { source: "typed", value: "Answer" },
+      },
+    };
+
+    const { result } = renderHook(() =>
+      useConfigComponents({
+        toJsPsychCoords,
+        columnMapping: {},
+        canvasStyles,
+      }),
+    );
+
+    const config = result.current([inputComponent]);
+
+    expect(config.response_components.value[0]).toEqual(
+      expect.objectContaining({
+        type: "InputResponseComponent",
+        coordinates: { x: 30, y: 20 },
+        placeholder: { source: "typed", value: "Answer" },
+        _input_font_size_runtime_vw: {
+          source: "typed",
+          value: expect.closeTo(2.2),
+        },
+        width: 24,
+        height: expect.closeTo(3.3),
+      }),
+    );
+  });
+
+  it("serializes raw geometry without canvas styles and makes HTML portable", () => {
+    const imageComponent = {
+      id: "image-1",
+      type: "ImageComponent",
+      x: 100,
+      y: 50,
+      width: 240,
+      height: 120,
+    } as TrialComponent;
+    const htmlComponent = {
+      id: "html-1",
+      type: "HtmlComponent",
+      x: 20,
+      y: 30,
+      width: 400,
+      height: 200,
+      config: {
+        stimulus: {
+          source: "typed",
+          value: '<i class="fa fa-star extra"></i>',
+        },
+      },
+    } as TrialComponent;
+    const { result } = renderHook(() =>
+      useConfigComponents({
+        toJsPsychCoords,
+        columnMapping: {},
+        canvasStyles: undefined,
+      }),
+    );
+
+    const config = result.current([imageComponent, htmlComponent]);
+    const [image, html] = config.components.value;
+
+    expect(image).toEqual(
+      expect.objectContaining({ width: 240, height: 120 }),
+    );
+    expect(html.width).toBeUndefined();
+    expect(html.height).toBeUndefined();
+    expect(html.stimulus.value).toContain("&#9733;");
+    expect(html.stimulus.value).not.toContain("fa-star");
+    expect(config.__canvasStyles).toBeUndefined();
+  });
+
+  it("uses runtime font and input-size fallbacks", () => {
+    const components = [
+      {
+        id: "text-default",
+        type: "TextComponent",
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        config: { text: { source: "typed", value: "Default" } },
+      },
+      {
+        id: "button-default",
+        type: "ButtonResponseComponent",
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        config: { button_text: { source: "typed", value: "Continue" } },
+      },
+      {
+        id: "input-config",
+        type: "InputResponseComponent",
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        config: {
+          input_font_size: { source: "typed", value: 18 },
+          placeholder: { source: "typed", value: "Configured" },
+        },
+      },
+      {
+        id: "input-default",
+        type: "InputResponseComponent",
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+      },
+    ] as TrialComponent[];
+    const { result } = renderHook(() =>
+      useConfigComponents({
+        toJsPsychCoords,
+        columnMapping: {},
+        canvasStyles,
+      }),
+    );
+
+    const config = result.current(components);
+    expect(config.components.value[0]._font_size_runtime_vw.value).toBeCloseTo(
+      1.6,
+    );
+    expect(
+      config.response_components.value[0]._button_font_size_runtime_vw.value,
+    ).toBeCloseTo(1.4);
+    expect(config.response_components.value[1]).toEqual(
+      expect.objectContaining({
+        _input_font_size_runtime_vw: expect.objectContaining({
+          source: "typed",
+          value: expect.closeTo(1.8),
+        }),
+        width: expect.closeTo(9.9),
+        height: expect.closeTo(2.7),
+      }),
+    );
+    expect(config.response_components.value[2]).toEqual(
+      expect.objectContaining({
+        _input_font_size_runtime_vw: expect.objectContaining({
+          source: "typed",
+          value: expect.closeTo(1.6),
+        }),
+        width: expect.closeTo(8.8),
+        height: expect.closeTo(2.4),
+      }),
+    );
+  });
 });
 
 describe("syncConfigToComponent", () => {
@@ -200,6 +367,29 @@ describe("syncConfigToComponent", () => {
     );
   });
 
+  it("keeps raw geometry without a canvas width for components without style maps", () => {
+    const component: TrialComponent = {
+      id: "audio-1",
+      type: "AudioComponent",
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+      config: {},
+    };
+
+    const updated = syncConfigToComponent(
+      component,
+      {
+        width: { source: "typed", value: 240 },
+        height: { source: "typed", value: 80 },
+      },
+      fromJsPsychCoords,
+    );
+
+    expect(updated).toMatchObject({ width: 240, height: 80 });
+  });
+
   it("restores top-level style fields from config for loaded components", () => {
     const restored = restoreStyleFields({
       id: "button-1",
@@ -234,6 +424,51 @@ describe("getTextNaturalSize", () => {
         canvasWidth: 1440,
       }),
     ).toEqual({ width: 200, height: 40 });
+  });
+
+  it("uses default max width and reads primitive text config values", () => {
+    expect(
+      getTextNaturalSize({
+        text: "Text",
+        fontSize: 16,
+      }),
+    ).toEqual({ width: 200, height: 40 });
+
+    expect(
+      getConfigValue(
+        {
+          id: "text-primitive",
+          type: "TextComponent",
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0,
+          config: { text: "Primitive text" },
+        } as TrialComponent,
+        "text",
+        "fallback",
+      ),
+    ).toBe("Primitive text");
+  });
+
+  it("preserves falsy primitive config and defaults null typed values", () => {
+    const component = {
+      id: "text-falsy",
+      type: "TextComponent",
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+      config: {
+        enabled: false,
+        count: 0,
+        text: { source: "typed", value: null },
+      },
+    } as TrialComponent;
+
+    expect(getConfigValue(component, "enabled", true)).toBe(false);
+    expect(getConfigValue(component, "count", 10)).toBe(0);
+    expect(getConfigValue(component, "text", "fallback")).toBe("fallback");
   });
 
   it("expands long text without requiring a manual resize", () => {
@@ -275,6 +510,26 @@ describe("getTextNaturalSize", () => {
     expect(narrowHeight).toBeGreaterThan(wideHeight);
   });
 
+  it("falls back for empty text and invalid typography values", () => {
+    expect(
+      getTextNaturalSize({
+        text: "",
+        fontSize: Number.NaN,
+        lineHeight: -1,
+        canvasWidth: 1440,
+      }),
+    ).toEqual({ width: 200, height: 40 });
+
+    expect(
+      getTextHeightForWidth({
+        text: "",
+        fontSize: Number.POSITIVE_INFINITY,
+        lineHeight: 0,
+        width: 200,
+      }),
+    ).toBe(40);
+  });
+
   it("does not let stale saved text height clip wrapped text", () => {
     const component: TrialComponent = {
       id: "text-1",
@@ -298,9 +553,177 @@ describe("getTextNaturalSize", () => {
     expect(model.effectiveHeight).toBeGreaterThan(component.height);
     expect(model.drawHeight).toBe(model.effectiveHeight);
   });
+
+  it("uses natural dimensions and combines italic and bold font styles", () => {
+    const component: TrialComponent = {
+      id: "text-natural",
+      type: "TextComponent",
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+      config: {
+        text: { source: "typed", value: "Natural text" },
+        font_style: { source: "typed", value: "italic" },
+        font_weight: { source: "typed", value: "bold" },
+      },
+    };
+
+    const model = getTextComponentModel(component, canvasStyles.width);
+
+    expect(model.effectiveWidth).toBeGreaterThanOrEqual(200);
+    expect(model.effectiveHeight).toBeGreaterThanOrEqual(40);
+    expect(model.konvaFontStyle).toBe("italic bold");
+  });
 });
 
 describe("editor guides and visual config updates", () => {
+  it("derives snap boxes for component families with component-specific defaults", () => {
+    const buttonBox = getComponentSnapBox({
+      id: "button-1",
+      type: "ButtonResponseComponent",
+      x: 80,
+      y: 90,
+      width: 0,
+      height: 0,
+      rotation: 12,
+      config: {
+        choices: { source: "typed", value: ["A", "B", "C"] },
+        grid_rows: { source: "typed", value: 2 },
+        grid_columns: { source: "typed", value: 0 },
+      },
+    });
+
+    expect(buttonBox).toEqual({
+      id: "button-1",
+      x: 80,
+      y: 90,
+      width: 160,
+      height: 68,
+      rotation: 12,
+    });
+
+    expect(
+      getComponentSnapBox({
+        id: "button-fallback",
+        type: "ButtonResponseComponent",
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        config: {
+          choices: { source: "typed", value: "Single" },
+          grid_rows: { source: "typed", value: "bad" },
+        },
+      }),
+    ).toMatchObject({ width: 80, height: 34, rotation: 0 });
+
+    const inputBox = getComponentSnapBox({
+      id: "input-1",
+      type: "InputResponseComponent",
+      x: 10,
+      y: 20,
+      width: 0,
+      height: 0,
+      config: {
+        input_font_size: { source: "typed", value: 20 },
+      },
+    });
+
+    expect(inputBox.width).toBeCloseTo(110);
+    expect(inputBox.height).toBe(30);
+
+    expect(
+      getComponentSnapBox({
+        id: "slider-1",
+        type: "SliderResponseComponent",
+        x: 10,
+        y: 20,
+        width: 0,
+        height: 0,
+        config: {},
+      }),
+    ).toMatchObject({ width: 300, height: 120 });
+
+    expect(
+      getComponentSnapBox({
+        id: "keyboard-1",
+        type: "KeyboardResponseComponent",
+        x: 10,
+        y: 20,
+        width: 0,
+        height: 0,
+        config: {},
+      }),
+    ).toMatchObject({ width: 220, height: 48 });
+
+    expect(
+      getComponentSnapBox({
+        id: "image-1",
+        type: "ImageComponent",
+        x: 10,
+        y: 20,
+        width: 0,
+        height: 0,
+        config: {},
+      }),
+    ).toMatchObject({ width: 160, height: 120 });
+
+    expect(
+      getComponentSnapBox({
+        id: "audio-1",
+        type: "AudioComponent",
+        x: 10,
+        y: 20,
+        width: 0,
+        height: 0,
+        config: {},
+      }),
+    ).toMatchObject({ width: 200, height: 80 });
+  });
+
+  it("preserves configured snap dimensions and button grid columns", () => {
+    expect(
+      getComponentSnapBox({
+        id: "button-sized",
+        type: "ButtonResponseComponent",
+        x: 0,
+        y: 0,
+        width: 420,
+        height: 96,
+        config: {
+          choices: { source: "typed", value: ["A", "B"] },
+          grid_rows: { source: "typed", value: 1 },
+          grid_columns: { source: "typed", value: 4 },
+        },
+      }),
+    ).toMatchObject({ width: 420, height: 96 });
+
+    expect(
+      getComponentSnapBox({
+        id: "slider-sized",
+        type: "SliderResponseComponent",
+        x: 0,
+        y: 0,
+        width: 360,
+        height: 140,
+        config: {},
+      }),
+    ).toMatchObject({ width: 360, height: 140 });
+
+    expect(
+      getComponentSnapBox({
+        id: "image-sized",
+        type: "ImageComponent",
+        x: 0,
+        y: 0,
+        width: 640,
+        height: 480,
+        config: {},
+      }),
+    ).toMatchObject({ width: 640, height: 480 });
+  });
+
   it("snaps moving boxes to the canvas center and returns guide lines", () => {
     const snapped = snapBoxToGuides({
       box: {
@@ -546,5 +969,221 @@ describe("useLoadComponents", () => {
         fullScreen: false,
       }),
     );
+  });
+
+  it("resets loaded state when closed and auto-sizes an empty trial on reopen", async () => {
+    const setComponents = vi.fn();
+    const setSelectedId = vi.fn();
+    let currentCanvasStyles: CanvasStyles = {
+      ...DEFAULT_CANVAS_STYLES,
+      backgroundColor: "#303030",
+      fullScreen: true,
+    };
+    const setCanvasStyles = vi.fn((updater) => {
+      currentCanvasStyles =
+        typeof updater === "function" ? updater(currentCanvasStyles) : updater;
+    });
+    Object.defineProperty(window, "screen", {
+      configurable: true,
+      value: { width: 1366, height: 768 },
+    });
+
+    const props = {
+      isOpen: true,
+      columnMapping: {},
+      fromJsPsychCoords,
+      CANVAS_WIDTH: 1000,
+      CANVAS_HEIGHT: 700,
+      setComponents,
+      setSelectedId,
+      setCanvasStyles,
+    };
+    const { rerender } = renderHook(
+      ({ isOpen }) => useLoadComponents({ ...props, isOpen }),
+      { initialProps: { isOpen: true } },
+    );
+
+    await waitFor(() => {
+      expect(setComponents).toHaveBeenCalledWith([]);
+      expect(setSelectedId).toHaveBeenCalledWith(null);
+    });
+    expect(currentCanvasStyles).toEqual(
+      expect.objectContaining({
+        width: 1366,
+        height: 768,
+        backgroundColor: "#303030",
+        fullScreen: true,
+      }),
+    );
+
+    rerender({ isOpen: true });
+    expect(setComponents).toHaveBeenCalledTimes(1);
+
+    rerender({ isOpen: false });
+    rerender({ isOpen: true });
+
+    await waitFor(() => {
+      expect(setComponents).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("loads single legacy component entries and non-editor-sized components", async () => {
+    const setComponents = vi.fn();
+    const setSelectedId = vi.fn();
+    let currentCanvasStyles: CanvasStyles = {
+      ...DEFAULT_CANVAS_STYLES,
+      backgroundColor: "#404040",
+      fullScreen: false,
+    };
+    const setCanvasStyles = vi.fn((updater) => {
+      currentCanvasStyles =
+        typeof updater === "function" ? updater(currentCanvasStyles) : updater;
+    });
+
+    renderHook(() =>
+      useLoadComponents({
+        isOpen: true,
+        columnMapping: {
+          components: {
+            source: "typed",
+            value: {
+              type: "HtmlComponent",
+              stimulus: { source: "typed", value: "<p>Hello</p>" },
+              width: 50,
+              height: 10,
+              rotation: 0,
+            },
+          },
+          response_components: {
+            source: "typed",
+            value: {
+              type: "FileUploadResponseComponent",
+              button_label: "Upload legacy",
+              coordinates: { x: 20, y: 30 },
+              width: 40,
+              height: 12,
+            },
+          },
+          __canvasStyles: { source: "typed", value: {} },
+        },
+        fromJsPsychCoords,
+        CANVAS_WIDTH: 1000,
+        CANVAS_HEIGHT: 700,
+        setComponents,
+        setSelectedId,
+        setCanvasStyles,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(setComponents).toHaveBeenCalled();
+    });
+    const loadedComponents = setComponents.mock.calls[0][0] as TrialComponent[];
+
+    expect(loadedComponents).toHaveLength(2);
+    expect(loadedComponents[0]).toEqual(
+      expect.objectContaining({
+        type: "HtmlComponent",
+        x: 500,
+        y: 350,
+        width: 0,
+        height: 0,
+        rotation: 0,
+        zIndex: 0,
+        config: {
+          stimulus: { source: "typed", value: "<p>Hello</p>" },
+        },
+      }),
+    );
+    expect(loadedComponents[1]).toEqual(
+      expect.objectContaining({
+        type: "FileUploadResponseComponent",
+        x: 200,
+        y: 300,
+        width: 0,
+        height: 0,
+        config: {
+          button_label: { source: "typed", value: "Upload legacy" },
+          coordinates: { source: "typed", value: { x: 20, y: 30 } },
+        },
+      }),
+    );
+    expect(setSelectedId).not.toHaveBeenCalled();
+    expect(currentCanvasStyles).toEqual(
+      expect.objectContaining({
+        backgroundColor: "#404040",
+        fullScreen: false,
+      }),
+    );
+  });
+
+  it("keeps loading idempotent in StrictMode and restores response rotation", async () => {
+    const setComponents = vi.fn();
+    const setSelectedId = vi.fn();
+    const setCanvasStyles = vi.fn((updater) => {
+      const previous: CanvasStyles = {
+        ...DEFAULT_CANVAS_STYLES,
+        backgroundColor: "#505050",
+        fullScreen: false,
+      };
+      return typeof updater === "function" ? updater(previous) : updater;
+    });
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.StrictMode, null, children);
+
+    renderHook(
+      () =>
+        useLoadComponents({
+          isOpen: true,
+          columnMapping: {
+            components: {
+              source: "typed",
+              value: {
+                type: "TextComponent",
+                legacyText: "ignored",
+              },
+            },
+            response_components: {
+              source: "typed",
+              value: {
+                type: "ButtonResponseComponent",
+                button_text: "Continue",
+                width: 20,
+                height: 6,
+                rotation: 12,
+              },
+            },
+          },
+          fromJsPsychCoords,
+          CANVAS_WIDTH: 1000,
+          CANVAS_HEIGHT: 700,
+          setComponents,
+          setSelectedId,
+          setCanvasStyles,
+        }),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(setComponents).toHaveBeenCalledTimes(1);
+    });
+    const loadedComponents = setComponents.mock.calls[0][0] as TrialComponent[];
+
+    expect(loadedComponents[0].config).not.toHaveProperty("legacyText");
+    expect(loadedComponents[1]).toEqual(
+      expect.objectContaining({
+        type: "ButtonResponseComponent",
+        x: 500,
+        y: 350,
+        width: 200,
+        height: 60,
+        rotation: 12,
+        config: expect.objectContaining({
+          button_text: { source: "typed", value: "Continue" },
+          rotation: { source: "typed", value: 12 },
+        }),
+      }),
+    );
+    expect(setSelectedId).not.toHaveBeenCalled();
   });
 });

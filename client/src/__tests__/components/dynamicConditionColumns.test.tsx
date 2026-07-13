@@ -192,6 +192,103 @@ describe("dynamic condition column helpers", () => {
     );
   });
 
+  it("skips dynamic stimulus and response components without a name prefix", () => {
+    const { result } = renderHook(() =>
+      useAvailableColumns({
+        selectedTrial: {
+          ...dynamicTrial,
+          columnMapping: {
+            components: {
+              source: "typed",
+              value: [
+                { type: "ImageComponent", stimulus: "missing-name.png" },
+              ],
+            },
+            response_components: {
+              source: "typed",
+              value: [{ type: "KeyboardResponseComponent" }],
+            },
+          },
+        },
+        getPropValue,
+        data: [],
+      }),
+    );
+
+    expect(result.current()).toEqual([
+      { value: "rt", label: "Trial RT", group: "Trial Data" },
+    ]);
+  });
+
+  it("uses empty dynamic mappings and survey question label fallbacks", () => {
+    const { result, rerender } = renderHook(
+      ({ selectedTrial }) =>
+        useAvailableColumns({
+          selectedTrial: selectedTrial as Trial,
+          getPropValue,
+          data: [],
+        }),
+      {
+        initialProps: {
+          selectedTrial: {
+            ...dynamicTrial,
+            columnMapping: undefined,
+          } as any,
+        },
+      },
+    );
+
+    expect(result.current()).toEqual([
+      { value: "rt", label: "Trial RT", group: "Trial Data" },
+    ]);
+
+    rerender({
+      selectedTrial: {
+        ...dynamicTrial,
+        columnMapping: {
+          components: {
+            value: [
+              {
+                type: "SurveyComponent",
+                name: "StimSurvey",
+                survey_json: {
+                  elements: [
+                    { name: "", title: "Stimulus title" },
+                    { name: "", title: "" },
+                  ],
+                },
+              },
+            ],
+          },
+          response_components: {
+            value: [
+              {
+                type: "SurveyComponent",
+                name: "ResponseSurvey",
+                survey_json: {
+                  elements: [
+                    { name: "", title: "Response title" },
+                    { name: "", title: "" },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      } as any,
+    });
+
+    const labels = result.current().map((column) => column.label);
+    expect(labels).toEqual(
+      expect.arrayContaining([
+        "StimSurvey › Stimulus title",
+        "StimSurvey › Question",
+        "ResponseSurvey › Response title",
+        "ResponseSurvey › Question",
+      ]),
+    );
+  });
+
   it("renders dynamic plugin property options and resets rule value on change", () => {
     const conditions: LoopCondition[] = [
       {
@@ -218,7 +315,12 @@ describe("dynamic condition column helpers", () => {
           type: "SurveyComponent",
           survey_json: {
             source: "typed",
-            value: { elements: [{ name: "choice", title: "Choice" }] },
+            value: {
+              elements: [
+                { name: "choice", title: "Choice" },
+                { name: "fallback" },
+              ],
+            },
           },
         }}
         componentIdx="SurveyResponse_1"
@@ -233,6 +335,9 @@ describe("dynamic condition column helpers", () => {
     expect(screen.getByRole("option", { name: "Type" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Choice" })).toHaveValue(
       "choice",
+    );
+    expect(screen.getByRole("option", { name: "fallback" })).toHaveValue(
+      "fallback",
     );
     expect(screen.queryByRole("option", { name: "Response" })).toBeNull();
     expect(screen.getByRole("option", { name: "RT" })).toBeInTheDocument();
@@ -284,6 +389,22 @@ describe("dynamic condition column helpers", () => {
       <DynamicPluginPropertyColumn
         rule={conditions[0].rules[0]}
         comp={{ type: "SurveyComponent", survey_json: { source: "typed", value: {} } }}
+        componentIdx="Component_1"
+        conditionId={1}
+        ruleIdx={0}
+        conditions={conditions}
+        setConditionsWrapper={vi.fn()}
+        getPropValue={getPropValue}
+      />,
+    );
+
+    expect(screen.getByRole("option", { name: "Response" })).toHaveValue("response");
+    expect(screen.getByRole("option", { name: "RT" })).toHaveValue("rt");
+
+    rerender(
+      <DynamicPluginPropertyColumn
+        rule={conditions[0].rules[0]}
+        comp={{ type: "ButtonResponseComponent" }}
         componentIdx="Component_1"
         conditionId={1}
         ruleIdx={0}
@@ -376,6 +497,68 @@ describe("dynamic condition column helpers", () => {
     rerender(
       <DynamicPluginPropertyColumn
         rule={conditions[0].rules[0]}
+        comp={{ type: "AudioComponent" }}
+        componentIdx="Component_1"
+        conditionId={1}
+        ruleIdx={0}
+        conditions={conditions}
+        setConditionsWrapper={vi.fn()}
+        getPropValue={getPropValue}
+      />,
+    );
+
+    expect(screen.queryByRole("option", { name: "Stimulus" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Coordinates" })).not.toBeInTheDocument();
+
+    rerender(
+      <DynamicPluginPropertyColumn
+        rule={conditions[0].rules[0]}
+        comp={{
+          type: "CustomComponent",
+          stimulus: "stim",
+          response: "resp",
+          rt: 10,
+          coordinates: { x: 1, y: 2 },
+        }}
+        componentIdx="Component_1"
+        conditionId={1}
+        ruleIdx={0}
+        conditions={conditions}
+        setConditionsWrapper={vi.fn()}
+        getPropValue={getPropValue}
+      />,
+    );
+
+    expect(screen.getByRole("option", { name: "Stimulus" })).toHaveValue(
+      "stimulus",
+    );
+    expect(screen.getByRole("option", { name: "Response" })).toHaveValue("response");
+    expect(screen.getByRole("option", { name: "RT" })).toHaveValue("rt");
+    expect(screen.getByRole("option", { name: "Coordinates" })).toHaveValue(
+      "coordinates",
+    );
+
+    rerender(
+      <DynamicPluginPropertyColumn
+        rule={conditions[0].rules[0]}
+        comp={{ type: "CustomComponent" }}
+        componentIdx="Component_1"
+        conditionId={1}
+        ruleIdx={0}
+        conditions={conditions}
+        setConditionsWrapper={vi.fn()}
+        getPropValue={getPropValue}
+      />,
+    );
+
+    expect(screen.queryByRole("option", { name: "Stimulus" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Response" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "RT" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Coordinates" })).not.toBeInTheDocument();
+
+    rerender(
+      <DynamicPluginPropertyColumn
+        rule={conditions[0].rules[0]}
         comp={null}
         componentIdx=""
         conditionId={1}
@@ -394,7 +577,15 @@ describe("dynamic condition column helpers", () => {
     const conditions: ParamsOverrideCondition[] = [
       {
         id: 10,
-        rules: [{ trialId: 1, column: "", op: "==", value: "old" }],
+        rules: [
+          { trialId: 1, column: "", op: "==", value: "old" },
+          { trialId: 1, column: "rt", op: ">", value: "10" },
+        ],
+        paramsToOverride: {},
+      },
+      {
+        id: 11,
+        rules: [{ trialId: 1, column: "rt", op: "<", value: "20" }],
         paramsToOverride: {},
       },
     ];
@@ -436,12 +627,123 @@ describe("dynamic condition column helpers", () => {
       [
         {
           id: 10,
-          rules: [{ trialId: 1, column: "response", op: "==", value: "" }],
+          rules: [
+            { trialId: 1, column: "response", op: "==", value: "" },
+            { trialId: 1, column: "rt", op: ">", value: "10" },
+          ],
+          paramsToOverride: {},
+        },
+        {
+          id: 11,
+          rules: [{ trialId: 1, column: "rt", op: "<", value: "20" }],
           paramsToOverride: {},
         },
       ],
       true,
     );
+  });
+
+  it("renders only trial data for a dynamic trial without column mappings", () => {
+    const conditions: ParamsOverrideCondition[] = [
+      {
+        id: 10,
+        rules: [{ trialId: 1, column: "", op: "==", value: "" }],
+        paramsToOverride: {},
+      },
+    ];
+
+    renderInTable(
+      <ColumnSelector
+        rule={conditions[0].rules[0]}
+        trialDataFields={{}}
+        loadingData={{}}
+        referencedTrial={{ ...dynamicTrial, columnMapping: undefined }}
+        conditions={conditions}
+        conditionId={10}
+        ruleIdx={0}
+        getPropValue={getPropValue}
+        setConditionsWrapper={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("option", { name: "Trial RT" })).toHaveValue("rt");
+    expect(screen.queryByText(/Stimulus Components/)).not.toBeInTheDocument();
+  });
+
+  it("falls back to Question and field keys when labels are empty", () => {
+    const conditions: ParamsOverrideCondition[] = [
+      {
+        id: 10,
+        rules: [{ trialId: 1, column: "", op: "==", value: "" }],
+        paramsToOverride: {},
+      },
+    ];
+    const unlabeledSurveyTrial = {
+      ...dynamicTrial,
+      columnMapping: {
+        components: {
+          value: [
+            {
+              type: "SurveyComponent",
+              name: "StimulusSurvey",
+              survey_json: { value: { elements: [{ name: "" }] } },
+            },
+          ],
+        },
+        response_components: {
+          value: [
+            {
+              type: "SurveyComponent",
+              name: "ResponseSurvey",
+              survey_json: { value: { elements: [{ name: "" }] } },
+            },
+          ],
+        },
+      },
+    } as unknown as Trial;
+
+    const rendered = renderInTable(
+      <ColumnSelector
+        rule={conditions[0].rules[0]}
+        trialDataFields={{}}
+        loadingData={{}}
+        referencedTrial={unlabeledSurveyTrial}
+        conditions={conditions}
+        conditionId={10}
+        ruleIdx={0}
+        getPropValue={getPropValue}
+        setConditionsWrapper={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("option", { name: "StimulusSurvey › Question" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "ResponseSurvey › Question" })).toBeInTheDocument();
+
+    rendered.rerender(
+      <table>
+        <tbody>
+          <tr>
+            <ColumnSelector
+              rule={conditions[0].rules[0]}
+              trialDataFields={{ 1: [{ key: "fallback_key", label: "", type: "string" }] }}
+              loadingData={{}}
+              referencedTrial={{
+                id: 1,
+                name: "Normal trial",
+                plugin: "plugin-html-keyboard-response",
+              }}
+              conditions={conditions}
+              conditionId={10}
+              ruleIdx={0}
+              getPropValue={getPropValue}
+              setConditionsWrapper={vi.fn()}
+            />
+          </tr>
+        </tbody>
+      </table>,
+    );
+
+    expect(screen.getByRole("option", { name: "fallback_key" })).toBeInTheDocument();
   });
 
   it("renders dynamic plugin ParamsOverride columns and resets the rule value", () => {
@@ -505,6 +807,64 @@ describe("dynamic condition column helpers", () => {
       ],
       true,
     );
+  });
+
+  it("skips ParamsOverride dynamic components without a name", () => {
+    const conditions: ParamsOverrideCondition[] = [
+      {
+        id: 10,
+        rules: [{ trialId: 1, column: "", op: "==", value: "old" }],
+        paramsToOverride: {},
+      },
+    ];
+    const trialWithUnnamedComponents = {
+      ...dynamicTrial,
+      columnMapping: {
+        components: {
+          source: "typed",
+          value: [
+            { type: "ImageComponent", stimulus: { source: "typed", value: "cat.png" } },
+            {
+              type: "ImageComponent",
+              name: { source: "typed", value: "NamedStimulus" },
+              stimulus: { source: "typed", value: "cat.png" },
+            },
+          ],
+        },
+        response_components: {
+          source: "typed",
+          value: [
+            { type: "AudioResponseComponent" },
+            {
+              type: "AudioResponseComponent",
+              name: { source: "typed", value: "NamedResponse" },
+            },
+          ],
+        },
+      },
+    } as Trial;
+
+    renderInTable(
+      <ColumnSelector
+        rule={conditions[0].rules[0]}
+        trialDataFields={{}}
+        loadingData={{}}
+        referencedTrial={trialWithUnnamedComponents}
+        conditions={conditions}
+        conditionId={10}
+        ruleIdx={0}
+        getPropValue={getPropValue}
+        setConditionsWrapper={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("option", { name: "NamedStimulus › Type" })).toHaveValue(
+      "NamedStimulus_type",
+    );
+    expect(screen.getByRole("option", { name: "NamedResponse › Type" })).toHaveValue(
+      "NamedResponse_type",
+    );
+    expect(screen.queryByRole("option", { name: "undefined › Type" })).not.toBeInTheDocument();
   });
 
   it("shows loading and disabled states in ParamsOverride column selection", () => {

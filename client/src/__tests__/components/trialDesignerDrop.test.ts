@@ -57,7 +57,8 @@ function dropComponent(
   type: ComponentType,
   overrides: Partial<Parameters<typeof handleDrop>[0]> = {},
 ) {
-  const state = createSetComponents(existingComponents);
+  const initialComponents = overrides.components ?? existingComponents;
+  const state = createSetComponents(initialComponents);
   const onAutoSave = vi.fn();
   const generateConfigFromComponents = vi.fn(() => ({ mapped: true }));
   const setSelectedId = vi.fn();
@@ -70,7 +71,7 @@ function dropComponent(
     fileUrl: "uploads/img/cat.png",
     type,
     stageRef: createStageRef(),
-    components: existingComponents,
+    components: initialComponents,
     toJsPsychCoords: vi.fn(() => ({ x: -25, y: 30 })),
     getDefaultConfig,
     setComponents: state.setComponents,
@@ -170,5 +171,25 @@ describe("TrialDesigner handleDrop", () => {
     expect(state.setComponents).not.toHaveBeenCalled();
     expect(onAutoSave).not.toHaveBeenCalled();
     expect(state.getComponents()).toEqual(existingComponents);
+  });
+
+  it("defaults missing z-indexes and skips autosave when it is disabled", () => {
+    const componentWithoutZIndex = {
+      ...existingComponents[0],
+      zIndex: undefined,
+    } as TrialComponent;
+    const result = dropComponent("HtmlComponent", {
+      components: [componentWithoutZIndex],
+      onAutoSave: undefined,
+    });
+
+    expect(result.getComponents()[1]).toMatchObject({
+      type: "HtmlComponent",
+      zIndex: 1,
+      config: {
+        zIndex: { source: "typed", value: 1 },
+      },
+    });
+    expect(result.generateConfigFromComponents).not.toHaveBeenCalled();
   });
 });

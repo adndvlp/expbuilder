@@ -54,6 +54,52 @@ describe("ChatInput", () => {
     expect(screen.queryByTitle("Send (Enter)")).not.toBeInTheDocument();
   });
 
+  it("ignores blank submits and submits nothing while thinking", () => {
+    const { rerender } = render(<ChatInput />);
+    const textarea = screen.getByPlaceholderText(/Tell the agent what you need/);
+
+    fireEvent.keyDown(textarea, { key: "Enter" });
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+
+    mocks.isThinking = true;
+    rerender(<ChatInput />);
+    fireEvent.change(screen.getByPlaceholderText(/Tell the agent what you need/), {
+      target: { value: "Please wait" },
+    });
+    fireEvent.keyDown(screen.getByPlaceholderText(/Tell the agent what you need/), {
+      key: "Enter",
+    });
+
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("opens the hidden file input from the attach button", () => {
+    const clickSpy = vi
+      .spyOn(HTMLInputElement.prototype, "click")
+      .mockImplementation(() => {});
+
+    render(<ChatInput />);
+
+    fireEvent.click(screen.getByTitle("Attach file"));
+
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores multiline keys and file events without files", () => {
+    const { container } = render(<ChatInput />);
+    const textarea = screen.getByPlaceholderText(/Tell the agent what you need/);
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const dropZone = container.querySelector(".chat-input-wrap") as HTMLElement;
+
+    fireEvent.change(textarea, { target: { value: "Keep editing" } });
+    fireEvent.keyDown(textarea, { key: "Enter", shiftKey: true });
+    fireEvent.change(input, { target: { files: null } });
+    fireEvent.drop(dropZone, { dataTransfer: { files: null } });
+
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    expect(screen.queryByText("Drop files here")).not.toBeInTheDocument();
+  });
+
   it("attaches selected files and sends them with the message", async () => {
     render(<ChatInput />);
 
@@ -86,5 +132,30 @@ describe("ChatInput", () => {
       );
     });
     expect(screen.queryByText("notes.txt")).not.toBeInTheDocument();
+  });
+
+  it("handles dropped image files, drag overlay state and attachment removal", async () => {
+    const { container } = render(<ChatInput />);
+    const dropZone = container.querySelector(".chat-input-wrap") as HTMLElement;
+    const image = new File(["image"], "photo.png", { type: "image/png" });
+
+    fireEvent.dragOver(dropZone, { dataTransfer: { files: [] } });
+    expect(screen.getByText("Drop files here")).toBeInTheDocument();
+
+    fireEvent.dragLeave(dropZone);
+    expect(screen.queryByText("Drop files here")).not.toBeInTheDocument();
+
+    fireEvent.dragOver(dropZone, { dataTransfer: { files: [] } });
+    await act(async () => {
+      fireEvent.drop(dropZone, { dataTransfer: { files: [image] } });
+      await Promise.resolve();
+    });
+
+    expect(await screen.findByText("photo.png")).toBeInTheDocument();
+    expect(screen.getByAltText("photo.png")).toBeInTheDocument();
+    expect(screen.queryByText("Drop files here")).not.toBeInTheDocument();
+
+    fireEvent.click(container.querySelector(".chat-attach-remove") as HTMLElement);
+    expect(screen.queryByText("photo.png")).not.toBeInTheDocument();
   });
 });

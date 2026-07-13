@@ -1,4 +1,11 @@
-import { act, fireEvent, render, renderHook, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import ParameterMapper, {
@@ -184,6 +191,10 @@ describe("ParameterMapper state hooks", () => {
     act(() => result.current.openSurveyModal("survey_json"));
     expect(result.current.isSurveyModalOpen).toBe(true);
     expect(result.current.currentSurveyKey).toBe("survey_json");
+
+    act(() => result.current.closeSurveyModal());
+    expect(result.current.isSurveyModalOpen).toBe(false);
+    expect(result.current.currentSurveyKey).toBe("");
   });
 
   it("autosaves HTML params as scalar or html array based on the parameter type", () => {
@@ -315,6 +326,75 @@ describe("ParameterMapper state hooks", () => {
       value: survey,
     });
   });
+
+  it("ignores modal changes when no parameter key is active", () => {
+    const { result } = renderHook(() =>
+      useAutoSaveHarness({ parameters: [] }),
+    );
+
+    act(() => {
+      result.current.handleHtmlChange("<p>Ignored</p>");
+      result.current.handleButtonHtmlChange("<button>Ignored</button>");
+      result.current.handleSurveyChange({ title: "Ignored" });
+    });
+
+    expect(result.current.columnMapping).toEqual({});
+  });
+
+  it("updates modal values without onSave or a choices parameter", () => {
+    const { result } = renderHook(() =>
+      useAutoSaveHarness({
+        parameters: [
+          { key: "stimulus", label: "Stimulus", type: "html_string" },
+          { key: "button_html", label: "Button HTML", type: "function" },
+          { key: "survey_json", label: "Survey", type: "object" },
+        ],
+        currentHtmlKey: "stimulus",
+        currentButtonKey: "button_html",
+        currentSurveyKey: "survey_json",
+      }),
+    );
+
+    act(() => {
+      result.current.handleHtmlChange("<p>Stored</p>");
+      result.current.handleButtonHtmlChange("<button>   </button>");
+      result.current.handleSurveyChange({ title: "Stored" });
+    });
+
+    expect(result.current.columnMapping.stimulus.value).toBe("<p>Stored</p>");
+    expect(result.current.columnMapping.button_html.value).toContain(
+      '"<button>   </button>"',
+    );
+    expect(result.current.columnMapping.choices).toBeUndefined();
+    expect(result.current.columnMapping.survey_json.value).toEqual({
+      title: "Stored",
+    });
+  });
+
+  it("autosaves button HTML without choices when that parameter is unavailable", () => {
+    vi.useFakeTimers();
+    const onSave = vi.fn();
+    const { result } = renderHook(() =>
+      useAutoSaveHarness({
+        parameters: [
+          { key: "button_html", label: "Button HTML", type: "function" },
+        ],
+        currentButtonKey: "button_html",
+        onSave,
+      }),
+    );
+
+    act(() => {
+      result.current.handleButtonHtmlChange("<button>Continue</button>");
+      vi.advanceTimersByTime(100);
+    });
+
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onSave).toHaveBeenCalledWith(
+      "button_html",
+      expect.objectContaining({ source: "typed" }),
+    );
+  });
 });
 
 describe("ParameterInputField", () => {
@@ -362,10 +442,14 @@ describe("ParameterInputField", () => {
   });
 
   it("keeps a selected WebGazer point preset visible after saving it", () => {
+    vi.useFakeTimers();
+    const onSave = vi.fn();
+
     render(
       <ParameterInputFieldHarness
         paramKey="calibration_points"
         type="number_array"
+        onSave={onSave}
       />,
     );
 
@@ -393,6 +477,104 @@ describe("ParameterInputField", () => {
       },
     });
     expect(select.value).toBe(fivePointPreset);
+
+    act(() => vi.advanceTimersByTime(100));
+    expect(onSave).toHaveBeenCalledWith("calibration_points", {
+      source: "typed",
+      value: [
+        [20, 20],
+        [80, 20],
+        [50, 50],
+        [20, 80],
+        [80, 80],
+      ],
+    });
+  });
+
+  it.each([
+    ["boolean", "enabled", false],
+    ["string_array", "choices", []],
+    ["object", "coordinates", { x: 0, y: 0 }],
+    ["object", "metadata", ""],
+    ["string", "label", ""],
+  ] as const)(
+    "initializes the %s typed default for %s",
+    (type, paramKey, expected) => {
+      render(
+        <ParameterInputFieldHarness paramKey={paramKey} type={type} />,
+      );
+
+      fireEvent.change(screen.getByRole("combobox"), {
+        target: { value: "type_value" },
+      });
+
+      expect(readMapping()).toEqual({
+        [paramKey]: { source: "typed", value: expected },
+      });
+    },
+  );
+
+  it("renders numeric CSV values and validation-point array values", () => {
+    const numericView = render(
+      <ParameterInputFieldHarness
+        initialMapping={{ score: { source: "csv", value: 7 } }}
+        paramKey="score"
+        type="number"
+        csvColumns={["7"]}
+      />,
+    );
+    expect(screen.getByRole("combobox")).toHaveValue("7");
+    numericView.unmount();
+
+    const validationPoints = [
+      [20, 20],
+      [80, 20],
+      [50, 50],
+      [20, 80],
+      [80, 80],
+    ];
+    render(
+      <ParameterInputFieldHarness
+        initialMapping={{
+          validation_points: {
+            source: "csv",
+            value: validationPoints,
+          },
+        }}
+        paramKey="validation_points"
+        type="number_array"
+      />,
+    );
+
+    expect(screen.getByRole("combobox")).toHaveValue(
+      JSON.stringify(validationPoints),
+    );
+  });
+
+  it("changes and removes a WebGazer preset without autosave", () => {
+    render(
+      <ParameterInputFieldHarness
+        paramKey="validation_points"
+        type="number_array"
+      />,
+    );
+    const select = screen.getByRole("combobox");
+    const fivePointPreset = JSON.stringify([
+      [20, 20],
+      [80, 20],
+      [50, 50],
+      [20, 80],
+      [80, 80],
+    ]);
+
+    fireEvent.change(select, { target: { value: fivePointPreset } });
+    expect(readMapping().validation_points).toEqual({
+      source: "typed",
+      value: JSON.parse(fivePointPreset),
+    });
+
+    fireEvent.change(select, { target: { value: "" } });
+    expect(readMapping()).toEqual({});
   });
 });
 
@@ -540,6 +722,7 @@ describe("useTrialPersistence", () => {
               { id: 4, name: "Nested keep", branches: [2, "2", 5] },
             ],
           },
+          { id: 5, name: "No branches" },
         ],
       }),
     );
@@ -554,6 +737,7 @@ describe("useTrialPersistence", () => {
         branches: ["4"],
         trials: [{ id: 4, name: "Nested keep", branches: [5] }],
       },
+      { id: 5, name: "No branches" },
     ]);
     expect(result.current.selectedTrial).toBeNull();
     expect(globalThis.fetch).toHaveBeenCalledWith(
@@ -578,5 +762,29 @@ describe("useTrialPersistence", () => {
     expect(result.current.trials).toBe(initialTrials);
     expect(result.current.selectedTrial).toBeNull();
     expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it("logs API delete failures after removing the selected trial locally", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+    } as Response);
+
+    const { result } = renderHook(() =>
+      useTrialPersistenceHarness({
+        initialSelectedTrial: { id: 2, name: "Delete me" },
+        initialTrials: [{ id: 2, name: "Delete me" }],
+      }),
+    );
+
+    act(() => result.current.handleDeleteTrial());
+
+    await waitFor(() => {
+      expect(consoleError).toHaveBeenCalledWith(
+        "Error deleting trial:",
+        expect.any(Error),
+      );
+    });
   });
 });

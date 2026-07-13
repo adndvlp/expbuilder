@@ -46,13 +46,36 @@ describe("SurveyPreview", () => {
             null,
             { value: "A" },
             { text: "B" },
+            {},
             { value: "", text: "" },
           ],
         },
         {
+          type: "rating",
+          name: "rating_bad_values",
+          rateValues: "bad",
+        },
+        {
+          type: "rating",
+          name: "rating_empty_with_bounds",
+          rateValues: [],
+          rateMin: 2,
+          rateMax: 4,
+        },
+        {
           type: "radiogroup",
           name: "radio",
-          choices: ["yes", { value: "no" }, { text: "maybe", imageLink: "maybe.png" }],
+          choices: [
+            "yes",
+            { value: "no" },
+            { text: "maybe", imageLink: "maybe.png" },
+            {},
+          ],
+        },
+        {
+          type: "dropdown",
+          name: "null_choices",
+          choices: null,
         },
         {
           type: "checkbox",
@@ -87,13 +110,33 @@ describe("SurveyPreview", () => {
           ],
         },
         {
+          type: "rating",
+          name: "rating_bad_values",
+          rateValues: [],
+          rateMin: 1,
+          rateMax: 5,
+        },
+        {
+          type: "rating",
+          name: "rating_empty_with_bounds",
+          rateValues: [],
+          rateMin: 2,
+          rateMax: 4,
+        },
+        {
           type: "radiogroup",
           name: "radio",
           choices: [
             { value: "yes", text: "yes" },
             { value: "no", text: "no" },
             { value: "maybe", text: "maybe", imageLink: "maybe.png" },
+            { value: "", text: "" },
           ],
+        },
+        {
+          type: "dropdown",
+          name: "null_choices",
+          choices: [],
         },
         {
           type: "checkbox",
@@ -103,6 +146,19 @@ describe("SurveyPreview", () => {
       ],
     });
     expect(model.instance.mode).toBe("display");
+  });
+
+  it("creates a survey model when no elements array is present", async () => {
+    vi.mocked(Model).mockImplementation(function (this: any) {
+      this.mode = "edit";
+      this.applyTheme = vi.fn();
+    } as any);
+
+    render(<SurveyPreview surveyJson={{ title: "Only title" }} displayMode={false} />);
+
+    await waitFor(() => {
+      expect(Model).toHaveBeenCalledWith({ title: "Only title" });
+    });
   });
 
   it("applies custom theme variables to the Survey model", async () => {
@@ -153,5 +209,16 @@ describe("SurveyPreview", () => {
 
     expect(await screen.findByText(/Preview Error:/)).toBeInTheDocument();
     expect(screen.getByText(/Invalid schema/)).toBeInTheDocument();
+  });
+
+  it("shows a generic preview error when survey-core throws a non-error value", async () => {
+    vi.mocked(Model).mockImplementation(function () {
+      throw "bad schema";
+    } as any);
+
+    render(<SurveyPreview surveyJson={{ title: "Broken" }} />);
+
+    expect(await screen.findByText(/Preview Error:/)).toBeInTheDocument();
+    expect(screen.getByText(/Invalid survey JSON/)).toBeInTheDocument();
   });
 });

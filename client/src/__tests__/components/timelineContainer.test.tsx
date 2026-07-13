@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import UrlContext from "../../pages/ExperimentBuilder/contexts/UrlContext";
 import Timeline from "../../pages/ExperimentBuilder/components/Timeline";
+import { StorageSelectModal } from "../../pages/ExperimentBuilder/components/Timeline/StorageSelectModal";
 
 const mocks = vi.hoisted(() => ({
   auth: { currentUser: null as { uid: string } | null },
@@ -154,9 +155,10 @@ function renderTimeline(initialExperimentUrl = "") {
     );
   }
 
-  render(<Wrapper />);
+  const view = render(<Wrapper />);
 
   return {
+    ...view,
     uploadedFiles,
     handleFileUpload,
     handleDeleteFile,
@@ -274,6 +276,48 @@ describe("Timeline container", () => {
     expect(await screen.findByText("Tunnel closed")).toBeInTheDocument();
   });
 
+  it("styles failed, error and informational build statuses", async () => {
+    const cases = [
+      ["Build Failed", "#f8d7da", "#721c24"],
+      ["Build error", "#f8d7da", "#721c24"],
+      ["Building experiment", "#cce5ff", "#004085"],
+    ] as const;
+
+    for (const [status, backgroundColor, color] of cases) {
+      mocks.handleRunExperiment.mockImplementation((props: any) => {
+        props.setSubmitStatus(status);
+      });
+      const view = renderTimeline();
+
+      fireEvent.click(screen.getByText("Build Experiment"));
+
+      expect(await screen.findByText(status)).toHaveStyle({
+        backgroundColor,
+        color,
+      });
+      view.unmount();
+    }
+  });
+
+  it("shows processing and tunnel-creation states", async () => {
+    mocks.handleRunExperiment.mockImplementation((props: any) => {
+      props.setIsSubmitting(true);
+    });
+    const buildView = renderTimeline();
+
+    fireEvent.click(screen.getByText("Build Experiment"));
+    expect(await screen.findByText("Processing...")).toBeDisabled();
+    buildView.unmount();
+
+    mocks.handleShareLocalExperiment.mockImplementation((props: any) => {
+      props.setIsTunnelCreating(true);
+    });
+    renderTimeline();
+
+    fireEvent.click(screen.getByText("Share Local Experiment"));
+    expect(await screen.findByText("Creating tunnel...")).toBeDisabled();
+  });
+
   it("runs using a persisted tunnel URL even when experimentUrl is empty", () => {
     localStorage.setItem("tunnelUrl", "https://stored-tunnel.test");
 
@@ -284,6 +328,21 @@ describe("Timeline container", () => {
     expect(mocks.openExternal).toHaveBeenCalledWith(
       "https://stored-tunnel.test/exp-123",
     );
+  });
+
+  it("ignores run and hover events after a persisted tunnel URL disappears", () => {
+    localStorage.setItem("tunnelUrl", "https://stored-tunnel.test");
+    renderTimeline();
+    const runButton = screen.getByText("Run experiment");
+    const initialBackground = runButton.style.backgroundColor;
+
+    localStorage.removeItem("tunnelUrl");
+    fireEvent.mouseEnter(runButton);
+    fireEvent.mouseLeave(runButton);
+    fireEvent.click(runButton);
+
+    expect(runButton.style.backgroundColor).toBe(initialBackground);
+    expect(mocks.openExternal).not.toHaveBeenCalled();
   });
 
   it("uses cached user tokens without reading Firestore", async () => {
@@ -309,6 +368,35 @@ describe("Timeline container", () => {
       expect(screen.getByText("Publish to GitHub Pages")).toBeEnabled();
     });
     expect(mocks.firestoreGetDoc).not.toHaveBeenCalled();
+  });
+
+  it("refreshes user tokens when the local cache is stale", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(1_000_000);
+    mocks.authUser = { uid: "user-123" };
+    mocks.auth.currentUser = { uid: "user-123" };
+    mocks.firestoreData = {
+      githubTokens: { access_token: "github" },
+      osfTokens: { access_token: "osf" },
+    };
+    localStorage.setItem(
+      "userTokens_user-123",
+      JSON.stringify({
+        tokens: {
+          drive: false,
+          dropbox: false,
+          osf: false,
+          github: false,
+        },
+        ts: 1,
+      }),
+    );
+
+    renderTimeline("https://published-source.test/exp-123");
+
+    await waitFor(() => {
+      expect(mocks.firestoreGetDoc).toHaveBeenCalled();
+      expect(screen.getByText("Publish to GitHub Pages")).toBeEnabled();
+    });
   });
 
   it("loads connected user tokens and confirms a publish storage choice", async () => {
@@ -375,6 +463,34 @@ describe("Timeline container", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders publish errors in the error color", async () => {
+    mocks.authUser = { uid: "user-123" };
+    mocks.auth.currentUser = { uid: "user-123" };
+    mocks.firestoreData = {
+      googleDriveTokens: { access_token: "drive" },
+      githubTokens: { access_token: "github" },
+    };
+    mocks.publishWithStorage.mockImplementation(
+      async (_uid: string, _storage: string, props: any) => {
+        props.setPublishStatus("Error publishing experiment");
+        props.setShowStorageModal(false);
+        props.setIsPublishing(false);
+      },
+    );
+
+    renderTimeline("https://published-source.test/exp-123");
+
+    await waitFor(() => {
+      expect(screen.getByText("Publish to GitHub Pages")).toBeEnabled();
+    });
+    fireEvent.click(screen.getByText("Publish to GitHub Pages"));
+    fireEvent.click(await screen.findByText("Confirm"));
+
+    expect(await screen.findByText("Error publishing experiment")).toHaveStyle({
+      color: "#f44336",
+    });
+  });
+
   it("cancels storage selection without publishing", async () => {
     mocks.authUser = { uid: "user-123" };
     mocks.auth.currentUser = { uid: "user-123" };
@@ -413,5 +529,56 @@ describe("Timeline container", () => {
       expect(mocks.firestoreGetDoc).toHaveBeenCalled();
     });
     expect(screen.getByText("Publish to GitHub Pages")).toBeDisabled();
+  });
+
+  it("selects every storage option and ignores clicks inside the modal body", () => {
+    const onCancel = vi.fn();
+    const onConfirm = vi.fn();
+    const { rerender } = render(
+      <StorageSelectModal
+        isOpen={false}
+        availableStorages={["googledrive"]}
+        onCancel={onCancel}
+        onConfirm={onConfirm}
+      />,
+    );
+    expect(screen.queryByText("Select Storage Provider")).not.toBeInTheDocument();
+
+    rerender(
+      <StorageSelectModal
+        isOpen
+        availableStorages={["googledrive", "dropbox", "osf"]}
+        onCancel={onCancel}
+        onConfirm={onConfirm}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByText("Select Storage Provider").closest(".storage-modal-content")!,
+    );
+    expect(onCancel).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText("Confirm"));
+    expect(onConfirm).toHaveBeenLastCalledWith("googledrive");
+
+    fireEvent.click(screen.getByRole("button", { name: /OSF/ }));
+    fireEvent.click(screen.getByText("Confirm"));
+    expect(onConfirm).toHaveBeenLastCalledWith("osf");
+
+    fireEvent.click(screen.getByRole("button", { name: /Google Drive/ }));
+    fireEvent.click(screen.getByText("Confirm"));
+    expect(onConfirm).toHaveBeenLastCalledWith("googledrive");
+
+    fireEvent.click(screen.getByRole("button", { name: /Dropbox/ }));
+    fireEvent.click(screen.getByText("Confirm"));
+    expect(onConfirm).toHaveBeenLastCalledWith("dropbox");
+
+    fireEvent.click(screen.getByText("Cancel"));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(
+      screen.getByText("Select Storage Provider").closest(".storage-modal-overlay")!,
+    );
+    expect(onCancel).toHaveBeenCalledTimes(2);
   });
 });

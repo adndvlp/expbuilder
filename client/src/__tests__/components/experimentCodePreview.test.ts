@@ -53,6 +53,24 @@ describe("getInitJsPsychPreview helpers", () => {
     expect(code).toContain("firebase.database.ServerValue.TIMESTAMP");
   });
 
+  it("renders placeholder IDs, opposite progress states and empty user blocks", () => {
+    const localPreInit = getPreInitLocalPreview("exp-empty");
+    const publicPreInit = getPreInitPublicPreview("exp-empty", "   ");
+    const local = normalize(getLocalInitJsPsychPreview(undefined, false));
+    const publicPreview = normalize(
+      getPublicInitJsPsychPreview(undefined, true),
+    );
+    const onTrialStart = getPublicOnTrialStartPreview();
+
+    expect(localPreInit).toContain("// (your code will run here)");
+    expect(publicPreInit).toContain("// (your code will run here)");
+    expect(local).toContain("// show_progress_bar: false,");
+    expect(local).toContain("/api/append-result/[experimentID]");
+    expect(publicPreview).toContain("show_progress_bar: true,");
+    expect(publicPreview).toContain("data.experimentID = '[experimentID]'");
+    expect(onTrialStart).not.toContain("// --- User code ---");
+  });
+
   it("injects user code into local lifecycle callback previews", () => {
     const onDataUpdate = getLocalOnDataUpdatePreview(
       "exp-3",

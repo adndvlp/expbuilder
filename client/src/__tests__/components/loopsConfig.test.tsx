@@ -26,12 +26,25 @@ vi.mock(
   }),
 );
 
+vi.mock("react-switch", () => ({
+  default: ({ checked, onChange }: any) => (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+    >
+      switch {String(checked)}
+    </button>
+  ),
+}));
+
 vi.mock(
   "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/Csv/CsvUploader",
   () => ({
     default: ({ onCsvUpload, onDeleteCSV, csvJson }: any) => (
       <div data-testid="csv-uploader">
-        <span data-testid="csv-rows">{csvJson.length}</span>
+        <span data-testid="csv-rows">{csvJson?.length ?? 0}</span>
         <button type="button" onClick={() => onCsvUpload({ target: { files: [] } })}>
           Upload CSV
         </button>
@@ -74,15 +87,20 @@ vi.mock(
 vi.mock(
   "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/ConditionalLoop",
   () => ({
-    default: ({ onSave }: any) => (
-      <button
-        type="button"
-        onClick={() =>
-          onSave([{ id: 1, rules: [{ trialId: 1, column: "rt", op: ">", value: "500" }] }])
-        }
-      >
-        Save Conditional Loop
-      </button>
+    default: ({ onSave, onClose }: any) => (
+      <div>
+        <button
+          type="button"
+          onClick={() =>
+            onSave([{ id: 1, rules: [{ trialId: 1, column: "rt", op: ">", value: "500" }] }])
+          }
+        >
+          Save Conditional Loop
+        </button>
+        <button type="button" onClick={onClose}>
+          Close Conditional Loop
+        </button>
+      </div>
     ),
   }),
 );
@@ -202,6 +220,116 @@ describe("LoopsConfig", () => {
     );
   });
 
+  it("handles guard paths when no loop is selected", () => {
+    const firstRender = render(<LoopsConfig />);
+
+    const saveButton = screen.getByRole("button", { name: "Save loop" });
+    (saveButton as HTMLButtonElement).disabled = false;
+    fireEvent.click(saveButton);
+    fireEvent.blur(screen.getByPlaceholderText("1"));
+    const switches = screen.getAllByRole("switch");
+    fireEvent.click(switches[0]);
+    fireEvent.click(switches[1]);
+    fireEvent.click(switches[1]);
+    fireEvent.click(screen.getByRole("button", { name: "Delete CSV" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save Orders" }));
+    expect(mocks.csvState.setCsvJson).not.toHaveBeenCalled();
+    expect(mocks.trialsContext.updateLoop).not.toHaveBeenCalled();
+    expect(mocks.trialsContext.updateLoopField).not.toHaveBeenCalled();
+
+    firstRender.unmount();
+    mocks.csvState.csvJson = [{ stimulus: "A" }];
+    mocks.csvState.csvColumns = ["stimulus"];
+
+    render(<LoopsConfig />);
+    fireEvent.click(screen.getByRole("button", { name: "Delete CSV" }));
+
+    expect(mocks.csvState.setCsvJson).toHaveBeenCalledWith([]);
+    expect(mocks.csvState.setCsvColumns).toHaveBeenCalledWith([]);
+    expect(mocks.trialsContext.updateLoopField).not.toHaveBeenCalled();
+  });
+
+  it("falls back to default loop state when optional loop fields are absent", () => {
+    render(
+      <LoopsConfig
+        loop={
+          {
+            id: "loop_sparse",
+            name: "Sparse Loop",
+            type: "loop",
+            code: "",
+          } as unknown as Loop
+        }
+      />,
+    );
+
+    expect(mocks.csvState.setCsvJson).toHaveBeenCalledWith([]);
+    expect(mocks.csvState.setCsvColumns).toHaveBeenCalledWith([]);
+    expect(mocks.lastOrdersProps.orders).toBe(false);
+    expect(mocks.lastOrdersProps.categories).toBe(false);
+    expect(screen.getByText(/0 trial\(s\)/)).toBeInTheDocument();
+  });
+
+  it("handles unsuccessful field and orders saves without showing success", async () => {
+    installTrialsContext({
+      updateLoopField: vi.fn(async () => false),
+      updateLoop: vi.fn(async () => null),
+    });
+
+    render(<LoopsConfig loop={makeLoop()} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Save loop" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getAllByRole("switch")[0]);
+    await waitFor(() => {
+      expect(mocks.trialsContext.updateLoopField).toHaveBeenCalledWith(
+        "loop_1",
+        "randomize",
+        true,
+      );
+    });
+    expect(screen.queryByText(/Saved \(randomize\)/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save Orders" }));
+    await waitFor(() => {
+      expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith(
+        "loop_1",
+        expect.objectContaining({ orders: true }),
+      );
+    });
+    expect(screen.queryByText(/Saved \(orders\)/)).not.toBeInTheDocument();
+  });
+
+  it("saves empty CSV fallbacks without propagating when a loop has no trials", async () => {
+    mocks.csvState.csvJson = undefined as any;
+    mocks.csvState.csvColumns = undefined as any;
+    mocks.csvState.handleCsvUpload = vi.fn((_event, onDataLoaded) => {
+      onDataLoaded(undefined, undefined);
+    });
+
+    render(<LoopsConfig loop={makeLoop({ trials: [] })} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Upload CSV" }));
+
+    await waitFor(() => {
+      expect(mocks.trialsContext.updateLoopField).toHaveBeenCalledWith(
+        "loop_1",
+        "csvJson",
+        [],
+        false,
+      );
+    });
+    expect(mocks.trialsContext.updateLoopField).toHaveBeenCalledWith(
+      "loop_1",
+      "csvColumns",
+      [],
+      false,
+    );
+    expect(mocks.trialsContext.updateTrialField).not.toHaveBeenCalled();
+  });
+
   it("deletes loop CSV data and clears csvFromLoop from loop trials", async () => {
     mocks.csvState.csvJson = [{ stimulus: "A" }];
     mocks.csvState.csvColumns = ["stimulus"];
@@ -258,6 +386,126 @@ describe("LoopsConfig", () => {
     });
   });
 
+  it("saves randomize and conditional loop switch changes", async () => {
+    render(<LoopsConfig loop={makeLoop()} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Save loop" })).toBeEnabled();
+    });
+
+    const switches = screen.getAllByRole("switch");
+    expect(switches.length).toBeGreaterThanOrEqual(2);
+
+    fireEvent.click(switches[0]);
+    await waitFor(() => {
+      expect(mocks.trialsContext.updateLoopField).toHaveBeenCalledWith(
+        "loop_1",
+        "randomize",
+        true,
+      );
+    });
+
+    fireEvent.click(switches[1]);
+    await waitFor(() => {
+      expect(mocks.trialsContext.updateLoopField).toHaveBeenCalledWith(
+        "loop_1",
+        "isConditionalLoop",
+        true,
+      );
+    });
+
+    fireEvent.click(screen.getByText("Configure Loop Conditions"));
+    fireEvent.click(screen.getByText("Save Conditional Loop"));
+
+    await waitFor(() => {
+      expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith("loop_1", {
+        loopConditions: [
+          { id: 1, rules: [{ trialId: 1, column: "rt", op: ">", value: "500" }] },
+        ],
+        isConditionalLoop: true,
+      });
+    });
+
+    fireEvent.click(screen.getByText("Close Conditional Loop"));
+    expect(screen.queryByText("Save Conditional Loop")).not.toBeInTheDocument();
+
+    fireEvent.click(switches[1]);
+    await waitFor(() => {
+      expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith("loop_1", {
+        isConditionalLoop: false,
+        loopConditions: [],
+      });
+    });
+  });
+
+  it("closes the conditional loop modal when clicking the backdrop", async () => {
+    const loop = makeLoop({
+      isConditionalLoop: true,
+      loopConditions: [
+        { id: 1, rules: [{ trialId: 1, column: "rt", op: ">", value: "500" }] },
+      ],
+    });
+
+    render(<LoopsConfig loop={loop} />);
+
+    fireEvent.click(await screen.findByText("Edit Loop Conditions (1)"));
+    const modalButton = screen.getByText("Save Conditional Loop");
+    fireEvent.click(modalButton.parentElement!.parentElement!.parentElement!);
+
+    expect(screen.queryByText("Save Conditional Loop")).not.toBeInTheDocument();
+  });
+
+  it("clears the field save indicator after its timeout", async () => {
+    render(<LoopsConfig loop={makeLoop()} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Save loop" })).toBeEnabled();
+    });
+    vi.useFakeTimers();
+
+    const repetitionsInput = screen.getByPlaceholderText("1");
+    fireEvent.change(repetitionsInput, { target: { value: "" } });
+    expect(repetitionsInput).toHaveValue(1);
+    fireEvent.change(repetitionsInput, { target: { value: "3" } });
+    fireEvent.blur(repetitionsInput);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mocks.trialsContext.updateLoopField).toHaveBeenCalledWith(
+      "loop_1",
+      "repetitions",
+      3,
+    );
+
+    expect(screen.getByText(/Saved \(repetitions\)/)).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(1500);
+    });
+  });
+
+  it("clears a pending save indicator timeout on unmount", async () => {
+    const { unmount } = render(<LoopsConfig loop={makeLoop()} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Save loop" })).toBeEnabled();
+    });
+
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole("button", { name: "Save Orders" }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText(/Saved \(orders\)/)).toBeInTheDocument();
+    unmount();
+
+    act(() => {
+      vi.advanceTimersByTime(1500);
+    });
+  });
+
   it("saves repetitions on blur and persists the full loop on manual save", async () => {
     mocks.csvState.csvJson = [{ stimulus: "A" }];
     mocks.csvState.csvColumns = ["stimulus"];
@@ -307,6 +555,52 @@ describe("LoopsConfig", () => {
 
     await waitFor(() => {
       expect(mocks.trialsContext.deleteLoop).toHaveBeenCalledWith("loop_1");
+    });
+  });
+
+  it("does not delete the loop when deletion is cancelled", () => {
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+
+    render(<LoopsConfig loop={makeLoop()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete loop" }));
+
+    expect(mocks.trialsContext.deleteLoop).not.toHaveBeenCalled();
+  });
+
+  it("logs manual save and delete failures", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    installTrialsContext({
+      updateLoop: vi.fn(async () => {
+        throw new Error("save failed");
+      }),
+      deleteLoop: vi.fn(async () => {
+        throw new Error("delete failed");
+      }),
+    });
+
+    render(<LoopsConfig loop={makeLoop()} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Save loop" })).toBeEnabled();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save loop" }));
+
+    await waitFor(() => {
+      expect(console.error).toHaveBeenCalledWith(
+        "Error saving loop:",
+        expect.any(Error),
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete loop" }));
+
+    await waitFor(() => {
+      expect(console.error).toHaveBeenCalledWith(
+        "Error deleting loop:",
+        expect.any(Error),
+      );
     });
   });
 });
