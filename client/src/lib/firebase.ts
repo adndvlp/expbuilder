@@ -20,7 +20,9 @@ let isInitialized = false;
 
 // Function to initialize Firebase
 async function initializeFirebase() {
+  /* v8 ignore start -- module-private re-entry guard; initPromise invokes this once per module instance. */
   if (isInitialized) return { app, auth, db };
+  /* v8 ignore stop */
 
   let firebaseConfig = defaultConfig;
 

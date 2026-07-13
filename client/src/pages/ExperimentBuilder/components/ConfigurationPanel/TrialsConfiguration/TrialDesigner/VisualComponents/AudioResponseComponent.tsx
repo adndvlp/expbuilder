@@ -35,7 +35,7 @@ const AudioResponseComponent: React.FC<AudioResponseComponentProps> = ({
   // Extract the actual value from the config structure
   const getConfigValue = (key: string, defaultValue: any = null) => {
     const config = shapeProps.config[key];
-    if (!config) return defaultValue;
+    if (config === undefined || config === null) return defaultValue;
 
     // Handle nested config structure with source/value
     if (typeof config === "object" && config !== null && "source" in config) {
@@ -48,7 +48,7 @@ const AudioResponseComponent: React.FC<AudioResponseComponentProps> = ({
     }
 
     // Direct value
-    return config !== undefined && config !== null ? config : defaultValue;
+    return config;
   };
 
   const showDoneButton = getConfigValue("show_done_button", true);

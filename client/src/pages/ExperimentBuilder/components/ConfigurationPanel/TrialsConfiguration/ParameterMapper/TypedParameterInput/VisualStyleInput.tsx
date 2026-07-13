@@ -244,7 +244,7 @@ function segmentedButtonStyle(
   };
 }
 
-function numericConfig(paramKey: string) {
+export function numericConfig(paramKey: string) {
   if (paramKey === "line_height") return { min: 0.5, max: 4, step: 0.1 };
   if (paramKey.includes("font_size")) return { min: 1, max: 240, step: 1 };
   if (paramKey.includes("border_width")) return { min: 0, max: 48, step: 1 };
@@ -354,7 +354,7 @@ function VisualStyleInput({
             }));
           }}
           onBlur={(event) => {
-            const raw = Number(event.target.value);
+            const raw = event.target.valueAsNumber;
             commit(clampNumber(Number.isFinite(raw) ? raw : value, paramKey));
           }}
         />

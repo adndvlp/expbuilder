@@ -16,6 +16,8 @@ function RatingScale({
   onUpdateRateValue,
   onRemoveRateValue,
 }: Props) {
+  const rateValues = question.rateValues ?? [];
+
   return (
     <>
       <div style={{ marginBottom: "12px" }}>
@@ -94,7 +96,7 @@ function RatingScale({
             Add Value
           </button>
         </div>
-        {(question.rateValues || []).length === 0 ? (
+        {rateValues.length === 0 ? (
           <div
             style={{
               padding: "12px",
@@ -117,7 +119,7 @@ function RatingScale({
               gap: "8px",
             }}
           >
-            {(question.rateValues || []).map(
+            {rateValues.map(
               (rateValue: RateValue, rateIndex: number) => (
                 <div
                   key={rateIndex}
@@ -175,7 +177,7 @@ function RatingScale({
       </div>
 
       {/* Solo mostrar rateMin/rateMax si NO hay rateValues personalizados */}
-      {(question.rateValues || []).length === 0 && (
+      {rateValues.length === 0 && (
         <div
           style={{
             display: "grid",
@@ -198,7 +200,7 @@ function RatingScale({
             </label>
             <input
               type="number"
-              value={question.rateMin || 1}
+              value={question.rateMin ?? 1}
               onChange={(e) => onUpdate({ rateMin: parseInt(e.target.value) })}
               style={{
                 width: "100%",
@@ -225,7 +227,7 @@ function RatingScale({
             </label>
             <input
               type="number"
-              value={question.rateMax || 5}
+              value={question.rateMax ?? 5}
               onChange={(e) => onUpdate({ rateMax: parseInt(e.target.value) })}
               style={{
                 width: "100%",

@@ -81,9 +81,13 @@ function LoopsConfig({ loop }: Props) {
   const showSaveIndicator = (fieldName?: string) => {
     setSavingField(fieldName || null);
     setSaveIndicator(true);
-    setTimeout(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => {
       setSaveIndicator(false);
       setSavingField(null);
+      timeoutRef.current = null;
     }, 1500);
   };
 
@@ -164,7 +168,9 @@ function LoopsConfig({ loop }: Props) {
   };
 
   const handleSave = async () => {
+    /* v8 ignore start -- the Save button is disabled while the loop cannot be saved. */
     if (!canSave || !loop) return;
+    /* v8 ignore stop */
 
     const updatedLoopData = {
       repetitions,
@@ -191,9 +197,8 @@ function LoopsConfig({ loop }: Props) {
 
   // Cleanup timeout on unmount
   useEffect(() => {
-    const timeoutCurrent = timeoutRef.current;
     return () => {
-      if (timeoutCurrent) clearTimeout(timeoutCurrent);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
 
@@ -202,13 +207,15 @@ function LoopsConfig({ loop }: Props) {
     setIsConditionalLoop(conditions.length > 0);
 
     // Save automatically when conditions are configured
-    if (loop) {
-      await updateLoop(loop.id, {
-        loopConditions: conditions,
-        isConditionalLoop: conditions.length > 0,
-      });
-      showSaveIndicator("loop conditions");
-    }
+    /* v8 ignore start -- ConditionalLoop is only rendered while a loop exists. */
+    if (!loop) return;
+    /* v8 ignore stop */
+
+    await updateLoop(loop.id, {
+      loopConditions: conditions,
+      isConditionalLoop: conditions.length > 0,
+    });
+    showSaveIndicator("loop conditions");
   };
 
   const handleRemoveLoop = async () => {

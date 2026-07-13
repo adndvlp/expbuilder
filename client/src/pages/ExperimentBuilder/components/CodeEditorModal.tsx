@@ -63,7 +63,7 @@ export default function CodeEditorModal({
   useEffect(() => {
     if (isOpen && isMultiTab && tabs) {
       setRightPanelValues(Object.fromEntries(tabs.map((t) => [t.key, t.value])));
-      setActiveTabKey(tabs[0]?.key ?? "");
+      setActiveTabKey(tabs[0].key);
     }
   }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 

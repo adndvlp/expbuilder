@@ -36,47 +36,38 @@ const GrapesButtonEditor: React.FC<GrapesButtonEditorProps> = ({
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
       }
-      if (grapesInstance.current) {
-        grapesInstance.current.destroy();
-        grapesInstance.current = null;
-      }
+      grapesInstance.current.destroy();
+      grapesInstance.current = null;
     };
     // eslint-disable-next-line
   }, [isOpen]);
 
   const getProcessedHtml = () => {
-    if (!grapesInstance.current) return "";
-    let html = grapesInstance.current.getHtml({});
+    const editor = grapesInstance.current;
+    let html = editor.getHtml({});
     html = html.replace(/<\/?body[^>]*>/gi, "");
-    const css = grapesInstance.current.getCss({});
+    const css = editor.getCss({});
     return makeGrapesHtmlPortable(juice.inlineContent(html, css));
   };
 
   const triggerAutoSave = () => {
-    if (onAutoSave && grapesInstance.current) {
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current);
-      }
-
-      autoSaveTimeoutRef.current = setTimeout(() => {
-        const inlinedHtml = getProcessedHtml();
-        onAutoSave(inlinedHtml);
-        setSaveIndicator(true);
-        setTimeout(() => setSaveIndicator(false), 1500);
-      }, 1000);
+    if (!onAutoSave) return;
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
     }
+
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      const inlinedHtml = getProcessedHtml();
+      onAutoSave(inlinedHtml);
+      setSaveIndicator(true);
+      setTimeout(() => setSaveIndicator(false), 1500);
+    }, 1000);
   };
 
   const initGrapes = () => {
-    if (!editorRef.current) return;
-    if (grapesInstance.current) {
-      grapesInstance.current.destroy();
-      grapesInstance.current = null;
-    }
-
     // Initialize GrapesJS with button-only configuration
     grapesInstance.current = grapesjs.init({
-      container: editorRef.current,
+      container: editorRef.current!,
       fromElement: false,
       height: "100%",
       width: "100%",
@@ -251,10 +242,8 @@ const GrapesButtonEditor: React.FC<GrapesButtonEditorProps> = ({
   };
 
   const handleSave = () => {
-    if (grapesInstance.current) {
-      onChange(getProcessedHtml());
-      onClose();
-    }
+    onChange(getProcessedHtml());
+    onClose();
   };
 
   return (

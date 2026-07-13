@@ -57,7 +57,7 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
   // Extract the actual value from the config structure
   const getConfigValue = (key: string, defaultValue: any = null) => {
     const config = shapeProps.config[key];
-    if (!config) return defaultValue;
+    if (config == null) return defaultValue;
 
     // Handle nested config structure with source/value
     if (typeof config === "object" && config !== null && "source" in config) {
@@ -78,7 +78,7 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
     }
 
     // Direct value
-    let value = config !== undefined && config !== null ? config : defaultValue;
+    let value = config;
 
     // Special handling for choices: ensure it's always an array
     if (key === "choices" && value !== null && !Array.isArray(value)) {
@@ -99,18 +99,12 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
       : [trimmed];
   };
 
-  const normalizeChoices = (value: any) => {
-    const normalized = Array.isArray(value)
-      ? value.flatMap((choice) =>
-          typeof choice === "string"
-            ? splitChoiceString(choice)
-            : [String(choice)],
-        )
-      : typeof value === "string"
-        ? splitChoiceString(value)
-        : value == null
-          ? []
-          : [String(value)];
+  const normalizeChoices = (value: any[]) => {
+    const normalized = value.flatMap((choice) =>
+      typeof choice === "string"
+        ? splitChoiceString(choice)
+        : [String(choice)],
+    );
 
     return normalized.length > 0 ? normalized : ["Button"];
   };
@@ -168,7 +162,7 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
   }, [isSelected]);
 
   // Calculate grid dimensions
-  const numButtons = Array.isArray(choices) ? choices.length : 1;
+  const numButtons = choices.length;
   const parsedGridRows =
     typeof gridRows === "number" && !isNaN(gridRows) && gridRows > 0
       ? gridRows
@@ -283,9 +277,8 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
   // Render buttons in grid
   const renderButtons = () => {
     const buttons: React.ReactElement[] = [];
-    const choicesArray = Array.isArray(choices) ? choices : [String(choices)];
 
-    choicesArray.forEach((choice, index) => {
+    choices.forEach((choice, index) => {
       const row = Math.floor(index / parsedGridColumns);
       const col = index % parsedGridColumns;
       const x = col * buttonWidth;

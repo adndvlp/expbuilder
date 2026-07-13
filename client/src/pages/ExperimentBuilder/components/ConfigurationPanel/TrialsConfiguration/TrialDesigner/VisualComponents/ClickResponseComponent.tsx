@@ -32,15 +32,15 @@ const ClickResponseComponent: React.FC<ClickResponseComponentProps> = ({
   const groupRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
 
-  const getConfigValue = (key: string, fallback?: any) => {
+  const getConfigValue = (key: string, fallback: any = null) => {
     const config = shapeProps.config[key];
-    if (!config) return fallback ?? null;
+    if (config == null) return fallback;
     if (typeof config === "object" && config !== null && "source" in config) {
       return config.value !== undefined && config.value !== null
         ? config.value
-        : (fallback ?? null);
+        : fallback;
     }
-    return config ?? fallback ?? null;
+    return config;
   };
 
   const captureFullScreen = getConfigValue("capture_full_screen", true);

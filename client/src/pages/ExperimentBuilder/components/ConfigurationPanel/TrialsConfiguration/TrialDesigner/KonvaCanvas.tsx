@@ -193,6 +193,7 @@ function KonvaCanvas({
             pointerEvents: "none",
           }}
         >
+          {/* v8 ignore start -- legacy Konva grid is disabled while the HTML scene is enabled. */}
           {!EXPERIMENTAL_HTML_SCENE_ENABLED && (
             <div
               style={{
@@ -208,8 +209,10 @@ function KonvaCanvas({
               }}
             />
           )}
+          {/* v8 ignore stop */}
 
           {/* Center crosshair */}
+          {/* v8 ignore start -- legacy Konva crosshair is disabled while the HTML scene is enabled. */}
           {!EXPERIMENTAL_HTML_SCENE_ENABLED && (
             <div
               style={{
@@ -246,6 +249,7 @@ function KonvaCanvas({
               />
             </div>
           )}
+          {/* v8 ignore stop */}
         </div>
 
         <ExperimentalHtmlSceneLayer

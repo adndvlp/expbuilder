@@ -92,8 +92,7 @@ function RuntimeCopyNode({
   );
 
   useLayoutEffect(() => {
-    const host = hostRef.current;
-    if (!host) return;
+    const host = hostRef.current!;
 
     host.innerHTML = "";
     const rendered = renderRuntimeCopy(
@@ -112,8 +111,7 @@ function RuntimeCopyNode({
   ]);
 
   useEffect(() => {
-    const host = hostRef.current;
-    if (!host) return;
+    const host = hostRef.current!;
 
     const measure = () => {
       const content = host.firstElementChild as HTMLElement | null;

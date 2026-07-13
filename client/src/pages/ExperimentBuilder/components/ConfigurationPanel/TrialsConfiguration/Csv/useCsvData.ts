@@ -71,7 +71,7 @@ export function useCsvData() {
               if (cell.type === ExcelJS.ValueType.Date) {
                 value = cell.value; // Keep as Date object or format as needed
               } else if (cell.type === ExcelJS.ValueType.Formula) {
-                value = cell.result || cell.text;
+                value = cell.result ?? cell.text;
               } else {
                 value = cell.text || "";
               }

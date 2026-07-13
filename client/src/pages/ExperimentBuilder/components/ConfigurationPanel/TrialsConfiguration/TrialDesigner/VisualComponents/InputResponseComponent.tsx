@@ -44,7 +44,7 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
 
   const getConfigValue = (key: string, defaultValue: any = null) => {
     const config = shapeProps.config[key];
-    if (!config) return defaultValue;
+    if (config === undefined || config === null) return defaultValue;
     if (typeof config === "object" && config !== null && "source" in config) {
       const v =
         config.value !== undefined && config.value !== null
@@ -52,7 +52,7 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
           : defaultValue;
       return v;
     }
-    return config !== undefined && config !== null ? config : defaultValue;
+    return config;
   };
 
   useEffect(() => {

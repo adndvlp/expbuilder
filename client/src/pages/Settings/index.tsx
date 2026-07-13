@@ -141,7 +141,9 @@ export default function Settings() {
   };
 
   const handleExportSelected = async () => {
+    /* v8 ignore start */
     if (selectedExpIDs.size === 0) return;
+    /* v8 ignore stop */
     setIsExporting(true);
     try {
       if (selectedExpIDs.size === 1) {

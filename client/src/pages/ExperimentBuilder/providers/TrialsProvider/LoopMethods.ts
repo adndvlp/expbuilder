@@ -45,11 +45,6 @@ export default function LoopMethods({
         // 2. Actualizar branches: reemplazar trial/loop IDs por el ID temporal del loop
         const tempLoopId = `temp-loop-${Date.now()}`;
         const updatedTimeline = filteredTimeline.map((item) => {
-          // Saltar si este item está dentro del loop (evita referencias circulares)
-          if (loop.trials.includes(item.id)) {
-            return item;
-          }
-
           // Si tiene branches con trials/loops del nuevo loop, reemplazarlos
           if (item.branches && item.branches.length > 0) {
             const hasAnyItemFromLoop = item.branches.some((branchId) =>
@@ -83,7 +78,7 @@ export default function LoopMethods({
             type: "loop" as const,
             name: loop.name,
             branches: loop.branches || [],
-            trials: loop.trials || [],
+            trials: loop.trials,
           },
         ];
       };
@@ -646,29 +641,27 @@ export default function LoopMethods({
 
             // Actualizar al ÚLTIMO último item para agregar los branches del loop
             // (evita crear múltiples padres para el mismo branch)
-            if (lastItems.length > 0) {
-              terminalInternalItemId = lastItems[lastItems.length - 1];
+            terminalInternalItemId = lastItems[lastItems.length - 1];
 
-              updated = updated.map((item) => {
-                if (item.id === terminalInternalItemId) {
-                  const currentBranches = item.branches || [];
-                  const newBranches = [...currentBranches];
+            updated = updated.map((item) => {
+              if (item.id === terminalInternalItemId) {
+                const currentBranches = item.branches || [];
+                const newBranches = [...currentBranches];
 
-                  // Agregar los branches del loop (evitar duplicados)
-                  loopBranches.forEach((branchId) => {
-                    if (!newBranches.includes(branchId)) {
-                      newBranches.push(branchId);
-                    }
-                  });
+                // Agregar los branches del loop (evitar duplicados)
+                loopBranches.forEach((branchId) => {
+                  if (!newBranches.includes(branchId)) {
+                    newBranches.push(branchId);
+                  }
+                });
 
-                  return {
-                    ...item,
-                    branches: newBranches,
-                  };
-                }
-                return item;
-              });
-            }
+                return {
+                  ...item,
+                  branches: newBranches,
+                };
+              }
+              return item;
+            });
           }
 
           // 4. Eliminar el loop del timeline

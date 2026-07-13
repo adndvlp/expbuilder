@@ -79,7 +79,9 @@ function KonvaParameterMapper({
   // Handle component parameter changes
   const handleComponentColumnMappingChange = useCallback(
     (updateFn: any) => {
+      /* v8 ignore start -- ParameterMapper is only rendered while selectedId exists. */
       if (!selectedId) return;
+      /* v8 ignore stop */
 
       onRecordHistory();
 

@@ -23,12 +23,10 @@ export function useDraggable(initialPos: Position) {
   };
 
   const handleMouseMove = (e: MouseEvent) => {
-    if (dragging) {
-      setPos({
-        x: e.clientX - offset.x,
-        y: e.clientY - offset.y,
-      });
-    }
+    setPos({
+      x: e.clientX - offset.x,
+      y: e.clientY - offset.y,
+    });
   };
 
   useEffect(() => {

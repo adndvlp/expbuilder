@@ -8,10 +8,17 @@ import { DOC_SECTIONS } from "./content";
 import "./index.css";
 
 let mermaidModule: any = null;
+const defaultMermaidLoader = () => import("mermaid");
+let mermaidLoader = defaultMermaidLoader;
+
+export function resetDocsMermaidForTests(loader = defaultMermaidLoader) {
+  mermaidModule = null;
+  mermaidLoader = loader;
+}
 
 async function getMermaid() {
   if (!mermaidModule) {
-    const m = await import("mermaid");
+    const m = await mermaidLoader();
     m.default.initialize({
       startOnLoad: false,
       theme: "base",
@@ -125,7 +132,7 @@ export default function Docs() {
   const activeSection = DOC_SECTIONS.find((s) => s.id === activeId)!;
 
   useEffect(() => {
-    if (contentRef.current) contentRef.current.scrollTop = 0;
+    contentRef.current!.scrollTop = 0;
   }, [activeId]);
 
   const renderCode = useCallback(

@@ -85,7 +85,9 @@ function ExperimentPreview({
       if (isDevMode || (!selectedTrial && !selectedLoop)) {
         code = await generateLocalExperiment();
       } else {
+        /* v8 ignore start -- the outer branch already routes empty selection to full local preview. */
         if (!selectedTrial && !selectedLoop) return;
+        /* v8 ignore stop */
 
         let generatedCode = "";
 
@@ -98,9 +100,9 @@ function ExperimentPreview({
             getLoopTimeline,
             getLoop,
           );
-        } else if (selectedLoop) {
+        } else {
           generatedCode = await generateSingleLoopCode(
-            selectedLoop,
+            selectedLoop!,
             experimentID || "",
             uploadedFiles,
             getTrial,

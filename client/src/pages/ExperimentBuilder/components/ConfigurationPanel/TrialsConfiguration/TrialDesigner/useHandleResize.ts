@@ -48,6 +48,9 @@ export default function useHandleResize({
       document.removeEventListener("mouseup", stopResizing);
     };
 
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", stopResizing);
+
     return () => {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", stopResizing);

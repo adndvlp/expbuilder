@@ -122,24 +122,53 @@ function getBuilderPreview(
   userCode: string,
 ): string {
   if (variant === "local") {
-    if (param.key === "on_data_update")
-      return getLocalOnDataUpdatePreview(eid, userCode);
-    if (param.key === "on_finish")
-      return getLocalOnFinishPreview(eid, userCode);
-  } else {
-    if (param.key === "on_trial_start")
-      return getPublicOnTrialStartPreview(userCode);
-    if (param.key === "on_data_update")
-      return getPublicOnDataUpdatePreview(eid, userCode);
-    if (param.key === "on_finish")
-      return getPublicOnFinishPreview(eid, userCode);
+    const localPreviews: Record<string, () => string> = {
+      on_data_update: () => getLocalOnDataUpdatePreview(eid, userCode),
+      on_finish: () => getLocalOnFinishPreview(eid, userCode),
+    };
+    return localPreviews[param.key]!();
   }
-  return userCode;
+
+  const publicPreviews: Record<string, () => string> = {
+    on_trial_start: () => getPublicOnTrialStartPreview(userCode),
+    on_data_update: () => getPublicOnDataUpdatePreview(eid, userCode),
+    on_finish: () => getPublicOnFinishPreview(eid, userCode),
+  };
+  return publicPreviews[param.key]!();
+}
+
+export function resolveRightPreviewValue({
+  param,
+  previewVariant,
+  eid,
+  liveValue,
+  localParams,
+  publicParams,
+  activeParam,
+  editVariant,
+}: {
+  param: ParamDef;
+  previewVariant: Variant;
+  eid: string;
+  liveValue: string;
+  localParams: Record<string, string | undefined>;
+  publicParams: Record<string, string | undefined>;
+  activeParam: string;
+  editVariant: Variant;
+}) {
+  if (isBuilderUsed(param, previewVariant)) {
+    return getBuilderPreview(param, previewVariant, eid, liveValue);
+  }
+  const savedParams =
+    previewVariant === "local" ? localParams : publicParams;
+  const savedValue = savedParams[activeParam] ?? "";
+  const value = previewVariant === editVariant ? liveValue : savedValue;
+  return value || `// No user code for this param in ${previewVariant}`;
 }
 
 // ── Shared mini-components ────────────────────────────────────────────────────
 
-function PreviewTabs({
+export function PreviewTabs({
   value,
   onChange,
   isLightMode,
@@ -243,12 +272,12 @@ export default function GlobalCustomCode() {
 
   // initJsPsych modal state
   const [activeParam, setActiveParam] = useState<string>(JSPSYCH_PARAMS[0].key);
-  const [editVariant] = useState<Variant>("local");
+  const editVariant: Variant = "local";
   const [rightPreviewVariant, setRightPreviewVariant] =
     useState<Variant>("local");
 
   // Pre-init modal state
-  const [preInitEditVariant] = useState<Variant>("local");
+  const preInitEditVariant: Variant = "local";
   const [preInitRightVariant, setPreInitRightVariant] =
     useState<Variant>("local");
 
@@ -272,13 +301,11 @@ export default function GlobalCustomCode() {
   };
 
   // Active param state
-  const activeDef =
-    JSPSYCH_PARAMS.find((p) => p.key === activeParam) ?? JSPSYCH_PARAMS[0];
+  const activeDef = JSPSYCH_PARAMS.find((p) => p.key === activeParam)!;
   const isBuilderParam = isBuilderUsed(activeDef, editVariant);
   const isBuilderAnyVariant =
     isBuilderUsed(activeDef, "local") || isBuilderUsed(activeDef, "public");
-  const currentEditParams =
-    editVariant === "local" ? localParams : publicParams;
+  const currentEditParams = localParams;
   const currentValue = currentEditParams[activeParam] ?? "";
 
   // Live value for right-panel preview (reset on param/variant switch)
@@ -290,10 +317,7 @@ export default function GlobalCustomCode() {
   }, [editorKey]);
 
   // Pre-init live value
-  const preInitCurrentValue =
-    preInitEditVariant === "local"
-      ? (customPreInitCode.local ?? "")
-      : (customPreInitCode.public ?? "");
+  const preInitCurrentValue = customPreInitCode.local ?? "";
   const [preInitLiveValue, setPreInitLiveValue] = useState(preInitCurrentValue);
   const preInitEditorKey = `preinit-${preInitEditVariant}`;
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -312,18 +336,16 @@ export default function GlobalCustomCode() {
 
   // Right panel value for initJsPsych
   const getRightValue = (previewVariant: Variant) => {
-    const pDef = activeDef;
-    if (isBuilderUsed(pDef, previewVariant)) {
-      // Builder param: always use live value so both preview tabs update in real time
-      return getBuilderPreview(pDef, previewVariant, eid, liveValue);
-    }
-    // Non-builder: each variant has its own stored value
-    const savedVal =
-      previewVariant === "local"
-        ? (localParams[activeParam] ?? "")
-        : (publicParams[activeParam] ?? "");
-    const val = previewVariant === editVariant ? liveValue : savedVal;
-    return val || `// No user code for this param in ${previewVariant}`;
+    return resolveRightPreviewValue({
+      param: activeDef,
+      previewVariant,
+      eid,
+      liveValue,
+      localParams,
+      publicParams,
+      activeParam,
+      editVariant,
+    });
   };
 
   // Right panel value for pre-init: always use live value in both preview tabs

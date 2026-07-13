@@ -198,7 +198,9 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
     selectedTrial?.parentLoopId ? loopTimeline : timeline;
 
   const isBranchTarget = (trialId: string | number | null): boolean => {
+    /* v8 ignore start -- handleSaveConditions exits without a selected trial, and buildBranchingSaveUpdates filters falsy targets. */
     if (!trialId || !selectedTrial) return false;
+    /* v8 ignore stop */
 
     if (includesId(selectedTrial.branches, trialId)) {
       return true;

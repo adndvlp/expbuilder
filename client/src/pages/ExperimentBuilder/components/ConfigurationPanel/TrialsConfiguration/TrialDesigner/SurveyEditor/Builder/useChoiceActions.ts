@@ -24,6 +24,7 @@ export const useChoiceActions = ({ questions, updateQuestion }: Props) => {
   ) => {
     const currentChoices = [...(questions[questionIndex].choices || [])];
     const choice = currentChoices[choiceIndex];
+    if (choice === undefined) return;
 
     // Convertir string a objeto si es necesario
     if (typeof choice === "string") {

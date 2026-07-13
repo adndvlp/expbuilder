@@ -7,6 +7,37 @@ import { fetchOAuthState } from "../../lib/oauthState";
 // Detectar si estamos en Electron
 const isElectron = !!(window as any).electron?.startOAuthFlow;
 
+const OSF_FUNCTION_BASE =
+  "https://us-central1-test-e4cf9.cloudfunctions.net";
+
+export function getOsfRedirectUri(
+  electron: boolean,
+  isDev: boolean,
+  productionOverride?: string,
+) {
+  if (electron) return "http://localhost:8888/oauth/osf/callback";
+  if (isDev) return "http://localhost:5173/oauth/osf/callback";
+  return productionOverride || `${OSF_FUNCTION_BASE}/osfOAuthCallback`;
+}
+
+export function getOsfManageUrl(isDev: boolean) {
+  return isDev
+    ? "http://127.0.0.1:5001/test-e4cf9/us-central1/osfManage"
+    : `${OSF_FUNCTION_BASE}/osfManage`;
+}
+
+export function getOsfOAuthExchangeUrl(
+  isDev: boolean,
+  code: string,
+  state: string,
+  redirectUri: string,
+) {
+  const baseUrl = isDev
+    ? "http://127.0.0.1:5001/test-e4cf9/us-central1/osfOAuthCallback"
+    : `${OSF_FUNCTION_BASE}/osfOAuthCallback`;
+  return `${baseUrl}?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+}
+
 export default function OsfToken() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -27,12 +58,11 @@ export default function OsfToken() {
   // REDIRECT_URI dinámico según el entorno. T-3: prod URL override via
   // VITE_OSF_OAUTH_CALLBACK_URL — must match the URL registered in the
   // OSF developer console at https://osf.io/settings/applications.
-  const REDIRECT_URI = isElectron
-    ? "http://localhost:8888/oauth/osf/callback"
-    : import.meta.env.DEV
-      ? "http://localhost:5173/oauth/osf/callback"
-      : import.meta.env.VITE_OSF_OAUTH_CALLBACK_URL ||
-        "https://us-central1-test-e4cf9.cloudfunctions.net/osfOAuthCallback";
+  const REDIRECT_URI = getOsfRedirectUri(
+    isElectron,
+    import.meta.env.DEV,
+    import.meta.env.VITE_OSF_OAUTH_CALLBACK_URL,
+  );
 
   // T-5: state obtained from backend (signed HMAC) at click time.
   const buildOAuthUrl = (state: string) =>
@@ -44,7 +74,10 @@ export default function OsfToken() {
 
   // Cargar estado del token
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
 
     const loadTokenStatus = async () => {
       try {
@@ -107,13 +140,12 @@ export default function OsfToken() {
         if (result.success) {
           // Llamar a la Cloud Function para intercambiar el código por tokens
           const electronRedirectUri = "http://localhost:8888/callback";
-          const functionUrl = import.meta.env.DEV
-            ? `http://127.0.0.1:5001/test-e4cf9/us-central1/osfOAuthCallback?code=${encodeURIComponent(
-                result.code,
-              )}&state=${encodeURIComponent(result.state)}&redirect_uri=${encodeURIComponent(electronRedirectUri)}`
-            : `https://us-central1-test-e4cf9.cloudfunctions.net/osfOAuthCallback?code=${encodeURIComponent(
-                result.code,
-              )}&state=${encodeURIComponent(result.state)}&redirect_uri=${encodeURIComponent(electronRedirectUri)}`;
+          const functionUrl = getOsfOAuthExchangeUrl(
+            import.meta.env.DEV,
+            result.code,
+            result.state,
+            electronRedirectUri,
+          );
 
           const response = await fetch(functionUrl);
 
@@ -179,9 +211,7 @@ export default function OsfToken() {
 
     try {
       // Llamar a la Cloud Function para validar y guardar el token
-      const functionUrl = import.meta.env.DEV
-        ? `http://127.0.0.1:5001/test-e4cf9/us-central1/osfManage`
-        : `https://us-central1-test-e4cf9.cloudfunctions.net/osfManage`;
+      const functionUrl = getOsfManageUrl(import.meta.env.DEV);
 
       const response = await fetch(functionUrl, {
         method: "POST",
@@ -221,8 +251,6 @@ export default function OsfToken() {
 
   // Función para borrar el token
   const handleDeleteToken = async () => {
-    if (!user) return;
-
     if (
       !confirm(
         "Are you sure you want to disconnect OSF? This will remove your token.",
@@ -234,9 +262,7 @@ export default function OsfToken() {
     setIsDeleting(true);
     try {
       // Llamar a la Cloud Function para desconectar OSF
-      const functionUrl = import.meta.env.DEV
-        ? `http://127.0.0.1:5001/test-e4cf9/us-central1/osfManage`
-        : `https://us-central1-test-e4cf9.cloudfunctions.net/osfManage`;
+      const functionUrl = getOsfManageUrl(import.meta.env.DEV);
 
       const response = await fetch(functionUrl, {
         method: "POST",
@@ -245,7 +271,7 @@ export default function OsfToken() {
         },
         body: JSON.stringify({
           action: "disconnect",
-          uid: user.uid,
+          uid: user!.uid,
         }),
       });
 
@@ -481,7 +507,7 @@ export default function OsfToken() {
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
                     onClick={handleSaveToken}
-                    disabled={isSaving || !tokenInput.trim()}
+                    disabled={isSaving}
                     className="token-button connect"
                     style={{ flex: 1 }}
                   >

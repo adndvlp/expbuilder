@@ -13,7 +13,6 @@ import {
   getVisualDefaultValue,
   getVisualStylePriority,
   isVisualStyleParameter,
-  shouldSpanVisualControl,
 } from "./TypedParameterInput/VisualStyleInput";
 
 type UploadedFile = { name: string; url: string; type: string };
@@ -319,19 +318,12 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
             value: getVisualDefaultValue(key, type),
           }
         : rawEntry;
-    const spanFull =
-      componentMode &&
-      (key === "text" ||
-        key === "coordinates" ||
-        (isVisualStyle && shouldSpanVisualControl(key)));
     const fieldStyle = componentMode
       ? {
           ...INSPECTOR_FIELD_STYLE,
           gridColumn: shouldFillInspectorRow(key) ? "1 / -1" : undefined,
         }
-      : spanFull
-        ? { gridColumn: "1 / -1" }
-        : undefined;
+      : undefined;
 
     // ── Special: Dynamic CSV diagnostics → controlled per trial ──
     if (key === "dynamic_csv_diagnostics") {
@@ -489,7 +481,7 @@ const ParameterMapper: React.FC<ParameterMapperProps> = ({
     });
 
     return INSPECTOR_SECTION_ORDER.map((section) => {
-      const items = sectionItems.get(section) ?? [];
+      const items = sectionItems.get(section)!;
       if (items.length === 0) return null;
 
       return (

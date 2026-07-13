@@ -24,14 +24,12 @@ function MoveItemModal({
   const [moveAsBranch, setMoveAsBranch] = useState(true);
 
   const handleConfirm = () => {
-    if (selectedDestination !== null) {
-      // If the destination has no branches, it is always sequential
-      const destination = availableDestinations.find(
-        (d) => d.id === selectedDestination,
-      );
-      const finalAddAsBranch = destination?.hasBranches ? moveAsBranch : false;
-      onConfirm(selectedDestination, finalAddAsBranch);
-    }
+    // The button is disabled until a destination is selected.
+    const destination = availableDestinations.find(
+      (d) => d.id === selectedDestination,
+    );
+    const finalAddAsBranch = destination?.hasBranches ? moveAsBranch : false;
+    onConfirm(selectedDestination as number | string, finalAddAsBranch);
   };
 
   const selectedDest = availableDestinations.find(
@@ -295,18 +293,14 @@ function MoveItemModal({
                 : "none",
           }}
           onMouseEnter={(e) => {
-            if (selectedDestination !== null) {
-              e.currentTarget.style.transform = "translateY(-1px)";
-              e.currentTarget.style.boxShadow =
-                "0 4px 12px rgba(76, 175, 80, 0.4)";
-            }
+            e.currentTarget.style.transform = "translateY(-1px)";
+            e.currentTarget.style.boxShadow =
+              "0 4px 12px rgba(76, 175, 80, 0.4)";
           }}
           onMouseLeave={(e) => {
-            if (selectedDestination !== null) {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow =
-                "0 2px 8px rgba(76, 175, 80, 0.3)";
-            }
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow =
+              "0 2px 8px rgba(76, 175, 80, 0.3)";
           }}
         >
           Move

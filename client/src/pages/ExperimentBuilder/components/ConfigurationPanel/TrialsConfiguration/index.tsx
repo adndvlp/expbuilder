@@ -30,7 +30,6 @@ function TrialsConfig({ pluginName }: Props) {
 
   // Autosave
   const [isLoadingTrial, setIsLoadingTrial] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialFileLoad = useRef(false);
   const [saveIndicator, setSaveIndicator] = useState(false);
   const [savingField, setSavingField] = useState<string | null>(null);
@@ -205,7 +204,6 @@ function TrialsConfig({ pluginName }: Props) {
 
   // Guardar nombre del trial
   const saveName = async () => {
-    if (!selectedTrial || !trialName) return;
     await saveField("name", trialName);
   };
 
@@ -277,14 +275,6 @@ function TrialsConfig({ pluginName }: Props) {
     }
   };
 
-  // Auto-save removed - using manual save only
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, []);
-
   return (
     <div id="plugin-config">
       <div className="mb-1 input-section p-4 border rounded">
@@ -318,7 +308,7 @@ function TrialsConfig({ pluginName }: Props) {
           setTrialName={setTrialName}
           selectedTrial={selectedTrial}
           setSelectedTrial={setSelectedTrial}
-          onSave={saveName}
+          onSave={trialName ? saveName : undefined}
         />
         {/* CSV info - CSV is managed at loop level only */}
         {parentLoop && (parentLoop.csvJson?.length ?? 0) > 0 && (

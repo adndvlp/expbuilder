@@ -166,7 +166,7 @@ ${activateBranchCode}
     `
     }
   },`;
-    } else if (hasBranches) {
+    } else {
       // If it has branches but NO repeat conditions
       if (!hasMultipleBranches || !hasBranchConditions) {
         // If there is only one branch OR there are no conditions, automatically follow the first branch

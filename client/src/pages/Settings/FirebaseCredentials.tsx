@@ -50,8 +50,6 @@ export default function FirebaseCredentials() {
   };
 
   const handleSave = async () => {
-    if (!isElectron) return;
-
     // Validar que todos los campos estén llenos
     if (
       !config.apiKey ||
@@ -86,8 +84,6 @@ export default function FirebaseCredentials() {
   };
 
   const handleReset = async () => {
-    if (!isElectron) return;
-
     if (
       !confirm(
         "Are you sure you want to reset to default Firebase credentials? The app will need to be restarted.",

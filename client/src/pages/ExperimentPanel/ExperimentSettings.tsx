@@ -78,7 +78,6 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
     siteKey: "",
   });
   const [experimentExists, setExperimentExists] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{
     type: "success" | "error";
@@ -99,9 +98,6 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
 
   useEffect(() => {
     if (!experimentID) return;
-
-    // Don't block the UI — set loading false immediately
-    setLoading(false);
 
     // Load session name config from local API immediately
     fetch(`${API_URL}/api/session-name-config/${experimentID}`)
@@ -185,13 +181,12 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
         return token.customValue || "text";
       case "counter":
         return "1".padStart(token.counterDigits, "0");
-      default:
-        return "";
     }
   }
 
   const addSessionToken = (type: SessionNameTokenType) => {
     setSessionNameTokens((prev) =>
+      /* v8 ignore next -- maxed buttons are disabled; this guards stale queued clicks. */
       prev.length >= MAX_TOKENS ? prev : [...prev, makeSessionToken(type)],
     );
   };
@@ -330,14 +325,6 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
       setSaving(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div style={{ padding: 32, textAlign: "center" }}>
-        <p style={{ color: "var(--text-dark)" }}>Loading configuration...</p>
-      </div>
-    );
-  }
 
   return (
     <div

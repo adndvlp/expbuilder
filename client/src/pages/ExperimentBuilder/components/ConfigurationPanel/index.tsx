@@ -94,6 +94,7 @@ const ConfigurationPanel: React.FC = () => {
       </div>
     );
   }
+  const activeTrial = selectedTrial;
 
   const webgazerPlugins = pluginList.filter((plugin) =>
     /plugin-webgazer/i.test(plugin),
@@ -130,7 +131,7 @@ const ConfigurationPanel: React.FC = () => {
     ...filteredPlugins
       .filter((plugin) => !plugins.some((p) => p.name === plugin))
       .map((plugin) => {
-        const value = /plugin-webgazer/i.test(plugin) ? "webgazer" : plugin;
+        const value = plugin;
         return {
           value,
           label: value.replace(/^plugin-/, "").replace(/-/g, " "),
@@ -146,9 +147,7 @@ const ConfigurationPanel: React.FC = () => {
     if (!checked) {
       // Cambiar a plugin-dynamic
       setSelectedId("plugin-dynamic");
-      if (selectedTrial) {
-        updateTrial(selectedTrial.id, { plugin: "plugin-dynamic" });
-      }
+      updateTrial(activeTrial.id, { plugin: "plugin-dynamic" });
     }
   };
 
@@ -164,10 +163,6 @@ const ConfigurationPanel: React.FC = () => {
         nextNum++;
       }
       const name = String(nextNum);
-      if (usedNames.includes(name)) {
-        setMetadataError("Plugin name already exists");
-        return;
-      }
       setPluginEditor(true);
       const newPlugin = {
         name,
@@ -176,16 +171,12 @@ const ConfigurationPanel: React.FC = () => {
         index: plugins.length,
       };
       setPlugins([...plugins, newPlugin]);
-      if (selectedTrial) {
-        updateTrial(selectedTrial.id, { plugin: name });
-      }
+      updateTrial(activeTrial.id, { plugin: name });
       setSelectedId(name);
       return;
     }
 
-    if (selectedTrial) {
-      updateTrial(selectedTrial.id, { plugin: newValue.value });
-    }
+    updateTrial(activeTrial.id, { plugin: newValue.value });
 
     // Si selecciona un plugin subido por el usuario, activa el editor automáticamente
     if (plugins.some((p) => p.name === newValue.value)) {

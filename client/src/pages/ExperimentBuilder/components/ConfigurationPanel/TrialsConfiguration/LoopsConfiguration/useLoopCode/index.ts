@@ -134,9 +134,7 @@ export default function useLoopCode({
         const itemId =
           rawItemId !== null
             ? JSON.stringify(rawItemId)
-            : isLoopData(item)
-              ? `"${sanitizeName(loopId)}"`
-              : `${timelineRef}.data.trial_id`;
+            : `${timelineRef}.data.trial_id`;
 
         return `
     const ${itemNameSanitized}_wrapper = {

@@ -7,7 +7,7 @@ export function getConfigValue<T = any>(
   defaultValue: T,
 ): T {
   const config = component.config[key];
-  if (!config) return defaultValue;
+  if (config === undefined || config === null) return defaultValue;
 
   if (typeof config === "object" && config !== null && "source" in config) {
     return config.value !== undefined && config.value !== null
@@ -15,7 +15,7 @@ export function getConfigValue<T = any>(
       : defaultValue;
   }
 
-  return config !== undefined && config !== null ? config : defaultValue;
+  return config as T;
 }
 
 export type TextComponentModel = {
@@ -38,9 +38,6 @@ export type TextComponentModel = {
   isClozeMode: boolean;
   konvaFontStyle: string;
 };
-
-const NATURAL_W = 200;
-const NATURAL_H = 40;
 
 export function getTextComponentModel(
   component: TrialComponent,
@@ -85,7 +82,7 @@ export function getTextComponentModel(
     maxWidth: component.width > 0 ? component.width : undefined,
   });
   const effectiveWidth =
-    component.width > 0 ? component.width : naturalTextSize.width || NATURAL_W;
+    component.width > 0 ? component.width : naturalTextSize.width;
   const contentHeight = getTextHeightForWidth({
     text,
     fontSize,
@@ -95,7 +92,7 @@ export function getTextComponentModel(
   const effectiveHeight =
     component.height > 0
       ? Math.max(component.height, contentHeight)
-      : naturalTextSize.height || NATURAL_H;
+      : naturalTextSize.height;
 
   const textParts = text.split("%");
   const isClozeMode = textParts.length >= 3 && textParts.length % 2 === 1;

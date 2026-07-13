@@ -91,6 +91,63 @@ type GeneratedTrialResult = {
   mappedJson: Record<string, any>[];
 };
 
+type PluginParameterDefinition = {
+  key: string;
+  type?: unknown;
+  default?: unknown;
+};
+
+export function getPluginDefaultValue(
+  parameters: PluginParameterDefinition[],
+  key: string,
+) {
+  const field = parameters.find((candidate) => candidate.key === key);
+  return field && "default" in field ? field.default : "";
+}
+
+export function resolveColumnValue(
+  parameters: PluginParameterDefinition[],
+  mapping: Record<string, unknown> | undefined,
+  row?: Record<string, unknown>,
+  defaultValue?: unknown,
+  key?: string,
+) {
+  if (!mapping || mapping.source === "none") {
+    return defaultValue ?? (key ? getPluginDefaultValue(parameters, key) : "");
+  }
+
+  if (mapping.source === "typed") {
+    return mapping.value ?? (key ? getPluginDefaultValue(parameters, key) : "");
+  }
+
+  if (mapping.source === "csv" && row && key) {
+    const columnKey = mapping.value;
+    if (typeof columnKey === "string" || typeof columnKey === "number") {
+      const rawValue = row[columnKey];
+      const param = parameters.find((candidate) => candidate.key === key);
+
+      if (!param) return rawValue;
+
+      if (param.type && /int|number/i.test(String(param.type))) {
+        const parsed = parseInt(String(rawValue));
+        return isNaN(parsed) ? 0 : parsed;
+      }
+      if (param.type && /float|decimal/i.test(String(param.type))) {
+        const parsed = parseFloat(String(rawValue));
+        return isNaN(parsed) ? 0 : parsed;
+      }
+      if (param.type && /bool/i.test(String(param.type))) {
+        if (typeof rawValue === "boolean") return rawValue;
+        const str = String(rawValue).toLowerCase();
+        return str === "true" || str === "1";
+      }
+      return rawValue;
+    }
+  }
+
+  return key ? getPluginDefaultValue(parameters, key) : "";
+}
+
 /**
  * Generates code for a single trial
  */
@@ -150,54 +207,12 @@ async function generateTrialCode(
           )
         : "";
 
-    // Create getColumnValue function without hook
-    const getDefaultValueForKey = (key: string) => {
-      const field = parameters.find((f) => f.key === key);
-      return field && "default" in field ? field.default : "";
-    };
-
     const getColumnValue = (
       mapping: Record<string, unknown> | undefined,
       row?: Record<string, unknown>,
       defaultValue?: unknown,
       key?: string,
-    ) => {
-      if (!mapping || mapping.source === "none") {
-        return defaultValue ?? (key ? getDefaultValueForKey(key) : "");
-      }
-
-      if (mapping.source === "typed") {
-        return mapping.value ?? (key ? getDefaultValueForKey(key) : "");
-      }
-
-      if (mapping.source === "csv" && row && key) {
-        const columnKey = mapping.value;
-        if (typeof columnKey === "string" || typeof columnKey === "number") {
-          const rawValue = row[columnKey];
-          const param = parameters.find((p) => p.key === key);
-
-          if (!param) return rawValue;
-
-          // Handle numeric types
-          if (param.type && /int|number/i.test(String(param.type))) {
-            const parsed = parseInt(String(rawValue));
-            return isNaN(parsed) ? 0 : parsed;
-          }
-          if (param.type && /float|decimal/i.test(String(param.type))) {
-            const parsed = parseFloat(String(rawValue));
-            return isNaN(parsed) ? 0 : parsed;
-          }
-          if (param.type && /bool/i.test(String(param.type))) {
-            if (typeof rawValue === "boolean") return rawValue;
-            const str = String(rawValue).toLowerCase();
-            return str === "true" || str === "1";
-          }
-          return rawValue;
-        }
-      }
-
-      return key ? getDefaultValueForKey(key) : "";
-    };
+    ) => resolveColumnValue(parameters, mapping, row, defaultValue, key);
 
     // Determine which CSV data to use
     // If trial is set to use loop CSV and loop CSV is provided, use it

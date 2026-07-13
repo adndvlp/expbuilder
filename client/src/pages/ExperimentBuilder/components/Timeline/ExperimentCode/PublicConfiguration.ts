@@ -9,8 +9,13 @@ import { resumeCode } from "./ResumeCode";
 import { captchaCode } from "./CaptchaCode";
 import { auth } from "../../../../../lib/firebase";
 
+/* v8 ignore start -- import-time env fallbacks cannot be toggled after this module is loaded in Vitest. */
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 const DATA_API_URL = import.meta.env.VITE_DATA_API_URL;
+const FIREBASE_DATABASE_URL =
+  import.meta.env.VITE_FIREBASE_DATABASE_URL ||
+  `https://${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseio.com`;
+/* v8 ignore stop */
 
 type GetTrialFn = (id: string | number) => Promise<Trial | null>;
 type GetLoopTimelineFn = (loopId: string | number, updateState?: boolean) => Promise<TimelineItem[]>;
@@ -354,7 +359,7 @@ export default function PublicConfiguration({
   const firebaseConfig = {
     apiKey: "${import.meta.env.VITE_FIREBASE_API_KEY}",
     authDomain: "${import.meta.env.VITE_FIREBASE_AUTH_DOMAIN}",
-    databaseURL: "${import.meta.env.VITE_FIREBASE_DATABASE_URL || "https://" + import.meta.env.VITE_FIREBASE_PROJECT_ID + ".firebaseio.com"}",
+    databaseURL: "${FIREBASE_DATABASE_URL}",
     projectId: "${import.meta.env.VITE_FIREBASE_PROJECT_ID}",
     storageBucket: "${import.meta.env.VITE_FIREBASE_STORAGE_BUCKET}",
     messagingSenderId: "${import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID}",

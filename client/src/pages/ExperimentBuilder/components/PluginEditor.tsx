@@ -20,7 +20,6 @@ const PluginEditor: React.FC<PluginEditorProps> = ({ selectedPluginName }) => {
   const { selectedTrial, updateTrial, setSelectedTrial } = useTrials();
   const [saveIndicator, setSaveIndicator] = useState(false);
   const [localPlugin, setLocalPlugin] = useState<Plugin | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const autosaveTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const [isLightMode, setIsLightMode] = useState(
@@ -29,6 +28,8 @@ const PluginEditor: React.FC<PluginEditorProps> = ({ selectedPluginName }) => {
   );
 
   useEffect(() => {
+    if (!window.matchMedia) return;
+
     const mediaQuery = window.matchMedia("(prefers-color-scheme: light)");
     const handler = (e: MediaQueryListEvent) => setIsLightMode(e.matches);
     mediaQuery.addEventListener("change", handler);
@@ -103,7 +104,7 @@ const PluginEditor: React.FC<PluginEditorProps> = ({ selectedPluginName }) => {
         });
     }
     setLocalPlugin(newPlugin);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    e.target.value = "";
   };
 
   // Actualizar plugin seleccionado
@@ -173,7 +174,6 @@ const PluginEditor: React.FC<PluginEditorProps> = ({ selectedPluginName }) => {
           id="jsFiles"
           type="file"
           accept=".js"
-          ref={fileInputRef}
           onChange={handleFileUpload}
           style={{ marginBottom: 10 }}
         />

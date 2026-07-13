@@ -213,8 +213,7 @@ function Webgazer({ webgazerPlugins }: Props) {
 
   // Guardar campo individual
   const saveField = async (fieldName: string, value: unknown) => {
-    if (!selectedTrial) return;
-    const success = await updateTrialField(selectedTrial.id, fieldName, value);
+    const success = await updateTrialField(selectedTrial!.id, fieldName, value);
     if (success) {
       showSaveIndicator(fieldName);
     }

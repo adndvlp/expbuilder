@@ -142,7 +142,7 @@ export default function FetchSessions({
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         ),
       );
-    } else if (activeTab === "online") {
+    } else {
       // Online experiments: usar directamente la metadata de Firestore (fuente única)
       setSessions(
         [...onlineSessions].sort(

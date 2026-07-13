@@ -41,8 +41,11 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
   // Extract the actual value from the config structure
   const getConfigValue = (key: string) => {
     const config = shapeProps.config[key];
-    if (!config) return null;
-    if (config.source === "typed" || config.source === "csv") {
+    if (config === undefined || config === null) return null;
+    if (
+      typeof config === "object" &&
+      (config.source === "typed" || config.source === "csv")
+    ) {
       return config.value;
     }
     return config; // fallback for direct values
@@ -74,7 +77,9 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
 
   // Sync Konva node when props change (ParameterMapper updates)
   useEffect(() => {
+    /* v8 ignore start -- React-Konva assigns the ref before this effect in supported renders. */
     if (!shapeRef.current) return;
+    /* v8 ignore stop */
     shapeRef.current.x(shapeProps.x);
     shapeRef.current.y(shapeProps.y);
     shapeRef.current.getLayer()?.batchDraw();
@@ -137,7 +142,6 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
           }}
           onTransformEnd={() => {
             const node = shapeRef.current;
-            if (!placeholderImg) return;
             const scaleX = node.scaleX();
             const scaleY = node.scaleY();
             const nextWidth = Math.max(5, placeholderImg.width * scaleX);
@@ -160,8 +164,8 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
               rotation: node.rotation(),
             });
           }}
-          offsetX={placeholderImg ? placeholderImg.width / 2 : 0}
-          offsetY={placeholderImg ? placeholderImg.height / 2 : 0}
+          offsetX={placeholderImg.width / 2}
+          offsetY={placeholderImg.height / 2}
         />
         {isSelected && (
           <Transformer

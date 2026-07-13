@@ -14,9 +14,11 @@ export function generateOnStartCode(options: {
   const branchCustomParamsCode = generateBranchCustomParametersCode(isInLoop, getVarName);
   const trimmedCustom = customOnStart?.trim() || "";
 
+  /* v8 ignore start -- branch custom parameter generation always returns a loop or window-scoped block. */
   if (!paramsOverrideCode && !branchCustomParamsCode && !trimmedCustom) {
     return "";
   }
+  /* v8 ignore stop */
 
   const customBlock = trimmedCustom
     ? `\n      // --- User Custom Code ---\n      ${trimmedCustom}`

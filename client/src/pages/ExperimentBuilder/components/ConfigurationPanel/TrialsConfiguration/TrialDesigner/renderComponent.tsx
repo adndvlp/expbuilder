@@ -79,8 +79,7 @@ const RenderComponent = ({
       onRecordHistory?.();
     }
 
-    setComponents((prevComponents) => {
-      const updatedComponents = prevComponents.map((c) => {
+    const updatedComponents = components.map((c) => {
         if (c.id === comp.id) {
           const updated = { ...c, ...attrs };
 
@@ -202,14 +201,13 @@ const RenderComponent = ({
         return c;
       });
 
-      // Trigger autosave
-      if (!__transient && onAutoSave) {
-        const config = generateConfigFromComponents(updatedComponents);
-        setTimeout(() => onAutoSave(config), 100);
-      }
+    setComponents(updatedComponents);
 
-      return updatedComponents;
-    });
+    // Trigger autosave
+    if (!__transient && onAutoSave) {
+      const config = generateConfigFromComponents(updatedComponents);
+      setTimeout(() => onAutoSave(config), 100);
+    }
   };
   // Handle drag end
   const handleDragEnd = (id: string, e: any) => {

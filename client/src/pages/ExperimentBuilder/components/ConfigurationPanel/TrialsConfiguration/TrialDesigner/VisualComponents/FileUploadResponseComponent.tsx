@@ -36,7 +36,7 @@ const FileUploadResponseComponent: React.FC<
 
   const getConfigValue = (key: string, defaultValue: any = null) => {
     const config = shapeProps.config[key];
-    if (!config) return defaultValue;
+    if (config === undefined || config === null) return defaultValue;
     if (typeof config === "object" && config !== null && "source" in config) {
       if (config.source === "typed" || config.source === "csv") {
         return config.value !== undefined && config.value !== null
@@ -45,7 +45,7 @@ const FileUploadResponseComponent: React.FC<
       }
       return defaultValue;
     }
-    return config !== undefined && config !== null ? config : defaultValue;
+    return config;
   };
 
   const buttonLabel = getConfigValue("button_label", "Choose File");

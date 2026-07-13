@@ -424,7 +424,7 @@ export function ParameterOverrideRow({
                 ) : (
                   <ParameterInput
                     paramKey={param.key}
-                    paramLabel={param?.label || param?.key || ""}
+                    paramLabel={param.label || param.key}
                     paramType={param.type}
                     value={paramValue.value}
                     onChange={(newValue) => {

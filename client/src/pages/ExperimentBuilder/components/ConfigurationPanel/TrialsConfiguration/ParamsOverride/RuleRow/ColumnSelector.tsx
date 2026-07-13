@@ -34,11 +34,11 @@ function ColumnSelector({
   const getAvailableColumns = (): Array<{
     value: string;
     label: string;
-    group?: string;
+    group: string;
   }> => {
     if (!referencedTrial) return [];
 
-    const columns: Array<{ value: string; label: string; group?: string }> = [];
+    const columns: Array<{ value: string; label: string; group: string }> = [];
 
     // For DynamicPlugin, generate columns from components
     if (referencedTrial.plugin === "plugin-dynamic") {
@@ -274,11 +274,11 @@ function ColumnSelector({
           {availableColumns
             .reduce<
               Array<{
-                name: string | undefined;
+                name: string;
                 columns: Array<{
                   value: string;
                   label: string;
-                  group?: string;
+                  group: string;
                 }>;
               }>
             >((acc, col) => {
@@ -292,7 +292,7 @@ function ColumnSelector({
               return acc;
             }, [])
             .map((group) => (
-              <optgroup key={group.name} label={group.name || "Other"}>
+              <optgroup key={group.name} label={group.name}>
                 {group.columns.map((col) => (
                   <option key={col.value} value={col.value}>
                     {col.label}

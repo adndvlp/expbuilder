@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { Trial, Loop } from "../../ConfigurationPanel/types";
 import {
-  isTrial,
   findItemById,
   getTrialIdsInLoops,
 } from "../utils/trialUtils";
@@ -143,9 +142,7 @@ export function useFlowLayout({
             const branchX = currentX + branchWidth / 2;
             const branchY = y + branchVerticalOffset;
 
-            // Use item.type if available, otherwise use isTrial()
-            const isTrialItem =
-              "type" in item ? item.type === "trial" : isTrial(item);
+            const isTrialItem = item.type === "trial";
 
             if (isTrialItem) {
               const branchTrial = item as Trial;
@@ -244,9 +241,7 @@ export function useFlowLayout({
             const branchX = currentX + branchWidth / 2;
             const branchY = y + branchVerticalOffset;
 
-            // Use item.type if available, otherwise use isTrial()
-            const isTrialItem =
-              "type" in item ? item.type === "trial" : isTrial(item);
+            const isTrialItem = item.type === "trial";
 
             if (isTrialItem) {
               const branchTrial = item as Trial;
@@ -351,11 +346,7 @@ export function useFlowLayout({
             const branchWidth = branchWidths[index];
             const branchX = currentX + branchWidth / 2;
 
-            // Use branchItem.type if available, otherwise use isTrial()
-            const isTrialItem =
-              "type" in branchItem
-                ? branchItem.type === "trial"
-                : isTrial(branchItem);
+            const isTrialItem = branchItem.type === "trial";
 
             if (isTrialItem) {
               const branchTrial = branchItem as Trial;

@@ -13,7 +13,6 @@ const CodeEditor: React.FC = () => {
     updateCustomPluginContext(monaco, plugins.map((p) => p.name));
   }, [plugins]);
   const [saveIndicator, setSaveIndicator] = useState(false);
-  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isLightMode, setIsLightMode] = useState(
@@ -29,7 +28,6 @@ const CodeEditor: React.FC = () => {
   }, []);
 
   const handleEditorDidMount: OnMount = (editor, monacoInst) => {
-    editorRef.current = editor;
     setupMonacoJsPsychContext(monacoInst);
 
     // Configurar los comandos de undo/redo
@@ -50,15 +48,13 @@ const CodeEditor: React.FC = () => {
       }
 
       timeoutRef.current = setTimeout(() => {
-        if (editorRef.current) {
-          const newCode = editorRef.current.getValue();
-          setCode(newCode);
+        const newCode = editor.getValue();
+        setCode(newCode);
 
-          setSaveIndicator(true);
-          setTimeout(() => {
-            setSaveIndicator(false);
-          }, 2000);
-        }
+        setSaveIndicator(true);
+        setTimeout(() => {
+          setSaveIndicator(false);
+        }, 2000);
       }, 1000);
     });
   };

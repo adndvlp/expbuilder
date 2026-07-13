@@ -33,14 +33,20 @@ const KeyboardResponseComponent: React.FC<KeyboardResponseComponentProps> = ({
   const trRef = useRef<Konva.Transformer>(null);
 
   // Extract the actual value from the config structure
-  const getConfigValue = (key: string, fallback?: any) => {
+  const getConfigValue = (key: string, fallback: any) => {
     const config = shapeProps.config[key];
-    if (!config) return fallback ?? null;
+    if (config == null) return fallback;
     if (config.source === "typed" || config.source === "csv") {
-      if (typeof config.value === "object") return fallback ?? null;
+      if (
+        config.value !== null &&
+        typeof config.value === "object" &&
+        !Array.isArray(config.value)
+      ) {
+        return fallback;
+      }
       return config.value;
     }
-    if (typeof config === "object") return fallback ?? null;
+    if (typeof config === "object") return fallback;
     return config;
   };
 

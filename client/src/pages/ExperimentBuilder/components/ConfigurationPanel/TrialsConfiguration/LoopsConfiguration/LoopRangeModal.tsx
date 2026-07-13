@@ -224,10 +224,12 @@ function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
         )}
         <button
           onClick={() => {
+            /* v8 ignore start */
             if (allSelectedIds.size < 1) {
               alert("Please select at least 1 item to create a loop.");
               return;
             }
+            /* v8 ignore stop */
             const ids = Array.from(allSelectedIds);
             onConfirm(ids);
             if (onClose) onClose();

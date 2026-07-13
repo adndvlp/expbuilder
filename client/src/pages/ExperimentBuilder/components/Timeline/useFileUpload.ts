@@ -12,7 +12,7 @@ type FileCache = {
   [key: string]: UploadedFile[];
 };
 
-type UploadJob = {
+export type UploadJob = {
   id: string;
   status: "processing" | "completed" | "failed";
   progress?: number;
@@ -24,7 +24,7 @@ type UploadJob = {
   warnings?: { message?: string }[];
 };
 
-type ExpectedCompressedFile = {
+export type ExpectedCompressedFile = {
   baseName: string;
   extension: string;
 };
@@ -89,6 +89,34 @@ function matchesExpectedCompressedFile(
   return new RegExp(`^${escapedBase}(-\\d+)?${escapedExt}$`).test(file.name);
 }
 
+export async function waitForExpectedCompressedFiles(
+  expectedFiles: ExpectedCompressedFile[],
+  loadUploadedFiles: (force?: boolean) => Promise<UploadedFile[]>,
+  options: { attempts?: number; delayMs?: number } = {},
+) {
+  if (expectedFiles.length === 0) return false;
+
+  const attempts = options.attempts ?? 60;
+  const delayMs = options.delayMs ?? 2000;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (attempt > 0) await wait(delayMs);
+    const files = await loadUploadedFiles(true);
+    const allFound = expectedFiles.every((expected) =>
+      files.some((file) => matchesExpectedCompressedFile(file, expected)),
+    );
+    if (allFound) return true;
+  }
+
+  return false;
+}
+
+export const fileUploadTestUtils = {
+  getCompressedExtension,
+  getExpectedCompressedFiles,
+  describeJobProgress,
+};
+
 function describeJobProgress(jobs: UploadJob[]) {
   if (jobs.length === 0) return "Converting media...";
   const totalProgress = jobs.reduce((sum, job) => {
@@ -102,6 +130,68 @@ function describeJobProgress(jobs: UploadJob[]) {
       : `${jobs.length} media files`;
 
   return `Converting ${fileName}... ${averageProgress}%`;
+}
+
+export async function waitForUploadJobs(
+  jobs: UploadJob[],
+  loadUploadedFiles: (force?: boolean) => Promise<UploadedFile[]>,
+  setUploadStatus: (status: string) => void,
+  options: { attempts?: number; delayMs?: number } = {},
+) {
+  const attempts = options.attempts ?? 1800;
+  const delayMs = options.delayMs ?? 2000;
+  const pending = new Map(jobs.map((job) => [job.id, job]));
+  const warnings: string[] = [];
+  const failures: string[] = [];
+
+  for (let attempt = 0; attempt < attempts && pending.size > 0; attempt += 1) {
+    if (attempt > 0) await wait(delayMs);
+
+    const jobResults = await Promise.all(
+      Array.from(pending.keys()).map(async (jobId) => {
+        const res = await fetch(`${API_URL}/api/upload-jobs/${jobId}`);
+        if (!res.ok) throw new Error(`Upload job ${jobId} not found`);
+        const data = await res.json();
+        return data.job as UploadJob;
+      }),
+    );
+
+    jobResults.forEach((job) => {
+      if (pending.has(job.id)) {
+        pending.set(job.id, job);
+      }
+
+      if (job.status === "completed") {
+        pending.delete(job.id);
+        job.warnings?.forEach((warning) => {
+          if (warning.message) warnings.push(warning.message);
+        });
+      } else if (job.status === "failed") {
+        pending.delete(job.id);
+        failures.push(
+          [job.originalName, job.error || "Conversion failed"]
+            .filter(Boolean)
+            .join(": "),
+        );
+      }
+    });
+
+    setUploadStatus(describeJobProgress(Array.from(pending.values())));
+  }
+
+  await loadUploadedFiles(true);
+
+  if (failures.length > 0) {
+    const error = new Error(failures.join("\n"));
+    error.name = "UploadJobFailedError";
+    throw error;
+  }
+  if (pending.size > 0) {
+    throw new Error(
+      "Conversion is still processing. The file list will update when it finishes.",
+    );
+  }
+  return warnings;
 }
 
 export function useFileUpload({ folder }: UseFileUploadProps) {
@@ -160,78 +250,16 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
     delete lastFetchTime.current[folder];
   }, [folder]);
 
-  const waitForUploadJobs = useCallback(
+  const waitForUploadJobsInFolder = useCallback(
     async (jobs: UploadJob[]) => {
-      const pending = new Map(jobs.map((job) => [job.id, job]));
-      const warnings: string[] = [];
-      const failures: string[] = [];
-
-      for (let attempt = 0; attempt < 1800 && pending.size > 0; attempt += 1) {
-        if (attempt > 0) await wait(2000);
-
-        const jobResults = await Promise.all(
-          Array.from(pending.keys()).map(async (jobId) => {
-            const res = await fetch(`${API_URL}/api/upload-jobs/${jobId}`);
-            if (!res.ok) throw new Error(`Upload job ${jobId} not found`);
-            const data = await res.json();
-            return data.job as UploadJob;
-          }),
-        );
-
-        jobResults.forEach((job) => {
-          if (pending.has(job.id)) {
-            pending.set(job.id, job);
-          }
-
-          if (job.status === "completed") {
-            pending.delete(job.id);
-            job.warnings?.forEach((warning) => {
-              if (warning.message) warnings.push(warning.message);
-            });
-          } else if (job.status === "failed") {
-            pending.delete(job.id);
-            failures.push(
-              [job.originalName, job.error || "Conversion failed"]
-                .filter(Boolean)
-                .join(": "),
-            );
-          }
-        });
-
-        setUploadStatus(describeJobProgress(Array.from(pending.values())));
-      }
-
-      await loadUploadedFiles(true);
-
-      if (failures.length > 0) {
-        const error = new Error(failures.join("\n"));
-        error.name = "UploadJobFailedError";
-        throw error;
-      }
-      if (pending.size > 0) {
-        throw new Error(
-          "Conversion is still processing. The file list will update when it finishes.",
-        );
-      }
-      return warnings;
+      return waitForUploadJobs(jobs, loadUploadedFiles, setUploadStatus);
     },
     [loadUploadedFiles],
   );
 
-  const waitForExpectedCompressedFiles = useCallback(
+  const waitForExpectedCompressedFilesInFolder = useCallback(
     async (expectedFiles: ExpectedCompressedFile[]) => {
-      if (expectedFiles.length === 0) return false;
-
-      for (let attempt = 0; attempt < 60; attempt += 1) {
-        if (attempt > 0) await wait(2000);
-        const files = await loadUploadedFiles(true);
-        const allFound = expectedFiles.every((expected) =>
-          files.some((file) => matchesExpectedCompressedFile(file, expected)),
-        );
-        if (allFound) return true;
-      }
-
-      return false;
+      return waitForExpectedCompressedFiles(expectedFiles, loadUploadedFiles);
     },
     [loadUploadedFiles],
   );
@@ -291,7 +319,7 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
       invalidateCache();
       if (data.processingJobs?.length) {
         setUploadStatus(describeJobProgress(data.processingJobs));
-        const jobWarnings = await waitForUploadJobs(data.processingJobs);
+        const jobWarnings = await waitForUploadJobsInFolder(data.processingJobs);
         if (jobWarnings.length > 0) {
           alert(jobWarnings.join("\n"));
         }
@@ -314,7 +342,7 @@ export function useFileUpload({ folder }: UseFileUploadProps) {
         setUploadStatus("Waiting for converted media to appear...");
         try {
           const foundConvertedFiles =
-            await waitForExpectedCompressedFiles(expectedCompressedFiles);
+            await waitForExpectedCompressedFilesInFolder(expectedCompressedFiles);
           if (foundConvertedFiles) {
             setUploadStatus("");
             return;

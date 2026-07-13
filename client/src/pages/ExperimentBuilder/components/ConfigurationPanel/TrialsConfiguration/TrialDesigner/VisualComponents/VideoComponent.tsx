@@ -86,10 +86,8 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
     });
 
     return () => {
-      if (videoRef.current) {
-        videoRef.current.pause();
-        videoRef.current.src = "";
-      }
+      video.pause();
+      video.src = "";
     };
   }, [shapeProps.config.stimulus, uploadedFiles]);
 
@@ -157,7 +155,6 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
           }}
           onTransformEnd={() => {
             const node = shapeRef.current;
-            if (!placeholderImg) return;
             const scaleX = node.scaleX();
             const scaleY = node.scaleY();
             const nextWidth = Math.max(5, placeholderImg.width * scaleX);
@@ -180,8 +177,8 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
               rotation: node.rotation(),
             });
           }}
-          offsetX={placeholderImg ? placeholderImg.width / 2 : 0}
-          offsetY={placeholderImg ? placeholderImg.height / 2 : 0}
+          offsetX={placeholderImg.width / 2}
+          offsetY={placeholderImg.height / 2}
         />
         {isSelected && (
           <Transformer

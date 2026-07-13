@@ -38,7 +38,11 @@ export default function DropboxToken() {
 
   // Cargar estado del token
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setHasToken(false);
+      setIsLoading(false);
+      return;
+    }
 
     const loadTokenStatus = async () => {
       try {
@@ -123,7 +127,9 @@ export default function DropboxToken() {
 
   // Función para borrar el token
   const handleDeleteToken = async () => {
+    /* v8 ignore start -- disconnect button is only rendered from a signed-in token state. */
     if (!user) return;
+    /* v8 ignore stop */
 
     setIsDeleting(true);
     try {

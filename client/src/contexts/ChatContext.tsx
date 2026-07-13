@@ -86,7 +86,7 @@ const ChatContext = createContext<ChatContextType | null>(null);
 const uid = () => Math.random().toString(36).slice(2, 10);
 
 /** Parse a single SSE line pair into { event, data } */
-function parseSSEChunk(chunk: string): Array<{ event: string; data: string }> {
+export function parseSSEChunk(chunk: string): Array<{ event: string; data: string }> {
   const events: Array<{ event: string; data: string }> = [];
   const blocks = chunk.split("\n\n");
   for (const block of blocks) {
@@ -151,7 +151,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             })),
           }));
           setConversations(revived);
-          setActiveConvId(revived[0]?.id ?? null);
+          setActiveConvId(revived[0]!.id);
         }
       })
       .catch(() => {})
@@ -315,14 +315,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         );
       };
 
-      // Snapshot current messages before state update for API payload
-      let historyMessages: { role: string; content: string }[] = [];
+      // Snapshot current messages before state update for API payload.
+      const currentConversation = conversations.find((c) => c.id === convId);
+      const historyMessages: { role: string; content: string }[] = (
+        currentConversation?.messages ?? []
+      ).map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
       setConversations((prev) => {
-        const conv = prev.find((c) => c.id === convId);
-        historyMessages = (conv?.messages ?? []).map((m) => ({
-          role: m.role,
-          content: m.content,
-        }));
         return prev.map((c) =>
           c.id === convId
             ? {
@@ -454,7 +456,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
       })();
     },
-    [activeConvId, isThinking, provider, model, apiKeys]
+    [activeConvId, conversations, isThinking, provider, model, apiKeys]
   );
 
   return (

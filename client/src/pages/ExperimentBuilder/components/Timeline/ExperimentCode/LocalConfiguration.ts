@@ -7,7 +7,8 @@ import { loadingOverlayCode } from "./LoadingOverlay";
 import { resumeCode } from "./ResumeCode";
 import { CanvasStyles } from "../../ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "";
+export const resolveApiUrl = (value: string | undefined) => value ?? "";
+const API_URL = resolveApiUrl(import.meta.env.VITE_API_URL);
 
 type GetTrialFn = (id: string | number) => Promise<Trial | null>;
 type GetLoopTimelineFn = (loopId: string | number, updateState?: boolean) => Promise<TimelineItem[]>;
@@ -73,19 +74,17 @@ export default function LocalConfiguration({
     // Fetch session name config from local API
     let sessionNameTokens: _SessionNameToken[] = [];
     let sessionNameSeparator = "_";
-    if (experimentID) {
-      try {
-        const snRes = await fetch(
-          `${API_URL}/api/session-name-config/${experimentID}`,
-        );
-        if (snRes.ok) {
-          const sn = await snRes.json();
-          sessionNameTokens = sn.tokens ?? [];
-          sessionNameSeparator = sn.separator ?? "_";
-        }
-      } catch {
-        // local server unavailable — fall back to UUID
+    try {
+      const snRes = await (experimentID
+        ? fetch(`${API_URL}/api/session-name-config/${experimentID}`)
+        : Promise.resolve(null));
+      if (snRes?.ok) {
+        const sn = await snRes.json();
+        sessionNameTokens = sn.tokens ?? [];
+        sessionNameSeparator = sn.separator ?? "_";
       }
+    } catch {
+      // local server unavailable — fall back to UUID
     }
 
     const _experimentCode = `

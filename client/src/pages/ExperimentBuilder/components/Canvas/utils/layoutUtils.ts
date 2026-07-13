@@ -150,7 +150,7 @@ export function alignMergePointNodes<T extends BranchGraphItem>({
       if (visited.has(branchKey)) return;
 
       // Shared children get their own centering pass.
-      if ((parentMap.get(branchKey)?.length || 0) > 1) return;
+      if (parentMap.get(branchKey)!.length > 1) return;
 
       const branchItem = findGraphItem(items, branchId);
       if (!branchItem) return;

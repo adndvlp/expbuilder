@@ -60,9 +60,7 @@ function MenuItem({
         whiteSpace: "nowrap",
       }}
       onMouseEnter={(event) => {
-        if (!disabled) {
-          event.currentTarget.style.background = "#e5edf8";
-        }
+        event.currentTarget.style.background = "#e5edf8";
       }}
       onMouseLeave={(event) => {
         event.currentTarget.style.background = "transparent";

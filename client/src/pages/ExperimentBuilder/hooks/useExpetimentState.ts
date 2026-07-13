@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 
 let experimentVersion = 0;
-const listeners: (() => void)[] = [];
+const listeners = new Set<() => void>();
 
 export const useExperimentState = () => {
   const [version, setVersion] = useState(experimentVersion);
@@ -12,10 +12,9 @@ export const useExperimentState = () => {
   };
 
   const subscribe = (callback: () => void) => {
-    listeners.push(callback);
+    listeners.add(callback);
     return () => {
-      const index = listeners.indexOf(callback);
-      if (index > -1) listeners.splice(index, 1);
+      listeners.delete(callback);
     };
   };
 

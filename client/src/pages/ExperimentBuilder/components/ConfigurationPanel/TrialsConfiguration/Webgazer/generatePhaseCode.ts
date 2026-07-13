@@ -217,7 +217,7 @@ export const generatePhaseCode = ({
       if (pluginRecal) {
         // Recalibrate instructions are placed directly in the timeline (no timeline_variables),
         // so they must use static values instead of jsPsych.timelineVariable().
-        const row0 = mappedJson[0] ?? {};
+        const row0 = mappedJson[0];
         const stimulus = JSON.stringify(
           row0[`${pluginNameRefactor}_instructions`] ?? "",
         );

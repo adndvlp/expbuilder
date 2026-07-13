@@ -33,9 +33,9 @@ const SliderResponseComponent: React.FC<SliderResponseComponentProps> = ({
   const trRef = useRef<Konva.Transformer>(null);
 
   // Extract the actual value from the config structure
-  const getConfigValue = (key: string, fallback?: any) => {
+  const getConfigValue = (key: string, fallback: any) => {
     const config = shapeProps.config[key];
-    if (!config) return fallback ?? null;
+    if (!config) return fallback;
     if (config.source === "typed" || config.source === "csv") {
       // Special handling for labels: convert string to array or return array directly
       if (key === "labels") {
@@ -45,16 +45,16 @@ const SliderResponseComponent: React.FC<SliderResponseComponentProps> = ({
         if (Array.isArray(config.value)) {
           return config.value;
         }
-        return fallback ?? [];
+        return fallback;
       }
       // Allow arrays for other parameters too
       if (Array.isArray(config.value)) {
         return config.value;
       }
-      if (typeof config.value === "object") return fallback ?? null;
+      if (typeof config.value === "object") return fallback;
       return config.value;
     }
-    if (typeof config === "object") return fallback ?? null;
+    if (typeof config === "object") return fallback;
     return config;
   };
 

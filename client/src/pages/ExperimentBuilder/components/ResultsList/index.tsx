@@ -220,7 +220,7 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
       );
       setSessionFiles((prev) => ({
         ...prev,
-        [sessionId]: (prev[sessionId] ?? []).filter((f) => f.id !== fileId),
+        [sessionId]: prev[sessionId]!.filter((f) => f.id !== fileId),
       }));
     } catch {
       // ignore

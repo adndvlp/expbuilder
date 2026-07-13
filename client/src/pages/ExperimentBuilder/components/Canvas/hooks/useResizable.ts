@@ -35,17 +35,15 @@ export function useResizable(
   };
 
   const handleMouseMove = (e: MouseEvent) => {
-    if (resizing) {
-      const newWidth = Math.max(
-        minWidth,
-        resizeStart.width + (e.clientX - resizeStart.x),
-      );
-      const newHeight = Math.max(
-        minHeight,
-        resizeStart.height + (e.clientY - resizeStart.y),
-      );
-      setSize({ width: newWidth, height: newHeight });
-    }
+    const newWidth = Math.max(
+      minWidth,
+      resizeStart.width + (e.clientX - resizeStart.x),
+    );
+    const newHeight = Math.max(
+      minHeight,
+      resizeStart.height + (e.clientY - resizeStart.y),
+    );
+    setSize({ width: newWidth, height: newHeight });
   };
 
   useEffect(() => {

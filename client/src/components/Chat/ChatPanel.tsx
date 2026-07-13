@@ -55,7 +55,7 @@ function PanelContent({ closing }: { closing: boolean }) {
   const isEmpty = messages.length === 0;
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [messages.length, isThinking]);
 
   return (

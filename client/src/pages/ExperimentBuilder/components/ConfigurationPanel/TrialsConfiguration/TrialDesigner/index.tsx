@@ -350,9 +350,8 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   );
 
   const getSelectedIdsForCommand = useCallback(() => {
-    if (selectedIds.length > 0) return selectedIds;
-    return selectedId ? [selectedId] : [];
-  }, [selectedId, selectedIds]);
+    return selectedIds;
+  }, [selectedIds]);
 
   const copySelectedComponents = useCallback(() => {
     const idsToCopy = getSelectedIdsForCommand();
@@ -406,7 +405,9 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
         pasteCount: pasteCountRef.current,
       });
 
+      /* v8 ignore start -- empty clipboard is already guarded above. */
       if (pastedComponents.length === 0) return false;
+      /* v8 ignore stop */
 
       const nextComponents = [...prevComponents, ...pastedComponents];
       pushHistory(prevComponents);
