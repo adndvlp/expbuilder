@@ -54,68 +54,6 @@ vi.mock(
   }),
 );
 
-vi.mock("../../../pages/ExperimentBuilder/components/Canvas/SubCanvas", () => ({
-  default: ({
-    loopId,
-    loopName,
-    onRefreshMetadata,
-    onNavigateToLoop,
-    onNavigateToRoot,
-    onClose,
-    onSelectTrial,
-    onSelectLoop,
-    onOpenNestedLoop,
-  }: {
-    loopId: string;
-    loopName: string;
-    onRefreshMetadata: () => void;
-    onNavigateToLoop: (index: number) => void;
-    onNavigateToRoot: () => void;
-    onClose: () => void;
-    onSelectTrial: (trial: any) => void;
-    onSelectLoop: (loop: any) => void;
-    onOpenNestedLoop: (id: string) => void;
-  }) => (
-    <div data-testid="sub-canvas">
-      SubCanvas {loopId} {loopName}
-      <button type="button" onClick={onRefreshMetadata}>
-        Refresh Loop
-      </button>
-      <button type="button" onClick={() => onNavigateToLoop(0)}>
-        Navigate First Loop
-      </button>
-      <button type="button" onClick={onNavigateToRoot}>
-        Navigate Root
-      </button>
-      <button
-        type="button"
-        onClick={() =>
-          onSelectTrial({ id: 7, type: "trial", name: "Inner Trial" })
-        }
-      >
-        Select Inner Trial
-      </button>
-      <button
-        type="button"
-        onClick={() =>
-          onSelectLoop({ id: "loop-child", type: "loop", name: "Child Loop" })
-        }
-      >
-        Select Inner Loop
-      </button>
-      <button type="button" onClick={() => onOpenNestedLoop("loop-child")}>
-        Open Nested Loop
-      </button>
-      <button type="button" onClick={() => onOpenNestedLoop("loop-1")}>
-        Open Root Nested
-      </button>
-      <button type="button" onClick={onClose}>
-        Close SubCanvas
-      </button>
-    </div>
-  ),
-}));
-
 function makeTrial(id: number, overrides: Record<string, unknown> = {}) {
   return {
     id,
@@ -205,27 +143,6 @@ describe("Canvas container", () => {
       "Trial 1",
     );
     expect(mocks.trialsContext.getLoopTimeline).not.toHaveBeenCalled();
-  });
-
-  it("logs refresh failures for an opened loop", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    render(<Canvas />);
-
-    await act(async () => {
-      await mocks.flowLayoutProps.onOpenLoop("loop-1");
-    });
-
-    mocks.trialsContext.getLoopTimeline.mockRejectedValueOnce(
-      new Error("refresh failed"),
-    );
-    fireEvent.click(await screen.findByText("Refresh Loop"));
-
-    await waitFor(() => {
-      expect(console.error).toHaveBeenCalledWith(
-        "Error refreshing loop metadata:",
-        expect.any(Error),
-      );
-    });
   });
 
   it("adds a direct branch when the parent has no existing branches", async () => {

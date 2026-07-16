@@ -42,10 +42,6 @@ vi.mock(
   }),
 );
 
-vi.mock("../../pages/ExperimentBuilder/components/Canvas/SubCanvas", () => ({
-  default: () => <div data-testid="mock-sub-canvas" />,
-}));
-
 vi.mock(
   "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/LoopRangeModal",
   () => ({
@@ -87,9 +83,9 @@ vi.mock(
 vi.mock(
   "../../pages/ExperimentBuilder/components/Canvas/components/CanvasToolbar",
   () => ({
-    default: ({ onShowLoopModal, onAddTrial, onMoveItem }: any) => (
+    default: ({ onCreateLoop, onAddTrial, onMoveItem }: any) => (
       <div data-testid="mock-canvas-toolbar">
-        <button type="button" onClick={onShowLoopModal}>
+        <button type="button" onClick={onCreateLoop}>
           toolbar loop
         </button>
         <button type="button" onClick={onAddTrial}>

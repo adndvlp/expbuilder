@@ -71,7 +71,9 @@ describe("Canvas nodes", () => {
     fireEvent.click(loop);
     expect(onClick).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByTitle("Open loop"));
+    const expandButton = screen.getByTitle("Expand loop");
+    expect(expandButton).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(expandButton);
     fireEvent.click(screen.getByTitle("Add branch"));
 
     expect(onOpenLoop).toHaveBeenCalledTimes(1);
@@ -88,6 +90,7 @@ describe("Canvas nodes", () => {
           onClick: vi.fn(),
           onAddBranch: vi.fn(),
           onOpenLoop: vi.fn(),
+          expanded: true,
         }}
       />,
     );
@@ -95,7 +98,10 @@ describe("Canvas nodes", () => {
     expect(screen.getByText("Main loop").closest(".loop-node")).not.toHaveClass(
       "loop-node--selected",
     );
-    expect(screen.getByTitle("Open loop")).toBeInTheDocument();
+    expect(screen.getByTitle("Collapse loop")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
     expect(screen.queryByTitle("Add branch")).not.toBeInTheDocument();
   });
 });

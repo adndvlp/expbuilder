@@ -61,10 +61,6 @@ vi.mock(
   }),
 );
 
-vi.mock("../../../pages/ExperimentBuilder/components/Canvas/SubCanvas", () => ({
-  default: () => null,
-}));
-
 bindCanvasMocks(mocks);
 
 describe("Canvas container", () => {

@@ -9,7 +9,7 @@ import {
 describe("getIsDarkMode", () => {
   it("returns undefined when matchMedia not available", () => {
     const original = window.matchMedia;
-    // @ts-ignore
+    // @ts-expect-error Exercising the runtime fallback where matchMedia is absent.
     delete window.matchMedia;
     // When matchMedia is missing, getIsDarkMode returns undefined (falsy)
     expect(getIsDarkMode()).toBeUndefined();
@@ -49,14 +49,17 @@ describe("getCanvasBackground", () => {
   it("returns dark background style", () => {
     const style = getCanvasBackground(true);
     expect(style.background).toContain("#23272f");
-    expect(style.minHeight).toBe("100vh");
+    expect(style.minHeight).toBe(0);
+    expect(style.height).toBe("100%");
+    expect(style.overflow).toBe("hidden");
     expect(style.position).toBe("relative");
   });
 
   it("returns light background style", () => {
     const style = getCanvasBackground(false);
     expect(style.background).toContain("#f7f8fa");
-    expect(style.minHeight).toBe("100vh");
+    expect(style.minHeight).toBe(0);
+    expect(style.height).toBe("100%");
   });
 });
 

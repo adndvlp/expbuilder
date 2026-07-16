@@ -56,6 +56,7 @@ export default function TrialsProvider({ children }: Props) {
       loopId: string | number,
       updateState: boolean = true,
       forceRefresh: boolean = false,
+      throwOnError: boolean = false,
     ): Promise<TimelineItem[]> => {
       try {
         // Si es el mismo loop activo, devolver el estado cacheado
@@ -88,6 +89,7 @@ export default function TrialsProvider({ children }: Props) {
         return timeline;
       } catch (error) {
         console.error("Error loading loop trials timeline:", error);
+        if (throwOnError) throw error;
         return [];
       }
     },

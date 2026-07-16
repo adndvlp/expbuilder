@@ -13,6 +13,52 @@
     background 0.3s;
 }
 
+.canvas-routing-handle {
+  width: 1px;
+  height: 1px;
+  min-width: 1px;
+  min-height: 1px;
+  opacity: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+.canvas-routing-handle--upper {
+  top: 32%;
+}
+
+.canvas-routing-handle--lower {
+  top: 68%;
+}
+
+.canvas-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.canvas-workspace {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.canvas-status {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 20;
+  min-height: 20px;
+  color: #fff;
+  font-size: 13px;
+  pointer-events: none;
+}
+
 .trial-node:hover .react-flow__handle,
 .trial-node--selected .react-flow__handle {
   background: linear-gradient(135deg, #f9e79f 0%, #f1c40f 100%);

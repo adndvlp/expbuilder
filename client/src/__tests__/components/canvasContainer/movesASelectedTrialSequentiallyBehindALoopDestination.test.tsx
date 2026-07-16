@@ -1,10 +1,4 @@
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Canvas from "../../../pages/ExperimentBuilder/components/Canvas";
 
@@ -53,68 +47,6 @@ vi.mock(
     ),
   }),
 );
-
-vi.mock("../../../pages/ExperimentBuilder/components/Canvas/SubCanvas", () => ({
-  default: ({
-    loopId,
-    loopName,
-    onRefreshMetadata,
-    onNavigateToLoop,
-    onNavigateToRoot,
-    onClose,
-    onSelectTrial,
-    onSelectLoop,
-    onOpenNestedLoop,
-  }: {
-    loopId: string;
-    loopName: string;
-    onRefreshMetadata: () => void;
-    onNavigateToLoop: (index: number) => void;
-    onNavigateToRoot: () => void;
-    onClose: () => void;
-    onSelectTrial: (trial: any) => void;
-    onSelectLoop: (loop: any) => void;
-    onOpenNestedLoop: (id: string) => void;
-  }) => (
-    <div data-testid="sub-canvas">
-      SubCanvas {loopId} {loopName}
-      <button type="button" onClick={onRefreshMetadata}>
-        Refresh Loop
-      </button>
-      <button type="button" onClick={() => onNavigateToLoop(0)}>
-        Navigate First Loop
-      </button>
-      <button type="button" onClick={onNavigateToRoot}>
-        Navigate Root
-      </button>
-      <button
-        type="button"
-        onClick={() =>
-          onSelectTrial({ id: 7, type: "trial", name: "Inner Trial" })
-        }
-      >
-        Select Inner Trial
-      </button>
-      <button
-        type="button"
-        onClick={() =>
-          onSelectLoop({ id: "loop-child", type: "loop", name: "Child Loop" })
-        }
-      >
-        Select Inner Loop
-      </button>
-      <button type="button" onClick={() => onOpenNestedLoop("loop-child")}>
-        Open Nested Loop
-      </button>
-      <button type="button" onClick={() => onOpenNestedLoop("loop-1")}>
-        Open Root Nested
-      </button>
-      <button type="button" onClick={onClose}>
-        Close SubCanvas
-      </button>
-    </div>
-  ),
-}));
 
 function makeTrial(id: number, overrides: Record<string, unknown> = {}) {
   return {
@@ -277,18 +209,4 @@ describe("Canvas container", () => {
     });
   });
 
-  it("ignores loop-stack navigation while the opened loop is at root", async () => {
-    render(<Canvas />);
-
-    await act(async () => {
-      await mocks.flowLayoutProps.onOpenLoop("loop-1");
-    });
-    const callsBeforeNavigation = mocks.trialsContext.getLoop.mock.calls.length;
-
-    fireEvent.click(await screen.findByText("Navigate First Loop"));
-
-    expect(mocks.trialsContext.getLoop).toHaveBeenCalledTimes(
-      callsBeforeNavigation,
-    );
-  });
 });

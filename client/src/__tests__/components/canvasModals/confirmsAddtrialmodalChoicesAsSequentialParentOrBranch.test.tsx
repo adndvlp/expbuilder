@@ -1,7 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import AddTrialModal from "../../../pages/ExperimentBuilder/components/Canvas/components/AddTrialModal";
-import LoopBreadcrumb from "../../../pages/ExperimentBuilder/components/Canvas/components/LoopBreadcrumb";
 import MoveItemModal from "../../../pages/ExperimentBuilder/components/Canvas/components/MoveItemModal";
 
 describe("Canvas modals", () => {
@@ -55,128 +54,6 @@ describe("Canvas modals", () => {
     expect(cancelButton).toHaveStyle({ opacity: "1" });
     fireEvent.mouseLeave(cancelButton);
     expect(cancelButton).toHaveStyle({ opacity: "0.7" });
-  });
-
-  it("navigates LoopBreadcrumb root and visible loops", () => {
-    const onNavigate = vi.fn();
-    const onNavigateToRoot = vi.fn();
-
-    render(
-      <LoopBreadcrumb
-        loopStack={[
-          { id: "loop-1", name: "Outer loop" },
-          { id: "loop-2", name: "Inner loop" },
-        ]}
-        onNavigate={onNavigate}
-        onNavigateToRoot={onNavigateToRoot}
-      />,
-    );
-
-    const rootButton = screen.getByText("Root").closest("button")!;
-    fireEvent.mouseEnter(rootButton);
-    expect(rootButton).toHaveStyle({ background: "rgba(255, 255, 255, 0.15)" });
-    fireEvent.mouseLeave(rootButton);
-    expect(rootButton).toHaveStyle({ background: "transparent" });
-    fireEvent.click(rootButton);
-    fireEvent.click(screen.getByText("Outer loop"));
-    fireEvent.click(screen.getByText("Inner loop"));
-
-    expect(onNavigateToRoot).toHaveBeenCalledTimes(1);
-    expect(onNavigate).toHaveBeenNthCalledWith(1, 0);
-    expect(onNavigate).toHaveBeenNthCalledWith(2, 1);
-
-    const outerButton = screen.getByText("Outer loop");
-    fireEvent.mouseEnter(outerButton);
-    expect(outerButton).toHaveStyle({
-      background: "rgba(255, 255, 255, 0.15)",
-    });
-    fireEvent.mouseLeave(outerButton);
-    expect(outerButton).toHaveStyle({ background: "transparent" });
-  });
-
-  it("collapses long LoopBreadcrumb stacks while preserving real indexes", () => {
-    const onNavigate = vi.fn();
-    const onNavigateToRoot = vi.fn();
-
-    const { container } = render(
-      <LoopBreadcrumb
-        compact
-        loopStack={[
-          { id: "loop-1", name: "Loop 1" },
-          { id: "loop-2", name: "Loop 2" },
-          { id: "loop-3", name: "Loop 3" },
-          { id: "loop-4", name: "Loop 4" },
-          { id: "loop-5", name: "Loop 5" },
-        ]}
-        onNavigate={onNavigate}
-        onNavigateToRoot={onNavigateToRoot}
-      />,
-    );
-
-    expect(screen.queryByText("Root")).not.toBeInTheDocument();
-    expect(screen.getByText("...")).toBeInTheDocument();
-    expect(screen.getByText("Loop 1")).toBeInTheDocument();
-    expect(screen.queryByText("Loop 2")).not.toBeInTheDocument();
-    expect(screen.queryByText("Loop 3")).not.toBeInTheDocument();
-    expect(screen.getByText("Loop 4")).toBeInTheDocument();
-    expect(screen.getByText("Loop 5")).toBeInTheDocument();
-
-    fireEvent.click(container.querySelector("button")!);
-    fireEvent.click(screen.getByText("Loop 1"));
-    fireEvent.click(screen.getByText("Loop 4"));
-    fireEvent.click(screen.getByText("Loop 5"));
-
-    expect(onNavigateToRoot).toHaveBeenCalledTimes(1);
-    expect(onNavigate).toHaveBeenNthCalledWith(1, 0);
-    expect(onNavigate).toHaveBeenNthCalledWith(2, 3);
-    expect(onNavigate).toHaveBeenNthCalledWith(3, 4);
-  });
-
-  it("renders an active root breadcrumb without changing hover state", () => {
-    const onNavigateToRoot = vi.fn();
-    render(
-      <LoopBreadcrumb
-        loopStack={[]}
-        onNavigate={vi.fn()}
-        onNavigateToRoot={onNavigateToRoot}
-      />,
-    );
-
-    const rootButton = screen.getByText("Root").closest("button")!;
-    expect(rootButton).toHaveStyle({
-      background: "rgba(255, 255, 255, 0.2)",
-      border: "1px solid rgba(255, 255, 255, 0.3)",
-    });
-    fireEvent.mouseEnter(rootButton);
-    fireEvent.mouseLeave(rootButton);
-    fireEvent.click(rootButton);
-
-    expect(rootButton).toHaveStyle({ background: "rgba(255, 255, 255, 0.2)" });
-    expect(onNavigateToRoot).toHaveBeenCalledTimes(1);
-  });
-
-  it("uses expanded ellipsis spacing and keeps the active loop hover unchanged", () => {
-    render(
-      <LoopBreadcrumb
-        loopStack={[
-          { id: "loop-1", name: "First" },
-          { id: "loop-2", name: "Second" },
-          { id: "loop-3", name: "Third" },
-          { id: "loop-4", name: "Active" },
-        ]}
-        onNavigate={vi.fn()}
-        onNavigateToRoot={vi.fn()}
-      />,
-    );
-
-    const ellipsis = screen.getByText("...").parentElement!;
-    const activeButton = screen.getByText("Active");
-    expect(ellipsis).toHaveStyle({ gap: "8px" });
-    fireEvent.mouseEnter(activeButton);
-    fireEvent.mouseLeave(activeButton);
-    expect(activeButton).toHaveStyle({
-      background: "rgba(255, 255, 255, 0.2)",
-    });
   });
 
   it("keeps MoveItemModal disabled until a destination is selected", () => {

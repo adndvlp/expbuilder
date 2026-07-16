@@ -13,6 +13,7 @@ export type LoopMethodsProps = {
     loopId: string | number,
     updateState?: boolean,
     forceRefresh?: boolean,
+    throwOnError?: boolean,
   ) => Promise<TimelineItem[]>;
   setSelectedLoop: Dispatch<SetStateAction<Loop | null>>;
   selectedLoop: Loop | null;

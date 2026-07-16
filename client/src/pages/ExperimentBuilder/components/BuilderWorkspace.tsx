@@ -150,7 +150,7 @@ export default function BuilderWorkspace({
       {isDevMode ? (
         <CodeEditor />
       ) : (
-        <div style={{ overflowY: "auto" }}>
+        <div className="canvas-content">
           <Canvas />
         </div>
       )}

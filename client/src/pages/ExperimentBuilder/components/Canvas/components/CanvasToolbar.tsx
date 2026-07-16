@@ -1,26 +1,46 @@
-import React from "react";
+import type { CSSProperties } from "react";
 import { FiRefreshCw } from "react-icons/fi";
-import useTrials from "../../../hooks/useTrials";
 import { TbBinaryTree } from "react-icons/tb";
 
 type CanvasToolbarProps = {
-  fabStyle: React.CSSProperties;
-  onShowLoopModal: () => void;
+  fabStyle: CSSProperties;
+  scopeKind: "root" | "loop";
+  itemCount: number;
+  hasSelection: boolean;
+  onCreateLoop: () => void;
   onAddTrial: () => void;
-  openLoop: any;
-  setShowBranchedModal: (value: boolean) => void;
+  onShowBranches: () => void;
   onMoveItem?: () => void;
 };
 
+const actionStyle = (
+  fabStyle: CSSProperties,
+  background: string,
+): CSSProperties => ({
+  ...fabStyle,
+  position: "static",
+  width: 48,
+  height: 48,
+  fontSize: 24,
+  background,
+  color: "#fff",
+  boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+});
+
 function CanvasToolbar({
   fabStyle,
-  onShowLoopModal,
+  scopeKind,
+  itemCount,
+  hasSelection,
+  onCreateLoop,
   onAddTrial,
-  openLoop,
-  setShowBranchedModal,
+  onShowBranches,
   onMoveItem,
 }: CanvasToolbarProps) {
-  const { timeline, selectedTrial, selectedLoop } = useTrials();
+  const isRoot = scopeKind === "root";
+  const showCreateLoop = itemCount > 0 && (isRoot || hasSelection);
+  const showItemActions =
+    hasSelection && (isRoot ? itemCount > 1 : itemCount > 0);
 
   return (
     <div
@@ -33,121 +53,46 @@ function CanvasToolbar({
         zIndex: 10,
       }}
     >
-      {timeline.length >= 1 && !openLoop && (
+      {showCreateLoop && (
         <button
-          style={{
-            ...fabStyle,
-            position: "static",
-            width: 48,
-            height: 48,
-            fontSize: 24,
-            background: "#1976d2",
-            color: "#fff",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-          }}
-          onClick={onShowLoopModal}
-          title="Add loop"
+          type="button"
+          style={actionStyle(fabStyle, "#1976d2")}
+          onClick={onCreateLoop}
+          title={isRoot ? "Add loop" : "Create Nested Loop"}
         >
           <FiRefreshCw size={24} color="#fff" />
         </button>
       )}
-      {timeline.length === 0 && (
+      {isRoot && itemCount === 0 && (
         <button
-          style={{
-            ...fabStyle,
-            position: "static",
-            width: 48,
-            height: 48,
-            fontSize: 28,
-            background: "#ffb300",
-            color: "#fff",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-          }}
+          type="button"
+          style={actionStyle(fabStyle, "#ffb300")}
           onClick={onAddTrial}
           title="Add trial"
         >
           +
         </button>
       )}
-      {(() => {
-        // Check if selectedTrial is inside the openLoop
-        const isTrialInsideOpenLoop =
-          openLoop &&
-          openLoop.trials &&
-          selectedTrial &&
-          openLoop.trials.includes(selectedTrial.id);
-
-        // Show button if:
-        // - There's more than one item in timeline, AND
-        // - A trial or loop is selected, AND
-        // - SubCanvas is not open
-        const shouldShow =
-          !openLoop &&
-          timeline.length > 1 &&
-          ((selectedLoop && !isTrialInsideOpenLoop) ||
-            (selectedTrial && !isTrialInsideOpenLoop));
-
-        return (
-          shouldShow && (
-            <button
-              style={{
-                ...fabStyle,
-                position: "static",
-                width: 48,
-                height: 48,
-                fontSize: 28,
-                background: "#4caf50",
-                color: "#fff",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-              }}
-              title="Branches"
-              onClick={() => setShowBranchedModal(true)}
-            >
-              <TbBinaryTree size={24} color="#fff" />
-            </button>
-          )
-        );
-      })()}
-      {(() => {
-        // Check if selectedTrial is inside the openLoop
-        const isTrialInsideOpenLoop =
-          openLoop &&
-          openLoop.trials &&
-          selectedTrial &&
-          openLoop.trials.includes(selectedTrial.id);
-
-        // Show button if:
-        // - There's more than one item in timeline, AND
-        // - A trial or loop is selected, AND
-        // - SubCanvas is not open
-        const shouldShow =
-          !openLoop &&
-          timeline.length > 1 &&
-          ((selectedLoop && !isTrialInsideOpenLoop) ||
-            (selectedTrial && !isTrialInsideOpenLoop));
-
-        return (
-          shouldShow &&
-          onMoveItem && (
-            <button
-              style={{
-                ...fabStyle,
-                position: "static",
-                width: 48,
-                height: 48,
-                fontSize: 28,
-                background: "#ff9800",
-                color: "#fff",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-              }}
-              title="Move Item"
-              onClick={onMoveItem}
-            >
-              ⇄
-            </button>
-          )
-        );
-      })()}
+      {showItemActions && (
+        <button
+          type="button"
+          style={actionStyle(fabStyle, "#4caf50")}
+          title="Branches"
+          onClick={onShowBranches}
+        >
+          <TbBinaryTree size={24} color="#fff" />
+        </button>
+      )}
+      {showItemActions && onMoveItem && (
+        <button
+          type="button"
+          style={actionStyle(fabStyle, "#ff9800")}
+          title="Move Item"
+          onClick={onMoveItem}
+        >
+          ⇄
+        </button>
+      )}
     </div>
   );
 }

@@ -54,68 +54,6 @@ vi.mock(
   }),
 );
 
-vi.mock("../../../pages/ExperimentBuilder/components/Canvas/SubCanvas", () => ({
-  default: ({
-    loopId,
-    loopName,
-    onRefreshMetadata,
-    onNavigateToLoop,
-    onNavigateToRoot,
-    onClose,
-    onSelectTrial,
-    onSelectLoop,
-    onOpenNestedLoop,
-  }: {
-    loopId: string;
-    loopName: string;
-    onRefreshMetadata: () => void;
-    onNavigateToLoop: (index: number) => void;
-    onNavigateToRoot: () => void;
-    onClose: () => void;
-    onSelectTrial: (trial: any) => void;
-    onSelectLoop: (loop: any) => void;
-    onOpenNestedLoop: (id: string) => void;
-  }) => (
-    <div data-testid="sub-canvas">
-      SubCanvas {loopId} {loopName}
-      <button type="button" onClick={onRefreshMetadata}>
-        Refresh Loop
-      </button>
-      <button type="button" onClick={() => onNavigateToLoop(0)}>
-        Navigate First Loop
-      </button>
-      <button type="button" onClick={onNavigateToRoot}>
-        Navigate Root
-      </button>
-      <button
-        type="button"
-        onClick={() =>
-          onSelectTrial({ id: 7, type: "trial", name: "Inner Trial" })
-        }
-      >
-        Select Inner Trial
-      </button>
-      <button
-        type="button"
-        onClick={() =>
-          onSelectLoop({ id: "loop-child", type: "loop", name: "Child Loop" })
-        }
-      >
-        Select Inner Loop
-      </button>
-      <button type="button" onClick={() => onOpenNestedLoop("loop-child")}>
-        Open Nested Loop
-      </button>
-      <button type="button" onClick={() => onOpenNestedLoop("loop-1")}>
-        Open Root Nested
-      </button>
-      <button type="button" onClick={onClose}>
-        Close SubCanvas
-      </button>
-    </div>
-  ),
-}));
-
 function makeTrial(id: number, overrides: Record<string, unknown> = {}) {
   return {
     id,
@@ -203,6 +141,9 @@ describe("Canvas container", () => {
       getLoop: vi.fn(async () => {
         throw new Error("loop read failed");
       }),
+      getLoopTimeline: vi.fn(async () => {
+        throw new Error("loop timeline failed");
+      }),
     });
 
     render(<Canvas />);
@@ -210,7 +151,10 @@ describe("Canvas container", () => {
     await act(async () => {
       await mocks.flowLayoutProps.onSelectTrial({ id: 1 });
       await mocks.flowLayoutProps.onSelectLoop({ id: "loop-1" });
-      await mocks.flowLayoutProps.onOpenLoop("loop-1");
+      await mocks.flowLayoutProps.onToggleLoop(
+        { id: "loop-1", type: "loop", name: "Loop 1" },
+        null,
+      );
     });
 
     expect(console.error).toHaveBeenCalledWith(
@@ -221,10 +165,12 @@ describe("Canvas container", () => {
       "Error fetching full loop data:",
       expect.any(Error),
     );
-    expect(console.error).toHaveBeenCalledWith(
-      "Error loading loop:",
-      expect.any(Error),
-    );
+    await waitFor(() => {
+      expect(console.error).toHaveBeenCalledWith(
+        "Error loading loop:",
+        expect.any(Error),
+      );
+    });
   });
 
   it("ignores empty flow-layout selections and a missing opened loop", async () => {
@@ -238,20 +184,43 @@ describe("Canvas container", () => {
     await act(async () => {
       await mocks.flowLayoutProps.onSelectTrial({ id: 404 });
       await mocks.flowLayoutProps.onSelectLoop({ id: "missing-loop" });
-      await mocks.flowLayoutProps.onOpenLoop("missing-loop");
+      await mocks.flowLayoutProps.onToggleLoop(
+        { id: "missing-loop", type: "loop", name: "Missing Loop" },
+        null,
+      );
     });
 
-    expect(screen.queryByTestId("sub-canvas")).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("react-flow")).toHaveLength(1);
     expect(mocks.trialsContext.getLoopTimeline).toHaveBeenCalledWith(
       "missing-loop",
+      true,
+      false,
+      true,
     );
     expect(mocks.trialsContext.setSelectedTrial).toHaveBeenCalledWith(null);
     expect(mocks.trialsContext.setSelectedLoop).toHaveBeenCalledWith(null);
   });
 
-  it("opens branch configuration with loop-scoped metadata and renders opened loops", async () => {
+  it("keeps loop-scoped selection and nested expansion in one ReactFlow", async () => {
     installTrialsContext({
       selectedTrial: makeTrial(1, { parentLoopId: "loop-1" }),
+      timeline: [
+        { id: "loop-1", type: "loop", name: "Loop 1", branches: [] },
+        { id: "outside", type: "trial", name: "Outside", branches: [] },
+      ],
+      getLoopTimeline: vi.fn(async (id: string | number) =>
+        id === "loop-1"
+          ? [
+              { id: 1, type: "trial", name: "Trial 1", branches: [] },
+              {
+                id: "loop-child",
+                type: "loop",
+                name: "Child Loop",
+                branches: [],
+              },
+            ]
+          : [],
+      ),
     });
 
     render(<Canvas />);
@@ -261,25 +230,43 @@ describe("Canvas container", () => {
     expect(await screen.findByTestId("branched-modal")).toHaveTextContent(
       "Trial 1",
     );
-    await waitFor(() => {
-      expect(mocks.trialsContext.getLoopTimeline).toHaveBeenCalledWith(
-        "loop-1",
+    expect(mocks.trialsContext.getLoopTimeline).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await mocks.flowLayoutProps.onToggleLoop(
+        { id: "loop-1", type: "loop", name: "Loop 1" },
+        null,
       );
     });
 
+    expect(screen.getAllByTestId("react-flow")).toHaveLength(1);
+    expect(mocks.trialsContext.getLoopTimeline).toHaveBeenCalledWith(
+      "loop-1",
+      true,
+      false,
+      true,
+    );
+
     await act(async () => {
-      await mocks.flowLayoutProps.onOpenLoop("loop-1");
+      await mocks.flowLayoutProps.onToggleLoop(
+        { id: "loop-child", type: "loop", name: "Child Loop" },
+        "loop-1",
+      );
+    });
+    await act(async () => {
+      await mocks.flowLayoutProps.onSelectLoop(
+        { id: "loop-child", type: "loop", name: "Child Loop" },
+        "loop-child",
+      );
     });
 
-    expect(await screen.findByTestId("sub-canvas")).toHaveTextContent("Loop 1");
-    expect(mocks.trialsContext.getLoop).toHaveBeenCalledWith("loop-1");
-    expect(mocks.trialsContext.getLoopTimeline).toHaveBeenCalledWith("loop-1");
-
-    fireEvent.click(screen.getByText("Open Nested Loop"));
-
-    await waitFor(() => {
-      expect(mocks.trialsContext.getLoop).toHaveBeenCalledWith("loop-child");
-    });
+    expect(mocks.trialsContext.getLoopTimeline).toHaveBeenCalledWith(
+      "loop-child",
+      true,
+      false,
+      true,
+    );
+    expect(mocks.trialsContext.getLoop).toHaveBeenCalledWith("loop-child");
     expect(mocks.trialsContext.setSelectedLoop).toHaveBeenCalledWith(
       expect.objectContaining({ id: "loop-child" }),
     );

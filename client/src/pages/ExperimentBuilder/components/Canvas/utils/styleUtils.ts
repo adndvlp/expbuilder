@@ -12,11 +12,11 @@ export function getCanvasBackground(isDark: boolean): React.CSSProperties {
     background: isDark
       ? "radial-gradient(circle at 50% 50%, #23272f 80%, #181a20 100%)"
       : "radial-gradient(circle at 50% 50%, #f7f8fa 80%, #e9ecf3 100%)",
-    minHeight: "100vh",
+    minHeight: 0,
     width: "100%",
-    height: "100vh",
+    height: "100%",
     position: "relative",
-    overflow: "visible",
+    overflow: "hidden",
   };
 }
 

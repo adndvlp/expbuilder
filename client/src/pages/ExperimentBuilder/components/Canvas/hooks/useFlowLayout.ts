@@ -1,47 +1,38 @@
 import { useMemo } from "react";
-import { Loop, Trial } from "../../ConfigurationPanel/types";
+import type { Loop, Trial } from "../../ConfigurationPanel/types";
 import { buildFlowLayout } from "../services/buildFlowLayout";
+import { buildUnifiedFlowLayout } from "../services/buildUnifiedFlowLayout";
 
-interface UseFlowLayoutProps {
-  timeline: any[];
+type LegacyFlowLayoutProps = {
+  timeline: unknown[];
   selectedTrial: Trial | null;
-  selectedLoop: any;
+  selectedLoop: Loop | null;
   onSelectTrial: (trial: Trial) => void;
   onSelectLoop: (loop: Loop) => void;
   onAddBranch: (id: number | string) => void;
   onOpenLoop?: (loopId: string) => void;
-  openLoop?: any;
-  setOpenLoop?: (loop: any) => void;
-}
+  openLoop?: Loop | null;
+};
 
-export function useFlowLayout({
-  timeline,
-  selectedTrial,
-  selectedLoop,
-  onSelectTrial,
-  onSelectLoop,
-  onAddBranch,
-  onOpenLoop,
-  openLoop,
-}: UseFlowLayoutProps) {
-  const selectedTrialId = selectedTrial?.id;
-  const selectedLoopId = selectedLoop?.id;
-  const openLoopId = openLoop?.id;
-  const { nodes, edges } = useMemo(
-    () =>
-      buildFlowLayout({
-        timeline,
-        selectedTrialId,
-        selectedLoopId,
-        openLoopId,
-        onSelectTrial,
-        onSelectLoop,
-        onAddBranch,
-        onOpenLoop,
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [timeline, selectedTrialId, selectedLoopId, openLoopId],
-  );
+type UnifiedFlowLayoutProps = Parameters<typeof buildUnifiedFlowLayout>[0];
+type UseFlowLayoutProps = LegacyFlowLayoutProps | UnifiedFlowLayoutProps;
 
-  return { nodes, edges };
+const isUnifiedLayout = (
+  props: UseFlowLayoutProps,
+): props is UnifiedFlowLayoutProps => "expandedPath" in props;
+
+export function useFlowLayout(props: UseFlowLayoutProps) {
+  return useMemo(() => {
+    if (isUnifiedLayout(props)) return buildUnifiedFlowLayout(props);
+    return buildFlowLayout({
+      timeline: props.timeline,
+      selectedTrialId: props.selectedTrial?.id,
+      selectedLoopId: props.selectedLoop?.id,
+      openLoopId: props.openLoop?.id,
+      onSelectTrial: props.onSelectTrial,
+      onSelectLoop: props.onSelectLoop,
+      onAddBranch: props.onAddBranch,
+      onOpenLoop: props.onOpenLoop,
+    });
+  }, [props]);
 }

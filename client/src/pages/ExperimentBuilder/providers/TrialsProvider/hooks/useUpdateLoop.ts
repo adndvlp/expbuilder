@@ -34,7 +34,7 @@ export default function useUpdateLoop({
         }
 
         // Si no está seleccionado, necesitamos obtenerlo (pero sin hacer fetch innecesario)
-        // Podemos inferir del contexto: si estamos actualizando desde un SubCanvas, es nested
+        // Un loop con parentLoopId pertenece al scope expandido de otro loop.
 
         // OPTIMISTIC UI PRIMERO - actualizar antes del fetch
         const optimisticUpdateFn = (prev: TimelineItem[]) => {
