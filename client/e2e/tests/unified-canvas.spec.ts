@@ -61,6 +61,13 @@ test("expands parent and nested loops inside one ReactFlow", async ({ page }) =>
   await expect(canvas.getByText("Nested first", { exact: true })).toBeVisible();
   await expect(canvas.getByText("Parent last", { exact: true })).toBeVisible();
   await expect(canvas.locator(".react-flow")).toHaveCount(1);
+  const [expandedLoopBox, trialBox] = await Promise.all([
+    canvas.locator(".loop-node", { hasText: "Parent loop" }).boundingBox(),
+    canvas.locator(".trial-node", { hasText: "Parent first" }).boundingBox(),
+  ]);
+  expect(expandedLoopBox).not.toBeNull();
+  expect(trialBox).not.toBeNull();
+  expect(expandedLoopBox!.width).toBeLessThan(trialBox!.width);
   await page.waitForTimeout(400);
   await expect(canvas.getByText("Welcome", { exact: true })).toBeInViewport({
     ratio: 0.9,

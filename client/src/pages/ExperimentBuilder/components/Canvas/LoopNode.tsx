@@ -15,7 +15,13 @@ type LoopNodeData = {
 function LoopNode({ data }: { data: LoopNodeData }) {
   return (
     <div
-      className={`loop-node${data.selected ? " loop-node--selected" : ""}`}
+      className={[
+        "loop-node",
+        data.selected ? "loop-node--selected" : "",
+        data.expanded ? "loop-node--expanded" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       onClick={data.onClick}
     >
       <CanvasNodeHandles />

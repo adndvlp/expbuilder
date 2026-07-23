@@ -95,9 +95,9 @@ describe("Canvas nodes", () => {
       />,
     );
 
-    expect(screen.getByText("Main loop").closest(".loop-node")).not.toHaveClass(
-      "loop-node--selected",
-    );
+    const loop = screen.getByText("Main loop").closest(".loop-node");
+    expect(loop).not.toHaveClass("loop-node--selected");
+    expect(loop).toHaveClass("loop-node--expanded");
     expect(screen.getByTitle("Collapse loop")).toHaveAttribute(
       "aria-expanded",
       "true",

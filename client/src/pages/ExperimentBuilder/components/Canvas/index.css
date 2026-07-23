@@ -181,6 +181,10 @@
   font-weight: 600;
 }
 
+.loop-node--expanded {
+  width: 140px;
+}
+
 .loop-node:hover {
   box-shadow: 0 8px 24px rgba(241, 196, 15, 0.25);
   transform: translateY(-3px) scale(1.05);
