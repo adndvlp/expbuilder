@@ -16,6 +16,7 @@ import {
   getMainLayoutItems,
   sanitizeLayoutTimeline,
 } from "./sanitizeLayoutTimeline";
+import { finalizeExpandedLayout } from "./finalizeExpandedLayout";
 const ROOT_X = 500;
 const ROOT_Y = 80;
 const VERTICAL_GAP = 120;
@@ -129,32 +130,42 @@ function renderItem(
     return block;
   }
 
-  addExpandedEdge(
-    context,
-    inner.entryId,
-    markerId,
-    "loop-control",
-    expandedScope.id,
-    CANVAS_EDGE_HANDLES.loopEntry,
-  );
-  inner.exitIds.forEach((exitId) => {
+  const loopExitId = inner.exitIds.at(-1)!;
+  if (loopExitId === inner.entryId) {
     addExpandedEdge(
       context,
       markerId,
-      exitId,
+      markerId,
+      "loop-return",
+      expandedScope.id,
+      CANVAS_EDGE_HANDLES.singleItemLoop,
+    );
+  } else {
+    addExpandedEdge(
+      context,
+      inner.entryId,
+      markerId,
+      "loop-control",
+      expandedScope.id,
+      CANVAS_EDGE_HANDLES.loopEntry,
+    );
+    addExpandedEdge(
+      context,
+      markerId,
+      loopExitId,
       "loop-control",
       expandedScope.id,
       CANVAS_EDGE_HANDLES.loopExit,
     );
     addExpandedEdge(
       context,
-      exitId,
-      inner.entryId!,
+      loopExitId,
+      inner.entryId,
       "loop-return",
       expandedScope.id,
       CANVAS_EDGE_HANDLES.loopReturn,
     );
-  });
+  }
   const block = {
     entryId: inner.entryId,
     exitIds: inner.exitIds,
@@ -281,20 +292,5 @@ export function composeExpandedLoopLayout({
     ROOT_X,
     ROOT_Y,
   );
-  const positions = new Map(
-    result.nodes.map((node) => [node.id, node.position] as const),
-  );
-  const flowEdges = result.edges.filter((edge) => edge.data.kind === "flow");
-  const loopEdges = result.edges.filter((edge) => edge.data.kind !== "flow");
-  flowEdges.sort((left, right) => {
-    const leftSource = positions.get(left.source);
-    const rightSource = positions.get(right.source);
-    const yDifference = (leftSource?.y ?? 0) - (rightSource?.y ?? 0);
-    if (yDifference !== 0) return yDifference;
-    const xDifference = (leftSource?.x ?? 0) - (rightSource?.x ?? 0);
-    if (xDifference !== 0) return xDifference;
-    return left.id.localeCompare(right.id);
-  });
-  result.edges.splice(0, result.edges.length, ...flowEdges, ...loopEdges);
-  return result;
+  return finalizeExpandedLayout(result, VERTICAL_GAP);
 }

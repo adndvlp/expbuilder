@@ -6,6 +6,7 @@ import TrialNode from "./TrialNode";
 import CanvasModals from "./components/CanvasModals";
 import CanvasToolbar from "./components/CanvasToolbar";
 import CanvasViewportFitter from "./components/CanvasViewportFitter";
+import LoopRoutingEdge from "./components/LoopRoutingEdge";
 import { useCanvasWorkspace } from "./hooks/useCanvasWorkspace";
 import { getCanvasLayoutSignature } from "./services/getCanvasLayoutSignature";
 import {
@@ -16,6 +17,7 @@ import {
 } from "./utils/styleUtils";
 
 const nodeTypes = { trial: TrialNode, loop: LoopNode };
+const edgeTypes = { loop: LoopRoutingEdge };
 
 function Canvas() {
   const workspace = useCanvasWorkspace();
@@ -66,6 +68,7 @@ function Canvas() {
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           fitView
           fitViewOptions={{ padding: 0.2, maxZoom: 1.15 }}
           minZoom={0.1}

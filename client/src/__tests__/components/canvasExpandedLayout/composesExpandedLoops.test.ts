@@ -110,7 +110,7 @@ describe("composeExpandedLoopLayout", () => {
     );
   });
 
-  it("routes a one-item expanded loop without crossing its control edges", () => {
+  it("renders one exterior circuit for a one-item expanded loop", () => {
     const result = composeExpandedLoopLayout({
       rootTimeline: [trial("before"), loop("single"), trial("after")],
       expandedScopes: [
@@ -121,33 +121,24 @@ describe("composeExpandedLoopLayout", () => {
     });
     const marker = getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "loop", "single");
     const only = getScopedNodeId("single-scope", "trial", "only");
-    const entryControl = result.edges.find(
-      (edge) => edge.source === only && edge.target === marker,
-    );
-    const exitControl = result.edges.find(
-      (edge) => edge.source === marker && edge.target === only,
-    );
-    const loopReturn = result.edges.find(
+    const circuit = result.edges.find(
       (edge) =>
-        edge.source === only &&
-        edge.target === only &&
+        edge.source === marker &&
+        edge.target === marker &&
         edge.data.kind === "loop-return",
     );
 
-    expect(entryControl).toMatchObject({
+    expect(result.edges).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: only, target: marker }),
+        expect.objectContaining({ source: marker, target: only }),
+        expect.objectContaining({ source: only, target: only }),
+      ]),
+    );
+    expect(circuit).toMatchObject({
       type: "smoothstep",
-      sourceHandle: "loop-entry-source",
-      targetHandle: "loop-return-target",
-    });
-    expect(exitControl).toMatchObject({
-      type: "smoothstep",
-      sourceHandle: "loop-return-source",
-      targetHandle: "loop-exit-target",
-    });
-    expect(loopReturn).toMatchObject({
-      type: "smoothstep",
-      sourceHandle: "loop-return-source",
-      targetHandle: "loop-return-target",
+      sourceHandle: "flow-source",
+      targetHandle: "flow-target",
     });
   });
 

@@ -1,4 +1,7 @@
 import { expect, test } from "../fixtures/test.fixture";
+import { getLoopLayoutScopeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/buildUnifiedFlowLayout";
+import { getScopedNodeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/composeExpandedLoopLayout";
+import { ROOT_CANVAS_SCOPE_ID } from "../../src/pages/ExperimentBuilder/components/Canvas/services/expandedLayoutTypes";
 
 const rootTimeline = [
   { id: "welcome", type: "trial", name: "Welcome" },
@@ -78,7 +81,7 @@ test("expands parent and nested loops inside one ReactFlow", async ({ page }) =>
   await expect(canvas.getByText("Parent first", { exact: true })).toHaveCount(0);
 });
 
-test("routes the branching one-item loop without crossed edges", async ({
+test("routes a one-item loop as one exterior circuit", async ({
   page,
 }) => {
   const branchingTimeline = [
@@ -136,9 +139,122 @@ test("routes the branching one-item loop without crossed edges", async ({
   await expect(canvas.getByText("Task", { exact: true })).toBeVisible();
   await expect(canvas.locator(".react-flow")).toHaveCount(1);
   await expect(canvas.locator(".canvas-breadcrumb")).toHaveCount(0);
+  const markerId = getScopedNodeId(
+    ROOT_CANVAS_SCOPE_ID,
+    "loop",
+    "loop-1",
+  );
+  const taskId = getScopedNodeId(
+    getLoopLayoutScopeId("loop-1"),
+    "trial",
+    "task",
+  );
+  const edgeId = (kind: string, source: string, target: string) =>
+    ["edge", kind, source, target].map(encodeURIComponent).join("::");
+  const path = (kind: string, source: string, target: string) =>
+    canvas.locator(
+      `[data-testid="rf__edge-${edgeId(kind, source, target)}"] .react-flow__edge-path`,
+    );
+  const circuit = path("loop-return", markerId, markerId);
+
+  await expect(path("loop-control", taskId, markerId)).toHaveCount(0);
+  await expect(path("loop-control", markerId, taskId)).toHaveCount(0);
+  await expect(path("loop-return", taskId, taskId)).toHaveCount(0);
+  await expect(circuit).toHaveCount(1);
+
+  const markerBox = await canvas
+    .locator(`.react-flow__node[data-id="${markerId}"]`)
+    .boundingBox();
+  const taskBox = await canvas
+    .locator(`.react-flow__node[data-id="${taskId}"]`)
+    .boundingBox();
+  const geometry = await circuit.evaluate((element) => {
+    const svgPath = element as SVGPathElement;
+    const matrix = svgPath.getScreenCTM()!;
+    const length = svgPath.getTotalLength();
+    const points = Array.from({ length: 101 }, (_, index) =>
+      svgPath
+        .getPointAtLength((length * index) / 100)
+        .matrixTransform(matrix),
+    );
+    return {
+      minY: Math.min(...points.map((point) => point.y)),
+      maxX: Math.max(...points.map((point) => point.x)),
+      maxY: Math.max(...points.map((point) => point.y)),
+    };
+  });
+  expect(markerBox).not.toBeNull();
+  expect(taskBox).not.toBeNull();
+  expect(geometry.minY).toBeLessThan(
+    Math.min(markerBox!.y, taskBox!.y) - 20,
+  );
+  expect(geometry.maxX).toBeGreaterThan(taskBox!.x + taskBox!.width + 20);
+  expect(geometry.maxY).toBeGreaterThan(
+    Math.max(
+      markerBox!.y + markerBox!.height,
+      taskBox!.y + taskBox!.height,
+    ) + 20,
+  );
   await page.mouse.move(10, 10);
   await page.waitForTimeout(400);
   await canvas.screenshot({
     path: "test-results/unified-canvas-single-loop.png",
+  });
+});
+
+test("balances two branch roots when one subtree is wider", async ({
+  page,
+}) => {
+  const timeline = [
+    {
+      id: "parent",
+      type: "trial",
+      name: "New Trial",
+      branches: ["continuation", "side"],
+    },
+    {
+      id: "continuation",
+      type: "trial",
+      name: "New Trial 1",
+      branches: ["left-child", "right-child"],
+    },
+    { id: "left-child", type: "trial", name: "New Trial 4" },
+    { id: "right-child", type: "trial", name: "New Trial 5" },
+    { id: "side", type: "trial", name: "New Trial 2" },
+  ];
+  await page.route("**/api/trials-metadata/exp-balanced-branches", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ timeline }),
+    }),
+  );
+  await page.setViewportSize({ width: 1700, height: 1000 });
+  await page.goto("/#/home/experiment/exp-balanced-branches/builder");
+  const canvas = page.locator(".canvas-container");
+  const node = (id: string) =>
+    canvas.locator(
+      `.react-flow__node[data-id="${getScopedNodeId(
+        ROOT_CANVAS_SCOPE_ID,
+        "trial",
+        id,
+      )}"]`,
+    );
+  const parentBox = await node("parent").boundingBox();
+  const continuationBox = await node("continuation").boundingBox();
+  const sideBox = await node("side").boundingBox();
+
+  expect(parentBox).not.toBeNull();
+  expect(continuationBox).not.toBeNull();
+  expect(sideBox).not.toBeNull();
+  const center = (box: NonNullable<typeof parentBox>) =>
+    box.x + box.width / 2;
+  expect(center(continuationBox!)).toBeLessThan(center(parentBox!));
+  expect(center(sideBox!)).toBeGreaterThan(center(parentBox!));
+  expect(
+    (center(continuationBox!) + center(sideBox!)) / 2,
+  ).toBeCloseTo(center(parentBox!), 1);
+  await canvas.screenshot({
+    path: "test-results/unified-canvas-balanced-branches.png",
   });
 });

@@ -4,9 +4,12 @@ import type {
   LoopScopeId,
 } from "../hooks/useExpandedLoopPath";
 import { composeExpandedLoopLayout } from "./composeExpandedLoopLayout";
+import { CANVAS_HANDLE_IDS } from "./canvasHandleIds";
 import { ROOT_CANVAS_SCOPE_ID } from "./expandedLayoutTypes";
 import type {
+  ExpandedCanvasEdge,
   ExpandedCanvasNodeData,
+  ExpandedCanvasNode,
   LayoutTimelineItem,
 } from "./expandedLayoutTypes";
 
@@ -31,6 +34,12 @@ type BuildUnifiedFlowLayoutInput = {
 };
 
 const itemKey = (id: string | number) => String(id);
+const CANVAS_NODE_WIDTH = 180;
+const CANVAS_NODE_HEIGHT = 50;
+const LOOP_ROUTE_PADDING = 44;
+const LOOP_CONTROL_OFFSET = 36;
+const LOOP_ENTRY_CLEARANCE = 44;
+const LOOP_UPPER_HANDLE_RATIO = 0.32;
 const idsMatch = (
   left: string | number | null | undefined,
   right: string | number | null | undefined,
@@ -43,6 +52,65 @@ function toLayoutScopeId(scopeId: LoopScopeId | null) {
   return scopeId === null
     ? ROOT_CANVAS_SCOPE_ID
     : getLoopLayoutScopeId(scopeId);
+}
+
+function getLoopRouteBounds(
+  nodes: ExpandedCanvasNode[],
+  scopeIds: string[],
+) {
+  return new Map(
+    scopeIds.map((scopeId, depth) => {
+      const descendantScopes = new Set(scopeIds.slice(depth));
+      const scopedNodes = nodes.filter((node) =>
+        descendantScopes.has(node.data.scopeId),
+      );
+      const right = Math.max(
+        0,
+        ...scopedNodes.map((node) => node.position.x + CANVAS_NODE_WIDTH),
+      );
+      const nestingOffset = (scopeIds.length - depth - 1) * 24;
+      return [scopeId, right + LOOP_ROUTE_PADDING + nestingOffset] as const;
+    }),
+  );
+}
+
+function getLoopEntryRouteY(
+  edge: ExpandedCanvasEdge,
+  nodes: ExpandedCanvasNode[],
+  nodeById: Map<string, ExpandedCanvasNode>,
+) {
+  if (
+    edge.data.kind !== "loop-control" ||
+    edge.sourceHandle !== CANVAS_HANDLE_IDS.loopEntrySource
+  ) {
+    return undefined;
+  }
+  const source = nodeById.get(edge.source);
+  const target = nodeById.get(edge.target);
+  if (!source || !target) return undefined;
+  const connectionY =
+    source.position.y + CANVAS_NODE_HEIGHT * LOOP_UPPER_HANDLE_RATIO;
+  const laneX =
+    target.position.x + CANVAS_NODE_WIDTH + LOOP_CONTROL_OFFSET;
+  const left = Math.min(laneX, source.position.x);
+  const right = Math.max(laneX, source.position.x);
+  const blockers = nodes.filter(
+    (node) =>
+      node.id !== source.id &&
+      node.id !== target.id &&
+      node.position.x < right &&
+      node.position.x + CANVAS_NODE_WIDTH > left &&
+      node.position.y < connectionY &&
+      node.position.y + CANVAS_NODE_HEIGHT > connectionY,
+  );
+  if (blockers.length === 0) return undefined;
+  return (
+    Math.min(
+      source.position.y,
+      target.position.y,
+      ...blockers.map((node) => node.position.y),
+    ) - LOOP_ENTRY_CLEARANCE
+  );
 }
 
 export function buildUnifiedFlowLayout(input: BuildUnifiedFlowLayoutInput) {
@@ -96,20 +164,32 @@ export function buildUnifiedFlowLayout(input: BuildUnifiedFlowLayoutInput) {
     };
     return { ...node, data };
   });
-  const deepestLoop = Math.max(0, input.expandedPath.length - 1);
-  const loopDepths = new Map(
-    input.expandedPath.map((entry, depth) => [
-      getLoopLayoutScopeId(entry.loop.id),
-      depth,
-    ]),
+  const expandedScopeIds = input.expandedPath.map((entry) =>
+    getLoopLayoutScopeId(entry.loop.id),
   );
+  const deepestLoop = Math.max(0, expandedScopeIds.length - 1);
+  const loopDepths = new Map(
+    expandedScopeIds.map((scopeId, depth) => [scopeId, depth]),
+  );
+  const routeBounds = getLoopRouteBounds(layout.nodes, expandedScopeIds);
+  const nodeById = new Map(layout.nodes.map((node) => [node.id, node]));
   const edges = layout.edges.map((edge) => {
     const isReturn = edge.data.kind === "loop-return";
     const isLoopEdge = isReturn || edge.data.kind === "loop-control";
     const depth = loopDepths.get(edge.data.scopeId) ?? deepestLoop;
+    const routeX = isReturn
+      ? routeBounds.get(edge.data.scopeId)
+      : undefined;
+    const routeY = getLoopEntryRouteY(edge, layout.nodes, nodeById);
     return {
       ...edge,
-      animated: isReturn,
+      type: isLoopEdge ? "loop" : edge.type,
+      data: {
+        ...edge.data,
+        routeX,
+        routeY,
+      },
+      animated: isLoopEdge,
       pathOptions: isLoopEdge
         ? {
             borderRadius: 16,

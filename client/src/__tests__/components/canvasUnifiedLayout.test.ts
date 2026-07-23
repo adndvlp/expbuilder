@@ -81,6 +81,24 @@ describe("buildUnifiedFlowLayout", () => {
     expect(parentReturn!.pathOptions.offset).toBeGreaterThan(
       nestedReturn!.pathOptions.offset,
     );
+    expect(
+      result.edges
+        .filter((edge) => edge.data.kind !== "flow")
+        .every((edge) => edge.type === "loop"),
+    ).toBe(true);
+    expect(
+      result.edges
+        .filter((edge) => edge.data.kind !== "flow")
+        .every((edge) => edge.animated),
+    ).toBe(true);
+    expect(
+      result.edges
+        .filter((edge) => edge.data.kind === "flow")
+        .every((edge) => !edge.animated),
+    ).toBe(true);
+    expect(parentReturn).toMatchObject({
+      data: { routeX: expect.any(Number) },
+    });
   });
 
   it("marks pending loops and styles return edges distinctly", () => {

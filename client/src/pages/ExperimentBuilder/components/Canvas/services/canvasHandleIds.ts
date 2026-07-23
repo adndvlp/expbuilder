@@ -14,14 +14,18 @@ export const CANVAS_EDGE_HANDLES = {
   },
   loopEntry: {
     sourceHandle: CANVAS_HANDLE_IDS.loopEntrySource,
-    targetHandle: CANVAS_HANDLE_IDS.loopReturnTarget,
+    targetHandle: CANVAS_HANDLE_IDS.flowTarget,
   },
   loopExit: {
-    sourceHandle: CANVAS_HANDLE_IDS.loopReturnSource,
+    sourceHandle: CANVAS_HANDLE_IDS.flowSource,
     targetHandle: CANVAS_HANDLE_IDS.loopExitTarget,
   },
   loopReturn: {
     sourceHandle: CANVAS_HANDLE_IDS.loopReturnSource,
     targetHandle: CANVAS_HANDLE_IDS.loopReturnTarget,
+  },
+  singleItemLoop: {
+    sourceHandle: CANVAS_HANDLE_IDS.flowSource,
+    targetHandle: CANVAS_HANDLE_IDS.flowTarget,
   },
 } as const;
