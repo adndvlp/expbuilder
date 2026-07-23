@@ -73,6 +73,11 @@ function Canvas() {
           fitViewOptions={{ padding: 0.2, maxZoom: 1.15 }}
           minZoom={0.1}
           nodesConnectable={false}
+          panOnDrag
+          panOnScroll
+          zoomOnDoubleClick={false}
+          zoomOnPinch
+          zoomOnScroll={false}
           style={{ background: "transparent" }}
           onPaneClick={workspace.clearSelection}
         >
