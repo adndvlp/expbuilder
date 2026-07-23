@@ -1,4 +1,5 @@
 import React from "react";
+import { getCanvasEdgeThemeVariables } from "../services/branchEdgeTheme";
 
 export function getIsDarkMode(): boolean {
   return (
@@ -9,6 +10,7 @@ export function getIsDarkMode(): boolean {
 
 export function getCanvasBackground(isDark: boolean): React.CSSProperties {
   return {
+    ...getCanvasEdgeThemeVariables(isDark),
     background: isDark
       ? "radial-gradient(circle at 50% 50%, #23272f 80%, #181a20 100%)"
       : "radial-gradient(circle at 50% 50%, #f7f8fa 80%, #e9ecf3 100%)",

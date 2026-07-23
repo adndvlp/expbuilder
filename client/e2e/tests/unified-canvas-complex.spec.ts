@@ -88,7 +88,9 @@ async function pathCrossesNode(path: Locator, node: Locator) {
     const length = svgPath.getTotalLength();
     for (let sample = 0; sample <= 100; sample += 1) {
       const point = svgPath.getPointAtLength((length * sample) / 100);
-      const screenPoint = new DOMPoint(point.x, point.y).matrixTransform(matrix);
+      const screenPoint = new DOMPoint(point.x, point.y).matrixTransform(
+        matrix,
+      );
       if (
         screenPoint.x > bounds.x &&
         screenPoint.x < bounds.x + bounds.width &&
@@ -132,19 +134,16 @@ test("renders the complete branching loop topology in one canvas", async ({
       body: JSON.stringify({ timeline: rootTimeline }),
     }),
   );
-  await page.route(
-    "**/api/loop-trials-metadata/exp-complex/*",
-    (route) => {
-      const isNested = route.request().url().endsWith("/nested-loop");
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          trialsMetadata: isNested ? nestedTimeline : outerTimeline,
-        }),
-      });
-    },
-  );
+  await page.route("**/api/loop-trials-metadata/exp-complex/*", (route) => {
+    const isNested = route.request().url().endsWith("/nested-loop");
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        trialsMetadata: isNested ? nestedTimeline : outerTimeline,
+      }),
+    });
+  });
 
   await page.setViewportSize({ width: 2200, height: 1400 });
   await page.goto("/#/home/experiment/exp-complex/builder");
@@ -171,12 +170,8 @@ test("renders the complete branching loop topology in one canvas", async ({
   const outerMarker = node(
     getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "loop", "loop-1"),
   );
-  const nestedMarker = node(
-    getScopedNodeId(outerScope, "loop", "nested-loop"),
-  );
-  const nestedTask = node(
-    getScopedNodeId(nestedScope, "trial", "nested-task"),
-  );
+  const nestedMarker = node(getScopedNodeId(outerScope, "loop", "nested-loop"));
+  const nestedTask = node(getScopedNodeId(nestedScope, "trial", "nested-task"));
   const final = node(getScopedNodeId(outerScope, "trial", "final"));
   const mergeParents = [
     node(getScopedNodeId(nestedScope, "trial", "loca")),
@@ -201,15 +196,16 @@ test("renders the complete branching loop topology in one canvas", async ({
 
   const strokes = await canvas
     .locator(".react-flow__edge-path")
-    .evaluateAll((paths) =>
-      paths.map((path) => getComputedStyle(path).stroke),
-    );
-  expect(strokes.filter((stroke) => stroke === "rgb(47, 128, 237)")).toHaveLength(
-    6,
-  );
+    .evaluateAll((paths) => paths.map((path) => getComputedStyle(path).stroke));
   expect(
-    strokes.filter((stroke) => stroke === "rgb(174, 182, 194)"),
-  ).toHaveLength(16);
+    strokes.filter((stroke) => stroke === "rgb(47, 128, 237)"),
+  ).toHaveLength(6);
+  const flowStrokes = strokes.filter(
+    (stroke) => stroke !== "rgb(47, 128, 237)",
+  );
+  expect(flowStrokes).toHaveLength(16);
+  expect(new Set(flowStrokes).size).toBeGreaterThan(3);
+  expect(flowStrokes).toContain("rgb(102, 112, 133)");
   await expect(canvas.locator(".react-flow__edge.animated")).toHaveCount(6);
 
   const questionId = getScopedNodeId(outerScope, "trial", "question");
@@ -217,10 +213,14 @@ test("renders the complete branching loop topology in one canvas", async ({
     getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "trial", "final-left"),
   );
   const branchBoxes = await Promise.all([
-    node(getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "trial", "instructions")).boundingBox(),
+    node(
+      getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "trial", "instructions"),
+    ).boundingBox(),
     node(questionId).boundingBox(),
     leftFinal.boundingBox(),
-    node(getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "trial", "final-right")).boundingBox(),
+    node(
+      getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "trial", "final-right"),
+    ).boundingBox(),
     node(getScopedNodeId(outerScope, "trial", "end-right")).boundingBox(),
   ]);
   const [instructionsBox, questionBox, leftBox, rightBox, rightTerminalBox] =
@@ -230,11 +230,7 @@ test("renders the complete branching loop topology in one canvas", async ({
   expect(rightBox.x).toBeGreaterThan(
     rightTerminalBox.x + rightTerminalBox.width,
   );
-  const outerMarkerId = getScopedNodeId(
-    ROOT_CANVAS_SCOPE_ID,
-    "loop",
-    "loop-1",
-  );
+  const outerMarkerId = getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "loop", "loop-1");
   const outerEntryEdgeId = [
     "edge",
     encodeURIComponent("loop-control"),

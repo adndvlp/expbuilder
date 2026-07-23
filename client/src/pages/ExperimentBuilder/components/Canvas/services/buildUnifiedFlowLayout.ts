@@ -12,6 +12,8 @@ import type {
   ExpandedCanvasNode,
   LayoutTimelineItem,
 } from "./expandedLayoutTypes";
+import { assignBranchColorSlots } from "./assignBranchEdgeColors";
+import { getBranchEdgeStroke } from "./branchEdgeTheme";
 
 export type UnifiedCanvasNodeData = ExpandedCanvasNodeData & {
   selected: boolean;
@@ -54,10 +56,7 @@ function toLayoutScopeId(scopeId: LoopScopeId | null) {
     : getLoopLayoutScopeId(scopeId);
 }
 
-function getLoopRouteBounds(
-  nodes: ExpandedCanvasNode[],
-  scopeIds: string[],
-) {
+function getLoopRouteBounds(nodes: ExpandedCanvasNode[], scopeIds: string[]) {
   return new Map(
     scopeIds.map((scopeId, depth) => {
       const descendantScopes = new Set(scopeIds.slice(depth));
@@ -90,8 +89,7 @@ function getLoopEntryRouteY(
   if (!source || !target) return undefined;
   const connectionY =
     source.position.y + CANVAS_NODE_HEIGHT * LOOP_UPPER_HANDLE_RATIO;
-  const laneX =
-    target.position.x + CANVAS_NODE_WIDTH + LOOP_CONTROL_OFFSET;
+  const laneX = target.position.x + CANVAS_NODE_WIDTH + LOOP_CONTROL_OFFSET;
   const left = Math.min(laneX, source.position.x);
   const right = Math.max(laneX, source.position.x);
   const blockers = nodes.filter(
@@ -173,13 +171,12 @@ export function buildUnifiedFlowLayout(input: BuildUnifiedFlowLayoutInput) {
   );
   const routeBounds = getLoopRouteBounds(layout.nodes, expandedScopeIds);
   const nodeById = new Map(layout.nodes.map((node) => [node.id, node]));
+  const branchColorSlots = assignBranchColorSlots(layout.edges);
   const edges = layout.edges.map((edge) => {
     const isReturn = edge.data.kind === "loop-return";
     const isLoopEdge = isReturn || edge.data.kind === "loop-control";
     const depth = loopDepths.get(edge.data.scopeId) ?? deepestLoop;
-    const routeX = isReturn
-      ? routeBounds.get(edge.data.scopeId)
-      : undefined;
+    const routeX = isReturn ? routeBounds.get(edge.data.scopeId) : undefined;
     const routeY = getLoopEntryRouteY(edge, layout.nodes, nodeById);
     return {
       ...edge,
@@ -197,7 +194,9 @@ export function buildUnifiedFlowLayout(input: BuildUnifiedFlowLayoutInput) {
           }
         : undefined,
       style: {
-        stroke: isLoopEdge ? "#2f80ed" : "#aeb6c2",
+        stroke: isLoopEdge
+          ? "#2f80ed"
+          : getBranchEdgeStroke(branchColorSlots.get(edge.id)),
         strokeWidth: isLoopEdge ? 2 : 1.5,
       },
     };

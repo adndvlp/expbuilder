@@ -5,6 +5,8 @@ import {
 } from "../../pages/ExperimentBuilder/components/Canvas/services/buildUnifiedFlowLayout";
 import type { ExpandedLoopEntry } from "../../pages/ExperimentBuilder/components/Canvas/hooks/useExpandedLoopPath";
 import { getCanvasLayoutSignature } from "../../pages/ExperimentBuilder/components/Canvas/services/getCanvasLayoutSignature";
+import { getScopedNodeId } from "../../pages/ExperimentBuilder/components/Canvas/services/composeExpandedLoopLayout";
+import { ROOT_CANVAS_SCOPE_ID } from "../../pages/ExperimentBuilder/components/Canvas/services/expandedLayoutTypes";
 
 const path: ExpandedLoopEntry[] = [
   {
@@ -114,10 +116,62 @@ describe("buildUnifiedFlowLayout", () => {
       onAddBranch: vi.fn(),
     });
 
-    expect(result.nodes.find((node) => node.data.itemId === "parent")?.data)
-      .toMatchObject({ loading: true });
-    expect(result.edges.find((edge) => edge.data.kind === "loop-return"))
-      .toMatchObject({ animated: true, style: { stroke: "#2f80ed" } });
+    expect(
+      result.nodes.find((node) => node.data.itemId === "parent")?.data,
+    ).toMatchObject({ loading: true });
+    expect(
+      result.edges.find((edge) => edge.data.kind === "loop-return"),
+    ).toMatchObject({ animated: true, style: { stroke: "#2f80ed" } });
+  });
+
+  it("styles each trial branch consistently with a distinct theme color", () => {
+    const result = buildUnifiedFlowLayout({
+      timeline: [
+        { id: "start", type: "trial", name: "Start" },
+        {
+          id: "question",
+          type: "trial",
+          name: "Question",
+          branches: ["left", "right"],
+        },
+        {
+          id: "left",
+          type: "trial",
+          name: "Left",
+          branches: ["left-step"],
+        },
+        { id: "left-step", type: "trial", name: "Left step" },
+        {
+          id: "right",
+          type: "trial",
+          name: "Right",
+          branches: ["right-step"],
+        },
+        { id: "right-step", type: "trial", name: "Right step" },
+      ],
+      expandedPath: [],
+      selectedItemId: null,
+      selectedScopeId: null,
+      onSelectTrial: vi.fn(),
+      onSelectLoop: vi.fn(),
+      onToggleLoop: vi.fn(),
+      onAddBranch: vi.fn(),
+    });
+    const nodeId = (itemId: string) =>
+      getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "trial", itemId);
+    const stroke = (source: string, target: string) =>
+      result.edges.find(
+        (edge) =>
+          edge.source === nodeId(source) && edge.target === nodeId(target),
+      )?.style.stroke;
+
+    expect(stroke("start", "question")).toBe("var(--canvas-flow-edge)");
+    expect(stroke("question", "left")).toMatch(
+      /^var\(--canvas-branch-edge-\d\)$/,
+    );
+    expect(stroke("question", "right")).not.toBe(stroke("question", "left"));
+    expect(stroke("left", "left-step")).toBe(stroke("question", "left"));
+    expect(stroke("right", "right-step")).toBe(stroke("question", "right"));
   });
 });
 
