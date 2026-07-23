@@ -2,6 +2,32 @@ import { useState } from "react";
 import Papa from "papaparse";
 import * as ExcelJS from "exceljs";
 
+type FormulaCellValue = {
+  formula?: string;
+  sharedFormula?: string;
+  result?: unknown;
+};
+
+function isFormulaCellValue(value: unknown): value is FormulaCellValue {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    ("formula" in value || "sharedFormula" in value)
+  );
+}
+
+function getExcelCellValue(cell: ExcelJS.Cell): unknown {
+  if (cell.value instanceof Date) {
+    return cell.value;
+  }
+
+  if (isFormulaCellValue(cell.value)) {
+    return cell.value.result ?? cell.text;
+  }
+
+  return cell.text || "";
+}
+
 export function useCsvData() {
   const [csvJson, setCsvJson] = useState<any[]>([]);
   const [csvColumns, setCsvColumns] = useState<string[]>([]);
@@ -66,16 +92,7 @@ export function useCsvData() {
           row.eachCell((cell, colNumber) => {
             const header = headers[colNumber - 1];
             if (header) {
-              // Handle different cell types
-              let value = cell.value;
-              if (cell.type === ExcelJS.ValueType.Date) {
-                value = cell.value; // Keep as Date object or format as needed
-              } else if (cell.type === ExcelJS.ValueType.Formula) {
-                value = cell.result ?? cell.text;
-              } else {
-                value = cell.text || "";
-              }
-              rowData[header] = value;
+              rowData[header] = getExcelCellValue(cell);
             }
           });
 

@@ -1,4 +1,3 @@
-import * as ExcelJS from "exceljs";
 import { vi } from "vitest";
 
 export function fileEvent(file?: File) {
@@ -21,16 +20,11 @@ export function makeWorksheet() {
     eachCell: (callback: (cell: any, colNumber: number) => void) => {
       callback({ text: "A", value: "A", type: 3 }, 1);
       callback({ text: "500", value: 500, type: 2 }, 2);
-      callback(
-        { text: "5/24/2026", value: dateValue, type: ExcelJS.ValueType.Date },
-        3,
-      );
+      callback({ text: "5/24/2026", value: dateValue }, 3);
       callback(
         {
           text: "=1+1",
-          value: { formula: "1+1" },
-          result: 2,
-          type: ExcelJS.ValueType.Formula,
+          value: { formula: "1+1", result: 2, date1904: false },
         },
         4,
       );

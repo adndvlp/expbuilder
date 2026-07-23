@@ -178,14 +178,16 @@ describe("useCsvData", () => {
         callback(
           {
             text: "fallback",
-            result: undefined,
-            type: ExcelJS.ValueType.Formula,
+            value: { formula: "A1", result: undefined, date1904: false },
           },
           2,
         );
         callback({ text: "", value: null, type: 3 }, 3);
         callback(
-          { text: "zero", result: 0, type: ExcelJS.ValueType.Formula },
+          {
+            text: "zero",
+            value: { formula: "1-1", result: 0, date1904: false },
+          },
           4,
         );
         callback({ text: "no header", value: "no header", type: 3 }, 5);

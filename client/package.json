@@ -22,7 +22,7 @@
     "@types/react-syntax-highlighter": "^15.5.13",
     "@xyflow/react": "^12.9.2",
     "bootstrap": "^5.3.5",
-    "exceljs": "^4.4.0",
+    "exceljs": "^3.4.0",
     "firebase": "^12.3.0",
     "grapesjs": "^0.22.13",
     "juice": "^11.0.3",

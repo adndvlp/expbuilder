@@ -7,7 +7,7 @@
     "email": "andngdv.lpr@gmail.com"
   },
   "devDependencies": {
-    "electron": "^38.3.0",
+    "electron": "^43.2.0",
     "electron-builder": "^26.8.1",
     "eslint": "^9.39.1",
     "eslint-plugin-import": "^2.32.0",
@@ -21,7 +21,7 @@
     "acorn-walk": "^8.3.4",
     "ai": "^6.0.177",
     "cheerio": "^1.1.0",
-    "cloudinary": "^1.41.3",
+    "cloudinary": "^2.10.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "electron-updater": "^6.6.2",
@@ -31,7 +31,7 @@
     "jszip": "^3.10.1",
     "lowdb": "^7.0.1",
     "multer": "^1.4.5-lts.2",
-    "multer-storage-cloudinary": "^4.0.0",
+    "multer-storage-cloudinary": "^2.2.1",
     "sharp": "^0.35.3",
     "socket.io": "^4.8.1",
     "uuid": "^13.0.0"
@@ -137,10 +137,8 @@
         }
       ],
       "icon": "icon/icon.icns",
-      "identity": "-",
-      "hardenedRuntime": true,
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist"
+      "identity": null,
+      "hardenedRuntime": false
     },
     "win": {
       "target": [
