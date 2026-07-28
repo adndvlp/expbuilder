@@ -189,7 +189,9 @@ describe("generateTrialLoopCodes integration", () => {
     expect(codes).toHaveLength(2);
     expect(normalize(codes[0])).toContain("timeline.push(Top_Trial_procedure)");
     expect(normalize(codes[1])).toContain("const loop_1_procedure = {");
-    expect(getLoopTimeline).toHaveBeenCalledWith("loop_1", false);
+    expect(getLoopTimeline).toHaveBeenCalledWith("loop_1", {
+      mode: "query",
+    });
   });
 
   it("handles missing timelines and top-level items that produce no code", async () => {

@@ -1,9 +1,20 @@
-import { ReactNode, useEffect, useState, useCallback } from "react";
-import TrialsContext, { TimelineItem } from "../../contexts/TrialsContext";
-import { Trial, Loop } from "../../components/ConfigurationPanel/types";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type { ReactNode, SetStateAction } from "react";
+import TrialsContext, {
+  type TimelineItem,
+  type TrialsContextType,
+} from "../../contexts/TrialsContext";
+import type { Loop, Trial } from "../../components/ConfigurationPanel/types";
 import { useExperimentID } from "../../hooks/useExperimentID";
 import TrialMethods from "./TrialMethods";
 import LoopMethods from "./LoopMethods";
+import useLoopTimelineCache from "./hooks/useLoopTimelineCache";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -12,24 +23,46 @@ type Props = {
 };
 
 export default function TrialsProvider({ children }: Props) {
-  const [timeline, setTimeline] = useState<TimelineItem[]>([]);
-  const [loopTimeline, setLoopTimeline] = useState<TimelineItem[]>([]);
-  const [activeLoopId, setActiveLoopId] = useState<string | number | null>(
-    null,
-  );
+  const [timeline, setTimelineState] = useState<TimelineItem[]>([]);
   const [selectedTrial, setSelectedTrial] = useState<Trial | null>(null);
   const [selectedLoop, setSelectedLoop] = useState<Loop | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const experimentID = useExperimentID();
+  const currentExperimentIdRef = useRef(experimentID);
+  const timelineRequestVersionRef = useRef(0);
+  currentExperimentIdRef.current = experimentID;
+
+  const setTimeline = useCallback(
+    (nextTimeline: SetStateAction<TimelineItem[]>) => {
+      timelineRequestVersionRef.current += 1;
+      setIsLoading(false);
+      setTimelineState(nextTimeline);
+    },
+    [],
+  );
+  const {
+    loopTimeline,
+    loopTimelineCache,
+    activeLoopId,
+    getLoopTimeline,
+    activateLoopTimeline,
+    clearLoopTimeline,
+    updateLoopTimelineItems,
+    resetLoopTimelineCache,
+  } = useLoopTimelineCache(experimentID);
 
   // ==================== TIMELINE METHODS ====================
 
   const getTimeline = useCallback(async () => {
+    if (!experimentID) return;
+    const requestedExperimentId = experimentID;
+    const requestVersion = ++timelineRequestVersionRef.current;
+
     try {
       setIsLoading(true);
       const response = await fetch(
-        `${API_URL}/api/trials-metadata/${experimentID}`,
+        `${API_URL}/api/trials-metadata/${requestedExperimentId}`,
       );
 
       if (!response.ok) {
@@ -38,76 +71,34 @@ export default function TrialsProvider({ children }: Props) {
 
       const data = await response.json();
 
-      // Actualizar timeline (solo metadata: id, type, name, branches)
-      setTimeline(data.timeline || []);
+      if (
+        requestVersion === timelineRequestVersionRef.current &&
+        requestedExperimentId === currentExperimentIdRef.current
+      ) {
+        setTimelineState(data.timeline || []);
+      }
     } catch (error) {
       console.error("Error loading trials timeline:", error);
     } finally {
-      setIsLoading(false);
+      if (
+        requestVersion === timelineRequestVersionRef.current &&
+        requestedExperimentId === currentExperimentIdRef.current
+      ) {
+        setIsLoading(false);
+      }
     }
   }, [experimentID]);
-
-  // ARCHITECTURE NOTE: `updateState` determines if the fetched data should mutate the UI (`loopTimeline`).
-  // - true (default): Used when manually navigating into a loop via the Canvas "open" button.
-  // - false: Used by background processes (like code generation in ExperimentPreview) to fetch
-  //   loop data purely as a data query, without destroying the user's current visual context.
-  const getLoopTimeline = useCallback(
-    async (
-      loopId: string | number,
-      updateState: boolean = true,
-      forceRefresh: boolean = false,
-      throwOnError: boolean = false,
-    ): Promise<TimelineItem[]> => {
-      try {
-        // Si es el mismo loop activo, devolver el estado cacheado
-        if (
-          !forceRefresh &&
-          activeLoopId === loopId &&
-          loopTimeline.length > 0 &&
-          updateState
-        ) {
-          return loopTimeline;
-        }
-
-        const response = await fetch(
-          `${API_URL}/api/loop-trials-metadata/${experimentID}/${loopId}`,
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to load loop trials timeline");
-        }
-
-        const data = await response.json();
-        const timeline = data.trialsMetadata || [];
-
-        // Guardar en el estado SIEMPRE (independientemente de selectedLoop)
-        if (updateState) {
-          setLoopTimeline(timeline);
-          setActiveLoopId(loopId);
-        }
-
-        return timeline;
-      } catch (error) {
-        console.error("Error loading loop trials timeline:", error);
-        if (throwOnError) throw error;
-        return [];
-      }
-    },
-    [experimentID, activeLoopId, loopTimeline],
-  );
-
-  const clearLoopTimeline = useCallback(() => {
-    setLoopTimeline([]);
-    setActiveLoopId(null);
-  }, []);
 
   const { createTrial, getTrial, updateTrial, updateTrialField, deleteTrial } =
     TrialMethods({
       selectedTrial,
       experimentID,
+      timeline,
+      loopTimelineCache,
       setTimeline,
-      setLoopTimeline,
+      updateLoopTimelineItems,
       getTimeline,
+      getLoopTimeline,
       setSelectedTrial,
     });
 
@@ -115,9 +106,9 @@ export default function TrialsProvider({ children }: Props) {
     LoopMethods({
       experimentID,
       timeline,
-      loopTimeline,
+      loopTimelineCache,
       setTimeline,
-      setLoopTimeline,
+      updateLoopTimelineItems,
       getTimeline,
       getLoopTimeline,
       selectedLoop,
@@ -151,7 +142,7 @@ export default function TrialsProvider({ children }: Props) {
         return false;
       }
     },
-    [experimentID],
+    [experimentID, setTimeline],
   );
 
   // ==================== DELETE ALL ====================
@@ -170,13 +161,14 @@ export default function TrialsProvider({ children }: Props) {
       setTimeline([]);
       setSelectedTrial(null);
       setSelectedLoop(null);
+      resetLoopTimelineCache();
 
       return true;
     } catch (error) {
       console.error("Error deleting all trials:", error);
       return false;
     }
-  }, [experimentID]);
+  }, [experimentID, resetLoopTimelineCache, setTimeline]);
 
   // ==================== INITIAL LOAD ====================
 
@@ -186,34 +178,63 @@ export default function TrialsProvider({ children }: Props) {
     }
   }, [experimentID, getTimeline]);
 
+  const contextValue = useMemo<TrialsContextType>(
+    () => ({
+      timeline,
+      loopTimeline,
+      loopTimelineCache,
+      activeLoopId,
+      selectedTrial,
+      setSelectedTrial,
+      selectedLoop,
+      setSelectedLoop,
+      createTrial,
+      getTrial,
+      updateTrial,
+      updateTrialField,
+      deleteTrial,
+      createLoop,
+      getLoop,
+      updateLoop,
+      updateLoopField,
+      deleteLoop,
+      updateTimeline,
+      getTimeline,
+      getLoopTimeline,
+      activateLoopTimeline,
+      clearLoopTimeline,
+      deleteAllTrials,
+      isLoading,
+    }),
+    [
+      activeLoopId,
+      activateLoopTimeline,
+      clearLoopTimeline,
+      createLoop,
+      createTrial,
+      deleteAllTrials,
+      deleteLoop,
+      deleteTrial,
+      getLoop,
+      getLoopTimeline,
+      getTimeline,
+      getTrial,
+      isLoading,
+      loopTimeline,
+      loopTimelineCache,
+      selectedLoop,
+      selectedTrial,
+      timeline,
+      updateLoop,
+      updateLoopField,
+      updateTimeline,
+      updateTrial,
+      updateTrialField,
+    ],
+  );
+
   return (
-    <TrialsContext.Provider
-      value={{
-        timeline,
-        loopTimeline,
-        activeLoopId,
-        selectedTrial,
-        setSelectedTrial,
-        selectedLoop,
-        setSelectedLoop,
-        createTrial,
-        getTrial,
-        updateTrial,
-        updateTrialField,
-        deleteTrial,
-        createLoop,
-        getLoop,
-        updateLoop,
-        updateLoopField,
-        deleteLoop,
-        updateTimeline,
-        getTimeline,
-        getLoopTimeline,
-        clearLoopTimeline,
-        deleteAllTrials,
-        isLoading,
-      }}
-    >
+    <TrialsContext.Provider value={contextValue}>
       {children}
     </TrialsContext.Provider>
   );

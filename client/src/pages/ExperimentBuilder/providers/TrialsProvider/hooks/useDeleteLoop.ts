@@ -7,10 +7,9 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 export default function useDeleteLoop({
   experimentID,
-  timeline,
-  loopTimeline,
+  loopTimelineCache,
   setTimeline,
-  setLoopTimeline,
+  updateLoopTimelineItems,
   getTimeline,
   getLoopTimeline,
   selectedLoop,
@@ -19,6 +18,7 @@ export default function useDeleteLoop({
 }: LoopMethodsWithGetLoop) {
   return useCallback(
     async (id: string | number): Promise<boolean> => {
+      let parentLoopId: string | number | null = null;
       try {
         // Obtener loop antes de eliminar para saber sus trials, branches y si es nested
         let loopToDelete: Loop | null = null;
@@ -37,24 +37,21 @@ export default function useDeleteLoop({
         if (!loopToDelete) {
           throw new Error("Loop not found");
         }
+        parentLoopId = loopToDelete.parentLoopId ?? null;
 
         // Obtener los metadatos de TODOS los trials que tienen este parentLoopId
         // (no solo los que están en loop.trials)
         let loopTrialsMetadata: TimelineItem[] = [];
-        const hasDataInLoopTimeline =
-          selectedLoop?.id === id && loopTimeline.length > 0;
+        const cachedEntry = loopTimelineCache[String(id)];
 
-        if (hasDataInLoopTimeline) {
-          loopTrialsMetadata = loopTimeline;
+        if (cachedEntry?.status === "ready") {
+          loopTrialsMetadata = cachedEntry.items;
         } else {
           try {
-            const response = await fetch(
-              `${API_URL}/api/loop-trials-metadata/${experimentID}/${id}`,
-            );
-            if (response.ok) {
-              const data = await response.json();
-              loopTrialsMetadata = data.trialsMetadata || [];
-            }
+            loopTrialsMetadata = await getLoopTimeline(id, {
+              mode: "query",
+              throwOnError: true,
+            });
           } catch (error) {
             console.error("Error fetching loop trials:", error);
           }
@@ -186,28 +183,8 @@ export default function useDeleteLoop({
           return updated;
         };
 
-        // Aplicar optimistic update al timeline correcto
-        // IMPORTANTE: Verificar si el padre del nested loop realmente existe
-        // (puede haber sido borrado antes, dejando el loop con parentLoopId obsoleto)
-        let shouldUseLoopTimeline = false;
-        if (isNestedLoop && loopToDelete.parentLoopId) {
-          // Verificar si el padre existe en el timeline principal o en loopTimeline
-          const parentExistsInMainTimeline = timeline.some(
-            (item: TimelineItem) =>
-              item.id === loopToDelete.parentLoopId && item.type === "loop",
-          );
-          const parentExistsInLoopTimeline = loopTimeline.some(
-            (item: TimelineItem) =>
-              item.id === loopToDelete.parentLoopId && item.type === "loop",
-          );
-
-          // Solo usar loopTimeline si el padre realmente existe
-          shouldUseLoopTimeline =
-            parentExistsInMainTimeline || parentExistsInLoopTimeline;
-        }
-
-        if (shouldUseLoopTimeline) {
-          setLoopTimeline(optimisticDeleteFn);
+        if (isNestedLoop && parentLoopId != null) {
+          updateLoopTimelineItems(parentLoopId, optimisticDeleteFn);
         } else {
           setTimeline(optimisticDeleteFn);
         }
@@ -234,8 +211,11 @@ export default function useDeleteLoop({
       } catch (error) {
         console.error("Error deleting loop:", error);
         // Si falla, recargar timeline apropiado
-        if (selectedLoop?.parentLoopId) {
-          await getLoopTimeline(selectedLoop.parentLoopId, true, true);
+        if (parentLoopId != null) {
+          await getLoopTimeline(parentLoopId, {
+            mode: "cache",
+            forceRefresh: true,
+          });
         } else {
           await getTimeline();
         }
@@ -245,14 +225,13 @@ export default function useDeleteLoop({
     [
       experimentID,
       selectedLoop,
-      timeline,
       getTimeline,
       getLoopTimeline,
       getLoop,
       setTimeline,
-      setLoopTimeline,
       setSelectedLoop,
-      loopTimeline,
+      loopTimelineCache,
+      updateLoopTimelineItems,
     ],
   );
 }

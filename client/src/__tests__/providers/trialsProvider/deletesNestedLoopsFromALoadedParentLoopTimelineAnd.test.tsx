@@ -241,8 +241,11 @@ describe("TrialsProvider", () => {
 
     expect(result).toBe(false);
     await waitFor(() => {
-      expect(view.getContext()?.loopTimeline).toEqual(reloaded);
+      expect(
+        view.getContext()?.loopTimelineCache["loop-parent"]?.items,
+      ).toEqual(reloaded);
     });
+    expect(view.getContext()?.activeLoopId).toBeNull();
     expect(console.error).toHaveBeenCalledWith(
       "Error deleting loop:",
       expect.any(Error),

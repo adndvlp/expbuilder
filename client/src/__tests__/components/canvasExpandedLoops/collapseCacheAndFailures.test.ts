@@ -9,13 +9,12 @@ import {
 
 describe("useExpandedLoopPath collapse, cache and failures", () => {
   it("collapses an ancestor with every descendant and activates its parent", async () => {
-    const refreshedParentItems = [trialItem("parent-refreshed")];
-    const { result, loadLoopItems, activateRoot } = setupExpandedLoopPath();
+    const parentItems = [trialItem("parent")];
+    const { result, loadLoopItems, activateScope } = setupExpandedLoopPath();
     loadLoopItems
-      .mockResolvedValueOnce([trialItem("parent")])
+      .mockResolvedValueOnce(parentItems)
       .mockResolvedValueOnce([trialItem("child")])
-      .mockResolvedValueOnce([trialItem("grandchild")])
-      .mockResolvedValueOnce(refreshedParentItems);
+      .mockResolvedValueOnce([trialItem("grandchild")]);
 
     await act(async () => {
       await result.current.expandLoop(loopReference("parent"));
@@ -25,8 +24,9 @@ describe("useExpandedLoopPath collapse, cache and failures", () => {
     });
 
     expect(pathIds(result.current.expandedPath)).toEqual(["parent"]);
-    expect(result.current.expandedPath[0].items).toEqual(refreshedParentItems);
+    expect(result.current.expandedPath[0].items).toEqual(parentItems);
     expect(result.current.activeScopeId).toBe("parent");
+    expect(loadLoopItems).toHaveBeenCalledTimes(3);
 
     await act(async () => {
       expect(await result.current.collapseLoop("parent")).toBe(true);
@@ -34,7 +34,8 @@ describe("useExpandedLoopPath collapse, cache and failures", () => {
 
     expect(result.current.expandedPath).toEqual([]);
     expect(result.current.activeScopeId).toBeNull();
-    expect(activateRoot).toHaveBeenCalledTimes(1);
+    expect(loadLoopItems).toHaveBeenCalledTimes(3);
+    expect(activateScope).toHaveBeenLastCalledWith(null);
   });
 
   it("synchronizes cached items locally and refreshes them explicitly", async () => {
@@ -107,17 +108,17 @@ describe("useExpandedLoopPath collapse, cache and failures", () => {
     expect(result.current.error).toBeNull();
   });
 
-  it("does not collapse a route when reactivating its parent fails", async () => {
+  it("does not collapse a route when local parent activation fails", async () => {
     const failure = new Error("parent reload failed");
-    const { result, loadLoopItems } = setupExpandedLoopPath();
+    const { result, loadLoopItems, activateScope } = setupExpandedLoopPath();
     loadLoopItems
       .mockResolvedValueOnce([trialItem("parent")])
-      .mockResolvedValueOnce([trialItem("child")])
-      .mockRejectedValueOnce(failure);
+      .mockResolvedValueOnce([trialItem("child")]);
 
     await act(async () => {
       await result.current.expandLoop(loopReference("parent"));
       await result.current.expandLoop(loopReference("child"), "parent");
+      activateScope.mockRejectedValueOnce(failure);
       expect(await result.current.collapseLoop("child")).toBe(false);
     });
 

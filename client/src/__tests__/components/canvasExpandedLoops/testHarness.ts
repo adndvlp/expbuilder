@@ -5,6 +5,7 @@ import {
   useExpandedLoopPath,
   type ExpandedLoopReference,
   type LoadLoopItems,
+  type LoopScopeId,
 } from "../../../pages/ExperimentBuilder/components/Canvas/hooks/useExpandedLoopPath";
 
 export const trialItem = (id: string): TimelineItem => ({
@@ -20,14 +21,14 @@ export const loopReference = (
 
 export const setupExpandedLoopPath = () => {
   const loadLoopItems = vi.fn<LoadLoopItems>();
-  const activateRoot = vi
-    .fn<() => Promise<void>>()
-    .mockResolvedValue(undefined);
+  const activateScope = vi
+    .fn<(scopeId: LoopScopeId | null) => boolean | Promise<boolean>>()
+    .mockReturnValue(true);
   const hook = renderHook(() =>
-    useExpandedLoopPath({ loadLoopItems, activateRoot }),
+    useExpandedLoopPath({ loadLoopItems, onActivateScope: activateScope }),
   );
 
-  return { ...hook, loadLoopItems, activateRoot };
+  return { ...hook, loadLoopItems, activateScope };
 };
 
 export const pathIds = (

@@ -1,5 +1,5 @@
 import { createContext } from "react";
-import { Loop, Trial } from "../components/ConfigurationPanel/types";
+import type { Loop, Trial } from "../components/ConfigurationPanel/types";
 
 export type TimelineItem = {
   id: string | number;
@@ -10,12 +10,40 @@ export type TimelineItem = {
   parentLoopId?: string | null;
 };
 
-type TrialsContextType = {
+export type LoopTimelineCacheEntry =
+  | {
+      status: "loading" | "ready";
+      items: TimelineItem[];
+      revision: number;
+    }
+  | {
+      status: "error";
+      items: TimelineItem[];
+      revision: number;
+      error: unknown;
+    };
+
+export type LoopTimelineCache = Record<string, LoopTimelineCacheEntry>;
+
+export type LoopTimelineLoadOptions = {
+  mode?: "activate" | "cache" | "query";
+  forceRefresh?: boolean;
+  throwOnError?: boolean;
+};
+
+export type NewBranchItem = Pick<TimelineItem, "id" | "name"> & {
+  branches?: (string | number)[] | null;
+  trials?: (string | number)[] | null;
+  plugin?: unknown;
+};
+
+export type TrialsContextType = {
   // Tres arrays planos
   timeline: TimelineItem[];
 
   // Loop timeline para el loop activo
   loopTimeline: TimelineItem[];
+  loopTimelineCache: LoopTimelineCache;
   activeLoopId: string | number | null;
 
   // Estado de selección
@@ -35,7 +63,7 @@ type TrialsContextType = {
   updateTrialField: (
     id: string | number,
     fieldName: string,
-    value: any,
+    value: unknown,
     updateSelectedTrial?: boolean,
   ) => Promise<boolean>;
   deleteTrial: (id: string | number) => Promise<boolean>;
@@ -46,12 +74,12 @@ type TrialsContextType = {
   updateLoop: (
     id: string | number,
     loop: Partial<Loop>,
-    newBranchItem?: any,
+    newBranchItem?: NewBranchItem,
   ) => Promise<Loop | null>;
   updateLoopField: (
     id: string | number,
     fieldName: string,
-    value: any,
+    value: unknown,
     updateSelectedLoop?: boolean,
   ) => Promise<boolean>;
   deleteLoop: (id: string | number) => Promise<boolean>;
@@ -65,10 +93,11 @@ type TrialsContextType = {
   // Método para cargar timeline de trials/loops dentro de un loop
   getLoopTimeline: (
     loopId: string | number,
-    updateState?: boolean,
-    forceRefresh?: boolean,
-    throwOnError?: boolean,
+    options?: LoopTimelineLoadOptions,
   ) => Promise<TimelineItem[]>;
+
+  // Cambia el scope activo usando metadata previamente cargada.
+  activateLoopTimeline: (loopId: string | number | null) => boolean;
 
   // Método para limpiar loop timeline
   clearLoopTimeline: () => void;
@@ -83,6 +112,7 @@ type TrialsContextType = {
 const TrialsContext = createContext<TrialsContextType>({
   timeline: [],
   loopTimeline: [],
+  loopTimelineCache: {},
   activeLoopId: null,
   selectedTrial: null,
   setSelectedTrial: () => {},
@@ -101,6 +131,7 @@ const TrialsContext = createContext<TrialsContextType>({
   updateTimeline: async () => false,
   getTimeline: async () => {},
   getLoopTimeline: async () => [],
+  activateLoopTimeline: () => false,
   clearLoopTimeline: () => {},
   deleteAllTrials: async () => false,
   isLoading: false,

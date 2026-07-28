@@ -96,6 +96,9 @@ function installTrialsContext(overrides: Partial<any> = {}) {
       { id: 3, type: "trial", name: "Trial 3", branches: [] },
     ],
     loopTimeline: [],
+    loopTimelineCache: {},
+    activeLoopId: null,
+    activateLoopTimeline: vi.fn(() => true),
     selectedTrial: null,
     setSelectedTrial: vi.fn(),
     selectedLoop: null,
@@ -193,9 +196,11 @@ describe("Canvas container", () => {
     expect(screen.getAllByTestId("react-flow")).toHaveLength(1);
     expect(mocks.trialsContext.getLoopTimeline).toHaveBeenCalledWith(
       "missing-loop",
-      true,
-      false,
-      true,
+      {
+        mode: "cache",
+        forceRefresh: false,
+        throwOnError: true,
+      },
     );
     expect(mocks.trialsContext.setSelectedTrial).toHaveBeenCalledWith(null);
     expect(mocks.trialsContext.setSelectedLoop).toHaveBeenCalledWith(null);
@@ -242,9 +247,11 @@ describe("Canvas container", () => {
     expect(screen.getAllByTestId("react-flow")).toHaveLength(1);
     expect(mocks.trialsContext.getLoopTimeline).toHaveBeenCalledWith(
       "loop-1",
-      true,
-      false,
-      true,
+      {
+        mode: "cache",
+        forceRefresh: false,
+        throwOnError: true,
+      },
     );
 
     await act(async () => {
@@ -262,9 +269,11 @@ describe("Canvas container", () => {
 
     expect(mocks.trialsContext.getLoopTimeline).toHaveBeenCalledWith(
       "loop-child",
-      true,
-      false,
-      true,
+      {
+        mode: "cache",
+        forceRefresh: false,
+        throwOnError: true,
+      },
     );
     expect(mocks.trialsContext.getLoop).toHaveBeenCalledWith("loop-child");
     expect(mocks.trialsContext.setSelectedLoop).toHaveBeenCalledWith(

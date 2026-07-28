@@ -1,15 +1,24 @@
 import { useCallback } from "react";
-import { Trial } from "../../components/ConfigurationPanel/types";
-import { TimelineItem } from "../../contexts/TrialsContext";
-import { TrialMethodsProps } from "./types";
+import type { Trial } from "../../components/ConfigurationPanel/types";
+import type { TimelineItem } from "../../contexts/TrialsContext";
+import { findTimelineItemLocation } from "./itemScope";
+import type { TrialMethodsProps } from "./types";
+import {
+  removeTrialFromTimeline,
+  updateTrialMetadata,
+  updateTrialWithBranches,
+} from "./trialTimelineUpdates";
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function TrialMethods({
   selectedTrial,
   experimentID,
+  timeline,
+  loopTimelineCache,
   setTimeline,
-  setLoopTimeline,
+  updateLoopTimelineItems,
   getTimeline,
+  getLoopTimeline,
   setSelectedTrial,
 }: TrialMethodsProps) {
   const createTrial = useCallback(
@@ -71,6 +80,11 @@ export default function TrialMethods({
       trial: Partial<Trial>,
       newBranchTrial?: Trial, // Trial recién creado como branch
     ): Promise<Trial | null> => {
+      const parentLoopId =
+        selectedTrial && String(selectedTrial.id) === String(id)
+          ? (selectedTrial.parentLoopId ?? null)
+          : (findTimelineItemLocation(id, timeline, loopTimelineCache)
+              ?.parentLoopId ?? null);
       try {
         const response = await fetch(
           `${API_URL}/api/trial/${experimentID}/${id}`,
@@ -88,53 +102,14 @@ export default function TrialMethods({
         const data = await response.json();
         const updatedTrial = data.trial;
 
-        // Optimistic UI: actualizar el timeline correcto
-        const updateTimelineFn = (prev: TimelineItem[]) => {
-          // 1. Actualizar el trial que se está modificando
-          const updated = prev.map((item) =>
-            item.id === id && item.type === "trial"
-              ? {
-                  ...item,
-                  name: updatedTrial.name,
-                  branches: updatedTrial.branches || [],
-                }
-              : item,
+        const updateTimelineFn = (items: TimelineItem[]) =>
+          updateTrialWithBranches(items, id, updatedTrial, newBranchTrial);
+
+        if (updatedTrial.parentLoopId != null) {
+          updateLoopTimelineItems(
+            updatedTrial.parentLoopId,
+            updateTimelineFn,
           );
-
-          // 2. Agregar trials de branches que no estén en el timeline
-          if (updatedTrial.branches && updatedTrial.branches.length > 0) {
-            const existingIds = new Set(updated.map((item) => item.id));
-            const missingBranchIds = updatedTrial.branches.filter(
-              (branchId: number | string) => !existingIds.has(branchId),
-            );
-
-            // Para cada branch faltante, agregarlo al timeline
-            missingBranchIds.forEach((branchId: number | string) => {
-              // Si es el trial recién creado, usar sus datos reales
-              if (newBranchTrial && newBranchTrial.id === branchId) {
-                updated.push({
-                  id: newBranchTrial.id,
-                  type: "trial" as const,
-                  name: newBranchTrial.name,
-                  branches: newBranchTrial.branches || [],
-                });
-              } else {
-                // Para otros branches, usar placeholder (se actualizarán después)
-                updated.push({
-                  id: branchId,
-                  type: "trial" as const,
-                  name: "Loading...",
-                  branches: [],
-                });
-              }
-            });
-          }
-
-          return updated;
-        };
-
-        if (updatedTrial.parentLoopId) {
-          setLoopTimeline(updateTimelineFn);
         } else {
           setTimeline(updateTimelineFn);
         }
@@ -147,12 +122,28 @@ export default function TrialMethods({
         return updatedTrial;
       } catch (error) {
         console.error("Error updating trial:", error);
-        // Si falla, recargar timeline
-        await getTimeline();
+        if (parentLoopId != null) {
+          await getLoopTimeline(parentLoopId, {
+            mode: "cache",
+            forceRefresh: true,
+          });
+        } else {
+          await getTimeline();
+        }
         return null;
       }
     },
-    [experimentID, selectedTrial, getTimeline],
+    [
+      experimentID,
+      getLoopTimeline,
+      getTimeline,
+      loopTimelineCache,
+      selectedTrial,
+      setSelectedTrial,
+      setTimeline,
+      timeline,
+      updateLoopTimelineItems,
+    ],
   );
 
   // Actualización granular de un solo campo (optimizado para autoguardado)
@@ -160,7 +151,7 @@ export default function TrialMethods({
     async (
       id: string | number,
       fieldName: string,
-      value: any,
+      value: unknown,
       updateSelectedTrial: boolean = true,
     ): Promise<boolean> => {
       try {
@@ -182,19 +173,14 @@ export default function TrialMethods({
 
         // Optimistic UI: actualizar timeline si es campo name o branches
         if (fieldName === "name" || fieldName === "branches") {
-          const updateTimelineItems = (prev: TimelineItem[]) =>
-            prev.map((item) =>
-              item.id === id && item.type === "trial"
-                ? {
-                    ...item,
-                    name: updatedTrial.name,
-                    branches: updatedTrial.branches || [],
-                  }
-                : item,
-            );
+          const updateTimelineItems = (items: TimelineItem[]) =>
+            updateTrialMetadata(items, id, updatedTrial);
 
-          if (updatedTrial.parentLoopId) {
-            setLoopTimeline(updateTimelineItems);
+          if (updatedTrial.parentLoopId != null) {
+            updateLoopTimelineItems(
+              updatedTrial.parentLoopId,
+              updateTimelineItems,
+            );
           } else {
             setTimeline(updateTimelineItems);
           }
@@ -220,57 +206,35 @@ export default function TrialMethods({
         return false;
       }
     },
-    [experimentID, selectedTrial, getTrial, setLoopTimeline, setTimeline],
+    [
+      experimentID,
+      getTrial,
+      selectedTrial,
+      setSelectedTrial,
+      setTimeline,
+      updateLoopTimelineItems,
+    ],
   );
 
   const deleteTrial = useCallback(
     async (id: string | number): Promise<boolean> => {
+      const parentLoopId =
+        selectedTrial && String(selectedTrial.id) === String(id)
+          ? (selectedTrial.parentLoopId ?? null)
+          : (findTimelineItemLocation(id, timeline, loopTimelineCache)
+              ?.parentLoopId ?? null);
       try {
-        // ========== OPTIMISTIC UI: BORRADO INTELIGENTE ==========
-        // Reconectar TODOS los branches (hijos) del trial eliminado con TODOS los padres
-        const updateTimelineFn = (prev: any[]) => {
-          // 1. Encontrar el trial que se va a eliminar para obtener sus branches (hijos)
-          const trialToDelete = prev.find(
-            (item) => item.id === id && item.type === "trial",
-          );
-          const childrenBranches = trialToDelete?.branches || [];
+        const updateTimelineItems = (items: TimelineItem[]) =>
+          removeTrialFromTimeline(items, id);
+        if (parentLoopId != null) {
+          updateLoopTimelineItems(parentLoopId, updateTimelineItems);
+        } else {
+          setTimeline(updateTimelineItems);
+        }
 
-          // 2. Reconectar: reemplazar referencias al trial eliminado con TODOS sus hijos
-          //    Ejemplo: Trial0→Trial1→[Trial2, Trial3]
-          //    Al borrar Trial1 → Trial0→[Trial2, Trial3]
-          const reconnected = prev.map((item) => {
-            if (item.branches && item.branches.includes(id)) {
-              // Remover el trial eliminado
-              const newBranches = item.branches.filter(
-                (branchId: string | number) => branchId !== id,
-              );
-              // Agregar TODOS los hijos del trial eliminado (evitar duplicados)
-              childrenBranches.forEach((childId: string | number) => {
-                if (!newBranches.includes(childId)) {
-                  newBranches.push(childId);
-                }
-              });
-              return {
-                ...item,
-                branches: newBranches,
-              };
-            }
-            return item;
-          });
-
-          // 3. Eliminar el trial del timeline
-          return reconnected.filter((item) => item.id !== id);
-        };
-
-        // Actualizar ambos timelines para cubrir todos los casos
-        setTimeline(updateTimelineFn);
-        setLoopTimeline(updateTimelineFn);
-
-        // Limpiar selección si era el trial eliminado
         if (selectedTrial?.id === id) {
           setSelectedTrial(null);
         }
-        // ========== FIN OPTIMISTIC UI ==========
 
         const response = await fetch(
           `${API_URL}/api/trial/${experimentID}/${id}`,
@@ -286,12 +250,28 @@ export default function TrialMethods({
         return true;
       } catch (error) {
         console.error("Error deleting trial:", error);
-        // Si falla, recargar timeline
-        await getTimeline();
+        if (parentLoopId != null) {
+          await getLoopTimeline(parentLoopId, {
+            mode: "cache",
+            forceRefresh: true,
+          });
+        } else {
+          await getTimeline();
+        }
         return false;
       }
     },
-    [experimentID, selectedTrial, getTimeline, setTimeline, setLoopTimeline],
+    [
+      experimentID,
+      getLoopTimeline,
+      getTimeline,
+      loopTimelineCache,
+      selectedTrial,
+      setSelectedTrial,
+      setTimeline,
+      timeline,
+      updateLoopTimelineItems,
+    ],
   );
   return { createTrial, getTrial, updateTrial, updateTrialField, deleteTrial };
 }

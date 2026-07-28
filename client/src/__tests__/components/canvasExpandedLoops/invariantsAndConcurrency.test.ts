@@ -1,5 +1,6 @@
-import { act } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { useExpandedLoopPath } from "../../../pages/ExperimentBuilder/components/Canvas/hooks/useExpandedLoopPath";
 import type { TimelineItem } from "../../../pages/ExperimentBuilder/contexts/TrialsContext";
 import {
   loopReference,
@@ -90,7 +91,7 @@ describe("useExpandedLoopPath invariants and concurrency", () => {
   });
 
   it("supports collapsing the whole route and an already empty route", async () => {
-    const { result, loadLoopItems, activateRoot } = setupExpandedLoopPath();
+    const { result, loadLoopItems, activateScope } = setupExpandedLoopPath();
     loadLoopItems.mockResolvedValue([trialItem("parent")]);
 
     await act(async () => {
@@ -101,21 +102,21 @@ describe("useExpandedLoopPath invariants and concurrency", () => {
 
     expect(result.current.expandedPath).toEqual([]);
     expect(result.current.activeScopeId).toBeNull();
-    expect(activateRoot).toHaveBeenCalledTimes(2);
+    expect(activateScope).toHaveBeenLastCalledWith(null);
   });
 
   it("keeps cached items when activation or refresh fails", async () => {
     const cachedItems = [trialItem("cached")];
     const activateFailure = new Error("activation failed");
     const refreshFailure = new Error("refresh failed");
-    const { result, loadLoopItems } = setupExpandedLoopPath();
+    const { result, loadLoopItems, activateScope } = setupExpandedLoopPath();
     loadLoopItems
       .mockResolvedValueOnce(cachedItems)
-      .mockRejectedValueOnce(activateFailure)
       .mockRejectedValueOnce(refreshFailure);
 
     await act(async () => {
       await result.current.expandLoop(loopReference("parent"));
+      activateScope.mockRejectedValueOnce(activateFailure);
       expect(await result.current.activateScope("parent")).toBe(false);
     });
     expect(result.current.error?.cause).toBe(activateFailure);
@@ -155,9 +156,9 @@ describe("useExpandedLoopPath invariants and concurrency", () => {
   });
 
   it("ignores stale root failures after a newer expansion wins", async () => {
-    const slowRoot = deferred<void>();
-    const { result, loadLoopItems, activateRoot } = setupExpandedLoopPath();
-    activateRoot.mockImplementationOnce(() => slowRoot.promise);
+    const slowRoot = deferred<boolean>();
+    const { result, loadLoopItems, activateScope } = setupExpandedLoopPath();
+    activateScope.mockImplementationOnce(() => slowRoot.promise);
     loadLoopItems.mockResolvedValueOnce([trialItem("winner")]);
 
     let rootActivation!: Promise<boolean>;
@@ -176,10 +177,17 @@ describe("useExpandedLoopPath invariants and concurrency", () => {
     expect(result.current.error).toBeNull();
   });
 
-  it("works without a root activation callback", async () => {
+  it("works without a scope activation callback", async () => {
     const loadLoopItems = vi.fn().mockResolvedValue([trialItem("parent")]);
-    const { result } = setupExpandedLoopPath();
-    result.current.clearError();
-    expect(loadLoopItems).not.toHaveBeenCalled();
+    const { result } = renderHook(() => useExpandedLoopPath({ loadLoopItems }));
+
+    await act(async () => {
+      expect(await result.current.expandLoop(loopReference("parent"))).toBe(
+        true,
+      );
+      expect(await result.current.activateScope(null)).toBe(true);
+    });
+
+    expect(loadLoopItems).toHaveBeenCalledTimes(1);
   });
 });

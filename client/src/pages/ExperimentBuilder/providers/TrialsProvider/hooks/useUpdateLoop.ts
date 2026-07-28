@@ -1,14 +1,17 @@
 import { useCallback } from "react";
-import { Loop } from "../../../components/ConfigurationPanel/types";
-import { TimelineItem } from "../../../contexts/TrialsContext";
-import { LoopMethodsWithGetLoop } from "../types";
+import type { Loop } from "../../../components/ConfigurationPanel/types";
+import type {
+  NewBranchItem,
+  TimelineItem,
+} from "../../../contexts/TrialsContext";
+import type { LoopMethodsWithGetLoop } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function useUpdateLoop({
   experimentID,
   setTimeline,
-  setLoopTimeline,
+  updateLoopTimelineItems,
   getTimeline,
   getLoopTimeline,
   selectedLoop,
@@ -19,28 +22,20 @@ export default function useUpdateLoop({
     async (
       id: string | number,
       loop: Partial<Loop>,
-      newBranchItem?: any, // Trial o Loop recién creado como branch
+      newBranchItem?: NewBranchItem,
     ): Promise<Loop | null> => {
+      let parentLoopId: string | number | null = null;
       try {
-        // Determinar si es nested loop buscando en ambos timelines
-        // (no podemos confiar solo en loop.parentLoopId porque puede no estar en el partial)
-        let currentLoop: Loop | null = null;
-        let isNestedLoop = false;
+        const currentLoopData =
+          selectedLoop?.id === id ? selectedLoop : await getLoop(id);
+        if (!currentLoopData) throw new Error("Loop not found");
+        parentLoopId = currentLoopData.parentLoopId ?? null;
 
-        // Buscar primero en selectedLoop
-        if (selectedLoop?.id === id) {
-          currentLoop = selectedLoop;
-          isNestedLoop = selectedLoop.parentLoopId != null;
-        }
-
-        // Si no está seleccionado, necesitamos obtenerlo (pero sin hacer fetch innecesario)
-        // Un loop con parentLoopId pertenece al scope expandido de otro loop.
-
-        // OPTIMISTIC UI PRIMERO - actualizar antes del fetch
         const optimisticUpdateFn = (prev: TimelineItem[]) => {
-          // 1. Actualizar el loop que se está modificando
+          let targetFound = false;
           const updated = prev.map((item) => {
             if (item.id === id && item.type === "loop") {
+              targetFound = true;
               return {
                 ...item,
                 name: loop.name ?? item.name,
@@ -50,6 +45,7 @@ export default function useUpdateLoop({
             }
             return item;
           });
+          if (!targetFound) return prev;
 
           // 2. Agregar items de branches que no estén en el timeline
           const updatedBranches = loop.branches;
@@ -95,20 +91,11 @@ export default function useUpdateLoop({
           return updated;
         };
 
-        // Aplicar optimistic update al timeline correcto
-        if (isNestedLoop) {
-          setLoopTimeline(optimisticUpdateFn);
+        if (parentLoopId != null) {
+          updateLoopTimelineItems(parentLoopId, optimisticUpdateFn);
         } else {
           setTimeline(optimisticUpdateFn);
         }
-
-        // BACKEND - obtener loop actual y actualizar
-        const currentLoopData = currentLoop || (await getLoop(id));
-        if (!currentLoopData) {
-          throw new Error("Loop not found");
-        }
-
-        isNestedLoop = currentLoopData.parentLoopId != null;
 
         const response = await fetch(
           `${API_URL}/api/loop/${experimentID}/${id}`,
@@ -203,8 +190,9 @@ export default function useUpdateLoop({
               : item,
           );
 
-        if (isNestedLoop) {
-          setLoopTimeline(finalUpdateFn);
+        parentLoopId = updatedLoop.parentLoopId ?? parentLoopId;
+        if (parentLoopId != null) {
+          updateLoopTimelineItems(parentLoopId, finalUpdateFn);
         } else {
           setTimeline(finalUpdateFn);
         }
@@ -218,8 +206,11 @@ export default function useUpdateLoop({
       } catch (error) {
         console.error("Error updating loop:", error);
         // Si falla, recargar timeline apropiado
-        if (selectedLoop?.parentLoopId) {
-          await getLoopTimeline(selectedLoop.parentLoopId, true, true);
+        if (parentLoopId != null) {
+          await getLoopTimeline(parentLoopId, {
+            mode: "cache",
+            forceRefresh: true,
+          });
         } else {
           await getTimeline();
         }
@@ -233,8 +224,8 @@ export default function useUpdateLoop({
       getLoopTimeline,
       getLoop,
       setTimeline,
-      setLoopTimeline,
       setSelectedLoop,
+      updateLoopTimelineItems,
     ],
   );
 }

@@ -33,7 +33,7 @@ export async function generateLoopCode(
     // ExperimentPreview whenever a loop is selected to generate its code. If we update the global
     // UI state (loopTimeline) here, it would force the Canvas to render this loop's contents,
     // causing an unexpected visual "auto-open" behavior when clicking a nested loop node.
-    const trialsMetadata = await getLoopTimeline(loop.id, false);
+    const trialsMetadata = await getLoopTimeline(loop.id, { mode: "query" });
     const loopMergePointIds = getMergePointIds(trialsMetadata);
 
     // Generate code for each trial/loop in the loop

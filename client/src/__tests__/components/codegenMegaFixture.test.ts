@@ -244,8 +244,12 @@ describe("codegen mega regression fixture", () => {
     const combined = normalize(codes.join("\n"));
 
     expect(codes).toHaveLength(3);
-    expect(getLoopTimeline).toHaveBeenCalledWith("loop_parent", false);
-    expect(getLoopTimeline).toHaveBeenCalledWith("loop_child", false);
+    expect(getLoopTimeline).toHaveBeenCalledWith("loop_parent", {
+      mode: "query",
+    });
+    expect(getLoopTimeline).toHaveBeenCalledWith("loop_child", {
+      mode: "query",
+    });
 
     expect(combined).toContain("const test_stimuli_Dynamic_Survey_Trial =");
     expect(combined).toContain("type: DynamicPlugin");

@@ -32,7 +32,10 @@ function TrialsContextProbe() {
             await ctx.deleteLoop("loop"),
             await ctx.updateTimeline([]),
             await ctx.getTimeline(),
-            await ctx.getLoopTimeline("loop", true, true),
+            await ctx.getLoopTimeline("loop", {
+              mode: "activate",
+              forceRefresh: true,
+            }),
             ctx.clearLoopTimeline(),
             await ctx.deleteAllTrials(),
           ];

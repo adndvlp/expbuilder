@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TimelineItem } from "../../../contexts/TrialsContext";
 import useTrials from "../../../hooks/useTrials";
 import type { CanvasActionScope } from "../actions";
@@ -26,8 +26,7 @@ export function useCanvasWorkspace() {
   const trials = useTrials();
   const {
     timeline,
-    loopTimeline,
-    activeLoopId,
+    loopTimelineCache,
     selectedTrial,
     selectedLoop,
     setSelectedTrial,
@@ -35,20 +34,29 @@ export function useCanvasWorkspace() {
     getTrial,
     getLoop,
     getLoopTimeline,
-    clearLoopTimeline,
+    activateLoopTimeline,
   } = trials;
   const [selectedScopeId, setSelectedScopeId] =
     useState<LoopScopeId | null>(null);
   const [showBranchedModal, setShowBranchedModal] = useState(false);
+  const selectionRequestRef = useRef(0);
   const loadLoopItems = useCallback(
     (loopId: LoopScopeId, options: { forceRefresh: boolean }) =>
-      getLoopTimeline(loopId, true, options.forceRefresh, true),
+      getLoopTimeline(loopId, {
+        mode: "cache",
+        forceRefresh: options.forceRefresh,
+        throwOnError: true,
+      }),
     [getLoopTimeline],
   );
-  const activateRoot = useCallback(() => {
-    clearLoopTimeline?.();
-  }, [clearLoopTimeline]);
-  const expanded = useExpandedLoopPath({ loadLoopItems, activateRoot });
+  const onActivateScope = useCallback(
+    (scopeId: LoopScopeId | null) => activateLoopTimeline(scopeId),
+    [activateLoopTimeline],
+  );
+  const expanded = useExpandedLoopPath({
+    loadLoopItems,
+    onActivateScope,
+  });
   const {
     activeScopeId,
     activeEntry,
@@ -60,21 +68,27 @@ export function useCanvasWorkspace() {
     pending,
     reconcilePath,
     refreshLoop,
-    syncActiveItems,
+    syncLoopItems,
   } = expanded;
 
   useEffect(() => {
-    const reconciliation = reconcilePath(timeline);
-    if (reconciliation.activeScopeChanged) {
-      void activateExpandedScope(reconciliation.activeScopeId);
+    let synchronized = false;
+    expandedPath.forEach((entry) => {
+      const cached = loopTimelineCache[String(entry.loop.id)];
+      if (cached?.status === "ready" && cached.items !== entry.items) {
+        synchronized = syncLoopItems(entry.loop.id, cached.items) || synchronized;
+      }
+    });
+    if (!synchronized) {
+      reconcilePath(timeline);
     }
-  }, [activateExpandedScope, expandedPath, reconcilePath, timeline]);
-
-  useEffect(() => {
-    if (activeScopeId !== null && scopesMatch(activeLoopId, activeScopeId)) {
-      syncActiveItems(loopTimeline);
-    }
-  }, [activeLoopId, activeScopeId, loopTimeline, syncActiveItems]);
+  }, [
+    expandedPath,
+    loopTimelineCache,
+    reconcilePath,
+    syncLoopItems,
+    timeline,
+  ]);
 
   useEffect(() => {
     if (error) console.error("Error loading loop:", error.cause);
@@ -100,6 +114,7 @@ export function useCanvasWorkspace() {
     selectedItem !== null && scopesMatch(selectedScopeId, activeScopeId);
 
   const clearSelection = useCallback(() => {
+    selectionRequestRef.current += 1;
     setSelectedTrial(null);
     setSelectedLoop(null);
   }, [setSelectedLoop, setSelectedTrial]);
@@ -116,16 +131,19 @@ export function useCanvasWorkspace() {
 
   const selectTrial = useCallback(
     async (trial: TimelineItem, requested?: LoopScopeId | null) => {
+      const requestId = ++selectionRequestRef.current;
       const scopeId = resolveRequestedScope(requested, activeScopeId);
       if (!scopesMatch(scopeId, activeScopeId)) {
         const activated = await activateExpandedScope(scopeId);
-        if (!activated) return;
+        if (!activated || requestId !== selectionRequestRef.current) return;
       }
       setSelectedScopeId(scopeId);
       try {
         const fullTrial = await getTrial(trial.id);
+        if (requestId !== selectionRequestRef.current) return;
         if (fullTrial) setSelectedTrial(fullTrial);
       } catch (selectionError: unknown) {
+        if (requestId !== selectionRequestRef.current) return;
         console.error("Error fetching full trial data:", selectionError);
       }
       setSelectedLoop(null);
@@ -141,16 +159,19 @@ export function useCanvasWorkspace() {
 
   const selectLoop = useCallback(
     async (loop: TimelineItem, requested?: LoopScopeId | null) => {
+      const requestId = ++selectionRequestRef.current;
       const scopeId = resolveRequestedScope(requested, activeScopeId);
       if (!scopesMatch(scopeId, activeScopeId)) {
         const activated = await activateExpandedScope(scopeId);
-        if (!activated) return;
+        if (!activated || requestId !== selectionRequestRef.current) return;
       }
       setSelectedScopeId(scopeId);
       try {
         const fullLoop = await getLoop(loop.id);
+        if (requestId !== selectionRequestRef.current) return;
         if (fullLoop) setSelectedLoop(fullLoop);
       } catch (selectionError: unknown) {
+        if (requestId !== selectionRequestRef.current) return;
         console.error("Error fetching full loop data:", selectionError);
       }
       setSelectedTrial(null);

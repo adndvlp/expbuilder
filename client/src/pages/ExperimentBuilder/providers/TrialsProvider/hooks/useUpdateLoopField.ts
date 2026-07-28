@@ -1,13 +1,16 @@
 import { useCallback } from "react";
-import { TimelineItem } from "../../../contexts/TrialsContext";
-import { LoopMethodsWithGetLoop } from "../types";
+import type { TimelineItem } from "../../../contexts/TrialsContext";
+import { findTimelineItemLocation } from "../itemScope";
+import type { LoopMethodsWithGetLoop } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function useUpdateLoopField({
   experimentID,
+  timeline,
+  loopTimelineCache,
   setTimeline,
-  setLoopTimeline,
+  updateLoopTimelineItems,
   selectedLoop,
   setSelectedLoop,
   getLoop,
@@ -16,25 +19,27 @@ export default function useUpdateLoopField({
     async (
       id: string | number,
       fieldName: string,
-      value: any,
+      value: unknown,
       updateSelectedLoop: boolean = true,
     ): Promise<boolean> => {
+      let parentLoopId: string | number | null = null;
       try {
-        // Determinar si es nested loop
-        let isNestedLoop = false;
-        if (selectedLoop?.id === id) {
-          isNestedLoop = selectedLoop.parentLoopId != null;
-        }
+        parentLoopId =
+          selectedLoop && String(selectedLoop.id) === String(id)
+            ? (selectedLoop.parentLoopId ?? null)
+            : (findTimelineItemLocation(id, timeline, loopTimelineCache)
+                ?.parentLoopId ?? null);
 
-        // OPTIMISTIC UI PRIMERO
         if (
           fieldName === "name" ||
           fieldName === "branches" ||
           fieldName === "trials"
         ) {
-          const optimisticUpdateFn = (prev: TimelineItem[]) =>
-            prev.map((item) => {
+          const optimisticUpdateFn = (prev: TimelineItem[]) => {
+            let changed = false;
+            const next = prev.map((item) => {
               if (item.id === id && item.type === "loop") {
+                changed = true;
                 return {
                   ...item,
                   [fieldName]: value,
@@ -42,9 +47,11 @@ export default function useUpdateLoopField({
               }
               return item;
             });
+            return changed ? next : prev;
+          };
 
-          if (isNestedLoop) {
-            setLoopTimeline(optimisticUpdateFn);
+          if (parentLoopId != null) {
+            updateLoopTimelineItems(parentLoopId, optimisticUpdateFn);
           } else {
             setTimeline(optimisticUpdateFn);
           }
@@ -85,8 +92,9 @@ export default function useUpdateLoopField({
                 : item,
             );
 
-          if (updatedLoop.parentLoopId) {
-            setLoopTimeline(finalUpdateFn);
+          parentLoopId = updatedLoop.parentLoopId ?? parentLoopId;
+          if (parentLoopId != null) {
+            updateLoopTimelineItems(parentLoopId, finalUpdateFn);
           } else {
             setTimeline(finalUpdateFn);
           }
@@ -114,11 +122,13 @@ export default function useUpdateLoopField({
     },
     [
       experimentID,
-      selectedLoop,
       getLoop,
+      loopTimelineCache,
+      selectedLoop,
       setTimeline,
-      setLoopTimeline,
       setSelectedLoop,
+      timeline,
+      updateLoopTimelineItems,
     ],
   );
 }

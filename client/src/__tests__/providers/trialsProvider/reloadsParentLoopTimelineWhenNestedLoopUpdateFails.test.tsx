@@ -98,8 +98,11 @@ describe("TrialsProvider", () => {
 
     expect(result).toBeNull();
     await waitFor(() => {
-      expect(view.getContext()?.loopTimeline).toEqual(reloaded);
+      expect(
+        view.getContext()?.loopTimelineCache["loop-parent"]?.items,
+      ).toEqual(reloaded);
     });
+    expect(view.getContext()?.activeLoopId).toBeNull();
   });
 
   it("updates nested loop fields in loopTimeline without syncing selectedLoop when disabled", async () => {

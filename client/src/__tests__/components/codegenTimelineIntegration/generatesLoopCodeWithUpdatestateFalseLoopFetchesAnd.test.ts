@@ -100,7 +100,9 @@ describe("generateTrialLoopCodes integration", () => {
       ),
     );
 
-    expect(getLoopTimeline).toHaveBeenCalledWith("loop_1", false);
+    expect(getLoopTimeline).toHaveBeenCalledWith("loop_1", {
+      mode: "query",
+    });
     expect(code).toContain("const test_stimuli_loop_1 = [");
     expect(code).toContain('"stimulus_Loop_Trial_A": "A"');
     expect(code).toContain('"stimulus_Loop_Trial_B": "B"');
@@ -191,8 +193,12 @@ describe("generateTrialLoopCodes integration", () => {
       ),
     );
 
-    expect(getLoopTimeline).toHaveBeenCalledWith("loop_parent", false);
-    expect(getLoopTimeline).toHaveBeenCalledWith("loop_child", false);
+    expect(getLoopTimeline).toHaveBeenCalledWith("loop_parent", {
+      mode: "query",
+    });
+    expect(getLoopTimeline).toHaveBeenCalledWith("loop_child", {
+      mode: "query",
+    });
     expect(code).toContain("loop_loop_parent_NextTrialId = branches[0];");
     expect(code).toContain("loop_loop_parent_SkipRemaining = true;");
     expect(code).toContain("loop_loop_parent_BranchingActive = true;");

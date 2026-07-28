@@ -8,7 +8,7 @@ import { okJson } from "../../helpers/trialFactories";
 
 export const API_URL = "http://localhost:3000";
 
-function renderTrialsProvider() {
+export function renderTrialsProvider() {
   let contextValue: React.ContextType<typeof TrialsContext> | null = null;
 
   function TestConsumer() {

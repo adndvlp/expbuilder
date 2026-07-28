@@ -64,6 +64,7 @@ async function renderLoadedProvider(initialTimeline: TimelineItem[] = []) {
 describe("TrialsProvider", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(useParams).mockReturnValue({ id: "test-exp-123" });
     globalThis.fetch = vi.fn() as unknown as typeof fetch;
   });
 
@@ -119,14 +120,17 @@ describe("TrialsProvider", () => {
 
     queueFetchResponses(okJson({}));
     const loopResult = await act(async () =>
-      view.getContext()?.getLoopTimeline("empty-loop", true, true),
+      view.getContext()?.getLoopTimeline("empty-loop", {
+        mode: "activate",
+        forceRefresh: true,
+      }),
     );
     expect(loopResult).toEqual([]);
     expect(view.getContext()?.loopTimeline).toEqual([]);
   });
 
   it("does not load a timeline without an experiment id", async () => {
-    vi.mocked(useParams).mockReturnValueOnce({} as any);
+    vi.mocked(useParams).mockReturnValue({});
     const view = renderTrialsProvider();
 
     await act(async () => {
@@ -159,11 +163,12 @@ describe("TrialsProvider", () => {
     expect(typeof ctx?.updateTimeline).toBe("function");
     expect(typeof ctx?.getTimeline).toBe("function");
     expect(typeof ctx?.getLoopTimeline).toBe("function");
+    expect(typeof ctx?.activateLoopTimeline).toBe("function");
     expect(typeof ctx?.clearLoopTimeline).toBe("function");
     expect(typeof ctx?.deleteAllTrials).toBe("function");
   });
 
-  it("loads loop timelines without mutating visual state when updateState is false", async () => {
+  it("queries loop timelines without mutating visual state or cache", async () => {
     const view = await renderLoadedProvider();
     const loopTimeline = [
       timelineTrial({ id: 10, name: "Loop trial A" }),
@@ -173,7 +178,9 @@ describe("TrialsProvider", () => {
     queueFetchResponses(okJson({ trialsMetadata: loopTimeline }));
 
     const result = await act(async () => {
-      return view.getContext()?.getLoopTimeline("loop-1", false);
+      return view
+        .getContext()
+        ?.getLoopTimeline("loop-1", { mode: "query" });
     });
 
     expect(result).toEqual(loopTimeline);
@@ -220,7 +227,10 @@ describe("TrialsProvider", () => {
 
     queueFetchResponses(notOkJson());
     const failed = await act(async () => {
-      return view.getContext()?.getLoopTimeline("loop-fail", true, true);
+      return view.getContext()?.getLoopTimeline("loop-fail", {
+        mode: "activate",
+        forceRefresh: true,
+      });
     });
 
     expect(failed).toEqual([]);

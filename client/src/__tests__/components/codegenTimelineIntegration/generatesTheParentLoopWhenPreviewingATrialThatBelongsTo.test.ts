@@ -93,7 +93,9 @@ describe("generateTrialLoopCodes integration", () => {
     );
 
     expect(getLoop).toHaveBeenCalledWith("loop_flanker");
-    expect(getLoopTimeline).toHaveBeenCalledWith("loop_flanker", false);
+    expect(getLoopTimeline).toHaveBeenCalledWith("loop_flanker", {
+      mode: "query",
+    });
     expect(code).toContain("const test_stimuli_loop_flanker = [");
     expect(code).toContain('"text": ">>>>>"');
     expect(code).toContain('"text": "<<<<<"');

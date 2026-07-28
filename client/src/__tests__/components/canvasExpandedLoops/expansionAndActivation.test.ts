@@ -61,13 +61,12 @@ describe("useExpandedLoopPath expansion and activation", () => {
   });
 
   it("activates an ancestor or root without hiding expanded descendants", async () => {
+    const originalParentItems = [trialItem("parent-trial")];
     const originalChildItems = [trialItem("child-trial")];
-    const refreshedParentItems = [trialItem("updated-parent-trial")];
-    const { result, loadLoopItems, activateRoot } = setupExpandedLoopPath();
+    const { result, loadLoopItems, activateScope } = setupExpandedLoopPath();
     loadLoopItems
-      .mockResolvedValueOnce([trialItem("parent-trial")])
-      .mockResolvedValueOnce(originalChildItems)
-      .mockResolvedValueOnce(refreshedParentItems);
+      .mockResolvedValueOnce(originalParentItems)
+      .mockResolvedValueOnce(originalChildItems);
 
     await act(async () => {
       await result.current.expandLoop(loopReference("parent"));
@@ -76,9 +75,10 @@ describe("useExpandedLoopPath expansion and activation", () => {
     });
 
     expect(pathIds(result.current.expandedPath)).toEqual(["parent", "child"]);
-    expect(result.current.expandedPath[0].items).toEqual(refreshedParentItems);
+    expect(result.current.expandedPath[0].items).toEqual(originalParentItems);
     expect(result.current.expandedPath[1].items).toEqual(originalChildItems);
     expect(result.current.activeScopeId).toBe("parent");
+    expect(loadLoopItems).toHaveBeenCalledTimes(2);
 
     await act(async () => {
       expect(await result.current.activateScope(null)).toBe(true);
@@ -86,6 +86,7 @@ describe("useExpandedLoopPath expansion and activation", () => {
 
     expect(pathIds(result.current.expandedPath)).toEqual(["parent", "child"]);
     expect(result.current.activeScopeId).toBeNull();
-    expect(activateRoot).toHaveBeenCalledTimes(1);
+    expect(loadLoopItems).toHaveBeenCalledTimes(2);
+    expect(activateScope).toHaveBeenLastCalledWith(null);
   });
 });

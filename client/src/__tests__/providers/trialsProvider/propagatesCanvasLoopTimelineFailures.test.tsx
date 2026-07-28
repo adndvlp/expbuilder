@@ -20,7 +20,11 @@ describe("TrialsProvider strict loop timeline loading", () => {
       try {
         await view
           .getContext()
-          ?.getLoopTimeline("missing-loop", true, true, true);
+          ?.getLoopTimeline("missing-loop", {
+            mode: "cache",
+            forceRefresh: true,
+            throwOnError: true,
+          });
       } catch (cause: unknown) {
         failure = cause;
       }

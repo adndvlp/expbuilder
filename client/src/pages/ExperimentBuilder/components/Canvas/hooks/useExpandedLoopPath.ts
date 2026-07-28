@@ -9,6 +9,11 @@ import type {
   LoopScopeId,
   UseExpandedLoopPathOptions,
 } from "./expandedLoopPathTypes";
+import {
+  findScopeIndex,
+  scopesMatch,
+  withEntryItems,
+} from "./expandedLoopPathUtils";
 import { reconcileExpandedLoopPath } from "./reconcileExpandedLoopPath";
 
 export type {
@@ -25,32 +30,11 @@ export type {
 
 type LoadResult =
   | { status: "loaded"; items: TimelineItem[] }
-  | { status: "root" }
   | { status: "failed" };
-
-const scopesMatch = (left: LoopScopeId | null, right: LoopScopeId | null) =>
-  left === right ||
-  (left !== null && right !== null && String(left) === String(right));
-
-const findScopeIndex = (path: ExpandedLoopEntry[], scopeId: LoopScopeId) =>
-  path.findIndex((entry) => scopesMatch(entry.loop.id, scopeId));
-
-const withEntryItems = (
-  path: ExpandedLoopEntry[],
-  scopeId: LoopScopeId,
-  items: TimelineItem[],
-) => {
-  const index = findScopeIndex(path, scopeId);
-  if (index < 0) return path;
-
-  const nextPath = [...path];
-  nextPath[index] = { ...nextPath[index], items };
-  return nextPath;
-};
 
 export function useExpandedLoopPath({
   loadLoopItems,
-  activateRoot,
+  onActivateScope,
 }: UseExpandedLoopPathOptions) {
   const [expandedPath, setExpandedPath] = useState<ExpandedLoopEntry[]>([]);
   const [activeScopeId, setActiveScopeId] = useState<LoopScopeId | null>(null);
@@ -72,7 +56,7 @@ export function useExpandedLoopPath({
 
   const loadScope = useCallback(
     async (
-      scopeId: LoopScopeId | null,
+      scopeId: LoopScopeId,
       operation: ExpandedLoopOperation,
       forceRefresh: boolean,
     ): Promise<LoadResult> => {
@@ -81,13 +65,6 @@ export function useExpandedLoopPath({
       setError(null);
 
       try {
-        if (scopeId === null) {
-          await activateRoot?.();
-          if (requestId !== requestIdRef.current) return { status: "failed" };
-          setPending(null);
-          return { status: "root" };
-        }
-
         const items = await loadLoopItems(scopeId, { forceRefresh });
         if (requestId !== requestIdRef.current) return { status: "failed" };
         setPending(null);
@@ -100,7 +77,7 @@ export function useExpandedLoopPath({
         return { status: "failed" };
       }
     },
-    [activateRoot, loadLoopItems],
+    [loadLoopItems],
   );
 
   const reportMissingScope = useCallback(
@@ -113,6 +90,31 @@ export function useExpandedLoopPath({
       });
     },
     [],
+  );
+
+  const activateTarget = useCallback(
+    async (
+      scopeId: LoopScopeId | null,
+      operation: ExpandedLoopOperation,
+    ) => {
+      const requestId = ++requestIdRef.current;
+      setError(null);
+      try {
+        const activated = (await onActivateScope?.(scopeId)) ?? true;
+        if (requestId !== requestIdRef.current) return false;
+        if (!activated) {
+          throw new Error(`Unable to activate loop scope ${String(scopeId)}`);
+        }
+        commitActiveScope(scopeId);
+        return true;
+      } catch (cause: unknown) {
+        if (requestId === requestIdRef.current) {
+          setError({ operation, scopeId, cause });
+        }
+        return false;
+      }
+    },
+    [commitActiveScope, onActivateScope],
   );
 
   const expandLoop = useCallback(
@@ -130,6 +132,7 @@ export function useExpandedLoopPath({
 
       const loaded = await loadScope(loop.id, "expand", false);
       if (loaded.status !== "loaded") return false;
+      if (!(await activateTarget(loop.id, "expand"))) return false;
 
       const currentPath = pathRef.current;
       const entry: ExpandedLoopEntry = {
@@ -156,10 +159,9 @@ export function useExpandedLoopPath({
         }
       }
 
-      commitActiveScope(loop.id);
       return true;
     },
-    [commitActiveScope, commitPath, loadScope, reportMissingScope],
+    [activateTarget, commitPath, loadScope, reportMissingScope],
   );
 
   const activateScope = useCallback(
@@ -169,15 +171,9 @@ export function useExpandedLoopPath({
         return false;
       }
 
-      const loaded = await loadScope(scopeId, "activate", false);
-      if (loaded.status === "failed") return false;
-      if (loaded.status === "loaded" && scopeId !== null) {
-        commitPath(withEntryItems(pathRef.current, scopeId, loaded.items));
-      }
-      commitActiveScope(scopeId);
-      return true;
+      return activateTarget(scopeId, "activate");
     },
-    [commitActiveScope, commitPath, loadScope, reportMissingScope],
+    [activateTarget, reportMissingScope],
   );
 
   const collapseLoop = useCallback(
@@ -190,20 +186,14 @@ export function useExpandedLoopPath({
 
       const parentId =
         initialIndex > 0 ? pathRef.current[initialIndex - 1].loop.id : null;
-      const loaded = await loadScope(parentId, "collapse", false);
-      if (loaded.status === "failed") return false;
+      if (!(await activateTarget(parentId, "collapse"))) return false;
 
       const currentIndex = findScopeIndex(pathRef.current, scopeId);
       if (currentIndex < 0) return false;
-      let nextPath = pathRef.current.slice(0, currentIndex);
-      if (loaded.status === "loaded" && parentId !== null) {
-        nextPath = withEntryItems(nextPath, parentId, loaded.items);
-      }
-      commitPath(nextPath);
-      commitActiveScope(parentId);
+      commitPath(pathRef.current.slice(0, currentIndex));
       return true;
     },
-    [commitActiveScope, commitPath, loadScope, reportMissingScope],
+    [activateTarget, commitPath, reportMissingScope],
   );
 
   const collapseAll = useCallback(async () => {
@@ -221,17 +211,18 @@ export function useExpandedLoopPath({
 
       const loaded = await loadScope(scopeId, "refresh", true);
       if (loaded.status !== "loaded") return false;
+      if (!(await activateTarget(scopeId, "refresh"))) return false;
       commitPath(withEntryItems(pathRef.current, scopeId, loaded.items));
-      commitActiveScope(scopeId);
       return true;
     },
-    [commitActiveScope, commitPath, loadScope, reportMissingScope],
+    [activateTarget, commitPath, loadScope, reportMissingScope],
   );
 
   const syncLoopItems = useCallback(
     (scopeId: LoopScopeId, items: TimelineItem[]) => {
       if (findScopeIndex(pathRef.current, scopeId) < 0) return false;
-      commitPath(withEntryItems(pathRef.current, scopeId, items));
+      const nextPath = withEntryItems(pathRef.current, scopeId, items);
+      if (nextPath !== pathRef.current) commitPath(nextPath);
       return true;
     },
     [commitPath],
@@ -260,10 +251,18 @@ export function useExpandedLoopPath({
       if (result.pathChanged) commitPath(result.path);
       if (result.activeScopeChanged) {
         commitActiveScope(result.activeScopeId);
+        try {
+          const activation = onActivateScope?.(result.activeScopeId);
+          if (activation instanceof Promise) {
+            void activation.catch(() => undefined);
+          }
+        } catch {
+          // Reconciliation must not discard an otherwise valid cached path.
+        }
       }
       return result;
     },
-    [commitActiveScope, commitPath],
+    [commitActiveScope, commitPath, onActivateScope],
   );
 
   return {

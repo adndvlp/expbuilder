@@ -1,19 +1,22 @@
-import { Dispatch, SetStateAction } from "react";
-import { Loop, Trial } from "../../components/ConfigurationPanel/types";
-import { TimelineItem } from "../../contexts/TrialsContext";
+import type { Dispatch, SetStateAction } from "react";
+import type { Loop, Trial } from "../../components/ConfigurationPanel/types";
+import type {
+  LoopTimelineCache,
+  LoopTimelineLoadOptions,
+  TimelineItem,
+} from "../../contexts/TrialsContext";
+import type { UpdateLoopTimelineItems } from "./hooks/useLoopTimelineCache";
 
 export type LoopMethodsProps = {
   experimentID: string | undefined;
   timeline: TimelineItem[];
-  loopTimeline: TimelineItem[];
+  loopTimelineCache: LoopTimelineCache;
   setTimeline: Dispatch<SetStateAction<TimelineItem[]>>;
-  setLoopTimeline: Dispatch<SetStateAction<TimelineItem[]>>;
+  updateLoopTimelineItems: UpdateLoopTimelineItems;
   getTimeline: () => Promise<void>;
   getLoopTimeline: (
     loopId: string | number,
-    updateState?: boolean,
-    forceRefresh?: boolean,
-    throwOnError?: boolean,
+    options?: LoopTimelineLoadOptions,
   ) => Promise<TimelineItem[]>;
   setSelectedLoop: Dispatch<SetStateAction<Loop | null>>;
   selectedLoop: Loop | null;
@@ -24,9 +27,12 @@ export type LoopMethodsWithGetLoop = LoopMethodsProps & { getLoop: GetLoop };
 
 export type TrialMethodsProps = {
   experimentID: string | undefined;
+  timeline: TimelineItem[];
+  loopTimelineCache: LoopTimelineCache;
   setTimeline: Dispatch<SetStateAction<TimelineItem[]>>;
-  setLoopTimeline: Dispatch<SetStateAction<TimelineItem[]>>;
+  updateLoopTimelineItems: UpdateLoopTimelineItems;
   getTimeline: () => Promise<void>;
+  getLoopTimeline: LoopMethodsProps["getLoopTimeline"];
   selectedTrial: Trial | null;
   setSelectedTrial: (trial: Trial | null) => void;
 };

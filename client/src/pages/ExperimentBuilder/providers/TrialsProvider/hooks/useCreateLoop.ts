@@ -8,7 +8,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 export default function useCreateLoop({
   experimentID,
   setTimeline,
-  setLoopTimeline,
+  updateLoopTimelineItems,
   getTimeline,
   getLoopTimeline,
 }: LoopMethodsProps) {
@@ -16,6 +16,7 @@ export default function useCreateLoop({
     async (loop: Omit<Loop, "id">): Promise<Loop> => {
       // Determinar si es nested loop (si los trials tienen parentLoopId)
       const isNestedLoop = loop.parentLoopId != null;
+      const tempLoopId = `temp-loop-${Date.now()}`;
 
       // OPTIMISTIC UI PRIMERO - actualizar el timeline correcto
       const optimisticUpdateFn = (prev: TimelineItem[]) => {
@@ -25,7 +26,6 @@ export default function useCreateLoop({
         );
 
         // 2. Actualizar branches: reemplazar trial/loop IDs por el ID temporal del loop
-        const tempLoopId = `temp-loop-${Date.now()}`;
         const updatedTimeline = filteredTimeline.map((item) => {
           // Si tiene branches con trials/loops del nuevo loop, reemplazarlos
           if (item.branches && item.branches.length > 0) {
@@ -39,8 +39,8 @@ export default function useCreateLoop({
                 (branchId) => !loop.trials.includes(branchId),
               );
               // Agregar el loop ID temporal si no está ya
-              if (!filteredBranches.includes(tempLoopId as any)) {
-                filteredBranches.push(tempLoopId as any);
+              if (!filteredBranches.includes(tempLoopId)) {
+                filteredBranches.push(tempLoopId);
               }
               return {
                 ...item,
@@ -56,7 +56,7 @@ export default function useCreateLoop({
         return [
           ...updatedTimeline,
           {
-            id: tempLoopId as any,
+            id: tempLoopId,
             type: "loop" as const,
             name: loop.name,
             branches: loop.branches || [],
@@ -65,8 +65,8 @@ export default function useCreateLoop({
         ];
       };
 
-      if (isNestedLoop) {
-        setLoopTimeline(optimisticUpdateFn);
+      if (isNestedLoop && loop.parentLoopId != null) {
+        updateLoopTimelineItems(loop.parentLoopId, optimisticUpdateFn);
       } else {
         setTimeline(optimisticUpdateFn);
       }
@@ -118,8 +118,7 @@ export default function useCreateLoop({
           prev.map((item) => {
             // Reemplazar el loop temporal con el real
             if (
-              typeof item.id === "string" &&
-              item.id.startsWith("temp-loop-")
+              item.id === tempLoopId
             ) {
               return {
                 ...item,
@@ -129,8 +128,7 @@ export default function useCreateLoop({
             // Actualizar branches que apuntaban al ID temporal
             if (item.branches && item.branches.length > 0) {
               const updatedBranches = item.branches.map((branchId) =>
-                typeof branchId === "string" &&
-                branchId.startsWith("temp-loop-")
+                branchId === tempLoopId
                   ? newLoop.id
                   : branchId,
               );
@@ -142,8 +140,8 @@ export default function useCreateLoop({
             return item;
           });
 
-        if (isNestedLoop) {
-          setLoopTimeline(replaceWithRealId);
+        if (isNestedLoop && loop.parentLoopId != null) {
+          updateLoopTimelineItems(loop.parentLoopId, replaceWithRealId);
         } else {
           setTimeline(replaceWithRealId);
         }
@@ -152,14 +150,23 @@ export default function useCreateLoop({
       } catch (error) {
         console.error("Error creating loop:", error);
         // Si falla, recargar timeline apropiado
-        if (isNestedLoop && loop.parentLoopId) {
-          await getLoopTimeline(loop.parentLoopId, true, true);
+        if (isNestedLoop && loop.parentLoopId != null) {
+          await getLoopTimeline(loop.parentLoopId, {
+            mode: "cache",
+            forceRefresh: true,
+          });
         } else {
           await getTimeline();
         }
         throw error;
       }
     },
-    [experimentID, getTimeline, getLoopTimeline, setTimeline, setLoopTimeline],
+    [
+      experimentID,
+      getLoopTimeline,
+      getTimeline,
+      setTimeline,
+      updateLoopTimelineItems,
+    ],
   );
 }

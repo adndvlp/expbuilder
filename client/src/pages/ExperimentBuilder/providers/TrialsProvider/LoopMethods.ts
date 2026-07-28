@@ -3,7 +3,7 @@ import useDeleteLoop from "./hooks/useDeleteLoop";
 import useGetLoop from "./hooks/useGetLoop";
 import useUpdateLoop from "./hooks/useUpdateLoop";
 import useUpdateLoopField from "./hooks/useUpdateLoopField";
-import { LoopMethodsProps } from "./types";
+import type { LoopMethodsProps } from "./types";
 
 export default function LoopMethods(props: LoopMethodsProps) {
   const createLoop = useCreateLoop(props);

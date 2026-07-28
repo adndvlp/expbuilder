@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   Loop,
@@ -9,6 +9,7 @@ import type { TimelineItem } from "../../pages/ExperimentBuilder/contexts/Trials
 
 const mocks = vi.hoisted(() => ({
   trials: {} as Record<string, unknown>,
+  flowOptions: null as Record<string, unknown> | null,
 }));
 
 vi.mock("../../pages/ExperimentBuilder/hooks/useTrials", () => ({
@@ -17,7 +18,12 @@ vi.mock("../../pages/ExperimentBuilder/hooks/useTrials", () => ({
 
 vi.mock(
   "../../pages/ExperimentBuilder/components/Canvas/hooks/useFlowLayout",
-  () => ({ useFlowLayout: () => ({ nodes: [], edges: [] }) }),
+  () => ({
+    useFlowLayout: (options: Record<string, unknown>) => {
+      mocks.flowOptions = options;
+      return { nodes: [], edges: [] };
+    },
+  }),
 );
 
 const loopItems: TimelineItem[] = [
@@ -60,6 +66,7 @@ function createTrialsMock() {
       { id: "parent", type: "loop", name: "Parent loop" },
     ] as TimelineItem[],
     loopTimeline: [] as TimelineItem[],
+    loopTimelineCache: {},
     activeLoopId: null,
     selectedTrial: null,
     selectedLoop: null,
@@ -72,6 +79,7 @@ function createTrialsMock() {
       id === "parent" ? parent : null,
     ),
     getLoopTimeline: vi.fn(async () => loopItems),
+    activateLoopTimeline: vi.fn(() => true),
     clearLoopTimeline: vi.fn(),
     createTrial: vi.fn(async (input: Omit<Trial, "id">) =>
       makeTrial(99, input),
@@ -160,5 +168,71 @@ describe("useCanvasWorkspace active action scope", () => {
     expect(trials.updateTrial).toHaveBeenCalledWith(10, { branches: [11] });
     expect(trials.updateLoop).toHaveBeenCalledWith("parent", { trials: [10] });
     expect(trials.updateTimeline).not.toHaveBeenCalled();
+  });
+
+  it("switches between already expanded scopes without fetching again", async () => {
+    const trials = createTrialsMock();
+    const { result } = renderHook(() => useCanvasWorkspace());
+    await activateParentScope(result);
+
+    await act(async () => {
+      expect(await result.current.expanded.activateScope(null)).toBe(true);
+      expect(await result.current.expanded.activateScope("parent")).toBe(true);
+    });
+
+    expect(trials.getLoopTimeline).toHaveBeenCalledTimes(1);
+    expect(trials.activateLoopTimeline).toHaveBeenCalledWith(null);
+    expect(trials.activateLoopTimeline).toHaveBeenLastCalledWith("parent");
+  });
+
+  it("synchronizes only the matching expanded loop cache entry", async () => {
+    const trials = createTrialsMock();
+    const view = renderHook(() => useCanvasWorkspace());
+    await activateParentScope(view.result);
+    const updatedItems = [
+      { id: 10, type: "trial", name: "Updated task", branches: [] },
+    ] satisfies TimelineItem[];
+
+    trials.loopTimelineCache = {
+      parent: { status: "ready", items: updatedItems, revision: 2 },
+    };
+    view.rerender();
+
+    await waitFor(() => {
+      expect(view.result.current.actionScope).toMatchObject({
+        kind: "loop",
+        loopId: "parent",
+        items: updatedItems,
+      });
+    });
+  });
+
+  it("ignores an older trial selection response after a newer selection", async () => {
+    const trials = createTrialsMock();
+    let resolveOld!: (trial: Trial) => void;
+    const oldTrial = new Promise<Trial>((resolve) => {
+      resolveOld = resolve;
+    });
+    trials.getTrial
+      .mockImplementationOnce(() => oldTrial)
+      .mockResolvedValueOnce(makeTrial(11));
+    renderHook(() => useCanvasWorkspace());
+    const selectTrial = mocks.flowOptions?.onSelectTrial as (
+      item: TimelineItem,
+    ) => Promise<void>;
+
+    let oldSelection!: Promise<void>;
+    act(() => {
+      oldSelection = selectTrial(loopItems[0]);
+    });
+    await act(async () => {
+      await selectTrial(loopItems[1]);
+    });
+    resolveOld(makeTrial(10));
+    await act(async () => {
+      await oldSelection;
+    });
+
+    expect(trials.setSelectedTrial).toHaveBeenLastCalledWith(makeTrial(11));
   });
 });

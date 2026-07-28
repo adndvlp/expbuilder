@@ -39,5 +39,7 @@ export type LoadLoopItems = (
 
 export type UseExpandedLoopPathOptions = {
   loadLoopItems: LoadLoopItems;
-  activateRoot?: () => void | Promise<void>;
+  onActivateScope?: (
+    scopeId: LoopScopeId | null,
+  ) => boolean | Promise<boolean>;
 };
