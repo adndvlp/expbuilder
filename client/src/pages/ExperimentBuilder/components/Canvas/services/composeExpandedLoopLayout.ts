@@ -8,15 +8,9 @@ import type {
   LayoutTimelineItem,
 } from "./expandedLayoutTypes";
 import { CANVAS_EDGE_HANDLES } from "./canvasHandleIds";
-import {
-  addExpandedEdge,
-  addExpandedFlowEdges,
-} from "./expandedEdgeFactory";
-import {
-  getMainLayoutItems,
-  sanitizeLayoutTimeline,
-} from "./sanitizeLayoutTimeline";
-import { finalizeExpandedLayout } from "./finalizeExpandedLayout";
+import { addExpandedEdge, addExpandedFlowEdges } from "./expandedEdgeFactory";
+import { getMainLayoutItems, sanitizeLayoutTimeline } from "./sanitizeLayoutTimeline";
+import { finalizeExpandedLoopLayout } from "./finalizeExpandedLoopLayout";
 const ROOT_X = 500;
 const ROOT_Y = 80;
 const VERTICAL_GAP = 120;
@@ -292,5 +286,10 @@ export function composeExpandedLoopLayout({
     ROOT_X,
     ROOT_Y,
   );
-  return finalizeExpandedLayout(result, VERTICAL_GAP);
+  return finalizeExpandedLoopLayout({
+    layout: result,
+    scopes: expandedScopes,
+    markerOffset: markerHorizontalOffset,
+    verticalGap: VERTICAL_GAP,
+  });
 }

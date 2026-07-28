@@ -2,7 +2,6 @@ import { expect, test } from "../fixtures/test.fixture";
 import type { Locator } from "@playwright/test";
 import { getScopedNodeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/composeExpandedLoopLayout";
 import { getLoopLayoutScopeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/buildUnifiedFlowLayout";
-import { CANVAS_HANDLE_IDS } from "../../src/pages/ExperimentBuilder/components/Canvas/services/canvasHandleIds";
 import { ROOT_CANVAS_SCOPE_ID } from "../../src/pages/ExperimentBuilder/components/Canvas/services/expandedLayoutTypes";
 
 const rootTimeline = [
@@ -104,26 +103,6 @@ async function pathCrossesNode(path: Locator, node: Locator) {
   }, box);
 }
 
-async function getPathHeading(path: Locator) {
-  return path.evaluate((element) => {
-    const svgPath = element as SVGPathElement;
-    const matrix = svgPath.getScreenCTM();
-    if (!matrix) return null;
-    const start = svgPath.getPointAtLength(0);
-    const next = svgPath.getPointAtLength(
-      Math.min(20, svgPath.getTotalLength()),
-    );
-    const screenStart = new DOMPoint(start.x, start.y).matrixTransform(matrix);
-    const screenNext = new DOMPoint(next.x, next.y).matrixTransform(matrix);
-    return {
-      startX: screenStart.x,
-      startY: screenStart.y,
-      nextX: screenNext.x,
-      nextY: screenNext.y,
-    };
-  });
-}
-
 test("renders the complete branching loop topology in one canvas", async ({
   page,
 }) => {
@@ -160,7 +139,7 @@ test("renders the complete branching loop topology in one canvas", async ({
     .click();
   await expect(canvas.getByText("Loca", { exact: true })).toBeVisible();
   await expect(canvas.locator(".react-flow__node")).toHaveCount(16);
-  await expect(canvas.locator(".react-flow__edge")).toHaveCount(22);
+  await expect(canvas.locator(".react-flow__edge")).toHaveCount(18);
   await page.waitForTimeout(500);
 
   const outerScope = getLoopLayoutScopeId("loop-1");
@@ -199,14 +178,14 @@ test("renders the complete branching loop topology in one canvas", async ({
     .evaluateAll((paths) => paths.map((path) => getComputedStyle(path).stroke));
   expect(
     strokes.filter((stroke) => stroke === "rgb(47, 128, 237)"),
-  ).toHaveLength(6);
+  ).toHaveLength(2);
   const flowStrokes = strokes.filter(
     (stroke) => stroke !== "rgb(47, 128, 237)",
   );
   expect(flowStrokes).toHaveLength(16);
   expect(new Set(flowStrokes).size).toBeGreaterThan(3);
   expect(flowStrokes).toContain("rgb(102, 112, 133)");
-  await expect(canvas.locator(".react-flow__edge.animated")).toHaveCount(6);
+  await expect(canvas.locator(".react-flow__edge.animated")).toHaveCount(2);
 
   const questionId = getScopedNodeId(outerScope, "trial", "question");
   const leftFinal = node(
@@ -231,53 +210,17 @@ test("renders the complete branching loop topology in one canvas", async ({
     rightTerminalBox.x + rightTerminalBox.width,
   );
   const outerMarkerId = getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "loop", "loop-1");
-  const outerEntryEdgeId = [
-    "edge",
-    encodeURIComponent("loop-control"),
-    encodeURIComponent(questionId),
-    encodeURIComponent(outerMarkerId),
-  ].join("::");
-  const outerEntryPath = canvas.locator(
-    `[data-testid="rf__edge-${outerEntryEdgeId}"] .react-flow__edge-path`,
-  );
-  await expect(outerEntryPath).toHaveCount(1);
-  expect(await pathCrossesNode(outerEntryPath, leftFinal)).toBe(false);
-  const heading = await getPathHeading(outerEntryPath);
-  const outerEntryHandle = outerMarker.locator(
-    `[data-handleid="${CANVAS_HANDLE_IDS.flowTarget}"]`,
-  );
-  const outerEntryHandleBox = await outerEntryHandle.boundingBox();
-  expect(heading).not.toBeNull();
-  expect(outerEntryHandleBox).not.toBeNull();
-  expect(Math.abs(heading!.startX - (outerEntryHandleBox!.x + 8))).toBeLessThan(
-    12,
-  );
-  expect(heading!.nextX).toBeCloseTo(heading!.startX, 0);
-  expect(heading!.nextY).toBeLessThan(heading!.startY);
-
-  const outerReturnEdgeId = [
+  const outerCircuitEdgeId = [
     "edge",
     encodeURIComponent("loop-return"),
-    encodeURIComponent(getScopedNodeId(outerScope, "trial", "final")),
-    encodeURIComponent(questionId),
+    encodeURIComponent(outerMarkerId),
+    encodeURIComponent(outerMarkerId),
   ].join("::");
-  const outerReturnPath = canvas.locator(
-    `[data-testid="rf__edge-${outerReturnEdgeId}"] .react-flow__edge-path`,
+  const outerCircuit = canvas.locator(
+    `[data-testid="rf__edge-${outerCircuitEdgeId}"] .react-flow__edge-path`,
   );
-  const questionReturnHandle = node(questionId).locator(
-    `[data-handleid="${CANVAS_HANDLE_IDS.loopReturnTarget}"]`,
-  );
-  const [returnHeading, questionReturnHandleBox] = await Promise.all([
-    getPathHeading(outerReturnPath),
-    questionReturnHandle.boundingBox(),
-  ]);
-  expect(returnHeading).not.toBeNull();
-  expect(questionReturnHandleBox).not.toBeNull();
-  expect(
-    Math.abs(returnHeading!.startX - (questionReturnHandleBox!.x + 0.5)),
-  ).toBeLessThan(12);
-  expect(returnHeading!.nextX).toBeGreaterThan(returnHeading!.startX);
-  expect(returnHeading!.nextY).toBeCloseTo(returnHeading!.startY, 0);
+  await expect(outerCircuit).toHaveCount(1);
+  expect(await pathCrossesNode(outerCircuit, leftFinal)).toBe(false);
 
   await page.mouse.move(10, 10);
   await page.waitForTimeout(400);

@@ -2,22 +2,21 @@ import type {
   ExpandedCanvasEdge,
   ExpandedCanvasLayout,
   ExpandedCanvasNode,
+  ExpandedLoopScope,
 } from "./expandedLayoutTypes";
-
+import { getLoopAwareBranchBounds } from "./getLoopAwareBranchBounds";
+import { getLoopCircuitHorizontalBounds } from "./loopScopeGeometry";
 type FlowGraph = {
   nodeById: Map<string, ExpandedCanvasNode>;
   parents: Map<string, Set<string>>;
   children: Map<string, Set<string>>;
 };
-
 type BranchGroup = {
   nodeIds: Set<string>;
   rootX: number;
   minX: number;
   maxX: number;
 };
-
-const NODE_WIDTH = 180;
 const SUBTREE_GAP = 80;
 
 const addRelation = (
@@ -135,17 +134,18 @@ function getBranchGroup(
   rootId: string,
   graph: FlowGraph,
   edges: ExpandedCanvasEdge[],
+  circuitBounds: ReturnType<typeof getLoopCircuitHorizontalBounds>,
 ) {
   const nodeIds = collectMovableSubtree(rootId, graph, edges);
   const nodes = [...nodeIds]
     .map((nodeId) => graph.nodeById.get(nodeId))
     .filter((node): node is ExpandedCanvasNode => Boolean(node));
   const rootX = graph.nodeById.get(rootId)?.position.x ?? 0;
+  const bounds = getLoopAwareBranchBounds({ nodes, nodeIds, circuitBounds });
   return {
     nodeIds,
     rootX,
-    minX: Math.min(...nodes.map((node) => node.position.x)),
-    maxX: Math.max(...nodes.map((node) => node.position.x + NODE_WIDTH)),
+    ...bounds,
   };
 }
 
@@ -156,7 +156,11 @@ function moveBranchGroup(group: BranchGroup, graph: FlowGraph, dx: number) {
   group.maxX += dx;
 }
 
-function spreadBranchSubtrees(layout: ExpandedCanvasLayout, graph: FlowGraph) {
+function spreadBranchSubtrees(
+  layout: ExpandedCanvasLayout,
+  graph: FlowGraph,
+  scopes: readonly ExpandedLoopScope[],
+) {
   const depthMemo = new Map<string, number>();
   const branchParents = [...graph.children.entries()]
     .filter(([, childIds]) => childIds.size > 1)
@@ -169,8 +173,11 @@ function spreadBranchSubtrees(layout: ExpandedCanvasLayout, graph: FlowGraph) {
   branchParents.forEach(([parentId, childIds]) => {
     const parent = graph.nodeById.get(parentId);
     if (!parent) return;
+    const circuitBounds = getLoopCircuitHorizontalBounds(layout.nodes, scopes);
     const groups = [...childIds]
-      .map((childId) => getBranchGroup(childId, graph, layout.edges))
+      .map((childId) =>
+        getBranchGroup(childId, graph, layout.edges, circuitBounds),
+      )
       .sort((left, right) => left.rootX - right.rootX);
     const pivotIndex =
       groups.length % 2 === 1
@@ -283,9 +290,10 @@ function sortEdgesByFlowPosition(layout: ExpandedCanvasLayout) {
 export function finalizeExpandedLayout(
   layout: ExpandedCanvasLayout,
   verticalGap: number,
+  scopes: readonly ExpandedLoopScope[] = [],
 ) {
   const graph = buildFlowGraph(layout);
-  spreadBranchSubtrees(layout, graph);
+  spreadBranchSubtrees(layout, graph, scopes);
   alignMergeNodes(layout, graph, verticalGap);
   sortEdgesByFlowPosition(layout);
   return layout;

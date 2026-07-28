@@ -20,10 +20,15 @@ const loopTimeline = [
     id: "split",
     type: "trial",
     name: "New Trial 3",
-    branches: ["left", "right"],
+    branches: ["left", "nested-loop"],
   },
   { id: "left", type: "trial", name: "New Trial 4" },
-  { id: "right", type: "trial", name: "New Trial 5" },
+  {
+    id: "nested-loop",
+    type: "loop",
+    name: "Nested Loop 1",
+    trials: ["nested-item"],
+  },
 ];
 
 async function pathCrossesNode(path: Locator, node: Locator) {
@@ -53,7 +58,7 @@ async function pathCrossesNode(path: Locator, node: Locator) {
 const edgeId = (kind: string, source: string, target: string) =>
   ["edge", kind, source, target].map(encodeURIComponent).join("::");
 
-test("renders one shared loop circuit across sibling terminal trials", async ({
+test("routes the parent circuit through a terminal trial and nested loop branch", async ({
   page,
 }) => {
   await page.route("**/api/trials-metadata/exp-multi-exit", (route) =>
@@ -80,13 +85,15 @@ test("renders one shared loop circuit across sibling terminal trials", async ({
     .locator(".loop-node", { hasText: "Loop 1" })
     .getByTitle("Expand loop")
     .click();
-  await expect(canvas.getByText("New Trial 5", { exact: true })).toBeVisible();
+  await expect(
+    canvas.getByText("Nested Loop 1", { exact: true }),
+  ).toBeVisible();
 
   const scope = getLoopLayoutScopeId("loop-1");
   const markerId = getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "loop", "loop-1");
   const splitId = getScopedNodeId(scope, "trial", "split");
   const leftId = getScopedNodeId(scope, "trial", "left");
-  const rightId = getScopedNodeId(scope, "trial", "right");
+  const rightId = getScopedNodeId(scope, "loop", "nested-loop");
   const node = (id: string) =>
     canvas.locator(`.react-flow__node[data-id="${id}"]`);
   const path = (kind: string, source: string, target: string) =>
@@ -94,22 +101,16 @@ test("renders one shared loop circuit across sibling terminal trials", async ({
       `[data-testid="rf__edge-${edgeId(kind, source, target)}"] .react-flow__edge-path`,
     );
 
-  const sharedExit = path("loop-control", markerId, rightId);
-  const sharedReturn = path("loop-return", rightId, splitId);
-  await expect(sharedExit).toHaveCount(1);
-  await expect(sharedReturn).toHaveCount(1);
+  const circuit = path("loop-return", markerId, markerId);
+  await expect(circuit).toHaveCount(1);
   await expect(path("loop-control", markerId, leftId)).toHaveCount(0);
   await expect(path("loop-return", leftId, splitId)).toHaveCount(0);
-  expect(await pathCrossesNode(sharedExit, node(leftId))).toBe(true);
-  const dashPatterns = await Promise.all(
-    [sharedExit, sharedReturn].map((edge) =>
-      edge.evaluate((element) => getComputedStyle(element).strokeDasharray),
-    ),
-  );
-  expect(new Set(dashPatterns).size).toBe(1);
+  await expect(path("loop-control", markerId, rightId)).toHaveCount(0);
+  expect(await pathCrossesNode(circuit, node(leftId))).toBe(false);
+  expect(await pathCrossesNode(circuit, node(rightId))).toBe(false);
   await page.mouse.move(10, 10);
   await page.waitForTimeout(400);
   await canvas.screenshot({
-    path: "test-results/unified-canvas-multi-exit.png",
+    path: "test-results/unified-canvas-nested-loop-branch.png",
   });
 });

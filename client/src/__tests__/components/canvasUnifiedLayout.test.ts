@@ -74,14 +74,21 @@ describe("buildUnifiedFlowLayout", () => {
     const returns = result.edges.filter(
       (edge) => edge.data.kind === "loop-return",
     );
+    expect(returns).toHaveLength(2);
+    expect(
+      returns.every((edge) => edge.source === edge.target),
+    ).toBe(true);
+    expect(
+      result.edges.some((edge) => edge.data.kind === "loop-control"),
+    ).toBe(false);
     const parentReturn = returns.find(
       (edge) => edge.data.scopeId === getLoopLayoutScopeId("parent"),
     );
     const nestedReturn = returns.find(
       (edge) => edge.data.scopeId === getLoopLayoutScopeId("nested"),
     );
-    expect(parentReturn!.pathOptions.offset).toBeGreaterThan(
-      nestedReturn!.pathOptions.offset,
+    expect(parentReturn!.data.routeX).toBeGreaterThan(
+      nestedReturn!.data.routeX,
     );
     expect(
       result.edges
@@ -99,7 +106,11 @@ describe("buildUnifiedFlowLayout", () => {
         .every((edge) => !edge.animated),
     ).toBe(true);
     expect(parentReturn).toMatchObject({
-      data: { routeX: expect.any(Number) },
+      data: {
+        routeX: expect.any(Number),
+        routeTopY: expect.any(Number),
+        routeBottomY: expect.any(Number),
+      },
     });
   });
 
@@ -172,6 +183,36 @@ describe("buildUnifiedFlowLayout", () => {
     expect(stroke("question", "right")).not.toBe(stroke("question", "left"));
     expect(stroke("left", "left-step")).toBe(stroke("question", "left"));
     expect(stroke("right", "right-step")).toBe(stroke("question", "right"));
+  });
+
+  it("keeps a sibling branch outside an expanded loop circuit", () => {
+    const result = buildUnifiedFlowLayout({
+      timeline: [
+        {
+          id: "start",
+          type: "trial",
+          name: "Start",
+          branches: ["parent", "right"],
+        },
+        { id: "parent", type: "loop", name: "Parent" },
+        { id: "right", type: "trial", name: "Right" },
+      ],
+      expandedPath: path,
+      selectedItemId: null,
+      selectedScopeId: null,
+      onSelectTrial: vi.fn(),
+      onSelectLoop: vi.fn(),
+      onToggleLoop: vi.fn(),
+      onAddBranch: vi.fn(),
+    });
+    const circuit = result.edges.find(
+      (edge) =>
+        edge.data.kind === "loop-return" &&
+        edge.data.scopeId === getLoopLayoutScopeId("parent"),
+    );
+    const sibling = result.nodes.find((node) => node.data.itemId === "right");
+
+    expect(sibling!.position.x).toBeGreaterThan(circuit!.data.routeX!);
   });
 });
 
