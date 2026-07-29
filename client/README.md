@@ -42,7 +42,7 @@ User interface for creating cognitive psychology experiments using jsPsych. Prov
 
 - **Socket.IO Client** - WebSocket for real-time tracking
 - **PapaParse** - CSV Parser
-- **ExcelJS** - Excel data export
+- **read-excel-file** - Excel data import
 - **Lodash.isEqual** - Deep object comparison
 - **Juice** - Inline CSS for emails/export
 

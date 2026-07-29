@@ -46,7 +46,7 @@ router.get("/api/trials-extensions/:experimentID", async (req, res) => {
     const experimentDoc = await getExperimentDoc(experimentID);
 
     if (!experimentDoc) {
-      return res.status(404).json({ error: "Experiment not found" });
+      return res.json({ extensions: [] });
     }
 
     const extensionsSet = new Set();

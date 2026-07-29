@@ -1,23 +1,32 @@
 import { useEffect, useRef, useState } from "react";
-import Editor, { OnMount } from "@monaco-editor/react";
-import * as monaco from "monaco-editor"; // brings in Monaco’s own types
+import Editor, { type OnMount } from "@monaco-editor/react";
 import useDevMode from "../hooks/useDevMode";
 import usePlugins from "../hooks/usePlugins";
-import { setupMonacoJsPsychContext, updateCustomPluginContext } from "./monacoJsPsychContext";
+import {
+  setupMonacoJsPsychContext,
+  updateCustomPluginContext,
+} from "./monacoJsPsychContext";
+
+type MonacoInstance = Parameters<OnMount>[1];
 
 const CodeEditor: React.FC = () => {
   const { code, setCode } = useDevMode();
   const { plugins } = usePlugins();
+  const monacoRef = useRef<MonacoInstance | null>(null);
+  const pluginNamesRef = useRef<string[]>([]);
+  pluginNamesRef.current = plugins.map((plugin) => plugin.name);
 
   useEffect(() => {
-    updateCustomPluginContext(monaco, plugins.map((p) => p.name));
+    if (monacoRef.current) {
+      updateCustomPluginContext(monacoRef.current, pluginNamesRef.current);
+    }
   }, [plugins]);
   const [saveIndicator, setSaveIndicator] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isLightMode, setIsLightMode] = useState(
     window.matchMedia &&
-      window.matchMedia("(prefers-color-scheme: light)").matches
+      window.matchMedia("(prefers-color-scheme: light)").matches,
   );
 
   useEffect(() => {
@@ -28,18 +37,25 @@ const CodeEditor: React.FC = () => {
   }, []);
 
   const handleEditorDidMount: OnMount = (editor, monacoInst) => {
+    monacoRef.current = monacoInst;
     setupMonacoJsPsychContext(monacoInst);
+    updateCustomPluginContext(monacoInst, pluginNamesRef.current);
 
     // Configurar los comandos de undo/redo
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyZ, () => {
-      editor.trigger("keyboard", "undo", null);
-    });
+    editor.addCommand(
+      monacoInst.KeyMod.CtrlCmd | monacoInst.KeyCode.KeyZ,
+      () => {
+        editor.trigger("keyboard", "undo", null);
+      },
+    );
 
     editor.addCommand(
-      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyZ,
+      monacoInst.KeyMod.CtrlCmd |
+        monacoInst.KeyMod.Shift |
+        monacoInst.KeyCode.KeyZ,
       () => {
         editor.trigger("keyboard", "redo", null);
-      }
+      },
     );
 
     editor.onDidChangeModelContent(() => {

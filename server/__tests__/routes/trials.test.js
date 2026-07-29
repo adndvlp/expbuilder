@@ -79,9 +79,10 @@ describe("GET /api/trials-metadata/:experimentID", () => {
 });
 
 describe("GET /api/trials-extensions/:experimentID", () => {
-  test("404 on unknown experiment", async () => {
+  test("returns no extensions for an unknown experiment", async () => {
     const { app } = await freshApp();
-    await request(app).get("/api/trials-extensions/NO").expect(404);
+    const res = await request(app).get("/api/trials-extensions/NO").expect(200);
+    expect(res.body).toEqual({ extensions: [] });
   });
 
   test("returns unique extensionType from trials flagged includesExtensions", async () => {
@@ -105,7 +106,10 @@ describe("GET /api/trials-extensions/:experimentID", () => {
       .send({
         name: "T3",
         plugin: "p",
-        parameters: { includesExtensions: true, extensionType: "mouse-tracking" },
+        parameters: {
+          includesExtensions: true,
+          extensionType: "mouse-tracking",
+        },
       });
     const res = await request(app).get("/api/trials-extensions/E1").expect(200);
     expect(new Set(res.body.extensions)).toEqual(
@@ -136,9 +140,7 @@ describe("GET /api/trial/:experimentID/:id", () => {
 
   test("404 when trial id missing", async () => {
     const { app } = await freshApp();
-    await request(app)
-      .post("/api/trial/E1")
-      .send({ name: "T1", plugin: "p" });
+    await request(app).post("/api/trial/E1").send({ name: "T1", plugin: "p" });
     await request(app).get("/api/trial/E1/999999").expect(404);
   });
 });

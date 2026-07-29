@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNodesInitialized, useReactFlow } from "reactflow";
+import { useNodesInitialized, useReactFlow } from "@xyflow/react";
 
 type CanvasViewportFitterProps = {
   layoutSignature: string;

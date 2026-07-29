@@ -87,10 +87,17 @@ describe("coverage editor: Monaco context and code editor", () => {
         target: "ESNext",
       }),
     );
+
+    expect(() => updateCustomPluginContext({}, ["custom-trial"])).not.toThrow();
+    expect(() => setupMonacoJsPsychContext({})).not.toThrow();
   });
 
   it("mounts Monaco, handles undo/redo commands and debounced saves", () => {
     render(<CodeEditor />);
+
+    expect(
+      editorHarness.monaco.languages.typescript.javascriptDefaults.addExtraLib,
+    ).not.toHaveBeenCalled();
 
     expect(screen.getByText("Editor vs-dark")).toBeInTheDocument();
     act(() => {
@@ -100,6 +107,12 @@ describe("coverage editor: Monaco context and code editor", () => {
 
     fireEvent.click(screen.getByText("Editor vs-light"));
 
+    expect(
+      editorHarness.monaco.languages.typescript.javascriptDefaults.addExtraLib,
+    ).toHaveBeenCalledWith(
+      expect.stringContaining("jsPsychPluginHtmlKeyboardResponse"),
+      "ts:jspsych-custom-plugins.d.ts",
+    );
     expect(editorHarness.editor.addCommand).toHaveBeenCalledTimes(2);
     editorHarness.editor.addCommand.mock.calls[0][1]();
     editorHarness.editor.addCommand.mock.calls[1][1]();

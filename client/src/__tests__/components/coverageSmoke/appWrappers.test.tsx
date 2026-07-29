@@ -9,8 +9,8 @@ import AlignmentGuidesLayer from "../../../pages/ExperimentBuilder/components/Co
 
 const routerMocks = vi.hoisted(() => ({ pathname: "/builder" }));
 
-vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual<any>("react-router-dom");
+vi.mock("react-router", async () => {
+  const actual = await vi.importActual<any>("react-router");
   return {
     ...actual,
     useLocation: () => ({ pathname: routerMocks.pathname }),

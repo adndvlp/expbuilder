@@ -1,40 +1,23 @@
 import { useState } from "react";
 import Papa from "papaparse";
-import * as ExcelJS from "exceljs";
+import readXlsxFile from "read-excel-file/browser";
 
-type FormulaCellValue = {
-  formula?: string;
-  sharedFormula?: string;
-  result?: unknown;
-};
+export type CsvRow = Record<string, unknown>;
 
-function isFormulaCellValue(value: unknown): value is FormulaCellValue {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    ("formula" in value || "sharedFormula" in value)
-  );
-}
-
-function getExcelCellValue(cell: ExcelJS.Cell): unknown {
-  if (cell.value instanceof Date) {
-    return cell.value;
+function getExcelHeader(value: unknown, columnIndex: number): string {
+  if (value === null || value === undefined || value === "") {
+    return `Column${columnIndex + 1}`;
   }
-
-  if (isFormulaCellValue(cell.value)) {
-    return cell.value.result ?? cell.text;
-  }
-
-  return cell.text || "";
+  return value instanceof Date ? value.toISOString() : String(value);
 }
 
 export function useCsvData() {
-  const [csvJson, setCsvJson] = useState<any[]>([]);
+  const [csvJson, setCsvJson] = useState<CsvRow[]>([]);
   const [csvColumns, setCsvColumns] = useState<string[]>([]);
 
   const handleCsvUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
-    onDataLoaded?: (data: any[], columns: string[]) => void
+    onDataLoaded?: (data: CsvRow[], columns: string[]) => void,
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -46,11 +29,8 @@ export function useCsvData() {
         header: true,
         skipEmptyLines: true,
         complete: (results) => {
-          const newData = results.data;
-          const newColumns =
-            results.data.length > 0
-              ? Object.keys(results.data[0] as Record<string, any>)
-              : [];
+          const newData = results.data as CsvRow[];
+          const newColumns = newData.length > 0 ? Object.keys(newData[0]) : [];
 
           setCsvJson(newData);
           setCsvColumns(newColumns);
@@ -65,50 +45,31 @@ export function useCsvData() {
       });
     } else if (fileName.endsWith(".xlsx")) {
       try {
-        const workbook = new ExcelJS.Workbook();
-        const arrayBuffer = await file.arrayBuffer();
-        await workbook.xlsx.load(arrayBuffer);
-
-        // Get the first worksheet
-        const worksheet = workbook.getWorksheet(1);
-        if (!worksheet) {
+        const [firstWorksheet] = await readXlsxFile(file);
+        if (!firstWorksheet) {
           alert("No worksheet found in the Excel file");
           return;
         }
 
-        const jsonData: any[] = [];
-        const headers: string[] = [];
+        const [headerRow = [], ...dataRows] = firstWorksheet.data;
+        const newColumns = headerRow.map(getExcelHeader);
+        const jsonData = dataRows
+          .map((row) =>
+            Object.fromEntries(
+              newColumns.map((header, columnIndex) => [
+                header,
+                row[columnIndex] ?? "",
+              ]),
+            ),
+          )
+          .filter((row) =>
+            Object.values(row).some(
+              (value) => value !== "" && value !== null && value !== undefined,
+            ),
+          );
 
-        // Get headers from the first row
-        const headerRow = worksheet.getRow(1);
-        headerRow.eachCell((cell, colNumber) => {
-          headers[colNumber - 1] = cell.text || `Column${colNumber}`;
-        });
-        // Process data rows (starting from row 2)
-        worksheet.eachRow((row, rowNumber) => {
-          if (rowNumber === 1) return; // Skip header row
-
-          const rowData: Record<string, any> = {};
-          row.eachCell((cell, colNumber) => {
-            const header = headers[colNumber - 1];
-            if (header) {
-              rowData[header] = getExcelCellValue(cell);
-            }
-          });
-
-          // Only add rows that have some data
-          if (
-            Object.values(rowData).some(
-              (val) => val !== "" && val !== null && val !== undefined
-            )
-          ) {
-            jsonData.push(rowData);
-          }
-        });
-
-        const newColumns = headers.filter((header) => header);
         setCsvJson(jsonData);
-        setCsvColumns(newColumns); // Remove empty headers
+        setCsvColumns(newColumns);
 
         if (onDataLoaded) {
           onDataLoaded(jsonData, newColumns);

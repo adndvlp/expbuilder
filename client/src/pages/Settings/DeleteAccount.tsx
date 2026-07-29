@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { auth, db } from "../../lib/firebase";
 import { deleteUser } from "firebase/auth";
 import { doc, deleteDoc } from "firebase/firestore";

@@ -1,5 +1,5 @@
 import { ReactNode, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import "./index.css";
 import BuilderWorkspace from "./components/BuilderWorkspace";
 import ConfigurationPanel from "./components/ConfigurationPanel";

@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation } from "react-router";
 import { ChatProvider } from "../contexts/ChatContext";
 import ChatPanel from "./Chat/ChatPanel";
 import ChatFAB from "./Chat/ChatFAB";

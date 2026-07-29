@@ -133,12 +133,13 @@ describe("GlobalCustomCode", () => {
   it("opens the initJsPsych editor, syncs param edits and renders builder previews", async () => {
     render(<GlobalCustomCode />);
 
+    expect(mocks.updateCustomPluginContext).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "initJsPsych" }));
     expect(mocks.updateCustomPluginContext).toHaveBeenCalledWith(
       expect.anything(),
       ["custom-plugin"],
     );
-
-    fireEvent.click(screen.getByRole("button", { name: "initJsPsych" }));
 
     expect(screen.getByText(/progress bar on/)).toBeInTheDocument();
     expect(screen.getByText(/Builder-managed/)).toBeInTheDocument();

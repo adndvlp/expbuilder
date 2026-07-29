@@ -1,7 +1,7 @@
 import "./mocks";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React, { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import CsvUploader from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/Csv/CsvUploader";
 import ExtensionsConfig from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/Extensions";

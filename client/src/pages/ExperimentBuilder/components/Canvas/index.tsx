@@ -1,5 +1,5 @@
-import "reactflow/dist/style.css";
-import ReactFlow from "reactflow";
+import "@xyflow/react/dist/style.css";
+import { ReactFlow } from "@xyflow/react";
 import BranchedTrial from "../ConfigurationPanel/TrialsConfiguration/BranchedTrial";
 import LoopNode from "./LoopNode";
 import TrialNode from "./TrialNode";
@@ -18,6 +18,9 @@ import {
 
 const nodeTypes = { trial: TrialNode, loop: LoopNode };
 const edgeTypes = { loop: LoopRoutingEdge };
+const proOptions = { hideAttribution: true };
+const fitViewOptions = { padding: 0.2, maxZoom: 1.15 };
+const reactFlowStyle = { background: "transparent" };
 
 function Canvas() {
   const workspace = useCanvasWorkspace();
@@ -64,13 +67,13 @@ function Canvas() {
         )}
 
         <ReactFlow
-          proOptions={{ hideAttribution: true }}
+          proOptions={proOptions}
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           fitView
-          fitViewOptions={{ padding: 0.2, maxZoom: 1.15 }}
+          fitViewOptions={fitViewOptions}
           minZoom={0.1}
           nodesConnectable={false}
           panOnDrag
@@ -78,7 +81,7 @@ function Canvas() {
           zoomOnDoubleClick={false}
           zoomOnPinch
           zoomOnScroll={false}
-          style={{ background: "transparent" }}
+          style={reactFlowStyle}
           onPaneClick={workspace.clearSelection}
         >
           <CanvasViewportFitter layoutSignature={layoutSignature} />

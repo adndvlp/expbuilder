@@ -4,15 +4,18 @@ import "@testing-library/jest-dom/vitest";
 // Vitest sets process.env but Vite uses import.meta.env
 // The vitest config passes env vars which become import.meta.env in Vite
 
-// Mock react-router-dom
-vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual("react-router-dom");
+// Mock react-router
+vi.mock("react-router", async () => {
+  const actual = await vi.importActual("react-router");
   return {
     ...actual,
     useParams: vi.fn(() => ({ id: "test-exp-123" })),
     useNavigate: vi.fn(() => vi.fn()),
     useSearchParams: vi.fn(() => [new URLSearchParams(), vi.fn()]),
-    Link: ({ to, children }: any) => actual.createComponent ? actual.createComponent("a", { href: to }, children) : null,
+    Link: ({ to, children }: any) =>
+      actual.createComponent
+        ? actual.createComponent("a", { href: to }, children)
+        : null,
     Outlet: () => null,
   };
 });
@@ -22,12 +25,18 @@ vi.mock("firebase/auth", () => ({
   getAuth: vi.fn(() => ({
     currentUser: null,
     signOut: vi.fn(),
-    onAuthStateChanged: vi.fn((cb) => { cb(null); return vi.fn(); }),
+    onAuthStateChanged: vi.fn((cb) => {
+      cb(null);
+      return vi.fn();
+    }),
   })),
   signInWithEmailAndPassword: vi.fn(),
   createUserWithEmailAndPassword: vi.fn(),
   connectAuthEmulator: vi.fn(),
-  onAuthStateChanged: vi.fn((auth, cb) => { cb(null); return vi.fn(); }),
+  onAuthStateChanged: vi.fn((auth, cb) => {
+    cb(null);
+    return vi.fn();
+  }),
 }));
 
 vi.mock("firebase/firestore", () => ({
@@ -96,7 +105,7 @@ vi.mock("@monaco-editor/react", () => ({
   default: () => null,
 }));
 
-// Mock @xyflow/react and reactflow
+// Mock @xyflow/react
 vi.mock("@xyflow/react", () => ({
   ReactFlow: () => null,
   ReactFlowProvider: ({ children }: any) => children,
@@ -109,16 +118,6 @@ vi.mock("@xyflow/react", () => ({
   Background: () => null,
   Controls: () => null,
   MiniMap: () => null,
-}));
-
-vi.mock("reactflow", () => ({
-  ReactFlow: () => null,
-  ReactFlowProvider: ({ children }: any) => children,
-  useNodesState: () => [[], vi.fn(), vi.fn()],
-  useEdgesState: () => [[], vi.fn(), vi.fn()],
-  MarkerType: { ArrowClosed: "arrowclosed" },
-  Position: { Left: "left", Right: "right", Top: "top", Bottom: "bottom" },
-  Handle: () => null,
 }));
 
 // Mock react-konva and konva
@@ -167,9 +166,9 @@ vi.mock("papaparse", () => ({
   },
 }));
 
-// Mock exceljs
-vi.mock("exceljs", () => ({
-  Workbook: vi.fn(),
+// Mock browser-side XLSX parsing
+vi.mock("read-excel-file/browser", () => ({
+  default: vi.fn(),
 }));
 
 // Mock bootstrap CSS import

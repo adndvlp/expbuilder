@@ -1,5 +1,4 @@
-import { OnMount } from "@monaco-editor/react";
-import * as monaco from "monaco-editor";
+import { type OnMount } from "@monaco-editor/react";
 import { useEffect, useRef, useState } from "react";
 import useCanvasStyles from "../hooks/useCanvasStyles";
 import useDevMode from "../hooks/useDevMode";
@@ -26,6 +25,8 @@ import {
 export { PreviewTabs } from "./GlobalCustomCode/components/PreviewTabs";
 export { resolveRightPreviewValue } from "./GlobalCustomCode/previewValues";
 
+type MonacoInstance = Parameters<OnMount>[1];
+
 export default function GlobalCustomCode() {
   const {
     customInitJsPsychParams,
@@ -34,6 +35,9 @@ export default function GlobalCustomCode() {
     setCustomPreInitCode,
   } = useDevMode();
   const { plugins } = usePlugins();
+  const monacoRef = useRef<MonacoInstance | null>(null);
+  const pluginNamesRef = useRef<string[]>([]);
+  pluginNamesRef.current = plugins.map((plugin) => plugin.name);
   const { canvasStyles } = useCanvasStyles();
   const experimentID = useExperimentID();
   const [modalOpen, setModalOpen] = useState(false);
@@ -52,10 +56,9 @@ export default function GlobalCustomCode() {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    updateCustomPluginContext(
-      monaco,
-      plugins.map((plugin) => plugin.name),
-    );
+    if (monacoRef.current) {
+      updateCustomPluginContext(monacoRef.current, pluginNamesRef.current);
+    }
   }, [plugins]);
 
   const localParams = customInitJsPsychParams.local;
@@ -87,7 +90,9 @@ export default function GlobalCustomCode() {
     }, 1200);
   };
   const handleEditorMount: OnMount = (_editor, monacoInstance) => {
+    monacoRef.current = monacoInstance;
     setupMonacoJsPsychContext(monacoInstance);
+    updateCustomPluginContext(monacoInstance, pluginNamesRef.current);
   };
   const handleReadonlyMount: OnMount = (editor) => {
     editor.revealLine(editor.getModel()?.getLineCount() ?? 1);

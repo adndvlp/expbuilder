@@ -59,7 +59,7 @@ Supports two formats:
 | Format | Library | Notes |
 |---|---|---|
 | \`.csv\` | PapaParse | Delimiter: auto-detected |
-| \`.xlsx\` | ExcelJS | First row = headers |
+| \`.xlsx\` | read-excel-file | First row = headers |
 
 Column names are **case-sensitive** and are sanitized (spaces → \`_\`).
 

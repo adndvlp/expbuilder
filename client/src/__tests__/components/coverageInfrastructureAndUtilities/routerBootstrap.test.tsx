@@ -23,7 +23,7 @@ describe("coverage infrastructure: static exports and router bootstrap", () => {
     const createHashRouter = vi.fn((routes) => ({ routes }));
     const page = (name: string) => () => <div>{name}</div>;
 
-    vi.doMock("react-router-dom", () => ({
+    vi.doMock("react-router", () => ({
       createHashRouter,
     }));
     vi.doMock("../../../components/AppLayout", () => ({
@@ -109,7 +109,7 @@ describe("coverage infrastructure: static exports and router bootstrap", () => {
 
     document.body.innerHTML = '<div id="root"></div>';
     vi.doMock("react-dom/client", () => ({ createRoot }));
-    vi.doMock("react-router-dom", () => ({ RouterProvider: routerProvider }));
+    vi.doMock("react-router", () => ({ RouterProvider: routerProvider }));
     vi.doMock("../../../pages", () => ({ default: fakeRouter }));
 
     await import("../../../main");

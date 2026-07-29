@@ -225,12 +225,13 @@ describe("GlobalCustomCode", () => {
 
     render(<GlobalCustomCode />);
 
+    expect(mocks.updateCustomPluginContext).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "initJsPsych" }));
     expect(mocks.updateCustomPluginContext).toHaveBeenCalledWith(
       expect.anything(),
       ["plugin-custom"],
     );
-
-    fireEvent.click(screen.getByRole("button", { name: "initJsPsych" }));
     expect(screen.getByText(/progress bar on/)).toBeInTheDocument();
     expect(screen.getByText(/Builder-managed/)).toBeInTheDocument();
 

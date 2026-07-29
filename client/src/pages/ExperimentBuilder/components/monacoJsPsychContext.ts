@@ -240,34 +240,82 @@ declare function io(url?: string, opts?: Record<string, any>): {
 `;
 
 function pluginNameToGlobal(name: string): string {
-  return "jsPsych" + name.split("-").map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join("");
+  return (
+    "jsPsych" +
+    name
+      .split("-")
+      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+      .join("")
+  );
+}
+
+type JavaScriptDefaults = {
+  addExtraLib: (content: string, filePath?: string) => unknown;
+  setCompilerOptions: (options: Record<string, unknown>) => void;
+  setDiagnosticsOptions: (options: Record<string, unknown>) => void;
+};
+
+type MonacoWithTypeScript = {
+  languages?: {
+    typescript?: {
+      javascriptDefaults?: JavaScriptDefaults;
+      ScriptTarget?: {
+        ESNext?: unknown;
+      };
+    };
+  };
+};
+
+function getMonacoWithTypeScript(value: unknown): MonacoWithTypeScript | null {
+  if (
+    (typeof value !== "object" || value === null) &&
+    typeof value !== "function"
+  ) {
+    return null;
+  }
+
+  return value as MonacoWithTypeScript;
 }
 
 // Call whenever the plugin list changes. Replaces the same extra-lib filename,
 // so Monaco picks up the new globals without duplicating declarations.
-export function updateCustomPluginContext(monacoInst: any, pluginNames: string[]): void {
+export function updateCustomPluginContext(
+  monacoInst: unknown,
+  pluginNames: string[],
+): void {
+  const monaco = getMonacoWithTypeScript(monacoInst);
+  const javascriptDefaults = monaco?.languages?.typescript?.javascriptDefaults;
+  if (!javascriptDefaults) return;
+
   const decls = pluginNames.length
-    ? pluginNames.map((n) => `declare const ${pluginNameToGlobal(n)}: any;`).join("\n")
+    ? pluginNames
+        .map((n) => `declare const ${pluginNameToGlobal(n)}: any;`)
+        .join("\n")
     : "// no custom plugins loaded";
 
-  monacoInst.languages.typescript.javascriptDefaults.addExtraLib(
-    decls,
-    "ts:jspsych-custom-plugins.d.ts",
-  );
+  javascriptDefaults.addExtraLib(decls, "ts:jspsych-custom-plugins.d.ts");
 }
 
-let _contextRegistered = false;
+const registeredMonacoInstances = new WeakSet<object>();
 
-export function setupMonacoJsPsychContext(monacoInst: any): void {
-  if (_contextRegistered) return;
-  _contextRegistered = true;
+export function setupMonacoJsPsychContext(monacoInst: unknown): void {
+  const monaco = getMonacoWithTypeScript(monacoInst);
+  if (!monaco || registeredMonacoInstances.has(monaco)) {
+    return;
+  }
 
-  monacoInst.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+  const typescript = monaco.languages?.typescript;
+  const javascriptDefaults = typescript?.javascriptDefaults;
+  if (!javascriptDefaults || typescript.ScriptTarget?.ESNext === undefined) {
+    return;
+  }
+
+  javascriptDefaults.setDiagnosticsOptions({
     noSemanticValidation: false,
     noSyntaxValidation: false,
   });
 
-  monacoInst.languages.typescript.javascriptDefaults.setCompilerOptions({
+  javascriptDefaults.setCompilerOptions({
     checkJs: true,
     allowJs: true,
     noEmit: true,
@@ -276,11 +324,13 @@ export function setupMonacoJsPsychContext(monacoInst: any): void {
     noUnusedLocals: false,
     noUnusedParameters: false,
     allowNonTsExtensions: true,
-    target: monacoInst.languages.typescript.ScriptTarget.ESNext,
+    target: typescript.ScriptTarget.ESNext,
   });
 
-  monacoInst.languages.typescript.javascriptDefaults.addExtraLib(
+  javascriptDefaults.addExtraLib(
     JSPSYCH_BUILDER_CONTEXT,
     "ts:jspsych-builder-context.d.ts",
   );
+
+  registeredMonacoInstances.add(monaco);
 }

@@ -29,10 +29,8 @@ export async function generateLoopCode(
     }
 
     // Fetch trials metadata within the loop using getLoopTimeline.
-    // ARCHITECTURE NOTE: We pass `updateState: false` here because this function is called by
-    // ExperimentPreview whenever a loop is selected to generate its code. If we update the global
-    // UI state (loopTimeline) here, it would force the Canvas to render this loop's contents,
-    // causing an unexpected visual "auto-open" behavior when clicking a nested loop node.
+    // Query mode intentionally avoids mutating or activating the Canvas loop cache while
+    // ExperimentPreview recursively generates code for selected and nested loops.
     const trialsMetadata = await getLoopTimeline(loop.id, { mode: "query" });
     const loopMergePointIds = getMergePointIds(trialsMetadata);
 

@@ -1,4 +1,4 @@
-import { BaseEdge, type EdgeProps } from "reactflow";
+import { BaseEdge, type Edge, type EdgeProps } from "@xyflow/react";
 import { getLoopCircuitPath } from "../services/loopRoutingPath";
 
 type LoopRoutingEdgeData = {
@@ -7,9 +7,9 @@ type LoopRoutingEdgeData = {
   routeBottomY?: number;
 };
 
-export default function LoopRoutingEdge(
-  props: EdgeProps<LoopRoutingEdgeData>,
-) {
+type LoopRoutingEdge = Edge<LoopRoutingEdgeData, "loop">;
+
+export default function LoopRoutingEdge(props: EdgeProps<LoopRoutingEdge>) {
   const path = getLoopCircuitPath({
     sourceX: props.sourceX,
     sourceY: props.sourceY,

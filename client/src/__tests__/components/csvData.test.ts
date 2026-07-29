@@ -1,9 +1,9 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Papa from "papaparse";
-import * as ExcelJS from "exceljs";
+import readXlsxFile from "read-excel-file/browser";
 import { useCsvData } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/Csv/useCsvData";
-import { fileEvent, makeWorksheet } from "./csvData/fixtures";
+import { fileEvent } from "./csvData/fixtures";
 
 vi.mock("papaparse", () => ({
   default: {
@@ -11,12 +11,8 @@ vi.mock("papaparse", () => ({
   },
 }));
 
-vi.mock("exceljs", () => ({
-  Workbook: vi.fn(),
-  ValueType: {
-    Date: 4,
-    Formula: 6,
-  },
+vi.mock("read-excel-file/browser", () => ({
+  default: vi.fn(),
 }));
 
 describe("useCsvData", () => {
@@ -117,14 +113,16 @@ describe("useCsvData", () => {
   });
 
   it("loads XLSX first worksheet rows and skips empty rows", async () => {
-    const worksheet = makeWorksheet();
-    const load = vi.fn().mockResolvedValue(undefined);
-    vi.mocked(ExcelJS.Workbook).mockImplementation(function WorkbookMock() {
-      return {
-        xlsx: { load },
-        getWorksheet: vi.fn(() => worksheet),
-      } as any;
-    } as any);
+    vi.mocked(readXlsxFile).mockResolvedValue([
+      {
+        sheet: "Trials",
+        data: [
+          ["stimulus", "duration", "when", "score"],
+          ["A", "500", new Date("2026-05-24T00:00:00.000Z"), 2],
+          [null, null, null, null],
+        ],
+      },
+    ]);
     const onDataLoaded = vi.fn();
     const { result } = renderHook(() => useCsvData());
 
@@ -135,7 +133,7 @@ describe("useCsvData", () => {
       );
     });
 
-    expect(load).toHaveBeenCalledWith(expect.any(ArrayBuffer));
+    expect(readXlsxFile).toHaveBeenCalledWith(expect.any(File));
     expect(result.current.csvJson).toEqual([
       {
         stimulus: "A",
@@ -164,48 +162,15 @@ describe("useCsvData", () => {
   });
 
   it("uses Excel header and cell fallbacks without a callback", async () => {
-    const headerRow = {
-      eachCell: (callback: (cell: any, colNumber: number) => void) => {
-        callback({ text: "" }, 1);
-        callback({ text: "formula" }, 2);
-        callback({ text: "plain" }, 3);
-        callback({ text: "ignored" }, 4);
+    vi.mocked(readXlsxFile).mockResolvedValue([
+      {
+        sheet: "Fallbacks",
+        data: [
+          [null, "formula", "plain", "ignored"],
+          [null, "fallback", null, 0, "no header"],
+        ],
       },
-    };
-    const dataRow = {
-      eachCell: (callback: (cell: any, colNumber: number) => void) => {
-        callback({ text: "", value: null, type: 3 }, 1);
-        callback(
-          {
-            text: "fallback",
-            value: { formula: "A1", result: undefined, date1904: false },
-          },
-          2,
-        );
-        callback({ text: "", value: null, type: 3 }, 3);
-        callback(
-          {
-            text: "zero",
-            value: { formula: "1-1", result: 0, date1904: false },
-          },
-          4,
-        );
-        callback({ text: "no header", value: "no header", type: 3 }, 5);
-      },
-    };
-    const worksheet = {
-      getRow: vi.fn(() => headerRow),
-      eachRow: vi.fn((callback: (row: any, rowNumber: number) => void) => {
-        callback(headerRow, 1);
-        callback(dataRow, 2);
-      }),
-    };
-    vi.mocked(ExcelJS.Workbook).mockImplementation(function WorkbookMock() {
-      return {
-        xlsx: { load: vi.fn().mockResolvedValue(undefined) },
-        getWorksheet: vi.fn(() => worksheet),
-      } as any;
-    } as any);
+    ]);
     const { result } = renderHook(() => useCsvData());
 
     await act(async () => {
@@ -227,12 +192,7 @@ describe("useCsvData", () => {
 
   it("alerts when XLSX has no first worksheet", async () => {
     const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
-    vi.mocked(ExcelJS.Workbook).mockImplementation(function WorkbookMock() {
-      return {
-        xlsx: { load: vi.fn().mockResolvedValue(undefined) },
-        getWorksheet: vi.fn(() => undefined),
-      } as any;
-    } as any);
+    vi.mocked(readXlsxFile).mockResolvedValue([]);
     const { result } = renderHook(() => useCsvData());
 
     await act(async () => {
@@ -254,12 +214,7 @@ describe("useCsvData", () => {
       .spyOn(console, "error")
       .mockImplementation(() => {});
     const error = new Error("bad workbook");
-    vi.mocked(ExcelJS.Workbook).mockImplementation(function WorkbookMock() {
-      return {
-        xlsx: { load: vi.fn().mockRejectedValue(error) },
-        getWorksheet: vi.fn(),
-      } as any;
-    } as any);
+    vi.mocked(readXlsxFile).mockRejectedValue(error);
     const { result } = renderHook(() => useCsvData());
 
     await act(async () => {

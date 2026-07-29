@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Need to mock react-router-dom useParams before importing the hook
-vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual("react-router-dom");
+// Need to mock react-router useParams before importing the hook
+vi.mock("react-router", async () => {
+  const actual = await vi.importActual("react-router");
   return {
     ...actual,
     useParams: vi.fn(),
@@ -10,7 +10,7 @@ vi.mock("react-router-dom", async () => {
 });
 
 import { fetchExperimentNameByID } from "../../pages/ExperimentBuilder/hooks/useExperimentID";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 
 describe("useExperimentID", () => {
   beforeEach(() => {

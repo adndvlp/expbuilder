@@ -1,4 +1,4 @@
-import { createHashRouter } from "react-router-dom";
+import { createHashRouter } from "react-router";
 import AppLayout from "../components/AppLayout";
 import Dashboard from "./Dashboard";
 import ExperimentBuilder from "./ExperimentBuilder";

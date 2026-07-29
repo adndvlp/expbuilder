@@ -31,8 +31,8 @@ vi.mock(
   }),
 );
 
-vi.mock("reactflow", () => ({
-  default: ({ onPaneClick }: { onPaneClick: () => void }) => (
+vi.mock("@xyflow/react", () => ({
+  ReactFlow: ({ onPaneClick }: { onPaneClick: () => void }) => (
     <div data-testid="react-flow">
       <button type="button" onClick={onPaneClick}>
         Pane

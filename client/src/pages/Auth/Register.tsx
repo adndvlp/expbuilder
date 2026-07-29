@@ -3,7 +3,7 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase";
 import "./index.css";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 const Register: React.FC = () => {
   const [email, setEmail] = useState("");

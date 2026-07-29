@@ -1,12 +1,10 @@
 import { UploadedFile } from "./useExperimentCode";
-import { Trial, Loop } from "../../ConfigurationPanel/types";
-import { TimelineItem } from "../../../contexts/TrialsContext";
 import { CanvasStyles } from "../../ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
-
-
-type GetTrialFn = (id: string | number) => Promise<Trial | null>;
-type GetLoopTimelineFn = (loopId: string | number, updateState?: boolean) => Promise<TimelineItem[]>;
-type GetLoopFn = (id: string | number) => Promise<Loop | null>;
+import type {
+  GetLoopFn,
+  GetLoopTimelineFn,
+  GetTrialFn,
+} from "../../../utils/codegen/types";
 
 type Props = {
   experimentID: string | undefined;

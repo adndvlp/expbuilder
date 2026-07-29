@@ -1,6 +1,6 @@
 import { act, render, waitFor } from "@testing-library/react";
 import React from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TimelineItem } from "../../../pages/ExperimentBuilder/contexts/TrialsContext";
 import TrialsContext from "../../../pages/ExperimentBuilder/contexts/TrialsContext";

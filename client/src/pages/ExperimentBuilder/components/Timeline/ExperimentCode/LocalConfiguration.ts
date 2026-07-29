@@ -1,21 +1,17 @@
 import { UploadedFile } from "./useExperimentCode";
-import { Trial, Loop } from "../../ConfigurationPanel/types";
-import { TimelineItem } from "../../../contexts/TrialsContext";
 import ExperimentBase from "./ExperimentBase";
 import useDevMode from "../../../hooks/useDevMode";
 import { CanvasStyles } from "../../ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
 import { buildLocalExperimentCode } from "./services/buildLocalExperimentCode";
 import { SessionNameToken } from "./services/localCodeTypes";
+import type {
+  GetLoopFn,
+  GetLoopTimelineFn,
+  GetTrialFn,
+} from "../../../utils/codegen/types";
 
 export const resolveApiUrl = (value: string | undefined) => value ?? "";
 const API_URL = resolveApiUrl(import.meta.env.VITE_API_URL);
-
-type GetTrialFn = (id: string | number) => Promise<Trial | null>;
-type GetLoopTimelineFn = (
-  loopId: string | number,
-  updateState?: boolean,
-) => Promise<TimelineItem[]>;
-type GetLoopFn = (id: string | number) => Promise<Loop | null>;
 
 type Props = {
   experimentID: string | undefined;

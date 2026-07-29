@@ -1,12 +1,15 @@
 import { UploadedFile } from "./useExperimentCode";
-import { Trial, Loop } from "../../ConfigurationPanel/types";
-import { TimelineItem } from "../../../contexts/TrialsContext";
 import { CanvasStyles } from "../../ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
 import ExperimentBase from "./ExperimentBase";
 import useDevMode from "../../../hooks/useDevMode";
 import { auth } from "../../../../../lib/firebase";
 import { buildPublicExperimentCode } from "./services/buildPublicExperimentCode";
 import { SessionNameToken } from "./services/localCodeTypes";
+import type {
+  GetLoopFn,
+  GetLoopTimelineFn,
+  GetTrialFn,
+} from "../../../utils/codegen/types";
 
 /* v8 ignore start -- import-time env fallbacks cannot be toggled after this module is loaded in Vitest. */
 const API_URL = import.meta.env.VITE_API_URL ?? "";
@@ -15,13 +18,6 @@ const FIREBASE_DATABASE_URL =
   import.meta.env.VITE_FIREBASE_DATABASE_URL ||
   `https://${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseio.com`;
 /* v8 ignore stop */
-
-type GetTrialFn = (id: string | number) => Promise<Trial | null>;
-type GetLoopTimelineFn = (
-  loopId: string | number,
-  updateState?: boolean,
-) => Promise<TimelineItem[]>;
-type GetLoopFn = (id: string | number) => Promise<Loop | null>;
 
 type Props = {
   experimentID: string | undefined;

@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import logo from "../../../icon/icon.png";
 import { LandingFooter } from "./LandingPage/components/LandingFooter";
 

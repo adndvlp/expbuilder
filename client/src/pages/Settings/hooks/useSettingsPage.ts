@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth } from "../../../lib/firebase";
 import type { Experiment, SettingsNotification } from "../types";

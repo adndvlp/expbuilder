@@ -22,8 +22,8 @@ vi.mock("../../pages/ExperimentBuilder/hooks/useTrials", () => ({
   default: () => mocks.trials,
 }));
 
-vi.mock("reactflow", () => ({
-  default: ({ nodes }: { nodes: MockNode[] }) => (
+vi.mock("@xyflow/react", () => ({
+  ReactFlow: ({ nodes }: { nodes: MockNode[] }) => (
     <div data-testid="react-flow">
       {nodes.map((node) =>
         node.type === "loop" ? (

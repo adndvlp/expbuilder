@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import FirebaseCredentials from "./FirebaseCredentials";
 import ResetAppButton from "./ResetAppButton";
 import { AccountSettings } from "./components/AccountSettings";

@@ -1,4 +1,4 @@
-import { Handle, Position } from "reactflow";
+import { Handle, Position } from "@xyflow/react";
 import { CANVAS_HANDLE_IDS } from "../services/canvasHandleIds";
 
 export default function CanvasNodeHandles() {

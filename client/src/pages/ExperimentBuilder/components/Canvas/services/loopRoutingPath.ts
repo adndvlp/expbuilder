@@ -42,7 +42,7 @@ function getRoundedPath(points: Point[], radius = 16) {
     path += ` L ${entry.x} ${entry.y}`;
     path += ` Q ${corner.x} ${corner.y} ${exit.x} ${exit.y}`;
   }
-  const last = points.at(-1)!;
+  const last = points[points.length - 1]!;
   return `${path} L ${last.x} ${last.y}`;
 }
 

@@ -124,7 +124,7 @@ function renderItem(
     return block;
   }
 
-  const loopExitId = inner.exitIds.at(-1)!;
+  const loopExitId = inner.exitIds[inner.exitIds.length - 1]!;
   if (loopExitId === inner.entryId) {
     addExpandedEdge(
       context,

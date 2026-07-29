@@ -1,6 +1,6 @@
 import "./index.css";
 import { useEffect, useState } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router";
 import { PromptModal } from "./PromptModal";
 import { auth } from "../../lib/firebase";
 const VITE_API = import.meta.env.VITE_API_URL;

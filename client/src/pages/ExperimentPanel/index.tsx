@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import { useEffect, useState } from "react";
 import ResultsList from "../ExperimentBuilder/components/ResultsList";
 import { fetchExperimentNameByID } from "../ExperimentBuilder/hooks/useExperimentID";

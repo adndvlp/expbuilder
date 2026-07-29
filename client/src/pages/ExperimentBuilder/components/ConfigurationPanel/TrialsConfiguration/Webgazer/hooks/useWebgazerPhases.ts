@@ -1,17 +1,18 @@
 import { useMemo } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { ColumnMapping, Trial } from "../../../types";
+import type { CsvRow } from "../../Csv/useCsvData";
 import { generatePhaseCode } from "../generatePhaseCode";
 
 interface Args {
   columnMapping: ColumnMapping;
-  csvJson: unknown[];
+  csvJson: CsvRow[];
   instructions: [unknown[], unknown[], unknown[], unknown[]];
   plugins: string[];
   selectedTrial: Trial | null;
   setColumnMapping: Dispatch<SetStateAction<ColumnMapping>>;
   setCsvColumns: Dispatch<SetStateAction<string[]>>;
-  setCsvJson: Dispatch<SetStateAction<unknown[]>>;
+  setCsvJson: Dispatch<SetStateAction<CsvRow[]>>;
   setIsLoadingTrial: Dispatch<SetStateAction<boolean>>;
   setTrialName: Dispatch<SetStateAction<string>>;
 }

@@ -1,10 +1,13 @@
-import { Loop, Trial } from "../../components/ConfigurationPanel/types";
-import { TimelineItem } from "../../contexts/TrialsContext";
+import type { Loop, Trial } from "../../components/ConfigurationPanel/types";
+import type {
+  LoopTimelineLoadOptions,
+  TimelineItem,
+} from "../../contexts/TrialsContext";
 
 export type GetTrialFn = (id: string | number) => Promise<Trial | null>;
 export type GetLoopTimelineFn = (
   loopId: string | number,
-  updateState?: boolean,
+  options?: LoopTimelineLoadOptions,
 ) => Promise<TimelineItem[]>;
 export type GetLoopFn = (id: string | number) => Promise<Loop | null>;
 

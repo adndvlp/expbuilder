@@ -40,7 +40,7 @@ export function reconcileExpandedLoopPath({
     );
     if (!visibleLoop) break;
 
-    const expectedParentId = nextPath.at(-1)?.loop.id ?? null;
+    const expectedParentId = nextPath[nextPath.length - 1]?.loop.id ?? null;
     const loopChanged =
       visibleLoop.name !== entry.loop.name ||
       !idsMatch(entry.loop.parentLoopId, expectedParentId);
@@ -64,7 +64,7 @@ export function reconcileExpandedLoopPath({
     nextPath.some((entry) => idsMatch(entry.loop.id, activeScopeId));
   const nextActiveScopeId = activeStillVisible
     ? activeScopeId
-    : (nextPath.at(-1)?.loop.id ?? null);
+    : (nextPath[nextPath.length - 1]?.loop.id ?? null);
   const pathChanged =
     nextPath.length !== path.length ||
     nextPath.some((entry, index) => entry !== path[index]);

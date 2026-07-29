@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom";
+import { Navigate } from "react-router";
 import React, { useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "../lib/firebase";
