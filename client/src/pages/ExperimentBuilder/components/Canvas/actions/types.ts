@@ -1,4 +1,5 @@
 import type useTrials from "../../../hooks/useTrials";
+import type { Trial } from "../../ConfigurationPanel/types";
 import type { TimelineItem } from "../../../contexts/TrialsContext";
 
 export type CanvasItemId = string | number;
@@ -35,7 +36,7 @@ export type CanvasActionDependencies = Pick<
 >;
 
 export type TrialSelection = {
-  onSelectTrial?: ReturnType<typeof useTrials>["setSelectedTrial"];
+  onSelectTrial?: (trial: Trial) => void;
 };
 
 export type LoopSelection = {

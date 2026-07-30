@@ -1,4 +1,5 @@
 import type React from "react";
+import Switch from "react-switch";
 import ParameterInputField from "../ParameterInputField";
 import TypedParameterInput from "../TypedParameterInput";
 import {
@@ -68,13 +69,20 @@ export default function ParameterControl({
 
   // ── Special: Dynamic CSV diagnostics → controlled per trial ──
   if (key === "dynamic_csv_diagnostics") {
-    const DYNAMIC_CSV_DIAGNOSTIC_OPTIONS = [
-      { value: "off", label: "Off - clean CSV" },
-      { value: "summary", label: "Summary - quality fields" },
-      { value: "full", label: "Full - benchmark/debug" },
-    ];
-    const currentMode =
-      (entry.source === "typed" ? (entry.value as string) : null) ?? "off";
+    const currentValue = entry.source === "typed" ? entry.value : false;
+    const checked =
+      currentValue === "debug";
+    const saveAuditValue = (checked: boolean) => {
+      const newValue = {
+        source: "typed" as const,
+        value: checked ? "debug" : "off",
+      };
+      setColumnMapping((prev) => ({
+        ...prev,
+        [key]: newValue,
+      }));
+      if (onSave) setTimeout(() => onSave(key, newValue), 100);
+    };
     return (
       <div key={key} style={fieldStyle}>
         <label
@@ -83,32 +91,38 @@ export default function ParameterControl({
         >
           Dynamic CSV Audit Data
         </label>
-        <select
-          className={componentMode ? "" : "w-full p-2 border rounded mt-1"}
-          value={currentMode}
-          onChange={(e) => {
-            const newValue = {
-              source: "typed" as const,
-              value: e.target.value,
-            };
-            setColumnMapping((prev) => ({
-              ...prev,
-              [key]: newValue,
-            }));
-            if (onSave) setTimeout(() => onSave(key, newValue), 100);
-          }}
+        <div
+          className={
+            componentMode
+              ? ""
+              : "mt-2 flex items-center gap-3 text-sm text-slate-800"
+          }
           style={
             componentMode
-              ? INSPECTOR_SELECT_STYLE
-              : { color: "var(--text-dark)" }
+              ? { display: "flex", alignItems: "center", gap: 12 }
+              : undefined
           }
+          data-testid="dynamic-csv-audit-toggle"
+          aria-checked={checked}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              saveAuditValue(!checked);
+            }
+          }}
         >
-          {DYNAMIC_CSV_DIAGNOSTIC_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+          <Switch
+            aria-label="Dynamic CSV Audit Data"
+            checked={checked}
+            onChange={saveAuditValue}
+            onColor="#f1c40f"
+            onHandleColor="#ffffff"
+            handleDiameter={24}
+            uncheckedIcon={false}
+            checkedIcon={false}
+            height={20}
+            width={44}
+          />
+        </div>
       </div>
     );
   }

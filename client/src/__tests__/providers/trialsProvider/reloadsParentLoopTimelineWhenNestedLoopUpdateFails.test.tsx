@@ -236,15 +236,16 @@ describe("TrialsProvider", () => {
     await waitFor(() => {
       expect(view.getContext()?.selectedLoop).toEqual(selected);
     });
+    const responseWithoutCollections = loop({
+      id: "loop-1",
+      name: "Server Missing Arrays",
+    });
+    Reflect.deleteProperty(responseWithoutCollections, "branches");
+    Reflect.deleteProperty(responseWithoutCollections, "trials");
 
     queueFetchResponses(
       okJson({
-        loop: loop({
-          id: "loop-1",
-          name: "Server Missing Arrays",
-          branches: undefined as any,
-          trials: undefined as any,
-        }),
+        loop: responseWithoutCollections,
       }),
     );
 

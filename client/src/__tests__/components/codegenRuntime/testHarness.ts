@@ -47,9 +47,28 @@ function normalize(code: string) {
 }
 
 function getResumeResolver() {
-  return new Function(`${resumeCode()}; return _resolveResumeBranch;`)() as (
+  const factory = new Function(
+    "localStorage",
+    "sessionStorage",
+    `${resumeCode()}; return _resolveResumeBranch;`,
+  );
+  return factory(createMemoryStorage(), createMemoryStorage()) as (
     resumeRaw: string | null,
   ) => string | null;
+}
+
+function createMemoryStorage() {
+  const values = new Map<string, string>();
+  return {
+    clear: () => values.clear(),
+    getItem: (key) => values.get(key) ?? null,
+    removeItem: (key) => {
+      values.delete(key);
+    },
+    setItem: (key, value) => {
+      values.set(key, String(value));
+    },
+  };
 }
 
 afterEach(() => {

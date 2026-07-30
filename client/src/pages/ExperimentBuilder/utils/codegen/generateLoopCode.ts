@@ -63,11 +63,14 @@ export async function generateLoopCode(
           );
 
           return {
-            id: fullTrial.id,
             trialName: fullTrial.name,
             pluginName: fullTrial.plugin,
             timelineProps: trialResult.code,
             mappedJson: trialResult.mappedJson,
+            branches: fullTrial.branches || [],
+            branchConditions: fullTrial.branchConditions || [],
+            repeatConditions: fullTrial.repeatConditions || [],
+            customOnFinish: fullTrial.customOnFinish || "",
           };
         } else if (item.type === "loop") {
           // Recursively generate nested loop code

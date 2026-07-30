@@ -1,7 +1,7 @@
 import { act, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { TimelineItem } from "../../../pages/ExperimentBuilder/contexts/TrialsContext";
-import { okJson } from "../../helpers/trialFactories";
+import { loop, okJson, trial } from "../../helpers/trialFactories";
 import {
   fetchMock,
   registerTrialsProviderLifecycle,
@@ -80,6 +80,46 @@ describe("TrialsProvider root timeline concurrency", () => {
     });
 
     expect(view.getContext()?.timeline).toEqual(savedTimeline);
+    expect(view.getContext()?.isLoading).toBe(false);
+  });
+
+  it("does not cancel a cold timeline load for nonvisual saves", async () => {
+    const slowInitialLoad = deferredResponse();
+    const populatedTimeline = [item("trial-1", "Loaded Trial")];
+    const selectedTrial = trial({
+      id: "trial-1",
+      name: "Loaded Trial",
+      parameters: { stimulus: "updated" },
+    });
+    const selectedLoop = loop({
+      id: "loop-1",
+      name: "Loop",
+      repetitions: 2,
+    });
+    fetchMock()
+      .mockImplementationOnce(() => slowInitialLoad.promise)
+      .mockResolvedValueOnce(okJson({ trial: selectedTrial }))
+      .mockResolvedValueOnce(okJson({ loop: selectedLoop }));
+
+    const view = renderTrialsProvider();
+    await waitFor(() => {
+      expect(fetchMock()).toHaveBeenCalledTimes(1);
+    });
+    act(() => view.getContext()?.setSelectedTrial(selectedTrial));
+    act(() => view.getContext()?.setSelectedLoop(selectedLoop));
+
+    await act(async () => {
+      await view
+        .getContext()
+        ?.updateTrial("trial-1", { parameters: { stimulus: "updated" } });
+      await view.getContext()?.updateLoop("loop-1", { repetitions: 2 });
+    });
+    await act(async () => {
+      slowInitialLoad.resolve(okJson({ timeline: populatedTimeline }));
+      await slowInitialLoad.promise;
+    });
+
+    expect(view.getContext()?.timeline).toEqual(populatedTimeline);
     expect(view.getContext()?.isLoading).toBe(false);
   });
 });

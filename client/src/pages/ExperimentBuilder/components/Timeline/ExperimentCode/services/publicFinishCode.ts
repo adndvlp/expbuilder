@@ -41,24 +41,11 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
   ];
   return `
       on_finish: async function() {
-        // Si hay un repeat/jump pendiente, recargar para ejecutarlo
-        if (localStorage.getItem('jsPsych_jumpToTrial')) {
-          if (pendingBatchSaves.length > 0) await Promise.allSettled(pendingBatchSaves);
-          sessionStorage.setItem('jsPsych_jumpReload', '1');
-          window.location.reload();
-          return;
-        }
-
         _showLoading('Saving your data\u2026');
         await new Promise(r => setTimeout(r, 0));
         
-        // Limpiar datos de retoma ya que el experimento terminó correctamente
-        localStorage.removeItem('jsPsych_resumeTrial');
-        localStorage.removeItem('jsPsych_currentSessionId');
-        localStorage.removeItem('jsPsych_participantNumber');
-        sessionStorage.removeItem('jsPsych_captchaPassed');
-
-        if (BATCH_CONFIG.useIndexedDB) {
+        try {
+          if (BATCH_CONFIG.useIndexedDB) {
           // --- CON IndexedDB: Enviar datos acumulados ---
           
           // Esperar cualquier batch pendiente
@@ -71,15 +58,9 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
           
           if (allTrials.length > 0) {
             if (BATCH_CONFIG.size === 0) {
-              try {
-                _setLoadingMsg('Uploading data\u2026');
-                await sendCompleteExperiment(allTrials);
-                await TrialDB.clear();
-              } catch (error) {
-                console.error('Error sending complete experiment:', error);
-                _setLoadingMsg('Error saving data. Please contact support.');
-                return;
-              }
+              _setLoadingMsg('Uploading data\u2026');
+              await sendCompleteExperiment(allTrials);
+              await TrialDB.clear();
             } else {
               BATCH_CONFIG.currentBatchNumber++;
               _setLoadingMsg('Sending final batch\u2026');
@@ -92,11 +73,15 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
               }
             }
           }
+          }
+        } catch (error) {
+          console.error('Error flushing trial data:', error);
+          _setLoadingMsg(
+            'Error saving data. Your progress was preserved. Please reload to retry.'
+          );
+          return;
         }
         
-        // Cancelar el onDisconnect para evitar que marque como abandoned
-        sessionRef.onDisconnect().cancel();
-
         _setLoadingMsg('Finishing up\u2026');
         
         try {
@@ -112,7 +97,16 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
           });
         } catch (error) {
           console.error('Error marking session as finished:', error);
+          _setLoadingMsg('Error saving data. Please contact support.');
+          return;
         }
+
+        // Cancel only after the durable completed state was confirmed.
+        sessionRef.onDisconnect().cancel();
+        localStorage.removeItem('jsPsych_resumeTrial');
+        localStorage.removeItem('jsPsych_currentSessionId');
+        localStorage.removeItem('jsPsych_participantNumber');
+        sessionStorage.removeItem('jsPsych_captchaPassed');
 
         // --- Recruitment platform redirect ---
         ${

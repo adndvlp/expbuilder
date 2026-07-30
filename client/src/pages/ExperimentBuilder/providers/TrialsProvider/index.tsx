@@ -12,9 +12,10 @@ import TrialsContext, {
 } from "../../contexts/TrialsContext";
 import type { Loop, Trial } from "../../components/ConfigurationPanel/types";
 import { useExperimentID } from "../../hooks/useExperimentID";
-import TrialMethods from "./TrialMethods";
-import LoopMethods from "./LoopMethods";
+import useTrialMethods from "./TrialMethods";
+import useLoopMethods from "./LoopMethods";
 import useLoopTimelineCache from "./hooks/useLoopTimelineCache";
+import { createStateStore } from "./stateStore";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -24,22 +25,51 @@ type Props = {
 
 export default function TrialsProvider({ children }: Props) {
   const [timeline, setTimelineState] = useState<TimelineItem[]>([]);
-  const [selectedTrial, setSelectedTrial] = useState<Trial | null>(null);
-  const [selectedLoop, setSelectedLoop] = useState<Loop | null>(null);
+  const [selectedTrial, setSelectedTrialState] = useState<Trial | null>(null);
+  const [selectedLoop, setSelectedLoopState] = useState<Loop | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const timelineStore = useMemo(
+    () => createStateStore<TimelineItem[]>([]),
+    [],
+  );
+  const trialSelection = useMemo(
+    () => createStateStore<Trial | null>(null),
+    [],
+  );
+  const loopSelection = useMemo(
+    () => createStateStore<Loop | null>(null),
+    [],
+  );
 
   const experimentID = useExperimentID();
-  const currentExperimentIdRef = useRef(experimentID);
   const timelineRequestVersionRef = useRef(0);
-  currentExperimentIdRef.current = experimentID;
+
+  const setSelectedTrial = useCallback<
+    TrialsContextType["setSelectedTrial"]
+  >((nextSelection) => {
+    const next = trialSelection.resolve(nextSelection);
+    setSelectedTrialState(next);
+  }, [trialSelection]);
+  const setSelectedLoop = useCallback<TrialsContextType["setSelectedLoop"]>(
+    (nextSelection) => {
+      const next = loopSelection.resolve(nextSelection);
+      setSelectedLoopState(next);
+    },
+    [loopSelection],
+  );
+  const getSelectedTrial = trialSelection.get;
+  const getSelectedLoop = loopSelection.get;
 
   const setTimeline = useCallback(
     (nextTimeline: SetStateAction<TimelineItem[]>) => {
+      const previous = timelineStore.get();
+      const next = timelineStore.resolve(nextTimeline);
+      if (Object.is(previous, next)) return;
       timelineRequestVersionRef.current += 1;
       setIsLoading(false);
-      setTimelineState(nextTimeline);
+      setTimelineState(next);
     },
-    [],
+    [timelineStore],
   );
   const {
     loopTimeline,
@@ -71,27 +101,23 @@ export default function TrialsProvider({ children }: Props) {
 
       const data = await response.json();
 
-      if (
-        requestVersion === timelineRequestVersionRef.current &&
-        requestedExperimentId === currentExperimentIdRef.current
-      ) {
-        setTimelineState(data.timeline || []);
+      if (requestVersion === timelineRequestVersionRef.current) {
+        const nextTimeline = data.timeline || [];
+        timelineStore.resolve(nextTimeline);
+        setTimelineState(nextTimeline);
       }
     } catch (error) {
       console.error("Error loading trials timeline:", error);
     } finally {
-      if (
-        requestVersion === timelineRequestVersionRef.current &&
-        requestedExperimentId === currentExperimentIdRef.current
-      ) {
+      if (requestVersion === timelineRequestVersionRef.current) {
         setIsLoading(false);
       }
     }
-  }, [experimentID]);
+  }, [experimentID, timelineStore]);
 
   const { createTrial, getTrial, updateTrial, updateTrialField, deleteTrial } =
-    TrialMethods({
-      selectedTrial,
+    useTrialMethods({
+      getSelectedTrial,
       experimentID,
       timeline,
       loopTimelineCache,
@@ -103,7 +129,7 @@ export default function TrialsProvider({ children }: Props) {
     });
 
   const { createLoop, getLoop, updateLoop, updateLoopField, deleteLoop } =
-    LoopMethods({
+    useLoopMethods({
       experimentID,
       timeline,
       loopTimelineCache,
@@ -113,6 +139,7 @@ export default function TrialsProvider({ children }: Props) {
       getLoopTimeline,
       selectedLoop,
       setSelectedLoop,
+      getSelectedLoop,
     });
 
   // ==================== TIMELINE METHODS ====================
@@ -168,13 +195,22 @@ export default function TrialsProvider({ children }: Props) {
       console.error("Error deleting all trials:", error);
       return false;
     }
-  }, [experimentID, resetLoopTimelineCache, setTimeline]);
+  }, [
+    experimentID,
+    resetLoopTimelineCache,
+    setSelectedLoop,
+    setSelectedTrial,
+    setTimeline,
+  ]);
 
   // ==================== INITIAL LOAD ====================
 
   useEffect(() => {
     if (experimentID) {
-      getTimeline();
+      // The experiment ID is an external route input; entering a cold builder
+      // must fetch its timeline once after the route commits.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void getTimeline();
     }
   }, [experimentID, getTimeline]);
 
@@ -223,6 +259,8 @@ export default function TrialsProvider({ children }: Props) {
       loopTimeline,
       loopTimelineCache,
       selectedLoop,
+      setSelectedLoop,
+      setSelectedTrial,
       selectedTrial,
       timeline,
       updateLoop,

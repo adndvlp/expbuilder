@@ -4,18 +4,28 @@ import type {
   NewBranchItem,
   TimelineItem,
 } from "../../../contexts/TrialsContext";
+import {
+  getLoopTimelineChanges,
+  getLoopTimelineSnapshot,
+  updateLoopTimeline,
+} from "../loopTimelineUpdates";
+import { findTimelineItemLocation } from "../itemScope";
 import type { LoopMethodsWithGetLoop } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
+const idsMatch = (left: string | number, right: string | number) =>
+  String(left) === String(right);
 
 export default function useUpdateLoop({
   experimentID,
+  timeline,
+  loopTimelineCache,
   setTimeline,
   updateLoopTimelineItems,
   getTimeline,
   getLoopTimeline,
-  selectedLoop,
   setSelectedLoop,
+  getSelectedLoop,
   getLoop,
 }: LoopMethodsWithGetLoop) {
   return useCallback(
@@ -26,75 +36,37 @@ export default function useUpdateLoop({
     ): Promise<Loop | null> => {
       let parentLoopId: string | number | null = null;
       try {
+        const timelineChanges = getLoopTimelineChanges(loop);
+        const location = findTimelineItemLocation(
+          id,
+          timeline,
+          loopTimelineCache,
+        );
+        const selected = getSelectedLoop();
         const currentLoopData =
-          selectedLoop?.id === id ? selectedLoop : await getLoop(id);
+          location?.item.type === "loop"
+            ? location.item
+            : selected && idsMatch(selected.id, id)
+              ? selected
+              : await getLoop(id);
         if (!currentLoopData) throw new Error("Loop not found");
-        parentLoopId = currentLoopData.parentLoopId ?? null;
+        parentLoopId = location
+          ? location.parentLoopId
+          : (currentLoopData.parentLoopId ?? null);
 
-        const optimisticUpdateFn = (prev: TimelineItem[]) => {
-          let targetFound = false;
-          const updated = prev.map((item) => {
-            if (item.id === id && item.type === "loop") {
-              targetFound = true;
-              return {
-                ...item,
-                name: loop.name ?? item.name,
-                branches: loop.branches ?? item.branches,
-                trials: loop.trials ?? item.trials,
-              };
-            }
-            return item;
-          });
-          if (!targetFound) return prev;
-
-          // 2. Agregar items de branches que no estén en el timeline
-          const updatedBranches = loop.branches;
-          if (updatedBranches && updatedBranches.length > 0) {
-            const existingIds = new Set(updated.map((item) => item.id));
-            const missingBranchIds = updatedBranches.filter(
-              (branchId: number | string) => !existingIds.has(branchId),
+        if (timelineChanges) {
+          const optimisticUpdate = (items: TimelineItem[]) =>
+            updateLoopTimeline(
+              items,
+              id,
+              timelineChanges,
+              newBranchItem,
             );
-
-            // Para cada branch faltante, agregarlo al timeline
-            missingBranchIds.forEach((branchId: number | string) => {
-              // Si es el item recién creado, usar sus datos reales
-              if (newBranchItem && newBranchItem.id === branchId) {
-                // Determinar type: si tiene 'plugin', es trial; si tiene 'trials', es loop
-                const itemType =
-                  newBranchItem.plugin !== undefined
-                    ? "trial"
-                    : newBranchItem.trials !== undefined
-                      ? "loop"
-                      : "trial";
-                const branchItem: TimelineItem = {
-                  id: newBranchItem.id,
-                  type: itemType as "trial" | "loop",
-                  name: newBranchItem.name,
-                  branches: newBranchItem.branches || [],
-                };
-                if (itemType === "loop") {
-                  branchItem.trials = newBranchItem.trials || [];
-                }
-                updated.push(branchItem);
-              } else {
-                // Para otros branches, usar placeholder
-                updated.push({
-                  id: branchId,
-                  type: "trial" as const,
-                  name: "Loading...",
-                  branches: [],
-                });
-              }
-            });
+          if (parentLoopId != null) {
+            updateLoopTimelineItems(parentLoopId, optimisticUpdate);
+          } else {
+            setTimeline(optimisticUpdate);
           }
-
-          return updated;
-        };
-
-        if (parentLoopId != null) {
-          updateLoopTimelineItems(parentLoopId, optimisticUpdateFn);
-        } else {
-          setTimeline(optimisticUpdateFn);
         }
 
         const response = await fetch(
@@ -114,13 +86,15 @@ export default function useUpdateLoop({
         const updatedLoop = data.loop;
 
         // Si se actualizó el array de trials, sincronizar parentLoopId
-        if (loop.trials) {
+        if (loop.trials !== undefined) {
           const oldTrials = currentLoopData.trials || [];
           const newTrials = loop.trials;
+          const oldTrialIds = new Set(oldTrials.map(String));
+          const newTrialIds = new Set(newTrials.map(String));
 
           // Trials/loops removidos del loop - limpiar parentLoopId
           const removedItems = oldTrials.filter(
-            (itemId) => !newTrials.includes(itemId),
+            (itemId) => !newTrialIds.has(String(itemId)),
           );
           for (const itemId of removedItems) {
             try {
@@ -150,7 +124,7 @@ export default function useUpdateLoop({
 
           // Trials/loops agregados al loop - asignar parentLoopId
           const addedItems = newTrials.filter(
-            (itemId) => !oldTrials.includes(itemId),
+            (itemId) => !oldTrialIds.has(String(itemId)),
           );
           for (const itemId of addedItems) {
             try {
@@ -177,30 +151,22 @@ export default function useUpdateLoop({
           }
         }
 
-        // ACTUALIZAR UI CON DATOS REALES - refinar el optimistic update
-        const finalUpdateFn = (prev: TimelineItem[]) =>
-          prev.map((item) =>
-            item.id === id && item.type === "loop"
-              ? {
-                  ...item,
-                  name: updatedLoop.name,
-                  branches: updatedLoop.branches || [],
-                  trials: updatedLoop.trials || [],
-                }
-              : item,
-          );
-
         parentLoopId = updatedLoop.parentLoopId ?? parentLoopId;
-        if (parentLoopId != null) {
-          updateLoopTimelineItems(parentLoopId, finalUpdateFn);
-        } else {
-          setTimeline(finalUpdateFn);
+        if (timelineChanges) {
+          const snapshot = getLoopTimelineSnapshot(updatedLoop);
+          const finalUpdate = (items: TimelineItem[]) =>
+            updateLoopTimeline(items, id, snapshot, newBranchItem);
+          if (parentLoopId != null) {
+            updateLoopTimelineItems(parentLoopId, finalUpdate);
+          } else {
+            setTimeline(finalUpdate);
+          }
         }
 
         // Actualizar selectedLoop si es el que está seleccionado
-        if (selectedLoop?.id === id) {
-          setSelectedLoop(updatedLoop);
-        }
+        setSelectedLoop((current) =>
+          current && idsMatch(current.id, id) ? updatedLoop : current,
+        );
 
         return updatedLoop;
       } catch (error) {
@@ -219,12 +185,14 @@ export default function useUpdateLoop({
     },
     [
       experimentID,
-      selectedLoop,
+      getSelectedLoop,
       getTimeline,
       getLoopTimeline,
       getLoop,
+      loopTimelineCache,
       setTimeline,
       setSelectedLoop,
+      timeline,
       updateLoopTimelineItems,
     ],
   );

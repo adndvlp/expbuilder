@@ -209,12 +209,16 @@ class ImageComponent {
     this.drawRect = rect;
     this.updateTrackingElement(rect, zIndex);
     this.removeDrawable?.();
-    this.stage.preloadTexture(this.drawableId, this.source);
+    const stimulusKey = String(
+      this.resolveParam(config.stimulus, this.drawableId) ?? this.drawableId,
+    );
+    const textureKey = `${this.drawableId}:${stimulusKey}`;
+    this.stage.preloadTexture(textureKey, this.source);
     this.removeDrawable = this.stage.registerSprite({
       id: this.drawableId,
       zIndex,
       visible: false,
-      textureKey: this.drawableId,
+      textureKey,
       source: this.source,
       x: rect.x,
       y: rect.y,

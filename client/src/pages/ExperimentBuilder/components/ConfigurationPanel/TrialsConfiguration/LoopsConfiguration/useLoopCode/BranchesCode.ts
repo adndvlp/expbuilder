@@ -97,7 +97,6 @@ function BranchesCode({
       
       if (allRulesMatch && condition.jumpToTrialId) {
         console.log('Loop repeat condition matched! Jumping to trial:', condition.jumpToTrialId);
-        // Save the target trial in localStorage
         localStorage.setItem('jsPsych_jumpToTrial', String(condition.jumpToTrialId));
         shouldRepeat = true;
         break;
@@ -105,13 +104,7 @@ function BranchesCode({
     }
     
     if (shouldRepeat) {
-      // Clear the jsPsych container (jspsych-container is the display_element)
-      const container = document.getElementById('jspsych-container');
-      if (container) {
-        // Clear all content from the container
-        container.innerHTML = '';
-      }
-      // Restart the timeline
+      document.getElementById('jspsych-container').innerHTML = '';
       setTimeout(() => {
         jsPsych.run(timeline);
       }, 100);

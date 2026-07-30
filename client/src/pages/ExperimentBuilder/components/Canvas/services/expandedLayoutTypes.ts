@@ -33,6 +33,7 @@ export type ExpandedCanvasNode = {
   type: "trial" | "loop";
   data: ExpandedCanvasNodeData;
   position: { x: number; y: number };
+  measured: { width: number; height: number };
   draggable: false;
 };
 

@@ -5,6 +5,7 @@ import {
   replaceGroupedTrialBranches,
   syncTimelineBranches,
 } from "./state.js";
+import { createUniqueItemName } from "../uniqueItemName.js";
 
 const router = Router();
 
@@ -13,17 +14,18 @@ router.post("/api/loop/:experimentID", async (req, res) => {
   try {
     const { experimentID } = req.params;
     const loopData = req.body;
+    const experimentDoc = await getExperimentDoc(experimentID, true);
 
     const id = "loop_" + Date.now();
     const newLoop = {
       ...loopData,
       id,
+      name: createUniqueItemName(experimentDoc, loopData.name, "Loop 1"),
       trials: loopData.trials || [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    const experimentDoc = await getExperimentDoc(experimentID, true);
     experimentDoc.loops.push(newLoop);
 
     if (!newLoop.parentLoopId) {

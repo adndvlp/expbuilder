@@ -184,18 +184,14 @@ const ${loopIdSanitized}_procedure = {
   ${generateConditionalLoopFunction(isConditionalLoop, loopConditions)}
   conditional_function: function() {
     const currentId = "${id}";
-    
-    // Check if there is a target trial saved in localStorage (for repeat/jump)
+
+    // Check for a pending repeat/jump target before normal branching.
     const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
     if (jumpToTrial) {
       if (String(currentId) === String(jumpToTrial)) {
-        // Found the target loop for repeat/jump
-        console.log('Repeat/jump: Found target loop', currentId);
         localStorage.removeItem('jsPsych_jumpToTrial');
         return true;
       }
-      // Not the target, skip
-      console.log('Repeat/jump: Skipping loop', currentId);
       return false;
     }
     

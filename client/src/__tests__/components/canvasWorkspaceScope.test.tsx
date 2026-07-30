@@ -207,6 +207,22 @@ describe("useCanvasWorkspace active action scope", () => {
     });
   });
 
+  it("keeps flow input stable when selected form data is replaced", () => {
+    const trials = createTrialsMock();
+    trials.selectedTrial = makeTrial(10, {
+      parameters: { stimulus: "before" },
+    });
+    const view = renderHook(() => useCanvasWorkspace());
+    const firstFlowOptions = mocks.flowOptions;
+
+    trials.selectedTrial = makeTrial(10, {
+      parameters: { stimulus: "after" },
+    });
+    view.rerender();
+
+    expect(mocks.flowOptions).toBe(firstFlowOptions);
+  });
+
   it("ignores an older trial selection response after a newer selection", async () => {
     const trials = createTrialsMock();
     let resolveOld!: (trial: Trial) => void;

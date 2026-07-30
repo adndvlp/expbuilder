@@ -267,4 +267,26 @@ describe("PublicConfigurationHarness", () => {
     expect(code).toContain("cc=DONE");
     expect(code).toContain("jsPsych.data.addProperties");
   });
+
+  it("keeps the backend session id stable when a counter display name is generated", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: vi.fn(async () => ({
+          tokens: [{ id: "counter", type: "counter", counterDigits: 3 }],
+          separator: "-",
+        })),
+      })),
+    );
+
+    const { generateExperiment } =
+      createPublicConfigurationHarness("experiment-counter");
+    const code = normalize(await generateExperiment());
+    expect(code).toContain("_updateSessionName(trialSessionId, _finalName)");
+    expect(code).not.toContain("trialSessionId = _finalName");
+    expect(code).not.toContain("window.JSPSYCH_SESSION_ID = trialSessionId; // update global");
+    expect(code).toContain("throw new Error('Batch upload failed:");
+    expect(() => new Function(code)).not.toThrow();
+  });
 });

@@ -8,6 +8,7 @@ import type {
   LayoutTimelineItem,
 } from "./expandedLayoutTypes";
 import { CANVAS_EDGE_HANDLES } from "./canvasHandleIds";
+import { getCanvasNodeDimensions } from "./canvasNodeGeometry";
 import { addExpandedEdge, addExpandedFlowEdges } from "./expandedEdgeFactory";
 import { getMainLayoutItems, sanitizeLayoutTimeline } from "./sanitizeLayoutTimeline";
 import { finalizeExpandedLoopLayout } from "./finalizeExpandedLoopLayout";
@@ -63,6 +64,7 @@ function createItemNode(
       expanded,
     },
     position: { x, y },
+    measured: getCanvasNodeDimensions(item.type, expanded),
     draggable: false,
   });
   return id;

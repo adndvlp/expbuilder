@@ -20,6 +20,7 @@ export type LoopMethodsProps = {
   ) => Promise<TimelineItem[]>;
   setSelectedLoop: Dispatch<SetStateAction<Loop | null>>;
   selectedLoop: Loop | null;
+  getSelectedLoop: () => Loop | null;
 };
 
 export type GetLoop = (id: string | number) => Promise<Loop | null>;
@@ -33,6 +34,6 @@ export type TrialMethodsProps = {
   updateLoopTimelineItems: UpdateLoopTimelineItems;
   getTimeline: () => Promise<void>;
   getLoopTimeline: LoopMethodsProps["getLoopTimeline"];
-  selectedTrial: Trial | null;
-  setSelectedTrial: (trial: Trial | null) => void;
+  getSelectedTrial: () => Trial | null;
+  setSelectedTrial: Dispatch<SetStateAction<Trial | null>>;
 };

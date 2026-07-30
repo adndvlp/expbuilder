@@ -35,12 +35,12 @@ describe("ParameterMapper diagnostics and styling", () => {
       "https://www.jspsych.org/latest/plugins/html-button-response#parameters",
     );
 
-    const diagnosticSelect = getSelectByValue("off");
-    expect(diagnosticSelect).toBeTruthy();
-    fireEvent.change(diagnosticSelect!, { target: { value: "summary" } });
+    const diagnosticToggle = screen.getByTestId("dynamic-csv-audit-toggle");
+    expect(diagnosticToggle).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(diagnosticToggle);
     expect(readMapping().dynamic_csv_diagnostics).toEqual({
       source: "typed",
-      value: "summary",
+      value: "debug",
     });
 
     act(() => {
@@ -49,7 +49,7 @@ describe("ParameterMapper diagnostics and styling", () => {
 
     expect(onSave).toHaveBeenCalledWith("dynamic_csv_diagnostics", {
       source: "typed",
-      value: "summary",
+      value: "debug",
     });
   });
 
@@ -108,15 +108,13 @@ describe("ParameterMapper diagnostics and styling", () => {
       />,
     );
 
-    fireEvent.change(getSelectByValue("off")!, {
-      target: { value: "full" },
-    });
+    fireEvent.click(screen.getByTestId("dynamic-csv-audit-toggle"));
     fireEvent.change(getSelectByValue("text")!, {
       target: { value: "password" },
     });
 
     expect(readMapping()).toMatchObject({
-      dynamic_csv_diagnostics: { source: "typed", value: "full" },
+      dynamic_csv_diagnostics: { source: "typed", value: "debug" },
       input_type: { source: "typed", value: "password" },
     });
   });

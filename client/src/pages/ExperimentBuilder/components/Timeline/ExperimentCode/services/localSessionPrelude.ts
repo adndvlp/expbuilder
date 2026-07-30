@@ -11,6 +11,8 @@ export function buildLocalSessionPrelude({
   // --- FileUploadResponseComponent endpoint (local Express server) ---
   window.JSPSYCH_FILE_UPLOAD_ENDPOINT = '/api/participant-files/${experimentID}';
 
+  ${resumeCode()}
+
   // --- Session Name Configuration ---
   const _SESSION_NAME_TOKENS = ${JSON.stringify(sessionNameTokens)};
   const _SESSION_NAME_SEPARATOR = ${JSON.stringify(sessionNameSeparator)};
@@ -156,24 +158,20 @@ export function buildLocalSessionPrelude({
   let participantNumber;
   let socket;
 
-  async function saveSession(trialSessionId) {
-   
-   const res = await fetch("/api/append-result/${experimentID}", {
+  async function saveSession(sessionId) {
+    const res = await fetch("/api/append-result/${experimentID}", {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "*/*" },
       body: JSON.stringify({
-        sessionId: trialSessionId,
+        sessionId: sessionId,
         metadata: metadata
       }),
     });
-  
+
     const result = await res.json();
-    participantNumber = result.participantNumber;
-    return participantNumber;
-    
+    return result.participantNumber;
   }
 
   ${loadingOverlayCode()}
-  ${resumeCode()}
 `;
 }

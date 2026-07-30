@@ -1,11 +1,11 @@
 import type { LoopData, TimelineItem } from "../types";
 
-interface Options {
+type Options = {
   loopIdSanitized: string;
   mergePointIds: (string | number)[];
   sanitizeName: (name: string) => string;
   trials: TimelineItem[];
-}
+};
 
 const isLoopData = (item: TimelineItem): item is LoopData =>
   "isLoop" in item && item.isLoop === true;
@@ -16,32 +16,33 @@ export function generateItemWrappers({
   sanitizeName,
   trials,
 }: Options): string {
+  const getItemIdentity = (item: TimelineItem) => {
+    const itemName = isLoopData(item)
+      ? item.loopName || (item as any).name
+      : item.trialName;
+    const itemNameSanitized = sanitizeName(itemName);
+    const loopId = isLoopData(item) ? item.loopId || (item as any).id : null;
+    const timelineRef = isLoopData(item)
+      ? `${sanitizeName(loopId)}_procedure`
+      : `${itemNameSanitized}_timeline`;
+    const rawId = isLoopData(item) ? loopId : ((item as any).id ?? null);
+    return { itemNameSanitized, rawId, timelineRef };
+  };
+  if (trials.length === 0) return "";
+
   return trials
     .map((item, index) => {
-      // For nested loops from trialsWithCode, they have {id, name, type, isLoop, timelineProps}
-      // For old nested loops (legacy), they have {loopId, loopName, ...}
-      const itemName = isLoopData(item)
-        ? item.loopName || (item as any).name // Support both formats
-        : item.trialName;
-      const itemNameSanitized = sanitizeName(itemName);
+      const { itemNameSanitized, rawId, timelineRef } =
+        getItemIdentity(item);
       const isLastItem = index === trials.length - 1;
-
-      // For loops, use the sanitized loop ID instead of the name
-      // This must match how the procedure of the loop is defined
-      const loopId = isLoopData(item) ? item.loopId || (item as any).id : null; // Support both formats
-      const timelineRef = isLoopData(item)
-        ? `${sanitizeName(loopId)}_procedure`
-        : `${itemNameSanitized}_timeline`;
-      const rawItemId = isLoopData(item) ? loopId : ((item as any).id ?? null);
       const isMergePointItem =
-        rawItemId !== null &&
+        rawId !== null &&
         mergePointIds.some(
-          (mergePointId) => String(mergePointId) === String(rawItemId),
+          (mergePointId) => String(mergePointId) === String(rawId),
         );
-
       const itemId =
-        rawItemId !== null
-          ? JSON.stringify(rawItemId)
+        rawId !== null
+          ? JSON.stringify(rawId)
           : `${timelineRef}.data.trial_id`;
 
       return `
@@ -49,20 +50,6 @@ const ${itemNameSanitized}_wrapper = {
   timeline: [${timelineRef}],
   conditional_function: function() {
     const currentId = ${itemId};
-    
-    // Check if there is a target trial/loop saved in localStorage (for global repeat/jump)
-    const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
-    if (jumpToTrial) {
-      if (String(currentId) === String(jumpToTrial)) {
-        // Found the target trial/loop for repeat/jump
-        console.log('Repeat/jump: Found target trial/loop inside loop', currentId);
-        localStorage.removeItem('jsPsych_jumpToTrial');
-        return true;
-      }
-      // Not the target, skip
-      console.log('Repeat/jump: Skipping trial/loop inside loop', currentId);
-      return false;
-    }
     
     // If loopSkipRemaining is active, check if this is the target item
     if (loop_${loopIdSanitized}_SkipRemaining) {

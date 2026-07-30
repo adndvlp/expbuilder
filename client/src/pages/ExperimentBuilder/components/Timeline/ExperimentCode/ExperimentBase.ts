@@ -64,13 +64,13 @@ export default function ExperimentBase({
         ? `
       timeline.push({
       type: jsPsychFullscreen,
-      fullscreen_mode: true
+      fullscreen_mode: true,
+      conditional_function: function() { return !document.fullscreenElement; }
       });`
         : ""
     }
 
     ${allCodes}
-
 
     jsPsych.run(timeline);
     

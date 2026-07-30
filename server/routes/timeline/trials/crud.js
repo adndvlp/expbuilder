@@ -5,6 +5,7 @@ import {
   reconnectParentsToChildren,
   syncTimelineItems,
 } from "./state.js";
+import { createUniqueItemName } from "../uniqueItemName.js";
 
 const router = Router();
 
@@ -12,16 +13,21 @@ router.post("/api/trial/:experimentID", async (req, res) => {
   try {
     const { experimentID } = req.params;
     const trialData = req.body;
+    const experimentDoc = await getExperimentDoc(experimentID, true);
 
     const id = Date.now();
     const newTrial = {
       ...trialData,
       id,
+      name: createUniqueItemName(
+        experimentDoc,
+        trialData.name,
+        "New Trial",
+      ),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    const experimentDoc = await getExperimentDoc(experimentID, true);
     experimentDoc.trials.push(newTrial);
 
     if (!newTrial.parentLoopId) {

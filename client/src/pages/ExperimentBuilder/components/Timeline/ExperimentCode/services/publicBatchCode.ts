@@ -75,6 +75,7 @@ export function publicBatchCode(options: PublicExperimentCodeOptions): string {
         if (!res.ok) {
           return res.text().then(text => {
             console.error('Error sending batch:', text);
+            throw new Error('Batch upload failed: ' + text);
           });
         }
         return res.json();
@@ -86,6 +87,7 @@ export function publicBatchCode(options: PublicExperimentCodeOptions): string {
       })
       .catch(error => {
         console.error('Error in sendBatchConcatenated:', error);
+        throw error;
       })
       .finally(() => {
         const index = pendingBatchSaves.indexOf(batchPromise);

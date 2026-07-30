@@ -63,6 +63,13 @@ export function publicInitCode(options: PublicExperimentCodeOptions): string {
         data.clientTimestamp = Date.now();
         data.sessionId = trialSessionId;
         data.experimentID = "${experimentID}";
+        if (data.builder_id !== undefined && data.builder_id !== null) {
+          localStorage.setItem('jsPsych_resumeTrial', JSON.stringify({
+            branches: data.branches || [],
+            branchConditions: data.branchConditions || [],
+            trialData: data
+          }));
+        }
 
         // Actualizar estado a 'in-progress' en la primera actualización
         if (data.trial_index === 0) {
@@ -72,15 +79,6 @@ export function publicInitCode(options: PublicExperimentCodeOptions): string {
           }).catch(err => console.error('Error updating state:', err));
         }
 
-        // 🔄 SISTEMA DE RETOMA: Guardar branches + datos del trial para evaluar al reanudar
-        if (data.builder_id !== undefined && data.builder_id !== null) {
-          localStorage.setItem('jsPsych_resumeTrial', JSON.stringify({
-            branches: data.branches || [],
-            branchConditions: data.branchConditions || [],
-            trialData: data
-          }));
-        }
-
         if (BATCH_CONFIG.useIndexedDB) {
           // --- CON IndexedDB: Batching habilitado ---
           try {
@@ -88,6 +86,7 @@ export function publicInitCode(options: PublicExperimentCodeOptions): string {
             console.log(\`Trial \${data.trial_index} saved to IndexedDB\`);
           } catch (error) {
             console.error('Error saving to IndexedDB:', error);
+            return;
           }
 
           // Solo enviar batches si batchSize > 0

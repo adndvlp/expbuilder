@@ -176,8 +176,13 @@ describe("generateTrialLoopCodes integration", () => {
     );
   });
 
-  it("returns saved WebGazer code without loading plugin parameters", async () => {
-    const savedCode = "const saved_webgazer_phase = { type: webgazer };";
+  it("wraps saved WebGazer code as one navigable builder trial", async () => {
+    const savedCode = `
+      const saved_webgazer_phase = { type: webgazer };
+      const calibration_done = { type: jsPsychHtmlButtonResponse };
+      timeline.push(saved_webgazer_phase);
+      timeline.push(calibration_done);
+    `;
     const getTrial = vi.fn(async () =>
       trial({
         id: 2,
@@ -194,7 +199,47 @@ describe("generateTrialLoopCodes integration", () => {
       getTrial,
     );
 
-    expect(code).toBe(savedCode);
+    expect(code).toContain("const WebGazer_webgazer_items = [];");
+    expect(code).toContain(
+      "WebGazer_webgazer_items.push(saved_webgazer_phase)",
+    );
+    expect(code).toContain("WebGazer_webgazer_items.push(calibration_done)");
+    expect(code).toContain("const WebGazer_timeline = {");
+    expect(code).toContain("builder_id: 2");
+    expect(code).toContain("const currentId = 2");
+    expect(code).toContain("timeline.push(WebGazer_procedure)");
+    expect(() => new Function("const timeline = [];\n" + code)).not.toThrow();
+  });
+
+  it("exposes a saved WebGazer trial to loop navigation wrappers", async () => {
+    const webgazerTrial = trial({
+      id: 2,
+      name: "Web Gazer",
+      plugin: "webgazer",
+      parentLoopId: "loop_webgazer",
+      trialCode: `
+        const calibration_done = { type: jsPsychHtmlButtonResponse };
+        timeline.push(calibration_done);
+      `,
+    });
+    const parentLoop = loop({
+      id: "loop_webgazer",
+      name: "WebGazer Loop",
+      trials: [2],
+    });
+
+    const code = await generateSingleTrialCode(
+      { id: 2 } as Trial,
+      [],
+      "experiment-1",
+      vi.fn(async () => webgazerTrial),
+      vi.fn(async () => [timelineTrial({ id: 2, name: "Web Gazer" })]),
+      vi.fn(async () => parentLoop),
+    );
+
+    expect(code).toContain("const Web_Gazer_timeline = {");
+    expect(code).toContain("timeline: [Web_Gazer_timeline]");
+    expect(code).toContain("builder_id: 2");
   });
 
   it("returns empty saved WebGazer code when none exists", async () => {

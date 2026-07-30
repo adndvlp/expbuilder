@@ -214,17 +214,33 @@ export function useCanvasWorkspace() {
     },
     [activeScopeId, onAddBranch],
   );
-  const flow = useFlowLayout({
-    timeline,
-    expandedPath,
-    selectedItemId: hasSelection ? (selectedItem?.id ?? null) : null,
-    selectedScopeId,
-    pendingLoopId: pending?.scopeId,
-    onSelectTrial: selectTrial,
-    onSelectLoop: selectLoop,
-    onToggleLoop: toggleLoop,
-    onAddBranch: addBranch,
-  });
+  const selectedItemId = hasSelection ? (selectedItem?.id ?? null) : null;
+  const pendingLoopId = pending?.scopeId;
+  const flowInput = useMemo(
+    () => ({
+      timeline,
+      expandedPath,
+      selectedItemId,
+      selectedScopeId,
+      pendingLoopId,
+      onSelectTrial: selectTrial,
+      onSelectLoop: selectLoop,
+      onToggleLoop: toggleLoop,
+      onAddBranch: addBranch,
+    }),
+    [
+      addBranch,
+      expandedPath,
+      pendingLoopId,
+      selectLoop,
+      selectTrial,
+      selectedItemId,
+      selectedScopeId,
+      timeline,
+      toggleLoop,
+    ],
+  );
+  const flow = useFlowLayout(flowInput);
 
   const { handleAddLoop } = loopActions;
   const addLoop = useCallback(

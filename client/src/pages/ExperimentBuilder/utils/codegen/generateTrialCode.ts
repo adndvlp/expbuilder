@@ -1,4 +1,5 @@
 import { useTrialCode } from "../../components/ConfigurationPanel/TrialsConfiguration/TrialCode/useTrialCode";
+import { generateConditionalFunctionCode } from "../../components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/conditionalFunctionGenerator";
 import { Trial } from "../../components/ConfigurationPanel/types";
 import { generateExtensionCode } from "../generateExtensionCode";
 import { resolveColumnValue } from "./columnValues";
@@ -36,8 +37,65 @@ export async function generateTrialCode(
     // WebGazer is complex - use saved code instead of generating it
     // IMPORTANT: Check this BEFORE trying to load plugin parameters
     if (fullTrial.plugin === "webgazer") {
+      const savedCode = fullTrial.trialCode?.trim();
+      if (!savedCode) {
+        return {
+          code: "",
+          mappedJson: fullTrial.csvJson || [],
+        };
+      }
+
+      const sanitizeName = (name: string) =>
+        name.replace(/[^a-zA-Z0-9_]/g, "_");
+      const trialName = sanitizeName(fullTrial.name);
+      const itemsName = `${trialName}_webgazer_items`;
+      const capturedCode = savedCode.replace(
+        /\btimeline\s*\.\s*push\s*\(/g,
+        `${itemsName}.push(`,
+      );
+      const branches = fullTrial.branches || [];
+      const branchConditions = fullTrial.branchConditions || [];
+
+      let code = `
+    const ${itemsName} = [];
+    ${capturedCode}
+
+    const ${trialName}_webgazer_completion =
+      typeof calibration_done !== "undefined"
+        ? calibration_done
+        : ${itemsName}[${itemsName}.length - 1];
+    if (${trialName}_webgazer_completion) {
+      ${trialName}_webgazer_completion.data = Object.assign(
+        {},
+        ${trialName}_webgazer_completion.data || {},
+        {
+          trial_id: ${JSON.stringify(fullTrial.id)},
+          builder_id: ${JSON.stringify(fullTrial.id)},
+          trial_name: ${JSON.stringify(fullTrial.name)},
+          ${isInLoop ? "isInLoop: true," : ""}
+          branches: ${JSON.stringify(branches)},
+          branchConditions: ${JSON.stringify(branchConditions)}
+        }
+      );
+    }
+
+    const ${trialName}_timeline = {
+      timeline: ${itemsName}
+    };
+  `;
+
+      if (!isInLoop) {
+        code += `
+    const ${trialName}_procedure = {
+      timeline: [${trialName}_timeline],
+      ${generateConditionalFunctionCode(fullTrial.id)}
+    };
+    timeline.push(${trialName}_procedure);
+  `;
+      }
+
       return {
-        code: fullTrial.trialCode || "",
+        code,
         mappedJson: fullTrial.csvJson || [],
       };
     }

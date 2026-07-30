@@ -1,4 +1,5 @@
 import { createContext } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import type { Loop, Trial } from "../components/ConfigurationPanel/types";
 
 export type TimelineItem = {
@@ -48,9 +49,9 @@ export type TrialsContextType = {
 
   // Estado de selección
   selectedTrial: Trial | null;
-  setSelectedTrial: (trial: Trial | null) => void;
+  setSelectedTrial: Dispatch<SetStateAction<Trial | null>>;
   selectedLoop: Loop | null;
-  setSelectedLoop: (loop: Loop | null) => void;
+  setSelectedLoop: Dispatch<SetStateAction<Loop | null>>;
 
   // Métodos singulares para Trial
   createTrial: (trial: Omit<Trial, "id">) => Promise<Trial>;

@@ -9,9 +9,11 @@ import {
   updateTrialWithBranches,
 } from "./trialTimelineUpdates";
 const API_URL = import.meta.env.VITE_API_URL;
+const idsMatch = (left: string | number, right: string | number) =>
+  String(left) === String(right);
 
-export default function TrialMethods({
-  selectedTrial,
+export default function useTrialMethods({
+  getSelectedTrial,
   experimentID,
   timeline,
   loopTimelineCache,
@@ -80,11 +82,19 @@ export default function TrialMethods({
       trial: Partial<Trial>,
       newBranchTrial?: Trial, // Trial recién creado como branch
     ): Promise<Trial | null> => {
-      const parentLoopId =
-        selectedTrial && String(selectedTrial.id) === String(id)
-          ? (selectedTrial.parentLoopId ?? null)
-          : (findTimelineItemLocation(id, timeline, loopTimelineCache)
-              ?.parentLoopId ?? null);
+      const updatesTimeline =
+        typeof trial.name === "string" || Array.isArray(trial.branches);
+      const location = findTimelineItemLocation(
+        id,
+        timeline,
+        loopTimelineCache,
+      );
+      const selected = getSelectedTrial();
+      const parentLoopId = location
+        ? location.parentLoopId
+        : selected && idsMatch(selected.id, id)
+          ? (selected.parentLoopId ?? null)
+          : null;
       try {
         const response = await fetch(
           `${API_URL}/api/trial/${experimentID}/${id}`,
@@ -102,22 +112,24 @@ export default function TrialMethods({
         const data = await response.json();
         const updatedTrial = data.trial;
 
-        const updateTimelineFn = (items: TimelineItem[]) =>
-          updateTrialWithBranches(items, id, updatedTrial, newBranchTrial);
+        if (updatesTimeline) {
+          const updateTimelineFn = (items: TimelineItem[]) =>
+            updateTrialWithBranches(items, id, updatedTrial, newBranchTrial);
 
-        if (updatedTrial.parentLoopId != null) {
-          updateLoopTimelineItems(
-            updatedTrial.parentLoopId,
-            updateTimelineFn,
-          );
-        } else {
-          setTimeline(updateTimelineFn);
+          if (updatedTrial.parentLoopId != null) {
+            updateLoopTimelineItems(
+              updatedTrial.parentLoopId,
+              updateTimelineFn,
+            );
+          } else {
+            setTimeline(updateTimelineFn);
+          }
         }
 
         // Actualizar selectedTrial si es el que está seleccionado
-        if (selectedTrial?.id === id) {
-          setSelectedTrial(updatedTrial);
-        }
+        setSelectedTrial((current) =>
+          current && idsMatch(current.id, id) ? updatedTrial : current,
+        );
 
         return updatedTrial;
       } catch (error) {
@@ -135,10 +147,10 @@ export default function TrialMethods({
     },
     [
       experimentID,
+      getSelectedTrial,
       getLoopTimeline,
       getTimeline,
       loopTimelineCache,
-      selectedTrial,
       setSelectedTrial,
       setTimeline,
       timeline,
@@ -187,8 +199,10 @@ export default function TrialMethods({
         }
 
         // Actualizar selectedTrial si es el que está seleccionado y se solicita
-        if (updateSelectedTrial && selectedTrial?.id === id) {
-          setSelectedTrial(updatedTrial);
+        if (updateSelectedTrial) {
+          setSelectedTrial((current) =>
+            current && idsMatch(current.id, id) ? updatedTrial : current,
+          );
         }
 
         return true;
@@ -196,11 +210,11 @@ export default function TrialMethods({
         console.error(`Error updating ${fieldName}:`, error);
 
         // Si falla, recargar el trial completo para mantener consistencia
-        if (selectedTrial?.id === id) {
-          const freshTrial = await getTrial(id);
-          if (freshTrial) {
-            setSelectedTrial(freshTrial);
-          }
+        const freshTrial = await getTrial(id);
+        if (freshTrial) {
+          setSelectedTrial((current) =>
+            current && idsMatch(current.id, id) ? freshTrial : current,
+          );
         }
 
         return false;
@@ -209,7 +223,6 @@ export default function TrialMethods({
     [
       experimentID,
       getTrial,
-      selectedTrial,
       setSelectedTrial,
       setTimeline,
       updateLoopTimelineItems,
@@ -218,11 +231,17 @@ export default function TrialMethods({
 
   const deleteTrial = useCallback(
     async (id: string | number): Promise<boolean> => {
-      const parentLoopId =
-        selectedTrial && String(selectedTrial.id) === String(id)
-          ? (selectedTrial.parentLoopId ?? null)
-          : (findTimelineItemLocation(id, timeline, loopTimelineCache)
-              ?.parentLoopId ?? null);
+      const location = findTimelineItemLocation(
+        id,
+        timeline,
+        loopTimelineCache,
+      );
+      const selected = getSelectedTrial();
+      const parentLoopId = location
+        ? location.parentLoopId
+        : selected && idsMatch(selected.id, id)
+          ? (selected.parentLoopId ?? null)
+          : null;
       try {
         const updateTimelineItems = (items: TimelineItem[]) =>
           removeTrialFromTimeline(items, id);
@@ -232,9 +251,9 @@ export default function TrialMethods({
           setTimeline(updateTimelineItems);
         }
 
-        if (selectedTrial?.id === id) {
-          setSelectedTrial(null);
-        }
+        setSelectedTrial((current) =>
+          current && idsMatch(current.id, id) ? null : current,
+        );
 
         const response = await fetch(
           `${API_URL}/api/trial/${experimentID}/${id}`,
@@ -263,10 +282,10 @@ export default function TrialMethods({
     },
     [
       experimentID,
+      getSelectedTrial,
       getLoopTimeline,
       getTimeline,
       loopTimelineCache,
-      selectedTrial,
       setSelectedTrial,
       setTimeline,
       timeline,

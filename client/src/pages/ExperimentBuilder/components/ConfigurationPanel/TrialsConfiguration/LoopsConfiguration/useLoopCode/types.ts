@@ -1,9 +1,12 @@
 export type Trial = {
-  id?: string | number;
   trialName: string;
   pluginName: string;
   timelineProps: string;
   mappedJson?: Record<string, any>[];
+  branches?: (string | number)[];
+  branchConditions?: BranchCondition[];
+  repeatConditions?: RepeatCondition[];
+  customOnFinish?: string;
 };
 
 // LoopData: Similar to Loop but with 'items' instead of 'trials' (for processed data)

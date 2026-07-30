@@ -26,29 +26,38 @@ import {
   resolveTimingMs,
 } from "./utils/PrecisionTiming";
 import ResponseTimingManager from "./utils/ResponseTimingManager";
-import { getCanvasStages, StageMetrics } from "./renderer/CanvasStage";
+import {
+  getCanvasStages,
+  StageMetrics,
+} from "./renderer/CanvasStage";
 
 const DYNAMIC_CONTAINER_ID = "jspsych-dynamic-plugin-container";
 const DYNAMIC_VISUAL_BRIDGE_ID = "jspsych-dynamic-visual-bridge";
+const DYNAMIC_PERSISTENT_VISUAL_ID = "jspsych-dynamic-persistent-visual";
 
 let preservedVisualBridge: HTMLElement | null = null;
 let preservedVisualBridgeObserver: MutationObserver | null = null;
-let preservedVisualHandoffTimestamp: number | null = null;
+let persistentVisualSurface: HTMLElement | null = null;
+let persistentVisualHandoffTimestamp: number | null = null;
+let persistentVisualHandoffTimer: number | null = null;
+let dynamicTrialSequenceCounter = 0;
+
+type PendingVisualDurationPatch = {
+  jsPsych: any;
+  trialSequence: number;
+  onsetCommitTime: number | null;
+  expectedDuration: number | null;
+  stimulus: string | null;
+  frameBoundaryHandoff: boolean;
+};
+
+let pendingVisualDurationPatch: PendingVisualDurationPatch | null = null;
 
 function removePreservedVisualBridge() {
   preservedVisualBridgeObserver?.disconnect();
   preservedVisualBridgeObserver = null;
   preservedVisualBridge?.remove();
   preservedVisualBridge = null;
-  preservedVisualHandoffTimestamp = null;
-}
-
-function consumePreservedVisualHandoffTimestamp() {
-  const timestamp = preservedVisualBridge
-    ? preservedVisualHandoffTimestamp
-    : null;
-  preservedVisualHandoffTimestamp = null;
-  return timestamp;
 }
 
 function monitorPreservedVisualBridge(displayElement: HTMLElement) {
@@ -68,11 +77,9 @@ function monitorPreservedVisualBridge(displayElement: HTMLElement) {
 function preserveCanvasVisualBridge(
   mainContainer: HTMLElement,
   displayElement: HTMLElement,
-  handoffTimestamp: number | null,
 ) {
   const canvases = getCanvasStages(mainContainer)
-    .map((stage) => stage.canvas)
-    .filter((canvas) => canvas.parentNode !== null);
+    .filter((stage) => stage.canvas.parentNode !== null);
 
   removePreservedVisualBridge();
   if (canvases.length === 0) return;
@@ -91,7 +98,8 @@ function preserveCanvasVisualBridge(
   bridge.style.pointerEvents = "none";
   bridge.style.zIndex = "2147483647";
 
-  for (const canvas of canvases) {
+  for (const stage of canvases) {
+    const canvas = stage.canvas;
     const rect = canvas.getBoundingClientRect();
     canvas.style.position = "fixed";
     canvas.style.left = `${rect.left}px`;
@@ -106,8 +114,84 @@ function preserveCanvasVisualBridge(
 
   document.body.appendChild(bridge);
   preservedVisualBridge = bridge;
-  preservedVisualHandoffTimestamp = handoffTimestamp;
   monitorPreservedVisualBridge(displayElement);
+}
+
+function styleVisualContainer(
+  container: HTMLElement,
+  width: number,
+  height: number,
+  backgroundColor: string,
+) {
+  const ratio = Math.min(
+    window.innerWidth / width,
+    window.innerHeight / height,
+  );
+  container.style.position = "fixed";
+  container.style.top = "50%";
+  container.style.left = "50%";
+  container.style.width = `${width}px`;
+  container.style.height = `${height}px`;
+  container.style.overflow = "hidden";
+  container.style.textAlign = "left";
+  container.style.background = backgroundColor;
+  container.style.transform = `translate(-50%, -50%) scale(${ratio})`;
+  container.style.transformOrigin = "center center";
+}
+
+function getPersistentVisualSurface(
+  width: number,
+  height: number,
+  backgroundColor: string,
+) {
+  if (!persistentVisualSurface) {
+    persistentVisualSurface = document.createElement("div");
+    persistentVisualSurface.id = DYNAMIC_PERSISTENT_VISUAL_ID;
+    persistentVisualSurface.setAttribute("aria-hidden", "true");
+    persistentVisualSurface.style.pointerEvents = "none";
+    persistentVisualSurface.style.zIndex = "2147483646";
+    document.body.appendChild(persistentVisualSurface);
+  }
+  styleVisualContainer(persistentVisualSurface, width, height, backgroundColor);
+  return persistentVisualSurface;
+}
+
+function removePersistentVisualSurface() {
+  if (!persistentVisualSurface) return;
+  if (persistentVisualHandoffTimer !== null) {
+    window.clearTimeout(persistentVisualHandoffTimer);
+    persistentVisualHandoffTimer = null;
+  }
+  persistentVisualHandoffTimestamp = null;
+  for (const stage of getCanvasStages(persistentVisualSurface)) {
+    stage.destroy();
+  }
+  persistentVisualSurface.remove();
+  persistentVisualSurface = null;
+}
+
+function setPersistentVisualHandoff(timestamp: number) {
+  persistentVisualHandoffTimestamp = timestamp;
+  if (persistentVisualHandoffTimer !== null) {
+    window.clearTimeout(persistentVisualHandoffTimer);
+  }
+  persistentVisualHandoffTimer = window.setTimeout(() => {
+    persistentVisualHandoffTimestamp = null;
+    persistentVisualHandoffTimer = null;
+  }, 0);
+}
+
+function consumePersistentVisualHandoffTimestamp() {
+  const timestamp =
+    persistentVisualSurface && persistentVisualHandoffTimestamp !== null
+      ? persistentVisualHandoffTimestamp
+      : null;
+  if (persistentVisualHandoffTimer !== null) {
+    window.clearTimeout(persistentVisualHandoffTimer);
+    persistentVisualHandoffTimer = null;
+  }
+  persistentVisualHandoffTimestamp = null;
+  return timestamp;
 }
 
 const info = <const>{
@@ -309,6 +393,66 @@ const info = <const>{
     },
     visual_timing_quality: {
       type: ParameterType.STRING,
+    },
+    dynamic_trial_sequence: {
+      type: ParameterType.INT,
+    },
+    dynamic_next_trial_sequence: {
+      type: ParameterType.INT,
+    },
+    visual_stimulus: {
+      type: ParameterType.STRING,
+    },
+    visual_expected_duration: {
+      type: ParameterType.FLOAT,
+    },
+    visual_onset_commit_time: {
+      type: ParameterType.FLOAT,
+    },
+    visual_offset_commit_time: {
+      type: ParameterType.FLOAT,
+    },
+    visual_duration: {
+      type: ParameterType.FLOAT,
+    },
+    visual_duration_error: {
+      type: ParameterType.FLOAT,
+    },
+    visual_duration_source: {
+      type: ParameterType.STRING,
+    },
+    visual_next_onset_commit_time: {
+      type: ParameterType.FLOAT,
+    },
+    visual_next_stimulus: {
+      type: ParameterType.STRING,
+    },
+    previous_visual_trial_sequence: {
+      type: ParameterType.INT,
+    },
+    previous_visual_stimulus: {
+      type: ParameterType.STRING,
+    },
+    previous_visual_onset_commit_time: {
+      type: ParameterType.FLOAT,
+    },
+    previous_visual_offset_commit_time: {
+      type: ParameterType.FLOAT,
+    },
+    previous_visual_duration: {
+      type: ParameterType.FLOAT,
+    },
+    previous_visual_duration_error: {
+      type: ParameterType.FLOAT,
+    },
+    previous_visual_duration_source: {
+      type: ParameterType.STRING,
+    },
+    visual_frame_boundary_handoff: {
+      type: ParameterType.BOOL,
+    },
+    visual_frame_boundary_handoff_lead_ms: {
+      type: ParameterType.FLOAT,
     },
     response_timing_quality: {
       type: ParameterType.STRING,
@@ -670,6 +814,87 @@ function roundTiming(value: number | null): number | null {
   return value === null ? null : Math.round(value * 1000) / 1000;
 }
 
+function getPrimaryStimulusRecord(records: any[]) {
+  return (
+    records.find(
+      (record) => typeof record?.actual_onset_abs === "number",
+    ) ??
+    records[0] ??
+    null
+  );
+}
+
+function getPrimaryStimulusValue(stimulusComponents: Array<{ config: any }>) {
+  const primary = stimulusComponents[0]?.config;
+  if (!primary) return null;
+  const raw =
+    primary.stimulus ??
+    primary.text ??
+    primary.html ??
+    primary.content ??
+    primary.name ??
+    null;
+  const value = resolveRawValue(raw);
+  return value === null || value === undefined ? null : String(value);
+}
+
+function findPrimaryVisualTimingRecord(
+  timing: ReturnType<typeof createPrecisionTiming>,
+  stimulusComponents: Array<{ config: any }>,
+) {
+  const primary = stimulusComponents[0]?.config;
+  if (!primary) return null;
+  return (
+    timing.findStimulusRecord?.(
+      primary.__componentId ?? primary.builder_id ?? primary.id ?? null,
+      primary.name ?? primary.type ?? null,
+    ) ?? null
+  );
+}
+
+function patchPreviousVisualDuration(
+  jsPsych: any,
+  nextOnsetCommitTime: number | null,
+  nextStimulus: string | null,
+  nextTrialSequence: number,
+) {
+  const pending = pendingVisualDurationPatch;
+  if (
+    !pending ||
+    pending.jsPsych !== jsPsych ||
+    !pending.frameBoundaryHandoff ||
+    typeof pending.onsetCommitTime !== "number" ||
+    typeof nextOnsetCommitTime !== "number"
+  ) {
+    return null;
+  }
+
+  const visualDuration = nextOnsetCommitTime - pending.onsetCommitTime;
+  const visualDurationError = roundTiming(
+      pending.expectedDuration === null
+        ? null
+        : visualDuration - pending.expectedDuration,
+    );
+  const currentRowPreviousVisualData = {
+    previous_visual_trial_sequence: pending.trialSequence,
+    previous_visual_stimulus: pending.stimulus,
+    previous_visual_onset_commit_time: roundTiming(pending.onsetCommitTime),
+    previous_visual_offset_commit_time: roundTiming(nextOnsetCommitTime),
+    previous_visual_duration: roundTiming(visualDuration),
+    previous_visual_duration_error: visualDurationError,
+    previous_visual_duration_source: "next_visual_onset_commit",
+  };
+
+  pendingVisualDurationPatch = null;
+  return currentRowPreviousVisualData;
+}
+
+function closePendingVisualDuration(jsPsych: any, reason: string) {
+  const pending = pendingVisualDurationPatch;
+  if (!pending || pending.jsPsych !== jsPsych) return;
+  pendingVisualDurationPatch = null;
+}
+
 function resolveRawValue(value: any) {
   return value && typeof value === "object" && "value" in value
     ? value.value
@@ -678,6 +903,35 @@ function resolveRawValue(value: any) {
 
 function componentLabel(config: any) {
   return config.name ? `${config.name}:${config.type}` : String(config.type);
+}
+
+function usesWholeTrialStimulusWindow(config: any) {
+  const onset = resolveTimingMs(config.stimulus_onset, null);
+  const duration = resolveTimingMs(config.stimulus_duration, null);
+  return (onset === null || onset === 0) && duration === null;
+}
+
+function isFrameBoundaryImageTrial(
+  trialDuration: number | null,
+  stimulusComponents: Array<{ config: any }>,
+  responseComponents: Array<{ config: any }>,
+) {
+  const responsesDoNotDrawVisuals = responseComponents.every(
+    ({ config }) =>
+      String(resolveRawValue(config.type) ?? "") === "KeyboardResponseComponent",
+  );
+
+  return (
+    trialDuration !== null &&
+    trialDuration > 0 &&
+    responsesDoNotDrawVisuals &&
+    stimulusComponents.length > 0 &&
+    stimulusComponents.every(
+      ({ config }) =>
+        String(resolveRawValue(config.type) ?? "") === "ImageComponent" &&
+        usesWholeTrialStimulusWindow(config),
+    )
+  );
 }
 
 function isClozeTextComponent(config: any) {
@@ -986,6 +1240,9 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
   constructor(private jsPsych: JsPsych) {}
 
   trial(display_element: HTMLElement, trial: TrialType<Info>) {
+    const dynamicTrialSequence = ++dynamicTrialSequenceCounter;
+    return new Promise((resolveTrial) => {
+
     // Inject plugin styles if not already present
     if (!document.getElementById("jspsych-dynamic-plugin-styles")) {
       const styleElement = document.createElement("style");
@@ -1050,9 +1307,14 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     // Store component instances and rendered elements
     const stimulusComponents: any[] = [];
     const responseComponents: any[] = [];
+    let visualRenderContainer = mainContainer;
     let hasResponded = false;
     let trialEnded = false;
     let trialEndedByResponse = false;
+    let visualFrameBoundaryHandoff = false;
+    let visualFrameBoundaryHandoffLeadMs: number | null = null;
+    let previousVisualDurationPatched = false;
+    let previousVisualDurationData: Record<string, any> | null = null;
     let handleParticipantResponse: (
       offsetTime?: number | null,
       options?: { force?: boolean },
@@ -1132,14 +1394,14 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       // Pass onResponse callback to ALL components so they can end the trial if needed
       allComponents.forEach((comp) => {
         const { instance, config } = comp;
-        const _prevLen = mainContainer.children.length;
-        const renderedElement = instance.render(mainContainer, config, () => {
+        const _prevLen = visualRenderContainer.children.length;
+        const renderedElement = instance.render(visualRenderContainer, config, () => {
           handleParticipantResponse();
         });
         // Capture the topmost new child appended during render (synchronous DOM op)
         comp.renderedEl =
-          mainContainer.children.length > _prevLen
-            ? (mainContainer.lastElementChild as HTMLElement)
+          visualRenderContainer.children.length > _prevLen
+            ? (visualRenderContainer.lastElementChild as HTMLElement)
             : renderedElement instanceof HTMLElement
               ? renderedElement
               : null;
@@ -1247,11 +1509,11 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           ? null
           : timingSummary.actualDuration - desiredTrialDuration;
       const diagnostics = getDiagnosticsOptions(trial);
-      for (const stage of getCanvasStages(mainContainer)) {
+      for (const stage of getCanvasStages(visualRenderContainer)) {
         stage.setTrialActive(false);
       }
       const renderMetrics = aggregateRenderMetrics(
-        getCanvasStages(mainContainer).map((stage) => stage.getMetrics()),
+        getCanvasStages(visualRenderContainer).map((stage) => stage.getMetrics()),
         String(trial.render_backend || "webgl-strict"),
       );
       const domAudit = auditDomLayers(stimulusComponents, responseComponents);
@@ -1274,6 +1536,35 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         responseTimingData.response_timing_quality_reason,
       );
       timing.stop();
+
+      const primaryStimulusRecord = getPrimaryStimulusRecord(
+        timingSummary.stimulusRecords,
+      );
+      const visualStimulus = getPrimaryStimulusValue(stimulusComponents);
+      const visualOnsetCommitTime =
+        typeof primaryStimulusRecord?.actual_onset_abs === "number"
+          ? primaryStimulusRecord.actual_onset_abs
+          : null;
+      const visualOffsetCommitTime =
+        visualFrameBoundaryHandoff
+          ? null
+          : typeof primaryStimulusRecord?.actual_offset_abs === "number"
+            ? primaryStimulusRecord.actual_offset_abs
+            : null;
+      const visualDuration =
+        typeof visualOnsetCommitTime === "number" &&
+        typeof visualOffsetCommitTime === "number"
+          ? visualOffsetCommitTime - visualOnsetCommitTime
+          : null;
+      const visualDurationError =
+        typeof visualDuration === "number" && desiredTrialDuration !== null
+          ? visualDuration - desiredTrialDuration
+          : null;
+      const visualDurationSource = visualFrameBoundaryHandoff
+        ? "reported_on_next_row_previous_visual_duration"
+        : visualDuration === null
+          ? "unavailable"
+          : "stimulus_offset_commit";
 
       // Keep normal exports compact unless Dynamic diagnostics are explicitly enabled.
       const trialData: any = {
@@ -1300,6 +1591,29 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           timing_quality: timingQuality.quality,
           timing_quality_reason: timingQuality.reason,
           visual_timing_quality: visualTimingQuality.quality,
+          dynamic_trial_sequence: dynamicTrialSequence,
+          dynamic_next_trial_sequence: null,
+          visual_stimulus: visualStimulus,
+          visual_expected_duration: roundTiming(desiredTrialDuration),
+          visual_onset_commit_time: roundTiming(visualOnsetCommitTime),
+          visual_offset_commit_time: roundTiming(visualOffsetCommitTime),
+          visual_duration: roundTiming(visualDuration),
+          visual_duration_error: roundTiming(visualDurationError),
+          visual_duration_source: visualDurationSource,
+          visual_next_onset_commit_time: null,
+          visual_next_stimulus: null,
+          previous_visual_trial_sequence: null,
+          previous_visual_stimulus: null,
+          previous_visual_onset_commit_time: null,
+          previous_visual_offset_commit_time: null,
+          previous_visual_duration: null,
+          previous_visual_duration_error: null,
+          previous_visual_duration_source: null,
+          ...(previousVisualDurationData ?? {}),
+          visual_frame_boundary_handoff: visualFrameBoundaryHandoff,
+          visual_frame_boundary_handoff_lead_ms: roundTiming(
+            visualFrameBoundaryHandoffLeadMs,
+          ),
           response_timing_quality: responseTimingData.response_timing_quality,
           response_timing_quality_reason:
             responseTimingData.response_timing_quality_reason,
@@ -1566,7 +1880,22 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         }
       });
 
-      preserveCanvasVisualBridge(mainContainer, display_element, offsetTime);
+      if (visualFrameBoundaryHandoff) {
+        pendingVisualDurationPatch = {
+          jsPsych: this.jsPsych,
+          trialSequence: dynamicTrialSequence,
+          onsetCommitTime: visualOnsetCommitTime,
+          expectedDuration: desiredTrialDuration,
+          stimulus: visualStimulus,
+          frameBoundaryHandoff: visualFrameBoundaryHandoff,
+        };
+      }
+
+      if (visualFrameBoundaryHandoff && typeof offsetTime === "number") {
+        setPersistentVisualHandoff(offsetTime);
+      } else {
+        preserveCanvasVisualBridge(mainContainer, display_element);
+      }
 
       // Clean up components
       stimulusComponents.forEach(({ instance }) => {
@@ -1583,31 +1912,75 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       // Clear display
       display_element.innerHTML = "";
 
-      // Save trial data
-      this.jsPsych.finishTrial(trialData);
+      // Return trial data through jsPsych's promise-result path.
+      resolveTrial(trialData);
     };
 
     const startPresentation = () => {
       if (trialEnded) return;
 
+      const trialDuration = resolveTimingMs(trial.trial_duration, null);
+      visualFrameBoundaryHandoff = isFrameBoundaryImageTrial(
+        trialDuration,
+        stimulusComponents,
+        responseComponents,
+      );
+      if (visualFrameBoundaryHandoff) {
+        removePreservedVisualBridge();
+        visualRenderContainer = getPersistentVisualSurface(
+          canvasWidth,
+          canvasHeight,
+          trial.__canvasStyles?.backgroundColor ?? "transparent",
+        );
+        for (const stage of getCanvasStages(visualRenderContainer)) {
+          stage.resetForTrial();
+        }
+        mainContainer.style.visibility = "visible";
+      } else {
+        closePendingVisualDuration(
+          this.jsPsych,
+          "unclosed_no_next_visual_onset_commit",
+        );
+        removePersistentVisualSurface();
+        visualRenderContainer = mainContainer;
+      }
+
       renderAllComponents();
       responseTiming.attach();
       timing.onStart(() => {
         mainContainer.style.visibility = "visible";
-        for (const stage of getCanvasStages(mainContainer)) {
+        for (const stage of getCanvasStages(visualRenderContainer)) {
           stage.setTrialActive(true);
         }
       });
       timing.onFrameCommit((timestamp) => {
-        for (const stage of getCanvasStages(mainContainer)) {
+        for (const stage of getCanvasStages(visualRenderContainer)) {
           stage.commit(timestamp, true);
+        }
+        if (visualFrameBoundaryHandoff && !previousVisualDurationPatched) {
+          const currentVisualRecord = findPrimaryVisualTimingRecord(
+            timing,
+            stimulusComponents,
+          );
+          const currentOnsetCommitTime =
+            typeof currentVisualRecord?.actual_onset_abs === "number"
+              ? currentVisualRecord.actual_onset_abs
+              : null;
+          previousVisualDurationData = patchPreviousVisualDuration(
+            this.jsPsych,
+            currentOnsetCommitTime,
+            getPrimaryStimulusValue(stimulusComponents),
+            dynamicTrialSequence,
+          );
+          previousVisualDurationPatched = previousVisualDurationData !== null;
         }
         removePreservedVisualBridge();
       });
 
       // Handle trial duration on measured animation frames.
-      const trialDuration = resolveTimingMs(trial.trial_duration, null);
       if (trialDuration !== null) {
+        visualFrameBoundaryHandoffLeadMs = visualFrameBoundaryHandoff ? 0 : null;
+
         timing.scheduleAt(trialDuration, (timestamp) => {
           if (trialEnded) return;
           if (!hasResponded) {
@@ -1618,16 +1991,11 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         });
       }
 
-      const handoffTimestamp = consumePreservedVisualHandoffTimestamp();
-      if (
-        typeof handoffTimestamp === "number" &&
-        performance.now() - handoffTimestamp <= timing.getFrameIntervalEstimate()
-      ) {
-        queueMicrotask(() => {
-          if (!trialEnded) {
-            timing.startAt(handoffTimestamp);
-          }
-        });
+      const handoffTimestamp = visualFrameBoundaryHandoff
+        ? consumePersistentVisualHandoffTimestamp()
+        : null;
+      if (typeof handoffTimestamp === "number") {
+        timing.startAt(handoffTimestamp);
       } else {
         timing.start();
       }
@@ -1660,6 +2028,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     } else {
       startPresentation();
     }
+    });
   }
 }
 

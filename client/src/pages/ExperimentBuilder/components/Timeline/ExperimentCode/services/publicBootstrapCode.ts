@@ -54,35 +54,35 @@ export function publicBootstrapCode(
       _setLoadingMsg('Creating session\u2026');
     }
 
-    // Leer datos de retoma ANTES de cualquier limpieza
     const resumeRaw = localStorage.getItem('jsPsych_resumeTrial');
     const existingJump = localStorage.getItem('jsPsych_jumpToTrial');
-
-    // Guard contra bucle infinito: si la última recarga fue un intento de jump
-    // y el key sigue intacto (ningún trial lo consumió), borrar todo y empezar limpio.
-    const comingFromJumpReload = sessionStorage.getItem('jsPsych_jumpReload') === '1';
+    const comingFromJumpReload =
+      sessionStorage.getItem('jsPsych_jumpReload') === '1';
     sessionStorage.removeItem('jsPsych_jumpReload');
+
     if (comingFromJumpReload && existingJump) {
       localStorage.removeItem('jsPsych_jumpToTrial');
       localStorage.removeItem('jsPsych_resumeTrial');
       localStorage.removeItem('jsPsych_currentSessionId');
       localStorage.removeItem('jsPsych_participantNumber');
-      trialSessionId = _sessionNameHasDynamic()
-        ? (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 10))
-        : (_generateSessionName(null) || (crypto.randomUUID
-            ? crypto.randomUUID()
-            : Math.random().toString(36).slice(2, 10)));
-      window.JSPSYCH_SESSION_ID = trialSessionId;
+      trialSessionId = _generateSessionName(null) || (crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2, 10));
       isResuming = false;
-    } else if (!existingJump) {
-      // Sin jump pendiente: derivar destino desde el último trial completado
-      localStorage.removeItem('jsPsych_jumpToTrial');
-      const jumpTarget = _resolveResumeBranch(resumeRaw);
-      localStorage.removeItem('jsPsych_resumeTrial');
-      if (jumpTarget) localStorage.setItem('jsPsych_jumpToTrial', jumpTarget);
-    } else {
-      // Jump ya establecido por repeat/jump — preservarlo, solo limpiar resume
-      localStorage.removeItem('jsPsych_resumeTrial');
+    } else if (isResuming && resumeRaw && !existingJump) {
+      const resumeTarget = _resolveResumeBranch(resumeRaw);
+      if (resumeTarget !== null) {
+        localStorage.setItem('jsPsych_jumpToTrial', resumeTarget);
+        sessionStorage.setItem('jsPsych_jumpReload', '1');
+      } else {
+        localStorage.removeItem('jsPsych_resumeTrial');
+        localStorage.removeItem('jsPsych_currentSessionId');
+        localStorage.removeItem('jsPsych_participantNumber');
+        trialSessionId = _generateSessionName(null) || (crypto.randomUUID
+          ? crypto.randomUUID()
+          : Math.random().toString(36).slice(2, 10));
+        isResuming = false;
+      }
     }
     
     // --- Configuración de Batching (cargada desde Firestore) ---
@@ -125,9 +125,8 @@ export function publicBootstrapCode(
     if (_sessionNameHasDynamic() && typeof participantNumber === 'number' && !isNaN(participantNumber)) {
       const _finalName = _generateSessionName(participantNumber);
       if (_finalName) {
-        _updateSessionName(trialSessionId, _finalName); // update Firestore metadata
-        trialSessionId = _finalName;                    // update local variable
-        window.JSPSYCH_SESSION_ID = trialSessionId;     // update global for file uploads
+        // Session IDs are durable identities. The generated name is display metadata.
+        _updateSessionName(trialSessionId, _finalName);
       }
     }
 

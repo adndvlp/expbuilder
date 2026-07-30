@@ -191,7 +191,6 @@ describe("TrialsProvider", () => {
         branches: [],
       }),
     ]);
-    const currentLoop = loop({ id: "loop-1", name: "Loop", trials: [1, 2] });
     const updatedLoop = loop({
       id: "loop-1",
       name: "Loop updated",
@@ -201,7 +200,6 @@ describe("TrialsProvider", () => {
     const newBranchTrial = trial({ id: 50, name: "Loop branch" });
 
     queueFetchResponses(
-      okJson({ loop: currentLoop }),
       okJson({ loop: updatedLoop }),
       okJson({ trial: trial({ id: 1, parentLoopId: null }) }),
       okJson({ trial: trial({ id: 3, parentLoopId: "loop-1" }) }),
@@ -253,12 +251,6 @@ describe("TrialsProvider", () => {
       }),
       timelineTrial({ id: 99, name: "Bystander" }),
     ]);
-    const currentLoop = loop({
-      id: "loop-1",
-      name: "Loop",
-      trials: [1, 2],
-      branches: [],
-    });
     const updatedLoop = loop({
       id: "loop-1",
       name: "Loop",
@@ -266,10 +258,7 @@ describe("TrialsProvider", () => {
       branches: [50],
     });
 
-    queueFetchResponses(
-      okJson({ loop: currentLoop }),
-      okJson({ loop: updatedLoop }),
-    );
+    queueFetchResponses(okJson({ loop: updatedLoop }));
 
     const result = await act(async () => {
       return view.getContext()?.updateLoop("loop-1", { branches: [50] });

@@ -192,6 +192,18 @@ abstract class BaseStage {
     this.trialActive = active;
   }
 
+  resetForTrial() {
+    this.drawables.clear();
+    this.pendingVisibilityCommits = [];
+    this.trialActive = false;
+    this.dirty = true;
+    this.metrics = createBaseMetrics(
+      "webgl-strict",
+      this.metrics.render_backend,
+      this.metrics.buffer_strategy,
+    );
+  }
+
   registerSprite(sprite: SpriteDrawable) {
     this.drawables.set(sprite.id, {
       kind: "sprite",

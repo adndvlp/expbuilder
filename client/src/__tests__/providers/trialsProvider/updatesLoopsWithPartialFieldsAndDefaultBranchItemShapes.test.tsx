@@ -28,26 +28,16 @@ describe("TrialsProvider", () => {
         branches: [7],
       }),
     ]);
+    const responseWithoutCollections = loop({
+      id: "loop-1",
+      name: "After",
+    });
+    Reflect.deleteProperty(responseWithoutCollections, "branches");
+    Reflect.deleteProperty(responseWithoutCollections, "trials");
 
     queueFetchResponses(
       okJson({
-        loop: loop({
-          id: "loop-1",
-          name: "Before",
-          trials: [1],
-          branches: [7],
-        }),
-      }),
-      okJson({
-        loop: loop({
-          id: "loop-1",
-          name: "After",
-          branches: undefined as any,
-          trials: undefined as any,
-        }),
-      }),
-      okJson({
-        loop: loop({ id: "loop-1", name: "After", trials: [], branches: [] }),
+        loop: responseWithoutCollections,
       }),
       okJson({
         loop: loop({
@@ -56,9 +46,6 @@ describe("TrialsProvider", () => {
           trials: [],
           branches: [60],
         }),
-      }),
-      okJson({
-        loop: loop({ id: "loop-1", name: "After", trials: [], branches: [] }),
       }),
       okJson({
         loop: loop({
@@ -114,11 +101,6 @@ describe("TrialsProvider", () => {
     const view = await renderLoadedProvider([
       timelineLoop({ id: "loop-1", name: "Loop", trials: [], branches: [] }),
     ]);
-    const currentLoop = loop({
-      id: "loop-1",
-      name: "Loop",
-      trials: undefined as any,
-    });
     const updatedLoop = loop({
       id: "loop-1",
       name: "Loop",
@@ -126,7 +108,6 @@ describe("TrialsProvider", () => {
     });
 
     queueFetchResponses(
-      okJson({ loop: currentLoop }),
       okJson({ loop: updatedLoop }),
       okJson({ trial: trial({ id: 2, parentLoopId: "loop-1" }) }),
     );

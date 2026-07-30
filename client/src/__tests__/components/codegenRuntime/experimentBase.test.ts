@@ -52,6 +52,9 @@ describe("ExperimentBaseHarness", () => {
     expect(code).toContain("type: jsPsychPreload");
     expect(code).toContain('files: ["https://cdn.test/a.png"]');
     expect(code).toContain("type: jsPsychFullscreen");
+    expect(code).toContain(
+      "conditional_function: function() { return !document.fullscreenElement; }",
+    );
     expect(code).toContain("const Trial_A_procedure = {};");
     expect(code).toContain("const loop_1_procedure = {};");
     expect(code).toContain("jsPsych.run(timeline);");

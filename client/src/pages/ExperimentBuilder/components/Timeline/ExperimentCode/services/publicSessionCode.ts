@@ -45,6 +45,8 @@ export function publicSessionCode(
     baseCode,
   ];
   return `
+  ${resumeCode()}
+
   // --- Session Name Configuration ---
   const _SESSION_NAME_TOKENS = ${JSON.stringify(sessionNameTokens)};
   const _SESSION_NAME_SEPARATOR = ${JSON.stringify(sessionNameSeparator)};
@@ -169,7 +171,6 @@ export function publicSessionCode(
   }
 
   ${loadingOverlayCode()}
-  ${resumeCode()}
   ${captchaCode()}
 `;
 }

@@ -1,9 +1,16 @@
 import { useCallback } from "react";
 import type { TimelineItem } from "../../../contexts/TrialsContext";
 import { findTimelineItemLocation } from "../itemScope";
+import {
+  getLoopTimelineFieldChanges,
+  getLoopTimelineSnapshot,
+  updateLoopTimeline,
+} from "../loopTimelineUpdates";
 import type { LoopMethodsWithGetLoop } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
+const idsMatch = (left: string | number, right: string | number) =>
+  String(left) === String(right);
 
 export default function useUpdateLoopField({
   experimentID,
@@ -11,8 +18,8 @@ export default function useUpdateLoopField({
   loopTimelineCache,
   setTimeline,
   updateLoopTimelineItems,
-  selectedLoop,
   setSelectedLoop,
+  getSelectedLoop,
   getLoop,
 }: LoopMethodsWithGetLoop) {
   return useCallback(
@@ -22,38 +29,30 @@ export default function useUpdateLoopField({
       value: unknown,
       updateSelectedLoop: boolean = true,
     ): Promise<boolean> => {
-      let parentLoopId: string | number | null = null;
       try {
-        parentLoopId =
-          selectedLoop && String(selectedLoop.id) === String(id)
-            ? (selectedLoop.parentLoopId ?? null)
-            : (findTimelineItemLocation(id, timeline, loopTimelineCache)
-                ?.parentLoopId ?? null);
+        const timelineChanges = getLoopTimelineFieldChanges(
+          fieldName,
+          value,
+        );
+        const location = findTimelineItemLocation(
+          id,
+          timeline,
+          loopTimelineCache,
+        );
+        const selected = getSelectedLoop();
+        let parentLoopId = location
+          ? location.parentLoopId
+          : selected && idsMatch(selected.id, id)
+            ? (selected.parentLoopId ?? null)
+            : null;
 
-        if (
-          fieldName === "name" ||
-          fieldName === "branches" ||
-          fieldName === "trials"
-        ) {
-          const optimisticUpdateFn = (prev: TimelineItem[]) => {
-            let changed = false;
-            const next = prev.map((item) => {
-              if (item.id === id && item.type === "loop") {
-                changed = true;
-                return {
-                  ...item,
-                  [fieldName]: value,
-                };
-              }
-              return item;
-            });
-            return changed ? next : prev;
-          };
-
+        if (timelineChanges) {
+          const optimisticUpdate = (items: TimelineItem[]) =>
+            updateLoopTimeline(items, id, timelineChanges);
           if (parentLoopId != null) {
-            updateLoopTimelineItems(parentLoopId, optimisticUpdateFn);
+            updateLoopTimelineItems(parentLoopId, optimisticUpdate);
           } else {
-            setTimeline(optimisticUpdateFn);
+            setTimeline(optimisticUpdate);
           }
         }
 
@@ -75,34 +74,23 @@ export default function useUpdateLoopField({
         const updatedLoop = data.loop;
 
         // ACTUALIZAR UI CON DATOS REALES
-        if (
-          fieldName === "name" ||
-          fieldName === "branches" ||
-          fieldName === "trials"
-        ) {
-          const finalUpdateFn = (prev: TimelineItem[]) =>
-            prev.map((item) =>
-              item.id === id && item.type === "loop"
-                ? {
-                    ...item,
-                    name: updatedLoop.name,
-                    branches: updatedLoop.branches || [],
-                    trials: updatedLoop.trials || [],
-                  }
-                : item,
-            );
-
+        if (timelineChanges) {
+          const snapshot = getLoopTimelineSnapshot(updatedLoop);
+          const finalUpdate = (items: TimelineItem[]) =>
+            updateLoopTimeline(items, id, snapshot);
           parentLoopId = updatedLoop.parentLoopId ?? parentLoopId;
           if (parentLoopId != null) {
-            updateLoopTimelineItems(parentLoopId, finalUpdateFn);
+            updateLoopTimelineItems(parentLoopId, finalUpdate);
           } else {
-            setTimeline(finalUpdateFn);
+            setTimeline(finalUpdate);
           }
         }
 
         // Actualizar selectedLoop si es el que está seleccionado y se solicita
-        if (updateSelectedLoop && selectedLoop?.id === id) {
-          setSelectedLoop(updatedLoop);
+        if (updateSelectedLoop) {
+          setSelectedLoop((current) =>
+            current && idsMatch(current.id, id) ? updatedLoop : current,
+          );
         }
 
         return true;
@@ -110,11 +98,11 @@ export default function useUpdateLoopField({
         console.error(`Error updating ${fieldName}:`, error);
 
         // Si falla, recargar el loop completo para mantener consistencia
-        if (selectedLoop?.id === id) {
-          const freshLoop = await getLoop(id);
-          if (freshLoop) {
-            setSelectedLoop(freshLoop);
-          }
+        const freshLoop = await getLoop(id);
+        if (freshLoop) {
+          setSelectedLoop((current) =>
+            current && idsMatch(current.id, id) ? freshLoop : current,
+          );
         }
 
         return false;
@@ -123,8 +111,8 @@ export default function useUpdateLoopField({
     [
       experimentID,
       getLoop,
+      getSelectedLoop,
       loopTimelineCache,
-      selectedLoop,
       setTimeline,
       setSelectedLoop,
       timeline,

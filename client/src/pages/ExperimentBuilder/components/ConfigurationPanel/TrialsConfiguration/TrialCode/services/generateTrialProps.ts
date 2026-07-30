@@ -28,7 +28,7 @@ export function generateTrialProps({
   trialNameSanitized,
 }: Options): string {
   // Lógica especial para DynamicPlugin
-  if (pluginName === "DynamicPlugin") {
+  if (pluginName === "DynamicPlugin" || pluginName === "plugin-dynamic") {
     const componentsKey = isInLoop
       ? `components_${trialNameSanitized}`
       : "components";

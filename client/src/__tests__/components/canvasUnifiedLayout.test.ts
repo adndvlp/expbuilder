@@ -58,6 +58,14 @@ describe("buildUnifiedFlowLayout", () => {
     expect(parentMarker?.data.expanded).toBe(true);
     expect(nestedMarker?.data.expanded).toBe(true);
     expect(nestedTrial?.data.selected).toBe(true);
+    expect(
+      result.nodes.every(
+        (node) =>
+          node.measured?.height === 50 &&
+          node.measured.width ===
+            (node.data.role === "loop-marker" ? 140 : 180),
+      ),
+    ).toBe(true);
     nestedTrial?.data.onClick();
     nestedTrial?.data.onAddBranch?.();
     nestedMarker?.data.onOpenLoop?.();

@@ -33,6 +33,10 @@ export type TrialWithCode = {
   pluginName?: string;
   timelineProps: string;
   mappedJson?: Record<string, any>[];
+  branches?: (string | number)[];
+  branchConditions?: unknown[];
+  repeatConditions?: unknown[];
+  customOnFinish?: string;
   isLoop?: boolean;
   id?: string | number;
   type?: string;

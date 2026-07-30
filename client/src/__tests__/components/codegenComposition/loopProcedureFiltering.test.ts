@@ -128,6 +128,6 @@ describe("useLoopCode composition", () => {
     expect(code).toContain(
       "localStorage.setItem('jsPsych_jumpToTrial', String(condition.jumpToTrialId));",
     );
-    expect(code).toContain("jsPsych.run(timeline);");
+    expect(code).toContain("jsPsych.run(timeline)");
   });
 });

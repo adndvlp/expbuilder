@@ -73,7 +73,6 @@ export function generateRepeatConditionsCode(
         
         if (allRulesMatch && condition.jumpToTrialId) {
           console.log('Repeat condition matched! Jumping to trial:', condition.jumpToTrialId);
-          // Guardar el trial objetivo en localStorage
           localStorage.setItem('jsPsych_jumpToTrial', String(condition.jumpToTrialId));
           shouldRepeat = true;
           break;
@@ -81,13 +80,7 @@ export function generateRepeatConditionsCode(
       }
       
       if (shouldRepeat) {
-        // Limpiar el contenedor de jsPsych (jspsych-container es el display_element)
-        const container = document.getElementById('jspsych-container');
-        if (container) {
-          // Limpiar todo el contenido del container
-          container.innerHTML = '';
-        }
-        // Reiniciar el timeline
+        document.getElementById('jspsych-container').innerHTML = '';
         setTimeout(() => {
           jsPsych.run(timeline);
         }, 100);

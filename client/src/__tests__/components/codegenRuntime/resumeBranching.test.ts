@@ -2,14 +2,11 @@ import { describe, expect, it } from "vitest";
 import { getResumeResolver } from "./testHarness";
 
 describe("resumeCode", () => {
-  it("returns null for missing, corrupt or terminal resume data", () => {
+  it("returns null for missing or corrupt resume data", () => {
     const resolveResumeBranch = getResumeResolver();
 
     expect(resolveResumeBranch(null)).toBeNull();
     expect(resolveResumeBranch("not-json")).toBeNull();
-    expect(
-      resolveResumeBranch(JSON.stringify({ branches: [], trialData: {} })),
-    ).toBeNull();
   });
 
   it("returns the only branch without evaluating conditions", () => {
