@@ -186,10 +186,13 @@ describe("experiment configuration generators", () => {
   });
 
   it("falls back to empty session tokens and the default separator", async () => {
-    globalThis.fetch = vi.fn(async () => ({
-      ok: true,
-      json: async () => ({ tokens: null, separator: null }),
-    }) as Response);
+    globalThis.fetch = vi.fn(
+      async () =>
+        ({
+          ok: true,
+          json: async () => ({ tokens: null, separator: null }),
+        }) as Response,
+    );
 
     const { result } = renderHook(() => LocalConfiguration(defaultProps));
     const code = await result.current.generateLocalExperiment();
@@ -250,7 +253,9 @@ describe("experiment configuration generators", () => {
     expect(code).toContain(
       "window.JSPSYCH_FILE_UPLOAD_ENDPOINT = 'http://localhost:3000/api/data'.replace('/apiData', '/uploadParticipantFile');",
     );
-    expect(code).toContain("await _showCaptchaGate(\"site-key-123\", \"recaptcha\")");
+    expect(code).toContain(
+      'await _showCaptchaGate("site-key-123", "recaptcha")',
+    );
     expect(code).toContain("batchSize: 5");
     expect(code).toContain("resumeTimeoutMinutes: 45");
     expect(code).toContain("useIndexedDB: false");

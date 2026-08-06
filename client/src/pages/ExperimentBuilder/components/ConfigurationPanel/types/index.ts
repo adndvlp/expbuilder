@@ -40,6 +40,11 @@ export type BranchCondition = {
     column: string; // Direct column name (e.g., "ButtonResponseComponent_1_response" or "response")
     op: string;
     value: string;
+    // Source trial for the rule data. Only used when the condition belongs to a
+    // Loop (loop exit branching): the rule reads the last data row produced by
+    // this trial inside the loop. If omitted, the last trial row of the loop is
+    // used (backward-compatible fallback).
+    trialId?: string | number;
     // Legacy fields for backward compatibility
     prop?: string;
     fieldType?: string;
@@ -55,6 +60,8 @@ export type RepeatCondition = {
     column: string; // Direct column name
     op: string;
     value: string;
+    // Source trial for the rule data (loop-owned conditions). See BranchCondition.
+    trialId?: string | number;
     // Legacy fields for backward compatibility
     prop?: string;
     fieldType?: string;

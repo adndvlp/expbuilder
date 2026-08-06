@@ -38,8 +38,14 @@ export type BranchCondition = {
     prop: string;
     op: string;
     value: string;
+    column?: string;
+    // Source trial for the rule data (loop exit branching). If omitted, the
+    // last trial row of the loop is used.
+    trialId?: string | number;
+    componentIdx?: string;
   }>;
   nextTrialId: number | string | null;
+  customParameters?: Record<string, any>;
 };
 
 export type LoopConditionRule = {
@@ -60,6 +66,11 @@ export type RepeatCondition = {
     prop: string;
     op: string;
     value: string;
+    column?: string;
+    // Source trial for the rule data. If omitted, the last trial row of the
+    // loop is used.
+    trialId?: string | number;
+    componentIdx?: string;
   }>;
   jumpToTrialId: number | string | null;
 };
