@@ -199,12 +199,10 @@ describe("generateTrialLoopCodes integration", () => {
     expect(getLoopTimeline).toHaveBeenCalledWith("loop_child", {
       mode: "query",
     });
-    expect(code).toContain("loop_loop_parent_NextTrialId = branches[0];");
+    expect(code).toContain("loop_loop_parent_NextTrialId = exitTargetId;");
     expect(code).toContain("loop_loop_parent_SkipRemaining = true;");
     expect(code).toContain("loop_loop_parent_BranchingActive = true;");
-    expect(code).not.toContain(
-      "const branches = [99]; if (branches.length > 0) { window.nextTrialId = branches[0];",
-    );
+    expect(code).not.toContain("window.nextTrialId = exitTargetId;");
   });
 
   it("handles an empty nested loop entry in its parent loop", async () => {

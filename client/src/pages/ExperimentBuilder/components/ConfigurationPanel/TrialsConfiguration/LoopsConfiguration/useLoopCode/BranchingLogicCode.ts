@@ -1,5 +1,10 @@
-import { LoopCondition } from "./types";
+import { BranchCondition, LoopCondition, RepeatCondition } from "./types";
 import { generateConditionalLoopFunction } from "./services/generateConditionalLoopFunction";
+import { generateLoopRepeatConditionsCode } from "./services/generateLoopRepeatConditionsCode";
+import {
+  generateLoopExitBranchCode,
+  generateLoopRuleDataPrelude,
+} from "./services/generateLoopExitBranchCode";
 
 type Props = {
   code: string;
@@ -15,6 +20,8 @@ type Props = {
   isConditionalLoop?: boolean | undefined;
   loopConditions?: LoopCondition[] | undefined;
   branches: (string | number)[] | undefined;
+  branchConditions?: BranchCondition[] | undefined;
+  repeatConditions?: RepeatCondition[] | undefined;
 };
 
 export default function BranchingLogicCode({
@@ -31,7 +38,12 @@ export default function BranchingLogicCode({
   isConditionalLoop,
   loopConditions,
   branches,
+  branchConditions,
+  repeatConditions,
 }: Props) {
+  const hasExitConditions = branchConditions && branchConditions.length > 0;
+  const hasRepeatConditions = repeatConditions && repeatConditions.length > 0;
+  const needsRuleData = hasExitConditions || hasRepeatConditions;
   code += `
     
     ${itemDefinitions}
@@ -47,134 +59,6 @@ const loop_${loopIdSanitized}_HasBranches = ${hasBranchesLoop ? "true" : "false"
 let loop_${loopIdSanitized}_ShouldBranchOnFinish = false;
 
 ${itemWrappers}
-
-const evaluateLoopCondition_${loopIdSanitized} = (trialData, condition) => {
-  // All rules in a condition must be true (AND logic)
-  return condition.rules.every(rule => {
-    let propValue;
-    
-    // Parse column name to extract component info for dynamic plugins
-    // Format: "componentName_propertyName" or "componentName_questionName" for surveys
-    // If column is empty, construct it from componentIdx and prop
-    let columnName = rule.column || "";
-    if (!columnName && rule.componentIdx && rule.prop) {
-      columnName = rule.componentIdx + '_' + rule.prop;
-    } else if (!columnName && rule.prop) {
-      columnName = rule.prop;
-    }
-    const parts = columnName.split("_");
-    
-    // Check if this looks like a dynamic plugin column (has underscore)
-    if (parts.length >= 2) {
-      // Last part is the property or question name
-      const propertyOrQuestion = parts[parts.length - 1];
-      // Everything before the last underscore is the component name
-      const componentName = parts.slice(0, -1).join("_");
-      
-      // First, try direct access with the full columnName (e.g., "ButtonResponseComponent_1_response")
-      if (trialData[columnName] !== undefined) {
-        propValue = trialData[columnName];
-      } else {
-        // If not found, try componentName_response format and check if it's an object (SurveyComponent case)
-        const responseKey = componentName + '_response';
-        const responseData = trialData[responseKey];
-        
-        // If response data exists and is an object (SurveyComponent case)
-        if (responseData && typeof responseData === 'object' && !Array.isArray(responseData)) {
-          // This is likely a survey response - check if property is a question name
-          if (responseData[propertyOrQuestion] !== undefined) {
-            propValue = responseData[propertyOrQuestion];
-          } else {
-            return false;
-          }
-        } else {
-          return false;
-        }
-      }
-    } else {
-      // Normal plugin structure - direct property access
-      propValue = trialData[columnName] || trialData[rule.prop];
-    }
-    
-    const compareValue = rule.value;
-    
-    // Handle array responses (multi-select or single-select returned as array)
-    if (Array.isArray(propValue)) {
-      switch (rule.op) {
-        case '==':
-          return propValue.includes(compareValue) || propValue.includes(String(compareValue));
-        case '!=':
-          return !propValue.includes(compareValue) && !propValue.includes(String(compareValue));
-        default:
-          return false;
-      }
-    }
-    
-    // Convert values for comparison
-    const numPropValue = parseFloat(propValue);
-    const numCompareValue = parseFloat(compareValue);
-    const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
-    
-    switch (rule.op) {
-      case '==':
-        return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
-      case '!=':
-        return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
-      case '>':
-        return isNumeric && numPropValue > numCompareValue;
-      case '<':
-        return isNumeric && numPropValue < numCompareValue;
-      case '>=':
-        return isNumeric && numPropValue >= numCompareValue;
-      case '<=':
-        return isNumeric && numPropValue <= numCompareValue;
-      default:
-        return false;
-    }
-  });
-};
-
-const getNextLoopTrialId_${loopIdSanitized} = (lastTrialData) => {
-  if (!lastTrialData || !lastTrialData.trials || !lastTrialData.trials[0]) {
-    return null;
-  }
-  
-  const trial = lastTrialData.trials[0];
-  
-  // Check if trial has branches
-  if (!Array.isArray(trial.branches) || trial.branches.length === 0) {
-    return null;
-  }
-  
-  // If there is only one branch OR there are no conditions, automatically follow the first branch
-  const hasMultipleBranches = trial.branches.length > 1;
-  const hasBranchConditions = Array.isArray(trial.branchConditions) && trial.branchConditions.length > 0;
-  
-  if (!hasMultipleBranches || !hasBranchConditions) {
-    console.log('Loop internal: Auto-branching to first branch:', trial.branches[0]);
-    return trial.branches[0];
-  }
-  
-  // If there are multiple branches AND conditions, evaluate the conditions
-  const conditions = trial.branchConditions.flat();
-  
-  // Evaluate each condition (OR logic between conditions)
-  for (const condition of conditions) {
-    if (!condition || !condition.rules) {
-      console.warn('Invalid condition structure:', condition);
-      continue;
-    }
-    
-    if (evaluateLoopCondition_${loopIdSanitized}(trial, condition)) {
-      console.log('Loop internal: Condition matched:', condition);
-      return condition.nextTrialId;
-    }
-  }
-  
-  // No condition matched - default to the first branch
-  console.log('Loop internal: No condition matched, defaulting to first branch:', trial.branches[0]);
-  return trial.branches[0];
-};
 
 const ${loopIdSanitized}_procedure = {
   timeline: [${timelineRefs}],
@@ -241,30 +125,34 @@ const ${loopIdSanitized}_procedure = {
     loop_${loopIdSanitized}_TargetExecuted = false;
     loop_${loopIdSanitized}_BranchingActive = false;
     loop_${loopIdSanitized}_BranchCustomParameters = null;
-    
-    // Check if branching should occur because a trial without branches was completed
-    // but the loop has branches
+    ${needsRuleData ? generateLoopRuleDataPrelude(id) : ""}
+    ${hasRepeatConditions ? generateLoopRepeatConditionsCode({ repeatConditions }) : ""}
+    ${
+      hasBranchesLoop
+        ? `
+    // Evaluate the loop exit branches when a terminal child completed
     if (loop_${loopIdSanitized}_ShouldBranchOnFinish && loop_${loopIdSanitized}_HasBranches) {
-      const branches = [${branches && branches.length > 0 ? branches.map((b) => (typeof b === "string" ? `"${b}"` : b)).join(", ") : ""}];
-      if (branches.length > 0) {
-        ${
-          parentLoopIdSanitized
-            ? `
-        // This is a nested loop - activate parent loop branching
-        loop_${parentLoopIdSanitized}_NextTrialId = branches[0];
-        loop_${parentLoopIdSanitized}_SkipRemaining = true;
-        loop_${parentLoopIdSanitized}_BranchingActive = true;
-        console.log('Nested loop finished (from internal trial), activating parent loop branching to:', branches[0]);`
-            : `
-        // This is a root loop - activate global branching
-        window.nextTrialId = branches[0];
-        window.skipRemaining = true;
-        window.branchingActive = true;
-        console.log('Root loop finished (from internal trial), branching to:', branches[0]);`
-        }
-      }
+      ${generateLoopExitBranchCode({
+        id,
+        branches: branches ?? [],
+        branchConditions,
+        loopIdSanitized,
+        parentLoopIdSanitized,
+      })}
     }
-    
+    `
+        : ""
+    }
+    ${
+      !hasBranchesLoop && parentLoopIdSanitized
+        ? `
+    // This nested loop has no own branches: signal the parent loop to evaluate its exit branches
+    if (loop_${parentLoopIdSanitized}_HasBranches) {
+      loop_${parentLoopIdSanitized}_ShouldBranchOnFinish = true;
+    }
+    `
+        : ""
+    }
     // Reset all branching variables of the loop
     loop_${loopIdSanitized}_NextTrialId = null;
     loop_${loopIdSanitized}_SkipRemaining = false;

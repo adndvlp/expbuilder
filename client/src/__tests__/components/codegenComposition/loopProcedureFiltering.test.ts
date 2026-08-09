@@ -89,10 +89,10 @@ describe("useLoopCode composition", () => {
     expect(code).toContain("const shouldRepeat = loopConditionsArray.some");
     expect(code).toContain("window.nextTrialId = null;");
     expect(code).toContain("window.skipRemaining = false;");
-    expect(code).toContain("window.nextTrialId = branches[0];");
+    expect(code).toContain("window.nextTrialId = exitTargetId;");
   });
 
-  it("generates loop repeat/jump conditions in on_finish", () => {
+  it("generates loop repeat/jump conditions in on_timeline_finish", () => {
     const genLoopCode = useLoopCode({
       id: "loop_repeat",
       branches: undefined,

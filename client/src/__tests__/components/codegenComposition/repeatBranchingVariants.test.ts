@@ -34,8 +34,8 @@ describe("useLoopCode composition", () => {
     const code = normalize(genLoopCode());
 
     expect(code).toContain("const repeatConditionsArray =");
-    expect(code).toContain('const branches = [10,"fallback_branch"];');
-    expect(code).toContain("window.nextTrialId = branches[0];");
+    expect(code).toContain('const exitBranches = [10,"fallback_branch"];');
+    expect(code).toContain("window.nextTrialId = exitTargetId;");
   });
 
   it("generates conditional loop branching without repeat conditions", () => {
@@ -69,9 +69,9 @@ describe("useLoopCode composition", () => {
 
     const code = normalize(genLoopCode());
 
-    expect(code).toContain('const branches = [10,"branch_b"];');
-    expect(code).toContain("const branchConditions =");
-    expect(code).toContain("window.nextTrialId = branches[0];");
+    expect(code).toContain('const exitBranches = [10,"branch_b"];');
+    expect(code).toContain("const exitBranchConditions =");
+    expect(code).toContain("window.nextTrialId = exitTargetId;");
   });
 
   it("propagates nested loop branching to parent loop variables", () => {
@@ -100,9 +100,9 @@ describe("useLoopCode composition", () => {
 
     const code = normalize(genLoopCode());
 
-    expect(code).toContain("loop_loop_parent_NextTrialId = branches[0];");
+    expect(code).toContain("loop_loop_parent_NextTrialId = exitTargetId;");
     expect(code).toContain("loop_loop_parent_SkipRemaining = true;");
     expect(code).toContain("loop_loop_parent_BranchingActive = true;");
-    expect(code).not.toContain("window.nextTrialId = branches[0];");
+    expect(code).not.toContain("window.nextTrialId = exitTargetId;");
   });
 });

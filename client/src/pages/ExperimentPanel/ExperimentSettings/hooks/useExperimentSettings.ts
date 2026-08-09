@@ -4,6 +4,7 @@ import { db } from "../../../../lib/firebase";
 import type {
   BatchConfig,
   CaptchaConfig,
+  MultiSessionConfig,
   RecruitmentConfig,
   SessionNameToken,
   SessionNameTokenType,
@@ -35,6 +36,12 @@ export function useExperimentSettings(experimentID: string | undefined) {
     provider: "hcaptcha",
     siteKey: "",
   });
+  const [multiSessionConfig, setMultiSessionConfig] =
+    useState<MultiSessionConfig>({
+      enabled: false,
+      maxParticipantsPerExperiment: 4,
+      maxParticipantsPerBreakoutRoom: 2,
+    });
   const [experimentExists, setExperimentExists] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<StatusMessage | null>(null);
@@ -76,6 +83,13 @@ export function useExperimentSettings(experimentID: string | undefined) {
           enabled: data.captchaConfig?.enabled ?? false,
           provider: data.captchaConfig?.provider ?? "hcaptcha",
           siteKey: data.captchaConfig?.siteKey ?? "",
+        });
+        setMultiSessionConfig({
+          enabled: data.multiSessionConfig?.enabled ?? false,
+          maxParticipantsPerExperiment:
+            data.multiSessionConfig?.maxParticipantsPerExperiment ?? 4,
+          maxParticipantsPerBreakoutRoom:
+            data.multiSessionConfig?.maxParticipantsPerBreakoutRoom ?? 2,
         });
       })
       .catch((error) => {
@@ -165,7 +179,7 @@ export function useExperimentSettings(experimentID: string | undefined) {
     try {
       await setDoc(
         doc(db, "experiments", experimentID),
-        { batchConfig: config, recruitmentConfig, captchaConfig },
+        { batchConfig: config, recruitmentConfig, captchaConfig, multiSessionConfig },
         { merge: true },
       );
       const response = await fetch(
@@ -201,6 +215,8 @@ export function useExperimentSettings(experimentID: string | undefined) {
     setRecruitmentConfig,
     captchaConfig,
     setCaptchaConfig,
+    multiSessionConfig,
+    setMultiSessionConfig,
     experimentExists,
     saving,
     message,

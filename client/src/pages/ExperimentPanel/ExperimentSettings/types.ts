@@ -24,6 +24,12 @@ export type CaptchaConfig = {
   siteKey: string;
 };
 
+export type MultiSessionConfig = {
+  enabled: boolean;
+  maxParticipantsPerExperiment: number;
+  maxParticipantsPerBreakoutRoom: number;
+};
+
 export type SessionNameTokenType =
   | "date"
   | "time"

@@ -1,4 +1,3 @@
-import BranchesCode from "./BranchesCode";
 import BranchingLogicCode from "./BranchingLogicCode";
 import {
   BranchCondition,
@@ -46,7 +45,6 @@ export default function useLoopCode({
   isConditionalLoop,
   parentLoopId,
   mergePointIds = [],
-  isMergePoint = false,
 }: Props) {
   const sanitizeName = (name: string) => {
     return name.replace(/[^a-zA-Z0-9_]/g, "_");
@@ -215,6 +213,8 @@ export default function useLoopCode({
       repetitions,
       randomize,
       branches,
+      branchConditions,
+      repeatConditions,
       isConditionalLoop,
       loopConditions,
     });
@@ -226,20 +226,6 @@ export default function useLoopCode({
   data: {
     loop_id: "${id}"
   },`;
-
-    const branchesResult = BranchesCode({
-      code,
-      hasBranchesLoop,
-      branches,
-      branchConditions,
-      repeatConditions,
-      id,
-      loopIdSanitized,
-      parentLoopIdSanitized,
-      isMergePoint,
-    });
-
-    code = branchesResult.code;
 
     code += `
 };

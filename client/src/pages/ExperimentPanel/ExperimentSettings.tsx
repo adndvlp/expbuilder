@@ -2,6 +2,7 @@ import AppearanceSettings from "./AppearanceSettings";
 import CustomDomainSettings from "./CustomDomainSettings";
 import { CaptchaSection } from "./ExperimentSettings/components/CaptchaSection";
 import { DataSettingsSection } from "./ExperimentSettings/components/DataSettingsSection";
+import { MultiSessionSection } from "./ExperimentSettings/components/MultiSessionSection";
 import { RecruitmentSection } from "./ExperimentSettings/components/RecruitmentSection";
 import { SessionNameSection } from "./ExperimentSettings/components/session-name/SessionNameSection";
 import { useExperimentSettings } from "./ExperimentSettings/hooks/useExperimentSettings";
@@ -43,6 +44,10 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
         onUpdateToken={settings.updateSessionToken}
         onSeparatorChange={settings.setSessionNameSeparator}
         onSave={settings.handleSaveSessionName}
+      />
+      <MultiSessionSection
+        config={settings.multiSessionConfig}
+        setConfig={settings.setMultiSessionConfig}
       />
       {settings.experimentExists && (
         <>

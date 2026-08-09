@@ -154,11 +154,11 @@ describe("useLoopCode composition", () => {
 
     expect(code).toContain("const repeatConditionsArray =");
     expect(code).toContain(
-      'const loopData = jsPsych.data.get().filter({loop_id: "loop_combo"}).values();',
+      'const loopDataRows = jsPsych.data.get().filter({loop_id: "loop_combo"}).values();',
     );
     expect(code).toContain("columnName = rule.componentIdx + '_' + rule.prop;");
-    expect(code).toContain('const branches = [10,"loop_next"];');
-    expect(code).toContain("const branchConditions =");
-    expect(code).toContain("window.nextTrialId = branches[0];");
+    expect(code).toContain('const exitBranches = [10,"loop_next"];');
+    expect(code).toContain("const exitBranchConditions =");
+    expect(code).toContain("window.nextTrialId = exitTargetId;");
   });
 });
