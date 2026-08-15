@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ResultsList from "../../../pages/ExperimentBuilder/components/ResultsList";
 
 const mocks = vi.hoisted(() => ({
-  socketHandlers: {} as Record<string, (...args: any[]) => void>,
+  socketHandlers: {} as Record<string, (...args: unknown[]) => void>,
   socketEmit: vi.fn(),
   socketDisconnect: vi.fn(),
   experimentID: "exp-123" as string | null,
@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("socket.io-client", () => ({
   io: vi.fn(() => ({
-    on: vi.fn((event: string, callback: (...args: any[]) => void) => {
+    on: vi.fn((event: string, callback: (...args: unknown[]) => void) => {
       mocks.socketHandlers[event] = callback;
     }),
     emit: mocks.socketEmit,
@@ -234,16 +234,16 @@ describe("ResultsList container", () => {
         experimentID: "exp-123",
         sessions: [
           {
-            _id: "active-local-2",
             sessionId: "local-2",
-            createdAt: "2026-05-24T12:00:00.000Z",
+            connectedAt: "2026-05-24T12:00:00.000Z",
+            lastUpdate: "2026-05-24T12:00:00.000Z",
             state: "initiated",
             metadata: { browser: "Safari", os: "iOS" },
           },
           {
-            _id: "active-local-1",
             sessionId: "local-1",
-            createdAt: "2026-05-24T10:00:00.000Z",
+            connectedAt: "2026-05-24T10:00:00.000Z",
+            lastUpdate: "2026-05-24T10:00:00.000Z",
             state: "in-progress",
             metadata: { os: "macOS 15" },
           },
@@ -251,8 +251,10 @@ describe("ResultsList container", () => {
       });
     });
 
-    expect(await screen.findByText("local-2")).toBeInTheDocument();
-    expect(screen.getByText("In Progress")).toBeInTheDocument();
+    expect(screen.queryByText("local-2")).not.toBeInTheDocument();
+    expect(screen.getByText("Connected")).toBeInTheDocument();
+    expect(screen.getByText("Completed")).toBeInTheDocument();
+    expect(screen.queryByText("In Progress")).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText("Files (1)")).toBeInTheDocument();

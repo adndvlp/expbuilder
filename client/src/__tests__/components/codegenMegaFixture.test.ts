@@ -265,7 +265,10 @@ describe("codegen mega regression fixture", () => {
     expect(combined).toContain("loop_function: function(data)");
     expect(combined).toContain("const loopConditionsArray =");
     expect(combined).toContain("const repeatConditionsArray =");
-    expect(combined).toContain("localStorage.setItem('jsPsych_jumpToTrial'");
+    expect(combined).toContain(
+      "window.JSPSYCH_LOCAL_KEYS?.jumpTrial || 'jsPsych_jumpToTrial'",
+    );
+    expect(combined).toContain("localStorage.setItem(jumpKey");
 
     expect(combined).toContain("loop_loop_parent_NextTrialId = nextTrialId;");
     expect(combined).toContain("loop_loop_parent_NextTrialId = branches[0];");

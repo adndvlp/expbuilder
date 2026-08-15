@@ -49,7 +49,7 @@ describe('GET /:experimentID (serve experiment HTML)', () => {
       updatedAt: new Date().toISOString(),
     })
     await db.write()
-    await request(app).get('/NoHtmlExp').expect(404)
+    await request(app).get('/E1').expect(404)
   })
 })
 
@@ -68,7 +68,7 @@ describe('GET /:experimentID/preview', () => {
       updatedAt: new Date().toISOString(),
     })
     await db.write()
-    await request(app).get('/NoPrevExp/preview').expect(404)
+    await request(app).get('/E1/preview').expect(404)
   })
 })
 
@@ -103,7 +103,31 @@ describe('POST /api/run-experiment/:experimentID', () => {
       .send({ generatedCode: 'jsPsych.run(timeline);' })
       .expect(200)
     expect(res.body.success).toBe(true)
-    expect(res.body.experimentUrl).toContain('RunExp')
+    expect(res.body.experimentUrl).toContain('E1')
+  })
+
+  test('keeps generated HTML isolated when two experiments share a name', async () => {
+    const { app, db } = await freshApp()
+    db.data.experiments.push(
+      { experimentID: 'E1', name: 'Same Name', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      { experimentID: 'E2', name: 'Same Name', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    )
+    await db.write()
+
+    await request(app)
+      .post('/api/run-experiment/E1')
+      .send({ generatedCode: 'window.EXPERIMENT = "first";' })
+      .expect(200)
+    await request(app)
+      .post('/api/run-experiment/E2')
+      .send({ generatedCode: 'window.EXPERIMENT = "second";' })
+      .expect(200)
+
+    const first = await request(app).get('/E1').expect(200)
+    const second = await request(app).get('/E2').expect(200)
+    expect(first.text).toContain('"first"')
+    expect(first.text).not.toContain('"second"')
+    expect(second.text).toContain('"second"')
   })
 })
 

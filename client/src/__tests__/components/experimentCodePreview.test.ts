@@ -25,7 +25,8 @@ describe("getInitJsPsychPreview helpers", () => {
 
     expect(local).toContain("// --- Your code (runs here, before initJsPsych) ---");
     expect(local).toContain("window.localReady = true;");
-    expect(local).toContain("const pendingDataSaves = [];");
+    expect(local).toContain("const localOutbox = _createLocalOutbox");
+    expect(local).toContain("await localOutbox.initialize(persistedEventCount)");
     expect(publicPreview).toContain("const pendingBatchSaves = [];");
     expect(publicPreview).toContain("const _prolificPID");
     expect(publicPreview).toContain("window.publicReady = true;");
@@ -36,10 +37,12 @@ describe("getInitJsPsychPreview helpers", () => {
 
     expect(code).toContain("const jsPsych = initJsPsych({");
     expect(code).toContain("show_progress_bar: true,");
-    expect(code).toContain('/api/append-result/exp-1');
-    expect(code).toContain("localStorage.setItem('jsPsych_resumeTrial'");
+    expect(code).toContain("localOutbox.enqueue(data)");
+    expect(code).toContain("localStorage.setItem(_sessionKeys.resumeTrial");
     expect(code).toContain("socket.emit('update-session-state'");
     expect(code).toContain("await fetch(\"/api/complete-session/exp-1\"");
+    expect(code).toContain("completeBody.storedEventCount !== stats.total");
+    expect(code).toContain("stats.pending !== 0");
   });
 
   it("renders public initJsPsych preview with batching and Firebase session updates", () => {
@@ -65,7 +68,7 @@ describe("getInitJsPsychPreview helpers", () => {
     expect(localPreInit).toContain("// (your code will run here)");
     expect(publicPreInit).toContain("// (your code will run here)");
     expect(local).toContain("// show_progress_bar: false,");
-    expect(local).toContain("/api/append-result/[experimentID]");
+    expect(local).toContain("localOutbox.enqueue(data)");
     expect(publicPreview).toContain("show_progress_bar: true,");
     expect(publicPreview).toContain("data.experimentID = '[experimentID]'");
     expect(onTrialStart).not.toContain("// --- User code ---");
@@ -80,9 +83,9 @@ describe("getInitJsPsychPreview helpers", () => {
 
     expect(onDataUpdate).toContain("// --- User code ---");
     expect(onDataUpdate).toContain("data.extra = true;");
-    expect(onDataUpdate).toContain("pendingDataSaves.push(savePromise);");
+    expect(onDataUpdate).toContain("localOutbox.enqueue(data)");
     expect(onFinish).toContain("window.done = true;");
-    expect(onFinish).toContain("Promise.allSettled(pendingDataSaves)");
+    expect(onFinish).toContain("localOutbox.waitForIdle()");
   });
 
   it("injects user code into public lifecycle callback previews", () => {

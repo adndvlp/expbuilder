@@ -346,10 +346,10 @@ Returns metadata for all trials inside the loop (including branches recursively)
 - Uploaded during experiment (by participants via FileUploadResponseComponent)
 - Sent as base64 in `POST /api/participant-files/:experimentID`
 - Stored in `userDataRoot/{experimentName}/participant-files/`
-- DB records track `sessionId` for session renaming support
+- DB records track the durable `sessionId` UUID for ownership; visible renaming only updates `displayName`
 
 ### Serving Media
-Media files are served by a middleware in `experiments.js` that matches paths like `/img/filename` and searches all experiment folders.
+Media files are served from experiment-scoped paths such as `/:experimentID/img/filename`; the server resolves the exact experiment instead of searching other experiment folders.
 
 ---
 

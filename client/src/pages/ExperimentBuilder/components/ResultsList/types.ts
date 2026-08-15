@@ -1,16 +1,37 @@
-export type SessionMeta = {
-  _id: string;
+export type SessionState =
+  | "initiated"
+  | "resumed"
+  | "in-progress"
+  | "completed"
+  | "abandoned";
+
+export type SessionMetadata = {
+  browser?: string;
+  browserVersion?: string;
+  os?: string;
+  screenResolution?: string;
+  language?: string;
+  startedAt?: string;
+};
+
+export type SessionPresence = {
   sessionId: string;
-  createdAt: string;
-  state?: "initiated" | "in-progress" | "completed" | "abandoned";
-  metadata?: {
-    browser?: string;
-    browserVersion?: string;
-    os?: string;
-    screenResolution?: string;
-    language?: string;
-    startedAt?: string;
-  };
+  state: SessionState;
+  connectedAt: string;
+  lastUpdate: string;
+  metadata?: SessionMetadata;
+};
+
+export type SessionMeta = {
+  _id?: string;
+  sessionId: string;
+  experimentID?: string;
+  createdAt?: string;
+  displayName?: string;
+  participantNumber?: number;
+  state?: SessionState;
+  metadata?: SessionMetadata;
+  presence?: SessionPresence;
   isOnline?: boolean;
   fileUrl?: string;
 };

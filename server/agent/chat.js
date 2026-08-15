@@ -6,6 +6,7 @@ import { streamText, generateText, stepCountIs } from 'ai'
 import { resolveModel } from './providers/registry.js'
 import { buildSystemPrompt } from './system-prompt.js'
 import { db, ensureDbData } from '../utils/db.js'
+import { withDbLock } from '../modules/session-persistence/dbQueue.js'
 import { readTools } from './tools/read.js'
 import { createTrialTools } from './tools/create.js'
 
@@ -16,17 +17,31 @@ import { createTrialTools } from './tools/create.js'
  * @param {import('express').Response} res
  */
 async function resolveSystemPrompt(messages) {
-  await db.read()
-  ensureDbData()
-  const lastUser = [...messages].reverse().find(m => m.role === 'user')
-  const userMessage = typeof lastUser?.content === 'string'
-    ? lastUser.content
-    : lastUser?.content?.find?.(p => p.type === 'text')?.text ?? ''
-  return buildSystemPrompt({
-    userMessage,
-    experiments: db.data.experiments ?? [],
-    trials: db.data.trials ?? [],
+  return withDbLock(async () => {
+    await db.read()
+    ensureDbData()
+    const lastUser = [...messages].reverse().find(m => m.role === 'user')
+    const userMessage = typeof lastUser?.content === 'string'
+      ? lastUser.content
+      : lastUser?.content?.find?.(p => p.type === 'text')?.text ?? ''
+    return buildSystemPrompt({
+      userMessage,
+      experiments: db.data.experiments ?? [],
+      trials: db.data.trials ?? [],
+    })
   })
+}
+
+function serializedTools(tools) {
+  return Object.fromEntries(Object.entries(tools).map(([name, definition]) => [
+    name,
+    typeof definition.execute !== 'function'
+      ? definition
+      : {
+          ...definition,
+          execute: (...args) => withDbLock(() => definition.execute(...args)),
+        },
+  ]))
 }
 
 export async function handleChatStream(req, res) {
@@ -63,7 +78,10 @@ export async function handleChatStream(req, res) {
       system,
       temperature,
       maxTokens,
-      ...(isLocal ? {} : { tools: { ...readTools, ...createTrialTools }, stopWhen: stepCountIs(10) }),
+      ...(isLocal ? {} : {
+        tools: serializedTools({ ...readTools, ...createTrialTools }),
+        stopWhen: stepCountIs(10),
+      }),
     })
 
     for await (const chunk of result.textStream) {
@@ -103,7 +121,10 @@ export async function handleChatOnce(req, res) {
     const isLocal = ['ollama', 'lmstudio', 'localai'].includes(providerId)
     const result = await generateText({
       model, messages, system, temperature, maxTokens,
-      ...(isLocal ? {} : { tools: { ...readTools, ...createTrialTools }, stopWhen: stepCountIs(10) }),
+      ...(isLocal ? {} : {
+        tools: serializedTools({ ...readTools, ...createTrialTools }),
+        stopWhen: stepCountIs(10),
+      }),
     })
     res.json({ text: result.text, usage: result.usage })
   } catch (err) {

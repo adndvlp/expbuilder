@@ -15,8 +15,9 @@ export function getPreInitLocalPreview(
 
 _hideLoading();
 
-// Builder: track pending saves
-const pendingDataSaves = [];
+// Builder: IndexedDB outbox uses the persisted server count when resuming
+const localOutbox = _createLocalOutbox(experimentID, trialSessionId);
+await localOutbox.initialize(persistedEventCount);
 
 // Builder: clean up stale jsPsych wrappers
 document.querySelectorAll('.jspsych-content-wrapper').forEach(el => el.remove());
@@ -35,25 +36,16 @@ export function getLocalOnDataUpdatePreview(
 ): string {
   return `on_data_update: function(data) {
     if (data.builder_id !== undefined && data.builder_id !== null) {
-      localStorage.setItem('jsPsych_resumeTrial', JSON.stringify({
+      localStorage.setItem(_sessionKeys.resumeTrial, JSON.stringify({
         branches: data.branches || [],
         branchConditions: data.branchConditions || [],
         trialData: data
       }));
     }
 
-    const savePromise = fetch("/api/append-result/${eid}", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", Accept: "*/*" },
-      body: JSON.stringify({ sessionId: trialSessionId, response: data }),
-    })
-    .catch(error => console.error('Error in on_data_update:', error))
-    .finally(() => {
-      const index = pendingDataSaves.indexOf(savePromise);
-      if (index > -1) pendingDataSaves.splice(index, 1);
+    localOutbox.enqueue(data).catch(error => {
+      console.error('Result remains safe in IndexedDB:', error);
     });
-
-    pendingDataSaves.push(savePromise);
 
     if (data.trial_index === 0 && socket) {
       socket.emit('update-session-state', {
@@ -72,22 +64,35 @@ export function getLocalOnFinishPreview(
   userCode?: string,
 ): string {
   return `on_finish: async function() {
-    if (pendingDataSaves.length > 0) {
-      await Promise.allSettled(pendingDataSaves);
-    }
-
     _showLoading('Saving your data…');
     await new Promise(r => setTimeout(r, 0));
 
     _setLoadingMsg('Finishing up…');
 
+    const stats = await localOutbox.waitForIdle();
+    if (stats.pending !== 0 || stats.acknowledged !== stats.total) {
+      _setLoadingMsg('Data is safe on this device. Reconnecting to save…');
+      return;
+    }
     const completeResponse = await fetch("/api/complete-session/${eid}", {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "*/*" },
-      body: JSON.stringify({ sessionId: trialSessionId }),
+      body: JSON.stringify({
+        sessionId: trialSessionId,
+        expectedEventCount: stats.total,
+        lastSequence: stats.lastSequence
+      }),
     });
-    if (!completeResponse.ok) {
-      _setLoadingMsg('Error saving data. Please contact support.');
+    let completeBody = null;
+    try { completeBody = await completeResponse.json(); } catch (_error) {}
+    if (
+      !completeResponse.ok ||
+      !completeBody ||
+      completeBody.success !== true ||
+      completeBody.storedEventCount !== stats.total ||
+      completeBody.lastSequence !== stats.lastSequence
+    ) {
+      _setLoadingMsg('Data is safe on this device. Reconnecting to save…');
       return;
     }
 
@@ -99,9 +104,8 @@ export function getLocalOnFinishPreview(
       });
     }
 
-    localStorage.removeItem('jsPsych_resumeTrial');
-    localStorage.removeItem('jsPsych_currentSessionId');
-    localStorage.removeItem('jsPsych_participantNumber');
+    await localOutbox.clear();
+    _clearSessionIdentity();
     _showSuccess();${injectUserCode(userCode)}
   },`;
 }

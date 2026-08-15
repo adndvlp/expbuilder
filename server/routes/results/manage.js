@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { Router } from "express";
+import { withDbLock } from "../../modules/session-persistence/dbQueue.js";
 import { db, userDataRoot } from "../../utils/db.js";
 
 const router = Router();
@@ -17,55 +18,56 @@ router.delete(
   "/api/session-results/:sessionId/:experimentID",
   async (req, res) => {
     try {
-      await db.read();
-      const sessionIndex = db.data.sessionResults.findIndex(
-        (s) =>
-          s.experimentID === req.params.experimentID &&
-          s.sessionId === req.params.sessionId,
-      );
-
-      if (sessionIndex === -1) {
-        return res
-          .status(404)
-          .json({ success: false, error: "Session not found" });
-      }
-
-      db.data.sessionResults.splice(sessionIndex, 1);
-
-      db.data.participantFiles ||= [];
-      const toDelete = db.data.participantFiles.filter(
-        (f) =>
-          f.experimentID === req.params.experimentID &&
-          f.sessionId === req.params.sessionId,
-      );
-
-      const experimentName = getExperimentName(req.params.experimentID);
-      for (const record of toDelete) {
-        const filePath = path.join(
-          userDataRoot,
-          experimentName,
-          "participant-files",
-          record.filename,
+      await withDbLock(async () => {
+        await db.read();
+        const sessionIndex = db.data.sessionResults.findIndex(
+          (s) =>
+            s.experimentID === req.params.experimentID &&
+            s.sessionId === req.params.sessionId,
         );
-        try {
-          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-        /* istanbul ignore next -- individual participant file delete failures are intentionally ignored. */
-        } catch {
-          // ignore individual file errors
+
+        if (sessionIndex === -1) {
+          res.status(404).json({ success: false, error: "Session not found" });
+          return;
         }
-      }
 
-      db.data.participantFiles = db.data.participantFiles.filter(
-        (f) =>
-          !(
+        db.data.sessionResults.splice(sessionIndex, 1);
+
+        db.data.participantFiles ||= [];
+        const toDelete = db.data.participantFiles.filter(
+          (f) =>
             f.experimentID === req.params.experimentID &&
-            f.sessionId === req.params.sessionId
-          ),
-      );
+            f.sessionId === req.params.sessionId,
+        );
 
-      await db.write();
+        db.data.participantFiles = db.data.participantFiles.filter(
+          (f) =>
+            !(
+              f.experimentID === req.params.experimentID &&
+              f.sessionId === req.params.sessionId
+            ),
+        );
 
-      res.json({ success: true });
+        await db.write();
+
+        const experimentName = getExperimentName(req.params.experimentID);
+        for (const record of toDelete) {
+          const filePath = path.join(
+            userDataRoot,
+            experimentName,
+            "participant-files",
+            record.filename,
+          );
+          try {
+            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+          /* istanbul ignore next -- disk cleanup is best effort after durable deletion. */
+          } catch {
+            // The database is authoritative; an orphan is safer than lost data.
+          }
+        }
+
+        res.json({ success: true });
+      });
     /* istanbul ignore next -- lowdb write failure path. */
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
@@ -76,46 +78,37 @@ router.delete(
 /* istanbul ignore next -- participant-file rename permutations are covered by route tests. */
 router.patch("/api/rename-session/:experimentID", async (req, res) => {
   try {
-    const { oldSessionId, newSessionId } = req.body;
-    if (!oldSessionId || !newSessionId) {
+    const { displayName, sessionId } = req.body || {};
+    if (
+      typeof sessionId !== "string" ||
+      !sessionId.trim() ||
+      typeof displayName !== "string" ||
+      !displayName.trim() ||
+      displayName.length > 200
+    ) {
       return res.status(400).json({
         success: false,
-        error: "oldSessionId and newSessionId required",
+        error: "sessionId and displayName required",
       });
     }
 
-    await db.read();
-    const experimentID = req.params.experimentID;
-
-    const session = db.data.sessionResults.find(
-      (s) => s.experimentID === experimentID && s.sessionId === oldSessionId,
-    );
-    if (!session) {
-      return res
-        .status(404)
-        .json({ success: false, error: "Session not found" });
-    }
-
-    const conflict = db.data.sessionResults.find(
-      (s) => s.experimentID === experimentID && s.sessionId === newSessionId,
-    );
-    if (conflict) {
-      return res.status(409).json({
-        success: false,
-        error: "A session with that name already exists",
-      });
-    }
-
-    session.sessionId = newSessionId;
-
-    for (const f of db.data.participantFiles) {
-      if (f.experimentID === experimentID && f.sessionId === oldSessionId) {
-        f.sessionId = newSessionId;
+    await withDbLock(async () => {
+      await db.read();
+      const session = db.data.sessionResults.find(
+        (candidate) =>
+          candidate.experimentID === req.params.experimentID &&
+          candidate.sessionId === sessionId,
+      );
+      if (!session) {
+        res.status(404).json({ success: false, error: "Session not found" });
+        return;
       }
-    }
 
-    await db.write();
-    res.json({ success: true });
+      session.displayName = displayName.trim();
+      session.lastUpdate = new Date().toISOString();
+      await db.write();
+      res.json({ success: true, displayName: session.displayName, sessionId });
+    });
   /* istanbul ignore next -- lowdb write failure path. */
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

@@ -1,6 +1,7 @@
 import { spawn } from "child_process";
 import { Router } from "express";
 import { db, ensureDbData } from "../../utils/db.js";
+import { withDbLock } from "../../modules/session-persistence/dbQueue.js";
 import { getTunnelSettings } from "./settings.js";
 import {
   clearTunnelProcess,
@@ -14,16 +15,18 @@ const router = Router();
 async function persistTunnelUrl(experimentID, url) {
   if (!experimentID) return;
   try {
-    await db.read();
-    ensureDbData();
-    const exp = db.data.experiments.find(
-      (e) => e.experimentID === experimentID,
-    );
-    if (exp) {
-      exp.tunnelUrl = url;
-      exp.updatedAt = new Date().toISOString();
-      await db.write();
-    }
+    await withDbLock(async () => {
+      await db.read();
+      ensureDbData();
+      const exp = db.data.experiments.find(
+        (e) => e.experimentID === experimentID,
+      );
+      if (exp) {
+        exp.tunnelUrl = url;
+        exp.updatedAt = new Date().toISOString();
+        await db.write();
+      }
+    });
   } catch (err) {
     console.error("Error persisting tunnelUrl:", err);
   }
@@ -32,16 +35,18 @@ async function persistTunnelUrl(experimentID, url) {
 async function clearExperimentTunnelUrl(experimentID) {
   if (!experimentID) return;
   try {
-    await db.read();
-    ensureDbData();
-    const exp = db.data.experiments.find(
-      (e) => e.experimentID === experimentID,
-    );
-    if (exp) {
-      delete exp.tunnelUrl;
-      exp.updatedAt = new Date().toISOString();
-      await db.write();
-    }
+    await withDbLock(async () => {
+      await db.read();
+      ensureDbData();
+      const exp = db.data.experiments.find(
+        (e) => e.experimentID === experimentID,
+      );
+      if (exp) {
+        delete exp.tunnelUrl;
+        exp.updatedAt = new Date().toISOString();
+        await db.write();
+      }
+    });
   } catch (err) {
     console.error("Error clearing tunnelUrl from experiment:", err);
   }

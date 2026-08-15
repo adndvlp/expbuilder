@@ -201,6 +201,6 @@ Customizable session naming for local experiments:
 - Example: `[participantId, text("session"), counter(1)]` with separator `_` → `P1_session_1`
 
 Session names with `participantId` or `counter` tokens are resolved after the session is first created:
-1. Create session with temporary ID
-2. Resolve participant number and counter
-3. `PATCH /api/rename-session/:experimentID` to update session ID
+1. Create a durable UUID session and receive a positive participant number.
+2. Resolve the visible name from the participant number and configured tokens.
+3. `PATCH /api/rename-session/:experimentID` updates only `displayName`; session identity does not change.

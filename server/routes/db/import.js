@@ -82,7 +82,13 @@ router.post(
           continue;
         }
 
-        const { experiment, trials, config, sessionResults } = data;
+        const {
+          experiment,
+          trials,
+          config,
+          sessionResults,
+          sessionCounter,
+        } = data;
         if (!experiment?.experimentID) continue;
 
         mergeRecord(db.data.experiments, experiment.experimentID, experiment);
@@ -94,6 +100,10 @@ router.post(
             (s) => s.experimentID !== experiment.experimentID,
           );
           db.data.sessionResults.push(...sessionResults);
+        }
+        if (Number.isInteger(sessionCounter) && sessionCounter >= 0) {
+          db.data.sessionCounters ||= {};
+          db.data.sessionCounters[experiment.experimentID] = sessionCounter;
         }
 
         await restoreMediaFiles(
@@ -110,7 +120,9 @@ router.post(
       if (fs.existsSync(uploadedPath)) {
         try {
           fs.unlinkSync(uploadedPath);
-        } catch {}
+        } catch {
+          // Best-effort cleanup; the original import error is returned below.
+        }
       }
       res.status(500).json({ success: false, error: err.message });
     }

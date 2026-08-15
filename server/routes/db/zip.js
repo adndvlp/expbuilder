@@ -33,11 +33,18 @@ export async function buildExperimentsZip(experiments) {
     const sessionResults = db.data.sessionResults.filter(
       (s) => s.experimentID === experiment.experimentID,
     );
+    const sessionCounter = db.data.sessionCounters?.[experiment.experimentID];
 
     folder.file(
       "data.json",
       JSON.stringify(
-        { experiment, trials: trialsDoc, config: configDoc, sessionResults },
+        {
+          experiment,
+          trials: trialsDoc,
+          config: configDoc,
+          sessionResults,
+          sessionCounter,
+        },
         null,
         2,
       ),

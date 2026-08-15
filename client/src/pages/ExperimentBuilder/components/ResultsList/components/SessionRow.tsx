@@ -1,6 +1,7 @@
 import Switch from "react-switch";
 import { openExternal } from "../../../../../lib/openExternal";
 import { ParticipantFile, SessionMeta, TabType } from "../types";
+import { formatSessionDate } from "../services/sessionDates";
 import SessionFilesCell from "./SessionFilesCell";
 import StateBadge from "./StateBadge";
 
@@ -49,10 +50,13 @@ export default function SessionRow({
           />
         </td>
       )}
-      <td>{session.sessionId}</td>
-      <td>{new Date(session.createdAt).toLocaleString()}</td>
+      <td>{session.displayName || session.sessionId}</td>
+      <td>{formatSessionDate(session.createdAt)}</td>
       {showsMetadata && (
         <>
+          {activeTab === "local" && (
+            <td>{session.presence ? "Connected" : "Offline"}</td>
+          )}
           <td>
             <StateBadge state={session.state} />
           </td>

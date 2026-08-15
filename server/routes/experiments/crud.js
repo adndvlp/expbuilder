@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { Router } from "express";
 import { v4 as uuidv4 } from "uuid";
+import { withDbLock } from "../../modules/session-persistence/dbQueue.js";
 import { db, ensureDbData, userDataRoot } from "../../utils/db.js";
 import { experimentsHtmlDir, trialsPreviewsHtmlDir } from "./paths.js";
 
@@ -99,19 +100,20 @@ router.delete("/api/delete-experiment/:experimentID", async (req, res) => {
     db.data.participantFiles = db.data.participantFiles.filter(
       (f) => f.experimentID !== experimentID,
     );
+    delete db.data.sessionCounters[experimentID];
 
     await db.write();
 
-    if (experiment && experiment.name) {
+    if (experiment) {
       const experimentHtmlPath = path.join(
         experimentsHtmlDir,
-        `${experiment.name}.html`,
+        `${experimentID}.html`,
       );
       if (fs.existsSync(experimentHtmlPath)) fs.unlinkSync(experimentHtmlPath);
 
       const previewHtmlPath = path.join(
         trialsPreviewsHtmlDir,
-        `${experiment.name}.html`,
+        `${experimentID}.html`,
       );
       if (fs.existsSync(previewHtmlPath)) fs.unlinkSync(previewHtmlPath);
     }
@@ -174,27 +176,26 @@ async function deleteFromFirebase(experiment, experimentID, uid) {
   }
 }
 
-export function serveUploadedMedia(req, res, next) {
-  const match = req.path.match(/^(?:\/[^/]+)?\/(img|aud|vid|others)\/(.+)$/);
-  if (match) {
-    const [, type, encodedFilename] = match;
-    const filename = decodeURIComponent(encodedFilename);
-    const experiments = fs.readdirSync(userDataRoot).filter((dir) => {
-      const stat = fs.statSync(path.join(userDataRoot, dir));
-      return (
-        stat.isDirectory() &&
-        dir !== "experiments_html" &&
-        dir !== "trials_previews_html"
-      );
+export async function serveUploadedMedia(req, res, next) {
+  const match = req.path.match(/^\/([^/]+)\/(img|aud|vid|others)\/(.+)$/);
+  if (!match) return next();
+  try {
+    const [, experimentID, type, encodedFilename] = match;
+    const filename = path.basename(decodeURIComponent(encodedFilename));
+    const experimentName = await withDbLock(async () => {
+      await db.read();
+      ensureDbData();
+      return db.data.experiments.find(
+        (candidate) => candidate.experimentID === experimentID,
+      )?.name;
     });
-    for (const experimentName of experiments) {
-      const filePath = path.join(userDataRoot, experimentName, type, filename);
-      if (fs.existsSync(filePath)) {
-        return res.sendFile(filePath);
-      }
-    }
+    if (!experimentName) return next();
+    const filePath = path.join(userDataRoot, experimentName, type, filename);
+    if (!fs.existsSync(filePath)) return next();
+    return res.sendFile(filePath);
+  } catch (error) {
+    return next(error);
   }
-  next();
 }
 
 export default router;

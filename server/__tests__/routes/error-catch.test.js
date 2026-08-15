@@ -62,7 +62,7 @@ describe('results.js error handlers', () => {
   })
   test('POST complete-session error', async () => {
     const { app, tmpDir } = await freshAppWithError('../../routes/results.js')
-    await request(app).post('/api/complete-session/E1').send({ sessionId: 's1' }).expect(500)
+    await request(app).post('/api/complete-session/E1').send({ sessionId: 's1', expectedEventCount: 0, lastSequence: -1 }).expect(500)
     fs.rmSync(tmpDir, { recursive: true, force: true })
   })
   test('POST save-online-session-metadata error', async () => {
@@ -82,7 +82,7 @@ describe('results.js error handlers', () => {
   })
   test('PATCH rename-session error', async () => {
     const { app, tmpDir } = await freshAppWithError('../../routes/results.js')
-    await request(app).patch('/api/rename-session/E1').send({ oldSessionId: 'old', newSessionId: 'new' }).expect(500)
+    await request(app).patch('/api/rename-session/E1').send({ sessionId: 'old', displayName: 'new' }).expect(500)
     fs.rmSync(tmpDir, { recursive: true, force: true })
   })
 })
@@ -115,7 +115,7 @@ describe('files.js error handlers', () => {
   })
   test('POST participant-files error', async () => {
     const { app, tmpDir } = await freshAppWithError('../../routes/files.js')
-    await request(app).post('/api/participant-files/E1').send({ files: [{ name: 'f.txt', data: 'dGVzdA==', type: 'text/plain', size: 4 }] }).expect(500)
+    await request(app).post('/api/participant-files/E1').send({ sessionId: 's1', files: [{ name: 'f.txt', data: 'dGVzdA==', type: 'text/plain', size: 4 }] }).expect(500)
     fs.rmSync(tmpDir, { recursive: true, force: true })
   })
   test('GET participant-files error', async () => {

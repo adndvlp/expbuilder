@@ -14,6 +14,7 @@ import {
   Filters,
   ParticipantFile,
   SessionMeta,
+  SessionPresence,
   TabType,
 } from "./types";
 
@@ -24,9 +25,9 @@ const API_URL = import.meta.env.VITE_API_URL;
 type ResultsListProps = { activeTab: TabType };
 
 export default function ResultsList({ activeTab }: ResultsListProps) {
-  const [localActiveSessions, setLocalActiveSessions] = useState<SessionMeta[]>(
-    [],
-  );
+  const [localActiveSessions, setLocalActiveSessions] = useState<
+    SessionPresence[]
+  >([]);
   const [sessions, setSessions] = useState<SessionMeta[]>([]);
   const [loading, setLoading] = useState(false);
   const [onlineLoading, setOnlineLoading] = useState(false);
@@ -42,7 +43,9 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
   const experimentID = useExperimentID();
 
   useEffect(() => {
-    setFilters({ ...EMPTY_FILTERS });
+    // Each results source has independent filters; reset them when switching.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFilters(EMPTY_FILTERS);
   }, [activeTab]);
 
   useEffect(() => {
@@ -54,7 +57,7 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
     });
     socket.on(
       "session-update",
-      (data: { experimentID: string; sessions: SessionMeta[] }) => {
+      (data: { experimentID: string; sessions: SessionPresence[] }) => {
         if (data.experimentID === experimentID) {
           console.log("Session update received:", data.sessions);
           setLocalActiveSessions(data.sessions);
@@ -173,6 +176,11 @@ export default function ResultsList({ activeTab }: ResultsListProps) {
         onDownloadSelectedOnline={actions.handleDownloadSelectedOnline}
         onDeleteSelected={actions.handleDeleteSelected}
       />
+      {activeTab !== "online" && actions.localLoadError && (
+        <p className="results-text" role="alert">
+          {actions.localLoadError}
+        </p>
+      )}
       {isLoading ? (
         <p className="results-text">Loading...</p>
       ) : sessions.length === 0 ? (

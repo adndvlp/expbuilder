@@ -25,6 +25,12 @@ const freshApp = async () => {
   return { app, db, tmpDir }
 }
 
+const binaryParser = (response, callback) => {
+  const chunks = []
+  response.on('data', (chunk) => chunks.push(Buffer.from(chunk)))
+  response.on('end', () => callback(null, Buffer.concat(chunks)))
+}
+
 describe('GET /api/export-all-experiments edge cases', () => {
   test('includes trials, config, and session results in data.json', async () => {
     const { app, db } = await freshApp()
@@ -54,11 +60,20 @@ describe('GET /api/export-all-experiments edge cases', () => {
       lastUpdate: new Date().toISOString(),
       metadata: {},
     })
+    db.data.sessionCounters.E1 = 9
     await db.write()
 
-    const res = await request(app).get('/api/export-all-experiments').expect(200)
+    const res = await request(app)
+      .get('/api/export-all-experiments')
+      .buffer(true)
+      .parse(binaryParser)
+      .expect(200)
     expect(res.headers['content-type']).toBe('application/zip')
-    expect(res.body).toBeDefined()
+    const zip = await JSZip.loadAsync(res.body)
+    const exported = JSON.parse(
+      await zip.file('ExportExp/data.json').async('string'),
+    )
+    expect(exported.sessionCounter).toBe(9)
   })
 
   test('includes multimedia files in export', async () => {
@@ -169,6 +184,7 @@ describe('POST /api/import-experiments structured ZIP', () => {
           metadata: {},
         },
       ],
+      sessionCounter: 7,
     }))
     folder.folder('img').file('stimulus.png', 'image-bytes')
     folder.folder('aud').file('.hidden.wav', 'ignored')
@@ -187,6 +203,7 @@ describe('POST /api/import-experiments structured ZIP', () => {
     expect(db.data.trials[0].trials[0].name).toBe('T1')
     expect(db.data.configs[0].isDevMode).toBe(true)
     expect(db.data.sessionResults[0].sessionId).toBe('s1')
+    expect(db.data.sessionCounters.E1).toBe(7)
     expect(fs.readFileSync(path.join(tmpDir, 'Imported Exp', 'img', 'stimulus.png'), 'utf8')).toBe('image-bytes')
     expect(fs.existsSync(path.join(tmpDir, 'Imported Exp', 'aud', '.hidden.wav'))).toBe(false)
     expect(fs.existsSync(path.join(tmpDir, 'Imported Exp', 'badtype'))).toBe(false)

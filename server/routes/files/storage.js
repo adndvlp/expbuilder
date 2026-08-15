@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import fs from "fs";
 import path from "path";
+import { withDbLock } from "../../modules/session-persistence/dbQueue.js";
 import { db, userDataRoot } from "../../utils/db.js";
 import { compressFile } from "./compression.js";
 
@@ -22,15 +23,13 @@ export function getMediaType(filename) {
 }
 
 export async function getExperimentName(experimentID) {
-  let experimentName = experimentID;
-  await db.read();
-  const experiment = db.data.experiments.find(
-    (e) => e.experimentID === experimentID,
-  );
-  if (experiment && experiment.name) {
-    experimentName = experiment.name;
-  }
-  return experimentName;
+  return withDbLock(async () => {
+    await db.read();
+    const experiment = db.data.experiments.find(
+      (candidate) => candidate.experimentID === experimentID,
+    );
+    return experiment?.name || experimentID;
+  });
 }
 
 function getCompressedFilename(originalName, type) {

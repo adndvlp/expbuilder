@@ -14,12 +14,13 @@ export function generateConditionalFunctionCode(
       const currentId = ${trialId};
       
       // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
-      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
+      const jumpKey = window.JSPSYCH_LOCAL_KEYS?.jumpTrial || 'jsPsych_jumpToTrial';
+      const jumpToTrial = localStorage.getItem(jumpKey);
       if (jumpToTrial) {
         if (String(currentId) === String(jumpToTrial)) {
           // Encontramos el trial objetivo para repeat/jump
           console.log('🔁 [REPEAT/JUMP] Found target trial', currentId);
-          localStorage.removeItem('jsPsych_jumpToTrial');
+          localStorage.removeItem(jumpKey);
           return true;
         }
         // No es el objetivo, saltar

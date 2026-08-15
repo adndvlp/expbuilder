@@ -114,6 +114,7 @@ describe('delete_experiment', () => {
       data.trials.push({ experimentID: 'e1', trials: [{ id: 1 }], loops: [], timeline: [] })
       data.configs.push({ experimentID: 'e1', data: {} })
       data.sessionResults.push({ experimentID: 'e1', sessionId: 's1' })
+      data.sessionCounters = { e1: 9, keep: 3 }
     })
     const result = await createTrialTools.delete_experiment.execute({ experimentID: 'e1' })
     expect(result.success).toBe(true)
@@ -122,6 +123,7 @@ describe('delete_experiment', () => {
     expect(db.data.trials).toHaveLength(0)
     expect(db.data.configs).toHaveLength(0)
     expect(db.data.sessionResults).toHaveLength(0)
+    expect(db.data.sessionCounters).toEqual({ keep: 3 })
     cleanup(tmpDir)
   })
 
@@ -134,16 +136,16 @@ describe('delete_experiment', () => {
     const previewHtmlDir = path.join(tmpDir, 'trials_previews_html')
     fs.mkdirSync(expHtmlDir, { recursive: true })
     fs.mkdirSync(previewHtmlDir, { recursive: true })
-    fs.writeFileSync(path.join(expHtmlDir, 'ToDelete.html'), '<html></html>')
-    fs.writeFileSync(path.join(previewHtmlDir, 'ToDelete.html'), '<html></html>')
+    fs.writeFileSync(path.join(expHtmlDir, 'e1.html'), '<html></html>')
+    fs.writeFileSync(path.join(previewHtmlDir, 'e1.html'), '<html></html>')
     fs.mkdirSync(path.join(tmpDir, 'ToDelete', 'img'), { recursive: true })
     fs.writeFileSync(path.join(tmpDir, 'ToDelete', 'img', 'a.png'), 'x')
 
     const result = await createTrialTools.delete_experiment.execute({ experimentID: 'e1' })
 
     expect(result).toEqual({ success: true, deletedExperimentID: 'e1' })
-    expect(fs.existsSync(path.join(expHtmlDir, 'ToDelete.html'))).toBe(false)
-    expect(fs.existsSync(path.join(previewHtmlDir, 'ToDelete.html'))).toBe(false)
+    expect(fs.existsSync(path.join(expHtmlDir, 'e1.html'))).toBe(false)
+    expect(fs.existsSync(path.join(previewHtmlDir, 'e1.html'))).toBe(false)
     expect(fs.existsSync(path.join(tmpDir, 'ToDelete'))).toBe(false)
     await db.read()
     expect(db.data.participantFiles).toEqual([])

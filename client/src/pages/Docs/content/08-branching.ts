@@ -119,15 +119,15 @@ Allows restarting the experiment from a specific trial (via \`localStorage\`):
 
 \`\`\`js
 // on_finish of the source trial:
-localStorage.setItem('jsPsych_jumpToTrial', String(targetTrialId));
+localStorage.setItem(_sessionKeys.jumpTrial, String(targetTrialId));
 document.getElementById('jspsych-container').innerHTML = '';
 setTimeout(() => jsPsych.run(timeline), 100);
 
 // In conditional_function of each procedure:
-const jumpTo = localStorage.getItem('jsPsych_jumpToTrial');
+const jumpTo = localStorage.getItem(_sessionKeys.jumpTrial);
 if (jumpTo) {
 if (String(currentId) === String(jumpTo)) {
-  localStorage.removeItem('jsPsych_jumpToTrial');
+  localStorage.removeItem(_sessionKeys.jumpTrial);
   return true;  // run this trial
 }
 return false;   // skip
@@ -166,10 +166,10 @@ conditional_function: function() {
 const currentId = 123;
 
 // Priority 1: pending jump/repeat (localStorage)
-const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
+const jumpToTrial = localStorage.getItem(_sessionKeys.jumpTrial);
 if (jumpToTrial) {
   if (String(currentId) === String(jumpToTrial)) {
-    localStorage.removeItem('jsPsych_jumpToTrial');
+    localStorage.removeItem(_sessionKeys.jumpTrial);
     return true;
   }
   return false;

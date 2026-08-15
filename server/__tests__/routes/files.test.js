@@ -158,15 +158,31 @@ describe('POST /api/participant-files/:experimentID', () => {
       .expect(400)
   })
 
+  test('requires a persisted session before accepting participant files', async () => {
+    const { app } = await freshApp()
+    await request(app)
+      .post('/api/participant-files/E1')
+      .send({
+        sessionId: 'missing-session',
+        files: [{ name: 'test.txt', data: Buffer.from('hello').toString('base64') }],
+      })
+      .expect(404, { error: 'Session not found' })
+  })
+
   test('saves base64 files', async () => {
     const { app, db, tmpDir } = await freshApp()
+    db.data.sessionResults.push({ experimentID: 'E1', sessionId: 'session-1', data: [] })
+    await db.write()
     const base64 = Buffer.from('hello').toString('base64')
     const res = await request(app)
       .post('/api/participant-files/E1')
-      .send({ files: [{ name: 'test.txt', data: base64, type: 'text/plain', size: 5 }] })
+      .send({ sessionId: 'session-1', files: [{ name: 'test.txt', data: base64, type: 'text/plain', size: 5 }] })
       .expect(200)
     expect(res.body.count).toBe(1)
     expect(res.body.fileUrls).toHaveLength(1)
+    expect(res.body.fileUrl).toMatch(
+      /^\/api\/participant-files-serve\/E1\//,
+    )
     await db.read()
     expect(db.data.participantFiles).toHaveLength(1)
     expect(db.data.participantFiles[0].originalName).toBe('test.txt')
@@ -174,6 +190,8 @@ describe('POST /api/participant-files/:experimentID', () => {
 
   test('stores session prefix, sanitized names, defaults, and multiple file URLs', async () => {
     const { app, db, tmpDir } = await freshApp()
+    db.data.sessionResults.push({ experimentID: 'E1', sessionId: 'session-1', data: [] })
+    await db.write()
     const res = await request(app)
       .post('/api/participant-files/E1')
       .send({
@@ -201,9 +219,11 @@ describe('POST /api/participant-files/:experimentID', () => {
 
   test('handles data URL format', async () => {
     const { app, db } = await freshApp()
+    db.data.sessionResults.push({ experimentID: 'E1', sessionId: 'session-1', data: [] })
+    await db.write()
     await request(app)
       .post('/api/participant-files/E1')
-      .send({ files: [{ name: 'img.png', data: 'data:image/png;base64,iVBORw0KGgo=', type: 'image/png', size: 10 }] })
+      .send({ sessionId: 'session-1', files: [{ name: 'img.png', data: 'data:image/png;base64,iVBORw0KGgo=', type: 'image/png', size: 10 }] })
       .expect(200)
     await db.read()
     expect(db.data.participantFiles[0].mimeType).toBe('image/png')
@@ -212,11 +232,12 @@ describe('POST /api/participant-files/:experimentID', () => {
   test('uses experiment display name for participant file storage', async () => {
     const { app, db, tmpDir } = await freshApp()
     db.data.experiments.push({ experimentID: 'E1', name: 'Named Uploads' })
+    db.data.sessionResults.push({ experimentID: 'E1', sessionId: 'session-1', data: [] })
     await db.write()
 
     await request(app)
       .post('/api/participant-files/E1')
-      .send({ files: [{ name: 'named.txt', data: Buffer.from('named').toString('base64') }] })
+      .send({ sessionId: 'session-1', files: [{ name: 'named.txt', data: Buffer.from('named').toString('base64') }] })
       .expect(200)
 
     await db.read()
@@ -229,7 +250,9 @@ describe('POST /api/participant-files/:experimentID', () => {
   })
 
   test('uses fallback message when participant file writing throws a non-error value', async () => {
-    const { app } = await freshApp()
+    const { app, db } = await freshApp()
+    db.data.sessionResults.push({ experimentID: 'E1', sessionId: 'session-1', data: [] })
+    await db.write()
     const writeSpy = jest.spyOn(fs, 'writeFileSync').mockImplementationOnce(() => {
       throw 'write failed'
     })
@@ -237,7 +260,7 @@ describe('POST /api/participant-files/:experimentID', () => {
     try {
       await request(app)
         .post('/api/participant-files/E1')
-        .send({ files: [{ name: 'bad.txt', data: Buffer.from('bad').toString('base64') }] })
+        .send({ sessionId: 'session-1', files: [{ name: 'bad.txt', data: Buffer.from('bad').toString('base64') }] })
         .expect(500, { error: 'Error saving file' })
     } finally {
       writeSpy.mockRestore()
@@ -519,6 +542,12 @@ describe('GET /api/participant-files-serve/:experimentID/:filename', () => {
   test('serves participant files using experiment display name', async () => {
     const { app, db, tmpDir } = await freshApp()
     db.data.experiments.push({ experimentID: 'E1', name: 'Named Exp' })
+    db.data.participantFiles.push({
+      id: 'file-1',
+      experimentID: 'E1',
+      sessionId: 'session-1',
+      filename: 'data file.txt',
+    })
     await db.write()
     fs.mkdirSync(path.join(tmpDir, 'Named Exp', 'participant-files'), { recursive: true })
     fs.writeFileSync(path.join(tmpDir, 'Named Exp', 'participant-files', 'data file.txt'), 'participant-data')

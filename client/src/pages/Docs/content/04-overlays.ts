@@ -31,16 +31,25 @@ on_finish: async function() {
 _showLoading('Saving your data…');
 await new Promise(r => setTimeout(r, 0)); // yield to event loop
 
-// 2. Flush pending data
-await Promise.all(pendingDataSaves);
+// 2. Flush IndexedDB outbox and verify zero pending records
+const stats = await localOutbox.waitForIdle();
+if (stats.pending !== 0) throw new Error('Results remain pending');
 
 // 3. Update message
 _setLoadingMsg('Finishing up…');
 
-// 4. Complete session
-await fetch("/api/complete-session/" + experimentID, { method: "POST" });
+// 4. Complete with the exact expected count and final sequence
+await fetch("/api/complete-session/" + experimentID, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    sessionId: trialSessionId,
+    expectedEventCount: stats.total,
+    lastSequence: stats.lastSequence
+  })
+});
 
-// 5. Show success
+// 5. Show success only after a matching acknowledgement
 _showSuccess();
 }
 \`\`\`

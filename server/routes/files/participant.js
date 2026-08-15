@@ -2,12 +2,25 @@ import { randomUUID } from "crypto";
 import fs from "fs";
 import path from "path";
 import { Router } from "express";
-import { db, userDataRoot } from "../../utils/db.js";
+import { withDbLock } from "../../modules/session-persistence/dbQueue.js";
+import { db, ensureDbData, userDataRoot } from "../../utils/db.js";
 import { getExperimentName } from "./storage.js";
 
 const router = Router();
 
+function removeFiles(filePaths) {
+  filePaths.forEach((filePath) => {
+    try {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch (error) {
+      console.error("Error rolling back participant file:", error);
+    }
+  });
+}
+
 router.post("/api/participant-files/:experimentID", async (req, res) => {
+  const writtenPaths = [];
+  const recordIds = [];
   try {
     const experimentID = req.params.experimentID;
     /* istanbul ignore next -- app-level express.json initializes req.body for this JSON endpoint. */
@@ -15,6 +28,29 @@ router.post("/api/participant-files/:experimentID", async (req, res) => {
 
     if (!Array.isArray(files) || files.length === 0) {
       return res.status(400).json({ error: "No files received" });
+    }
+    if (typeof sessionId !== "string" || !sessionId.trim()) {
+      return res.status(400).json({ error: "sessionId required" });
+    }
+    if (
+      files.some(
+        (file) =>
+          !file ||
+          typeof file !== "object" ||
+          typeof file.data !== "string" ||
+          (file.name !== undefined && typeof file.name !== "string"),
+      )
+    ) {
+      return res.status(400).json({ error: "Invalid file payload" });
+    }
+    await db.read();
+    const sessionExists = db.data.sessionResults.some(
+      (session) =>
+        session.experimentID === experimentID &&
+        session.sessionId === sessionId,
+    );
+    if (!sessionExists) {
+      return res.status(404).json({ error: "Session not found" });
     }
 
     const experimentName = await getExperimentName(experimentID);
@@ -27,19 +63,22 @@ router.post("/api/participant-files/:experimentID", async (req, res) => {
     const fileUrls = files.map((file) => {
       const ts = Date.now();
       const safeName = (file.name || "upload").replace(/[^a-zA-Z0-9._-]/g, "_");
-      const prefix = sessionId ? `${sessionId}_` : "";
-      const filename = `${prefix}${ts}_${safeName}`;
+      const safeSessionId = sessionId.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const id = randomUUID();
+      const filename = `${safeSessionId}_${ts}_${id}_${safeName}`;
       const filePath = path.join(folder, filename);
 
       const base64Data = file.data.includes(",")
         ? file.data.split(",")[1]
         : file.data;
+      writtenPaths.push(filePath);
       fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
 
+      recordIds.push(id);
       fileRecords.push({
-        id: randomUUID(),
+        id,
         experimentID,
-        sessionId: sessionId || null,
+        sessionId,
         filename,
         originalName: file.name || "upload",
         mimeType: file.type || "application/octet-stream",
@@ -47,7 +86,7 @@ router.post("/api/participant-files/:experimentID", async (req, res) => {
         uploadedAt,
       });
 
-      return `participant-files/${encodeURIComponent(filename)}`;
+      return `/api/participant-files-serve/${encodeURIComponent(experimentID)}/${encodeURIComponent(filename)}`;
     });
 
     db.data.participantFiles ||= [];
@@ -60,6 +99,12 @@ router.post("/api/participant-files/:experimentID", async (req, res) => {
       count: fileUrls.length,
     });
   } catch (err) {
+    if (recordIds.length > 0 && Array.isArray(db.data?.participantFiles)) {
+      db.data.participantFiles = db.data.participantFiles.filter(
+        (record) => !recordIds.includes(record.id),
+      );
+    }
+    removeFiles(writtenPaths);
     console.error("Error saving participant file:", err);
     res.status(500).json({ error: err.message || "Error saving file" });
   }
@@ -98,7 +143,23 @@ router.get(
     try {
       const experimentID = decodeURIComponent(req.params.experimentID);
       const filename = decodeURIComponent(req.params.filename);
-      const experimentName = await getExperimentName(experimentID);
+      const experimentName = await withDbLock(async () => {
+        await db.read();
+        ensureDbData();
+        const record = db.data.participantFiles.find(
+          (candidate) =>
+            candidate.experimentID === experimentID &&
+            candidate.filename === filename,
+        );
+        if (!record) return null;
+        const experiment = db.data.experiments.find(
+          (candidate) => candidate.experimentID === experimentID,
+        );
+        return experiment?.name || experimentID;
+      });
+      if (!experimentName) {
+        return res.status(404).json({ error: "File not found" });
+      }
       const filePath = path.join(
         userDataRoot,
         experimentName,
@@ -142,12 +203,9 @@ router.delete(
         "participant-files",
         record.filename,
       );
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-
       db.data.participantFiles.splice(idx, 1);
       await db.write();
+      removeFiles([filePath]);
 
       res.json({ success: true });
     } catch (err) {

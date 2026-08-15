@@ -1,4 +1,4 @@
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import {
   downloadOnlineSessions,
   downloadSessionCsv,
@@ -8,13 +8,14 @@ import {
   loadOnlineSessionFiles,
   loadOnlineSessions,
 } from "./services/onlineSessions";
-import { ParticipantFile, SessionMeta, TabType } from "./types";
+import { sessionTimestamp } from "./services/sessionDates";
+import { ParticipantFile, SessionMeta, SessionPresence, TabType } from "./types";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 type Props = {
   experimentID: string | undefined;
-  localActiveSessions: SessionMeta[];
+  localActiveSessions: SessionPresence[];
   activeTab: TabType;
   selected: string[];
   sessions: SessionMeta[];
@@ -40,6 +41,9 @@ export default function SessionsActions({
   const [allSessions, setAllSessions] = useState<SessionMeta[]>([]);
   const [onlineSessions, setOnlineSessions] = useState<SessionMeta[]>([]);
   const [onlineLoaded, setOnlineLoaded] = useState(false);
+  const [localLoadError, setLocalLoadError] = useState<string | null>(null);
+  const loadedExperimentID = useRef<string | undefined>(undefined);
+  const localRequestVersion = useRef(0);
 
   const fetchOnlineSessions = async () => {
     if (!experimentID) return;
@@ -57,17 +61,41 @@ export default function SessionsActions({
   };
 
   const fetchSessions = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `${API_URL}/api/session-results/${experimentID}`,
-      );
-      const data = await response.json();
-      setAllSessions(data.sessions || []);
-    } catch (error) {
-      console.error("Error fetching sessions:", error);
+    const requestVersion = ++localRequestVersion.current;
+    const requestedExperimentID = experimentID;
+    if (!requestedExperimentID) {
+      loadedExperimentID.current = undefined;
+      setAllSessions([]);
+      setLocalLoadError(null);
+      setLoading(false);
+      setSelected([]);
+      setSelectMode(false);
+      return;
+    }
+    if (loadedExperimentID.current !== requestedExperimentID) {
+      loadedExperimentID.current = requestedExperimentID;
       setAllSessions([]);
     }
+    setLoading(true);
+    setLocalLoadError(null);
+    try {
+      const response = await fetch(
+        `${API_URL}/api/session-results/${requestedExperimentID}`,
+      );
+      const data = await response.json();
+      if (!response.ok || !Array.isArray(data.sessions)) {
+        throw new Error(`Invalid sessions response (HTTP ${response.status})`);
+      }
+      if (localRequestVersion.current !== requestVersion) return;
+      setAllSessions(data.sessions);
+    } catch (error) {
+      if (localRequestVersion.current !== requestVersion) return;
+      console.error("Error fetching sessions:", error);
+      setLocalLoadError(
+        "Could not load saved sessions. No data was deleted; try Refresh.",
+      );
+    }
+    if (localRequestVersion.current !== requestVersion) return;
     setLoading(false);
     setSelected([]);
     setSelectMode(false);
@@ -77,6 +105,8 @@ export default function SessionsActions({
     if (activeTab === "online" && !onlineLoaded) {
       fetchOnlineSessions().then(() => setOnlineLoaded(true));
     }
+    // The loader intentionally runs once when the online tab is first opened.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   useEffect(() => {
@@ -86,8 +116,8 @@ export default function SessionsActions({
           .filter((session) => session.sessionId.includes("_result_"))
           .sort(
             (left, right) =>
-              new Date(right.createdAt).getTime() -
-              new Date(left.createdAt).getTime(),
+              sessionTimestamp(right.createdAt) -
+              sessionTimestamp(left.createdAt),
           ),
       );
       return;
@@ -105,22 +135,17 @@ export default function SessionsActions({
       );
       localActiveSessions.forEach((session) => {
         const existing = sessionMap.get(session.sessionId);
-        sessionMap.set(
-          session.sessionId,
-          existing
-            ? {
-                ...existing,
-                state: session.state,
-                metadata: { ...existing.metadata, ...session.metadata },
-              }
-            : session,
-        );
+        if (!existing) return;
+        sessionMap.set(session.sessionId, {
+          ...existing,
+          presence: session,
+        });
       });
       setSessions(
         Array.from(sessionMap.values()).sort(
           (left, right) =>
-            new Date(right.createdAt).getTime() -
-            new Date(left.createdAt).getTime(),
+            sessionTimestamp(right.createdAt) -
+            sessionTimestamp(left.createdAt),
         ),
       );
       return;
@@ -128,10 +153,12 @@ export default function SessionsActions({
     setSessions(
       [...onlineSessions].sort(
         (left, right) =>
-          new Date(right.createdAt).getTime() -
-          new Date(left.createdAt).getTime(),
+          sessionTimestamp(right.createdAt) -
+          sessionTimestamp(left.createdAt),
       ),
     );
+    // State setters are stable and adding them would obscure the data trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, allSessions, onlineSessions, localActiveSessions]);
 
   useEffect(() => {
@@ -220,5 +247,6 @@ export default function SessionsActions({
     handleCancelSelect,
     handleRefresh,
     fetchOnlineSessionFiles,
+    localLoadError,
   };
 }

@@ -1,5 +1,6 @@
 import { spawn } from "child_process";
 import { db, ensureDbData } from "../../utils/db.js";
+import { withDbLock } from "../../modules/session-persistence/dbQueue.js";
 import {
   clearTunnelProcess,
   getCloudflaredPath,
@@ -11,22 +12,26 @@ import {
 export function schedulePersistentTunnelAutostart() {
   setImmediate(async () => {
     try {
-      await db.read();
-      ensureDbData();
-      for (const exp of db.data.experiments) {
-        const s = exp.tunnelSettings;
-        if (!s || !s.persistent) continue;
-        if (!s.hostname) continue;
-        if (getTunnelProcess()) continue;
+      const candidates = await withDbLock(async () => {
+        await db.read();
+        ensureDbData();
+        return db.data.experiments
+          .filter((exp) => exp.tunnelSettings?.persistent && exp.tunnelSettings.hostname)
+          .map((exp) => ({
+            experimentID: exp.experimentID,
+            hostname: exp.tunnelSettings.hostname,
+          }));
+      });
 
+      for (const candidate of candidates) {
+        if (getTunnelProcess()) break;
         console.log(
-          `[tunnel] Auto-starting cloudflared tunnel for ${exp.experimentID} → ${s.hostname}`,
+          `[tunnel] Auto-starting cloudflared tunnel for ${candidate.experimentID} → ${candidate.hostname}`,
         );
-        const cloudflaredPath = getCloudflaredPath();
-        const processRef = spawn(cloudflaredPath, [
+        const processRef = spawn(getCloudflaredPath(), [
           "tunnel",
           "--hostname",
-          s.hostname,
+          candidate.hostname,
           "--url",
           "http://localhost:3000",
           "--no-autoupdate",
@@ -34,13 +39,19 @@ export function schedulePersistentTunnelAutostart() {
         setTunnelProcess(processRef);
         processRef.stderr.on("data", (d) => process.stderr.write(d));
         processRef.stdout.on("data", (d) => process.stdout.write(d));
-        processRef.on("exit", () => {
-          clearTunnelProcess();
+        processRef.on("exit", () => clearTunnelProcess());
+        await withDbLock(async () => {
+          await db.read();
+          ensureDbData();
+          const exp = db.data.experiments.find(
+            (item) => item.experimentID === candidate.experimentID,
+          );
+          if (!exp) return;
+          exp.tunnelUrl = `https://${candidate.hostname}`;
+          exp.updatedAt = new Date().toISOString();
+          await db.write();
         });
-        exp.tunnelUrl = `https://${s.hostname}`;
-        exp.updatedAt = new Date().toISOString();
       }
-      await db.write();
     } catch (err) {
       console.error("[tunnel] Auto-start error:", err.message);
     }

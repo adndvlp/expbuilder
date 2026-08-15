@@ -15,7 +15,7 @@ export const ApiReferenceSection: DocSection = {
 | \`window.branchCustomParameters\` | object | null | Both | Params to inject into target trial |
 | \`window.JSPSYCH_FILE_UPLOAD_ENDPOINT\` | string | Both | Endpoint for FileUploadResponseComponent |
 | \`window.JSPSYCH_SESSION_ID\` | string | Both | Current Session ID |
-| \`window._socketReady\` | boolean | Local | true when Socket.IO loaded |
+| \`window.JSPSYCH_LOCAL_KEYS\` | object | Local | Experiment-scoped storage keys |
 | \`window._firebaseReady\` | boolean | Published | true when Firebase SDK loaded |
 
 ## Loop Scope Variables
@@ -31,16 +31,18 @@ export const ApiReferenceSection: DocSection = {
 
 | Key | Content | Lifecycle |
 |---|---|---|
-| \`jsPsych_currentSessionId\` | Current Session ID | Created at start, cleared in on_finish |
-| \`jsPsych_participantNumber\` | Participant number | Created on assignment, cleared in on_finish |
-| \`jsPsych_resumeTrial\` | \`{ branches, branchConditions, trialData }\` | Updated each trial, cleared in on_finish |
-| \`jsPsych_jumpToTrial\` | builder_id of target trial | Created by repeat/jump, cleared when consumed |
+| \`expbuilder:local:<id>:session-id\` | Durable session UUID | Cleared only after confirmed completion |
+| \`expbuilder:local:<id>:participant-number\` | Positive server-assigned number | Cleared only after confirmed completion |
+| \`expbuilder:local:<id>:resume-trial\` | \`{ branches, branchConditions, trialData }\` | Updated each trial; scoped by experiment |
+| \`expbuilder:local:<id>:jump-to-trial\` | builder_id of target trial | Cleared when consumed |
 
 ## sessionStorage Keys
 
 | Key | Content | Lifecycle |
 |---|---|---|
-| \`jsPsych_jumpReload\` | \`"1"\` | Written before reload, cleared at start |
+| \`expbuilder:local:<id>:tab-id\` | Tab UUID | Created once per tab |
+| \`expbuilder:local:<id>:tab-session-id\` | Session UUID owned by the tab | Cleared after confirmed completion |
+| \`expbuilder:local:<id>:jump-reload\` | \`"1"\` | Written before reload, cleared at start |
 
 ## Template Markers
 
@@ -53,11 +55,12 @@ export const ApiReferenceSection: DocSection = {
 
 | Method | Route | Body / Response |
 |---|---|---|
-| POST | \`/api/append-result/:id\` | \`{ sessionId, metadata }\` → \`{ participantNumber }\` |
-| PUT | \`/api/append-result/:id\` | \`{ sessionId, response }\` → \`{ success }\` |
-| POST | \`/api/complete-session/:id\` | \`{ sessionId }\` → \`{ success }\` |
-| POST | \`/api/participant-files/:id\` | FormData with file → \`{ url }\` |
-| PATCH | \`/api/rename-session/:id\` | \`{ oldId, newId }\` → \`{ success }\` |
+| POST | \`/api/append-result/:id\` | \`{ sessionId, metadata?, displayName? }\` → \`{ success, id, participantNumber, created }\` |
+| PUT | \`/api/append-result/:id\` | \`{ sessionId, eventId, sequence, response }\` → matching ACK + \`storedCount\` |
+| GET | \`/api/session-results/:id?sessionId=:sid\` | Validate/query one persisted session |
+| POST | \`/api/complete-session/:id\` | \`{ sessionId, expectedEventCount, lastSequence }\` → matching count/sequence |
+| POST | \`/api/participant-files/:id\` | \`{ sessionId, files: [{ name, data, type?, size? }] }\` |
+| PATCH | \`/api/rename-session/:id\` | \`{ sessionId, displayName }\`; identity is unchanged |
 | GET | \`/api/session-name-config/:id\` | → \`{ tokens, separator }\` |
 
 ## Firebase Realtime Database Paths (published mode)

@@ -113,6 +113,7 @@ describe('DELETE /api/delete-experiment/:experimentID', () => {
     db.data.configs.push({ experimentID: 'E1', data: {}, isDevMode: false })
     db.data.sessionResults.push({ experimentID: 'E1', sessionId: 's1', createdAt: new Date().toISOString(), data: [], state: 'completed', lastUpdate: new Date().toISOString(), metadata: {} })
     db.data.participantFiles.push({ id: 'pf1', experimentID: 'E1', filename: 'f.txt' })
+    db.data.sessionCounters.E1 = 7
     // Create upload directory
     fs.mkdirSync(path.join(tmpDir, 'Exp1', 'img'), { recursive: true })
     fs.writeFileSync(path.join(tmpDir, 'Exp1', 'img', 'photo.jpg'), 'data')
@@ -129,6 +130,7 @@ describe('DELETE /api/delete-experiment/:experimentID', () => {
     expect(db.data.configs).toHaveLength(0)
     expect(db.data.sessionResults).toHaveLength(0)
     expect(db.data.participantFiles).toHaveLength(0)
+    expect(db.data.sessionCounters.E1).toBeUndefined()
   })
 
   test('calls Firebase delete and logs partial success flags', async () => {
@@ -174,20 +176,30 @@ describe('DELETE /api/delete-experiment/:experimentID', () => {
 })
 
 describe('uploaded media passthrough middleware', () => {
-  test('serves media by scanning experiment folders and skips generated HTML dirs', async () => {
-    const { app, tmpDir } = await freshApp()
+  test('serves media only from the experiment identified in the URL', async () => {
+    const { app, db, tmpDir } = await freshApp()
+    db.data.experiments.push(
+      { experimentID: 'E1', name: 'Folder Exp', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      { experimentID: 'E2', name: 'Other Exp', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    )
+    await db.write()
     fs.mkdirSync(path.join(tmpDir, 'experiments_html', 'img'), { recursive: true })
     fs.writeFileSync(path.join(tmpDir, 'experiments_html', 'img', 'ignored.png'), 'ignored')
     fs.mkdirSync(path.join(tmpDir, 'Folder Exp', 'img'), { recursive: true })
     fs.writeFileSync(path.join(tmpDir, 'Folder Exp', 'img', 'hello world.png'), 'image-data')
+    fs.mkdirSync(path.join(tmpDir, 'Other Exp', 'img'), { recursive: true })
+    fs.writeFileSync(path.join(tmpDir, 'Other Exp', 'img', 'hello world.png'), 'other-data')
 
-    const res = await request(app).get('/img/hello%20world.png').expect(200)
+    const res = await request(app).get('/E1/img/hello%20world.png').expect(200)
     expect(res.body.toString()).toBe('image-data')
+    const other = await request(app).get('/E2/img/hello%20world.png').expect(200)
+    expect(other.body.toString()).toBe('other-data')
+    await request(app).get('/img/hello%20world.png').expect(404)
   })
 
   test('falls through when media file is absent', async () => {
     const { app } = await freshApp()
-    await request(app).get('/img/missing.png').expect(404)
+    await request(app).get('/E1/img/missing.png').expect(404)
   })
 })
 
@@ -305,10 +317,11 @@ describe('POST /api/run-experiment/:experimentID', () => {
       .send({ generatedCode: 'const generated = true;' })
       .expect(200)
 
-    expect(res.body.experimentUrl).toBe('http://localhost:3000/RunExp')
-    const html = fs.readFileSync(path.join(tmpDir, 'experiments_html', 'RunExp.html'), 'utf8')
+    expect(res.body.experimentUrl).toBe('http://localhost:3000/E1')
+    const html = fs.readFileSync(path.join(tmpDir, 'experiments_html', 'E1.html'), 'utf8')
     expect(html).toContain('const generated = true;')
     expect(html).toContain('background-color: #abcdef')
+    expect(html).toContain('<base id="experiment-base" href="/E1/">')
   })
 
   test('uses request canvas styles when experiment appearance is absent', async () => {
@@ -321,7 +334,7 @@ describe('POST /api/run-experiment/:experimentID', () => {
       .send({ generatedCode: 'const generated = true;', canvasStyles: { backgroundColor: '#112233' } })
       .expect(200)
 
-    const html = fs.readFileSync(path.join(tmpDir, 'experiments_html', 'StyledRun.html'), 'utf8')
+    const html = fs.readFileSync(path.join(tmpDir, 'experiments_html', 'E1.html'), 'utf8')
     expect(html).toContain('background-color: #112233')
   })
 })
@@ -333,8 +346,8 @@ describe('GET /:experimentID and /:experimentID/preview', () => {
     await db.write()
     fs.mkdirSync(path.join(tmpDir, 'experiments_html'), { recursive: true })
     fs.mkdirSync(path.join(tmpDir, 'trials_previews_html'), { recursive: true })
-    fs.writeFileSync(path.join(tmpDir, 'experiments_html', 'ServeExp.html'), '<html>run</html>')
-    fs.writeFileSync(path.join(tmpDir, 'trials_previews_html', 'ServeExp.html'), '<html>preview</html>')
+    fs.writeFileSync(path.join(tmpDir, 'experiments_html', 'E1.html'), '<html>run</html>')
+    fs.writeFileSync(path.join(tmpDir, 'trials_previews_html', 'E1.html'), '<html>preview</html>')
 
     expect((await request(app).get('/E1').expect(200)).text).toContain('run')
     expect((await request(app).get('/E1/preview').expect(200)).text).toContain('preview')
@@ -376,9 +389,10 @@ describe('POST /api/trials-preview/:experimentID', () => {
       .expect(200)
 
     expect(res.body.experimentUrl).toBe('http://localhost:3000/E1/preview')
-    const html = fs.readFileSync(path.join(tmpDir, 'trials_previews_html', 'PreviewExp.html'), 'utf8')
+    const html = fs.readFileSync(path.join(tmpDir, 'trials_previews_html', 'E1.html'), 'utf8')
     expect(html).toContain('const preview = true;')
     expect(html).toContain('background-color: #445566')
+    expect(html).toContain('<base id="experiment-base" href="/E1/">')
   })
 })
 

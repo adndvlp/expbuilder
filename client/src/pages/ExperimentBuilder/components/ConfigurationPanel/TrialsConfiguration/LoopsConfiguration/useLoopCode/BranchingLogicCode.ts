@@ -186,10 +186,11 @@ const ${loopIdSanitized}_procedure = {
     const currentId = "${id}";
 
     // Check for a pending repeat/jump target before normal branching.
-    const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
+    const jumpKey = window.JSPSYCH_LOCAL_KEYS?.jumpTrial || 'jsPsych_jumpToTrial';
+    const jumpToTrial = localStorage.getItem(jumpKey);
     if (jumpToTrial) {
       if (String(currentId) === String(jumpToTrial)) {
-        localStorage.removeItem('jsPsych_jumpToTrial');
+        localStorage.removeItem(jumpKey);
         return true;
       }
       return false;

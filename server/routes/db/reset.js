@@ -80,6 +80,8 @@ router.post("/api/app/reset", async (req, res) => {
     db.data.configs = [];
     db.data.pluginConfigs = [];
     db.data.sessionResults = [];
+    db.data.participantFiles = [];
+    db.data.sessionCounters = {};
     await db.write();
 
     clearFixedRuntimeDirs();

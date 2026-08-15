@@ -1,5 +1,6 @@
 const STATE_STYLES: Record<string, { background: string; label: string }> = {
   initiated: { background: "#f59e0b", label: "Initiated" },
+  resumed: { background: "#8b5cf6", label: "Resumed" },
   "in-progress": { background: "#3b82f6", label: "In Progress" },
   completed: { background: "#10b981", label: "Completed" },
   abandoned: { background: "#ef4444", label: "Abandoned" },

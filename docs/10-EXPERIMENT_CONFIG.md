@@ -81,10 +81,10 @@ If tokens are configured, at least one must be `randomAlpha` or `counter` to gua
 The formula is previewed in real-time: e.g., `2026-04-09_pilot_001`
 
 ### How it works
-1. Session names with `participantId`/`counter` tokens are resolved after session creation
-2. First, session is created with a temporary ID
-3. Participant number is calculated from existing sessions
-4. `PATCH /api/rename-session/:experimentID` updates the session ID
+1. A new local session receives a UUID and a server-assigned participant number.
+2. Name tokens are resolved after that strict creation acknowledgement.
+3. `PATCH /api/rename-session/:experimentID` stores the result as `displayName`.
+4. The UUID used by results, IndexedDB, and files never changes.
 
 ---
 

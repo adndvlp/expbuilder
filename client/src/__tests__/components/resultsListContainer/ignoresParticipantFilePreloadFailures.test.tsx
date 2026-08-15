@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ResultsList from "../../../pages/ExperimentBuilder/components/ResultsList";
 
 const mocks = vi.hoisted(() => ({
-  socketHandlers: {} as Record<string, (...args: any[]) => void>,
+  socketHandlers: {} as Record<string, (...args: unknown[]) => void>,
   socketEmit: vi.fn(),
   socketDisconnect: vi.fn(),
   experimentID: "exp-123" as string | null,
@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("socket.io-client", () => ({
   io: vi.fn(() => ({
-    on: vi.fn((event: string, callback: (...args: any[]) => void) => {
+    on: vi.fn((event: string, callback: (...args: unknown[]) => void) => {
       mocks.socketHandlers[event] = callback;
     }),
     emit: mocks.socketEmit,
@@ -266,9 +266,9 @@ describe("ResultsList container", () => {
         experimentID: "exp-123",
         sessions: [
           {
-            _id: "active-local-2",
             sessionId: "local-2",
-            createdAt: "2026-05-24T12:00:00.000Z",
+            connectedAt: "2026-05-24T12:00:00.000Z",
+            lastUpdate: "2026-05-24T12:00:00.000Z",
             state: "initiated",
             metadata: {
               browser: "Safari",
@@ -280,20 +280,21 @@ describe("ResultsList container", () => {
       });
     });
 
-    expect(await screen.findByText("local-2")).toBeInTheDocument();
+    expect(screen.queryByText("local-2")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Filter"));
-    fireEvent.change(screen.getByLabelText("Browser"), {
-      target: { value: "Safari" },
+    fireEvent.change(screen.getByLabelText("State"), {
+      target: { value: "initiated" },
     });
 
-    expect(screen.getByText("local-2")).toBeInTheDocument();
+    expect(screen.queryByText("local-2")).not.toBeInTheDocument();
     expect(screen.queryByText("local-1")).not.toBeInTheDocument();
-    expect(screen.getByText("1 of 2")).toBeInTheDocument();
+    expect(screen.getByText("No sessions match the current filters.")).toBeInTheDocument();
+    expect(screen.getByText("0 of 1")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Clear all"));
 
     expect(await screen.findByText("local-1")).toBeInTheDocument();
-    expect(screen.getByText("local-2")).toBeInTheDocument();
+    expect(screen.queryByText("local-2")).not.toBeInTheDocument();
   });
 });

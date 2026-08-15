@@ -9,6 +9,7 @@ import {
 } from "../utils/generateTrialLoopCodes";
 import useDevMode from "../hooks/useDevMode";
 import { useExperimentCode } from "./Timeline/ExperimentCode/useExperimentCode";
+import { buildSelectedPreviewPersistence } from "./experiment-preview/selectedPreviewPersistence";
 const API_URL = import.meta.env.VITE_API_URL;
 
 type UploadedFile = { name: string; url: string; type: string };
@@ -26,8 +27,10 @@ type Props = {
   autoStart?: boolean;
 };
 
+const EMPTY_UPLOADED_FILES: UploadedFile[] = [];
+
 function ExperimentPreview({
-  uploadedFiles = [],
+  uploadedFiles = EMPTY_UPLOADED_FILES,
   canvasStyles,
   autoStart = false,
 }: Props) {
@@ -62,9 +65,11 @@ function ExperimentPreview({
 
   useEffect(() => {
     if (started && version) {
+      // The server version is an external signal that replaces the iframe URL.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setKey((prev) => prev + 1);
     }
-  }, [version]);
+  }, [started, version]);
 
   const handleStart = () => {
     setStarted(true);
@@ -80,92 +85,68 @@ function ExperimentPreview({
 
   // trials preview - generate code dynamically
   useEffect(() => {
-    let code = "";
+    let generatedPreviewCode: string;
     const generateAndSendCode = async () => {
       if (isDevMode || (!selectedTrial && !selectedLoop)) {
-        code = await generateLocalExperiment();
+        generatedPreviewCode = await generateLocalExperiment();
       } else {
         /* v8 ignore start -- the outer branch already routes empty selection to full local preview. */
         if (!selectedTrial && !selectedLoop) return;
         /* v8 ignore stop */
 
-        let generatedCode = "";
-
-        if (selectedTrial) {
-          generatedCode = await generateSingleTrialCode(
-            selectedTrial,
-            uploadedFiles,
-            experimentID || "",
-            getTrial,
-            getLoopTimeline,
-            getLoop,
-          );
-        } else {
-          generatedCode = await generateSingleLoopCode(
-            selectedLoop!,
-            experimentID || "",
-            uploadedFiles,
-            getTrial,
-            getLoopTimeline,
-            getLoop,
-          );
-        }
+        const generatedCode = selectedTrial
+          ? await generateSingleTrialCode(
+              selectedTrial,
+              uploadedFiles,
+              experimentID || "",
+              getTrial,
+              getLoopTimeline,
+              getLoop,
+            )
+          : await generateSingleLoopCode(
+              selectedLoop!,
+              experimentID || "",
+              uploadedFiles,
+              getTrial,
+              getLoopTimeline,
+              getLoop,
+            );
 
         if (!generatedCode) return;
 
+        const persistenceCode = buildSelectedPreviewPersistence({
+          experimentID: experimentID || "",
+          isSaveMode,
+          selectionName: selectedTrial?.name || selectedLoop?.name || "preview",
+        });
         const trialCode = `
-
-        const trialSessionId =
-            "${selectedTrial?.name || selectedLoop?.name}_result_" + (crypto.randomUUID
-              ? crypto.randomUUID()
-              : Math.random().toString(36).slice(2, 10));
-
-        const isSaveMode = ${isSaveMode};
-        ${isSaveMode ? `window.JSPSYCH_FILE_UPLOAD_ENDPOINT = '/api/participant-files/${experimentID}';` : ""}
-        if (isSaveMode) { window.JSPSYCH_SESSION_ID = trialSessionId; }
-        let participantNumber;
-
-          async function initParticipant(trialSessionId) {
-            if (isSaveMode) {
-              const res = await fetch("/api/append-result/${experimentID}", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", Accept: "*/*" },
-                body: JSON.stringify({
-                  sessionId: trialSessionId,
-                }),
-              });
-              const result = await res.json();
-              return result.participantNumber;
-            } else {
-              const res = await fetch("/api/participant-number/${experimentID}");
-              const result = await res.json();
-              return result.participantNumber;
-            }
-          }
+${persistenceCode}
 (async () => {
 localStorage.removeItem('jsPsych_jumpToTrial');
-  participantNumber = await initParticipant(trialSessionId);
+  participantNumber = await initParticipant();
 
-  if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
+  if (!Number.isInteger(participantNumber) || participantNumber < 1) {
     alert("The participant number is not assigned. Please, wait.");
     throw new Error("participantNumber not assigned");
   }
     const jsPsych = initJsPsych({
           on_data_update: function (data) {
-            if (isSaveMode) {
-              fetch("/api/append-result/${experimentID}", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json", Accept: "*/*" },
-                body: JSON.stringify({
-                  sessionId: trialSessionId,
-                  response: data,
-                }),
-              });
-            }
+            persistPreviewResult(data);
           },
 
-          on_finish: function() {
-              jsPsych.data.displayData();
+          on_finish: async function() {
+              let completionRetryDelay = 2000;
+              const attemptPreviewCompletion = async function() {
+                const finishCompleted = await completePreviewSession();
+                if (finishCompleted) {
+                  jsPsych.data.displayData();
+                  return;
+                }
+                const retryAfter = completionRetryDelay;
+                completionRetryDelay = Math.min(completionRetryDelay * 2, 30000);
+                setTimeout(attemptPreviewCompletion, retryAfter);
+              };
+              await attemptPreviewCompletion();
           },
     });
 
@@ -177,13 +158,16 @@ localStorage.removeItem('jsPsych_jumpToTrial');
       
       })()
       `;
-        code = trialCode;
+        generatedPreviewCode = trialCode;
       }
 
       await fetch(`${API_URL}/api/trials-preview/${experimentID}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ generatedCode: code, canvasStyles }),
+        body: JSON.stringify({
+          generatedCode: generatedPreviewCode,
+          canvasStyles,
+        }),
         credentials: "include",
         mode: "cors",
       });
@@ -198,6 +182,13 @@ localStorage.removeItem('jsPsych_jumpToTrial');
     selectedTrial,
     selectedLoop,
     experimentID,
+    canvasStyles,
+    generateLocalExperiment,
+    getLoop,
+    getLoopTimeline,
+    getTrial,
+    incrementVersion,
+    uploadedFiles,
   ]);
 
   // Crear URL con parámetros únicos para evitar caché

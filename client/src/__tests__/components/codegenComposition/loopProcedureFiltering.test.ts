@@ -126,7 +126,10 @@ describe("useLoopCode composition", () => {
 
     expect(code).toContain("const repeatConditionsArray =");
     expect(code).toContain(
-      "localStorage.setItem('jsPsych_jumpToTrial', String(condition.jumpToTrialId));",
+      "window.JSPSYCH_LOCAL_KEYS?.jumpTrial || 'jsPsych_jumpToTrial'",
+    );
+    expect(code).toContain(
+      "localStorage.setItem(jumpKey, String(condition.jumpToTrialId));",
     );
     expect(code).toContain("jsPsych.run(timeline)");
   });

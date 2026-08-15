@@ -102,7 +102,7 @@ Provides TypeScript ambient declarations to Monaco for all code editors in the b
 - `DynamicPlugin` for the custom plugin
 - `data` callback param type (rt, response, trial_index, builder_id, branches, etc.)
 - `trial` callback param type (type, data, prev_response)
-- Local config scope: `pendingDataSaves`, `trialSessionId`, `socket`
+- Local config scope: `localOutbox`, `trialSessionId`, `participantNumber`, `socket`
 - Public config scope: `sessionRef`, `BATCH_CONFIG`, `TrialDB`, `firebase`, recruitment params
 - Builder window globals: `nextTrialId`, `skipRemaining`, `branchingActive`, `JSPSYCH_SESSION_ID`, etc.
 - Helper functions: `_showLoading()`, `_hideLoading()`, `_generateSessionName()`, `evaluateCondition()`, etc.
@@ -181,7 +181,7 @@ Generates the loop's internal branching infrastructure:
 ### BranchesCode.ts
 
 Generates the loop-level `on_finish` handler:
-- **With repeat conditions**: evaluates `repeatConditions` against loop data, on match sets `jsPsych_jumpToTrial` in localStorage and restarts timeline
+- **With repeat conditions**: evaluates `repeatConditions` against loop data, then writes the experiment-scoped `_sessionKeys.jumpTrial` and restarts the timeline
 - **With branches**: evaluates `branchConditions`, activates `window.nextTrialId` / `window.skipRemaining`
 - **Terminal loop** (no branches/repeats): calls `jsPsych.abortExperiment()` if branching was active
 - Rule evaluation logic: handles numeric comparison, string equality, array includes, dynamic plugin column names
@@ -259,7 +259,7 @@ Entry point called from `ExperimentBase`. Iterates the timeline and calls `gener
 7. CAPTCHA gate (public only)
 8. Resume check (localStorage)
 9. Session creation → participantNumber assigned
-10. Session name resolution (counter tokens → rename)
+10. Session display-name resolution (counter tokens → `displayName`; UUID unchanged)
 11. customPreInitCode injected ← user code
 12. jsPsych.initJsPsych({...customInitJsPsychParams...})  ← user params
 13. Preload trial (if media files exist)

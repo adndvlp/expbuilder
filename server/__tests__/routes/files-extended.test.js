@@ -43,6 +43,12 @@ describe('GET /api/participant-files-serve/:experimentID/:filename', () => {
     const folder = path.join(tmpDir, 'FileExp', 'participant-files')
     fs.mkdirSync(folder, { recursive: true })
     fs.writeFileSync(path.join(folder, 'test.txt'), 'hello world')
+    db.data.participantFiles.push({
+      id: 'file-1',
+      experimentID: 'E1',
+      sessionId: 'session-1',
+      filename: 'test.txt',
+    })
     await db.write()
 
     const res = await request(app)

@@ -14,6 +14,7 @@ All data is stored in a single JSON file (`database/db.json`). The schema is ini
 | `pluginConfigs` | `Array<PluginConfigDoc>` | Custom user plugins (single document) |
 | `sessionResults` | `Array<SessionDoc>` | Participant session data |
 | `participantFiles` | `Array<ParticipantFile>` | Files uploaded by participants |
+| `sessionCounters` | `Record<string, number>` | Last participant number allocated per `experimentID` |
 | `chat` | `Object` | Chat agent settings (API keys, provider, conversations) |
 
 ---
@@ -330,9 +331,15 @@ type ConfigDoc = {
 ```typescript
 type SessionDoc = {
   experimentID: string;
-  sessionId: string;      // Unique session ID (can be custom names)
+  sessionId: string;      // Durable UUID identity within the experiment
+  displayName?: string;   // Researcher-facing label; never changes identity
+  participantNumber?: number; // Positive server-assigned number on new local sessions
   createdAt: string;
   data: any[];            // Array of trial response objects
+  events?: Array<{        // Idempotency and ordering metadata on new local sessions
+    eventId: string;
+    sequence: number;
+  }>;
   state: "initiated" | "in-progress" | "completed";
   lastUpdate: string;
   metadata: {
@@ -346,6 +353,13 @@ type SessionDoc = {
   isOnline?: boolean;     // True if data is stored in cloud, metadata locally
 };
 ```
+
+`sessionCounters[experimentID]` stores the latest number assigned by the server.
+Allocation is serialized with session creation, continues from the greater of
+the stored counter and existing participant numbers, and does not reuse a number
+after a session is deleted. Experiment ZIP export writes this value as
+`sessionCounter` in that experiment's existing `data.json`; import restores it
+only when it is a valid non-negative integer.
 
 ### ParticipantFile
 

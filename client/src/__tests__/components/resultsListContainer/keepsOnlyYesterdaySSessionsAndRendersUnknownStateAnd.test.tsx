@@ -1,9 +1,8 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ResultsList from "../../../pages/ExperimentBuilder/components/ResultsList";
-
 const mocks = vi.hoisted(() => ({
-  socketHandlers: {} as Record<string, (...args: any[]) => void>,
+  socketHandlers: {} as Record<string, (...args: unknown[]) => void>,
   socketEmit: vi.fn(),
   socketDisconnect: vi.fn(),
   experimentID: "exp-123" as string | null,
@@ -14,7 +13,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("socket.io-client", () => ({
   io: vi.fn(() => ({
-    on: vi.fn((event: string, callback: (...args: any[]) => void) => {
+    on: vi.fn((event: string, callback: (...args: unknown[]) => void) => {
       mocks.socketHandlers[event] = callback;
     }),
     emit: mocks.socketEmit,
@@ -196,6 +195,29 @@ describe("ResultsList container", () => {
     today.setHours(12, 0, 0, 0);
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
+
+    fetchMock().mockImplementation(async (url: string) => {
+      if (url === "http://localhost:3000/api/session-results/exp-123") {
+        return okJson({
+          sessions: [
+            ...sessionsFixture,
+            {
+              _id: "persisted-unknown-yesterday",
+              sessionId: "unknown-yesterday",
+              createdAt: yesterday.toISOString(),
+              state: "unexpected",
+            },
+            {
+              _id: "persisted-completed-today",
+              sessionId: "completed-today",
+              createdAt: today.toISOString(),
+              state: "completed",
+            },
+          ],
+        });
+      }
+      return okJson({ success: true });
+    });
 
     render(<ResultsList activeTab="local" />);
 

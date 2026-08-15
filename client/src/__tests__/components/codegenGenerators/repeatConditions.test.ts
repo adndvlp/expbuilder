@@ -41,7 +41,10 @@ describe("generateRepeatConditionsCode", () => {
     expect(code).toContain("columnName = rule.componentIdx + '_' + rule.prop;");
     expect(code).toContain("case '>=':");
     expect(code).toContain(
-      "localStorage.setItem('jsPsych_jumpToTrial', String(condition.jumpToTrialId));",
+      "window.JSPSYCH_LOCAL_KEYS?.jumpTrial || 'jsPsych_jumpToTrial'",
+    );
+    expect(code).toContain(
+      "localStorage.setItem(jumpKey, String(condition.jumpToTrialId));",
     );
     expect(code).toContain("jsPsych.run(timeline)");
   });

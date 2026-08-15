@@ -120,8 +120,9 @@ describe('api.js app setup', () => {
 
     expect(Server).toHaveBeenCalledWith(httpServer, expect.objectContaining({
       cors: expect.objectContaining({
-        origin: 'https://allowed.example.com',
+        origin: true,
       }),
+      allowRequest: expect.any(Function),
     }))
 
     const allowed = await request(app)
@@ -158,7 +159,7 @@ describe('api.js app setup', () => {
     cleanup()
   })
 
-  test('tracks active sessions and mirrors state changes into the database', async () => {
+  test('tracks presence without mutating durable session state', async () => {
     const {
       cleanup,
       connectionHandler,
@@ -180,6 +181,7 @@ describe('api.js app setup', () => {
     const socketHandlers = {}
     const socket = {
       id: 'socket-1',
+      request: { headers: { host: 'localhost:3000' } },
       emit: jest.fn(),
       join: jest.fn(),
       on: jest.fn((event, handler) => {
@@ -195,12 +197,14 @@ describe('api.js app setup', () => {
       'update-session-state': expect.any(Function),
     }))
 
+    const joinAck = jest.fn()
     await socketHandlers['join-experiment']({
       experimentID: 'E1',
       sessionId: 'S1',
       state: 'in-progress',
       metadata: { browser: 'Chrome' },
-    })
+    }, joinAck)
+    expect(joinAck).toHaveBeenCalledWith(expect.objectContaining({ success: true }))
     expect(socket.join).toHaveBeenCalledWith('E1')
     expect(io.to).toHaveBeenCalledWith('E1')
     expect(roomEmitter.emit).toHaveBeenCalledWith('session-update', expect.objectContaining({
@@ -213,26 +217,55 @@ describe('api.js app setup', () => {
     }))
 
     await db.read()
-    expect(db.data.sessionResults[0].state).toBe('in-progress')
-    expect(db.data.sessionResults[0].metadata).toEqual({ browser: 'Chrome' })
+    expect(db.data.sessionResults[0].state).toBe('initiated')
+    expect(db.data.sessionResults[0].metadata).toEqual({})
 
+    const updateAck = jest.fn()
     await socketHandlers['update-session-state']({
       experimentID: 'E1',
       sessionId: 'S1',
-      state: 'paused',
-    })
+      state: 'in-progress',
+    }, updateAck)
+    expect(updateAck).toHaveBeenCalledWith({ success: true })
     await db.read()
-    expect(db.data.sessionResults[0].state).toBe('paused')
+    expect(db.data.sessionResults[0].state).toBe('initiated')
 
     socketHandlers['listen-experiment']('E1')
     expect(socket.emit).toHaveBeenCalledWith('session-update', expect.objectContaining({
       experimentID: 'E1',
-      sessions: [expect.objectContaining({ sessionId: 'S1', state: 'paused' })],
+      sessions: [expect.objectContaining({ sessionId: 'S1', state: 'in-progress' })],
     }))
+
+    const remoteHandlers = {}
+    const remoteSocket = {
+      id: 'remote-listener',
+      request: {
+        headers: {
+          host: 'study.trycloudflare.com',
+          'cf-ray': 'cloudflare-request',
+        },
+      },
+      emit: jest.fn(),
+      join: jest.fn(),
+      on: jest.fn((event, handler) => {
+        remoteHandlers[event] = handler
+      }),
+    }
+    connectionHandler(remoteSocket)
+    const remoteAck = jest.fn()
+    remoteHandlers['listen-experiment']('E1', remoteAck)
+    expect(remoteAck).toHaveBeenCalledWith({
+      success: false,
+      error: 'Listener not available remotely',
+    })
+    expect(remoteSocket.emit).not.toHaveBeenCalledWith(
+      'session-update',
+      expect.anything(),
+    )
 
     await socketHandlers.disconnect()
     await db.read()
-    expect(db.data.sessionResults[0].state).toBe('abandoned')
+    expect(db.data.sessionResults[0].state).toBe('initiated')
 
     cleanup()
   })
@@ -262,6 +295,7 @@ describe('api.js app setup', () => {
     const socketHandlers = {}
     const socket = {
       id: 'socket-2',
+      request: { headers: { host: 'localhost:3000' } },
       emit: jest.fn(),
       join: jest.fn(),
       on: jest.fn((event, handler) => {
@@ -271,36 +305,26 @@ describe('api.js app setup', () => {
 
     connectionHandler(socket)
 
+    const missingUpdateAck = jest.fn()
     await socketHandlers['update-session-state']({
       experimentID: 'NO_ACTIVE',
       sessionId: 'missing-active-session',
       state: 'ignored',
-    })
+    }, missingUpdateAck)
+    expect(missingUpdateAck).toHaveBeenCalledWith(expect.objectContaining({ success: false }))
 
-    await socketHandlers['join-experiment']({ experimentID: 'E2', sessionId: 'new-session' })
-    await socketHandlers['join-experiment']({ experimentID: 'E2', sessionId: 'second-session' })
-    expect(roomEmitter.emit).toHaveBeenCalledWith('session-update', expect.objectContaining({
-      experimentID: 'E2',
-      sessions: expect.arrayContaining([
-        expect.objectContaining({
-          sessionId: 'new-session',
-          state: 'initiated',
-          metadata: {},
-        }),
-      ]),
-    }))
+    const missingJoinAck = jest.fn()
+    await socketHandlers['join-experiment'](
+      { experimentID: 'E2', sessionId: 'new-session' },
+      missingJoinAck,
+    )
+    expect(missingJoinAck).toHaveBeenCalledWith({ success: false, error: 'Session not found' })
 
     await socketHandlers['update-session-state']({
       experimentID: 'E2',
       sessionId: 'missing-active-session',
       state: 'ignored',
-    })
-
-    await socketHandlers['update-session-state']({
-      experimentID: 'E2',
-      sessionId: 'new-session',
-      state: 'active',
-    })
+    }, jest.fn())
 
     socketHandlers['listen-experiment']('unknown-experiment')
     expect(socket.emit).not.toHaveBeenCalledWith('session-update', expect.objectContaining({
@@ -311,22 +335,23 @@ describe('api.js app setup', () => {
       experimentID: 'E3',
       sessionId: 'persisted',
       metadata: { fresh: true },
-    })
+    }, jest.fn())
     await db.read()
     expect(db.data.sessionResults.find(s => s.sessionId === 'persisted')).toEqual(expect.objectContaining({
       state: 'initiated',
-      metadata: { existing: true, fresh: true },
+      metadata: { existing: true },
     }))
 
     await socketHandlers['join-experiment']({
       experimentID: 'E1',
       sessionId: 'completed',
       state: 'completed',
-    })
+    }, jest.fn())
 
     const otherSocketHandlers = {}
     connectionHandler({
       id: 'socket-other',
+      request: { headers: { host: 'localhost:3000' } },
       emit: jest.fn(),
       join: jest.fn(),
       on: jest.fn((event, handler) => {
@@ -336,11 +361,11 @@ describe('api.js app setup', () => {
     await otherSocketHandlers['join-experiment']({
       experimentID: 'E4',
       sessionId: 'foreign-session',
-    })
+    }, jest.fn())
     await socketHandlers['join-experiment']({
       experimentID: 'E4',
       sessionId: 'own-session',
-    })
+    }, jest.fn())
 
     await socketHandlers.disconnect()
     await db.read()

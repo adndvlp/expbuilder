@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ResultsList from "../../../pages/ExperimentBuilder/components/ResultsList";
 
 const mocks = vi.hoisted(() => ({
-  socketHandlers: {} as Record<string, (...args: any[]) => void>,
+  socketHandlers: {} as Record<string, (...args: unknown[]) => void>,
   socketEmit: vi.fn(),
   socketDisconnect: vi.fn(),
   experimentID: "exp-123" as string | null,
@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("socket.io-client", () => ({
   io: vi.fn(() => ({
-    on: vi.fn((event: string, callback: (...args: any[]) => void) => {
+    on: vi.fn((event: string, callback: (...args: unknown[]) => void) => {
       mocks.socketHandlers[event] = callback;
     }),
     emit: mocks.socketEmit,
@@ -86,6 +86,28 @@ const sessionsFixture = [
     createdAt: "2026-05-24T09:00:00.000Z",
     state: "completed",
     isOnline: true,
+  },
+  {
+    _id: "persisted-local-abandoned",
+    sessionId: "local-abandoned",
+    createdAt: "2026-05-24T12:00:00.000Z",
+    state: "abandoned",
+    metadata: {
+      browser: "Safari",
+      os: "iOS",
+      screenResolution: "390x844",
+    },
+  },
+  {
+    _id: "persisted-local-nostate",
+    sessionId: "local-no-state",
+    createdAt: "2026-05-20T12:00:00.000Z",
+    state: "initiated",
+    metadata: {
+      browser: "Firefox",
+      os: "Linux",
+      screenResolution: "1366x768",
+    },
   },
 ];
 
@@ -197,25 +219,11 @@ describe("ResultsList container", () => {
         experimentID: "exp-123",
         sessions: [
           {
-            _id: "active-local-abandoned",
             sessionId: "local-abandoned",
-            createdAt: "2026-05-24T12:00:00.000Z",
             state: "abandoned",
-            metadata: {
-              browser: "Safari",
-              os: "iOS",
-              screenResolution: "390x844",
-            },
           },
           {
-            _id: "active-local-nostate",
             sessionId: "local-no-state",
-            createdAt: "2026-05-20T12:00:00.000Z",
-            metadata: {
-              browser: "Firefox",
-              os: "Linux",
-              screenResolution: "1366x768",
-            },
           },
         ],
       });

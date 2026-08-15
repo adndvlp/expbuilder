@@ -5,79 +5,43 @@ export const ResumeSection: DocSection = {
   title: "Resume System",
   content: `# Resume System
 
-Allows the participant to close the browser and resume where they left off.
+Local Run Experiment can resume an incomplete session without mixing experiments or tabs.
 
-## Per-Trial Persistence
+## Scoped state
 
-On each \`on_data_update\` of a trial with \`builder_id\`:
+Every key begins with \`expbuilder:local:<experimentID>:\`. The last resumable trial is stored at \`resume-trial\`; the durable UUID is stored at \`session-id\`; each tab also has a private \`tab-id\` and \`tab-session-id\`.
 
 \`\`\`js
-localStorage.setItem('jsPsych_resumeTrial', JSON.stringify({
-branches: data.branches || [],
-branchConditions: data.branchConditions || [],
-trialData: data,
+localStorage.setItem(_sessionKeys.resumeTrial, JSON.stringify({
+  branches: data.branches || [],
+  branchConditions: data.branchConditions || [],
+  trialData: data
 }));
 \`\`\`
 
-## Resolution on Reload
+## Validation on reload
 
 \`\`\`mermaid
 flowchart TD
-  A["Reload experiment"] --> B{"sessionId in localStorage?"}
-  B -->|no| C["Start new session"]
-  B -->|yes| D["isResuming = true"]
-  D --> E["Read jsPsych_resumeTrial"]
-  E --> F["_resolveResumeBranch()"]
-  F --> G{"Branch resolved?"}
-  G -->|yes: targetId| H["localStorage.setItem('jsPsych_jumpToTrial', targetId)"]
-  G -->|no: null| I["Experiment already completed — start new one"]
-  G -->|error| J["Corrupt data — clean reset"]
+  A["Reload experiment"] --> B{"Scoped candidate exists?"}
+  B -->|no| C["Create new UUID session"]
+  B -->|yes| D["GET exact session from db.json"]
+  D -->|HTTP unavailable or invalid| E["Block safe startup; keep local data"]
+  D -->|missing or completed| C
+  D -->|valid and incomplete| F{"Active in another tab?"}
+  F -->|yes| C
+  F -->|no| G["Resume same UUID and outbox"]
+  G --> H["Resolve scoped resume branch"]
 \`\`\`
 
-## Branch Resolution
+The browser never treats an unverifiable candidate as a new or successfully resumed session. This prevents pending IndexedDB records from becoming detached from their server identity.
 
-\`_resolveResumeBranch(resumeRaw)\` reconstructs the last state:
+## Branch resolution
 
-\`\`\`js
-// 1. If 0 branches → experiment finished normally
-// 2. If 1 branch → jump to that trial (without evaluating conditions)
-// 3. If 2+ branches → evaluate branch conditions:
-//    - Build column names (DynamicPlugin support)
-//    - Evaluate rules with operators (==, !=, >, <, >=, <=)
-//    - Arrays: includes()
-//    - Survey: extract nested property
-//    - No match → first branch by default
-\`\`\`
+\`_resolveResumeBranch()\` reconstructs the last builder state. Zero branches means there is no target; one branch jumps directly; multiple branches evaluate their conditions. Repeat/jump state uses \`_sessionKeys.jumpTrial\`, so two experiments on the same origin cannot consume each other's jump.
 
-## Anti-Loop Guard
+## Recovery and cleanup
 
-Prevents a jump/reload from getting stuck in an infinite cycle:
-
-\`\`\`js
-// On startup:
-const comingFromJumpReload = sessionStorage.getItem('jsPsych_jumpReload') === '1';
-sessionStorage.removeItem('jsPsych_jumpReload');
-
-if (comingFromJumpReload && existingJump) {
-// The jump was processed in the previous cycle but not consumed
-// → full reset, start new session
-localStorage.removeItem('jsPsych_jumpToTrial');
-localStorage.removeItem('jsPsych_resumeTrial');
-localStorage.removeItem('jsPsych_currentSessionId');
-localStorage.removeItem('jsPsych_participantNumber');
-}
-\`\`\`
-
-## Cleanup on Finish
-
-\`\`\`js
-on_finish: async function() {
-// Clean up resume state
-localStorage.removeItem('jsPsych_resumeTrial');
-localStorage.removeItem('jsPsych_currentSessionId');
-localStorage.removeItem('jsPsych_participantNumber');
-// Do NOT clean jsPsych_jumpToTrial here (it's cleaned when consumed)
-}
-\`\`\`
+The session outbox replays unresolved records after reload with the original \`eventId\` and \`sequence\`. Browser identity, resume state, and acknowledged IndexedDB records are cleared only after \`complete-session\` confirms the exact stored count and last sequence. Network failure, server rejection, or a missing sequence leaves everything recoverable.
 `,
 };

@@ -261,9 +261,9 @@ These URLs are used in trial parameters via `ColumnMapping`:
 Files uploaded by participants during experiments (via FileUploadResponseComponent):
 - Sent as base64 in JSON body (not multipart)
 - `POST /api/participant-files/:experimentID`
-- Body: `{ files: [{ name, data: base64, type, size }], sessionId? }`
+- Body: `{ files: [{ name, data: base64, type, size }], sessionId }`; the persisted session is required
 - Stored in `{experimentName}/participant-files/`
-- DB records include sessionId for renaming support
+- DB records use the durable session UUID for ownership; changing `displayName` does not rename files
 
 ### LLM-Friendly File Handling
 

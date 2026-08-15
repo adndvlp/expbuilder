@@ -2,8 +2,20 @@ import { Parser } from "json2csv";
 
 export function rowsWithSessionMetadata(doc, sessionId) {
   const metadata = doc.metadata || {};
-  return doc.data.map((row) => ({
+  const paired = doc.data.map((row, index) => ({
+    row,
+    event: doc.events?.[index],
+    sourceIndex: index,
+  }));
+  if (doc.events?.length === doc.data.length) {
+    paired.sort((left, right) => left.event.sequence - right.event.sequence);
+  }
+  return paired.map(({ event, row, sourceIndex }) => ({
     ...row,
+    session_event_id: event?.eventId || "",
+    session_sequence: event?.sequence ?? sourceIndex,
+    session_participant_number: doc.participantNumber || "",
+    session_display_name: doc.displayName || "",
     session_browser: metadata.browser || "",
     session_browser_version: metadata.browserVersion || "",
     session_os: metadata.os || "",

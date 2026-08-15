@@ -1,4 +1,5 @@
 import { Filters, SessionMeta, TabType } from "../types";
+import { sessionTimestamp } from "./sessionDates";
 
 export function getFilterOptions(sessions: SessionMeta[]) {
   const compact = (values: Array<string | undefined>) => [
@@ -32,7 +33,8 @@ export function filterSessions(
     if (!filters.datePeriod) return true;
 
     const now = new Date();
-    const created = new Date(session.createdAt).getTime();
+    const created = sessionTimestamp(session.createdAt);
+    if (created === 0) return false;
     const startOf = (date: Date) => {
       date.setHours(0, 0, 0, 0);
       return date.getTime();

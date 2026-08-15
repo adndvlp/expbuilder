@@ -82,14 +82,15 @@ export const experimentTools = {
       db.data.configs = db.data.configs.filter(c => c.experimentID !== experimentID)
       db.data.sessionResults = db.data.sessionResults.filter(s => s.experimentID !== experimentID)
       db.data.participantFiles = (db.data.participantFiles ?? []).filter(f => f.experimentID !== experimentID)
+      delete db.data.sessionCounters?.[experimentID]
       await db.write()
 
       // Clean up HTML files
       if (experiment.name) {
         const expHtmlDir = path.join(userDataRoot, 'experiments_html')
         const previewHtmlDir = path.join(userDataRoot, 'trials_previews_html')
-        const expHtml = path.join(expHtmlDir, `${experiment.name}.html`)
-        const previewHtml = path.join(previewHtmlDir, `${experiment.name}.html`)
+        const expHtml = path.join(expHtmlDir, `${experimentID}.html`)
+        const previewHtml = path.join(previewHtmlDir, `${experimentID}.html`)
         if (fs.existsSync(expHtml)) fs.unlinkSync(expHtml)
         if (fs.existsSync(previewHtml)) fs.unlinkSync(previewHtml)
 

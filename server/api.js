@@ -1,12 +1,22 @@
 import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import path from "path";
 import cors from "cors";
 import dotenv from "dotenv";
 
-import { db, ensureDbData, userDataRoot } from "./utils/db.js";
+import { db, dbPath, ensureDbData, userDataRoot } from "./utils/db.js";
 import { __dirname } from "./utils/paths.js";
+import {
+  serializeDbRequest,
+  withDbLock,
+} from "./modules/session-persistence/dbQueue.js";
+import { createPresenceTracker } from "./modules/session-presence/presenceTracker.js";
+import {
+  isLocalRequest,
+  originMatchesRequest,
+  restrictRemoteAccess,
+  socketOriginAllowed,
+} from "./modules/tunnel-access/participantAccess.js";
 
 import experimentsRouter from "./routes/experiments.js";
 import pluginsRouter from "./routes/plugins.js";
@@ -18,45 +28,56 @@ import configsRouter from "./routes/configs.js";
 import dbRouter from "./routes/db.js";
 import agentRouter from "./agent/routes.js";
 
-dotenv.config({ path: path.resolve(__dirname, ".env") });
+dotenv.config({ path: `${__dirname}/.env` });
 
 const app = express();
 const httpServer = createServer(app);
+const DEV_ORIGINS = ["http://localhost:5173", "http://localhost:5174", "http://localhost:4173", "http://localhost:3000"];
+const socketOrigins = process.env.ORIGIN
+  ? [process.env.ORIGIN, ...DEV_ORIGINS]
+  : DEV_ORIGINS;
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.ORIGIN || "*",
+    origin: true,
     methods: ["GET", "POST"],
     credentials: true,
   },
+  allowRequest: (req, callback) =>
+    callback(null, socketOriginAllowed(req, socketOrigins)),
 });
 
 const port = 3000;
 
-const DEV_ORIGINS = ["http://localhost:5173", "http://localhost:5174", "http://localhost:4173", "http://localhost:3000"];
-app.use(
+app.use((req, res, next) =>
   cors({
     origin: (origin, cb) => {
       const allowed = process.env.ORIGIN
         ? [process.env.ORIGIN, ...DEV_ORIGINS]
         : DEV_ORIGINS;
-      // Electron (no origin) or explicit allowlist
-      if (!origin || allowed.includes(origin)) return cb(null, true);
-      cb(new Error(`CORS: ${origin} not allowed`));
+      if (!origin || allowed.includes(origin) || originMatchesRequest(req, origin)) {
+        return cb(null, true);
+      }
+      return cb(new Error(`CORS: ${origin} not allowed`));
     },
     credentials: true,
-  }),
+  })(req, res, next),
 );
 
 app.use(express.json({ limit: "50mb" }));
+app.use(restrictRemoteAccess);
 
-await db.read();
-ensureDbData();
-await db.write();
+await withDbLock(async () => {
+  await db.read();
+  ensureDbData();
+  await db.write();
+});
 
-// Setup static file serving
-app.use(express.static(path.join(__dirname, "dist"))); // Serve dist/ at root level
-app.use(express.static(path.join(__dirname))); // Serve root directory
-app.use("/plugins", express.static(path.join(userDataRoot, "plugins")));
+// Serve only the assets required by local experiment HTML.
+app.use("/jspsych-bundle", express.static(`${__dirname}/jspsych-bundle`));
+app.use("/dynamicplugin/dist", express.static(`${__dirname}/dynamicplugin/dist`));
+app.use("/icon", express.static(`${__dirname}/icon`));
+app.use("/plugins", express.static(`${userDataRoot}/plugins`));
+app.use(serializeDbRequest);
 
 app.use("/", experimentsRouter);
 app.use("/", pluginsRouter);
@@ -69,142 +90,31 @@ app.use("/", dbRouter);
 app.use("/", agentRouter);
 
 // Socket.IO para tracking de sesiones en tiempo real
-const activeSessions = new Map(); // experimentID -> Map(sessionId -> sessionData)
+const presence = createPresenceTracker(io);
 
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
-  socket.on(
-    "join-experiment",
-    async ({ experimentID, sessionId, state, metadata }) => {
-      console.log(`Session joined: ${experimentID}/${sessionId}`);
-
-      // Unirse a la sala del experimento
-      socket.join(experimentID);
-
-      // Almacenar información de la sesión
-      if (!activeSessions.has(experimentID)) {
-        activeSessions.set(experimentID, new Map());
-      }
-      const experimentSessions = activeSessions.get(experimentID);
-      experimentSessions.set(sessionId, {
-        sessionId,
-        state: state || "initiated",
-        socketId: socket.id,
-        connectedAt: new Date().toISOString(),
-        lastUpdate: new Date().toISOString(),
-        metadata: metadata || {},
-      });
-
-      // Notificar a todos los clientes en esta sala (incluyendo ResultsList)
-      io.to(experimentID).emit("session-update", {
-        experimentID,
-        sessions: Array.from(experimentSessions.values()),
-      });
-
-      // Guardar o actualizar estado en la base de datos
-      await db.read();
-      const existing = db.data.sessionResults.find(
-        (s) => s.experimentID === experimentID && s.sessionId === sessionId,
-      );
-      if (existing) {
-        if (state) existing.state = state;
-        if (metadata) existing.metadata = { ...existing.metadata, ...metadata };
-        existing.lastUpdate = new Date().toISOString();
-        await db.write();
-      }
-    },
+  socket.on("join-experiment", (payload, acknowledge) =>
+    presence.join(socket, payload, acknowledge),
   );
 
-  socket.on(
-    "update-session-state",
-    async ({ experimentID, sessionId, state }) => {
-      console.log(
-        `Session state updated: ${experimentID}/${sessionId} -> ${state}`,
-      );
-
-      if (activeSessions.has(experimentID)) {
-        const experimentSessions = activeSessions.get(experimentID);
-        const session = experimentSessions.get(sessionId);
-        if (session) {
-          session.state = state;
-          session.lastUpdate = new Date().toISOString();
-
-          // Notificar a todos en la sala
-          io.to(experimentID).emit("session-update", {
-            experimentID,
-            sessions: Array.from(experimentSessions.values()),
-          });
-        }
-      }
-
-      // Actualizar en base de datos
-      await db.read();
-      const existing = db.data.sessionResults.find(
-        (s) => s.experimentID === experimentID && s.sessionId === sessionId,
-      );
-      if (existing) {
-        existing.state = state;
-        existing.lastUpdate = new Date().toISOString();
-        await db.write();
-      }
-    },
+  socket.on("update-session-state", (payload, acknowledge) =>
+    presence.update(socket.id, payload, acknowledge),
   );
 
-  socket.on("disconnect", async () => {
+  socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
-
-    // Buscar y marcar sesión como abandonada si no completó
-    for (const [experimentID, experimentSessions] of activeSessions.entries()) {
-      for (const [sessionId, sessionData] of experimentSessions.entries()) {
-        if (sessionData.socketId === socket.id) {
-          // Solo marcar como abandonada si no está completada
-          if (sessionData.state !== "completed") {
-            sessionData.state = "abandoned";
-            sessionData.disconnectedAt = new Date().toISOString();
-
-            // Actualizar en base de datos
-            await db.read();
-            const existing = db.data.sessionResults.find(
-              (s) =>
-                s.experimentID === experimentID && s.sessionId === sessionId,
-            );
-            if (existing) {
-              existing.state = "abandoned";
-              existing.lastUpdate = new Date().toISOString();
-              await db.write();
-            }
-
-            // Notificar a ResultsList
-            io.to(experimentID).emit("session-update", {
-              experimentID,
-              sessions: Array.from(experimentSessions.values()),
-            });
-          }
-
-          // Remover de sesiones activas
-          experimentSessions.delete(sessionId);
-          if (experimentSessions.size === 0) {
-            activeSessions.delete(experimentID);
-          }
-          break;
-        }
-      }
-    }
+    presence.disconnect(socket.id);
   });
 
   // Evento para que ResultsList escuche actualizaciones
-  socket.on("listen-experiment", (experimentID) => {
-    socket.join(experimentID);
-
-    // Enviar estado actual de sesiones activas
-    if (activeSessions.has(experimentID)) {
-      const experimentSessions = activeSessions.get(experimentID);
-      socket.emit("session-update", {
-        experimentID,
-        sessions: Array.from(experimentSessions.values()),
-      });
+  socket.on("listen-experiment", (experimentID, acknowledge) => {
+    if (!isLocalRequest(socket.request)) {
+      acknowledge?.({ success: false, error: "Listener not available remotely" });
+      return;
     }
+    presence.listen(socket, experimentID, acknowledge);
   });
 });
 
@@ -235,20 +145,23 @@ process.on("unhandledRejection", (reason, promise) => {
 httpServer.listen(port, async () => {
   // Clear all tunnel URLs on startup — any previous tunnel process is dead
   try {
-    await db.read();
-    ensureDbData();
-    let changed = false;
-    for (const exp of db.data.experiments) {
-      if (exp.tunnelUrl) {
-        delete exp.tunnelUrl;
-        changed = true;
+    await withDbLock(async () => {
+      await db.read();
+      ensureDbData();
+      let changed = false;
+      for (const exp of db.data.experiments) {
+        if (exp.tunnelUrl) {
+          delete exp.tunnelUrl;
+          changed = true;
+        }
       }
-    }
-    if (changed) await db.write();
+      if (changed) await db.write();
+    });
   } catch (err) {
     console.error("Error clearing tunnel URLs on startup:", err);
   }
   console.log(`Server running on port ${port}`);
+  console.info(`[session-persistence] db.json path: ${dbPath}`);
   console.log(`Experiment URL: http://localhost:${port}/experiment`);
   console.log(`API URL: http://localhost:${port}/api`);
   console.log(`WebSocket enabled for real-time session tracking`);

@@ -1,3 +1,5 @@
+import { MONACO_LOCAL_PERSISTENCE_CONTEXT } from "./monacoLocalPersistenceContext";
+
 // Full ambient context for all Monaco editors in the builder.
 // Covers: local config, public config, jsPsych bundle globals, Firebase, URL params.
 // Goal: prevent user code from redeclaring builder-owned consts/lets that exist in the HTML.
@@ -135,11 +137,6 @@ declare const trial: {
   [key: string]: any;
 };
 
-// ─── Local config scope ───────────────────────────────────────────────────────
-declare const pendingDataSaves: Promise<any>[];
-declare let trialSessionId: string;
-declare let socket: { emit(event: string, data?: any): void } | null;
-
 // ─── Public config scope ──────────────────────────────────────────────────────
 declare const sessionRef: {
   update(data: any): Promise<void>;
@@ -186,48 +183,9 @@ interface Window {
   skipRemaining?: boolean;
   branchingActive?: boolean;
   branchCustomParameters?: Record<string, any> | null;
-  JSPSYCH_SESSION_ID?: string;
-  JSPSYCH_FILE_UPLOAD_ENDPOINT?: string;
-  JSPSYCH_EXPERIMENT_ID?: string;
   _socketReady?: boolean;
   [key: string]: any;
 }
-
-// ─── Builder UI helpers ───────────────────────────────────────────────────────
-declare function _showLoading(message?: string): void;
-declare function _hideLoading(): void;
-declare function _setLoadingMsg(message: string): void;
-declare function _showSuccess(): void;
-
-// ─── Local HTML outer-scope (before async IIFE, accessible at injection point) ─
-declare let isResuming: boolean;
-declare let participantNumber: number;
-declare const metadata: {
-  browser: string;
-  browserVersion: string;
-  os: string;
-  screenWidth: number;
-  screenHeight: number;
-  screenResolution: string;
-  viewportWidth: number;
-  viewportHeight: number;
-  language: string;
-  userAgent: string;
-  startedAt: string;
-};
-declare function waitForSocket(): Promise<void>;
-declare function saveSession(sessionId: string): Promise<number>;
-declare function _generateSessionName(participantNumber: number | null): string | null;
-declare function _sessionNameHasDynamic(): boolean;
-declare function _renameSessionIfNeeded(oldId: string, newId: string): Promise<string>;
-declare function _resolveResumeBranch(resumeRaw: string | null): string | null;
-
-// ─── Local HTML async IIFE scope (declared before injection point) ────────────
-declare const resumeRaw: string | null;
-declare const existingJump: string | null;
-declare const comingFromJumpReload: boolean;
-declare function evaluateCondition(trialData: any, condition: any): boolean;
-declare function getNextTrialId(lastTrialData: any): string | null;
 
 // ─── Socket.IO client global ──────────────────────────────────────────────────
 declare function io(url?: string, opts?: Record<string, any>): {
@@ -328,7 +286,7 @@ export function setupMonacoJsPsychContext(monacoInst: unknown): void {
   });
 
   javascriptDefaults.addExtraLib(
-    JSPSYCH_BUILDER_CONTEXT,
+    JSPSYCH_BUILDER_CONTEXT + MONACO_LOCAL_PERSISTENCE_CONTEXT,
     "ts:jspsych-builder-context.d.ts",
   );
 

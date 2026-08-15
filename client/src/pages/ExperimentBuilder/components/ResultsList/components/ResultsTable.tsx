@@ -58,6 +58,7 @@ export default function ResultsTable(props: Props) {
             <th>Date</th>
             {showsMetadata && (
               <>
+                {activeTab === "local" && <th>Presence</th>}
                 <th>State</th>
                 <th>Browser</th>
                 <th>OS</th>
@@ -86,7 +87,7 @@ export default function ResultsTable(props: Props) {
           )}
           {filteredSessions.map((session) => (
             <SessionRow
-              key={session._id}
+              key={session._id || session.sessionId}
               {...props}
               session={session}
               files={sessionFiles[session.sessionId]}

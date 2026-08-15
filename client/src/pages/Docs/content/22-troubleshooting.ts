@@ -26,13 +26,13 @@ export const TroubleshootingSection: DocSection = {
 
 1. Resume only works if the participant closes the browser **after** completing at least one trial with \`builder_id\`.
 2. If the trial was deleted or renamed after the participant started, resume will fail (clean reset).
-3. Clearing the browser's localStorage/cookies erases the resume state.
+3. Clearing localStorage or IndexedDB erases part of the recoverable state; do not clear site data while a local session is pending.
 4. In incognito, resume does not persist between browser sessions.
 
 ## localStorage Limits
 
 - localStorage has a limit of ~5-10 MB per domain.
-- \`jsPsych_resumeTrial\` stores the complete \`data\` of the last trial. Heavy data (audio/video base64) may exceed the limit.
+- \`expbuilder:local:<experimentID>:resume-trial\` stores the last branching state. Trial results themselves are retained in the IndexedDB outbox until completion.
 - **Solution**: Avoid storing large blobs. FileUploadResponseComponent and AudioResponseComponent upload files to the server and only store the URL.
 
 ## CORS Errors in Published Mode

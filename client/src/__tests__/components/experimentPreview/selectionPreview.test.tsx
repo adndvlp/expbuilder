@@ -36,6 +36,21 @@ describe("ExperimentPreview selected item previews", () => {
     expect(body.generatedCode).toContain(
       "window.JSPSYCH_FILE_UPLOAD_ENDPOINT = '/api/participant-files/test-exp-123';",
     );
+    expect(body.generatedCode).toContain(
+      "const localOutbox = _createLocalOutbox",
+    );
+    expect(body.generatedCode).toContain("sessionStorage.setItem(_previewSessionKey");
+    expect(body.generatedCode).toContain("localStorage.setItem(_previewSessionKey");
+    expect(body.generatedCode).toContain("storedSessionId || _newPreviewSessionId()");
+    expect(body.generatedCode).toContain("'/api/session-results/' + \"test-exp-123\"");
+    expect(body.generatedCode).toContain("localOutbox.enqueue(data)");
+    expect(body.generatedCode).toContain("void localOutbox.flush().catch");
+    expect(body.generatedCode).toContain("expectedEventCount: stats.total");
+    expect(body.generatedCode).toContain(
+      "body.storedEventCount !== stats.total",
+    );
+    expect(body.generatedCode).toContain("const finishCompleted = await completePreviewSession()")
+    expect(body.generatedCode).toContain("setTimeout(attemptPreviewCompletion, retryAfter)")
     expect(body.generatedCode).toContain("const singleTrial = {};");
     expect(body.generatedCode).toContain("jsPsych.run(timeline);");
   });

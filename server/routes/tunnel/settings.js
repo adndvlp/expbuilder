@@ -1,18 +1,22 @@
 import { Router } from "express";
+import { withDbLock } from "../../modules/session-persistence/dbQueue.js";
 import { db, ensureDbData } from "../../utils/db.js";
 
 const router = Router();
 
 export async function getTunnelSettings(experimentID) {
-  await db.read();
-  ensureDbData();
-  const exp = db.data.experiments.find((e) => e.experimentID === experimentID);
-  if (!exp) return null;
-  exp.tunnelSettings ||= {
-    hostname: "",
-    persistent: false,
-  };
-  return exp.tunnelSettings;
+  return withDbLock(async () => {
+    await db.read();
+    ensureDbData();
+    const exp = db.data.experiments.find(
+      (candidate) => candidate.experimentID === experimentID,
+    );
+    if (!exp) return null;
+    return {
+      hostname: exp.tunnelSettings?.hostname || "",
+      persistent: exp.tunnelSettings?.persistent === true,
+    };
+  });
 }
 
 router.get("/api/tunnel-settings/:experimentID", async (req, res) => {

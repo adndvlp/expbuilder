@@ -79,7 +79,7 @@ Format: \`[ComponentType]_[Index]_[Property]\`
 | \`trialSessionId\` | IIFE | Current session ID |
 | \`participantNumber\` | IIFE | Participant number |
 | \`metadata\` | IIFE | System metadata |
-| \`pendingDataSaves\` | IIFE | In-flight fetch promises (local) |
+| \`localOutbox\` | IIFE | IndexedDB-first queue with idempotent retries (local) |
 | \`socket\` | IIFE | Socket.IO client (local) |
 | \`TrialDB\` | Global | IndexedDB wrapper (published) |
 | \`BATCH_CONFIG\` | IIFE | Batching config (published) |
@@ -88,10 +88,14 @@ Format: \`[ComponentType]_[Index]_[Property]\`
 
 | Key | When written | When cleared |
 |---|---|---|
-| \`jsPsych_currentSessionId\` | At session start | \`on_finish\` (success) |
-| \`jsPsych_participantNumber\` | When number received | \`on_finish\` (success) |
-| \`jsPsych_resumeTrial\` | Each \`on_data_update\` | \`on_finish\` (success) |
-| \`jsPsych_jumpToTrial\` | Repeat/jump triggered | When consumed in \`conditional_function\` |
-| \`jsPsych_jumpReload\` | \`sessionStorage\` | At experiment start (anti-loop guard) |
+| \`expbuilder:local:<id>:session-id\` | At validated session start | Confirmed completion only |
+| \`expbuilder:local:<id>:participant-number\` | After strict creation ACK | Confirmed completion only |
+| \`expbuilder:local:<id>:resume-trial\` | Each \`on_data_update\` | Confirmed completion only |
+| \`expbuilder:local:<id>:jump-to-trial\` | Repeat/jump triggered | When consumed |
+| \`expbuilder:local:<id>:jump-reload\` | \`sessionStorage\` | At experiment start |
+
+## Local IndexedDB Outbox
+
+Database \`expbuilder-local-session-outbox-v1\`, store \`trial-events\`. Each record contains \`experimentID\`, \`sessionId\`, stable \`eventId\`, integer \`sequence\`, trial \`payload\`, status, retry count, and timestamps. Acknowledged records remain until completion is confirmed.
 `,
 };

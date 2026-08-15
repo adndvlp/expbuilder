@@ -97,7 +97,8 @@ function BranchesCode({
       
       if (allRulesMatch && condition.jumpToTrialId) {
         console.log('Loop repeat condition matched! Jumping to trial:', condition.jumpToTrialId);
-        localStorage.setItem('jsPsych_jumpToTrial', String(condition.jumpToTrialId));
+        const jumpKey = window.JSPSYCH_LOCAL_KEYS?.jumpTrial || 'jsPsych_jumpToTrial';
+        localStorage.setItem(jumpKey, String(condition.jumpToTrialId));
         shouldRepeat = true;
         break;
       }

@@ -2,7 +2,8 @@ import fs from "fs";
 import path from "path";
 import * as cheerio from "cheerio";
 import { Router } from "express";
-import { db } from "../../utils/db.js";
+import { withDbLock } from "../../modules/session-persistence/dbQueue.js";
+import { db, ensureDbData } from "../../utils/db.js";
 import { ensureTemplate } from "../../utils/templates.js";
 import { experimentsHtmlDir, trialsPreviewsHtmlDir } from "./paths.js";
 
@@ -12,6 +13,13 @@ function appendGeneratedScript($, generatedCode) {
   $("script#generated-script").remove();
   $("body").append(
     `<script id="generated-script">\n${generatedCode}\n</script>`,
+  );
+}
+
+function setExperimentBase($, experimentID) {
+  $("base#experiment-base").remove();
+  $("head").prepend(
+    `<base id="experiment-base" href="/${encodeURIComponent(experimentID)}/">`,
   );
 }
 
@@ -66,7 +74,6 @@ router.post("/api/run-experiment/:experimentID", async (req, res) => {
         .status(404)
         .json({ success: false, error: "Experiment not found" });
     }
-    const experimentName = experiment.name;
     const trialDoc = db.data.trials.find(
       (t) => t.experimentID === experimentID,
     );
@@ -79,7 +86,7 @@ router.post("/api/run-experiment/:experimentID", async (req, res) => {
     const templatePath = ensureTemplate("experiment_template.html");
     const experimentHtmlPath = path.join(
       experimentsHtmlDir,
-      `${experimentName}.html`,
+      `${experimentID}.html`,
     );
     fs.copyFileSync(templatePath, experimentHtmlPath);
     let html = fs.readFileSync(experimentHtmlPath, "utf8");
@@ -92,12 +99,13 @@ router.post("/api/run-experiment/:experimentID", async (req, res) => {
     }
 
     appendBackgroundStyle($, canvasStyles);
+    setExperimentBase($, experimentID);
     appendGeneratedScript($, generatedCode);
     fs.writeFileSync(experimentHtmlPath, $.html());
     res.json({
       success: true,
       message: "Experiment built and ready to run",
-      experimentUrl: `http://localhost:3000/${experimentName}`,
+      experimentUrl: `http://localhost:3000/${experimentID}`,
     });
   } catch (error) {
     console.error(`Error running experiment: ${error.message}`);
@@ -107,15 +115,18 @@ router.post("/api/run-experiment/:experimentID", async (req, res) => {
 
 router.get("/:experimentID", async (req, res) => {
   const experimentID = req.params.experimentID;
-  await db.read();
-  const experiment = db.data.experiments.find(
-    (e) => e.experimentID === experimentID,
-  );
-  if (!experiment || !experiment.name) {
+  const exists = await withDbLock(async () => {
+    await db.read();
+    ensureDbData();
+    return db.data.experiments.some(
+      (experiment) =>
+        experiment.experimentID === experimentID && experiment.name,
+    );
+  });
+  if (!exists) {
     return res.status(404).send("Experiment not found");
   }
-  const experimentName = experiment.name;
-  const htmlPath = path.join(experimentsHtmlDir, `${experimentName}.html`);
+  const htmlPath = path.join(experimentsHtmlDir, `${experimentID}.html`);
   if (!fs.existsSync(htmlPath)) {
     return res.status(404).send("Experiment HTML not found");
   }
@@ -124,15 +135,18 @@ router.get("/:experimentID", async (req, res) => {
 
 router.get("/:experimentID/preview", async (req, res) => {
   const experimentID = req.params.experimentID;
-  await db.read();
-  const experiment = db.data.experiments.find(
-    (e) => e.experimentID === experimentID,
-  );
-  if (!experiment || !experiment.name) {
+  const exists = await withDbLock(async () => {
+    await db.read();
+    ensureDbData();
+    return db.data.experiments.some(
+      (experiment) =>
+        experiment.experimentID === experimentID && experiment.name,
+    );
+  });
+  if (!exists) {
     return res.status(404).send("Experiment not found");
   }
-  const experimentName = experiment.name;
-  const htmlPath = path.join(trialsPreviewsHtmlDir, `${experimentName}.html`);
+  const htmlPath = path.join(trialsPreviewsHtmlDir, `${experimentID}.html`);
   if (!fs.existsSync(htmlPath)) {
     return res.status(404).send("Preview HTML not found");
   }
@@ -154,7 +168,6 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
         .status(404)
         .json({ success: false, error: "Experiment not found" });
     }
-    const experimentName = experiment.name;
     const trialDoc = db.data.trials.find(
       (t) => t.experimentID === experimentID,
     );
@@ -167,7 +180,7 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
     const templatePath = ensureTemplate("trials_preview_template.html");
     const previewHtmlPath = path.join(
       trialsPreviewsHtmlDir,
-      `${experimentName}.html`,
+      `${experimentID}.html`,
     );
     fs.copyFileSync(templatePath, previewHtmlPath);
     let html = fs.readFileSync(previewHtmlPath, "utf8");
@@ -180,6 +193,7 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
     }
 
     appendBackgroundStyle($, canvasStyles);
+    setExperimentBase($, experimentID);
     appendGeneratedScript($, generatedCode);
     fs.writeFileSync(previewHtmlPath, $.html());
     res.json({

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SessionsActions from "../../../pages/ExperimentBuilder/components/ResultsList/SessionsActions";
 import type {
   SessionMeta,
+  SessionPresence,
   TabType,
 } from "../../../pages/ExperimentBuilder/components/ResultsList";
 
@@ -18,6 +19,15 @@ vi.mock("firebase/firestore", () => ({
 }));
 
 const API_URL = "http://localhost:3000";
+
+type ElectronTestWindow = Window & {
+  electron?: {
+    saveZipFile: ReturnType<typeof vi.fn>;
+    openExternal: ReturnType<typeof vi.fn>;
+  };
+};
+
+const electronWindow = window as ElectronTestWindow;
 
 function okJson(payload: unknown, ok = true): Response {
   return {
@@ -89,7 +99,7 @@ describe("SessionsActions", () => {
     }) as unknown as typeof fetch;
     vi.spyOn(window, "alert").mockImplementation(() => {});
     vi.spyOn(window, "confirm").mockReturnValue(true);
-    (window as any).electron = {
+    electronWindow.electron = {
       saveZipFile: vi.fn(async () => ({ success: true })),
       openExternal: vi.fn(),
     };
@@ -99,7 +109,7 @@ describe("SessionsActions", () => {
     vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
-    delete (window as any).electron;
+    delete electronWindow.electron;
   });
 
   it("loads preview sessions and sorts newest results first", async () => {
@@ -120,19 +130,19 @@ describe("SessionsActions", () => {
     expect(props.setSelectMode).toHaveBeenCalledWith(false);
   });
 
-  it("merges active local websocket sessions over local DB sessions", async () => {
-    const activeLocal: SessionMeta[] = [
+  it("attaches presence without replacing durable session data", async () => {
+    const activeLocal: SessionPresence[] = [
       {
-        _id: "active-local-1",
         sessionId: "local-1",
-        createdAt: "2026-05-24T09:00:00.000Z",
+        connectedAt: "2026-05-24T09:00:00.000Z",
+        lastUpdate: "2026-05-24T09:01:00.000Z",
         state: "in-progress",
         metadata: { os: "macOS" },
       },
       {
-        _id: "active-local-2",
         sessionId: "local-2",
-        createdAt: "2026-05-24T11:00:00.000Z",
+        connectedAt: "2026-05-24T11:00:00.000Z",
+        lastUpdate: "2026-05-24T11:01:00.000Z",
         state: "initiated",
       },
     ];
@@ -145,11 +155,9 @@ describe("SessionsActions", () => {
 
     await waitFor(() => {
       expect(props.setSessions).toHaveBeenCalledWith([
-        activeLocal[1],
         {
           ...sessionsFixture[2],
-          state: "in-progress",
-          metadata: { browser: "Chrome", os: "macOS" },
+          presence: activeLocal[0],
         },
       ]);
     });
@@ -169,7 +177,7 @@ describe("SessionsActions", () => {
           }),
         },
       ],
-    } as any);
+    } as unknown as Awaited<ReturnType<typeof getDocs>>);
     const props = createProps({ activeTab: "online" });
 
     renderHook(() => SessionsActions(props));
@@ -203,7 +211,7 @@ describe("SessionsActions", () => {
           data: () => ({}),
         },
       ],
-    } as any);
+    } as unknown as Awaited<ReturnType<typeof getDocs>>);
     const props = createProps({ activeTab: "online" });
 
     renderHook(() => SessionsActions(props));
@@ -250,7 +258,7 @@ describe("SessionsActions", () => {
     fetchMock().mockRejectedValueOnce(new Error("local fetch failed"));
     const props = createProps();
 
-    renderHook(() => SessionsActions(props));
+    const failed = renderHook(() => SessionsActions(props));
 
     await waitFor(() => {
       expect(console.error).toHaveBeenCalledWith(
@@ -258,14 +266,19 @@ describe("SessionsActions", () => {
         expect.any(Error),
       );
       expect(props.setLoading).toHaveBeenCalledWith(false);
+      expect(failed.result.current.localLoadError).toContain(
+        "Could not load saved sessions",
+      );
     });
 
     fetchMock().mockResolvedValueOnce(okJson({}));
     const emptyProps = createProps({ activeTab: "preview" });
-    renderHook(() => SessionsActions(emptyProps));
+    const empty = renderHook(() => SessionsActions(emptyProps));
 
     await waitFor(() => {
-      expect(emptyProps.setSessions).toHaveBeenCalledWith([]);
+      expect(empty.result.current.localLoadError).toContain(
+        "Could not load saved sessions",
+      );
     });
   });
 });

@@ -104,6 +104,8 @@ describe('POST /api/app/reset', () => {
     db.data.trials.push({ experimentID: 'E1', trials: [], loops: [], timeline: [] })
     db.data.configs.push({ experimentID: 'E1', data: {}, isDevMode: false })
     db.data.sessionResults.push({ experimentID: 'E1', sessionId: 's1', createdAt: new Date().toISOString(), data: [], state: 'completed', lastUpdate: new Date().toISOString(), metadata: {} })
+    db.data.participantFiles.push({ id: 'pf1', experimentID: 'E1' })
+    db.data.sessionCounters.E1 = 3
     await db.write()
     const res = await request(app).post('/api/app/reset').send({}).expect(200)
     expect(res.body.success).toBe(true)
@@ -112,6 +114,8 @@ describe('POST /api/app/reset', () => {
     expect(db.data.trials).toHaveLength(0)
     expect(db.data.configs).toHaveLength(0)
     expect(db.data.sessionResults).toHaveLength(0)
+    expect(db.data.participantFiles).toHaveLength(0)
+    expect(db.data.sessionCounters).toEqual({})
   })
 })
 

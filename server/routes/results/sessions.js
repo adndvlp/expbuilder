@@ -1,201 +1,299 @@
 import { Router } from "express";
-import { db } from "../../utils/db.js";
+import { withDbLock } from "../../modules/session-persistence/dbQueue.js";
+import { logSessionEvent } from "../../modules/session-persistence/sessionLog.js";
+import {
+  appendEvent,
+  createSession,
+  findSession,
+  missingSequences,
+  participantNumberFor,
+  previewParticipantNumber,
+  sessionProgress,
+} from "../../modules/session-persistence/sessionStore.js";
+import { db, ensureDbData } from "../../utils/db.js";
 
 const router = Router();
 
-function getParticipantNumber(experimentID, sessionId) {
-  const sessions = db.data.sessionResults
-    .filter((s) => s.experimentID === experimentID)
-    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-  return sessions.findIndex((s) => s.sessionId === sessionId) + 1;
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
 }
 
-/* istanbul ignore next -- session creation error branches are covered by route smoke tests. */
-router.post("/api/append-result/:experimentID", async (req, res) => {
+function isObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function resultSizeLimit() {
+  const configured = Number(process.env.SESSION_RESULT_MAX_BYTES);
+  return Number.isInteger(configured) && configured > 0
+    ? configured
+    : 5 * 1024 * 1024;
+}
+
+async function locked(handler, res, diagnostics = {}) {
   try {
-    let { sessionId } = req.body;
-    if (!sessionId) {
-      return res
-        .status(400)
-        .json({ success: false, error: "sessionId required" });
-    }
+    return await withDbLock(async () => {
+      await db.read();
+      ensureDbData();
+      return handler();
+    });
+  } catch (error) {
+    logSessionEvent("error", "database-operation-failed", {
+      ...diagnostics,
+      error,
+    });
+    return res.status(500).json({ success: false, error: error.message });
+  }
+}
 
-    await db.read();
-    let existing = db.data.sessionResults.find(
-      (s) =>
-        s.experimentID === req.params.experimentID && s.sessionId === sessionId,
+router.post("/api/append-result/:experimentID", async (req, res) => {
+  const { displayName, metadata, sessionId } = req.body || {};
+  if (!isNonEmptyString(sessionId)) {
+    return res.status(400).json({ success: false, error: "sessionId required" });
+  }
+  if (metadata !== undefined && !isObject(metadata)) {
+    return res.status(400).json({ success: false, error: "metadata must be an object" });
+  }
+  if (displayName !== undefined && !isNonEmptyString(displayName)) {
+    return res.status(400).json({ success: false, error: "displayName must be a string" });
+  }
+
+  return locked(async () => {
+    const experimentExists = db.data.experiments.some(
+      (experiment) => experiment.experimentID === req.params.experimentID,
     );
-    if (existing) {
-      return res
-        .status(409)
-        .json({ success: false, error: "Session already exists" });
+    if (!experimentExists) {
+      logSessionEvent("warn", "session-create-rejected", {
+        experimentID: req.params.experimentID,
+        sessionId,
+        result: "experiment-not-found",
+      });
+      return res.status(404).json({ success: false, error: "Experiment not found" });
     }
-
-    const { metadata } = req.body;
-    db.data.sessionResults.push({
+    const result = createSession(
+      req.params.experimentID,
+      sessionId,
+      metadata,
+      displayName,
+    );
+    if (result.created) await db.write();
+    const participantNumber = participantNumberFor(
+      req.params.experimentID,
+      result.session,
+    );
+    logSessionEvent("info", "session-created", {
       experimentID: req.params.experimentID,
       sessionId,
-      createdAt: new Date().toISOString(),
-      data: [],
-      state: "initiated",
-      lastUpdate: new Date().toISOString(),
-      metadata: metadata || {},
+      participantNumber,
+      result: result.created ? "created" : "existing",
     });
-    await db.write();
-
-    res.json({
+    return res.json({
       success: true,
-      id: sessionId,
-      participantNumber: getParticipantNumber(req.params.experimentID, sessionId),
+      id: result.session.sessionId,
+      participantNumber,
+      created: result.created,
     });
-  /* istanbul ignore next -- lowdb write failures are defensive and hard to trigger without corrupting shared state. */
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+  }, res, { experimentID: req.params.experimentID, sessionId });
 });
 
-/* istanbul ignore next -- append-result malformed/error branches are covered by route smoke tests. */
 router.put("/api/append-result/:experimentID", async (req, res) => {
+  let { response } = req.body || {};
+  const { eventId, sequence, sessionId } = req.body || {};
+  if (
+    !isNonEmptyString(sessionId) ||
+    !isNonEmptyString(eventId) ||
+    !Number.isSafeInteger(sequence) ||
+    sequence < 0 ||
+    response === undefined ||
+    response === null
+  ) {
+    return res.status(400).json({
+      success: false,
+      error: "sessionId, eventId, non-negative sequence and response required",
+    });
+  }
+
   try {
-    let { sessionId, response } = req.body;
-    if (!sessionId || !response) {
-      return res
-        .status(400)
-        .json({ success: false, error: "sessionId and response required" });
-    }
-
     if (typeof response === "string") response = JSON.parse(response);
+  } catch {
+    return res.status(400).json({ success: false, error: "response must be valid JSON" });
+  }
+  if (!isObject(response)) {
+    return res.status(400).json({ success: false, error: "response must be an object" });
+  }
+  if (Buffer.byteLength(JSON.stringify(response), "utf8") > resultSizeLimit()) {
+    return res.status(413).json({ success: false, error: "response is too large" });
+  }
 
-    await db.read();
-    let existing = db.data.sessionResults.find(
-      (s) =>
-        s.experimentID === req.params.experimentID && s.sessionId === sessionId,
-    );
-    if (!existing) {
-      return res
-        .status(404)
-        .json({ success: false, error: "Session not found" });
+  return locked(async () => {
+    const session = findSession(req.params.experimentID, sessionId);
+    if (!session) {
+      logSessionEvent("warn", "trial-rejected", {
+        experimentID: req.params.experimentID,
+        sessionId,
+        eventId,
+        sequence,
+        result: "session-not-found",
+      });
+      return res.status(404).json({ success: false, error: "Session not found" });
     }
-
-    existing.data.push(response);
-    existing.state = "in-progress";
-    existing.lastUpdate = new Date().toISOString();
-    await db.write();
-
-    res.json({
+    const result = appendEvent(session, { eventId, sequence, response });
+    if (result.conflict) {
+      logSessionEvent("warn", "trial-conflict", {
+        experimentID: req.params.experimentID,
+        sessionId,
+        eventId,
+        sequence,
+        result: result.conflict,
+      });
+      return res.status(409).json({ success: false, error: result.conflict });
+    }
+    if (!result.duplicate) await db.write();
+    logSessionEvent("info", "trial-stored", {
+      experimentID: req.params.experimentID,
+      sessionId,
+      eventId,
+      sequence,
+      storedCount: session.events.length,
+      result: result.duplicate ? "duplicate" : "stored",
+    });
+    return res.json({
       success: true,
       id: sessionId,
-      participantNumber: getParticipantNumber(req.params.experimentID, sessionId),
+      eventId,
+      sequence,
+      duplicate: result.duplicate,
+      storedCount: session.events.length,
+      participantNumber: participantNumberFor(req.params.experimentID, session),
     });
-  /* istanbul ignore next -- malformed JSON / lowdb failures are defensive error handling. */
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+  }, res, {
+    experimentID: req.params.experimentID,
+    sessionId,
+    eventId,
+    sequence,
+  });
 });
-
-/* istanbul ignore next -- session listing error branch is defensive lowdb handling. */
-router.get("/api/session-results/:experimentID", async (req, res) => {
-  try {
-    await db.read();
+router.get("/api/session-results/:experimentID", async (req, res) =>
+  locked(() => {
+    const requestedSession = req.query.sessionId;
     const sessions = db.data.sessionResults
-      .filter((s) => s.experimentID === req.params.experimentID)
-      .map(({ data, ...session }) => session)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    res.json({ sessions });
-  /* istanbul ignore next -- lowdb read failure path. */
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.post("/api/complete-session/:experimentID", async (req, res) => {
-  try {
-    const { sessionId } = req.body;
-    if (!sessionId) {
-      return res
-        .status(400)
-        .json({ success: false, error: "sessionId required" });
-    }
-
-    await db.read();
-    const existing = db.data.sessionResults.find(
-      (s) =>
-        s.experimentID === req.params.experimentID && s.sessionId === sessionId,
-    );
-
-    if (!existing) {
-      return res
-        .status(404)
-        .json({ success: false, error: "Session not found" });
-    }
-
-    existing.state = "completed";
-    existing.lastUpdate = new Date().toISOString();
-    await db.write();
-
-    res.json({ success: true });
-  /* istanbul ignore next -- lowdb write failure path. */
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-/* istanbul ignore next -- online-session metadata permutations are covered by route tests. */
-router.post(
-  "/api/save-online-session-metadata/:experimentID",
-  async (req, res) => {
-    try {
-      const { sessionId, metadata, state } = req.body;
-      if (!sessionId) {
-        return res
-          .status(400)
-          .json({ success: false, error: "sessionId required" });
-      }
-
-      await db.read();
-      const existing = db.data.sessionResults.find(
-        (s) =>
-          s.experimentID === req.params.experimentID &&
-          s.sessionId === sessionId,
-      );
-
-      if (existing) {
-        if (metadata) existing.metadata = { ...existing.metadata, ...metadata };
-        if (state) existing.state = state;
-        existing.lastUpdate = new Date().toISOString();
-      } else {
-        db.data.sessionResults.push({
-          experimentID: req.params.experimentID,
-          sessionId,
-          createdAt: new Date().toISOString(),
-          data: [],
-          state: state || "initiated",
-          lastUpdate: new Date().toISOString(),
-          metadata: metadata || {},
-          isOnline: true,
-        });
-      }
-
-      await db.write();
-      res.json({ success: true });
-    /* istanbul ignore next -- lowdb write failure path. */
-    } catch (err) {
-      res.status(500).json({ success: false, error: err.message });
-    }
-  },
+      .filter(
+        (session) =>
+          session.experimentID === req.params.experimentID &&
+          (!requestedSession || session.sessionId === requestedSession),
+      )
+      .map(({ data, events, ...session }) => ({
+        ...session,
+        ...sessionProgress(data, events),
+      }))
+      .sort((left, right) => {
+        const leftTime = Date.parse(left.createdAt);
+        const rightTime = Date.parse(right.createdAt);
+        return (Number.isFinite(rightTime) ? rightTime : 0) -
+          (Number.isFinite(leftTime) ? leftTime : 0);
+      });
+    return res.json({ sessions });
+  }, res),
 );
 
-router.get("/api/participant-number/:experimentID", async (req, res) => {
-  try {
-    await db.read();
-    const count = db.data.sessionResults.filter(
-      (s) => s.experimentID === req.params.experimentID,
-    ).length;
-    res.json({ participantNumber: count + 1 });
-  /* istanbul ignore next -- lowdb read failure path. */
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+router.post("/api/complete-session/:experimentID", async (req, res) => {
+  const { expectedEventCount, lastSequence, sessionId } = req.body || {};
+  if (
+    !isNonEmptyString(sessionId) ||
+    !Number.isSafeInteger(expectedEventCount) ||
+    expectedEventCount < 0 ||
+    !Number.isSafeInteger(lastSequence) ||
+    lastSequence !== expectedEventCount - 1
+  ) {
+    return res.status(400).json({
+      success: false,
+      error: "sessionId, expectedEventCount and matching lastSequence required",
+    });
   }
+
+  return locked(async () => {
+    const session = findSession(req.params.experimentID, sessionId);
+    if (!session) {
+      return res.status(404).json({ success: false, error: "Session not found" });
+    }
+    const missing = missingSequences(session, expectedEventCount, lastSequence);
+    if (missing.length > 0 || (session.events || []).length !== expectedEventCount) {
+      logSessionEvent("warn", "completion-rejected", {
+        experimentID: req.params.experimentID,
+        sessionId,
+        expectedEventCount,
+        lastSequence,
+        storedCount: (session.events || []).length,
+        result: "missing-results",
+      });
+      return res.status(409).json({
+        success: false,
+        error: "Session has missing results",
+        missingSequences: missing,
+        storedEventCount: (session.events || []).length,
+      });
+    }
+    session.state = "completed";
+    session.completedAt = new Date().toISOString();
+    session.lastUpdate = session.completedAt;
+    await db.write();
+    logSessionEvent("info", "session-completed", {
+      experimentID: req.params.experimentID,
+      sessionId,
+      expectedEventCount,
+      lastSequence,
+      storedCount: (session.events || []).length,
+      result: "completed",
+    });
+    return res.json({
+      success: true,
+      storedEventCount: (session.events || []).length,
+      lastSequence,
+    });
+  }, res, {
+    experimentID: req.params.experimentID,
+    sessionId,
+    expectedEventCount,
+    lastSequence,
+  });
 });
+
+router.post("/api/save-online-session-metadata/:experimentID", async (req, res) => {
+  const { metadata, sessionId, state } = req.body || {};
+  if (!isNonEmptyString(sessionId)) {
+    return res.status(400).json({ success: false, error: "sessionId required" });
+  }
+  return locked(async () => {
+    const existing = findSession(req.params.experimentID, sessionId);
+    if (existing) {
+      if (metadata) existing.metadata = { ...existing.metadata, ...metadata };
+      if (state) existing.state = state;
+      existing.lastUpdate = new Date().toISOString();
+    } else {
+      const now = new Date().toISOString();
+      db.data.sessionResults.push({
+        experimentID: req.params.experimentID,
+        sessionId,
+        createdAt: now,
+        data: [],
+        state: state || "initiated",
+        lastUpdate: now,
+        metadata: metadata || {},
+        isOnline: true,
+      });
+    }
+    await db.write();
+    return res.json({ success: true });
+  }, res);
+});
+
+router.get("/api/participant-number/:experimentID", async (req, res) =>
+  locked(
+    () =>
+      res.json({
+        participantNumber: previewParticipantNumber(req.params.experimentID),
+      }),
+    res,
+  ),
+);
 
 export default router;

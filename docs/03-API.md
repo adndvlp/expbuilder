@@ -19,8 +19,8 @@ All routes are prefixed with the Express server URL. `experimentID` refers to th
 | PUT | `/api/appearance-settings/:experimentID` | Save appearance settings. Body: `{ backgroundColor, fullScreen, progressBar }` |
 
 ### Static File Serving
-- Files under `{experimentName}/img|aud|vid|others/` are served at matching URL paths
-- Pattern: `/:anything/img/filename` etc.
+- Files under an experiment's `img|aud|vid|others/` directories are resolved by exact `experimentID`
+- Pattern: `/:experimentID/img/filename` etc.; one experiment cannot fall through to another experiment's files
 
 ---
 
@@ -118,15 +118,15 @@ Delete Loop1:
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/append-result/:experimentID` | Create new session. Body: `{ sessionId, metadata? }` |
-| PUT | `/api/append-result/:experimentID` | Append trial result to session. Body: `{ sessionId, response }` |
-| GET | `/api/session-results/:experimentID` | List session metadata (no data) |
+| POST | `/api/append-result/:experimentID` | Idempotently create a UUID session. Body: `{ sessionId, metadata?, displayName? }`; returns a strict ACK and positive `participantNumber` |
+| PUT | `/api/append-result/:experimentID` | Idempotently store one trial. Body: `{ sessionId, eventId, sequence, response }`; returns matching identifiers and `storedCount` |
+| GET | `/api/session-results/:experimentID` | List persisted session metadata (no trial payload); optional exact `?sessionId=` query |
 | GET | `/api/participant-number/:experimentID` | Get next participant number |
 | GET | `/api/download-session/:sessionId/:experimentID` | Download session as CSV |
 | POST | `/api/download-sessions-zip` | Download multiple sessions as ZIP. Body: `{ sessionIds[], experimentID }` |
-| POST | `/api/complete-session/:experimentID` | Mark session as completed. Body: `{ sessionId }` |
+| POST | `/api/complete-session/:experimentID` | Complete only an exact sequence set. Body: `{ sessionId, expectedEventCount, lastSequence }` |
 | POST | `/api/save-online-session-metadata/:experimentID` | Save online session metadata. Body: `{ sessionId, metadata?, state? }` |
-| PATCH | `/api/rename-session/:experimentID` | Rename session. Body: `{ oldSessionId, newSessionId }` |
+| PATCH | `/api/rename-session/:experimentID` | Change only the visible label. Body: `{ sessionId, displayName }`; UUID identity is unchanged |
 | DELETE | `/api/session-results/:sessionId/:experimentID` | Delete session + participant files |
 
 ---
@@ -138,7 +138,7 @@ Delete Loop1:
 | POST | `/api/upload-files/:experimentID` | Upload multimedia (multipart). Auto-classifies into img/aud/vid/others |
 | GET | `/api/list-files/:type/:experimentID` | List files by type (`all`, `img`, `aud`, `vid`, `others`) |
 | DELETE | `/api/delete-file/:type/:filename/:experimentID` | Delete a file |
-| POST | `/api/participant-files/:experimentID` | Receive participant-uploaded files (base64). Body: `{ files[], sessionId? }` |
+| POST | `/api/participant-files/:experimentID` | Receive participant files (base64). Body: `{ files[], sessionId }`; the persisted session is required |
 | GET | `/api/participant-files/:experimentID` | List participant files. Query: `?sessionId=xxx` |
 | GET | `/api/participant-files-serve/:experimentID/:filename` | Serve participant file |
 | DELETE | `/api/participant-files/:experimentID/:fileId` | Delete participant file |
@@ -153,6 +153,10 @@ Delete Loop1:
 | GET | `/api/export-experiment/:experimentID` | Export single experiment as ZIP |
 | POST | `/api/import-experiments` | Import experiments from ZIP (multipart, field: `zipfile`) |
 | POST | `/api/app/reset` | Factory reset. Body: `{ uid?, deleteRepos? }` |
+
+Each exported experiment keeps its existing `data.json` and includes the current
+`sessionCounter`. Import restores that counter when valid so future participant
+numbers continue without reuse.
 
 ---
 
