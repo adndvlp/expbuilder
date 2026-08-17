@@ -299,6 +299,12 @@ class ImageComponent {
       stimulusOnset,
       stimulusDuration,
       config.__componentId ?? config.builder_id ?? config.id ?? null,
+      {
+        renderBackend: "webgl",
+        timestampSemantics: "webgl_commit_frame",
+        timingDegraded: false,
+        timingDegradedReason: "",
+      },
     );
 
     const draw = (timestamp: number) => {
@@ -339,12 +345,16 @@ class ImageComponent {
       if (stimulusOnset === null) {
         timing.onStart(draw);
       } else {
-        this.cancelSchedule.push(timing.scheduleAt(stimulusOnset, draw));
+        this.cancelSchedule.push(
+          timing.scheduleAt(stimulusOnset, draw, { policy: "nearest" }),
+        );
       }
 
       if (stimulusDuration !== null) {
         this.cancelSchedule.push(
-          timing.scheduleAt((stimulusOnset ?? 0) + stimulusDuration, hide),
+          timing.scheduleAt((stimulusOnset ?? 0) + stimulusDuration, hide, {
+            policy: "not_before",
+          }),
         );
       }
     } else {
@@ -353,7 +363,9 @@ class ImageComponent {
 
       if (stimulusDuration !== null) {
         this.cancelSchedule.push(
-          scheduleFrameEvent(drawDelay + stimulusDuration, hide),
+          scheduleFrameEvent(drawDelay + stimulusDuration, hide, {
+            policy: "not_before",
+          }),
         );
       }
     }

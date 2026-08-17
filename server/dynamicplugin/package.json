@@ -18,7 +18,9 @@
     "build": "vite build",
     "dev": "vite build --watch",
     "prepublishOnly": "npm run build",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:timing": "vitest run tests"
   },
   "keywords": [
     "jspsych",
@@ -30,8 +32,10 @@
   "type": "commonjs",
   "devDependencies": {
     "@types/node": "^24.10.1",
+    "jsdom": "^30.0.1",
     "typescript": "^5.9.3",
-    "vite": "^7.2.2"
+    "vite": "^7.2.2",
+    "vitest": "^4.1.10"
   },
   "dependencies": {
     "jspsych": "^8.2.2",

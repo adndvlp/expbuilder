@@ -111,6 +111,7 @@ class SliderResponseComponent {
   private jsPsych: any;
   private response: number | null;
   private rt: number | null;
+  private responseTimestampSource: string | null = null;
   private slider_start: number;
   private start_time: number | null;
   private sliderContainer: HTMLElement | null;
@@ -371,6 +372,15 @@ class SliderResponseComponent {
    */
   getRT(): number | null {
     return this.rt;
+  }
+
+  /**
+   * Diagnostic: timestamp source for the recorded response
+   * ("event.timeStamp" when a DOM event was available, otherwise
+   * "performance.now_fallback").
+   */
+  getResponseTimestampSource(): string | null {
+    return this.responseTimestampSource ?? null;
   }
 
   /**

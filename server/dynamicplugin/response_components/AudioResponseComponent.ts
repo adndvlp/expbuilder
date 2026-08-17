@@ -86,6 +86,7 @@ class AudioResponseComponent {
   private recorder: MediaRecorder | null = null;
   private recorded_data_chunks: Blob[] = [];
   private rt: number | null = null;
+  private responseTimestampSource: string | null = null;
   private response: string = "";
   private audio_url: string = "";
   private recorder_start_time: number = 0;
@@ -247,8 +248,12 @@ class AudioResponseComponent {
         }
       };
       this.recordingDurationCancel = this.timing
-        ? this.timing.scheduleAt(recordingDuration, stopAtDuration)
-        : scheduleFrameEvent(recordingDuration, stopAtDuration);
+        ? this.timing.scheduleAt(recordingDuration, stopAtDuration, {
+            policy: "not_before",
+          })
+        : scheduleFrameEvent(recordingDuration, stopAtDuration, {
+            policy: "not_before",
+          });
     }
   }
 
@@ -337,6 +342,15 @@ class AudioResponseComponent {
 
   getRT(): number | null {
     return this.rt;
+  }
+
+  /**
+   * Diagnostic: timestamp source for the recorded response
+   * ("event.timeStamp" when a DOM event was available, otherwise
+   * "performance.now_fallback").
+   */
+  getResponseTimestampSource(): string | null {
+    return this.responseTimestampSource ?? null;
   }
 
   /** True once a recording has been captured and encoded */

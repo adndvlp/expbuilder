@@ -169,6 +169,7 @@ class InputResponseComponent {
   private jsPsych: any;
   private response: string[] | null;
   private rt: number | null;
+  private responseTimestampSource: string | null = null;
   private start_time: number | null;
   private clozeContainer: HTMLElement | null;
   private solutions: string[][];
@@ -403,6 +404,15 @@ class InputResponseComponent {
    */
   getRT(): number | null {
     return this.rt;
+  }
+
+  /**
+   * Diagnostic: timestamp source for the recorded response
+   * ("event.timeStamp" when a DOM event was available, otherwise
+   * "performance.now_fallback").
+   */
+  getResponseTimestampSource(): string | null {
+    return this.responseTimestampSource ?? null;
   }
 
   /**

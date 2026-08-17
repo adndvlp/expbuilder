@@ -29,8 +29,10 @@ The current timing implementation uses:
 For response trials, read `rt`/`rt_raw` as:
 
 ```txt
-response_time - trial_onset_time
+response_time - trial_time_origin
 ```
+
+(`trial_onset_time` remains as a deprecated alias of `trial_time_origin`.)
 
 `rt_corrected` is saved separately only when a compatible calibration profile
 is supplied; `rt` always remains the raw value.

@@ -259,6 +259,7 @@ class TextComponent {
   private isClozeMode: boolean = false;
   private response: string[] | null = null;
   private rt: number | null = null;
+  private responseTimestampSource: string | null = null;
   private start_time: number | null = null;
   private solutions: string[][] = [];
   private inputElements: HTMLInputElement[] = [];
@@ -601,6 +602,12 @@ class TextComponent {
       stimulusOnset,
       stimulusDuration,
       config.__componentId ?? config.builder_id ?? config.id ?? null,
+      {
+        renderBackend: "webgl",
+        timestampSemantics: "webgl_commit_frame",
+        timingDegraded: false,
+        timingDegradedReason: "",
+      },
     );
 
     const draw = (timestamp: number) => {
@@ -628,12 +635,16 @@ class TextComponent {
       if (stimulusOnset === null) {
         timing.onStart(draw);
       } else {
-        this.cancelSchedule.push(timing.scheduleAt(stimulusOnset, draw));
+        this.cancelSchedule.push(
+          timing.scheduleAt(stimulusOnset, draw, { policy: "nearest" }),
+        );
       }
 
       if (stimulusDuration !== null) {
         this.cancelSchedule.push(
-          timing.scheduleAt((stimulusOnset ?? 0) + stimulusDuration, hide),
+          timing.scheduleAt((stimulusOnset ?? 0) + stimulusDuration, hide, {
+            policy: "not_before",
+          }),
         );
       }
     } else {
@@ -642,7 +653,9 @@ class TextComponent {
 
       if (stimulusDuration !== null) {
         this.cancelSchedule.push(
-          scheduleFrameEvent(drawDelay + stimulusDuration, hide),
+          scheduleFrameEvent(drawDelay + stimulusDuration, hide, {
+            policy: "not_before",
+          }),
         );
       }
     }
@@ -851,6 +864,15 @@ class TextComponent {
   /** Returns the response time in milliseconds, or null when not yet recorded. */
   getRT(): number | null {
     return this.rt;
+  }
+
+  /**
+   * Diagnostic: timestamp source for the recorded response
+   * ("event.timeStamp" when a DOM event was available, otherwise
+   * "performance.now_fallback").
+   */
+  getResponseTimestampSource(): string | null {
+    return this.responseTimestampSource ?? null;
   }
 
   /**

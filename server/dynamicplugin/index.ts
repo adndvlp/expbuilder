@@ -27,6 +27,10 @@ import {
 } from "./utils/PrecisionTiming";
 import ResponseTimingManager from "./utils/ResponseTimingManager";
 import {
+  createVisualHandoff,
+  VisualHandoffSnapshot,
+} from "./utils/VisualHandoff";
+import {
   getCanvasStages,
   StageMetrics,
 } from "./renderer/CanvasStage";
@@ -38,8 +42,7 @@ const DYNAMIC_PERSISTENT_VISUAL_ID = "jspsych-dynamic-persistent-visual";
 let preservedVisualBridge: HTMLElement | null = null;
 let preservedVisualBridgeObserver: MutationObserver | null = null;
 let persistentVisualSurface: HTMLElement | null = null;
-let persistentVisualHandoffTimestamp: number | null = null;
-let persistentVisualHandoffTimer: number | null = null;
+const visualHandoff = createVisualHandoff();
 let dynamicTrialSequenceCounter = 0;
 
 type PendingVisualDurationPatch = {
@@ -158,11 +161,7 @@ function getPersistentVisualSurface(
 
 function removePersistentVisualSurface() {
   if (!persistentVisualSurface) return;
-  if (persistentVisualHandoffTimer !== null) {
-    window.clearTimeout(persistentVisualHandoffTimer);
-    persistentVisualHandoffTimer = null;
-  }
-  persistentVisualHandoffTimestamp = null;
+  visualHandoff.clear("surface_removed");
   for (const stage of getCanvasStages(persistentVisualSurface)) {
     stage.destroy();
   }
@@ -170,28 +169,12 @@ function removePersistentVisualSurface() {
   persistentVisualSurface = null;
 }
 
-function setPersistentVisualHandoff(timestamp: number) {
-  persistentVisualHandoffTimestamp = timestamp;
-  if (persistentVisualHandoffTimer !== null) {
-    window.clearTimeout(persistentVisualHandoffTimer);
-  }
-  persistentVisualHandoffTimer = window.setTimeout(() => {
-    persistentVisualHandoffTimestamp = null;
-    persistentVisualHandoffTimer = null;
-  }, 0);
+function setPersistentVisualHandoff(timestamp: number, fromTrialSequence: number) {
+  visualHandoff.set(timestamp, fromTrialSequence);
 }
 
-function consumePersistentVisualHandoffTimestamp() {
-  const timestamp =
-    persistentVisualSurface && persistentVisualHandoffTimestamp !== null
-      ? persistentVisualHandoffTimestamp
-      : null;
-  if (persistentVisualHandoffTimer !== null) {
-    window.clearTimeout(persistentVisualHandoffTimer);
-    persistentVisualHandoffTimer = null;
-  }
-  persistentVisualHandoffTimestamp = null;
-  return timestamp;
+function consumePersistentVisualHandoffTimestamp(): VisualHandoffSnapshot {
+  return visualHandoff.consume();
 }
 
 const info = <const>{
@@ -346,6 +329,15 @@ const info = <const>{
     timing_method: {
       type: ParameterType.STRING,
     },
+    timing_schema_version: {
+      type: ParameterType.INT,
+    },
+    trial_time_origin: {
+      type: ParameterType.FLOAT,
+    },
+    trial_time_origin_source: {
+      type: ParameterType.STRING,
+    },
     trial_onset_time: {
       type: ParameterType.FLOAT,
     },
@@ -354,6 +346,15 @@ const info = <const>{
     },
     actual_trial_duration: {
       type: ParameterType.FLOAT,
+    },
+    trial_duration_policy: {
+      type: ParameterType.STRING,
+    },
+    stimulus_onset_policy: {
+      type: ParameterType.STRING,
+    },
+    stimulus_offset_policy: {
+      type: ParameterType.STRING,
     },
     duration_error: {
       type: ParameterType.FLOAT,
@@ -369,6 +370,12 @@ const info = <const>{
     },
     dropped_frame_count: {
       type: ParameterType.INT,
+    },
+    estimated_dropped_frame_count: {
+      type: ParameterType.INT,
+    },
+    frame_interval_source: {
+      type: ParameterType.STRING,
     },
     max_frame_interval: {
       type: ParameterType.FLOAT,
@@ -409,7 +416,13 @@ const info = <const>{
     visual_onset_commit_time: {
       type: ParameterType.FLOAT,
     },
+    visual_onset_frame_time: {
+      type: ParameterType.FLOAT,
+    },
     visual_offset_commit_time: {
+      type: ParameterType.FLOAT,
+    },
+    visual_offset_frame_time: {
       type: ParameterType.FLOAT,
     },
     visual_duration: {
@@ -454,6 +467,21 @@ const info = <const>{
     visual_frame_boundary_handoff_lead_ms: {
       type: ParameterType.FLOAT,
     },
+    visual_handoff_available: {
+      type: ParameterType.BOOL,
+    },
+    visual_handoff_consumed: {
+      type: ParameterType.BOOL,
+    },
+    visual_handoff_lost: {
+      type: ParameterType.BOOL,
+    },
+    visual_handoff_lost_reason: {
+      type: ParameterType.STRING,
+    },
+    visual_handoff_from_trial_sequence: {
+      type: ParameterType.INT,
+    },
     response_timing_quality: {
       type: ParameterType.STRING,
     },
@@ -475,7 +503,13 @@ const info = <const>{
     visual_all_commits_rAF: {
       type: ParameterType.BOOL,
     },
+    visual_all_commits_frame_synced: {
+      type: ParameterType.BOOL,
+    },
     commit_outside_raf_count: {
+      type: ParameterType.INT,
+    },
+    commit_unsynced_count: {
       type: ParameterType.INT,
     },
     buffer_strategy: {
@@ -536,6 +570,9 @@ const info = <const>{
       type: ParameterType.STRING,
     },
     rt_raw: {
+      type: ParameterType.FLOAT,
+    },
+    rt_from_allowed_onset: {
       type: ParameterType.FLOAT,
     },
     rt_corrected: {
@@ -649,10 +686,16 @@ const info = <const>{
     response_expected_delay_ms: {
       type: ParameterType.FLOAT,
     },
+    response_reference_delay_ms: {
+      type: ParameterType.FLOAT,
+    },
     external_reference_id: {
       type: ParameterType.STRING,
     },
     response_error_ms: {
+      type: ParameterType.FLOAT,
+    },
+    response_reference_error_ms: {
       type: ParameterType.FLOAT,
     },
     response_listener_attached: {
@@ -817,7 +860,7 @@ function roundTiming(value: number | null): number | null {
 function getPrimaryStimulusRecord(records: any[]) {
   return (
     records.find(
-      (record) => typeof record?.actual_onset_abs === "number",
+      (record) => typeof record?.frame_onset_abs === "number",
     ) ??
     records[0] ??
     null
@@ -1030,6 +1073,13 @@ function aggregateRenderMetrics(
     render_backend_requested: requestedBackend,
     render_backend: renderBackends.join("+") || "none",
     visual_backend: renderBackends.join("+") || "none",
+    visual_all_commits_frame_synced: stageMetrics.every(
+      (metrics) => metrics.visual_all_commits_frame_synced,
+    ),
+    commit_unsynced_count: stageMetrics.reduce(
+      (sum, metrics) => sum + metrics.commit_unsynced_count,
+      0,
+    ),
     visual_all_commits_rAF: stageMetrics.every(
       (metrics) => metrics.visual_all_commits_rAF,
     ),
@@ -1313,6 +1363,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     let trialEndedByResponse = false;
     let visualFrameBoundaryHandoff = false;
     let visualFrameBoundaryHandoffLeadMs: number | null = null;
+    let consumedVisualHandoff: VisualHandoffSnapshot | null = null;
     let previousVisualDurationPatched = false;
     let previousVisualDurationData: Record<string, any> | null = null;
     let handleParticipantResponse: (
@@ -1542,14 +1593,14 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       );
       const visualStimulus = getPrimaryStimulusValue(stimulusComponents);
       const visualOnsetCommitTime =
-        typeof primaryStimulusRecord?.actual_onset_abs === "number"
-          ? primaryStimulusRecord.actual_onset_abs
+        typeof primaryStimulusRecord?.frame_onset_abs === "number"
+          ? primaryStimulusRecord.frame_onset_abs
           : null;
       const visualOffsetCommitTime =
         visualFrameBoundaryHandoff
           ? null
-          : typeof primaryStimulusRecord?.actual_offset_abs === "number"
-            ? primaryStimulusRecord.actual_offset_abs
+          : typeof primaryStimulusRecord?.frame_offset_abs === "number"
+            ? primaryStimulusRecord.frame_offset_abs
             : null;
       const visualDuration =
         typeof visualOnsetCommitTime === "number" &&
@@ -1573,16 +1624,24 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
 
       if (diagnostics.includeSummary) {
         Object.assign(trialData, {
+          timing_schema_version: 2,
           timing_method:
             "performance.now + requestAnimationFrame frame-nearest scheduler",
+          trial_time_origin: timingSummary.trialTimeOrigin,
+          trial_time_origin_source: timingSummary.trialTimeOriginSource,
           trial_onset_time: timingSummary.onsetTime,
           trial_offset_time: timingSummary.offsetTime,
+          trial_duration_policy: desiredTrialDuration === null ? null : "not_before",
+          stimulus_onset_policy: "nearest",
+          stimulus_offset_policy: "not_before",
           actual_trial_duration: roundTiming(timingSummary.actualDuration),
           duration_error: roundTiming(trialDurationError),
           trial_ended_by_response: trialEndedByResponse,
           frame_count: timingSummary.frameCount,
           long_frame_count: timingSummary.longFrameCount,
+          estimated_dropped_frame_count: timingSummary.droppedFrameCount,
           dropped_frame_count: timingSummary.droppedFrameCount,
+          frame_interval_source: "requestAnimationFrame_gap",
           max_frame_interval: roundTiming(timingSummary.maxFrameInterval),
           mean_frame_interval: roundTiming(timingSummary.meanFrameInterval),
           frame_interval_estimate: roundTiming(
@@ -1595,6 +1654,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           dynamic_next_trial_sequence: null,
           visual_stimulus: visualStimulus,
           visual_expected_duration: roundTiming(desiredTrialDuration),
+          visual_onset_frame_time: roundTiming(visualOnsetCommitTime),
+          visual_offset_frame_time: roundTiming(visualOffsetCommitTime),
           visual_onset_commit_time: roundTiming(visualOnsetCommitTime),
           visual_offset_commit_time: roundTiming(visualOffsetCommitTime),
           visual_duration: roundTiming(visualDuration),
@@ -1614,6 +1675,20 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           visual_frame_boundary_handoff_lead_ms: roundTiming(
             visualFrameBoundaryHandoffLeadMs,
           ),
+          visual_handoff_available: consumedVisualHandoff?.available ?? false,
+          visual_handoff_consumed: consumedVisualHandoff?.consumed ?? false,
+          visual_handoff_lost:
+            (consumedVisualHandoff?.lost ?? false) ||
+            (visualFrameBoundaryHandoff &&
+              !(consumedVisualHandoff?.available ?? false)),
+          visual_handoff_lost_reason:
+            consumedVisualHandoff?.lostReason ||
+            (visualFrameBoundaryHandoff &&
+            !(consumedVisualHandoff?.available ?? false)
+              ? "not_available"
+              : ""),
+          visual_handoff_from_trial_sequence:
+            consumedVisualHandoff?.fromTrialSequence ?? null,
           response_timing_quality: responseTimingData.response_timing_quality,
           response_timing_quality_reason:
             responseTimingData.response_timing_quality_reason,
@@ -1621,6 +1696,9 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           render_backend_requested: renderMetrics.render_backend_requested,
           render_backend: renderMetrics.render_backend,
           visual_backend: renderMetrics.visual_backend,
+          visual_all_commits_frame_synced:
+            renderMetrics.visual_all_commits_frame_synced,
+          commit_unsynced_count: renderMetrics.commit_unsynced_count,
           visual_all_commits_rAF: renderMetrics.visual_all_commits_rAF,
           commit_outside_raf_count: renderMetrics.commit_outside_raf_count,
           buffer_strategy: renderMetrics.buffer_strategy,
@@ -1742,6 +1820,26 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           }
 
         }
+
+        // Response timestamp source diagnostic (handler-fallback when no
+        // DOM event was available for the semantic response).
+        if (
+          typeof (instance as any).getResponseTimestampSource === "function"
+        ) {
+          trialData[`${prefix}_response_timestamp_source`] = (
+            instance as any
+          ).getResponseTimestampSource();
+        }
+
+        // AudioComponent timing diagnostics (clock bridge / fallback).
+        if (config.type === "AudioComponent") {
+          const audioDiagnostics = (instance as any).getDiagnostics?.();
+          if (audioDiagnostics && typeof audioDiagnostics === "object") {
+            for (const [key, value] of Object.entries(audioDiagnostics)) {
+              trialData[`${prefix}_${key}`] = value;
+            }
+          }
+        }
       });
 
       // Add response components data as individual columns
@@ -1795,6 +1893,16 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           trialData[`${prefix}_response`] = response;
         }
 
+        // Response timestamp source diagnostic (handler-fallback when no
+        // DOM event was available for the semantic response).
+        if (
+          typeof (instance as any).getResponseTimestampSource === "function"
+        ) {
+          trialData[`${prefix}_response_timestamp_source`] = (
+            instance as any
+          ).getResponseTimestampSource();
+        }
+
         // KeyboardResponseComponent - correctness score
         if (
           config.type === "KeyboardResponseComponent" &&
@@ -1802,6 +1910,15 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           typeof instance.getCorrect === "function"
         ) {
           trialData[`${prefix}_correct`] = instance.getCorrect();
+        }
+
+        // ButtonResponseComponent - response event type diagnostic
+        if (
+          config.type === "ButtonResponseComponent" &&
+          typeof (instance as any).getResponseEventType === "function"
+        ) {
+          trialData[`${prefix}_response_event_type`] =
+            (instance as any).getResponseEventType();
         }
 
         // SliderResponseComponent - slider_start
@@ -1892,7 +2009,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       }
 
       if (visualFrameBoundaryHandoff && typeof offsetTime === "number") {
-        setPersistentVisualHandoff(offsetTime);
+        setPersistentVisualHandoff(offsetTime, dynamicTrialSequence);
       } else {
         preserveCanvasVisualBridge(mainContainer, display_element);
       }
@@ -1963,8 +2080,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             stimulusComponents,
           );
           const currentOnsetCommitTime =
-            typeof currentVisualRecord?.actual_onset_abs === "number"
-              ? currentVisualRecord.actual_onset_abs
+            typeof currentVisualRecord?.frame_onset_abs === "number"
+              ? currentVisualRecord.frame_onset_abs
               : null;
           previousVisualDurationData = patchPreviousVisualDuration(
             this.jsPsych,
@@ -1981,21 +2098,31 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       if (trialDuration !== null) {
         visualFrameBoundaryHandoffLeadMs = visualFrameBoundaryHandoff ? 0 : null;
 
-        timing.scheduleAt(trialDuration, (timestamp) => {
-          if (trialEnded) return;
-          if (!hasResponded) {
-            hasResponded = true;
-            recordAllPendingResponses();
-          }
-          endTrial(timestamp);
-        });
+        timing.scheduleAt(
+          trialDuration,
+          (timestamp) => {
+            if (trialEnded) return;
+            if (!hasResponded) {
+              hasResponded = true;
+              recordAllPendingResponses();
+            }
+            endTrial(timestamp);
+          },
+          { policy: "not_before" },
+        );
       }
 
-      const handoffTimestamp = visualFrameBoundaryHandoff
-        ? consumePersistentVisualHandoffTimestamp()
-        : null;
-      if (typeof handoffTimestamp === "number") {
-        timing.startAt(handoffTimestamp);
+      // A handoff state must be resolved by the immediately following
+      // trial, not only by frame-boundary trials: otherwise a lost handoff
+      // from an earlier trial could be observed by a later unrelated trial.
+      const handoff = consumePersistentVisualHandoffTimestamp();
+      consumedVisualHandoff = handoff;
+      if (
+        visualFrameBoundaryHandoff &&
+        handoff &&
+        typeof handoff.timestamp === "number"
+      ) {
+        timing.startAt(handoff.timestamp, "visual_handoff");
       } else {
         timing.start();
       }

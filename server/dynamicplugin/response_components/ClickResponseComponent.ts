@@ -120,6 +120,8 @@ class ClickResponseComponent {
   private useTouch: boolean = false;
   private timing: any = null;
   private unregisterResponseTiming: (() => void) | null = null;
+  private fallbackEventType: "pointerdown" | "touchstart" | "click" = "pointerdown";
+  responseEventType: string | null = null;
 
   static info = info;
 
@@ -150,6 +152,7 @@ class ClickResponseComponent {
     this.timing = trial.__timing || null;
     setResponseStartTime(this, this.timing);
     this.useTouch = ClickResponseComponent.isTouchDevice();
+    this.responseEventType = null;
     // Build an overlay div so the hit area is explicit and controllable.
     // When capture_full_screen is true it covers the full viewport.
     this.overlayElement = document.createElement("div");
@@ -232,6 +235,7 @@ class ClickResponseComponent {
 
             this.rt = response.rt_raw;
             this.response = { x, y, is_touch: isTouch };
+            this.responseEventType = response.response_event_type ?? "pointerdown";
 
             if (trial.show_click_marker !== false && trial.show_click_marker) {
               this.showMarker(clientX, clientY, trial);
@@ -241,29 +245,11 @@ class ClickResponseComponent {
       return;
     }
 
-    // Build the unified handler
-    this.boundHandler = (e: Event) => {
-      if (this.response !== null) return; // Already captured
-
-      let clientX: number;
-      let clientY: number;
-      let isTouch: boolean;
-
-      if (e instanceof TouchEvent) {
-        const touch = e.changedTouches[0] ?? e.touches[0];
-        if (!touch) return;
-        clientX = touch.clientX;
-        clientY = touch.clientY;
-        isTouch = true;
-        // Prevent ghost mouse event that follows touchstart on some browsers
-        e.preventDefault();
-      } else if (e instanceof MouseEvent) {
-        clientX = e.clientX;
-        clientY = e.clientY;
-        isTouch = false;
-      } else {
-        return;
-      }
+    // Build the unified handler.
+    // Pointer-first fallback: pointerdown with PointerEvent coordinates and
+    // the shared event-timestamp validation.
+    const recordFromCoordinates = (clientX: number, clientY: number, isTouch: boolean, e: Event) => {
+      if (this.response !== null) return;
 
       // Compute coordinates
       let x: number;
@@ -291,10 +277,54 @@ class ClickResponseComponent {
       }
     };
 
+    const usePointerEvents = typeof window.PointerEvent === "function";
+    if (usePointerEvents) {
+      this.fallbackEventType = "pointerdown";
+      this.boundHandler = (e: Event) => {
+        if (!(e instanceof PointerEvent)) return;
+        this.responseEventType = "pointerdown";
+        recordFromCoordinates(
+          e.clientX,
+          e.clientY,
+          e.pointerType === "touch" || e.pointerType === "pen",
+          e,
+        );
+      };
+    } else {
+      // Explicit compatibility fallback for browsers without PointerEvent.
+      // Never silently mixes event phases: the event type is recorded.
+      this.fallbackEventType = this.useTouch ? "touchstart" : "click";
+      this.boundHandler = (e: Event) => {
+        if (this.response !== null) return; // Already captured
+
+        let clientX: number;
+        let clientY: number;
+        let isTouch: boolean;
+
+        if (e instanceof TouchEvent) {
+          const touch = e.changedTouches[0] ?? e.touches[0];
+          if (!touch) return;
+          clientX = touch.clientX;
+          clientY = touch.clientY;
+          isTouch = true;
+          this.responseEventType = "touchstart";
+          // Prevent ghost mouse event that follows touchstart on some browsers
+          e.preventDefault();
+        } else if (e instanceof MouseEvent) {
+          clientX = e.clientX;
+          clientY = e.clientY;
+          isTouch = false;
+          this.responseEventType = "click";
+        } else {
+          return;
+        }
+        recordFromCoordinates(clientX, clientY, isTouch, e);
+      };
+    }
+
     // Register the correct event type
-    const eventType = this.useTouch ? "touchstart" : "click";
     (this.listenTarget as HTMLElement).addEventListener(
-      eventType,
+      this.fallbackEventType,
       this.boundHandler,
       // passive: false so we can call preventDefault() on touch to suppress ghost click
       { passive: false },
@@ -374,9 +404,8 @@ class ClickResponseComponent {
       this.unregisterResponseTiming = null;
     }
     if (this.boundHandler && this.listenTarget) {
-      const eventType = this.useTouch ? "touchstart" : "click";
       (this.listenTarget as HTMLElement).removeEventListener(
-        eventType,
+        this.fallbackEventType,
         this.boundHandler,
       );
     }

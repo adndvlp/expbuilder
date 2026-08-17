@@ -123,6 +123,7 @@ class FileUploadResponseComponent {
   private file_size: number | null = null;
   private file_type: string | null = null;
   private rt: number | null = null;
+  private responseTimestampSource: string | null = null;
   private start_time: number | null = null;
   private container: HTMLElement | null = null;
   private isUploading = false;
@@ -395,6 +396,15 @@ class FileUploadResponseComponent {
   /** Response time in milliseconds from render to upload completion. */
   getRT(): number | null {
     return this.rt;
+  }
+
+  /**
+   * Diagnostic: timestamp source for the recorded response
+   * ("event.timeStamp" when a DOM event was available, otherwise
+   * "performance.now_fallback").
+   */
+  getResponseTimestampSource(): string | null {
+    return this.responseTimestampSource ?? null;
   }
 
   /** True once at least one file has been successfully uploaded. */

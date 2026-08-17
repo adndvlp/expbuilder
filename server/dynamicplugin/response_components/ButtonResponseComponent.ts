@@ -219,6 +219,7 @@ type ButtonLayout = {
 type ButtonVisualState = "normal" | "disabled" | "validation";
 
 let buttonComponentCounter = 0;
+let buttonInstanceCounter = 0;
 
 /**
  * ButtonResponseComponent
@@ -247,6 +248,10 @@ class ButtonResponseComponent {
   private componentId: string | null = null;
   private componentName: string | null = null;
   private buttonSpriteIds: Record<ButtonVisualState, string> | null = null;
+  private responseEventType: string | null = null;
+
+  /** Guaranteed-unique per-instance identifier, independent of trial.name. */
+  private readonly instanceId = ++buttonInstanceCounter;
 
   static info = info;
 
@@ -504,34 +509,6 @@ class ButtonResponseComponent {
     };
   }
 
-  private createTransparentButton(cell: ButtonCell): HTMLButtonElement {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.dataset.choice = cell.choice;
-    button.setAttribute("aria-label", cell.choice || `Choice ${cell.index + 1}`);
-    button.style.position = "absolute";
-    button.style.left = `${cell.x + this.layout!.width / 2}px`;
-    button.style.top = `${cell.y + this.layout!.height / 2}px`;
-    button.style.width = `${cell.width}px`;
-    button.style.height = `${cell.height}px`;
-    button.style.margin = "0";
-    button.style.padding = "0";
-    button.style.border = "0";
-    button.style.background = "transparent";
-    button.style.color = "transparent";
-    button.style.opacity = "0";
-    button.style.cursor = "pointer";
-    button.style.pointerEvents = "auto";
-    button.addEventListener("click", (event) => {
-      this.storeButtonResponse(cell.choice, event);
-      if ((this as any).onResponseCallback) {
-        (this as any).onResponseCallback();
-      }
-    });
-    this.registerButtonPointerTarget(button, cell.choice);
-    return button;
-  }
-
   private registerButtonPointerTarget(button: HTMLElement, choice: string) {
     if (!this.responseTiming?.enabled) return;
     const unregister = this.responseTiming.registerPointerTarget({
@@ -543,26 +520,11 @@ class ButtonResponseComponent {
         if (!this.buttonsEnabled || response.response_valid !== true) {
           return false;
         }
+        this.responseEventType = response.response_event_type ?? "pointerdown";
         this.storeButtonResponse(choice, response.event, response);
       },
     });
     this.responseTimingUnregisters.push(unregister);
-  }
-
-  private updateOverlay(layout: ButtonLayout) {
-    if (!this.buttonGroupElement) return;
-
-    this.buttonGroupElement.style.left = `${layout.centerX}px`;
-    this.buttonGroupElement.style.top = `${layout.centerY}px`;
-    this.buttonGroupElement.style.width = `${layout.width}px`;
-    this.buttonGroupElement.style.height = `${layout.height}px`;
-    this.buttonGroupElement.style.transform = `translate(-50%, -50%) rotate(${layout.rotation}deg)`;
-    this.buttonGroupElement.style.zIndex = String(layout.zIndex);
-    this.buttonGroupElement.innerHTML = "";
-
-    for (const cell of layout.cells) {
-      this.buttonGroupElement.appendChild(this.createTransparentButton(cell));
-    }
   }
 
   private getFittedFont(
@@ -775,6 +737,7 @@ class ButtonResponseComponent {
         if (!this.buttonsEnabled || response.response_valid !== true) {
           return false;
         }
+        this.responseEventType = response.response_event_type ?? "pointerdown";
         this.storeButtonResponse(cell.choice, response.event, response);
       },
     });
@@ -948,13 +911,130 @@ class ButtonResponseComponent {
       this.buttonGroupElement.insertAdjacentHTML("beforeend", html);
       const buttonElement = this.buttonGroupElement.lastChild as HTMLElement;
       buttonElement.dataset.choice = choice;
-      buttonElement.addEventListener("click", (event) => {
-        this.storeButtonResponse(choice, event);
-        if (onResponse) {
-          onResponse();
+
+      const manager = this.responseTiming;
+      if (manager?.enabled) {
+        // Pointer responses flow through the manager's window pointerdown
+        // path (registerButtonPointerTarget). This click listener only
+        // covers keyboard/programmatic activation and must route through
+        // the manager so it stays the timestamp authority. It must not
+        // finish the trial a second time after an accepted pointerdown.
+        buttonElement.addEventListener("click", (event) => {
+          if (this.response !== null || !this.buttonsEnabled) return;
+          this.responseEventType = "click";
+          manager.recordExternalEvent(
+            event,
+            {
+              eventType: "click",
+              device: "activation",
+              targetComponent: this.componentName ?? this.componentId,
+              minimumValidRtMs: null,
+            },
+            (response: any) => {
+              if (response.response_valid !== true) return false;
+              this.storeButtonResponse(choice, event, response);
+              return true;
+            },
+          );
+        });
+      } else {
+        // Manager-disabled fallback: pointer-first for pointer responses,
+        // shared event timing; the click listener remains as an
+        // accessibility fallback for keyboard/programmatic activation.
+        if (typeof window.PointerEvent === "function") {
+          buttonElement.addEventListener("pointerdown", (event) => {
+            if (this.response !== null || !this.buttonsEnabled) return;
+            if (!(event instanceof PointerEvent)) return;
+            this.responseEventType = "pointerdown";
+            this.storeButtonResponse(choice, event);
+            if (onResponse) {
+              onResponse();
+            }
+          });
         }
-      });
+        buttonElement.addEventListener("click", (event) => {
+          if (this.response !== null || !this.buttonsEnabled) return;
+          this.responseEventType = "click";
+          this.storeButtonResponse(choice, event);
+          if (onResponse) {
+            onResponse();
+          }
+        });
+      }
       this.registerButtonPointerTarget(buttonElement, choice);
+    }
+  }
+
+  private prepareCanvasAccessibilityLayer(displayElement: HTMLElement) {
+    if (!this.responseTiming?.enabled || !this.layout) return;
+    const layout = this.layout;
+
+    // Non-visual semantic overlay for the default canvas path: real buttons
+    // with transparent styling so keyboard/programmatic activation can fire
+    // native click events without duplicating the WebGL visuals. Pointer
+    // events keep flowing through the canvas hit targets registered with the
+    // response manager.
+    const overlay = document.createElement("div");
+    overlay.id = `jspsych-button-response-accessibility-overlay-${this.instanceId}`;
+    overlay.className = "jspsych-button-response-accessibility-overlay";
+    overlay.setAttribute("role", "group");
+    overlay.setAttribute(
+      "aria-label",
+      this.componentName ?? "Response options",
+    );
+    overlay.style.position = "absolute";
+    overlay.style.left = `${layout.centerX}px`;
+    overlay.style.top = `${layout.centerY}px`;
+    overlay.style.width = `${layout.width}px`;
+    overlay.style.height = `${layout.height}px`;
+    overlay.style.transform = `translate(-50%, -50%) rotate(${layout.rotation}deg)`;
+    overlay.style.zIndex = String(layout.zIndex);
+    overlay.style.pointerEvents = "none";
+    displayElement.appendChild(overlay);
+    this.buttonGroupElement = overlay;
+
+    for (const cell of layout.cells) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.choice = cell.choice;
+      button.setAttribute(
+        "aria-label",
+        cell.choice || `Choice ${cell.index + 1}`,
+      );
+      button.style.position = "absolute";
+      button.style.left = `${cell.x + layout.width / 2}px`;
+      button.style.top = `${cell.y + layout.height / 2}px`;
+      button.style.width = `${cell.width}px`;
+      button.style.height = `${cell.height}px`;
+      button.style.margin = "0";
+      button.style.padding = "0";
+      button.style.border = "0";
+      button.style.background = "transparent";
+      button.style.color = "transparent";
+      button.style.opacity = "0";
+      button.style.cursor = "pointer";
+      button.style.pointerEvents = "none";
+      button.addEventListener("click", (event) => {
+        if (this.response !== null || !this.buttonsEnabled) return;
+        // The manager remains the timestamp authority; the component never
+        // computes RT on its own for this path.
+        this.responseEventType = "click";
+        this.responseTiming.recordExternalEvent(
+          event,
+          {
+            eventType: "click",
+            device: "activation",
+            targetComponent: this.componentName ?? this.componentId,
+            minimumValidRtMs: null,
+          },
+          (response: any) => {
+            if (response.response_valid !== true) return false;
+            this.storeButtonResponse(cell.choice, event, response);
+            return true;
+          },
+        );
+      });
+      overlay.appendChild(button);
     }
   }
 
@@ -970,12 +1050,12 @@ class ButtonResponseComponent {
     this.responseTiming = trial.__responseTiming || null;
     this.componentId = trial.__componentId ?? null;
     this.componentName = trial.name ?? null;
-    (this as any).onResponseCallback = onResponse;
     this.drawableId = trial.name
       ? `button-${trial.name}`
       : `button-${++buttonComponentCounter}`;
     this.buttonsEnabled = true;
     this.validationError = false;
+    this.responseEventType = null;
     const choices = this.getChoices(trial);
     this.useDomLayer =
       !this.responseTiming?.enabled ||
@@ -986,6 +1066,7 @@ class ButtonResponseComponent {
       this.renderDomLayer(display_element, trial, onResponse);
     } else {
       this.prepareCanvasButtons(display_element, trial);
+      this.prepareCanvasAccessibilityLayer(display_element);
     }
 
     setResponseStartTime(this, this.timing);
@@ -995,8 +1076,12 @@ class ButtonResponseComponent {
     if (enableButtonAfter > 0) {
       this.disableButtons();
       this.enableTimeout = this.timing
-        ? this.timing.scheduleAt(enableButtonAfter, () => this.enableButtons())
-        : scheduleFrameEvent(enableButtonAfter, () => this.enableButtons());
+        ? this.timing.scheduleAt(enableButtonAfter, () => this.enableButtons(), {
+            policy: "not_before",
+          })
+        : scheduleFrameEvent(enableButtonAfter, () => this.enableButtons(), {
+            policy: "not_before",
+          });
     }
 
     return this.buttonGroupElement ?? undefined;
@@ -1062,6 +1147,14 @@ class ButtonResponseComponent {
    */
   getRT(): number | null {
     return this.rt;
+  }
+
+  /**
+   * Diagnostic: the DOM event type that produced the recorded response
+   * (pointerdown, click), when the manager-disabled fallback is used.
+   */
+  getResponseEventType(): string | null {
+    return this.responseEventType;
   }
 
   /** True once a button has been clicked */

@@ -1,3 +1,10 @@
+import { readEventTimestamp } from "./EventTiming";
+import { preloadAudioBuffer } from "./AudioTiming";
+
+export type TrialTimeOriginSource = "fresh_raf" | "visual_handoff";
+
+export type DeadlinePolicy = "nearest" | "not_before";
+
 type FrameTimingOptions = {
   recordFrameTiming?: boolean;
   longFrameThreshold?: number;
@@ -6,6 +13,7 @@ type FrameTimingOptions = {
 
 type ScheduledFrameEvent = {
   at: number;
+  policy: DeadlinePolicy;
   callback: (timestamp: number, elapsed: number) => void;
   cancelled: boolean;
 };
@@ -21,11 +29,22 @@ export type StimulusTimingRecord = {
   desired_onset: number;
   desired_duration: number | null;
   desired_offset: number | null;
+
+  // Canonical V2 frame-domain fields. frame_* values are rAF/commit frame
+  // timestamps; they are NOT physical photon-onset measurements.
+  frame_onset: number | null;
+  frame_onset_abs: number | null;
+  frame_offset: number | null;
+  frame_offset_abs: number | null;
+  frame_duration: number | null;
+
+  // Deprecated V1 aliases of the frame_* fields.
   actual_onset: number | null;
   actual_onset_abs: number | null;
   actual_offset: number | null;
   actual_offset_abs: number | null;
   actual_duration: number | null;
+
   onset_error: number | null;
   offset_error: number | null;
   duration_error: number | null;
@@ -33,7 +52,19 @@ export type StimulusTimingRecord = {
   offset_commit_index: number | null;
   onset_commit_duration: number | null;
   offset_commit_duration: number | null;
+  onset_cpu_commit_start_abs: number | null;
+  onset_cpu_commit_end_abs: number | null;
+  offset_cpu_commit_start_abs: number | null;
+  offset_cpu_commit_end_abs: number | null;
   render_backend: string | null;
+  timestamp_semantics: string;
+  timing_degraded: boolean;
+  timing_degraded_reason: string;
+
+  /** Unavailable in a browser-only record; may be filled by an external
+   * measurement system in the future. */
+  physical_onset_abs: null;
+  physical_offset_abs: null;
 };
 
 export type AssetPreloadList = {
@@ -46,6 +77,13 @@ export type CanvasBitmapSource = ImageBitmap | HTMLImageElement;
 
 const DEFAULT_FRAME_MS = 1000 / 60;
 const MIN_FRAME_INTERVAL_MS = 0.25;
+export type StimulusRegistrationMetadata = {
+  renderBackend?: string;
+  timestampSemantics?: string;
+  timingDegraded?: boolean;
+  timingDegradedReason?: string;
+};
+
 const round3 = (value: number): number => Math.round(value * 1000) / 1000;
 const imagePreloadCache = new Map<string, Promise<void>>();
 const bitmapPreloadCache = new Map<string, Promise<CanvasBitmapSource>>();
@@ -72,18 +110,23 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
   const stimulusRecords: StimulusTimingRecord[] = [];
   const recentFrameIntervals: number[] = [];
 
-  let onsetTime: number | null = null;
+  let trialTimeOrigin: number | null = null;
+  let trialTimeOriginSource: TrialTimeOriginSource | null = null;
   let lastFrameTime: number | null = null;
   let latestFrameTime: number | null = null;
   let frameIntervalEstimate = fallbackFrameMs;
   let rafHandle: number | null = null;
   let running = false;
 
-  const getOnsetTime = () => onsetTime;
+  const getTrialTimeOrigin = () => trialTimeOrigin;
+  const getTrialTimeOriginSource = () => trialTimeOriginSource;
+
+  /** Deprecated V1 compatibility alias of getTrialTimeOrigin(). */
+  const getOnsetTime = () => trialTimeOrigin;
 
   const getElapsed = (timestamp = performance.now()): number | null => {
-    if (onsetTime === null) return null;
-    return timestamp - onsetTime;
+    if (trialTimeOrigin === null) return null;
+    return timestamp - trialTimeOrigin;
   };
 
   const updateFrameEstimate = (duration: number) => {
@@ -120,8 +163,11 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     event: ScheduledFrameEvent,
     timestamp: number,
   ) => {
-    if (onsetTime === null) return false;
-    const targetTime = onsetTime + event.at;
+    if (trialTimeOrigin === null) return false;
+    const targetTime = trialTimeOrigin + event.at;
+    if (event.policy === "not_before") {
+      return timestamp >= targetTime;
+    }
     const frameMs = getFrameIntervalEstimate();
     const errorNow = Math.abs(timestamp - targetTime);
     const errorNext = Math.abs(timestamp + frameMs - targetTime);
@@ -129,8 +175,8 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
   };
 
   const runDueEvents = (timestamp: number) => {
-    if (onsetTime === null) return;
-    const elapsed = timestamp - onsetTime;
+    if (trialTimeOrigin === null) return;
+    const elapsed = timestamp - trialTimeOrigin;
     for (const event of scheduledEvents) {
       if (!event.cancelled && shouldRunEventOnFrame(event, timestamp)) {
         event.cancelled = true;
@@ -146,7 +192,7 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
   };
 
   const tick = (timestamp: number) => {
-    if (!running || onsetTime === null) return;
+    if (!running || trialTimeOrigin === null) return;
 
     latestFrameTime = timestamp;
     if (lastFrameTime !== null) {
@@ -154,7 +200,7 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
       updateFrameEstimate(duration);
       if (recordFrameTiming && duration > MIN_FRAME_INTERVAL_MS) {
         frameIntervals.push({
-          t: round3(timestamp - onsetTime),
+          t: round3(timestamp - trialTimeOrigin),
           duration: round3(duration),
         });
       }
@@ -167,9 +213,10 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     rafHandle = requestAnimationFrame(tick);
   };
 
-  const startAt = (timestamp: number) => {
-    if (onsetTime !== null || rafHandle !== null) return;
-    onsetTime = timestamp;
+  const startAt = (timestamp: number, source: TrialTimeOriginSource) => {
+    if (trialTimeOrigin !== null || rafHandle !== null) return;
+    trialTimeOrigin = timestamp;
+    trialTimeOriginSource = source;
     lastFrameTime = timestamp;
     latestFrameTime = timestamp;
     running = true;
@@ -182,10 +229,10 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
   };
 
   const start = () => {
-    if (onsetTime !== null || rafHandle !== null) return;
+    if (trialTimeOrigin !== null || rafHandle !== null) return;
     rafHandle = requestAnimationFrame((timestamp) => {
       rafHandle = null;
-      startAt(timestamp);
+      startAt(timestamp, "fresh_raf");
     });
   };
 
@@ -198,8 +245,8 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
   };
 
   const onStart = (callback: (timestamp: number) => void) => {
-    if (onsetTime !== null) {
-      callback(onsetTime);
+    if (trialTimeOrigin !== null) {
+      callback(trialTimeOrigin);
     } else {
       startCallbacks.push(callback);
     }
@@ -218,9 +265,15 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
   const scheduleAt = (
     delayMs: number | null | undefined,
     callback: (timestamp: number, elapsed: number) => void,
+    options: { policy?: DeadlinePolicy } = {},
   ) => {
     const at = Math.max(0, Number(delayMs ?? 0));
-    const event: ScheduledFrameEvent = { at, callback, cancelled: false };
+    const event: ScheduledFrameEvent = {
+      at,
+      policy: options.policy ?? "nearest",
+      callback,
+      cancelled: false,
+    };
     scheduledEvents.push(event);
     scheduledEvents.sort((a, b) => a.at - b.at);
     return () => {
@@ -233,6 +286,7 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     desiredOnset: number | null,
     desiredDuration: number | null,
     componentId: string | null = null,
+    metadata: StimulusRegistrationMetadata = {},
   ) => {
     const desired_onset = desiredOnset ?? 0;
     const record: StimulusTimingRecord = {
@@ -242,6 +296,11 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
       desired_duration: desiredDuration,
       desired_offset:
         desiredDuration === null ? null : desired_onset + desiredDuration,
+      frame_onset: null,
+      frame_onset_abs: null,
+      frame_offset: null,
+      frame_offset_abs: null,
+      frame_duration: null,
       actual_onset: null,
       actual_onset_abs: null,
       actual_offset: null,
@@ -254,82 +313,123 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
       offset_commit_index: null,
       onset_commit_duration: null,
       offset_commit_duration: null,
-      render_backend: null,
+      onset_cpu_commit_start_abs: null,
+      onset_cpu_commit_end_abs: null,
+      offset_cpu_commit_start_abs: null,
+      offset_cpu_commit_end_abs: null,
+      render_backend: metadata.renderBackend ?? null,
+      timestamp_semantics: metadata.timestampSemantics ?? "",
+      timing_degraded: metadata.timingDegraded ?? false,
+      timing_degraded_reason: metadata.timingDegradedReason ?? "",
+      physical_onset_abs: null,
+      physical_offset_abs: null,
     };
     stimulusRecords.push(record);
 
+    const applyCommitInfo = (
+      phase: "onset" | "offset",
+      commitInfo: any,
+    ) => {
+      if (!commitInfo) return;
+      const frameTimestamp =
+        typeof commitInfo.frameTimestamp === "number"
+          ? commitInfo.frameTimestamp
+          : typeof commitInfo.timestamp === "number"
+            ? commitInfo.timestamp
+            : null;
+      if (phase === "onset") {
+        record.onset_commit_index = commitInfo.commitIndex ?? null;
+        record.onset_commit_duration =
+          typeof commitInfo.commitDuration === "number"
+            ? round3(commitInfo.commitDuration)
+            : null;
+        record.onset_cpu_commit_start_abs =
+          typeof commitInfo.cpuCommitStartedAt === "number"
+            ? round3(commitInfo.cpuCommitStartedAt)
+            : null;
+        record.onset_cpu_commit_end_abs =
+          typeof commitInfo.cpuCommitEndedAt === "number"
+            ? round3(commitInfo.cpuCommitEndedAt)
+            : null;
+        record.render_backend = commitInfo.renderBackend ?? record.render_backend;
+        if (record.timestamp_semantics === "") {
+          record.timestamp_semantics =
+            record.render_backend === "dom"
+              ? "dom_mutation_frame"
+              : record.render_backend === "html_media"
+                ? "html_media_play_request"
+                : "webgl_commit_frame";
+        }
+      } else {
+        record.offset_commit_index = commitInfo.commitIndex ?? null;
+        record.offset_commit_duration =
+          typeof commitInfo.commitDuration === "number"
+            ? round3(commitInfo.commitDuration)
+            : null;
+        record.offset_cpu_commit_start_abs =
+          typeof commitInfo.cpuCommitStartedAt === "number"
+            ? round3(commitInfo.cpuCommitStartedAt)
+            : null;
+        record.offset_cpu_commit_end_abs =
+          typeof commitInfo.cpuCommitEndedAt === "number"
+            ? round3(commitInfo.cpuCommitEndedAt)
+            : null;
+        record.render_backend = commitInfo.renderBackend ?? record.render_backend;
+      }
+      return frameTimestamp;
+    };
+
     return {
       markOnset(timestamp: number, commitInfo?: any) {
-        if (onsetTime === null || record.actual_onset !== null) return;
+        if (trialTimeOrigin === null || record.frame_onset !== null) return;
+        const frameTimestamp = applyCommitInfo("onset", commitInfo);
         const onsetTimestamp =
-          typeof commitInfo?.timestamp === "number"
-            ? commitInfo.timestamp
-            : timestamp;
-        record.actual_onset_abs = round3(onsetTimestamp);
-        record.actual_onset = round3(onsetTimestamp - onsetTime);
-        record.onset_error = round3(record.actual_onset - record.desired_onset);
-        if (commitInfo) {
-          record.onset_commit_index = commitInfo.commitIndex ?? null;
-          record.onset_commit_duration =
-            typeof commitInfo.commitDuration === "number"
-              ? round3(commitInfo.commitDuration)
-              : null;
-          record.render_backend = commitInfo.renderBackend ?? record.render_backend;
-        }
+          typeof frameTimestamp === "number" ? frameTimestamp : timestamp;
+        record.frame_onset_abs = round3(onsetTimestamp);
+        record.frame_onset = round3(onsetTimestamp - trialTimeOrigin);
+        record.onset_error = round3(record.frame_onset - record.desired_onset);
+        // V1 compatibility aliases
+        record.actual_onset_abs = record.frame_onset_abs;
+        record.actual_onset = record.frame_onset;
       },
       markOffset(timestamp: number, commitInfo?: any) {
         if (
-          onsetTime === null ||
-          record.actual_onset === null ||
-          record.actual_offset !== null
+          trialTimeOrigin === null ||
+          record.frame_onset === null ||
+          record.frame_offset !== null
         ) {
           return;
         }
+        const frameTimestamp = applyCommitInfo("offset", commitInfo);
         const offsetTimestamp =
-          typeof commitInfo?.timestamp === "number"
-            ? commitInfo.timestamp
-            : timestamp;
-        record.actual_offset_abs = round3(offsetTimestamp);
-        record.actual_offset = round3(offsetTimestamp - onsetTime);
-        record.actual_duration = round3(
-          record.actual_offset - record.actual_onset,
-        );
+          typeof frameTimestamp === "number" ? frameTimestamp : timestamp;
+        record.frame_offset_abs = round3(offsetTimestamp);
+        record.frame_offset = round3(offsetTimestamp - trialTimeOrigin);
+        record.frame_duration = round3(record.frame_offset - record.frame_onset);
         record.offset_error =
           record.desired_offset === null
             ? null
-            : round3(record.actual_offset - record.desired_offset);
+            : round3(record.frame_offset - record.desired_offset);
         record.duration_error =
           record.desired_duration === null
             ? null
-            : round3(record.actual_duration - record.desired_duration);
-        if (commitInfo) {
-          record.offset_commit_index = commitInfo.commitIndex ?? null;
-          record.offset_commit_duration =
-            typeof commitInfo.commitDuration === "number"
-              ? round3(commitInfo.commitDuration)
-              : null;
-          record.render_backend = commitInfo.renderBackend ?? record.render_backend;
-        }
+            : round3(record.frame_duration - record.desired_duration);
+        // V1 compatibility aliases
+        record.actual_offset_abs = record.frame_offset_abs;
+        record.actual_offset = record.frame_offset;
+        record.actual_duration = record.frame_duration;
       },
       record,
     };
   };
 
   const getEventTime = (event: Event): number => {
-    const now = performance.now();
-    const eventTime = event.timeStamp;
-    if (
-      typeof eventTime === "number" &&
-      eventTime > 0 &&
-      Math.abs(now - eventTime) < 100000
-    ) {
-      return eventTime;
-    }
-    return now;
+    return readEventTimestamp(event).responseTime;
   };
 
   const getSummary = (offsetTime = performance.now()) => {
-    const actualDuration = onsetTime === null ? null : offsetTime - onsetTime;
+    const actualDuration =
+      trialTimeOrigin === null ? null : offsetTime - trialTimeOrigin;
     const intervals = recordFrameTiming ? frameIntervals.map((frame) => frame.duration) : [];
     const longFrames = intervals.filter((duration) => duration > longFrameThreshold);
     const baselineFrameMs = estimateBaselineFrameMs(intervals);
@@ -344,21 +444,25 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     const finalizedStimulusRecords = stimulusRecords.map((record) => {
       const next = { ...record };
       if (
-        onsetTime !== null &&
-        next.actual_onset !== null &&
-        next.actual_offset === null
+        trialTimeOrigin !== null &&
+        next.frame_onset !== null &&
+        next.frame_offset === null
       ) {
-        next.actual_offset_abs = round3(offsetTime);
-        next.actual_offset = round3(offsetTime - onsetTime);
-        next.actual_duration = round3(next.actual_offset - next.actual_onset);
+        next.frame_offset_abs = round3(offsetTime);
+        next.frame_offset = round3(offsetTime - trialTimeOrigin);
+        next.frame_duration = round3(next.frame_offset - next.frame_onset);
         next.offset_error =
           next.desired_offset === null
             ? null
-            : round3(next.actual_offset - next.desired_offset);
+            : round3(next.frame_offset - next.desired_offset);
         next.duration_error =
           next.desired_duration === null
             ? null
-            : round3(next.actual_duration - next.desired_duration);
+            : round3(next.frame_duration - next.desired_duration);
+        // V1 compatibility aliases
+        next.actual_offset_abs = next.frame_offset_abs;
+        next.actual_offset = next.frame_offset;
+        next.actual_duration = next.frame_duration;
       }
       return next;
     });
@@ -380,7 +484,9 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     };
 
     return {
-      onsetTime,
+      trialTimeOrigin,
+      trialTimeOriginSource,
+      onsetTime: trialTimeOrigin,
       offsetTime,
       actualDuration,
       latestFrameTime,
@@ -422,6 +528,8 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     onFrameCommit,
     scheduleAt,
     registerStimulus,
+    getTrialTimeOrigin,
+    getTrialTimeOriginSource,
     getOnsetTime,
     getElapsed,
     getFrameIntervalEstimate,
@@ -444,6 +552,12 @@ export function scheduleStimulusVisibility(
     stimulusOnset,
     stimulusDuration,
     config.__componentId ?? config.builder_id ?? config.id ?? null,
+    {
+      renderBackend: "dom",
+      timestampSemantics: "dom_mutation_frame",
+      timingDegraded: true,
+      timingDegradedReason: "browser_paint_unobservable",
+    },
   );
 
   if (timing && stimulusOnset === null) {
@@ -456,10 +570,14 @@ export function scheduleStimulusVisibility(
     element.style.visibility = "hidden";
     if (timing) {
       cancellations.push(
-        timing.scheduleAt(stimulusOnset, (timestamp) => {
-          element.style.visibility = "visible";
-          stimulusTiming?.markOnset(timestamp);
-        }),
+        timing.scheduleAt(
+          stimulusOnset,
+          (timestamp) => {
+            element.style.visibility = "visible";
+            stimulusTiming?.markOnset(timestamp);
+          },
+          { policy: "nearest" },
+        ),
       );
     } else {
       cancellations.push(scheduleFrameEvent(stimulusOnset, () => {
@@ -472,15 +590,25 @@ export function scheduleStimulusVisibility(
     const hideAt = (stimulusOnset ?? 0) + stimulusDuration;
     if (timing) {
       cancellations.push(
-        timing.scheduleAt(hideAt, (timestamp) => {
-          element.style.visibility = "hidden";
-          stimulusTiming?.markOffset(timestamp);
-        }),
+        timing.scheduleAt(
+          hideAt,
+          (timestamp) => {
+            element.style.visibility = "hidden";
+            stimulusTiming?.markOffset(timestamp);
+          },
+          { policy: "not_before" },
+        ),
       );
     } else {
-      cancellations.push(scheduleFrameEvent(hideAt, () => {
-        element.style.visibility = "hidden";
-      }));
+      cancellations.push(
+        scheduleFrameEvent(
+          hideAt,
+          () => {
+            element.style.visibility = "hidden";
+          },
+          { policy: "not_before" },
+        ),
+      );
     }
   }
 
@@ -492,6 +620,7 @@ export function scheduleStimulusVisibility(
 export function scheduleFrameEvent(
   delayMs: number | null | undefined,
   callback: (timestamp: number, elapsed: number) => void,
+  { policy = "nearest" }: { policy?: DeadlinePolicy } = {},
 ) {
   const delay = Math.max(0, Number(delayMs ?? 0));
   let startTime: number | null = null;
@@ -516,6 +645,16 @@ export function scheduleFrameEvent(
 
     const targetTime = startTime + delay;
     const elapsed = timestamp - startTime;
+
+    if (policy === "not_before") {
+      if (timestamp >= targetTime) {
+        callback(timestamp, elapsed);
+        return;
+      }
+      rafHandle = requestAnimationFrame(tick);
+      return;
+    }
+
     const errorNow = Math.abs(timestamp - targetTime);
     const errorNext = Math.abs(timestamp + frameMs - targetTime);
 
@@ -554,7 +693,12 @@ export function getResponseRT(
   timing?: ReturnType<typeof createPrecisionTiming>,
   event?: Event,
 ) {
-  const endTime = event && timing ? timing.getEventTime(event) : performance.now();
+  const eventTimestamp = event ? readEventTimestamp(event) : null;
+  const source = eventTimestamp
+    ? eventTimestamp.source
+    : "performance.now_fallback";
+  target.responseTimestampSource = source;
+  const endTime = eventTimestamp?.responseTime ?? performance.now();
   const startTime = timing?.getOnsetTime() ?? target.start_time ?? endTime;
   return endTime - startTime;
 }
@@ -697,7 +841,7 @@ export function preloadAssets(
   assets: AssetPreloadList,
   timeoutMs = 10000,
 ): Promise<void> {
-  return Promise.all([
+  const tasks: Promise<unknown>[] = [
     preloadImages(assets.images, timeoutMs),
     preloadWithJsPsych(
       audioPreloadCache,
@@ -711,5 +855,22 @@ export function preloadAssets(
       timeoutMs,
       jsPsych.pluginAPI.preloadVideo.bind(jsPsych.pluginAPI),
     ),
-  ]).then(() => undefined);
+  ];
+
+  // Timed-audio preload: when a usable WebAudio AudioContext is available,
+  // decode audio buffers before presentation so the scheduled WebAudio path
+  // never decodes inside the timing-critical callback.
+  const audioContext =
+    typeof jsPsych?.pluginAPI?.audioContext === "function"
+      ? jsPsych.pluginAPI.audioContext()
+      : null;
+  if (audioContext) {
+    for (const url of [...new Set(assets.audio.filter(Boolean))]) {
+      tasks.push(
+        preloadAudioBuffer(audioContext, url, timeoutMs).catch(() => null),
+      );
+    }
+  }
+
+  return Promise.all(tasks).then(() => undefined);
 }

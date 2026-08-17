@@ -1,3 +1,5 @@
+import { readEventTimestamp } from "./EventTiming";
+
 type TimingQuality = "ok" | "warning" | "bad";
 
 type ResponseInvalidReason =
@@ -221,6 +223,40 @@ export class ResponseTimingManager {
     }
   }
 
+  /**
+   * Public capture method for component-owned semantic events: the manager
+   * stays the timestamp authority even when the DOM listener belongs to a
+   * component. Reuses the same tryRecordResponse path as keydown/pointerdown.
+   *
+   * Returns true when the response was accepted; when onAccepted returns
+   * false the recorded response is rolled back.
+   */
+  recordExternalEvent(
+    event: Event,
+    details: {
+      eventType: string;
+      device: string;
+      targetComponent?: string | null;
+      minimumValidRtMs?: number | null;
+    },
+    onAccepted?: (response: ResponseTimingResult) => boolean | void,
+  ): boolean {
+    if (!this.enabled || this.responseRecorded) return false;
+    const accepted = this.tryRecordResponse(event, details);
+    if (!accepted) return false;
+
+    const callbackResult = onAccepted?.({
+      ...this.getData(),
+      event,
+    });
+    if (callbackResult === false) {
+      this.clearRecordedResponse();
+      return false;
+    }
+    this.finishIfNeeded();
+    return true;
+  }
+
   getData() {
     if (this.enabled) {
       this.updateResponseQuality();
@@ -229,6 +265,7 @@ export class ResponseTimingManager {
       rt: this.data.rt,
       rt_raw: this.data.rt_raw,
       rt_corrected: this.data.rt_corrected,
+      rt_from_allowed_onset: this.data.rt_from_allowed_onset,
       response_timing_enabled: this.data.response_timing_enabled,
       response_required: this.data.response_required,
       response_allowed_from: this.data.response_allowed_from,
@@ -268,8 +305,10 @@ export class ResponseTimingManager {
       document_hidden_during_trial: this.hiddenDuringTrial,
       window_blur_during_trial: this.blurDuringTrial,
       response_expected_delay_ms: this.data.response_expected_delay_ms,
+      response_reference_delay_ms: this.data.response_expected_delay_ms,
       external_reference_id: this.data.external_reference_id,
       response_error_ms: this.data.response_error_ms,
+      response_reference_error_ms: this.data.response_error_ms,
       response_listener_attached: this.data.response_listener_attached,
       response_listener_removed: this.data.response_listener_removed,
     };
@@ -396,6 +435,9 @@ export class ResponseTimingManager {
       typeof anchor.allowedFromAbs === "number" &&
       timestamp.response_time < anchor.allowedFromAbs
     ) {
+      this.data.rt_from_allowed_onset = round3(
+        timestamp.response_time - anchor.allowedFromAbs,
+      );
       if (this.getPrematurePolicy() === "ignore") return false;
       this.recordBeforeTrialOnset(timestamp.response_time);
       this.finishIfNeeded(true);
@@ -403,6 +445,10 @@ export class ResponseTimingManager {
     }
 
     const rtRaw = round3(timestamp.response_time - anchor.anchorTimeAbs);
+    this.data.rt_from_allowed_onset =
+      typeof anchor.allowedFromAbs === "number"
+        ? round3(timestamp.response_time - anchor.allowedFromAbs)
+        : null;
     const minimumValidRt = this.getMinimumValidRt(details.minimumValidRtMs);
     if (
       typeof rtRaw === "number" &&
@@ -532,21 +578,12 @@ export class ResponseTimingManager {
   }
 
   private getResponseTimestamp(event: Event): TimestampInfo {
-    const now = performance.now();
-    const raw = event.timeStamp;
-    const useEventTimestamp =
-      typeof raw === "number" &&
-      Number.isFinite(raw) &&
-      raw > 0 &&
-      Math.abs(raw - now) <= 60000;
-    const responseTime = useEventTimestamp ? raw : now;
+    const info = readEventTimestamp(event);
     return {
-      response_time: responseTime,
-      response_now_at_handler: now,
-      response_timestamp_source: useEventTimestamp
-        ? "event.timeStamp"
-        : "performance.now_fallback",
-      response_event_lag: now - responseTime,
+      response_time: info.responseTime,
+      response_now_at_handler: info.handlerTime,
+      response_timestamp_source: info.source,
+      response_event_lag: info.eventLag,
     };
   }
 
@@ -777,6 +814,7 @@ export class ResponseTimingManager {
       rt: null,
       rt_raw: null,
       rt_corrected: null,
+      rt_from_allowed_onset: null,
       response_before_trial_onset: false,
       response_before_trial_onset_time: null,
       response_time: null,
@@ -823,6 +861,7 @@ export class ResponseTimingManager {
       rt: null,
       rt_raw: null,
       rt_corrected: null,
+      rt_from_allowed_onset: null,
       response_timing_enabled: this.enabled,
       response_required: this.isResponseRequired(),
       response_allowed_from:

@@ -40,10 +40,18 @@ type StageDrawable =
   | (Required<RectDrawable> & { kind: "rect"; colorRgba: RgbaColor });
 
 export type StageCommitInfo = {
-  timestamp: number;
+  /** rAF/commit frame timestamp this commit is synced to. */
+  frameTimestamp: number;
+  /** performance.now() immediately before the CPU render pass. */
+  cpuCommitStartedAt: number;
+  /** performance.now() immediately after the CPU render pass. */
+  cpuCommitEndedAt: number;
   commitIndex: number;
   commitDuration: number;
   renderBackend: string;
+
+  /** deprecated V1 alias of frameTimestamp */
+  timestamp: number;
 };
 
 type PendingVisibilityCommit = {
@@ -56,6 +64,8 @@ export type StageMetrics = {
   render_backend_requested: RenderBackendRequest;
   render_backend: string;
   buffer_strategy: string;
+  visual_all_commits_frame_synced: boolean;
+  commit_unsynced_count: number;
   visual_all_commits_rAF: boolean;
   commit_outside_raf_count: number;
   commit_count: number;
@@ -96,6 +106,8 @@ function createBaseMetrics(
     render_backend_requested: requested,
     render_backend: backend,
     buffer_strategy: bufferStrategy,
+    visual_all_commits_frame_synced: true,
+    commit_unsynced_count: 0,
     visual_all_commits_rAF: true,
     commit_outside_raf_count: 0,
     commit_count: 0,
@@ -151,7 +163,7 @@ function createVisibleCanvas(
   return { canvas, dpr };
 }
 
-abstract class BaseStage {
+export abstract class BaseStage {
   canvas: HTMLCanvasElement;
   dpr: number;
   width: number;
@@ -272,8 +284,11 @@ abstract class BaseStage {
     }
   }
 
-  commit(timestamp: number, fromAnimationFrame = false): StageCommitInfo | null {
-    if (this.trialActive && !fromAnimationFrame) {
+  commit(frameTimestamp: number, frameSynced = false): StageCommitInfo | null {
+    if (this.trialActive && !frameSynced) {
+      this.metrics.visual_all_commits_frame_synced = false;
+      this.metrics.commit_unsynced_count += 1;
+      // V1 compatibility aliases
       this.metrics.visual_all_commits_rAF = false;
       this.metrics.commit_outside_raf_count += 1;
     }
@@ -283,10 +298,10 @@ abstract class BaseStage {
       return null;
     }
 
-    const startedAt = performance.now();
-    const drawCalls = this.renderFrame(timestamp);
-    const endedAt = performance.now();
-    const duration = round3(endedAt - startedAt);
+    const cpuCommitStartedAt = performance.now();
+    const drawCalls = this.renderFrame(frameTimestamp);
+    const cpuCommitEndedAt = performance.now();
+    const duration = round3(cpuCommitEndedAt - cpuCommitStartedAt);
     this.metrics.commit_count += 1;
     this.metrics.commit_durations.push(duration);
     this.metrics.draw_call_count += drawCalls;
@@ -299,10 +314,13 @@ abstract class BaseStage {
     this.pollGpuQueries();
 
     const info: StageCommitInfo = {
-      timestamp,
+      frameTimestamp,
+      cpuCommitStartedAt,
+      cpuCommitEndedAt,
       commitIndex: this.metrics.commit_count,
       commitDuration: duration,
       renderBackend: this.metrics.render_backend,
+      timestamp: frameTimestamp,
     };
     const pending = this.pendingVisibilityCommits;
     this.pendingVisibilityCommits = [];

@@ -203,6 +203,21 @@ class VideoComponent {
     // Set playback rate
     videoElement.playbackRate = config.rate || 1;
 
+    // Timing record: HTML media presentation is unobservable from the page.
+    const timing = config.__timing as any;
+    const stimulusTiming = timing?.registerStimulus?.(
+      config.name || config.type || "video",
+      0,
+      null,
+      config.__componentId ?? config.builder_id ?? config.id ?? null,
+      {
+        renderBackend: "html_media",
+        timestampSemantics: "html_media_play_request",
+        timingDegraded: true,
+        timingDegradedReason: "media_presentation_unobservable",
+      },
+    );
+
     // Attempt to play if autoplay is enabled and no start
     if (shouldAutoplay && config.start == null) {
       // Use loadeddata event to ensure video is ready before playing
@@ -238,8 +253,11 @@ class VideoComponent {
             }
           };
 
-          if (config.__timing) {
-            config.__timing.onStart(startPlayback);
+          if (timing) {
+            timing.onStart((timestamp: number) => {
+              stimulusTiming?.markOnset(timestamp);
+              startPlayback();
+            });
           } else {
             startPlayback();
           }

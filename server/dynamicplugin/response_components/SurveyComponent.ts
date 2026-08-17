@@ -94,6 +94,7 @@ class SurveyjsComponent {
   private survey: any = null;
   private response: any = {};
   private rt: number = 0;
+  private responseTimestampSource: string | null = null;
   private startTime: number = 0;
   private timing: any = null;
 
@@ -213,6 +214,15 @@ class SurveyjsComponent {
 
   getRT() {
     return this.rt;
+  }
+
+  /**
+   * Diagnostic: timestamp source for the recorded response
+   * ("event.timeStamp" when a DOM event was available, otherwise
+   * "performance.now_fallback").
+   */
+  getResponseTimestampSource(): string | null {
+    return this.responseTimestampSource ?? null;
   }
 
   getSurvey() {
