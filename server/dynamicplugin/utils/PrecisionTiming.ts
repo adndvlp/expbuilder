@@ -1,7 +1,7 @@
 import { readEventTimestamp } from "./EventTiming";
 import { preloadAudioBuffer } from "./AudioTiming";
 
-export type TrialTimeOriginSource = "fresh_raf" | "visual_handoff";
+export type TrialTimeOriginSource = "fresh_raf" | "visual_handoff" | "host_coordinator";
 
 export type DeadlinePolicy = "nearest" | "not_before";
 
@@ -114,6 +114,7 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
   let trialTimeOriginSource: TrialTimeOriginSource | null = null;
   let lastFrameTime: number | null = null;
   let latestFrameTime: number | null = null;
+  let latestCommittedFrameTime: number | null = null;
   let frameIntervalEstimate = fallbackFrameMs;
   let rafHandle: number | null = null;
   let running = false;
@@ -189,6 +190,10 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     for (const callback of [...frameCommitCallbacks]) {
       callback(timestamp);
     }
+    // Authority of the last frame whose commit phase ACTUALLY ran. If a
+    // scheduled event ends/stops the trial during `runDueEvents`, the current
+    // frame never reaches this point and must not be marked as committed.
+    latestCommittedFrameTime = timestamp;
   };
 
   const tick = (timestamp: number) => {
@@ -490,6 +495,7 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
       offsetTime,
       actualDuration,
       latestFrameTime,
+      latestCommittedFrameTime,
       frameCount: intervals.length,
       longFrameCount: longFrames.length,
       droppedFrameCount,

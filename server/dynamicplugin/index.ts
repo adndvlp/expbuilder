@@ -39,6 +39,43 @@ const DYNAMIC_CONTAINER_ID = "jspsych-dynamic-plugin-container";
 const DYNAMIC_VISUAL_BRIDGE_ID = "jspsych-dynamic-visual-bridge";
 const DYNAMIC_PERSISTENT_VISUAL_ID = "jspsych-dynamic-persistent-visual";
 
+/**
+ * Structural (runtime) contract of the ExpBuilder jsPsych Timing V1
+ * coordinator (`jsPsych.timing`, P0). Feature-detected at runtime — never by
+ * version strings — so this plugin keeps working with official jsPsych
+ * (legacy VisualHandoff path) and with the Timing fork (host path).
+ */
+interface HostTrialOrigin {
+  timestamp: number;
+  source: "host_coordinator";
+  fromTrialIndex: number;
+  frameIndex: number | null;
+  acquiredAt: number;
+}
+
+interface TimingTransitionOutcome {
+  fromTrialIndex: number;
+  toTrialIndex: number;
+  status: "acquired" | "lost";
+  reason: string | null;
+}
+
+interface HostTimingCoordinator {
+  /** Defines host authority: feature-detected and required. */
+  acquireTrialOrigin(requesterTrialIndex: number): HostTrialOrigin | null;
+  /** Feature-detected individually at call sites. */
+  registerHandoff?(
+    timestamp: number,
+    meta?: { frameIndex?: number; frameIntervalEstimateMs?: number }
+  ):
+    | { status: "pending" }
+    | { status: "rejected"; reason: string };
+  /** Feature-detected individually at call sites. */
+  getTransitionOutcome?(requesterTrialIndex: number): TimingTransitionOutcome | null;
+}
+
+type TimingContinuity = "acquired" | "lost" | "none";
+
 let preservedVisualBridge: HTMLElement | null = null;
 let preservedVisualBridgeObserver: MutationObserver | null = null;
 let persistentVisualSurface: HTMLElement | null = null;
@@ -481,6 +518,24 @@ const info = <const>{
     },
     visual_handoff_from_trial_sequence: {
       type: ParameterType.INT,
+    },
+    timing_continuity: {
+      type: ParameterType.STRING,
+    },
+    timing_lost_reason: {
+      type: ParameterType.STRING,
+    },
+    timing_handoff_from_trial_index: {
+      type: ParameterType.INT,
+    },
+    timing_handoff_frame_index: {
+      type: ParameterType.INT,
+    },
+    timing_handoff_acquired_at: {
+      type: ParameterType.FLOAT,
+    },
+    timing_handoff_register_status: {
+      type: ParameterType.STRING,
     },
     response_timing_quality: {
       type: ParameterType.STRING,
@@ -1291,6 +1346,14 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
 
   trial(display_element: HTMLElement, trial: TrialType<Info>) {
     const dynamicTrialSequence = ++dynamicTrialSequenceCounter;
+
+    // Single timing-authority decision per trial. When the host exposes the
+    // Timing V1 coordinator, it is the ONLY origin authority (success or
+    // fresh_raf); the legacy VisualHandoff path is used exclusively when the
+    // coordinator is absent (official jsPsych).
+    const hostTiming = (this.jsPsych as any)?.timing as HostTimingCoordinator | undefined;
+    const hostTimingAvailable = typeof hostTiming?.acquireTrialOrigin === "function";
+
     return new Promise((resolveTrial) => {
 
     // Inject plugin styles if not already present
@@ -1364,6 +1427,10 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     let visualFrameBoundaryHandoff = false;
     let visualFrameBoundaryHandoffLeadMs: number | null = null;
     let consumedVisualHandoff: VisualHandoffSnapshot | null = null;
+    let hostOrigin: HostTrialOrigin | null = null;
+    let timingContinuity: TimingContinuity = "none";
+    let timingLostReason: string | null = null;
+    let hostRegisterStatus: string | null = null;
     let previousVisualDurationPatched = false;
     let previousVisualDurationData: Record<string, any> | null = null;
     let handleParticipantResponse: (
@@ -1554,6 +1621,32 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       trialEnded = true;
 
       const timingSummary = timing.getSummary(offsetTime);
+
+      // Outgoing host handoff: must be registered BEFORE control returns to
+      // jsPsych (resolveTrial). Uses the last frame whose commit phase
+      // ACTUALLY ran (latestCommittedFrameTime — NOT latestFrameTime, which a
+      // due scheduled event may advance without any commit) and the trial's
+      // frame interval estimate. Only for timing_continuous trials when the
+      // host coordinator is available.
+      if (hostTimingAvailable && trial.timing_continuous === true) {
+        const latestCommittedFrameTime =
+          typeof timingSummary.latestCommittedFrameTime === "number"
+            ? timingSummary.latestCommittedFrameTime
+            : null;
+        if (latestCommittedFrameTime === null) {
+          hostRegisterStatus = "skipped_no_committed_frame";
+        } else if (typeof hostTiming.registerHandoff === "function") {
+          const registerResult = hostTiming.registerHandoff(latestCommittedFrameTime, {
+            frameIntervalEstimateMs: timing.getFrameIntervalEstimate(),
+          });
+          hostRegisterStatus =
+            registerResult.status === "pending"
+              ? "pending"
+              : `rejected:${registerResult.reason}`;
+        } else {
+          hostRegisterStatus = "skipped_no_register_api";
+        }
+      }
       const desiredTrialDuration = resolveTimingMs(trial.trial_duration, null);
       const trialDurationError =
         desiredTrialDuration === null || timingSummary.actualDuration === null
@@ -1629,6 +1722,22 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             "performance.now + requestAnimationFrame frame-nearest scheduler",
           trial_time_origin: timingSummary.trialTimeOrigin,
           trial_time_origin_source: timingSummary.trialTimeOriginSource,
+          ...(hostTimingAvailable
+            ? {
+                timing_continuity: timingContinuity,
+                timing_lost_reason: timingLostReason,
+                ...(hostOrigin
+                  ? {
+                      timing_handoff_from_trial_index: hostOrigin.fromTrialIndex,
+                      timing_handoff_frame_index: hostOrigin.frameIndex,
+                      timing_handoff_acquired_at: hostOrigin.acquiredAt,
+                    }
+                  : {}),
+                ...(hostRegisterStatus !== null
+                  ? { timing_handoff_register_status: hostRegisterStatus }
+                  : {}),
+              }
+            : {}),
           trial_onset_time: timingSummary.onsetTime,
           trial_offset_time: timingSummary.offsetTime,
           trial_duration_policy: desiredTrialDuration === null ? null : "not_before",
@@ -1675,20 +1784,27 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           visual_frame_boundary_handoff_lead_ms: roundTiming(
             visualFrameBoundaryHandoffLeadMs,
           ),
-          visual_handoff_available: consumedVisualHandoff?.available ?? false,
-          visual_handoff_consumed: consumedVisualHandoff?.consumed ?? false,
-          visual_handoff_lost:
-            (consumedVisualHandoff?.lost ?? false) ||
-            (visualFrameBoundaryHandoff &&
-              !(consumedVisualHandoff?.available ?? false)),
-          visual_handoff_lost_reason:
-            consumedVisualHandoff?.lostReason ||
-            (visualFrameBoundaryHandoff &&
-            !(consumedVisualHandoff?.available ?? false)
-              ? "not_available"
-              : ""),
-          visual_handoff_from_trial_sequence:
-            consumedVisualHandoff?.fromTrialSequence ?? null,
+          visual_handoff_available: hostTimingAvailable
+            ? false
+            : consumedVisualHandoff?.available ?? false,
+          visual_handoff_consumed: hostTimingAvailable
+            ? false
+            : consumedVisualHandoff?.consumed ?? false,
+          visual_handoff_lost: hostTimingAvailable
+            ? false
+            : (consumedVisualHandoff?.lost ?? false) ||
+              (visualFrameBoundaryHandoff &&
+                !(consumedVisualHandoff?.available ?? false)),
+          visual_handoff_lost_reason: hostTimingAvailable
+            ? ""
+            : consumedVisualHandoff?.lostReason ||
+              (visualFrameBoundaryHandoff &&
+              !(consumedVisualHandoff?.available ?? false)
+                ? "not_available"
+                : ""),
+          visual_handoff_from_trial_sequence: hostTimingAvailable
+            ? null
+            : consumedVisualHandoff?.fromTrialSequence ?? null,
           response_timing_quality: responseTimingData.response_timing_quality,
           response_timing_quality_reason:
             responseTimingData.response_timing_quality_reason,
@@ -2008,7 +2124,11 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         };
       }
 
-      if (visualFrameBoundaryHandoff && typeof offsetTime === "number") {
+      if (
+        !hostTimingAvailable &&
+        visualFrameBoundaryHandoff &&
+        typeof offsetTime === "number"
+      ) {
         setPersistentVisualHandoff(offsetTime, dynamicTrialSequence);
       } else {
         preserveCanvasVisualBridge(mainContainer, display_element);
@@ -2112,19 +2232,56 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         );
       }
 
-      // A handoff state must be resolved by the immediately following
-      // trial, not only by frame-boundary trials: otherwise a lost handoff
-      // from an earlier trial could be observed by a later unrelated trial.
-      const handoff = consumePersistentVisualHandoffTimestamp();
-      consumedVisualHandoff = handoff;
-      if (
-        visualFrameBoundaryHandoff &&
-        handoff &&
-        typeof handoff.timestamp === "number"
-      ) {
-        timing.startAt(handoff.timestamp, "visual_handoff");
+      // Origin authority selection. With the host coordinator present it is
+      // the ONLY authority: a successful acquire starts at the handoff
+      // timestamp; a null acquire falls back to fresh_raf — the legacy
+      // VisualHandoff state is never consulted nor consumed in that case.
+      if (hostTimingAvailable) {
+        const currentTrialIndex = this.jsPsych.getProgress()?.current_trial_global ?? 0;
+
+        // Only a timing_continuous successor acquires a host origin. A normal
+        // trial never acquires (P0 would return null anyway — its slot was
+        // discarded with successor_not_continuous) but may still report that
+        // outcome. Trial index 0 has no predecessor: skip acquisition.
+        if (currentTrialIndex > 0 && trial.timing_continuous === true) {
+          hostOrigin = hostTiming.acquireTrialOrigin(currentTrialIndex);
+        }
+
+        // Outcome MUST be consulted AFTER the acquisition attempt:
+        // acquireTrialOrigin may CREATE the outcome (never_registered,
+        // expired, ...) and returns null.
+        const outcome =
+          typeof hostTiming.getTransitionOutcome === "function"
+            ? hostTiming.getTransitionOutcome(currentTrialIndex)
+            : null;
+
+        if (hostOrigin && typeof hostOrigin.timestamp === "number") {
+          timing.startAt(hostOrigin.timestamp, "host_coordinator");
+          timingContinuity = "acquired";
+          timingLostReason = null;
+        } else {
+          timing.start();
+          if (outcome && outcome.status === "lost" && outcome.reason) {
+            timingContinuity = "lost";
+            timingLostReason = outcome.reason;
+          } else {
+            timingContinuity = "none";
+            timingLostReason = null;
+          }
+        }
       } else {
-        timing.start();
+        // Legacy (official jsPsych): original V2 behavior, untouched.
+        const handoff = consumePersistentVisualHandoffTimestamp();
+        consumedVisualHandoff = handoff;
+        if (
+          visualFrameBoundaryHandoff &&
+          handoff &&
+          typeof handoff.timestamp === "number"
+        ) {
+          timing.startAt(handoff.timestamp, "visual_handoff");
+        } else {
+          timing.start();
+        }
       }
 
       if (trial.prefetch_next_trials !== false) {

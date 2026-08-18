@@ -58,8 +58,44 @@ describe("getResponseRT shared event timing", () => {
   });
 });
 
-describe("PrecisionTiming origin", () => {
+describe("PrecisionTiming committed-frame authority", () => {
   beforeEach(() => {
+    installFakeRaf();
+  });
+  afterEach(() => {
+    restoreFakeRaf();
+  });
+
+  it("distinguishes the latest observed frame from the last committed frame", () => {
+    const timing = createPrecisionTiming({ recordFrameTiming: true });
+
+    timing.start();
+    stepRaf(1700); // start frame: origin + commit phase runs → committed = 1700
+    stepRaf(1716); // establishes a realistic ~16 ms frame interval estimate
+    stepRaf(1732);
+
+    let dueFired = false;
+    timing.scheduleAt(300, () => {
+      dueFired = true;
+      timing.stop(); // trial ends during runDueEvents, before the commit phase
+    });
+
+    stepRaf(1984); // tick: commits normally → committed = 1984
+    stepRaf(2000); // tick: latestFrameTime = 2000; due fires; stop; NO commit phase
+
+    expect(dueFired).toBe(true);
+    const summary = timing.getSummary(2000);
+    expect(summary.latestFrameTime).toBe(2000);
+    expect(summary.latestCommittedFrameTime).toBe(1984);
+  });
+
+  it("exposes null latestCommittedFrameTime before any commit", () => {
+    const timing = createPrecisionTiming();
+    expect(timing.getSummary(performance.now()).latestCommittedFrameTime).toBeNull();
+  });
+});
+
+describe("PrecisionTiming origin", () => {  beforeEach(() => {
     installFakeRaf();
   });
 
