@@ -30,8 +30,7 @@ export function sanitizeId(id) {
 }
 
 /* istanbul ignore next -- value resolution permutations are covered through generated-code fixtures. */
-export function resolveValue(mapping, row, parameters, key) {
-  if (!mapping || mapping.source === 'none') {
+export function resolveValue(mapping, row, parameters, key) {  if (!mapping || mapping.source === 'none') {
     const p = parameters.find(x => x.key === key)
     return p?.default ?? null
   }
@@ -49,10 +48,44 @@ export function resolveValue(mapping, row, parameters, key) {
 }
 
 export function jsStr(v) {
-  if (typeof v === 'string' && (v.trim().startsWith('function') || v.trim().startsWith('(') || v.trim().match(/^[a-zA-Z_$][\w$]*\s*=>/))) {
+  if (isCodeString(v)) {
     return v.trim()
   }
   return JSON.stringify(v)
+}
+
+/**
+ * Shared resolver for COMPONENT fields. Component sub-keys are persisted in
+ * two forms: plain literals (e.g. `type: "VideoComponent"`, `plainLabel:
+ * "plain"`) and parameter mappings (`{ source: "typed"|"csv"|"none",
+ * value: ... }`). Mappings are resolved through `resolveValue`; plain values
+ * are returned as-is. Functions are never evaluated.
+ */
+export function resolveComponentValue(value, row, parameters, key) {
+  if (
+    value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    typeof value.source === 'string'
+  ) {
+    return resolveValue(value, row, parameters, key)
+  }
+  return value
+}
+
+/**
+ * Returns true when a string value is JavaScript code (a function or arrow
+ * expression) rather than a literal. Used both by `jsStr` (emission) and by
+ * the P3 prepare manifest builder (literal-only extraction).
+ */
+export function isCodeString(v) {
+  if (typeof v !== 'string') return false
+  const trimmed = v.trim()
+  return (
+    trimmed.startsWith('function') ||
+    trimmed.startsWith('(') ||
+    /^[a-zA-Z_$][\w$]*\s*=>/.test(trimmed)
+  )
 }
 
 /* istanbul ignore next -- emitted rule branches are covered as generated source snapshots. */

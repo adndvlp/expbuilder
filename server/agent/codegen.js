@@ -6,7 +6,7 @@ import { __dirname } from '../utils/paths.js'
 import { ensureTemplate } from '../utils/templates.js'
 import { getPluginScriptsFromTrials } from '../utils/plugin-scripts.js'
 import { generateLoopCode } from './codegen/loop.js'
-import { generateTrialCode } from './codegen/trial.js'
+import { buildStaticPrepareManifest, generateTrialCode } from './codegen/trial.js'
 
 /* istanbul ignore next -- integration tests assert generated experiment output, not every emitted branch. */
 export async function generateExperimentCode(experimentID, isPublic = false) {
@@ -51,10 +51,35 @@ export async function generateExperimentCode(experimentID, isPublic = false) {
     code += `timeline.push({\n  type: jsPsychFullscreen,\n  fullscreen_mode: true\n});\n\n`
   }
 
-  for (const item of timeline) {
+  for (let index = 0; index < timeline.length; index++) {
+    const item = timeline[index]
     if (item.type === 'trial') {
       const t = doc.trials.find(tr => tr.id === item.id)
-      if (t) code += generateTrialCode(t, false).code + '\n'
+      if (t) {
+        // P3 static-successor safety rule: a prepare manifest is emitted ONLY
+        // when adjacency is demonstrably static — the immediately next
+        // timeline item is a plain trial (not a loop), the current trial has
+        // no branch/repeat conditions, and the CURRENT trial itself expands
+        // to exactly ONE runtime execution (no multi-row CSV, no loop CSV).
+        let prepareManifest = null
+        const nextItem = timeline[index + 1]
+        const hasBranches = (t.branchConditions?.length ?? 0) > 0
+        const hasRepeats = (t.repeatConditions?.length ?? 0) > 0
+        const currentHasMultipleCsvRows = (t.csvJson?.length ?? 0) > 1
+        const currentConsumesLoopCsv = Boolean(t.csvFromLoop)
+        if (
+          t.plugin === 'plugin-dynamic' &&
+          !hasBranches &&
+          !hasRepeats &&
+          !currentHasMultipleCsvRows &&
+          !currentConsumesLoopCsv &&
+          nextItem?.type === 'trial'
+        ) {
+          const nextTrial = doc.trials.find(tr => tr.id === nextItem.id)
+          prepareManifest = buildStaticPrepareManifest(nextTrial)
+        }
+        code += generateTrialCode(t, false, null, null, prepareManifest).code + '\n'
+      }
     } else if (item.type === 'loop') {
       const l = doc.loops.find(lp => lp.id === item.id)
       if (l) code += generateLoopCode(l, doc, null) + '\n'

@@ -2,15 +2,85 @@ import {
   generateConditionEval,
   generateExtensionCode,
   generateRuleEvalJS,
+  isCodeString,
   jsStr,
   readMetadata,
+  resolveComponentValue,
   resolveValue,
   sanitizeId,
   toJsPsychGlobal,
 } from './helpers.js'
 
+const IMAGE_URL_RE = /\.(png|jpe?g|gif|webp|svg|bmp)(\?.*)?$/i
+
+/**
+ * P3 producer: builds the STATIC `prepare_next_manifest` for a successor
+ * trial. Only literal strings qualify — function-valued assets are excluded
+ * and never evaluated. Returns null when the successor is not preparable
+ * (not a DynamicPlugin trial, CSV-driven rows, or no literal assets would be
+ * covered anyway — the caller decides adjacency safety).
+ */
+export function buildStaticPrepareManifest(nextTrial) {
+  if (!nextTrial || nextTrial.plugin !== 'plugin-dynamic') return null
+  if ((nextTrial.csvJson?.length ?? 0) > 1) return null
+
+  const parameters = readMetadata('plugin-dynamic').parameters
+  const cm = nextTrial.columnMapping || {}
+
+  const manifest = {
+    stableTrialId: String(nextTrial.id),
+    images: [],
+    audio: [],
+    video: [],
+  }
+
+  /**
+   * Canonical component-value resolution, IDENTICAL to `buildProps` in
+   * `generateTrialCode`: a component sub-key is a mapping object resolved
+   * through `resolveValue`. The canonical array form is a typed mapping
+   * whose value is a plain array of strings (same form `jsStr` emits).
+   * CSV-sourced values resolve to null here (no row) and are never declared
+   * as preparable literals.
+   */
+  const resolveCompValue = (mapping) => resolveComponentValue(mapping, {}, parameters, '')
+
+  const toLiterals = (value) => {
+    if (Array.isArray(value)) {
+      return value.filter((v) => typeof v === 'string' && !isCodeString(v))
+    }
+    if (typeof value === 'string' && !isCodeString(value)) return [value]
+    return []
+  }
+
+  const collect = (configs) => {
+    if (!Array.isArray(configs)) return
+    for (const comp of configs) {
+      if (!comp || typeof comp !== 'object') continue
+      const type = resolveCompValue(comp.type)
+      if (type === 'ImageComponent') {
+        manifest.images.push(...toLiterals(resolveCompValue(comp.stimulus)))
+      } else if (type === 'AudioComponent') {
+        manifest.audio.push(...toLiterals(resolveCompValue(comp.stimulus)))
+      } else if (type === 'VideoComponent') {
+        manifest.video.push(...toLiterals(resolveCompValue(comp.stimulus)))
+      } else if (type === 'SketchpadComponent') {
+        manifest.images.push(...toLiterals(resolveCompValue(comp.background_image)))
+      } else if (type === 'ButtonResponseComponent') {
+        for (const s of toLiterals(resolveCompValue(comp.choices))) {
+          if (IMAGE_URL_RE.test(s)) manifest.images.push(s)
+        }
+      }
+    }
+  }
+
+  collect(cm.components?.value)
+  collect(cm.response_components?.value)
+
+  return manifest
+}
+
 /* istanbul ignore next -- trial code generation is covered by output-focused fixture tests. */
-export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
+export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId, prepareManifest = null) {
   if (!trial.plugin) return { code: '', timelineRef: '', procedureRef: '' }
 
   if (trial.plugin === 'webgazer') return { code: trial.trialCode || '', timelineRef: '', procedureRef: '' }
@@ -40,7 +110,7 @@ export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
             props[key] = val.map(comp => {
               const resolved = {}
               for (const ck of Object.keys(comp)) {
-                resolved[ck] = resolveValue(comp[ck], row, parameters, ck)
+                resolved[ck] = resolveComponentValue(comp[ck], row, parameters, ck)
               }
               return resolved
             })
@@ -193,6 +263,13 @@ export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
   const buildTrialObj = (rowMapped, useTimelineVar) => {
     let obj = ''
     obj += `    type: ${pluginGlobal},\n`
+
+    if (trial.plugin === 'plugin-dynamic') {
+      obj += `    __stableTrialId: ${jsStr(String(trial.id))},\n`
+      if (prepareManifest) {
+        obj += `    prepare_next_manifest: ${JSON.stringify(prepareManifest)},\n`
+      }
+    }
 
     const extType = trial.parameters?.extensionType
     const includesExt = trial.parameters?.includesExtensions

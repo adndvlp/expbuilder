@@ -82,6 +82,170 @@ let persistentVisualSurface: HTMLElement | null = null;
 const visualHandoff = createVisualHandoff();
 let dynamicTrialSequenceCounter = 0;
 
+// ---------------------------------------------------------------------------
+// P3 — prepared presentation (static resource prewarm).
+//
+// The jsPsych timeline cannot safely reveal the next trial before loop /
+// conditional / parameter resolution, so P3 is driven exclusively by a
+// builder-generated STATIC manifest (`prepare_next_manifest` on the ACTIVE
+// trial): literal asset URLs only. Preparation warms the existing module
+// caches (image decode/bitmap, audio, video) — it never evaluates future
+// parameters, never touches DOM, never starts trial/onset/response/activation
+// timers, never acquires a host origin. NOTE: the existing preload
+// infrastructure uses bounded LOAD timeouts internally (window.setTimeout
+// with a cap); that is a shared-cache safety net, not a trial timer, and is
+// intentionally unchanged.
+//
+// Prepared state is isolated PER jsPsych instance (WeakMap) because a page
+// can run multiple independent experiments.
+// ---------------------------------------------------------------------------
+interface PreparedPresentationState {
+  generation: number;
+  stableTrialId: string | null;
+  images: string[];
+  audio: string[];
+  video: string[];
+  status: "warming" | "ready" | "not_safe" | "discarded";
+  /** Diagnostics only (performance.now()); never a trial origin. */
+  startedAt: number;
+  readyAt: number | null;
+}
+
+interface PreparationContext {
+  generation: number;
+  candidate: PreparedPresentationState | null;
+}
+
+const preparationContexts = new WeakMap<object, PreparationContext>();
+
+function getPreparationContext(jsPsych: any): PreparationContext {
+  let context = preparationContexts.get(jsPsych);
+  if (!context) {
+    context = { generation: 0, candidate: null };
+    preparationContexts.set(jsPsych, context);
+  }
+  return context;
+}
+
+function disposePreparedPresentation(jsPsych: any) {
+  const context = preparationContexts.get(jsPsych);
+  if (!context) return;
+  context.generation++;
+  context.candidate = null;
+}
+
+function prepareNextPresentation(jsPsych: any, rawManifest: unknown) {
+  const manifest = (rawManifest ?? {}) as {
+    stableTrialId?: unknown;
+    images?: unknown;
+    audio?: unknown;
+    video?: unknown;
+  };
+  const stableTrialId =
+    typeof manifest.stableTrialId === "string" ? manifest.stableTrialId : null;
+  const stringArray = (value: unknown): string[] =>
+    Array.isArray(value)
+      ? value.filter((entry): entry is string => typeof entry === "string")
+      : [];
+  const images = stringArray(manifest.images);
+  const audio = stringArray(manifest.audio);
+  const video = stringArray(manifest.video);
+
+  const context = getPreparationContext(jsPsych);
+
+  if (images.length === 0 && audio.length === 0 && video.length === 0) {
+    context.generation++;
+    context.candidate = {
+      generation: context.generation,
+      stableTrialId,
+      images,
+      audio,
+      video,
+      status: "not_safe",
+      startedAt: performance.now(),
+      readyAt: null,
+    };
+    return;
+  }
+
+  const generation = ++context.generation;
+  const entry: PreparedPresentationState = {
+    generation,
+    stableTrialId,
+    images,
+    audio,
+    video,
+    status: "warming",
+    startedAt: performance.now(),
+    readyAt: null,
+  };
+  context.candidate = entry;
+
+  preloadAssets(jsPsych, { images, audio, video })
+    .then(() => {
+      if (entry.generation !== context.generation || context.candidate !== entry) {
+        entry.status = "discarded";
+        return;
+      }
+      entry.status = "ready";
+      entry.readyAt = performance.now();
+    })
+    .catch(() => {
+      if (entry.generation !== context.generation || context.candidate !== entry) {
+        entry.status = "discarded";
+        return;
+      }
+      context.candidate = null;
+    });
+}
+
+type PrepareStatus = "not_attempted" | "reused" | "miss" | "not_safe";
+
+function validatePreparedPresentation(jsPsych: any, trial: any): {
+  status: PrepareStatus;
+  startedAt: number | null;
+  readyAt: number | null;
+} {
+  const context = preparationContexts.get(jsPsych);
+  const candidate = context?.candidate ?? null;
+  if (!candidate) {
+    return { status: "not_attempted", startedAt: null, readyAt: null };
+  }
+  // Single-use: whichever trial activates next consumes the candidate.
+  context.candidate = null;
+  const { startedAt, readyAt } = candidate;
+
+  if (candidate.status !== "ready") {
+    return { status: "not_safe", startedAt, readyAt: null };
+  }
+
+  const stableIdMatches =
+    candidate.stableTrialId === null || trial.__stableTrialId === candidate.stableTrialId;
+  if (!stableIdMatches) {
+    return { status: "miss", startedAt, readyAt };
+  }
+
+  // Typed, category-aware validation against the REAL processed trial.
+  // Function-valued parameters never participate (the collector only
+  // accepts literal strings).
+  const actual = collectAssetPreloadListFromTrial(trial);
+  const hasAnyActual =
+    actual.images.length > 0 || actual.audio.length > 0 || actual.video.length > 0;
+  if (!hasAnyActual) {
+    return { status: "miss", startedAt, readyAt };
+  }
+
+  const covered =
+    actual.images.every((url) => candidate.images.includes(url)) &&
+    actual.audio.every((url) => candidate.audio.includes(url)) &&
+    actual.video.every((url) => candidate.video.includes(url));
+  if (!covered) {
+    return { status: "miss", startedAt, readyAt };
+  }
+
+  return { status: "reused", startedAt, readyAt };
+}
+
 type PendingVisualDurationPatch = {
   jsPsych: any;
   trialSequence: number;
@@ -544,6 +708,15 @@ const info = <const>{
       type: ParameterType.FLOAT,
     },
     trial_end_commit_time: {
+      type: ParameterType.FLOAT,
+    },
+    timing_prepare_status: {
+      type: ParameterType.STRING,
+    },
+    timing_prepare_started_at: {
+      type: ParameterType.FLOAT,
+    },
+    timing_prepare_ready_at: {
       type: ParameterType.FLOAT,
     },
     response_timing_quality: {
@@ -1363,6 +1536,14 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     const hostTiming = (this.jsPsych as any)?.timing as HostTimingCoordinator | undefined;
     const hostTimingAvailable = typeof hostTiming?.acquireTrialOrigin === "function";
 
+    // P3: consume/validate any prepared presentation BEFORE this trial's
+    // heavy work. Purely static: only literal media strings of the processed
+    // trial participate.
+    const prepareDiagnostics = validatePreparedPresentation(this.jsPsych, trial);
+    const prepareStatus: PrepareStatus = prepareDiagnostics.status;
+    const prepareStartedAt: number | null = prepareDiagnostics.startedAt;
+    const prepareReadyAt: number | null = prepareDiagnostics.readyAt;
+
     return new Promise((resolveTrial) => {
 
     // Inject plugin styles if not already present
@@ -1475,6 +1656,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       timing.stop();
       responseTiming.detach();
       resizeObserver.disconnect();
+      disposePreparedPresentation(this.jsPsych);
       for (const { instance } of stimulusComponents) {
         if (instance.destroy) instance.destroy();
       }
@@ -1797,6 +1979,9 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           timing_schema_version: 2,
           timing_method:
             "performance.now + requestAnimationFrame frame-nearest scheduler",
+          timing_prepare_status: prepareStatus,
+          timing_prepare_started_at: prepareStartedAt,
+          timing_prepare_ready_at: prepareReadyAt,
           trial_time_origin: timingSummary.trialTimeOrigin,
           trial_time_origin_source: timingSummary.trialTimeOriginSource,
           ...(trial.timing_continuous === true
@@ -2376,6 +2561,12 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         } else {
           timing.start();
         }
+      }
+
+      // P3: kick off the static prewarm of the successor from THIS trial's
+      // builder-generated manifest. Non-blocking; never awaits.
+      if (trial.prepare_next_manifest) {
+        prepareNextPresentation(this.jsPsych, trial.prepare_next_manifest);
       }
 
       if (trial.prefetch_next_trials !== false) {
