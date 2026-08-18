@@ -258,6 +258,7 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
     // No rAF step: host origin must be set synchronously via startAt.
     vi.spyOn(performance, "now").mockReturnValue(1260);
     window.dispatchEvent(keydown(1250));
+    stepRaf(1266); // P2: post-commit finalize frame (commit 1266)
     const data: any = await dataPromise;
 
     expect(coordinator.acquireTrialOrigin).toHaveBeenCalledTimes(1);
@@ -272,8 +273,11 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
     expect(data.timing_handoff_acquired_at).toBe(1001);
     // A is continuous: it registers its own outgoing handoff at the end.
     expect(coordinator.registerHandoff).toHaveBeenCalledTimes(1);
-    expect(coordinator.registerHandoff.mock.calls[0][0]).toBe(1000);
+    expect(coordinator.registerHandoff.mock.calls[0][0]).toBe(1266); // commit ts, NOT response ts
     expect(data.timing_handoff_register_status).toBe("pending");
+    expect(data.trial_end_alignment).toBe("post_commit");
+    expect(data.trial_end_request_time).toBe(1250);
+    expect(data.trial_end_commit_time).toBe(1266);
     expect(data.visual_handoff_available).toBe(false);
     expect(data.visual_handoff_consumed).toBe(false);
     expect(data.visual_handoff_lost).toBe(false);
@@ -304,6 +308,7 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
     stepRaf(1050); // fresh_raf origin
     vi.spyOn(performance, "now").mockReturnValue(1260);
     window.dispatchEvent(keydown(1250));
+    stepRaf(1266); // P2: post-commit finalize frame
     const data: any = await dataPromise;
 
     expect(coordinator.acquireTrialOrigin).toHaveBeenCalledTimes(1);
@@ -372,6 +377,7 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
     stepRaf(2300);
     vi.spyOn(performance, "now").mockReturnValue(2460);
     window.dispatchEvent(keydown(2450));
+    stepRaf(2466); // P2: post-commit finalize frame
     const data: any = await dataPromise;
 
     expect(data.trial_time_origin_source).toBe("fresh_raf");
@@ -400,7 +406,8 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
     );
     await vi.advanceTimersByTimeAsync(21000);
     stepRaf(1700); // start + commit
-    stepRaf(2000); // due event ends the trial BEFORE this frame's commit phase
+    stepRaf(1716); // establish estimate
+    stepRaf(2000); // due → request end → commit 2000 → post-commit finalize
     const data: any = await dataPromise;
 
     expect(coordinator.acquireTrialOrigin).not.toHaveBeenCalled();
@@ -411,10 +418,13 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
 
     expect(coordinator.registerHandoff).toHaveBeenCalledTimes(1);
     const [timestamp, meta] = coordinator.registerHandoff.mock.calls[0];
-    // Last COMMITTED frame (1700), NOT the due-event frame timestamp (2000).
-    expect(timestamp).toBe(1700);
+    // P2: the due frame (2000) commits BEFORE finalization — handoff uses the
+    // COMMITTED due frame, not the previous committed frame (1716).
+    expect(timestamp).toBe(2000);
     expect(meta.frameIntervalEstimateMs).toBeGreaterThan(0);
     expect(data.timing_handoff_register_status).toBe("pending");
+    expect(data.trial_end_alignment).toBe("post_commit");
+    expect(data.trial_end_commit_time).toBe(2000);
   });
 
   it("F. chain A→B→C: B acquires A's committed frame, C acquires B's — never TA", async () => {
@@ -445,23 +455,25 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
       return promise;
     };
 
-    const dataA: any = await runTrial(0, [1700, 1984, 2000], true);
+    const dataA: any = await runTrial(0, [1700, 1716, 1984, 2000], true);
     expect(dataA.trial_time_origin_source).toBe("fresh_raf");
     expect(dataA.timing_handoff_register_status).toBe("pending");
-    // A registered its last COMMITTED frame (1984), not the due frame (2000).
-    expect(coordinator.registerHandoff.mock.calls[0][0]).toBe(1984);
+    // P2: A's due frame (2000) commits before finalization.
+    const ta = coordinator.registerHandoff.mock.calls[0][0];
+    expect(dataA.trial_end_commit_time).toBe(ta);
 
-    const dataB: any = await runTrial(1, [2184, 2284], true);
+    const dataB: any = await runTrial(1, [2100, 2300], true);
     expect(dataB.trial_time_origin_source).toBe("host_coordinator");
-    expect(dataB.trial_time_origin).toBe(1984); // A's handoff TA (committed)
+    expect(dataB.trial_time_origin).toBe(ta); // A's handoff TA (committed due frame)
     expect(dataB.timing_continuity).toBe("acquired");
     expect(dataB.timing_handoff_from_trial_index).toBe(0);
-    // B registered its last committed frame (2184), not its due frame (2284).
-    expect(coordinator.registerHandoff.mock.calls[1][0]).toBe(2184);
+    const tb = coordinator.registerHandoff.mock.calls[1][0];
+    expect(tb).not.toBe(ta);
+    expect(dataB.trial_end_commit_time).toBe(tb);
 
-    const dataC: any = await runTrial(2, [2384, 2484], true);
+    const dataC: any = await runTrial(2, [2400, 2600], true);
     expect(dataC.trial_time_origin_source).toBe("host_coordinator");
-    expect(dataC.trial_time_origin).toBe(2184); // B's handoff TB, never TA
+    expect(dataC.trial_time_origin).toBe(tb); // B's handoff TB, never TA
     expect(dataC.timing_handoff_from_trial_index).toBe(1);
 
     expect(coordinator.acquireTrialOrigin).toHaveBeenCalledTimes(2); // index 0 skipped
@@ -500,6 +512,7 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
     stepRaf(1050);
     vi.spyOn(performance, "now").mockReturnValue(1260);
     window.dispatchEvent(keydown(1250));
+    stepRaf(1266); // P2: post-commit finalize frame
     const data: any = await dataPromise;
 
     expect(coordinator.acquireTrialOrigin).toHaveBeenCalledTimes(1);
@@ -532,6 +545,7 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
     stepRaf(1050);
     vi.spyOn(performance, "now").mockReturnValue(1260);
     window.dispatchEvent(keydown(1250));
+    stepRaf(1266); // P2: post-commit finalize frame
     const data: any = await dataPromise;
 
     expect(coordinator.acquireTrialOrigin).not.toHaveBeenCalled();
@@ -616,6 +630,7 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
     stepRaf(1050);
     vi.spyOn(performance, "now").mockReturnValue(1260);
     window.dispatchEvent(keydown(1250));
+    stepRaf(1266); // P2: post-commit finalize frame
     const data: any = await dataPromise;
 
     expect(coordinator.acquireTrialOrigin).toHaveBeenCalledTimes(1); // acquire null, no outcome
@@ -656,6 +671,7 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
     stepRaf(1050);
     vi.spyOn(performance, "now").mockReturnValue(1260);
     window.dispatchEvent(keydown(1250));
+    stepRaf(1266); // P2: post-commit finalize frame
     const data: any = await dataPromise;
 
     // acquire ran BEFORE the outcome lookup that matters.
@@ -693,10 +709,99 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
     stepRaf(1050);
     vi.spyOn(performance, "now").mockReturnValue(1260);
     window.dispatchEvent(keydown(1250));
+    stepRaf(1266); // P2: post-commit finalize frame
     const data: any = await dataPromise;
 
     expect(data.trial_time_origin_source).toBe("fresh_raf");
     expect(data.timing_continuity).toBe("lost");
     expect(data.timing_lost_reason).toBe("expired");
+  });
+
+  it("L. P2: response between frames — RT keeps the event timestamp, handoff uses the commit frame", async () => {
+    const coordinator = createContractCoordinator();
+    jsPsych = fakeJsPsych({
+      getProgress: () => ({ current_trial_global: 1 }),
+      timing: {
+        acquireTrialOrigin: coordinator.acquireTrialOrigin, // null: no slot
+        registerHandoff: coordinator.registerHandoff,
+        getTransitionOutcome: coordinator.getTransitionOutcome,
+      },
+    });
+
+    const dataPromise = startTrial(
+      jsPsych,
+      baseTrial({ timing_continuous: true }),
+    );
+    await vi.advanceTimersByTimeAsync(21000);
+    stepRaf(1700); // fresh origin + commit
+    stepRaf(1984); // commit
+    vi.spyOn(performance, "now").mockReturnValue(1991);
+    window.dispatchEvent(keydown(1991)); // response accepted: RT = 1991 - 1700
+    stepRaf(2000); // commit 2000 → post-commit finalize
+    const data: any = await dataPromise;
+
+    expect(data.rt).toBe(291); // event timestamp, NOT 2000 - 1700
+    expect(data.trial_end_request_time).toBe(1991);
+    expect(data.trial_end_commit_time).toBe(2000);
+    expect(coordinator.registerHandoff.mock.calls[0][0]).toBe(2000);
+    expect(data.trial_end_alignment).toBe("post_commit");
+  });
+
+  it("M. P2 race: response first, duration due later — ONE finalization, response timestamp preserved", async () => {
+    const coordinator = createContractCoordinator();
+    jsPsych = fakeJsPsych({
+      getProgress: () => ({ current_trial_global: 1 }),
+      timing: {
+        acquireTrialOrigin: coordinator.acquireTrialOrigin, // null
+        registerHandoff: coordinator.registerHandoff,
+        getTransitionOutcome: coordinator.getTransitionOutcome,
+      },
+    });
+
+    const dataPromise = startTrial(
+      jsPsych,
+      baseTrial({ timing_continuous: true, trial_duration: 300 }),
+    );
+    await vi.advanceTimersByTimeAsync(21000);
+    stepRaf(1700); // fresh origin + commit
+    stepRaf(1984); // commit
+    vi.spyOn(performance, "now").mockReturnValue(1991);
+    window.dispatchEvent(keydown(1991)); // response accepted → requestEnd(1991)
+    stepRaf(2000); // duration due (returns false: pendingEnd exists) → commit → finalize once
+    const data: any = await dataPromise;
+
+    expect(coordinator.registerHandoff).toHaveBeenCalledTimes(1);
+    expect(coordinator.registerHandoff.mock.calls[0][0]).toBe(2000);
+    expect(data.rt).toBe(291);
+    expect(data.trial_end_request_time).toBe(1991);
+    expect(data.trial_ended_by_response).toBe(true);
+  });
+
+  it("N. P2 control: non-continuous trial keeps the immediate end path (no deferral)", async () => {
+    const coordinator = createContractCoordinator();
+    jsPsych = fakeJsPsych({
+      getProgress: () => ({ current_trial_global: 1 }),
+      timing: {
+        acquireTrialOrigin: coordinator.acquireTrialOrigin,
+        registerHandoff: coordinator.registerHandoff,
+        getTransitionOutcome: coordinator.getTransitionOutcome,
+      },
+    });
+
+    // Normal trial (no timing_continuous): duration due ends it immediately,
+    // without waiting for a post-commit phase.
+    const dataPromise = startTrial(
+      jsPsych,
+      baseTrial({ trial_duration: 300 }),
+    );
+    await vi.advanceTimersByTimeAsync(21000);
+    stepRaf(1700);
+    stepRaf(1716);
+    stepRaf(2000);
+    const data: any = await dataPromise;
+
+    expect(data.trial_time_origin_source).toBe("fresh_raf");
+    expect(data.trial_end_alignment).toBeUndefined();
+    expect(coordinator.registerHandoff).not.toHaveBeenCalled();
   });
 });

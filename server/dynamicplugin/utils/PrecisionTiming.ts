@@ -196,9 +196,57 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     latestCommittedFrameTime = timestamp;
   };
 
-  const tick = (timestamp: number) => {
-    if (!running || trialTimeOrigin === null) return;
+  const postCommitCallbacks: Array<(timestamp: number) => void> = [];
 
+  const runPostCommitCallbacks = (timestamp: number) => {
+    // Snapshot semantics: callbacks queued DURING this phase run on the next
+    // committed frame, never on the current one. One-shot: the queue is
+    // cleared before invocation, so a throwing callback cannot re-run later.
+    // Explicit stop policy: if a callback stops the scheduler, the remaining
+    // callbacks of this frame's snapshot do NOT run, and the queue is cleared
+    // again so that no callback — including ones queued during this phase —
+    // survives a stop.
+    const callbacks = [...postCommitCallbacks];
+    postCommitCallbacks.length = 0;
+    for (const callback of callbacks) {
+      callback(timestamp);
+      if (!running) {
+        postCommitCallbacks.length = 0;
+        break;
+      }
+    }
+  };
+
+  /**
+   * Queues a one-shot callback to run AFTER the next frame's commit phase
+   * (`runFrameCommitCallbacks`), receiving exactly that commit timestamp. The
+   * callback observes `latestCommittedFrameTime === timestamp`. `stop()` clears
+   * pending callbacks. No extra rAF/setTimeout is created.
+   */
+  const queuePostCommit = (callback: (timestamp: number) => void) => {
+    postCommitCallbacks.push(callback);
+    return () => {
+      const index = postCommitCallbacks.indexOf(callback);
+      if (index >= 0) {
+        postCommitCallbacks.splice(index, 1);
+      }
+    };
+  };
+
+  /**
+   * Single observable frame phase sequence shared by `tick()` and `startAt()`:
+   *   1. latestFrameTime = timestamp
+   *   2. frame-interval estimator update
+   *   3. runDueEvents
+   *   4. if !running → return            (hard stop before commit: no commit)
+   *   5. runFrameCommitCallbacks         (sets latestCommittedFrameTime)
+   *   6. if !running → return
+   *   7. runPostCommitCallbacks
+   *   8. if !running → return            (post-commit finalize must not
+   *                                      schedule another rAF)
+   *   9. schedule next rAF
+   */
+  const runFramePhases = (timestamp: number) => {
     latestFrameTime = timestamp;
     if (lastFrameTime !== null) {
       const duration = timestamp - lastFrameTime;
@@ -215,7 +263,14 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     if (!running) return;
     runFrameCommitCallbacks(timestamp);
     if (!running) return;
+    runPostCommitCallbacks(timestamp);
+    if (!running) return;
     rafHandle = requestAnimationFrame(tick);
+  };
+
+  const tick = (timestamp: number) => {
+    if (!running || trialTimeOrigin === null) return;
+    runFramePhases(timestamp);
   };
 
   const startAt = (timestamp: number, source: TrialTimeOriginSource) => {
@@ -228,9 +283,7 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     for (const callback of [...startCallbacks]) {
       callback(timestamp);
     }
-    runDueEvents(timestamp);
-    runFrameCommitCallbacks(timestamp);
-    rafHandle = requestAnimationFrame(tick);
+    runFramePhases(timestamp);
   };
 
   const start = () => {
@@ -247,6 +300,8 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
       cancelAnimationFrame(rafHandle);
       rafHandle = null;
     }
+    // A stopped scheduler must never run pending post-commit callbacks.
+    postCommitCallbacks.length = 0;
   };
 
   const onStart = (callback: (timestamp: number) => void) => {
@@ -532,6 +587,7 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     stop,
     onStart,
     onFrameCommit,
+    queuePostCommit,
     scheduleAt,
     registerStimulus,
     getTrialTimeOrigin,

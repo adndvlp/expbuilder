@@ -58,6 +58,158 @@ describe("getResponseRT shared event timing", () => {
   });
 });
 
+describe("PrecisionTiming post-commit queue (P2)", () => {
+  beforeEach(() => {
+    installFakeRaf();
+  });
+  afterEach(() => {
+    restoreFakeRaf();
+  });
+
+  it("runs post-commit callbacks exactly once, after the commit phase, with the commit timestamp", () => {
+    const timing = createPrecisionTiming();
+    const order: string[] = [];
+    timing.onFrameCommit((timestamp) => {
+      order.push(`commit:${timestamp}`);
+    });
+    timing.queuePostCommit((timestamp) => {
+      order.push(`postCommit:${timestamp}`);
+    });
+
+    timing.start();
+    stepRaf(1000);
+
+    expect(order).toEqual(["commit:1000", "postCommit:1000"]);
+    // The post-commit callback observes the frame as committed.
+    let observedCommitted: number | null = null;
+    timing.queuePostCommit(() => {
+      observedCommitted = timing.getSummary(performance.now()).latestCommittedFrameTime;
+    });
+    stepRaf(1016);
+    expect(observedCommitted).toBe(1016);
+  });
+
+  it("is FIFO and one-shot; callbacks queued during post-commit run on the NEXT frame", () => {
+    const timing = createPrecisionTiming();
+    const order: string[] = [];
+    let queuedLate = false;
+    timing.queuePostCommit((timestamp) => {
+      order.push(`first:${timestamp}`);
+      if (!queuedLate) {
+        queuedLate = true;
+        timing.queuePostCommit((lateTimestamp) => {
+          order.push(`late:${lateTimestamp}`);
+        });
+      }
+    });
+    timing.queuePostCommit((timestamp) => {
+      order.push(`second:${timestamp}`);
+    });
+
+    timing.start();
+    stepRaf(1000);
+    stepRaf(1016);
+
+    expect(order).toEqual(["first:1000", "second:1000", "late:1016"]);
+  });
+
+  it("supports cancellation via the returned unsubscribe", () => {
+    const timing = createPrecisionTiming();
+    const callback = vi.fn();
+    const unsubscribe = timing.queuePostCommit(callback);
+    unsubscribe();
+    unsubscribe(); // idempotent
+
+    timing.start();
+    stepRaf(1000);
+
+    expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("F. a post-commit callback that stops the scheduler prevents the remaining snapshot callbacks", () => {
+    const timing = createPrecisionTiming();
+    const calls: string[] = [];
+
+    timing.queuePostCommit((timestamp) => {
+      calls.push(`A:${timestamp}`);
+      timing.stop();
+      // Queued DURING the phase, AFTER stop(): the loop clears the queue
+      // again on break — nothing may survive a stop.
+      timing.queuePostCommit((lateTimestamp) => {
+        calls.push(`late:${lateTimestamp}`);
+      });
+    });
+    timing.queuePostCommit((timestamp) => {
+      calls.push(`B:${timestamp}`);
+    });
+
+    timing.start();
+    stepRaf(1000); // A runs → stop → B (snapshot) must NOT run
+
+    expect(calls).toEqual(["A:1000"]);
+    // The queue is literally empty: a subsequent frame runs nothing.
+    expect(pendingRafCount()).toBe(0);
+    stepRaf(1016);
+    expect(calls).toEqual(["A:1000"]);
+  });
+
+  it("clears pending post-commit callbacks on stop", () => {
+    const timing = createPrecisionTiming();
+    const callback = vi.fn();
+
+    timing.start();
+    stepRaf(1000); // initial frame
+    timing.queuePostCommit(callback);
+    timing.stop();
+
+    stepRaf(1016); // any stale frame
+    expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("does not run post-commit when a due event stops the trial before the commit phase", () => {
+    const timing = createPrecisionTiming();
+    const order: string[] = [];
+    timing.onFrameCommit(() => {
+      order.push("commit");
+    });
+
+    timing.start();
+    stepRaf(1000); // commit (initial frame)
+    stepRaf(1016); // commit (establishes estimate)
+
+    timing.queuePostCommit(() => {
+      order.push("postCommit");
+    });
+    timing.scheduleAt(300, () => {
+      order.push("due");
+      timing.stop(); // stops during runDueEvents → no commit/postCommit
+    });
+    stepRaf(1300); // due fires → stop
+
+    expect(order).toEqual(["commit", "commit", "due"]);
+  });
+
+  it("shares the same observable phase ordering between startAt and tick", () => {
+    const timing = createPrecisionTiming();
+    const order: string[] = [];
+    timing.onFrameCommit(() => {
+      order.push("commit");
+    });
+    timing.queuePostCommit(() => {
+      order.push("postCommit");
+    });
+    timing.scheduleAt(0, () => {
+      order.push("due:0");
+    });
+
+    timing.startAt(1000, "host_coordinator");
+
+    // startAt must run: due → commit → postCommit, all for the initial frame.
+    expect(order).toEqual(["due:0", "commit", "postCommit"]);
+    expect(timing.getSummary(performance.now()).latestCommittedFrameTime).toBe(1000);
+  });
+});
+
 describe("PrecisionTiming committed-frame authority", () => {
   beforeEach(() => {
     installFakeRaf();

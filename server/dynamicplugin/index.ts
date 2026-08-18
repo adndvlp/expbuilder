@@ -537,6 +537,15 @@ const info = <const>{
     timing_handoff_register_status: {
       type: ParameterType.STRING,
     },
+    trial_end_alignment: {
+      type: ParameterType.STRING,
+    },
+    trial_end_request_time: {
+      type: ParameterType.FLOAT,
+    },
+    trial_end_commit_time: {
+      type: ParameterType.FLOAT,
+    },
     response_timing_quality: {
       type: ParameterType.STRING,
     },
@@ -1431,6 +1440,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     let timingContinuity: TimingContinuity = "none";
     let timingLostReason: string | null = null;
     let hostRegisterStatus: string | null = null;
+    let pendingEnd: { requestTimestamp: number; reason: string } | null = null;
     let previousVisualDurationPatched = false;
     let previousVisualDurationData: Record<string, any> | null = null;
     let handleParticipantResponse: (
@@ -1446,6 +1456,50 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       onFinish: (timestamp, options) =>
         handleParticipantResponse(timestamp, options),
     });
+
+    // External core teardown detection. `jsPsych.abortExperiment()` resolves
+    // the core trial promise and clears `display_element` WITHOUT resolving
+    // this plugin's own promise. When the core removes our container while
+    // the trial is still active, cancel every internal resource. This works
+    // identically on official jsPsych (no jsPsych.timing involved).
+    let hardTornDown = false;
+    let teardownObserver: MutationObserver | null = null;
+
+    const hardTeardownWithoutResolve = () => {
+      if (trialEnded || hardTornDown) return;
+      hardTornDown = true;
+      trialEnded = true;
+      teardownObserver?.disconnect();
+      teardownObserver = null;
+      pendingEnd = null;
+      timing.stop();
+      responseTiming.detach();
+      resizeObserver.disconnect();
+      for (const { instance } of stimulusComponents) {
+        if (instance.destroy) instance.destroy();
+      }
+      for (const { instance } of responseComponents) {
+        if (instance.destroy) instance.destroy();
+      }
+      removePersistentVisualSurface();
+      removePreservedVisualBridge();
+      if (pendingVisualDurationPatch?.trialSequence === dynamicTrialSequence) {
+        pendingVisualDurationPatch = null;
+      }
+    };
+
+    if (typeof MutationObserver !== "undefined") {
+      teardownObserver = new MutationObserver(() => {
+        if (trialEnded || hardTornDown) return;
+        if (!document.contains(mainContainer)) {
+          hardTeardownWithoutResolve();
+        }
+      });
+      teardownObserver.observe(display_element, {
+        childList: true,
+        subtree: true,
+      });
+    }
 
     // Instantiate all components first
     const stimulusTypeCounts: Record<string, number> = {};
@@ -1611,32 +1665,55 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       hasResponded = true;
       trialEndedByResponse = true;
       recordAllPendingResponses();
-      endTrial(typeof offsetTime === "number" ? offsetTime : performance.now());
+      const responseTime =
+        typeof offsetTime === "number" ? offsetTime : performance.now();
+      if (trial.timing_continuous === true) {
+        // P2: the response timestamp is captured NOW (RT = E - origin) but
+        // the finalization is aligned to the next frame commit.
+        requestTrialEnd(responseTime, "response");
+      } else {
+        endTrial(responseTime);
+      }
+      return true;
+    };
+
+    // P2 end-request layer for timing_continuous trials. The FIRST accepted
+    // request wins (idempotent); the actual finalization runs in a one-shot
+    // post-commit callback with the commit frame timestamp.
+    const requestTrialEnd = (requestTimestamp: number, reason: string): boolean => {
+      if (trialEnded || pendingEnd) {
+        return false;
+      }
+      pendingEnd = { requestTimestamp, reason };
+      timing.queuePostCommit((commitTimestamp) => {
+        endTrial(commitTimestamp, { postCommitTimestamp: commitTimestamp });
+      });
       return true;
     };
 
     // Function to end the trial and collect data
-    const endTrial = (offsetTime = performance.now()) => {
+    const endTrial = (
+      offsetTime = performance.now(),
+      options: { postCommitTimestamp?: number } = {},
+    ) => {
       if (trialEnded) return;
       trialEnded = true;
+      // Our own DOM cleanup must never be interpreted as an external abort.
+      teardownObserver?.disconnect();
+      teardownObserver = null;
 
       const timingSummary = timing.getSummary(offsetTime);
 
       // Outgoing host handoff: must be registered BEFORE control returns to
-      // jsPsych (resolveTrial). Uses the last frame whose commit phase
-      // ACTUALLY ran (latestCommittedFrameTime — NOT latestFrameTime, which a
-      // due scheduled event may advance without any commit) and the trial's
-      // frame interval estimate. Only for timing_continuous trials when the
-      // host coordinator is available.
+      // jsPsych (resolveTrial). For a P2-aligned end the explicit post-commit
+      // timestamp is authoritative. A continuous end WITHOUT an aligned
+      // commit timestamp is a hard/un-aligned end: NEVER register a previous
+      // committed frame as if it were a valid transition.
       if (hostTimingAvailable && trial.timing_continuous === true) {
-        const latestCommittedFrameTime =
-          typeof timingSummary.latestCommittedFrameTime === "number"
-            ? timingSummary.latestCommittedFrameTime
-            : null;
-        if (latestCommittedFrameTime === null) {
-          hostRegisterStatus = "skipped_no_committed_frame";
+        if (typeof options.postCommitTimestamp !== "number") {
+          hostRegisterStatus = "skipped_unaligned_end";
         } else if (typeof hostTiming.registerHandoff === "function") {
-          const registerResult = hostTiming.registerHandoff(latestCommittedFrameTime, {
+          const registerResult = hostTiming.registerHandoff(options.postCommitTimestamp, {
             frameIntervalEstimateMs: timing.getFrameIntervalEstimate(),
           });
           hostRegisterStatus =
@@ -1722,6 +1799,16 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             "performance.now + requestAnimationFrame frame-nearest scheduler",
           trial_time_origin: timingSummary.trialTimeOrigin,
           trial_time_origin_source: timingSummary.trialTimeOriginSource,
+          ...(trial.timing_continuous === true
+            ? {
+                trial_end_alignment:
+                  options.postCommitTimestamp !== undefined
+                    ? "post_commit"
+                    : "immediate",
+                trial_end_request_time: pendingEnd?.requestTimestamp ?? null,
+                trial_end_commit_time: options.postCommitTimestamp ?? null,
+              }
+            : {}),
           ...(hostTimingAvailable
             ? {
                 timing_continuity: timingContinuity,
@@ -2226,7 +2313,14 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
               hasResponded = true;
               recordAllPendingResponses();
             }
-            endTrial(timestamp);
+            if (trial.timing_continuous === true) {
+              // P2: the due frame must reach its commit phase before the
+              // trial finalizes; the outgoing handoff will use the commit
+              // timestamp (this same frame), not the previous frame.
+              requestTrialEnd(timestamp, "trial_duration");
+            } else {
+              endTrial(timestamp);
+            }
           },
           { policy: "not_before" },
         );
