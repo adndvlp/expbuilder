@@ -108,7 +108,6 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
   const frameCommitCallbacks: Array<(timestamp: number) => void> = [];
   const frameIntervals: FrameInterval[] = [];
   const stimulusRecords: StimulusTimingRecord[] = [];
-  const recentFrameIntervals: number[] = [];
 
   let trialTimeOrigin: number | null = null;
   let trialTimeOriginSource: TrialTimeOriginSource | null = null;
@@ -128,20 +127,6 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
   const getElapsed = (timestamp = performance.now()): number | null => {
     if (trialTimeOrigin === null) return null;
     return timestamp - trialTimeOrigin;
-  };
-
-  const updateFrameEstimate = (duration: number) => {
-    if (!Number.isFinite(duration) || duration <= MIN_FRAME_INTERVAL_MS) return;
-    recentFrameIntervals.push(duration);
-    if (recentFrameIntervals.length > 10) {
-      recentFrameIntervals.shift();
-    }
-    const sorted = [...recentFrameIntervals].sort((a, b) => a - b);
-    const middle = Math.floor(sorted.length / 2);
-    frameIntervalEstimate =
-      sorted.length % 2 === 1
-        ? sorted[middle]
-        : (sorted[middle - 1] + sorted[middle]) / 2;
   };
 
   const getFrameIntervalEstimate = () =>
@@ -169,6 +154,12 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     if (event.policy === "not_before") {
       return timestamp >= targetTime;
     }
+
+    // nearest (P5): the OBSERVED frame's error vs the ONE-STEP-AHEAD
+    // prediction (observed timestamp + robust nominal period). Ties fire on
+    // the earlier (current) frame — documented policy. The event still only
+    // runs on a REAL observed rAF; prediction decides WHICH frame, the rAF
+    // decides WHEN.
     const frameMs = getFrameIntervalEstimate();
     const errorNow = Math.abs(timestamp - targetTime);
     const errorNext = Math.abs(timestamp + frameMs - targetTime);
@@ -183,6 +174,191 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
         event.cancelled = true;
         event.callback(timestamp, elapsed);
       }
+    }
+  };
+
+  // -------------------------------------------------------------------------
+  // P5 frame-phase predictor (FrameClock). The OBSERVED rAF timestamp remains
+  // the only scheduling authority; the clock only maintains a robust nominal
+  // period and a phase anchor so that frame SELECTION (nearest/not_before) is
+  // stable under jitter, dropped frames and refresh-rate transitions.
+  // Predicted frame times are PREDICTIVE diagnostics — never physical
+  // presentation times.
+  // -------------------------------------------------------------------------
+  const FRAME_CLOCK_MAX_SAMPLES = 8;
+
+  const frameClock = {
+    periodMs: fallbackFrameMs,
+    anchorTimestamp: null as number | null,
+    anchorOrdinal: 0,
+    nextOrdinal: 0,
+    acceptedSamples: 0,
+    samples: [] as number[],
+    fastStreak: 0,
+    fastDeltas: [] as number[],
+    slowStreak: 0,
+    slowDeltas: [] as number[],
+    gapStreak: 0,
+    gapFrames: 0,
+    gapDeltas: [] as number[],
+    lastPredictionError: null as number | null,
+    lastObservedTimestamp: null as number | null,
+  };
+
+  const frameClockMedian = (samples: number[]) => {
+    const sorted = [...samples].sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+    return sorted.length % 2 === 1
+      ? sorted[middle]
+      : (sorted[middle - 1] + sorted[middle]) / 2;
+  };
+
+  const observeFrame = (timestamp: number) => {
+    const clock = frameClock;
+    const previous = clock.lastObservedTimestamp;
+    clock.lastObservedTimestamp = timestamp;
+
+    if (clock.anchorTimestamp === null) {
+      clock.anchorTimestamp = timestamp;
+      clock.anchorOrdinal = 0;
+      clock.nextOrdinal = 1;
+      return;
+    }
+
+    const delta = timestamp - previous!;
+    if (!Number.isFinite(delta) || delta <= MIN_FRAME_INTERVAL_MS) {
+      return;
+    }
+
+    // Nominal-period gating: interpret the delta as `expectedFrames` nominal
+    // intervals. An isolated multi-frame gap (e.g. 50 ms at 60 Hz ≈ 3 frames)
+    // updates the PHASE but never pollutes the period samples.
+    const expectedFrames = Math.max(1, Math.round(delta / clock.periodMs));
+    const tolerance = Math.max(0.25 * clock.periodMs, 2);
+
+    const adoptNewPeriod = (newPeriod: number) => {
+      // The samples window describes the CURRENT regime only: a regime
+      // adoption resets the predictor diagnostics to the new cadence.
+      clock.samples = [newPeriod];
+      clock.acceptedSamples = 1;
+      clock.periodMs = newPeriod;
+      frameIntervalEstimate = newPeriod;
+      clock.fastStreak = 0;
+      clock.fastDeltas = [];
+      clock.slowStreak = 0;
+      clock.slowDeltas = [];
+      clock.gapStreak = 0;
+      clock.gapFrames = 0;
+      clock.gapDeltas = [];
+      clock.anchorTimestamp = timestamp;
+      clock.anchorOrdinal = clock.nextOrdinal;
+    };
+
+    const clearRegimeCandidates = () => {
+      clock.fastStreak = 0;
+      clock.fastDeltas = [];
+      clock.slowStreak = 0;
+      clock.slowDeltas = [];
+      clock.gapStreak = 0;
+      clock.gapFrames = 0;
+      clock.gapDeltas = [];
+    };
+
+    if (expectedFrames === 1) {
+      if (Math.abs(delta - clock.periodMs) <= tolerance) {
+        // NOMINAL: resets every regime candidate.
+        clock.samples.push(delta);
+        if (clock.samples.length > FRAME_CLOCK_MAX_SAMPLES) {
+          clock.samples.shift();
+        }
+        clock.acceptedSamples += 1;
+        clock.periodMs = frameClockMedian(clock.samples);
+        frameIntervalEstimate = clock.periodMs;
+        clearRegimeCandidates();
+      } else if (delta < clock.periodMs * 0.75) {
+        // FAST regime candidate: stable consecutive fast deltas only
+        // (unstable candidates restart the streak). Resets slow/gap.
+        clock.slowStreak = 0;
+        clock.slowDeltas = [];
+        clock.gapStreak = 0;
+        clock.gapDeltas = [];
+        if (clock.fastDeltas.length > 0) {
+          const lastFast = clock.fastDeltas[clock.fastDeltas.length - 1];
+          clock.fastStreak =
+            Math.abs(delta - lastFast) <= Math.max(0.25 * lastFast, 2)
+              ? clock.fastStreak + 1
+              : 1;
+        } else {
+          clock.fastStreak = 1;
+        }
+        clock.fastDeltas.push(delta);
+        if (clock.fastDeltas.length > 3) clock.fastDeltas.shift();
+        if (clock.fastStreak >= 3) {
+          adoptNewPeriod(frameClockMedian(clock.fastDeltas));
+        }
+      } else {
+        // MODERATE SLOW regime candidate: stable consecutive slow deltas.
+        // Resets fast/gap.
+        clock.fastStreak = 0;
+        clock.fastDeltas = [];
+        clock.gapStreak = 0;
+        clock.gapDeltas = [];
+        if (clock.slowDeltas.length > 0) {
+          const lastSlow = clock.slowDeltas[clock.slowDeltas.length - 1];
+          clock.slowStreak =
+            Math.abs(delta - lastSlow) <= Math.max(0.25 * lastSlow, 2)
+              ? clock.slowStreak + 1
+              : 1;
+        } else {
+          clock.slowStreak = 1;
+        }
+        clock.slowDeltas.push(delta);
+        if (clock.slowDeltas.length > 3) clock.slowDeltas.shift();
+        if (clock.slowStreak >= 3) {
+          adoptNewPeriod(frameClockMedian(clock.slowDeltas));
+        }
+      }
+    } else {
+      // Multi-interval delta: advance PHASE only. A multi-frame gap
+      // INTERRUPTS fast and moderate-slow candidates (mutual exclusivity).
+      clock.fastStreak = 0;
+      clock.fastDeltas = [];
+      clock.slowStreak = 0;
+      clock.slowDeltas = [];
+      if (expectedFrames === clock.gapFrames && clock.gapDeltas.length > 0) {
+        const lastGap = clock.gapDeltas[clock.gapDeltas.length - 1];
+        clock.gapStreak =
+          Math.abs(delta - lastGap) <= Math.max(0.25 * lastGap, 2)
+            ? clock.gapStreak + 1
+            : 1;
+      } else {
+        clock.gapStreak = 1;
+        clock.gapFrames = expectedFrames;
+      }
+      clock.gapDeltas.push(delta);
+      if (clock.gapDeltas.length > 3) clock.gapDeltas.shift();
+      if (clock.gapStreak >= 3) {
+        adoptNewPeriod(frameClockMedian(clock.gapDeltas));
+      }
+    }
+
+    const observedOrdinal = clock.nextOrdinal + expectedFrames - 1;
+    clock.nextOrdinal = observedOrdinal + 1;
+
+    // Phase correction against the anchored prediction for this ordinal.
+    const predicted =
+      clock.anchorTimestamp +
+      (observedOrdinal - clock.anchorOrdinal) * clock.periodMs;
+    const error = timestamp - predicted;
+    clock.lastPredictionError = error;
+    if (Math.abs(error) > 0.5 * clock.periodMs) {
+      // Major divergence (missed frames / big jitter): safe re-anchor.
+      clock.anchorTimestamp = timestamp;
+      clock.anchorOrdinal = observedOrdinal;
+      clock.lastPredictionError = 0;
+    } else if (Math.abs(error) > 0.25) {
+      // Gradual drift correction.
+      clock.anchorTimestamp += error * 0.25;
     }
   };
 
@@ -250,7 +426,7 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     latestFrameTime = timestamp;
     if (lastFrameTime !== null) {
       const duration = timestamp - lastFrameTime;
-      updateFrameEstimate(duration);
+      observeFrame(timestamp);
       if (recordFrameTiming && duration > MIN_FRAME_INTERVAL_MS) {
         frameIntervals.push({
           t: round3(timestamp - trialTimeOrigin),
@@ -551,6 +727,12 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
       actualDuration,
       latestFrameTime,
       latestCommittedFrameTime,
+      framePeriodEstimateMs: round3(frameClock.periodMs),
+      framePredictionErrorMs:
+        frameClock.lastPredictionError === null
+          ? null
+          : round3(frameClock.lastPredictionError),
+      framePredictorSamples: frameClock.acceptedSamples,
       frameCount: intervals.length,
       longFrameCount: longFrames.length,
       droppedFrameCount,
