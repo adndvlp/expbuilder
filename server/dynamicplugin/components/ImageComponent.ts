@@ -3,7 +3,7 @@ import { getCanvasStage, CanvasStage } from "../renderer/CanvasStage";
 import {
   CanvasBitmapSource,
   createPrecisionTiming,
-  getPreloadedBitmap,
+  getReadyPreloadedBitmap,
   preloadBitmap,
   resolveTimingMs,
   scheduleFrameEvent,
@@ -275,12 +275,17 @@ class ImageComponent {
 
     const stimulus = this.resolveParam(config.stimulus, "");
     if (stimulus) {
-      const cachedSource = getPreloadedBitmap(stimulus);
-      if (cachedSource) {
-        this.source = cachedSource;
+      const readySource = getReadyPreloadedBitmap(stimulus);
+      if (readySource) {
+        this.source = readySource;
         this.prepareDrawable(config, zIndex);
-        this.sourcePromise = Promise.resolve(cachedSource);
+        // P4 fast path: the resource is synchronously READY — no async
+        // loader promise is created for a warm cache hit.
+        this.sourcePromise = null;
       } else {
+        // Cache miss OR cached-but-not-ready (e.g. resolved via preload
+        // timeout with zero intrinsic dimensions): keep the original async
+        // fallback with its retry semantics.
         this.sourcePromise = preloadBitmap(stimulus).then((source) => {
           this.source = source;
           this.prepareDrawable(config, zIndex);

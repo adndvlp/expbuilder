@@ -22,6 +22,7 @@ import FileUploadResponseComponent from "./response_components/FileUploadRespons
 import {
   AssetPreloadList,
   createPrecisionTiming,
+  getReadyPreloadedBitmap,
   preloadAssets,
   resolveTimingMs,
 } from "./utils/PrecisionTiming";
@@ -718,6 +719,12 @@ const info = <const>{
     },
     timing_prepare_ready_at: {
       type: ParameterType.FLOAT,
+    },
+    timing_activation_path: {
+      type: ParameterType.STRING,
+    },
+    timing_prepared_resources_used: {
+      type: ParameterType.INT,
     },
     response_timing_quality: {
       type: ParameterType.STRING,
@@ -1982,6 +1989,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           timing_prepare_status: prepareStatus,
           timing_prepare_started_at: prepareStartedAt,
           timing_prepare_ready_at: prepareReadyAt,
+          timing_activation_path: activationPath,
+          timing_prepared_resources_used: preparedResourcesUsed,
           trial_time_origin: timingSummary.trialTimeOrigin,
           trial_time_origin_source: timingSummary.trialTimeOriginSource,
           ...(trial.timing_continuous === true
@@ -2584,16 +2593,40 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       }
     };
 
+    // P4 fast activation path: when every image asset is SYNCHRONOUSLY READY
+    // (present in the shared P3 cache AND usable for synchronous drawing —
+    // `getReadyPreloadedBitmap`, which rejects cached elements that resolved
+    // via the preload timeout with zero intrinsic dimensions) and there is no
+    // audio/video to schedule, start the presentation SYNCHRONOUSLY (no
+    // preload promise hop). This never waits for anything: if any resource is
+    // not ready for synchronous draw, the normal preload path runs unchanged.
+    let activationPath: "prepared_fast" | "normal" = "normal";
+    let preparedResourcesUsed = 0;
+
     if (trial.preload_assets !== false) {
-      preloadAssets(
-        this.jsPsych,
-        collectAssetPreloadList(allComponents),
-        resolveTimingMs(trial.asset_preload_timeout, 10000) ?? 10000,
-      )
-        .catch((error) => {
-          console.warn("DynamicPlugin asset preload failed:", error);
-        })
-        .then(startPresentation);
+      const currentAssets = collectAssetPreloadList(allComponents);
+      const cachedImageCount = currentAssets.images.filter(
+        (url) => getReadyPreloadedBitmap(url) !== null,
+      ).length;
+      preparedResourcesUsed = cachedImageCount;
+      const allImagesCached = cachedImageCount === currentAssets.images.length;
+      const fastPathEligible =
+        allImagesCached && currentAssets.audio.length === 0 && currentAssets.video.length === 0;
+
+      if (fastPathEligible) {
+        activationPath = "prepared_fast";
+        startPresentation();
+      } else {
+        preloadAssets(
+          this.jsPsych,
+          currentAssets,
+          resolveTimingMs(trial.asset_preload_timeout, 10000) ?? 10000,
+        )
+          .catch((error) => {
+            console.warn("DynamicPlugin asset preload failed:", error);
+          })
+          .then(startPresentation);
+      }
     } else {
       startPresentation();
     }

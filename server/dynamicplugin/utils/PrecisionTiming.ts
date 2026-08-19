@@ -861,6 +861,21 @@ export function getPreloadedBitmap(url: string): CanvasBitmapSource | null {
   return bitmapSourceCache.get(url) ?? null;
 }
 
+/**
+ * Returns the cached bitmap ONLY when it is ready for synchronous drawing.
+ * A cached HTMLImageElement that resolved via the preload timeout may still
+ * have zero intrinsic dimensions; such a resource is NOT usable for a
+ * synchronous drawable and must not enable the P4 fast activation path.
+ */
+export function getReadyPreloadedBitmap(url: string): CanvasBitmapSource | null {
+  const source = bitmapSourceCache.get(url) ?? null;
+  if (!source) return null;
+  if ("naturalWidth" in source) {
+    return source.naturalWidth > 0 && source.naturalHeight > 0 ? source : null;
+  }
+  return source.width > 0 && source.height > 0 ? source : null;
+}
+
 function preloadWithJsPsych(
   cache: Map<string, Promise<void>>,
   urls: string[],
