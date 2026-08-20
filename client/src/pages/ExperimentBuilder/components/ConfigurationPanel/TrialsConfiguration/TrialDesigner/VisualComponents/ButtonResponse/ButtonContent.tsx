@@ -1,5 +1,7 @@
 import { Image as KonvaImage, Rect, Text } from "react-konva";
 import useImage from "use-image";
+import { useExperimentID } from "../../../../../../hooks/useExperimentID";
+import { resolveMediaPreviewUrl } from "../../../../../../utils/resolveMediaPreviewUrl";
 import { isImageUrl } from "./buttonModel";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -24,10 +26,11 @@ interface Props {
 }
 
 export default function ButtonContent(props: Props) {
+  const experimentID = useExperimentID();
   const isImage = isImageUrl(props.choice);
   const imageUrl =
-    isImage && !props.choice.startsWith("http")
-      ? `${API_URL}/${props.choice}`
+    isImage
+      ? resolveMediaPreviewUrl(props.choice, { apiUrl: API_URL, experimentID })
       : props.choice;
   const [image] = useImage(isImage && imageUrl ? imageUrl : "");
   const rect = (

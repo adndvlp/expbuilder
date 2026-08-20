@@ -3,7 +3,8 @@ import { Image as KonvaImage, Transformer } from "react-konva";
 import Konva from "konva";
 import useImage from "use-image";
 import imagePlaceholder from "../../../../../../../assets/image.png";
-import { mapFileToUrl } from "../../../../../utils/mapFileToUrl";
+import { useExperimentID } from "../../../../../hooks/useExperimentID";
+import { resolveMediaPreviewUrl } from "../../../../../utils/resolveMediaPreviewUrl";
 import { snapKonvaNode, SnapHandlers } from "../snapKonvaNode";
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -35,6 +36,7 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
   onSnap,
   onGuidesChange,
 }) => {
+  const experimentID = useExperimentID();
   const shapeRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
 
@@ -51,16 +53,15 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
     return config; // fallback for direct values
   };
 
-  let imageUrl = getConfigValue("stimulus");
-  // Map filename to full path (e.g., "cofre.png" -> "img/cofre.png")
-  if (imageUrl && uploadedFiles.length > 0) {
-    imageUrl = mapFileToUrl(imageUrl, uploadedFiles);
-  }
-  // Add http://localhost:3000/ prefix if not already present
-  if (imageUrl && !imageUrl.startsWith("http")) {
-    imageUrl = `${API_URL}/${imageUrl}`;
-  }
-  const [image] = useImage(imageUrl || undefined);
+  const stimulus = getConfigValue("stimulus");
+  const imageUrl = stimulus
+    ? resolveMediaPreviewUrl(String(stimulus), {
+        apiUrl: API_URL,
+        experimentID,
+        uploadedFiles,
+      })
+    : "";
+  const [image] = useImage(imageUrl);
 
   useEffect(() => {
     if (isSelected && trRef.current && shapeRef.current) {

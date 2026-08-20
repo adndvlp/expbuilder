@@ -215,7 +215,7 @@ describe("ExperimentalHtmlSceneLayer", () => {
         width: 120,
         height: 80,
         config: {
-          stimulus: { source: "typed", value: "uploads/relative-only.mp4" },
+          stimulus: { source: "typed", value: "vid/relative-only.mp4" },
         },
       }),
       trialComponent({
@@ -250,7 +250,7 @@ describe("ExperimentalHtmlSceneLayer", () => {
     );
     expect(sources).toEqual(
       expect.arrayContaining([
-        expect.stringContaining("uploads/relative-only.mp4"),
+        "http://localhost:3000/exp-1/vid/relative-only.mp4",
         "https://cdn.test/clip.mp4",
         "https://cdn.test/direct.mp4",
       ]),

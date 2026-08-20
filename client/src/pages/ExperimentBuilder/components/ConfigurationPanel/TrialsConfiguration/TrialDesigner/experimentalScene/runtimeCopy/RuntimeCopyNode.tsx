@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import type { CSSProperties } from "react";
-import { mapFileToUrl } from "../../../../../../utils/mapFileToUrl";
+import { useExperimentID } from "../../../../../../hooks/useExperimentID";
+import { resolveMediaPreviewUrl } from "../../../../../../utils/resolveMediaPreviewUrl";
 import type { HtmlSceneNode, HtmlSceneNodeMetric } from "../sceneModel";
 import { renderRuntimeCopy } from "../runtimePreviewDom";
 
@@ -23,6 +24,7 @@ export default function RuntimeCopyNode({
   isTextEditing,
   onMeasure,
 }: Props) {
+  const experimentID = useExperimentID();
   const hostRef = useRef<HTMLDivElement | null>(null);
   const renderSignature = useMemo(
     () => getRuntimeRenderSignature(node),
@@ -36,10 +38,21 @@ export default function RuntimeCopyNode({
       host,
       node.component,
       node.canvasStyles,
-      (value) => resolveAssetUrl(value, uploadedFiles),
+      (value) =>
+        resolveMediaPreviewUrl(value, {
+          apiUrl: API_URL,
+          experimentID,
+          uploadedFiles,
+        }),
     );
     return () => rendered.destroy();
-  }, [node.id, node.canvasStyles, renderSignature, uploadedFiles]);
+  }, [
+    experimentID,
+    node.id,
+    node.canvasStyles,
+    renderSignature,
+    uploadedFiles,
+  ]);
 
   useEffect(() => {
     const host = hostRef.current!;
@@ -113,16 +126,6 @@ export default function RuntimeCopyNode({
       />
     </div>
   );
-}
-
-function resolveAssetUrl(value: string, uploadedFiles: any[]) {
-  if (!value) return "";
-  let url =
-    uploadedFiles.length > 0 ? mapFileToUrl(value, uploadedFiles) : value;
-  if (url && !/^(?:https?:|data:|blob:|file:)/i.test(url) && API_URL) {
-    url = `${API_URL}/${url.replace(/^\/+/, "")}`;
-  }
-  return url;
 }
 
 function getRuntimeRenderSignature(node: HtmlSceneNode) {

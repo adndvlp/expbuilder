@@ -3,7 +3,8 @@ import { Image as KonvaImage, Transformer } from "react-konva";
 import Konva from "konva";
 import useImage from "use-image";
 import videoPlaceholder from "../../../../../../../assets/video.png";
-import { mapFileToUrl } from "../../../../../utils/mapFileToUrl";
+import { useExperimentID } from "../../../../../hooks/useExperimentID";
+import { resolveMediaPreviewUrl } from "../../../../../utils/resolveMediaPreviewUrl";
 import { snapKonvaNode, SnapHandlers } from "../snapKonvaNode";
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -35,6 +36,7 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
   onSnap,
   onGuidesChange,
 }) => {
+  const experimentID = useExperimentID();
   const shapeRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const [videoImage, setVideoImage] = useState<HTMLImageElement | null>(null);
@@ -52,20 +54,17 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
 
   useEffect(() => {
     const videoValue = getConfigValue("stimulus");
-    let videoUrl = Array.isArray(videoValue) ? videoValue[0] : videoValue;
+    const videoUrl = Array.isArray(videoValue) ? videoValue[0] : videoValue;
 
     if (!videoUrl) return;
 
-    // Map filename to full path (e.g., "video.mp4" -> "vid/video.mp4")
-    if (uploadedFiles.length > 0) {
-      videoUrl = mapFileToUrl(videoUrl, uploadedFiles);
-    }
-
     const video = document.createElement("video");
     video.crossOrigin = "anonymous";
-    video.src = videoUrl.startsWith("http")
-      ? videoUrl
-      : `${API_URL}/${videoUrl}`;
+    video.src = resolveMediaPreviewUrl(String(videoUrl), {
+      apiUrl: API_URL,
+      experimentID,
+      uploadedFiles,
+    });
     videoRef.current = video;
 
     video.addEventListener("loadeddata", () => {
@@ -89,7 +88,7 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
       video.pause();
       video.src = "";
     };
-  }, [shapeProps.config.stimulus, uploadedFiles]);
+  }, [experimentID, shapeProps.config.stimulus, uploadedFiles]);
 
   useEffect(() => {
     if (isSelected && trRef.current && shapeRef.current) {

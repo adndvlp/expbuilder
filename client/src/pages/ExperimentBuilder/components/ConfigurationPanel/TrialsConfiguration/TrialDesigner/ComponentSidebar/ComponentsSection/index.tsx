@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useExperimentID } from "../../../../../../hooks/useExperimentID";
+import { resolveMediaPreviewUrl } from "../../../../../../utils/resolveMediaPreviewUrl";
 import { ComponentType } from "../../types";
 import GenericComponents from "./GenericComponents";
 import MediaSectionToggle from "./MediaSectionToggle";
@@ -21,6 +23,7 @@ function ComponentsSection({
   videos,
   addComponent,
 }: Props) {
+  const experimentID = useExperimentID();
   const [imageExpanded, setImageExpanded] = useState(false);
   const [videoExpanded, setVideoExpanded] = useState(false);
   const [audioExpanded, setAudioExpanded] = useState(false);
@@ -75,7 +78,10 @@ function ComponentsSection({
                     }}
                   >
                     <img
-                      src={`${API_URL}/${imgUrl}`}
+                      src={resolveMediaPreviewUrl(imgUrl, {
+                        apiUrl: API_URL,
+                        experimentID,
+                      })}
                       alt="thumbnail"
                       style={{
                         width: "100%",
@@ -142,7 +148,10 @@ function ComponentsSection({
                     }}
                   >
                     <video
-                      src={`${API_URL}/${vidUrl}`}
+                      src={resolveMediaPreviewUrl(vidUrl, {
+                        apiUrl: API_URL,
+                        experimentID,
+                      })}
                       style={{
                         width: "100%",
                         height: "100%",

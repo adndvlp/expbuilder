@@ -38,8 +38,19 @@ export function loadingOverlayCode(): string {
     if (el) el.remove();
   }
 
+  function _clearCompletedTrialVisuals() {
+    [
+      'jspsych-dynamic-visual-bridge',
+      'jspsych-dynamic-persistent-visual'
+    ].forEach(function(id) {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
+  }
+
   function _showSuccess() {
     _hideLoading();
+    _clearCompletedTrialVisuals();
     const overlay = document.createElement('div');
     overlay.id = 'jspsych-loading-overlay';
     overlay.style.cssText = [

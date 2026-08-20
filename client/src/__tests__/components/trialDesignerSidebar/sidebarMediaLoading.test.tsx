@@ -29,13 +29,13 @@ describe("TrialDesigner component metadata and sidebar", () => {
   it("fetches media files for ComponentSidebar and wires drag payloads", async () => {
     fetchMock().mockImplementation(async (url: string) => {
       if (url.includes("/api/list-files/img/")) {
-        return okJson({ files: [{ url: "uploads/img/cat.png" }] });
+        return okJson({ files: [{ url: "img/cat.png" }] });
       }
       if (url.includes("/api/list-files/vid/")) {
-        return okJson({ files: [{ url: "uploads/vid/clip.mp4" }] });
+        return okJson({ files: [{ url: "vid/clip.mp4" }] });
       }
       if (url.includes("/api/list-files/aud/")) {
-        return okJson({ files: [{ url: "uploads/aud/tone.mp3" }] });
+        return okJson({ files: [{ url: "aud/tone.mp3" }] });
       }
       return okJson({});
     });
@@ -68,7 +68,10 @@ describe("TrialDesigner component metadata and sidebar", () => {
 
     fireEvent.click(screen.getByText("Image"));
     const thumbnail = await screen.findByAltText("thumbnail");
-    expect(thumbnail).toHaveAttribute("src", `${API_URL}/uploads/img/cat.png`);
+    expect(thumbnail).toHaveAttribute(
+      "src",
+      `${API_URL}/test-exp-123/img/cat.png`,
+    );
 
     const dataTransfer = { setData: vi.fn() };
     fireEvent.dragStart(thumbnail.parentElement as HTMLElement, {
@@ -76,7 +79,7 @@ describe("TrialDesigner component metadata and sidebar", () => {
     });
     expect(dataTransfer.setData).toHaveBeenCalledWith(
       "fileUrl",
-      "uploads/img/cat.png",
+      "img/cat.png",
     );
     expect(dataTransfer.setData).toHaveBeenCalledWith("type", "ImageComponent");
 

@@ -12,5 +12,6 @@
     "activeProvider": "lmstudio",
     "activeModel": "qwen/qwen3-coder-30b",
     "conversations": []
-  }
+  },
+  "sessionCounters": {}
 }

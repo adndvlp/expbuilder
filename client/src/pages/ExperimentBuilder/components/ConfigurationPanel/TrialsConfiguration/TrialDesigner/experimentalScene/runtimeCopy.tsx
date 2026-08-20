@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { Model } from "survey-core";
 import { Survey } from "survey-react-ui";
 import "survey-core/survey-core.min.css";
+import imagePlaceholder from "../../../../../../../assets/image.png";
 import type { CanvasStyles, TrialComponent } from "../types";
 import {
   isImageUrl,
@@ -86,7 +87,15 @@ function resolveComponentConfig(
       : undefined;
 
   if (component.type === "ImageComponent") {
-    config.stimulus = resolveAsset(String(config.stimulus || ""));
+    const stimulusConfig = component.config?.stimulus;
+    const usesCsvColumn =
+      stimulusConfig &&
+      typeof stimulusConfig === "object" &&
+      stimulusConfig.source === "csv";
+
+    config.stimulus = usesCsvColumn
+      ? imagePlaceholder
+      : resolveAsset(String(config.stimulus || ""));
   }
 
   if (component.type === "VideoComponent") {

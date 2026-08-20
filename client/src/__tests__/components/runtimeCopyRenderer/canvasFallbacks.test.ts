@@ -8,6 +8,7 @@ import {
   renderPreviewVideoComponent,
   renderRuntimeCopy,
 } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/experimentalScene/runtimePreviewDom";
+import imagePlaceholder from "../../../assets/image.png";
 import {
   canvasStyles,
   component,
@@ -120,6 +121,51 @@ describe("runtime copy: canvas-backed component fallbacks", () => {
       input_font_size: 14,
     });
     expect(directInput.querySelectorAll("input")).toHaveLength(1);
+  });
+
+  it("shows the image placeholder when stimulus is assigned to a CSV column", () => {
+    installCanvasContext();
+    const loadedSources: string[] = [];
+
+    class CapturingImage {
+      draggable = true;
+      naturalWidth = 64;
+      naturalHeight = 32;
+      width = 64;
+      height = 32;
+      complete = true;
+      onload: (() => void) | null = null;
+      private currentSrc = "";
+
+      set src(value: string) {
+        this.currentSrc = value;
+        loadedSources.push(value);
+        this.onload?.();
+      }
+
+      get src() {
+        return this.currentSrc;
+      }
+    }
+
+    vi.stubGlobal("Image", CapturingImage as unknown as typeof Image);
+    const resolveAsset = vi.fn((value: string) => `/assets/${value}`);
+    const host = document.createElement("div");
+
+    const image = renderRuntimeCopy(
+      host,
+      component("ImageComponent", {
+        stimulus: { source: "csv", value: "image_column" },
+      }),
+      canvasStyles,
+      resolveAsset,
+    );
+
+    expect(loadedSources).toEqual([imagePlaceholder]);
+    expect(resolveAsset).not.toHaveBeenCalled();
+    expect(image.element.querySelector("canvas")?.style.width).toBe("64px");
+
+    image.destroy();
   });
 
   it("covers image preview sizing and non-complete image loading", () => {
