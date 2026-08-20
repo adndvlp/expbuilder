@@ -5,7 +5,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   previewMocks,
   registerExperimentPreviewLifecycle,
@@ -49,7 +49,7 @@ describe("ExperimentPreview full previews", () => {
         fullScreen: false,
       },
     });
-    expect(previewMocks.incrementVersion).toHaveBeenCalled();
+    expect(previewMocks.generateLocalExperiment).toHaveBeenCalledTimes(1);
 
     const iframe = screen.getByTitle("Experiment Preview");
     expect(iframe).toHaveAttribute(
@@ -75,6 +75,8 @@ describe("ExperimentPreview full previews", () => {
     });
 
     expect(screen.queryByTitle("Experiment Preview")).not.toBeInTheDocument();
+    expect(previewMocks.generateLocalExperiment).not.toHaveBeenCalled();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
   it("falls back to the full local preview without a selection", async () => {
@@ -129,5 +131,52 @@ describe("ExperimentPreview full previews", () => {
 
     fireEvent.click(screen.getByText("Stop Demo"));
     expect(screen.queryByTitle("Experiment Preview")).not.toBeInTheDocument();
+  });
+
+  it("does not regenerate after refreshing its own iframe", async () => {
+    previewMocks.unstableGeneratorIdentity = true;
+
+    render(
+      <ExperimentPreview
+        autoStart
+        canvasStyles={{ width: 800, height: 600 }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(previewMocks.generateLocalExperiment).toHaveBeenCalledTimes(1);
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(previewMocks.generateLocalExperiment).toHaveBeenCalledTimes(1);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("aborts preview generation when the demo unmounts", async () => {
+    let resolveRequest: (() => void) | undefined;
+    globalThis.fetch = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveRequest = () =>
+            resolve({ ok: true, json: async () => ({ success: true }) });
+        }),
+    ) as unknown as typeof fetch;
+
+    const { unmount } = render(<ExperimentPreview autoStart />);
+
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(1));
+    const request = vi.mocked(globalThis.fetch).mock.calls[0][1];
+    const signal = request?.signal as AbortSignal;
+    expect(signal.aborted).toBe(false);
+
+    unmount();
+
+    expect(signal.aborted).toBe(true);
+    resolveRequest?.();
   });
 });

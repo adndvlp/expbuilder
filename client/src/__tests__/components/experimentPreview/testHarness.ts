@@ -11,6 +11,7 @@ const hoistedMocks = vi.hoisted(() => ({
   trialUrl: "http://localhost:3000/test-exp-123/preview",
   experimentID: "test-exp-123" as string | undefined,
   version: 1,
+  unstableGeneratorIdentity: false,
   devMode: { isDevMode: true, isSaveMode: false, code: "" },
   trialsContext: {
     selectedTrial: null as any,
@@ -24,7 +25,9 @@ vi.mock(
   "../../../pages/ExperimentBuilder/components/Timeline/ExperimentCode/useExperimentCode",
   () => ({
     useExperimentCode: () => ({
-      generateLocalExperiment: hoistedMocks.generateLocalExperiment,
+      generateLocalExperiment: hoistedMocks.unstableGeneratorIdentity
+        ? () => hoistedMocks.generateLocalExperiment()
+        : hoistedMocks.generateLocalExperiment,
     }),
   }),
 );
@@ -93,6 +96,7 @@ export function registerExperimentPreviewLifecycle() {
     previewMocks.trialsContext.selectedTrial = null;
     previewMocks.trialsContext.selectedLoop = null;
     previewMocks.version = 1;
+    previewMocks.unstableGeneratorIdentity = false;
     previewMocks.experimentID = "test-exp-123";
   });
 

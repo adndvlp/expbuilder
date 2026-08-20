@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from "react";
 import useUrl from "../hooks/useUrl";
-import { useExperimentState } from "../hooks/useExpetimentState";
 import useTrials from "../hooks/useTrials";
 import { useExperimentID } from "../hooks/useExperimentID";
 import {
@@ -36,13 +35,30 @@ function ExperimentPreview({
 }: Props) {
   const { generateLocalExperiment } = useExperimentCode(uploadedFiles);
   const { trialUrl } = useUrl();
-  const { version, incrementVersion } = useExperimentState();
   const [started, setStarted] = useState(autoStart);
   const [key, setKey] = useState(autoStart ? 1 : 0);
 
   const { isDevMode, isSaveMode, code } = useDevMode();
 
   const experimentID = useExperimentID();
+  const { selectedTrial, selectedLoop, getTrial, getLoopTimeline, getLoop } =
+    useTrials();
+
+  const previewGeneratorsRef = useRef({
+    generateLocalExperiment,
+    getTrial,
+    getLoopTimeline,
+    getLoop,
+  });
+
+  useEffect(() => {
+    previewGeneratorsRef.current = {
+      generateLocalExperiment,
+      getTrial,
+      getLoopTimeline,
+      getLoop,
+    };
+  }, [generateLocalExperiment, getLoop, getLoopTimeline, getTrial]);
 
   // Scale iframe to fit container while keeping internal vw/vh correct
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -63,14 +79,6 @@ function ExperimentPreview({
     return () => ro.disconnect();
   }, [canvasStyles?.width, canvasStyles?.height, started]);
 
-  useEffect(() => {
-    if (started && version) {
-      // The server version is an external signal that replaces the iframe URL.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setKey((prev) => prev + 1);
-    }
-  }, [started, version]);
-
   const handleStart = () => {
     setStarted(true);
     setKey((prev) => prev + 1);
@@ -80,15 +88,19 @@ function ExperimentPreview({
     setStarted(false);
   };
 
-  const { selectedTrial, selectedLoop, getTrial, getLoopTimeline, getLoop } =
-    useTrials();
-
   // trials preview - generate code dynamically
   useEffect(() => {
+    if (!started) return;
+
+    const abortController = new AbortController();
+    let active = true;
     let generatedPreviewCode: string;
+
     const generateAndSendCode = async () => {
+      const generators = previewGeneratorsRef.current;
+
       if (isDevMode || (!selectedTrial && !selectedLoop)) {
-        generatedPreviewCode = await generateLocalExperiment();
+        generatedPreviewCode = await generators.generateLocalExperiment();
       } else {
         /* v8 ignore start -- the outer branch already routes empty selection to full local preview. */
         if (!selectedTrial && !selectedLoop) return;
@@ -99,17 +111,17 @@ function ExperimentPreview({
               selectedTrial,
               uploadedFiles,
               experimentID || "",
-              getTrial,
-              getLoopTimeline,
-              getLoop,
+              generators.getTrial,
+              generators.getLoopTimeline,
+              generators.getLoop,
             )
           : await generateSingleLoopCode(
               selectedLoop!,
               experimentID || "",
               uploadedFiles,
-              getTrial,
-              getLoopTimeline,
-              getLoop,
+              generators.getTrial,
+              generators.getLoopTimeline,
+              generators.getLoop,
             );
 
         if (!generatedCode) return;
@@ -161,6 +173,8 @@ localStorage.removeItem('jsPsych_jumpToTrial');
         generatedPreviewCode = trialCode;
       }
 
+      if (!active) return;
+
       await fetch(`${API_URL}/api/trials-preview/${experimentID}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -170,12 +184,25 @@ localStorage.removeItem('jsPsych_jumpToTrial');
         }),
         credentials: "include",
         mode: "cors",
+        signal: abortController.signal,
       });
-      incrementVersion();
+
+      if (active) setKey((prev) => prev + 1);
     };
 
-    generateAndSendCode();
+    void generateAndSendCode().catch((error: unknown) => {
+      if (!active || (error instanceof Error && error.name === "AbortError")) {
+        return;
+      }
+      console.error("Error generating experiment preview:", error);
+    });
+
+    return () => {
+      active = false;
+      abortController.abort();
+    };
   }, [
+    started,
     code,
     isDevMode,
     isSaveMode,
@@ -183,11 +210,6 @@ localStorage.removeItem('jsPsych_jumpToTrial');
     selectedLoop,
     experimentID,
     canvasStyles,
-    generateLocalExperiment,
-    getLoop,
-    getLoopTimeline,
-    getTrial,
-    incrementVersion,
     uploadedFiles,
   ]);
 
