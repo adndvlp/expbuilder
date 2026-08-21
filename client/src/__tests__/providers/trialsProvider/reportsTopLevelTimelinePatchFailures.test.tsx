@@ -5,6 +5,8 @@ import type { TimelineItem } from "../../../pages/ExperimentBuilder/contexts/Tri
 import TrialsContext from "../../../pages/ExperimentBuilder/contexts/TrialsContext";
 import TrialsProvider from "../../../pages/ExperimentBuilder/providers/TrialsProvider";
 import {
+  graphJson,
+  mutationJson,
   notOkJson,
   okJson,
   timelineLoop,
@@ -50,7 +52,7 @@ function queueFetchResponses(...responses: Response[]) {
 }
 
 async function renderLoadedProvider(initialTimeline: TimelineItem[] = []) {
-  queueFetchResponses(okJson({ timeline: initialTimeline }));
+  queueFetchResponses(graphJson(initialTimeline));
 
   const view = renderTrialsProvider();
 
@@ -93,12 +95,15 @@ describe("TrialsProvider", () => {
     );
   });
 
-  it("creates trials through the API without mutating timeline optimistically", async () => {
+  it("applies the canonical graph returned while creating a trial", async () => {
     const initialTimeline = [timelineTrial({ id: 1, name: "Existing Trial" })];
     const view = await renderLoadedProvider(initialTimeline);
     const createdTrial = trial({ id: 2, name: "Created Trial" });
 
-    queueFetchResponses(okJson({ trial: createdTrial }));
+    const createdItem = timelineTrial({ id: 2, name: "Created Trial" });
+    queueFetchResponses(
+      mutationJson({ trial: createdTrial }, [...initialTimeline, createdItem]),
+    );
 
     const result = await act(async () => {
       return view
@@ -107,7 +112,7 @@ describe("TrialsProvider", () => {
     });
 
     expect(result).toEqual(createdTrial);
-    expect(view.getContext()?.timeline).toEqual(initialTimeline);
+    expect(view.getContext()?.timeline).toEqual([...initialTimeline, createdItem]);
     expect(fetchMock()).toHaveBeenLastCalledWith(
       `${API_URL}/api/trial/test-exp-123`,
       {
@@ -123,7 +128,7 @@ describe("TrialsProvider", () => {
     const view = await renderLoadedProvider();
     const reloadedTimeline = [timelineTrial({ id: 9, name: "Reloaded" })];
 
-    queueFetchResponses(notOkJson(), okJson({ timeline: reloadedTimeline }));
+    queueFetchResponses(notOkJson(), graphJson(reloadedTimeline));
 
     let caughtError: unknown;
     await act(async () => {
@@ -160,18 +165,18 @@ describe("TrialsProvider", () => {
     const view = await renderLoadedProvider([
       timelineTrial({ id: 1, name: "Question", branches: [] }),
     ]);
-    const branchTrial = trial({
-      id: 2,
-      name: "Follow-up",
-      branches: undefined as any,
-    });
+    const branchTrial = { ...trial({ id: 2, name: "Follow-up" }), branches: undefined };
     const updatedTrial = trial({
       id: 1,
       name: "Question Updated",
       branches: [2],
     });
 
-    queueFetchResponses(okJson({ trial: updatedTrial }));
+    const nextTimeline = [
+      timelineTrial({ id: 1, name: "Question Updated", branches: [2] }),
+      timelineTrial({ id: 2, name: "Follow-up" }),
+    ];
+    queueFetchResponses(mutationJson({ trial: updatedTrial }, nextTimeline));
 
     const result = await act(async () => {
       return view
@@ -184,10 +189,7 @@ describe("TrialsProvider", () => {
     });
 
     expect(result).toEqual(updatedTrial);
-    expect(view.getContext()?.timeline).toEqual([
-      timelineTrial({ id: 1, name: "Question Updated", branches: [2] }),
-      timelineTrial({ id: 2, name: "Follow-up" }),
-    ]);
+    expect(view.getContext()?.timeline).toEqual(nextTimeline);
   });
 
   it("updates a trial without branches and preserves unrelated timeline items", async () => {
@@ -198,19 +200,20 @@ describe("TrialsProvider", () => {
     const updated = trial({
       id: 1,
       name: "After",
-      branches: undefined as any,
+      branches: [2],
     });
-    queueFetchResponses(okJson({ trial: updated }));
+    const nextTimeline = [
+      timelineTrial({ id: 1, name: "After", branches: [2] }),
+      timelineTrial({ id: 99, name: "Unrelated" }),
+    ];
+    queueFetchResponses(mutationJson({ trial: updated }, nextTimeline));
 
     const result = await act(async () => {
       return view.getContext()?.updateTrial(1, { name: "After" });
     });
 
     expect(result).toEqual(updated);
-    expect(view.getContext()?.timeline).toEqual([
-      timelineTrial({ id: 1, name: "After", branches: [] }),
-      timelineTrial({ id: 99, name: "Unrelated" }),
-    ]);
+    expect(view.getContext()?.timeline).toEqual(nextTimeline);
   });
 
   it("updates nested trials with placeholder branch items and selected trial sync", async () => {
@@ -249,7 +252,26 @@ describe("TrialsProvider", () => {
       view.getContext()?.setSelectedTrial(selected);
     });
 
-    queueFetchResponses(okJson({ trial: updated }));
+    const rootItems = [
+      timelineLoop({ id: "loop-1", name: "Loop", trials: [10] }),
+    ];
+    const nestedItems = [
+      timelineTrial({
+        id: 10,
+        name: "Nested Question Updated",
+        branches: [20],
+        parentLoopId: "loop-1",
+      }),
+    ];
+    queueFetchResponses(
+      mutationJson({ trial: updated }, rootItems, {
+        "loop-1": {
+          scopeId: "loop-1",
+          parentScopeId: null,
+          items: nestedItems,
+        },
+      }),
+    );
 
     const result = await act(async () => {
       return view
@@ -259,14 +281,6 @@ describe("TrialsProvider", () => {
 
     expect(result).toEqual(updated);
     expect(view.getContext()?.selectedTrial).toEqual(updated);
-    expect(view.getContext()?.loopTimeline).toEqual([
-      timelineTrial({
-        id: 10,
-        name: "Nested Question Updated",
-        branches: [20],
-        parentLoopId: "loop-1",
-      }),
-      timelineTrial({ id: 20, name: "Loading..." }),
-    ]);
+    expect(view.getContext()?.loopTimeline).toEqual(nestedItems);
   });
 });

@@ -1,4 +1,5 @@
 import type { TimelineItem } from "../../../contexts/TrialsContext";
+import type { GraphBranchEdge } from "../../../modules/experiment-graph/types";
 import type {
   ExpandedLoopEntry,
   LoopScopeId,
@@ -31,6 +32,8 @@ type BuildUnifiedFlowLayoutInput = {
   selectedItemId: string | number | null;
   selectedScopeId: LoopScopeId | null;
   pendingLoopId?: LoopScopeId | null;
+  branchEdges?: readonly GraphBranchEdge[];
+  scopeParents?: Readonly<Record<string, string | null>>;
   onSelectTrial: (trial: TimelineItem, scopeId: LoopScopeId | null) => void;
   onSelectLoop: (loop: TimelineItem, scopeId: LoopScopeId | null) => void;
   onToggleLoop: (loop: TimelineItem, scopeId: LoopScopeId | null) => void;
@@ -74,6 +77,8 @@ export function buildUnifiedFlowLayout(input: BuildUnifiedFlowLayoutInput) {
   const layout = composeExpandedLoopLayout({
     rootTimeline: input.timeline,
     expandedScopes,
+    branchEdges: input.branchEdges,
+    scopeParents: input.scopeParents,
   });
 
   const nodes = layout.nodes.map((node) => {

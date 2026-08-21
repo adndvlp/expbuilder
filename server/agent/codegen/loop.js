@@ -1,5 +1,10 @@
 import { sanitizeId } from './helpers.js'
 import { generateTrialCode } from './trial.js'
+import {
+  generateChildWrapper,
+  generateLoopRoutingProperties,
+  generateLoopState,
+} from './loopRouting.js'
 
 /* istanbul ignore next -- loop code generation is covered by output-focused fixture tests. */
 export function generateLoopCode(loop, doc, parentLoopId) {
@@ -14,7 +19,7 @@ export function generateLoopCode(loop, doc, parentLoopId) {
     const t = doc.trials.find(tr => tr.id === tid)
     const l = doc.loops.find(lp => lp.id === tid)
     if (t) children.push({ ...generateTrialCode(t, true, loop.csvJson, loop.id), id: tid, name: t.name, type: 'trial' })
-    else if (l) children.push({ code: generateLoopCode(l, doc, loop.id), timelineRef: '', procedureRef: '', id: tid, name: l.name, type: 'loop', hasCsv: false })
+    else if (l) children.push({ code: generateLoopCode(l, doc, loop.id), timelineRef: '', procedureRef: `${sanitizeId(tid)}_procedure`, id: tid, name: l.name, type: 'loop', hasCsv: false })
   }
   const validChildren = children.filter(c => c.code)
 
@@ -54,55 +59,12 @@ export function generateLoopCode(loop, doc, parentLoopId) {
 
   for (const child of validChildren) {
     childCode += child.code
-    const childId = sanitizeId(child.id)
-    if (child.type === 'trial' && child.hasCsv) {
-      timelineRefs.push(`${childId}_wrapper`)
-      childCode += `\nconst ${childId}_wrapper = {\n`
-      childCode += `  timeline: [${childId}_procedure],\n`
-      childCode += `  conditional_function: function() {\n`
-      childCode += `    if (loop_${loopId}_SkipRemaining) {\n`
-      childCode += `      if (String("${child.id}") === String(loop_${loopId}_NextTrialId)) {\n`
-      childCode += `        loop_${loopId}_TargetExecuted = true;\n`
-      childCode += `        return true;\n`
-      childCode += `      }\n`
-      childCode += `      return false;\n`
-      childCode += `    }\n`
-      childCode += `    if (loop_${loopId}_TargetExecuted) return false;\n`
-      childCode += `    return true;\n`
-      childCode += `  },\n`
-      childCode += `  on_timeline_finish: function() {\n`
-      childCode += `    loop_${loopId}_IterationComplete = true;\n`
-      childCode += `  }\n`
-      childCode += `};\n\n`
-    } else if (child.type === 'trial') {
-      timelineRefs.push(`${childId}_timeline`)
-    } else {
-      const cid = sanitizeId(child.id)
-      timelineRefs.push(`${cid}_wrapper`)
-      childCode += `\nconst ${cid}_wrapper = {\n`
-      childCode += `  timeline: [${cid}_procedure],\n`
-      childCode += `  conditional_function: function() {\n`
-      childCode += `    if (loop_${loopId}_SkipRemaining) {\n`
-      childCode += `      if (String("${child.id}") === String(loop_${loopId}_NextTrialId)) {\n`
-      childCode += `        loop_${loopId}_TargetExecuted = true;\n`
-      childCode += `        return true;\n`
-      childCode += `      }\n`
-      childCode += `      return false;\n`
-      childCode += `    }\n`
-      childCode += `    if (loop_${loopId}_TargetExecuted) return false;\n`
-      childCode += `    return true;\n`
-      childCode += `  }\n`
-      childCode += `};\n\n`
-    }
+    const wrapper = generateChildWrapper(child, loop.id)
+    if (wrapper.timelineRef) timelineRefs.push(wrapper.timelineRef)
+    childCode += wrapper.code
   }
 
-  childCode += `// Branching state for loop ${loop.id}\n`
-  childCode += `let loop_${loopId}_NextTrialId = null;\n`
-  childCode += `let loop_${loopId}_SkipRemaining = false;\n`
-  childCode += `let loop_${loopId}_TargetExecuted = false;\n`
-  childCode += `let loop_${loopId}_BranchingActive = false;\n`
-  childCode += `let loop_${loopId}_BranchCustomParameters = null;\n`
-  childCode += `let loop_${loopId}_IterationComplete = false;\n`
+  childCode += generateLoopState(loop, validChildren)
 
   let procedure = childCode
   procedure += `\nconst ${loopId}_procedure = {\n`
@@ -110,6 +72,7 @@ export function generateLoopCode(loop, doc, parentLoopId) {
   procedure += `  timeline_variables: test_stimuli_${loopId},\n`
   procedure += `  sample: { type: "with-replacement", size: ${rep}${csvData.length > 1 ? ` * ${csvData.length}` : ''} },\n`
   if (loop.randomize) procedure += `  randomize_order: true,\n`
+  procedure += generateLoopRoutingProperties(loop, parentLoopId)
 
   if (loop.isConditionalLoop && loop.loopConditions?.length) {
     procedure += `  loop_function: function(data) {\n`
@@ -177,16 +140,6 @@ export function generateLoopCode(loop, doc, parentLoopId) {
     procedure += `  },\n`
   }
 
-  procedure += `  on_timeline_start: function() {\n`
-  procedure += `    loop_${loopId}_NextTrialId = null;\n`
-  procedure += `    loop_${loopId}_SkipRemaining = false;\n`
-  procedure += `    loop_${loopId}_TargetExecuted = false;\n`
-  procedure += `    loop_${loopId}_BranchingActive = false;\n`
-  procedure += `    loop_${loopId}_BranchCustomParameters = null;\n`
-  procedure += `    loop_${loopId}_IterationComplete = false;\n`
-  procedure += `    loop_${loopId}_ShouldBranchOnFinish = false;\n`
-  procedure += `    window.nextTrialId = null; window.skipRemaining = false;\n`
-  procedure += `  },\n`
   procedure += `  data: { loop_id: "${loop.id}" }\n`
   procedure += `};\n`
 

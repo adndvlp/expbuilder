@@ -1,25 +1,18 @@
 import { useCallback } from "react";
-import type { TimelineItem } from "../../../contexts/TrialsContext";
-import { findTimelineItemLocation } from "../itemScope";
-import {
-  getLoopTimelineFieldChanges,
-  getLoopTimelineSnapshot,
-  updateLoopTimeline,
-} from "../loopTimelineUpdates";
+import type { Loop } from "../../../components/ConfigurationPanel/types";
+import type { ExperimentGraphSnapshot } from "../../../modules/experiment-graph/types";
 import type { LoopMethodsWithGetLoop } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const idsMatch = (left: string | number, right: string | number) =>
   String(left) === String(right);
+const graphFields = new Set(["name", "branches", "trials", "parentLoopId"]);
 
 export default function useUpdateLoopField({
   experimentID,
-  timeline,
-  loopTimelineCache,
-  setTimeline,
-  updateLoopTimelineItems,
+  applyGraphSnapshot,
+  getTimeline,
   setSelectedLoop,
-  getSelectedLoop,
   getLoop,
 }: LoopMethodsWithGetLoop) {
   return useCallback(
@@ -27,36 +20,9 @@ export default function useUpdateLoopField({
       id: string | number,
       fieldName: string,
       value: unknown,
-      updateSelectedLoop: boolean = true,
+      updateSelectedLoop = true,
     ): Promise<boolean> => {
       try {
-        const timelineChanges = getLoopTimelineFieldChanges(
-          fieldName,
-          value,
-        );
-        const location = findTimelineItemLocation(
-          id,
-          timeline,
-          loopTimelineCache,
-        );
-        const selected = getSelectedLoop();
-        let parentLoopId = location
-          ? location.parentLoopId
-          : selected && idsMatch(selected.id, id)
-            ? (selected.parentLoopId ?? null)
-            : null;
-
-        if (timelineChanges) {
-          const optimisticUpdate = (items: TimelineItem[]) =>
-            updateLoopTimeline(items, id, timelineChanges);
-          if (parentLoopId != null) {
-            updateLoopTimelineItems(parentLoopId, optimisticUpdate);
-          } else {
-            setTimeline(optimisticUpdate);
-          }
-        }
-
-        // BACKEND
         const response = await fetch(
           `${API_URL}/api/loop/${experimentID}/${id}`,
           {
@@ -65,58 +31,37 @@ export default function useUpdateLoopField({
             body: JSON.stringify({ [fieldName]: value }),
           },
         );
+        if (!response.ok) throw new Error(`Failed to update ${fieldName}`);
 
-        if (!response.ok) {
-          throw new Error(`Failed to update ${fieldName}`);
-        }
-
-        const data = await response.json();
-        const updatedLoop = data.loop;
-
-        // ACTUALIZAR UI CON DATOS REALES
-        if (timelineChanges) {
-          const snapshot = getLoopTimelineSnapshot(updatedLoop);
-          const finalUpdate = (items: TimelineItem[]) =>
-            updateLoopTimeline(items, id, snapshot);
-          parentLoopId = updatedLoop.parentLoopId ?? parentLoopId;
-          if (parentLoopId != null) {
-            updateLoopTimelineItems(parentLoopId, finalUpdate);
-          } else {
-            setTimeline(finalUpdate);
-          }
-        }
-
-        // Actualizar selectedLoop si es el que está seleccionado y se solicita
+        const data = (await response.json()) as {
+          loop: Loop;
+          graph: ExperimentGraphSnapshot;
+        };
+        if (graphFields.has(fieldName)) applyGraphSnapshot(data.graph);
         if (updateSelectedLoop) {
           setSelectedLoop((current) =>
-            current && idsMatch(current.id, id) ? updatedLoop : current,
+            current && idsMatch(current.id, id) ? data.loop : current,
           );
         }
-
         return true;
-      } catch (error) {
+      } catch (error: unknown) {
         console.error(`Error updating ${fieldName}:`, error);
-
-        // Si falla, recargar el loop completo para mantener consistencia
         const freshLoop = await getLoop(id);
-        if (freshLoop) {
+        if (freshLoop && updateSelectedLoop) {
           setSelectedLoop((current) =>
             current && idsMatch(current.id, id) ? freshLoop : current,
           );
         }
-
+        if (graphFields.has(fieldName)) await getTimeline();
         return false;
       }
     },
     [
+      applyGraphSnapshot,
       experimentID,
       getLoop,
-      getSelectedLoop,
-      loopTimelineCache,
-      setTimeline,
+      getTimeline,
       setSelectedLoop,
-      timeline,
-      updateLoopTimelineItems,
     ],
   );
 }

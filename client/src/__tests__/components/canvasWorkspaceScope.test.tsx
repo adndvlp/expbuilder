@@ -149,9 +149,7 @@ describe("useCanvasWorkspace active action scope", () => {
         trials: [10, 11],
       }),
     );
-    expect(trials.updateLoop).toHaveBeenCalledWith("parent", {
-      trials: ["nested-created"],
-    });
+    expect(trials.updateLoop).not.toHaveBeenCalled();
     expect(trials.updateTimeline).not.toHaveBeenCalled();
   });
 

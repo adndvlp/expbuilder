@@ -54,17 +54,45 @@ describe("POST /api/trial/:experimentID", () => {
       type: "trial",
       name: "T1",
       branches: [],
+      parentLoopId: null,
     });
   });
 
   test("skips timeline when trial has parentLoopId", async () => {
     const { app } = await freshApp();
-    await request(app)
+    const loop = await request(app)
+      .post("/api/loop/E1")
+      .send({ name: "L1", trials: [], loopConfig: {} })
+      .expect(200);
+    const created = await request(app)
       .post("/api/trial/E1")
-      .send({ name: "T_in_loop", plugin: "p", parentLoopId: "loop_1" })
+      .send({
+        name: "T_in_loop",
+        plugin: "p",
+        parentLoopId: loop.body.loop.id,
+      })
       .expect(200);
     const meta = await request(app).get("/api/trials-metadata/E1").expect(200);
-    expect(meta.body.timeline).toHaveLength(0);
+    expect(meta.body.timeline.map((item) => item.id)).not.toContain(
+      created.body.trial.id,
+    );
+    const loopMeta = await request(app)
+      .get(`/api/loop-trials-metadata/E1/${loop.body.loop.id}`)
+      .expect(200);
+    expect(loopMeta.body.trialsMetadata.map((item) => item.id)).toContain(
+      created.body.trial.id,
+    );
+  });
+
+  test("rejects a missing parent loop without creating an orphan trial", async () => {
+    const { app, db } = await freshApp();
+    const response = await request(app)
+      .post("/api/trial/E1")
+      .send({ name: "Orphan", plugin: "p", parentLoopId: "loop_missing" })
+      .expect(400);
+    expect(response.body.error).toBe("Loop loop_missing not found");
+    await db.read();
+    expect(db.data.trials).toEqual([]);
   });
 });
 

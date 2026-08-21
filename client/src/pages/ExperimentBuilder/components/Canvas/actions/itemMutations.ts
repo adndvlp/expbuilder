@@ -3,7 +3,6 @@ import type { TimelineItem } from "../../../contexts/TrialsContext";
 import type {
   CanvasActionDependencies,
   CanvasActionScope,
-  LoopCanvasActionScope,
 } from "./types";
 
 export function getScopeNames(scope: CanvasActionScope): string[] {
@@ -37,25 +36,4 @@ export async function getItemBranches(
       ? await dependencies.getTrial(item.id)
       : await dependencies.getLoop(item.id);
   return fullItem ? fullItem.branches ?? [] : null;
-}
-
-export async function propagateLoopCsv(
-  scope: LoopCanvasActionScope,
-  trial: Trial,
-  dependencies: CanvasActionDependencies,
-) {
-  const parentLoop = await dependencies.getLoop(scope.loopId);
-  if ((parentLoop?.csvJson?.length ?? 0) > 0) {
-    await dependencies.updateTrialField(
-      trial.id,
-      "csvFromLoop",
-      true,
-      false,
-    );
-  }
-  return parentLoop;
-}
-
-export async function refreshScope(scope: CanvasActionScope) {
-  if (scope.kind === "loop") await scope.refresh?.();
 }

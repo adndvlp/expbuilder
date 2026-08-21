@@ -42,13 +42,12 @@ describe("scoped Canvas branch actions", () => {
     );
   });
 
-  it("creates loop branches with parentLoopId, inherited CSV, and refresh", async () => {
+  it("creates loop branches in their owner scope without client-side resync", async () => {
     const dependencies = createDependencies();
-    const refresh = vi.fn();
     const onSelectTrial = vi.fn();
 
     await addScopedBranchTrial({
-      scope: createLoopScope(refresh),
+      scope: createLoopScope(),
       parentId: 10,
       dependencies,
       onSelectTrial,
@@ -57,12 +56,7 @@ describe("scoped Canvas branch actions", () => {
     expect(dependencies.createTrial).toHaveBeenCalledWith(
       expect.objectContaining({ parentLoopId: "parent-loop" }),
     );
-    expect(dependencies.updateTrialField).toHaveBeenCalledWith(
-      99,
-      "csvFromLoop",
-      true,
-      false,
-    );
+    expect(dependencies.updateTrialField).not.toHaveBeenCalled();
     expect(dependencies.updateTrial).toHaveBeenCalledWith(
       10,
       { branches: [11, 99] },
@@ -70,15 +64,13 @@ describe("scoped Canvas branch actions", () => {
     );
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
     expect(onSelectTrial).toHaveBeenCalled();
-    expect(refresh).toHaveBeenCalledOnce();
   });
 
   it("inserts a sequential parent inside the active loop without touching root", async () => {
     const dependencies = createDependencies();
-    const refresh = vi.fn();
 
     await addScopedParentTrial({
-      scope: createLoopScope(refresh),
+      scope: createLoopScope(),
       parentId: 10,
       dependencies,
     });
@@ -95,13 +87,11 @@ describe("scoped Canvas branch actions", () => {
       expect.objectContaining({ id: 99 }),
     );
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
-    expect(refresh).toHaveBeenCalledOnce();
   });
 
   it("adds a branch to a child loop within the active scope", async () => {
     const dependencies = createDependencies();
-    const refresh = vi.fn();
-    const scope = createLoopScope(refresh);
+    const scope = createLoopScope();
     scope.items = [
       ...scope.items,
       { id: "child-loop", type: "loop", name: "Child loop", branches: [11] },
@@ -119,6 +109,5 @@ describe("scoped Canvas branch actions", () => {
       expect.objectContaining({ id: 99 }),
     );
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
-    expect(refresh).toHaveBeenCalledOnce();
   });
 });

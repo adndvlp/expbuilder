@@ -1,4 +1,5 @@
 import { PublicExperimentCodeOptions } from "./publicCodeTypes";
+import { resumeJumpStartupCode } from "./resumeJumpStartupCode";
 
 export function publicBootstrapCode(
   options: PublicExperimentCodeOptions,
@@ -54,36 +55,7 @@ export function publicBootstrapCode(
       _setLoadingMsg('Creating session\u2026');
     }
 
-    const resumeRaw = localStorage.getItem('jsPsych_resumeTrial');
-    const existingJump = localStorage.getItem('jsPsych_jumpToTrial');
-    const comingFromJumpReload =
-      sessionStorage.getItem('jsPsych_jumpReload') === '1';
-    sessionStorage.removeItem('jsPsych_jumpReload');
-
-    if (comingFromJumpReload && existingJump) {
-      localStorage.removeItem('jsPsych_jumpToTrial');
-      localStorage.removeItem('jsPsych_resumeTrial');
-      localStorage.removeItem('jsPsych_currentSessionId');
-      localStorage.removeItem('jsPsych_participantNumber');
-      trialSessionId = _generateSessionName(null) || (crypto.randomUUID
-        ? crypto.randomUUID()
-        : Math.random().toString(36).slice(2, 10));
-      isResuming = false;
-    } else if (isResuming && resumeRaw && !existingJump) {
-      const resumeTarget = _resolveResumeBranch(resumeRaw);
-      if (resumeTarget !== null) {
-        localStorage.setItem('jsPsych_jumpToTrial', resumeTarget);
-        sessionStorage.setItem('jsPsych_jumpReload', '1');
-      } else {
-        localStorage.removeItem('jsPsych_resumeTrial');
-        localStorage.removeItem('jsPsych_currentSessionId');
-        localStorage.removeItem('jsPsych_participantNumber');
-        trialSessionId = _generateSessionName(null) || (crypto.randomUUID
-          ? crypto.randomUUID()
-          : Math.random().toString(36).slice(2, 10));
-        isResuming = false;
-      }
-    }
+${resumeJumpStartupCode()}
     
     // --- Configuración de Batching (cargada desde Firestore) ---
     const BATCH_CONFIG = {

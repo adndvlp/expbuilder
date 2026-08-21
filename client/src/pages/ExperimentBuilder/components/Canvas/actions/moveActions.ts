@@ -1,7 +1,6 @@
 import type { TimelineItem } from "../../../contexts/TrialsContext";
 import {
   getItemBranches,
-  refreshScope,
   updateItemBranches,
 } from "./itemMutations";
 import type {
@@ -130,6 +129,5 @@ export async function moveScopedItem(
   } else {
     await updateLoopDirectChildren(input);
   }
-  await refreshScope(input.scope);
   return { status: "moved" };
 }

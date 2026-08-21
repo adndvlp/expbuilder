@@ -1,10 +1,6 @@
 import type { Loop, Trial } from "../../ConfigurationPanel/types";
 import { generateUniqueName } from "../utils/trialUtils";
-import {
-  getScopeNames,
-  propagateLoopCsv,
-  refreshScope,
-} from "./itemMutations";
+import { getScopeNames } from "./itemMutations";
 import type {
   CanvasItemId,
   LoopSelection,
@@ -45,25 +41,7 @@ export async function createScopedTrial(
   if (input.scope.kind === "loop" && !parentLoop) return null;
 
   const trial = await input.dependencies.createTrial(trialInput(input));
-  if (input.scope.kind === "root") {
-    await input.dependencies.updateTimeline([
-      ...input.scope.items,
-      {
-        id: trial.id,
-        type: "trial",
-        name: trial.name,
-        branches: trial.branches ?? [],
-      },
-    ]);
-  } else {
-    await propagateLoopCsv(input.scope, trial, input.dependencies);
-    await input.dependencies.updateLoop(input.scope.loopId, {
-      trials: [...(parentLoop?.trials ?? []), trial.id],
-    });
-  }
-
   input.onSelectTrial?.(trial);
-  await refreshScope(input.scope);
   return trial;
 }
 
@@ -104,15 +82,6 @@ export async function createScopedLoop(
     ...baseLoopInput(name, input.itemIds),
     parentLoopId: String(input.scope.loopId),
   });
-  await input.dependencies.updateLoop(input.scope.loopId, {
-    trials: [
-      ...(parentLoop.trials ?? []).filter(
-        (id) => !input.itemIds.includes(id),
-      ),
-      loop.id,
-    ],
-  });
   input.onSelectLoop?.(loop);
-  await refreshScope(input.scope);
   return loop;
 }

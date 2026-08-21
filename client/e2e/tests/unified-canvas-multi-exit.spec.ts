@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures/test.fixture";
-import type { Locator } from "@playwright/test";
+import { expectPathAvoidsNodes } from "../helpers/layoutAssertions";
 import { getLoopLayoutScopeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/buildUnifiedFlowLayout";
 import { getScopedNodeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/composeExpandedLoopLayout";
 import { ROOT_CANVAS_SCOPE_ID } from "../../src/pages/ExperimentBuilder/components/Canvas/services/expandedLayoutTypes";
@@ -31,29 +31,34 @@ const loopTimeline = [
   },
 ];
 
-async function pathCrossesNode(path: Locator, node: Locator) {
-  const bounds = await node.boundingBox();
-  if (!bounds) return false;
-  return path.evaluate((element, box) => {
-    const svgPath = element as SVGPathElement;
-    const matrix = svgPath.getScreenCTM();
-    if (!matrix) return false;
-    const length = svgPath.getTotalLength();
-    for (let sample = 1; sample < 100; sample += 1) {
-      const point = svgPath.getPointAtLength((length * sample) / 100);
-      const screen = new DOMPoint(point.x, point.y).matrixTransform(matrix);
-      if (
-        screen.x > box.x &&
-        screen.x < box.x + box.width &&
-        screen.y > box.y &&
-        screen.y < box.y + box.height
-      ) {
-        return true;
-      }
-    }
-    return false;
-  }, bounds);
-}
+const graphSnapshot = {
+  revision: "multi-exit-layout-regression",
+  root: { scopeId: null, parentScopeId: null, items: rootTimeline },
+  scopes: {
+    "loop-1": {
+      scopeId: "loop-1",
+      parentScopeId: null,
+      items: loopTimeline,
+    },
+  },
+  edges: [
+    {
+      sourceId: "split",
+      targetId: "left",
+      sourceOwnerId: "loop-1",
+      targetOwnerId: "loop-1",
+      exitedLoopIds: [],
+    },
+    {
+      sourceId: "split",
+      targetId: "nested-loop",
+      sourceOwnerId: "loop-1",
+      targetOwnerId: "loop-1",
+      exitedLoopIds: [],
+    },
+  ],
+  diagnostics: [],
+};
 
 const edgeId = (kind: string, source: string, target: string) =>
   ["edge", kind, source, target].map(encodeURIComponent).join("::");
@@ -61,6 +66,13 @@ const edgeId = (kind: string, source: string, target: string) =>
 test("routes the parent circuit through a terminal trial and nested loop branch", async ({
   page,
 }) => {
+  await page.route("**/api/experiment-graph/exp-multi-exit", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ graph: graphSnapshot }),
+    }),
+  );
   await page.route("**/api/trials-metadata/exp-multi-exit", (route) =>
     route.fulfill({
       status: 200,
@@ -106,8 +118,7 @@ test("routes the parent circuit through a terminal trial and nested loop branch"
   await expect(path("loop-control", markerId, leftId)).toHaveCount(0);
   await expect(path("loop-return", leftId, splitId)).toHaveCount(0);
   await expect(path("loop-control", markerId, rightId)).toHaveCount(0);
-  expect(await pathCrossesNode(circuit, node(leftId))).toBe(false);
-  expect(await pathCrossesNode(circuit, node(rightId))).toBe(false);
+  await expectPathAvoidsNodes(circuit, [node(leftId), node(rightId)]);
   await page.mouse.move(10, 10);
   await page.waitForTimeout(400);
   await canvas.screenshot({

@@ -1,0 +1,110 @@
+import { createUniqueItemName } from "../uniqueItemName.js";
+import {
+  getCrossedLoops,
+  getItemOwnerId,
+  getOwnedBranchIds,
+  normalizeScopeId,
+} from "./scopeGraph.js";
+
+const idsMatch = (left, right) => String(left) === String(right);
+
+function nextTrialId(experimentDoc) {
+  let id = Date.now();
+  while (experimentDoc.trials.some((trial) => idsMatch(trial.id, id))) id += 1;
+  return id;
+}
+
+function addUnique(branches, branchId) {
+  return (branches ?? []).some((id) => idsMatch(id, branchId))
+    ? [...(branches ?? [])]
+    : [...(branches ?? []), branchId];
+}
+
+function replaceLevelBranches(branches, levelBranchIds, newBranchId) {
+  const replacedIds = new Set(levelBranchIds.map(String));
+  const next = [];
+  let inserted = false;
+  for (const branchId of branches ?? []) {
+    if (!replacedIds.has(String(branchId))) {
+      next.push(branchId);
+    } else if (!inserted) {
+      next.push(newBranchId);
+      inserted = true;
+    }
+  }
+  if (!inserted) next.push(newBranchId);
+  return next;
+}
+
+export function createLoopBranch(
+  experimentDoc,
+  sourceTrial,
+  targetScopeId,
+  mode,
+) {
+  const sourceOwnerId = getItemOwnerId(experimentDoc, sourceTrial.id);
+  if (sourceOwnerId === null || sourceOwnerId === undefined) {
+    return { error: "Source trial must belong to a loop" };
+  }
+  const normalizedTarget = normalizeScopeId(targetScopeId);
+  const crossedLoops = getCrossedLoops(
+    experimentDoc,
+    sourceOwnerId,
+    normalizedTarget,
+  );
+  if (!crossedLoops) {
+    return { error: "Target scope must be the current loop or an ancestor" };
+  }
+
+  const levelBranches = getOwnedBranchIds(
+    experimentDoc,
+    sourceTrial.branches,
+    normalizedTarget,
+  );
+  const targetLoop =
+    normalizedTarget === null
+      ? null
+      : experimentDoc.loops.find((loop) =>
+          idsMatch(loop.id, normalizedTarget),
+        );
+  const now = new Date().toISOString();
+  const trial = {
+    id: nextTrialId(experimentDoc),
+    type: "Trial",
+    name: createUniqueItemName(experimentDoc, "New Trial", "New Trial"),
+    plugin: "plugin-dynamic",
+    parameters: {},
+    trialCode: "",
+    branches: mode === "sequential" ? [...levelBranches] : [],
+    ...(normalizedTarget === null
+      ? {}
+      : { parentLoopId: normalizedTarget }),
+    ...((targetLoop?.csvJson?.length ?? 0) > 0
+      ? { csvFromLoop: true }
+      : {}),
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  sourceTrial.branches =
+    mode === "sequential"
+      ? replaceLevelBranches(sourceTrial.branches, levelBranches, trial.id)
+      : addUnique(sourceTrial.branches, trial.id);
+  sourceTrial.updatedAt = now;
+  experimentDoc.trials.push(trial);
+
+  if (normalizedTarget === null) {
+    experimentDoc.timeline.push({
+      id: trial.id,
+      type: "trial",
+      name: trial.name,
+    });
+  } else {
+    targetLoop.trials = addUnique(targetLoop.trials, trial.id);
+    targetLoop.updatedAt = now;
+  }
+  for (const loop of experimentDoc.loops) delete loop.exitBranchRoutes;
+  for (const loop of crossedLoops) loop.updatedAt = now;
+  experimentDoc.updatedAt = now;
+  return { trial, crossedLoopIds: crossedLoops.map((loop) => loop.id) };
+}

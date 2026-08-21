@@ -1,11 +1,5 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import type { ReactNode, SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import TrialsContext, {
   type TimelineItem,
   type TrialsContextType,
@@ -16,6 +10,7 @@ import useTrialMethods from "./TrialMethods";
 import useLoopMethods from "./LoopMethods";
 import useLoopTimelineCache from "./hooks/useLoopTimelineCache";
 import { createStateStore } from "./stateStore";
+import { useExperimentGraphState } from "../../modules/experiment-graph/useExperimentGraphState";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -24,14 +19,8 @@ type Props = {
 };
 
 export default function TrialsProvider({ children }: Props) {
-  const [timeline, setTimelineState] = useState<TimelineItem[]>([]);
   const [selectedTrial, setSelectedTrialState] = useState<Trial | null>(null);
   const [selectedLoop, setSelectedLoopState] = useState<Loop | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const timelineStore = useMemo(
-    () => createStateStore<TimelineItem[]>([]),
-    [],
-  );
   const trialSelection = useMemo(
     () => createStateStore<Trial | null>(null),
     [],
@@ -42,7 +31,6 @@ export default function TrialsProvider({ children }: Props) {
   );
 
   const experimentID = useExperimentID();
-  const timelineRequestVersionRef = useRef(0);
 
   const setSelectedTrial = useCallback<
     TrialsContextType["setSelectedTrial"]
@@ -60,17 +48,6 @@ export default function TrialsProvider({ children }: Props) {
   const getSelectedTrial = trialSelection.get;
   const getSelectedLoop = loopSelection.get;
 
-  const setTimeline = useCallback(
-    (nextTimeline: SetStateAction<TimelineItem[]>) => {
-      const previous = timelineStore.get();
-      const next = timelineStore.resolve(nextTimeline);
-      if (Object.is(previous, next)) return;
-      timelineRequestVersionRef.current += 1;
-      setIsLoading(false);
-      setTimelineState(next);
-    },
-    [timelineStore],
-  );
   const {
     loopTimeline,
     loopTimelineCache,
@@ -79,41 +56,18 @@ export default function TrialsProvider({ children }: Props) {
     activateLoopTimeline,
     clearLoopTimeline,
     updateLoopTimelineItems,
+    replaceLoopTimelines,
     resetLoopTimelineCache,
   } = useLoopTimelineCache(experimentID);
-
-  // ==================== TIMELINE METHODS ====================
-
-  const getTimeline = useCallback(async () => {
-    if (!experimentID) return;
-    const requestedExperimentId = experimentID;
-    const requestVersion = ++timelineRequestVersionRef.current;
-
-    try {
-      setIsLoading(true);
-      const response = await fetch(
-        `${API_URL}/api/trials-metadata/${requestedExperimentId}`,
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to load trials timeline");
-      }
-
-      const data = await response.json();
-
-      if (requestVersion === timelineRequestVersionRef.current) {
-        const nextTimeline = data.timeline || [];
-        timelineStore.resolve(nextTimeline);
-        setTimelineState(nextTimeline);
-      }
-    } catch (error) {
-      console.error("Error loading trials timeline:", error);
-    } finally {
-      if (requestVersion === timelineRequestVersionRef.current) {
-        setIsLoading(false);
-      }
-    }
-  }, [experimentID, timelineStore]);
+  const {
+    graph,
+    timeline,
+    isLoading,
+    setTimeline,
+    applyGraphSnapshot,
+    getTimeline,
+    clearGraph,
+  } = useExperimentGraphState(experimentID, replaceLoopTimelines);
 
   const { createTrial, getTrial, updateTrial, updateTrialField, deleteTrial } =
     useTrialMethods({
@@ -124,6 +78,7 @@ export default function TrialsProvider({ children }: Props) {
       setTimeline,
       updateLoopTimelineItems,
       getTimeline,
+      applyGraphSnapshot,
       getLoopTimeline,
       setSelectedTrial,
     });
@@ -136,6 +91,7 @@ export default function TrialsProvider({ children }: Props) {
       setTimeline,
       updateLoopTimelineItems,
       getTimeline,
+      applyGraphSnapshot,
       getLoopTimeline,
       selectedLoop,
       setSelectedLoop,
@@ -160,8 +116,10 @@ export default function TrialsProvider({ children }: Props) {
           throw new Error("Failed to update timeline");
         }
 
-        // Actualizar estado local
-        setTimeline(newTimeline);
+        const data = (await response.json()) as {
+          graph: NonNullable<TrialsContextType["graph"]>;
+        };
+        applyGraphSnapshot(data.graph);
 
         return true;
       } catch (error) {
@@ -169,7 +127,7 @@ export default function TrialsProvider({ children }: Props) {
         return false;
       }
     },
-    [experimentID, setTimeline],
+    [applyGraphSnapshot, experimentID],
   );
 
   // ==================== DELETE ALL ====================
@@ -185,7 +143,7 @@ export default function TrialsProvider({ children }: Props) {
       }
 
       // Limpiar estado local
-      setTimeline([]);
+      clearGraph();
       setSelectedTrial(null);
       setSelectedLoop(null);
       resetLoopTimelineCache();
@@ -197,10 +155,10 @@ export default function TrialsProvider({ children }: Props) {
     }
   }, [
     experimentID,
+    clearGraph,
     resetLoopTimelineCache,
     setSelectedLoop,
     setSelectedTrial,
-    setTimeline,
   ]);
 
   // ==================== INITIAL LOAD ====================
@@ -217,6 +175,8 @@ export default function TrialsProvider({ children }: Props) {
   const contextValue = useMemo<TrialsContextType>(
     () => ({
       timeline,
+      graph,
+      applyGraphSnapshot,
       loopTimeline,
       loopTimelineCache,
       activeLoopId,
@@ -245,6 +205,7 @@ export default function TrialsProvider({ children }: Props) {
     [
       activeLoopId,
       activateLoopTimeline,
+      applyGraphSnapshot,
       clearLoopTimeline,
       createLoop,
       createTrial,
@@ -255,6 +216,7 @@ export default function TrialsProvider({ children }: Props) {
       getLoopTimeline,
       getTimeline,
       getTrial,
+      graph,
       isLoading,
       loopTimeline,
       loopTimelineCache,

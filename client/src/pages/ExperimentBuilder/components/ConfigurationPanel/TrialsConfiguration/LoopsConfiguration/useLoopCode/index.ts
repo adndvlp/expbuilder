@@ -3,11 +3,16 @@ import BranchingLogicCode from "./BranchingLogicCode";
 import {
   BranchCondition,
   LoopCondition,
-  LoopData,
   RepeatCondition,
   TimelineItem,
 } from "./types";
 import { generateItemWrappers } from "./services/generateItemWrappers";
+import {
+  generateDescendantIdEntries,
+  getLoopId,
+  getTimelineItemName,
+  isLoopData,
+} from "./services/timelineItemIdentity";
 
 type Props = {
   id: string | undefined;
@@ -17,11 +22,11 @@ type Props = {
   repetitions: number;
   randomize: boolean;
   orders: boolean;
-  stimuliOrders: any[];
+  stimuliOrders: unknown[];
   categories: boolean;
-  categoryData: any[];
+  categoryData: unknown[];
   trials: TimelineItem[]; // Can contain trials or loops
-  unifiedStimuli: Record<string, any>[];
+  unifiedStimuli: Record<string, unknown>[];
   loopConditions?: LoopCondition[];
   isConditionalLoop?: boolean;
   parentLoopId?: string | null; // Parent loop ID if this is a nested loop
@@ -52,11 +57,6 @@ export default function useLoopCode({
     return name.replace(/[^a-zA-Z0-9_]/g, "_");
   };
 
-  // Helper to check if it is a nested loop
-  const isLoopData = (item: TimelineItem): item is LoopData => {
-    return "isLoop" in item && item.isLoop === true;
-  };
-
   const genLoopCode = (): string => {
     // Sanitize the loop ID to use it in variable names
     const loopIdSanitized = id ? sanitizeName(id) : "Loop";
@@ -71,14 +71,16 @@ export default function useLoopCode({
       .map((item) => {
         if (isLoopData(item)) {
           // If the nested loop already has timelineProps (generated code), use it directly
-          if ((item as any).timelineProps) {
-            return (item as any).timelineProps;
+          if (item.timelineProps) {
+            return item.timelineProps;
           }
+
+          const nestedLoopId = getLoopId(item);
 
           // If it does not have timelineProps, generate code recursively
           // eslint-disable-next-line react-hooks/rules-of-hooks
           const nestedLoopCode = useLoopCode({
-            id: item.loopId,
+            id: nestedLoopId === null ? undefined : String(nestedLoopId),
             branches: item.branches,
             branchConditions: item.branchConditions,
             repeatConditions: item.repeatConditions,
@@ -115,9 +117,7 @@ export default function useLoopCode({
     // Generate the list of wrapper names for the loop timeline
     const timelineRefs = trials
       .map((item) => {
-        const itemName = isLoopData(item)
-          ? item.loopName || (item as any).name // Support both formats
-          : item.trialName;
+        const itemName = getTimelineItemName(item);
         const itemNameSanitized = sanitizeName(itemName);
         return `${itemNameSanitized}_wrapper`;
       })
@@ -215,6 +215,7 @@ export default function useLoopCode({
       repetitions,
       randomize,
       branches,
+      descendantIdEntries: generateDescendantIdEntries(trials, sanitizeName),
       isConditionalLoop,
       loopConditions,
     });

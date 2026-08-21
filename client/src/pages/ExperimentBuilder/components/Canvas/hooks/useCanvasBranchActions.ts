@@ -9,12 +9,34 @@ import type {
   CanvasActionDependencies,
   CanvasActionScope,
 } from "../actions";
+import { useExperimentID } from "../../../hooks/useExperimentID";
+import {
+  createLoopBranch,
+  loadLoopBranchLevels,
+} from "../features/loop-branching/loopBranchApi";
+import { isTerminalTrial } from "../features/loop-branching/terminalTrials";
+import type {
+  LoopBranchLevel,
+  LoopBranchMode,
+} from "../features/loop-branching/types";
+
+const scopesMatch = (left: string | null, right: string | null) =>
+  left === null ? right === null : String(left) === String(right);
 
 export function useCanvasBranchActions(
   trials: ReturnType<typeof useTrials>,
   actionScope?: CanvasActionScope,
 ) {
+  const experimentId = useExperimentID();
   const [showAddTrialModal, setShowAddTrialModal] = useState(false);
+  const [showLoopBranchLevelModal, setShowLoopBranchLevelModal] =
+    useState(false);
+  const [loopBranchLevels, setLoopBranchLevels] = useState<LoopBranchLevel[]>(
+    [],
+  );
+  const [selectedLoopBranchLevel, setSelectedLoopBranchLevel] =
+    useState<LoopBranchLevel | null>(null);
+  const [isCreatingLoopBranch, setIsCreatingLoopBranch] = useState(false);
   const [pendingParentId, setPendingParentId] = useState<
     string | number | null
   >(null);
@@ -80,10 +102,69 @@ export function useCanvasBranchActions(
     [dependencies, scope, selectTrial],
   );
 
+  const resetLoopBranchFlow = useCallback(() => {
+    setShowLoopBranchLevelModal(false);
+    setShowAddTrialModal(false);
+    setLoopBranchLevels([]);
+    setSelectedLoopBranchLevel(null);
+    setPendingParentId(null);
+  }, []);
+
+  const submitLoopBranch = useCallback(
+    async (mode: LoopBranchMode, level: LoopBranchLevel) => {
+      if (pendingParentId === null || !experimentId) return;
+      setIsCreatingLoopBranch(true);
+      setShowAddTrialModal(false);
+      setShowLoopBranchLevelModal(false);
+      try {
+        const result = await createLoopBranch(
+          experimentId,
+          pendingParentId,
+          level.scopeId,
+          mode,
+        );
+        trials.applyGraphSnapshot(result.graph);
+        selectTrial(result.trial);
+        resetLoopBranchFlow();
+      } catch (error: unknown) {
+        console.error("Error creating loop branch:", error);
+        setShowLoopBranchLevelModal(true);
+      } finally {
+        setIsCreatingLoopBranch(false);
+      }
+    },
+    [
+      experimentId,
+      pendingParentId,
+      resetLoopBranchFlow,
+      selectTrial,
+      trials,
+    ],
+  );
+
   const onAddBranch = useCallback(
     async (parentId: string | number) => {
-      const parent = scope.items.find((item) => item.id === parentId);
+      const parent = scope.items.find(
+        (item) => String(item.id) === String(parentId),
+      );
       if (!parent) return;
+      if (
+        scope.kind === "loop" &&
+        parent.type === "trial" &&
+        isTerminalTrial(scope.items, parentId) &&
+        experimentId
+      ) {
+        try {
+          const levels = await loadLoopBranchLevels(experimentId, parentId);
+          setPendingParentId(parentId);
+          setLoopBranchLevels(levels);
+          setSelectedLoopBranchLevel(null);
+          setShowLoopBranchLevelModal(true);
+        } catch (error: unknown) {
+          console.error("Error loading loop branch levels:", error);
+        }
+        return;
+      }
       if ((parent.branches ?? []).length === 0) {
         try {
           await addBranch(parentId);
@@ -95,12 +176,36 @@ export function useCanvasBranchActions(
       setPendingParentId(parentId);
       setShowAddTrialModal(true);
     },
-    [addBranch, scope.items],
+    [addBranch, experimentId, scope],
+  );
+
+  const handleLoopBranchLevelConfirm = useCallback(
+    async (scopeId: string | null) => {
+      const level = loopBranchLevels.find((candidate) =>
+        scopesMatch(candidate.scopeId, scopeId),
+      );
+      if (!level) return;
+      setShowLoopBranchLevelModal(false);
+      setSelectedLoopBranchLevel(level);
+      if (level.branchCount > 0) {
+        setShowAddTrialModal(true);
+        return;
+      }
+      await submitLoopBranch("parallel", level);
+    },
+    [loopBranchLevels, submitLoopBranch],
   );
 
   const handleAddTrialConfirm = useCallback(
     async (addAsBranch: boolean) => {
       if (pendingParentId === null) return;
+      if (selectedLoopBranchLevel) {
+        await submitLoopBranch(
+          addAsBranch ? "parallel" : "sequential",
+          selectedLoopBranchLevel,
+        );
+        return;
+      }
       setShowAddTrialModal(false);
       try {
         if (addAsBranch) await addBranch(pendingParentId);
@@ -116,15 +221,26 @@ export function useCanvasBranchActions(
         setPendingParentId(null);
       }
     },
-    [addBranch, addParent, pendingParentId],
+    [
+      addBranch,
+      addParent,
+      pendingParentId,
+      selectedLoopBranchLevel,
+      submitLoopBranch,
+    ],
   );
 
   return {
     showAddTrialModal,
     setShowAddTrialModal,
+    showLoopBranchLevelModal,
+    loopBranchLevels,
+    isCreatingLoopBranch,
     pendingParentId,
     setPendingParentId,
     onAddBranch,
+    handleLoopBranchLevelConfirm,
     handleAddTrialConfirm,
+    cancelLoopBranchFlow: resetLoopBranchFlow,
   };
 }

@@ -1,4 +1,5 @@
 import { db } from "../../../utils/db.js";
+import { collectOwnedItemIds } from "../loopBranching/scopeGraph.js";
 
 export async function getExperimentDoc(experimentID, createIfMissing = false) {
   await db.read();
@@ -72,28 +73,7 @@ export function replaceGroupedTrialBranches(experimentDoc, newLoop) {
 }
 
 export function collectAllItemIds(itemIds, loopId, experimentDoc) {
-  const collected = new Set();
-  const toProcess = [...itemIds];
-
-  while (toProcess.length > 0) {
-    const itemId = toProcess.shift();
-    if (itemId === loopId) continue;
-    if (collected.has(itemId)) continue;
-
-    collected.add(itemId);
-
-    const trial = experimentDoc.trials.find((t) => t.id === itemId);
-    if (trial && trial.branches) {
-      toProcess.push(...trial.branches.filter((bid) => bid !== loopId));
-    }
-
-    const nestedLoop = experimentDoc.loops.find((l) => l.id === itemId);
-    if (nestedLoop?.branches) {
-      toProcess.push(...nestedLoop.branches.filter((bid) => bid !== loopId));
-    }
-  }
-
-  return Array.from(collected);
+  return collectOwnedItemIds(itemIds, loopId, experimentDoc);
 }
 
 export function findLastItems(trialIds, experimentDoc) {

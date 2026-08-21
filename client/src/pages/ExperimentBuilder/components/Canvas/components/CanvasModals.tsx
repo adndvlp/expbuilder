@@ -4,6 +4,8 @@ import LoopRangeModal from "../../ConfigurationPanel/TrialsConfiguration/LoopsCo
 import AddTrialModal from "./AddTrialModal";
 import MoveItemModal from "./MoveItemModal";
 import { CanvasItemToMove } from "../hooks/useCanvasMoveActions";
+import LoopBranchLevelModal from "../features/loop-branching/LoopBranchLevelModal";
+import type { LoopBranchLevel } from "../features/loop-branching/types";
 
 type CanvasModalsProps = {
   timeline: TimelineItem[];
@@ -15,6 +17,11 @@ type CanvasModalsProps = {
   pendingParentId: string | number | null;
   onAddTrial: (addAsBranch: boolean) => Promise<void>;
   onCloseAddTrial: () => void;
+  showLoopBranchLevelModal: boolean;
+  loopBranchLevels: LoopBranchLevel[];
+  isCreatingLoopBranch: boolean;
+  onSelectLoopBranchLevel: (scopeId: string | null) => void | Promise<void>;
+  onCloseLoopBranchLevel: () => void;
   showMoveItemModal: boolean;
   itemToMove: CanvasItemToMove | null;
   onMoveItem: (
@@ -55,6 +62,11 @@ export default function CanvasModals({
   pendingParentId,
   onAddTrial,
   onCloseAddTrial,
+  showLoopBranchLevelModal,
+  loopBranchLevels,
+  isCreatingLoopBranch,
+  onSelectLoopBranchLevel,
+  onCloseLoopBranchLevel,
   showMoveItemModal,
   itemToMove,
   onMoveItem,
@@ -101,6 +113,21 @@ export default function CanvasModals({
             parentName={
               timeline.find((item) => item.id === pendingParentId)?.name
             }
+          />
+        </ModalOverlay>
+      )}
+
+      {showLoopBranchLevelModal && (
+        <ModalOverlay>
+          <LoopBranchLevelModal
+            sourceName={
+              timeline.find((item) => item.id === pendingParentId)?.name ??
+              "the selected trial"
+            }
+            levels={loopBranchLevels}
+            isSubmitting={isCreatingLoopBranch}
+            onConfirm={onSelectLoopBranchLevel}
+            onClose={onCloseLoopBranchLevel}
           />
         </ModalOverlay>
       )}

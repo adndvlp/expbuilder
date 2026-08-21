@@ -143,7 +143,7 @@ ${activateBranchCode}
         : `
     // This loop has no branches, it is a terminal loop
     // If we get here after branching, end the experiment
-    if (window.branchingActive) {
+    if (window.branchingActive && !loop_${loopIdSanitized}_BranchingActive) {
       ${
         isMergePoint
           ? `
@@ -201,7 +201,7 @@ ${activateBranchCode}
   on_finish: function(data) {
     // This loop has no branches or repeat conditions, it is a terminal loop
     // If we get here after branching, end the experiment
-    if (window.branchingActive) {
+    if (window.branchingActive && !loop_${loopIdSanitized}_BranchingActive) {
       ${
         isMergePoint
           ? `

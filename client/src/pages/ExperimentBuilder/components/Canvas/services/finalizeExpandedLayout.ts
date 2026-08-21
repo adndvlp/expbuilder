@@ -1,16 +1,18 @@
 import type {
-  ExpandedCanvasEdge,
   ExpandedCanvasLayout,
   ExpandedCanvasNode,
   ExpandedLoopScope,
 } from "./expandedLayoutTypes";
+import {
+  buildExpandedFlowGraph,
+  collectExpandedMovableSubtree,
+  getExpandedFlowDepth,
+  moveExpandedNodes,
+  type ExpandedFlowGraph,
+} from "./expandedFlowGraph";
 import { getLoopAwareBranchBounds } from "./getLoopAwareBranchBounds";
+import { layoutScopeExitBranches } from "./layoutScopeExitBranches";
 import { getLoopCircuitHorizontalBounds } from "./loopScopeGeometry";
-type FlowGraph = {
-  nodeById: Map<string, ExpandedCanvasNode>;
-  parents: Map<string, Set<string>>;
-  children: Map<string, Set<string>>;
-};
 type BranchGroup = {
   nodeIds: Set<string>;
   rootX: number;
@@ -19,124 +21,13 @@ type BranchGroup = {
 };
 const SUBTREE_GAP = 80;
 
-const addRelation = (
-  relations: Map<string, Set<string>>,
-  key: string,
-  value: string,
-) => {
-  const related = relations.get(key) ?? new Set<string>();
-  related.add(value);
-  relations.set(key, related);
-};
-
-function buildFlowGraph(layout: ExpandedCanvasLayout): FlowGraph {
-  const graph: FlowGraph = {
-    nodeById: new Map(layout.nodes.map((node) => [node.id, node])),
-    parents: new Map(),
-    children: new Map(),
-  };
-
-  layout.edges
-    .filter((edge) => edge.data.kind === "flow")
-    .forEach((edge) => {
-      addRelation(graph.parents, edge.target, edge.source);
-      addRelation(graph.children, edge.source, edge.target);
-    });
-
-  return graph;
-}
-
-function getFlowDepth(
-  nodeId: string,
-  parents: Map<string, Set<string>>,
-  memo: Map<string, number>,
-  visiting: Set<string>,
-): number {
-  const cached = memo.get(nodeId);
-  if (cached !== undefined) return cached;
-  if (visiting.has(nodeId)) return 0;
-
-  visiting.add(nodeId);
-  const parentIds = [...(parents.get(nodeId) ?? [])];
-  const depth =
-    parentIds.length === 0
-      ? 0
-      : Math.max(
-          ...parentIds.map((parentId) =>
-            getFlowDepth(parentId, parents, memo, visiting),
-          ),
-        ) + 1;
-  visiting.delete(nodeId);
-  memo.set(nodeId, depth);
-  return depth;
-}
-
-function collectMovableSubtree(
-  rootId: string,
-  graph: FlowGraph,
-  edges: ExpandedCanvasEdge[],
-) {
-  const movable = new Set<string>([rootId]);
-  const queue = [rootId];
-
-  while (queue.length > 0) {
-    const sourceId = queue.shift()!;
-    (graph.children.get(sourceId) ?? []).forEach((childId) => {
-      if ((graph.parents.get(childId)?.size ?? 0) !== 1) return;
-      if (movable.has(childId)) return;
-      movable.add(childId);
-      queue.push(childId);
-    });
-  }
-
-  edges
-    .filter(
-      (edge) =>
-        edge.data.kind === "loop-control" ||
-        (edge.data.kind === "loop-return" && edge.source === edge.target),
-    )
-    .forEach((edge) => {
-      const marker = graph.nodeById.get(edge.target);
-      const ownsSingleItemScope =
-        edge.source === edge.target &&
-        [...movable].some(
-          (nodeId) =>
-            graph.nodeById.get(nodeId)?.data.scopeId === edge.data.scopeId,
-        );
-      if (
-        marker?.data.role === "loop-marker" &&
-        (movable.has(edge.source) || ownsSingleItemScope)
-      ) {
-        movable.add(marker.id);
-      }
-    });
-
-  return movable;
-}
-
-function moveNodes(
-  nodeIds: Set<string>,
-  graph: FlowGraph,
-  dx: number,
-  dy: number,
-) {
-  nodeIds.forEach((nodeId) => {
-    const node = graph.nodeById.get(nodeId);
-    if (!node) return;
-    node.position = {
-      x: node.position.x + dx,
-      y: node.position.y + dy,
-    };
-  });
-}
-
 function getBranchGroup(
   rootId: string,
-  graph: FlowGraph,
-  edges: ExpandedCanvasEdge[],
+  graph: ExpandedFlowGraph,
+  layout: ExpandedCanvasLayout,
   circuitBounds: ReturnType<typeof getLoopCircuitHorizontalBounds>,
 ) {
-  const nodeIds = collectMovableSubtree(rootId, graph, edges);
+  const nodeIds = collectExpandedMovableSubtree(rootId, graph, layout.edges);
   const nodes = [...nodeIds]
     .map((nodeId) => graph.nodeById.get(nodeId))
     .filter((node): node is ExpandedCanvasNode => Boolean(node));
@@ -149,8 +40,12 @@ function getBranchGroup(
   };
 }
 
-function moveBranchGroup(group: BranchGroup, graph: FlowGraph, dx: number) {
-  moveNodes(group.nodeIds, graph, dx, 0);
+function moveBranchGroup(
+  group: BranchGroup,
+  graph: ExpandedFlowGraph,
+  dx: number,
+) {
+  moveExpandedNodes(group.nodeIds, graph, dx, 0);
   group.rootX += dx;
   group.minX += dx;
   group.maxX += dx;
@@ -158,7 +53,7 @@ function moveBranchGroup(group: BranchGroup, graph: FlowGraph, dx: number) {
 
 function spreadBranchSubtrees(
   layout: ExpandedCanvasLayout,
-  graph: FlowGraph,
+  graph: ExpandedFlowGraph,
   scopes: readonly ExpandedLoopScope[],
 ) {
   const depthMemo = new Map<string, number>();
@@ -166,8 +61,8 @@ function spreadBranchSubtrees(
     .filter(([, childIds]) => childIds.size > 1)
     .sort(
       ([leftId], [rightId]) =>
-        getFlowDepth(rightId, graph.parents, depthMemo, new Set()) -
-        getFlowDepth(leftId, graph.parents, depthMemo, new Set()),
+        getExpandedFlowDepth(rightId, graph.parents, depthMemo, new Set()) -
+        getExpandedFlowDepth(leftId, graph.parents, depthMemo, new Set()),
     );
 
   branchParents.forEach(([parentId, childIds]) => {
@@ -175,9 +70,7 @@ function spreadBranchSubtrees(
     if (!parent) return;
     const circuitBounds = getLoopCircuitHorizontalBounds(layout.nodes, scopes);
     const groups = [...childIds]
-      .map((childId) =>
-        getBranchGroup(childId, graph, layout.edges, circuitBounds),
-      )
+      .map((childId) => getBranchGroup(childId, graph, layout, circuitBounds))
       .sort((left, right) => left.rootX - right.rootX);
     const pivotIndex =
       groups.length % 2 === 1
@@ -200,8 +93,7 @@ function spreadBranchSubtrees(
       for (let index = 1; index < rootOffsets.length; index += 1) {
         rootOffsets[index] += rootOffsets[index - 1];
       }
-      const center =
-        (rootOffsets[0] + rootOffsets[rootOffsets.length - 1]) / 2;
+      const center = (rootOffsets[0] + rootOffsets[rootOffsets.length - 1]) / 2;
       groups.forEach((group, index) =>
         moveBranchGroup(
           group,
@@ -215,10 +107,13 @@ function spreadBranchSubtrees(
     const pivot = groups[pivotIndex];
     moveBranchGroup(pivot, graph, parent.position.x - pivot.rootX);
     let cursor = pivot.minX - SUBTREE_GAP;
-    groups.slice(0, pivotIndex).reverse().forEach((group) => {
-      moveBranchGroup(group, graph, cursor - group.maxX);
-      cursor = group.minX - SUBTREE_GAP;
-    });
+    groups
+      .slice(0, pivotIndex)
+      .reverse()
+      .forEach((group) => {
+        moveBranchGroup(group, graph, cursor - group.maxX);
+        cursor = group.minX - SUBTREE_GAP;
+      });
     cursor = pivot.maxX + SUBTREE_GAP;
     groups.slice(pivotIndex + 1).forEach((group) => {
       moveBranchGroup(group, graph, cursor - group.minX);
@@ -229,7 +124,7 @@ function spreadBranchSubtrees(
 
 function alignMergeNodes(
   layout: ExpandedCanvasLayout,
-  graph: FlowGraph,
+  graph: ExpandedFlowGraph,
   verticalGap: number,
 ) {
   const depthMemo = new Map<string, number>();
@@ -238,8 +133,8 @@ function alignMergeNodes(
     .map(([nodeId]) => nodeId)
     .sort(
       (left, right) =>
-        getFlowDepth(left, graph.parents, depthMemo, new Set()) -
-        getFlowDepth(right, graph.parents, depthMemo, new Set()),
+        getExpandedFlowDepth(left, graph.parents, depthMemo, new Set()) -
+        getExpandedFlowDepth(right, graph.parents, depthMemo, new Set()),
     );
 
   mergeIds.forEach((mergeId) => {
@@ -258,8 +153,8 @@ function alignMergeNodes(
     const dy = targetY - mergeNode.position.y;
     if (dx === 0 && dy === 0) return;
 
-    moveNodes(
-      collectMovableSubtree(mergeId, graph, layout.edges),
+    moveExpandedNodes(
+      collectExpandedMovableSubtree(mergeId, graph, layout.edges),
       graph,
       dx,
       dy,
@@ -292,9 +187,14 @@ export function finalizeExpandedLayout(
   verticalGap: number,
   scopes: readonly ExpandedLoopScope[] = [],
 ) {
-  const graph = buildFlowGraph(layout);
-  spreadBranchSubtrees(layout, graph, scopes);
-  alignMergeNodes(layout, graph, verticalGap);
+  const localGraph = buildExpandedFlowGraph(
+    layout,
+    (edge) => edge.data.flowRole !== "scope-exit",
+  );
+  const completeGraph = buildExpandedFlowGraph(layout);
+  spreadBranchSubtrees(layout, localGraph, scopes);
+  layoutScopeExitBranches(layout, completeGraph, verticalGap);
+  alignMergeNodes(layout, completeGraph, verticalGap);
   sortEdgesByFlowPosition(layout);
   return layout;
 }

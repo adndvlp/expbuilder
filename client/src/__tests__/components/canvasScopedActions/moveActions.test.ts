@@ -28,12 +28,11 @@ describe("scoped Canvas move actions", () => {
     ]);
   });
 
-  it("moves loop items by updating parent loop direct children and refreshing", async () => {
+  it("moves loop items through canonical mutation responses", async () => {
     const dependencies = createDependencies();
-    const refresh = vi.fn();
 
     const result = await moveScopedItem({
-      scope: createLoopScope(refresh),
+      scope: createLoopScope(),
       item: { id: 11, type: "trial", name: "Loca" },
       destinationId: 10,
       addAsBranch: true,
@@ -51,7 +50,6 @@ describe("scoped Canvas move actions", () => {
       parentLoopId: "parent-loop",
     });
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
-    expect(refresh).toHaveBeenCalledOnce();
   });
 
   it("returns a discriminated failure when the destination is outside the scope", async () => {

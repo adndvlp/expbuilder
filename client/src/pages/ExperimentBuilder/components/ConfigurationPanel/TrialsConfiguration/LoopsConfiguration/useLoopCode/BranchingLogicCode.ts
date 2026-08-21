@@ -1,5 +1,7 @@
 import { LoopCondition } from "./types";
 import { generateConditionalLoopFunction } from "./services/generateConditionalLoopFunction";
+import { generateLoopFinishLifecycle } from "./services/generateLoopFinishLifecycle";
+import { generateLoopRoutingLifecycle } from "./services/generateLoopRoutingLifecycle";
 
 type Props = {
   code: string;
@@ -15,6 +17,7 @@ type Props = {
   isConditionalLoop?: boolean | undefined;
   loopConditions?: LoopCondition[] | undefined;
   branches: (string | number)[] | undefined;
+  descendantIdEntries: string;
 };
 
 export default function BranchingLogicCode({
@@ -31,6 +34,7 @@ export default function BranchingLogicCode({
   isConditionalLoop,
   loopConditions,
   branches,
+  descendantIdEntries,
 }: Props) {
   code += `
     
@@ -45,6 +49,7 @@ let loop_${loopIdSanitized}_TargetExecuted = false; // Indicates if the target t
 let loop_${loopIdSanitized}_IterationComplete = false; // Indicates that the current iteration is complete
 const loop_${loopIdSanitized}_HasBranches = ${hasBranchesLoop ? "true" : "false"};
 let loop_${loopIdSanitized}_ShouldBranchOnFinish = false;
+const loop_${loopIdSanitized}_DescendantIds = [${descendantIdEntries}];
 
 ${itemWrappers}
 
@@ -182,96 +187,18 @@ const ${loopIdSanitized}_procedure = {
   repetitions: ${repetitions},
   randomize_order: ${randomize},
   ${generateConditionalLoopFunction(isConditionalLoop, loopConditions)}
-  conditional_function: function() {
-    const currentId = "${id}";
-
-    // Check for a pending repeat/jump target before normal branching.
-    const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
-    if (jumpToTrial) {
-      if (String(currentId) === String(jumpToTrial)) {
-        localStorage.removeItem('jsPsych_jumpToTrial');
-        return true;
-      }
-      return false;
-    }
-    
-    // If skipRemaining is active (normal branching), check if this is the target loop
-    if (window.skipRemaining) {
-      if (String(currentId) === String(window.nextTrialId)) {
-        // Found the target loop
-        window.skipRemaining = false;
-        window.nextTrialId = null;
-        return true;
-      }
-      // Not the target, skip
-      return false;
-    }
-    
-    return true;
-  },
-  on_timeline_start: function() {
-    // Reset the flags at the start of each loop iteration
-    // This allows each repetition of the loop to work correctly
-    loop_${loopIdSanitized}_NextTrialId = null;
-    loop_${loopIdSanitized}_SkipRemaining = false;
-    loop_${loopIdSanitized}_BranchingActive = false;
-    loop_${loopIdSanitized}_BranchCustomParameters = null;
-    loop_${loopIdSanitized}_TargetExecuted = false;
-    loop_${loopIdSanitized}_IterationComplete = false;
-    loop_${loopIdSanitized}_ShouldBranchOnFinish = false;
-    
-    // IMPORTANT: If the loop is conditional, also reset the GLOBAL branching
-    // so that it regenerates during this loop iteration
-    ${
-      isConditionalLoop && loopConditions && loopConditions.length > 0
-        ? `
-    window.nextTrialId = null;
-    window.skipRemaining = false;
-    window.branchingActive = false;
-    window.branchCustomParameters = null;
-    console.log('Conditional loop iteration starting, reset global branching flags');
-    `
-        : ""
-    }
-  },
-  on_timeline_finish: function() {
-    // Reset the flags at the end of all loop repetitions
-    loop_${loopIdSanitized}_NextTrialId = null;
-    loop_${loopIdSanitized}_SkipRemaining = false;
-    loop_${loopIdSanitized}_TargetExecuted = false;
-    loop_${loopIdSanitized}_BranchingActive = false;
-    loop_${loopIdSanitized}_BranchCustomParameters = null;
-    
-    // Check if branching should occur because a trial without branches was completed
-    // but the loop has branches
-    if (loop_${loopIdSanitized}_ShouldBranchOnFinish && loop_${loopIdSanitized}_HasBranches) {
-      const branches = [${branches && branches.length > 0 ? branches.map((b) => (typeof b === "string" ? `"${b}"` : b)).join(", ") : ""}];
-      if (branches.length > 0) {
-        ${
-          parentLoopIdSanitized
-            ? `
-        // This is a nested loop - activate parent loop branching
-        loop_${parentLoopIdSanitized}_NextTrialId = branches[0];
-        loop_${parentLoopIdSanitized}_SkipRemaining = true;
-        loop_${parentLoopIdSanitized}_BranchingActive = true;
-        console.log('Nested loop finished (from internal trial), activating parent loop branching to:', branches[0]);`
-            : `
-        // This is a root loop - activate global branching
-        window.nextTrialId = branches[0];
-        window.skipRemaining = true;
-        window.branchingActive = true;
-        console.log('Root loop finished (from internal trial), branching to:', branches[0]);`
-        }
-      }
-    }
-    
-    // Reset all branching variables of the loop
-    loop_${loopIdSanitized}_NextTrialId = null;
-    loop_${loopIdSanitized}_SkipRemaining = false;
-    loop_${loopIdSanitized}_BranchingActive = false;
-    loop_${loopIdSanitized}_BranchCustomParameters = null;
-    loop_${loopIdSanitized}_ShouldBranchOnFinish = false;
-  },
+  ${generateLoopRoutingLifecycle({
+    id,
+    isConditionalLoop: Boolean(isConditionalLoop),
+    loopIdSanitized,
+    parentLoopIdSanitized,
+    resetGlobalBranching: Boolean(loopConditions?.length),
+  })}
+  ${generateLoopFinishLifecycle({
+    branches,
+    loopIdSanitized,
+    parentLoopIdSanitized,
+  })}
 `;
   return { code };
 }

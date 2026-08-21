@@ -102,9 +102,17 @@ function Canvas() {
           pendingParentId={branchActions.pendingParentId}
           onAddTrial={branchActions.handleAddTrialConfirm}
           onCloseAddTrial={() => {
-            branchActions.setShowAddTrialModal(false);
-            branchActions.setPendingParentId(null);
+            branchActions.cancelLoopBranchFlow();
           }}
+          showLoopBranchLevelModal={
+            branchActions.showLoopBranchLevelModal
+          }
+          loopBranchLevels={branchActions.loopBranchLevels}
+          isCreatingLoopBranch={branchActions.isCreatingLoopBranch}
+          onSelectLoopBranchLevel={
+            branchActions.handleLoopBranchLevelConfirm
+          }
+          onCloseLoopBranchLevel={branchActions.cancelLoopBranchFlow}
           showMoveItemModal={moveActions.showMoveItemModal}
           itemToMove={moveActions.itemToMove}
           onMoveItem={moveActions.handleMoveItemConfirm}

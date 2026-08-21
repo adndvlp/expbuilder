@@ -2,6 +2,7 @@ import { CANVAS_EDGE_HANDLES } from "./canvasHandleIds";
 import type {
   ExpandedCanvasEdge,
   ExpandedCanvasEdgeKind,
+  ExpandedCanvasFlowRole,
 } from "./expandedLayoutTypes";
 
 type EdgeCollector = {
@@ -21,6 +22,7 @@ export function addExpandedEdge(
   kind: ExpandedCanvasEdgeKind,
   scopeId: string,
   handles: EdgeHandles,
+  flowRole?: ExpandedCanvasFlowRole,
 ) {
   if (source === target && kind !== "loop-return") return;
   const key = [
@@ -39,7 +41,7 @@ export function addExpandedEdge(
     sourceHandle: handles.sourceHandle,
     targetHandle: handles.targetHandle,
     type: kind === "flow" ? "default" : "smoothstep",
-    data: { kind, scopeId },
+    data: { kind, scopeId, flowRole },
   });
 }
 
@@ -48,6 +50,7 @@ export function addExpandedFlowEdges(
   sources: string[],
   target: string,
   scopeId: string,
+  flowRole?: ExpandedCanvasFlowRole,
 ) {
   sources.forEach((source) =>
     addExpandedEdge(
@@ -57,6 +60,7 @@ export function addExpandedFlowEdges(
       "flow",
       scopeId,
       CANVAS_EDGE_HANDLES.flow,
+      flowRole,
     ),
   );
 }

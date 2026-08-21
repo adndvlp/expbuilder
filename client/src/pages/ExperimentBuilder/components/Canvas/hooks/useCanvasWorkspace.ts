@@ -26,6 +26,7 @@ export function useCanvasWorkspace() {
   const trials = useTrials();
   const {
     timeline,
+    graph,
     loopTimelineCache,
     selectedTrial,
     selectedLoop,
@@ -67,7 +68,6 @@ export function useCanvasWorkspace() {
     expandedPath,
     pending,
     reconcilePath,
-    refreshLoop,
     syncLoopItems,
   } = expanded;
 
@@ -101,11 +101,8 @@ export function useCanvasWorkspace() {
       loopId: activeScopeId,
       items: activeEntry?.items ?? [],
       rootItems: timeline,
-      refresh: async () => {
-        await refreshLoop(activeScopeId);
-      },
     };
-  }, [activeEntry, activeScopeId, refreshLoop, timeline]);
+  }, [activeEntry, activeScopeId, timeline]);
   const loopActions = useCanvasLoopActions(trials, actionScope);
   const branchActions = useCanvasBranchActions(trials, actionScope);
   const moveActions = useCanvasMoveActions(trials, actionScope);
@@ -217,20 +214,31 @@ export function useCanvasWorkspace() {
   const selectedItemId = hasSelection ? (selectedItem?.id ?? null) : null;
   const pendingLoopId = pending?.scopeId;
   const flowInput = useMemo(
-    () => ({
-      timeline,
-      expandedPath,
-      selectedItemId,
-      selectedScopeId,
-      pendingLoopId,
-      onSelectTrial: selectTrial,
-      onSelectLoop: selectLoop,
-      onToggleLoop: toggleLoop,
-      onAddBranch: addBranch,
-    }),
+    () => {
+      const scopeParents = Object.fromEntries(
+        Object.values(graph?.scopes ?? {}).map((scope) => [
+          String(scope.scopeId),
+          scope.parentScopeId === null ? null : String(scope.parentScopeId),
+        ]),
+      );
+      return {
+        timeline,
+        expandedPath,
+        selectedItemId,
+        selectedScopeId,
+        pendingLoopId,
+        branchEdges: graph?.edges ?? [],
+        scopeParents,
+        onSelectTrial: selectTrial,
+        onSelectLoop: selectLoop,
+        onToggleLoop: toggleLoop,
+        onAddBranch: addBranch,
+      };
+    },
     [
       addBranch,
       expandedPath,
+      graph,
       pendingLoopId,
       selectLoop,
       selectTrial,

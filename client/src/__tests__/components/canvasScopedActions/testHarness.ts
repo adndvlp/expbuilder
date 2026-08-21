@@ -101,12 +101,11 @@ export function createRootScope(): RootCanvasActionScope {
   return { kind: "root", items: rootItems };
 }
 
-export function createLoopScope(refresh = vi.fn()): LoopCanvasActionScope {
+export function createLoopScope(): LoopCanvasActionScope {
   return {
     kind: "loop",
     loopId: "parent-loop",
     items: loopItems,
     rootItems,
-    refresh,
   };
 }

@@ -1,4 +1,5 @@
 import useLoopCode from "../../components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/useLoopCode";
+import type { TimelineItem } from "../../components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/useLoopCode/types";
 import { Loop } from "../../components/ConfigurationPanel/types";
 import { getMergePointIds, isMergePoint } from "../branchGraphUtils";
 import { generateTrialCode } from "./generateTrialCode";
@@ -63,6 +64,7 @@ export async function generateLoopCode(
           );
 
           return {
+            id: fullTrial.id,
             trialName: fullTrial.name,
             pluginName: fullTrial.plugin,
             timelineProps: trialResult.code,
@@ -129,7 +131,7 @@ export async function generateLoopCode(
 
     const unifiedStimuli = [];
     for (let i = 0; i < maxRows; i++) {
-      const row: Record<string, any> = {};
+      const row: Record<string, unknown> = {};
 
       trialsWithCode.forEach((trial) => {
         if (
@@ -163,17 +165,17 @@ export async function generateLoopCode(
     const genLoopCode = useLoopCode({
       id: fullLoop.id,
       branches: fullLoop.branches,
-      branchConditions: fullLoop.branchConditions as unknown as any,
-      repeatConditions: fullLoop.repeatConditions as unknown as any,
+      branchConditions: fullLoop.branchConditions,
+      repeatConditions: fullLoop.repeatConditions,
       repetitions: fullLoop.repetitions,
       randomize: fullLoop.randomize,
       orders: fullLoop.orders || false,
       stimuliOrders: fullLoop.stimuliOrders || [],
       categories: fullLoop.categories || false,
       categoryData: fullLoop.categoryData || [],
-      trials: trialsWithCode as unknown as any,
+      trials: trialsWithCode as unknown as TimelineItem[],
       unifiedStimuli,
-      loopConditions: fullLoop.loopConditions as unknown as any,
+      loopConditions: fullLoop.loopConditions,
       isConditionalLoop: fullLoop.isConditionalLoop,
       parentLoopId: fullLoop.parentLoopId
         ? String(fullLoop.parentLoopId)

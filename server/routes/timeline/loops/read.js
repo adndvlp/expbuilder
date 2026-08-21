@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { collectAllItemIds, getExperimentDoc } from "./state.js";
+import { buildExperimentGraph } from "../graph/buildExperimentGraph.js";
+import { getExperimentDoc } from "./state.js";
 
 const router = Router();
 
@@ -20,39 +21,8 @@ router.get(
         return res.status(404).json({ error: "Loop not found" });
       }
 
-      const allItemIds = collectAllItemIds(
-        loop.trials || [],
-        loopId,
-        experimentDoc,
-      );
-      const trialsMetadata = allItemIds
-        .map((itemId) => {
-          const trial = experimentDoc.trials.find((t) => t.id === itemId);
-          if (trial) {
-            return {
-              id: trial.id,
-              type: "trial",
-              name: trial.name,
-              branches: trial.branches || [],
-            };
-          }
-
-          const nestedLoop = experimentDoc.loops.find((l) => l.id === itemId);
-          if (nestedLoop) {
-            return {
-              id: nestedLoop.id,
-              type: "loop",
-              name: nestedLoop.name,
-              branches: nestedLoop.branches || [],
-              trials: nestedLoop.trials || [],
-            };
-          }
-
-          return null;
-        })
-        .filter(Boolean);
-
-      res.json({ trialsMetadata });
+      const graph = buildExperimentGraph(experimentDoc);
+      res.json({ trialsMetadata: graph.scopes[String(loop.id)].items });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

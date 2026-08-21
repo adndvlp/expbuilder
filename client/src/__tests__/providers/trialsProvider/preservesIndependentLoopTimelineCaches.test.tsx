@@ -1,7 +1,7 @@
 import { act, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { TimelineItem } from "../../../pages/ExperimentBuilder/contexts/TrialsContext";
-import { okJson, trial } from "../../helpers/trialFactories";
+import { mutationJson, okJson, trial } from "../../helpers/trialFactories";
 import {
   fetchMock,
   queueFetchResponses,
@@ -150,7 +150,17 @@ describe("TrialsProvider loop timeline cache", () => {
       name: "Parent saved",
       parentLoopId: "parent",
     });
-    queueFetchResponses(okJson({ trial: updated }));
+    const updatedParentItems = [item("parent-trial", "Parent saved")];
+    queueFetchResponses(
+      mutationJson({ trial: updated }, [], {
+        parent: {
+          scopeId: "parent",
+          parentScopeId: null,
+          items: updatedParentItems,
+        },
+        child: { scopeId: "child", parentScopeId: null, items: childItems },
+      }),
+    );
     await act(async () => {
       await view
         .getContext()
@@ -158,9 +168,9 @@ describe("TrialsProvider loop timeline cache", () => {
     });
 
     expect(view.getContext()?.activeLoopId).toBe("child");
-    expect(view.getContext()?.loopTimelineCache.parent?.items).toEqual([
-      item("parent-trial", "Parent saved"),
-    ]);
+    expect(view.getContext()?.loopTimelineCache.parent?.items).toEqual(
+      updatedParentItems,
+    );
     expect(view.getContext()?.loopTimelineCache.child?.items).toEqual(
       childItems,
     );
@@ -183,7 +193,15 @@ describe("TrialsProvider loop timeline cache", () => {
     });
     fetchMock()
       .mockImplementationOnce(() => slowRefresh.promise)
-      .mockResolvedValueOnce(okJson({ trial: savedTrial }));
+      .mockResolvedValueOnce(
+        mutationJson({ trial: savedTrial }, [], {
+          parent: {
+            scopeId: "parent",
+            parentScopeId: null,
+            items: [item("parent-trial", "Saved while refreshing")],
+          },
+        }),
+      );
 
     let refresh!: Promise<TimelineItem[]>;
     act(() => {

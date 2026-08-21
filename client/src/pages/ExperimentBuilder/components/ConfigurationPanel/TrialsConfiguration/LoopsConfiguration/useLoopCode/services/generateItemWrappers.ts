@@ -1,4 +1,10 @@
-import type { LoopData, TimelineItem } from "../types";
+import type { TimelineItem } from "../types";
+import {
+  getLoopId,
+  getTimelineItemId,
+  getTimelineItemName,
+  isLoopData,
+} from "./timelineItemIdentity";
 
 type Options = {
   loopIdSanitized: string;
@@ -7,9 +13,6 @@ type Options = {
   trials: TimelineItem[];
 };
 
-const isLoopData = (item: TimelineItem): item is LoopData =>
-  "isLoop" in item && item.isLoop === true;
-
 export function generateItemWrappers({
   loopIdSanitized,
   mergePointIds,
@@ -17,23 +20,32 @@ export function generateItemWrappers({
   trials,
 }: Options): string {
   const getItemIdentity = (item: TimelineItem) => {
-    const itemName = isLoopData(item)
-      ? item.loopName || (item as any).name
-      : item.trialName;
+    const itemName = getTimelineItemName(item);
     const itemNameSanitized = sanitizeName(itemName);
-    const loopId = isLoopData(item) ? item.loopId || (item as any).id : null;
+    const loopId = isLoopData(item) ? getLoopId(item) : null;
     const timelineRef = isLoopData(item)
-      ? `${sanitizeName(loopId)}_procedure`
+      ? `${sanitizeName(String(loopId))}_procedure`
       : `${itemNameSanitized}_timeline`;
-    const rawId = isLoopData(item) ? loopId : ((item as any).id ?? null);
-    return { itemNameSanitized, rawId, timelineRef };
+    const rawId = getTimelineItemId(item);
+    const nestedLoopIdSanitized =
+      loopId === null ? null : sanitizeName(String(loopId));
+    return {
+      itemNameSanitized,
+      nestedLoopIdSanitized,
+      rawId,
+      timelineRef,
+    };
   };
   if (trials.length === 0) return "";
 
   return trials
     .map((item, index) => {
-      const { itemNameSanitized, rawId, timelineRef } =
-        getItemIdentity(item);
+      const {
+        itemNameSanitized,
+        nestedLoopIdSanitized,
+        rawId,
+        timelineRef,
+      } = getItemIdentity(item);
       const isLastItem = index === trials.length - 1;
       const isMergePointItem =
         rawId !== null &&
@@ -50,6 +62,24 @@ const ${itemNameSanitized}_wrapper = {
   timeline: [${timelineRef}],
   conditional_function: function() {
     const currentId = ${itemId};
+
+    const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
+    if (jumpToTrial) {
+      if (String(currentId) === String(jumpToTrial)) {
+        localStorage.removeItem('jsPsych_jumpToTrial');
+        return true;
+      }
+      ${
+        nestedLoopIdSanitized
+          ? `if (loop_${nestedLoopIdSanitized}_DescendantIds.some(
+        (descendantId) => String(descendantId) === String(jumpToTrial),
+      )) {
+        return true;
+      }`
+          : ""
+      }
+      return false;
+    }
     
     // If loopSkipRemaining is active, check if this is the target item
     if (loop_${loopIdSanitized}_SkipRemaining) {
@@ -58,24 +88,21 @@ const ${itemNameSanitized}_wrapper = {
         loop_${loopIdSanitized}_TargetExecuted = true;
         return true;
       }
+      ${
+        nestedLoopIdSanitized
+          ? `if (loop_${nestedLoopIdSanitized}_DescendantIds.some(
+        (descendantId) => String(descendantId) === String(loop_${loopIdSanitized}_NextTrialId),
+      )) {
+        return true;
+      }`
+          : ""
+      }
       // Not the target, skip
       return false;
     }
 
     // If the target item has already been executed, skip all remaining items in this iteration
     if (loop_${loopIdSanitized}_TargetExecuted) {
-      ${
-        isLastItem
-          ? `
-      // Last item: reset flags for the next iteration/repetition
-      loop_${loopIdSanitized}_NextTrialId = null;
-      loop_${loopIdSanitized}_SkipRemaining = false;
-      loop_${loopIdSanitized}_TargetExecuted = false;
-      loop_${loopIdSanitized}_BranchingActive = false;
-      loop_${loopIdSanitized}_BranchCustomParameters = null;
-      loop_${loopIdSanitized}_IterationComplete = false;`
-          : ""
-      }
       return false;
     }
     
@@ -104,13 +131,21 @@ const ${itemNameSanitized}_wrapper = {
     ${
       isLastItem
         ? `
-    // Last item of the timeline: reset flags for the next iteration/repetition
-    loop_${loopIdSanitized}_NextTrialId = null;
-    loop_${loopIdSanitized}_SkipRemaining = false;
-    loop_${loopIdSanitized}_TargetExecuted = false;
-    loop_${loopIdSanitized}_BranchingActive = false;
-    loop_${loopIdSanitized}_BranchCustomParameters = null;
-    loop_${loopIdSanitized}_IterationComplete = false;`
+    // Preserve an exit whose target belongs to an enclosing scope.
+    const hasUnresolvedExit = loop_${loopIdSanitized}_BranchingActive &&
+      !loop_${loopIdSanitized}_TargetExecuted &&
+      loop_${loopIdSanitized}_NextTrialId !== null;
+    const hasResolvedExit = loop_${loopIdSanitized}_BranchingActive &&
+      loop_${loopIdSanitized}_TargetExecuted &&
+      loop_${loopIdSanitized}_NextTrialId !== null;
+    if (!hasUnresolvedExit && !hasResolvedExit) {
+      loop_${loopIdSanitized}_NextTrialId = null;
+      loop_${loopIdSanitized}_SkipRemaining = false;
+      loop_${loopIdSanitized}_TargetExecuted = false;
+      loop_${loopIdSanitized}_BranchingActive = false;
+      loop_${loopIdSanitized}_BranchCustomParameters = null;
+      loop_${loopIdSanitized}_IterationComplete = false;
+    }`
         : ""
     }
   }
