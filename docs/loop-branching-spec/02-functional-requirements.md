@@ -11,7 +11,7 @@
 - **Nivel de salida:** límite de loop elegido; el destino pertenece al scope inmediatamente exterior a ese límite.
 - **Arista semántica:** relación canónica origen → destino, independiente de qué loops estén comprimidos.
 - **Proyección:** arista/nodo que el canvas deriva para representar la misma relación cuando oculta scopes.
-- **Terminal:** concepto pendiente de una definición de producto exacta; no debe confundirse automáticamente con el último índice del array.
+- **Terminal:** propiedad de ejecución que no participa en la elegibilidad de autoría del selector de nivel.
 - **Branch:** flujo forward elegido al terminar un item; no es un `jump`/repeat.
 
 ## Invariantes de dominio
@@ -33,12 +33,11 @@
 | INV-13 | El código generado, el canvas y la persistencia se derivan del mismo grafo validado. |
 | INV-14 | Local, preview y publicación resuelven una ruta de branch de la misma manera. |
 | INV-15 | “Rama de un loop” puede describir una proyección visible o el scope de destino, pero no cambia silenciosamente el source canónico; la semántica final se decide en DEC-36. |
+| INV-16 | Todo trial cuyo owner directo sea un loop puede abrir el selector de nivel, independientemente de su índice, branches o continuaciones posteriores. |
 
 ## Elegibilidad del botón
 
-La solicitud establece que el caso especial aplica a “los últimos trials de los loops”. La implementación DEBE encapsular esta política en una función de dominio pura, por ejemplo `getLoopExitEligibility`, y no repartir comparaciones de índice por componentes.
-
-Hasta resolver [DEC-01 a DEC-05](./06-pending-decisions.md), son obligatorios estos límites:
+La elegibilidad se deriva únicamente del ownership canónico. No existe una política de “último trial” para abrir el selector y ningún componente debe inferirla por índice, branches, layout o estado expandido.
 
 - ELIG-01: el origen es un `trial`, no se inferirá soporte para el botón de un nodo loop.
 - ELIG-02: el origen tiene al menos un loop ancestro.
@@ -46,8 +45,8 @@ Hasta resolver [DEC-01 a DEC-05](./06-pending-decisions.md), son obligatorios es
 - ELIG-04: la lista no ofrece scopes laterales ni descendientes.
 - ELIG-05: la política usa el grafo canónico, no el estado expandido del canvas.
 - ELIG-06: que el origen ya tenga branches no impide añadir otra salida permitida.
-- ELIG-07: una arista existente no convierte por sí sola a un origen no elegible en elegible.
-- ELIG-08: randomización, repeticiones y terminales múltiples no pueden quedar definidos por accidente del orden del array.
+- ELIG-07: agregar, borrar o reordenar otros items del loop no cambia la elegibilidad mientras el owner del origen siga siendo ese loop.
+- ELIG-08: randomización, repeticiones y orden del array no participan en la elegibilidad.
 
 ## Opciones de nivel
 
@@ -55,11 +54,12 @@ Dada la ruta `root > Loop principal > Nested loop 1 > Nested loop 2`, un origen 
 
 | Opción mostrada | Límite que cruza | Owner del trial nuevo |
 |---|---|---|
+| Dentro de Nested loop 2 | ninguno | `Nested loop 2` |
 | Salir de Nested loop 2 | `Nested loop 2` | `Nested loop 1` |
 | Salir de Nested loop 1 | `Nested loop 1` y todo descendiente | `Loop principal` |
 | Salir de Loop principal | los tres loops | raíz |
 
-La etiqueta final, si también debe ofrecerse “permanecer dentro de Nested loop 2” y el control single/multi-select están pendientes. Véanse DEC-06 a DEC-09.
+Se muestra primero el scope actual y después sus ancestros hasta raíz. El control conserva el estilo de checkbox del modal de loops, pero permite exactamente una selección por confirmación.
 
 ## Flujo de creación
 
@@ -67,7 +67,7 @@ La etiqueta final, si también debe ofrecerse “permanecer dentro de Nested loo
 
 - FR-01: al pulsar `+`, el sistema obtiene el origen por ID canónico y no sólo desde la timeline activa.
 - FR-02: obtiene y valida la ruta completa de owners.
-- FR-03: evalúa la elegibilidad con la política aprobada.
+- FR-03: confirma que el origen es un trial cuyo owner directo es un loop.
 - FR-04: si aplica el caso especial, abre el modal de nivel incluso cuando el origen tiene cero branches.
 - FR-05: abrir el modal no crea ni actualiza datos.
 - FR-06: cancelar, cerrar o presionar Escape no realiza ninguna mutación.
@@ -101,7 +101,7 @@ La etiqueta final, si también debe ofrecerse “permanecer dentro de Nested loo
 
 ## Relación con el modal actual
 
-El caso no especial debe conservar el comportamiento aprobado del modal `Parent vs Branch`. Cuando coincidan “origen elegible para salida” y “origen con branch existente”, el sistema requiere una composición explícita de ambas decisiones; no se permite escoger una precedencia implícita. DEC-10 define si hay un paso combinado, dos pasos o se elimina una alternativa en este contexto.
+Para cualquier trial dentro de un loop se elige primero el nivel. Si el origen ya tiene una branch en el nivel seleccionado, después se abre `Parent vs Branch` para escoger inserción secuencial o paralela en ese nivel. Si el nivel está vacío, se crea directamente la primera branch paralela. Los trials de raíz conservan el flujo anterior.
 
 ## Condiciones y resolución
 

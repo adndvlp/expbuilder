@@ -17,8 +17,8 @@ React Flow debe conservar su sistema visual actual y representar las mismas rela
 
 - UI-01: se usa el botón verde `+` ya existente del trial.
 - UI-02: la selección del trial y el path expandido no son suficientes por sí solos; el modal recibe un snapshot validado de la ruta completa.
-- UI-03: un trial elegible abre el selector de nivel aun con cero branches.
-- UI-04: un trial no elegible conserva el flujo existente, salvo que otra decisión lo amplíe.
+- UI-03: todo trial cuyo owner directo es un loop abre el selector de nivel, aun con cero branches o con items posteriores.
+- UI-04: un trial del scope raíz conserva el flujo existente.
 
 ### Modal
 
@@ -38,6 +38,9 @@ No debe copiar la lógica de auto-inclusión de branches de `LoopRangeModal`; s�
 Ejemplo conceptual:
 
 ```text
+( ) Dentro de “Nested loop 2”
+    El nuevo trial se agregará dentro de “Nested loop 2”.
+
 ( ) Salir de “Nested loop 2”
     El nuevo trial se agregará dentro de “Nested loop 1”.
 
@@ -48,7 +51,7 @@ Ejemplo conceptual:
     El nuevo trial se agregará al timeline principal.
 ```
 
-El control aparece como radio o checkbox según DEC-07; esta spec no decide esa semántica por la apariencia solicitada.
+El control usa la apariencia de checkbox existente y selección única.
 
 ### Estados
 
@@ -67,7 +70,7 @@ El modal actual tiene otro propósito. Para no perder funcionalidad:
 - el selector de nivel no debe llamar a `onConfirm(boolean)` ni sobrecargar ese boolean con scopes;
 - el estado pendiente debe ser un tipo discriminado, no `pendingParentId` más flags ambiguos;
 - el componente de presentación no decide elegibilidad ni ownership;
-- la decisión de cómo combinar ambos flujos está en DEC-10.
+- el selector de nivel aparece primero y `Parent vs Branch` sólo aparece después si ese nivel ya contiene una branch del origen.
 
 ## Modelo visual requerido
 

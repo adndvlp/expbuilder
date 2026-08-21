@@ -80,13 +80,10 @@
 - Opciones reales: continuar al siguiente item del scope; seguir sólo branches propias; continuation/merge explícito; terminar si no tiene salida.
 - Pregunta: ¿cuál es la regla posterior al target en cada nivel y cambia si tiene branches propias?
 
-### DEC-29 — Terminalidad de cada límite cruzado — BLOQUEANTE
+### DEC-29 — Cruce desde un trial no terminal — RESUELTA
 
-- Entendido: el source es último en su owner directo y puede intentar salir de varios ancestros.
-- Falta: si debe ser terminal transitivo de cada boundary cruzado.
-- Impacto: opciones del modal y omisión de siblings posteriores.
-- Opciones reales: basta terminalidad directa; exigir que cada contenedor sea terminal en su padre; permitir el salto aunque omita siblings; decidir por boundary.
-- Pregunta: ¿qué condición de terminalidad debe cumplir cada opción de salida hacia un ancestro?
+- Decisión: no se exige terminalidad directa ni transitiva para ofrecer o crear la salida.
+- Consecuencia: cuando la condición elige esa branch, el runtime abandona los items restantes de los scopes cruzados conforme a la ruta canónica.
 
 ### DEC-30 — Crear o reutilizar destino con `+` — BLOQUEANTE
 
@@ -192,4 +189,4 @@
 
 ## Orden sugerido para revisión humana
 
-Sin resolver por el usuario, el orden que reduce retrabajo es: DEC-01/29/36; DEC-06/07/10/30/31; DEC-11/12/28; DEC-15/17–19/39–41; DEC-20/21/34; después edición, agente, layout y release. Este orden no selecciona respuestas.
+Para las decisiones restantes, el orden que reduce retrabajo es: DEC-36; DEC-07/30/31; DEC-11/12/28; DEC-15/17–19/39–41; DEC-20/21/34; después edición, agente, layout y release. Este orden no selecciona respuestas.

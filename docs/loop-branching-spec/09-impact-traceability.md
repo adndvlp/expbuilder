@@ -14,7 +14,7 @@ Leyenda:
 
 | Necesidad expresada | Cobertura normativa | Verificación |
 |---|---|---|
-| El `+` de un último trial de loop abre modal aunque no tenga branches | FR-01–FR-07, UI-01–UI-04 | TC-01–TC-04 |
+| El `+` de cualquier trial dentro de un loop abre modal, aunque tenga items posteriores | INV-16, FR-01–FR-07, UI-01–UI-04 | TC-01/01A–TC-04 |
 | Elegir el nivel en el que se agrega la branch | opciones de nivel, INV-03–INV-05 | TD-03, TA-01/02/07 |
 | Usar una lista con lenguaje visual de checkboxes | sección Modal | TC-03/11/12; DEC-07–09 |
 | Repetir el `+` sobre el mismo source | FR-16–FR-18 | TD-06, E2E-01 |
@@ -144,7 +144,7 @@ La lista concreta de casos nuevos está en [07](./07-test-acceptance-plan.md). L
 
 | Área | Decisiones que la desbloquean |
 |---|---|
-| Elegibilidad | DEC-01–05, DEC-17–19, DEC-29 |
+| Elegibilidad | DEC-01/02/03/05/29 resueltas; DEC-04, DEC-17–19 |
 | Modal/creación | DEC-06–10, DEC-12, DEC-30/31 |
 | Persistencia | DEC-11–14, DEC-22/24, DEC-36 |
 | Continuación runtime | DEC-15–19, DEC-28/32, DEC-39–41 |

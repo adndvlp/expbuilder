@@ -119,13 +119,13 @@ Esta spec no selecciona una estrategia. El spike compara evidencia de comportami
 
 ## Repeticiones, randomización y loops condicionales
 
-La frase “último trial del loop” no define cuándo sale un loop que tiene más de una repetición o orden aleatorio.
+La autoría de una salida está disponible para cualquier trial dentro de un loop. Repeticiones y orden aleatorio no cambian esa elegibilidad; sólo afectan la semántica de ejecución de la ruta elegida.
 
 Una vez que DEC-17 a DEC-19 tengan respuesta, se exigen estas propiedades:
 
 - LOOP-RT-01: no se ejecuta accidentalmente una repetición adicional después de una salida inmediata.
 - LOOP-RT-02: no se omiten items que producto haya decidido completar antes de salir.
-- LOOP-RT-03: el source sigue siendo elegible/ineligible según estructura aprobada, no por el orden aleatorio observado por casualidad.
+- LOOP-RT-03: el source sigue siendo elegible mientras pertenezca a un loop, sin depender del orden aleatorio observado.
 - LOOP-RT-04: branch, `loop_function`/conditional condition y repetitions tienen precedencia explícita.
 - LOOP-RT-05: cada `on_timeline_start`/`finish` y custom callback corre el número y orden aprobado.
 - LOOP-RT-06: los flags de un loop que no se abandona no se contaminan con la salida de un descendiente.

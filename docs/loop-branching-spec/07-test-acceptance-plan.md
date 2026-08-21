@@ -70,6 +70,7 @@ Variantes cartesianas acotadas:
 ## Pruebas del modal
 
 - TC-01: cero branches + source elegible abre modal, no crea trial.
+- TC-01A: insertar otro item después del source no cambia su elegibilidad ni sus niveles.
 - TC-02: Cancel/backdrop/Escape dejan mocks de mutación sin llamadas.
 - TC-03: lista nombres y descripciones según ancestry, no según caché activa.
 - TC-04: Confirm deshabilitado sin selección.
@@ -78,7 +79,7 @@ Variantes cartesianas acotadas:
 - TC-07: revision conflict conserva/recalcula opciones.
 - TC-08: success enfoca/selecciona target.
 - TC-09: flujo no especial mantiene `Parent vs Branch`.
-- TC-10: flujo combinado sigue DEC-10.
+- TC-10: el flujo combinado elige nivel primero y sólo después muestra `Sequential/Parallel` cuando el nivel ya está ocupado.
 - TC-11: labels accesibles y navegación por teclado.
 - TC-12: nesting largo activa scroll y no recorta Confirm/Cancel.
 

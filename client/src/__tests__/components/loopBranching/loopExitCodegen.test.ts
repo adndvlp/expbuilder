@@ -21,6 +21,12 @@ const generateLoop = (parentLoopId: string | null) =>
         pluginName: "html-keyboard-response",
         timelineProps: "const Source_timeline = {};",
       },
+      {
+        id: 2,
+        trialName: "Later Trial",
+        pluginName: "html-keyboard-response",
+        timelineProps: "const Later_Trial_timeline = {};",
+      },
     ],
     unifiedStimuli: [],
   })();
@@ -55,7 +61,7 @@ describe("loop exit code generation", () => {
 
   it("does not erase an unresolved exit in the last wrapper", () => {
     const code = generateLoop("parent");
-    const wrapperStart = code.indexOf("const Source_wrapper =");
+    const wrapperStart = code.indexOf("const Later_Trial_wrapper =");
     const loopStart = code.indexOf("const inner_procedure =");
     const wrapperCode = code.slice(wrapperStart, loopStart);
 
@@ -87,7 +93,7 @@ describe("loop exit code generation", () => {
     );
   });
 
-  it("executes the generated nested-loop transfer without losing its payload", () => {
+  it("transfers an exit from a non-terminal source without losing its payload", () => {
     const code = generateLoop("parent");
     const factory = new Function(`
       const timeline = [];

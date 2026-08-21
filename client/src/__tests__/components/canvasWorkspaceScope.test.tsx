@@ -10,11 +10,25 @@ import type { TimelineItem } from "../../pages/ExperimentBuilder/contexts/Trials
 const mocks = vi.hoisted(() => ({
   trials: {} as Record<string, unknown>,
   flowOptions: null as Record<string, unknown> | null,
+  loadLevels: vi.fn(),
+  createBranch: vi.fn(),
 }));
 
 vi.mock("../../pages/ExperimentBuilder/hooks/useTrials", () => ({
   default: () => mocks.trials,
 }));
+
+vi.mock("../../pages/ExperimentBuilder/hooks/useExperimentID", () => ({
+  useExperimentID: () => "experiment-1",
+}));
+
+vi.mock(
+  "../../pages/ExperimentBuilder/components/Canvas/features/loop-branching/loopBranchApi",
+  () => ({
+    loadLoopBranchLevels: mocks.loadLevels,
+    createLoopBranch: mocks.createBranch,
+  }),
+);
 
 vi.mock(
   "../../pages/ExperimentBuilder/components/Canvas/hooks/useFlowLayout",
@@ -91,6 +105,7 @@ function createTrialsMock() {
     updateLoop: vi.fn(async () => null),
     updateTrialField: vi.fn(async () => true),
     updateTimeline: vi.fn(async () => true),
+    applyGraphSnapshot: vi.fn(),
   };
   mocks.trials = trials;
   return trials;
@@ -112,9 +127,30 @@ async function activateParentScope(
 }
 
 describe("useCanvasWorkspace active action scope", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.loadLevels.mockResolvedValue([
+      {
+        scopeId: "parent",
+        name: "Parent loop",
+        relation: "current",
+        branchCount: 0,
+      },
+    ]);
+    mocks.createBranch.mockResolvedValue({
+      trial: makeTrial(99, { parentLoopId: "parent" }),
+      crossedLoopIds: [],
+      graph: {
+        revision: "2",
+        root: { scopeId: null, parentScopeId: null, items: [] },
+        scopes: {},
+        edges: [],
+        diagnostics: [],
+      },
+    });
+  });
 
-  it("routes branch creation to the expanded loop", async () => {
+  it("routes a non-terminal trial through level selection in the expanded loop", async () => {
     const trials = createTrialsMock();
     const { result } = renderHook(() => useCanvasWorkspace());
     await activateParentScope(result);
@@ -123,14 +159,22 @@ describe("useCanvasWorkspace active action scope", () => {
       await result.current.branchActions.onAddBranch(10);
     });
 
-    expect(trials.createTrial).toHaveBeenCalledWith(
-      expect.objectContaining({ parentLoopId: "parent" }),
-    );
-    expect(trials.updateTrial).toHaveBeenCalledWith(
+    expect(result.current.branchActions.showLoopBranchLevelModal).toBe(true);
+    expect(mocks.loadLevels).toHaveBeenCalledWith("experiment-1", 10);
+    expect(trials.createTrial).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.branchActions.handleLoopBranchLevelConfirm("parent");
+    });
+
+    expect(mocks.createBranch).toHaveBeenCalledWith(
+      "experiment-1",
       10,
-      { branches: [99] },
-      expect.objectContaining({ id: 99 }),
+      "parent",
+      "parallel",
     );
+    expect(trials.applyGraphSnapshot).toHaveBeenCalledTimes(1);
+    expect(trials.updateTrial).not.toHaveBeenCalled();
     expect(trials.updateTimeline).not.toHaveBeenCalled();
   });
 

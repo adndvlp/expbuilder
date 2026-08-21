@@ -6,31 +6,23 @@ Estas preguntas no detuvieron la auditoría ni las áreas independientes de la s
 
 Cada decisión sigue el formato exigido por `SPEC.md`: entendido, dato faltante, impacto, opciones reales y pregunta concreta. El registro continúa en [06B](./06b-pending-decisions.md).
 
-## Elegibilidad y significado de “último”
+## Elegibilidad por ownership
 
-### DEC-01 — Definición de último trial — BLOQUEANTE
+### DEC-01 — Elegibilidad del trial — RESUELTA
 
-- Entendido: el selector especial aplica a “los últimos trials de los loops”.
-- Falta: qué propiedad vuelve último a un trial.
-- Impacto: determina qué botones abren modal y qué valida el servidor.
-- Opciones reales: último ID de `loop.trials`; toda hoja sin salida interna; último visible; una hoja terminal designada.
-- Pregunta: ¿qué definición exacta debe usarse y puede un loop tener varios últimos trials elegibles?
+- Decisión: todo trial que pertenece a un loop abre el selector de nivel.
+- Consecuencia: índice, visibilidad, terminalidad y presencia de items posteriores no intervienen.
+- Evidencia de producto: aclaración del 21 de agosto de 2026 sobre `New Trial 3` después de agregar continuaciones.
 
-### DEC-02 — Terminal ya ramificado — BLOQUEANTE
+### DEC-02 — Trial ya ramificado — RESUELTA
 
-- Entendido: al mismo trial se le pueden añadir varias ramas de salida.
-- Falta: qué edges hacen que deje de ser terminal.
-- Impacto: elegibilidad posterior y distinción entre branch interna y salida.
-- Opciones reales: sólo una continuación interna quita terminalidad; cualquier branch la quita; la terminalidad se conserva por designación explícita.
-- Pregunta: ¿qué tipos de branch cuentan como continuación interna y le quitan la condición de último?
+- Decisión: ninguna branch existente ni continuación posterior quita elegibilidad.
+- Consecuencia: el mismo origen puede volver a elegir cualquier nivel válido.
 
-### DEC-03 — Descendiente terminal de nested
+### DEC-03 — Trial dentro de nested loops — RESUELTA
 
-- Entendido: el source puede estar varios niveles abajo.
-- Falta: si debe ser hijo directo del loop o puede ser cualquier hoja descendiente.
-- Impacto: análisis de terminalidad, ancestry y proyección.
-- Opciones reales: sólo hijo directo; cualquier trial terminal descendiente; sólo descendants seleccionados como terminales del loop.
-- Pregunta: ¿qué descendientes son elegibles para salir de sus loops ancestros?
+- Decisión: el owner directo identifica el scope actual y su ancestry determina todos los niveles disponibles.
+- Consecuencia: cualquier trial dentro de un nested loop puede elegir su scope actual, cada ancestro y raíz.
 
 ### DEC-04 — Nodo loop como origen
 
@@ -40,23 +32,17 @@ Cada decisión sigue el formato exigido por `SPEC.md`: entendido, dato faltante,
 - Opciones reales: limitar a trials; incluir también loops; mantener loop branching actual sin selector nuevo.
 - Pregunta: ¿esta feature se limita estrictamente a trials o incluye nodos loop?
 
-### DEC-05 — Un solo nivel de loop
+### DEC-05 — Un solo nivel de loop — RESUELTA
 
 - Entendido: un trial dentro de un único loop sólo tiene una salida hacia raíz.
-- Falta: si aún debe elegirla en modal.
-- Impacto: consistencia UX y número de clicks.
-- Opciones reales: mostrar siempre el modal; crear directo cuando sólo existe una opción; mostrar modal sólo si también se ofrece same-scope.
-- Pregunta: ¿qué flujo debe aplicarse cuando existe una sola opción de salida?
+- Decisión: siempre se muestra el modal porque también ofrece el scope actual y raíz.
 
 ## Modal y creación
 
-### DEC-06 — Permanecer dentro del loop actual — BLOQUEANTE
+### DEC-06 — Permanecer dentro del loop actual — RESUELTA
 
 - Entendido: las opciones descritas en el pedido son “saliendo” de cada loop.
-- Falta: si debe mantenerse una opción para crear branch en el scope actual.
-- Impacto: preservación del flujo normal del `+` y contenido del modal.
-- Opciones reales: incluir same-scope en la lista; mostrar sólo exits y conservar same-scope en otro paso; no permitir same-scope en este contexto.
-- Pregunta: ¿el selector incluye “crear dentro de [loop actual]” además de cada nivel de salida?
+- Decisión: el scope actual es la primera opción, seguido por ancestros y raíz.
 
 ### DEC-07 — Selección única o múltiple — BLOQUEANTE
 
@@ -82,13 +68,11 @@ Cada decisión sigue el formato exigido por `SPEC.md`: entendido, dato faltante,
 - Opciones reales: sin selección; preseleccionar la salida más interna; recordar la última elección del usuario.
 - Pregunta: ¿con qué selección, si alguna, debe abrir el modal?
 
-### DEC-10 — Convivencia con Parent vs Branch — BLOQUEANTE
+### DEC-10 — Convivencia con Parent vs Branch — RESUELTA
 
 - Entendido: hoy, con al menos una branch, el modal pregunta parent/sequential frente a branch/parallel.
-- Falta: cómo combinar tipo de alta y nivel cuando ambas condiciones se cumplen.
-- Impacto: un boolean actual no representa ambas decisiones.
-- Opciones reales: tipo y luego nivel; modal combinado; sólo branch + nivel en este contexto; parent/branch dentro de cada scope.
-- Pregunta: ¿cuál es el flujo exacto cuando el source es terminal de loop y ya tiene una branch?
+- Decisión: primero nivel; si ya existe una branch en ese nivel, después `Sequential/Parallel`.
+- Consecuencia: un nivel vacío crea directamente su primera branch paralela.
 
 ## Datos, orden y condiciones
 

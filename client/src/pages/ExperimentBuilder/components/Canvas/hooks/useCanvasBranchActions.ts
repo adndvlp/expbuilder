@@ -14,7 +14,6 @@ import {
   createLoopBranch,
   loadLoopBranchLevels,
 } from "../features/loop-branching/loopBranchApi";
-import { isTerminalTrial } from "../features/loop-branching/terminalTrials";
 import type {
   LoopBranchLevel,
   LoopBranchMode,
@@ -151,7 +150,6 @@ export function useCanvasBranchActions(
       if (
         scope.kind === "loop" &&
         parent.type === "trial" &&
-        isTerminalTrial(scope.items, parentId) &&
         experimentId
       ) {
         try {

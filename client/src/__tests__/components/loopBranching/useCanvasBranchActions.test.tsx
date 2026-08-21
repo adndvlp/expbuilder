@@ -33,6 +33,13 @@ const scope: CanvasActionScope = {
       branches: [99],
       parentLoopId: "inner",
     },
+    {
+      id: 2,
+      type: "trial",
+      name: "Later trial",
+      branches: [],
+      parentLoopId: "inner",
+    },
   ],
 };
 
@@ -95,7 +102,7 @@ describe("useCanvasBranchActions loop levels", () => {
     });
   });
 
-  it("opens level first and placement second only for an occupied level", async () => {
+  it("opens level first for a non-terminal trial and placement second only for an occupied level", async () => {
     const trials = createTrialsMock();
     const view = renderHook(() => useCanvasBranchActions(trials, scope));
 

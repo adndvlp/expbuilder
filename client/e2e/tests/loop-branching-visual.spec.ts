@@ -48,7 +48,7 @@ test("renders exact exit sources through expanded and collapsed loop levels", as
       type: "loop",
       name: "Nested Loop",
       parentLoopId: "outer",
-      trials: ["source"],
+      trials: ["source", "later"],
       branches: [],
     },
     {
@@ -63,9 +63,16 @@ test("renders exact exit sources through expanded and collapsed loop levels", as
     {
       id: "source",
       type: "trial",
-      name: "Nested Final Trial",
+      name: "Nested Earlier Trial",
       parentLoopId: "inner",
       branches: ["outer-target", "root-target"],
+    },
+    {
+      id: "later",
+      type: "trial",
+      name: "Later Nested Trial",
+      parentLoopId: "inner",
+      branches: [],
     },
   ];
   const snapshot = graph(
@@ -123,6 +130,7 @@ test("renders exact exit sources through expanded and collapsed loop levels", as
   const outerScope = getLoopLayoutScopeId("outer");
   const innerScope = getLoopLayoutScopeId("inner");
   const source = getScopedNodeId(innerScope, "trial", "source");
+  const later = getScopedNodeId(innerScope, "trial", "later");
   const left = getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "trial", "left");
   const innerMarker = getScopedNodeId(outerScope, "loop", "inner");
   const outerMarker = getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "loop", "outer");
@@ -142,6 +150,7 @@ test("renders exact exit sources through expanded and collapsed loop levels", as
 
   await expect(edge(source, outerTarget)).toHaveCount(1);
   await expect(edge(source, rootTarget)).toHaveCount(1);
+  await expect(edge(source, later)).toHaveCount(1);
   await expect(edge(left, source)).toHaveCount(1);
   await expect(edge(left, innerMarker)).toHaveCount(0);
   await expect(edge(left, outerMarker)).toHaveCount(0);
@@ -149,11 +158,21 @@ test("renders exact exit sources through expanded and collapsed loop levels", as
   await expectBalancedFan(
     canvas,
     source,
-    [outerTarget, rootTarget],
+    [later, outerTarget, rootTarget],
     [outerTarget, rootTarget],
   );
-  await expectPathAvoidsNodes(path(source, outerTarget), [node(rootTarget)]);
-  await expectPathAvoidsNodes(path(source, rootTarget), [node(outerTarget)]);
+  await expectPathAvoidsNodes(path(source, outerTarget), [
+    node(later),
+    node(rootTarget),
+  ]);
+  await expectPathAvoidsNodes(path(source, rootTarget), [
+    node(later),
+    node(outerTarget),
+  ]);
+  await expectPathAvoidsNodes(path(source, later), [
+    node(outerTarget),
+    node(rootTarget),
+  ]);
   await canvas.screenshot({ path: "test-results/loop-branching-expanded.png" });
 
   const sourceNode = canvas.locator(`.react-flow__node[data-id="${source}"]`);

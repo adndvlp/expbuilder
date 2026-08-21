@@ -186,7 +186,7 @@ La validación actual de conexión sólo evita self-edge y ciclos globales. El c
 |---|---|
 | `SOURCE_NOT_FOUND` | no existe el trial origen |
 | `SOURCE_NOT_TRIAL` | el origen no es trial |
-| `SOURCE_NOT_ELIGIBLE` | no cumple la regla terminal aprobada |
+| `SOURCE_NOT_ELIGIBLE` | el trial origen no pertenece a ningún loop |
 | `OWNER_PATH_INVALID` | cadena de loops rota o cíclica |
 | `EXIT_LOOP_NOT_ANCESTOR` | se pidió un límite lateral/descendiente |
 | `DUPLICATE_BRANCH` | misma edge ya existe |

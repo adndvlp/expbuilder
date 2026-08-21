@@ -43,6 +43,13 @@ const seedNestedExperiment = async (db) => {
         branches: [],
       },
       { id: 3, type: "Trial", name: "Root exit", branches: [] },
+      {
+        id: 4,
+        type: "Trial",
+        name: "Later inner trial",
+        parentLoopId: "inner",
+        branches: [],
+      },
     ],
     loops: [
       {
@@ -62,7 +69,7 @@ const seedNestedExperiment = async (db) => {
         id: "inner",
         name: "Inner loop",
         parentLoopId: "middle",
-        trials: [1],
+        trials: [1, 4],
         branches: [],
       },
     ],
@@ -169,7 +176,7 @@ describe("loop exit branches", () => {
       .get("/api/loop-trials-metadata/E1/inner")
       .expect(200);
 
-    expect(response.body.trialsMetadata.map((item) => item.id)).toEqual([1]);
+    expect(response.body.trialsMetadata.map((item) => item.id)).toEqual([1, 4]);
     expect(response.body.trialsMetadata[0]).toMatchObject({
       parentLoopId: "inner",
       branches: [2, 3],
