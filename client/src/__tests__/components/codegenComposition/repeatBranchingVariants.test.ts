@@ -33,8 +33,9 @@ describe("useLoopCode composition", () => {
 
     const code = normalize(genLoopCode());
 
-    expect(code).toContain("const repeatConditionsArray =");
-    expect(code).toContain('const branches = [10,"fallback_branch"];');
+    expect(code).toContain("const repeatConditions =");
+    expect(code).toContain("window.ExpBuilderNavigation.requestJump(");
+    expect(code).toContain('const branches = [10, "fallback_branch"];');
     expect(code).toContain("window.nextTrialId = branches[0];");
   });
 
@@ -69,8 +70,8 @@ describe("useLoopCode composition", () => {
 
     const code = normalize(genLoopCode());
 
-    expect(code).toContain('const branches = [10,"branch_b"];');
-    expect(code).toContain("const branchConditions =");
+    expect(code).toContain('const branches = [10, "branch_b"];');
+    expect(code).toContain("window.ExpBuilderBranching.decide(");
     expect(code).toContain("window.nextTrialId = branches[0];");
   });
 

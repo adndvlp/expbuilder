@@ -11,8 +11,7 @@ import useLoopMethods from "./LoopMethods";
 import useLoopTimelineCache from "./hooks/useLoopTimelineCache";
 import { createStateStore } from "./stateStore";
 import { useExperimentGraphState } from "../../modules/experiment-graph/useExperimentGraphState";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import { experimentAuthoringClient } from "../../modules/experiment-authoring";
 
 type Props = {
   children: ReactNode;
@@ -103,22 +102,10 @@ export default function TrialsProvider({ children }: Props) {
   const updateTimeline = useCallback(
     async (newTimeline: TimelineItem[]): Promise<boolean> => {
       try {
-        const response = await fetch(
-          `${API_URL}/api/timeline/${experimentID}`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ timeline: newTimeline }),
-          },
+        const data = await experimentAuthoringClient.updateTimeline(
+          experimentID,
+          newTimeline,
         );
-
-        if (!response.ok) {
-          throw new Error("Failed to update timeline");
-        }
-
-        const data = (await response.json()) as {
-          graph: NonNullable<TrialsContextType["graph"]>;
-        };
         applyGraphSnapshot(data.graph);
 
         return true;
@@ -134,13 +121,7 @@ export default function TrialsProvider({ children }: Props) {
 
   const deleteAllTrials = useCallback(async (): Promise<boolean> => {
     try {
-      const response = await fetch(`${API_URL}/api/trials/${experimentID}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete all trials");
-      }
+      await experimentAuthoringClient.deleteAllTrials(experimentID);
 
       // Limpiar estado local
       clearGraph();

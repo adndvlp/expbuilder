@@ -15,12 +15,14 @@ import {
   loadLoopBranchLevels,
 } from "../features/loop-branching/loopBranchApi";
 import type {
-  LoopBranchLevel,
-  LoopBranchMode,
-} from "../features/loop-branching/types";
-
-const scopesMatch = (left: string | null, right: string | null) =>
-  left === null ? right === null : String(left) === String(right);
+  SelectedLoopBranchLevel,
+  StartedLoopBranchIntent,
+} from "../../../modules/experiment-authoring/intents/loopBranch";
+import {
+  commitLoopBranchIntent,
+  selectLoopBranchLevel,
+  startLoopBranchIntent,
+} from "../../../modules/experiment-authoring/intents/loopBranch";
 
 export function useCanvasBranchActions(
   trials: ReturnType<typeof useTrials>,
@@ -30,16 +32,23 @@ export function useCanvasBranchActions(
   const [showAddTrialModal, setShowAddTrialModal] = useState(false);
   const [showLoopBranchLevelModal, setShowLoopBranchLevelModal] =
     useState(false);
-  const [loopBranchLevels, setLoopBranchLevels] = useState<LoopBranchLevel[]>(
-    [],
-  );
+  const [startedLoopBranchIntent, setStartedLoopBranchIntent] =
+    useState<StartedLoopBranchIntent | null>(null);
   const [selectedLoopBranchLevel, setSelectedLoopBranchLevel] =
-    useState<LoopBranchLevel | null>(null);
+    useState<SelectedLoopBranchLevel | null>(null);
   const [isCreatingLoopBranch, setIsCreatingLoopBranch] = useState(false);
   const [pendingParentId, setPendingParentId] = useState<
     string | number | null
   >(null);
   const { setSelectedLoop, setSelectedTrial } = trials;
+  const loopBranchIntentDependencies = useMemo(
+    () => ({
+      loadLevels: loadLoopBranchLevels,
+      createBranch: createLoopBranch,
+    }),
+    [],
+  );
+  const loopBranchLevels = startedLoopBranchIntent?.levels ?? [];
   const scope = useMemo<CanvasActionScope>(
     () =>
       actionScope ?? {
@@ -104,24 +113,27 @@ export function useCanvasBranchActions(
   const resetLoopBranchFlow = useCallback(() => {
     setShowLoopBranchLevelModal(false);
     setShowAddTrialModal(false);
-    setLoopBranchLevels([]);
+    setStartedLoopBranchIntent(null);
     setSelectedLoopBranchLevel(null);
     setPendingParentId(null);
   }, []);
 
   const submitLoopBranch = useCallback(
-    async (mode: LoopBranchMode, level: LoopBranchLevel) => {
-      if (pendingParentId === null || !experimentId) return;
+    async (
+      placement: "parallel" | "sequential",
+      selection: SelectedLoopBranchLevel,
+    ) => {
+      if (!startedLoopBranchIntent) return;
       setIsCreatingLoopBranch(true);
       setShowAddTrialModal(false);
       setShowLoopBranchLevelModal(false);
       try {
-        const result = await createLoopBranch(
-          experimentId,
-          pendingParentId,
-          level.scopeId,
-          mode,
-        );
+        const result = await commitLoopBranchIntent({
+          intent: startedLoopBranchIntent,
+          selection,
+          placement,
+          dependencies: loopBranchIntentDependencies,
+        });
         trials.applyGraphSnapshot(result.graph);
         selectTrial(result.trial);
         resetLoopBranchFlow();
@@ -133,10 +145,10 @@ export function useCanvasBranchActions(
       }
     },
     [
-      experimentId,
-      pendingParentId,
+      loopBranchIntentDependencies,
       resetLoopBranchFlow,
       selectTrial,
+      startedLoopBranchIntent,
       trials,
     ],
   );
@@ -153,9 +165,13 @@ export function useCanvasBranchActions(
         experimentId
       ) {
         try {
-          const levels = await loadLoopBranchLevels(experimentId, parentId);
+          const intent = await startLoopBranchIntent({
+            experimentId,
+            sourceTrialId: parentId,
+            dependencies: loopBranchIntentDependencies,
+          });
           setPendingParentId(parentId);
-          setLoopBranchLevels(levels);
+          setStartedLoopBranchIntent(intent);
           setSelectedLoopBranchLevel(null);
           setShowLoopBranchLevelModal(true);
         } catch (error: unknown) {
@@ -174,24 +190,23 @@ export function useCanvasBranchActions(
       setPendingParentId(parentId);
       setShowAddTrialModal(true);
     },
-    [addBranch, experimentId, scope],
+    [addBranch, experimentId, loopBranchIntentDependencies, scope],
   );
 
   const handleLoopBranchLevelConfirm = useCallback(
     async (scopeId: string | null) => {
-      const level = loopBranchLevels.find((candidate) =>
-        scopesMatch(candidate.scopeId, scopeId),
-      );
-      if (!level) return;
+      if (!startedLoopBranchIntent) return;
+      const selection = selectLoopBranchLevel(startedLoopBranchIntent, scopeId);
+      if (!selection) return;
       setShowLoopBranchLevelModal(false);
-      setSelectedLoopBranchLevel(level);
-      if (level.branchCount > 0) {
+      setSelectedLoopBranchLevel(selection);
+      if (selection.requiresPlacement) {
         setShowAddTrialModal(true);
         return;
       }
-      await submitLoopBranch("parallel", level);
+      await submitLoopBranch("parallel", selection);
     },
-    [loopBranchLevels, submitLoopBranch],
+    [startedLoopBranchIntent, submitLoopBranch],
   );
 
   const handleAddTrialConfirm = useCallback(

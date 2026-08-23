@@ -305,7 +305,7 @@ describe('POST /api/run-experiment/:experimentID', () => {
       .send({ generatedCode: 'const generated = true;' })
       .expect(200)
 
-    expect(res.body.experimentUrl).toBe('http://localhost:3000/RunExp')
+    expect(new URL(res.body.experimentUrl).pathname).toBe('/E1')
     const html = fs.readFileSync(path.join(tmpDir, 'experiments_html', 'RunExp.html'), 'utf8')
     expect(html).toContain('const generated = true;')
     expect(html).toContain('background-color: #abcdef')
@@ -375,7 +375,7 @@ describe('POST /api/trials-preview/:experimentID', () => {
       .send({ generatedCode: 'const preview = true;' })
       .expect(200)
 
-    expect(res.body.experimentUrl).toBe('http://localhost:3000/E1/preview')
+    expect(new URL(res.body.experimentUrl).pathname).toBe('/E1/preview')
     const html = fs.readFileSync(path.join(tmpDir, 'trials_previews_html', 'PreviewExp.html'), 'utf8')
     expect(html).toContain('const preview = true;')
     expect(html).toContain('background-color: #445566')

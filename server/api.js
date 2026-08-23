@@ -6,6 +6,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 
 import { db, ensureDbData, userDataRoot } from "./utils/db.js";
+import { updateSessionState } from "./runtime/sessionStore.js";
 import { __dirname } from "./utils/paths.js";
 
 import experimentsRouter from "./routes/experiments.js";
@@ -30,7 +31,7 @@ const io = new Server(httpServer, {
   },
 });
 
-const port = 3000;
+const port = Number(process.env.PORT || 3000);
 
 const DEV_ORIGINS = ["http://localhost:5173", "http://localhost:5174", "http://localhost:4173", "http://localhost:3000"];
 app.use(
@@ -102,17 +103,7 @@ io.on("connection", (socket) => {
         sessions: Array.from(experimentSessions.values()),
       });
 
-      // Guardar o actualizar estado en la base de datos
-      await db.read();
-      const existing = db.data.sessionResults.find(
-        (s) => s.experimentID === experimentID && s.sessionId === sessionId,
-      );
-      if (existing) {
-        if (state) existing.state = state;
-        if (metadata) existing.metadata = { ...existing.metadata, ...metadata };
-        existing.lastUpdate = new Date().toISOString();
-        await db.write();
-      }
+      await updateSessionState(experimentID, sessionId, { state, metadata });
     },
   );
 
@@ -138,16 +129,7 @@ io.on("connection", (socket) => {
         }
       }
 
-      // Actualizar en base de datos
-      await db.read();
-      const existing = db.data.sessionResults.find(
-        (s) => s.experimentID === experimentID && s.sessionId === sessionId,
-      );
-      if (existing) {
-        existing.state = state;
-        existing.lastUpdate = new Date().toISOString();
-        await db.write();
-      }
+      await updateSessionState(experimentID, sessionId, { state });
     },
   );
 
@@ -163,17 +145,9 @@ io.on("connection", (socket) => {
             sessionData.state = "abandoned";
             sessionData.disconnectedAt = new Date().toISOString();
 
-            // Actualizar en base de datos
-            await db.read();
-            const existing = db.data.sessionResults.find(
-              (s) =>
-                s.experimentID === experimentID && s.sessionId === sessionId,
-            );
-            if (existing) {
-              existing.state = "abandoned";
-              existing.lastUpdate = new Date().toISOString();
-              await db.write();
-            }
+            await updateSessionState(experimentID, sessionId, {
+              state: "abandoned",
+            });
 
             // Notificar a ResultsList
             io.to(experimentID).emit("session-update", {

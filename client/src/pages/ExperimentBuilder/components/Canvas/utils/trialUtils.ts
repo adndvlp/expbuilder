@@ -1,4 +1,5 @@
 import { Trial } from "../../ConfigurationPanel/types";
+export { generateUniqueName } from "../actions/generateUniqueName";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -30,19 +31,6 @@ export function findItemById(timeline: any[], id: number | string): any | null {
     return findLoopById(timeline, id);
   }
   return findTrialById(timeline, id);
-}
-
-export function generateUniqueName(
-  existingNames: string[],
-  baseName = "New Trial",
-): string {
-  let newName = baseName;
-  let counter = 1;
-  while (existingNames.includes(newName)) {
-    newName = `${baseName} ${counter}`;
-    counter++;
-  }
-  return newName;
 }
 
 export function collectAllBranchIds(timeline: any[]): Set<number | string> {

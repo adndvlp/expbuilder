@@ -12,6 +12,7 @@ import {
   removeItemFromScopes,
 } from "../graph/ownership.js";
 import { findLoop, normalizeScopeId } from "../graph/identity.js";
+import { allocateTrialId } from "../graph/itemIds.js";
 
 const router = Router();
 
@@ -33,7 +34,7 @@ router.post("/api/trial/:experimentID", async (req, res) => {
     }
     experimentDoc ??= await getExperimentDoc(experimentID, true);
 
-    const id = Date.now();
+    const id = allocateTrialId(experimentDoc);
     const newTrial = {
       ...trialData,
       id,

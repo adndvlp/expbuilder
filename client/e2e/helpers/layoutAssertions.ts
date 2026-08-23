@@ -47,12 +47,37 @@ export async function expectBelowAndCentered(
   sourceId: string,
   targetId: string,
 ) {
-  const [source, target] = await Promise.all([
-    nodeGeometry(canvas, sourceId),
-    nodeGeometry(canvas, targetId),
-  ]);
-  expect(Math.abs(source.centerX - target.centerX)).toBeLessThan(2);
-  expect(target.topY).toBeGreaterThan(source.bottomY);
+  await expect.poll(async () => {
+    const [source, target] = await Promise.all([
+      nodeGeometry(canvas, sourceId),
+      nodeGeometry(canvas, targetId),
+    ]);
+    return Math.abs(source.centerX - target.centerX);
+  }).toBeLessThan(2);
+  await expect.poll(async () => {
+    const [source, target] = await Promise.all([
+      nodeGeometry(canvas, sourceId),
+      nodeGeometry(canvas, targetId),
+    ]);
+    return target.topY - source.bottomY;
+  }).toBeGreaterThan(0);
+}
+
+async function fanGeometry(
+  canvas: Locator,
+  sourceId: string,
+  childIds: string[],
+) {
+  const source = await nodeGeometry(canvas, sourceId);
+  const children = await Promise.all(
+    childIds.map((childId) => nodeGeometry(canvas, childId)),
+  );
+  const centers = children.map((child) => child.centerX).sort((a, b) => a - b);
+  return {
+    source,
+    centers,
+    fanCenter: (centers[0]! + centers[centers.length - 1]!) / 2,
+  };
 }
 
 export async function expectBalancedFan(
@@ -61,16 +86,22 @@ export async function expectBalancedFan(
   childIds: string[],
   exitTargetIds: string[],
 ) {
+  await expect.poll(async () => {
+    const { source, centers } = await fanGeometry(canvas, sourceId, childIds);
+    return (
+      centers[0]! < source.centerX &&
+      centers[centers.length - 1]! > source.centerX
+    );
+  }).toBe(true);
+  await expect.poll(async () => {
+    const { source, fanCenter } = await fanGeometry(
+      canvas,
+      sourceId,
+      childIds,
+    );
+    return Math.abs(fanCenter - source.centerX);
+  }).toBeLessThan(2);
   const source = await nodeGeometry(canvas, sourceId);
-  const children = await Promise.all(
-    childIds.map((childId) => nodeGeometry(canvas, childId)),
-  );
-  const centers = children.map((child) => child.centerX).sort((a, b) => a - b);
-  expect(centers[0]).toBeLessThan(source.centerX);
-  expect(centers[centers.length - 1]).toBeGreaterThan(source.centerX);
-  expect(
-    Math.abs((centers[0]! + centers[centers.length - 1]!) / 2 - source.centerX),
-  ).toBeLessThan(2);
   const exits = await Promise.all(
     exitTargetIds.map((targetId) => nodeGeometry(canvas, targetId)),
   );

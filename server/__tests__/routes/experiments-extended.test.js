@@ -103,7 +103,7 @@ describe('POST /api/run-experiment/:experimentID', () => {
       .send({ generatedCode: 'jsPsych.run(timeline);' })
       .expect(200)
     expect(res.body.success).toBe(true)
-    expect(res.body.experimentUrl).toContain('RunExp')
+    expect(new URL(res.body.experimentUrl).pathname).toBe('/E1')
   })
 })
 

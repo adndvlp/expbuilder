@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router";
 import { PromptModal } from "./PromptModal";
 import { auth } from "../../lib/firebase";
+import { experimentAuthoringClient } from "../ExperimentBuilder/modules/experiment-authoring";
 const VITE_API = import.meta.env.VITE_API_URL;
 
 type Experiment = {
@@ -43,16 +44,16 @@ function Dashboard() {
     setShowPromptModal(false);
     setLoading(true);
 
-    const res = await fetch(`${VITE_API}/api/create-experiment`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-    const data = await res.json();
-
-    if (data.success) setExperiments((prev) => [...prev, data.experiment]);
-
-    setLoading(false);
+    try {
+      const experiment = await experimentAuthoringClient.createExperiment({
+        name,
+      });
+      setExperiments((prev) => [...prev, experiment]);
+    } catch (error) {
+      console.error("Error creating experiment:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Delete experiment

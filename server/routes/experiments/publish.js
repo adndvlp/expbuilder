@@ -12,6 +12,7 @@ import {
   GITHUB_FILE_LIMIT_BYTES,
   isPublishableMediaFile,
 } from "./media.js";
+import { applyGeneratedArtifact } from "./artifact.js";
 
 const router = Router();
 
@@ -44,11 +45,12 @@ function injectPublicAssets($, experiment, experimentID) {
     `<link href="https://unpkg.com/jspsych@8.2.2/css/jspsych.css" rel="stylesheet" type="text/css" />`,
   );
   $("head").append(`<script src="https://unpkg.com/jspsych@8.2.2"></script>`);
-  $("head").append(`<script src="${getDynamicPluginCdn()}"></script>`);
-
   const trialDoc = db.data.trials.find(
     (t) => t.experimentID === experimentID,
   );
+  if (trialDoc?.trials?.some((trial) => trial.plugin === "plugin-dynamic")) {
+    $("head").append(`<script src="${getDynamicPluginCdn()}"></script>`);
+  }
   const { scriptUrls, styleUrls } = getPluginScriptsFromTrials(
     trialDoc?.trials ?? [],
   );
@@ -186,10 +188,7 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     console.log(
       "Replacing script with PUBLIC experiment code for publishing...",
     );
-    $("script#generated-script").remove();
-    $("body").append(
-      `<script id=\"generated-script\">\n${generatedPublicCode}\n</script>`,
-    );
+    applyGeneratedArtifact($, generatedPublicCode);
 
     injectPublicAssets($, experiment, experimentID);
 

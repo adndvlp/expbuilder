@@ -19,6 +19,7 @@ export async function generateLoopCode(
   getLoopTimeline: GetLoopTimelineFn,
   getLoop: GetLoopFn,
   parentScopeMergePointIds: Set<string> = new Set(),
+  codegenOptions: { apiBaseUrl?: string; fetchImpl?: typeof fetch } = {},
 ): Promise<string> {
   try {
     // Fetch full loop data (including loopConditions and isConditionalLoop)
@@ -61,6 +62,7 @@ export async function generateLoopCode(
             true, // isInLoop = true
             fullLoop?.csvJson,
             isMergePoint(loopMergePointIds, item.id),
+            codegenOptions,
           );
 
           return {
@@ -75,12 +77,6 @@ export async function generateLoopCode(
             customOnFinish: fullTrial.customOnFinish || "",
           };
         } else if (item.type === "loop") {
-          // Recursively generate nested loop code
-          console.log(
-            `🔁 [GENERATE LOOP] Generating nested loop code for:`,
-            item.id,
-          );
-
           // Fetch full loop data using getLoop
           const fullNestedLoop = await getLoop(item.id);
 
@@ -103,11 +99,7 @@ export async function generateLoopCode(
             getLoopTimeline,
             getLoop,
             loopMergePointIds,
-          );
-
-          console.log(
-            `🔁 [GENERATE LOOP] Nested loop code generated, length:`,
-            nestedLoopCode?.length || 0,
+            codegenOptions,
           );
 
           return {
@@ -146,13 +138,6 @@ export async function generateLoopCode(
 
       unifiedStimuli.push(row);
     }
-
-    console.log("🔍 [ANALYSIS] Loop:", fullLoop.id);
-    console.log(
-      "🔍 [ANALYSIS] Combined unifiedStimuli from trials:",
-      unifiedStimuli,
-    );
-    console.log("🔍 [ANALYSIS] trialsWithCode.length:", trialsWithCode?.length);
 
     // Validar que trialsWithCode no esté vacío
     if (!trialsWithCode || trialsWithCode.length === 0) {

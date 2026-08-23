@@ -58,7 +58,6 @@ export type TrialsContextType = {
   updateTrial: (
     id: string | number,
     trial: Partial<Trial>,
-    newBranchTrial?: Trial,
   ) => Promise<Trial | null>;
   updateTrialField: (
     id: string | number,
@@ -74,7 +73,6 @@ export type TrialsContextType = {
   updateLoop: (
     id: string | number,
     loop: Partial<Loop>,
-    newBranchItem?: NewBranchItem,
   ) => Promise<Loop | null>;
   updateLoopField: (
     id: string | number,

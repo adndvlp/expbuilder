@@ -41,6 +41,13 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
   ];
   return `
       on_finish: async function() {
+        if (window.ExpBuilderNavigation.isTransitionPending()) {
+          window.ExpBuilderRuntime?.emit(
+            'experiment-finish-suppressed',
+            { reason: 'jump' }
+          );
+          return;
+        }
         _showLoading('Saving your data\u2026');
         await new Promise(r => setTimeout(r, 0));
         

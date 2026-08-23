@@ -227,7 +227,7 @@ describe("Canvas container", () => {
     expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(2, {
       branches: [],
     });
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(3, {
+    expect(mocks.trialsContext.updateTrial).not.toHaveBeenCalledWith(3, {
       branches: [2],
     });
 

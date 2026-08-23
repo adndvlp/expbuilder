@@ -14,6 +14,16 @@ export function buildLocalRuntime({
 }: LocalExperimentCodeOptions) {
   return `
   (async () => {
+    const _runtimeTrace = (type, payload) => {
+      if (window.ExpBuilderRuntime) {
+        window.ExpBuilderRuntime.emit(type, payload || {});
+      }
+    };
+    const _runtimeError = (error, context) => {
+      if (window.ExpBuilderRuntime) {
+        window.ExpBuilderRuntime.reportError(error, context || {});
+      }
+    };
 ${resumeJumpStartupCode()}
 
     // Esperar a que Socket.IO esté listo
@@ -58,9 +68,6 @@ ${resumeJumpStartupCode()}
 
     _hideLoading();
 
-    // Track pending data saves to ensure all complete before finishing
-    const pendingDataSaves = [];
-
     // Clean up stale jsPsych wrappers from previous runs (prevents stacking on restarts)
     document.querySelectorAll('.jspsych-content-wrapper').forEach(el => el.remove());
 
@@ -70,9 +77,19 @@ ${resumeJumpStartupCode()}
 
 
     ${extensions}
-    ${localParams.on_trial_start?.trim() ? `on_trial_start: function(trial) {\n      // --- User code (on_trial_start) ---\n      ${localParams.on_trial_start.trim()}\n    },` : ""}
+    on_trial_start: function(trial) {
+      const trialData = trial && trial.data ? trial.data : {};
+      _runtimeTrace('trial-start', {
+        builderId: trialData.builder_id ?? trialData.trial_id ?? null,
+        trialType: trial && trial.type ? String(trial.type.info?.name || trial.type) : null
+      });${localParams.on_trial_start?.trim() ? `\n      // --- User code (on_trial_start) ---\n      ${localParams.on_trial_start.trim()}` : ""}
+    },
 
     on_data_update: function (data) {
+      _runtimeTrace('trial-data', {
+        builderId: data.builder_id ?? data.trial_id ?? data.loop_id ?? null,
+        trialIndex: data.trial_index ?? null
+      });
       if (data.builder_id !== undefined && data.builder_id !== null) {
         localStorage.setItem('jsPsych_resumeTrial', JSON.stringify({
           branches: data.branches || [],
@@ -81,7 +98,7 @@ ${resumeJumpStartupCode()}
         }));
       }
       // Create and track the promise for this data save
-      const savePromise = fetch("/api/append-result/${experimentID}", {
+      window.ExpBuilderPersistence.track(fetch("/api/append-result/${experimentID}", {
         method: "PUT",
         headers: { "Content-Type": "application/json", Accept: "*/*" },
         body: JSON.stringify({
@@ -89,18 +106,18 @@ ${resumeJumpStartupCode()}
           response: data,
         }),
       })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Trial data save failed: ' + response.status);
+        }
+        window.ExpBuilderNavigation.onTrialPersisted(data);
+        return response;
+      })
       .catch(error => {
+        _runtimeError(error, { source: 'trial-data-save' });
         console.error('Error in on_data_update:', error);
       })
-      .finally(() => {
-        // Remove from pending once complete
-        const index = pendingDataSaves.indexOf(savePromise);
-        if (index > -1) {
-          pendingDataSaves.splice(index, 1);
-        }
-      });
-      
-      pendingDataSaves.push(savePromise);
+      );
       
       // Actualizar estado a 'in-progress' en la primera actualización
       if (data.trial_index === 0 && socket) {
@@ -115,9 +132,11 @@ ${resumeJumpStartupCode()}
     },
 
   on_finish: async function() {
-    if (pendingDataSaves.length > 0) {
-      await Promise.allSettled(pendingDataSaves);
+    if (window.ExpBuilderNavigation.isTransitionPending()) {
+      _runtimeTrace('experiment-finish-suppressed', { reason: 'jump' });
+      return;
     }
+    await window.ExpBuilderPersistence.whenIdle();
 
     _showLoading('Saving your data\u2026');
     await new Promise(r => setTimeout(r, 0));
@@ -136,6 +155,7 @@ ${resumeJumpStartupCode()}
         throw new Error('Session completion failed: ' + completeResponse.status);
       }
     } catch (error) {
+      _runtimeError(error, { source: 'session-completion' });
       console.error('Error completing session:', error);
       _setLoadingMsg('Error saving data. Please contact support.');
       return;
@@ -152,6 +172,10 @@ ${resumeJumpStartupCode()}
     localStorage.removeItem('jsPsych_resumeTrial');
     localStorage.removeItem('jsPsych_currentSessionId');
     localStorage.removeItem('jsPsych_participantNumber');
+    _runtimeTrace('experiment-finish', {
+      experimentID: '${experimentID}',
+      sessionId: trialSessionId
+    });
     _showSuccess();${localParams.on_finish?.trim() ? `\n    // --- User code (on_finish) ---\n    ${localParams.on_finish.trim()}` : ""}
   }${(() => {
     const BUILDER_PARAMS = ["on_trial_start", "on_data_update", "on_finish"];

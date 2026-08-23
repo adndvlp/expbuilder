@@ -1,9 +1,8 @@
 import { useCallback } from "react";
 import type { Loop } from "../../../components/ConfigurationPanel/types";
-import type { ExperimentGraphSnapshot } from "../../../modules/experiment-graph/types";
+import { experimentAuthoringClient } from "../../../modules/experiment-authoring";
 import type { LoopMethodsWithGetLoop } from "../types";
 
-const API_URL = import.meta.env.VITE_API_URL;
 const idsMatch = (left: string | number, right: string | number) =>
   String(left) === String(right);
 const graphFields = new Set(["name", "branches", "trials", "parentLoopId"]);
@@ -23,20 +22,11 @@ export default function useUpdateLoopField({
       updateSelectedLoop = true,
     ): Promise<boolean> => {
       try {
-        const response = await fetch(
-          `${API_URL}/api/loop/${experimentID}/${id}`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ [fieldName]: value }),
-          },
+        const data = await experimentAuthoringClient.updateLoop(
+          experimentID,
+          id,
+          { [fieldName]: value } as Partial<Loop>,
         );
-        if (!response.ok) throw new Error(`Failed to update ${fieldName}`);
-
-        const data = (await response.json()) as {
-          loop: Loop;
-          graph: ExperimentGraphSnapshot;
-        };
         if (graphFields.has(fieldName)) applyGraphSnapshot(data.graph);
         if (updateSelectedLoop) {
           setSelectedLoop((current) =>

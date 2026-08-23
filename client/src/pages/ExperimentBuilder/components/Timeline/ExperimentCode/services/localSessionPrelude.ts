@@ -168,6 +168,10 @@ export function buildLocalSessionPrelude({
       }),
     });
 
+    if (!res.ok) {
+      throw new Error('Session creation failed: ' + res.status);
+    }
+
     const result = await res.json();
     return result.participantNumber;
   }

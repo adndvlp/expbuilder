@@ -1,10 +1,8 @@
 import { useCallback } from "react";
 import type { Loop } from "../../../components/ConfigurationPanel/types";
-import type { NewBranchItem } from "../../../contexts/TrialsContext";
-import type { ExperimentGraphSnapshot } from "../../../modules/experiment-graph/types";
+import { experimentAuthoringClient } from "../../../modules/experiment-authoring";
 import type { LoopMethodsWithGetLoop } from "../types";
 
-const API_URL = import.meta.env.VITE_API_URL;
 const idsMatch = (left: string | number, right: string | number) =>
   String(left) === String(right);
 const affectsGraph = (updates: Partial<Loop>) =>
@@ -22,23 +20,13 @@ export default function useUpdateLoop({
     async (
       id: string | number,
       updates: Partial<Loop>,
-      _newBranchItem?: NewBranchItem,
     ): Promise<Loop | null> => {
       try {
-        const response = await fetch(
-          `${API_URL}/api/loop/${experimentID}/${id}`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(updates),
-          },
+        const data = await experimentAuthoringClient.updateLoop(
+          experimentID,
+          id,
+          updates,
         );
-        if (!response.ok) throw new Error("Failed to update loop");
-
-        const data = (await response.json()) as {
-          loop: Loop;
-          graph: ExperimentGraphSnapshot;
-        };
         if (affectsGraph(updates)) applyGraphSnapshot(data.graph);
         setSelectedLoop((current) =>
           current && idsMatch(current.id, id) ? data.loop : current,

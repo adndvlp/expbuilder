@@ -5,6 +5,12 @@ import type {
   GetLoopTimelineFn,
   GetTrialFn,
 } from "../../../utils/codegen/types";
+import {
+  generateExperimentBaseCode,
+  renderExperimentBaseCode,
+} from "./services/generateExperimentBaseCode";
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 type Props = {
   experimentID: string | undefined;
@@ -24,57 +30,20 @@ export default function ExperimentBase({
   canvasStyles,
 }: Props) {
   const generatedBaseCode = async () => {
-    let allCodes = "";
     try {
-      const { generateAllCodes } = await import(
-        "../../../utils/generateTrialLoopCodes"
-      );
-      const codes = await generateAllCodes(
-        experimentID || "",
+      return await generateExperimentBaseCode({
+        experimentID: experimentID || "",
         uploadedFiles,
         getTrial,
         getLoopTimeline,
         getLoop,
-      );
-      allCodes = codes.join("\n\n");
+        canvasStyles,
+        apiBaseUrl: API_URL,
+      });
     } catch (error) {
       console.error("Error generating codes:", error);
+      return renderExperimentBaseCode([], uploadedFiles, canvasStyles);
     }
-
-    const fullScreen = canvasStyles?.fullScreen ?? true;
-
-    return `const timeline = [];
-
-    // Global preload for all uploaded files from Timeline
-    ${
-      uploadedFiles.length > 0
-        ? `
-    const globalPreload = {
-      type: jsPsychPreload,
-      files: ${JSON.stringify(uploadedFiles.filter((f) => f && f.url).map((f) => f.url))}
-    };
-    timeline.push(globalPreload);
-    `
-        : ""
-    }
-
-    //Full screen
-    ${
-      fullScreen
-        ? `
-      timeline.push({
-      type: jsPsychFullscreen,
-      fullscreen_mode: true,
-      conditional_function: function() { return !document.fullscreenElement; }
-      });`
-        : ""
-    }
-
-    ${allCodes}
-
-    jsPsych.run(timeline);
-    
-`;
   };
   return { generatedBaseCode };
 }

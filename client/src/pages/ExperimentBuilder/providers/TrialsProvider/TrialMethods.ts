@@ -1,9 +1,8 @@
 import { useCallback } from "react";
 import type { Trial } from "../../components/ConfigurationPanel/types";
-import type { ExperimentGraphSnapshot } from "../../modules/experiment-graph/types";
+import { experimentAuthoringClient } from "../../modules/experiment-authoring";
 import type { TrialMethodsProps } from "./types";
 
-const API_URL = import.meta.env.VITE_API_URL;
 const idsMatch = (left: string | number, right: string | number) =>
   String(left) === String(right);
 const hasField = (updates: Partial<Trial>, field: keyof Trial) =>
@@ -12,11 +11,6 @@ const affectsGraph = (updates: Partial<Trial>) =>
   hasField(updates, "name") ||
   hasField(updates, "branches") ||
   hasField(updates, "parentLoopId");
-
-type TrialMutationResponse = {
-  trial: Trial;
-  graph: ExperimentGraphSnapshot;
-};
 
 export default function useTrialMethods({
   getSelectedTrial,
@@ -28,14 +22,10 @@ export default function useTrialMethods({
   const createTrial = useCallback(
     async (trial: Omit<Trial, "id">): Promise<Trial> => {
       try {
-        const response = await fetch(`${API_URL}/api/trial/${experimentID}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(trial),
-        });
-        if (!response.ok) throw new Error("Failed to create trial");
-
-        const data = (await response.json()) as TrialMutationResponse;
+        const data = await experimentAuthoringClient.createTrial(
+          experimentID,
+          trial,
+        );
         applyGraphSnapshot(data.graph);
         return data.trial;
       } catch (error: unknown) {
@@ -50,11 +40,7 @@ export default function useTrialMethods({
   const getTrial = useCallback(
     async (id: string | number): Promise<Trial | null> => {
       try {
-        const response = await fetch(
-          `${API_URL}/api/trial/${experimentID}/${id}`,
-        );
-        if (!response.ok) return null;
-        return ((await response.json()) as { trial: Trial }).trial;
+        return await experimentAuthoringClient.getTrial(experimentID, id);
       } catch (error: unknown) {
         console.error("Error getting trial:", error);
         return null;
@@ -67,20 +53,13 @@ export default function useTrialMethods({
     async (
       id: string | number,
       updates: Partial<Trial>,
-      _newBranchTrial?: Trial,
     ): Promise<Trial | null> => {
       try {
-        const response = await fetch(
-          `${API_URL}/api/trial/${experimentID}/${id}`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(updates),
-          },
+        const data = await experimentAuthoringClient.updateTrial(
+          experimentID,
+          id,
+          updates,
         );
-        if (!response.ok) throw new Error("Failed to update trial");
-
-        const data = (await response.json()) as TrialMutationResponse;
         if (affectsGraph(updates)) applyGraphSnapshot(data.graph);
         setSelectedTrial((current) =>
           current && idsMatch(current.id, id) ? data.trial : current,
@@ -104,17 +83,11 @@ export default function useTrialMethods({
     ): Promise<boolean> => {
       const updates = { [fieldName]: value } as Partial<Trial>;
       try {
-        const response = await fetch(
-          `${API_URL}/api/trial/${experimentID}/${id}`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(updates),
-          },
+        const data = await experimentAuthoringClient.updateTrial(
+          experimentID,
+          id,
+          updates,
         );
-        if (!response.ok) throw new Error(`Failed to update ${fieldName}`);
-
-        const data = (await response.json()) as TrialMutationResponse;
         if (affectsGraph(updates)) applyGraphSnapshot(data.graph);
         if (updateSelectedTrial) {
           setSelectedTrial((current) =>
@@ -140,15 +113,10 @@ export default function useTrialMethods({
   const deleteTrial = useCallback(
     async (id: string | number): Promise<boolean> => {
       try {
-        const response = await fetch(
-          `${API_URL}/api/trial/${experimentID}/${id}`,
-          { method: "DELETE" },
+        const data = await experimentAuthoringClient.deleteTrial(
+          experimentID,
+          id,
         );
-        if (!response.ok) throw new Error("Failed to delete trial");
-
-        const data = (await response.json()) as {
-          graph: ExperimentGraphSnapshot;
-        };
         applyGraphSnapshot(data.graph);
         const selected = getSelectedTrial();
         if (selected && idsMatch(selected.id, id)) setSelectedTrial(null);

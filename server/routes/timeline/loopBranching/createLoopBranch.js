@@ -5,14 +5,9 @@ import {
   getOwnedBranchIds,
   normalizeScopeId,
 } from "./scopeGraph.js";
+import { allocateTrialId } from "../graph/itemIds.js";
 
 const idsMatch = (left, right) => String(left) === String(right);
-
-function nextTrialId(experimentDoc) {
-  let id = Date.now();
-  while (experimentDoc.trials.some((trial) => idsMatch(trial.id, id))) id += 1;
-  return id;
-}
 
 function addUnique(branches, branchId) {
   return (branches ?? []).some((id) => idsMatch(id, branchId))
@@ -69,7 +64,7 @@ export function createLoopBranch(
         );
   const now = new Date().toISOString();
   const trial = {
-    id: nextTrialId(experimentDoc),
+    id: allocateTrialId(experimentDoc),
     type: "Trial",
     name: createUniqueItemName(experimentDoc, "New Trial", "New Trial"),
     plugin: "plugin-dynamic",

@@ -29,7 +29,6 @@ describe("scoped Canvas branch actions", () => {
     expect(dependencies.updateTrial).toHaveBeenCalledWith(
       1,
       { branches: [99] },
-      expect.objectContaining({ id: 99 }),
     );
     expect(dependencies.updateTimeline).toHaveBeenCalledWith([
       expect.objectContaining({ id: 1, branches: [99] }),
@@ -60,7 +59,6 @@ describe("scoped Canvas branch actions", () => {
     expect(dependencies.updateTrial).toHaveBeenCalledWith(
       10,
       { branches: [11, 99] },
-      expect.objectContaining({ id: 99 }),
     );
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
     expect(onSelectTrial).toHaveBeenCalled();
@@ -84,7 +82,6 @@ describe("scoped Canvas branch actions", () => {
     expect(dependencies.updateTrial).toHaveBeenCalledWith(
       10,
       { branches: [99] },
-      expect.objectContaining({ id: 99 }),
     );
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
   });
@@ -106,7 +103,6 @@ describe("scoped Canvas branch actions", () => {
     expect(dependencies.updateLoop).toHaveBeenCalledWith(
       "child-loop",
       { branches: [11, 99] },
-      expect.objectContaining({ id: 99 }),
     );
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
   });

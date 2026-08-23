@@ -1,5 +1,5 @@
 import type { Loop, Trial } from "../../ConfigurationPanel/types";
-import { generateUniqueName } from "../utils/trialUtils";
+import { generateUniqueName } from "./generateUniqueName";
 import { getScopeNames } from "./itemMutations";
 import type {
   CanvasItemId,

@@ -1,6 +1,6 @@
 import type { Trial } from "../../ConfigurationPanel/types";
 import type { TimelineItem } from "../../../contexts/TrialsContext";
-import { generateUniqueName } from "../utils/trialUtils";
+import { generateUniqueName } from "./generateUniqueName";
 import {
   getItemBranches,
   getScopeNames,
@@ -55,7 +55,6 @@ export async function addScopedBranchTrial(
     parentItem,
     [...parentBranches, trial.id],
     input.dependencies,
-    trial,
   );
 
   input.onSelectTrial?.(trial);
@@ -99,7 +98,6 @@ export async function addScopedParentTrial(
     parentItem,
     [trial.id],
     input.dependencies,
-    trial,
   );
 
   if (input.scope.kind === "root") {

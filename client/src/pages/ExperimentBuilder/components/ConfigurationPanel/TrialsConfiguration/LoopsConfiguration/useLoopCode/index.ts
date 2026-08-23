@@ -13,6 +13,7 @@ import {
   getTimelineItemName,
   isLoopData,
 } from "./services/timelineItemIdentity";
+import { toCodeIdentifier } from "../../../../../utils/codegen/codeIdentifier";
 
 type Props = {
   id: string | undefined;
@@ -53,9 +54,7 @@ export default function useLoopCode({
   mergePointIds = [],
   isMergePoint = false,
 }: Props) {
-  const sanitizeName = (name: string) => {
-    return name.replace(/[^a-zA-Z0-9_]/g, "_");
-  };
+  const sanitizeName = toCodeIdentifier;
 
   const genLoopCode = (): string => {
     // Sanitize the loop ID to use it in variable names
@@ -178,11 +177,7 @@ export default function useLoopCode({
         } else {
           test_stimuli_${loopIdSanitized} = categoryFilteredStimuli;
         }
-        
-        console.log("Participant:", participantNumber, "Category:", participantCategory);
-        console.log("Category indices:", categoryIndices);
-        console.log("Filtered stimuli:", test_stimuli_${loopIdSanitized});
-        } else {
+      } else if (stimuliOrders.length > 0) {
         // Original logic without categories
         const orderIndex = (participantNumber - 1) % stimuliOrders.length;
         const index_order = stimuliOrders[orderIndex];
@@ -190,10 +185,16 @@ export default function useLoopCode({
         test_stimuli_${loopIdSanitized} = index_order
           .filter((i) => i !== -1 && i >= 0 && i < test_stimuli_previous_${loopIdSanitized}.length)
           .map((i) => test_stimuli_previous_${loopIdSanitized}[i]);
-          
-        console.log(test_stimuli_${loopIdSanitized});
+      } else {
+        test_stimuli_${loopIdSanitized} = test_stimuli_previous_${loopIdSanitized};
       }
-    }`;
+    }
+    window.ExpBuilderRuntime?.emit("stimuli-selected", {
+      loopId: ${JSON.stringify(id ?? null)},
+      count: test_stimuli_${loopIdSanitized}.length,
+      orders: ${orders},
+      categories: ${categories}
+    });`;
     } else {
       code = `
 
@@ -242,9 +243,12 @@ export default function useLoopCode({
 
     code = branchesResult.code;
 
+    const appendRootProcedure = parentLoopId
+      ? ""
+      : `timeline.push(${loopIdSanitized}_procedure);`;
     code += `
 };
-timeline.push(${loopIdSanitized}_procedure);
+${appendRootProcedure}
 `;
 
     return code;

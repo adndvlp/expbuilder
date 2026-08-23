@@ -36,5 +36,7 @@ Dockerfile
 /test-results/
 /playwright-report/
 /blob-report/
+/runtime-report/
+/runtime-e2e/artifacts/
 /playwright/.cache/
 /playwright/.auth/

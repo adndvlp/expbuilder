@@ -11,6 +11,7 @@ import {
   stringifyWithFunctions,
   toCamelCase,
 } from "./services/phaseCodeFormatting";
+import { toCodeIdentifier } from "../../../../utils/codegen/codeIdentifier";
 
 type PhaseProps = {
   pluginName: string;
@@ -50,8 +51,7 @@ export const generatePhaseCode = ({
     if (!isInLoop || !parentLoopId) {
       return baseName;
     }
-    const sanitizeName = (name: string) => name.replace(/[^a-zA-Z0-9_]/g, "_");
-    const sanitizedParentId = sanitizeName(parentLoopId);
+    const sanitizedParentId = toCodeIdentifier(parentLoopId);
     return `loop_${sanitizedParentId}_${baseName}`;
   };
 

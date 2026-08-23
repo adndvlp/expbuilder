@@ -36,13 +36,10 @@ describe("generateRepeatConditionsCode", () => {
 
     expect(code).toContain("const repeatConditionsArray =");
     expect(code).toContain('"jumpToTrialId":7');
-    expect(code).toContain("Array.isArray(propValue)");
-    expect(code).toContain("return propValue.includes(compareValue);");
-    expect(code).toContain("columnName = rule.componentIdx + '_' + rule.prop;");
-    expect(code).toContain("case '>=':");
-    expect(code).toContain(
-      "localStorage.setItem('jsPsych_jumpToTrial', String(condition.jumpToTrialId));",
-    );
-    expect(code).toContain("jsPsych.run(timeline)");
+    expect(code).toContain("window.ExpBuilderBranching.evaluateCondition");
+    expect(code).toContain("window.ExpBuilderNavigation.requestJump(");
+    expect(code).toContain("sourceSessionId: trialSessionId");
+    expect(code).not.toContain("jsPsych.run(timeline)");
+    expect(code).not.toContain("document.getElementById");
   });
 });

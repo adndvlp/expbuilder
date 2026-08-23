@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { generateAllCodes } from "../../pages/ExperimentBuilder/utils/generateTrialLoopCodes";
+import { toCodeIdentifier } from "../../pages/ExperimentBuilder/utils/codegen/codeIdentifier";
 import { loop, timelineLoop, timelineTrial, trial } from "../helpers/trialFactories";
 
 vi.mock(
@@ -251,7 +252,9 @@ describe("codegen mega regression fixture", () => {
       mode: "query",
     });
 
-    expect(combined).toContain("const test_stimuli_Dynamic_Survey_Trial =");
+    expect(combined).toContain(
+      `const test_stimuli_${toCodeIdentifier("Dynamic Survey Trial")} =`,
+    );
     expect(combined).toContain("type: DynamicPlugin");
     expect(combined).toContain("SurveyComponent");
     expect(combined).toContain("ButtonResponseComponent");
@@ -259,13 +262,14 @@ describe("codegen mega regression fixture", () => {
     expect(combined).toContain("let test_stimuli_loop_parent = [];");
     expect(combined).toContain("const stimuliOrders = [[1,0]];");
     expect(combined).toContain('const categoryData = ["practice","main"];');
-    expect(combined).toContain('"stimulus_Loop_CSV_Trial": "loop A"');
-    expect(combined).toContain('"stimulus_Loop_CSV_Trial": "loop B"');
+    const loopTrialIdentifier = toCodeIdentifier("Loop CSV Trial");
+    expect(combined).toContain(`"stimulus_${loopTrialIdentifier}": "loop A"`);
+    expect(combined).toContain(`"stimulus_${loopTrialIdentifier}": "loop B"`);
     expect(combined).toContain("const paramsOverrideConditions =");
     expect(combined).toContain("loop_function: function(data)");
-    expect(combined).toContain("const loopConditionsArray =");
-    expect(combined).toContain("const repeatConditionsArray =");
-    expect(combined).toContain("localStorage.setItem('jsPsych_jumpToTrial'");
+    expect(combined).toContain("const loopConditions =");
+    expect(combined).toContain("const repeatConditions =");
+    expect(combined).toContain("window.ExpBuilderNavigation.requestJump(");
 
     expect(combined).toContain("loop_loop_parent_NextTrialId = nextTrialId;");
     expect(combined).toContain("loop_loop_parent_NextTrialId = branches[0];");

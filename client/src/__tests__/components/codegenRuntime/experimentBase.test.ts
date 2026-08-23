@@ -47,6 +47,11 @@ describe("ExperimentBaseHarness", () => {
       getTrial,
       getLoopTimeline,
       getLoop,
+      {
+        apiBaseUrl: "http://localhost:3000",
+        fetchImpl: undefined,
+        throwOnError: true,
+      },
     );
     expect(code).toContain("const timeline = [];");
     expect(code).toContain("type: jsPsychPreload");

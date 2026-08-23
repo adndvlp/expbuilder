@@ -12,6 +12,9 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
+    "test:runtime": "node runtime-e2e/run.mjs",
+    "test:runtime:headed": "node runtime-e2e/run.mjs --headed",
+    "test:runtime:debug": "node runtime-e2e/run.mjs --debug",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest"
   },

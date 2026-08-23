@@ -21,17 +21,20 @@ function executeStartup(options: {
   sessionStorage: MemoryStorage;
   isResuming: boolean;
   resolveResumeBranch: (raw: string) => string | null;
+  emit?: (type: string, payload: Record<string, unknown>) => void;
 }) {
   const execute = new Function(
     "localStorage",
     "sessionStorage",
     "initialIsResuming",
     "_resolveResumeBranch",
+    "emit",
     `
       let isResuming = initialIsResuming;
       let trialSessionId = 'existing-session';
       const crypto = { randomUUID: () => 'fresh-session' };
       const _generateSessionName = () => null;
+      const window = { ExpBuilderRuntime: { emit } };
       ${resumeJumpStartupCode()}
       return { isResuming, trialSessionId };
     `,
@@ -40,6 +43,7 @@ function executeStartup(options: {
     sessionStorage: MemoryStorage,
     isResuming: boolean,
     resolveResumeBranch: (raw: string) => string | null,
+    emit: (type: string, payload: Record<string, unknown>) => void,
   ) => { isResuming: boolean; trialSessionId: string };
 
   return execute(
@@ -47,6 +51,7 @@ function executeStartup(options: {
     options.sessionStorage,
     options.isResuming,
     options.resolveResumeBranch,
+    options.emit ?? (() => undefined),
   );
 }
 
@@ -58,20 +63,31 @@ describe("resume/jump startup protocol", () => {
       jsPsych_currentSessionId: "old-session",
       jsPsych_participantNumber: "7",
     });
-    const sessionStorage = createStorage({ jsPsych_jumpReload: "1" });
+    const sessionStorage = createStorage({
+      jsPsych_jumpReload: "1",
+      jsPsych_jumpContext: JSON.stringify({ conditionId: 9 }),
+    });
     const resolver = vi.fn(() => null);
+    const emit = vi.fn();
 
     const result = executeStartup({
       localStorage,
       sessionStorage,
       isResuming: true,
       resolveResumeBranch: resolver,
+      emit,
     });
 
     expect(localStorage.getItem("jsPsych_jumpToTrial")).toBe("42");
     expect(localStorage.getItem("jsPsych_resumeTrial")).toBeNull();
     expect(sessionStorage.getItem("jsPsych_jumpReload")).toBeNull();
+    expect(sessionStorage.getItem("jsPsych_jumpContext")).toBeNull();
     expect(resolver).not.toHaveBeenCalled();
+    expect(emit).toHaveBeenCalledWith("jump-reload-resume", {
+      conditionId: 9,
+      targetId: "42",
+      newSessionId: "fresh-session",
+    });
     expect(result).toEqual({
       isResuming: false,
       trialSessionId: "fresh-session",

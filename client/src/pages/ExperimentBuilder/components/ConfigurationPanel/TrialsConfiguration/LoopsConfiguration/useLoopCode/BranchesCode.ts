@@ -12,211 +12,98 @@ type Props = {
   isMergePoint?: boolean;
 };
 
+const activateBranch = (parentLoopIdSanitized?: string | null) =>
+  parentLoopIdSanitized
+    ? `
+    loop_${parentLoopIdSanitized}_NextTrialId = branchDecision.targetId;
+    loop_${parentLoopIdSanitized}_SkipRemaining = true;
+    loop_${parentLoopIdSanitized}_BranchingActive = true;
+    loop_${parentLoopIdSanitized}_BranchCustomParameters = branchDecision.customParameters;`
+    : `
+    window.nextTrialId = branchDecision.targetId;
+    window.skipRemaining = true;
+    window.branchingActive = true;
+    window.branchCustomParameters = branchDecision.customParameters;`;
+
+const resolveTerminalBranch = (isMergePoint: boolean) =>
+  isMergePoint
+    ? `
+    window.nextTrialId = null;
+    window.skipRemaining = false;
+    window.branchingActive = false;
+    window.branchCustomParameters = null;`
+    : `
+    jsPsych.abortExperiment('', {});`;
+
 function BranchesCode({
   code,
   hasBranchesLoop,
-  branches,
-  branchConditions,
-  repeatConditions,
+  branches = [],
+  branchConditions = [],
+  repeatConditions = [],
   loopIdSanitized,
   parentLoopIdSanitized,
   isMergePoint = false,
   id,
 }: Props) {
-  // Branching logic for the loop (same as trials)
-  const hasBranches = hasBranchesLoop;
-  const hasMultipleBranches = branches && branches.length > 1;
-  const hasBranchConditions = branchConditions && branchConditions.length > 0;
-  const hasRepeatConditions = repeatConditions && repeatConditions.length > 0;
-  const activateBranchCode = parentLoopIdSanitized
+  const loopId = JSON.stringify(id ?? null);
+  const repeatCode = repeatConditions.length
     ? `
-        loop_${parentLoopIdSanitized}_NextTrialId = branches[0];
-        loop_${parentLoopIdSanitized}_SkipRemaining = true;
-        loop_${parentLoopIdSanitized}_BranchingActive = true;`
-    : `
-        window.nextTrialId = branches[0];
-        window.skipRemaining = true;
-        window.branchingActive = true;`;
+  const repeatConditions = ${JSON.stringify(repeatConditions)};
+  const matchedRepeatCondition = repeatConditions.find(
+    condition => condition?.jumpToTrialId &&
+      window.ExpBuilderBranching.evaluateCondition(loopLastData, condition)
+  );
+  if (matchedRepeatCondition) {
+    window.ExpBuilderRuntime?.emit('repeat-decision', {
+      sourceId: ${loopId},
+      conditionId: matchedRepeatCondition.id ?? null,
+      targetId: matchedRepeatCondition.jumpToTrialId
+    });
+    window.ExpBuilderNavigation.requestJump(
+      matchedRepeatCondition.jumpToTrialId,
+      {
+        sourceId: ${loopId},
+        conditionId: matchedRepeatCondition.id ?? null,
+        sourceSessionId: trialSessionId
+      },
+      loopLastData,
+      () => jsPsych.pauseExperiment()
+    );
+    return;
+  }`
+    : "";
 
-  if (hasBranches || hasRepeatConditions) {
-    // If it has branches or repeat conditions, generate full on_finish
-    if (hasRepeatConditions) {
-      // Generate on_finish with evaluation of repeat conditions
-      code += `
+  const branchCode = hasBranchesLoop
+    ? `
+  if (!loop_${loopIdSanitized}_ShouldBranchOnFinish &&
+      !loop_${loopIdSanitized}_BranchingActive) {
+    const branchDecision = window.ExpBuilderBranching.decide(
+      loopLastData,
+      ${JSON.stringify(branches)},
+      ${JSON.stringify(branchConditions)}
+    );
+    window.ExpBuilderRuntime?.emit('branch-decision', {
+      sourceType: 'loop',
+      sourceId: ${loopId},
+      targetId: branchDecision.targetId,
+      conditionId: branchDecision.conditionId,
+      usedDefault: branchDecision.usedDefault
+    });
+    if (branchDecision.targetId !== null) {${activateBranch(parentLoopIdSanitized)}
+    }
+  }`
+    : `
+  if (window.branchingActive && !loop_${loopIdSanitized}_BranchingActive) {${resolveTerminalBranch(isMergePoint)}
+  }`;
+
+  return {
+    code: `${code}
   on_finish: function(data) {
-    // Evaluate repeat conditions (to restart the experiment from a specific trial)
-    const repeatConditionsArray = ${JSON.stringify(repeatConditions)};
-    
-    let shouldRepeat = false;
-    for (const condition of repeatConditionsArray) {
-      if (!condition || !condition.rules) {
-        continue;
-      }
-      
-      // Get the last trial data from the loop
-      const loopData = jsPsych.data.get().filter({loop_id: "${id}"}).values();
-      if (loopData.length === 0) continue;
-      
-      const lastTrialData = loopData[loopData.length - 1];
-      
-      // All rules in a condition must be true (AND logic)
-      const allRulesMatch = condition.rules.every(rule => {
-        // Construct column name from componentIdx and prop if column is empty
-        let columnName = rule.column || "";
-        if (!columnName && rule.componentIdx && rule.prop) {
-          columnName = rule.componentIdx + '_' + rule.prop;
-        } else if (!columnName && rule.prop) {
-          columnName = rule.prop;
-        }
-        
-        const propValue = lastTrialData[columnName];
-        const compareValue = rule.value;
-        
-        // Convert values for comparison
-        const numPropValue = parseFloat(propValue);
-        const numCompareValue = parseFloat(compareValue);
-        const isNumeric = !isNaN(numPropValue) && !isNaN(numCompareValue);
-        
-        switch (rule.op) {
-          case '==':
-            return isNumeric ? numPropValue === numCompareValue : propValue == compareValue;
-          case '!=':
-            return isNumeric ? numPropValue !== numCompareValue : propValue != compareValue;
-          case '>':
-            return isNumeric && numPropValue > numCompareValue;
-          case '<':
-            return isNumeric && numPropValue < numCompareValue;
-          case '>=':
-            return isNumeric && numPropValue >= numCompareValue;
-          case '<=':
-            return isNumeric && numPropValue <= numCompareValue;
-          default:
-            return false;
-        }
-      });
-      
-      if (allRulesMatch && condition.jumpToTrialId) {
-        console.log('Loop repeat condition matched! Jumping to trial:', condition.jumpToTrialId);
-        localStorage.setItem('jsPsych_jumpToTrial', String(condition.jumpToTrialId));
-        shouldRepeat = true;
-        break;
-      }
-    }
-    
-    if (shouldRepeat) {
-      document.getElementById('jspsych-container').innerHTML = '';
-      setTimeout(() => {
-        jsPsych.run(timeline);
-      }, 100);
-      return;
-    }
-    
-    ${
-      hasBranches
-        ? hasMultipleBranches && hasBranchConditions
-          ? `
-    // Evaluate loop conditions for branching
-    // Only if it was NOT activated from an internal trial (ShouldBranchOnFinish or BranchingActive)
-    if (!loop_${loopIdSanitized}_ShouldBranchOnFinish && !loop_${loopIdSanitized}_BranchingActive) {
-      const branches = [${branches.map((b) => (typeof b === "string" ? `"${b}"` : b))}];
-      const branchConditions = ${JSON.stringify(branchConditions)};
-      
-      // TODO: Implement condition evaluation if necessary
-      // For now, follow the first branch
-      if (branches.length > 0) {
-${activateBranchCode}
-        console.log('Loop on_finish: branching to', branches[0]);
-      }
-    }
-    `
-          : `
-    // Automatic branching to the first branch of the loop
-    // Only if it was NOT activated from an internal trial (ShouldBranchOnFinish or BranchingActive)
-    if (!loop_${loopIdSanitized}_ShouldBranchOnFinish && !loop_${loopIdSanitized}_BranchingActive) {
-      const branches = [${branches?.map((b) => (typeof b === "string" ? `"${b}"` : b)) ?? []}];
-      if (branches.length > 0) {
-${activateBranchCode}
-        console.log('Loop on_finish: branching to', branches[0]);
-      }
-    }
-    `
-        : `
-    // This loop has no branches, it is a terminal loop
-    // If we get here after branching, end the experiment
-    if (window.branchingActive && !loop_${loopIdSanitized}_BranchingActive) {
-      ${
-        isMergePoint
-          ? `
-      window.nextTrialId = null;
-      window.skipRemaining = false;
-      window.branchingActive = false;
-      window.branchCustomParameters = null;`
-          : `
-      jsPsych.abortExperiment('', {});
-      `
-      }
-    }
-    `
-    }
-  },`;
-    } else {
-      // If it has branches but NO repeat conditions
-      if (!hasMultipleBranches || !hasBranchConditions) {
-        // If there is only one branch OR there are no conditions, automatically follow the first branch
-        code += `
-  on_finish: function(data) {
-    // Automatic branching to the first branch of the loop
-    // Only if it was NOT activated from an internal trial (ShouldBranchOnFinish or BranchingActive)
-    if (!loop_${loopIdSanitized}_ShouldBranchOnFinish && !loop_${loopIdSanitized}_BranchingActive) {
-      const branches = [${branches?.map((b) => (typeof b === "string" ? `"${b}"` : b)) ?? []}];
-      if (branches.length > 0) {
-${activateBranchCode}
-        console.log('Loop on_finish: branching to', branches[0]);
-      }
-    }
-  },`;
-      } else {
-        // If there are multiple branches AND conditions, we need to evaluate them
-        code += `
-  on_finish: function(data) {
-    // Evaluate loop conditions for branching
-    // Only if it was NOT activated from an internal trial (ShouldBranchOnFinish or BranchingActive)
-    if (!loop_${loopIdSanitized}_ShouldBranchOnFinish && !loop_${loopIdSanitized}_BranchingActive) {
-      const branches = [${branches.map((b) => (typeof b === "string" ? `"${b}"` : b))}];
-      const branchConditions = ${JSON.stringify(branchConditions)};
-      
-      // TODO: Implement condition evaluation if necessary
-      // For now, follow the first branch
-      if (branches.length > 0) {
-${activateBranchCode}
-        console.log('Loop on_finish: branching to', branches[0]);
-      }
-    }
-  },`;
-      }
-    }
-  } else {
-    // Terminal loop: has no branches or repeat conditions
-    code += `
-  on_finish: function(data) {
-    // This loop has no branches or repeat conditions, it is a terminal loop
-    // If we get here after branching, end the experiment
-    if (window.branchingActive && !loop_${loopIdSanitized}_BranchingActive) {
-      ${
-        isMergePoint
-          ? `
-      window.nextTrialId = null;
-      window.skipRemaining = false;
-      window.branchingActive = false;
-      window.branchCustomParameters = null;`
-          : `
-      jsPsych.abortExperiment('', {});
-      `
-      }
-    }
-  },`;
-  }
-  return { code };
+  const loopRows = jsPsych.data.get().filter({loop_id: ${loopId}}).values();
+  const loopLastData = loopRows[loopRows.length - 1] || data || {};${repeatCode}${branchCode}
+  },`,
+  };
 }
 
 export default BranchesCode;

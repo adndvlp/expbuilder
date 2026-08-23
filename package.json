@@ -6,6 +6,9 @@
     "name": "Andrés Pacheco Fabián",
     "email": "andngdv.lpr@gmail.com"
   },
+  "workspaces": [
+    "server/dynamicplugin"
+  ],
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "electron": "^43.2.0",
@@ -60,6 +63,7 @@
   "main": "main.js",
   "type": "module",
   "scripts": {
+    "postinstall": "npm run build --workspace=jspsych-expbuilder-plugin-dynamic",
     "electron": "electron .",
     "build:electron": "electron-builder",
     "lint": "eslint .",

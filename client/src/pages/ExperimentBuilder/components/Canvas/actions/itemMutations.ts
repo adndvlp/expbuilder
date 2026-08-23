@@ -1,4 +1,3 @@
-import type { Trial } from "../../ConfigurationPanel/types";
 import type { TimelineItem } from "../../../contexts/TrialsContext";
 import type {
   CanvasActionDependencies,
@@ -15,16 +14,11 @@ export async function updateItemBranches(
   item: TimelineItem,
   branches: (string | number)[],
   dependencies: CanvasActionDependencies,
-  newBranchTrial?: Trial,
 ) {
   if (item.type === "trial") {
-    return newBranchTrial
-      ? dependencies.updateTrial(item.id, { branches }, newBranchTrial)
-      : dependencies.updateTrial(item.id, { branches });
+    return dependencies.updateTrial(item.id, { branches });
   }
-  return newBranchTrial
-    ? dependencies.updateLoop(item.id, { branches }, newBranchTrial)
-    : dependencies.updateLoop(item.id, { branches });
+  return dependencies.updateLoop(item.id, { branches });
 }
 
 export async function getItemBranches(

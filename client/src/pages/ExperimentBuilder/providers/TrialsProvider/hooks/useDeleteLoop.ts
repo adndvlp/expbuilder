@@ -1,8 +1,7 @@
 import { useCallback } from "react";
-import type { ExperimentGraphSnapshot } from "../../../modules/experiment-graph/types";
+import { experimentAuthoringClient } from "../../../modules/experiment-authoring";
 import type { LoopMethodsWithGetLoop } from "../types";
 
-const API_URL = import.meta.env.VITE_API_URL;
 const idsMatch = (left: string | number, right: string | number) =>
   String(left) === String(right);
 
@@ -16,15 +15,10 @@ export default function useDeleteLoop({
   return useCallback(
     async (id: string | number): Promise<boolean> => {
       try {
-        const response = await fetch(
-          `${API_URL}/api/loop/${experimentID}/${id}`,
-          { method: "DELETE" },
+        const data = await experimentAuthoringClient.deleteLoop(
+          experimentID,
+          id,
         );
-        if (!response.ok) throw new Error("Failed to delete loop");
-
-        const data = (await response.json()) as {
-          graph: ExperimentGraphSnapshot;
-        };
         applyGraphSnapshot(data.graph);
         if (selectedLoop && idsMatch(selectedLoop.id, id)) {
           setSelectedLoop(null);

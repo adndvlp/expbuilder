@@ -8,6 +8,7 @@ import {
 import { createUniqueItemName } from "../uniqueItemName.js";
 import { buildExperimentGraph } from "../graph/buildExperimentGraph.js";
 import { moveItemToScope } from "../graph/ownership.js";
+import { allocateLoopId } from "../graph/itemIds.js";
 
 const router = Router();
 
@@ -18,7 +19,7 @@ router.post("/api/loop/:experimentID", async (req, res) => {
     const loopData = req.body;
     const experimentDoc = await getExperimentDoc(experimentID, true);
 
-    const id = "loop_" + Date.now();
+    const id = allocateLoopId(experimentDoc);
     const newLoop = {
       ...loopData,
       id,

@@ -1,14 +1,15 @@
 import { Router } from "express";
-import { db } from "../../utils/db.js";
+import {
+  appendSessionResult,
+  completeSession,
+  createSession,
+  getSession,
+  listSessions,
+  nextParticipantNumber,
+  saveOnlineSession,
+} from "../../runtime/sessionStore.js";
 
 const router = Router();
-
-function getParticipantNumber(experimentID, sessionId) {
-  const sessions = db.data.sessionResults
-    .filter((s) => s.experimentID === experimentID)
-    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-  return sessions.findIndex((s) => s.sessionId === sessionId) + 1;
-}
 
 /* istanbul ignore next -- session creation error branches are covered by route smoke tests. */
 router.post("/api/append-result/:experimentID", async (req, res) => {
@@ -20,33 +21,21 @@ router.post("/api/append-result/:experimentID", async (req, res) => {
         .json({ success: false, error: "sessionId required" });
     }
 
-    await db.read();
-    let existing = db.data.sessionResults.find(
-      (s) =>
-        s.experimentID === req.params.experimentID && s.sessionId === sessionId,
+    const result = await createSession(
+      req.params.experimentID,
+      sessionId,
+      req.body.metadata || {},
     );
-    if (existing) {
+    if (!result.created) {
       return res
         .status(409)
         .json({ success: false, error: "Session already exists" });
     }
 
-    const { metadata } = req.body;
-    db.data.sessionResults.push({
-      experimentID: req.params.experimentID,
-      sessionId,
-      createdAt: new Date().toISOString(),
-      data: [],
-      state: "initiated",
-      lastUpdate: new Date().toISOString(),
-      metadata: metadata || {},
-    });
-    await db.write();
-
     res.json({
       success: true,
       id: sessionId,
-      participantNumber: getParticipantNumber(req.params.experimentID, sessionId),
+      participantNumber: result.participantNumber,
     });
   /* istanbul ignore next -- lowdb write failures are defensive and hard to trigger without corrupting shared state. */
   } catch (err) {
@@ -66,26 +55,21 @@ router.put("/api/append-result/:experimentID", async (req, res) => {
 
     if (typeof response === "string") response = JSON.parse(response);
 
-    await db.read();
-    let existing = db.data.sessionResults.find(
-      (s) =>
-        s.experimentID === req.params.experimentID && s.sessionId === sessionId,
+    const result = await appendSessionResult(
+      req.params.experimentID,
+      sessionId,
+      response,
     );
-    if (!existing) {
+    if (!result.found) {
       return res
         .status(404)
         .json({ success: false, error: "Session not found" });
     }
 
-    existing.data.push(response);
-    existing.state = "in-progress";
-    existing.lastUpdate = new Date().toISOString();
-    await db.write();
-
     res.json({
       success: true,
       id: sessionId,
-      participantNumber: getParticipantNumber(req.params.experimentID, sessionId),
+      participantNumber: result.participantNumber,
     });
   /* istanbul ignore next -- malformed JSON / lowdb failures are defensive error handling. */
   } catch (err) {
@@ -96,17 +80,33 @@ router.put("/api/append-result/:experimentID", async (req, res) => {
 /* istanbul ignore next -- session listing error branch is defensive lowdb handling. */
 router.get("/api/session-results/:experimentID", async (req, res) => {
   try {
-    await db.read();
-    const sessions = db.data.sessionResults
-      .filter((s) => s.experimentID === req.params.experimentID)
-      .map(({ data, ...session }) => session)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const sessions = await listSessions(req.params.experimentID);
     res.json({ sessions });
   /* istanbul ignore next -- lowdb read failure path. */
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
+router.get(
+  "/api/session-result/:experimentID/:sessionId",
+  async (req, res) => {
+    try {
+      const session = await getSession(
+        req.params.experimentID,
+        req.params.sessionId,
+      );
+      if (!session) {
+        return res
+          .status(404)
+          .json({ success: false, error: "Session not found" });
+      }
+      return res.json({ success: true, session });
+    } catch (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  },
+);
 
 router.post("/api/complete-session/:experimentID", async (req, res) => {
   try {
@@ -117,21 +117,15 @@ router.post("/api/complete-session/:experimentID", async (req, res) => {
         .json({ success: false, error: "sessionId required" });
     }
 
-    await db.read();
-    const existing = db.data.sessionResults.find(
-      (s) =>
-        s.experimentID === req.params.experimentID && s.sessionId === sessionId,
+    const completed = await completeSession(
+      req.params.experimentID,
+      sessionId,
     );
-
-    if (!existing) {
+    if (!completed) {
       return res
         .status(404)
         .json({ success: false, error: "Session not found" });
     }
-
-    existing.state = "completed";
-    existing.lastUpdate = new Date().toISOString();
-    await db.write();
 
     res.json({ success: true });
   /* istanbul ignore next -- lowdb write failure path. */
@@ -152,31 +146,12 @@ router.post(
           .json({ success: false, error: "sessionId required" });
       }
 
-      await db.read();
-      const existing = db.data.sessionResults.find(
-        (s) =>
-          s.experimentID === req.params.experimentID &&
-          s.sessionId === sessionId,
+      await saveOnlineSession(
+        req.params.experimentID,
+        sessionId,
+        metadata,
+        state,
       );
-
-      if (existing) {
-        if (metadata) existing.metadata = { ...existing.metadata, ...metadata };
-        if (state) existing.state = state;
-        existing.lastUpdate = new Date().toISOString();
-      } else {
-        db.data.sessionResults.push({
-          experimentID: req.params.experimentID,
-          sessionId,
-          createdAt: new Date().toISOString(),
-          data: [],
-          state: state || "initiated",
-          lastUpdate: new Date().toISOString(),
-          metadata: metadata || {},
-          isOnline: true,
-        });
-      }
-
-      await db.write();
       res.json({ success: true });
     /* istanbul ignore next -- lowdb write failure path. */
     } catch (err) {
@@ -187,11 +162,10 @@ router.post(
 
 router.get("/api/participant-number/:experimentID", async (req, res) => {
   try {
-    await db.read();
-    const count = db.data.sessionResults.filter(
-      (s) => s.experimentID === req.params.experimentID,
-    ).length;
-    res.json({ participantNumber: count + 1 });
+    const participantNumber = await nextParticipantNumber(
+      req.params.experimentID,
+    );
+    res.json({ participantNumber });
   /* istanbul ignore next -- lowdb read failure path. */
   } catch (err) {
     res.status(500).json({ error: err.message });

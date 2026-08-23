@@ -218,9 +218,18 @@ describe("Canvas container", () => {
             ([id]: [number | string]) => id === destinationId,
           ),
         ).toBe(false);
-      } else {
+      } else if (mode === "branch") {
         expect(destinationUpdater).toHaveBeenCalledWith(destinationId, {
           branches: [2],
+        });
+      } else {
+        expect(
+          destinationUpdater.mock.calls.some(
+            ([id]: [number | string]) => id === destinationId,
+          ),
+        ).toBe(false);
+        expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(2, {
+          branches: [],
         });
       }
     },

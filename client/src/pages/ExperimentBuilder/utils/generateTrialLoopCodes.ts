@@ -16,17 +16,27 @@ export {
 } from "./codegen/columnValues";
 export type { UploadedFile } from "./codegen/types";
 
+export type TimelineCodegenOptions = {
+  apiBaseUrl?: string;
+  fetchImpl?: typeof fetch;
+  throwOnError?: boolean;
+};
+
 export async function generateAllCodes(
   experimentID: string,
   uploadedFiles: UploadedFile[] = [],
   getTrial: GetTrialFn,
   getLoopTimeline: GetLoopTimelineFn,
   getLoop: GetLoopFn,
+  options: TimelineCodegenOptions = {},
 ): Promise<string[]> {
   try {
     // Fetch timeline metadata
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/trials-metadata/${experimentID}`,
+    const fetchImpl = options.fetchImpl ?? fetch;
+    const apiBaseUrl =
+      options.apiBaseUrl ?? import.meta.env.VITE_API_URL ?? "";
+    const response = await fetchImpl(
+      `${apiBaseUrl}/api/trials-metadata/${experimentID}`,
     );
 
     if (!response.ok) {
@@ -50,6 +60,7 @@ export async function generateAllCodes(
           false,
           undefined,
           isMergePoint(topLevelMergePointIds, item.id),
+          options,
         );
         if (result.code) codes.push(result.code);
       } else if (item.type === "loop") {
@@ -62,6 +73,7 @@ export async function generateAllCodes(
           getLoopTimeline,
           getLoop,
           topLevelMergePointIds,
+          options,
         );
         if (code) codes.push(code);
       }
@@ -69,6 +81,7 @@ export async function generateAllCodes(
 
     return codes;
   } catch (error) {
+    if (options.throwOnError) throw error;
     console.error("Error generating codes:", error);
     return [];
   }

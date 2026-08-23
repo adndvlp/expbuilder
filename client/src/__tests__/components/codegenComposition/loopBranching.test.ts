@@ -1,4 +1,5 @@
 import { describe, expect, it, normalize, useLoopCode } from "./testHarness";
+import { toCodeIdentifier } from "../../../pages/ExperimentBuilder/utils/codegen/codeIdentifier";
 
 describe("useLoopCode composition", () => {
   it("checks a newly requested loop branch target before suppressing remaining wrappers", () => {
@@ -100,7 +101,9 @@ describe("useLoopCode composition", () => {
 
     const code = normalize(genLoopCode());
 
-    expect(code).toContain("const Shared_Target_wrapper =");
+    expect(code).toContain(
+      `const ${toCodeIdentifier("Shared Target")}_wrapper =`,
+    );
     expect(code).toContain("loop_loop_merge_NextTrialId = null;");
     expect(code).toContain("loop_loop_merge_SkipRemaining = false;");
     expect(code).toContain("loop_loop_merge_TargetExecuted = false;");
@@ -152,13 +155,14 @@ describe("useLoopCode composition", () => {
 
     const code = normalize(genLoopCode());
 
-    expect(code).toContain("const repeatConditionsArray =");
+    expect(code).toContain("const repeatConditions =");
     expect(code).toContain(
-      'const loopData = jsPsych.data.get().filter({loop_id: "loop_combo"}).values();',
+      'const loopRows = jsPsych.data.get().filter({loop_id: "loop_combo"}).values();',
     );
-    expect(code).toContain("columnName = rule.componentIdx + '_' + rule.prop;");
-    expect(code).toContain('const branches = [10,"loop_next"];');
-    expect(code).toContain("const branchConditions =");
+    expect(code).toContain("window.ExpBuilderBranching.evaluateCondition");
+    expect(code).toContain("window.ExpBuilderNavigation.requestJump(");
+    expect(code).toContain('const branches = [10, "loop_next"];');
+    expect(code).toContain("window.ExpBuilderBranching.decide(");
     expect(code).toContain("window.nextTrialId = branches[0];");
   });
 });

@@ -4,7 +4,18 @@ export function resumeJumpStartupCode(): string {
     const existingJump = localStorage.getItem('jsPsych_jumpToTrial');
     const comingFromJumpReload =
       sessionStorage.getItem('jsPsych_jumpReload') === '1';
+    const jumpContextRaw = sessionStorage.getItem('jsPsych_jumpContext');
     sessionStorage.removeItem('jsPsych_jumpReload');
+    sessionStorage.removeItem('jsPsych_jumpContext');
+
+    let jumpContext = {};
+    if (jumpContextRaw) {
+      try {
+        jumpContext = JSON.parse(jumpContextRaw);
+      } catch (error) {
+        jumpContext = {};
+      }
+    }
 
     const startFreshRoutedSession = () => {
       localStorage.removeItem('jsPsych_resumeTrial');
@@ -20,6 +31,11 @@ export function resumeJumpStartupCode(): string {
       // A repeat condition reloaded the page to execute this exact target.
       // The timeline wrappers own consumption, so the target must survive startup.
       startFreshRoutedSession();
+      window.ExpBuilderRuntime?.emit('jump-reload-resume', {
+        ...jumpContext,
+        targetId: String(existingJump),
+        newSessionId: String(trialSessionId)
+      });
     } else if (isResuming && resumeRaw && !existingJump) {
       const resumeTarget = _resolveResumeBranch(resumeRaw);
       if (resumeTarget !== null) {

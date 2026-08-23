@@ -1,49 +1,30 @@
 import fs from "fs";
 import path from "path";
 import { Router } from "express";
-import { db, userDataRoot } from "../../utils/db.js";
+import { removeSession, renameSession } from "../../runtime/sessionStore.js";
+import { userDataRoot } from "../../utils/db.js";
 
 const router = Router();
-
-function getExperimentName(experimentID) {
-  const experiment = db.data.experiments?.find(
-    (e) => e.experimentID === experimentID,
-  );
-  return experiment?.name || experimentID;
-}
 
 /* istanbul ignore next -- participant-file cleanup permutations are covered by route tests. */
 router.delete(
   "/api/session-results/:sessionId/:experimentID",
   async (req, res) => {
     try {
-      await db.read();
-      const sessionIndex = db.data.sessionResults.findIndex(
-        (s) =>
-          s.experimentID === req.params.experimentID &&
-          s.sessionId === req.params.sessionId,
+      const result = await removeSession(
+        req.params.experimentID,
+        req.params.sessionId,
       );
-
-      if (sessionIndex === -1) {
+      if (!result.found) {
         return res
           .status(404)
           .json({ success: false, error: "Session not found" });
       }
 
-      db.data.sessionResults.splice(sessionIndex, 1);
-
-      db.data.participantFiles ||= [];
-      const toDelete = db.data.participantFiles.filter(
-        (f) =>
-          f.experimentID === req.params.experimentID &&
-          f.sessionId === req.params.sessionId,
-      );
-
-      const experimentName = getExperimentName(req.params.experimentID);
-      for (const record of toDelete) {
+      for (const record of result.files) {
         const filePath = path.join(
           userDataRoot,
-          experimentName,
+          result.experimentName,
           "participant-files",
           record.filename,
         );
@@ -54,16 +35,6 @@ router.delete(
           // ignore individual file errors
         }
       }
-
-      db.data.participantFiles = db.data.participantFiles.filter(
-        (f) =>
-          !(
-            f.experimentID === req.params.experimentID &&
-            f.sessionId === req.params.sessionId
-          ),
-      );
-
-      await db.write();
 
       res.json({ success: true });
     /* istanbul ignore next -- lowdb write failure path. */
@@ -84,37 +55,23 @@ router.patch("/api/rename-session/:experimentID", async (req, res) => {
       });
     }
 
-    await db.read();
     const experimentID = req.params.experimentID;
-
-    const session = db.data.sessionResults.find(
-      (s) => s.experimentID === experimentID && s.sessionId === oldSessionId,
+    const result = await renameSession(
+      experimentID,
+      oldSessionId,
+      newSessionId,
     );
-    if (!session) {
+    if (result === "missing") {
       return res
         .status(404)
         .json({ success: false, error: "Session not found" });
     }
-
-    const conflict = db.data.sessionResults.find(
-      (s) => s.experimentID === experimentID && s.sessionId === newSessionId,
-    );
-    if (conflict) {
+    if (result === "conflict") {
       return res.status(409).json({
         success: false,
         error: "A session with that name already exists",
       });
     }
-
-    session.sessionId = newSessionId;
-
-    for (const f of db.data.participantFiles) {
-      if (f.experimentID === experimentID && f.sessionId === oldSessionId) {
-        f.sessionId = newSessionId;
-      }
-    }
-
-    await db.write();
     res.json({ success: true });
   /* istanbul ignore next -- lowdb write failure path. */
   } catch (err) {

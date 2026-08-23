@@ -1,4 +1,5 @@
 import { describe, expect, it, normalize, useLoopCode } from "./testHarness";
+import { toCodeIdentifier } from "../../../pages/ExperimentBuilder/utils/codegen/codeIdentifier";
 
 describe("useLoopCode composition", () => {
   it("generates a loop procedure with trial wrappers and unified stimuli", () => {
@@ -36,12 +37,14 @@ describe("useLoopCode composition", () => {
     const code = normalize(genLoopCode());
 
     expect(code).toContain("const test_stimuli_loop_1 = [");
-    expect(code).toContain("const Loop_Trial_A_wrapper =");
-    expect(code).toContain("const Loop_Trial_B_wrapper =");
+    const trialA = toCodeIdentifier("Loop Trial A");
+    const trialB = toCodeIdentifier("Loop Trial B");
+    expect(code).toContain(`const ${trialA}_wrapper =`);
+    expect(code).toContain(`const ${trialB}_wrapper =`);
     expect(code).toContain("let loop_loop_1_NextTrialId = null;");
     expect(code).toContain("const loop_1_procedure =");
     expect(code).toContain(
-      "timeline: [Loop_Trial_A_wrapper, Loop_Trial_B_wrapper]",
+      `timeline: [${trialA}_wrapper, ${trialB}_wrapper]`,
     );
     expect(code).toContain("repetitions: 2");
     expect(code).toContain("randomize_order: true");
@@ -85,8 +88,10 @@ describe("useLoopCode composition", () => {
     expect(code).toContain("const stimuliOrders = [[1,0]];");
     expect(code).toContain('const categoryData = ["practice","main"];');
     expect(code).toContain("loop_function: function(data)");
-    expect(code).toContain("const loopConditionsArray =");
-    expect(code).toContain("const shouldRepeat = loopConditionsArray.some");
+    expect(code).toContain("const loopConditions =");
+    expect(code).toContain(
+      "window.ExpBuilderBranching.evaluateReferencedCondition",
+    );
     expect(code).toContain("window.nextTrialId = null;");
     expect(code).toContain("window.skipRemaining = false;");
     expect(code).toContain("window.nextTrialId = branches[0];");
@@ -124,10 +129,8 @@ describe("useLoopCode composition", () => {
 
     const code = normalize(genLoopCode());
 
-    expect(code).toContain("const repeatConditionsArray =");
-    expect(code).toContain(
-      "localStorage.setItem('jsPsych_jumpToTrial', String(condition.jumpToTrialId));",
-    );
-    expect(code).toContain("jsPsych.run(timeline)");
+    expect(code).toContain("const repeatConditions =");
+    expect(code).toContain("window.ExpBuilderNavigation.requestJump(");
+    expect(code).not.toContain("jsPsych.run(timeline)");
   });
 });
