@@ -25,4 +25,14 @@ export const verticalCapabilities = {
   "RUNTIME-NESTED-ROOT-EXIT": "nested-loop-runtime.spec.ts",
   "RUNTIME-NESTED-PARENT-EXIT": "nested-loop-runtime.spec.ts",
   "RUNTIME-NESTED-ANCESTOR-EXIT": "nested-loop-runtime.spec.ts",
+  "RUNTIME-BRANCH-CONDITIONAL-LOOP":
+    "interaction-conditions-runtime.spec.ts",
+  "RUNTIME-LOOP-EXIT-CONDITIONAL-LOOP":
+    "interaction-conditions-runtime.spec.ts",
+  "RUNTIME-PARAMS-CONDITIONAL-LOOP":
+    "interaction-conditions-runtime.spec.ts",
+  "RUNTIME-BRANCH-JUMP": "interaction-navigation-runtime.spec.ts",
+  "RUNTIME-LOOP-EXIT-JUMP": "interaction-navigation-runtime.spec.ts",
+  "RUNTIME-NESTED-EXIT-RESUME": "interaction-navigation-runtime.spec.ts",
+  "RUNTIME-RESOLVED-MEGA": "mega-runtime.spec.ts",
 };

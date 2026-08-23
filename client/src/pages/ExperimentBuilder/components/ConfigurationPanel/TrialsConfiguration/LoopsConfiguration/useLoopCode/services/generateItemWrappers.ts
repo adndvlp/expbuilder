@@ -105,12 +105,15 @@ const ${itemNameSanitized}_wrapper = {
         ? `
     // This shared branch target has completed. Clear branch state so later
     // wrappers in the same loop can continue normally.
-    if (loop_${loopIdSanitized}_SkipRemaining && String(currentId) === String(loop_${loopIdSanitized}_NextTrialId)) {
+    if (!loop_${loopIdSanitized}_RouteInherited &&
+        loop_${loopIdSanitized}_SkipRemaining &&
+        String(currentId) === String(loop_${loopIdSanitized}_NextTrialId)) {
       loop_${loopIdSanitized}_NextTrialId = null;
       loop_${loopIdSanitized}_SkipRemaining = false;
       loop_${loopIdSanitized}_TargetExecuted = false;
       loop_${loopIdSanitized}_BranchingActive = false;
       loop_${loopIdSanitized}_BranchCustomParameters = null;
+      loop_${loopIdSanitized}_RouteInherited = false;
       loop_${loopIdSanitized}_IterationComplete = false;
       loop_${loopIdSanitized}_ShouldBranchOnFinish = false;
       return;
@@ -121,18 +124,26 @@ const ${itemNameSanitized}_wrapper = {
       isLastItem
         ? `
     // Preserve an exit whose target belongs to an enclosing scope.
+    const targetBelongsToLoop = loop_${loopIdSanitized}_NextTrialId !== null &&
+      loop_${loopIdSanitized}_DescendantIds.some(
+        (descendantId) => String(descendantId) === String(loop_${loopIdSanitized}_NextTrialId),
+      );
     const hasUnresolvedExit = loop_${loopIdSanitized}_BranchingActive &&
       !loop_${loopIdSanitized}_TargetExecuted &&
-      loop_${loopIdSanitized}_NextTrialId !== null;
+      loop_${loopIdSanitized}_NextTrialId !== null &&
+      !targetBelongsToLoop;
     const hasResolvedExit = loop_${loopIdSanitized}_BranchingActive &&
       loop_${loopIdSanitized}_TargetExecuted &&
-      loop_${loopIdSanitized}_NextTrialId !== null;
-    if (!hasUnresolvedExit && !hasResolvedExit) {
+      loop_${loopIdSanitized}_NextTrialId !== null &&
+      !targetBelongsToLoop;
+    if (!loop_${loopIdSanitized}_RouteInherited &&
+        !hasUnresolvedExit && !hasResolvedExit) {
       loop_${loopIdSanitized}_NextTrialId = null;
       loop_${loopIdSanitized}_SkipRemaining = false;
       loop_${loopIdSanitized}_TargetExecuted = false;
       loop_${loopIdSanitized}_BranchingActive = false;
       loop_${loopIdSanitized}_BranchCustomParameters = null;
+      loop_${loopIdSanitized}_RouteInherited = false;
       loop_${loopIdSanitized}_IterationComplete = false;
     }`
         : ""

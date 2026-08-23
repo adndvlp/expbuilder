@@ -140,6 +140,8 @@ DEC-33 define si el agente también autoriza la creación conversacional de exit
 
 La lista concreta de casos nuevos está en [07](./07-test-acceptance-plan.md). Las pruebas existentes caracterizan compatibilidad; no prueban por sí mismas el nuevo origen cross-scope.
 
+La matriz no exhaustiva de interacciones, su evidencia vertical y sus bloqueos concretos están en [10](./10-interaction-coverage.md). Su registro ejecutable vive en `client/runtime-e2e/coverage/interactionCoverage.mjs`, de modo que una combinación no puede declararse cubierta sin un capability runtime registrado.
+
 ## Cobertura de decisiones
 
 | Área | Decisiones que la desbloquean |

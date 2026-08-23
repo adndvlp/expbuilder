@@ -68,6 +68,7 @@ export function generateLoopRoutingLifecycle({
       loop_${loopIdSanitized}_BranchingActive = true;
       loop_${loopIdSanitized}_BranchCustomParameters = ${routeCustomParameters};
       loop_${loopIdSanitized}_TargetExecuted = false;
+      loop_${loopIdSanitized}_RouteInherited = true;
       loop_${loopIdSanitized}_IterationComplete = false;
       loop_${loopIdSanitized}_ShouldBranchOnFinish = false;
     } else {
@@ -76,6 +77,7 @@ export function generateLoopRoutingLifecycle({
       loop_${loopIdSanitized}_BranchingActive = false;
       loop_${loopIdSanitized}_BranchCustomParameters = null;
       loop_${loopIdSanitized}_TargetExecuted = false;
+      loop_${loopIdSanitized}_RouteInherited = false;
       loop_${loopIdSanitized}_IterationComplete = false;
       loop_${loopIdSanitized}_ShouldBranchOnFinish = false;
     }${conditionalReset}

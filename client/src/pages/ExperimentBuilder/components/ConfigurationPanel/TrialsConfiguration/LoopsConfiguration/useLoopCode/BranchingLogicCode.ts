@@ -46,6 +46,7 @@ let loop_${loopIdSanitized}_SkipRemaining = false;
 let loop_${loopIdSanitized}_BranchingActive = false;
 let loop_${loopIdSanitized}_BranchCustomParameters = null; // Store custom parameters for branching within loops
 let loop_${loopIdSanitized}_TargetExecuted = false; // Indicates if the target trial has already been executed in this iteration
+let loop_${loopIdSanitized}_RouteInherited = false; // Preserve inherited routes until their completion propagates outward
 let loop_${loopIdSanitized}_IterationComplete = false; // Indicates that the current iteration is complete
 const loop_${loopIdSanitized}_HasBranches = ${hasBranchesLoop ? "true" : "false"};
 let loop_${loopIdSanitized}_ShouldBranchOnFinish = false;

@@ -222,6 +222,10 @@ El fixture debe declarar explícitamente si cada confirmación crea un target o 
 
 Interrumpir después del source, recargar, verificar route; luego disparar un repeat condition hacia un target nested y verificar ancestry/consumo.
 
+## Matriz incremental de interacciones
+
+La ampliación vertical de combinaciones está inventariada en [10 — Cobertura vertical de interacciones](./10-interaction-coverage.md). La matriz es deliberadamente no exhaustiva: cada entrada añade evidencia ejecutable o registra una decisión que impide definir una aserción normativa. `representative` significa que existe un caso concreto aprobado por las reglas actuales, no que todas las permutaciones de esa interacción estén cubiertas.
+
 ## Regresión obligatoria
 
 - branches raíz existentes;

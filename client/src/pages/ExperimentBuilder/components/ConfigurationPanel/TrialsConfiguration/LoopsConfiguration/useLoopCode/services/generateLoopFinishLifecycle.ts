@@ -73,6 +73,7 @@ export function generateLoopFinishLifecycle({
     loop_${loopIdSanitized}_SkipRemaining = false;
     loop_${loopIdSanitized}_TargetExecuted = false;
     loop_${loopIdSanitized}_BranchCustomParameters = null;
+    loop_${loopIdSanitized}_RouteInherited = false;
     loop_${loopIdSanitized}_IterationComplete = true;
 
     // BranchingActive/ShouldBranchOnFinish intentionally survive until the

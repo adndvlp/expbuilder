@@ -10,6 +10,10 @@ import {
   acceptanceCoverage,
   verticalCapabilities,
 } from "./coverageRegistry.mjs";
+import {
+  interactionCoverage,
+  interactionCoveragePolicy,
+} from "./interactionCoverage.mjs";
 
 const runtimeScenarioRoot = resolve(
   repositoryRoot,
@@ -64,7 +68,49 @@ async function validateRuntimeCapabilities() {
       errors.push(`${id}: ${file} is not registered`);
     }
   }
-  return found.size;
+  return found;
+}
+
+function validateInteractionCoverage(foundCapabilities, decisions) {
+  if (interactionCoveragePolicy.exhaustive !== false ||
+      interactionCoveragePolicy.model !== "incremental") {
+    errors.push("interaction coverage must remain explicitly incremental and non-exhaustive");
+  }
+  const totals = { representative: 0, partial: 0, blocked: 0 };
+  for (const [id, entry] of Object.entries(interactionCoverage)) {
+    if (!(entry.status in totals)) {
+      errors.push(`${id}: unsupported interaction status ${entry.status}`);
+      continue;
+    }
+    totals[entry.status] += 1;
+    const capabilities = entry.capabilities ?? [];
+    if (entry.status === "representative" && capabilities.length === 0) {
+      errors.push(`${id}: representative interactions require a capability`);
+    }
+    if (entry.status === "partial" && capabilities.length === 0) {
+      errors.push(`${id}: partial interactions require executed evidence`);
+    }
+    if (entry.status === "blocked" && capabilities.length > 0) {
+      errors.push(`${id}: blocked interactions cannot claim executed evidence`);
+    }
+    for (const capability of capabilities) {
+      if (!foundCapabilities.has(capability)) {
+        errors.push(`${id}: unknown runtime capability ${capability}`);
+      }
+    }
+    const blockers = entry.blockedBy ?? [];
+    if (entry.status !== "representative" && blockers.length === 0) {
+      errors.push(`${id}: ${entry.status} interactions require blockedBy`);
+    }
+    for (const decisionId of blockers) {
+      const decision = decisions.get(decisionId);
+      if (!decision) errors.push(`${id}: unknown decision ${decisionId}`);
+      else if (decision.resolved) {
+        errors.push(`${id}: ${decisionId} is resolved and cannot block coverage`);
+      }
+    }
+  }
+  return totals;
 }
 
 const acceptanceIds = await loadAcceptanceIds();
@@ -94,7 +140,9 @@ for (const [id, entry] of Object.entries(acceptanceCoverage)) {
   }
 }
 
-const capabilityCount = await validateRuntimeCapabilities();
+const foundCapabilities = await validateRuntimeCapabilities();
+const capabilityCount = foundCapabilities.size;
+const interactionTotals = validateInteractionCoverage(foundCapabilities, decisions);
 const totals = { covered: 0, blocked: 0, missing: 0 };
 const missingByGroup = {};
 for (const id of acceptanceIds) {
@@ -113,6 +161,11 @@ console.log(
 );
 console.log(`Missing by group: ${JSON.stringify(missingByGroup)}`);
 console.log(`Registered vertical runtime capabilities: ${capabilityCount}.`);
+console.log(
+  `Non-exhaustive interaction matrix: ` +
+    `${interactionTotals.representative} representative, ` +
+    `${interactionTotals.partial} partial, ${interactionTotals.blocked} blocked.`,
+);
 
 if (process.argv.includes("--require-complete") && totals.missing > 0) {
   errors.push(`${totals.missing} acceptance requirements remain missing`);

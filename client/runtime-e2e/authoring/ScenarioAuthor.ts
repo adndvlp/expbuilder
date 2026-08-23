@@ -1,5 +1,4 @@
 import {
-  addScopedBranchTrial,
   createScopedLoop,
   createScopedTrial,
 } from "../../src/pages/ExperimentBuilder/components/Canvas/actions";
@@ -14,6 +13,7 @@ import {
   startLoopBranchIntent,
 } from "../../src/pages/ExperimentBuilder/modules/experiment-authoring/intents";
 import { itemIdKey } from "../../src/pages/ExperimentBuilder/utils/branchGraphUtils";
+import { addScenarioScopedBranch } from "./addScenarioScopedBranch";
 import { compileScenarioArtifact } from "./compileScenarioArtifact";
 import { moveScenarioItem } from "./moveScenarioItem";
 import {
@@ -93,16 +93,29 @@ export class ScenarioAuthor {
   }
 
   async addRootBranch(sourceAlias: string, targetAlias: string) {
-    const trial = await addScopedBranchTrial({
-      parentId: this.id(sourceAlias),
-      scope: { kind: "root", items: this.session.graph.root.items },
+    const saved = await addScenarioScopedBranch({
+      sourceId: this.id(sourceAlias),
+      targetName: targetAlias,
       dependencies: this.dependencies(),
+      scope: { kind: "root", items: this.session.graph.root.items },
     });
-    if (!trial) throw new Error(`Could not branch from ${sourceAlias}`);
-    const saved = await this.dependencies().updateTrial(trial.id, {
-      name: targetAlias,
+    this.aliases.set(targetAlias, saved.id);
+    return saved;
+  }
+
+  async addScopedBranch(sourceAlias: string, targetAlias: string, loopAlias: string) {
+    const loopId = this.id(loopAlias);
+    const saved = await addScenarioScopedBranch({
+      sourceId: this.id(sourceAlias),
+      targetName: targetAlias,
+      dependencies: this.dependencies(),
+      scope: {
+        kind: "loop",
+        loopId,
+        items: this.session.graph.scopes[String(loopId)]?.items ?? [],
+        rootItems: this.session.graph.root.items,
+      },
     });
-    if (!saved) throw new Error(`Could not name branch ${targetAlias}`);
     this.aliases.set(targetAlias, saved.id);
     return saved;
   }

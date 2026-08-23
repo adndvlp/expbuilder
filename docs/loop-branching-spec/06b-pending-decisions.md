@@ -23,6 +23,7 @@
 ### DEC-22 — Move/delete/group que cambia rutas — BLOQUEANTE
 
 - Entendido: esas operaciones pueden modificar owner y boundaries.
+- Evidencia ejecutable: la mutación productiva de move desconecta el item de su parent actual, lo vuelve a adjuntar secuencialmente y actualiza referencias; al mover un source o target participante puede reescribir la ruta existente. No existe hoy un contrato que permita afirmar que debe preservarla, pedir confirmación o rechazar el movimiento.
 - Falta: política por operación.
 - Impacto: integridad del grafo y UX de edición.
 - Opciones reales: rechazar; mostrar impacto y recalcular tras confirmar; preservar ruta explícita; borrar dependencias seleccionadas.

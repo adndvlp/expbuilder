@@ -69,8 +69,50 @@ describe("loop exit code generation", () => {
       "const hasUnresolvedExit = loop_inner_BranchingActive &&",
     );
     expect(wrapperCode).toContain(
-      "if (!hasUnresolvedExit && !hasResolvedExit)",
+      "if (!loop_inner_RouteInherited &&",
     );
+    expect(wrapperCode).toContain(
+      "!hasUnresolvedExit && !hasResolvedExit)",
+    );
+  });
+
+  it("clears a resolved same-loop branch before a conditional repeat", () => {
+    const code = generateLoop("parent");
+    const factory = new Function(`
+      const timeline = [];
+      let loop_parent_NextTrialId = null;
+      let loop_parent_SkipRemaining = false;
+      let loop_parent_BranchingActive = false;
+      let loop_parent_BranchCustomParameters = null;
+      ${code}
+      return {
+        routeInside: () => {
+          loop_inner_NextTrialId = 2;
+          loop_inner_SkipRemaining = true;
+          loop_inner_BranchingActive = true;
+          loop_inner_TargetExecuted = true;
+        },
+        finishIteration: () => Later$20$Trial_wrapper.on_timeline_finish(),
+        state: () => ({
+          target: loop_inner_NextTrialId,
+          active: loop_inner_BranchingActive,
+          executed: loop_inner_TargetExecuted,
+        }),
+      };
+    `)() as {
+      routeInside: () => void;
+      finishIteration: () => void;
+      state: () => { target: number | null; active: boolean; executed: boolean };
+    };
+
+    factory.routeInside();
+    factory.finishIteration();
+
+    expect(factory.state()).toEqual({
+      target: null,
+      active: false,
+      executed: false,
+    });
   });
 
   it("does not reinterpret a reached target as another loop branch", () => {
