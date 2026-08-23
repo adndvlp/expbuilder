@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { TimelineItem } from "../../../contexts/TrialsContext";
 import LoopRangeModal from "../../ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/LoopRangeModal";
 import AddTrialModal from "./AddTrialModal";
@@ -31,9 +31,28 @@ type CanvasModalsProps = {
   onCloseMoveItem: () => void;
 };
 
-function ModalOverlay({ children }: { children: ReactNode }) {
+function ModalOverlay({
+  children,
+  onClose,
+}: {
+  children: ReactNode;
+  onClose?: () => void;
+}) {
+  useEffect(() => {
+    if (!onClose) return undefined;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
     <div
+      data-testid="canvas-modal-overlay"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose?.();
+      }}
       style={{
         position: "fixed",
         top: 0,
@@ -95,7 +114,7 @@ export default function CanvasModals({
   return (
     <>
       {showLoopModal && (
-        <ModalOverlay>
+        <ModalOverlay onClose={onCloseLoop}>
           <LoopRangeModal
             timeline={timeline}
             onConfirm={onAddLoop}
@@ -106,7 +125,7 @@ export default function CanvasModals({
       )}
 
       {showAddTrialModal && (
-        <ModalOverlay>
+        <ModalOverlay onClose={onCloseAddTrial}>
           <AddTrialModal
             onConfirm={onAddTrial}
             onClose={onCloseAddTrial}
@@ -118,7 +137,11 @@ export default function CanvasModals({
       )}
 
       {showLoopBranchLevelModal && (
-        <ModalOverlay>
+        <ModalOverlay
+          onClose={
+            isCreatingLoopBranch ? undefined : onCloseLoopBranchLevel
+          }
+        >
           <LoopBranchLevelModal
             sourceName={
               timeline.find((item) => item.id === pendingParentId)?.name ??
@@ -133,7 +156,7 @@ export default function CanvasModals({
       )}
 
       {showMoveItemModal && itemToMove && (
-        <ModalOverlay>
+        <ModalOverlay onClose={onCloseMoveItem}>
           <MoveItemModal
             onConfirm={onMoveItem}
             onClose={onCloseMoveItem}

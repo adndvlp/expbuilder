@@ -91,7 +91,7 @@ Format: \`[ComponentType]_[Index]_[Property]\`
 | \`jsPsych_currentSessionId\` | At session start | \`on_finish\` (success) |
 | \`jsPsych_participantNumber\` | When number received | \`on_finish\` (success) |
 | \`jsPsych_resumeTrial\` | Each \`on_data_update\` | \`on_finish\` (success) |
-| \`jsPsych_jumpToTrial\` | Repeat/jump triggered | When consumed in \`conditional_function\` |
+| \`jsPsych_jumpRequest\` | Repeat/jump triggered | When its compiled target is consumed |
 | \`jsPsych_jumpReload\` | \`sessionStorage\` | At experiment start (anti-loop guard) |
 `,
 };

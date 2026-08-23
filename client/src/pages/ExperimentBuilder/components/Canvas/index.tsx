@@ -6,6 +6,7 @@ import TrialNode from "./TrialNode";
 import CanvasModals from "./components/CanvasModals";
 import CanvasToolbar from "./components/CanvasToolbar";
 import CanvasViewportFitter from "./components/CanvasViewportFitter";
+import CanvasGraphStatus from "./components/CanvasGraphStatus";
 import LoopRoutingEdge from "./components/LoopRoutingEdge";
 import { useCanvasWorkspace } from "./hooks/useCanvasWorkspace";
 import { getCanvasLayoutSignature } from "./services/getCanvasLayoutSignature";
@@ -87,10 +88,11 @@ function Canvas() {
           <CanvasViewportFitter layoutSignature={layoutSignature} />
         </ReactFlow>
 
-        <div className="canvas-status" aria-live="polite">
-          {expanded.isLoading ? "Loading loop…" : ""}
-          {expanded.error ? "Unable to load the selected loop." : ""}
-        </div>
+        <CanvasGraphStatus
+          isLoopLoading={expanded.isLoading}
+          loopLoadFailed={Boolean(expanded.error)}
+          diagnostics={workspace.trials.graph?.diagnostics ?? []}
+        />
 
         <CanvasModals
           timeline={actionScope.items}

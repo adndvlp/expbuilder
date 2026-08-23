@@ -143,7 +143,10 @@ function ExperimentPreview({
             }
           }
 (async () => {
+localStorage.removeItem('jsPsych_jumpRequest');
 localStorage.removeItem('jsPsych_jumpToTrial');
+sessionStorage.removeItem('jsPsych_jumpReload');
+sessionStorage.removeItem('jsPsych_jumpContext');
   participantNumber = await initParticipant(trialSessionId);
 
   if (typeof participantNumber !== "number" || isNaN(participantNumber)) {

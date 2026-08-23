@@ -2,7 +2,8 @@ import type { Loop, Trial } from "../../components/ConfigurationPanel/types";
 import type { TimelineItem } from "../../contexts/TrialsContext";
 import type { ExperimentGraphSnapshot } from "../experiment-graph/types";
 import type {
-  LoopBranchLevel,
+  LoopBranchLevelSnapshot,
+  LoopBranchCommandOptions,
   LoopBranchMode,
 } from "../../components/Canvas/features/loop-branching/types";
 
@@ -24,6 +25,7 @@ export type AuthoringMutation<T> = {
 export type LoopBranchMutation = AuthoringMutation<{
   trial: Trial;
   crossedLoopIds: string[];
+  revision: string;
 }>;
 
 export interface ExperimentAuthoringClient {
@@ -65,11 +67,12 @@ export interface ExperimentAuthoringClient {
   loadLoopBranchLevels(
     experimentId: string | undefined,
     sourceTrialId: string | number,
-  ): Promise<LoopBranchLevel[]>;
+  ): Promise<LoopBranchLevelSnapshot>;
   createLoopBranch(
     experimentId: string | undefined,
     sourceTrialId: string | number,
     targetScopeId: string | null,
     mode: LoopBranchMode,
+    options?: LoopBranchCommandOptions,
   ): Promise<LoopBranchMutation>;
 }

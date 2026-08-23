@@ -23,6 +23,7 @@ import {
   selectLoopBranchLevel,
   startLoopBranchIntent,
 } from "../../../modules/experiment-authoring/intents/loopBranch";
+import { isRevisionConflict } from "../../../modules/experiment-authoring/http";
 
 export function useCanvasBranchActions(
   trials: ReturnType<typeof useTrials>,
@@ -139,6 +140,19 @@ export function useCanvasBranchActions(
         resetLoopBranchFlow();
       } catch (error: unknown) {
         console.error("Error creating loop branch:", error);
+        if (isRevisionConflict(error)) {
+          try {
+            const refreshed = await startLoopBranchIntent({
+              experimentId: startedLoopBranchIntent.experimentId,
+              sourceTrialId: startedLoopBranchIntent.sourceTrialId,
+              dependencies: loopBranchIntentDependencies,
+            });
+            setStartedLoopBranchIntent(refreshed);
+            setSelectedLoopBranchLevel(null);
+          } catch (refreshError) {
+            console.error("Error refreshing loop branch levels:", refreshError);
+          }
+        }
         setShowLoopBranchLevelModal(true);
       } finally {
         setIsCreatingLoopBranch(false);

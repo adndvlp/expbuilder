@@ -13,17 +13,10 @@ export function generateConditionalFunctionCode(
     conditional_function: function() {
       const currentId = ${trialId};
       
-      // Verificar si hay un trial objetivo guardado en localStorage (para repeat/jump)
-      const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
-      if (jumpToTrial) {
-        if (String(currentId) === String(jumpToTrial)) {
-          window.ExpBuilderRuntime?.emit('jump-target-enter', {
-            targetId: currentId
-          });
-          localStorage.removeItem('jsPsych_jumpToTrial');
-          return true;
-        }
-        return false;
+      const navigationDecision =
+        window.ExpBuilderNavigation?.enterItem(currentId, 'trial');
+      if (navigationDecision !== null && navigationDecision !== undefined) {
+        return navigationDecision;
       }
       
       // Si skipRemaining está activo (branching normal), verificar si este es el trial objetivo

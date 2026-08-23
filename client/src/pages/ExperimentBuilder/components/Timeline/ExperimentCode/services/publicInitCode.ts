@@ -66,11 +66,10 @@ export function publicInitCode(options: PublicExperimentCodeOptions): string {
         data.sessionId = trialSessionId;
         data.experimentID = "${experimentID}";
         if (data.builder_id !== undefined && data.builder_id !== null) {
-          localStorage.setItem('jsPsych_resumeTrial', JSON.stringify({
-            branches: data.branches || [],
-            branchConditions: data.branchConditions || [],
-            trialData: data
-          }));
+          localStorage.setItem(
+            'jsPsych_resumeTrial',
+            JSON.stringify(_createResumeCheckpoint(data))
+          );
         }
 
         // Actualizar estado a 'in-progress' en la primera actualización

@@ -1,4 +1,6 @@
 import type { CanvasStyles } from "../../../ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
+import { loadExperimentGraph } from "../../../../modules/experiment-graph/api";
+import { generateExecutionAddressManifestCode } from "../../../../modules/experiment-runtime/executionAddressManifest";
 import type {
   GetLoopFn,
   GetLoopTimelineFn,
@@ -27,6 +29,10 @@ export async function generateExperimentBaseCode({
   apiBaseUrl,
   fetchImpl,
 }: ExperimentBaseCodeOptions) {
+  const graph = await loadExperimentGraph(experimentID, {
+    apiBaseUrl,
+    fetchImpl,
+  });
   const { generateAllCodes } = await import(
     "../../../../utils/generateTrialLoopCodes"
   );
@@ -36,9 +42,12 @@ export async function generateExperimentBaseCode({
     getTrial,
     getLoopTimeline,
     getLoop,
-    { apiBaseUrl, fetchImpl, throwOnError: true },
+    { apiBaseUrl, fetchImpl, graph, throwOnError: true },
   );
-  return renderExperimentBaseCode(codes, uploadedFiles, canvasStyles);
+  return [
+    generateExecutionAddressManifestCode(graph),
+    renderExperimentBaseCode(codes, uploadedFiles, canvasStyles),
+  ].join("\n");
 }
 
 export function renderExperimentBaseCode(

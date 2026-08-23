@@ -51,11 +51,10 @@ export function getPublicOnDataUpdatePreview(
     data.sessionId = trialSessionId;
     data.experimentID = '${eid}';
     if (data.builder_id !== undefined && data.builder_id !== null) {
-      localStorage.setItem('jsPsych_resumeTrial', JSON.stringify({
-        branches: data.branches || [],
-        branchConditions: data.branchConditions || [],
-        trialData: data
-      }));
+      localStorage.setItem(
+        'jsPsych_resumeTrial',
+        JSON.stringify(_createResumeCheckpoint(data))
+      );
     }
 
     if (data.trial_index === 0) {
@@ -125,7 +124,7 @@ export function getPublicOnFinishPreview(
     });
 
     sessionRef.onDisconnect().cancel();
-    localStorage.removeItem('jsPsych_resumeTrial');
+    window.ExpBuilderNavigation.clearTransientState();
     localStorage.removeItem('jsPsych_currentSessionId');
     localStorage.removeItem('jsPsych_participantNumber');
     // [recruitment redirect: Prolific / MTurk / none → _showSuccess()]

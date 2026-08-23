@@ -7,7 +7,7 @@ import {
   runtimeApiBaseUrl,
 } from "../support/session";
 
-test("authors paramsOverride and applies it from persisted prior-trial data", async ({
+test("[RUNTIME-PARAMS-OVERRIDE] authors paramsOverride and applies it from persisted prior-trial data", async ({
   page,
 }) => {
   const author = new ScenarioAuthor(runtimeApiBaseUrl);
@@ -65,7 +65,7 @@ test("authors paramsOverride and applies it from persisted prior-trial data", as
   await runtime.assertNoRuntimeFailures();
 });
 
-test("authors a conditional loop and repeats only while its canonical condition matches", async ({
+test("[RUNTIME-CONDITIONAL-LOOP] authors a conditional loop and repeats only while its canonical condition matches", async ({
   page,
 }) => {
   const author = new ScenarioAuthor(runtimeApiBaseUrl);

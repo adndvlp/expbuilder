@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ExperimentBaseHarness,
   generateAllCodesMock,
+  mocks,
   normalize,
 } from "./testHarness";
 
@@ -50,6 +51,7 @@ describe("ExperimentBaseHarness", () => {
       {
         apiBaseUrl: "http://localhost:3000",
         fetchImpl: undefined,
+        graph: mocks.experimentGraph,
         throwOnError: true,
       },
     );

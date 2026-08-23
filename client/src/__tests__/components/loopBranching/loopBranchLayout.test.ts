@@ -10,6 +10,10 @@ import type {
   LayoutTimelineItem,
 } from "../../../pages/ExperimentBuilder/components/Canvas/services/expandedLayoutTypes";
 import type { GraphBranchEdge } from "../../../pages/ExperimentBuilder/modules/experiment-graph/types";
+import {
+  getLoopScopeLanes,
+  LOOP_NODE_ROUTE_GAP,
+} from "../../../pages/ExperimentBuilder/components/Canvas/services/loopScopeGeometry";
 
 const trial = (
   id: LayoutItemId,
@@ -75,10 +79,16 @@ describe("loop branch layout", () => {
     });
 
     expect(canonicalLayout.nodes).toEqual(previousLayout.nodes);
-    expect(canonicalLayout.edges).toEqual(previousLayout.edges);
+    const visualEdge = ({
+      data: { semanticEdgeIds: _semanticEdgeIds, ...data },
+      ...candidate
+    }: ExpandedCanvasLayout["edges"][number]) => ({ ...candidate, data });
+    expect(canonicalLayout.edges.map(visualEdge)).toEqual(
+      previousLayout.edges.map(visualEdge),
+    );
   });
 
-  it("anchors one exit under its visible source at every collapse level", () => {
+  it("[TL-12] anchors one exit outside its loop boundary at every collapse level", () => {
     const rootTimeline = [
       trial("split", ["left", "right"]),
       trial("left", ["outer"]),
@@ -126,6 +136,14 @@ describe("loop branch layout", () => {
     expect((childXs[0]! + childXs[1]!) / 2).toBe(sourceX);
     expect(position(expanded, rootExit).y).toBeGreaterThan(
       position(expanded, expandedSource).y,
+    );
+    const outerLane = getLoopScopeLanes(
+      expanded.nodes,
+      [outerScope, innerScope],
+    ).get("outer-scope");
+    expect(outerLane).toBeDefined();
+    expect(position(expanded, rootExit).y).toBeGreaterThanOrEqual(
+      outerLane!.bottomY + LOOP_NODE_ROUTE_GAP,
     );
 
     const nestedCollapsed = render([outerScope]);

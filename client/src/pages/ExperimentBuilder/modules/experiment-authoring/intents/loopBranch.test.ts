@@ -32,7 +32,7 @@ const levels: LoopBranchLevel[] = [
 
 function dependencies(): LoopBranchIntentDependencies {
   return {
-    loadLevels: vi.fn().mockResolvedValue(levels),
+    loadLevels: vi.fn().mockResolvedValue({ levels, revision: "r1" }),
     createBranch: vi.fn().mockResolvedValue({
       trial: { id: 9, name: "New Trial", type: "Trial" },
       graph,
@@ -51,6 +51,8 @@ describe("loop branch authoring intent", () => {
 
     expect(deps.loadLevels).toHaveBeenCalledWith("experiment-1", 4);
     expect(intent.levels).toEqual(levels);
+    expect(intent.revision).toBe("r1");
+    expect(intent.idempotencyKey).toEqual(expect.any(String));
   });
 
   it("matches string-like scope ids and rejects unavailable levels", () => {
@@ -58,6 +60,8 @@ describe("loop branch authoring intent", () => {
       experimentId: "experiment-1",
       sourceTrialId: 4,
       levels: [{ ...levels[0], scopeId: "12" }],
+      revision: "r1",
+      idempotencyKey: "intent-1",
     };
 
     expect(selectLoopBranchLevel(intent, "12")).toEqual({
@@ -73,6 +77,8 @@ describe("loop branch authoring intent", () => {
       experimentId: "experiment-1",
       sourceTrialId: 4,
       levels,
+      revision: "r1",
+      idempotencyKey: "intent-1",
     };
     const selection = selectLoopBranchLevel(intent, "inner-loop");
     if (!selection) throw new Error("Expected inner loop level");
@@ -89,6 +95,7 @@ describe("loop branch authoring intent", () => {
       4,
       "inner-loop",
       "parallel",
+      { expectedRevision: "r1", idempotencyKey: "intent-1" },
     );
   });
 
@@ -98,6 +105,8 @@ describe("loop branch authoring intent", () => {
       experimentId: "experiment-1",
       sourceTrialId: 4,
       levels,
+      revision: "r1",
+      idempotencyKey: "intent-2",
     };
     const selection = selectLoopBranchLevel(intent, null);
     if (!selection) throw new Error("Expected root level");
@@ -115,6 +124,7 @@ describe("loop branch authoring intent", () => {
       4,
       null,
       "sequential",
+      { expectedRevision: "r1", idempotencyKey: "intent-2" },
     );
   });
 });

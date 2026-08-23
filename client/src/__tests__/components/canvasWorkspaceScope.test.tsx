@@ -44,7 +44,6 @@ const loopItems: TimelineItem[] = [
   { id: 10, type: "trial", name: "Task", branches: [] },
   { id: 11, type: "trial", name: "End", branches: [] },
 ];
-
 const makeTrial = (id: number, overrides: Partial<Trial> = {}): Trial => ({
   id,
   type: "Trial",
@@ -55,7 +54,6 @@ const makeTrial = (id: number, overrides: Partial<Trial> = {}): Trial => ({
   branches: [],
   ...overrides,
 });
-
 const makeLoop = (id: string, overrides: Partial<Loop> = {}): Loop => ({
   id,
   name: id,
@@ -71,7 +69,6 @@ const makeLoop = (id: string, overrides: Partial<Loop> = {}): Loop => ({
   code: "",
   ...overrides,
 });
-
 function createTrialsMock() {
   const parent = makeLoop("parent", { trials: [10, 11] });
   const trials = {
@@ -129,14 +126,17 @@ async function activateParentScope(
 describe("useCanvasWorkspace active action scope", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.loadLevels.mockResolvedValue([
-      {
-        scopeId: "parent",
-        name: "Parent loop",
-        relation: "current",
-        branchCount: 0,
-      },
-    ]);
+    mocks.loadLevels.mockResolvedValue({
+      revision: "1",
+      levels: [
+        {
+          scopeId: "parent",
+          name: "Parent loop",
+          relation: "current",
+          branchCount: 0,
+        },
+      ],
+    });
     mocks.createBranch.mockResolvedValue({
       trial: makeTrial(99, { parentLoopId: "parent" }),
       crossedLoopIds: [],
@@ -172,6 +172,10 @@ describe("useCanvasWorkspace active action scope", () => {
       10,
       "parent",
       "parallel",
+      expect.objectContaining({
+        expectedRevision: "1",
+        idempotencyKey: expect.any(String),
+      }),
     );
     expect(trials.applyGraphSnapshot).toHaveBeenCalledTimes(1);
     expect(trials.updateTrial).not.toHaveBeenCalled();

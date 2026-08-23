@@ -85,8 +85,8 @@ Variantes cartesianas acotadas:
 
 ## Contratos de API
 
-- TA-01: creación a parent scope escribe target + edge en una transacción lógica.
-- TA-02: creación a root actualiza read model/proyección root.
+- TA-01: creación paralela a parent/root scope escribe target + edge en una transacción lógica sin reencadenar las salidas existentes.
+- TA-02: creación secuencial reemplaza las aristas directas del nivel por `source → nuevo → destinos existentes` y coloca el nuevo target antes de esos destinos en el orden canónico de root o del loop owner.
 - TA-03: fallo después de reservar ID no deja target huérfano.
 - TA-04: retry con misma idempotency key devuelve mismo resultado.
 - TA-05: misma key/diferente payload falla.

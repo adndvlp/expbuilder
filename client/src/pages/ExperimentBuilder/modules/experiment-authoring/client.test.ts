@@ -58,7 +58,10 @@ describe("experiment authoring client", () => {
       trials: [1],
       code: "",
     });
-    const branch = await client.createLoopBranch("E1", 1, null, "parallel");
+    const branch = await client.createLoopBranch("E1", 1, null, "parallel", {
+      expectedRevision: "r1",
+      idempotencyKey: "branch-command-1",
+    });
 
     expect(branch.crossedLoopIds).toEqual(["loop_1"]);
     expect(fetchImpl.mock.calls.map(([url]) => url)).toEqual([
@@ -71,7 +74,11 @@ describe("experiment authoring client", () => {
       sourceTrialId: 1,
       targetScopeId: null,
       mode: "parallel",
+      expectedRevision: "r1",
     });
+    expect(fetchImpl.mock.calls[3][1]?.headers).toEqual(
+      expect.objectContaining({ "Idempotency-Key": "branch-command-1" }),
+    );
   });
 
   it("preserves endpoint, status, and a non-JSON server body in failures", async () => {

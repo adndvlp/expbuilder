@@ -115,26 +115,25 @@ If the value is an array (checkbox/multi-select response), \`includes()\` is use
 
 ## 4. Repeat / Jump Conditions
 
-Allows restarting the experiment from a specific trial (via \`localStorage\`):
+Allows restarting the experiment from a compiled execution address:
 
 \`\`\`js
 // on_finish of the source trial:
-localStorage.setItem('jsPsych_jumpToTrial', String(targetTrialId));
-document.getElementById('jspsych-container').innerHTML = '';
-setTimeout(() => jsPsych.run(timeline), 100);
+window.ExpBuilderNavigation.requestJump(
+  targetTrialId,
+  { sourceId, conditionId },
+  data,
+  () => jsPsych.pauseExperiment(),
+);
 
-// In conditional_function of each procedure:
-const jumpTo = localStorage.getItem('jsPsych_jumpToTrial');
-if (jumpTo) {
-if (String(currentId) === String(jumpTo)) {
-  localStorage.removeItem('jsPsych_jumpToTrial');
-  return true;  // run this trial
-}
-return false;   // skip
-}
+// Scope wrappers inspect without consuming; real entries consume once.
+const canInclude = window.ExpBuilderNavigation.allowsItem(itemId, itemKind);
+const canEnter = window.ExpBuilderNavigation.enterItem(itemId, itemKind);
 \`\`\`
 
-**Key difference**: Jump can skip to **any** trial (even previous ones). Branch only jumps forward within the same scope.
+The stored \`jsPsych_jumpRequest\` is versioned and contains the target kind,
+owner and ordered \`enterLoopIds\`. Reload occurs only after source data is
+durable. Each loop segment and the final target are consumed exactly once.
 
 ## 5. Custom Params on Branch
 
@@ -165,14 +164,11 @@ Each procedure has a \`conditional_function\` that determines whether it runs or
 conditional_function: function() {
 const currentId = 123;
 
-// Priority 1: pending jump/repeat (localStorage)
-const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
-if (jumpToTrial) {
-  if (String(currentId) === String(jumpToTrial)) {
-    localStorage.removeItem('jsPsych_jumpToTrial');
-    return true;
-  }
-  return false;
+// Priority 1: pending jump/repeat address
+const navigationDecision =
+  window.ExpBuilderNavigation.enterItem(currentId, 'trial');
+if (navigationDecision !== null) {
+  return navigationDecision;
 }
 
 // Priority 2: active branching (window globals)

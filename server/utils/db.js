@@ -34,6 +34,7 @@ export function ensureDbData() {
   db.data.pluginConfigs ||= [];
   db.data.sessionResults ||= [];
   db.data.participantFiles ||= [];
+  db.data.mutationReceipts ||= [];
   // Chat agent — intentionally excluded from experiment export/import and factory reset
   db.data.chat ||= {
     apiKeys: {},
@@ -64,9 +65,17 @@ export function withDbMutation(mutator) {
   return enqueueDbAccess(async () => {
     await db.read();
     ensureDbData();
-    const result = await mutator(db.data);
-    await db.write();
-    return result;
+    const previous = db.data;
+    const candidate = structuredClone(previous);
+    const result = await mutator(candidate);
+    db.data = candidate;
+    try {
+      await db.write();
+      return result;
+    } catch (error) {
+      db.data = previous;
+      throw error;
+    }
   });
 }
 

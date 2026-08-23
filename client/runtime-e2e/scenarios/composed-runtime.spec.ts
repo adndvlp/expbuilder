@@ -7,7 +7,7 @@ import {
   runtimeApiBaseUrl,
 } from "../support/session";
 
-test("moves trials through the canvas action and executes the generated order", async ({
+test("[RUNTIME-MOVE-ORDER] moves trials through the canvas action and executes the generated order", async ({
   page,
 }) => {
   const author = new ScenarioAuthor(runtimeApiBaseUrl);
@@ -49,7 +49,7 @@ test("moves trials through the canvas action and executes the generated order", 
   await runtime.assertNoRuntimeFailures();
 });
 
-test("combines a conditional nested-loop exit with params override", async ({
+test("[RUNTIME-EXIT-PARAMS] combines a conditional nested-loop exit with params override", async ({
   page,
 }) => {
   const author = new ScenarioAuthor(runtimeApiBaseUrl);

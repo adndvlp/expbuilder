@@ -35,11 +35,10 @@ export function getLocalOnDataUpdatePreview(
 ): string {
   return `on_data_update: function(data) {
     if (data.builder_id !== undefined && data.builder_id !== null) {
-      localStorage.setItem('jsPsych_resumeTrial', JSON.stringify({
-        branches: data.branches || [],
-        branchConditions: data.branchConditions || [],
-        trialData: data
-      }));
+      localStorage.setItem(
+        'jsPsych_resumeTrial',
+        JSON.stringify(_createResumeCheckpoint(data))
+      );
     }
 
     const savePromise = fetch("/api/append-result/${eid}", {
@@ -99,7 +98,7 @@ export function getLocalOnFinishPreview(
       });
     }
 
-    localStorage.removeItem('jsPsych_resumeTrial');
+    window.ExpBuilderNavigation.clearTransientState();
     localStorage.removeItem('jsPsych_currentSessionId');
     localStorage.removeItem('jsPsych_participantNumber');
     _showSuccess();${injectUserCode(userCode)}

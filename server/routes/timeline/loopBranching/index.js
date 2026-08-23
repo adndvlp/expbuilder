@@ -1,8 +1,11 @@
 import { Router } from "express";
-import { db } from "../../../utils/db.js";
+import { withDbMutation } from "../../../utils/db.js";
 import { getExperimentDoc } from "../loops/state.js";
 import { buildExperimentGraph } from "../graph/buildExperimentGraph.js";
-import { createLoopBranch } from "./createLoopBranch.js";
+import {
+  executeLoopBranchCommand,
+  LoopBranchCommandError,
+} from "./executeLoopBranchCommand.js";
 import { findTrial, getLoopBranchLevels } from "./scopeGraph.js";
 
 const router = Router();
@@ -23,7 +26,8 @@ router.get(
       if (levels.length === 0) {
         return res.status(400).json({ error: "Source trial is not in a loop" });
       }
-      return res.json({ levels });
+      const graph = buildExperimentGraph(experimentDoc);
+      return res.json({ levels, revision: graph.revision });
     } catch (error) {
       return res.status(500).json({ error: error.message });
     }
@@ -32,34 +36,38 @@ router.get(
 
 router.post("/api/loop-branch/:experimentID", async (req, res) => {
   try {
-    const { sourceTrialId, targetScopeId = null, mode } = req.body;
+    const {
+      sourceTrialId,
+      targetScopeId = null,
+      mode,
+      expectedRevision,
+    } = req.body;
     if (!sourceTrialId || !["parallel", "sequential"].includes(mode)) {
       return res.status(400).json({ error: "Invalid loop branch command" });
     }
-    const experimentDoc = await getExperimentDoc(req.params.experimentID);
-    if (!experimentDoc) {
-      return res.status(404).json({ error: "Experiment not found" });
-    }
-    const sourceTrial = findTrial(experimentDoc, sourceTrialId);
-    if (!sourceTrial) {
-      return res.status(404).json({ error: "Source trial not found" });
-    }
-    const result = createLoopBranch(
-      experimentDoc,
-      sourceTrial,
-      targetScopeId,
-      mode,
+    const response = await withDbMutation((data) =>
+      executeLoopBranchCommand(data, {
+        experimentId: req.params.experimentID,
+        sourceTrialId,
+        targetScopeId,
+        mode,
+        expectedRevision,
+        idempotencyKey: req.get("Idempotency-Key"),
+      }),
     );
-    if (result.error) return res.status(400).json({ error: result.error });
-
-    await db.write();
-    return res.json({
-      success: true,
-      ...result,
-      graph: buildExperimentGraph(experimentDoc),
-    });
+    return res.json(response);
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    if (error instanceof LoopBranchCommandError) {
+      return res.status(error.status).json({
+        error: error.message,
+        code: error.code,
+        ...error.details,
+      });
+    }
+    return res.status(500).json({
+      error: error.message,
+      code: "LOOP_BRANCH_COMMAND_FAILED",
+    });
   }
 });
 

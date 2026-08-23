@@ -7,7 +7,123 @@ import {
   runtimeApiBaseUrl,
 } from "../support/session";
 
-test("authors exits at two nested-loop levels and executes the selected root exit", async ({
+test("[RUNTIME-NESTED-PARENT-EXIT] [TR-02] exits only the inner loop and executes its parent-scope target once", async ({
+  page,
+}) => {
+  const author = new ScenarioAuthor(runtimeApiBaseUrl);
+  await author.createExperiment(`runtime-parent-scope-exit-${Date.now()}`);
+  await author.createTrial("parent-exit-source");
+  await author.createTrial("parent-exit-inner-skipped");
+  await author.createLoop("parent-exit-inner", [
+    "parent-exit-source",
+    "parent-exit-inner-skipped",
+  ]);
+  await author.createLoop("parent-exit-outer", ["parent-exit-inner"]);
+  await author.addLoopExitBranch(
+    "parent-exit-source",
+    "parent-scope-target",
+    "parent-exit-outer",
+  );
+  await author.configureButtonTrials([
+    "parent-exit-source",
+    "parent-exit-inner-skipped",
+    "parent-scope-target",
+  ]);
+
+  const graph = await author.assertHealthyGraph();
+  const edge = graph.edges.find(
+    (candidate) =>
+      String(candidate.sourceId) === String(author.id("parent-exit-source")) &&
+      String(candidate.targetId) === String(author.id("parent-scope-target")),
+  );
+  expect(edge).toMatchObject({
+    targetOwnerId: author.id("parent-exit-outer"),
+    exitedLoopIds: [author.id("parent-exit-inner")],
+  });
+
+  const artifact = await author.compileAndBuild();
+  const runtime = new RuntimeObserver(page);
+  await page.goto(artifact.experimentUrl);
+  await expect(runtime.trial("parent-exit-source")).toBeVisible();
+  await runtime.continue();
+  await expect(runtime.trial("parent-scope-target")).toBeVisible();
+  await expect(runtime.trial("parent-exit-inner-skipped")).toHaveCount(0);
+  await runtime.continue();
+  await expect(page.getByText("Experiment complete. Thank you!")).toBeVisible();
+
+  const persisted = await loadPersistedSession(
+    author.experimentId,
+    await runtime.sessionId(),
+  );
+  expect(builderIds(persisted.session.data)).toEqual([
+    String(author.id("parent-exit-source")),
+    String(author.id("parent-scope-target")),
+  ]);
+  await runtime.assertNoRuntimeFailures();
+});
+
+test("[RUNTIME-NESTED-ANCESTOR-EXIT] [TR-03] exits two nested loops and executes its ancestor-scope target once", async ({
+  page,
+}) => {
+  const author = new ScenarioAuthor(runtimeApiBaseUrl);
+  await author.createExperiment(`runtime-ancestor-scope-exit-${Date.now()}`);
+  await author.createTrial("ancestor-exit-source");
+  await author.createTrial("ancestor-exit-inner-skipped");
+  await author.createLoop("ancestor-exit-inner", [
+    "ancestor-exit-source",
+    "ancestor-exit-inner-skipped",
+  ]);
+  await author.createLoop("ancestor-exit-middle", ["ancestor-exit-inner"]);
+  await author.createLoop("ancestor-exit-outer", ["ancestor-exit-middle"]);
+  await author.addLoopExitBranch(
+    "ancestor-exit-source",
+    "ancestor-scope-target",
+    "ancestor-exit-outer",
+  );
+  await author.configureButtonTrials([
+    "ancestor-exit-source",
+    "ancestor-exit-inner-skipped",
+    "ancestor-scope-target",
+  ]);
+
+  const graph = await author.assertHealthyGraph();
+  const edge = graph.edges.find(
+    (candidate) =>
+      String(candidate.sourceId) ===
+        String(author.id("ancestor-exit-source")) &&
+      String(candidate.targetId) ===
+        String(author.id("ancestor-scope-target")),
+  );
+  expect(edge).toMatchObject({
+    targetOwnerId: author.id("ancestor-exit-outer"),
+    exitedLoopIds: [
+      author.id("ancestor-exit-inner"),
+      author.id("ancestor-exit-middle"),
+    ],
+  });
+
+  const artifact = await author.compileAndBuild();
+  const runtime = new RuntimeObserver(page);
+  await page.goto(artifact.experimentUrl);
+  await expect(runtime.trial("ancestor-exit-source")).toBeVisible();
+  await runtime.continue();
+  await expect(runtime.trial("ancestor-scope-target")).toBeVisible();
+  await expect(runtime.trial("ancestor-exit-inner-skipped")).toHaveCount(0);
+  await runtime.continue();
+  await expect(page.getByText("Experiment complete. Thank you!")).toBeVisible();
+
+  const persisted = await loadPersistedSession(
+    author.experimentId,
+    await runtime.sessionId(),
+  );
+  expect(builderIds(persisted.session.data)).toEqual([
+    String(author.id("ancestor-exit-source")),
+    String(author.id("ancestor-scope-target")),
+  ]);
+  await runtime.assertNoRuntimeFailures();
+});
+
+test("[RUNTIME-NESTED-ROOT-EXIT] [TR-04] authors exits at two nested-loop levels and executes the selected root exit", async ({
   page,
 }) => {
   const author = new ScenarioAuthor(runtimeApiBaseUrl);

@@ -37,7 +37,9 @@ describe("getInitJsPsychPreview helpers", () => {
     expect(code).toContain("const jsPsych = initJsPsych({");
     expect(code).toContain("show_progress_bar: true,");
     expect(code).toContain('/api/append-result/exp-1');
-    expect(code).toContain("localStorage.setItem('jsPsych_resumeTrial'");
+    expect(code).toMatch(
+      /localStorage\.setItem\(\s*'jsPsych_resumeTrial'/,
+    );
     expect(code).toContain("socket.emit('update-session-state'");
     expect(code).toContain("await fetch(\"/api/complete-session/exp-1\"");
   });

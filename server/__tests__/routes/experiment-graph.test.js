@@ -5,6 +5,7 @@ import process from "node:process";
 import express from "express";
 import request from "supertest";
 import { describe, expect, jest, test } from "@jest/globals";
+import { buildExperimentGraph } from "../../routes/timeline/graph/buildExperimentGraph.js";
 
 const freshApp = async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "experiment-graph-"));
@@ -94,6 +95,25 @@ const edgeKeys = (graph) =>
   graph.edges.map((edge) => `${edge.sourceId}->${edge.targetId}`);
 
 describe("canonical experiment graph", () => {
+  test("[TD-11] keeps one owned shared target with multiple incoming edges", () => {
+    const graph = buildExperimentGraph({
+      timeline: [
+        { id: 1, type: "trial", name: "Left" },
+        { id: 2, type: "trial", name: "Right" },
+        { id: 3, type: "trial", name: "Shared" },
+      ],
+      loops: [],
+      trials: [
+        { id: 1, name: "Left", branches: [3] },
+        { id: 2, name: "Right", branches: [3] },
+        { id: 3, name: "Shared", branches: [] },
+      ],
+    });
+
+    expect(graph.edges.filter(({ targetId }) => targetId === 3)).toHaveLength(2);
+    expect(graph.root.items.filter(({ id }) => id === 3)).toHaveLength(1);
+  });
+
   test("derives cross-scope routes only from canonical item branches", async () => {
     const { app, db } = await freshApp();
     await seedGraph(db);
@@ -121,6 +141,7 @@ describe("canonical experiment graph", () => {
 
     const response = await request(app)
       .post("/api/loop-branch/E1")
+      .set("Idempotency-Key", "nested-graph-branch")
       .send({ sourceTrialId: 6, targetScopeId: "inner", mode: "parallel" })
       .expect(200);
     const { graph, trial } = response.body;
@@ -162,7 +183,7 @@ describe("canonical experiment graph", () => {
       .toEqual([6, response.body.trial.id]);
   });
 
-  test("groups nested items and reassigns ownership atomically", async () => {
+  test("[TM-01] [TM-02] groups a source without absorbing or changing its exit target", async () => {
     const { app, db } = await freshApp();
     await seedGraph(db);
 
@@ -182,6 +203,19 @@ describe("canonical experiment graph", () => {
       .toContain(loopId);
     expect(response.body.graph.scopes[loopId].items.map((item) => item.id))
       .toEqual([4]);
+    expect(response.body.graph.scopes[loopId].items.map((item) => item.id))
+      .not.toContain(8);
+    expect(response.body.graph.root.items.filter((item) => item.id === 8))
+      .toHaveLength(1);
+    expect(
+      response.body.graph.edges.find(
+        (edge) => edge.sourceId === 4 && edge.targetId === 8,
+      ),
+    ).toMatchObject({
+      sourceOwnerId: String(loopId),
+      targetOwnerId: null,
+      exitedLoopIds: [String(loopId), "outer"],
+    });
     await db.read();
     expect(db.data.trials[0].trials.find((trial) => trial.id === 4).parentLoopId)
       .toBe(loopId);

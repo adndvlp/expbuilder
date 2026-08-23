@@ -7,6 +7,16 @@ export type LoopBranchLevel = {
 
 export type LoopBranchMode = "parallel" | "sequential";
 
+export type LoopBranchLevelSnapshot = {
+  levels: LoopBranchLevel[];
+  revision: string;
+};
+
+export type LoopBranchCommandOptions = {
+  expectedRevision?: string;
+  idempotencyKey?: string;
+};
+
 export type CreatedLoopBranch = {
   trial: {
     id: number;
@@ -19,6 +29,7 @@ export type CreatedLoopBranch = {
     parentLoopId?: string;
   };
   crossedLoopIds: Array<string | number>;
+  revision: string;
   graph: ExperimentGraphSnapshot;
 };
 import type { ExperimentGraphSnapshot } from "../../../../modules/experiment-graph/types";

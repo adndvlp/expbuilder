@@ -1,6 +1,7 @@
 import type {
   CreatedLoopBranch,
-  LoopBranchLevel,
+  LoopBranchCommandOptions,
+  LoopBranchLevelSnapshot,
   LoopBranchMode,
 } from "./types";
 import { experimentAuthoringClient } from "../../../../modules/experiment-authoring";
@@ -8,7 +9,7 @@ import { experimentAuthoringClient } from "../../../../modules/experiment-author
 export async function loadLoopBranchLevels(
   experimentId: string,
   sourceTrialId: string | number,
-): Promise<LoopBranchLevel[]> {
+): Promise<LoopBranchLevelSnapshot> {
   return experimentAuthoringClient.loadLoopBranchLevels(
     experimentId,
     sourceTrialId,
@@ -20,11 +21,13 @@ export async function createLoopBranch(
   sourceTrialId: string | number,
   targetScopeId: string | null,
   mode: LoopBranchMode,
+  options?: LoopBranchCommandOptions,
 ): Promise<CreatedLoopBranch> {
   return (await experimentAuthoringClient.createLoopBranch(
     experimentId,
     sourceTrialId,
     targetScopeId,
     mode,
+    options,
   )) as CreatedLoopBranch;
 }

@@ -1,6 +1,8 @@
 import type { ExperimentGraphSnapshot } from "../../experiment-graph/types";
 import type {
+  LoopBranchCommandOptions,
   LoopBranchLevel,
+  LoopBranchLevelSnapshot,
   LoopBranchMode,
 } from "../../../components/Canvas/features/loop-branching/types";
 import type { Trial } from "../../../components/ConfigurationPanel/types";
@@ -11,12 +13,13 @@ export type LoopBranchIntentDependencies = {
   loadLevels: (
     experimentId: string,
     sourceTrialId: string | number,
-  ) => Promise<LoopBranchLevel[]>;
+  ) => Promise<LoopBranchLevelSnapshot>;
   createBranch: (
     experimentId: string,
     sourceTrialId: string | number,
     targetScopeId: string | null,
     mode: LoopBranchMode,
+    options?: LoopBranchCommandOptions,
   ) => Promise<{
     trial: Trial;
     graph: ExperimentGraphSnapshot;
@@ -28,6 +31,8 @@ export type StartedLoopBranchIntent = {
   experimentId: string;
   sourceTrialId: string | number;
   levels: LoopBranchLevel[];
+  revision: string;
+  idempotencyKey: string;
 };
 
 export type SelectedLoopBranchLevel = {
@@ -43,13 +48,18 @@ export async function startLoopBranchIntent(options: {
   sourceTrialId: string | number;
   dependencies: LoopBranchIntentDependencies;
 }): Promise<StartedLoopBranchIntent> {
+  const snapshot = await options.dependencies.loadLevels(
+    options.experimentId,
+    options.sourceTrialId,
+  );
   return {
     experimentId: options.experimentId,
     sourceTrialId: options.sourceTrialId,
-    levels: await options.dependencies.loadLevels(
-      options.experimentId,
-      options.sourceTrialId,
-    ),
+    levels: snapshot.levels,
+    revision: snapshot.revision,
+    idempotencyKey:
+      globalThis.crypto?.randomUUID?.() ??
+      `loop-branch-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   };
 }
 
@@ -79,5 +89,9 @@ export async function commitLoopBranchIntent(options: {
     options.intent.sourceTrialId,
     options.selection.level.scopeId,
     mode,
+    {
+      expectedRevision: options.intent.revision,
+      idempotencyKey: options.intent.idempotencyKey,
+    },
   );
 }

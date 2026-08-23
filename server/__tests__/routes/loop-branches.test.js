@@ -88,7 +88,7 @@ const seedNestedExperiment = async (db) => {
 };
 
 describe("loop exit branches", () => {
-  test("lists current, ancestor, and root levels with per-level counts", async () => {
+  test("[TD-03] [TD-06] lists current, ancestor, and root levels with per-level counts", async () => {
     const { app, db } = await freshApp();
     await seedNestedExperiment(db);
 
@@ -104,12 +104,13 @@ describe("loop exit branches", () => {
     ]);
   });
 
-  test("creates a parallel branch with one derived cross-scope route", async () => {
+  test("[TA-01] creates a parallel branch with one derived cross-scope route", async () => {
     const { app, db } = await freshApp();
     await seedNestedExperiment(db);
 
     const response = await request(app)
       .post("/api/loop-branch/E1")
+      .set("Idempotency-Key", "parallel-outer")
       .send({ sourceTrialId: 1, targetScopeId: "outer", mode: "parallel" })
       .expect(200);
 
@@ -138,12 +139,13 @@ describe("loop exit branches", () => {
     expect(doc.loops.every((loop) => !("exitBranchRoutes" in loop))).toBe(true);
   });
 
-  test("inserts sequentially only before branches in the selected level", async () => {
+  test("[TA-02] inserts sequentially only before branches in the selected level", async () => {
     const { app, db } = await freshApp();
     await seedNestedExperiment(db);
 
     const response = await request(app)
       .post("/api/loop-branch/E1")
+      .set("Idempotency-Key", "sequential-root")
       .send({ sourceTrialId: 1, targetScopeId: null, mode: "sequential" })
       .expect(200);
 
@@ -155,7 +157,11 @@ describe("loop exit branches", () => {
     );
     expect(source.branches).toEqual([2, target.id]);
     expect(target.branches).toEqual([3]);
-    expect(doc.timeline.map((item) => item.id)).toContain(target.id);
+    expect(doc.timeline.map((item) => item.id)).toEqual([
+      "outer",
+      target.id,
+      3,
+    ]);
     expect(response.body.graph.edges).toContainEqual(
       expect.objectContaining({
         sourceId: 1,
@@ -168,7 +174,7 @@ describe("loop exit branches", () => {
     );
   });
 
-  test("keeps external targets out of an inner loop read model", async () => {
+  test("[TA-09] keeps external targets out of an inner loop read model", async () => {
     const { app, db } = await freshApp();
     await seedNestedExperiment(db);
 
@@ -183,7 +189,7 @@ describe("loop exit branches", () => {
     });
   });
 
-  test("keeps projections out of metadata and exposes the canonical edge", async () => {
+  test("[TA-10] keeps projections out of metadata and exposes the canonical edge", async () => {
     const { app, db } = await freshApp();
     await seedNestedExperiment(db);
 
@@ -204,7 +210,7 @@ describe("loop exit branches", () => {
     );
   });
 
-  test("rejects a destination that is not the current scope or an ancestor", async () => {
+  test("[TD-04] [TA-07] rejects a destination that is not the current scope or an ancestor", async () => {
     const { app, db } = await freshApp();
     await seedNestedExperiment(db);
     db.data.trials[0].loops.push({
@@ -217,6 +223,7 @@ describe("loop exit branches", () => {
 
     await request(app)
       .post("/api/loop-branch/E1")
+      .set("Idempotency-Key", "invalid-sibling")
       .send({ sourceTrialId: 1, targetScopeId: "sibling", mode: "parallel" })
       .expect(400);
   });

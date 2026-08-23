@@ -8,6 +8,16 @@ import type {
 } from "./expandedLayoutTypes";
 
 const idKey = (id: string | number) => String(id);
+const ownerKey = (id: string | null) =>
+  id === null ? "root" : `loop:${idKey(id)}`;
+
+export const getCanonicalBranchEdgeId = (edge: GraphBranchEdge) =>
+  JSON.stringify([
+    ownerKey(edge.sourceOwnerId),
+    idKey(edge.sourceId),
+    ownerKey(edge.targetOwnerId),
+    idKey(edge.targetId),
+  ]);
 
 type RenderedEndpointBlock = {
   entryId: string;
@@ -131,6 +141,7 @@ export function addCanonicalBranchEdges(
         target.id,
         visibleSources[0]!.data.scopeId,
         edge.exitedLoopIds.length > 0 ? "scope-exit" : undefined,
+        getCanonicalBranchEdgeId(edge),
       );
     });
   });

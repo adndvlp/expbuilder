@@ -103,12 +103,14 @@ export class ScenarioAuthoringSession {
         sourceTrialId,
         targetScopeId,
         mode,
+        options,
       ) => {
         const result = await this.client.createLoopBranch(
           experimentId,
           sourceTrialId,
           targetScopeId,
           mode,
+          options,
         );
         this.snapshot = result.graph;
         return result;

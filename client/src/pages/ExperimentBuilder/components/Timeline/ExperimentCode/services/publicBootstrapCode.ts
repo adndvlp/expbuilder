@@ -1,5 +1,8 @@
 import { PublicExperimentCodeOptions } from "./publicCodeTypes";
-import { resumeJumpStartupCode } from "./resumeJumpStartupCode";
+import {
+  activateResumeRouteDecisionCode,
+  resumeJumpStartupCode,
+} from "./resumeJumpStartupCode";
 
 export function publicBootstrapCode(
   options: PublicExperimentCodeOptions,
@@ -144,6 +147,7 @@ ${resumeJumpStartupCode()}
     });
 
     ${evaluateCondition}
+${activateResumeRouteDecisionCode()}
 
     _hideLoading();
 

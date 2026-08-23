@@ -31,11 +31,26 @@ function replaceLevelBranches(branches, levelBranchIds, newBranchId) {
   return next;
 }
 
+function insertBeforeLevelBranches(items, newItem, levelBranchIds) {
+  const targetIds = new Set(levelBranchIds.map(String));
+  const targetIndex = items.findIndex((item) => {
+    const itemId = item && typeof item === "object" ? item.id : item;
+    return targetIds.has(String(itemId));
+  });
+  if (targetIndex < 0) return [...items, newItem];
+  return [
+    ...items.slice(0, targetIndex),
+    newItem,
+    ...items.slice(targetIndex),
+  ];
+}
+
 export function createLoopBranch(
   experimentDoc,
   sourceTrial,
   targetScopeId,
   mode,
+  mutationTimestamp = new Date().toISOString(),
 ) {
   const sourceOwnerId = getItemOwnerId(experimentDoc, sourceTrial.id);
   if (sourceOwnerId === null || sourceOwnerId === undefined) {
@@ -62,7 +77,7 @@ export function createLoopBranch(
       : experimentDoc.loops.find((loop) =>
           idsMatch(loop.id, normalizedTarget),
         );
-  const now = new Date().toISOString();
+  const now = mutationTimestamp;
   const trial = {
     id: allocateTrialId(experimentDoc),
     type: "Trial",
@@ -89,13 +104,22 @@ export function createLoopBranch(
   experimentDoc.trials.push(trial);
 
   if (normalizedTarget === null) {
-    experimentDoc.timeline.push({
+    const timelineItem = {
       id: trial.id,
       type: "trial",
       name: trial.name,
-    });
+    };
+    experimentDoc.timeline = mode === "sequential"
+      ? insertBeforeLevelBranches(
+          experimentDoc.timeline,
+          timelineItem,
+          levelBranches,
+        )
+      : [...experimentDoc.timeline, timelineItem];
   } else {
-    targetLoop.trials = addUnique(targetLoop.trials, trial.id);
+    targetLoop.trials = mode === "sequential"
+      ? insertBeforeLevelBranches(targetLoop.trials, trial.id, levelBranches)
+      : addUnique(targetLoop.trials, trial.id);
     targetLoop.updatedAt = now;
   }
   for (const loop of experimentDoc.loops) delete loop.exitBranchRoutes;

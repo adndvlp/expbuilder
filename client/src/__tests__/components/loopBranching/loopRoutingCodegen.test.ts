@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import generateLoopCode from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/useLoopCode";
 import type { LoopData } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/useLoopCode/types";
-import { resumeCode } from "../../../pages/ExperimentBuilder/components/Timeline/ExperimentCode/ResumeCode";
+import { getJumpRequestRuntimeCode } from "../../../pages/ExperimentBuilder/modules/experiment-runtime/jumpRequest";
+import { getNavigationCoordinatorRuntimeCode } from "../../../pages/ExperimentBuilder/modules/experiment-runtime/navigationCoordinator";
+import { getPersistenceCoordinatorRuntimeCode } from "../../../pages/ExperimentBuilder/modules/experiment-runtime/persistenceCoordinator";
 
-const generateNestedLoop = () => {
+const generateNestedLoop = (targetName = "Target") => {
   const innerLoop: LoopData = {
     loopId: "inner",
     loopName: "Inner",
@@ -19,7 +21,7 @@ const generateNestedLoop = () => {
     items: [
       {
         id: 42,
-        trialName: "Target",
+        trialName: targetName,
         pluginName: "html-keyboard-response",
         timelineProps: "const Target_timeline = {};",
       },
@@ -49,15 +51,18 @@ type GeneratedRuntime = {
   finishInnerWrapper: () => void;
   finishOuter: () => void;
   finishTargetWrapper: () => void;
+  getJump: () => Record<string, unknown> | null;
   innerCanRun: () => boolean;
   innerWrapperCanRun: () => boolean;
   outerCanRun: () => boolean;
   routeTo: (target: number, parameters: Record<string, string>) => void;
   routeResult: () => Record<string, unknown>;
+  resumeTo: (target: number) => void;
   setJump: (target: number) => void;
   startInner: () => void;
   startOuter: () => void;
   targetCanRun: () => boolean;
+  targetEntryCanRun: () => boolean;
 };
 
 const createRuntime = (code: string) =>
@@ -69,18 +74,49 @@ const createRuntime = (code: string) =>
       removeItem: (key) => storage.delete(key),
       setItem: (key, value) => storage.set(key, String(value)),
     };
+    const sessionValues = new Map();
+    const sessionStorage = {
+      getItem: (key) => sessionValues.has(key) ? sessionValues.get(key) : null,
+      removeItem: (key) => sessionValues.delete(key),
+      setItem: (key, value) => sessionValues.set(key, String(value)),
+    };
     const window = {
+      location: { reload: () => undefined },
       nextTrialId: null,
       skipRemaining: false,
       branchingActive: false,
       branchCustomParameters: null,
+      ExpBuilderRuntime: {
+        emit: () => undefined,
+        reportError: () => undefined,
+      },
+      ExpBuilderExecutionAddresses: {
+        version: 2,
+        revision: 'r1',
+        nextBySource: {},
+        addressesByTarget: {
+          '42': {
+            targetId: '42',
+            targetKind: 'trial',
+            targetOwnerId: 'inner',
+            enterLoopIds: ['outer', 'inner'],
+          },
+        },
+      },
     };
+    ${getPersistenceCoordinatorRuntimeCode()}
+    ${getJumpRequestRuntimeCode()}
+    ${getNavigationCoordinatorRuntimeCode()}
     ${code}
     return {
       finishInner: () => inner_procedure.on_timeline_finish(),
       finishInnerWrapper: () => Inner_wrapper.on_timeline_finish(),
       finishOuter: () => outer_procedure.on_timeline_finish(),
       finishTargetWrapper: () => Target_wrapper.on_timeline_finish(),
+      getJump: () => {
+        const raw = localStorage.getItem('jsPsych_jumpRequest');
+        return raw ? JSON.parse(raw) : null;
+      },
       innerCanRun: () => inner_procedure.conditional_function(),
       innerWrapperCanRun: () => Inner_wrapper.conditional_function(),
       outerCanRun: () => outer_procedure.conditional_function(),
@@ -96,21 +132,34 @@ const createRuntime = (code: string) =>
         active: window.branchingActive,
         parameters: window.branchCustomParameters,
       }),
-      setJump: (target) => localStorage.setItem('jsPsych_jumpToTrial', target),
+      resumeTo: (target) => window.ExpBuilderNavigation.activateResume({
+        kind: 'sequential',
+        sourceId: 'source',
+        targetId: String(target),
+        conditionId: null,
+      }),
+      setJump: (target) => window.ExpBuilderNavigation.requestJump(
+        target,
+        { sourceId: 'source' },
+        { builder_id: 'source', trial_index: 1 },
+      ),
       startInner: () => inner_procedure.on_timeline_start(),
       startOuter: () => outer_procedure.on_timeline_start(),
       targetCanRun: () => Target_wrapper.conditional_function(),
+      targetEntryCanRun: () =>
+        window.ExpBuilderNavigation.enterItem(42, 'trial'),
     };
   `)() as GeneratedRuntime;
 
 describe("nested loop route generation", () => {
-  it("publishes every descendant ID for routing through collapsed scopes", () => {
-    const code = generateNestedLoop();
+  it("[TG-07] preserves domain IDs while sanitizing generated names", () => {
+    const code = generateNestedLoop("Target / punctuation");
 
     expect(code).toContain("const loop_inner_DescendantIds = [42];");
     expect(code).toContain(
       'const loop_outer_DescendantIds = ["inner", ...loop_inner_DescendantIds];',
     );
+    expect(code).toContain("const currentId = 42;");
   });
 
   it("executes an exact branch target inside a nested loop", () => {
@@ -136,34 +185,48 @@ describe("nested loop route generation", () => {
     });
   });
 
-  it("lets jump-to-trial enter every loop ancestor before consuming the target", () => {
+  it("[TJ-06] keeps a nested jump separate from exit-branch state", () => {
     const runtime = createRuntime(generateNestedLoop());
 
     runtime.setJump(42);
     expect(runtime.outerCanRun()).toBe(true);
+    expect(runtime.getJump()).toMatchObject({
+      cursor: { nextEnterIndex: 1, progress: 1 },
+    });
     runtime.startOuter();
     expect(runtime.innerWrapperCanRun()).toBe(true);
     expect(runtime.innerCanRun()).toBe(true);
+    expect(runtime.getJump()).toMatchObject({
+      cursor: { nextEnterIndex: 2, progress: 2 },
+    });
     runtime.startInner();
     expect(runtime.targetCanRun()).toBe(true);
+    expect(runtime.getJump()).not.toBeNull();
+    expect(runtime.targetEntryCanRun()).toBe(true);
+    expect(runtime.getJump()).toBeNull();
+    runtime.finishTargetWrapper();
+    runtime.finishInner();
+    runtime.finishInnerWrapper();
+    runtime.finishOuter();
+    expect(runtime.routeResult()).toEqual({
+      target: null,
+      skip: false,
+      active: false,
+      parameters: null,
+    });
   });
 
-  it("routes a resumed branch through every nested-loop ancestor", () => {
-    const resolveResumeBranch = new Function(
-      `${resumeCode()}; return _resolveResumeBranch;`,
-    )() as (raw: string) => string | null;
-    const target = resolveResumeBranch(
-      JSON.stringify({ branches: [42], branchConditions: [], trialData: {} }),
-    );
+  it("routes a sequential resume through every nested-loop ancestor", () => {
     const runtime = createRuntime(generateNestedLoop());
 
-    expect(target).toBe("42");
-    runtime.setJump(Number(target));
+    runtime.resumeTo(42);
     expect(runtime.outerCanRun()).toBe(true);
     runtime.startOuter();
     expect(runtime.innerWrapperCanRun()).toBe(true);
     expect(runtime.innerCanRun()).toBe(true);
     runtime.startInner();
     expect(runtime.targetCanRun()).toBe(true);
+    expect(runtime.targetEntryCanRun()).toBe(true);
+    expect(runtime.getJump()).toBeNull();
   });
 });

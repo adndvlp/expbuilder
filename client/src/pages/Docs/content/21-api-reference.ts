@@ -33,8 +33,8 @@ export const ApiReferenceSection: DocSection = {
 |---|---|---|
 | \`jsPsych_currentSessionId\` | Current Session ID | Created at start, cleared in on_finish |
 | \`jsPsych_participantNumber\` | Participant number | Created on assignment, cleared in on_finish |
-| \`jsPsych_resumeTrial\` | \`{ branches, branchConditions, trialData }\` | Updated each trial, cleared in on_finish |
-| \`jsPsych_jumpToTrial\` | builder_id of target trial | Created by repeat/jump, cleared when consumed |
+| \`jsPsych_resumeTrial\` | Versioned checkpoint with resolved route | Updated each trial, cleared in on_finish |
+| \`jsPsych_jumpRequest\` | Versioned address, cursor, progress and source identity | Created by repeat/jump, cleared when target is consumed |
 
 ## sessionStorage Keys
 

@@ -96,7 +96,7 @@ describe("loop branch projection", () => {
     expect(flowPairs(render([]))).toEqual([[parent, outerMarker]]);
   });
 
-  it("keeps the semantic source trial while every loop is expanded", () => {
+  it("[TD-12] keeps the semantic source trial while every loop is expanded", () => {
     const result = composeExpandedLoopLayout({
       rootTimeline: [loop("outer"), trial("root-target")],
       expandedScopes: [
@@ -131,7 +131,7 @@ describe("loop branch projection", () => {
     });
   });
 
-  it("projects the source to the nearest collapsed loop", () => {
+  it("[TD-12] projects the source to the nearest collapsed loop", () => {
     const result = composeExpandedLoopLayout({
       rootTimeline: [loop("outer"), trial("root-target")],
       expandedScopes: [
@@ -169,7 +169,7 @@ describe("loop branch projection", () => {
     expect(flowPairs(result)).toContainEqual([collapsedInner, rootTarget]);
   });
 
-  it("keeps the outermost projection when all loops are collapsed", () => {
+  it("[TD-12] keeps the outermost projection when all loops are collapsed", () => {
     const result = composeExpandedLoopLayout({
       rootTimeline: [loop("outer"), trial("root-target")],
       expandedScopes: [],

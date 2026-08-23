@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 coverage
+!runtime-e2e/coverage/
+!runtime-e2e/coverage/**
 *.local
 .DS_Store
 Dockerfile

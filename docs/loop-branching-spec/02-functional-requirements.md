@@ -103,6 +103,8 @@ Se muestra primero el scope actual y después sus ancestros hasta raíz. El cont
 
 Para cualquier trial dentro de un loop se elige primero el nivel. Si el origen ya tiene una branch en el nivel seleccionado, después se abre `Parent vs Branch` para escoger inserción secuencial o paralela en ese nivel. Si el nivel está vacío, se crea directamente la primera branch paralela. Los trials de raíz conservan el flujo anterior.
 
+La inserción secuencial reemplaza las aristas directas de ese nivel por `source → nuevo → destinos existentes`. El nuevo target debe quedar antes del primero de esos destinos en el orden canónico del scope seleccionado; guardar sólo las aristas sin actualizar ese orden produciría una ruta hacia atrás que jsPsych ya habría recorrido.
+
 ## Condiciones y resolución
 
 - BR-01: cada condición apunta por ID/identidad de arista a un destino real.

@@ -15,7 +15,7 @@ import { getLoopLayoutScopeId } from "../../src/pages/ExperimentBuilder/componen
 import { ROOT_CANVAS_SCOPE_ID } from "../../src/pages/ExperimentBuilder/components/Canvas/services/expandedLayoutTypes";
 import { getScopedNodeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/scopedNodeId";
 
-test("renders exact exit sources through expanded and collapsed loop levels", async ({
+test("[TC-10] [TL-01] [TL-02] [TL-03] renders exact exit sources through expanded and collapsed loop levels", async ({
   page,
 }) => {
   const experimentId = "exp-loop-branch-visual";

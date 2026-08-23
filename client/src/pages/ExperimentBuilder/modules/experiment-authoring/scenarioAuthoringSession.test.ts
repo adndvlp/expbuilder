@@ -38,7 +38,10 @@ function client(): ExperimentAuthoringClient {
       trial: { id: 2, name: "Exit", type: "Trial" },
       graph: graph("r3", 2),
     }),
-    loadLoopBranchLevels: vi.fn().mockResolvedValue([]),
+    loadLoopBranchLevels: vi.fn().mockResolvedValue({
+      levels: [],
+      revision: "r2",
+    }),
   } as unknown as ExperimentAuthoringClient;
 }
 

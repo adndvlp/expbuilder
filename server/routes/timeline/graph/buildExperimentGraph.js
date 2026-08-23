@@ -15,6 +15,19 @@ const uniqueIds = (ids = []) =>
       ids.findIndex((candidate) => idsMatch(candidate, id)) === index,
   );
 
+const reachesSource = (experimentDoc, currentId, sourceId, visited = new Set()) => {
+  const currentKey = itemKey(currentId);
+  if (visited.has(currentKey)) return false;
+  visited.add(currentKey);
+  const current = findItem(experimentDoc, currentId);
+  if (!current) return false;
+  return (current.branches ?? []).some(
+    (nextId) =>
+      idsMatch(nextId, sourceId) ||
+      reachesSource(experimentDoc, nextId, sourceId, visited),
+  );
+};
+
 function summarizeItem(experimentDoc, item) {
   const ownerId = getItemOwnerId(experimentDoc, item.id);
   const type = getItemType(experimentDoc, item.id);
@@ -62,7 +75,20 @@ function buildBranchEdges(experimentDoc, diagnostics) {
       diagnostics.push({ code: "OWNER_NOT_FOUND", itemId: source.id });
       continue;
     }
-    for (const targetId of uniqueIds(source.branches ?? [])) {
+    const rawBranches = source.branches ?? [];
+    const branchIds = uniqueIds(rawBranches);
+    if (branchIds.length !== rawBranches.length) {
+      diagnostics.push({ code: "BRANCH_DUPLICATE", sourceId: source.id });
+    }
+    for (const targetId of branchIds) {
+      if (idsMatch(source.id, targetId)) {
+        diagnostics.push({
+          code: "BRANCH_SELF_REFERENCE",
+          sourceId: source.id,
+          targetId,
+        });
+        continue;
+      }
       const target = findItem(experimentDoc, targetId);
       const targetOwnerId = target
         ? getItemOwnerId(experimentDoc, target.id)
@@ -72,6 +98,14 @@ function buildBranchEdges(experimentDoc, diagnostics) {
           code: "BRANCH_TARGET_NOT_FOUND",
           sourceId: source.id,
           targetId,
+        });
+        continue;
+      }
+      if (reachesSource(experimentDoc, target.id, source.id)) {
+        diagnostics.push({
+          code: "BRANCH_CYCLE",
+          sourceId: source.id,
+          targetId: target.id,
         });
         continue;
       }

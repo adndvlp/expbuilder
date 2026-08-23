@@ -7,7 +7,7 @@ import {
   runtimeApiBaseUrl as apiBaseUrl,
 } from "../support/session";
 
-test("authors a conditional branch, executes the selected route, and persists only executed trials", async ({
+test("[RUNTIME-BRANCH-MATCH] [TR-05] [TR-12] [TR-16] [TG-04] [TG-10] authors ordered conditions, applies only the selected route parameters, and persists only executed trials", async ({
   page,
 }) => {
   const author = new ScenarioAuthor(apiBaseUrl);
@@ -26,8 +26,27 @@ test("authors a conditional branch, executes the selected route, and persists on
   await author.configureBranchConditions("source", [
     {
       id: 1,
+      rules: [{ column: "response", op: "==", value: "1" }],
+      nextTrialAlias: "default-branch",
+      customParameters: {
+        stimulus: {
+          source: "typed",
+          value:
+            '<main data-runtime-trial="unselected-parameters">wrong</main>',
+        },
+      },
+    },
+    {
+      id: 2,
       rules: [{ column: "response", op: "==", value: "0" }],
       nextTrialAlias: "matched-branch",
+      customParameters: {
+        stimulus: {
+          source: "typed",
+          value:
+            '<main data-runtime-trial="selected-parameters">selected</main>',
+        },
+      },
     },
   ]);
 
@@ -37,7 +56,8 @@ test("authors a conditional branch, executes the selected route, and persists on
 
   await expect(runtime.trial("source")).toBeVisible();
   await runtime.continue();
-  await expect(runtime.trial("matched-branch")).toBeVisible();
+  await expect(runtime.trial("selected-parameters")).toBeVisible();
+  await expect(runtime.trial("unselected-parameters")).toHaveCount(0);
   await expect(runtime.trial("skipped-sequential")).toHaveCount(0);
   await expect(runtime.trial("default-branch")).toHaveCount(0);
   await runtime.continue();
@@ -51,7 +71,7 @@ test("authors a conditional branch, executes the selected route, and persists on
     expect.objectContaining({
       payload: expect.objectContaining({
         targetId: author.id("matched-branch"),
-        conditionId: 1,
+        conditionId: 2,
         usedDefault: false,
       }),
     }),
@@ -69,7 +89,7 @@ test("authors a conditional branch, executes the selected route, and persists on
   await runtime.assertNoRuntimeFailures();
 });
 
-test("authors a branch from a non-terminal loop trial and exits to root at runtime", async ({
+test("[RUNTIME-LOOP-ROOT-EXIT] [TR-01] authors a branch from a non-terminal loop trial and exits to root at runtime", async ({
   page,
 }) => {
   const author = new ScenarioAuthor(apiBaseUrl);
@@ -117,7 +137,7 @@ test("authors a branch from a non-terminal loop trial and exits to root at runti
   await runtime.assertNoRuntimeFailures();
 });
 
-test("turns a generated-runtime exception into a participant error screen and machine-readable failure", async ({
+test("[RUNTIME-ERROR-GUARD] turns a generated-runtime exception into a participant error screen and machine-readable failure", async ({
   page,
 }) => {
   const author = new ScenarioAuthor(apiBaseUrl);
@@ -142,7 +162,7 @@ test("turns a generated-runtime exception into a participant error screen and ma
   );
 });
 
-test("loads the versioned DynamicPlugin asset and persists its real response", async ({
+test("[RUNTIME-DYNAMIC-ASSET] loads the versioned DynamicPlugin asset and persists its real response", async ({
   page,
 }) => {
   const author = new ScenarioAuthor(apiBaseUrl);
@@ -178,4 +198,27 @@ test("loads the versioned DynamicPlugin asset and persists its real response", a
     expect.objectContaining({ runtimeButton_response: "Continue" }),
   );
   await runtime.assertNoRuntimeFailures();
+});
+
+test("[RUNTIME-CORRUPT-ROUTE-GUARD] [TR-13] [TA-14] [TG-08] rejects a dangling route before generating a runnable artifact", async () => {
+  const author = new ScenarioAuthor(apiBaseUrl);
+  await author.createExperiment(`runtime-corrupt-route-${Date.now()}`);
+  await author.createTrial("corrupt-source");
+  await author.createTrial("safe-sequential-trial");
+  await author.configureButtonTrial("corrupt-source", {
+    branches: ["missing-target"],
+  });
+  await author.configureButtonTrial("safe-sequential-trial");
+
+  const graph = await author.session.refreshGraph();
+  expect(graph.diagnostics).toContainEqual(
+    expect.objectContaining({
+      code: "BRANCH_TARGET_NOT_FOUND",
+      sourceId: author.id("corrupt-source"),
+      targetId: "missing-target",
+    }),
+  );
+  await expect(author.compileAndBuild()).rejects.toThrow(
+    "BRANCH_TARGET_NOT_FOUND",
+  );
 });

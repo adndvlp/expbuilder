@@ -54,6 +54,7 @@ export type ExpandedCanvasEdge = {
     kind: ExpandedCanvasEdgeKind;
     scopeId: string;
     flowRole?: ExpandedCanvasFlowRole;
+    semanticEdgeIds?: string[];
   };
 };
 

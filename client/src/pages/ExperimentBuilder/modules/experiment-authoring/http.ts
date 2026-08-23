@@ -33,6 +33,20 @@ export class AuthoringRequestError extends Error {
   }
 }
 
+export function isRevisionConflict(
+  error: unknown,
+): error is AuthoringRequestError {
+  if (!(error instanceof AuthoringRequestError)) return false;
+  const body = error.responseBody;
+  return (
+    error.status === 409 &&
+    typeof body === "object" &&
+    body !== null &&
+    "code" in body &&
+    body.code === "REVISION_CONFLICT"
+  );
+}
+
 function joinUrl(baseUrl: string, path: string) {
   return `${baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
 }

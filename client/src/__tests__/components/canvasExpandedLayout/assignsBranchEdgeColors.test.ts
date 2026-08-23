@@ -9,12 +9,15 @@ import type {
   ExpandedCanvasEdge,
   ExpandedCanvasEdgeKind,
 } from "../../../pages/ExperimentBuilder/components/Canvas/services/expandedLayoutTypes";
+import type { GraphBranchEdge } from "../../../pages/ExperimentBuilder/modules/experiment-graph/types";
+import { getCanonicalBranchEdgeId } from "../../../pages/ExperimentBuilder/components/Canvas/services/canonicalBranchProjection";
 
 const edge = (
   id: string,
   source: string,
   target: string,
   kind: ExpandedCanvasEdgeKind = "flow",
+  semanticEdgeIds?: string[],
 ): ExpandedCanvasEdge => ({
   id,
   source,
@@ -22,7 +25,7 @@ const edge = (
   sourceHandle: "flow-source",
   targetHandle: "flow-target",
   type: kind === "flow" ? "default" : "smoothstep",
-  data: { kind, scopeId: "root" },
+  data: { kind, scopeId: "root", semanticEdgeIds },
 });
 
 const hexChannel = (hex: string, offset: number) =>
@@ -89,13 +92,48 @@ describe("assignBranchColorSlots", () => {
     expect(slots.get("nested-a")).not.toBe(slots.get("nested-b"));
   });
 
-  it("does not color loop routing edges", () => {
+  it("[TL-10] does not classify loop routing edges as semantic flow", () => {
     const slots = assignBranchColorSlots([
       edge("loop-control", "marker", "last", "loop-control"),
       edge("loop-return", "last", "first", "loop-return"),
     ]);
 
     expect(slots.size).toBe(0);
+  });
+
+  it("[TL-09] derives colors from canonical identity instead of the visible projection", () => {
+    const canonical: GraphBranchEdge[] = ["local", "root-a", "root-b"].map(
+      (targetId) => ({
+        sourceId: "source",
+        targetId,
+        sourceOwnerId: "inner",
+        targetOwnerId: targetId === "local" ? "inner" : null,
+        exitedLoopIds: targetId === "local" ? [] : ["inner", "outer"],
+      }),
+    );
+    const rootAId = getCanonicalBranchEdgeId(canonical[1]!);
+    const rootBId = getCanonicalBranchEdgeId(canonical[2]!);
+    const expanded = [
+      edge("source-local", "source", "local", "flow", [
+        getCanonicalBranchEdgeId(canonical[0]!),
+      ]),
+      edge("source-root-a", "source", "root-a", "flow", [rootAId]),
+      edge("source-root-b", "source", "root-b", "flow", [rootBId]),
+    ];
+    const collapsed = [
+      edge("marker-root-a", "marker", "root-a", "flow", [rootAId]),
+      edge("marker-root-b", "marker", "root-b", "flow", [rootBId]),
+    ];
+
+    const expandedSlots = assignBranchColorSlots(expanded, canonical);
+    const collapsedSlots = assignBranchColorSlots(collapsed, canonical);
+
+    expect(collapsedSlots.get("marker-root-a")).toBe(
+      expandedSlots.get("source-root-a"),
+    );
+    expect(collapsedSlots.get("marker-root-b")).toBe(
+      expandedSlots.get("source-root-b"),
+    );
   });
 });
 

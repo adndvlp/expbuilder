@@ -10,7 +10,8 @@ import type { Loop, Trial } from "../../components/ConfigurationPanel/types";
 import type { TimelineItem } from "../../contexts/TrialsContext";
 import type { ExperimentGraphSnapshot } from "../experiment-graph/types";
 import type {
-  LoopBranchLevel,
+  LoopBranchCommandOptions,
+  LoopBranchLevelSnapshot,
   LoopBranchMode,
 } from "../../components/Canvas/features/loop-branching/types";
 
@@ -18,6 +19,10 @@ const json = (body: unknown): RequestInit => ({
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(body),
 });
+
+const createIdempotencyKey = () =>
+  globalThis.crypto?.randomUUID?.() ??
+  `loop-branch-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 function experimentPath(
   route: string,
@@ -129,14 +134,14 @@ export function createExperimentAuthoringClient(options: {
     },
 
     async loadLoopBranchLevels(experimentId, sourceTrialId) {
-      const result = await transport.request<{ levels: LoopBranchLevel[] }>(
+      const result = await transport.request<LoopBranchLevelSnapshot>(
         experimentPath(
           "/api/loop-branch-levels",
           experimentId,
           sourceTrialId,
         ),
       );
-      return result.levels ?? [];
+      return { levels: result.levels ?? [], revision: result.revision };
     },
 
     async createLoopBranch(
@@ -144,12 +149,30 @@ export function createExperimentAuthoringClient(options: {
       sourceTrialId,
       targetScopeId,
       mode: LoopBranchMode,
+      options: LoopBranchCommandOptions = {},
     ) {
+      const expectedRevision =
+        options.expectedRevision ??
+        (
+          await transport.request<{ graph: ExperimentGraphSnapshot }>(
+            experimentPath("/api/experiment-graph", experimentId),
+          )
+        ).graph.revision;
       return transport.request<LoopBranchMutation>(
         experimentPath("/api/loop-branch", experimentId),
         {
           method: "POST",
-          ...json({ sourceTrialId, targetScopeId, mode }),
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key":
+              options.idempotencyKey ?? createIdempotencyKey(),
+          },
+          body: JSON.stringify({
+            sourceTrialId,
+            targetScopeId,
+            mode,
+            expectedRevision,
+          }),
         },
       );
     },

@@ -109,7 +109,10 @@ export function buildUnifiedFlowLayout(input: BuildUnifiedFlowLayoutInput) {
     return { ...node, data };
   });
   const loopRoutes = getLoopScopeLanes(layout.nodes, expandedScopes);
-  const branchColorSlots = assignBranchColorSlots(layout.edges);
+  const branchColorSlots = assignBranchColorSlots(
+    layout.edges,
+    input.branchEdges,
+  );
   const visualEdges = collapseLoopEdgesToCircuits(
     layout.nodes,
     layout.edges,

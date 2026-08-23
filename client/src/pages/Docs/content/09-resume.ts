@@ -29,7 +29,8 @@ flowchart TD
   D --> E["Read jsPsych_resumeTrial"]
   E --> F["_resolveResumeBranch()"]
   F --> G{"Branch resolved?"}
-  G -->|yes: targetId| H["localStorage.setItem('jsPsych_jumpToTrial', targetId)"]
+  G -->|branch| H["Activate the resolved branch route"]
+  G -->|sequential| K["Activate the compiled address cursor"]
   G -->|no: null| I["Experiment already completed — start new one"]
   G -->|error| J["Corrupt data — clean reset"]
 \`\`\`
@@ -55,16 +56,10 @@ Prevents a jump/reload from getting stuck in an infinite cycle:
 
 \`\`\`js
 // On startup:
-const comingFromJumpReload = sessionStorage.getItem('jsPsych_jumpReload') === '1';
-sessionStorage.removeItem('jsPsych_jumpReload');
-
-if (comingFromJumpReload && existingJump) {
-// The jump was processed in the previous cycle but not consumed
-// → full reset, start new session
-localStorage.removeItem('jsPsych_jumpToTrial');
-localStorage.removeItem('jsPsych_resumeTrial');
-localStorage.removeItem('jsPsych_currentSessionId');
-localStorage.removeItem('jsPsych_participantNumber');
+const startup = window.ExpBuilderNavigation.consumeReloadMarker();
+if (startup.status === 'stalled') {
+  // The same cursor progress was observed on two marked reloads.
+  // Only jump-owned keys are invalidated and execution is blocked safely.
 }
 \`\`\`
 
@@ -72,11 +67,9 @@ localStorage.removeItem('jsPsych_participantNumber');
 
 \`\`\`js
 on_finish: async function() {
-// Clean up resume state
-localStorage.removeItem('jsPsych_resumeTrial');
+window.ExpBuilderNavigation.clearTransientState();
 localStorage.removeItem('jsPsych_currentSessionId');
 localStorage.removeItem('jsPsych_participantNumber');
-// Do NOT clean jsPsych_jumpToTrial here (it's cleaned when consumed)
 }
 \`\`\`
 `,

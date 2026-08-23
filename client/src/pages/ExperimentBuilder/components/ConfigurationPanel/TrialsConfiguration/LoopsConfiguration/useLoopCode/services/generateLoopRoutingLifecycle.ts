@@ -37,15 +37,10 @@ export function generateLoopRoutingLifecycle({
 
   return `conditional_function: function() {
     const currentId = ${JSON.stringify(id ?? null)};
-    const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
-    if (jumpToTrial) {
-      if (String(currentId) === String(jumpToTrial)) {
-        localStorage.removeItem('jsPsych_jumpToTrial');
-        return true;
-      }
-      return loop_${loopIdSanitized}_DescendantIds.some(
-        (descendantId) => String(descendantId) === String(jumpToTrial),
-      );
+    const navigationDecision =
+      window.ExpBuilderNavigation?.enterItem(currentId, 'loop');
+    if (navigationDecision !== null && navigationDecision !== undefined) {
+      return navigationDecision;
     }
 
     if (${routeIsActive}) {

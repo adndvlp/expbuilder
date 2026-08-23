@@ -1,5 +1,6 @@
 import { Loop, Trial } from "../components/ConfigurationPanel/types";
 import type { TimelineItem } from "../contexts/TrialsContext";
+import type { ExperimentGraphSnapshot } from "../modules/experiment-graph/types";
 import { getMergePointIds, isMergePoint } from "./branchGraphUtils";
 import { generateLoopCode } from "./codegen/generateLoopCode";
 import { generateTrialCode } from "./codegen/generateTrialCode";
@@ -20,6 +21,7 @@ export type TimelineCodegenOptions = {
   apiBaseUrl?: string;
   fetchImpl?: typeof fetch;
   throwOnError?: boolean;
+  graph?: ExperimentGraphSnapshot;
 };
 
 export async function generateAllCodes(
@@ -31,20 +33,20 @@ export async function generateAllCodes(
   options: TimelineCodegenOptions = {},
 ): Promise<string[]> {
   try {
-    // Fetch timeline metadata
     const fetchImpl = options.fetchImpl ?? fetch;
     const apiBaseUrl =
       options.apiBaseUrl ?? import.meta.env.VITE_API_URL ?? "";
-    const response = await fetchImpl(
-      `${apiBaseUrl}/api/trials-metadata/${experimentID}`,
-    );
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch timeline metadata");
+    let timeline: TimelineItem[] = options.graph?.root.items || [];
+    if (!options.graph) {
+      const response = await fetchImpl(
+        `${apiBaseUrl}/api/trials-metadata/${experimentID}`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch timeline metadata");
+      }
+      const data = await response.json();
+      timeline = data.timeline || [];
     }
-
-    const data = await response.json();
-    const timeline: TimelineItem[] = data.timeline || [];
     const topLevelMergePointIds = getMergePointIds(timeline);
 
     const codes: string[] = [];

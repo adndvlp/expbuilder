@@ -1,5 +1,8 @@
 import { LocalExperimentCodeOptions } from "./localCodeTypes";
-import { resumeJumpStartupCode } from "./resumeJumpStartupCode";
+import {
+  activateResumeRouteDecisionCode,
+  resumeJumpStartupCode,
+} from "./resumeJumpStartupCode";
 
 export function buildLocalRuntime({
   experimentID,
@@ -65,6 +68,7 @@ ${resumeJumpStartupCode()}
     });
 
     ${evaluateCondition}
+${activateResumeRouteDecisionCode()}
 
     _hideLoading();
 
@@ -91,11 +95,10 @@ ${resumeJumpStartupCode()}
         trialIndex: data.trial_index ?? null
       });
       if (data.builder_id !== undefined && data.builder_id !== null) {
-        localStorage.setItem('jsPsych_resumeTrial', JSON.stringify({
-          branches: data.branches || [],
-          branchConditions: data.branchConditions || [],
-          trialData: data
-        }));
+        localStorage.setItem(
+          'jsPsych_resumeTrial',
+          JSON.stringify(_createResumeCheckpoint(data))
+        );
       }
       // Create and track the promise for this data save
       window.ExpBuilderPersistence.track(fetch("/api/append-result/${experimentID}", {
@@ -169,7 +172,7 @@ ${resumeJumpStartupCode()}
       });
     }
 
-    localStorage.removeItem('jsPsych_resumeTrial');
+    window.ExpBuilderNavigation.clearTransientState();
     localStorage.removeItem('jsPsych_currentSessionId');
     localStorage.removeItem('jsPsych_participantNumber');
     _runtimeTrace('experiment-finish', {

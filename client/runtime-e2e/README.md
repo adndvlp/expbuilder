@@ -51,10 +51,19 @@ npm run test:runtime -- -g "authors a jump"
 The runner allocates a free local port and an isolated temporary database. The
 suite uses one worker so scenarios never share authoring or session state.
 
+## Continuous integration
+
+`.github/workflows/builder-contracts.yml` runs the complete contract on every
+relevant pull request and push to `main`: server tests, shared UI/authoring unit
+tests, maintained-file limits, acceptance coverage, the production build and
+the generated experiments in Chromium. A failed runtime execution uploads its
+trace, screenshots, video and HTML report as a CI artifact.
+
 ## Current vertical coverage
 
 - conditional and default branching;
 - branches exiting non-terminal, root and nested-loop levels;
+- parallel and sequential placement when a loop level already has an exit;
 - params override and conditional loops;
 - Canvas move semantics followed by generated execution;
 - jump-to-trial with a durable reload boundary;
