@@ -7,6 +7,8 @@ type CanvasStageOptions = {
   zIndex?: number;
   backend?: RenderBackendRequest;
   recordGpuTiming?: boolean;
+  recordCommitSeries?: boolean;
+  recordGpuSeries?: boolean;
 };
 
 type SpriteDrawable = {
@@ -70,6 +72,7 @@ export type StageMetrics = {
   commit_outside_raf_count: number;
   commit_count: number;
   commit_durations: number[];
+  commit_series_truncated: boolean;
   mean_commit_duration: number | null;
   max_commit_duration: number | null;
   draw_call_count: number;
@@ -79,6 +82,8 @@ export type StageMetrics = {
   webgl_context_lost_count: number;
   gpu_timer_available: boolean;
   gpu_draw_durations: number[];
+  gpu_draw_count: number;
+  gpu_series_truncated: boolean;
   mean_gpu_draw_duration: number | null;
   max_gpu_draw_duration: number | null;
   gpu_pending_query_count: number;
@@ -86,16 +91,22 @@ export type StageMetrics = {
 };
 
 const CANVAS_STAGE_REGISTRY_KEY = "__dynamicCanvasStages";
+const CANVAS_STAGE_LIST_KEY = "__dynamicCanvasStageList";
 
 const round3 = (value: number): number => Math.round(value * 1000) / 1000;
 
-const summarizeDurations = (durations: number[]) => ({
-  mean:
-    durations.length > 0
-      ? durations.reduce((sum, value) => sum + value, 0) / durations.length
-      : null,
-  max: durations.length > 0 ? Math.max(...durations) : null,
-});
+const MAX_METRIC_SERIES_LENGTH = 4096;
+const MAX_UNUSED_TEXTURE_CACHE_ENTRIES = 64;
+
+const pushBounded = (series: number[], value: number): boolean => {
+  if (series.length >= MAX_METRIC_SERIES_LENGTH) {
+    series.shift();
+    series.push(value);
+    return true;
+  }
+  series.push(value);
+  return false;
+};
 
 function createBaseMetrics(
   requested: RenderBackendRequest,
@@ -112,6 +123,7 @@ function createBaseMetrics(
     commit_outside_raf_count: 0,
     commit_count: 0,
     commit_durations: [],
+    commit_series_truncated: false,
     mean_commit_duration: null,
     max_commit_duration: null,
     draw_call_count: 0,
@@ -121,6 +133,8 @@ function createBaseMetrics(
     webgl_context_lost_count: 0,
     gpu_timer_available: false,
     gpu_draw_durations: [],
+    gpu_draw_count: 0,
+    gpu_series_truncated: false,
     mean_gpu_draw_duration: null,
     max_gpu_draw_duration: null,
     gpu_pending_query_count: 0,
@@ -175,6 +189,14 @@ export abstract class BaseStage {
   protected trialActive = false;
   protected pendingVisibilityCommits: PendingVisibilityCommit[] = [];
   protected metrics: StageMetrics;
+  private orderedDrawables: StageDrawable[] = [];
+  private visibleDrawables: StageDrawable[] = [];
+  private recordCommitSeries: boolean;
+  private recordGpuSeries: boolean;
+  private commitDurationSum = 0;
+  private commitDurationMax: number | null = null;
+  private gpuDurationSum = 0;
+  private gpuDurationMax: number | null = null;
 
   constructor(
     parent: HTMLElement,
@@ -188,12 +210,10 @@ export abstract class BaseStage {
     this.width = options.width;
     this.height = options.height;
     this.backgroundColor = options.backgroundColor || "#ffffff";
+    this.recordCommitSeries = options.recordCommitSeries === true;
+    this.recordGpuSeries = options.recordGpuSeries === true;
     this.backgroundRgba = parseCssColor(this.backgroundColor);
-    this.metrics = createBaseMetrics(
-      "webgl-strict",
-      backend,
-      bufferStrategy,
-    );
+    this.metrics = createBaseMetrics("webgl-strict", backend, bufferStrategy);
   }
 
   setZIndex(zIndex: number) {
@@ -204,8 +224,18 @@ export abstract class BaseStage {
     this.trialActive = active;
   }
 
+  setMetricSeriesRecording(commitSeries: boolean, gpuSeries: boolean) {
+    this.recordCommitSeries = commitSeries;
+    this.recordGpuSeries = gpuSeries;
+  }
+
   resetForTrial() {
+    for (const drawable of this.drawables.values()) {
+      if (drawable.kind === "sprite") this.releaseTexture(drawable.textureKey);
+    }
     this.drawables.clear();
+    this.orderedDrawables = [];
+    this.visibleDrawables = [];
     this.pendingVisibilityCommits = [];
     this.trialActive = false;
     this.dirty = true;
@@ -214,10 +244,15 @@ export abstract class BaseStage {
       this.metrics.render_backend,
       this.metrics.buffer_strategy,
     );
+    this.commitDurationSum = 0;
+    this.commitDurationMax = null;
+    this.gpuDurationSum = 0;
+    this.gpuDurationMax = null;
   }
 
   registerSprite(sprite: SpriteDrawable) {
-    this.drawables.set(sprite.id, {
+    this.removeDrawable(sprite.id);
+    const drawable: StageDrawable = {
       kind: "sprite",
       id: sprite.id,
       textureKey: sprite.textureKey,
@@ -229,8 +264,14 @@ export abstract class BaseStage {
       zIndex: sprite.zIndex ?? 0,
       visible: sprite.visible ?? false,
       opacity: sprite.opacity ?? 1,
-    });
-    this.markDirty();
+    };
+    this.drawables.set(sprite.id, drawable);
+    this.retainTexture(drawable.textureKey);
+    this.insertByZIndex(this.orderedDrawables, drawable);
+    if (drawable.visible) {
+      this.insertByZIndex(this.visibleDrawables, drawable);
+      this.markDirty();
+    }
 
     return () => {
       this.removeDrawable(sprite.id);
@@ -238,7 +279,8 @@ export abstract class BaseStage {
   }
 
   registerRect(rect: RectDrawable) {
-    this.drawables.set(rect.id, {
+    this.removeDrawable(rect.id);
+    const drawable: StageDrawable = {
       kind: "rect",
       id: rect.id,
       x: rect.x,
@@ -249,8 +291,13 @@ export abstract class BaseStage {
       colorRgba: parseCssColor(rect.color),
       zIndex: rect.zIndex ?? 0,
       visible: rect.visible ?? false,
-    });
-    this.markDirty();
+    };
+    this.drawables.set(rect.id, drawable);
+    this.insertByZIndex(this.orderedDrawables, drawable);
+    if (drawable.visible) {
+      this.insertByZIndex(this.visibleDrawables, drawable);
+      this.markDirty();
+    }
 
     return () => {
       this.removeDrawable(rect.id);
@@ -264,17 +311,31 @@ export abstract class BaseStage {
   ) {
     const drawable = this.drawables.get(id);
     if (!drawable) return;
+    // A no-op has no physical commit to attribute. Never leave its callback
+    // queued for an unrelated future frame.
+    if (drawable.visible === visible) return;
     if (onCommit) {
       this.pendingVisibilityCommits.push({ id, visible, callback: onCommit });
     }
-    if (drawable.visible === visible) return;
     drawable.visible = visible;
+    if (visible) {
+      this.insertByZIndex(this.visibleDrawables, drawable);
+    } else {
+      this.removeFromOrdered(this.visibleDrawables, drawable);
+    }
     this.markDirty();
   }
 
   removeDrawable(id: string) {
-    if (!this.drawables.delete(id)) return;
-    this.markDirty();
+    const drawable = this.drawables.get(id);
+    if (!drawable || !this.drawables.delete(id)) return;
+    this.pendingVisibilityCommits = this.pendingVisibilityCommits.filter(
+      (event) => event.id !== id,
+    );
+    if (drawable.kind === "sprite") this.releaseTexture(drawable.textureKey);
+    this.removeFromOrdered(this.orderedDrawables, drawable);
+    this.removeFromOrdered(this.visibleDrawables, drawable);
+    if (drawable.visible) this.markDirty();
   }
 
   render() {
@@ -303,13 +364,21 @@ export abstract class BaseStage {
     const cpuCommitEndedAt = performance.now();
     const duration = round3(cpuCommitEndedAt - cpuCommitStartedAt);
     this.metrics.commit_count += 1;
-    this.metrics.commit_durations.push(duration);
+    this.commitDurationSum += duration;
+    this.commitDurationMax = Math.max(
+      this.commitDurationMax ?? duration,
+      duration,
+    );
+    if (this.recordCommitSeries) {
+      this.metrics.commit_series_truncated =
+        pushBounded(this.metrics.commit_durations, duration) ||
+        this.metrics.commit_series_truncated;
+    }
     this.metrics.draw_call_count += drawCalls;
-    const commitSummary = summarizeDurations(this.metrics.commit_durations);
-    this.metrics.mean_commit_duration =
-      commitSummary.mean === null ? null : round3(commitSummary.mean);
-    this.metrics.max_commit_duration =
-      commitSummary.max === null ? null : round3(commitSummary.max);
+    this.metrics.mean_commit_duration = round3(
+      this.commitDurationSum / this.metrics.commit_count,
+    );
+    this.metrics.max_commit_duration = round3(this.commitDurationMax);
     this.dirty = false;
     this.pollGpuQueries();
 
@@ -335,18 +404,8 @@ export abstract class BaseStage {
 
   getMetrics(): StageMetrics {
     this.pollGpuQueries();
-    const commitSummary = summarizeDurations(this.metrics.commit_durations);
-    const gpuSummary = summarizeDurations(this.metrics.gpu_draw_durations);
     return {
       ...this.metrics,
-      mean_commit_duration:
-        commitSummary.mean === null ? null : round3(commitSummary.mean),
-      max_commit_duration:
-        commitSummary.max === null ? null : round3(commitSummary.max),
-      mean_gpu_draw_duration:
-        gpuSummary.mean === null ? null : round3(gpuSummary.mean),
-      max_gpu_draw_duration:
-        gpuSummary.max === null ? null : round3(gpuSummary.max),
       gpu_pending_query_count: this.metrics.gpu_pending_query_count,
       commit_durations: [...this.metrics.commit_durations],
       gpu_draw_durations: [...this.metrics.gpu_draw_durations],
@@ -354,7 +413,21 @@ export abstract class BaseStage {
   }
 
   destroy() {
+    for (const drawable of this.drawables.values()) {
+      if (drawable.kind === "sprite") this.releaseTexture(drawable.textureKey);
+    }
+    this.drawables.clear();
+    this.orderedDrawables = [];
+    this.visibleDrawables = [];
+    this.pendingVisibilityCommits = [];
     this.canvas.remove();
+  }
+
+  getResourceDiagnostics() {
+    return {
+      drawableCount: this.drawables.size,
+      pendingVisibilityCallbacks: this.pendingVisibilityCommits.length,
+    };
   }
 
   abstract preloadTexture(
@@ -368,14 +441,32 @@ export abstract class BaseStage {
     return undefined;
   }
 
+  protected retainTexture(_key: string) {}
+
+  protected releaseTexture(_key: string) {}
+
   protected markDirty() {
     this.dirty = true;
   }
 
-  protected getVisibleDrawables() {
-    return [...this.drawables.values()]
-      .filter((drawable) => drawable.visible)
-      .sort((a, b) => a.zIndex - b.zIndex);
+  protected getOrderedDrawables() {
+    return this.visibleDrawables;
+  }
+
+  private insertByZIndex(target: StageDrawable[], drawable: StageDrawable) {
+    let low = 0;
+    let high = target.length;
+    while (low < high) {
+      const middle = (low + high) >>> 1;
+      if (target[middle].zIndex <= drawable.zIndex) low = middle + 1;
+      else high = middle;
+    }
+    target.splice(low, 0, drawable);
+  }
+
+  private removeFromOrdered(target: StageDrawable[], drawable: StageDrawable) {
+    const index = target.indexOf(drawable);
+    if (index >= 0) target.splice(index, 1);
   }
 
   protected pollGpuQueries() {
@@ -390,6 +481,8 @@ class WebGLStage extends BaseStage {
   private texCoordBuffer: WebGLBuffer;
   private textures = new Map<string, WebGLTexture>();
   private textureSources = new Map<string, CanvasImageSource>();
+  private textureUsage = new Map<string, { references: number; lastUsed: number }>();
+  private textureUseSequence = 0;
   private whiteTexture: WebGLTexture;
   private uniformResolution: WebGLUniformLocation | null;
   private uniformRect: WebGLUniformLocation | null;
@@ -448,7 +541,10 @@ class WebGLStage extends BaseStage {
     this.whiteTexture = this.createWhiteTexture();
     this.attributePosition = gl.getAttribLocation(this.program, "a_position");
     this.attributeTexCoord = gl.getAttribLocation(this.program, "a_texCoord");
-    this.uniformResolution = gl.getUniformLocation(this.program, "u_resolution");
+    this.uniformResolution = gl.getUniformLocation(
+      this.program,
+      "u_resolution",
+    );
     this.uniformRect = gl.getUniformLocation(this.program, "u_rect");
     this.uniformTexture = gl.getUniformLocation(this.program, "u_texture");
     this.uniformColor = gl.getUniformLocation(this.program, "u_color");
@@ -462,14 +558,79 @@ class WebGLStage extends BaseStage {
 
   preloadTexture(key: string, source: CanvasImageSource) {
     this.textureSources.set(key, source);
+    const usage = this.textureUsage.get(key) ?? {
+      references: 0,
+      lastUsed: 0,
+    };
+    usage.lastUsed = ++this.textureUseSequence;
+    this.textureUsage.set(key, usage);
     if (this.textures.has(key)) return key;
     const texture = this.uploadTexture(source);
     this.textures.set(key, texture);
+    this.evictUnusedTextures();
     return key;
   }
 
   protected getTextureSource(key: string) {
     return this.textureSources.get(key);
+  }
+
+  protected retainTexture(key: string) {
+    const usage = this.textureUsage.get(key) ?? {
+      references: 0,
+      lastUsed: 0,
+    };
+    usage.references += 1;
+    usage.lastUsed = ++this.textureUseSequence;
+    this.textureUsage.set(key, usage);
+  }
+
+  protected releaseTexture(key: string) {
+    const usage = this.textureUsage.get(key);
+    if (!usage) return;
+    usage.references = Math.max(0, usage.references - 1);
+    usage.lastUsed = ++this.textureUseSequence;
+    this.evictUnusedTextures();
+  }
+
+  getResourceDiagnostics() {
+    return {
+      ...super.getResourceDiagnostics(),
+      textureCount: this.textures.size,
+      retainedTextureReferences: [...this.textureUsage.values()].reduce(
+        (sum, usage) => sum + usage.references,
+        0,
+      ),
+      textureCacheLimit: MAX_UNUSED_TEXTURE_CACHE_ENTRIES,
+    };
+  }
+
+  destroy() {
+    super.destroy();
+    for (const query of this.pendingGpuQueries) this.gl.deleteQuery?.(query);
+    this.pendingGpuQueries = [];
+    for (const texture of this.textures.values()) this.gl.deleteTexture?.(texture);
+    this.textures.clear();
+    this.textureSources.clear();
+    this.textureUsage.clear();
+    this.gl.deleteTexture?.(this.whiteTexture);
+    this.gl.deleteBuffer?.(this.positionBuffer);
+    this.gl.deleteBuffer?.(this.texCoordBuffer);
+    this.gl.deleteProgram?.(this.program);
+  }
+
+  private evictUnusedTextures() {
+    const unused = [...this.textureUsage.entries()]
+      .filter(([, usage]) => usage.references === 0)
+      .sort((a, b) => a[1].lastUsed - b[1].lastUsed);
+    while (unused.length > MAX_UNUSED_TEXTURE_CACHE_ENTRIES) {
+      const [key] = unused.shift()!;
+      const texture = this.textures.get(key);
+      if (texture) this.gl.deleteTexture?.(texture);
+      this.textures.delete(key);
+      this.textureSources.delete(key);
+      this.textureUsage.delete(key);
+    }
   }
 
   protected renderFrame() {
@@ -481,7 +642,8 @@ class WebGLStage extends BaseStage {
     this.clearGl();
 
     let drawCalls = 0;
-    for (const drawable of this.getVisibleDrawables()) {
+    for (const drawable of this.getOrderedDrawables()) {
+      if (!drawable.visible) continue;
       if (drawable.kind === "sprite") {
         const texture =
           this.textures.get(drawable.textureKey) ??
@@ -532,7 +694,22 @@ class WebGLStage extends BaseStage {
       }
       if (available) {
         const ns = gl.getQueryParameter(query, gl.QUERY_RESULT);
-        this.metrics.gpu_draw_durations.push(round3(ns / 1_000_000));
+        const duration = round3(ns / 1_000_000);
+        this.metrics.gpu_draw_count += 1;
+        this.gpuDurationSum += duration;
+        this.gpuDurationMax = Math.max(
+          this.gpuDurationMax ?? duration,
+          duration,
+        );
+        this.metrics.mean_gpu_draw_duration = round3(
+          this.gpuDurationSum / this.metrics.gpu_draw_count,
+        );
+        this.metrics.max_gpu_draw_duration = round3(this.gpuDurationMax);
+        if (this.recordGpuSeries) {
+          this.metrics.gpu_series_truncated =
+            pushBounded(this.metrics.gpu_draw_durations, duration) ||
+            this.metrics.gpu_series_truncated;
+        }
         gl.deleteQuery(query);
       } else {
         remaining.push(query);
@@ -646,6 +823,16 @@ class WebGLStage extends BaseStage {
     const texture = this.uploadTexture(source);
     this.textureSources.set(key, source);
     this.textures.set(key, texture);
+    // registerSprite() retains before the first lazy upload. Preserve that
+    // reference count so an in-use texture can never be selected by LRU
+    // eviction merely because its GPU upload happened on the first draw.
+    const usage = this.textureUsage.get(key) ?? {
+      references: 0,
+      lastUsed: 0,
+    };
+    usage.lastUsed = ++this.textureUseSequence;
+    this.textureUsage.set(key, usage);
+    this.evictUnusedTextures();
     return texture;
   }
 
@@ -659,14 +846,7 @@ class WebGLStage extends BaseStage {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      source,
-    );
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
     if (this.trialActive) {
       this.metrics.texture_uploads_during_trial += 1;
     }
@@ -735,6 +915,11 @@ function getStageRegistry(parent: HTMLElement) {
       enumerable: false,
       configurable: true,
     });
+    Object.defineProperty(parent, CANVAS_STAGE_LIST_KEY, {
+      value: [] as CanvasStage[],
+      enumerable: false,
+      configurable: true,
+    });
   }
   return registry;
 }
@@ -751,6 +936,10 @@ export function getCanvasStage(
   const key = "webgl-strict";
   const existing = registry.get(key);
   if (existing) {
+    existing.setMetricSeriesRecording(
+      options.recordCommitSeries === true,
+      options.recordGpuSeries === true,
+    );
     if (options.zIndex !== undefined) {
       existing.setZIndex(
         Math.max(Number(existing.canvas.style.zIndex) || 0, options.zIndex),
@@ -761,12 +950,15 @@ export function getCanvasStage(
 
   const stage: CanvasStage = new WebGLStage(parent, options);
   registry.set(key, stage);
+  ((parent as any)[CANVAS_STAGE_LIST_KEY] as CanvasStage[]).push(stage);
   return stage;
 }
 
 export function getCanvasStages(parent: HTMLElement): CanvasStage[] {
-  const registry = (parent as any)[CANVAS_STAGE_REGISTRY_KEY] as
-    | Map<string, CanvasStage>
-    | undefined;
-  return registry ? [...registry.values()] : [];
+  // The persistent frame callback calls this on every observed rAF. Keep a
+  // stable list beside the registry so a stationary presentation does not
+  // allocate a fresh array on every frame.
+  return (
+    ((parent as any)[CANVAS_STAGE_LIST_KEY] as CanvasStage[] | undefined) ?? []
+  );
 }

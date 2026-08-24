@@ -12,7 +12,10 @@ function createManager(
   overrides: {
     timing?: any;
     trial?: Record<string, any>;
-    onFinish?: (timestamp?: number | null, options?: { force: boolean }) => boolean | void;
+    onFinish?: (
+      timestamp?: number | null,
+      options?: { force: boolean },
+    ) => boolean | void;
   } = {},
 ) {
   const container = document.createElement("div");
@@ -35,7 +38,11 @@ function keydownEvent(key: string, timeStamp: number, repeat = false) {
 }
 
 function pointerdownEvent(x = 10, y = 10) {
-  const event = new PointerEvent("pointerdown", { clientX: x, clientY: y, pointerType: "mouse" });
+  const event = new PointerEvent("pointerdown", {
+    clientX: x,
+    clientY: y,
+    pointerType: "mouse",
+  });
   return event;
 }
 
@@ -87,7 +94,9 @@ describe("ResponseTimingManager baseline characterization", () => {
     window.dispatchEvent(keydownEvent("a", 0));
     expect(captured).toHaveLength(1);
     expect(captured[0].response_time).toBe(1270);
-    expect(captured[0].response_timestamp_source).toBe("performance.now_fallback");
+    expect(captured[0].response_timestamp_source).toBe(
+      "performance.now_fallback",
+    );
     manager.detach();
   });
 
@@ -152,7 +161,11 @@ describe("ResponseTimingManager V2 semantics", () => {
   it("rt_raw = response - trial_time_origin for fresh_raf origin", () => {
     const captured: any[] = [];
     const { manager } = createManager({
-      timing: { getOnsetTime: () => 1000, getTrialTimeOrigin: () => 1000, getFrameIntervalEstimate: () => 1000 / 60 },
+      timing: {
+        getOnsetTime: () => 1000,
+        getTrialTimeOrigin: () => 1000,
+        getFrameIntervalEstimate: () => 1000 / 60,
+      },
       onFinish: () => true,
     });
     manager.attach();
@@ -168,6 +181,48 @@ describe("ResponseTimingManager V2 semantics", () => {
     window.dispatchEvent(keydownEvent("a", 1250));
     expect(captured[0].rt_raw).toBe(250);
     expect(captured[0].rt).toBe(250);
+    manager.detach();
+  });
+
+  it("preserves scheduled, visual-commit, and trial-origin RT anchors separately", () => {
+    const captured: any[] = [];
+    const stimulusRecord = {
+      component_id: "target",
+      name: "target",
+      scheduled_onset_abs: 100,
+      frame_onset_abs: 108.333,
+    };
+    const { manager } = createManager({
+      trial: {
+        response_rt_anchor: { from: "stimulus_commit", component: "target" },
+      },
+      timing: {
+        getOnsetTime: () => 108.333,
+        getScheduledTrialTimeOrigin: () => 100,
+        getFrameIntervalEstimate: () => 1000 / 60,
+        findStimulusRecord: () => stimulusRecord,
+      },
+      onFinish: () => true,
+    });
+    manager.attach();
+    manager.registerKeyboardTarget({
+      componentId: "kb",
+      componentName: "Keyboard",
+      choices: "ALL_KEYS",
+      caseSensitive: false,
+      minimumValidRtMs: null,
+      onResponse: (response: any) => captured.push(response),
+    });
+
+    vi.spyOn(performance, "now").mockReturnValue(309);
+    window.dispatchEvent(keydownEvent("a", 308.333));
+
+    expect(captured[0].rt_scheduled_onset).toBe(208.333);
+    expect(captured[0].rt_visual_commit).toBe(200);
+    expect(captured[0].rt_trial_origin).toBe(200);
+    expect(captured[0].rt_raw).toBe(200);
+    expect(captured[0].rt_anchor).toBe("stimulus_commit");
+    expect(captured[0].rt_anchor_component).toBe("target");
     manager.detach();
   });
 
@@ -267,7 +322,162 @@ describe("ResponseTimingManager V2 semantics", () => {
     window.dispatchEvent(keydownEvent("a", 1150)); // before 1300 gate
     expect(captured).toHaveLength(0);
     expect(finishes).toBe(1);
-    expect(manager.getData().response_invalid_reason).toBe("before_trial_onset");
+    expect(manager.getData().response_invalid_reason).toBe(
+      "before_response_allowed",
+    );
+    manager.detach();
+  });
+
+  it("allows responses relative to a component scheduled onset", () => {
+    const captured: any[] = [];
+    const stimulusRecord = {
+      component_id: "target",
+      name: "target",
+      scheduled_onset_abs: 1100,
+      frame_onset_abs: 1116.667,
+    };
+    const { manager } = createManager({
+      trial: {
+        response_allowed_from: {
+          from: "scheduled_onset",
+          component: "target",
+          at_ms: 25,
+        },
+      },
+      timing: {
+        getOnsetTime: () => 1000,
+        getFrameIntervalEstimate: () => 1000 / 60,
+        findStimulusRecord: () => stimulusRecord,
+      },
+      onFinish: () => true,
+    });
+    manager.attach();
+    manager.registerKeyboardTarget({
+      componentId: "kb",
+      componentName: "Keyboard",
+      choices: "ALL_KEYS",
+      caseSensitive: false,
+      minimumValidRtMs: null,
+      onResponse: (response: any) => captured.push(response),
+    });
+
+    vi.spyOn(performance, "now").mockReturnValue(1140);
+    window.dispatchEvent(keydownEvent("a", 1130));
+    expect(captured).toHaveLength(1);
+    expect(captured[0].response_allowed_from_abs).toBe(1125);
+    expect(captured[0].rt_from_allowed_onset).toBe(5);
+    manager.detach();
+  });
+
+  it("classifies a response before the real component commit as premature", () => {
+    const captured: any[] = [];
+    const stimulusRecord = {
+      component_id: "target",
+      name: "target",
+      scheduled_onset_abs: 1050,
+      frame_onset_abs: 1100,
+    };
+    const { manager } = createManager({
+      trial: {
+        response_allowed_from: {
+          from: "stimulus_commit",
+          component: "target",
+          at_ms: 0,
+        },
+        premature_response_policy: "end_invalid",
+      },
+      timing: {
+        getOnsetTime: () => 1000,
+        getFrameIntervalEstimate: () => 1000 / 60,
+        findStimulusRecord: () => stimulusRecord,
+      },
+      onFinish: () => true,
+    });
+    manager.attach();
+    manager.registerKeyboardTarget({
+      componentId: "kb",
+      componentName: "Keyboard",
+      choices: "ALL_KEYS",
+      caseSensitive: false,
+      minimumValidRtMs: null,
+      onResponse: (response: any) => captured.push(response),
+    });
+
+    vi.spyOn(performance, "now").mockReturnValue(1080);
+    window.dispatchEvent(keydownEvent("a", 1075));
+    expect(captured).toHaveLength(0);
+    expect(manager.getData().response_allowed_from_abs).toBe(1100);
+    expect(manager.getData().rt_from_allowed_onset).toBe(-25);
+    expect(manager.getData().response_invalid_reason).toBe(
+      "before_response_allowed",
+    );
+    manager.detach();
+  });
+
+  it("rejects a missing response-allowed component without origin fallback", () => {
+    const { manager } = createManager({
+      trial: {
+        response_allowed_from: {
+          from: "stimulus_commit",
+          component: "missing",
+          at_ms: 0,
+        },
+      },
+      timing: {
+        getOnsetTime: () => 1000,
+        getFrameIntervalEstimate: () => 1000 / 60,
+        findStimulusRecord: () => null,
+      },
+      onFinish: () => true,
+    });
+    manager.attach();
+    manager.registerKeyboardTarget({
+      componentId: "kb",
+      componentName: "Keyboard",
+      choices: "ALL_KEYS",
+      caseSensitive: false,
+      minimumValidRtMs: null,
+    });
+
+    vi.spyOn(performance, "now").mockReturnValue(1200);
+    window.dispatchEvent(keydownEvent("a", 1190));
+    expect(manager.getData().response_allowed_from_abs).toBeNull();
+    expect(manager.getData().response_invalid_reason).toBe(
+      "response_allowed_component_missing",
+    );
+    manager.detach();
+  });
+
+  it("rejects a missing RT-anchor component without origin fallback", () => {
+    const { manager } = createManager({
+      trial: {
+        response_rt_anchor: {
+          from: "stimulus_commit",
+          component: "missing",
+        },
+      },
+      timing: {
+        getOnsetTime: () => 1000,
+        getFrameIntervalEstimate: () => 1000 / 60,
+        findStimulusRecord: () => null,
+      },
+      onFinish: () => true,
+    });
+    manager.attach();
+    manager.registerKeyboardTarget({
+      componentId: "kb",
+      componentName: "Keyboard",
+      choices: "ALL_KEYS",
+      caseSensitive: false,
+      minimumValidRtMs: null,
+    });
+
+    vi.spyOn(performance, "now").mockReturnValue(1200);
+    window.dispatchEvent(keydownEvent("a", 1190));
+    expect(manager.getData().rt_anchor_time_abs).toBeNull();
+    expect(manager.getData().response_invalid_reason).toBe(
+      "response_anchor_component_missing",
+    );
     manager.detach();
   });
 

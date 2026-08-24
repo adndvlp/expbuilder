@@ -104,6 +104,11 @@ class ImageComponent {
   private visible = false;
   private offsetReached = false;
   private destroyed = false;
+  private deactivateAtBoundary: ((timestamp: number) => void) | null = null;
+  private precisionPreparation = false;
+  private resourceReadyAt: number | null = null;
+  private gpuReadyAt: number | null = null;
+  private precisionFallbackReason = "";
 
   constructor(jsPsych: any) {
     this.jsPsych = jsPsych;
@@ -114,7 +119,9 @@ class ImageComponent {
   private resolveParam(raw: any, fallback: any): any {
     if (raw === undefined || raw === null) return fallback;
     if (typeof raw === "object" && "value" in raw) {
-      return raw.value !== undefined && raw.value !== null ? raw.value : fallback;
+      return raw.value !== undefined && raw.value !== null
+        ? raw.value
+        : fallback;
     }
     return raw;
   }
@@ -132,7 +139,10 @@ class ImageComponent {
     };
   }
 
-  private computeDrawRect(config: any, source: CanvasBitmapSource): DrawRect | null {
+  private computeDrawRect(
+    config: any,
+    source: CanvasBitmapSource,
+  ): DrawRect | null {
     const canvasStyles = this.resolveParam(config.__canvasStyles, {});
     const canvasWidth = this.resolveParam(canvasStyles?.width, 1024);
     const canvasHeight = this.resolveParam(canvasStyles?.height, 768);
@@ -212,7 +222,9 @@ class ImageComponent {
     const stimulusKey = String(
       this.resolveParam(config.stimulus, this.drawableId) ?? this.drawableId,
     );
-    const textureKey = `${this.drawableId}:${stimulusKey}`;
+    // Texture storage is surface-global; repeated prepared trials can share a
+    // GPU texture while retaining distinct drawable visibility state.
+    const textureKey = `image:${stimulusKey}`;
     this.stage.preloadTexture(textureKey, this.source);
     this.removeDrawable = this.stage.registerSprite({
       id: this.drawableId,
@@ -226,7 +238,51 @@ class ImageComponent {
       height: rect.height,
     });
     this.prepared = true;
+    this.gpuReadyAt = performance.now();
     return true;
+  }
+
+  /**
+   * Precision preparation is truthful: resolve only after fetch/decode,
+   * drawable registration and synchronous GPU upload have all completed.
+   */
+  async prepare(container: HTMLElement, config: any): Promise<HTMLElement> {
+    if (config.__precisionGlobalPath !== true) {
+      return this.render(container, config);
+    }
+    this.precisionPreparation = true;
+    const element = this.render(container, config);
+    if (this.sourcePromise) {
+      try {
+        await this.sourcePromise;
+      } catch (error) {
+        this.precisionFallbackReason = "image_resource_load_or_decode_failed";
+        throw error;
+      }
+    }
+    this.resourceReadyAt ??= this.source ? performance.now() : null;
+    const zIndex = resolveTimingMs(config.zIndex, 0) ?? 0;
+    if (!this.prepareDrawable(config, zIndex)) {
+      this.precisionFallbackReason = this.source
+        ? "image_drawable_or_gpu_prepare_failed"
+        : "image_resource_missing";
+      throw new Error(this.precisionFallbackReason);
+    }
+    return element;
+  }
+
+  getPrecisionReadiness() {
+    return {
+      ready:
+        this.prepared &&
+        this.source !== null &&
+        this.stage !== null &&
+        this.gpuReadyAt !== null,
+      reason: this.prepared ? "image_drawable_gpu_ready" : "image_not_ready",
+      fallbackReason: this.precisionFallbackReason,
+      resourceReadyAt: this.resourceReadyAt,
+      gpuReadyAt: this.gpuReadyAt,
+    };
   }
 
   render(container: HTMLElement, config: any): HTMLElement {
@@ -241,8 +297,13 @@ class ImageComponent {
     this.prepared = false;
     this.visible = false;
     this.drawRect = null;
-    this.drawableId = config.name
-      ? `image-${config.name}`
+    this.deactivateAtBoundary = null;
+    this.resourceReadyAt = null;
+    this.gpuReadyAt = null;
+    this.precisionFallbackReason = "";
+    const runtimeComponentId = config.__runtimeComponentId ?? config.name;
+    this.drawableId = runtimeComponentId
+      ? `image-${runtimeComponentId}`
       : `image-${++imageComponentCounter}`;
 
     this.stage = getCanvasStage(container, {
@@ -252,11 +313,13 @@ class ImageComponent {
       zIndex,
       backend: this.resolveParam(config.__renderBackend, "webgl-strict"),
       recordGpuTiming: this.resolveParam(config.__recordGpuTiming, true),
+      recordCommitSeries: this.resolveParam(config.__recordCommitSeries, false),
+      recordGpuSeries: this.resolveParam(config.__recordGpuSeries, false),
     });
 
     this.element = document.createElement("div");
-    this.element.id = config.name
-      ? `jspsych-dynamic-${config.name}-stimulus`
+    this.element.id = runtimeComponentId
+      ? `jspsych-dynamic-${runtimeComponentId}-stimulus`
       : "jspsych-dynamic-image-stimulus";
     this.element.className = "dynamic-image-component";
     this.element.setAttribute("aria-hidden", "true");
@@ -278,6 +341,7 @@ class ImageComponent {
       const readySource = getReadyPreloadedBitmap(stimulus);
       if (readySource) {
         this.source = readySource;
+        this.resourceReadyAt = performance.now();
         this.prepareDrawable(config, zIndex);
         // P4 fast path: the resource is synchronously READY — no async
         // loader promise is created for a warm cache hit.
@@ -288,6 +352,7 @@ class ImageComponent {
         // fallback with its retry semantics.
         this.sourcePromise = preloadBitmap(stimulus).then((source) => {
           this.source = source;
+          this.resourceReadyAt = performance.now();
           this.prepareDrawable(config, zIndex);
           return source;
         });
@@ -299,6 +364,8 @@ class ImageComponent {
       | undefined;
     const stimulusOnset = resolveTimingMs(config.stimulus_onset, null);
     const stimulusDuration = resolveTimingMs(config.stimulus_duration, null);
+    const deferOffsetToTrialBoundary =
+      config.__deferOffsetToTrialBoundary === true;
     const stimulusTiming = timing?.registerStimulus?.(
       config.name || config.type || this.drawableId,
       stimulusOnset,
@@ -316,6 +383,10 @@ class ImageComponent {
       if (this.destroyed || this.offsetReached) return;
 
       if (!this.prepareDrawable(config, zIndex)) {
+        if (this.precisionPreparation) {
+          this.precisionFallbackReason = "activate_before_image_drawable_ready";
+          return;
+        }
         this.sourcePromise?.then(() => {
           if (this.destroyed || this.offsetReached) return;
           this.deferredRafHandle = requestAnimationFrame((frameTimestamp) => {
@@ -338,13 +409,18 @@ class ImageComponent {
       this.offsetReached = true;
       this.visible = false;
       if (this.drawn) {
-        this.stage?.setDrawableVisibility(this.drawableId, false, (commitInfo) => {
-          stimulusTiming?.markOffset(timestamp, commitInfo);
-        });
+        this.stage?.setDrawableVisibility(
+          this.drawableId,
+          false,
+          (commitInfo) => {
+            stimulusTiming?.markOffset(timestamp, commitInfo);
+          },
+        );
       } else {
         this.stage?.setDrawableVisibility(this.drawableId, false);
       }
     };
+    this.deactivateAtBoundary = hide;
 
     if (timing) {
       if (stimulusOnset === null) {
@@ -355,7 +431,7 @@ class ImageComponent {
         );
       }
 
-      if (stimulusDuration !== null) {
+      if (stimulusDuration !== null && !deferOffsetToTrialBoundary) {
         this.cancelSchedule.push(
           timing.scheduleAt((stimulusOnset ?? 0) + stimulusDuration, hide, {
             policy: "not_before",
@@ -366,7 +442,7 @@ class ImageComponent {
       const drawDelay = stimulusOnset ?? 0;
       this.cancelSchedule.push(scheduleFrameEvent(drawDelay, draw));
 
-      if (stimulusDuration !== null) {
+      if (stimulusDuration !== null && !deferOffsetToTrialBoundary) {
         this.cancelSchedule.push(
           scheduleFrameEvent(drawDelay + stimulusDuration, hide, {
             policy: "not_before",
@@ -376,6 +452,15 @@ class ImageComponent {
     }
 
     return this.stage.canvas;
+  }
+
+  /** Critical-path lifecycle hook used by the persistent frame engine. */
+  deactivate(info: { timestamp: number }) {
+    if (this.deactivateAtBoundary) {
+      this.deactivateAtBoundary(info.timestamp);
+    } else {
+      this.hide();
+    }
   }
 
   hide() {
@@ -414,6 +499,8 @@ class ImageComponent {
     this.sourcePromise = null;
     this.drawRect = null;
     this.prepared = false;
+    this.deactivateAtBoundary = null;
+    this.precisionPreparation = false;
   }
 
   getRenderedSize(): { width: number; height: number } | null {

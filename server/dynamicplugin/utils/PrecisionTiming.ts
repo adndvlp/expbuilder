@@ -1,14 +1,84 @@
 import { readEventTimestamp } from "./EventTiming";
 import { preloadAudioBuffer } from "./AudioTiming";
 
-export type TrialTimeOriginSource = "fresh_raf" | "visual_handoff" | "host_coordinator";
+export type TrialTimeOriginSource =
+  | "fresh_raf"
+  | "visual_handoff"
+  | "host_coordinator"
+  | "frame_engine_raf"
+  | "frame_engine_transition";
 
 export type DeadlinePolicy = "nearest" | "not_before";
+export type VisualBoundaryPolicy =
+  | "strict_not_before_ms"
+  | "frame_tolerant_not_before"
+  | "frame_locked"
+  | "frame_count";
+
+export interface HostTrialTimingContext {
+  readonly id: string;
+  setTrialIndex(index: number): void;
+  getOriginTime(): number | null;
+  getScheduledOriginTime(): number | null;
+  getLatestFrameTime(): number | null;
+  getLatestCommittedFrameTime(): number | null;
+  getFrameIntervalEstimate(): number;
+  getFrameIndex(): number | null;
+  markReady(readyAt?: number, diagnostics?: Record<string, unknown>): void;
+  markNotReady?(reason: string, diagnostics?: Record<string, unknown>): void;
+  getReadinessDiagnostics?(): Record<string, unknown>;
+  setPresentationLifecycle(lifecycle: {
+    arm?(info: any): void;
+    activate?(info: any): void;
+    deactivate?(info: any): void;
+  }): void;
+  start(): void;
+  stop(): void;
+  onStart(callback: (timestamp: number, info: any) => void): () => void;
+  onFrame(callback: (timestamp: number, info: any) => void): () => void;
+  onFrameCommit(callback: (timestamp: number, info: any) => void): () => void;
+  onPostCommit(callback: (timestamp: number, info: any) => void): () => void;
+  scheduleAt(
+    delayMs: number,
+    callback: (timestamp: number, elapsed: number) => void,
+    options?: { policy?: DeadlinePolicy },
+  ): () => void;
+  requestBoundary(options: {
+    targetTime?: number;
+    targetTimeMs?: number;
+    targetFrameIndex?: number | null;
+    frameCount?: number | null;
+    boundaryPolicy?: VisualBoundaryPolicy;
+    reason?: string;
+    requestedAt?: number;
+    allowTerminal?: boolean;
+    onCommit?: (info: any) => void;
+  }): boolean;
+  queuePostCritical(
+    task: (budgetMs?: number) => void | boolean,
+    options?: {
+      label?: string;
+      estimatedCostMs?: number;
+      responseSafe?: boolean;
+      minimumBudgetMs?: number;
+    },
+  ): { cancel(): void };
+  setResponseSensitive?(active: boolean): void;
+  setNextAudioDeadline?(timestamp: number | null): void;
+  recordStimulusCommit(anchor: {
+    componentId: string | null;
+    name: string;
+    scheduledTime: number | null;
+    commitTime: number;
+  }): void;
+  getTransitionTelemetry(): readonly any[];
+}
 
 type FrameTimingOptions = {
   recordFrameTiming?: boolean;
   longFrameThreshold?: number;
   expectedFrameMs?: number;
+  trialContext?: HostTrialTimingContext | null;
 };
 
 type ScheduledFrameEvent = {
@@ -29,6 +99,8 @@ export type StimulusTimingRecord = {
   desired_onset: number;
   desired_duration: number | null;
   desired_offset: number | null;
+  scheduled_onset_abs: number | null;
+  scheduled_offset_abs: number | null;
 
   // Canonical V2 frame-domain fields. frame_* values are rAF/commit frame
   // timestamps; they are NOT physical photon-onset measurements.
@@ -91,10 +163,15 @@ const bitmapSourceCache = new Map<string, CanvasBitmapSource>();
 const audioPreloadCache = new Map<string, Promise<void>>();
 const videoPreloadCache = new Map<string, Promise<void>>();
 
-export function resolveTimingMs(raw: any, fallback: number | null = null): number | null {
+export function resolveTimingMs(
+  raw: any,
+  fallback: number | null = null,
+): number | null {
   if (raw === null || raw === undefined) return fallback;
   if (typeof raw === "object" && "value" in raw) {
-    return raw.value === null || raw.value === undefined ? fallback : Number(raw.value);
+    return raw.value === null || raw.value === undefined
+      ? fallback
+      : Number(raw.value);
   }
   return Number(raw);
 }
@@ -108,8 +185,15 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
   const frameCommitCallbacks: Array<(timestamp: number) => void> = [];
   const frameIntervals: FrameInterval[] = [];
   const stimulusRecords: StimulusTimingRecord[] = [];
+  const stimulusControllers: Array<{
+    markOffset(timestamp: number, commitInfo?: any): void;
+    record: StimulusTimingRecord;
+  }> = [];
+  const trialContext = options.trialContext ?? null;
+  const contextUnsubscribers: Array<() => void> = [];
 
   let trialTimeOrigin: number | null = null;
+  let scheduledTrialTimeOrigin: number | null = null;
   let trialTimeOriginSource: TrialTimeOriginSource | null = null;
   let lastFrameTime: number | null = null;
   let latestFrameTime: number | null = null;
@@ -119,6 +203,7 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
   let running = false;
 
   const getTrialTimeOrigin = () => trialTimeOrigin;
+  const getScheduledTrialTimeOrigin = () => scheduledTrialTimeOrigin;
   const getTrialTimeOriginSource = () => trialTimeOriginSource;
 
   /** Deprecated V1 compatibility alias of getTrialTimeOrigin(). */
@@ -129,8 +214,11 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     return timestamp - trialTimeOrigin;
   };
 
-  const getFrameIntervalEstimate = () =>
-    Math.max(1, frameIntervalEstimate || fallbackFrameMs);
+  const getFrameIntervalEstimate = () => {
+    const estimate =
+      trialContext?.getFrameIntervalEstimate() ?? frameIntervalEstimate;
+    return Math.max(1, estimate || fallbackFrameMs);
+  };
 
   const estimateBaselineFrameMs = (intervals: number[]) => {
     const usable = intervals.filter(
@@ -400,6 +488,14 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
    * pending callbacks. No extra rAF/setTimeout is created.
    */
   const queuePostCommit = (callback: (timestamp: number) => void) => {
+    if (trialContext) {
+      let unsubscribe = () => {};
+      unsubscribe = trialContext.onPostCommit((timestamp) => {
+        unsubscribe();
+        callback(timestamp);
+      });
+      return unsubscribe;
+    }
     postCommitCallbacks.push(callback);
     return () => {
       const index = postCommitCallbacks.indexOf(callback);
@@ -449,9 +545,52 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     runFramePhases(timestamp);
   };
 
+  if (trialContext) {
+    contextUnsubscribers.push(
+      trialContext.onStart((timestamp, info) => {
+        if (trialTimeOrigin !== null) return;
+        trialTimeOrigin = timestamp;
+        scheduledTrialTimeOrigin =
+          typeof info?.scheduledTimestamp === "number"
+            ? info.scheduledTimestamp
+            : timestamp;
+        trialTimeOriginSource =
+          info?.source === "frame_engine_transition"
+            ? "frame_engine_transition"
+            : "frame_engine_raf";
+        lastFrameTime = null;
+        latestFrameTime = timestamp;
+        running = true;
+        for (const callback of [...startCallbacks]) callback(timestamp);
+      }),
+      trialContext.onFrame((timestamp) => {
+        latestFrameTime = timestamp;
+        observeFrame(timestamp);
+        if (lastFrameTime !== null) {
+          const duration = timestamp - lastFrameTime;
+          if (recordFrameTiming && duration > MIN_FRAME_INTERVAL_MS) {
+            frameIntervals.push({
+              t: round3(timestamp - (trialTimeOrigin ?? timestamp)),
+              duration: round3(duration),
+            });
+          }
+        }
+        lastFrameTime = timestamp;
+      }),
+      trialContext.onPostCommit((timestamp) => {
+        latestCommittedFrameTime = timestamp;
+      }),
+    );
+  }
+
   const startAt = (timestamp: number, source: TrialTimeOriginSource) => {
+    if (trialContext) {
+      trialContext.start();
+      return;
+    }
     if (trialTimeOrigin !== null || rafHandle !== null) return;
     trialTimeOrigin = timestamp;
+    scheduledTrialTimeOrigin = timestamp;
     trialTimeOriginSource = source;
     lastFrameTime = timestamp;
     latestFrameTime = timestamp;
@@ -463,6 +602,10 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
   };
 
   const start = () => {
+    if (trialContext) {
+      trialContext.start();
+      return;
+    }
     if (trialTimeOrigin !== null || rafHandle !== null) return;
     rafHandle = requestAnimationFrame((timestamp) => {
       rafHandle = null;
@@ -472,6 +615,12 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
 
   const stop = () => {
     running = false;
+    if (trialContext) {
+      trialContext.stop();
+      while (contextUnsubscribers.length > 0) contextUnsubscribers.pop()!();
+      postCommitCallbacks.length = 0;
+      return;
+    }
     if (rafHandle !== null) {
       cancelAnimationFrame(rafHandle);
       rafHandle = null;
@@ -489,6 +638,9 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
   };
 
   const onFrameCommit = (callback: (timestamp: number) => void) => {
+    if (trialContext) {
+      return trialContext.onFrameCommit((timestamp) => callback(timestamp));
+    }
     frameCommitCallbacks.push(callback);
     return () => {
       const index = frameCommitCallbacks.indexOf(callback);
@@ -503,6 +655,13 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     callback: (timestamp: number, elapsed: number) => void,
     options: { policy?: DeadlinePolicy } = {},
   ) => {
+    if (trialContext) {
+      return trialContext.scheduleAt(
+        Math.max(0, Number(delayMs ?? 0)),
+        callback,
+        options,
+      );
+    }
     const at = Math.max(0, Number(delayMs ?? 0));
     const event: ScheduledFrameEvent = {
       at,
@@ -515,6 +674,39 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     return () => {
       event.cancelled = true;
     };
+  };
+
+  const requestBoundary = (boundaryOptions: {
+    targetTime?: number;
+    targetTimeMs?: number;
+    targetFrameIndex?: number | null;
+    frameCount?: number | null;
+    boundaryPolicy?: VisualBoundaryPolicy;
+    reason?: string;
+    requestedAt?: number;
+    allowTerminal?: boolean;
+    onCommit?: (info: any) => void;
+  }) => trialContext?.requestBoundary(boundaryOptions) ?? false;
+
+  const queuePostCritical = (
+    task: (budgetMs?: number) => void | boolean,
+    taskOptions?: {
+      label?: string;
+      estimatedCostMs?: number;
+      responseSafe?: boolean;
+      minimumBudgetMs?: number;
+    },
+  ) => {
+    if (trialContext) {
+      return trialContext.queuePostCritical(task, taskOptions);
+    } else {
+      const handle = setTimeout(task, 0);
+      return { cancel: () => clearTimeout(handle) };
+    }
+  };
+
+  const setNextAudioDeadline = (timestamp: number | null) => {
+    trialContext?.setNextAudioDeadline?.(timestamp);
   };
 
   const registerStimulus = (
@@ -532,6 +724,8 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
       desired_duration: desiredDuration,
       desired_offset:
         desiredDuration === null ? null : desired_onset + desiredDuration,
+      scheduled_onset_abs: null,
+      scheduled_offset_abs: null,
       frame_onset: null,
       frame_onset_abs: null,
       frame_offset: null,
@@ -562,10 +756,7 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     };
     stimulusRecords.push(record);
 
-    const applyCommitInfo = (
-      phase: "onset" | "offset",
-      commitInfo: any,
-    ) => {
+    const applyCommitInfo = (phase: "onset" | "offset", commitInfo: any) => {
       if (!commitInfo) return;
       const frameTimestamp =
         typeof commitInfo.frameTimestamp === "number"
@@ -587,7 +778,8 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
           typeof commitInfo.cpuCommitEndedAt === "number"
             ? round3(commitInfo.cpuCommitEndedAt)
             : null;
-        record.render_backend = commitInfo.renderBackend ?? record.render_backend;
+        record.render_backend =
+          commitInfo.renderBackend ?? record.render_backend;
         if (record.timestamp_semantics === "") {
           record.timestamp_semantics =
             record.render_backend === "dom"
@@ -610,12 +802,13 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
           typeof commitInfo.cpuCommitEndedAt === "number"
             ? round3(commitInfo.cpuCommitEndedAt)
             : null;
-        record.render_backend = commitInfo.renderBackend ?? record.render_backend;
+        record.render_backend =
+          commitInfo.renderBackend ?? record.render_backend;
       }
       return frameTimestamp;
     };
 
-    return {
+    const controller = {
       markOnset(timestamp: number, commitInfo?: any) {
         if (trialTimeOrigin === null || record.frame_onset !== null) return;
         const frameTimestamp = applyCommitInfo("onset", commitInfo);
@@ -623,7 +816,19 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
           typeof frameTimestamp === "number" ? frameTimestamp : timestamp;
         record.frame_onset_abs = round3(onsetTimestamp);
         record.frame_onset = round3(onsetTimestamp - trialTimeOrigin);
-        record.onset_error = round3(record.frame_onset - record.desired_onset);
+        const scheduleOrigin = scheduledTrialTimeOrigin ?? trialTimeOrigin;
+        record.scheduled_onset_abs = round3(
+          scheduleOrigin + record.desired_onset,
+        );
+        record.onset_error = round3(
+          onsetTimestamp - record.scheduled_onset_abs,
+        );
+        trialContext?.recordStimulusCommit({
+          componentId: record.component_id,
+          name: record.name,
+          scheduledTime: record.scheduled_onset_abs,
+          commitTime: onsetTimestamp,
+        });
         // V1 compatibility aliases
         record.actual_onset_abs = record.frame_onset_abs;
         record.actual_onset = record.frame_onset;
@@ -641,11 +846,18 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
           typeof frameTimestamp === "number" ? frameTimestamp : timestamp;
         record.frame_offset_abs = round3(offsetTimestamp);
         record.frame_offset = round3(offsetTimestamp - trialTimeOrigin);
-        record.frame_duration = round3(record.frame_offset - record.frame_onset);
-        record.offset_error =
+        record.frame_duration = round3(
+          record.frame_offset - record.frame_onset,
+        );
+        const scheduleOrigin = scheduledTrialTimeOrigin ?? trialTimeOrigin;
+        record.scheduled_offset_abs =
           record.desired_offset === null
             ? null
-            : round3(record.frame_offset - record.desired_offset);
+            : round3(scheduleOrigin + record.desired_offset);
+        record.offset_error =
+          record.scheduled_offset_abs === null
+            ? null
+            : round3(offsetTimestamp - record.scheduled_offset_abs);
         record.duration_error =
           record.desired_duration === null
             ? null
@@ -657,6 +869,19 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
       },
       record,
     };
+    stimulusControllers.push(controller);
+    return controller;
+  };
+
+  const closeOpenStimuli = (timestamp: number, commitInfo?: any) => {
+    for (const controller of stimulusControllers) {
+      if (
+        controller.record.frame_onset !== null &&
+        controller.record.frame_offset === null
+      ) {
+        controller.markOffset(timestamp, commitInfo);
+      }
+    }
   };
 
   const getEventTime = (event: Event): number => {
@@ -666,16 +891,22 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
   const getSummary = (offsetTime = performance.now()) => {
     const actualDuration =
       trialTimeOrigin === null ? null : offsetTime - trialTimeOrigin;
-    const intervals = recordFrameTiming ? frameIntervals.map((frame) => frame.duration) : [];
-    const longFrames = intervals.filter((duration) => duration > longFrameThreshold);
+    const intervals = recordFrameTiming
+      ? frameIntervals.map((frame) => frame.duration)
+      : [];
+    const longFrames = intervals.filter(
+      (duration) => duration > longFrameThreshold,
+    );
     const baselineFrameMs = estimateBaselineFrameMs(intervals);
     const droppedFrameCount = intervals.reduce((sum, duration) => {
       return sum + Math.max(0, Math.round(duration / baselineFrameMs) - 1);
     }, 0);
-    const maxFrameInterval = intervals.length > 0 ? Math.max(...intervals) : null;
+    const maxFrameInterval =
+      intervals.length > 0 ? Math.max(...intervals) : null;
     const meanFrameInterval =
       intervals.length > 0
-        ? intervals.reduce((sum, duration) => sum + duration, 0) / intervals.length
+        ? intervals.reduce((sum, duration) => sum + duration, 0) /
+          intervals.length
         : null;
     const finalizedStimulusRecords = stimulusRecords.map((record) => {
       const next = { ...record };
@@ -714,13 +945,17 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
         if (byId) return byId;
       }
       if (name) {
-        return finalizedStimulusRecords.find((record) => record.name === name) ?? null;
+        return (
+          finalizedStimulusRecords.find((record) => record.name === name) ??
+          null
+        );
       }
       return null;
     };
 
     return {
       trialTimeOrigin,
+      scheduledTrialTimeOrigin,
       trialTimeOriginSource,
       onsetTime: trialTimeOrigin,
       offsetTime,
@@ -742,6 +977,9 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
       longFrameThreshold,
       frameIntervals: intervals,
       frameLog: recordFrameTiming ? frameIntervals : [],
+      transitionTelemetry: trialContext
+        ? [...trialContext.getTransitionTelemetry()]
+        : [],
       stimulusRecords: finalizedStimulusRecords,
       findStimulusRecord,
     };
@@ -760,7 +998,7 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     if (name) {
       return stimulusRecords.find((record) => record.name === name) ?? null;
     }
-    return null;
+    return stimulusRecords[0] ?? null;
   };
 
   return {
@@ -770,9 +1008,14 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     onStart,
     onFrameCommit,
     queuePostCommit,
+    requestBoundary,
+    queuePostCritical,
+    setNextAudioDeadline,
     scheduleAt,
     registerStimulus,
+    closeOpenStimuli,
     getTrialTimeOrigin,
+    getScheduledTrialTimeOrigin,
     getTrialTimeOriginSource,
     getOnsetTime,
     getElapsed,
@@ -780,6 +1023,8 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     getEventTime,
     findStimulusRecord,
     getSummary,
+    isGlobalFrameEngine: () => trialContext !== null,
+    getTrialContext: () => trialContext,
   };
 }
 
@@ -824,9 +1069,11 @@ export function scheduleStimulusVisibility(
         ),
       );
     } else {
-      cancellations.push(scheduleFrameEvent(stimulusOnset, () => {
-        element.style.visibility = "visible";
-      }));
+      cancellations.push(
+        scheduleFrameEvent(stimulusOnset, () => {
+          element.style.visibility = "visible";
+        }),
+      );
     }
   }
 
@@ -921,7 +1168,10 @@ export function scheduleFrameEvent(
   };
 }
 
-export function setResponseStartTime(target: any, timing?: ReturnType<typeof createPrecisionTiming>) {
+export function setResponseStartTime(
+  target: any,
+  timing?: ReturnType<typeof createPrecisionTiming>,
+) {
   if (timing) {
     target.start_time = null;
     timing.onStart((timestamp) => {
@@ -947,7 +1197,10 @@ export function getResponseRT(
   return endTime - startTime;
 }
 
-export function preloadImages(urls: string[], timeoutMs = 10000): Promise<void> {
+export function preloadImages(
+  urls: string[],
+  timeoutMs = 10000,
+): Promise<void> {
   const uniqueUrls = [...new Set(urls.filter(Boolean))];
   if (uniqueUrls.length === 0) return Promise.resolve();
 
@@ -972,7 +1225,10 @@ export function preloadImages(urls: string[], timeoutMs = 10000): Promise<void> 
             if (image.complete && image.naturalWidth !== 0) {
               finish();
             } else if ("decode" in image) {
-              image.decode().then(finish).catch(() => undefined);
+              image
+                .decode()
+                .then(finish)
+                .catch(() => undefined);
             }
           }),
         );
@@ -1030,7 +1286,10 @@ export function preloadBitmap(
         if (image.complete && image.naturalWidth !== 0) {
           resolveWithImage();
         } else if ("decode" in image) {
-          image.decode().then(resolveWithImage).catch(() => undefined);
+          image
+            .decode()
+            .then(resolveWithImage)
+            .catch(() => undefined);
         }
       }),
     );
@@ -1049,7 +1308,9 @@ export function getPreloadedBitmap(url: string): CanvasBitmapSource | null {
  * have zero intrinsic dimensions; such a resource is NOT usable for a
  * synchronous drawable and must not enable the P4 fast activation path.
  */
-export function getReadyPreloadedBitmap(url: string): CanvasBitmapSource | null {
+export function getReadyPreloadedBitmap(
+  url: string,
+): CanvasBitmapSource | null {
   const source = bitmapSourceCache.get(url) ?? null;
   if (!source) return null;
   if ("naturalWidth" in source) {

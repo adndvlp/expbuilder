@@ -164,6 +164,42 @@ describe("AudioComponent WebAudio scheduled path", () => {
     return timing;
   }
 
+  it("cannot arm or start playback before required audio preparation resolves", async () => {
+    let resolvePlayer!: (player: any) => void;
+    const play = vi.fn().mockResolvedValue(undefined);
+    const playerPromise = new Promise<any>((resolve) => {
+      resolvePlayer = resolve;
+    });
+    const jsPsych = {
+      pluginAPI: {
+        audioContext: () => null,
+        getAudioPlayer: vi.fn(() => playerPromise),
+      },
+    };
+    const component = new AudioComponent(jsPsych as any);
+    const preparation = component.prepare(document.body, {
+      stimulus: "required.wav",
+      autoplay: true,
+    });
+
+    component.arm();
+    component.activate({ timestamp: 100 });
+    expect(play).not.toHaveBeenCalled();
+
+    resolvePlayer({
+      play,
+      pause: vi.fn(),
+      stop: vi.fn(),
+      ended: false,
+    });
+    await preparation;
+    component.arm();
+    component.activate({ timestamp: 108.333 });
+    await Promise.resolve();
+    expect(play).toHaveBeenCalledTimes(1);
+    component.destroy();
+  });
+
   it("scheduled source receives an explicit target context time", async () => {
     stubFetch();
     const context = createFakeAudioContext({
@@ -196,6 +232,38 @@ describe("AudioComponent WebAudio scheduled path", () => {
     expect(diagnostics.audio_clock_bridge_available).toBe(true);
     expect(diagnostics.audio_timing_degraded).toBe(false);
     expect(diagnostics.physical_audio_onset_abs).toBeNull();
+    component.destroy();
+  });
+
+  it("pre-arms a decoded successor on its known future boundary", async () => {
+    stubFetch();
+    const context = createFakeAudioContext({
+      currentTime: 0.5,
+      baseLatency: 0.01,
+      outputTimestamp: { contextTime: 0.5, performanceTime: 950 },
+    });
+    (context.decodeAudioData as any) = vi.fn().mockResolvedValue(TEST_BUFFER);
+    await preloadAudioBuffer(context as any, "audio.wav", 1000);
+    vi.spyOn(performance, "now").mockReturnValue(900);
+
+    const component = new AudioComponent(fakeJsPsych(context) as any);
+    await component.prepare(document.body, {
+      name: "Audio_1",
+      stimulus: "audio.wav",
+      autoplay: true,
+    });
+    component.arm({ scheduledTimestamp: 1000 });
+
+    expect(context.createdSources).toHaveLength(1);
+    expect(context.createdSources[0].startArgs).toEqual([0.54]);
+    expect(component.getDiagnostics()).toMatchObject({
+      audio_prearmed: true,
+      audio_arm_lead_ms: 100,
+      audio_requested_performance_time: 1000,
+    });
+
+    component.activate({ timestamp: 1000 });
+    expect(context.createdSources).toHaveLength(1);
     component.destroy();
   });
 

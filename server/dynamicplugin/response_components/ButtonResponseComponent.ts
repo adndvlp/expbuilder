@@ -284,7 +284,8 @@ class ButtonResponseComponent {
 
   private getChoices(trial: any): string[] {
     const rawChoices = this.resolveParam(trial.choices, ["Button"]);
-    if (Array.isArray(rawChoices)) return rawChoices.map((choice) => String(choice));
+    if (Array.isArray(rawChoices))
+      return rawChoices.map((choice) => String(choice));
     return [String(rawChoices)];
   }
 
@@ -299,7 +300,9 @@ class ButtonResponseComponent {
   private parseCssPx(raw: string | number | null | undefined): number {
     if (raw === null || raw === undefined) return 0;
     if (typeof raw === "number") return Number.isFinite(raw) ? raw : 0;
-    const match = String(raw).trim().match(/^(-?\d+(?:\.\d+)?)/);
+    const match = String(raw)
+      .trim()
+      .match(/^(-?\d+(?:\.\d+)?)/);
     return match ? Number(match[1]) : 0;
   }
 
@@ -390,7 +393,8 @@ class ButtonResponseComponent {
     if (!measurementCtx) return null;
 
     const choices = this.getChoices(trial);
-    const { width: canvasWidth, height: canvasHeight } = this.getCanvasSize(trial);
+    const { width: canvasWidth, height: canvasHeight } =
+      this.getCanvasSize(trial);
     const layoutMode = this.resolveParam(trial.button_layout, "grid");
     const gridRows = this.resolveParam(trial.grid_rows, 1);
     const gridColumns = this.resolveParam(trial.grid_columns, null);
@@ -405,8 +409,13 @@ class ButtonResponseComponent {
         );
       }
       columns =
-        gridColumns === null ? Math.ceil(numButtons / gridRows) : Number(gridColumns);
-      rows = gridRows === null ? Math.ceil(numButtons / gridColumns) : Number(gridRows);
+        gridColumns === null
+          ? Math.ceil(numButtons / gridRows)
+          : Number(gridColumns);
+      rows =
+        gridRows === null
+          ? Math.ceil(numButtons / gridColumns)
+          : Number(gridRows);
     } else {
       rows = 1;
       columns = numButtons;
@@ -416,7 +425,10 @@ class ButtonResponseComponent {
     columns = Math.max(1, columns || 1);
 
     const padding = this.parsePadding(trial.button_padding);
-    const fontSizeVw = this.resolveParam(trial._button_font_size_runtime_vw, null);
+    const fontSizeVw = this.resolveParam(
+      trial._button_font_size_runtime_vw,
+      null,
+    );
     const configuredFontSize = this.resolveParam(trial.button_font_size, null);
     const fontSize =
       configuredFontSize != null
@@ -534,14 +546,23 @@ class ButtonResponseComponent {
     width: number,
     height: number,
   ) {
-    const maxWidth = Math.max(1, width - layout.padding.left - layout.padding.right);
-    const maxHeight = Math.max(1, height - layout.padding.top - layout.padding.bottom);
+    const maxWidth = Math.max(
+      1,
+      width - layout.padding.left - layout.padding.right,
+    );
+    const maxHeight = Math.max(
+      1,
+      height - layout.padding.top - layout.padding.bottom,
+    );
     let fontSize = Math.max(1, Math.min(layout.fontSize, maxHeight * 0.82));
 
     for (let attempt = 0; attempt < 8; attempt += 1) {
       ctx.font = `${fontSize}px sans-serif`;
       if (ctx.measureText(text).width <= maxWidth || fontSize <= 4) break;
-      fontSize *= Math.max(0.5, maxWidth / Math.max(1, ctx.measureText(text).width));
+      fontSize *= Math.max(
+        0.5,
+        maxWidth / Math.max(1, ctx.measureText(text).width),
+      );
     }
 
     return `${Math.max(1, fontSize)}px sans-serif`;
@@ -640,7 +661,12 @@ class ButtonResponseComponent {
       ctx.strokeStyle = "#e74c3c";
       ctx.lineWidth = 2;
       ctx.setLineDash([8, 4]);
-      ctx.strokeRect(-layout.width / 2, -layout.height / 2, layout.width, layout.height);
+      ctx.strokeRect(
+        -layout.width / 2,
+        -layout.height / 2,
+        layout.width,
+        layout.height,
+      );
       ctx.setLineDash([]);
     }
 
@@ -702,7 +728,9 @@ class ButtonResponseComponent {
       : this.buttonsEnabled
         ? "normal"
         : "disabled";
-    for (const state of Object.keys(this.buttonSpriteIds) as ButtonVisualState[]) {
+    for (const state of Object.keys(
+      this.buttonSpriteIds,
+    ) as ButtonVisualState[]) {
       this.stage.setDrawableVisibility(
         this.buttonSpriteIds[state],
         state === visibleState,
@@ -717,7 +745,13 @@ class ButtonResponseComponent {
       componentId: this.componentId,
       componentName: this.componentName,
       label: cell.choice,
-      hitTest: ({ canvasX, canvasY }: { canvasX: number | null; canvasY: number | null }) => {
+      hitTest: ({
+        canvasX,
+        canvasY,
+      }: {
+        canvasX: number | null;
+        canvasY: number | null;
+      }) => {
         if (typeof canvasX !== "number" || typeof canvasY !== "number") {
           return false;
         }
@@ -745,7 +779,8 @@ class ButtonResponseComponent {
   }
 
   private prepareCanvasButtons(displayElement: HTMLElement, trial: any) {
-    const { width: canvasWidth, height: canvasHeight } = this.getCanvasSize(trial);
+    const { width: canvasWidth, height: canvasHeight } =
+      this.getCanvasSize(trial);
     const zIndex = resolveTimingMs(trial.zIndex, 0) ?? 0;
     this.stage = getCanvasStage(displayElement, {
       width: canvasWidth,
@@ -754,6 +789,8 @@ class ButtonResponseComponent {
       zIndex,
       backend: this.resolveParam(trial.__renderBackend, "webgl-strict"),
       recordGpuTiming: this.resolveParam(trial.__recordGpuTiming, true),
+      recordCommitSeries: this.resolveParam(trial.__recordCommitSeries, false),
+      recordGpuSeries: this.resolveParam(trial.__recordGpuSeries, false),
     });
 
     this.layout = this.createLayout(trial);
@@ -887,7 +924,9 @@ class ButtonResponseComponent {
       }
 
       const n_cols =
-        gridColumns === null ? Math.ceil(choices.length / gridRows) : gridColumns;
+        gridColumns === null
+          ? Math.ceil(choices.length / gridRows)
+          : gridColumns;
       const n_rows =
         gridRows === null ? Math.ceil(choices.length / gridColumns) : gridRows;
 
@@ -1072,13 +1111,18 @@ class ButtonResponseComponent {
     setResponseStartTime(this, this.timing);
 
     // Handle enable_button_after delay
-    const enableButtonAfter = resolveTimingMs(trial.enable_button_after, 0) ?? 0;
+    const enableButtonAfter =
+      resolveTimingMs(trial.enable_button_after, 0) ?? 0;
     if (enableButtonAfter > 0) {
       this.disableButtons();
       this.enableTimeout = this.timing
-        ? this.timing.scheduleAt(enableButtonAfter, () => this.enableButtons(), {
-            policy: "not_before",
-          })
+        ? this.timing.scheduleAt(
+            enableButtonAfter,
+            () => this.enableButtons(),
+            {
+              policy: "not_before",
+            },
+          )
         : scheduleFrameEvent(enableButtonAfter, () => this.enableButtons(), {
             policy: "not_before",
           });
@@ -1090,7 +1134,11 @@ class ButtonResponseComponent {
   /**
    * Record the button response and RT
    */
-  private storeButtonResponse(choice: string, event?: Event, timingResponse?: any): void {
+  private storeButtonResponse(
+    choice: string,
+    event?: Event,
+    timingResponse?: any,
+  ): void {
     if (this.response !== null) {
       return; // Already responded
     }

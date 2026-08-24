@@ -254,6 +254,7 @@ class TextComponent {
   private drawn = false;
   private offsetReached = false;
   private destroyed = false;
+  private deactivateAtBoundary: ((timestamp: number) => void) | null = null;
 
   // ── Cloze state ─────────────────────────────────────────────────────────
   private isClozeMode: boolean = false;
@@ -302,7 +303,9 @@ class TextComponent {
   private parseCssPx(raw: string | number | null | undefined): number {
     if (raw === null || raw === undefined) return 0;
     if (typeof raw === "number") return Number.isFinite(raw) ? raw : 0;
-    const match = String(raw).trim().match(/^(-?\d+(?:\.\d+)?)/);
+    const match = String(raw)
+      .trim()
+      .match(/^(-?\d+(?:\.\d+)?)/);
     return match ? Number(match[1]) : 0;
   }
 
@@ -397,7 +400,9 @@ class TextComponent {
     const padding = this.parsePadding(config.padding);
     const configuredWidth = this.resolveParam(config.width, null);
     const explicitWidth =
-      configuredWidth != null ? (Number(configuredWidth) / 100) * canvasWidth : null;
+      configuredWidth != null
+        ? (Number(configuredWidth) / 100) * canvasWidth
+        : null;
     const maxBlockWidth = explicitWidth ?? Math.max(200, canvasWidth * 0.86);
     const maxTextWidth = Math.max(
       1,
@@ -436,10 +441,16 @@ class TextComponent {
       lines,
       font,
       fontColor: this.resolveParam(config.font_color, "#000000"),
-      textAlign: this.resolveParam(config.text_align, "center") as CanvasTextAlign,
+      textAlign: this.resolveParam(
+        config.text_align,
+        "center",
+      ) as CanvasTextAlign,
       lineHeightPx,
       padding,
-      backgroundColor: this.resolveParam(config.background_color, "transparent"),
+      backgroundColor: this.resolveParam(
+        config.background_color,
+        "transparent",
+      ),
       borderRadius: Number(this.resolveParam(config.border_radius, 0)),
       borderColor: this.resolveParam(config.border_color, "transparent"),
       borderWidth: Number(this.resolveParam(config.border_width, 0)),
@@ -503,8 +514,7 @@ class TextComponent {
         : layout.textAlign === "right"
           ? originX + layout.width - layout.padding.right
           : 0;
-    const firstLineY =
-      originY + layout.padding.top + layout.lineHeightPx / 2;
+    const firstLineY = originY + layout.padding.top + layout.lineHeightPx / 2;
 
     layout.lines.forEach((line, index) => {
       ctx.fillText(line, textX, firstLineY + index * layout.lineHeightPx);
@@ -558,8 +568,10 @@ class TextComponent {
     this.drawn = false;
     this.prepared = false;
     this.layout = null;
-    this.drawableId = config.name
-      ? `text-${config.name}`
+    this.deactivateAtBoundary = null;
+    const runtimeComponentId = config.__runtimeComponentId ?? config.name;
+    this.drawableId = runtimeComponentId
+      ? `text-${runtimeComponentId}`
       : `text-${++textComponentCounter}`;
 
     this.stage = getCanvasStage(container, {
@@ -569,11 +581,13 @@ class TextComponent {
       zIndex,
       backend: this.resolveParam(config.__renderBackend, "webgl-strict"),
       recordGpuTiming: this.resolveParam(config.__recordGpuTiming, true),
+      recordCommitSeries: this.resolveParam(config.__recordCommitSeries, false),
+      recordGpuSeries: this.resolveParam(config.__recordGpuSeries, false),
     });
 
     this.element = document.createElement("div");
-    this.element.id = config.name
-      ? `jspsych-text-component-${config.name}`
+    this.element.id = runtimeComponentId
+      ? `jspsych-text-component-${runtimeComponentId}`
       : "jspsych-text-component";
     this.element.className = "dynamic-text-component";
     this.element.setAttribute("aria-hidden", "true");
@@ -597,6 +611,8 @@ class TextComponent {
       | undefined;
     const stimulusOnset = resolveTimingMs(config.stimulus_onset, null);
     const stimulusDuration = resolveTimingMs(config.stimulus_duration, null);
+    const deferOffsetToTrialBoundary =
+      config.__deferOffsetToTrialBoundary === true;
     const stimulusTiming = timing?.registerStimulus?.(
       config.name || config.type || this.drawableId,
       stimulusOnset,
@@ -623,13 +639,18 @@ class TextComponent {
       if (this.destroyed) return;
       this.offsetReached = true;
       if (this.drawn) {
-        this.stage?.setDrawableVisibility(this.drawableId, false, (commitInfo) => {
-          stimulusTiming?.markOffset(timestamp, commitInfo);
-        });
+        this.stage?.setDrawableVisibility(
+          this.drawableId,
+          false,
+          (commitInfo) => {
+            stimulusTiming?.markOffset(timestamp, commitInfo);
+          },
+        );
       } else {
         this.stage?.setDrawableVisibility(this.drawableId, false);
       }
     };
+    this.deactivateAtBoundary = hide;
 
     if (timing) {
       if (stimulusOnset === null) {
@@ -640,7 +661,7 @@ class TextComponent {
         );
       }
 
-      if (stimulusDuration !== null) {
+      if (stimulusDuration !== null && !deferOffsetToTrialBoundary) {
         this.cancelSchedule.push(
           timing.scheduleAt((stimulusOnset ?? 0) + stimulusDuration, hide, {
             policy: "not_before",
@@ -651,7 +672,7 @@ class TextComponent {
       const drawDelay = stimulusOnset ?? 0;
       this.cancelSchedule.push(scheduleFrameEvent(drawDelay, draw));
 
-      if (stimulusDuration !== null) {
+      if (stimulusDuration !== null && !deferOffsetToTrialBoundary) {
         this.cancelSchedule.push(
           scheduleFrameEvent(drawDelay + stimulusDuration, hide, {
             policy: "not_before",
@@ -661,6 +682,19 @@ class TextComponent {
     }
 
     return this.element;
+  }
+
+  /** Critical-path lifecycle hook used by the persistent frame engine. */
+  deactivate(info: { timestamp: number }): void {
+    if (this.isClozeMode) {
+      this.hide();
+      return;
+    }
+    if (this.deactivateAtBoundary) {
+      this.deactivateAtBoundary(info.timestamp);
+    } else {
+      this.hide();
+    }
   }
 
   render(container: HTMLElement, config: any): HTMLElement {
@@ -695,7 +729,10 @@ class TextComponent {
     const width = this.resolveParam(config.width, null);
     const rotation = this.resolveParam(config.rotation, 0);
     const canvasStyles = this.resolveParam(config.__canvasStyles, {});
-    const canvasWidth = this.resolveParam(canvasStyles?.width, window.innerWidth);
+    const canvasWidth = this.resolveParam(
+      canvasStyles?.width,
+      window.innerWidth,
+    );
 
     // Create element
     this.element = document.createElement("div");
@@ -913,6 +950,7 @@ class TextComponent {
     this.element = null;
     this.stage = null;
     this.layout = null;
+    this.deactivateAtBoundary = null;
     this.prepared = false;
     this.destroyed = true;
   }

@@ -93,6 +93,11 @@ class VideoComponent {
   private videoElement: HTMLVideoElement | null = null;
   private wrapper: HTMLElement | null = null;
   private stopped: boolean = false;
+  private listenerController: AbortController | null = null;
+  private videoFrameRequest: number | null = null;
+  private observingVideoFrames = false;
+  private stimulusTiming: any = null;
+  private diagnostics: Record<string, any> = {};
 
   constructor(jsPsych: any) {
     this.jsPsych = jsPsych;
@@ -107,6 +112,14 @@ class VideoComponent {
    * @returns The rendered video element
    */
   render(container: HTMLElement, config: any): HTMLVideoElement {
+    this.listenerController?.abort();
+    this.listenerController = new AbortController();
+    const listenerOptions: AddEventListenerOptions = {
+      signal: this.listenerController.signal,
+    };
+    this.stopped = false;
+    this.observingVideoFrames = false;
+    this.videoFrameRequest = null;
     // Helper to map coordinate values
     // Coordinate range is [-100, 100], mapped to [-50vw/vh, 50vw/vh]
     const mapValue = (value: number): number => {
@@ -132,6 +145,8 @@ class VideoComponent {
 
     const videoElement = document.createElement("video");
     stimulusWrapper.appendChild(videoElement);
+    this.videoElement = videoElement;
+    this.wrapper = stimulusWrapper;
     videoElement.id = config.name
       ? `jspsych-dynamic-${config.name}-stimulus`
       : "jspsych-dynamic-video-stimulus";
@@ -205,18 +220,59 @@ class VideoComponent {
 
     // Timing record: HTML media presentation is unobservable from the page.
     const timing = config.__timing as any;
-    const stimulusTiming = timing?.registerStimulus?.(
+    const hasVideoFrameCallback =
+      typeof (videoElement as any).requestVideoFrameCallback === "function";
+    this.stimulusTiming = timing?.registerStimulus?.(
       config.name || config.type || "video",
       0,
       null,
       config.__componentId ?? config.builder_id ?? config.id ?? null,
       {
         renderBackend: "html_media",
-        timestampSemantics: "html_media_play_request",
+        timestampSemantics: hasVideoFrameCallback
+          ? "video_frame_callback"
+          : "html_media_playing_event",
         timingDegraded: true,
-        timingDegradedReason: "media_presentation_unobservable",
+        timingDegradedReason: hasVideoFrameCallback
+          ? "expected_display_time_is_not_physical_onset"
+          : "request_video_frame_callback_unavailable",
       },
     );
+    this.diagnostics = {
+      video_frame_callback_available: hasVideoFrameCallback,
+      video_play_request_abs: null,
+      video_play_request_frame_timestamp: null,
+      video_first_frame_callback_abs: null,
+      video_first_frame_media_time: null,
+      video_first_frame_expected_display_time: null,
+      video_first_frame_presented_frames: null,
+      video_last_frame_callback_abs: null,
+      video_last_frame_media_time: null,
+      video_last_frame_expected_display_time: null,
+      video_last_frame_presented_frames: null,
+      video_stop_request_abs: null,
+      video_onset_observation_source: hasVideoFrameCallback
+        ? "requestVideoFrameCallback"
+        : "playing_event",
+      physical_video_onset_abs: null,
+    };
+
+    if (!hasVideoFrameCallback) {
+      videoElement.addEventListener(
+        "playing",
+        () => {
+          const observedAt = performance.now();
+          if (this.diagnostics.video_first_frame_callback_abs === null) {
+            this.diagnostics.video_first_frame_callback_abs = observedAt;
+            this.stimulusTiming?.markOnset(observedAt, {
+              frameTimestamp: observedAt,
+              renderBackend: "html_media",
+            });
+          }
+        },
+        { ...listenerOptions, once: true },
+      );
+    }
 
     // Attempt to play if autoplay is enabled and no start
     if (shouldAutoplay && config.start == null) {
@@ -224,12 +280,17 @@ class VideoComponent {
       videoElement.addEventListener(
         "loadeddata",
         () => {
-          const startPlayback = () => {
+          const startPlayback = (frameTimestamp?: number) => {
+            this.recordPlayRequest(frameTimestamp ?? null);
+            this.beginVideoFrameObservation();
             // Try with audio first
             const playPromise = videoElement.play();
             if (playPromise !== undefined) {
               playPromise.catch((error) => {
-                console.warn("Autoplay with audio failed, trying muted:", error);
+                console.warn(
+                  "Autoplay with audio failed, trying muted:",
+                  error,
+                );
                 // If autoplay with audio fails, try muted
                 videoElement.muted = true;
                 videoElement
@@ -242,7 +303,7 @@ class VideoComponent {
                       () => {
                         videoElement.muted = false;
                       },
-                      { once: true },
+                      { ...listenerOptions, once: true },
                     );
                   })
                   .catch((err) => {
@@ -255,14 +316,13 @@ class VideoComponent {
 
           if (timing) {
             timing.onStart((timestamp: number) => {
-              stimulusTiming?.markOnset(timestamp);
-              startPlayback();
+              startPlayback(timestamp);
             });
           } else {
             startPlayback();
           }
         },
-        { once: true },
+        { ...listenerOptions, once: true },
       );
     }
 
@@ -288,6 +348,8 @@ class VideoComponent {
         videoElement.onplaying = () => {};
       };
       videoElement.muted = true;
+      this.recordPlayRequest(null);
+      this.beginVideoFrameObservation();
       videoElement.play();
     }
 
@@ -297,18 +359,108 @@ class VideoComponent {
       typeof config.stop === "number" &&
       !isNaN(config.stop)
     ) {
-      videoElement.addEventListener("timeupdate", () => {
-        if (videoElement.currentTime >= config.stop && !this.stopped) {
-          this.stopped = true;
-          videoElement.pause();
-        }
-      });
+      videoElement.addEventListener(
+        "timeupdate",
+        () => {
+          if (videoElement.currentTime >= config.stop && !this.stopped) {
+            this.stopped = true;
+            this.recordStopRequest();
+            videoElement.pause();
+          }
+        },
+        listenerOptions,
+      );
     }
 
-    this.videoElement = videoElement;
-    this.wrapper = stimulusWrapper;
-
     return videoElement;
+  }
+
+  private recordPlayRequest(frameTimestamp: number | null) {
+    this.stopped = false;
+    if (this.diagnostics.video_play_request_abs === null) {
+      this.diagnostics.video_play_request_abs = performance.now();
+      this.diagnostics.video_play_request_frame_timestamp = frameTimestamp;
+    }
+  }
+
+  private beginVideoFrameObservation() {
+    const video = this.videoElement as any;
+    if (
+      !video ||
+      this.observingVideoFrames ||
+      typeof video.requestVideoFrameCallback !== "function"
+    ) {
+      return;
+    }
+    this.observingVideoFrames = true;
+
+    const observe = (callbackTimestamp: number, metadata: any) => {
+      const expectedDisplayTime =
+        typeof metadata?.expectedDisplayTime === "number"
+          ? metadata.expectedDisplayTime
+          : null;
+      const mediaTime =
+        typeof metadata?.mediaTime === "number" ? metadata.mediaTime : null;
+      const presentedFrames =
+        typeof metadata?.presentedFrames === "number"
+          ? metadata.presentedFrames
+          : null;
+
+      if (this.diagnostics.video_first_frame_callback_abs === null) {
+        this.diagnostics.video_first_frame_callback_abs = callbackTimestamp;
+        this.diagnostics.video_first_frame_media_time = mediaTime;
+        this.diagnostics.video_first_frame_expected_display_time =
+          expectedDisplayTime;
+        this.diagnostics.video_first_frame_presented_frames = presentedFrames;
+        // The callback timestamp remains a software observation. The browser's
+        // expectedDisplayTime is exported separately and is never labelled a
+        // physical onset.
+        this.stimulusTiming?.markOnset(callbackTimestamp, {
+          frameTimestamp: callbackTimestamp,
+          renderBackend: "html_media",
+        });
+      }
+
+      this.diagnostics.video_last_frame_callback_abs = callbackTimestamp;
+      this.diagnostics.video_last_frame_media_time = mediaTime;
+      this.diagnostics.video_last_frame_expected_display_time =
+        expectedDisplayTime;
+      this.diagnostics.video_last_frame_presented_frames = presentedFrames;
+
+      if (!this.stopped && this.videoElement === video) {
+        this.videoFrameRequest = video.requestVideoFrameCallback(observe);
+      } else {
+        this.observingVideoFrames = false;
+        this.videoFrameRequest = null;
+      }
+    };
+
+    this.videoFrameRequest = video.requestVideoFrameCallback(observe);
+  }
+
+  private recordStopRequest() {
+    if (Object.keys(this.diagnostics).length === 0) return;
+    this.stopped = true;
+    if (
+      this.videoFrameRequest !== null &&
+      typeof (this.videoElement as any)?.cancelVideoFrameCallback === "function"
+    ) {
+      (this.videoElement as any).cancelVideoFrameCallback(
+        this.videoFrameRequest,
+      );
+    }
+    this.videoFrameRequest = null;
+    this.observingVideoFrames = false;
+    if (this.diagnostics.video_stop_request_abs === null) {
+      this.diagnostics.video_stop_request_abs = performance.now();
+      const lastObserved = this.diagnostics.video_last_frame_callback_abs;
+      if (typeof lastObserved === "number") {
+        this.stimulusTiming?.markOffset(lastObserved, {
+          frameTimestamp: lastObserved,
+          renderBackend: "html_media",
+        });
+      }
+    }
   }
 
   /**
@@ -316,6 +468,8 @@ class VideoComponent {
    */
   play() {
     if (this.videoElement) {
+      this.recordPlayRequest(null);
+      this.beginVideoFrameObservation();
       this.videoElement.play();
     }
   }
@@ -325,6 +479,7 @@ class VideoComponent {
    */
   pause() {
     if (this.videoElement) {
+      this.recordStopRequest();
       this.videoElement.pause();
     }
   }
@@ -334,6 +489,7 @@ class VideoComponent {
    */
   stop() {
     if (this.videoElement) {
+      this.recordStopRequest();
       this.videoElement.pause();
       this.videoElement.currentTime = 0;
     }
@@ -402,15 +558,36 @@ class VideoComponent {
    * Remove the video from DOM and clean up
    */
   destroy() {
+    this.recordStopRequest();
+    this.listenerController?.abort();
+    this.listenerController = null;
     if (this.videoElement) {
+      if (
+        this.videoFrameRequest !== null &&
+        typeof (this.videoElement as any).cancelVideoFrameCallback ===
+          "function"
+      ) {
+        (this.videoElement as any).cancelVideoFrameCallback(
+          this.videoFrameRequest,
+        );
+      }
       this.videoElement.pause();
       this.videoElement.onended = () => {};
+      this.videoElement.onseeked = null;
+      this.videoElement.onplaying = null;
     }
     if (this.wrapper && this.wrapper.parentNode) {
       this.wrapper.parentNode.removeChild(this.wrapper);
     }
     this.wrapper = null;
     this.videoElement = null;
+    this.videoFrameRequest = null;
+    this.observingVideoFrames = false;
+    this.stimulusTiming = null;
+  }
+
+  getDiagnostics(): Record<string, any> {
+    return { ...this.diagnostics };
   }
 
   /**

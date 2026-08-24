@@ -15,6 +15,7 @@ type Props = {
   isConditionalLoop?: boolean | undefined;
   loopConditions?: LoopCondition[] | undefined;
   branches: (string | number)[] | undefined;
+  precisionStateRefs?: string;
 };
 
 export default function BranchingLogicCode({
@@ -31,6 +32,7 @@ export default function BranchingLogicCode({
   isConditionalLoop,
   loopConditions,
   branches,
+  precisionStateRefs,
 }: Props) {
   code += `
     
@@ -181,6 +183,11 @@ const ${loopIdSanitized}_procedure = {
   timeline_variables: test_stimuli_${loopIdSanitized},
   repetitions: ${repetitions},
   randomize_order: ${randomize},
+  ${
+    precisionStateRefs
+      ? `precision_presentation_plan: {\n    static: true,\n    states: [${precisionStateRefs}]\n  },`
+      : ""
+  }
   ${generateConditionalLoopFunction(isConditionalLoop, loopConditions)}
   conditional_function: function() {
     const currentId = "${id}";

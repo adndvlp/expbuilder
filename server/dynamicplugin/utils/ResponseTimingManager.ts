@@ -11,13 +11,27 @@ type ResponseInvalidReason =
   | "below_minimum_rt"
   | "no_valid_response"
   | "calibration_mismatch"
+  | "before_response_allowed"
+  | "invalid_response_allowed_from"
+  | "response_allowed_component_missing"
+  | "response_anchor_component_missing"
   | "";
 
 type ResponseAllowedFrom =
-  | "trial_onset"
-  | { from: "trial_onset"; at_ms: number };
+  | string
+  | {
+      from: string;
+      component?: string;
+      at_ms?: number;
+    };
 
 type ResponseTimingMode = "normal" | "strict";
+
+type ResponseRtAnchor =
+  | "trial_origin"
+  | "scheduled_onset"
+  | "stimulus_commit"
+  | { from: "stimulus_commit" | "scheduled_onset"; component?: string };
 
 type CalibrationMatchStatus = "matched" | "partial" | "mismatch" | "none";
 
@@ -55,7 +69,9 @@ type KeyboardTarget = {
   onResponse?: (response: ResponseTimingResult) => boolean | void;
 };
 
-export type ResponseTimingResult = ReturnType<ResponseTimingManager["getData"]> & {
+export type ResponseTimingResult = ReturnType<
+  ResponseTimingManager["getData"]
+> & {
   event?: Event;
 };
 
@@ -101,7 +117,9 @@ function parseOs(userAgent: string) {
 function normalizeChoices(choices: any, caseSensitive: boolean) {
   const rawChoices = resolveRawValue(choices);
   if (rawChoices === "ALL_KEYS" || rawChoices === "NO_KEYS") return rawChoices;
-  const flatChoices = Array.isArray(rawChoices) ? rawChoices.flat() : [rawChoices];
+  const flatChoices = Array.isArray(rawChoices)
+    ? rawChoices.flat()
+    : [rawChoices];
   return caseSensitive
     ? flatChoices
     : flatChoices.map((choice: any) =>
@@ -116,6 +134,12 @@ function isChoiceValid(validResponses: any, key: string) {
 }
 
 export class ResponseTimingManager {
+  private static sharedHub: {
+    controller: AbortController;
+    refCount: number;
+    active: ResponseTimingManager | null;
+  } | null = null;
+
   readonly enabled: boolean;
 
   private trial: any;
@@ -127,7 +151,7 @@ export class ResponseTimingManager {
     timestamp?: number | null,
     options?: { force: boolean },
   ) => boolean | void;
-  private controller: AbortController | null = null;
+  private listenerArmed = false;
   private pointerTargets: PointerTarget[] = [];
   private keyboardTargets: KeyboardTarget[] = [];
   private data: Record<string, any>;
@@ -154,35 +178,90 @@ export class ResponseTimingManager {
     this.canvasWidth = options.canvasWidth;
     this.canvasHeight = options.canvasHeight;
     this.onFinish = options.onFinish;
-    this.enabled = resolveRawValue(this.trial.response_timing_enabled) !== false;
+    this.enabled =
+      resolveRawValue(this.trial.response_timing_enabled) !== false;
     this.data = this.createInitialData();
   }
 
-  attach() {
-    if (!this.enabled || this.controller) return;
-    this.controller = new AbortController();
+  private static ensureSharedHub() {
+    if (ResponseTimingManager.sharedHub) return ResponseTimingManager.sharedHub;
+    const controller = new AbortController();
+    const hub = {
+      controller,
+      refCount: 0,
+      active: null as ResponseTimingManager | null,
+    };
     const options = {
       capture: true,
       passive: false,
-      signal: this.controller.signal,
+      signal: controller.signal,
     } as AddEventListenerOptions;
 
-    window.addEventListener("keydown", this.handleKeydown, options);
-    window.addEventListener("pointerdown", this.handlePointerDown, options);
-    document.addEventListener("visibilitychange", this.handleVisibilityChange, {
-      signal: this.controller.signal,
-    });
-    window.addEventListener("blur", this.handleBlur, {
+    window.addEventListener(
+      "keydown",
+      (event) => hub.active?.handleKeydown(event),
+      options,
+    );
+    window.addEventListener(
+      "pointerdown",
+      (event) => hub.active?.handlePointerDown(event),
+      options,
+    );
+    document.addEventListener(
+      "visibilitychange",
+      () => hub.active?.handleVisibilityChange(),
+      {
+        signal: controller.signal,
+      },
+    );
+    window.addEventListener("blur", () => hub.active?.handleBlur(), {
       capture: true,
-      signal: this.controller.signal,
+      signal: controller.signal,
     });
+    ResponseTimingManager.sharedHub = hub;
+    return hub;
+  }
+
+  /** Install the one shared event hub before the presentation becomes live. */
+  arm() {
+    if (!this.enabled || this.listenerArmed) return;
+    const hub = ResponseTimingManager.ensureSharedHub();
+    hub.refCount += 1;
+    this.listenerArmed = true;
     this.data.response_listener_attached = true;
   }
 
+  /** Critical-path operation: switch event routing to this prepared trial. */
+  activate() {
+    if (!this.enabled) return;
+    this.arm();
+    const hub = ResponseTimingManager.sharedHub;
+    if (hub) hub.active = this;
+  }
+
+  /** Critical-path operation: stop routing without touching DOM listeners. */
+  deactivate() {
+    const hub = ResponseTimingManager.sharedHub;
+    if (hub?.active === this) hub.active = null;
+  }
+
+  /** Compatibility alias for callers that previously attached per trial. */
+  attach() {
+    this.activate();
+  }
+
   detach() {
-    if (!this.controller) return;
-    this.controller.abort();
-    this.controller = null;
+    if (!this.listenerArmed) return;
+    this.deactivate();
+    const hub = ResponseTimingManager.sharedHub;
+    if (hub) {
+      hub.refCount = Math.max(0, hub.refCount - 1);
+      if (hub.refCount === 0) {
+        hub.controller.abort();
+        ResponseTimingManager.sharedHub = null;
+      }
+    }
+    this.listenerArmed = false;
     this.data.response_listener_removed = true;
   }
 
@@ -212,7 +291,8 @@ export class ResponseTimingManager {
     } else if (this.isResponseRequired()) {
       this.data.response_timeout = true;
       this.data.response_timeout_ms =
-        typeof offsetTime === "number" && typeof this.data.response_allowed_from_abs === "number"
+        typeof offsetTime === "number" &&
+        typeof this.data.response_allowed_from_abs === "number"
           ? round3(offsetTime - this.data.response_allowed_from_abs)
           : null;
       this.recordInvalid("timeout", null, null, null);
@@ -265,6 +345,12 @@ export class ResponseTimingManager {
       rt: this.data.rt,
       rt_raw: this.data.rt_raw,
       rt_corrected: this.data.rt_corrected,
+      rt_trial_origin: this.data.rt_trial_origin,
+      rt_scheduled_onset: this.data.rt_scheduled_onset,
+      rt_visual_commit: this.data.rt_visual_commit,
+      rt_anchor: this.data.rt_anchor,
+      rt_anchor_component: this.data.rt_anchor_component,
+      rt_anchor_time_abs: this.data.rt_anchor_time_abs,
       rt_from_allowed_onset: this.data.rt_from_allowed_onset,
       response_timing_enabled: this.data.response_timing_enabled,
       response_required: this.data.response_required,
@@ -274,7 +360,8 @@ export class ResponseTimingManager {
       response_timing_quality_mode: this.data.response_timing_quality_mode,
       minimum_valid_rt_ms: this.data.minimum_valid_rt_ms,
       response_before_trial_onset: this.data.response_before_trial_onset,
-      response_before_trial_onset_time: this.data.response_before_trial_onset_time,
+      response_before_trial_onset_time:
+        this.data.response_before_trial_onset_time,
       response_timeout: this.data.response_timeout,
       response_timeout_ms: this.data.response_timeout_ms,
       response_time: this.data.response_time,
@@ -282,7 +369,8 @@ export class ResponseTimingManager {
       response_timestamp_source: this.data.response_timestamp_source,
       response_event_lag: this.data.response_event_lag,
       response_bias_correction_ms: this.data.response_bias_correction_ms,
-      response_calibration_profile_id: this.data.response_calibration_profile_id,
+      response_calibration_profile_id:
+        this.data.response_calibration_profile_id,
       response_calibration_match_status:
         this.data.response_calibration_match_status,
       response_event_type: this.data.response_event_type,
@@ -322,7 +410,10 @@ export class ResponseTimingManager {
       const comparableKey = target.caseSensitive
         ? event.key
         : event.key.toLowerCase();
-      const validResponses = normalizeChoices(target.choices, target.caseSensitive);
+      const validResponses = normalizeChoices(
+        target.choices,
+        target.caseSensitive,
+      );
       if (!isChoiceValid(validResponses, comparableKey)) continue;
 
       const accepted = this.tryRecordResponse(event, {
@@ -353,7 +444,10 @@ export class ResponseTimingManager {
   private handlePointerDown = (event: PointerEvent) => {
     if (!this.enabled || this.responseRecorded) return;
 
-    const coordinates = this.computePointerCoordinates(event.clientX, event.clientY);
+    const coordinates = this.computePointerCoordinates(
+      event.clientX,
+      event.clientY,
+    );
     const target = this.findPointerTarget(
       event.clientX,
       event.clientY,
@@ -370,7 +464,8 @@ export class ResponseTimingManager {
       canvasX: coordinates.canvasX,
       canvasY: coordinates.canvasY,
       canvasBoundingRect: coordinates.canvasBoundingRect,
-      targetComponent: target.componentName ?? target.componentId ?? target.label,
+      targetComponent:
+        target.componentName ?? target.componentId ?? target.label,
     });
     if (!accepted) return;
 
@@ -426,6 +521,12 @@ export class ResponseTimingManager {
         this.finishIfNeeded(true);
         return false;
       }
+      if (
+        anchor.reason === "before_response_allowed" &&
+        this.getPrematurePolicy() === "ignore"
+      ) {
+        return false;
+      }
       this.recordInvalid(anchor.reason, timestamp, event, details);
       this.finishIfNeeded(true);
       return false;
@@ -439,11 +540,25 @@ export class ResponseTimingManager {
         timestamp.response_time - anchor.allowedFromAbs,
       );
       if (this.getPrematurePolicy() === "ignore") return false;
-      this.recordBeforeTrialOnset(timestamp.response_time);
+      this.recordInvalid("before_response_allowed", timestamp, event, details);
       this.finishIfNeeded(true);
       return false;
     }
 
+    this.data.rt_trial_origin = round3(
+      timestamp.response_time - anchor.trialOriginAbs,
+    );
+    this.data.rt_scheduled_onset =
+      typeof anchor.scheduledOnsetAbs === "number"
+        ? round3(timestamp.response_time - anchor.scheduledOnsetAbs)
+        : null;
+    this.data.rt_visual_commit =
+      typeof anchor.visualCommitAbs === "number"
+        ? round3(timestamp.response_time - anchor.visualCommitAbs)
+        : null;
+    this.data.rt_anchor = anchor.anchorSource;
+    this.data.rt_anchor_component = anchor.anchorComponent;
+    this.data.rt_anchor_time_abs = round3(anchor.anchorTimeAbs);
     const rtRaw = round3(timestamp.response_time - anchor.anchorTimeAbs);
     this.data.rt_from_allowed_onset =
       typeof anchor.allowedFromAbs === "number"
@@ -495,6 +610,11 @@ export class ResponseTimingManager {
         ok: true;
         anchorTimeAbs: number;
         allowedFromAbs: number | null;
+        trialOriginAbs: number;
+        scheduledOnsetAbs: number | null;
+        visualCommitAbs: number | null;
+        anchorSource: "trial_origin" | "scheduled_onset" | "stimulus_commit";
+        anchorComponent: string;
       }
     | { ok: false; reason: ResponseInvalidReason } {
     const trialOnset = this.timing?.getOnsetTime?.() ?? null;
@@ -502,28 +622,118 @@ export class ResponseTimingManager {
       return { ok: false, reason: "before_trial_onset" };
     }
 
-    const allowedFromAbs = this.resolveAllowedFromAbs(trialOnset);
+    const allowedResolution = this.resolveAllowedFromAbs();
+    if (!allowedResolution.ok) return allowedResolution;
+    const allowedFromAbs = allowedResolution.value;
     this.data.response_allowed_from_abs = round3(allowedFromAbs);
+
+    const rawAnchor = resolveRawValue(this.trial.response_rt_anchor) as
+      | ResponseRtAnchor
+      | undefined;
+    const anchorRequest = rawAnchor ?? "trial_origin";
+    const requestedSource =
+      typeof anchorRequest === "object" ? anchorRequest.from : anchorRequest;
+    const anchorComponent =
+      typeof anchorRequest === "object" &&
+      typeof anchorRequest.component === "string"
+        ? anchorRequest.component
+        : "";
+    const stimulusRecord = this.timing?.findStimulusRecord?.(
+      anchorComponent || null,
+      anchorComponent || null,
+    );
+    if (anchorComponent && !stimulusRecord) {
+      return { ok: false, reason: "response_anchor_component_missing" };
+    }
+    const scheduledOnsetAbs =
+      typeof stimulusRecord?.scheduled_onset_abs === "number"
+        ? stimulusRecord.scheduled_onset_abs
+        : !anchorComponent &&
+            typeof this.timing?.getScheduledTrialTimeOrigin?.() === "number"
+          ? this.timing.getScheduledTrialTimeOrigin()
+          : trialOnset;
+    const visualCommitAbs =
+      typeof stimulusRecord?.frame_onset_abs === "number"
+        ? stimulusRecord.frame_onset_abs
+        : null;
+
+    let anchorTimeAbs = trialOnset;
+    let anchorSource: "trial_origin" | "scheduled_onset" | "stimulus_commit" =
+      "trial_origin";
+    if (requestedSource === "scheduled_onset") {
+      if (typeof scheduledOnsetAbs !== "number") {
+        return { ok: false, reason: "before_trial_onset" };
+      }
+      anchorTimeAbs = scheduledOnsetAbs;
+      anchorSource = "scheduled_onset";
+    } else if (requestedSource === "stimulus_commit") {
+      if (typeof visualCommitAbs !== "number") {
+        return { ok: false, reason: "before_trial_onset" };
+      }
+      anchorTimeAbs = visualCommitAbs;
+      anchorSource = "stimulus_commit";
+    }
 
     return {
       ok: true,
-      anchorTimeAbs: trialOnset,
+      anchorTimeAbs,
       allowedFromAbs,
+      trialOriginAbs: trialOnset,
+      scheduledOnsetAbs,
+      visualCommitAbs,
+      anchorSource,
+      anchorComponent,
     };
   }
 
-  private resolveAllowedFromAbs(anchorAbs: number) {
+  private resolveAllowedFromAbs():
+    | { ok: true; value: number | null }
+    | { ok: false; reason: ResponseInvalidReason } {
     const allowed = this.responseAllowedFrom;
     const trialOnset = this.timing?.getOnsetTime?.() ?? null;
 
-    if (allowed === "trial_onset") return trialOnset;
+    if (allowed === "trial_onset") return { ok: true, value: trialOnset };
     if (allowed && typeof allowed === "object") {
       const atMs = Number(allowed.at_ms ?? 0);
+      if (!Number.isFinite(atMs)) {
+        return { ok: false, reason: "invalid_response_allowed_from" };
+      }
       if (allowed.from === "trial_onset") {
-        return typeof trialOnset === "number" ? trialOnset + atMs : null;
+        return {
+          ok: true,
+          value: typeof trialOnset === "number" ? trialOnset + atMs : null,
+        };
+      }
+      if (
+        allowed.from === "scheduled_onset" ||
+        allowed.from === "stimulus_commit"
+      ) {
+        const component =
+          typeof allowed.component === "string" ? allowed.component : "";
+        const stimulus = this.timing?.findStimulusRecord?.(
+          component || null,
+          component || null,
+        );
+        if (!stimulus) {
+          return {
+            ok: false,
+            reason: "response_allowed_component_missing",
+          };
+        }
+        const base =
+          allowed.from === "scheduled_onset"
+            ? stimulus.scheduled_onset_abs
+            : stimulus.frame_onset_abs;
+        if (typeof base !== "number") {
+          return { ok: false, reason: "before_response_allowed" };
+        }
+        return {
+          ok: true,
+          value: base + atMs,
+        };
       }
     }
-    return anchorAbs;
+    return { ok: false, reason: "invalid_response_allowed_from" };
   }
 
   private recordBeforeTrialOnset(responseTime: number) {
@@ -556,7 +766,9 @@ export class ResponseTimingManager {
     details: any,
   ) {
     this.data.response_time = round3(timestamp.response_time);
-    this.data.response_now_at_handler = round3(timestamp.response_now_at_handler);
+    this.data.response_now_at_handler = round3(
+      timestamp.response_now_at_handler,
+    );
     this.data.response_timestamp_source = timestamp.response_timestamp_source;
     this.data.response_event_lag = round3(timestamp.response_event_lag);
     this.data.response_event_type = details.eventType;
@@ -630,9 +842,13 @@ export class ResponseTimingManager {
   private computePointerCoordinates(clientX: number, clientY: number) {
     const rect = this.container.getBoundingClientRect();
     const canvasX =
-      rect.width > 0 ? ((clientX - rect.left) / rect.width) * this.canvasWidth : null;
+      rect.width > 0
+        ? ((clientX - rect.left) / rect.width) * this.canvasWidth
+        : null;
     const canvasY =
-      rect.height > 0 ? ((clientY - rect.top) / rect.height) * this.canvasHeight : null;
+      rect.height > 0
+        ? ((clientY - rect.top) / rect.height) * this.canvasHeight
+        : null;
     return {
       canvasX,
       canvasY,
@@ -678,7 +894,9 @@ export class ResponseTimingManager {
     const profileOs = profile.os_family ?? profile.os;
     if (profileOs) {
       comparableCount += 1;
-      mismatches.push(String(profileOs).toLowerCase() !== osFamily.toLowerCase());
+      mismatches.push(
+        String(profileOs).toLowerCase() !== osFamily.toLowerCase(),
+      );
     }
 
     if (profile.input_device) {
@@ -814,6 +1032,12 @@ export class ResponseTimingManager {
       rt: null,
       rt_raw: null,
       rt_corrected: null,
+      rt_trial_origin: null,
+      rt_scheduled_onset: null,
+      rt_visual_commit: null,
+      rt_anchor: "trial_origin",
+      rt_anchor_component: "",
+      rt_anchor_time_abs: null,
       rt_from_allowed_onset: null,
       response_before_trial_onset: false,
       response_before_trial_onset_time: null,
@@ -845,11 +1069,9 @@ export class ResponseTimingManager {
   private createInitialData() {
     const allowedFrom = resolveRawValue(this.trial.response_allowed_from);
     const normalizedAllowedFrom: ResponseAllowedFrom =
-      allowedFrom === "trial_onset"
-        ? allowedFrom
-        : allowedFrom && typeof allowedFrom === "object"
-          ? allowedFrom
-          : "trial_onset";
+      allowedFrom === undefined || allowedFrom === null
+        ? "trial_onset"
+        : allowedFrom;
     this.responseAllowedFrom = normalizedAllowedFrom;
     const qualityMode =
       normalizeString(this.trial.response_timing_quality_mode, "normal") ===
@@ -861,6 +1083,12 @@ export class ResponseTimingManager {
       rt: null,
       rt_raw: null,
       rt_corrected: null,
+      rt_trial_origin: null,
+      rt_scheduled_onset: null,
+      rt_visual_commit: null,
+      rt_anchor: "trial_origin",
+      rt_anchor_component: "",
+      rt_anchor_time_abs: null,
       rt_from_allowed_onset: null,
       response_timing_enabled: this.enabled,
       response_required: this.isResponseRequired(),

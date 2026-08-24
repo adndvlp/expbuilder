@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { installFakeRaf, pendingRafCount, restoreFakeRaf, stepRaf } from "./helpers/fakeRaf";
+import {
+  installFakeRaf,
+  pendingRafCount,
+  restoreFakeRaf,
+  stepRaf,
+} from "./helpers/fakeRaf";
 
 let DynamicPlugin: any = null;
 
@@ -253,7 +258,9 @@ describe("P4 fast activation path", () => {
       shared,
       baseTrial({
         __stableTrialId: "trial-b",
-        components: [{ ...IMAGE_COMPONENT, stimulus: "https://example.com/b.png" }],
+        components: [
+          { ...IMAGE_COMPONENT, stimulus: "https://example.com/b.png" },
+        ],
         trial_duration: 300,
       }),
     );
@@ -265,7 +272,9 @@ describe("P4 fast activation path", () => {
 
     expect(dataB.timing_activation_path).toBe("prepared_fast");
     expect(dataB.timing_prepared_resources_used).toBe(1);
-    expect(imagesCreated.filter((src) => src.includes("b.png"))).toHaveLength(0);
+    expect(imagesCreated.filter((src) => src.includes("b.png"))).toHaveLength(
+      0,
+    );
     expect(dataB.timing_prepare_status).toBe("reused");
   });
 
@@ -285,17 +294,26 @@ describe("P4 fast activation path", () => {
 
     expect(dataB.timing_activation_path).toBe("normal");
     // The fallback path requested the image resource during activation.
-    expect(imagesCreated.filter((src) => src.includes("image.png")).length).toBeGreaterThanOrEqual(1);
+    expect(
+      imagesCreated.filter((src) => src.includes("image.png")).length,
+    ).toBeGreaterThanOrEqual(1);
   });
 
-  it("3. fast path never changes origin: origin = T, rt = E - T (prepare/activation times irrelevant)", async () => {
+  it("3. fast preparation never turns a retired host timestamp into a frame origin", async () => {
     const registerHandoff = vi.fn(() => ({ status: "pending" as const }));
     const outcomes = new Map<number, any>();
-    outcomes.set(1, { fromTrialIndex: 0, toTrialIndex: 1, status: "acquired", reason: null });
+    outcomes.set(1, {
+      fromTrialIndex: 0,
+      toTrialIndex: 1,
+      status: "acquired",
+      reason: null,
+    });
     let slot: { timestamp: number; from: number } | null = null;
     const timing = hostTiming({
       registerHandoff,
-      getTransitionOutcome: vi.fn((index: number) => outcomes.get(index) ?? null),
+      getTransitionOutcome: vi.fn(
+        (index: number) => outcomes.get(index) ?? null,
+      ),
       acquireTrialOrigin: vi.fn((index: number) => {
         if (!slot || slot.from + 1 !== index) return null;
         const origin = {
@@ -310,7 +328,10 @@ describe("P4 fast activation path", () => {
       }),
     });
     let currentIndex = 0;
-    const shared = fakeJsPsych({ timing, getProgress: () => ({ current_trial_global: currentIndex }) });
+    const shared = fakeJsPsych({
+      timing,
+      getProgress: () => ({ current_trial_global: currentIndex }),
+    });
 
     const { promise: promiseA } = startTrialWithDisplay(
       shared,
@@ -338,18 +359,22 @@ describe("P4 fast activation path", () => {
       baseTrial({
         __stableTrialId: "trial-b",
         timing_continuous: true,
-        components: [{ ...IMAGE_COMPONENT, stimulus: "https://example.com/b.png" }],
+        components: [
+          { ...IMAGE_COMPONENT, stimulus: "https://example.com/b.png" },
+        ],
       }),
     );
     await vi.advanceTimersByTimeAsync(21000);
+    stepRaf(2100);
     vi.spyOn(performance, "now").mockReturnValue(2266);
     window.dispatchEvent(keydown(2250)); // E
     stepRaf(2266); // commit → post-commit finalize
     const dataB: any = await promiseB;
 
-    expect(dataB.trial_time_origin).toBe(2000);
-    expect(dataB.trial_time_origin_source).toBe("host_coordinator");
-    expect(dataB.rt).toBe(250); // E - T only
+    expect(dataB.trial_time_origin).toBe(2100);
+    expect(dataB.trial_time_origin_source).toBe("fresh_raf");
+    expect(dataB.rt).toBe(150);
+    expect(dataB.timing_continuity).toBe("logical_only");
     expect(dataB.timing_activation_path).toBe("prepared_fast");
   });
 
@@ -378,7 +403,9 @@ describe("P4 fast activation path", () => {
       shared,
       baseTrial({
         __stableTrialId: "trial-b",
-        components: [{ ...IMAGE_COMPONENT, stimulus: "https://example.com/b.png" }],
+        components: [
+          { ...IMAGE_COMPONENT, stimulus: "https://example.com/b.png" },
+        ],
         trial_duration: 300,
       }),
     );
@@ -419,7 +446,9 @@ describe("P4 fast activation path", () => {
       shared,
       baseTrial({
         __stableTrialId: "trial-b",
-        components: [{ ...IMAGE_COMPONENT, stimulus: "https://example.com/b.png" }],
+        components: [
+          { ...IMAGE_COMPONENT, stimulus: "https://example.com/b.png" },
+        ],
       }),
     );
     await vi.advanceTimersByTimeAsync(21000);
@@ -438,7 +467,12 @@ describe("P4 fast activation path", () => {
     const timing = hostTiming();
     const shared = fakeJsPsych({ timing });
 
-    const runTrial = async (prepare: any, stableId: string, stimulus: string, frames: number[]) => {
+    const runTrial = async (
+      prepare: any,
+      stableId: string,
+      stimulus: string,
+      frames: number[],
+    ) => {
       const { promise } = startTrialWithDisplay(
         shared,
         baseTrial({
@@ -454,9 +488,24 @@ describe("P4 fast activation path", () => {
       return promise;
     };
 
-    await runTrial({ stableTrialId: "tb", images: ["https://example.com/b.png"] }, "ta", "https://example.com/a.png", [1700, 1716, 2000]);
-    const dataB: any = await runTrial({ stableTrialId: "tc", images: ["https://example.com/c.png"] }, "tb", "https://example.com/b.png", [2300, 2316, 2600]);
-    const dataC: any = await runTrial(null, "tc", "https://example.com/c.png", [2900, 2916, 3200]);
+    await runTrial(
+      { stableTrialId: "tb", images: ["https://example.com/b.png"] },
+      "ta",
+      "https://example.com/a.png",
+      [1700, 1716, 2000],
+    );
+    const dataB: any = await runTrial(
+      { stableTrialId: "tc", images: ["https://example.com/c.png"] },
+      "tb",
+      "https://example.com/b.png",
+      [2300, 2316, 2600],
+    );
+    const dataC: any = await runTrial(
+      null,
+      "tc",
+      "https://example.com/c.png",
+      [2900, 2916, 3200],
+    );
 
     expect(dataB.timing_activation_path).toBe("prepared_fast");
     expect(dataC.timing_activation_path).toBe("prepared_fast");
@@ -472,6 +521,10 @@ describe("P4 fast activation path", () => {
     const { promise: promiseA } = startTrialWithDisplay(
       shared,
       baseTrial({
+        // Explicitly partial visual window: this remains a legacy
+        // non-boundary response trial even though whole-window keyboard
+        // trials are now eligible for the persistent frame engine.
+        components: [{ ...IMAGE_COMPONENT, stimulus_duration: 100 }],
         prepare_next_manifest: {
           stableTrialId: "trial-b",
           images: ["https://example.com/b.png"],
@@ -490,7 +543,9 @@ describe("P4 fast activation path", () => {
       shared,
       baseTrial({
         __stableTrialId: "trial-b",
-        components: [{ ...IMAGE_COMPONENT, stimulus: "https://example.com/b.png" }],
+        components: [
+          { ...IMAGE_COMPONENT, stimulus: "https://example.com/b.png" },
+        ],
         trial_duration: 300,
       }),
     );
@@ -545,7 +600,9 @@ describe("P4 fast activation path", () => {
       baseTrial({
         __stableTrialId: "trial-b",
         timing_continuous: true,
-        components: [{ ...IMAGE_COMPONENT, stimulus: "https://example.com/b.png" }],
+        components: [
+          { ...IMAGE_COMPONENT, stimulus: "https://example.com/b.png" },
+        ],
         trial_duration: 300,
       }),
     );
@@ -567,7 +624,8 @@ describe("P4 fast activation path", () => {
     // Recovery: the stimulus was eventually prepared and its onset marked.
     const stimulusRecords = JSON.parse(dataB.stimulus_timing);
     const imageRecord = stimulusRecords.find(
-      (record: any) => record.name === "ImageComponent_1" || record.component_id,
+      (record: any) =>
+        record.name === "ImageComponent_1" || record.component_id,
     );
     expect(imageRecord).toBeDefined();
     expect(imageRecord.frame_onset).not.toBeNull();

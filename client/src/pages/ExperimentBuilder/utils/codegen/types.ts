@@ -37,6 +37,7 @@ export type TrialWithCode = {
   branchConditions?: unknown[];
   repeatConditions?: unknown[];
   customOnFinish?: string;
+  precisionPrepareSafe?: boolean;
   isLoop?: boolean;
   id?: string | number;
   type?: string;

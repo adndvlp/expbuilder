@@ -131,7 +131,9 @@ function createContractCoordinator() {
     state.slot = { timestamp, from: state.registrarIndex };
     return { status: "pending" as const };
   });
-  const getTransitionOutcome = vi.fn((index: number) => state.outcomes.get(index) ?? null);
+  const getTransitionOutcome = vi.fn(
+    (index: number) => state.outcomes.get(index) ?? null,
+  );
   return { state, acquireTrialOrigin, registerHandoff, getTransitionOutcome };
 }
 
@@ -232,7 +234,7 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
     document.body.innerHTML = "";
   });
 
-  it("A. host present, acquire success → startAt(T, host_coordinator), rt = E - T", async () => {
+  it("A. retired host timestamp is diagnostic-only and origin waits for a fresh rAF", async () => {
     const coordinator = createContractCoordinator();
     coordinator.state.slot = { timestamp: 1000, from: 0 };
     coordinator.state.outcomes.set(1, {
@@ -255,7 +257,7 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
       baseTrial({ timing_continuous: true }),
     );
     await vi.advanceTimersByTimeAsync(21000);
-    // No rAF step: host origin must be set synchronously via startAt.
+    stepRaf(1100);
     vi.spyOn(performance, "now").mockReturnValue(1260);
     window.dispatchEvent(keydown(1250));
     stepRaf(1266); // P2: post-commit finalize frame (commit 1266)
@@ -263,11 +265,11 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
 
     expect(coordinator.acquireTrialOrigin).toHaveBeenCalledTimes(1);
     expect(coordinator.acquireTrialOrigin).toHaveBeenCalledWith(1); // current trial global index
-    expect(data.trial_time_origin).toBe(1000);
-    expect(data.trial_time_origin_source).toBe("host_coordinator");
-    expect(data.rt).toBe(250); // event 1250 - host origin 1000
-    expect(data.timing_continuity).toBe("acquired");
-    expect(data.timing_lost_reason).toBeNull();
+    expect(data.trial_time_origin).toBe(1100);
+    expect(data.trial_time_origin_source).toBe("fresh_raf");
+    expect(data.rt).toBe(150);
+    expect(data.timing_continuity).toBe("logical_only");
+    expect(data.timing_lost_reason).toBe("legacy_timestamp_not_replayed");
     expect(data.timing_handoff_from_trial_index).toBe(0);
     expect(data.timing_handoff_frame_index).toBeNull();
     expect(data.timing_handoff_acquired_at).toBe(1001);
@@ -320,7 +322,7 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
     expect(data.visual_handoff_consumed).toBe(false);
   });
 
-  it("C. host absent → legacy VisualHandoff still works (no regression)", async () => {
+  it("C. host absent → legacy bridge is consumed but never replayed as a frame", async () => {
     // A: frame-boundary trial creates a legacy handoff.
     const first = startTrial(jsPsych, baseTrial({ trial_duration: 300 }));
     await vi.advanceTimersByTimeAsync(21000);
@@ -337,8 +339,9 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
     stepRaf(2600);
     const dataB: any = await second;
 
-    expect(dataB.trial_time_origin_source).toBe("visual_handoff");
-    expect(dataB.trial_time_origin).toBe(2000);
+    expect(dataB.trial_time_origin_source).toBe("fresh_raf");
+    expect(dataB.trial_time_origin).toBe(2300);
+    expect(dataB.visual_handoff_consumed).toBe(true);
     expect(dataB.timing_continuity).toBeUndefined();
     expect(dataB.timing_lost_reason).toBeUndefined();
   });
@@ -462,18 +465,18 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
     const ta = coordinator.registerHandoff.mock.calls[0][0];
     expect(dataA.trial_end_commit_time).toBe(ta);
 
-    const dataB: any = await runTrial(1, [2100, 2300], true);
-    expect(dataB.trial_time_origin_source).toBe("host_coordinator");
-    expect(dataB.trial_time_origin).toBe(ta); // A's handoff TA (committed due frame)
-    expect(dataB.timing_continuity).toBe("acquired");
+    const dataB: any = await runTrial(1, [2100, 2400], true);
+    expect(dataB.trial_time_origin_source).toBe("fresh_raf");
+    expect(dataB.trial_time_origin).toBe(2100);
+    expect(dataB.timing_continuity).toBe("logical_only");
     expect(dataB.timing_handoff_from_trial_index).toBe(0);
     const tb = coordinator.registerHandoff.mock.calls[1][0];
     expect(tb).not.toBe(ta);
     expect(dataB.trial_end_commit_time).toBe(tb);
 
-    const dataC: any = await runTrial(2, [2400, 2600], true);
-    expect(dataC.trial_time_origin_source).toBe("host_coordinator");
-    expect(dataC.trial_time_origin).toBe(tb); // B's handoff TB, never TA
+    const dataC: any = await runTrial(2, [2500, 2800], true);
+    expect(dataC.trial_time_origin_source).toBe("fresh_raf");
+    expect(dataC.trial_time_origin).toBe(2500);
     expect(dataC.timing_handoff_from_trial_index).toBe(1);
 
     expect(coordinator.acquireTrialOrigin).toHaveBeenCalledTimes(2); // index 0 skipped
@@ -579,7 +582,9 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
     stepRaf(2000);
     const data: any = await dataPromise;
 
-    expect(data.timing_handoff_register_status).toBe("rejected:stale_at_register");
+    expect(data.timing_handoff_register_status).toBe(
+      "rejected:stale_at_register",
+    );
     expect(data.visual_handoff_available).toBe(false);
     expect(data.visual_handoff_consumed).toBe(false);
     expect(data.visual_handoff_lost).toBe(false);
@@ -660,7 +665,11 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
     });
     jsPsych = fakeJsPsych({
       getProgress: () => ({ current_trial_global: 1 }),
-      timing: { acquireTrialOrigin, registerHandoff: vi.fn(() => ({ status: "pending" })), getTransitionOutcome },
+      timing: {
+        acquireTrialOrigin,
+        registerHandoff: vi.fn(() => ({ status: "pending" })),
+        getTransitionOutcome,
+      },
     });
 
     const dataPromise = startTrial(
@@ -695,10 +704,16 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
       });
       return null;
     });
-    const getTransitionOutcome = vi.fn((index: number) => outcomes.get(index) ?? null);
+    const getTransitionOutcome = vi.fn(
+      (index: number) => outcomes.get(index) ?? null,
+    );
     jsPsych = fakeJsPsych({
       getProgress: () => ({ current_trial_global: 1 }),
-      timing: { acquireTrialOrigin, registerHandoff: vi.fn(() => ({ status: "pending" })), getTransitionOutcome },
+      timing: {
+        acquireTrialOrigin,
+        registerHandoff: vi.fn(() => ({ status: "pending" })),
+        getTransitionOutcome,
+      },
     });
 
     const dataPromise = startTrial(
@@ -790,10 +805,7 @@ describe("DynamicPlugin host TimingCoordinator (P1)", () => {
 
     // Normal trial (no timing_continuous): duration due ends it immediately,
     // without waiting for a post-commit phase.
-    const dataPromise = startTrial(
-      jsPsych,
-      baseTrial({ trial_duration: 300 }),
-    );
+    const dataPromise = startTrial(jsPsych, baseTrial({ trial_duration: 300 }));
     await vi.advanceTimersByTimeAsync(21000);
     stepRaf(1700);
     stepRaf(1716);

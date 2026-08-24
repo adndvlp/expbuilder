@@ -112,6 +112,35 @@ export default function useLoopCode({
       trials,
     });
 
+    // Keep Builder's logical wrappers intact, but publish a separate leaf
+    // presentation plan when the sequence is provably static. The jsPsych core
+    // can then prepare these DynamicPlugin states without executing or waiting
+    // for the wrappers at a visual boundary.
+    const canCompilePrecisionPresentationPlan =
+      !isConditionalLoop &&
+      !loopConditions?.length &&
+      !branches?.length &&
+      !branchConditions?.length &&
+      !repeatConditions?.length &&
+      mergePointIds.length === 0 &&
+      !isMergePoint &&
+      trials.length > 0 &&
+      trials.every(
+        (item) =>
+          !isLoopData(item) &&
+          item.pluginName === "plugin-dynamic" &&
+          item.precisionPrepareSafe === true &&
+          !item.branches?.length &&
+          !item.branchConditions?.length &&
+          !item.repeatConditions?.length &&
+          !item.customOnFinish?.trim(),
+      );
+    const precisionStateRefs = canCompilePrecisionPresentationPlan
+      ? trials
+          .map((item) => `${sanitizeName((item as any).trialName)}_timeline`)
+          .join(", ")
+      : undefined;
+
     // Generate the list of wrapper names for the loop timeline
     const timelineRefs = trials
       .map((item) => {
@@ -215,6 +244,7 @@ export default function useLoopCode({
       repetitions,
       randomize,
       branches,
+      precisionStateRefs,
       isConditionalLoop,
       loopConditions,
     });

@@ -71,6 +71,14 @@ export async function generateLoopCode(
             branchConditions: fullTrial.branchConditions || [],
             repeatConditions: fullTrial.repeatConditions || [],
             customOnFinish: fullTrial.customOnFinish || "",
+            precisionPrepareSafe:
+              fullTrial.plugin === "plugin-dynamic" &&
+              !fullTrial.paramsOverride?.length &&
+              !fullTrial.customInitialize?.trim() &&
+              !fullTrial.customOnStart?.trim() &&
+              !fullTrial.customOnLoad?.trim() &&
+              !fullTrial.customOnFinish?.trim() &&
+              !fullTrial.parameters?.includesExtensions,
           };
         } else if (item.type === "loop") {
           // Recursively generate nested loop code

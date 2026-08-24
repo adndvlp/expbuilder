@@ -242,6 +242,7 @@ class SketchpadComponent {
   private background_image: HTMLImageElement | null = null;
   private start_time: number | null = 0;
   private timing: any = null;
+  private listenerController: AbortController | null = null;
 
   constructor(jsPsych: any) {
     this.jsPsych = jsPsych;
@@ -350,91 +351,140 @@ class SketchpadComponent {
     }
   }
   setup_event_listeners(config: any) {
-    document.addEventListener("pointermove", (e) => {
-      this.mouse_position = { x: e.clientX, y: e.clientY };
-    });
+    this.listenerController?.abort();
+    const controller = new AbortController();
+    this.listenerController = controller;
+    const listenerOptions: AddEventListenerOptions = {
+      signal: controller.signal,
+    };
+
+    document.addEventListener(
+      "pointermove",
+      (e) => {
+        this.mouse_position = { x: e.clientX, y: e.clientY };
+      },
+      listenerOptions,
+    );
 
     if (!this.canvas) return;
 
     this.canvas.addEventListener(
       "pointerdown",
       this.start_draw.bind(this, config),
+      listenerOptions,
     );
     this.canvas.addEventListener(
       "pointermove",
       this.move_draw.bind(this, config),
+      listenerOptions,
     );
-    this.canvas.addEventListener("pointerup", this.end_draw.bind(this));
-    this.canvas.addEventListener("pointerleave", this.end_draw.bind(this));
-    this.canvas.addEventListener("pointercancel", this.end_draw.bind(this));
+    this.canvas.addEventListener(
+      "pointerup",
+      this.end_draw.bind(this),
+      listenerOptions,
+    );
+    this.canvas.addEventListener(
+      "pointerleave",
+      this.end_draw.bind(this),
+      listenerOptions,
+    );
+    this.canvas.addEventListener(
+      "pointercancel",
+      this.end_draw.bind(this),
+      listenerOptions,
+    );
     if (config.key_to_draw !== null) {
-      document.addEventListener("keydown", (e) => {
-        if (
-          e.key == config.key_to_draw &&
-          !this.is_drawing &&
-          !this.draw_key_held
-        ) {
-          this.draw_key_held = true;
+      document.addEventListener(
+        "keydown",
+        (e) => {
           if (
-            this.canvas &&
-            document.elementFromPoint(
-              this.mouse_position.x,
-              this.mouse_position.y,
-            ) == this.canvas
+            e.key == config.key_to_draw &&
+            !this.is_drawing &&
+            !this.draw_key_held
           ) {
-            this.canvas.dispatchEvent(
-              new PointerEvent("pointerdown", {
-                clientX: this.mouse_position.x,
-                clientY: this.mouse_position.y,
-              }),
-            );
+            this.draw_key_held = true;
+            if (
+              this.canvas &&
+              document.elementFromPoint(
+                this.mouse_position.x,
+                this.mouse_position.y,
+              ) == this.canvas
+            ) {
+              this.canvas.dispatchEvent(
+                new PointerEvent("pointerdown", {
+                  clientX: this.mouse_position.x,
+                  clientY: this.mouse_position.y,
+                }),
+              );
+            }
           }
-        }
-      });
-      document.addEventListener("keyup", (e) => {
-        if (e.key == config.key_to_draw) {
-          this.draw_key_held = false;
-          if (
-            this.canvas &&
-            document.elementFromPoint(
-              this.mouse_position.x,
-              this.mouse_position.y,
-            ) == this.canvas
-          ) {
-            this.canvas.dispatchEvent(
-              new PointerEvent("pointerup", {
-                clientX: this.mouse_position.x,
-                clientY: this.mouse_position.y,
-              }),
-            );
+        },
+        listenerOptions,
+      );
+      document.addEventListener(
+        "keyup",
+        (e) => {
+          if (e.key == config.key_to_draw) {
+            this.draw_key_held = false;
+            if (
+              this.canvas &&
+              document.elementFromPoint(
+                this.mouse_position.x,
+                this.mouse_position.y,
+              ) == this.canvas
+            ) {
+              this.canvas.dispatchEvent(
+                new PointerEvent("pointerup", {
+                  clientX: this.mouse_position.x,
+                  clientY: this.mouse_position.y,
+                }),
+              );
+            }
           }
-        }
-      });
+        },
+        listenerOptions,
+      );
     }
     if (config.show_undo_button && this.display) {
       this.display
         .querySelector("#sketchpad-undo")
-        ?.addEventListener("click", this.undo.bind(this, config));
+        ?.addEventListener(
+          "click",
+          this.undo.bind(this, config),
+          listenerOptions,
+        );
       if (config.show_redo_button) {
         this.display
           .querySelector("#sketchpad-redo")
-          ?.addEventListener("click", this.redo.bind(this, config));
+          ?.addEventListener(
+            "click",
+            this.redo.bind(this, config),
+            listenerOptions,
+          );
       }
     }
     if (config.show_clear_button && this.display) {
       this.display
         .querySelector("#sketchpad-clear")
-        ?.addEventListener("click", this.clear.bind(this, config));
+        ?.addEventListener(
+          "click",
+          this.clear.bind(this, config),
+          listenerOptions,
+        );
     }
     if (this.display) {
       const color_btns = Array.prototype.slice.call(
         this.display.querySelectorAll(".sketchpad-color-select"),
       );
       for (const btn of color_btns) {
-        btn.addEventListener("click", (e: any) => {
-          const target = e.target;
-          this.current_stroke_color = target.getAttribute("data-color");
-        });
+        btn.addEventListener(
+          "click",
+          (e: any) => {
+            const target = e.target;
+            this.current_stroke_color = target.getAttribute("data-color");
+          },
+          listenerOptions,
+        );
       }
     }
   }
@@ -654,6 +704,12 @@ class SketchpadComponent {
    * Destroy and clean up the component
    */
   destroy() {
+    this.listenerController?.abort();
+    this.listenerController = null;
+    if (this.background_image) {
+      this.background_image.onload = null;
+      this.background_image.onerror = null;
+    }
     document.querySelector("#sketchpad-styles")?.remove();
   }
 }

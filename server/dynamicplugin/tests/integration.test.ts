@@ -1,9 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  installFakeRaf,
-  restoreFakeRaf,
-  stepRaf,
-} from "./helpers/fakeRaf";
+import { installFakeRaf, restoreFakeRaf, stepRaf } from "./helpers/fakeRaf";
 
 let DynamicPlugin: any = null;
 
@@ -216,6 +212,33 @@ describe("DynamicPlugin integration scenarios", () => {
     expect(data.stimulus_onset_policy).toBe("nearest");
   });
 
+  it("bounds unused persistent WebGL textures with an explicit LRU policy", async () => {
+    const { getCanvasStage } = await import("../renderer/CanvasStage");
+    const parent = document.createElement("div");
+    document.body.appendChild(parent);
+    const stage = getCanvasStage(parent, {
+      width: 64,
+      height: 64,
+      backend: "webgl-strict",
+      recordGpuTiming: false,
+    });
+
+    for (let index = 0; index < 100; index++) {
+      stage.preloadTexture(`unique-${index}`, {
+        width: 1,
+        height: 1,
+      } as any);
+    }
+
+    expect(stage.getResourceDiagnostics()).toMatchObject({
+      drawableCount: 0,
+      retainedTextureReferences: 0,
+      textureCount: 64,
+      textureCacheLimit: 64,
+    });
+    stage.destroy();
+  });
+
   it("Scenario B: delayed response gate keeps rt_raw and adds rt_from_allowed_onset", async () => {
     const dataPromise = startTrial(
       jsPsych,
@@ -237,10 +260,7 @@ describe("DynamicPlugin integration scenarios", () => {
   });
 
   it("Scenario C: not-before trial duration never ends early", async () => {
-    const dataPromise = startTrial(
-      jsPsych,
-      baseTrial({ trial_duration: 500 }),
-    );
+    const dataPromise = startTrial(jsPsych, baseTrial({ trial_duration: 500 }));
     await vi.advanceTimersByTimeAsync(21000);
     stepRaf(1000);
     stepRaf(1488);
@@ -266,7 +286,12 @@ describe("DynamicPlugin integration scenarios", () => {
     // handoff state created by A. Depending on microtask/timer ordering the
     // loss is recorded as the surface removal or the macrotask expiry; both
     // prove the state was resolved here, not leaked.
-    const trialB = startTrial(jsPsych, baseTrial());
+    const trialB = startTrial(
+      jsPsych,
+      baseTrial({
+        components: [{ ...IMAGE_COMPONENT, stimulus_duration: 100 }],
+      }),
+    );
     await vi.advanceTimersByTimeAsync(21000);
     stepRaf(2100);
     vi.spyOn(performance, "now").mockReturnValue(2210);

@@ -1,6 +1,75 @@
 import { describe, expect, it, normalize, useLoopCode } from "./testHarness";
 
 describe("useLoopCode composition", () => {
+  it("keeps logical wrappers while emitting a separate static Dynamic presentation plan", () => {
+    const genLoopCode = useLoopCode({
+      id: "visual_loop",
+      branches: undefined,
+      branchConditions: undefined,
+      repeatConditions: undefined,
+      repetitions: 100,
+      randomize: false,
+      orders: false,
+      stimuliOrders: [],
+      categories: false,
+      categoryData: [],
+      trials: [
+        {
+          trialName: "Visual Trial",
+          pluginName: "plugin-dynamic",
+          timelineProps:
+            "const Visual_Trial_timeline = { type: DynamicPlugin, data: { trial_id: 10 } };",
+          mappedJson: [
+            { components_Visual_Trial: [{ stimulus: "black.png" }] },
+            { components_Visual_Trial: [{ stimulus: "white.png" }] },
+          ],
+          precisionPrepareSafe: true,
+        },
+      ],
+      unifiedStimuli: [
+        { components_Visual_Trial: [{ stimulus: "black.png" }] },
+        { components_Visual_Trial: [{ stimulus: "white.png" }] },
+      ],
+    });
+
+    const code = normalize(genLoopCode());
+
+    expect(code).toContain("timeline: [Visual_Trial_wrapper]");
+    expect(code).toContain(
+      "precision_presentation_plan: { static: true, states: [Visual_Trial_timeline] }",
+    );
+    expect(code).toContain("repetitions: 100");
+  });
+
+  it("does not emit a physical plan when trial callbacks can mutate presentation state", () => {
+    const genLoopCode = useLoopCode({
+      id: "dynamic_loop",
+      branches: undefined,
+      branchConditions: undefined,
+      repetitions: 2,
+      randomize: false,
+      orders: false,
+      stimuliOrders: [],
+      categories: false,
+      categoryData: [],
+      trials: [
+        {
+          trialName: "Dynamic Trial",
+          pluginName: "plugin-dynamic",
+          timelineProps:
+            "const Dynamic_Trial_timeline = { type: DynamicPlugin, data: { trial_id: 10 } };",
+          mappedJson: [{ stimulus: "A" }],
+          precisionPrepareSafe: false,
+        },
+      ],
+      unifiedStimuli: [{ stimulus: "A" }],
+    });
+
+    expect(normalize(genLoopCode())).not.toContain(
+      "precision_presentation_plan",
+    );
+  });
+
   it("generates a loop procedure with trial wrappers and unified stimuli", () => {
     const genLoopCode = useLoopCode({
       id: "loop_1",

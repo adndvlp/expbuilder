@@ -7,6 +7,8 @@ export type Trial = {
   branchConditions?: BranchCondition[];
   repeatConditions?: RepeatCondition[];
   customOnFinish?: string;
+  /** No generated/user callback can mutate this trial's presentation fields. */
+  precisionPrepareSafe?: boolean;
 };
 
 // LoopData: Similar to Loop but with 'items' instead of 'trials' (for processed data)

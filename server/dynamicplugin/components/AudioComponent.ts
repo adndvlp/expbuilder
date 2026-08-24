@@ -62,6 +62,11 @@ class AudioComponent {
   private timedEnded = false;
   private autoplayAttemptFailed = false;
   private diagnostics: Record<string, any> = {};
+  private config: any = null;
+  private prepared = false;
+  private armed = false;
+  private playbackRequested = false;
+  private resourceReadyAt: number | null = null;
 
   constructor(jsPsych: any) {
     this.jsPsych = jsPsych;
@@ -76,12 +81,17 @@ class AudioComponent {
    * @param config - Configuration for the audio
    * @returns The rendered audio element (if controls are shown)
    */
-  async render(
+  async prepare(
     container: HTMLElement,
-    config: any
+    config: any,
   ): Promise<HTMLElement | null> {
+    this.config = config;
+    this.prepared = false;
+    this.armed = false;
+    this.playbackRequested = false;
     // Get audio player from jsPsych (fallback/legacy path)
     this.audio = await this.jsPsych.pluginAPI.getAudioPlayer(config.stimulus);
+    this.resourceReadyAt = performance.now();
 
     // Only create visible element if controls are requested
     if (config.show_controls) {
@@ -107,71 +117,142 @@ class AudioComponent {
     // presentation). When the cache is cold, playback falls back to the
     // HTMLAudio player instead of decoding in the presentation path.
     if (this.context && typeof this.context.decodeAudioData === "function") {
-      this.timedBuffer = getPreloadedAudioBuffer(
-        this.context,
-        config.stimulus,
-      );
+      this.timedBuffer = getPreloadedAudioBuffer(this.context, config.stimulus);
     }
 
-    // Start playback if autoplay is enabled - default to true
-    const shouldAutoplay =
-      config.autoplay !== undefined ? config.autoplay : true;
-    if (shouldAutoplay && this.audio) {
-      const playAudio = async () => {
-        try {
-          await this.audio.play();
-          this.diagnostics = {
-            audio_clock_bridge_available: false,
-            audio_clock_bridge_source: "",
-            audio_backend: "htmlaudio_fallback",
-            audio_timing_degraded: true,
-            audio_timing_degraded_reason:
-              "html_audio_presentation_unobservable",
-            physical_audio_onset_abs: null,
-          };
-        } catch (error) {
-          console.warn("Audio autoplay failed:", error);
-          this.autoplayAttemptFailed = true;
-          this.diagnostics = {
-            audio_clock_bridge_available: false,
-            audio_clock_bridge_source: "",
-            audio_backend: "htmlaudio_fallback",
-            audio_timing_degraded: true,
-            audio_timing_degraded_reason: "autoplay_policy_blocked",
-            physical_audio_onset_abs: null,
-          };
-          // If autoplay fails, could show controls or notify user
-          if (this.element) {
-            this.element.innerHTML = `
-              <div class="audio-controls">
-                <button onclick="this.parentElement.parentElement.click()">Click to play audio</button>
-              </div>
-            `;
-            this.element.addEventListener(
-              "click",
-              () => {
-                this.play();
-              },
-              { once: true }
-            );
-          }
-        }
-      };
+    this.prepared = true;
+    return this.element;
+  }
 
-      if (config.__timing) {
-        config.__timing.onStart((timestamp: number) => {
-          if (this.timedBuffer && this.context) {
-            this.scheduleTimedPlayback(timestamp);
-          } else {
-            void playAudio();
-          }
-        });
-      } else {
-        await playAudio();
+  getPrecisionReadiness() {
+    const shouldAutoplay =
+      this.config?.autoplay !== undefined ? this.config.autoplay : true;
+    const webAudioReady = !!this.context && !!this.timedBuffer;
+    const ready = this.prepared && !!this.audio && (!shouldAutoplay || webAudioReady);
+    return {
+      ready,
+      reason: ready
+        ? shouldAutoplay
+          ? "decoded_webaudio_buffer_ready"
+          : "audio_autoplay_disabled"
+        : "audio_not_ready_for_atomic_onset",
+      fallbackReason: ready ? "" : "decoded_webaudio_buffer_unavailable",
+      resourceReadyAt: this.resourceReadyAt,
+      gpuReadyAt: null,
+    };
+  }
+
+  /** Compatibility entry point for callers outside Dynamic's lifecycle. */
+  async render(
+    container: HTMLElement,
+    config: any,
+  ): Promise<HTMLElement | null> {
+    const element = await this.prepare(container, config);
+    this.arm();
+    if (config.__timing) {
+      config.__timing.onStart((timestamp: number) => {
+        this.activate({ timestamp });
+      });
+    } else {
+      this.activate({ timestamp: performance.now() });
+    }
+    return element;
+  }
+
+  arm(info: { scheduledTimestamp?: number | null } = {}) {
+    if (!this.prepared) return;
+    this.armed = true;
+
+    const target = info.scheduledTimestamp;
+    this.config?.__timing?.setNextAudioDeadline?.(
+      typeof target === "number" ? target : null,
+    );
+    const shouldAutoplay =
+      this.config?.autoplay !== undefined ? this.config.autoplay : true;
+    const armNow = performance.now();
+    if (
+      !this.playbackRequested &&
+      shouldAutoplay &&
+      this.audio &&
+      this.timedBuffer &&
+      this.context &&
+      typeof target === "number" &&
+      Number.isFinite(target) &&
+      target > armNow
+    ) {
+      this.playbackRequested = true;
+      this.scheduleTimedPlayback(target);
+      this.config?.__timing?.setNextAudioDeadline?.(null);
+      this.diagnostics.audio_prearmed = true;
+      this.diagnostics.audio_arm_lead_ms = round3(target - armNow);
+    }
+  }
+
+  activate({ timestamp }: { timestamp: number }) {
+    const config = this.config;
+    const shouldAutoplay =
+      config?.autoplay !== undefined ? config.autoplay : true;
+    if (
+      !this.prepared ||
+      !this.armed ||
+      this.playbackRequested ||
+      !shouldAutoplay ||
+      !this.audio
+    ) {
+      return;
+    }
+    this.playbackRequested = true;
+    if (this.timedBuffer && this.context) {
+      this.scheduleTimedPlayback(timestamp);
+      this.config?.__timing?.setNextAudioDeadline?.(null);
+      this.diagnostics.audio_prearmed = false;
+      this.diagnostics.audio_arm_lead_ms = 0;
+    } else {
+      void this.playFallback();
+    }
+  }
+
+  deactivate() {
+    this.stop();
+  }
+
+  private async playFallback() {
+    try {
+      await this.audio.play();
+      this.diagnostics = {
+        audio_clock_bridge_available: false,
+        audio_clock_bridge_source: "",
+        audio_backend: "htmlaudio_fallback",
+        audio_timing_degraded: true,
+        audio_timing_degraded_reason: "html_audio_presentation_unobservable",
+        physical_audio_onset_abs: null,
+      };
+    } catch (error) {
+      console.warn("Audio autoplay failed:", error);
+      this.autoplayAttemptFailed = true;
+      this.diagnostics = {
+        audio_clock_bridge_available: false,
+        audio_clock_bridge_source: "",
+        audio_backend: "htmlaudio_fallback",
+        audio_timing_degraded: true,
+        audio_timing_degraded_reason: "autoplay_policy_blocked",
+        physical_audio_onset_abs: null,
+      };
+      if (this.element) {
+        this.element.innerHTML = `
+          <div class="audio-controls">
+            <button onclick="this.parentElement.parentElement.click()">Click to play audio</button>
+          </div>
+        `;
+        this.element.addEventListener(
+          "click",
+          () => {
+            this.play();
+          },
+          { once: true },
+        );
       }
     }
-
-    return this.element;
   }
 
   /**
@@ -235,7 +316,10 @@ class AudioComponent {
    */
   play() {
     if (this.timedSource && this.context) {
-      if (this.context.state !== "running" && typeof this.context.resume === "function") {
+      if (
+        this.context.state !== "running" &&
+        typeof this.context.resume === "function"
+      ) {
         void this.context.resume();
       }
       return;
@@ -321,6 +405,11 @@ class AudioComponent {
     }
     this.element = null;
     this.audio = null;
+    this.config = null;
+    this.prepared = false;
+    this.armed = false;
+    this.playbackRequested = false;
+    this.resourceReadyAt = null;
   }
 
   /**
