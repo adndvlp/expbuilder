@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read: if(request.auth.uid == userId);
+      allow write: if(request.auth.uid == userId) && 
+        request.resource.data.keys().hasOnly(['email', 'experiments', 'dropboxTokens', 'googleDriveTokens', 'githubTokens', 'osfTokens', 'osfTokenValid', 'osfUserId', 'osfUserName', 'osfProjectId', 'uid']) &&
+        (request.resource.data.uid == userId);
+      allow delete: if(request.auth.uid == userId);
+    }
+    match /experiments/{experimentId}/session_metadata/{sessionId} {
+      allow read: if request.auth.uid != null &&
+        get(/databases/$(database)/documents/experiments/$(experimentId)).data.owner == request.auth.uid;
+      allow write: if false;
+    }
+    match /experiments/{experimentId}/session_metadata/{sessionId}/participant_files/{fileId} {
+      allow read: if request.auth.uid != null &&
+        get(/databases/$(database)/documents/experiments/$(experimentId)).data.owner == request.auth.uid;
+      allow write: if false;
+    }
+    match /experiments/{experimentId} {
+      function verifyFields(){
+        return request.resource.data.keys().hasOnly(['active', 'id', 'owner', 'title', 'sessions', 'useValidation', 'allowJSON', 'allowCSV', 'requiredFields', 'maxSessions', 'limitSessions', 'activeConditionAssignment', 'nConditions', 'currentCondition', 'batchConfig', 'recruitmentConfig', 'captchaConfig'])
+      }
+      function isOwner(){
+        return request.auth.uid == resource.data.owner;
+      }
+      allow read: if(request.auth.uid != null) &&
+        resource.data.owner == request.auth.uid;
+      allow create: if(request.auth.uid != null) &&
+       verifyFields() &&
+        request.resource.data.owner == request.auth.uid;
+      allow update: if isOwner() && (
+        verifyFields() ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['batchConfig', 'recruitmentConfig', 'captchaConfig']))
+      );
+      allow delete: if(request.auth.uid == resource.data.owner);
+    }
+  }
+}

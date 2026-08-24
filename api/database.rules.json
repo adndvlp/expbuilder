@@ -1,0 +1,13 @@
+{
+  "rules": {
+    "sessions": {
+      "$experimentID": {
+        "$sessionId": {
+          ".read": false,
+          ".write": "!data.child('finished').exists() || data.child('finished').val() == false",
+          ".validate": "newData.hasChildren(['connected', 'experimentID', 'sessionId'])"
+        }
+      }
+    }
+  }
+}
