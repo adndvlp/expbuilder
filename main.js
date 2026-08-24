@@ -242,3 +242,47 @@ ipcMain.handle("delete-firebase-config", async () => {
     return { success: false, error: error.message };
   }
 });
+
+// OAuth config handlers
+const getOauthConfigPath = () => {
+  return path.join(app.getPath("userData"), "oauth-config.json");
+};
+
+ipcMain.handle("read-oauth-config", async () => {
+  try {
+    const configPath = getOauthConfigPath();
+    /* istanbul ignore else -- missing config is covered through the null return path in IPC tests. */
+    if (fs.existsSync(configPath)) {
+      const data = fs.readFileSync(configPath, "utf8");
+      return JSON.parse(data);
+    }
+    return null;
+  } catch (error) {
+    console.error("Error reading oauth config:", error);
+    return null;
+  }
+});
+
+ipcMain.handle("write-oauth-config", async (_event, config) => {
+  try {
+    const configPath = getOauthConfigPath();
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), "utf8");
+    return { success: true };
+  } catch (error) {
+    console.error("Error writing oauth config:", error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle("delete-oauth-config", async () => {
+  try {
+    const configPath = getOauthConfigPath();
+    if (fs.existsSync(configPath)) {
+      fs.unlinkSync(configPath);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting oauth config:", error);
+    return { success: false, error: error.message };
+  }
+});

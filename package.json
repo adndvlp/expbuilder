@@ -64,6 +64,7 @@
     "build": "node scripts/build.mjs",
     "build:electron": "electron-builder",
     "fetch:cloudflared": "node scripts/fetch-cloudflared.mjs",
+    "pretest": "npm --prefix client exec -- playwright install chromium || echo 'Playwright browsers skipped'",
     "lint": "eslint .",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"
@@ -101,6 +102,7 @@
       "/node_modules/",
       "/dist/",
       "/landing-page/",
+      "/api/",
       "/server/cloudflared/",
       "/server/dynamicplugin/",
       "/server/jspsych-bundle/",

@@ -3,6 +3,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../../../../lib/firebase";
 import { fetchOAuthState } from "../../../../lib/oauthState";
 import { openExternal } from "../../../../lib/openExternal";
+import { getBackendProjectId, getProviderClientId } from "../../../../lib/oauthConfig";
 import {
   getOsfManageUrl,
   getOsfOAuthExchangeUrl,
@@ -10,7 +11,6 @@ import {
 } from "../utils/osfUrls";
 
 const isElectron = !!window.electron?.startOAuthFlow;
-const CLIENT_ID = "ee4514d3235d4acb8da4443b3516ede2";
 
 export function useOsfToken() {
   const [isDeleting, setIsDeleting] = useState(false);
@@ -57,8 +57,8 @@ export function useOsfToken() {
     void loadTokenStatus();
   }, [user]);
 
-  const buildOAuthUrl = (state: string) =>
-    `https://accounts.osf.io/oauth2/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
+  const buildOAuthUrl = (state: string, clientId: string) =>
+    `https://accounts.osf.io/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(
       redirectUri,
     )}&scope=${encodeURIComponent(
       "osf.full_read osf.full_write",
@@ -66,6 +66,23 @@ export function useOsfToken() {
 
   const handleConnectOAuth = async (retryAttempt = 0): Promise<void> => {
     if (!user) return;
+
+    const clientId = await getProviderClientId("osf");
+    if (!clientId) {
+      setError(
+        "OSF OAuth is not configured. Add your OSF Client ID in Settings > OAuth Credentials.",
+      );
+      return;
+    }
+
+    const projectId = await getBackendProjectId();
+    if (!projectId) {
+      setError(
+        "Firebase backend is not configured. Set your Firebase credentials in Settings first.",
+      );
+      return;
+    }
+
     let signedState: string;
     try {
       signedState = await fetchOAuthState("osf");
@@ -77,7 +94,7 @@ export function useOsfToken() {
     }
 
     if (!isElectron) {
-      openExternal(buildOAuthUrl(signedState));
+      openExternal(buildOAuthUrl(signedState, clientId));
       return;
     }
     setIsConnecting(true);
@@ -91,7 +108,7 @@ export function useOsfToken() {
     try {
       const result = await window.electron!.startOAuthFlow({
         provider: "osf",
-        clientId: CLIENT_ID,
+        clientId,
         scope: "osf.full_read osf.full_write",
         state: signedState,
       });
@@ -101,6 +118,7 @@ export function useOsfToken() {
           result.code!,
           result.state!,
           "http://localhost:8888/callback",
+          projectId,
         );
         const response = await fetch(functionUrl);
         if (!response.ok && !response.redirected) {
@@ -149,7 +167,14 @@ export function useOsfToken() {
     setIsSaving(true);
     setError("");
     try {
-      const response = await fetch(getOsfManageUrl(import.meta.env.DEV), {
+      const projectId = await getBackendProjectId();
+      if (!projectId) {
+        setError(
+          "Firebase backend is not configured. Set your Firebase credentials in Settings first.",
+        );
+        return;
+      }
+      const response = await fetch(getOsfManageUrl(import.meta.env.DEV, projectId), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -191,7 +216,14 @@ export function useOsfToken() {
     }
     setIsDeleting(true);
     try {
-      const response = await fetch(getOsfManageUrl(import.meta.env.DEV), {
+      const projectId = await getBackendProjectId();
+      if (!projectId) {
+        setError(
+          "Firebase backend is not configured. Set your Firebase credentials in Settings first.",
+        );
+        return;
+      }
+      const response = await fetch(getOsfManageUrl(import.meta.env.DEV, projectId), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "disconnect", uid: user!.uid }),

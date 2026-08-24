@@ -13,4 +13,7 @@ contextBridge.exposeInMainWorld("electron", {
   writeFirebaseConfig: (config) =>
     ipcRenderer.invoke("write-firebase-config", config),
   deleteFirebaseConfig: () => ipcRenderer.invoke("delete-firebase-config"),
+  readOauthConfig: () => ipcRenderer.invoke("read-oauth-config"),
+  writeOauthConfig: (config) => ipcRenderer.invoke("write-oauth-config", config),
+  deleteOauthConfig: () => ipcRenderer.invoke("delete-oauth-config"),
 });

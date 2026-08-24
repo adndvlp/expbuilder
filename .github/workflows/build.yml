@@ -24,7 +24,9 @@ jobs:
         run: npm ci
 
       - name: Run server tests
-        run: npm test
+        run: |
+          npm --prefix client exec -- playwright install --with-deps chromium || true
+          npm test
 
       - name: Run client unit tests
         run: npm ci --prefix client && npm run test:unit --prefix client

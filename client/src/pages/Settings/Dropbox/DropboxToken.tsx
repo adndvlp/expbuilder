@@ -3,6 +3,11 @@ import { openExternal } from "../../../lib/openExternal";
 import { doc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../../../lib/firebase";
 import { fetchOAuthState } from "../../../lib/oauthState";
+import {
+  buildFunctionsBaseUrl,
+  getBackendProjectId,
+  getProviderClientId,
+} from "../../../lib/oauthConfig";
 
 // Detectar si estamos en Electron
 const isElectron = !!(window as any).electron?.startOAuthFlow;
@@ -14,23 +19,20 @@ export default function DropboxToken() {
   const [isLoading, setIsLoading] = useState(true);
   const user = auth.currentUser;
 
-  // Parámetros de Dropbox OAuth
-  const CLIENT_ID = "pn9j0lbuvbmu3wl";
-
   // REDIRECT_URI dinámico según el entorno
   const REDIRECT_URI = isElectron
     ? "http://localhost:8888/callback" // Puerto local para Electron
     : import.meta.env.DEV
       ? "http://localhost:5173/dropbox-callback"
-      : "https://test-e4cf9.firebaseapp.com/dropbox-callback";
+      : `https://${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com/dropbox-callback`;
 
   const RESPONSE_TYPE = "code";
   const SCOPE = "account_info.read files.content.read files.content.write";
 
   // T-5: OAuth `state` is now obtained from the backend (server-signed HMAC)
   // immediately before the redirect. Built dynamically in `handleConnect`.
-  const buildOAuthUrl = (state: string) =>
-    `https://www.dropbox.com/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
+  const buildOAuthUrl = (state: string, clientId: string) =>
+    `https://www.dropbox.com/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
       REDIRECT_URI,
     )}&response_type=${RESPONSE_TYPE}&token_access_type=offline&state=${encodeURIComponent(
       state,
@@ -69,6 +71,14 @@ export default function DropboxToken() {
   const handleConnect = async () => {
     if (!user) return;
 
+    const clientId = await getProviderClientId("dropbox");
+    if (!clientId) {
+      alert(
+        "Dropbox OAuth is not configured. Add your Dropbox Client ID in Settings > OAuth Credentials.",
+      );
+      return;
+    }
+
     // T-5: fetch signed state from backend before any redirect.
     let signedState: string;
     try {
@@ -81,11 +91,19 @@ export default function DropboxToken() {
 
     // Si estamos en Electron, usar el flujo nativo
     if (isElectron) {
+      const projectId = await getBackendProjectId();
+      if (!projectId) {
+        alert(
+          "Firebase backend is not configured. Set your Firebase credentials in Settings first.",
+        );
+        return;
+      }
+
       setIsConnecting(true);
       try {
         const result = await (window as any).electron.startOAuthFlow({
           provider: "dropbox",
-          clientId: CLIENT_ID,
+          clientId,
           scope: SCOPE,
           state: signedState,
         });
@@ -95,10 +113,10 @@ export default function DropboxToken() {
           // IMPORTANTE: Pasar el redirect_uri que se usó originalmente (localhost:8888 para Electron)
           const electronRedirectUri = "http://localhost:8888/callback";
           const functionUrl = import.meta.env.DEV
-            ? `http://127.0.0.1:5001/test-e4cf9/us-central1/dropboxOAuthCallback?code=${encodeURIComponent(
+            ? `http://127.0.0.1:5001/${projectId}/us-central1/dropboxOAuthCallback?code=${encodeURIComponent(
                 result.code,
               )}&state=${encodeURIComponent(result.state)}&redirect_uri=${encodeURIComponent(electronRedirectUri)}`
-            : `https://us-central1-test-e4cf9.cloudfunctions.net/dropboxOAuthCallback?code=${encodeURIComponent(
+            : `${buildFunctionsBaseUrl(projectId)}/dropboxOAuthCallback?code=${encodeURIComponent(
                 result.code,
               )}&state=${encodeURIComponent(result.state)}&redirect_uri=${encodeURIComponent(electronRedirectUri)}`;
 
@@ -121,7 +139,7 @@ export default function DropboxToken() {
       }
     } else {
       // Flujo web normal (abre en navegador y redirige) — usa state firmado.
-      openExternal(buildOAuthUrl(signedState));
+      openExternal(buildOAuthUrl(signedState, clientId));
     }
   };
 

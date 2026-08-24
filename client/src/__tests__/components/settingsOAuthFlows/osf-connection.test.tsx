@@ -4,7 +4,7 @@ import {
   registerSettingsOAuthTokensHooks,
 } from "./testHarness";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import OsfToken from "../../../pages/Settings/OsfToken";
 import { fetchOAuthState } from "../../../lib/oauthState";
 import { openExternal } from "../../../lib/openExternal";
@@ -39,6 +39,41 @@ describe("Settings OAuth tokens", () => {
 
     expect(fetchOAuthState).not.toHaveBeenCalled();
     expect(openExternal).not.toHaveBeenCalled();
+  });
+
+  it("shows an inline error when OSF OAuth is not configured", async () => {
+    vi.stubEnv("VITE_OSF_CLIENT_ID", "");
+
+    render(<OsfToken />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Connect with OSF OAuth/ }),
+    );
+
+    expect(
+      await screen.findByText(
+        "OSF OAuth is not configured. Add your OSF Client ID in Settings > OAuth Credentials.",
+      ),
+    ).toBeInTheDocument();
+    expect(fetchOAuthState).not.toHaveBeenCalled();
+    expect(openExternal).not.toHaveBeenCalled();
+  });
+
+  it("shows an inline error when the Firebase backend is not configured", async () => {
+    vi.stubEnv("VITE_FIREBASE_PROJECT_ID", "");
+
+    render(<OsfToken />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Connect with OSF OAuth/ }),
+    );
+
+    expect(
+      await screen.findByText(
+        "Firebase backend is not configured. Set your Firebase credentials in Settings first.",
+      ),
+    ).toBeInTheDocument();
+    expect(fetchOAuthState).not.toHaveBeenCalled();
   });
 
   it("handles a missing OSF document and a valid manual token", async () => {

@@ -20,6 +20,28 @@ import { openExternal } from "../../../lib/openExternal";
 describe("Settings OAuth tokens", () => {
   registerSettingsOAuthTokensHooks();
 
+  it("keeps the OSF token when disconnecting without Firebase config", async () => {
+    mocks.getDoc.mockResolvedValue(
+      docSnap({
+        osfTokens: { access_token: "osf-oauth-token" },
+        osfUserName: "OSF User",
+        osfProjectId: "abc12",
+      }),
+    );
+    vi.mocked(window.confirm).mockReturnValue(true);
+    vi.stubEnv("VITE_FIREBASE_PROJECT_ID", "");
+
+    render(<OsfToken />);
+
+    expect(await screen.findByText(/OSF User/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Disconnect" }));
+
+    await waitFor(() => {
+      expect(fetch).not.toHaveBeenCalled();
+    });
+    expect(screen.getByText(/OSF User/)).toBeInTheDocument();
+  });
+
   it("cancels OSF disconnects and reports disconnect failures", async () => {
     mocks.getDoc.mockResolvedValue(
       docSnap({
@@ -128,7 +150,7 @@ describe("Settings OAuth tokens", () => {
 
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
-        "http://127.0.0.1:5001/test-e4cf9/us-central1/osfManage",
+        "http://127.0.0.1:5001/test-project/us-central1/osfManage",
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({

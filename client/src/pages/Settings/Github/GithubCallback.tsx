@@ -1,15 +1,17 @@
 import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router";
+import { buildFunctionsBaseUrl } from "../../../lib/oauthConfig";
 import "../index.css";
 
 export const getGithubOAuthCallbackUrl = (
   isDev: boolean,
   code: string,
   state: string,
+  projectId: string,
 ) =>
   isDev
-    ? `http://127.0.0.1:5001/test-e4cf9/us-central1/githubOAuthCallback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`
-    : `https://us-central1-test-e4cf9.cloudfunctions.net/githubOAuthCallback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
+    ? `http://127.0.0.1:5001/${projectId}/us-central1/githubOAuthCallback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`
+    : `${buildFunctionsBaseUrl(projectId)}/githubOAuthCallback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
 
 export default function GithubCallback() {
   const [searchParams] = useSearchParams();
@@ -40,7 +42,8 @@ export default function GithubCallback() {
       try {
         // Determinar la URL del Cloud Function
         const isDev = import.meta.env.DEV;
-        const functionUrl = getGithubOAuthCallbackUrl(isDev, code, state);
+        const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+        const functionUrl = getGithubOAuthCallbackUrl(isDev, code, state, projectId);
 
         // Llamar al Cloud Function - éste guardará los tokens y redirigirá
         window.location.href = functionUrl;

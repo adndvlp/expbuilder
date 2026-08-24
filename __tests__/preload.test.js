@@ -58,5 +58,17 @@ describe('preload.js', () => {
       channel: 'delete-firebase-config',
       payload: undefined,
     })
+    expect(api.readOauthConfig()).toEqual({
+      channel: 'read-oauth-config',
+      payload: undefined,
+    })
+    expect(api.writeOauthConfig({ githubClientId: 'gh' })).toEqual({
+      channel: 'write-oauth-config',
+      payload: { githubClientId: 'gh' },
+    })
+    expect(api.deleteOauthConfig()).toEqual({
+      channel: 'delete-oauth-config',
+      payload: undefined,
+    })
   })
 })

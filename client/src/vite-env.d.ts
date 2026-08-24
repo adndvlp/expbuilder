@@ -9,6 +9,13 @@ interface FirebaseConfig {
   appId: string;
 }
 
+interface OAuthConfig {
+  githubClientId?: string;
+  dropboxClientId?: string;
+  googleDriveClientId?: string;
+  osfClientId?: string;
+}
+
 interface ElectronAPI {
   openExternal: (url: string) => Promise<void>;
   startOAuthFlow: (config: {
@@ -35,6 +42,11 @@ interface ElectronAPI {
     config: FirebaseConfig
   ) => Promise<{ success: boolean; error?: string }>;
   deleteFirebaseConfig: () => Promise<{ success: boolean; error?: string }>;
+  readOauthConfig: () => Promise<OAuthConfig | null>;
+  writeOauthConfig: (
+    config: OAuthConfig
+  ) => Promise<{ success: boolean; error?: string }>;
+  deleteOauthConfig: () => Promise<{ success: boolean; error?: string }>;
 }
 
 interface Window {

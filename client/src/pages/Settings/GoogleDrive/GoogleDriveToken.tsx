@@ -3,6 +3,11 @@ import { openExternal } from "../../../lib/openExternal";
 import { doc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../../../lib/firebase";
 import { fetchOAuthState } from "../../../lib/oauthState";
+import {
+  buildFunctionsBaseUrl,
+  getBackendProjectId,
+  getProviderClientId,
+} from "../../../lib/oauthConfig";
 
 // Detectar si estamos en Electron
 const isElectron = !!(window as any).electron?.startOAuthFlow;
@@ -14,24 +19,20 @@ export default function GoogleDriveToken() {
   const [isLoading, setIsLoading] = useState(true);
   const user = auth.currentUser;
 
-  // Parámetros de Google OAuth
-  const CLIENT_ID =
-    "414213417080-bgjk8udcblfgrdld33eif0cmtofl7kir.apps.googleusercontent.com";
-
   // REDIRECT_URI dinámico según el entorno
   const REDIRECT_URI = isElectron
     ? "http://localhost:8888/callback" // Puerto local para Electron
     : import.meta.env.DEV
       ? "http://localhost:5173/google-drive-callback"
-      : "https://test-e4cf9.firebaseapp.com/google-drive-callback";
+      : `https://${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com/google-drive-callback`;
 
   const RESPONSE_TYPE = "code";
   const SCOPE =
     "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appfolder https://www.googleapis.com/auth/userinfo.email";
 
   // T-5: state from backend (signed HMAC).
-  const buildOAuthUrl = (state: string) =>
-    `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
+  const buildOAuthUrl = (state: string, clientId: string) =>
+    `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(
       REDIRECT_URI,
     )}&response_type=${RESPONSE_TYPE}&scope=${encodeURIComponent(
       SCOPE,
@@ -70,6 +71,14 @@ export default function GoogleDriveToken() {
   const handleConnect = async () => {
     if (!user) return;
 
+    const clientId = await getProviderClientId("googleDrive");
+    if (!clientId) {
+      alert(
+        "Google Drive OAuth is not configured. Add your Google Drive Client ID in Settings > OAuth Credentials.",
+      );
+      return;
+    }
+
     // T-5: fetch signed state from backend before any redirect.
     let signedState: string;
     try {
@@ -82,11 +91,19 @@ export default function GoogleDriveToken() {
 
     // Si estamos en Electron, usar el flujo nativo
     if (isElectron) {
+      const projectId = await getBackendProjectId();
+      if (!projectId) {
+        alert(
+          "Firebase backend is not configured. Set your Firebase credentials in Settings first.",
+        );
+        return;
+      }
+
       setIsConnecting(true);
       try {
         const result = await (window as any).electron.startOAuthFlow({
           provider: "google-drive",
-          clientId: CLIENT_ID,
+          clientId,
           scope: SCOPE,
           state: signedState,
         });
@@ -96,10 +113,10 @@ export default function GoogleDriveToken() {
           // IMPORTANTE: Pasar el redirect_uri que se usó originalmente (localhost:8888 para Electron)
           const electronRedirectUri = "http://localhost:8888/callback";
           const functionUrl = import.meta.env.DEV
-            ? `http://127.0.0.1:5001/test-e4cf9/us-central1/googleDriveOAuthCallback?code=${encodeURIComponent(
+            ? `http://127.0.0.1:5001/${projectId}/us-central1/googleDriveOAuthCallback?code=${encodeURIComponent(
                 result.code,
               )}&state=${encodeURIComponent(result.state)}&redirect_uri=${encodeURIComponent(electronRedirectUri)}`
-            : `https://us-central1-test-e4cf9.cloudfunctions.net/googleDriveOAuthCallback?code=${encodeURIComponent(
+            : `${buildFunctionsBaseUrl(projectId)}/googleDriveOAuthCallback?code=${encodeURIComponent(
                 result.code,
               )}&state=${encodeURIComponent(result.state)}&redirect_uri=${encodeURIComponent(electronRedirectUri)}`;
 
@@ -122,7 +139,7 @@ export default function GoogleDriveToken() {
       }
     } else {
       // Flujo web normal — usa state firmado.
-      openExternal(buildOAuthUrl(signedState));
+      openExternal(buildOAuthUrl(signedState, clientId));
     }
   };
 

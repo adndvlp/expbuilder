@@ -14,13 +14,16 @@ describe('main.js Electron lifecycle', () => {
     })
     expect([...loaded.handlers.keys()].sort()).toEqual([
       'delete-firebase-config',
+      'delete-oauth-config',
       'open-external',
       'read-firebase-config',
+      'read-oauth-config',
       'save-csv-zip',
       'save-json-file',
       'save-zip-file',
       'start-oauth-flow',
       'write-firebase-config',
+      'write-oauth-config',
     ])
 
     await loaded.readyCallback()

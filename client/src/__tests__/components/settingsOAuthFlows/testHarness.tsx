@@ -126,6 +126,10 @@ function registerSettingsOAuthTokensHooks() {
       "fetch",
       vi.fn(async () => okJson({ success: true })),
     );
+    vi.stubEnv("VITE_GITHUB_CLIENT_ID", "gh-client-id");
+    vi.stubEnv("VITE_DROPBOX_CLIENT_ID", "db-client-id");
+    vi.stubEnv("VITE_GOOGLE_DRIVE_CLIENT_ID", "drive-client-id");
+    vi.stubEnv("VITE_OSF_CLIENT_ID", "osf-client-id");
     vi.spyOn(window, "alert").mockImplementation(() => {});
     vi.spyOn(window, "confirm").mockReturnValue(true);
     vi.spyOn(console, "error").mockImplementation(() => {});
