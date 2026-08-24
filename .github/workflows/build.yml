@@ -1,0 +1,255 @@
+name: Build and Publish Desktop Apps
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run server tests
+        run: npm test
+
+      - name: Run client unit tests
+        run: npm ci --prefix client && npm run test:unit --prefix client
+
+  tag:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Create release tag
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            echo "Tag v$VERSION already exists, nothing to do"
+          else
+            git tag "v$VERSION"
+            git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "v$VERSION"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+  mac:
+    if: |
+      startsWith(github.ref, 'refs/tags/') ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref != 'refs/heads/main' && contains(join(github.event.commits.*.message, ' '), '[build]'))
+    needs: test
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install x64 sharp binaries
+        run: npm install --no-save --no-package-lock --force @img/sharp-darwin-x64@0.35.3 @img/sharp-libvips-darwin-x64@1.3.2
+
+      - name: Build client
+        run: npm ci --prefix client && npm run build --prefix client
+
+      - name: Fetch cloudflared binaries
+        run: |
+          npm run fetch:cloudflared
+          npm_config_platform=darwin npm_config_arch=x64 node scripts/fetch-cloudflared.mjs
+
+      - name: Fetch release tags
+        run: git fetch --tags --force
+
+      - name: Build and publish
+        if: startsWith(github.ref, 'refs/tags/')
+        run: npm run build:electron -- --mac --arm64 --x64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Build (no publish)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        run: npm run build:electron -- --mac --arm64 --x64 --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.yml
+            dist/*.blockmap
+          if-no-files-found: ignore
+
+  win:
+    if: |
+      startsWith(github.ref, 'refs/tags/') ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref != 'refs/heads/main' && contains(join(github.event.commits.*.message, ' '), '[build]'))
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build client
+        run: npm ci --prefix client && npm run build --prefix client
+
+      - name: Fetch cloudflared binary
+        run: npm run fetch:cloudflared
+
+      - name: Fetch release tags
+        run: git fetch --tags --force
+
+      - name: Build and publish
+        if: startsWith(github.ref, 'refs/tags/')
+        run: npm run build:electron -- --win --x64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Build (no publish)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        run: npm run build:electron -- --win --x64 --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win
+          path: |
+            dist/*.exe
+            dist/*.zip
+            dist/*.yml
+            dist/*.blockmap
+          if-no-files-found: ignore
+
+  linux-x64:
+    if: |
+      startsWith(github.ref, 'refs/tags/') ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref != 'refs/heads/main' && contains(join(github.event.commits.*.message, ' '), '[build]'))
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build client
+        run: npm ci --prefix client && npm run build --prefix client
+
+      - name: Fetch cloudflared binary
+        run: npm run fetch:cloudflared
+
+      - name: Fetch release tags
+        run: git fetch --tags --force
+
+      - name: Build and publish
+        if: startsWith(github.ref, 'refs/tags/')
+        run: npm run build:electron -- --linux deb rpm --x64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Build (no publish)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        run: npm run build:electron -- --linux deb rpm --x64 --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x64
+          path: |
+            dist/*.deb
+            dist/*.rpm
+            dist/*.yml
+            dist/*.blockmap
+          if-no-files-found: ignore
+
+  linux-arm64:
+    if: |
+      startsWith(github.ref, 'refs/tags/') ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref != 'refs/heads/main' && contains(join(github.event.commits.*.message, ' '), '[build]'))
+    needs: test
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build client
+        run: npm ci --prefix client && npm run build --prefix client
+
+      - name: Fetch cloudflared binary
+        run: npm run fetch:cloudflared
+
+      - name: Fetch release tags
+        run: git fetch --tags --force
+
+      - name: Build and publish
+        if: startsWith(github.ref, 'refs/tags/')
+        run: npm run build:electron -- --linux deb --arm64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Build (no publish)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        run: npm run build:electron -- --linux deb --arm64 --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-arm64
+          path: |
+            dist/*.deb
+            dist/*.yml
+            dist/*.blockmap
+          if-no-files-found: ignore

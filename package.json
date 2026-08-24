@@ -61,7 +61,9 @@
   "type": "module",
   "scripts": {
     "electron": "electron .",
+    "build": "node scripts/build.mjs",
     "build:electron": "electron-builder",
+    "fetch:cloudflared": "node scripts/fetch-cloudflared.mjs",
     "lint": "eslint .",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"
@@ -108,7 +110,7 @@
   },
   "build": {
     "productName": "ExpBuilder",
-    "appId": "com.tuapp.id",
+    "appId": "com.flowlab.id",
     "publish": [
       {
         "provider": "github",
@@ -147,19 +149,22 @@
         {
           "target": "dmg",
           "arch": [
-            "arm64"
+            "arm64",
+            "x64"
           ]
         },
         {
           "target": "zip",
           "arch": [
-            "arm64"
+            "arm64",
+            "x64"
           ]
         }
       ],
       "icon": "icon/icon.icns",
-      "identity": null,
-      "hardenedRuntime": false
+      "identity": "-",
+      "hardenedRuntime": false,
+      "notarize": false
     },
     "win": {
       "target": [
@@ -183,7 +188,8 @@
         {
           "target": "deb",
           "arch": [
-            "arm64"
+            "arm64",
+            "x64"
           ]
         },
         {
