@@ -46,14 +46,14 @@ export function mockProviderUrls(basePort = BASE_PORT) {
   const origin = (port) => `http://127.0.0.1:${port}`;
   return {
     GITHUB_API_BASE: origin(basePort),
-    GITHUB_OAUTH_TOKEN_URL: origin(basePort),
+    GITHUB_OAUTH_TOKEN_URL: `${origin(basePort)}/login/oauth/access_token`,
     DROPBOX_API_BASE: origin(basePort + 1),
     DROPBOX_CONTENT_BASE: origin(basePort + 1),
-    DROPBOX_TOKEN_URL: origin(basePort + 1),
+    DROPBOX_TOKEN_URL: `${origin(basePort + 1)}/oauth2/token`,
     GOOGLE_DRIVE_API_BASE: origin(basePort + 2),
-    GOOGLE_OAUTH_TOKEN_URL: origin(basePort + 2),
+    GOOGLE_OAUTH_TOKEN_URL: `${origin(basePort + 2)}/token`,
     OSF_API_BASE: origin(basePort + 3),
-    OSF_TOKEN_URL: origin(basePort + 3),
+    OSF_TOKEN_URL: `${origin(basePort + 3)}/oauth2/token`,
     OSF_AUTHORIZE_URL: origin(basePort + 3),
   };
 }

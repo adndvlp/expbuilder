@@ -117,7 +117,7 @@ export const dropboxOAuthCallback = onRequest(async (req, res) => {
             expires_in: tokens.expires_in,
             expires_at: expires_at,
             scope: tokens.scope,
-            uid: tokens.uid,
+            uid: uid,
             account_id: tokens.account_id,
           },
         },

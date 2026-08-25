@@ -7,15 +7,20 @@ export async function handleGithub(req, res, url, body) {
   const { pathname } = url;
 
   if (pathname === "/login/oauth/access_token" && req.method === "POST") {
-    const form = parseForm(body);
-    const code = form.get("code");
+    const data = parseJson(body) ?? Object.fromEntries(parseForm(body));
+    const code = data.code ?? parseForm(body).get("code");
     if (!code) {
       send(res, 400, { "Content-Type": "application/json" }, JSON.stringify({ error: "bad_verification_code" }));
       return;
     }
     const token = `gho-${code}-${nextId("tok")}`;
     store.github.users.set(token, { login: USERNAME, id: 12345 });
-    send(res, 200, { "Content-Type": "application/x-www-form-urlencoded" }, `access_token=${token}&scope=public_repo&token_type=bearer`);
+    const acceptsJson = (req.headers.accept ?? "").includes("application/json");
+    if (acceptsJson) {
+      sendJson(res, 200, { access_token: token, token_type: "bearer", scope: "public_repo" });
+    } else {
+      send(res, 200, { "Content-Type": "application/x-www-form-urlencoded" }, `access_token=${token}&scope=public_repo&token_type=bearer`);
+    }
     return;
   }
 

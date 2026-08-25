@@ -84,7 +84,6 @@ describe("dropboxOAuthCallback", () => {
           token_type: "bearer",
           expires_in: 14400,
           scope: "files",
-          uid: "duid",
           account_id: "acc1",
         },
       },
@@ -105,6 +104,8 @@ describe("dropboxOAuthCallback", () => {
     expect(body.dropboxTokens.access_token).toBe("AT");
     expect(body.dropboxTokens.refresh_token).toBe("RT");
     expect(body.dropboxTokens.expires_at).toBeGreaterThan(Date.now());
+    expect(body.dropboxTokens.uid).toBe("u1");
+    expect(body.dropboxTokens.account_id).toBe("acc1");
     expect(opts).toEqual({ merge: true });
 
     // Verify the POST hit Dropbox token endpoint

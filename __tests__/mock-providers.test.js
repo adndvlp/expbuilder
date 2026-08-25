@@ -65,7 +65,7 @@ describe('mock providers', () => {
   })
 
   test('Dropbox: token, folders, upload, list, download and shared links', async () => {
-    const tokenRes = await (await expectStatus(await fetch(`${urls.DROPBOX_TOKEN_URL}/oauth2/token`, {
+    const tokenRes = await (await expectStatus(await fetch(urls.DROPBOX_TOKEN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: form({ code: 'db-code', grant_type: 'authorization_code', client_id: 'db', client_secret: 's' }),
@@ -110,7 +110,7 @@ describe('mock providers', () => {
   })
 
   test('Google Drive: token, multipart upload, list, download and delete', async () => {
-    const tokenRes = await (await expectStatus(await fetch(`${urls.GOOGLE_OAUTH_TOKEN_URL}/token`, {
+    const tokenRes = await (await expectStatus(await fetch(urls.GOOGLE_OAUTH_TOKEN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: form({ code: 'drive-code', grant_type: 'authorization_code', client_id: 'gd', client_secret: 's', redirect_uri: 'http://localhost:8888/callback' }),
@@ -140,7 +140,7 @@ describe('mock providers', () => {
   })
 
   test('OSF: token, user, nodes, children, upload, list and download', async () => {
-    const tokenRes = await (await expectStatus(await fetch(`${urls.OSF_TOKEN_URL}/oauth2/token`, {
+    const tokenRes = await (await expectStatus(await fetch(urls.OSF_TOKEN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: form({ code: 'osf-code', grant_type: 'authorization_code', client_id: 'osf', client_secret: 's', redirect_uri: 'http://localhost:8888/callback' }),
