@@ -13,6 +13,10 @@ describe('main.js Electron lifecycle', () => {
       path: expect.stringMatching(/\.env$/),
     })
     expect([...loaded.handlers.keys()].sort()).toEqual([
+      'backend-setup:kill',
+      'backend-setup:start',
+      'backend-setup:write',
+      'backend-setup:write-env',
       'delete-firebase-config',
       'delete-oauth-config',
       'open-external',

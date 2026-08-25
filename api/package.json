@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "emulators": "firebase emulators:start --import=./emulator-backup --only functions,auth,firestore"
+    "setup": "node setup.mjs",
+    "emulators": "firebase emulators:start --import=./emulator-backup --only functions,auth,firestore",
+    "emulators:dev": "firebase emulators:start --only functions,auth,firestore"
   },
   "dependencies": {
     "firebase-functions": "^6.6.0"

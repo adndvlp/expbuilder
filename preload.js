@@ -16,4 +16,20 @@ contextBridge.exposeInMainWorld("electron", {
   readOauthConfig: () => ipcRenderer.invoke("read-oauth-config"),
   writeOauthConfig: (config) => ipcRenderer.invoke("write-oauth-config", config),
   deleteOauthConfig: () => ipcRenderer.invoke("delete-oauth-config"),
+  startBackendSetup: (args, token) =>
+    ipcRenderer.invoke("backend-setup:start", { args, token }),
+  writeBackendSetupInput: (id, text) =>
+    ipcRenderer.invoke("backend-setup:write", { id, text }),
+  killBackendSetup: (id) => ipcRenderer.invoke("backend-setup:kill", { id }),
+  onBackendSetupOutput: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on("backend-setup:output", listener);
+    return () => ipcRenderer.removeListener("backend-setup:output", listener);
+  },
+  onBackendSetupExit: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on("backend-setup:exit", listener);
+    return () => ipcRenderer.removeListener("backend-setup:exit", listener);
+  },
+  writeBackendEnv: (env) => ipcRenderer.invoke("backend-setup:write-env", { env }),
 });

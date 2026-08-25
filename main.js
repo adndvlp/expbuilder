@@ -8,6 +8,11 @@ import path from "path";
 import { fileURLToPath } from "url";
 import pkg from "electron-updater";
 import { createOAuthCallbackServer, isPortAvailable } from "./oauth-handler.js";
+import {
+  getApiDir,
+  startFirebaseCommand,
+  writeBackendEnvFile,
+} from "./server/backend-setup.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Check if running from asar (production) or not (development)
@@ -283,6 +288,61 @@ ipcMain.handle("delete-oauth-config", async () => {
     return { success: true };
   } catch (error) {
     console.error("Error deleting oauth config:", error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Backend setup handlers
+const backendSetupProcesses = new Map();
+
+ipcMain.handle("backend-setup:start", async (event, { args, token }) => {
+  const cwd = getApiDir(isProduction);
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const handle = startFirebaseCommand({
+    args: args ?? [],
+    token,
+    cwd,
+    onOutput: ({ stream, text }) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send("backend-setup:output", { id, stream, text });
+      }
+    },
+  });
+  backendSetupProcesses.set(id, handle);
+  handle.done
+    .then((result) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send("backend-setup:exit", { id, ...result });
+      }
+    })
+    .finally(() => backendSetupProcesses.delete(id));
+  return { id };
+});
+
+ipcMain.handle("backend-setup:write", async (_event, { id, text }) => {
+  const handle = backendSetupProcesses.get(id);
+  if (!handle) {
+    return { success: false, error: "Unknown backend setup process" };
+  }
+  handle.write(text);
+  return { success: true };
+});
+
+ipcMain.handle("backend-setup:kill", async (_event, { id }) => {
+  const handle = backendSetupProcesses.get(id);
+  if (!handle) {
+    return { success: false, error: "Unknown backend setup process" };
+  }
+  handle.kill();
+  return { success: true };
+});
+
+ipcMain.handle("backend-setup:write-env", async (_event, { env }) => {
+  try {
+    const envPath = writeBackendEnvFile(getApiDir(isProduction), env);
+    return { success: true, envPath };
+  } catch (error) {
+    console.error("Error writing backend env:", error);
     return { success: false, error: error.message };
   }
 });

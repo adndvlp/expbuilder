@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router";
 import FirebaseCredentials from "./FirebaseCredentials";
 import OAuthCredentials from "./OAuthCredentials";
+import BackendSetup from "./BackendSetup";
 import ResetAppButton from "./ResetAppButton";
 import { AccountSettings } from "./components/AccountSettings";
 import { BackupSection } from "./components/BackupSection";
@@ -117,6 +118,15 @@ export default function Settings() {
             GitHub, Dropbox, Google Drive or OSF requires these IDs.
           </div>
           <OAuthCredentials />
+        </div>
+
+        <div className="settings-section">
+          <h2 className="settings-section-title">Backend Setup</h2>
+          <div style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>
+            Create and deploy your own Firebase backend without leaving the
+            app.
+          </div>
+          <BackendSetup />
         </div>
 
         {!user && (
