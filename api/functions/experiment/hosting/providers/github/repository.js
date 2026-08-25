@@ -1,5 +1,6 @@
 import fetch from "../../../../utils/fetch-with-timeout.js";
 import { getGithubUsername } from "./user.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../utils/provider-endpoints.js";
 
 export async function createRepositoryGithub(
   accessToken,
@@ -15,7 +16,7 @@ export async function createRepositoryGithub(
 
     const username = usernameResult.username;
     const checkResponse = await fetch(
-      `https://api.github.com/repos/${username}/${repoName}`,
+      `${endpoints.github.apiBase}/repos/${username}/${repoName}`,
       {
         method: "GET",
         headers: {
@@ -35,7 +36,7 @@ export async function createRepositoryGithub(
       };
     }
 
-    const createResponse = await fetch("https://api.github.com/user/repos", {
+    const createResponse = await fetch(`${endpoints.github.apiBase}/user/repos`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,

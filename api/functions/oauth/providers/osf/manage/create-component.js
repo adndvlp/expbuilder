@@ -1,5 +1,6 @@
 import fetch from "../../../../utils/fetch-with-timeout.js";
 import { db } from "../../../../app.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../utils/provider-endpoints.js";
 
 /**
  * Crear componente de datos en OSF
@@ -47,7 +48,7 @@ export async function handleCreateComponent(req, res) {
   );
 
   const listResponse = await fetch(
-    `https://api.osf.io/v2/nodes/${projectId}/children/`,
+    `${endpoints.osf.apiBase}/v2/nodes/${projectId}/children/`,
     {
       method: "GET",
       headers: {
@@ -115,7 +116,7 @@ export async function handleCreateComponent(req, res) {
   console.log(`OSF: Creating new component with name "${componentName}"`);
 
   const createResponse = await fetch(
-    `https://api.osf.io/v2/nodes/${projectId}/children/?region=${region}`,
+    `${endpoints.osf.apiBase}/v2/nodes/${projectId}/children/?region=${region}`,
     {
       method: "POST",
       headers: {

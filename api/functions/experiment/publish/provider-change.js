@@ -2,6 +2,7 @@ import { db } from "../../app.js";
 import { createFolder, deleteFolder } from "../sessions/services/folder.js";
 import { getValidToken } from "../../oauth/index.js";
 import fetch from "../../utils/fetch-with-timeout.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../utils/provider-endpoints.js";
 
 export async function handleProviderChange(
   experimentRef,
@@ -64,7 +65,7 @@ export async function handleProviderChange(
             // Crear proyecto si no existe
             console.log(`[PROVIDER CHANGE] Creating OSF project for user...`);
             const projectResponse = await fetch(
-              "https://api.osf.io/v2/nodes/?region=us",
+              `${endpoints.osf.apiBase}/v2/nodes/?region=us`,
               {
                 method: "POST",
                 headers: {

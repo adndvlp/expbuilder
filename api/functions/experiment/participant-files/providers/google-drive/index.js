@@ -1,5 +1,6 @@
 import fetch from "../../../../utils/fetch-with-timeout.js";
 import { escapeDriveQueryValue } from "../../../sessions/storage.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../utils/provider-endpoints.js";
 
 export async function uploadToGoogleDrive(
   token,
@@ -35,7 +36,7 @@ export async function uploadToGoogleDrive(
   ].join("\r\n");
 
   const uploadRes = await fetch(
-    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink",
+    `${endpoints.googleDrive.apiBase}/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink`,
     {
       method: "POST",
       headers: {
@@ -67,7 +68,7 @@ export async function getOrCreateDriveFolder(token, parentId, folderName) {
   async function findFolder() {
     const q = `name='${escapeDriveQueryValue(folderName)}' and '${escapeDriveQueryValue(parentId)}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
     const searchRes = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,createdTime)&orderBy=createdTime`,
+      `${endpoints.googleDrive.apiBase}/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,createdTime)&orderBy=createdTime`,
       { headers: { Authorization: `Bearer ${token}` } },
     );
     const searchData = await searchRes.json();
@@ -80,7 +81,7 @@ export async function getOrCreateDriveFolder(token, parentId, folderName) {
   }
 
   const createRes = await fetch(
-    "https://www.googleapis.com/drive/v3/files?fields=id",
+    `${endpoints.googleDrive.apiBase}/drive/v3/files?fields=id`,
     {
       method: "POST",
       headers: {

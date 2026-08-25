@@ -1,6 +1,7 @@
 import fetch from "../../../utils/fetch-with-timeout.js";
 import { createSession, escapeDriveQueryValue } from "../storage.js";
 import { mergeCsvByColumns } from "../validation/serialize.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../utils/provider-endpoints.js";
 
 export function resolveFolderIdentifier(storageProvider, expData) {
   if (storageProvider === "googledrive") return expData.driveFolderId;
@@ -20,7 +21,7 @@ function isPatchProvider(storageProvider) {
 async function findDriveCsv(token, folderIdentifier, fileName) {
   const searchQuery = `name='${escapeDriveQueryValue(fileName)}' and '${escapeDriveQueryValue(folderIdentifier)}' in parents and trashed=false`;
   const searchResult = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(searchQuery)}`,
+    `${endpoints.googleDrive.apiBase}/drive/v3/files?q=${encodeURIComponent(searchQuery)}`,
     {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
@@ -34,7 +35,7 @@ async function findDriveCsv(token, folderIdentifier, fileName) {
 
   const fileId = searchData.files[0].id;
   const downloadResult = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+    `${endpoints.googleDrive.apiBase}/drive/v3/files/${fileId}?alt=media`,
     {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
@@ -55,7 +56,7 @@ async function findDriveCsv(token, folderIdentifier, fileName) {
 async function findDropboxCsv(token, folderIdentifier, fileName) {
   const filePath = `${folderIdentifier}/${fileName}`;
   const checkResult = await fetch(
-    "https://content.dropboxapi.com/2/files/download",
+    `${endpoints.dropbox.contentBase}/2/files/download`,
     {
       method: "POST",
       headers: {

@@ -1,4 +1,5 @@
 import fetch from "../../../../../utils/fetch-with-timeout.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../../utils/provider-endpoints.js";
 
 export async function appendResult(
   token,
@@ -11,7 +12,7 @@ export async function appendResult(
   const filePath = `${folderIdentifier}/${fileName}`;
 
   const uploadResult = await fetch(
-    "https://content.dropboxapi.com/2/files/upload",
+    `${endpoints.dropbox.contentBase}/2/files/upload`,
     {
       method: "POST",
       headers: {
@@ -42,7 +43,7 @@ export async function appendResult(
 
   try {
     const shareRes = await fetch(
-      "https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings",
+      `${endpoints.dropbox.apiBase}/2/sharing/create_shared_link_with_settings`,
       {
         method: "POST",
         headers: {

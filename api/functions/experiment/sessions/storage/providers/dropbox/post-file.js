@@ -1,10 +1,11 @@
 import fetch from "../../../../../utils/fetch-with-timeout.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../../utils/provider-endpoints.js";
 
 export async function postFile(token, folderIdentifier, filedata, filename) {
   const filePath = `${folderIdentifier}/${filename}`;
 
   const result = await fetch(
-    "https://content.dropboxapi.com/2/files/upload",
+    `${endpoints.dropbox.contentBase}/2/files/upload`,
     {
       method: "POST",
       headers: {

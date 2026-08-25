@@ -1,8 +1,9 @@
 import fetch from "../../../../utils/fetch-with-timeout.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../utils/provider-endpoints.js";
 
 export async function getGithubUsername(accessToken) {
   try {
-    const response = await fetch("https://api.github.com/user", {
+    const response = await fetch(`${endpoints.github.apiBase}/user`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${accessToken}`,

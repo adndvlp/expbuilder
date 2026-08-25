@@ -1,4 +1,5 @@
 import fetch from "../../../../utils/fetch-with-timeout.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../utils/provider-endpoints.js";
 
 export async function ensureOsfParticipantFolder(token, uploadLink) {
   try {
@@ -6,7 +7,7 @@ export async function ensureOsfParticipantFolder(token, uploadLink) {
     if (!componentMatch) return uploadLink;
     const componentId = componentMatch[1];
 
-    const listUrl = `https://api.osf.io/v2/nodes/${componentId}/files/osfstorage/`;
+    const listUrl = `${endpoints.osf.apiBase}/v2/nodes/${componentId}/files/osfstorage/`;
     const listRes = await fetch(listUrl, {
       headers: { Authorization: `Bearer ${token}` },
     });

@@ -3,6 +3,7 @@ import fetch from "../../../utils/fetch-with-timeout.js";
 import { db } from "../../../app.js";
 import { validateRedirectUri } from "../../utils/redirect-allowlist.js";
 import { validateOAuthState } from "../../state-service.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../utils/provider-endpoints.js";
 
 // Credenciales de Dropbox (desde functions/.env)
 const CLIENT_ID = process.env.DROPBOX_CLIENT_ID;
@@ -70,7 +71,7 @@ export const dropboxOAuthCallback = onRequest(async (req, res) => {
     console.log("Using REDIRECT_URI:", REDIRECT_URI);
 
     // Intercambia el código por tokens
-    const tokenRes = await fetch("https://api.dropbox.com/oauth2/token", {
+    const tokenRes = await fetch(`${endpoints.dropbox.tokenUrl}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",

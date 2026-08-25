@@ -1,4 +1,5 @@
 import fetch from "../../../../utils/fetch-with-timeout.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../utils/provider-endpoints.js";
 
 async function getOsfUploadLink(token, filesLink) {
   const filesResponse = await fetch(filesLink, {
@@ -18,7 +19,7 @@ export async function createOsfFolder(token, projectId, componentName) {
   );
 
   const listResponse = await fetch(
-    `https://api.osf.io/v2/nodes/${projectId}/children/`,
+    `${endpoints.osf.apiBase}/v2/nodes/${projectId}/children/`,
     {
       method: "GET",
       headers: {
@@ -54,7 +55,7 @@ export async function createOsfFolder(token, projectId, componentName) {
 
   console.log(`OSF: Creating new component with name "${componentName}"`);
   const createResponse = await fetch(
-    `https://api.osf.io/v2/nodes/${projectId}/children/?region=us`,
+    `${endpoints.osf.apiBase}/v2/nodes/${projectId}/children/?region=us`,
     {
       method: "POST",
       headers: {

@@ -1,11 +1,12 @@
 import { CLIENT_ID, getRedirectUri } from "./config.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../utils/provider-endpoints.js";
 
 /**
  * Función helper para iniciar el flujo de OAuth de OSF
  * Esta función genera la URL de autorización
  */
 export function getOSFAuthorizationUrl(uid) {
-  const authUrl = new URL("https://accounts.osf.io/oauth2/authorize");
+  const authUrl = new URL(`${endpoints.osf.authorizeUrl}`);
   authUrl.searchParams.append("response_type", "code");
   authUrl.searchParams.append("client_id", CLIENT_ID);
   authUrl.searchParams.append("redirect_uri", getRedirectUri());

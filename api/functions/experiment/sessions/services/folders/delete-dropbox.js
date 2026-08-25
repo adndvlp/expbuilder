@@ -1,8 +1,9 @@
 import fetch from "../../../../utils/fetch-with-timeout.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../utils/provider-endpoints.js";
 
 export async function deleteDropboxFolder(token, folderPath) {
   const response = await fetch(
-    "https://api.dropboxapi.com/2/files/delete_v2",
+    `${endpoints.dropbox.apiBase}/2/files/delete_v2`,
     {
       method: "POST",
       headers: {

@@ -1,8 +1,9 @@
 import fetch from "../../../../utils/fetch-with-timeout.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../utils/provider-endpoints.js";
 
 export async function deleteOsfFolder(token, componentId) {
   const filesResponse = await fetch(
-    `https://api.osf.io/v2/nodes/${componentId}/files/osfstorage/`,
+    `${endpoints.osf.apiBase}/v2/nodes/${componentId}/files/osfstorage/`,
     {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },

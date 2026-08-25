@@ -5,6 +5,7 @@ import { validateOAuthState } from "../../state-service.js";
 import { getClientRedirectUri } from "./config.js";
 import { ensureExpBuilderProject } from "./project-init.js";
 import { exchangeCodeForTokens } from "./token-exchange.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../utils/provider-endpoints.js";
 
 /**
  * Callback de OAuth de OSF
@@ -78,7 +79,7 @@ export const osfOAuthCallback = onRequest({ cors: true }, async (req, res) => {
     const expiresAt = Date.now() + (tokenData.expires_in || 3600) * 1000;
 
     // Obtener información del usuario de OSF usando el access token
-    const profileResponse = await fetch("https://api.osf.io/v2/users/me/", {
+    const profileResponse = await fetch(`${endpoints.osf.apiBase}/v2/users/me/`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${tokenData.access_token}`,

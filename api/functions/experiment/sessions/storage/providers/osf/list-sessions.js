@@ -4,10 +4,11 @@ import {
   extractSessionId,
 } from "../../helpers.js";
 
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../../utils/provider-endpoints.js";
 export async function listSessions(token, folderIdentifier, experimentID) {
   const componentId = folderIdentifier;
   const nodeResponse = await fetch(
-    `https://api.osf.io/v2/nodes/${componentId}/files/`,
+    `${endpoints.osf.apiBase}/v2/nodes/${componentId}/files/`,
     {
       method: "GET",
       headers: {

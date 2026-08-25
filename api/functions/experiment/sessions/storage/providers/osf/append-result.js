@@ -1,4 +1,5 @@
 import fetch from "../../../../../utils/fetch-with-timeout.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../../utils/provider-endpoints.js";
 
 export async function appendResult(
   token,
@@ -23,7 +24,7 @@ export async function appendResult(
     const componentIdMatch = uploadLink.match(/\/resources\/([^/]+)\//);
     if (componentIdMatch) {
       const componentId = componentIdMatch[1];
-      const filesLink = `https://api.osf.io/v2/nodes/${componentId}/files/osfstorage/`;
+      const filesLink = `${endpoints.osf.apiBase}/v2/nodes/${componentId}/files/osfstorage/`;
       const filesResponse = await fetch(filesLink, {
         method: "GET",
         headers: { Authorization: `Bearer ${token}` },

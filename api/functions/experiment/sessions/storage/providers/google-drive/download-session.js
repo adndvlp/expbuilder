@@ -1,5 +1,6 @@
 import fetch from "../../../../../utils/fetch-with-timeout.js";
 import { searchDriveFileByName } from "../../helpers.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../../utils/provider-endpoints.js";
 
 export async function downloadSession(
   token,
@@ -26,7 +27,7 @@ export async function downloadSession(
 
   const fileId = searchData.files[0].id;
   const downloadResult = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+    `${endpoints.googleDrive.apiBase}/drive/v3/files/${fileId}?alt=media`,
     {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },

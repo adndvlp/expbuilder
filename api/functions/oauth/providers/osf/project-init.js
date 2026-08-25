@@ -1,4 +1,5 @@
 import fetch from "../../../utils/fetch-with-timeout.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../utils/provider-endpoints.js";
 
 export async function ensureExpBuilderProject(accessToken) {
   // Crear proyecto "ExpBuilder" si no existe; reusarlo si ya está creado
@@ -6,7 +7,7 @@ export async function ensureExpBuilderProject(accessToken) {
   try {
     // 1) Buscar proyecto existente con title === "ExpBuilder"
     const listResponse = await fetch(
-      "https://api.osf.io/v2/users/me/nodes/?filter[title]=ExpBuilder",
+      `${endpoints.osf.apiBase}/v2/users/me/nodes/?filter[title]=ExpBuilder`,
       {
         method: "GET",
         headers: {
@@ -31,7 +32,7 @@ export async function ensureExpBuilderProject(accessToken) {
     if (!osfProjectId) {
       console.log("OSF OAuth: Creating ExpBuilder project...");
       const projectResponse = await fetch(
-        "https://api.osf.io/v2/nodes/?region=us",
+        `${endpoints.osf.apiBase}/v2/nodes/?region=us`,
         {
           method: "POST",
           headers: {

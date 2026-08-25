@@ -1,4 +1,5 @@
 import fetch from "../../../../../utils/fetch-with-timeout.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../../utils/provider-endpoints.js";
 
 export async function createSession(
   token,
@@ -11,7 +12,7 @@ export async function createSession(
   const filePath = `${folderIdentifier}/${fileName}`;
 
   const checkResult = await fetch(
-    "https://api.dropboxapi.com/2/files/get_metadata",
+    `${endpoints.dropbox.apiBase}/2/files/get_metadata`,
     {
       method: "POST",
       headers: {
@@ -32,7 +33,7 @@ export async function createSession(
   }
 
   const uploadResult = await fetch(
-    "https://content.dropboxapi.com/2/files/upload",
+    `${endpoints.dropbox.contentBase}/2/files/upload`,
     {
       method: "POST",
       headers: {

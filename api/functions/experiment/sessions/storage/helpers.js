@@ -1,4 +1,5 @@
 import fetch from "../../../utils/fetch-with-timeout.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../utils/provider-endpoints.js";
 
 /**
  * Escapa valores que se interpolan dentro de Drive search queries (q=...).
@@ -69,7 +70,7 @@ export function mimeFromFilename(filename) {
 export async function searchDriveFileByName(token, folderIdentifier, fileName) {
   const q = `name='${escapeDriveQueryValue(fileName)}' and '${escapeDriveQueryValue(folderIdentifier)}' in parents and trashed=false`;
   return fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`,
+    `${endpoints.googleDrive.apiBase}/drive/v3/files?q=${encodeURIComponent(q)}`,
     { method: "GET", headers: { Authorization: `Bearer ${token}` } },
   );
 }

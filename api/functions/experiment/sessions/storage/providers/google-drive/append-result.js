@@ -1,5 +1,6 @@
 import fetch from "../../../../../utils/fetch-with-timeout.js";
 import { searchDriveFileByName } from "../../helpers.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../../utils/provider-endpoints.js";
 
 export async function appendResult(
   token,
@@ -27,7 +28,7 @@ export async function appendResult(
     };
 
     const createResponse = await fetch(
-      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+      `${endpoints.googleDrive.apiBase}/upload/drive/v3/files?uploadType=multipart`,
       {
         method: "POST",
         headers: {
@@ -60,7 +61,7 @@ export async function appendResult(
 
   const fileId = searchData.files[0].id;
   const uploadResult = await fetch(
-    `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+    `${endpoints.googleDrive.apiBase}/upload/drive/v3/files/${fileId}?uploadType=media`,
     {
       method: "PATCH",
       headers: {

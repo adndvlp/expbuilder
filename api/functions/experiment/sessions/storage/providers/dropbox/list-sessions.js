@@ -4,12 +4,13 @@ import {
   extractSessionId,
 } from "../../helpers.js";
 
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../../utils/provider-endpoints.js";
 export async function listSessions(token, folderIdentifier, experimentID) {
   const matcher = makeSessionFileMatcher(experimentID);
   const allEntries = [];
 
   let listResult = await fetch(
-    "https://api.dropboxapi.com/2/files/list_folder",
+    `${endpoints.dropbox.apiBase}/2/files/list_folder`,
     {
       method: "POST",
       headers: {
@@ -38,7 +39,7 @@ export async function listSessions(token, folderIdentifier, experimentID) {
 
   while (page.has_more && page.cursor) {
     const contResp = await fetch(
-      "https://api.dropboxapi.com/2/files/list_folder/continue",
+      `${endpoints.dropbox.apiBase}/2/files/list_folder/continue`,
       {
         method: "POST",
         headers: {

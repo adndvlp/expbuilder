@@ -3,6 +3,7 @@ import fetch from "../../../utils/fetch-with-timeout.js";
 import { db } from "../../../app.js";
 import { validateRedirectUri } from "../../utils/redirect-allowlist.js";
 import { validateOAuthState } from "../../state-service.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../utils/provider-endpoints.js";
 
 // Credenciales de Google OAuth (desde functions/.env)
 const CLIENT_ID = process.env.GOOGLE_DRIVE_CLIENT_ID;
@@ -68,7 +69,7 @@ export const googleDriveOAuthCallback = onRequest(async (req, res) => {
     console.log("Using REDIRECT_URI:", REDIRECT_URI);
 
     // Intercambia el código por tokens
-    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    const tokenRes = await fetch(`${endpoints.googleDrive.tokenUrl}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",

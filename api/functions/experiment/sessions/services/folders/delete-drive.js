@@ -4,6 +4,7 @@ import {
   splitFolderPath,
 } from "./helpers.js";
 
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../utils/provider-endpoints.js";
 export async function deleteDriveFolder(token, folderPath) {
   const parts = splitFolderPath(folderPath);
   if (parts.length === 0) {
@@ -20,7 +21,7 @@ export async function deleteDriveFolder(token, folderPath) {
     );
 
     const searchResponse = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
+      `${endpoints.googleDrive.apiBase}/drive/v3/files?q=${encodeURIComponent(
         searchQuery,
       )}`,
       {
@@ -39,7 +40,7 @@ export async function deleteDriveFolder(token, folderPath) {
   }
 
   const deleteResponse = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${targetFolderId}`,
+    `${endpoints.googleDrive.apiBase}/drive/v3/files/${targetFolderId}`,
     {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },

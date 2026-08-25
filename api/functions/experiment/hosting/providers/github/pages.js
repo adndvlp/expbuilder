@@ -1,4 +1,5 @@
 import fetch from "../../../../utils/fetch-with-timeout.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../utils/provider-endpoints.js";
 
 export async function enableGithubPages(
   accessToken,
@@ -10,7 +11,7 @@ export async function enableGithubPages(
 ) {
   try {
     const checkResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repoName}/pages`,
+      `${endpoints.github.apiBase}/repos/${owner}/${repoName}/pages`,
       {
         method: "GET",
         headers: {
@@ -30,7 +31,7 @@ export async function enableGithubPages(
     }
 
     const enableResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repoName}/pages`,
+      `${endpoints.github.apiBase}/repos/${owner}/${repoName}/pages`,
       {
         method: "POST",
         headers: {
@@ -65,7 +66,7 @@ export async function enableGithubPages(
 
     for (let i = 0; i < maxAttempts; i++) {
       const pagesResponse = await fetch(
-        `https://api.github.com/repos/${owner}/${repoName}/pages`,
+        `${endpoints.github.apiBase}/repos/${owner}/${repoName}/pages`,
         {
           method: "GET",
           headers: {

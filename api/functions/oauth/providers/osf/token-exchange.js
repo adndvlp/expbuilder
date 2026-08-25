@@ -1,10 +1,11 @@
 import fetch from "../../../utils/fetch-with-timeout.js";
 import { validateRedirectUri } from "../../utils/redirect-allowlist.js";
 import { CLIENT_ID, CLIENT_SECRET, getRedirectUri } from "./config.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../utils/provider-endpoints.js";
 
 export async function exchangeCodeForTokens(code, redirectUri) {
   // Intercambiar el código por tokens
-  const tokenResponse = await fetch("https://accounts.osf.io/oauth2/token", {
+  const tokenResponse = await fetch(`${endpoints.osf.tokenUrl}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",

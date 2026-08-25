@@ -1,4 +1,5 @@
 import fetch from "../../../../utils/fetch-with-timeout.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../utils/provider-endpoints.js";
 
 const GH_CONTENTS_API_LIMIT = 1024 * 1024;
 
@@ -26,7 +27,7 @@ export async function uploadFileGithub(
     }
 
     const checkResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repoName}/contents/${filePath}?ref=${branch}`,
+      `${endpoints.github.apiBase}/repos/${owner}/${repoName}/contents/${filePath}?ref=${branch}`,
       {
         method: "GET",
         headers: {
@@ -43,7 +44,7 @@ export async function uploadFileGithub(
     }
 
     const uploadResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repoName}/contents/${filePath}`,
+      `${endpoints.github.apiBase}/repos/${owner}/${repoName}/contents/${filePath}`,
       {
         method: "PUT",
         headers: {

@@ -5,6 +5,7 @@ import { deleteFolder } from "./sessions/services/folder.js";
 import { getValidToken } from "../oauth/index.js";
 import { deleteRepositoryGithub } from "./hosting/services.js";
 import fetch from "../utils/fetch-with-timeout.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../utils/provider-endpoints.js";
 
 /**
  * Stream-delete a collection in page-sized chunks. Optionally drains named
@@ -121,7 +122,7 @@ export async function deleteExperiment(experimentID, uid, repoName = null) {
           const accessToken = githubTokens.access_token;
 
           // Obtener el username de GitHub
-          const userResponse = await fetch("https://api.github.com/user", {
+          const userResponse = await fetch(`${endpoints.github.apiBase}/user`, {
             method: "GET",
             headers: {
               Authorization: `Bearer ${accessToken}`,

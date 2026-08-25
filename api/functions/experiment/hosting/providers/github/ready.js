@@ -1,4 +1,5 @@
 import fetch from "../../../../utils/fetch-with-timeout.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../utils/provider-endpoints.js";
 
 export async function waitForGithubRepoReady(
   accessToken,
@@ -13,7 +14,7 @@ export async function waitForGithubRepoReady(
 
   while (Date.now() - startTime < maxWaitMs) {
     const r = await fetch(
-      `https://api.github.com/repos/${owner}/${repoName}/branches/${branch}`,
+      `${endpoints.github.apiBase}/repos/${owner}/${repoName}/branches/${branch}`,
       {
         method: "GET",
         headers: {

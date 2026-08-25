@@ -3,6 +3,7 @@ import { db } from "../app.js";
 import { refreshOSFToken } from "./api/callbacks/osf.js";
 import { refreshAccessToken } from "./refresh.js";
 import { getTokenProvider } from "./token-registry.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../utils/provider-endpoints.js";
 
 function validTokenResult(accessToken, wasRefreshed = false) {
   return {
@@ -47,7 +48,7 @@ async function getValidOsfToken(userRef, userData) {
 
   if (userData.osfToken && userData.osfTokenValid) {
     try {
-      const checkResp = await fetch("https://api.osf.io/v2/users/me/", {
+      const checkResp = await fetch(`${endpoints.osf.apiBase}/v2/users/me/`, {
         method: "GET",
         headers: { Authorization: `Bearer ${userData.osfToken}` },
       });

@@ -4,6 +4,7 @@ import {
   splitFolderPath,
 } from "./helpers.js";
 
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../utils/provider-endpoints.js";
 export async function createDriveFolder(token, folderPath) {
   const parts = splitFolderPath(folderPath);
   if (parts.length === 0) {
@@ -18,7 +19,7 @@ export async function createDriveFolder(token, folderPath) {
     );
 
     const searchResponse = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
+      `${endpoints.googleDrive.apiBase}/drive/v3/files?q=${encodeURIComponent(
         searchQuery,
       )}`,
       {
@@ -42,7 +43,7 @@ export async function createDriveFolder(token, folderPath) {
     }
 
     const createResponse = await fetch(
-      "https://www.googleapis.com/drive/v3/files",
+      `${endpoints.googleDrive.apiBase}/drive/v3/files`,
       {
         method: "POST",
         headers: {

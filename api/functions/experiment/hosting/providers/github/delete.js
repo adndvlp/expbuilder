@@ -1,9 +1,10 @@
 import fetch from "../../../../utils/fetch-with-timeout.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../utils/provider-endpoints.js";
 
 export async function deleteRepositoryGithub(accessToken, owner, repoName) {
   try {
     const deleteResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repoName}`,
+      `${endpoints.github.apiBase}/repos/${owner}/${repoName}`,
       {
         method: "DELETE",
         headers: {

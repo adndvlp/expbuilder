@@ -1,6 +1,7 @@
 import fetch from "../../../../utils/fetch-with-timeout.js";
 import { db } from "../../../../app.js";
 import { validateOSFToken } from "./validate-token.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../utils/provider-endpoints.js";
 
 /**
  * Guardar token de OSF
@@ -43,7 +44,7 @@ export async function handleSaveToken(req, res) {
   // fallaban más tarde. `current_user_permissions` debe incluir "write".
   try {
     const projectResponse = await fetch(
-      `https://api.osf.io/v2/nodes/${projectId}/`,
+      `${endpoints.osf.apiBase}/v2/nodes/${projectId}/`,
       {
         method: "GET",
         headers: {

@@ -5,6 +5,7 @@ import {
   extractSessionId,
 } from "../../helpers.js";
 
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../../utils/provider-endpoints.js";
 export async function listSessions(token, folderIdentifier, experimentID) {
   const matcher = makeSessionFileMatcher(experimentID);
   const searchQuery = `'${escapeDriveQueryValue(folderIdentifier)}' in parents and trashed=false and name contains '${escapeDriveQueryValue(experimentID + "_")}'`;
@@ -20,7 +21,7 @@ export async function listSessions(token, folderIdentifier, experimentID) {
     if (pageToken) params.set("pageToken", pageToken);
 
     const listResult = await fetch(
-      `https://www.googleapis.com/drive/v3/files?${params.toString()}`,
+      `${endpoints.googleDrive.apiBase}/drive/v3/files?${params.toString()}`,
       {
         method: "GET",
         headers: { Authorization: `Bearer ${token}` },

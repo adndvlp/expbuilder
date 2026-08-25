@@ -1,5 +1,6 @@
 import fetch from "../../../../../utils/fetch-with-timeout.js";
 import { mimeFromFilename } from "../../helpers.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../../utils/provider-endpoints.js";
 
 export async function postFile(token, folderIdentifier, filedata, filename) {
   const mime = mimeFromFilename(filename);
@@ -24,7 +25,7 @@ export async function postFile(token, folderIdentifier, filedata, filename) {
     close_delim;
 
   const uploadResult = await fetch(
-    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+    `${endpoints.googleDrive.apiBase}/upload/drive/v3/files?uploadType=multipart`,
     {
       method: "POST",
       headers: {

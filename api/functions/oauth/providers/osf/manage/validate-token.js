@@ -1,5 +1,6 @@
 import fetch from "../../../../utils/fetch-with-timeout.js";
 import { db } from "../../../../app.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../utils/provider-endpoints.js";
 
 /**
  * Valida un token de OSF
@@ -8,7 +9,7 @@ import { db } from "../../../../app.js";
  */
 export async function validateOSFToken(token) {
   try {
-    const response = await fetch("https://api.osf.io/v2/users/me/", {
+    const response = await fetch(`${endpoints.osf.apiBase}/v2/users/me/`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,

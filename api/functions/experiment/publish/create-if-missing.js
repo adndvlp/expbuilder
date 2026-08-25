@@ -2,6 +2,7 @@ import { db } from "../../app.js";
 import { getValidToken } from "../../oauth/index.js";
 import fetch from "../../utils/fetch-with-timeout.js";
 import { createExperiment } from "../create.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../utils/provider-endpoints.js";
 
 export async function createExperimentIfMissing(
   experimentID,
@@ -24,7 +25,7 @@ export async function createExperimentIfMissing(
           const tokenResult = await getValidToken("osf", uid);
           if (tokenResult.success) {
             const projectResponse = await fetch(
-              "https://api.osf.io/v2/nodes/?region=us",
+              `${endpoints.osf.apiBase}/v2/nodes/?region=us`,
               {
                 method: "POST",
                 headers: {

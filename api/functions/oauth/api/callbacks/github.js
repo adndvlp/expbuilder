@@ -3,6 +3,7 @@ import fetch from "../../../utils/fetch-with-timeout.js";
 import { db } from "../../../app.js";
 import { validateRedirectUri } from "../../utils/redirect-allowlist.js";
 import { validateOAuthState } from "../../state-service.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../utils/provider-endpoints.js";
 
 // Credenciales de GitHub (desde functions/.env)
 const CLIENT_ID = process.env.GITHUB_CLIENT_ID;
@@ -69,7 +70,7 @@ export const githubOAuthCallback = onRequest(async (req, res) => {
 
     // Intercambia el código por tokens
     const tokenRes = await fetch(
-      "https://github.com/login/oauth/access_token",
+      `${endpoints.github.tokenUrl}`,
       {
         method: "POST",
         headers: {

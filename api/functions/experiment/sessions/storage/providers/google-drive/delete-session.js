@@ -1,5 +1,6 @@
 import fetch from "../../../../../utils/fetch-with-timeout.js";
 import { searchDriveFileByName } from "../../helpers.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../../../utils/provider-endpoints.js";
 
 export async function deleteSession(
   token,
@@ -26,7 +27,7 @@ export async function deleteSession(
 
   const fileId = searchData.files[0].id;
   const deleteResult = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}`,
+    `${endpoints.googleDrive.apiBase}/drive/v3/files/${fileId}`,
     {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },

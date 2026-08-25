@@ -2,13 +2,14 @@ import fetch from "../../../utils/fetch-with-timeout.js";
 import { db } from "../../../app.js";
 import { getValidToken } from "../../../oauth/index.js";
 import { escapeDriveQueryValue } from "../storage.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../utils/provider-endpoints.js";
 
 async function lookupDriveFileUrl(token, expData, fileName) {
   if (!expData.driveFolderId) return null;
 
   const searchQuery = `name='${escapeDriveQueryValue(fileName)}' and '${escapeDriveQueryValue(expData.driveFolderId)}' in parents and trashed=false`;
   const searchRes = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(searchQuery)}`,
+    `${endpoints.googleDrive.apiBase}/drive/v3/files?q=${encodeURIComponent(searchQuery)}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -28,7 +29,7 @@ async function lookupDropboxFileUrl(token, expData, fileName) {
   try {
     const filePath = `${expData.dropboxFolder}/${fileName}`;
     const listRes = await fetch(
-      "https://api.dropboxapi.com/2/sharing/list_shared_links",
+      `${endpoints.dropbox.apiBase}/2/sharing/list_shared_links`,
       {
         method: "POST",
         headers: {
@@ -49,7 +50,7 @@ async function lookupDropboxFileUrl(token, expData, fileName) {
     }
 
     const createRes = await fetch(
-      "https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings",
+      `${endpoints.dropbox.apiBase}/2/sharing/create_shared_link_with_settings`,
       {
         method: "POST",
         headers: {
@@ -87,7 +88,7 @@ async function lookupOsfFileUrl(token, expData, fileName) {
 
   const componentId = componentIdMatch[1];
   const filesRes = await fetch(
-    `https://api.osf.io/v2/nodes/${componentId}/files/osfstorage/`,
+    `${endpoints.osf.apiBase}/v2/nodes/${componentId}/files/osfstorage/`,
     {
       headers: {
         Authorization: `Bearer ${token}`,

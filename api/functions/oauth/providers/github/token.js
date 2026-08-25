@@ -1,5 +1,6 @@
 import { db } from "../../../app.js";
 import fetch from "../../../utils/fetch-with-timeout.js";
+import { PROVIDER_ENDPOINTS as endpoints } from "../../../utils/provider-endpoints.js";
 
 /**
  * Obtiene el token de GitHub de un usuario
@@ -44,7 +45,7 @@ async function getGithubToken(uid) {
  * Obtiene el owner (username) de GitHub del usuario
  */
 async function getGithubOwner(accessToken) {
-  const userResponse = await fetch("https://api.github.com/user", {
+  const userResponse = await fetch(`${endpoints.github.apiBase}/user`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${accessToken}`,
