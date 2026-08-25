@@ -29,7 +29,7 @@ describe("Settings OAuth tokens", () => {
 
   it("builds OSF URLs for Electron, development and production", () => {
     expect(getOsfRedirectUri(true, true)).toBe(
-      "http://localhost:8888/oauth/osf/callback",
+      "http://localhost:8888/callback",
     );
     expect(getOsfRedirectUri(false, true)).toBe(
       "http://localhost:5173/oauth/osf/callback",

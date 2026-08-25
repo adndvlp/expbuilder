@@ -166,7 +166,8 @@
       }
     ],
     "asarUnpack": [
-      "**/node_modules/firebase-tools/**/*"
+      "**/node_modules/firebase-tools/**/*",
+      "**/node_modules/ffmpeg-static/**/*"
     ],
     "icon": "icon/icon.png",
     "mac": {

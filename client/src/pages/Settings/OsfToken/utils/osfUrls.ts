@@ -3,7 +3,7 @@ export function getOsfRedirectUri(
   isDev: boolean,
   productionOverride?: string,
 ) {
-  if (electron) return "http://localhost:8888/oauth/osf/callback";
+  if (electron) return "http://localhost:8888/callback";
   if (isDev) return "http://localhost:5173/oauth/osf/callback";
   return productionOverride || "http://localhost:8888/callback";
 }
