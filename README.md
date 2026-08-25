@@ -83,9 +83,10 @@ Releases are built and published automatically with GitHub Actions (`.github/wor
 
 | Trigger | Tests | Builds | Tag / Release |
 | --- | --- | --- | --- |
-| Feature branch commit with `[build]` in the message | Yes | Yes, installers as workflow artifacts | No |
-| Feature branch commit without `[build]` | Yes | No | No |
-| Push to `main` | Yes | Yes | Yes, creates the `v<version>` tag and publishes the release |
+| Commit with `[build]` in the message (any branch except `main`) | Yes | Yes, installers as workflow artifacts | No |
+| Commit without `[build]` on a branch other than `main` | No | No | No |
+| Push to `main` (with or without `[build]`) | Yes | Yes | Yes, creates the `v<version>` tag and publishes the release |
+| Push of a `v*` tag | Yes | Yes | Yes, publishes the release |
 | Manual run (`workflow_dispatch`) | Yes | Yes | No |
 
 The `[build]` flag is detected in any commit of the push, not only the last one.
