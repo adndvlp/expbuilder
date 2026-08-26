@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import type {
   ExperimentGraphSnapshot,
   GraphBranchEdge,
@@ -20,11 +21,26 @@ export const graph = (
   diagnostics: [],
 });
 
+export const graphScope = (
+  scopeId: GraphScopeView["scopeId"],
+  parentScopeId: GraphScopeView["parentScopeId"],
+  items: TimelineItem[],
+): GraphScopeView => ({ scopeId, parentScopeId, items });
+
 export const fulfillGraph = (snapshot: ExperimentGraphSnapshot) => ({
   status: 200,
   contentType: "application/json",
   body: JSON.stringify({ graph: snapshot }),
 });
+
+export const routeGraph = (
+  page: Page,
+  experimentId: string,
+  snapshot: ExperimentGraphSnapshot,
+) =>
+  page.route(`**/api/experiment-graph/${experimentId}`, (route) =>
+    route.fulfill(fulfillGraph(snapshot)),
+  );
 
 export const branchEdge = (
   sourceId: string | number,

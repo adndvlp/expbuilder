@@ -53,24 +53,36 @@ function moveBranchGroup(
 
 function spreadBranchSubtrees(
   layout: ExpandedCanvasLayout,
-  graph: ExpandedFlowGraph,
+  branchGraph: ExpandedFlowGraph,
+  ownershipGraph: ExpandedFlowGraph,
   scopes: readonly ExpandedLoopScope[],
+  excludedParentIds: ReadonlySet<string> = new Set(),
 ) {
   const depthMemo = new Map<string, number>();
-  const branchParents = [...graph.children.entries()]
-    .filter(([, childIds]) => childIds.size > 1)
+  const branchParents = [...branchGraph.children.entries()]
+    .filter(
+      ([parentId, childIds]) =>
+        childIds.size > 1 && !excludedParentIds.has(parentId),
+    )
     .sort(
       ([leftId], [rightId]) =>
-        getExpandedFlowDepth(rightId, graph.parents, depthMemo, new Set()) -
-        getExpandedFlowDepth(leftId, graph.parents, depthMemo, new Set()),
+        getExpandedFlowDepth(
+          rightId,
+          branchGraph.parents,
+          depthMemo,
+          new Set(),
+        ) -
+        getExpandedFlowDepth(leftId, branchGraph.parents, depthMemo, new Set()),
     );
 
   branchParents.forEach(([parentId, childIds]) => {
-    const parent = graph.nodeById.get(parentId);
+    const parent = branchGraph.nodeById.get(parentId);
     if (!parent) return;
     const circuitBounds = getLoopCircuitHorizontalBounds(layout.nodes, scopes);
     const groups = [...childIds]
-      .map((childId) => getBranchGroup(childId, graph, layout, circuitBounds))
+      .map((childId) =>
+        getBranchGroup(childId, ownershipGraph, layout, circuitBounds),
+      )
       .sort((left, right) => left.rootX - right.rootX);
     const pivotIndex =
       groups.length % 2 === 1
@@ -97,7 +109,7 @@ function spreadBranchSubtrees(
       groups.forEach((group, index) =>
         moveBranchGroup(
           group,
-          graph,
+          ownershipGraph,
           parent.position.x + rootOffsets[index] - center - group.rootX,
         ),
       );
@@ -105,21 +117,32 @@ function spreadBranchSubtrees(
     }
 
     const pivot = groups[pivotIndex];
-    moveBranchGroup(pivot, graph, parent.position.x - pivot.rootX);
+    moveBranchGroup(pivot, ownershipGraph, parent.position.x - pivot.rootX);
     let cursor = pivot.minX - SUBTREE_GAP;
     groups
       .slice(0, pivotIndex)
       .reverse()
       .forEach((group) => {
-        moveBranchGroup(group, graph, cursor - group.maxX);
+        moveBranchGroup(group, ownershipGraph, cursor - group.maxX);
         cursor = group.minX - SUBTREE_GAP;
       });
     cursor = pivot.maxX + SUBTREE_GAP;
     groups.slice(pivotIndex + 1).forEach((group) => {
-      moveBranchGroup(group, graph, cursor - group.minX);
+      moveBranchGroup(group, ownershipGraph, cursor - group.minX);
       cursor = group.maxX + SUBTREE_GAP;
     });
   });
+}
+
+function getScopeExitSourceIds(layout: ExpandedCanvasLayout) {
+  return new Set(
+    layout.edges
+      .filter(
+        (edge) =>
+          edge.data.kind === "flow" && edge.data.flowRole === "scope-exit",
+      )
+      .map((edge) => edge.source),
+  );
 }
 
 function alignMergeNodes(
@@ -192,8 +215,19 @@ export function finalizeExpandedLayout(
     (edge) => edge.data.flowRole !== "scope-exit",
   );
   const completeGraph = buildExpandedFlowGraph(layout);
-  spreadBranchSubtrees(layout, localGraph, scopes);
+  // Local edges define each fan-out; the complete graph keeps uniquely owned
+  // loop exits attached while their ancestor subtrees move.
+  spreadBranchSubtrees(layout, localGraph, completeGraph, scopes);
   layoutScopeExitBranches(layout, completeGraph, verticalGap);
+  // Exit sources now have their authoritative fan geometry. Repack only their
+  // ancestors so the widened envelope cannot invade a lateral sibling.
+  spreadBranchSubtrees(
+    layout,
+    localGraph,
+    completeGraph,
+    scopes,
+    getScopeExitSourceIds(layout),
+  );
   alignMergeNodes(layout, completeGraph, verticalGap);
   sortEdgesByFlowPosition(layout);
   return layout;
