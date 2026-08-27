@@ -6,6 +6,7 @@ on:
     paths:
       - "client/**"
       - "server/**"
+      - "api/functions/**"
       - "docs/loop-branching-spec/**"
       - "package.json"
       - "package-lock.json"
@@ -14,6 +15,7 @@ on:
     paths:
       - "client/**"
       - "server/**"
+      - "api/functions/**"
       - "docs/loop-branching-spec/**"
       - "package.json"
       - "package-lock.json"
@@ -31,7 +33,7 @@ jobs:
   contracts:
     name: Authoring to generated runtime
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     env:
       CI: true
 
@@ -47,6 +49,7 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             client/package-lock.json
+            api/functions/package-lock.json
 
       - name: Install server dependencies
         run: npm ci
@@ -55,10 +58,16 @@ jobs:
         working-directory: client
         run: npm ci
 
+      - name: Install cloud functions dependencies
+        run: npm ci --prefix api/functions
+
       - name: Test server contracts
         env:
           DB_ROOT: ${{ runner.temp }}/expbuilder-server-tests
         run: npm test -- --runInBand
+
+      - name: Test cloud functions contracts
+        run: npm test --prefix api/functions
 
       - name: Test shared UI and authoring contracts
         working-directory: client
@@ -84,13 +93,19 @@ jobs:
         working-directory: client
         run: npm run test:runtime
 
-      - name: Upload runtime failure evidence
+      - name: Run client e2e tests
+        working-directory: client
+        run: npm run test:e2e
+
+      - name: Upload failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: generated-runtime-failure-${{ github.run_id }}
+          name: builder-contracts-failure-${{ github.run_id }}
           path: |
             client/runtime-e2e/artifacts
             client/runtime-report
+            client/playwright-report
+            client/test-results
           if-no-files-found: ignore
           retention-days: 14
