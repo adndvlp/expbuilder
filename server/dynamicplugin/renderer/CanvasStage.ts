@@ -1,5 +1,18 @@
 export type RenderBackendRequest = "webgl-strict";
 
+export type GpuPrepareSyncMode = "none" | "fence" | "finish";
+
+export interface GpuPrepareSyncResult {
+  mode: GpuPrepareSyncMode;
+  /**
+   * True only when the driver acknowledged the GPU work (fence signaled).
+   * `finish`/`none` never claim physical completion.
+   */
+  confirmed: boolean;
+  durationMs: number;
+  error: string | null;
+}
+
 type CanvasStageOptions = {
   width: number;
   height: number;
@@ -9,6 +22,13 @@ type CanvasStageOptions = {
   recordGpuTiming?: boolean;
   recordCommitSeries?: boolean;
   recordGpuSeries?: boolean;
+  /**
+   * Prepare-time GPU synchronization. `fence` uses WebGL2 fenceSync with a
+   * bounded clientWaitSync; `finish` uses gl.finish(). Both run ONLY during
+   * preparation, never inside the critical rAF tick. Defaults to `none` (the
+   * sync cost must be benchmarked before it becomes a default).
+   */
+  gpuPrepareSync?: GpuPrepareSyncMode;
 };
 
 type SpriteDrawable = {
@@ -88,15 +108,133 @@ export type StageMetrics = {
   max_gpu_draw_duration: number | null;
   gpu_pending_query_count: number;
   gpu_disjoint_count: number;
+  /** Prepare-time GPU synchronization mode used by this stage. */
+  gpu_prepare_sync_mode: GpuPrepareSyncMode;
+  /** Driver acknowledged the prepare-time GPU work (fence signaled). */
+  gpu_prepare_sync_confirmed: boolean | null;
+  gpu_prepare_sync_duration_ms: number | null;
+  gpu_prepare_sync_error: string | null;
 };
 
 const CANVAS_STAGE_REGISTRY_KEY = "__dynamicCanvasStages";
 const CANVAS_STAGE_LIST_KEY = "__dynamicCanvasStageList";
 
+/**
+ * P1.1 (iteración 7): cursor O(1) de contadores monotónicos. Las métricas de
+ * UN trial son el delta entre dos cursores (prepare/activate → boundary) —
+ * jamás el acumulado del stage persistente.
+ *
+ * P0.4 (iteración 7): `snapshotCountersNoPoll()` devuelve este cursor SIN
+ * consultar la GPU (sin getQueryParameter/getParameter) y sin copiar arrays.
+ */
+export type StageMetricCursor = {
+  render_backend_requested: RenderBackendRequest;
+  render_backend: string;
+  buffer_strategy: string;
+  commit_count: number;
+  commit_duration_sum: number;
+  commit_duration_max: number | null;
+  draw_call_count: number;
+  texture_uploads: number;
+  buffer_uploads: number;
+  shader_compiles: number;
+  webgl_context_lost_count: number;
+  commit_unsynced_count: number;
+  gpu_timer_available: boolean;
+  gpu_draw_count: number;
+  gpu_duration_sum: number;
+  gpu_duration_max: number | null;
+  gpu_pending_query_count: number;
+  gpu_disjoint_count: number;
+  gpu_prepare_sync_mode: GpuPrepareSyncMode;
+  gpu_prepare_sync_confirmed: boolean | null;
+  gpu_prepare_sync_duration_ms: number | null;
+  gpu_prepare_sync_error: string | null;
+  /** Sequence index of the NEXT commit series entry (monotonic). */
+  commit_series_next_index: number;
+  gpu_series_next_index: number;
+  commit_series_truncated: boolean;
+  gpu_series_truncated: boolean;
+};
+
+export type StageMetricSeriesSlice = {
+  commitDurations: number[];
+  gpuDrawDurations: number[];
+  truncated: boolean;
+};
+
 const round3 = (value: number): number => Math.round(value * 1000) / 1000;
 
 const MAX_METRIC_SERIES_LENGTH = 4096;
 const MAX_UNUSED_TEXTURE_CACHE_ENTRIES = 64;
+/** 10 ms bounded prepare-time GPU wait (clientWaitSync timeout is in ns). */
+const GPU_PREPARE_SYNC_TIMEOUT_NS = 10_000_000;
+
+export interface GpuPrepareSyncGl {
+  finish?: () => void;
+  fenceSync?: (condition: number, flags: number) => unknown;
+  clientWaitSync?: (sync: unknown, flags: number, timeoutNs: number) => number;
+  deleteSync?: (sync: unknown) => void;
+  ALREADY_SIGNALED?: number;
+  CONDITION_SATISFIED?: number;
+  SYNC_FLUSH_COMMANDS_BIT?: number;
+  SYNC_GPU_COMMANDS_COMPLETE?: number;
+}
+
+/**
+ * P1.3: pure prepare-time GPU synchronization logic. Extractable and
+ * unit-testable without a real GL context. `confirmed === true` ONLY when a
+ * fence signaled; `finish` and `none` guarantee "issued", never completion.
+ */
+export function runGpuPrepareSync(
+  gl: GpuPrepareSyncGl,
+  mode: GpuPrepareSyncMode,
+): Omit<GpuPrepareSyncResult, "durationMs"> {
+  if (mode === "none") {
+    return { mode, confirmed: false, error: null };
+  }
+  try {
+    if (mode === "finish") {
+      gl.finish?.();
+      return { mode, confirmed: false, error: null };
+    }
+    const fence = gl.fenceSync;
+    const wait = gl.clientWaitSync;
+    const remove = gl.deleteSync;
+    if (
+      typeof fence !== "function" ||
+      typeof wait !== "function" ||
+      typeof remove !== "function" ||
+      typeof gl.SYNC_GPU_COMMANDS_COMPLETE !== "number" ||
+      typeof gl.SYNC_FLUSH_COMMANDS_BIT !== "number"
+    ) {
+      return { mode, confirmed: false, error: "fence_unavailable_requires_webgl2" };
+    }
+    const sync = fence(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+    if (!sync) {
+      return { mode, confirmed: false, error: "fence_creation_failed" };
+    }
+    const result = wait(
+      sync,
+      gl.SYNC_FLUSH_COMMANDS_BIT,
+      GPU_PREPARE_SYNC_TIMEOUT_NS,
+    );
+    const confirmed =
+      result === gl.ALREADY_SIGNALED || result === gl.CONDITION_SATISFIED;
+    remove(sync);
+    return {
+      mode,
+      confirmed,
+      error: confirmed ? null : "fence_not_signaled_within_timeout",
+    };
+  } catch (error) {
+    return {
+      mode,
+      confirmed: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
 
 const pushBounded = (series: number[], value: number): boolean => {
   if (series.length >= MAX_METRIC_SERIES_LENGTH) {
@@ -139,20 +277,31 @@ function createBaseMetrics(
     max_gpu_draw_duration: null,
     gpu_pending_query_count: 0,
     gpu_disjoint_count: 0,
+    gpu_prepare_sync_mode: "none",
+    gpu_prepare_sync_confirmed: null,
+    gpu_prepare_sync_duration_ms: null,
+    gpu_prepare_sync_error: null,
   };
 }
 
+const parsedCssColorCache = new Map<string, RgbaColor>();
+
 function parseCssColor(color: string): RgbaColor {
+  const cacheKey = color || "transparent";
+  const cached = parsedCssColorCache.get(cacheKey);
+  if (cached) return cached;
   const scratch = document.createElement("canvas");
   scratch.width = 1;
   scratch.height = 1;
   const ctx = scratch.getContext("2d");
   if (!ctx) return [0, 0, 0, 1];
   ctx.clearRect(0, 0, 1, 1);
-  ctx.fillStyle = color || "transparent";
+  ctx.fillStyle = cacheKey;
   ctx.fillRect(0, 0, 1, 1);
   const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
-  return [r / 255, g / 255, b / 255, a / 255];
+  const parsed: RgbaColor = [r / 255, g / 255, b / 255, a / 255];
+  parsedCssColorCache.set(cacheKey, parsed);
+  return parsed;
 }
 
 function createVisibleCanvas(
@@ -189,6 +338,8 @@ export abstract class BaseStage {
   protected trialActive = false;
   protected pendingVisibilityCommits: PendingVisibilityCommit[] = [];
   protected metrics: StageMetrics;
+  protected gpuResourceCallCount = 0;
+  protected gpuPrepareSync: GpuPrepareSyncMode;
   private orderedDrawables: StageDrawable[] = [];
   private visibleDrawables: StageDrawable[] = [];
   private recordCommitSeries: boolean;
@@ -197,6 +348,10 @@ export abstract class BaseStage {
   private commitDurationMax: number | null = null;
   private gpuDurationSum = 0;
   private gpuDurationMax: number | null = null;
+  // P1.1 (iteración 7): entradas de serie descartadas por el ring acotado —
+  // los slices se indexan por secuencia absoluta, no por posición de array.
+  private commitSeriesOffset = 0;
+  private gpuSeriesOffset = 0;
 
   constructor(
     parent: HTMLElement,
@@ -212,8 +367,10 @@ export abstract class BaseStage {
     this.backgroundColor = options.backgroundColor || "#ffffff";
     this.recordCommitSeries = options.recordCommitSeries === true;
     this.recordGpuSeries = options.recordGpuSeries === true;
+    this.gpuPrepareSync = options.gpuPrepareSync ?? "none";
     this.backgroundRgba = parseCssColor(this.backgroundColor);
     this.metrics = createBaseMetrics("webgl-strict", backend, bufferStrategy);
+    this.metrics.gpu_prepare_sync_mode = this.gpuPrepareSync;
   }
 
   setZIndex(zIndex: number) {
@@ -222,6 +379,11 @@ export abstract class BaseStage {
 
   setTrialActive(active: boolean) {
     this.trialActive = active;
+  }
+
+  setGpuPrepareSync(mode: GpuPrepareSyncMode) {
+    this.gpuPrepareSync = mode;
+    this.metrics.gpu_prepare_sync_mode = mode;
   }
 
   setMetricSeriesRecording(commitSeries: boolean, gpuSeries: boolean) {
@@ -244,10 +406,13 @@ export abstract class BaseStage {
       this.metrics.render_backend,
       this.metrics.buffer_strategy,
     );
+    this.metrics.gpu_prepare_sync_mode = this.gpuPrepareSync;
     this.commitDurationSum = 0;
     this.commitDurationMax = null;
     this.gpuDurationSum = 0;
     this.gpuDurationMax = null;
+    this.commitSeriesOffset = 0;
+    this.gpuSeriesOffset = 0;
   }
 
   registerSprite(sprite: SpriteDrawable) {
@@ -273,8 +438,10 @@ export abstract class BaseStage {
       this.markDirty();
     }
 
+    // P0.4 (iteración 7): el disposer retira rápido — la expulsión real de
+    // textura ocurre en runTextureMaintenance (no-responseSafe).
     return () => {
-      this.removeDrawable(sprite.id);
+      this.removeDrawableFast(sprite.id);
     };
   }
 
@@ -299,8 +466,10 @@ export abstract class BaseStage {
       this.markDirty();
     }
 
+    // P0.4 (iteración 7): retiro rápido; la expulsión real ocurre en
+    // runTextureMaintenance (no-responseSafe).
     return () => {
-      this.removeDrawable(rect.id);
+      this.removeDrawableFast(rect.id);
     };
   }
 
@@ -370,9 +539,10 @@ export abstract class BaseStage {
       duration,
     );
     if (this.recordCommitSeries) {
+      const truncated = pushBounded(this.metrics.commit_durations, duration);
       this.metrics.commit_series_truncated =
-        pushBounded(this.metrics.commit_durations, duration) ||
-        this.metrics.commit_series_truncated;
+        truncated || this.metrics.commit_series_truncated;
+      if (truncated) this.commitSeriesOffset += 1;
     }
     this.metrics.draw_call_count += drawCalls;
     this.metrics.mean_commit_duration = round3(
@@ -412,6 +582,114 @@ export abstract class BaseStage {
     };
   }
 
+  /**
+   * P0.4 (iteración 7): snapshot de contadores monotónicos O(1) para PHASE R.
+   * NO consulta la GPU (sin getQueryParameter/getParameter) y NO copia
+   * arrays de series. Los valores medios/máximos se derivan de los sums
+   * acumulados y de los slices acotados.
+   */
+  snapshotCountersNoPoll(): StageMetricCursor {
+    return {
+      render_backend_requested: this.metrics.render_backend_requested,
+      render_backend: this.metrics.render_backend,
+      buffer_strategy: this.metrics.buffer_strategy,
+      commit_count: this.metrics.commit_count,
+      commit_duration_sum: this.commitDurationSum,
+      commit_duration_max: this.commitDurationMax,
+      draw_call_count: this.metrics.draw_call_count,
+      texture_uploads: this.metrics.texture_uploads_during_trial,
+      buffer_uploads: this.metrics.buffer_uploads_during_trial,
+      shader_compiles: this.metrics.shader_compiles_during_trial,
+      webgl_context_lost_count: this.metrics.webgl_context_lost_count,
+      commit_unsynced_count: this.metrics.commit_unsynced_count,
+      gpu_timer_available: this.metrics.gpu_timer_available,
+      gpu_draw_count: this.metrics.gpu_draw_count,
+      gpu_duration_sum: this.gpuDurationSum,
+      gpu_duration_max: this.gpuDurationMax,
+      gpu_pending_query_count: this.metrics.gpu_pending_query_count,
+      gpu_disjoint_count: this.metrics.gpu_disjoint_count,
+      gpu_prepare_sync_mode: this.metrics.gpu_prepare_sync_mode,
+      gpu_prepare_sync_confirmed: this.metrics.gpu_prepare_sync_confirmed,
+      gpu_prepare_sync_duration_ms: this.metrics.gpu_prepare_sync_duration_ms,
+      gpu_prepare_sync_error: this.metrics.gpu_prepare_sync_error,
+      commit_series_next_index:
+        this.commitSeriesOffset + this.metrics.commit_durations.length,
+      gpu_series_next_index:
+        this.gpuSeriesOffset + this.metrics.gpu_draw_durations.length,
+      commit_series_truncated: this.metrics.commit_series_truncated,
+      gpu_series_truncated: this.metrics.gpu_series_truncated,
+    };
+  }
+
+  /**
+   * P1.1 (iteración 7): slice acotado por secuencia [from, to) — sólo el
+   * tramo que pertenece a UN trial. `truncated` indica que el ring acotado
+   * ya no retenía parte del tramo.
+   */
+  getMetricSeriesSlice(
+    commitFrom: number,
+    commitTo: number,
+    gpuFrom: number,
+    gpuTo: number,
+  ): StageMetricSeriesSlice {
+    const commitStart = Math.max(0, commitFrom - this.commitSeriesOffset);
+    const commitEnd = Math.min(
+      this.metrics.commit_durations.length,
+      Math.max(0, commitTo - this.commitSeriesOffset),
+    );
+    const gpuStart = Math.max(0, gpuFrom - this.gpuSeriesOffset);
+    const gpuEnd = Math.min(
+      this.metrics.gpu_draw_durations.length,
+      Math.max(0, gpuTo - this.gpuSeriesOffset),
+    );
+    const truncated =
+      commitFrom < this.commitSeriesOffset || gpuFrom < this.gpuSeriesOffset;
+    return {
+      commitDurations:
+        commitStart <= commitEnd
+          ? this.metrics.commit_durations.slice(commitStart, commitEnd)
+          : [],
+      gpuDrawDurations:
+        gpuStart <= gpuEnd
+          ? this.metrics.gpu_draw_durations.slice(gpuStart, gpuEnd)
+          : [],
+      truncated,
+    };
+  }
+
+  /**
+   * P0.4 (iteración 7): retiro rápido de drawables — quita la referencia del
+   * runtime activo y decrementa la referencia lógica de textura SIN evictar
+   * (sin gl.deleteTexture, sin ordenamientos). La expulsión real ocurre en
+   * `runTextureMaintenance()` (tarea no-responseSafe).
+   */
+  removeDrawableFast(id: string) {
+    const drawable = this.drawables.get(id);
+    if (!drawable || !this.drawables.delete(id)) return;
+    this.pendingVisibilityCommits = this.pendingVisibilityCommits.filter(
+      (event) => event.id !== id,
+    );
+    if (drawable.kind === "sprite") this.releaseTextureFast(drawable.textureKey);
+    this.removeFromOrdered(this.orderedDrawables, drawable);
+    this.removeFromOrdered(this.visibleDrawables, drawable);
+    if (drawable.visible) this.markDirty();
+  }
+
+  /**
+   * P0.4 (iteración 7): expulsión real de texturas (gl.deleteTexture,
+   * filtrado/ordenación del cache) — NUNCA dentro de una tarea
+   * response-safe. El plugin la agenda como tarea no-responseSafe tras
+   * PHASE R.
+   */
+  runTextureMaintenance(): void {
+    this.evictUnusedTextures();
+  }
+
+  protected releaseTextureFast(_key: string) {}
+
+  /** Overridden by GPU stages; no-op for non-retained backends. */
+  protected evictUnusedTextures() {}
+
   destroy() {
     for (const drawable of this.drawables.values()) {
       if (drawable.kind === "sprite") this.releaseTexture(drawable.textureKey);
@@ -427,13 +705,28 @@ export abstract class BaseStage {
     return {
       drawableCount: this.drawables.size,
       pendingVisibilityCallbacks: this.pendingVisibilityCommits.length,
+      gpuResourceCallCount: this.gpuResourceCallCount,
     };
+  }
+
+  getGpuResourceCallCount() {
+    return this.gpuResourceCallCount;
   }
 
   abstract preloadTexture(
     key: string,
     source: CanvasImageSource,
   ): string | null;
+
+  /** True only when `key` already has a resident GPU texture on this stage. */
+  abstract isTextureResident(key: string): boolean;
+
+  /**
+   * P1.3: prepare-time GPU synchronization. Must ONLY run during preparation,
+   * never inside the critical rAF tick. `fence` (WebGL2) can CONFIRM driver
+   * completion; `finish` and `none` only guarantee the commands were issued.
+   */
+  abstract syncGpuForPrepare(): GpuPrepareSyncResult;
 
   protected abstract renderFrame(timestamp: number): number;
 
@@ -571,6 +864,26 @@ class WebGLStage extends BaseStage {
     return key;
   }
 
+  isTextureResident(key: string) {
+    return this.textures.has(key);
+  }
+
+  /**
+   * P1.3: bounded prepare-time GPU synchronization. Runs only from the
+   * preparation phase (before markReady), never inside a rAF tick.
+   */
+  syncGpuForPrepare(): GpuPrepareSyncResult {
+    const startedAt = performance.now();
+    const result = runGpuPrepareSync(this.gl, this.gpuPrepareSync);
+    const durationMs =
+      result.mode === "none" ? 0 : Math.max(0, performance.now() - startedAt);
+    this.metrics.gpu_prepare_sync_mode = result.mode;
+    this.metrics.gpu_prepare_sync_confirmed = result.confirmed;
+    this.metrics.gpu_prepare_sync_duration_ms = round3(durationMs);
+    this.metrics.gpu_prepare_sync_error = result.error;
+    return { ...result, durationMs: round3(durationMs) };
+  }
+
   protected getTextureSource(key: string) {
     return this.textureSources.get(key);
   }
@@ -593,6 +906,17 @@ class WebGLStage extends BaseStage {
     this.evictUnusedTextures();
   }
 
+  /**
+   * P0.4 (iteración 7): decremento de referencia lógica SIN expulsión —
+   * response-safe. El gl.deleteTexture real queda en runTextureMaintenance.
+   */
+  protected releaseTextureFast(key: string) {
+    const usage = this.textureUsage.get(key);
+    if (!usage) return;
+    usage.references = Math.max(0, usage.references - 1);
+    usage.lastUsed = ++this.textureUseSequence;
+  }
+
   getResourceDiagnostics() {
     return {
       ...super.getResourceDiagnostics(),
@@ -609,11 +933,15 @@ class WebGLStage extends BaseStage {
     super.destroy();
     for (const query of this.pendingGpuQueries) this.gl.deleteQuery?.(query);
     this.pendingGpuQueries = [];
-    for (const texture of this.textures.values()) this.gl.deleteTexture?.(texture);
+    for (const texture of this.textures.values()) {
+      this.gl.deleteTexture?.(texture);
+      this.gpuResourceCallCount += 1;
+    }
     this.textures.clear();
     this.textureSources.clear();
     this.textureUsage.clear();
     this.gl.deleteTexture?.(this.whiteTexture);
+    this.gpuResourceCallCount += 1;
     this.gl.deleteBuffer?.(this.positionBuffer);
     this.gl.deleteBuffer?.(this.texCoordBuffer);
     this.gl.deleteProgram?.(this.program);
@@ -626,7 +954,10 @@ class WebGLStage extends BaseStage {
     while (unused.length > MAX_UNUSED_TEXTURE_CACHE_ENTRIES) {
       const [key] = unused.shift()!;
       const texture = this.textures.get(key);
-      if (texture) this.gl.deleteTexture?.(texture);
+      if (texture) {
+        this.gl.deleteTexture?.(texture);
+        this.gpuResourceCallCount += 1;
+      }
       this.textures.delete(key);
       this.textureSources.delete(key);
       this.textureUsage.delete(key);
@@ -706,9 +1037,10 @@ class WebGLStage extends BaseStage {
         );
         this.metrics.max_gpu_draw_duration = round3(this.gpuDurationMax);
         if (this.recordGpuSeries) {
+          const truncated = pushBounded(this.metrics.gpu_draw_durations, duration);
           this.metrics.gpu_series_truncated =
-            pushBounded(this.metrics.gpu_draw_durations, duration) ||
-            this.metrics.gpu_series_truncated;
+            truncated || this.metrics.gpu_series_truncated;
+          if (truncated) this.gpuSeriesOffset += 1;
         }
         gl.deleteQuery(query);
       } else {
@@ -816,6 +1148,7 @@ class WebGLStage extends BaseStage {
       gl.UNSIGNED_BYTE,
       new Uint8Array([255, 255, 255, 255]),
     );
+    this.gpuResourceCallCount += 2;
     return texture;
   }
 
@@ -847,6 +1180,7 @@ class WebGLStage extends BaseStage {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+    this.gpuResourceCallCount += 2;
     if (this.trialActive) {
       this.metrics.texture_uploads_during_trial += 1;
     }
@@ -940,6 +1274,7 @@ export function getCanvasStage(
       options.recordCommitSeries === true,
       options.recordGpuSeries === true,
     );
+    existing.setGpuPrepareSync(options.gpuPrepareSync ?? "none");
     if (options.zIndex !== undefined) {
       existing.setZIndex(
         Math.max(Number(existing.canvas.style.zIndex) || 0, options.zIndex),

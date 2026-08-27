@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { BaseStage, StageCommitInfo } from "../renderer/CanvasStage";
+import {
+  BaseStage,
+  GpuPrepareSyncGl,
+  StageCommitInfo,
+  runGpuPrepareSync,
+} from "../renderer/CanvasStage";
 
 class FakeStage extends BaseStage {
   renderedFrames: number[] = [];
@@ -12,6 +17,10 @@ class FakeStage extends BaseStage {
 
   preloadTexture(_key: string, _source: any): string | null {
     return "texture";
+  }
+
+  syncGpuForPrepare() {
+    return { mode: "none" as const, confirmed: false, durationMs: 0, error: null };
   }
 
   protected renderFrame(timestamp: number): number {
@@ -291,5 +300,86 @@ describe("CanvasStage baseline characterization", () => {
       "prepared-17",
       "prepared-923",
     ]);
+  });
+});
+
+describe("P1.3 prepare-time GPU synchronization", () => {
+  const FENCE_CONSTANTS = {
+    ALREADY_SIGNALED: 1,
+    CONDITION_SATISFIED: 2,
+    SYNC_FLUSH_COMMANDS_BIT: 4,
+    SYNC_GPU_COMMANDS_COMPLETE: 8,
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("none only reports issued semantics and never calls GL sync APIs", () => {
+    const finish = vi.fn();
+    const result = runGpuPrepareSync({ finish }, "none");
+    expect(result).toEqual({ mode: "none", confirmed: false, error: null });
+    expect(finish).not.toHaveBeenCalled();
+  });
+
+  it("finish guarantees issued, never physical completion", () => {
+    const finish = vi.fn();
+    const result = runGpuPrepareSync({ finish }, "finish");
+    expect(result.mode).toBe("finish");
+    expect(result.confirmed).toBe(false);
+    expect(result.error).toBeNull();
+    expect(finish).toHaveBeenCalledTimes(1);
+  });
+
+  it("fence confirms completion when the driver signals within the bounded wait", () => {
+    const deleteSync = vi.fn();
+    const gl: GpuPrepareSyncGl = {
+      ...FENCE_CONSTANTS,
+      fenceSync: vi.fn(() => ({ id: 1 })),
+      clientWaitSync: vi.fn(() => 1), // ALREADY_SIGNALED
+      deleteSync,
+    };
+    const result = runGpuPrepareSync(gl, "fence");
+    expect(result.mode).toBe("fence");
+    expect(result.confirmed).toBe(true);
+    expect(result.error).toBeNull();
+    expect(deleteSync).toHaveBeenCalledWith({ id: 1 });
+    expect(gl.clientWaitSync).toHaveBeenCalledWith(
+      { id: 1 },
+      FENCE_CONSTANTS.SYNC_FLUSH_COMMANDS_BIT,
+      10_000_000,
+    );
+  });
+
+  it("fence reports an explicit timeout instead of claiming completion", () => {
+    const gl: GpuPrepareSyncGl = {
+      ...FENCE_CONSTANTS,
+      fenceSync: vi.fn(() => ({ id: 2 })),
+      clientWaitSync: vi.fn(() => 3), // TIMEOUT_EXPIRED
+      deleteSync: vi.fn(),
+    };
+    const result = runGpuPrepareSync(gl, "fence");
+    expect(result.confirmed).toBe(false);
+    expect(result.error).toBe("fence_not_signaled_within_timeout");
+  });
+
+  it("fence degrades explicitly on WebGL1 (no sync API)", () => {
+    const result = runGpuPrepareSync({}, "fence");
+    expect(result.confirmed).toBe(false);
+    expect(result.error).toBe("fence_unavailable_requires_webgl2");
+  });
+
+  it("never calls sync APIs for mode none inside any code path", () => {
+    const gl: GpuPrepareSyncGl = {
+      ...FENCE_CONSTANTS,
+      fenceSync: vi.fn(() => ({ id: 3 })),
+      clientWaitSync: vi.fn(() => 1),
+      deleteSync: vi.fn(),
+      finish: vi.fn(),
+    };
+    runGpuPrepareSync(gl, "none");
+    expect(gl.fenceSync).not.toHaveBeenCalled();
+    expect(gl.finish).not.toHaveBeenCalled();
+    expect(gl.clientWaitSync).not.toHaveBeenCalled();
   });
 });

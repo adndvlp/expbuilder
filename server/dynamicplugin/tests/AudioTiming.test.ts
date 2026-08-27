@@ -159,44 +159,63 @@ describe("AudioComponent WebAudio scheduled path", () => {
   }
 
   function startedTiming() {
-    const timing = createPrecisionTiming({ expectedFrameMs: 20 });
-    timing.startAt(1000, "fresh_raf");
-    return timing;
+    return timingAt(1000);
   }
 
-  it("cannot arm or start playback before required audio preparation resolves", async () => {
-    let resolvePlayer!: (player: any) => void;
-    const play = vi.fn().mockResolvedValue(undefined);
-    const playerPromise = new Promise<any>((resolve) => {
-      resolvePlayer = resolve;
+  function timingAt(origin: number) {
+    const cancel = () => {};
+    return createPrecisionTiming({
+      expectedFrameMs: 20,
+      trialContext: {
+        id: "audio-test-context",
+        getFrameIntervalEstimate: () => 20,
+        start: vi.fn(),
+        stop: vi.fn(),
+        onStart: (callback: any) => {
+          callback(origin, {
+            source: "frame_engine_raf",
+            scheduledTimestamp: origin,
+          });
+          return cancel;
+        },
+        onFrame: () => cancel,
+        onFrameCommit: () => cancel,
+        onPostCommit: () => cancel,
+        scheduleAt: vi.fn(() => cancel),
+        requestBoundary: vi.fn(() => true),
+        replaceBoundary: vi.fn(() => true),
+        queuePostCritical: vi.fn(() => ({ cancel })),
+        setNextAudioDeadline: vi.fn(),
+        recordStimulusCommit: vi.fn(),
+        getTransitionTelemetry: () => [],
+      } as any,
     });
+  }
+
+  it("never creates an HTMLAudio player for the precision no-controls path", async () => {
+    const getAudioPlayer = vi.fn();
     const jsPsych = {
       pluginAPI: {
         audioContext: () => null,
-        getAudioPlayer: vi.fn(() => playerPromise),
+        getAudioPlayer,
       },
     };
     const component = new AudioComponent(jsPsych as any);
     const preparation = component.prepare(document.body, {
       stimulus: "required.wav",
       autoplay: true,
+      show_controls: false,
     });
 
+    expect(preparation).toBeNull();
+    expect(getAudioPlayer).not.toHaveBeenCalled();
+    expect(component.getResourceReadinessState({
+      stimulus: "required.wav",
+      show_controls: false,
+    }).resourceReady).toBe(false);
     component.arm();
     component.activate({ timestamp: 100 });
-    expect(play).not.toHaveBeenCalled();
-
-    resolvePlayer({
-      play,
-      pause: vi.fn(),
-      stop: vi.fn(),
-      ended: false,
-    });
-    await preparation;
-    component.arm();
-    component.activate({ timestamp: 108.333 });
-    await Promise.resolve();
-    expect(play).toHaveBeenCalledTimes(1);
+    expect(getAudioPlayer).not.toHaveBeenCalled();
     component.destroy();
   });
 
@@ -252,7 +271,10 @@ describe("AudioComponent WebAudio scheduled path", () => {
       stimulus: "audio.wav",
       autoplay: true,
     });
-    component.arm({ scheduledTimestamp: 1000 });
+    component.arm({
+      scheduledTimestamp: 990,
+      predictedSelectedFrameTime: 1000,
+    });
 
     expect(context.createdSources).toHaveLength(1);
     expect(context.createdSources[0].startArgs).toEqual([0.54]);
@@ -260,10 +282,55 @@ describe("AudioComponent WebAudio scheduled path", () => {
       audio_prearmed: true,
       audio_arm_lead_ms: 100,
       audio_requested_performance_time: 1000,
+      audio_requested_ideal_performance_time: 990,
+      audio_predicted_selected_frame_time: 1000,
     });
 
     component.activate({ timestamp: 1000 });
     expect(context.createdSources).toHaveLength(1);
+    component.destroy();
+  });
+
+  it("cancels and re-arms a pre-scheduled source when the selected boundary frame changes", async () => {
+    stubFetch();
+    const context = createFakeAudioContext({
+      currentTime: 0.5,
+      baseLatency: 0.01,
+      outputTimestamp: { contextTime: 0.5, performanceTime: 950 },
+    });
+    (context.decodeAudioData as any) = vi.fn().mockResolvedValue(TEST_BUFFER);
+    await preloadAudioBuffer(context as any, "audio.wav", 1000);
+    vi.spyOn(performance, "now").mockReturnValue(900);
+
+    const component = new AudioComponent(fakeJsPsych(context) as any);
+    await component.prepare(document.body, {
+      name: "Audio_1",
+      stimulus: "audio.wav",
+      autoplay: true,
+    });
+    component.arm({
+      scheduledTimestamp: 990,
+      predictedSelectedFrameTime: 1000,
+    });
+    component.arm({
+      scheduledTimestamp: 975,
+      predictedSelectedFrameTime: 983.333,
+    });
+
+    expect(context.createdSources).toHaveLength(2);
+    expect(context.createdSources[0].stopArgs.at(-1)).toBe(-1);
+    expect(context.createdSources[1].startArgs[0]).toBeCloseTo(0.523333, 6);
+    expect(component.getDiagnostics()).toMatchObject({
+      audio_requested_performance_time: 983.333,
+      audio_requested_ideal_performance_time: 975,
+      audio_predicted_selected_frame_time: 983.333,
+      audio_previous_requested_performance_time: 1000,
+      audio_rearmed: true,
+      audio_rearm_count: 1,
+    });
+
+    component.activate({ timestamp: 983.333 });
+    expect(context.createdSources).toHaveLength(2);
     component.destroy();
   });
 
@@ -282,8 +349,7 @@ describe("AudioComponent WebAudio scheduled path", () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     // origin 800 → target 0.34 < currentTime 0.5 → clamped, 160ms late
-    const timing = createPrecisionTiming({ expectedFrameMs: 20 });
-    timing.startAt(800, "fresh_raf");
+    const timing = timingAt(800);
     await component.render(container, {
       name: "Audio_1",
       stimulus: "audio.wav",
@@ -308,6 +374,7 @@ describe("AudioComponent WebAudio scheduled path", () => {
       name: "Audio_1",
       stimulus: "audio.wav",
       autoplay: true,
+      show_controls: true,
       __timing: startedTiming(),
     });
     await Promise.resolve();

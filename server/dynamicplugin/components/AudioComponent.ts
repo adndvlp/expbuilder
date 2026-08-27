@@ -49,8 +49,8 @@ const round3 = (value: number): number => Math.round(value * 1000) / 1000;
  * When a usable WebAudio AudioContext and a pre-decoded AudioBuffer are
  * available, playback is scheduled on the AudioContext clock with an
  * explicit target time translated from the performance-domain trial origin.
- * Otherwise playback falls back to the jsPsych HTMLAudio player and is
- * labeled timing-degraded.
+   * The no-controls precision path requires the decoded buffer and never
+   * constructs an HTMLAudio player.
  */
 class AudioComponent {
   private jsPsych: any;
@@ -67,6 +67,8 @@ class AudioComponent {
   private armed = false;
   private playbackRequested = false;
   private resourceReadyAt: number | null = null;
+  private scheduledPerformanceTarget: number | null = null;
+  private audioRearmCount = 0;
 
   constructor(jsPsych: any) {
     this.jsPsych = jsPsych;
@@ -81,20 +83,33 @@ class AudioComponent {
    * @param config - Configuration for the audio
    * @returns The rendered audio element (if controls are shown)
    */
-  async prepare(
+  prepare(
     container: HTMLElement,
     config: any,
-  ): Promise<HTMLElement | null> {
+  ): HTMLElement | null | Promise<HTMLElement | null> {
     this.config = config;
     this.prepared = false;
     this.armed = false;
     this.playbackRequested = false;
-    // Get audio player from jsPsych (fallback/legacy path)
-    this.audio = await this.jsPsych.pluginAPI.getAudioPlayer(config.stimulus);
-    this.resourceReadyAt = performance.now();
+    this.scheduledPerformanceTarget = null;
+    this.audioRearmCount = 0;
+    this.audio = null;
+    this.timedBuffer =
+      this.context && typeof this.context.decodeAudioData === "function"
+        ? getPreloadedAudioBuffer(this.context, config.stimulus)
+        : null;
+    if (this.timedBuffer) this.resourceReadyAt = performance.now();
 
-    // Only create visible element if controls are requested
-    if (config.show_controls) {
+    if (config.show_controls !== true) {
+      this.prepared = true;
+      return null;
+    }
+
+    return Promise.resolve(
+      this.jsPsych.pluginAPI.getAudioPlayer(config.stimulus),
+    ).then((audio) => {
+      this.audio = audio;
+      this.resourceReadyAt ??= performance.now();
       const audioElement = document.createElement("div");
       audioElement.id = config.name
         ? `jspsych-dynamic-${config.name}-stimulus`
@@ -110,25 +125,21 @@ class AudioComponent {
 
       container.appendChild(audioElement);
       this.element = audioElement;
-    }
-
-    // Timed WebAudio path: use a pre-decoded buffer when available
-    // (preloadAssets decodes into the AudioTiming cache before
-    // presentation). When the cache is cold, playback falls back to the
-    // HTMLAudio player instead of decoding in the presentation path.
-    if (this.context && typeof this.context.decodeAudioData === "function") {
-      this.timedBuffer = getPreloadedAudioBuffer(this.context, config.stimulus);
-    }
-
-    this.prepared = true;
-    return this.element;
+      this.prepared = true;
+      return this.element;
+    });
   }
 
   getPrecisionReadiness() {
     const shouldAutoplay =
       this.config?.autoplay !== undefined ? this.config.autoplay : true;
     const webAudioReady = !!this.context && !!this.timedBuffer;
-    const ready = this.prepared && !!this.audio && (!shouldAutoplay || webAudioReady);
+    const requiresControls = this.config?.show_controls === true;
+    const ready =
+      this.prepared &&
+      (requiresControls
+        ? !!this.audio && (!shouldAutoplay || webAudioReady)
+        : !shouldAutoplay || webAudioReady);
     return {
       ready,
       reason: ready
@@ -142,28 +153,56 @@ class AudioComponent {
     };
   }
 
-  /** Compatibility entry point for callers outside Dynamic's lifecycle. */
+  getResourceReadinessState(config?: any) {
+    if (config?.show_controls === true) {
+      return {
+        resourceReady: false,
+        gpuResourceReady: true,
+        runtimeMaterializationCostEstimateMs: null,
+      };
+    }
+    const buffer =
+      this.context && typeof this.context.decodeAudioData === "function"
+        ? getPreloadedAudioBuffer(this.context, config?.stimulus)
+        : null;
+    return {
+      resourceReady: buffer !== null,
+      gpuResourceReady: true,
+      runtimeMaterializationCostEstimateMs: buffer ? 0.5 : null,
+    };
+  }
+
+  /** Standalone lifecycle entry point; timing authority is still mandatory. */
   async render(
     container: HTMLElement,
     config: any,
   ): Promise<HTMLElement | null> {
     const element = await this.prepare(container, config);
     this.arm();
-    if (config.__timing) {
-      config.__timing.onStart((timestamp: number) => {
-        this.activate({ timestamp });
-      });
-    } else {
-      this.activate({ timestamp: performance.now() });
+    if (!config.__timing?.isGlobalFrameEngine?.()) {
+      throw new Error("AudioComponent requires the global FrameEngine timing authority.");
     }
+    config.__timing.onStart((timestamp: number) => {
+      this.activate({ timestamp });
+    });
     return element;
   }
 
-  arm(info: { scheduledTimestamp?: number | null } = {}) {
+  arm(
+    info: {
+      scheduledTimestamp?: number | null;
+      predictedSelectedFrameTime?: number | null;
+    } = {},
+  ) {
     if (!this.prepared) return;
     this.armed = true;
 
-    const target = info.scheduledTimestamp;
+    const idealTarget = info.scheduledTimestamp;
+    const predictedTarget = info.predictedSelectedFrameTime;
+    const target =
+      typeof predictedTarget === "number" && Number.isFinite(predictedTarget)
+        ? predictedTarget
+        : idealTarget;
     this.config?.__timing?.setNextAudioDeadline?.(
       typeof target === "number" ? target : null,
     );
@@ -173,7 +212,6 @@ class AudioComponent {
     if (
       !this.playbackRequested &&
       shouldAutoplay &&
-      this.audio &&
       this.timedBuffer &&
       this.context &&
       typeof target === "number" &&
@@ -185,6 +223,40 @@ class AudioComponent {
       this.config?.__timing?.setNextAudioDeadline?.(null);
       this.diagnostics.audio_prearmed = true;
       this.diagnostics.audio_arm_lead_ms = round3(target - armNow);
+      this.diagnostics.audio_requested_ideal_performance_time =
+        typeof idealTarget === "number" ? round3(idealTarget) : null;
+      this.diagnostics.audio_predicted_selected_frame_time = round3(target);
+      this.diagnostics.audio_rearmed = this.audioRearmCount > 0;
+      this.diagnostics.audio_rearm_count = this.audioRearmCount;
+      return;
+    }
+
+    if (
+      this.playbackRequested &&
+      this.timedSource &&
+      typeof target === "number" &&
+      Number.isFinite(target) &&
+      this.scheduledPerformanceTarget !== null &&
+      Math.abs(target - this.scheduledPerformanceTarget) > 0.001
+    ) {
+      const previousTarget = this.scheduledPerformanceTarget;
+      this.cancelTimedSource();
+      this.playbackRequested = false;
+      this.audioRearmCount += 1;
+      if (target > armNow) {
+        this.playbackRequested = true;
+        this.scheduleTimedPlayback(target);
+        this.config?.__timing?.setNextAudioDeadline?.(null);
+        this.diagnostics.audio_prearmed = true;
+        this.diagnostics.audio_arm_lead_ms = round3(target - armNow);
+        this.diagnostics.audio_requested_ideal_performance_time =
+          typeof idealTarget === "number" ? round3(idealTarget) : null;
+        this.diagnostics.audio_predicted_selected_frame_time = round3(target);
+        this.diagnostics.audio_rearmed = true;
+        this.diagnostics.audio_rearm_count = this.audioRearmCount;
+        this.diagnostics.audio_previous_requested_performance_time =
+          round3(previousTarget);
+      }
     }
   }
 
@@ -197,7 +269,7 @@ class AudioComponent {
       !this.armed ||
       this.playbackRequested ||
       !shouldAutoplay ||
-      !this.audio
+      (!this.timedBuffer && !this.audio)
     ) {
       return;
     }
@@ -255,6 +327,19 @@ class AudioComponent {
     }
   }
 
+  private cancelTimedSource() {
+    if (!this.timedSource) return;
+    this.timedSource.onended = null;
+    try {
+      this.timedSource.stop();
+    } catch {
+      // A source whose stop was already committed cannot be rescheduled.
+    }
+    this.timedSource = null;
+    this.timedEnded = false;
+    this.scheduledPerformanceTarget = null;
+  }
+
   /**
    * Schedule the decoded buffer on the AudioContext clock with an explicit
    * target context time translated from the performance-domain origin.
@@ -283,6 +368,7 @@ class AudioComponent {
     };
     source.start(scheduledContextTime);
     this.timedSource = source;
+    this.scheduledPerformanceTarget = performanceTargetMs;
 
     // Known fixed duration: schedule the stop on the audio clock instead of
     // a JS timer.
@@ -308,6 +394,8 @@ class AudioComponent {
       audio_timing_degraded: false,
       audio_timing_degraded_reason: "",
       physical_audio_onset_abs: null,
+      audio_rearmed: this.audioRearmCount > 0,
+      audio_rearm_count: this.audioRearmCount,
     };
   }
 
@@ -410,11 +498,11 @@ class AudioComponent {
     this.armed = false;
     this.playbackRequested = false;
     this.resourceReadyAt = null;
+    this.scheduledPerformanceTarget = null;
+    this.audioRearmCount = 0;
   }
 
-  /**
-   * Get the audio player instance (legacy jsPsych AudioPlayer contract).
-   */
+  /** Get the optional AudioPlayer used only by the controls-based DOM path. */
   getAudio() {
     return this.audio;
   }

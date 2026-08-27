@@ -134,6 +134,7 @@ function isChoiceValid(validResponses: any, key: string) {
 }
 
 export class ResponseTimingManager {
+  private static cumulativeLayoutReadCount = 0;
   private static sharedHub: {
     controller: AbortController;
     refCount: number;
@@ -153,6 +154,20 @@ export class ResponseTimingManager {
   ) => boolean | void;
   private listenerArmed = false;
   private pointerTargets: PointerTarget[] = [];
+  // P1.2 (iteración 5): layout cacheado — el pointer handler jamás fuerza un
+  // reflow. Se refresca fuera del handler (prepare/resize seguro).
+  private cachedContainerRect: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null = null;
+  private cachedTargetRects = new WeakMap<
+    HTMLElement,
+    { left: number; top: number; right: number; bottom: number }
+  >();
+  private pointerLayoutReadCount = 0;
+  private pointerHandlerDurationMs: number | null = null;
   private keyboardTargets: KeyboardTarget[] = [];
   private data: Record<string, any>;
   private responseAllowedFrom: ResponseAllowedFrom = "trial_onset";
@@ -181,6 +196,37 @@ export class ResponseTimingManager {
     this.enabled =
       resolveRawValue(this.trial.response_timing_enabled) !== false;
     this.data = this.createInitialData();
+  }
+
+  static getCumulativeLayoutReadCount() {
+    return ResponseTimingManager.cumulativeLayoutReadCount;
+  }
+
+  private recordLayoutRead(count = 1) {
+    this.pointerLayoutReadCount += count;
+    ResponseTimingManager.cumulativeLayoutReadCount += count;
+  }
+
+  /**
+   * Precision visual trials render into the shared persistent surface rather
+   * than a per-trial DOM container. Rebind before targets are armed so cached
+   * pointer geometry is measured against the surface that is actually shown.
+   */
+  setContainer(container: HTMLElement) {
+    if (this.container === container) return;
+    this.container = container;
+    this.cachedContainerRect = null;
+    this.cachedTargetRects = new WeakMap();
+  }
+
+  /** Seed experiment-owned surface geometry without consulting live layout. */
+  setPointerGeometry(rect: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  }) {
+    this.cachedContainerRect = { ...rect };
   }
 
   private static ensureSharedHub() {
@@ -277,10 +323,43 @@ export class ResponseTimingManager {
   registerPointerTarget(target: PointerTarget) {
     if (!this.enabled) return () => {};
     this.pointerTargets.push(target);
+    if (target.element) this.refreshPointerLayout();
     return () => {
       const index = this.pointerTargets.indexOf(target);
       if (index >= 0) this.pointerTargets.splice(index, 1);
     };
+  }
+
+  /**
+   * P1.2 (iteración 5): refresh del layout cacheado. Sólo se invoca fuera
+   * del event handler (prepare, resize seguro, activate). El handler de
+   * pointer usa exclusivamente la caché.
+   */
+  refreshPointerLayout() {
+    const elementTargets = this.pointerTargets.filter(
+      (target) => target.element,
+    );
+    if (this.cachedContainerRect && elementTargets.length === 0) return;
+    this.recordLayoutRead();
+    const rect = this.container.getBoundingClientRect();
+    this.cachedContainerRect = {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+    for (const target of elementTargets) {
+      if (target.element) {
+        this.recordLayoutRead();
+        const targetRect = target.element.getBoundingClientRect();
+        this.cachedTargetRects.set(target.element, {
+          left: targetRect.left,
+          top: targetRect.top,
+          right: targetRect.right,
+          bottom: targetRect.bottom,
+        });
+      }
+    }
   }
 
   finishWithoutResponse(offsetTime: number | null = null) {
@@ -368,6 +447,8 @@ export class ResponseTimingManager {
       response_now_at_handler: this.data.response_now_at_handler,
       response_timestamp_source: this.data.response_timestamp_source,
       response_event_lag: this.data.response_event_lag,
+      pointer_handler_duration: this.pointerHandlerDurationMs,
+      pointer_layout_read_count: this.pointerLayoutReadCount,
       response_bias_correction_ms: this.data.response_bias_correction_ms,
       response_calibration_profile_id:
         this.data.response_calibration_profile_id,
@@ -442,6 +523,7 @@ export class ResponseTimingManager {
   };
 
   private handlePointerDown = (event: PointerEvent) => {
+    const handlerStartedAt = performance.now();
     if (!this.enabled || this.responseRecorded) return;
 
     const coordinates = this.computePointerCoordinates(
@@ -479,6 +561,10 @@ export class ResponseTimingManager {
     }
     event.preventDefault();
     this.finishIfNeeded();
+    this.pointerHandlerDurationMs = Math.max(
+      0,
+      performance.now() - handlerStartedAt,
+    );
   };
 
   private handleVisibilityChange = () => {
@@ -825,7 +911,18 @@ export class ResponseTimingManager {
         return target;
       }
       if (target.element) {
-        const rect = target.element.getBoundingClientRect();
+        let rect = this.cachedTargetRects.get(target.element);
+        if (!rect) {
+          this.recordLayoutRead();
+          const live = target.element.getBoundingClientRect();
+          rect = {
+            left: live.left,
+            top: live.top,
+            right: live.right,
+            bottom: live.bottom,
+          };
+          this.cachedTargetRects.set(target.element, rect);
+        }
         if (
           clientX >= rect.left &&
           clientX <= rect.right &&
@@ -840,7 +937,19 @@ export class ResponseTimingManager {
   }
 
   private computePointerCoordinates(clientX: number, clientY: number) {
-    const rect = this.container.getBoundingClientRect();
+    let cached = this.cachedContainerRect;
+    if (!cached) {
+      this.recordLayoutRead();
+      const rect = this.container.getBoundingClientRect();
+      cached = {
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+      };
+      this.cachedContainerRect = cached;
+    }
+    const rect = cached;
     const canvasX =
       rect.width > 0
         ? ((clientX - rect.left) / rect.width) * this.canvasWidth
@@ -1137,6 +1246,8 @@ export class ResponseTimingManager {
         normalizeString(this.trial.external_reference_id, "") || "",
       response_error_ms: null,
       response_listener_attached: false,
+      pointer_handler_duration: null,
+      pointer_layout_read_count: 0,
       response_listener_removed: false,
     };
   }

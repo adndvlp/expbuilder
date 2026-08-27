@@ -43,8 +43,38 @@ describe("VideoComponent presentation telemetry", () => {
 
   it("keeps play request, first frame callback and expected display time distinct", async () => {
     vi.spyOn(performance, "now").mockReturnValue(110);
-    const timing = createPrecisionTiming({ expectedFrameMs: 1000 / 60 });
-    timing.startAt(100, "fresh_raf");
+    const cancel = () => {};
+    const timing = createPrecisionTiming({
+      expectedFrameMs: 1000 / 60,
+      trialContext: {
+        id: "video-test-context",
+        getFrameIntervalEstimate: () => 1000 / 60,
+        getFrameClock: () => ({
+          periodMs: 1000 / 60,
+          acceptedSamples: 0,
+          lastPredictionError: null,
+        }),
+        getFrameIndex: () => 0,
+        start: vi.fn(),
+        stop: vi.fn(),
+        onStart: (callback: any) => {
+          callback(100, {
+            source: "frame_engine_raf",
+            scheduledTimestamp: 100,
+          });
+          return cancel;
+        },
+        onFrame: () => cancel,
+        onFrameCommit: () => cancel,
+        onPostCommit: () => cancel,
+        scheduleAt: vi.fn(() => cancel),
+        requestBoundary: vi.fn(() => true),
+        replaceBoundary: vi.fn(() => true),
+        queuePostCritical: vi.fn(() => ({ cancel })),
+        recordStimulusCommit: vi.fn(),
+        getTransitionTelemetry: () => [],
+      } as any,
+    });
     const component = new VideoComponent({
       pluginAPI: { getVideoBuffer: vi.fn(() => null) },
     } as any);

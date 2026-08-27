@@ -5,7 +5,6 @@ import {
   getResponseRT,
   preloadBitmap,
   resolveTimingMs,
-  scheduleFrameEvent,
   setResponseStartTime,
 } from "../utils/PrecisionTiming";
 
@@ -1115,17 +1114,16 @@ class ButtonResponseComponent {
       resolveTimingMs(trial.enable_button_after, 0) ?? 0;
     if (enableButtonAfter > 0) {
       this.disableButtons();
-      this.enableTimeout = this.timing
-        ? this.timing.scheduleAt(
-            enableButtonAfter,
-            () => this.enableButtons(),
-            {
-              policy: "not_before",
-            },
-          )
-        : scheduleFrameEvent(enableButtonAfter, () => this.enableButtons(), {
-            policy: "not_before",
-          });
+      if (!this.timing) {
+        throw new Error(
+          "Delayed button activation requires an injected PrecisionTiming authority.",
+        );
+      }
+      this.enableTimeout = this.timing.scheduleAt(
+        enableButtonAfter,
+        () => this.enableButtons(),
+        { policy: "not_before" },
+      );
     }
 
     return this.buttonGroupElement ?? undefined;

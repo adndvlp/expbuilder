@@ -74,9 +74,14 @@ describe("general visual continuity eligibility", () => {
     ["HTML visual", [{ type: "HtmlComponent", stimulus_duration: 50 }]],
     ["video first-frame semantics", [{ type: "VideoComponent", stimulus_duration: 50 }]],
     ["Sketchpad mutable canvas", [{ type: "SketchpadComponent", stimulus_duration: 50 }]],
-    ["partial stimulus window", [image(25)]],
-  ])("keeps %s on the compatible legacy path", (_name, components) => {
+  ])("keeps %s non-continuous while retaining global timing", (_name, components) => {
     expect(intent(components as any[])).toBe("normal");
+  });
+
+  it("P0.2 (iteración 5): permite ventanas segmentadas de estímulos persistent-backend en la fast path", () => {
+    // A partial stimulus window over Image/Text is now scheduled as an
+    // intra-trial FrameEngine visual transition.
+    expect(intent([image(25)] as any[])).toBe("timing_continuous");
   });
 
   it("keeps a visual Button response layer outside the fast path", () => {

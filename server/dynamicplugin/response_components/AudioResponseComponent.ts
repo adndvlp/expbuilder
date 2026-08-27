@@ -3,7 +3,6 @@ import { ParameterType } from "jspsych";
 import {
   getResponseRT,
   resolveTimingMs,
-  scheduleFrameEvent,
 } from "../utils/PrecisionTiming";
 
 const version = "1.0.0";
@@ -247,13 +246,16 @@ class AudioResponseComponent {
           });
         }
       };
-      this.recordingDurationCancel = this.timing
-        ? this.timing.scheduleAt(recordingDuration, stopAtDuration, {
-            policy: "not_before",
-          })
-        : scheduleFrameEvent(recordingDuration, stopAtDuration, {
-            policy: "not_before",
-          });
+      if (!this.timing) {
+        throw new Error(
+          "Timed audio recording requires an injected PrecisionTiming authority.",
+        );
+      }
+      this.recordingDurationCancel = this.timing.scheduleAt(
+        recordingDuration,
+        stopAtDuration,
+        { policy: "not_before" },
+      );
     }
   }
 

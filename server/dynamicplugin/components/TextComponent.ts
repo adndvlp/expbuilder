@@ -4,7 +4,6 @@ import {
   createPrecisionTiming,
   getResponseRT,
   resolveTimingMs,
-  scheduleFrameEvent,
   scheduleStimulusVisibility,
   setResponseStartTime,
 } from "../utils/PrecisionTiming";
@@ -153,6 +152,16 @@ const info = {
       type: ParameterType.INT,
       default: null,
     },
+    /** P0.2: visual-boundary policy for the stimulus onset. Builder milliseconds default to nearest_frame. */
+    stimulus_onset_policy: {
+      type: ParameterType.STRING,
+      default: "nearest_frame",
+    },
+    /** P0.2: visual-boundary policy for the stimulus offset. Builder milliseconds default to nearest_frame. */
+    stimulus_duration_policy: {
+      type: ParameterType.STRING,
+      default: "nearest_frame",
+    },
 
     // ── Cloze / inline-input params (only relevant when text contains %%) ──
     /**
@@ -215,7 +224,7 @@ type Padding = {
   left: number;
 };
 
-type TextLayout = {
+export type TextLayout = {
   canvasWidth: number;
   canvasHeight: number;
   centerX: number;
@@ -234,6 +243,58 @@ type TextLayout = {
   borderColor: string;
   borderWidth: number;
 };
+
+export type PreparedTextVisualResource = {
+  signature: string;
+  textureKey: string;
+  layout: TextLayout;
+  textureCanvas: HTMLCanvasElement;
+  dpr: number;
+  resourceReadyAt: number;
+  gpuReadyAt: number | null;
+};
+
+const textRasterCache = new Map<string, PreparedTextVisualResource>();
+const publishedTextResources = new WeakMap<
+  CanvasStage,
+  Map<string, PreparedTextVisualResource>
+>();
+
+const unwrapTextParam = (raw: any, fallback: any) => {
+  if (raw === undefined || raw === null) return fallback;
+  if (typeof raw === "object" && "value" in raw) {
+    return raw.value !== undefined && raw.value !== null ? raw.value : fallback;
+  }
+  return raw;
+};
+
+export function getTextResourceSignature(config: any, dpr = window.devicePixelRatio || 1) {
+  const canvasStyles = unwrapTextParam(config?.__canvasStyles, {});
+  const coordinates = unwrapTextParam(config?.coordinates, { x: 0, y: 0 });
+  return JSON.stringify([
+    String(unwrapTextParam(config?.text, "Text")),
+    String(unwrapTextParam(config?.font_family, "sans-serif")),
+    Number(unwrapTextParam(config?.font_size, 16)),
+    unwrapTextParam(config?._font_size_runtime_vw, null),
+    String(unwrapTextParam(config?.font_weight, "normal")),
+    String(unwrapTextParam(config?.font_style, "normal")),
+    Number(unwrapTextParam(config?.line_height, 1.5)),
+    String(unwrapTextParam(config?.text_align, "center")),
+    unwrapTextParam(config?.width, null),
+    Number(unwrapTextParam(canvasStyles?.width, 1024)),
+    Number(unwrapTextParam(canvasStyles?.height, 768)),
+    Number(dpr),
+    String(unwrapTextParam(config?.font_color, "#000000")),
+    String(unwrapTextParam(config?.background_color, "transparent")),
+    String(unwrapTextParam(config?.padding, "0px")),
+    Number(unwrapTextParam(config?.border_radius, 0)),
+    String(unwrapTextParam(config?.border_color, "transparent")),
+    Number(unwrapTextParam(config?.border_width, 0)),
+    Number(coordinates?.x ?? 0),
+    Number(coordinates?.y ?? 0),
+    Number(unwrapTextParam(config?.rotation, 0)),
+  ]);
+}
 
 let textComponentCounter = 0;
 
@@ -255,6 +316,9 @@ class TextComponent {
   private offsetReached = false;
   private destroyed = false;
   private deactivateAtBoundary: ((timestamp: number) => void) | null = null;
+  private resourceReadyAt: number | null = null;
+  private gpuReadyAt: number | null = null;
+  private precisionFallbackReason = "";
 
   // ── Cloze state ─────────────────────────────────────────────────────────
   private isClozeMode: boolean = false;
@@ -270,6 +334,65 @@ class TextComponent {
   }
 
   static info = info;
+
+  static prepareMainResource(config: any): PreparedTextVisualResource {
+    const dpr = window.devicePixelRatio || 1;
+    const signature = getTextResourceSignature(config, dpr);
+    const cached = textRasterCache.get(signature);
+    if (cached) return cached;
+
+    const helper = new TextComponent(null);
+    const layout = helper.createTextLayout(config);
+    if (!layout) throw new Error("text_layout_prepare_failed");
+    const textureCanvas = document.createElement("canvas");
+    textureCanvas.width = Math.round(layout.canvasWidth * dpr);
+    textureCanvas.height = Math.round(layout.canvasHeight * dpr);
+    const textureCtx = textureCanvas.getContext("2d", { alpha: true });
+    if (!textureCtx) throw new Error("text_raster_context_unavailable");
+    textureCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    textureCtx.clearRect(0, 0, layout.canvasWidth, layout.canvasHeight);
+    helper.drawLayout(textureCtx, layout);
+    const resource: PreparedTextVisualResource = {
+      signature,
+      textureKey: `text:${signature}`,
+      layout,
+      textureCanvas,
+      dpr,
+      resourceReadyAt: performance.now(),
+      gpuReadyAt: null,
+    };
+    textRasterCache.set(signature, resource);
+    return resource;
+  }
+
+  static prepareGpuResource(stage: CanvasStage, config: any) {
+    const raster = TextComponent.prepareMainResource(config);
+    if (!stage.isTextureResident(raster.textureKey)) {
+      stage.preloadTexture(raster.textureKey, raster.textureCanvas);
+    }
+    if (!stage.isTextureResident(raster.textureKey)) {
+      throw new Error("text_gpu_upload_failed");
+    }
+    const resource: PreparedTextVisualResource = {
+      ...raster,
+      gpuReadyAt: performance.now(),
+    };
+    let resources = publishedTextResources.get(stage);
+    if (!resources) {
+      resources = new Map();
+      publishedTextResources.set(stage, resources);
+    }
+    resources.set(resource.signature, resource);
+    return resource;
+  }
+
+  static getPreparedVisualResource(stage: CanvasStage, config: any) {
+    const signature = getTextResourceSignature(config);
+    const resource = publishedTextResources.get(stage)?.get(signature) ?? null;
+    return resource && stage.isTextureResident(resource.textureKey)
+      ? resource
+      : null;
+  }
 
   /**
    * Resolve a parameter value that may be stored as a raw value OR as the
@@ -373,8 +496,6 @@ class TextComponent {
   }
 
   private createTextLayout(config: any): TextLayout | null {
-    if (!this.stage) return null;
-
     const measurementCanvas = document.createElement("canvas");
     const measurementCtx = measurementCanvas.getContext("2d");
     if (!measurementCtx) return null;
@@ -525,39 +646,65 @@ class TextComponent {
 
   private prepareCanvasText(config: any, zIndex: number): boolean {
     if (this.destroyed || !this.stage || this.prepared) return this.prepared;
+    const resource = TextComponent.getPreparedVisualResource(this.stage, config);
+    if (!resource) return false;
 
-    const layout = this.createTextLayout(config);
-    if (!layout) return false;
-
-    this.layout = layout;
-    this.updateTrackingElement(layout, zIndex);
+    this.layout = resource.layout;
+    this.resourceReadyAt = resource.resourceReadyAt;
+    this.gpuReadyAt = resource.gpuReadyAt;
+    this.updateTrackingElement(resource.layout, zIndex);
     this.removeDrawable?.();
-    const textureCanvas = document.createElement("canvas");
-    const dpr = window.devicePixelRatio || 1;
-    textureCanvas.width = Math.round(layout.canvasWidth * dpr);
-    textureCanvas.height = Math.round(layout.canvasHeight * dpr);
-    const textureCtx = textureCanvas.getContext("2d", { alpha: true });
-    if (!textureCtx) return false;
-    textureCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    textureCtx.clearRect(0, 0, layout.canvasWidth, layout.canvasHeight);
-    this.drawLayout(textureCtx, layout);
-    this.stage.preloadTexture(this.drawableId, textureCanvas);
     this.removeDrawable = this.stage.registerSprite({
       id: this.drawableId,
       zIndex,
       visible: false,
-      textureKey: this.drawableId,
-      source: textureCanvas,
+      textureKey: resource.textureKey,
+      source: resource.textureCanvas,
       x: 0,
       y: 0,
-      width: layout.canvasWidth,
-      height: layout.canvasHeight,
+      width: resource.layout.canvasWidth,
+      height: resource.layout.canvasHeight,
     });
     this.prepared = true;
     return true;
   }
 
-  private renderCanvasText(container: HTMLElement, config: any): HTMLElement {
+  prepare(
+    container: HTMLElement,
+    config: any,
+  ): HTMLElement | null {
+    const text = String(this.resolveParam(config.text, "Text"));
+    const parts = text.split("%");
+    const cloze = parts.length >= 3 && parts.length % 2 === 1;
+    if (cloze) return this.render(container, config);
+
+    const canvasStyles = this.resolveParam(config.__canvasStyles, {});
+    const stage = getCanvasStage(container, {
+      width: this.resolveParam(canvasStyles?.width, 1024),
+      height: this.resolveParam(canvasStyles?.height, 768),
+      backgroundColor: "transparent",
+      zIndex: resolveTimingMs(config.zIndex, 0) ?? 0,
+      backend: this.resolveParam(config.__renderBackend, "webgl-strict"),
+      recordGpuTiming: this.resolveParam(config.__recordGpuTiming, true),
+      recordCommitSeries: this.resolveParam(config.__recordCommitSeries, false),
+      recordGpuSeries: this.resolveParam(config.__recordGpuSeries, false),
+      gpuPrepareSync: this.resolveParam(config.__gpuPrepareSync, "none"),
+    });
+    if (!TextComponent.getPreparedVisualResource(stage, config)) {
+      if (config.__materializationOnly === true) {
+        this.precisionFallbackReason = "text_resource_not_prepared";
+        throw new Error(this.precisionFallbackReason);
+      }
+      TextComponent.prepareMainResource(config);
+      TextComponent.prepareGpuResource(stage, config);
+    }
+    return this.renderCanvasText(container, config);
+  }
+
+  private renderCanvasText(
+    container: HTMLElement,
+    config: any,
+  ): HTMLElement | null {
     const canvasStyles = this.resolveParam(config.__canvasStyles, {});
     const canvasWidth = this.resolveParam(canvasStyles?.width, 1024);
     const canvasHeight = this.resolveParam(canvasStyles?.height, 768);
@@ -569,6 +716,9 @@ class TextComponent {
     this.prepared = false;
     this.layout = null;
     this.deactivateAtBoundary = null;
+    this.resourceReadyAt = null;
+    this.gpuReadyAt = null;
+    this.precisionFallbackReason = "";
     const runtimeComponentId = config.__runtimeComponentId ?? config.name;
     this.drawableId = runtimeComponentId
       ? `text-${runtimeComponentId}`
@@ -583,26 +733,32 @@ class TextComponent {
       recordGpuTiming: this.resolveParam(config.__recordGpuTiming, true),
       recordCommitSeries: this.resolveParam(config.__recordCommitSeries, false),
       recordGpuSeries: this.resolveParam(config.__recordGpuSeries, false),
+      gpuPrepareSync: this.resolveParam(config.__gpuPrepareSync, "none"),
     });
 
-    this.element = document.createElement("div");
-    this.element.id = runtimeComponentId
-      ? `jspsych-text-component-${runtimeComponentId}`
-      : "jspsych-text-component";
-    this.element.className = "dynamic-text-component";
-    this.element.setAttribute("aria-hidden", "true");
-    this.element.style.position = "absolute";
-    this.element.style.left = "0";
-    this.element.style.top = "0";
-    this.element.style.width = "0";
-    this.element.style.height = "0";
-    this.element.style.margin = "0";
-    this.element.style.padding = "0";
-    this.element.style.background = "transparent";
-    this.element.style.pointerEvents = "none";
-    this.element.style.visibility = "hidden";
-    this.element.style.zIndex = String(zIndex);
-    container.appendChild(this.element);
+    // P0.5 (iteración 7): sin DIV de tracking en el precision global path —
+    // el texto dibujado en el canvas persistente no requiere DOM por trial.
+    // La geometría (rect, coordinates, size) se guarda en el componente JS.
+    if (config.__precisionGlobalPath !== true) {
+      this.element = document.createElement("div");
+      this.element.id = runtimeComponentId
+        ? `jspsych-text-component-${runtimeComponentId}`
+        : "jspsych-text-component";
+      this.element.className = "dynamic-text-component";
+      this.element.setAttribute("aria-hidden", "true");
+      this.element.style.position = "absolute";
+      this.element.style.left = "0";
+      this.element.style.top = "0";
+      this.element.style.width = "0";
+      this.element.style.height = "0";
+      this.element.style.margin = "0";
+      this.element.style.padding = "0";
+      this.element.style.background = "transparent";
+      this.element.style.pointerEvents = "none";
+      this.element.style.visibility = "hidden";
+      this.element.style.zIndex = String(zIndex);
+      container.appendChild(this.element);
+    }
 
     this.prepareCanvasText(config, zIndex);
 
@@ -653,7 +809,37 @@ class TextComponent {
     this.deactivateAtBoundary = hide;
 
     if (timing) {
-      if (stimulusOnset === null) {
+      const useVisualTransitions = timing.isGlobalFrameEngine?.() === true;
+      const onsetPolicy = (this.resolveParam(
+        config.stimulus_onset_policy,
+        "nearest_frame",
+      ) || "nearest_frame") as
+        | "nearest_frame"
+        | "strict_not_before_ms"
+        | "frame_tolerant_not_before";
+      const offsetPolicy = (this.resolveParam(
+        config.stimulus_duration_policy,
+        "nearest_frame",
+      ) || "nearest_frame") as
+        | "nearest_frame"
+        | "strict_not_before_ms"
+        | "frame_tolerant_not_before";
+      if (useVisualTransitions) {
+        // El onset se registra SIEMPRE como transición visual (aunque sea 0),
+        // de modo que el engine conoce desde qué frame el drawable está
+        // visible (mínimo-1-frame del offset).
+        this.cancelSchedule.push(
+          timing.scheduleVisualTransition({
+            key: `${this.drawableId}:onset`,
+            drawableKey: this.drawableId,
+            targetTimeMs: stimulusOnset ?? 0,
+            visible: true,
+            policy: onsetPolicy,
+            reason: "stimulus_onset",
+            onApply: draw,
+          }),
+        );
+      } else if (stimulusOnset === null) {
         timing.onStart(draw);
       } else {
         this.cancelSchedule.push(
@@ -662,23 +848,31 @@ class TextComponent {
       }
 
       if (stimulusDuration !== null && !deferOffsetToTrialBoundary) {
-        this.cancelSchedule.push(
-          timing.scheduleAt((stimulusOnset ?? 0) + stimulusDuration, hide, {
-            policy: "not_before",
-          }),
-        );
+        if (useVisualTransitions) {
+          this.cancelSchedule.push(
+            timing.scheduleVisualTransition({
+              key: `${this.drawableId}:offset`,
+              drawableKey: this.drawableId,
+              targetTimeMs: (stimulusOnset ?? 0) + stimulusDuration,
+              visible: false,
+              policy: offsetPolicy,
+              minimumPresentedFrames: stimulusDuration > 0 ? 1 : 0,
+              reason: "stimulus_offset",
+              onApply: hide,
+            }),
+          );
+        } else {
+          this.cancelSchedule.push(
+            timing.scheduleAt((stimulusOnset ?? 0) + stimulusDuration, hide, {
+              policy: "not_before",
+            }),
+          );
+        }
       }
     } else {
-      const drawDelay = stimulusOnset ?? 0;
-      this.cancelSchedule.push(scheduleFrameEvent(drawDelay, draw));
-
-      if (stimulusDuration !== null && !deferOffsetToTrialBoundary) {
-        this.cancelSchedule.push(
-          scheduleFrameEvent(drawDelay + stimulusDuration, hide, {
-            policy: "not_before",
-          }),
-        );
-      }
+      throw new Error(
+        "TextComponent requires an injected PrecisionTiming authority.",
+      );
     }
 
     return this.element;
@@ -697,7 +891,7 @@ class TextComponent {
     }
   }
 
-  render(container: HTMLElement, config: any): HTMLElement {
+  render(container: HTMLElement, config: any): HTMLElement | null {
     const text = this.resolveParam(config.text, "Text");
     const parts = String(text).split("%");
     this.isClozeMode = parts.length >= 3 && parts.length % 2 === 1;
@@ -893,7 +1087,50 @@ class TextComponent {
     return true;
   }
 
+  getPrecisionReadiness() {
+    const ready =
+      !this.isClozeMode &&
+      this.prepared &&
+      this.resourceReadyAt !== null &&
+      this.gpuReadyAt !== null;
+    return {
+      ready,
+      reason: ready ? "prepared_text_visual_resource_ready" : "text_not_ready",
+      fallbackReason: ready ? "" : this.precisionFallbackReason || "text_not_ready",
+      resourceReadyAt: this.resourceReadyAt,
+      gpuReadyAt: this.gpuReadyAt,
+    };
+  }
+
+  getResourceReadinessState(config?: any) {
+    const text = String(this.resolveParam(config?.text, "Text"));
+    const parts = text.split("%");
+    const cloze = parts.length >= 3 && parts.length % 2 === 1;
+    const stage = (config?.__canvasStage as CanvasStage | undefined) ?? this.stage;
+    const resource = !cloze && stage
+      ? TextComponent.getPreparedVisualResource(stage, config)
+      : null;
+    return {
+      resourceReady: resource !== null,
+      gpuResourceReady:
+        resource !== null && !!stage?.isTextureResident(resource.textureKey),
+      runtimeMaterializationCostEstimateMs: resource ? 1 : null,
+    };
+  }
   /** Returns the recorded answers, or null when not yet recorded. */
+  /** P0.3 (iteración 5): snapshot pequeño para fast retirement (PHASE R). */
+  freezeDataForFinalize() {
+    const renderedSize = this.getRenderedSize();
+    return {
+      renderedSize: renderedSize ?? null,
+      response: this.getResponse(),
+      responseTimestampSource: this.getResponseTimestampSource(),
+      audioDiagnostics:
+        typeof (this as any).getDiagnostics === "function"
+          ? (this as any).getDiagnostics()
+          : null,
+    };
+  }
   getResponse(): string[] | null {
     return this.response;
   }
@@ -952,6 +1189,9 @@ class TextComponent {
     this.layout = null;
     this.deactivateAtBoundary = null;
     this.prepared = false;
+    this.resourceReadyAt = null;
+    this.gpuReadyAt = null;
+    this.precisionFallbackReason = "";
     this.destroyed = true;
   }
 

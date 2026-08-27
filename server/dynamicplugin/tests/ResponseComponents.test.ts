@@ -15,9 +15,33 @@ function fakeJsPsych() {
 }
 
 function makeTiming(origin = 1000) {
-  const timing = createPrecisionTiming({ expectedFrameMs: 20 });
-  timing.startAt(origin, "fresh_raf");
-  return timing;
+  const cancel = () => {};
+  const context: any = {
+    id: "response-component-context",
+    getFrameIntervalEstimate: () => 20,
+    start: vi.fn(),
+    stop: vi.fn(),
+    onStart: vi.fn((callback) => {
+      callback(origin, {
+        source: "frame_engine_raf",
+        scheduledTimestamp: origin,
+      });
+      return cancel;
+    }),
+    onFrame: vi.fn(() => cancel),
+    onFrameCommit: vi.fn(() => cancel),
+    onPostCommit: vi.fn(() => cancel),
+    scheduleAt: vi.fn(() => cancel),
+    requestBoundary: vi.fn(() => true),
+    replaceBoundary: vi.fn(() => true),
+    queuePostCritical: vi.fn(() => ({ cancel })),
+    recordStimulusCommit: vi.fn(),
+    getTransitionTelemetry: vi.fn(() => []),
+  };
+  return createPrecisionTiming({
+    expectedFrameMs: 20,
+    trialContext: context,
+  });
 }
 
 function makeManager(options: {
@@ -154,7 +178,7 @@ describe("KeyboardResponseComponent timing authority", () => {
     document.body.innerHTML = "";
   });
 
-  it("manager enabled: registers keyboard target only, no legacy listener", () => {
+  it("manager enabled: registers only the shared keyboard target", () => {
     const jsPsych = fakeJsPsych();
     const component = new KeyboardResponseComponent(jsPsych);
     const registerKeyboardTarget = vi.fn(() => () => {});
@@ -167,8 +191,8 @@ describe("KeyboardResponseComponent timing authority", () => {
       __responseTiming: { enabled: true, registerKeyboardTarget },
     });
     expect(registerKeyboardTarget).toHaveBeenCalledTimes(1);
-    // A keydown on the root element must not be captured by any legacy
-    // component listener.
+    // A keydown on the root element must not be captured by a component-owned
+    // listener.
     vi.spyOn(performance, "now").mockReturnValue(1270);
     document.body.dispatchEvent(eventWithTimestamp(
       new KeyboardEvent("keydown", { key: "a", bubbles: true }),
@@ -206,7 +230,7 @@ describe("ClickResponseComponent timing authority", () => {
     document.body.innerHTML = "";
   });
 
-  it("manager enabled: manager pointer target only, no legacy timing listener", () => {
+  it("manager enabled: registers only the shared pointer target", () => {
     const jsPsych = fakeJsPsych();
     const component = new ClickResponseComponent(jsPsych);
     const registerPointerTarget = vi.fn(() => () => {});

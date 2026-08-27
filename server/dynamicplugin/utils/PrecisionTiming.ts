@@ -2,9 +2,6 @@ import { readEventTimestamp } from "./EventTiming";
 import { preloadAudioBuffer } from "./AudioTiming";
 
 export type TrialTimeOriginSource =
-  | "fresh_raf"
-  | "visual_handoff"
-  | "host_coordinator"
   | "frame_engine_raf"
   | "frame_engine_transition";
 
@@ -12,8 +9,10 @@ export type DeadlinePolicy = "nearest" | "not_before";
 export type VisualBoundaryPolicy =
   | "strict_not_before_ms"
   | "frame_tolerant_not_before"
+  | "nearest_frame"
   | "frame_locked"
   | "frame_count";
+export type ScheduleReference = "relative_duration" | "absolute_phase";
 
 export interface HostTrialTimingContext {
   readonly id: string;
@@ -22,6 +21,11 @@ export interface HostTrialTimingContext {
   getScheduledOriginTime(): number | null;
   getLatestFrameTime(): number | null;
   getLatestCommittedFrameTime(): number | null;
+  getFrameClock(): {
+    periodMs: number;
+    acceptedSamples?: number;
+    lastPredictionError?: number | null;
+  };
   getFrameIntervalEstimate(): number;
   getFrameIndex(): number | null;
   markReady(readyAt?: number, diagnostics?: Record<string, unknown>): void;
@@ -43,12 +47,54 @@ export interface HostTrialTimingContext {
     callback: (timestamp: number, elapsed: number) => void,
     options?: { policy?: DeadlinePolicy },
   ): () => void;
+  scheduleVisualTransition?(options: {
+    key: string;
+    drawableKey: string;
+    targetTimeMs: number;
+    visible: boolean;
+    policy?: VisualBoundaryPolicy;
+    minimumPresentedFrames?: number;
+    reason?: string;
+    onApply?: (timestamp: number) => void;
+  }): () => void;
+  scheduleVisualTransaction?(options: {
+    key: string;
+    targetTimeMs: number;
+    policy?: VisualBoundaryPolicy;
+    operations: Array<{
+      drawableKey: string;
+      visible: boolean;
+      minimumPresentedFrames?: number;
+    }>;
+    reason?: string;
+    onApply?: (timestamp: number) => void;
+  }): () => void;
   requestBoundary(options: {
     targetTime?: number;
     targetTimeMs?: number;
     targetFrameIndex?: number | null;
     frameCount?: number | null;
     boundaryPolicy?: VisualBoundaryPolicy;
+    scheduleReference?: ScheduleReference;
+    requestedDurationMs?: number;
+    lateSuccessorPolicy?: "hold_outgoing" | "terminal_blank" | "abort_precision_run";
+    allowZeroFrame?: boolean;
+    rebasePhase?: boolean;
+    reason?: string;
+    requestedAt?: number;
+    allowTerminal?: boolean;
+    onCommit?: (info: any) => void;
+  }): boolean;
+  replaceBoundary?(options: {
+    targetTime?: number;
+    targetTimeMs?: number;
+    targetFrameIndex?: number | null;
+    frameCount?: number | null;
+    boundaryPolicy?: VisualBoundaryPolicy;
+    scheduleReference?: ScheduleReference;
+    requestedDurationMs?: number;
+    allowZeroFrame?: boolean;
+    rebasePhase?: boolean;
     reason?: string;
     requestedAt?: number;
     allowTerminal?: boolean;
@@ -65,6 +111,8 @@ export interface HostTrialTimingContext {
   ): { cancel(): void };
   setResponseSensitive?(active: boolean): void;
   setNextAudioDeadline?(timestamp: number | null): void;
+  recordCriticalDomMutation?(count?: number): void;
+  getCriticalDomMutationCount?(): number;
   recordStimulusCommit(anchor: {
     componentId: string | null;
     name: string;
@@ -78,14 +126,7 @@ type FrameTimingOptions = {
   recordFrameTiming?: boolean;
   longFrameThreshold?: number;
   expectedFrameMs?: number;
-  trialContext?: HostTrialTimingContext | null;
-};
-
-type ScheduledFrameEvent = {
-  at: number;
-  policy: DeadlinePolicy;
-  callback: (timestamp: number, elapsed: number) => void;
-  cancelled: boolean;
+  trialContext: HostTrialTimingContext;
 };
 
 type FrameInterval = {
@@ -176,31 +217,73 @@ export function resolveTimingMs(
   return Number(raw);
 }
 
-export function createPrecisionTiming(options: FrameTimingOptions = {}) {
+export function createPrecisionTiming(options: FrameTimingOptions) {
+  if (!options?.trialContext) {
+    throw new Error(
+      "DynamicPlugin timing requires a FrameEngine TrialTimingContext.",
+    );
+  }
+  const trialContext = options.trialContext;
   const recordFrameTiming = options.recordFrameTiming !== false;
   const longFrameThreshold = options.longFrameThreshold ?? 34;
-  const fallbackFrameMs = options.expectedFrameMs ?? DEFAULT_FRAME_MS;
-  const scheduledEvents: ScheduledFrameEvent[] = [];
   const startCallbacks: Array<(timestamp: number) => void> = [];
-  const frameCommitCallbacks: Array<(timestamp: number) => void> = [];
   const frameIntervals: FrameInterval[] = [];
+  // P0.5 (iteración 5): estadísticas ONLINE (O(1) por frame) para que la
+  // Phase A lógica nunca recorra el log completo. El log completo sólo se
+  // serializa en Phase B.
+  let onlineFrameCount = 0;
+  let onlineFrameDurationSum = 0;
+  let onlineFrameMax: number | null = null;
+  let onlineLongFrameCount = 0;
+  let onlineDroppedFrameCount = 0;
+  const onlineBaselineRing: number[] = [];
+  const ONLINE_BASELINE_RING_SIZE = 32;
+  const onlineBaselineEstimate = () => {
+    if (onlineBaselineRing.length === 0) {
+      return trialContext.getFrameIntervalEstimate();
+    }
+    const sorted = [...onlineBaselineRing].sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+    return sorted.length % 2 === 1
+      ? sorted[middle]
+      : (sorted[middle - 1] + sorted[middle]) / 2;
+  };
+  const recordOnlineInterval = (duration: number) => {
+    onlineFrameCount += 1;
+    onlineFrameDurationSum += duration;
+    if (onlineFrameMax === null || duration > onlineFrameMax) {
+      onlineFrameMax = duration;
+    }
+    if (duration > longFrameThreshold) onlineLongFrameCount += 1;
+    const baseline = onlineBaselineEstimate();
+    if (baseline > MIN_FRAME_INTERVAL_MS) {
+      onlineDroppedFrameCount += Math.max(
+        0,
+        Math.round(duration / baseline) - 1,
+      );
+    }
+    onlineBaselineRing.push(duration);
+    if (onlineBaselineRing.length > ONLINE_BASELINE_RING_SIZE) {
+      onlineBaselineRing.shift();
+    }
+  };
   const stimulusRecords: StimulusTimingRecord[] = [];
   const stimulusControllers: Array<{
     markOffset(timestamp: number, commitInfo?: any): void;
     record: StimulusTimingRecord;
   }> = [];
-  const trialContext = options.trialContext ?? null;
   const contextUnsubscribers: Array<() => void> = [];
 
   let trialTimeOrigin: number | null = null;
   let scheduledTrialTimeOrigin: number | null = null;
   let trialTimeOriginSource: TrialTimeOriginSource | null = null;
+  let timingDegradedReason: string | null = null;
+  const markTimingDegraded = (reason: string) => {
+    timingDegradedReason = timingDegradedReason || reason;
+  };
   let lastFrameTime: number | null = null;
   let latestFrameTime: number | null = null;
   let latestCommittedFrameTime: number | null = null;
-  let frameIntervalEstimate = fallbackFrameMs;
-  let rafHandle: number | null = null;
-  let running = false;
 
   const getTrialTimeOrigin = () => trialTimeOrigin;
   const getScheduledTrialTimeOrigin = () => scheduledTrialTimeOrigin;
@@ -215,9 +298,12 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
   };
 
   const getFrameIntervalEstimate = () => {
-    const estimate =
-      trialContext?.getFrameIntervalEstimate() ?? frameIntervalEstimate;
-    return Math.max(1, estimate || fallbackFrameMs);
+    return Math.max(
+      1,
+      trialContext.getFrameIntervalEstimate() ||
+        options.expectedFrameMs ||
+        DEFAULT_FRAME_MS,
+    );
   };
 
   const estimateBaselineFrameMs = (intervals: number[]) => {
@@ -233,400 +319,46 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     return (sorted[middle - 1] + sorted[middle]) / 2;
   };
 
-  const shouldRunEventOnFrame = (
-    event: ScheduledFrameEvent,
-    timestamp: number,
-  ) => {
-    if (trialTimeOrigin === null) return false;
-    const targetTime = trialTimeOrigin + event.at;
-    if (event.policy === "not_before") {
-      return timestamp >= targetTime;
-    }
-
-    // nearest (P5): the OBSERVED frame's error vs the ONE-STEP-AHEAD
-    // prediction (observed timestamp + robust nominal period). Ties fire on
-    // the earlier (current) frame — documented policy. The event still only
-    // runs on a REAL observed rAF; prediction decides WHICH frame, the rAF
-    // decides WHEN.
-    const frameMs = getFrameIntervalEstimate();
-    const errorNow = Math.abs(timestamp - targetTime);
-    const errorNext = Math.abs(timestamp + frameMs - targetTime);
-    return errorNow <= errorNext;
-  };
-
-  const runDueEvents = (timestamp: number) => {
-    if (trialTimeOrigin === null) return;
-    const elapsed = timestamp - trialTimeOrigin;
-    for (const event of scheduledEvents) {
-      if (!event.cancelled && shouldRunEventOnFrame(event, timestamp)) {
-        event.cancelled = true;
-        event.callback(timestamp, elapsed);
-      }
-    }
-  };
-
-  // -------------------------------------------------------------------------
-  // P5 frame-phase predictor (FrameClock). The OBSERVED rAF timestamp remains
-  // the only scheduling authority; the clock only maintains a robust nominal
-  // period and a phase anchor so that frame SELECTION (nearest/not_before) is
-  // stable under jitter, dropped frames and refresh-rate transitions.
-  // Predicted frame times are PREDICTIVE diagnostics — never physical
-  // presentation times.
-  // -------------------------------------------------------------------------
-  const FRAME_CLOCK_MAX_SAMPLES = 8;
-
-  const frameClock = {
-    periodMs: fallbackFrameMs,
-    anchorTimestamp: null as number | null,
-    anchorOrdinal: 0,
-    nextOrdinal: 0,
-    acceptedSamples: 0,
-    samples: [] as number[],
-    fastStreak: 0,
-    fastDeltas: [] as number[],
-    slowStreak: 0,
-    slowDeltas: [] as number[],
-    gapStreak: 0,
-    gapFrames: 0,
-    gapDeltas: [] as number[],
-    lastPredictionError: null as number | null,
-    lastObservedTimestamp: null as number | null,
-  };
-
-  const frameClockMedian = (samples: number[]) => {
-    const sorted = [...samples].sort((a, b) => a - b);
-    const middle = Math.floor(sorted.length / 2);
-    return sorted.length % 2 === 1
-      ? sorted[middle]
-      : (sorted[middle - 1] + sorted[middle]) / 2;
-  };
-
-  const observeFrame = (timestamp: number) => {
-    const clock = frameClock;
-    const previous = clock.lastObservedTimestamp;
-    clock.lastObservedTimestamp = timestamp;
-
-    if (clock.anchorTimestamp === null) {
-      clock.anchorTimestamp = timestamp;
-      clock.anchorOrdinal = 0;
-      clock.nextOrdinal = 1;
-      return;
-    }
-
-    const delta = timestamp - previous!;
-    if (!Number.isFinite(delta) || delta <= MIN_FRAME_INTERVAL_MS) {
-      return;
-    }
-
-    // Nominal-period gating: interpret the delta as `expectedFrames` nominal
-    // intervals. An isolated multi-frame gap (e.g. 50 ms at 60 Hz ≈ 3 frames)
-    // updates the PHASE but never pollutes the period samples.
-    const expectedFrames = Math.max(1, Math.round(delta / clock.periodMs));
-    const tolerance = Math.max(0.25 * clock.periodMs, 2);
-
-    const adoptNewPeriod = (newPeriod: number) => {
-      // The samples window describes the CURRENT regime only: a regime
-      // adoption resets the predictor diagnostics to the new cadence.
-      clock.samples = [newPeriod];
-      clock.acceptedSamples = 1;
-      clock.periodMs = newPeriod;
-      frameIntervalEstimate = newPeriod;
-      clock.fastStreak = 0;
-      clock.fastDeltas = [];
-      clock.slowStreak = 0;
-      clock.slowDeltas = [];
-      clock.gapStreak = 0;
-      clock.gapFrames = 0;
-      clock.gapDeltas = [];
-      clock.anchorTimestamp = timestamp;
-      clock.anchorOrdinal = clock.nextOrdinal;
-    };
-
-    const clearRegimeCandidates = () => {
-      clock.fastStreak = 0;
-      clock.fastDeltas = [];
-      clock.slowStreak = 0;
-      clock.slowDeltas = [];
-      clock.gapStreak = 0;
-      clock.gapFrames = 0;
-      clock.gapDeltas = [];
-    };
-
-    if (expectedFrames === 1) {
-      if (Math.abs(delta - clock.periodMs) <= tolerance) {
-        // NOMINAL: resets every regime candidate.
-        clock.samples.push(delta);
-        if (clock.samples.length > FRAME_CLOCK_MAX_SAMPLES) {
-          clock.samples.shift();
-        }
-        clock.acceptedSamples += 1;
-        clock.periodMs = frameClockMedian(clock.samples);
-        frameIntervalEstimate = clock.periodMs;
-        clearRegimeCandidates();
-      } else if (delta < clock.periodMs * 0.75) {
-        // FAST regime candidate: stable consecutive fast deltas only
-        // (unstable candidates restart the streak). Resets slow/gap.
-        clock.slowStreak = 0;
-        clock.slowDeltas = [];
-        clock.gapStreak = 0;
-        clock.gapDeltas = [];
-        if (clock.fastDeltas.length > 0) {
-          const lastFast = clock.fastDeltas[clock.fastDeltas.length - 1];
-          clock.fastStreak =
-            Math.abs(delta - lastFast) <= Math.max(0.25 * lastFast, 2)
-              ? clock.fastStreak + 1
-              : 1;
-        } else {
-          clock.fastStreak = 1;
-        }
-        clock.fastDeltas.push(delta);
-        if (clock.fastDeltas.length > 3) clock.fastDeltas.shift();
-        if (clock.fastStreak >= 3) {
-          adoptNewPeriod(frameClockMedian(clock.fastDeltas));
-        }
-      } else {
-        // MODERATE SLOW regime candidate: stable consecutive slow deltas.
-        // Resets fast/gap.
-        clock.fastStreak = 0;
-        clock.fastDeltas = [];
-        clock.gapStreak = 0;
-        clock.gapDeltas = [];
-        if (clock.slowDeltas.length > 0) {
-          const lastSlow = clock.slowDeltas[clock.slowDeltas.length - 1];
-          clock.slowStreak =
-            Math.abs(delta - lastSlow) <= Math.max(0.25 * lastSlow, 2)
-              ? clock.slowStreak + 1
-              : 1;
-        } else {
-          clock.slowStreak = 1;
-        }
-        clock.slowDeltas.push(delta);
-        if (clock.slowDeltas.length > 3) clock.slowDeltas.shift();
-        if (clock.slowStreak >= 3) {
-          adoptNewPeriod(frameClockMedian(clock.slowDeltas));
+  contextUnsubscribers.push(
+    trialContext.onStart((timestamp, info) => {
+      if (trialTimeOrigin !== null) return;
+      trialTimeOrigin = timestamp;
+      scheduledTrialTimeOrigin =
+        typeof info?.scheduledTimestamp === "number"
+          ? info.scheduledTimestamp
+          : timestamp;
+      trialTimeOriginSource =
+        info?.source === "frame_engine_transition"
+          ? "frame_engine_transition"
+          : "frame_engine_raf";
+      lastFrameTime = null;
+      latestFrameTime = timestamp;
+      for (const callback of [...startCallbacks]) callback(timestamp);
+    }),
+    trialContext.onFrame((timestamp) => {
+      latestFrameTime = timestamp;
+      if (lastFrameTime !== null) {
+        const duration = timestamp - lastFrameTime;
+        if (recordFrameTiming && duration > MIN_FRAME_INTERVAL_MS) {
+          frameIntervals.push({
+            t: round3(timestamp - (trialTimeOrigin ?? timestamp)),
+            duration: round3(duration),
+          });
+          recordOnlineInterval(duration);
         }
       }
-    } else {
-      // Multi-interval delta: advance PHASE only. A multi-frame gap
-      // INTERRUPTS fast and moderate-slow candidates (mutual exclusivity).
-      clock.fastStreak = 0;
-      clock.fastDeltas = [];
-      clock.slowStreak = 0;
-      clock.slowDeltas = [];
-      if (expectedFrames === clock.gapFrames && clock.gapDeltas.length > 0) {
-        const lastGap = clock.gapDeltas[clock.gapDeltas.length - 1];
-        clock.gapStreak =
-          Math.abs(delta - lastGap) <= Math.max(0.25 * lastGap, 2)
-            ? clock.gapStreak + 1
-            : 1;
-      } else {
-        clock.gapStreak = 1;
-        clock.gapFrames = expectedFrames;
-      }
-      clock.gapDeltas.push(delta);
-      if (clock.gapDeltas.length > 3) clock.gapDeltas.shift();
-      if (clock.gapStreak >= 3) {
-        adoptNewPeriod(frameClockMedian(clock.gapDeltas));
-      }
-    }
+      lastFrameTime = timestamp;
+    }),
+    trialContext.onPostCommit((timestamp) => {
+      latestCommittedFrameTime = timestamp;
+    }),
+  );
 
-    const observedOrdinal = clock.nextOrdinal + expectedFrames - 1;
-    clock.nextOrdinal = observedOrdinal + 1;
-
-    // Phase correction against the anchored prediction for this ordinal.
-    const predicted =
-      clock.anchorTimestamp +
-      (observedOrdinal - clock.anchorOrdinal) * clock.periodMs;
-    const error = timestamp - predicted;
-    clock.lastPredictionError = error;
-    if (Math.abs(error) > 0.5 * clock.periodMs) {
-      // Major divergence (missed frames / big jitter): safe re-anchor.
-      clock.anchorTimestamp = timestamp;
-      clock.anchorOrdinal = observedOrdinal;
-      clock.lastPredictionError = 0;
-    } else if (Math.abs(error) > 0.25) {
-      // Gradual drift correction.
-      clock.anchorTimestamp += error * 0.25;
-    }
-  };
-
-  const runFrameCommitCallbacks = (timestamp: number) => {
-    for (const callback of [...frameCommitCallbacks]) {
-      callback(timestamp);
-    }
-    // Authority of the last frame whose commit phase ACTUALLY ran. If a
-    // scheduled event ends/stops the trial during `runDueEvents`, the current
-    // frame never reaches this point and must not be marked as committed.
-    latestCommittedFrameTime = timestamp;
-  };
-
-  const postCommitCallbacks: Array<(timestamp: number) => void> = [];
-
-  const runPostCommitCallbacks = (timestamp: number) => {
-    // Snapshot semantics: callbacks queued DURING this phase run on the next
-    // committed frame, never on the current one. One-shot: the queue is
-    // cleared before invocation, so a throwing callback cannot re-run later.
-    // Explicit stop policy: if a callback stops the scheduler, the remaining
-    // callbacks of this frame's snapshot do NOT run, and the queue is cleared
-    // again so that no callback — including ones queued during this phase —
-    // survives a stop.
-    const callbacks = [...postCommitCallbacks];
-    postCommitCallbacks.length = 0;
-    for (const callback of callbacks) {
-      callback(timestamp);
-      if (!running) {
-        postCommitCallbacks.length = 0;
-        break;
-      }
-    }
-  };
-
-  /**
-   * Queues a one-shot callback to run AFTER the next frame's commit phase
-   * (`runFrameCommitCallbacks`), receiving exactly that commit timestamp. The
-   * callback observes `latestCommittedFrameTime === timestamp`. `stop()` clears
-   * pending callbacks. No extra rAF/setTimeout is created.
-   */
-  const queuePostCommit = (callback: (timestamp: number) => void) => {
-    if (trialContext) {
-      let unsubscribe = () => {};
-      unsubscribe = trialContext.onPostCommit((timestamp) => {
-        unsubscribe();
-        callback(timestamp);
-      });
-      return unsubscribe;
-    }
-    postCommitCallbacks.push(callback);
-    return () => {
-      const index = postCommitCallbacks.indexOf(callback);
-      if (index >= 0) {
-        postCommitCallbacks.splice(index, 1);
-      }
-    };
-  };
-
-  /**
-   * Single observable frame phase sequence shared by `tick()` and `startAt()`:
-   *   1. latestFrameTime = timestamp
-   *   2. frame-interval estimator update
-   *   3. runDueEvents
-   *   4. if !running → return            (hard stop before commit: no commit)
-   *   5. runFrameCommitCallbacks         (sets latestCommittedFrameTime)
-   *   6. if !running → return
-   *   7. runPostCommitCallbacks
-   *   8. if !running → return            (post-commit finalize must not
-   *                                      schedule another rAF)
-   *   9. schedule next rAF
-   */
-  const runFramePhases = (timestamp: number) => {
-    latestFrameTime = timestamp;
-    if (lastFrameTime !== null) {
-      const duration = timestamp - lastFrameTime;
-      observeFrame(timestamp);
-      if (recordFrameTiming && duration > MIN_FRAME_INTERVAL_MS) {
-        frameIntervals.push({
-          t: round3(timestamp - trialTimeOrigin),
-          duration: round3(duration),
-        });
-      }
-    }
-    lastFrameTime = timestamp;
-    runDueEvents(timestamp);
-    if (!running) return;
-    runFrameCommitCallbacks(timestamp);
-    if (!running) return;
-    runPostCommitCallbacks(timestamp);
-    if (!running) return;
-    rafHandle = requestAnimationFrame(tick);
-  };
-
-  const tick = (timestamp: number) => {
-    if (!running || trialTimeOrigin === null) return;
-    runFramePhases(timestamp);
-  };
-
-  if (trialContext) {
-    contextUnsubscribers.push(
-      trialContext.onStart((timestamp, info) => {
-        if (trialTimeOrigin !== null) return;
-        trialTimeOrigin = timestamp;
-        scheduledTrialTimeOrigin =
-          typeof info?.scheduledTimestamp === "number"
-            ? info.scheduledTimestamp
-            : timestamp;
-        trialTimeOriginSource =
-          info?.source === "frame_engine_transition"
-            ? "frame_engine_transition"
-            : "frame_engine_raf";
-        lastFrameTime = null;
-        latestFrameTime = timestamp;
-        running = true;
-        for (const callback of [...startCallbacks]) callback(timestamp);
-      }),
-      trialContext.onFrame((timestamp) => {
-        latestFrameTime = timestamp;
-        observeFrame(timestamp);
-        if (lastFrameTime !== null) {
-          const duration = timestamp - lastFrameTime;
-          if (recordFrameTiming && duration > MIN_FRAME_INTERVAL_MS) {
-            frameIntervals.push({
-              t: round3(timestamp - (trialTimeOrigin ?? timestamp)),
-              duration: round3(duration),
-            });
-          }
-        }
-        lastFrameTime = timestamp;
-      }),
-      trialContext.onPostCommit((timestamp) => {
-        latestCommittedFrameTime = timestamp;
-      }),
-    );
-  }
-
-  const startAt = (timestamp: number, source: TrialTimeOriginSource) => {
-    if (trialContext) {
-      trialContext.start();
-      return;
-    }
-    if (trialTimeOrigin !== null || rafHandle !== null) return;
-    trialTimeOrigin = timestamp;
-    scheduledTrialTimeOrigin = timestamp;
-    trialTimeOriginSource = source;
-    lastFrameTime = timestamp;
-    latestFrameTime = timestamp;
-    running = true;
-    for (const callback of [...startCallbacks]) {
-      callback(timestamp);
-    }
-    runFramePhases(timestamp);
-  };
-
-  const start = () => {
-    if (trialContext) {
-      trialContext.start();
-      return;
-    }
-    if (trialTimeOrigin !== null || rafHandle !== null) return;
-    rafHandle = requestAnimationFrame((timestamp) => {
-      rafHandle = null;
-      startAt(timestamp, "fresh_raf");
-    });
-  };
+  const start = () => trialContext.start();
 
   const stop = () => {
-    running = false;
-    if (trialContext) {
-      trialContext.stop();
-      while (contextUnsubscribers.length > 0) contextUnsubscribers.pop()!();
-      postCommitCallbacks.length = 0;
-      return;
-    }
-    if (rafHandle !== null) {
-      cancelAnimationFrame(rafHandle);
-      rafHandle = null;
-    }
-    // A stopped scheduler must never run pending post-commit callbacks.
-    postCommitCallbacks.length = 0;
+    trialContext.stop();
+    while (contextUnsubscribers.length > 0) contextUnsubscribers.pop()!();
   };
 
   const onStart = (callback: (timestamp: number) => void) => {
@@ -638,42 +370,118 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
   };
 
   const onFrameCommit = (callback: (timestamp: number) => void) => {
-    if (trialContext) {
-      return trialContext.onFrameCommit((timestamp) => callback(timestamp));
-    }
-    frameCommitCallbacks.push(callback);
-    return () => {
-      const index = frameCommitCallbacks.indexOf(callback);
-      if (index >= 0) {
-        frameCommitCallbacks.splice(index, 1);
-      }
-    };
+    return trialContext.onFrameCommit((timestamp) => callback(timestamp));
+  };
+
+  const queuePostCommit = (callback: (timestamp: number) => void) => {
+    let unsubscribe = () => {};
+    unsubscribe = trialContext.onPostCommit((timestamp) => {
+      unsubscribe();
+      callback(timestamp);
+    });
+    return unsubscribe;
   };
 
   const scheduleAt = (
     delayMs: number | null | undefined,
     callback: (timestamp: number, elapsed: number) => void,
     options: { policy?: DeadlinePolicy } = {},
-  ) => {
-    if (trialContext) {
-      return trialContext.scheduleAt(
-        Math.max(0, Number(delayMs ?? 0)),
-        callback,
-        options,
+  ) =>
+    trialContext.scheduleAt(
+      Math.max(0, Number(delayMs ?? 0)),
+      callback,
+      options,
+    );
+
+  /**
+   * P0.2 (iteración 5): intra-trial drawable visibility transitions with
+   * full FrameEngine boundary-policy semantics.
+   */
+  interface GroupedVisualOp {
+    drawableKey: string;
+    visible: boolean;
+    minimumPresentedFrames: number;
+    onApply?: (timestamp: number) => void;
+  }
+  interface VisualTransitionGroup {
+    targetTimeMs: number;
+    policy: VisualBoundaryPolicy;
+    ops: GroupedVisualOp[];
+  }
+  const visualTransitionGroups = new Map<string, VisualTransitionGroup>();
+
+  /**
+   * P0.5 (iteración 6): los offsets+onsets que comparten el MISMO target y
+   * policy compatible se agrupan en una transacción atómica del FrameEngine.
+   * Ninguna operación se aplica parcialmente: o todo el grupo muta antes del
+   * mismo shared WebGL commit, o nada.
+   */
+  const scheduleVisualTransition = (options: {
+    key: string;
+    drawableKey: string;
+    targetTimeMs: number;
+    visible: boolean;
+    policy?: VisualBoundaryPolicy;
+    minimumPresentedFrames?: number;
+    reason?: string;
+    onApply?: (timestamp: number) => void;
+  }) => {
+    if (trialContext.scheduleVisualTransaction) {
+      const policy = options.policy ?? "nearest_frame";
+      const groupKey = `${options.targetTimeMs}:${policy}`;
+      let group = visualTransitionGroups.get(groupKey);
+      if (!group) {
+        group = { targetTimeMs: options.targetTimeMs, policy, ops: [] };
+        visualTransitionGroups.set(groupKey, group);
+      }
+      const op: GroupedVisualOp = {
+        drawableKey: options.drawableKey,
+        visible: options.visible === true,
+        minimumPresentedFrames: Math.max(
+          0,
+          options.minimumPresentedFrames ?? 0,
+        ),
+        onApply: options.onApply,
+      };
+      group.ops.push(op);
+      return () => {
+        const index = group.ops.indexOf(op);
+        if (index >= 0) group.ops.splice(index, 1);
+        if (group.ops.length === 0) visualTransitionGroups.delete(groupKey);
+      };
+    }
+    if (trialContext.scheduleVisualTransition) {
+      return trialContext.scheduleVisualTransition(options);
+    }
+    throw new Error(
+      "FrameEngine TrialTimingContext lacks visual transition support.",
+    );
+  };
+
+  /** Materializa los grupos como transacciones atómicas del engine. */
+  const flushVisualTransactions = () => {
+    if (!trialContext.scheduleVisualTransaction) {
+      throw new Error(
+        "FrameEngine TrialTimingContext lacks visual transaction support.",
       );
     }
-    const at = Math.max(0, Number(delayMs ?? 0));
-    const event: ScheduledFrameEvent = {
-      at,
-      policy: options.policy ?? "nearest",
-      callback,
-      cancelled: false,
-    };
-    scheduledEvents.push(event);
-    scheduledEvents.sort((a, b) => a.at - b.at);
-    return () => {
-      event.cancelled = true;
-    };
+    for (const [groupKey, group] of visualTransitionGroups) {
+      trialContext.scheduleVisualTransaction({
+        key: groupKey,
+        targetTimeMs: group.targetTimeMs,
+        policy: group.policy,
+        operations: group.ops.map((op) => ({
+          drawableKey: op.drawableKey,
+          visible: op.visible,
+          minimumPresentedFrames: op.minimumPresentedFrames,
+        })),
+        reason: "visual_transaction",
+        onApply: (timestamp) => {
+          for (const op of group.ops) op.onApply?.(timestamp);
+        },
+      });
+    }
+    visualTransitionGroups.clear();
   };
 
   const requestBoundary = (boundaryOptions: {
@@ -682,11 +490,39 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     targetFrameIndex?: number | null;
     frameCount?: number | null;
     boundaryPolicy?: VisualBoundaryPolicy;
+    scheduleReference?: ScheduleReference;
+    requestedDurationMs?: number;
+    lateSuccessorPolicy?: "hold_outgoing" | "terminal_blank" | "abort_precision_run";
+    allowZeroFrame?: boolean;
+    rebasePhase?: boolean;
     reason?: string;
     requestedAt?: number;
     allowTerminal?: boolean;
     onCommit?: (info: any) => void;
-  }) => trialContext?.requestBoundary(boundaryOptions) ?? false;
+  }) => trialContext.requestBoundary(boundaryOptions);
+
+  const replaceBoundary = (boundaryOptions: {
+    targetTime?: number;
+    targetTimeMs?: number;
+    targetFrameIndex?: number | null;
+    frameCount?: number | null;
+    boundaryPolicy?: VisualBoundaryPolicy;
+    scheduleReference?: ScheduleReference;
+    requestedDurationMs?: number;
+    allowZeroFrame?: boolean;
+    rebasePhase?: boolean;
+    reason?: string;
+    requestedAt?: number;
+    allowTerminal?: boolean;
+    onCommit?: (info: any) => void;
+  }) => {
+    if (!trialContext.replaceBoundary) {
+      throw new Error(
+        "FrameEngine TrialTimingContext lacks boundary replacement support.",
+      );
+    }
+    return trialContext.replaceBoundary(boundaryOptions);
+  };
 
   const queuePostCritical = (
     task: (budgetMs?: number) => void | boolean,
@@ -696,17 +532,10 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
       responseSafe?: boolean;
       minimumBudgetMs?: number;
     },
-  ) => {
-    if (trialContext) {
-      return trialContext.queuePostCritical(task, taskOptions);
-    } else {
-      const handle = setTimeout(task, 0);
-      return { cancel: () => clearTimeout(handle) };
-    }
-  };
+  ) => trialContext.queuePostCritical(task, taskOptions);
 
   const setNextAudioDeadline = (timestamp: number | null) => {
-    trialContext?.setNextAudioDeadline?.(timestamp);
+    trialContext.setNextAudioDeadline?.(timestamp);
   };
 
   const registerStimulus = (
@@ -823,7 +652,7 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
         record.onset_error = round3(
           onsetTimestamp - record.scheduled_onset_abs,
         );
-        trialContext?.recordStimulusCommit({
+        trialContext.recordStimulusCommit({
           componentId: record.component_id,
           name: record.name,
           scheduledTime: record.scheduled_onset_abs,
@@ -832,6 +661,11 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
         // V1 compatibility aliases
         record.actual_onset_abs = record.frame_onset_abs;
         record.actual_onset = record.frame_onset;
+      },
+      markDegraded(reason: string) {
+        record.timing_degraded = true;
+        record.timing_degraded_reason =
+          record.timing_degraded_reason || reason;
       },
       markOffset(timestamp: number, commitInfo?: any) {
         if (
@@ -888,27 +722,8 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     return readEventTimestamp(event).responseTime;
   };
 
-  const getSummary = (offsetTime = performance.now()) => {
-    const actualDuration =
-      trialTimeOrigin === null ? null : offsetTime - trialTimeOrigin;
-    const intervals = recordFrameTiming
-      ? frameIntervals.map((frame) => frame.duration)
-      : [];
-    const longFrames = intervals.filter(
-      (duration) => duration > longFrameThreshold,
-    );
-    const baselineFrameMs = estimateBaselineFrameMs(intervals);
-    const droppedFrameCount = intervals.reduce((sum, duration) => {
-      return sum + Math.max(0, Math.round(duration / baselineFrameMs) - 1);
-    }, 0);
-    const maxFrameInterval =
-      intervals.length > 0 ? Math.max(...intervals) : null;
-    const meanFrameInterval =
-      intervals.length > 0
-        ? intervals.reduce((sum, duration) => sum + duration, 0) /
-          intervals.length
-        : null;
-    const finalizedStimulusRecords = stimulusRecords.map((record) => {
+  const finalizeStimulusRecords = (offsetTime: number) =>
+    stimulusRecords.map((record) => {
       const next = { ...record };
       if (
         trialTimeOrigin !== null &&
@@ -933,6 +748,67 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
       }
       return next;
     });
+
+  /**
+   * P0.5 (iteración 5): snapshot O(1) para la PHASE A lógica. Sólo lee
+   * contadores online, origen, último frame y anclas de estímulos — jamás
+   * recorre el frame log completo ni serializa.
+   */
+  const getCriticalSnapshot = (offsetTime = performance.now()) => {
+    const actualDuration =
+      trialTimeOrigin === null ? null : offsetTime - trialTimeOrigin;
+    const baselineFrameMs = onlineBaselineEstimate();
+    return {
+      trialTimeOrigin,
+      scheduledTrialTimeOrigin,
+      trialTimeOriginSource,
+      onsetTime: trialTimeOrigin,
+      offsetTime,
+      actualDuration,
+      latestFrameTime,
+      latestCommittedFrameTime,
+      framePeriodEstimateMs: round3(trialContext.getFrameIntervalEstimate()),
+      framePredictionErrorMs: null,
+      framePredictorSamples: null,
+      frameCount: onlineFrameCount,
+      longFrameCount: onlineLongFrameCount,
+      droppedFrameCount: onlineDroppedFrameCount,
+      maxFrameInterval: onlineFrameMax,
+      meanFrameInterval:
+        onlineFrameCount > 0
+          ? onlineFrameDurationSum / onlineFrameCount
+          : null,
+      frameIntervalEstimate: baselineFrameMs,
+      longFrameThreshold,
+      frameIntervals: [],
+      frameLog: [],
+      transitionTelemetry: [...trialContext.getTransitionTelemetry()],
+      stimulusRecords: finalizeStimulusRecords(offsetTime),
+    };
+  };
+
+  const getSummary = (offsetTime = performance.now()) => {
+    const actualDuration =
+      trialTimeOrigin === null ? null : offsetTime - trialTimeOrigin;
+    const intervals = recordFrameTiming
+      ? frameIntervals.map((frame) => frame.duration)
+      : [];
+    const longFrames = intervals.filter(
+      (duration) => duration > longFrameThreshold,
+    );
+    const baselineFrameMs = estimateBaselineFrameMs(intervals);
+    const droppedFrameCount = intervals.reduce((sum, duration) => {
+      return sum + Math.max(0, Math.round(duration / baselineFrameMs) - 1);
+    }, 0);
+    const maxFrameInterval =
+      intervals.length > 0 ? Math.max(...intervals) : null;
+    const meanFrameInterval =
+      intervals.length > 0
+        ? intervals.reduce((sum, duration) => sum + duration, 0) /
+          intervals.length
+        : null;
+    const finalizedStimulusRecords = finalizeStimulusRecords(offsetTime);
+    const frameClock = trialContext.getFrameClock();
 
     const findStimulusRecord = (
       componentId?: string | null,
@@ -964,10 +840,10 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
       latestCommittedFrameTime,
       framePeriodEstimateMs: round3(frameClock.periodMs),
       framePredictionErrorMs:
-        frameClock.lastPredictionError === null
-          ? null
-          : round3(frameClock.lastPredictionError),
-      framePredictorSamples: frameClock.acceptedSamples,
+        typeof frameClock.lastPredictionError === "number"
+          ? round3(frameClock.lastPredictionError)
+          : null,
+      framePredictorSamples: frameClock.acceptedSamples ?? null,
       frameCount: intervals.length,
       longFrameCount: longFrames.length,
       droppedFrameCount,
@@ -977,9 +853,7 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
       longFrameThreshold,
       frameIntervals: intervals,
       frameLog: recordFrameTiming ? frameIntervals : [],
-      transitionTelemetry: trialContext
-        ? [...trialContext.getTransitionTelemetry()]
-        : [],
+      transitionTelemetry: [...trialContext.getTransitionTelemetry()],
       stimulusRecords: finalizedStimulusRecords,
       findStimulusRecord,
     };
@@ -1003,15 +877,17 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
 
   return {
     start,
-    startAt,
     stop,
     onStart,
     onFrameCommit,
     queuePostCommit,
     requestBoundary,
+    replaceBoundary,
     queuePostCritical,
     setNextAudioDeadline,
     scheduleAt,
+    scheduleVisualTransition,
+    flushVisualTransactions,
     registerStimulus,
     closeOpenStimuli,
     getTrialTimeOrigin,
@@ -1022,8 +898,11 @@ export function createPrecisionTiming(options: FrameTimingOptions = {}) {
     getFrameIntervalEstimate,
     getEventTime,
     findStimulusRecord,
+    markTimingDegraded,
+    getTimingDegradedReason: () => timingDegradedReason,
     getSummary,
-    isGlobalFrameEngine: () => trialContext !== null,
+    getCriticalSnapshot,
+    isGlobalFrameEngine: () => true,
     getTrialContext: () => trialContext,
   };
 }
@@ -1036,6 +915,11 @@ export function scheduleStimulusVisibility(
   const stimulusOnset = resolveTimingMs(config.stimulus_onset, null);
   const stimulusDuration = resolveTimingMs(config.stimulus_duration, null);
   const cancellations: Array<() => void> = [];
+  if (!timing && (stimulusOnset !== null || stimulusDuration !== null)) {
+    throw new Error(
+      "Scheduled stimulus visibility requires an injected PrecisionTiming authority.",
+    );
+  }
   const stimulusTiming = timing?.registerStimulus?.(
     config.name || config.type || element.id || "stimulus",
     stimulusOnset,
@@ -1068,12 +952,6 @@ export function scheduleStimulusVisibility(
           { policy: "nearest" },
         ),
       );
-    } else {
-      cancellations.push(
-        scheduleFrameEvent(stimulusOnset, () => {
-          element.style.visibility = "visible";
-        }),
-      );
     }
   }
 
@@ -1090,81 +968,11 @@ export function scheduleStimulusVisibility(
           { policy: "not_before" },
         ),
       );
-    } else {
-      cancellations.push(
-        scheduleFrameEvent(
-          hideAt,
-          () => {
-            element.style.visibility = "hidden";
-          },
-          { policy: "not_before" },
-        ),
-      );
     }
   }
 
   return () => {
     for (const cancel of cancellations) cancel();
-  };
-}
-
-export function scheduleFrameEvent(
-  delayMs: number | null | undefined,
-  callback: (timestamp: number, elapsed: number) => void,
-  { policy = "nearest" }: { policy?: DeadlinePolicy } = {},
-) {
-  const delay = Math.max(0, Number(delayMs ?? 0));
-  let startTime: number | null = null;
-  let lastFrameTime: number | null = null;
-  let frameMs = DEFAULT_FRAME_MS;
-  let rafHandle: number | null = null;
-  let cancelled = false;
-
-  const tick = (timestamp: number) => {
-    if (cancelled) return;
-    if (startTime === null) {
-      startTime = timestamp;
-    }
-
-    if (lastFrameTime !== null) {
-      const duration = timestamp - lastFrameTime;
-      if (Number.isFinite(duration) && duration > MIN_FRAME_INTERVAL_MS) {
-        frameMs = duration;
-      }
-    }
-    lastFrameTime = timestamp;
-
-    const targetTime = startTime + delay;
-    const elapsed = timestamp - startTime;
-
-    if (policy === "not_before") {
-      if (timestamp >= targetTime) {
-        callback(timestamp, elapsed);
-        return;
-      }
-      rafHandle = requestAnimationFrame(tick);
-      return;
-    }
-
-    const errorNow = Math.abs(timestamp - targetTime);
-    const errorNext = Math.abs(timestamp + frameMs - targetTime);
-
-    if (errorNow <= errorNext) {
-      callback(timestamp, elapsed);
-      return;
-    }
-
-    rafHandle = requestAnimationFrame(tick);
-  };
-
-  rafHandle = requestAnimationFrame(tick);
-
-  return () => {
-    cancelled = true;
-    if (rafHandle !== null) {
-      cancelAnimationFrame(rafHandle);
-      rafHandle = null;
-    }
   };
 }
 

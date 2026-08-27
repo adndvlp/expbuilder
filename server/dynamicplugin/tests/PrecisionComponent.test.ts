@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createPrecisionComponentLifecycle } from "../components/PrecisionComponent";
 
 describe("PrecisionComponent lifecycle adapter", () => {
-  it("awaits asynchronous legacy render before arming or activating", async () => {
+  it("awaits asynchronous component render before arming or activating", async () => {
     let release!: (element: HTMLElement) => void;
     const renderResult = new Promise<HTMLElement>((resolve) => {
       release = resolve;

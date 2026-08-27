@@ -3,7 +3,10 @@ import { JsPsych, JsPsychPlugin, ParameterType, TrialType } from "jspsych";
 const version = "1.0.0";
 
 // Import all component types
-import ImageComponent from "./components/ImageComponent";
+import ImageComponent, {
+  getImageTextureKey,
+  prepareImageTexture,
+} from "./components/ImageComponent";
 import VideoComponent from "./components/VideoComponent";
 import HtmlComponent from "./components/HtmlComponent";
 import TextComponent from "./components/TextComponent";
@@ -27,53 +30,22 @@ import {
   HostTrialTimingContext,
   preloadAssets,
   resolveTimingMs,
+  ScheduleReference,
   VisualBoundaryPolicy,
 } from "./utils/PrecisionTiming";
 import ResponseTimingManager from "./utils/ResponseTimingManager";
+import { getPreloadedAudioBuffer } from "./utils/AudioTiming";
 import {
-  createVisualHandoff,
-  VisualHandoffSnapshot,
-} from "./utils/VisualHandoff";
-import { getCanvasStages, StageMetrics } from "./renderer/CanvasStage";
+  CanvasStage,
+  getCanvasStage,
+  getCanvasStages,
+  StageMetricCursor,
+  StageMetrics,
+  StageMetricSeriesSlice,
+} from "./renderer/CanvasStage";
 
 const DYNAMIC_CONTAINER_ID = "jspsych-dynamic-plugin-container";
-const DYNAMIC_VISUAL_BRIDGE_ID = "jspsych-dynamic-visual-bridge";
 const DYNAMIC_PERSISTENT_VISUAL_ID = "jspsych-dynamic-persistent-visual";
-
-/**
- * Structural (runtime) contract of the ExpBuilder jsPsych Timing V1
- * coordinator (`jsPsych.timing`, P0). Feature-detected at runtime — never by
- * version strings — so this plugin keeps working with official jsPsych
- * (legacy VisualHandoff path) and with the Timing fork (host path).
- */
-interface HostTrialOrigin {
-  timestamp: number;
-  source: "host_coordinator";
-  fromTrialIndex: number;
-  frameIndex: number | null;
-  acquiredAt: number;
-}
-
-interface TimingTransitionOutcome {
-  fromTrialIndex: number;
-  toTrialIndex: number;
-  status: "acquired" | "lost";
-  reason: string | null;
-}
-
-interface HostTimingCoordinator {
-  /** Defines host authority: feature-detected and required. */
-  acquireTrialOrigin(requesterTrialIndex: number): HostTrialOrigin | null;
-  /** Feature-detected individually at call sites. */
-  registerHandoff?(
-    timestamp: number,
-    meta?: { frameIndex?: number; frameIntervalEstimateMs?: number },
-  ): { status: "pending" } | { status: "rejected"; reason: string };
-  /** Feature-detected individually at call sites. */
-  getTransitionOutcome?(
-    requesterTrialIndex: number,
-  ): TimingTransitionOutcome | null;
-}
 
 interface HostFrameEngine {
   createTrialContext(options?: {
@@ -81,44 +53,121 @@ interface HostFrameEngine {
     trialIndex?: number | null;
     continuous?: boolean;
     allowEarlyActivation?: boolean;
+    earlyTransitionRejectedReason?: string | null;
   }): HostTrialTimingContext;
   onVisualCommit(
     callback: (timestamp: number, observation: any) => void,
   ): () => void;
   onReset(callback: () => void): () => void;
   canStartBackgroundWork(): boolean;
+  isRunning?(): boolean;
   queueSafeTask(
+    task: () => void,
+    options?: {
+      label?: string;
+      estimatedCostMs?: number;
+      responseSafe?: boolean;
+    },
+  ): void;
+  /**
+   * P0.1 (iteración 6): MAIN_THREAD_PREP/GPU_PREP del scheduler de
+   * preparación — nunca se ejecuta durante ventanas response-sensitive ni en
+   * la CRITICAL window.
+   */
+  queuePreparationTask?(
     task: () => void,
     options?: { label?: string; estimatedCostMs?: number },
   ): void;
+  getWorkPhase?(): "SAFE" | "CRITICAL";
+  getDiagnostics?(): {
+    response_sensitive: boolean;
+    [key: string]: any;
+  };
+  getWarmupTelemetry?(): {
+    frame_clock_warmup_frames: number;
+    frame_clock_warmup_duration_ms: number;
+    frame_clock_warmup_refresh_hz: number | null;
+    frame_clock_warmup_confidence: number | null;
+    frame_clock_warmup_timeout: boolean;
+    frame_clock_warmup_regime_generation: number;
+  };
+  flushSafeTasks?(): void;
 }
 
-type TimingContinuity = "logical_only" | "lost" | "none";
+interface PreparedTrialDescriptor {
+  materializationSafe: boolean;
+  estimatedCostMs: number;
+  resourceReady: boolean;
+  gpuReady: boolean;
+  requiresLiveDom: boolean;
+  diagnostics?: Record<string, unknown>;
+}
 
-let preservedVisualBridge: HTMLElement | null = null;
-let preservedVisualBridgeObserver: MutationObserver | null = null;
+interface DynamicPreparedTrialResourceTemplate {
+  descriptorPublicationSafe: boolean;
+  estimatedPublicationCostMs: number;
+  resourceReady: boolean;
+  gpuReady: boolean;
+  requiresLiveDom: boolean;
+  payload: {
+    trial: any;
+    descriptor: PreparedTrialDescriptor;
+    stage: CanvasStage;
+  };
+}
+
 let persistentVisualSurface: HTMLElement | null = null;
 let persistentVisualFrameEngine: HostFrameEngine | null = null;
 let removePersistentVisualCommit: (() => void) | null = null;
 let removePersistentVisualReset: (() => void) | null = null;
 let persistentVisualResizeObserver: ResizeObserver | null = null;
+let persistentVisualResizeQueuedGeneration: number | null = null;
+let persistentVisualSurfaceGeneration = 0;
 let persistentVisualLayout: {
   width: number;
   height: number;
   backgroundColor: string;
 } | null = null;
-const visualHandoff = createVisualHandoff();
 let dynamicTrialSequenceCounter = 0;
+// P0.3 (iteración 5): métricas de recursos vivos/retirados para el stress
+// de 10,000 trials. La cola de finalización conserva registros pequeños,
+// nunca runtime completo.
+let cumulativeRetiredResources = 0;
+let pendingFinalizerCount = 0;
+let peakPendingFinalizers = 0;
+// P1.1 (iteración 7): el baseline de métricas de un trial es el cursor final
+// del trial anterior — atribución exacta del commit del boundary.
+let previousTrialMetricEndCursors: StageMetricCursor[] | null = null;
+// P1.2 (iteración 6): métricas vivas reales (creados − destruidos).
+let liveRuntimeComponentInstances = 0;
+let liveRuntimeLifecycles = 0;
 
 type ContainerTeardownRegistry = {
-  callbacks: Map<HTMLElement, () => void>;
+  callbacks: Map<HTMLElement, Set<() => void>>;
   observer: MutationObserver;
+  sentinel: HTMLElement;
 };
 
 const containerTeardownRegistries = new WeakMap<
   HTMLElement,
   ContainerTeardownRegistry
 >();
+
+// P1.2 (iteración 5): refresh de layout de pointer SÓLO en momentos SAFE
+// (resize del viewport), nunca dentro del event handler.
+let safePointerLayoutRefreshListeners: Array<() => void> | null = null;
+function ensureSafePointerLayoutRefresh(manager: any) {
+  const refresh = () => manager.refreshPointerLayout?.();
+  if (!safePointerLayoutRefreshListeners) {
+    safePointerLayoutRefreshListeners = [];
+    window.addEventListener("resize", () => {
+      for (const listener of safePointerLayoutRefreshListeners ?? []) {
+        listener();
+      }
+    });
+  }
+  safePointerLayoutRefreshListeners.push(refresh);
+}
 
 /** One DOM-removal observer per display, regardless of prepared trial count. */
 function registerContainerTeardown(
@@ -128,14 +177,20 @@ function registerContainerTeardown(
 ) {
   let registry = containerTeardownRegistries.get(displayElement);
   if (!registry) {
-    const callbacks = new Map<HTMLElement, () => void>();
+    const callbacks = new Map<HTMLElement, Set<() => void>>();
+    // One bounded, content-free node keeps external display clearing
+    // observable after DOM-free precision trials detach their per-trial shell.
+    const sentinel = document.createElement("span");
+    sentinel.dataset.dynamicPluginTeardownSentinel = "true";
+    sentinel.hidden = true;
+    displayElement.appendChild(sentinel);
     const visitRemovedNode = (node: Node) => {
       if (!(node instanceof HTMLElement)) return;
-      callbacks.get(node)?.();
-      for (const descendant of node.querySelectorAll<HTMLElement>(
-        '[data-dynamic-plugin-container="true"]',
-      )) {
-        callbacks.get(descendant)?.();
+      for (const [container, registeredCallbacks] of [...callbacks]) {
+        if (container !== node && !node.contains(container)) continue;
+        for (const registeredCallback of [...registeredCallbacks]) {
+          registeredCallback();
+        }
       }
     };
     const observer = new MutationObserver((records) => {
@@ -146,17 +201,32 @@ function registerContainerTeardown(
       }
     });
     observer.observe(displayElement, { childList: true, subtree: true });
-    registry = { callbacks, observer };
+    registry = { callbacks, observer, sentinel };
     containerTeardownRegistries.set(displayElement, registry);
   }
 
-  registry.callbacks.set(container, callback);
+  const observedContainer = displayElement.contains(container)
+    ? container
+    : registry.sentinel;
+  let callbacksForContainer = registry.callbacks.get(observedContainer);
+  if (!callbacksForContainer) {
+    callbacksForContainer = new Set();
+    registry.callbacks.set(observedContainer, callbacksForContainer);
+  }
+  callbacksForContainer.add(callback);
   let registered = true;
   return () => {
     if (!registered) return;
     registered = false;
-    registry!.callbacks.delete(container);
-    if (registry!.callbacks.size === 0) {
+    const registeredCallbacks = registry!.callbacks.get(observedContainer);
+    registeredCallbacks?.delete(callback);
+    if (registeredCallbacks?.size === 0) {
+      registry!.callbacks.delete(observedContainer);
+    }
+    if (
+      registry!.callbacks.size === 0 &&
+      !registry!.sentinel.isConnected
+    ) {
       registry!.observer.disconnect();
       containerTeardownRegistries.delete(displayElement);
     }
@@ -167,7 +237,7 @@ function registerContainerTeardown(
 // P3 — prepared presentation (static resource prewarm).
 //
 // Ordinary timelines cannot safely reveal an unresolved next trial. P3 is the
-// legacy/resource-only fallback driven by a builder-generated STATIC manifest
+// resource-only prewarm driven by a builder-generated STATIC manifest
 // (`prepare_next_manifest` on the ACTIVE trial): literal asset URLs only. The
 // core precision presentation plan is a separate, stronger contract that can
 // prepare complete leaf states once variables/control flow are resolved.
@@ -341,87 +411,6 @@ function validatePreparedPresentation(
   return { status: "reused", startedAt, readyAt };
 }
 
-type PendingVisualDurationPatch = {
-  jsPsych: any;
-  trialSequence: number;
-  onsetCommitTime: number | null;
-  expectedDuration: number | null;
-  stimulus: string | null;
-  frameBoundaryHandoff: boolean;
-};
-
-let pendingVisualDurationPatch: PendingVisualDurationPatch | null = null;
-
-function removePreservedVisualBridge() {
-  preservedVisualBridgeObserver?.disconnect();
-  preservedVisualBridgeObserver = null;
-  preservedVisualBridge?.remove();
-  preservedVisualBridge = null;
-}
-
-function monitorPreservedVisualBridge(displayElement: HTMLElement) {
-  preservedVisualBridgeObserver?.disconnect();
-  preservedVisualBridgeObserver = new MutationObserver(() => {
-    if (!preservedVisualBridge) return;
-    if (displayElement.childNodes.length === 0) return;
-    if (
-      displayElement.querySelector(
-        `#${DYNAMIC_CONTAINER_ID}, [data-dynamic-plugin-container="true"]`,
-      )
-    )
-      return;
-    removePreservedVisualBridge();
-  });
-  preservedVisualBridgeObserver.observe(displayElement, {
-    childList: true,
-    subtree: true,
-  });
-}
-
-function preserveCanvasVisualBridge(
-  mainContainer: HTMLElement,
-  displayElement: HTMLElement,
-) {
-  const canvases = getCanvasStages(mainContainer).filter(
-    (stage) => stage.canvas.parentNode !== null,
-  );
-
-  removePreservedVisualBridge();
-  if (canvases.length === 0) return;
-
-  const bridge = document.createElement("div");
-  bridge.id = DYNAMIC_VISUAL_BRIDGE_ID;
-  bridge.setAttribute("aria-hidden", "true");
-  bridge.style.position = "fixed";
-  bridge.style.left = "0";
-  bridge.style.top = "0";
-  bridge.style.width = "100vw";
-  bridge.style.height = "100vh";
-  bridge.style.margin = "0";
-  bridge.style.padding = "0";
-  bridge.style.overflow = "hidden";
-  bridge.style.pointerEvents = "none";
-  bridge.style.zIndex = "2147483647";
-
-  for (const stage of canvases) {
-    const canvas = stage.canvas;
-    const rect = canvas.getBoundingClientRect();
-    canvas.style.position = "fixed";
-    canvas.style.left = `${rect.left}px`;
-    canvas.style.top = `${rect.top}px`;
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${rect.height}px`;
-    canvas.style.margin = "0";
-    canvas.style.transform = "none";
-    canvas.style.pointerEvents = "none";
-    bridge.appendChild(canvas);
-  }
-
-  document.body.appendChild(bridge);
-  preservedVisualBridge = bridge;
-  monitorPreservedVisualBridge(displayElement);
-}
-
 function styleVisualContainer(
   container: HTMLElement,
   width: number,
@@ -444,33 +433,83 @@ function styleVisualContainer(
   container.style.transformOrigin = "center center";
 }
 
+function schedulePersistentVisualResize() {
+  if (!persistentVisualSurface || !persistentVisualLayout) return;
+  const generation = persistentVisualSurfaceGeneration;
+  if (persistentVisualResizeQueuedGeneration === generation) return;
+  persistentVisualResizeQueuedGeneration = generation;
+  const applyResize = () => {
+    if (persistentVisualResizeQueuedGeneration === generation) {
+      persistentVisualResizeQueuedGeneration = null;
+    }
+    if (
+      generation !== persistentVisualSurfaceGeneration ||
+      !persistentVisualSurface ||
+      !persistentVisualLayout
+    ) {
+      return;
+    }
+    styleVisualContainer(
+      persistentVisualSurface,
+      persistentVisualLayout.width,
+      persistentVisualLayout.height,
+      persistentVisualLayout.backgroundColor,
+    );
+  };
+  if (typeof persistentVisualFrameEngine?.queueSafeTask === "function") {
+    persistentVisualFrameEngine.queueSafeTask(applyResize, {
+      label: "dynamic-persistent-surface-resize",
+      estimatedCostMs: 1,
+    });
+  } else {
+    applyResize();
+  }
+}
+
 function getPersistentVisualSurface(
   width: number,
   height: number,
   backgroundColor: string,
 ) {
+  const nextLayout = { width, height, backgroundColor };
   if (!persistentVisualSurface) {
+    persistentVisualSurfaceGeneration += 1;
     persistentVisualSurface = document.createElement("div");
     persistentVisualSurface.id = DYNAMIC_PERSISTENT_VISUAL_ID;
     persistentVisualSurface.setAttribute("aria-hidden", "true");
     persistentVisualSurface.style.pointerEvents = "none";
     persistentVisualSurface.style.zIndex = "2147483646";
     document.body.appendChild(persistentVisualSurface);
+    styleVisualContainer(
+      persistentVisualSurface,
+      nextLayout.width,
+      nextLayout.height,
+      nextLayout.backgroundColor,
+    );
+  } else if (
+    !persistentVisualLayout ||
+    persistentVisualLayout.width !== nextLayout.width ||
+    persistentVisualLayout.height !== nextLayout.height ||
+    persistentVisualLayout.backgroundColor !== nextLayout.backgroundColor
+  ) {
+    styleVisualContainer(
+      persistentVisualSurface,
+      nextLayout.width,
+      nextLayout.height,
+      nextLayout.backgroundColor,
+    );
   }
-  persistentVisualLayout = { width, height, backgroundColor };
-  styleVisualContainer(persistentVisualSurface, width, height, backgroundColor);
+  persistentVisualLayout = nextLayout;
   if (
     !persistentVisualResizeObserver &&
     typeof ResizeObserver !== "undefined"
   ) {
     persistentVisualResizeObserver = new ResizeObserver(() => {
-      if (!persistentVisualSurface || !persistentVisualLayout) return;
-      styleVisualContainer(
-        persistentVisualSurface,
-        persistentVisualLayout.width,
-        persistentVisualLayout.height,
-        persistentVisualLayout.backgroundColor,
-      );
+      // P1.4 (iteración 7): ResizeObserver nunca muta layout directamente.
+      // El FrameEngine coalesce y ejecuta la actualización sólo en SAFE;
+      // durante una ventana de respuesta la geometría visible permanece
+      // estable hasta que exista presupuesto no crítico.
+      schedulePersistentVisualResize();
     });
     persistentVisualResizeObserver.observe(document.documentElement);
   }
@@ -491,16 +530,25 @@ function bindPersistentVisualSurfaceToFrameEngine(engine: HostFrameEngine) {
     }
   });
   removePersistentVisualReset = engine.onReset(() => {
+    // P0.3 (iteración 5): los contadores de recursos viven por experimento —
+    // se resetean con el engine.
+    cumulativeRetiredResources = 0;
+    pendingFinalizerCount = 0;
+    peakPendingFinalizers = 0;
+    liveRuntimeComponentInstances = 0;
+    liveRuntimeLifecycles = 0;
+    previousTrialMetricEndCursors = null;
     removePersistentVisualSurface();
   });
 }
 
 function removePersistentVisualSurface() {
+  persistentVisualSurfaceGeneration += 1;
+  persistentVisualResizeQueuedGeneration = null;
   persistentVisualResizeObserver?.disconnect();
   persistentVisualResizeObserver = null;
   persistentVisualLayout = null;
   if (persistentVisualSurface) {
-    visualHandoff.clear("surface_removed");
     for (const stage of getCanvasStages(persistentVisualSurface)) {
       stage.destroy();
     }
@@ -515,17 +563,6 @@ function removePersistentVisualSurface() {
   // also prevents a retained callback when teardown happens for another cause.
   removeResetListener?.();
   persistentVisualFrameEngine = null;
-}
-
-function setPersistentVisualHandoff(
-  timestamp: number,
-  fromTrialSequence: number,
-) {
-  visualHandoff.set(timestamp, fromTrialSequence);
-}
-
-function consumePersistentVisualHandoffTimestamp(): VisualHandoffSnapshot {
-  return visualHandoff.consume();
 }
 
 const info = <const>{
@@ -629,11 +666,21 @@ const info = <const>{
       type: ParameterType.STRING,
       default: "off",
     },
-    /** If true, use WebGL disjoint timer queries when the browser exposes them. */
-    record_gpu_timing: {
-      type: ParameterType.BOOL,
-      default: false,
-    },
+          /** If true, use WebGL disjoint timer queries when the browser exposes them. */
+          record_gpu_timing: {
+            type: ParameterType.BOOL,
+            default: false,
+          },
+          /**
+           * Prepare-time GPU synchronization: "none" (default, commands are
+           * only issued), "fence" (WebGL2 fenceSync + bounded clientWaitSync)
+           * or "finish" (gl.finish()). Only ever runs during preparation,
+           * never inside the critical rAF tick.
+           */
+          gpu_prepare_sync: {
+            type: ParameterType.STRING,
+            default: "none",
+          },
     response_timing_enabled: {
       type: ParameterType.BOOL,
       default: true,
@@ -646,15 +693,49 @@ const info = <const>{
       type: ParameterType.COMPLEX,
       default: "trial_onset",
     },
-    /** Visual-boundary policy. Builder defaults to bounded frame tolerance. */
+    /** Visual-boundary policy. Builder milliseconds default to `nearest_frame` (minimizes |actualDuration-requestedDuration|); the other policies remain for explicit semantics. */
     boundary_policy: {
       type: ParameterType.STRING,
-      default: "frame_tolerant_not_before",
+      default: "nearest_frame",
     },
     /** Required frame count for frame_count paradigms. */
     boundary_frame_count: {
       type: ParameterType.INT,
       default: null,
+    },
+    /**
+     * Schedule reference for fixed-duration boundaries.
+     * `relative_duration` (default) re-anchors every target to the previous
+     * actual commit — constant per-stimulus duration, minimal
+     * |actualDuration-requestedDuration|, explicit global drift.
+     * `absolute_phase` keeps the global ideal timeline anchored — one
+     * boundary's error never shifts future targets (frame counts are
+     * distributed, e.g. 7/8 at 144 Hz).
+     */
+    schedule_reference: {
+      type: ParameterType.STRING,
+      default: "relative_duration",
+    },
+    /**
+     * P1.1: how an early response interacts with the ideal phase timeline.
+     * `rebase_on_event` (default): the next duration starts from the
+     * response boundary's effective commit (fresh phase origin).
+     * `preserve_global_phase`: the ideal grid keeps the full requested
+     * durations; telemetry records the drift explicitly. Never implicit.
+     */
+    event_phase_policy: {
+      type: ParameterType.STRING,
+      default: "rebase_on_event",
+    },
+    /**
+     * P0.5: fraction of the observed frame period that PHASE A (logical
+     * finalization) may consume before the trial is flagged as
+     * precision-degraded. The phase must be O(1) and normally stays far
+     * below this budget.
+     */
+    phase_a_budget_fraction: {
+      type: ParameterType.FLOAT,
+      default: 0.5,
     },
     /** Selects the primary `rt` anchor while all anchor-specific RTs remain exported. */
     response_rt_anchor: {
@@ -827,43 +908,16 @@ const info = <const>{
     previous_visual_duration_source: {
       type: ParameterType.STRING,
     },
-    visual_frame_boundary_handoff: {
+    persistent_visual_boundary: {
       type: ParameterType.BOOL,
     },
-    visual_frame_boundary_handoff_lead_ms: {
+    persistent_visual_boundary_lead_ms: {
       type: ParameterType.FLOAT,
-    },
-    visual_handoff_available: {
-      type: ParameterType.BOOL,
-    },
-    visual_handoff_consumed: {
-      type: ParameterType.BOOL,
-    },
-    visual_handoff_lost: {
-      type: ParameterType.BOOL,
-    },
-    visual_handoff_lost_reason: {
-      type: ParameterType.STRING,
-    },
-    visual_handoff_from_trial_sequence: {
-      type: ParameterType.INT,
     },
     timing_continuity: {
       type: ParameterType.STRING,
     },
     timing_lost_reason: {
-      type: ParameterType.STRING,
-    },
-    timing_handoff_from_trial_index: {
-      type: ParameterType.INT,
-    },
-    timing_handoff_frame_index: {
-      type: ParameterType.INT,
-    },
-    timing_handoff_acquired_at: {
-      type: ParameterType.FLOAT,
-    },
-    timing_handoff_register_status: {
       type: ParameterType.STRING,
     },
     trial_end_alignment: {
@@ -907,6 +961,36 @@ const info = <const>{
     actual_raf_timestamp: { type: ParameterType.FLOAT },
     deadline_error_ms: { type: ParameterType.FLOAT },
     boundary_tolerance_applied_ms: { type: ParameterType.FLOAT },
+    selected_frame_policy: { type: ParameterType.STRING },
+    absolute_duration_error_ms: { type: ParameterType.FLOAT },
+    minimum_frame_constraint_applied: { type: ParameterType.BOOL },
+    unconstrained_nearest_frame_count: { type: ParameterType.INT },
+    frame_clock_warmup_frames: { type: ParameterType.INT },
+    frame_clock_warmup_duration_ms: { type: ParameterType.FLOAT },
+    frame_clock_warmup_refresh_hz: { type: ParameterType.FLOAT },
+    frame_clock_warmup_confidence: { type: ParameterType.FLOAT },
+    frame_clock_warmup_timeout: { type: ParameterType.BOOL },
+    frame_clock_warmup_regime_generation: { type: ParameterType.INT },
+    schedule_reference: { type: ParameterType.STRING },
+    ideal_absolute_target: { type: ParameterType.FLOAT },
+    actual_absolute_error: { type: ParameterType.FLOAT },
+    cumulative_phase_error: { type: ParameterType.FLOAT },
+    per_stimulus_duration_error: { type: ParameterType.FLOAT },
+    boundary_missed_reason: { type: ParameterType.STRING },
+    boundary_initial_due_frame: { type: ParameterType.INT },
+    boundary_actual_commit_frame: { type: ParameterType.INT },
+    extra_frames_held: { type: ParameterType.INT },
+    incoming_ready_after_target_ms: { type: ParameterType.FLOAT },
+    precision_path_degraded: { type: ParameterType.BOOL },
+    critical_dom_mutation_count: { type: ParameterType.INT },
+    precision_prefetch_authority: { type: ParameterType.STRING },
+    logical_finalize_deferred: { type: ParameterType.BOOL },
+    critical_logical_finalize_duration_ms: { type: ParameterType.FLOAT },
+    deferred_finalize_duration_ms: { type: ParameterType.FLOAT },
+    gpu_prepare_sync_mode: { type: ParameterType.STRING },
+    gpu_prepare_sync_confirmed: { type: ParameterType.BOOL },
+    gpu_prepare_sync_duration_ms: { type: ParameterType.FLOAT },
+    gpu_prepare_sync_error: { type: ParameterType.STRING },
     predictor_confidence: { type: ParameterType.FLOAT },
     phase_prediction_uncertainty_ms: { type: ParameterType.FLOAT },
     early_error_ms: { type: ParameterType.FLOAT },
@@ -1384,49 +1468,6 @@ function findPrimaryVisualTimingRecord(
   );
 }
 
-function patchPreviousVisualDuration(
-  jsPsych: any,
-  nextOnsetCommitTime: number | null,
-  nextStimulus: string | null,
-  nextTrialSequence: number,
-) {
-  const pending = pendingVisualDurationPatch;
-  if (
-    !pending ||
-    pending.jsPsych !== jsPsych ||
-    !pending.frameBoundaryHandoff ||
-    typeof pending.onsetCommitTime !== "number" ||
-    typeof nextOnsetCommitTime !== "number"
-  ) {
-    return null;
-  }
-
-  const visualDuration = nextOnsetCommitTime - pending.onsetCommitTime;
-  const visualDurationError = roundTiming(
-    pending.expectedDuration === null
-      ? null
-      : visualDuration - pending.expectedDuration,
-  );
-  const currentRowPreviousVisualData = {
-    previous_visual_trial_sequence: pending.trialSequence,
-    previous_visual_stimulus: pending.stimulus,
-    previous_visual_onset_commit_time: roundTiming(pending.onsetCommitTime),
-    previous_visual_offset_commit_time: roundTiming(nextOnsetCommitTime),
-    previous_visual_duration: roundTiming(visualDuration),
-    previous_visual_duration_error: visualDurationError,
-    previous_visual_duration_source: "next_visual_onset_commit",
-  };
-
-  pendingVisualDurationPatch = null;
-  return currentRowPreviousVisualData;
-}
-
-function closePendingVisualDuration(jsPsych: any, reason: string) {
-  const pending = pendingVisualDurationPatch;
-  if (!pending || pending.jsPsych !== jsPsych) return;
-  pendingVisualDurationPatch = null;
-}
-
 function resolveRawValue(value: any) {
   return value && typeof value === "object" && "value" in value
     ? value.value
@@ -1454,10 +1495,22 @@ function isFrameBoundaryVisualTrial(
   stimulusComponents: Array<{ config: any }>,
   responseComponents: Array<{ config: any }>,
 ) {
+  // P1.1/P1.2 (iteración 4): clasificar responses por si requieren
+  // pixels/DOM visuales. Keyboard nunca dibuja UI. ClickResponseComponent
+  // dibuja sólo un overlay transparente de captura (sin píxeles) cuando el
+  // marker está desactivado; con marker activo sigue fuera del fast path.
   const responsesDoNotDrawVisuals = responseComponents.every(
-    ({ config }) =>
-      String(resolveRawValue(config.type) ?? "") ===
-      "KeyboardResponseComponent",
+    ({ config }) => {
+      const type = String(resolveRawValue(config.type) ?? "");
+      if (type === "KeyboardResponseComponent") return true;
+      if (
+        type === "ClickResponseComponent" &&
+        resolveRawValue(config.show_click_marker) === false
+      ) {
+        return true;
+      }
+      return false;
+    },
   );
 
   const visualStimuli = stimulusComponents.filter(
@@ -1470,12 +1523,15 @@ function isFrameBoundaryVisualTrial(
         String(resolveRawValue(config.type) ?? "") === "AudioComponent",
     )
     .every(({ config }) => resolveRawValue(config.show_controls) !== true);
+  // P0.2 (iteración 5): la elegibilidad ya no exige que cada estímulo ocupe
+  // TODA la ventana del trial — los estímulos segmentados (onset/duration
+  // explícitos) se temporizan como transiciones visuales del FrameEngine y
+  // el boundary del trial sigue cerrando todo lo visible.
   const usesPersistentBackend = visualStimuli.every(({ config }) => {
     const type = String(resolveRawValue(config.type) ?? "");
     return (
-      (type === "ImageComponent" ||
-        (type === "TextComponent" && !isClozeTextComponent(config))) &&
-      usesWholeTrialStimulusWindow(config, trialDuration)
+      type === "ImageComponent" ||
+      (type === "TextComponent" && !isClozeTextComponent(config))
     );
   });
 
@@ -1609,11 +1665,133 @@ function getDiagnosticsOptions(trial: any) {
   };
 }
 
+/**
+ * P1.1 (iteración 7): métricas de UN trial como DELTAS de cursores O(1)
+ * capturados en la activación y en el boundary. Nunca el acumulado del stage
+ * persistente — B jamás contiene A+B.
+ */
+function aggregateRenderMetricsFromCursors(
+  starts: Array<StageMetricCursor | null>,
+  ends: StageMetricCursor[],
+  slices: StageMetricSeriesSlice[],
+  requestedBackend: string,
+) {
+  const delta = (end: number, start: number | null) =>
+    start === null ? end : Math.max(0, end - start);
+  const commitDurations = slices.flatMap((slice) => slice.commitDurations);
+  const gpuDrawDurations = slices.flatMap((slice) => slice.gpuDrawDurations);
+  const max = (values: number[]) =>
+    values.length > 0 ? Math.max(...values) : null;
+  const commitCount = ends.reduce(
+    (sum, end, index) => sum + delta(end.commit_count, starts[index]?.commit_count ?? null),
+    0,
+  );
+  const gpuDrawCount = ends.reduce(
+    (sum, end, index) => sum + delta(end.gpu_draw_count, starts[index]?.gpu_draw_count ?? null),
+    0,
+  );
+  const commitMean = commitDurations.length === 0
+    ? null
+    : commitDurations.reduce((sum, value) => sum + value, 0) / commitDurations.length;
+  const gpuMean = gpuDrawDurations.length === 0
+    ? null
+    : gpuDrawDurations.reduce((sum, value) => sum + value, 0) / gpuDrawDurations.length;
+  const renderBackends = [...new Set(ends.map((cursor) => cursor.render_backend))];
+  const bufferStrategies = [...new Set(ends.map((cursor) => cursor.buffer_strategy))];
+  const syncModes = [...new Set(ends.map((cursor) => cursor.gpu_prepare_sync_mode))];
+
+  return {
+    render_backend_requested: requestedBackend,
+    render_backend: renderBackends.join("+") || "none",
+    visual_backend: renderBackends.join("+") || "none",
+    visual_all_commits_frame_synced: ends.every(
+      (end, index) =>
+        delta(end.commit_unsynced_count, starts[index]?.commit_unsynced_count ?? null) === 0,
+    ),
+    commit_unsynced_count: ends.reduce(
+      (sum, end, index) =>
+        sum + delta(end.commit_unsynced_count, starts[index]?.commit_unsynced_count ?? null),
+      0,
+    ),
+    visual_all_commits_rAF: ends.every(
+      (end, index) =>
+        delta(end.commit_unsynced_count, starts[index]?.commit_unsynced_count ?? null) === 0,
+    ),
+    commit_outside_raf_count: ends.reduce(
+      (sum, end, index) =>
+        sum + delta(end.commit_unsynced_count, starts[index]?.commit_unsynced_count ?? null),
+      0,
+    ),
+    buffer_strategy: bufferStrategies.join("+") || "none",
+    commit_count: commitCount,
+    commit_durations: commitDurations.map(roundTiming),
+    commit_series_truncated: slices.some((slice) => slice.truncated),
+    mean_commit_duration: roundTiming(commitMean),
+    max_commit_duration: roundTiming(max(commitDurations)),
+    draw_call_count: ends.reduce(
+      (sum, end, index) => sum + delta(end.draw_call_count, starts[index]?.draw_call_count ?? null),
+      0,
+    ),
+    texture_uploads_during_trial: ends.reduce(
+      (sum, end, index) => sum + delta(end.texture_uploads, starts[index]?.texture_uploads ?? null),
+      0,
+    ),
+    buffer_uploads_during_trial: ends.reduce(
+      (sum, end, index) => sum + delta(end.buffer_uploads, starts[index]?.buffer_uploads ?? null),
+      0,
+    ),
+    shader_compiles_during_trial: ends.reduce(
+      (sum, end, index) => sum + delta(end.shader_compiles, starts[index]?.shader_compiles ?? null),
+      0,
+    ),
+    webgl_context_lost_count: ends.reduce(
+      (sum, end, index) =>
+        sum + delta(end.webgl_context_lost_count, starts[index]?.webgl_context_lost_count ?? null),
+      0,
+    ),
+    gpu_timer_available: ends.some((cursor) => cursor.gpu_timer_available),
+    gpu_draw_durations: gpuDrawDurations.map(roundTiming),
+    gpu_draw_count: gpuDrawCount,
+    gpu_series_truncated: slices.some((slice) => slice.truncated),
+    mean_gpu_draw_duration: roundTiming(gpuMean),
+    max_gpu_draw_duration: roundTiming(max(gpuDrawDurations)),
+    gpu_pending_query_count: ends.reduce(
+      (sum, end) => sum + end.gpu_pending_query_count,
+      0,
+    ),
+    gpu_disjoint_count: ends.reduce(
+      (sum, end, index) => sum + delta(end.gpu_disjoint_count, starts[index]?.gpu_disjoint_count ?? null),
+      0,
+    ),
+    gpu_prepare_sync_mode: syncModes.join("+") || "none",
+    gpu_prepare_sync_confirmed:
+      syncModes.includes("fence")
+        ? ends
+            .filter((cursor) => cursor.gpu_prepare_sync_mode === "fence")
+            .every((cursor) => cursor.gpu_prepare_sync_confirmed === true)
+        : null,
+    gpu_prepare_sync_duration_ms:
+      ends.length === 0
+        ? null
+        : roundTiming(
+            max(
+              ends
+                .map((cursor) => cursor.gpu_prepare_sync_duration_ms)
+                .filter((value): value is number => typeof value === "number"),
+            ),
+          ),
+    gpu_prepare_sync_error:
+      ends
+        .map((cursor) => cursor.gpu_prepare_sync_error)
+        .filter((value): value is string => typeof value === "string")
+        .join("; ") || null,
+  };
+}
+
 function aggregateRenderMetrics(
   stageMetrics: StageMetrics[],
   requestedBackend: string,
-) {
-  const commitDurations = stageMetrics.flatMap(
+) {  const commitDurations = stageMetrics.flatMap(
     (metrics) => metrics.commit_durations,
   );
   const gpuDrawDurations = stageMetrics.flatMap(
@@ -1729,6 +1907,33 @@ function aggregateRenderMetrics(
       (sum, metrics) => sum + metrics.gpu_disjoint_count,
       0,
     ),
+    gpu_prepare_sync_mode:
+      [
+        ...new Set(
+          stageMetrics.map((metrics) => metrics.gpu_prepare_sync_mode),
+        ),
+      ].join("+") || "none",
+    gpu_prepare_sync_confirmed:
+      stageMetrics.some((metrics) => metrics.gpu_prepare_sync_mode === "fence")
+        ? stageMetrics
+            .filter((metrics) => metrics.gpu_prepare_sync_mode === "fence")
+            .every((metrics) => metrics.gpu_prepare_sync_confirmed === true)
+        : null,
+    gpu_prepare_sync_duration_ms:
+      stageMetrics.length === 0
+        ? null
+        : roundTiming(
+            max(
+              stageMetrics
+                .map((metrics) => metrics.gpu_prepare_sync_duration_ms)
+                .filter((value): value is number => typeof value === "number"),
+            ),
+          ),
+    gpu_prepare_sync_error:
+      stageMetrics
+        .map((metrics) => metrics.gpu_prepare_sync_error)
+        .filter((value): value is string => typeof value === "string")
+        .join("; ") || null,
   };
 }
 
@@ -1881,6 +2086,73 @@ function classifyTimingQuality(
   return { quality: "ok", reason: "" };
 }
 
+function inspectPreparedResourceReadiness(
+  jsPsych: JsPsych,
+  stage: CanvasStage,
+  components: Array<{ config: any }>,
+) {
+  const audioContext = jsPsych.pluginAPI.audioContext();
+  const states = components.map(({ config }) => {
+    const type = String(resolveRawValue(config.type) ?? "");
+    if (type === "ImageComponent") {
+      const stimulus = String(resolveRawValue(config.stimulus) ?? "");
+      return {
+        resourceReady: getReadyPreloadedBitmap(stimulus) !== null,
+        gpuReady: stage.isTextureResident(getImageTextureKey(stimulus)),
+        cost: 1,
+      };
+    }
+    if (type === "TextComponent" && !isClozeTextComponent(config)) {
+      const resource = TextComponent.getPreparedVisualResource(stage, config);
+      return {
+        resourceReady: resource !== null,
+        gpuReady:
+          resource !== null && stage.isTextureResident(resource.textureKey),
+        cost: 1,
+      };
+    }
+    if (
+      type === "AudioComponent" &&
+      resolveRawValue(config.show_controls) !== true
+    ) {
+      const buffer = audioContext
+        ? getPreloadedAudioBuffer(
+            audioContext,
+            String(resolveRawValue(config.stimulus) ?? ""),
+          )
+        : null;
+      return { resourceReady: buffer !== null, gpuReady: true, cost: 0.5 };
+    }
+    if (type === "KeyboardResponseComponent") {
+      return { resourceReady: true, gpuReady: true, cost: 0.5 };
+    }
+    if (
+      type === "ClickResponseComponent" &&
+      resolveRawValue(config.show_click_marker) === false
+    ) {
+      return { resourceReady: true, gpuReady: true, cost: 0.5 };
+    }
+    return { resourceReady: false, gpuReady: false, cost: 4 };
+  });
+  return {
+    resourceReady: states.every((state) => state.resourceReady),
+    gpuReady: states.every((state) => state.gpuReady),
+    estimatedMaterializationCostMs:
+      0.5 + states.reduce((sum, state) => sum + state.cost, 0),
+  };
+}
+
+function clonePreparedTrialResource(trial: any) {
+  return {
+    ...trial,
+    __canvasStyles: { ...(trial.__canvasStyles ?? {}) },
+    components: (trial.components ?? []).map((config: any) => ({ ...config })),
+    response_components: (trial.response_components ?? []).map(
+      (config: any) => ({ ...config }),
+    ),
+  };
+}
+
 /**
  * **DynamicPlugin**
  *
@@ -1927,10 +2199,67 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     dispose: () => void;
     startLogicalLifecycle: () => void;
   } | null = null;
+  private executionTiming: {
+    frameEngine: HostFrameEngine;
+    trialContext: HostTrialTimingContext;
+    timingContinuous: boolean;
+    allowEarlyActivation: boolean;
+    earlyTransitionRejectedReason: string | null;
+  } | null = null;
+  private preparedTrialDescriptor: PreparedTrialDescriptor | null = null;
+  private preparedTrialResourceTemplate: DynamicPreparedTrialResourceTemplate | null =
+    null;
+  private pendingPreparedMaterialization: {
+    displayElement: HTMLElement;
+    trial: any;
+    preparation: {
+      trialIndex: number | null;
+      frameEngine: HostFrameEngine;
+      timingContinuous: boolean;
+      earlyTransitionRejectedReason?: string | null;
+    };
+  } | null = null;
   private preparedTrialReady = true;
   private preparedTrialFallbackReason: string | null = null;
+  private prepareCpuDurationMs: number | null = null;
+  private prepareCompletedDuringResponseWindow: boolean | null = null;
+  private prepareCompletedNearVisualDeadline: boolean | null = null;
+  // P0.1 (iteración 6): etapas del scheduler de preparación.
+  private prepareResourceWaitMs: number | null = null;
+  private prepareMainThreadMs: number | null = null;
+  private prepareGpuMs: number | null = null;
+  private preparePublishMs: number | null = null;
+  private prepareMainThreadDuringResponseWindow: boolean | null = null;
+  private prepareGpuDuringResponseWindow: boolean | null = null;
+  private prepareCompletionDeferredUntilSafe: boolean | null = null;
+  // P0.2 (iteración 7): contrato de materialización runtime response-safe.
+  private runtimeMaterializationDuringResponseWindow: boolean | null = null;
+  private runtimeMaterializationCostEstimateMs: number | null = null;
+  private runtimeMaterializationDomMutations: number | null = null;
+  private runtimeMaterializationLayoutReads: number | null = null;
+  private runtimeMaterializationGpuCalls: number | null = null;
+  private runtimeMaterializationCpuMs: number | null = null;
 
   constructor(private jsPsych: JsPsych) {}
+
+  /** Core-owned timing authority for every DynamicPlugin execution. */
+  setTrialExecutionTiming(timing: {
+    frameEngine: HostFrameEngine;
+    trialContext: HostTrialTimingContext;
+    timingContinuous: boolean;
+    allowEarlyActivation: boolean;
+    earlyTransitionRejectedReason: string | null;
+  }) {
+    this.executionTiming = timing;
+  }
+
+  getTrialTimingContext() {
+    return (
+      this.preparedExecution?.context ??
+      this.executionTiming?.trialContext ??
+      null
+    );
+  }
 
   async prepareTrial(
     displayElement: HTMLElement,
@@ -1946,6 +2275,16 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
   ) {
     this.preparedTrialReady = true;
     this.preparedTrialFallbackReason = null;
+    this.preparedTrialDescriptor = null;
+    this.preparedTrialResourceTemplate = null;
+    this.pendingPreparedMaterialization = null;
+    this.prepareResourceWaitMs = null;
+    this.prepareMainThreadMs = null;
+    this.prepareGpuMs = null;
+    this.preparePublishMs = null;
+    this.prepareMainThreadDuringResponseWindow = null;
+    this.prepareGpuDuringResponseWindow = null;
+    this.prepareCompletionDeferredUntilSafe = null;
     const trial = materializeStaticTrial(rawTrial);
     trial.timing_continuous = preparation.timingContinuous;
     const trialDuration = resolveTimingMs(trial.trial_duration, null);
@@ -1976,25 +2315,353 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       return;
     }
 
+    const resourceStartedAt = performance.now();
+    const surface = getPersistentVisualSurface(
+      trial.__canvasStyles?.width ?? 1024,
+      trial.__canvasStyles?.height ?? 768,
+      "transparent",
+    );
+    bindPersistentVisualSurfaceToFrameEngine(preparation.frameEngine);
+    const stage = getCanvasStage(surface, {
+      width: trial.__canvasStyles?.width ?? 1024,
+      height: trial.__canvasStyles?.height ?? 768,
+      backgroundColor: "transparent",
+      zIndex: 0,
+      backend: trial.render_backend || "webgl-strict",
+      recordGpuTiming: trial.record_gpu_timing !== false,
+      recordCommitSeries: false,
+      recordGpuSeries: false,
+      gpuPrepareSync: String(trial.gpu_prepare_sync ?? "none") as any,
+    });
+    const components = [...stimulusComponents, ...responseComponents];
+    const assets = collectAssetPreloadList(components);
+    await preloadAssets(
+      this.jsPsych,
+      assets,
+      resolveTimingMs(trial.asset_preload_timeout, 10000) ?? 10000,
+    );
+    this.prepareResourceWaitMs = Math.max(
+      0,
+      performance.now() - resourceStartedAt,
+    );
+
+    const runSafePreparationStage = (
+      work: () => void,
+      options: { label: string; estimatedCostMs: number; gpu?: boolean },
+    ) =>
+      new Promise<void>((resolve, reject) => {
+        const run = () => {
+          const startedAt = performance.now();
+          const duringResponse =
+            preparation.frameEngine.getDiagnostics?.().response_sensitive ===
+            true;
+          try {
+            work();
+            const duration = Math.max(0, performance.now() - startedAt);
+            if (options.gpu) {
+              this.prepareGpuMs = Math.max(
+                0,
+                (this.prepareGpuMs ?? 0) + duration,
+              );
+              this.prepareGpuDuringResponseWindow =
+                this.prepareGpuDuringResponseWindow === true || duringResponse;
+            } else {
+              this.prepareMainThreadMs = Math.max(
+                0,
+                (this.prepareMainThreadMs ?? 0) + duration,
+              );
+              this.prepareMainThreadDuringResponseWindow =
+                this.prepareMainThreadDuringResponseWindow === true ||
+                duringResponse;
+            }
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        };
+        const mustDefer =
+          preparation.frameEngine.isRunning?.() === true &&
+          (preparation.frameEngine.getDiagnostics?.().response_sensitive ===
+            true ||
+            preparation.frameEngine.getWorkPhase?.() === "CRITICAL");
+        if (mustDefer) {
+          this.prepareCompletionDeferredUntilSafe = true;
+          if (!preparation.frameEngine.queuePreparationTask) {
+            reject(
+              new Error(
+                "Global FrameEngine is missing queuePreparationTask().",
+              ),
+            );
+            return;
+          }
+          preparation.frameEngine.queuePreparationTask(run, options);
+        } else {
+          run();
+        }
+      });
+
+    await runSafePreparationStage(
+      () => {
+        for (const { config } of stimulusComponents) {
+          config.__canvasStyles = trial.__canvasStyles;
+          const type = String(resolveRawValue(config.type) ?? "");
+          if (type === "TextComponent" && !isClozeTextComponent(config)) {
+            TextComponent.prepareMainResource(config);
+          }
+        }
+      },
+      { label: "dynamic-trial-text-main-prep", estimatedCostMs: 4 },
+    );
+    await runSafePreparationStage(
+      () => {
+        for (const { config } of stimulusComponents) {
+          const type = String(resolveRawValue(config.type) ?? "");
+          if (type === "ImageComponent") {
+            prepareImageTexture(stage, resolveRawValue(config.stimulus));
+          } else if (
+            type === "TextComponent" &&
+            !isClozeTextComponent(config)
+          ) {
+            TextComponent.prepareGpuResource(stage, config);
+          }
+        }
+        if (String(trial.gpu_prepare_sync ?? "none") !== "none") {
+          stage.syncGpuForPrepare();
+        }
+      },
+      { label: "dynamic-trial-gpu-prep", estimatedCostMs: 3, gpu: true },
+    );
+
+    const readiness = inspectPreparedResourceReadiness(
+      this.jsPsych,
+      stage,
+      components,
+    );
+    const { resourceReady, gpuReady } = readiness;
+    const requiresLiveDom = !isFrameBoundaryVisualTrial(
+      trialDuration,
+      stimulusComponents,
+      responseComponents,
+    );
+    const descriptor: PreparedTrialDescriptor = {
+      materializationSafe: resourceReady && gpuReady && !requiresLiveDom,
+      estimatedCostMs: readiness.estimatedMaterializationCostMs,
+      resourceReady,
+      gpuReady,
+      requiresLiveDom,
+      diagnostics: {
+        timingAuthority: "global_frame_engine",
+        imageCount: assets.images.length,
+        audioCount: assets.audio.length,
+      },
+    };
+    this.preparedTrialResourceTemplate = {
+      descriptorPublicationSafe:
+        resourceReady && gpuReady && !requiresLiveDom,
+      estimatedPublicationCostMs: 0.5,
+      resourceReady,
+      gpuReady,
+      requiresLiveDom,
+      payload: {
+        trial: clonePreparedTrialResource(trial),
+        descriptor: { ...descriptor },
+        stage,
+      },
+    };
+    await new Promise<void>((resolve) => {
+      const publish = () => {
+        const startedAt = performance.now();
+        this.preparedTrialDescriptor = descriptor;
+        this.preparePublishMs = Math.max(0, performance.now() - startedAt);
+        resolve();
+      };
+      if (preparation.frameEngine.isRunning?.() === true) {
+        preparation.frameEngine.queueSafeTask(publish, {
+          label: "dynamic-trial-ready-descriptor-publication",
+          estimatedCostMs: 0.1,
+          responseSafe: true,
+        });
+      } else {
+        publish();
+      }
+    });
+    this.pendingPreparedMaterialization = {
+      displayElement,
+      trial,
+      preparation,
+    };
+    if (!resourceReady || !gpuReady || requiresLiveDom) {
+      this.preparedTrialReady = false;
+      this.preparedTrialFallbackReason = !resourceReady
+        ? "prepared_resource_not_ready"
+        : !gpuReady
+          ? "prepared_gpu_resource_not_ready"
+          : "prepared_trial_requires_live_dom";
+    }
+  }
+
+  getPreparedTrialDescriptor() {
+    return this.preparedTrialDescriptor;
+  }
+
+  getPreparedTrialResourceTemplate() {
+    return this.preparedTrialResourceTemplate;
+  }
+
+  /**
+   * READY DESCRIPTOR publication. The reusable template was produced by
+   * SAFE-only preparation; this path performs only bounded cloning and cache
+   * residency checks. It never creates DOM, measures layout, or uploads GPU
+   * resources.
+   */
+  publishPreparedTrialDescriptor(
+    displayElement: HTMLElement,
+    _rawTrial: TrialType<Info>,
+    preparation: {
+      trialIndex: number | null;
+      frameEngine: HostFrameEngine;
+      timingContinuous: boolean;
+      presentationStatic?: boolean;
+      earlyTransitionEligible?: boolean;
+      earlyTransitionRejectedReason?: string | null;
+    },
+    template: DynamicPreparedTrialResourceTemplate,
+  ) {
+    this.preparedExecution = null;
+    this.pendingPreparedMaterialization = null;
+    this.preparedTrialDescriptor = null;
+    this.preparedTrialResourceTemplate = template;
+    this.preparedTrialReady = true;
+    this.preparedTrialFallbackReason = null;
+    this.prepareResourceWaitMs = 0;
+    this.prepareMainThreadMs = 0;
+    this.prepareGpuMs = 0;
+    this.prepareMainThreadDuringResponseWindow = false;
+    this.prepareGpuDuringResponseWindow = false;
+    this.prepareCompletionDeferredUntilSafe = false;
+
+    if (
+      !preparation.timingContinuous ||
+      template?.descriptorPublicationSafe !== true ||
+      !template.payload?.trial ||
+      !template.payload?.stage
+    ) {
+      this.preparedTrialReady = false;
+      this.preparedTrialFallbackReason =
+        preparation.earlyTransitionRejectedReason ??
+        "prepared_resource_template_not_publishable";
+      return;
+    }
+
+    const publishStartedAt = performance.now();
+    const trial = clonePreparedTrialResource(template.payload.trial);
+    trial.timing_continuous = true;
+    const stimulusComponents = trial.components.map((config: any) => ({ config }));
+    const responseComponents = trial.response_components.map((config: any) => ({
+      config,
+    }));
+    const components = [...stimulusComponents, ...responseComponents];
+    const readiness = inspectPreparedResourceReadiness(
+      this.jsPsych,
+      template.payload.stage,
+      components,
+    );
+    const trialDuration = resolveTimingMs(trial.trial_duration, null);
+    const requiresLiveDom = !isFrameBoundaryVisualTrial(
+      trialDuration,
+      stimulusComponents,
+      responseComponents,
+    );
+    const descriptor: PreparedTrialDescriptor = {
+      ...template.payload.descriptor,
+      materializationSafe:
+        readiness.resourceReady && readiness.gpuReady && !requiresLiveDom,
+      estimatedCostMs: readiness.estimatedMaterializationCostMs,
+      resourceReady: readiness.resourceReady,
+      gpuReady: readiness.gpuReady,
+      requiresLiveDom,
+      diagnostics: {
+        ...(template.payload.descriptor.diagnostics ?? {}),
+        resourceTemplateReused: true,
+      },
+    };
+    template.resourceReady = descriptor.resourceReady;
+    template.gpuReady = descriptor.gpuReady;
+    template.requiresLiveDom = descriptor.requiresLiveDom;
+    template.descriptorPublicationSafe = descriptor.materializationSafe;
+    this.preparedTrialDescriptor = descriptor;
+    this.pendingPreparedMaterialization = {
+      displayElement,
+      trial,
+      preparation,
+    };
+    this.preparePublishMs = Math.max(0, performance.now() - publishStartedAt);
+    if (!descriptor.materializationSafe) {
+      this.preparedTrialReady = false;
+      this.preparedTrialFallbackReason = !descriptor.resourceReady
+        ? "prepared_resource_not_ready"
+        : !descriptor.gpuReady
+          ? "prepared_gpu_resource_not_ready"
+          : "prepared_trial_requires_live_dom";
+    }
+  }
+
+  async materializePreparedTrial(descriptor: PreparedTrialDescriptor) {
+    const pending = this.pendingPreparedMaterialization;
+    if (!pending || descriptor !== this.preparedTrialDescriptor) {
+      throw new Error("prepared_trial_descriptor_not_current");
+    }
+    if (!descriptor.materializationSafe) return;
+    this.pendingPreparedMaterialization = null;
+    const { displayElement, trial, preparation } = pending;
+    const materializationStartedAt = performance.now();
+    const materializationStages = persistentVisualSurface
+      ? getCanvasStages(persistentVisualSurface)
+      : [];
+    const gpuCallsBefore = materializationStages.reduce(
+      (sum, stage) => sum + stage.getGpuResourceCallCount(),
+      0,
+    );
+    const layoutReadsBefore =
+      ResponseTimingManager.getCumulativeLayoutReadCount();
+    let domMutationCount = 0;
+    const materializationObserver =
+      typeof MutationObserver !== "undefined" && document.documentElement
+        ? new MutationObserver((records) => {
+            domMutationCount += records.length;
+          })
+        : null;
+    materializationObserver?.observe(document.documentElement, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+    });
     const context = preparation.frameEngine.createTrialContext({
       id: `dynamic-${dynamicTrialSequenceCounter + 1}`,
       trialIndex: preparation.trialIndex,
       continuous: true,
       allowEarlyActivation: true,
     });
-    bindPersistentVisualSurfaceToFrameEngine(preparation.frameEngine);
-
     let resolveReady!: () => void;
     let rejectReady!: (error: unknown) => void;
     const ready = new Promise<void>((resolve, reject) => {
       resolveReady = resolve;
       rejectReady = reject;
     });
+    const prepareCpuStartedAt = performance.now();
+    this.prepareCpuDurationMs = null;
+    this.prepareCompletedDuringResponseWindow = null;
+    this.prepareCompletedNearVisualDeadline = null;
     let dispose = () => context.stop();
     let startLogicalLifecycle = () => {};
     const result = this.runTrial(displayElement, trial, {
       frameEngine: preparation.frameEngine,
       trialContext: context,
+      timingContinuous: true,
+      allowEarlyActivation: true,
+      earlyTransitionRejectedReason: null,
+      materializationOnly: true,
+      materializationEstimatedCostMs: descriptor.estimatedCostMs,
       onReady: resolveReady,
       onPreparationError: rejectReady,
       registerCancel: (cancel) => {
@@ -2018,6 +2685,19 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     this.preparedExecution = preparedExecution;
     try {
       await ready;
+      const prepareCpuDurationMs = Math.max(
+        0,
+        performance.now() - prepareCpuStartedAt,
+      );
+      this.prepareCpuDurationMs = prepareCpuDurationMs;
+      this.prepareCompletedDuringResponseWindow =
+        preparation.frameEngine.getDiagnostics?.().response_sensitive === true;
+      this.prepareCompletedNearVisualDeadline =
+        preparation.frameEngine.getWorkPhase?.() === "CRITICAL";
+      const coordinator = (this.jsPsych as any)?.timing as
+        | { reportPrepareCpuDuration?: (durationMs: number) => void }
+        | undefined;
+      coordinator?.reportPrepareCpuDuration?.(prepareCpuDurationMs);
     } catch (error) {
       const reason =
         error instanceof Error && error.message
@@ -2025,18 +2705,46 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           : "precision_prepare_failed";
       this.preparedTrialReady = false;
       this.preparedTrialFallbackReason = reason;
-      context.markNotReady?.(reason, {
-        precisionFallbackReason: reason,
-      });
+      context.markNotReady?.(reason, { precisionFallbackReason: reason });
       if (this.preparedExecution === preparedExecution) {
         this.preparedExecution = null;
       }
       dispose();
+    } finally {
+      domMutationCount += materializationObserver?.takeRecords().length ?? 0;
+      materializationObserver?.disconnect();
+      const gpuCallsAfter = materializationStages.reduce(
+        (sum, stage) => sum + stage.getGpuResourceCallCount(),
+        0,
+      );
+      this.runtimeMaterializationDomMutations = domMutationCount;
+      this.runtimeMaterializationLayoutReads = Math.max(
+        0,
+        ResponseTimingManager.getCumulativeLayoutReadCount() -
+          layoutReadsBefore,
+      );
+      this.runtimeMaterializationGpuCalls = Math.max(
+        0,
+        gpuCallsAfter - gpuCallsBefore,
+      );
+      this.runtimeMaterializationCpuMs = Math.max(
+        0,
+        performance.now() - materializationStartedAt,
+      );
     }
   }
 
   isPreparedTrialReady() {
     return this.preparedTrialReady && this.preparedExecution !== null;
+  }
+
+  /**
+   * P0.2 (iteración 7): contrato de materialización runtime. Tras una
+   * preparación completada, un coste no-nulo significa que el trial
+   * materializó con recursos ready (response-safe por contrato).
+   */
+  getRuntimeMaterializationEstimate(): number | null {
+    return this.runtimeMaterializationCostEstimateMs;
   }
 
   getPreparedTrialFallbackReason() {
@@ -2045,25 +2753,55 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
 
   discardPreparedTrial() {
     const prepared = this.preparedExecution;
-    if (!prepared) return;
+    this.preparedTrialDescriptor = null;
+    this.preparedTrialResourceTemplate = null;
+    this.pendingPreparedMaterialization = null;
+    this.preparedTrialReady = false;
     this.preparedExecution = null;
-    prepared.dispose();
+    prepared?.dispose();
   }
 
   setPreparedTrialIndex(trialIndex: number) {
     this.preparedExecution?.context.setTrialIndex(trialIndex);
+    if (this.pendingPreparedMaterialization) {
+      this.pendingPreparedMaterialization.preparation.trialIndex = trialIndex;
+    }
   }
 
   trial(displayElement: HTMLElement, trial: TrialType<Info>) {
     const prepared = this.preparedExecution;
     if (prepared) {
       this.preparedExecution = null;
+      this.preparedTrialDescriptor = null;
+      this.pendingPreparedMaterialization = null;
+      this.executionTiming = null;
       Object.assign(prepared.trial, trial);
       prepared.context.start();
       prepared.startLogicalLifecycle();
       return prepared.result;
     }
-    return this.runTrial(displayElement, trial);
+    const executionTiming = this.executionTiming;
+    this.executionTiming = null;
+    if (!executionTiming?.frameEngine || !executionTiming.trialContext) {
+      throw new Error(
+        "DynamicPlugin requires a core-provided FrameEngine TrialTimingContext.",
+      );
+    }
+    let startLogicalLifecycle = () => {};
+    const result = this.runTrial(displayElement, trial, {
+      frameEngine: executionTiming.frameEngine,
+      trialContext: executionTiming.trialContext,
+      timingContinuous: executionTiming.timingContinuous,
+      allowEarlyActivation: executionTiming.allowEarlyActivation,
+      earlyTransitionRejectedReason:
+        executionTiming.earlyTransitionRejectedReason,
+      registerLogicalStart: (start) => {
+        startLogicalLifecycle = start;
+      },
+    });
+    executionTiming.trialContext.start();
+    startLogicalLifecycle();
+    return result;
   }
 
   private runTrial(
@@ -2072,6 +2810,11 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     execution: {
       frameEngine?: HostFrameEngine;
       trialContext?: HostTrialTimingContext;
+      timingContinuous?: boolean;
+      allowEarlyActivation?: boolean;
+      earlyTransitionRejectedReason?: string | null;
+      materializationOnly?: boolean;
+      materializationEstimatedCostMs?: number;
       onReady?: () => void;
       onPreparationError?: (error: unknown) => void;
       registerCancel?: (cancel: () => void) => void;
@@ -2079,19 +2822,37 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     } = {},
   ) {
     const dynamicTrialSequence = ++dynamicTrialSequenceCounter;
-    const trialContext = execution.trialContext ?? null;
-    const hostFrameEngine = execution.frameEngine ?? null;
+    const trialContext = execution.trialContext;
+    const hostFrameEngine = execution.frameEngine;
+    if (!trialContext || !hostFrameEngine) {
+      throw new Error(
+        "DynamicPlugin cannot execute without the core FrameEngine context.",
+      );
+    }
+    const timingContinuous = execution.timingContinuous === true;
+    const allowEarlyActivation = execution.allowEarlyActivation === true;
+    const earlyTransitionRejectedReason =
+      execution.earlyTransitionRejectedReason ?? null;
+    const descriptorMaterializationOnly = execution.materializationOnly === true;
 
-    // Single timing-authority decision per trial. When the host exposes the
-    // Timing V1 coordinator, it is the ONLY origin authority (success or
-    // fresh_raf); the legacy VisualHandoff path is used exclusively when the
-    // coordinator is absent (official jsPsych).
-    const hostTiming = (this.jsPsych as any)?.timing as
-      | HostTimingCoordinator
-      | undefined;
-    const hostTimingAvailable =
-      trialContext === null &&
-      typeof hostTiming?.acquireTrialOrigin === "function";
+    // Prepared executions retain the RESOURCE/MAIN/GPU measurements collected
+    // before descriptor publication. A normal execution starts a fresh set.
+    if (!descriptorMaterializationOnly) {
+      this.prepareResourceWaitMs = null;
+      this.prepareMainThreadMs = null;
+      this.prepareGpuMs = null;
+      this.preparePublishMs = null;
+      this.prepareMainThreadDuringResponseWindow = null;
+      this.prepareGpuDuringResponseWindow = null;
+      this.prepareCompletionDeferredUntilSafe = null;
+    }
+    this.runtimeMaterializationDuringResponseWindow = null;
+    this.runtimeMaterializationCostEstimateMs =
+      execution.materializationEstimatedCostMs ?? null;
+    this.runtimeMaterializationDomMutations = null;
+    this.runtimeMaterializationLayoutReads = null;
+    this.runtimeMaterializationGpuCalls = null;
+    this.runtimeMaterializationCpuMs = null;
 
     // P3: consume/validate any prepared presentation BEFORE this trial's
     // heavy work. Purely static: only literal media strings of the processed
@@ -2105,8 +2866,18 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     const prepareReadyAt: number | null = prepareDiagnostics.readyAt;
 
     return new Promise((resolveTrial) => {
+      const canvasWidth = trial.__canvasStyles?.width ?? 1024;
+      const canvasHeight = trial.__canvasStyles?.height ?? 768;
+      const detachedExecution = isFrameBoundaryVisualTrial(
+        resolveTimingMs(trial.trial_duration, null),
+        (trial.components ?? []).map((config: any) => ({ config })),
+        (trial.response_components ?? []).map((config: any) => ({ config })),
+      );
       // Inject plugin styles if not already present
-      if (!document.getElementById("jspsych-dynamic-plugin-styles")) {
+      if (
+        !detachedExecution &&
+        !document.getElementById("jspsych-dynamic-plugin-styles")
+      ) {
         const styleElement = document.createElement("style");
         styleElement.id = "jspsych-dynamic-plugin-styles";
         styleElement.textContent = `
@@ -2134,23 +2905,26 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         document.head.appendChild(styleElement);
       }
 
-      // Create main container for all components
-      const mainContainer = document.createElement("div");
-      mainContainer.id = trialContext
-        ? `${DYNAMIC_CONTAINER_ID}-${dynamicTrialSequence}`
-        : DYNAMIC_CONTAINER_ID;
-      mainContainer.dataset.dynamicPluginContainer = "true";
-      mainContainer.style.visibility = "hidden";
-      mainContainer.style.background =
-        trial.__canvasStyles?.backgroundColor ?? "transparent";
-      display_element.appendChild(mainContainer);
-
-      // Design canvas dimensions
-      const canvasWidth = trial.__canvasStyles?.width ?? 1024;
-      const canvasHeight = trial.__canvasStyles?.height ?? 768;
+      // Image/Text + non-visual response trials use a detached execution
+      // descriptor over the experiment-owned persistent surface. No
+      // trial-specific DOM node is created, styled, appended, or removed.
+      const mainContainer = detachedExecution
+        ? getPersistentVisualSurface(canvasWidth, canvasHeight, "transparent")
+        : document.createElement("div");
+      if (detachedExecution) {
+        bindPersistentVisualSurfaceToFrameEngine(hostFrameEngine);
+      } else {
+        mainContainer.id = `${DYNAMIC_CONTAINER_ID}-${dynamicTrialSequence}`;
+        mainContainer.dataset.dynamicPluginContainer = "true";
+        mainContainer.style.visibility = "hidden";
+        mainContainer.style.background =
+          trial.__canvasStyles?.backgroundColor ?? "transparent";
+        display_element.appendChild(mainContainer);
+      }
 
       // Scale to fit viewport (same mechanism as ExperimentPreview iframe)
       const updateScale = () => {
+        if (detachedExecution) return;
         const ratio = Math.min(
           window.innerWidth / canvasWidth,
           window.innerHeight / canvasHeight,
@@ -2160,12 +2934,9 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         mainContainer.style.transform =
           "translate(-50%, -50%) scale(" + ratio + ")";
       };
-      updateScale();
+      if (!detachedExecution) updateScale();
 
-      const resizeObserver = trialContext
-        ? null
-        : new ResizeObserver(() => updateScale());
-      resizeObserver?.observe(document.documentElement);
+      const resizeObserver: ResizeObserver | null = null;
 
       const initialDiagnostics = getDiagnosticsOptions(trial);
       const timing = createPrecisionTiming({
@@ -2180,21 +2951,14 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       const responseComponents: any[] = [];
       let visualRenderContainer = mainContainer;
       const visualBackgroundDisposers: Array<() => void> = [];
-      const visualBackgroundId = `dynamic-background-${trialContext?.id ?? dynamicTrialSequence}`;
+      const visualBackgroundId = `dynamic-background-${trialContext.id}`;
       let hasResponded = false;
       let trialEnded = false;
       let trialEndedByResponse = false;
-      let visualFrameBoundaryHandoff = false;
-      let visualFrameBoundaryHandoffLeadMs: number | null = null;
-      let consumedVisualHandoff: VisualHandoffSnapshot | null = null;
-      let hostOrigin: HostTrialOrigin | null = null;
-      let timingContinuity: TimingContinuity = "none";
-      let timingLostReason: string | null = null;
-      let hostRegisterStatus: string | null = null;
+      let persistentVisualBoundary = false;
+      let persistentVisualBoundaryLeadMs: number | null = null;
       let pendingEnd: { requestTimestamp: number; reason: string } | null =
         null;
-      let previousVisualDurationPatched = false;
-      let previousVisualDurationData: Record<string, any> | null = null;
       let handleParticipantResponse: (
         offsetTime?: number | null,
         options?: { force?: boolean },
@@ -2202,7 +2966,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       let precisionReady = false;
       let precisionReadyAt: number | null = null;
       let precisionReadyReason = "";
-      let precisionFallbackReason = this.preparedTrialFallbackReason ?? "";
+      let precisionFallbackReason = this.preparedTrialFallbackReason || "";
       let resourceReadyAt: number | null = null;
       let gpuReadyAt: number | null = null;
       const responseTiming = new ResponseTimingManager({
@@ -2214,8 +2978,22 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         onFinish: (timestamp, options) =>
           handleParticipantResponse(timestamp, options),
       });
+      if (detachedExecution) {
+        const surfaceScale = Math.min(
+          window.innerWidth / canvasWidth,
+          window.innerHeight / canvasHeight,
+        );
+        const surfaceWidth = canvasWidth * surfaceScale;
+        const surfaceHeight = canvasHeight * surfaceScale;
+        responseTiming.setPointerGeometry({
+          left: (window.innerWidth - surfaceWidth) / 2,
+          top: (window.innerHeight - surfaceHeight) / 2,
+          width: surfaceWidth,
+          height: surfaceHeight,
+        });
+      }
       let presentationActivated = false;
-      let logicalLifecycleStarted = trialContext === null;
+      let logicalLifecycleStarted = false;
       let responseTimingAttached = false;
       const activateLogicalResponses = () => {
         logicalLifecycleStarted = true;
@@ -2223,7 +3001,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         for (const component of responseComponents) {
           component.lifecycle.activate({
             timestamp:
-              trialContext?.getLatestFrameTime() ??
+              trialContext.getLatestFrameTime() ??
               timing.getTrialTimeOrigin() ??
               performance.now(),
           });
@@ -2231,7 +3009,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         if (hasResponseInputs) {
           responseTiming.activate();
           responseTimingAttached = true;
-          trialContext?.setResponseSensitive?.(true);
+          trialContext.setResponseSensitive?.(true);
         }
       };
       execution.registerLogicalStart?.(activateLogicalResponses);
@@ -2239,8 +3017,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       // External core teardown detection. `jsPsych.abortExperiment()` resolves
       // the core trial promise and clears `display_element` WITHOUT resolving
       // this plugin's own promise. When the core removes our container while
-      // the trial is still active, cancel every internal resource. This works
-      // identically on official jsPsych (no jsPsych.timing involved).
+      // the trial is still active, cancel every internal resource.
       let hardTornDown = false;
       let unregisterTeardown: (() => void) | null = null;
 
@@ -2253,7 +3030,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         pendingEnd = null;
         timing.stop();
         responseTiming.detach();
-        trialContext?.setResponseSensitive?.(false);
+        trialContext.setResponseSensitive?.(false);
         resizeObserver?.disconnect();
         if (removeGlobalVisuals) disposePreparedPresentation(this.jsPsych);
         for (const component of stimulusComponents) {
@@ -2266,19 +3043,13 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         }
         for (const dispose of visualBackgroundDisposers) dispose();
         visualBackgroundDisposers.length = 0;
-        mainContainer.remove();
+        if (!detachedExecution) mainContainer.remove();
         if (removeGlobalVisuals) {
           removePersistentVisualSurface();
-          removePreservedVisualBridge();
-        }
-        if (
-          pendingVisualDurationPatch?.trialSequence === dynamicTrialSequence
-        ) {
-          pendingVisualDurationPatch = null;
         }
       };
 
-      if (typeof MutationObserver !== "undefined") {
+      if (!detachedExecution && typeof MutationObserver !== "undefined") {
         unregisterTeardown = registerContainerTeardown(
           display_element,
           mainContainer,
@@ -2294,14 +3065,19 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         trial.components.forEach((rawConfig: any, idx: number) => {
           const config = { ...rawConfig };
           // Inject __canvasStyles so components can compute pixel coords
-          config.__canvasStyles = trialContext
-            ? { ...trial.__canvasStyles, backgroundColor: "transparent" }
-            : trial.__canvasStyles;
+          config.__canvasStyles = {
+            ...trial.__canvasStyles,
+            backgroundColor: "transparent",
+          };
           config.__renderBackend = trial.render_backend || "webgl-strict";
           config.__recordGpuTiming = trial.record_gpu_timing !== false;
           config.__recordCommitSeries = initialDiagnostics.includeRenderSeries;
           config.__recordGpuSeries = initialDiagnostics.includeGpuSeries;
-          config.__precisionGlobalPath = trialContext !== null;
+          config.__gpuPrepareSync = String(
+            resolveRawValue(trial.gpu_prepare_sync) ?? "none",
+          );
+          config.__precisionGlobalPath = true;
+          config.__canvasStage = getCanvasStages(mainContainer)[0] ?? null;
           attachPrecisionTiming(config, timing);
           attachResponseTiming(config, responseTiming);
           const ComponentClass = COMPONENT_MAP[config.type];
@@ -2312,9 +3088,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
               config.name = `${config.type}_${stimulusTypeCounts[config.type]}`;
             }
             config.__componentId = getStableComponentId(config, config.name);
-            config.__runtimeComponentId = `${trialContext?.id ?? dynamicTrialSequence}:${config.__componentId}`;
+            config.__runtimeComponentId = `${trialContext.id}:${config.__componentId}`;
             config.__deferOffsetToTrialBoundary =
-              trialContext !== null &&
               usesWholeTrialStimulusWindow(
                 config,
                 resolveTimingMs(trial.trial_duration, null),
@@ -2332,14 +3107,19 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       if (trial.response_components && trial.response_components.length > 0) {
         trial.response_components.forEach((rawConfig: any, idx: number) => {
           const config = { ...rawConfig };
-          config.__canvasStyles = trialContext
-            ? { ...trial.__canvasStyles, backgroundColor: "transparent" }
-            : trial.__canvasStyles;
+          config.__canvasStyles = {
+            ...trial.__canvasStyles,
+            backgroundColor: "transparent",
+          };
           config.__renderBackend = trial.render_backend || "webgl-strict";
           config.__recordGpuTiming = trial.record_gpu_timing !== false;
           config.__recordCommitSeries = initialDiagnostics.includeRenderSeries;
           config.__recordGpuSeries = initialDiagnostics.includeGpuSeries;
-          config.__precisionGlobalPath = trialContext !== null;
+          config.__gpuPrepareSync = String(
+            resolveRawValue(trial.gpu_prepare_sync) ?? "none",
+          );
+          config.__precisionGlobalPath = true;
+          config.__canvasStage = getCanvasStages(mainContainer)[0] ?? null;
           attachPrecisionTiming(config, timing);
           attachResponseTiming(config, responseTiming);
           const ComponentClass = RESPONSE_COMPONENT_MAP[config.type];
@@ -2350,7 +3130,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
               config.name = `${config.type}_${responseTypeCounts[config.type]}`;
             }
             config.__componentId = getStableComponentId(config, config.name);
-            config.__runtimeComponentId = `${trialContext?.id ?? dynamicTrialSequence}:${config.__componentId}`;
+            config.__runtimeComponentId = `${trialContext.id}:${config.__componentId}`;
             const instance = new ComponentClass(this.jsPsych);
             responseComponents.push({ instance, config });
           } else {
@@ -2368,17 +3148,89 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           ({ instance }) => typeof instance.recordResponse === "function",
         );
       for (const component of allComponents) {
+        // P1.2 (iteración 6): instancias y lifecycles vivos, contados en un
+        // único choke point (el destroy del lifecycle).
+        liveRuntimeComponentInstances += 1;
+        liveRuntimeLifecycles += 1;
         component.lifecycle = createPrecisionComponentLifecycle(
           component.instance,
+          {
+            onDestroy: () => {
+              liveRuntimeComponentInstances = Math.max(
+                0,
+                liveRuntimeComponentInstances - 1,
+              );
+              liveRuntimeLifecycles = Math.max(
+                0,
+                liveRuntimeLifecycles - 1,
+              );
+            },
+          },
         );
       }
       allComponents.sort(
         (a, b) => (a.config.zIndex ?? 0) - (b.config.zIndex ?? 0),
       );
 
-      const renderAllComponents = async () => {
+      // P0.3 (iteración 7): las continuaciones async de los componentes NUNCA
+      // ejecutan DOM/measure/GPU directamente — re-entran al PreparationScheduler
+      // con estos hooks. Cada etapa se mide COMPLETA (P1.2).
+      const scheduleComponentStage = (
+        work: () => void,
+        options: { label?: string; gpu?: boolean } = {},
+      ) => {
+        const stageEngine = hostFrameEngine;
+        const runMeasured = () => {
+          const startedAt = performance.now();
+          const duringWindow =
+            stageEngine?.getDiagnostics?.().response_sensitive === true;
+          try {
+            work();
+          } finally {
+            const durationMs = Math.max(0, performance.now() - startedAt);
+            if (options.gpu === true) {
+              this.prepareGpuMs = Math.max(
+                0,
+                (this.prepareGpuMs ?? 0) + durationMs,
+              );
+              if (duringWindow && this.prepareGpuDuringResponseWindow !== true) {
+                this.prepareGpuDuringResponseWindow = true;
+              }
+            } else {
+              this.prepareMainThreadMs = Math.max(
+                0,
+                (this.prepareMainThreadMs ?? 0) + durationMs,
+              );
+              if (
+                duringWindow &&
+                this.prepareMainThreadDuringResponseWindow !== true
+              ) {
+                this.prepareMainThreadDuringResponseWindow = true;
+              }
+            }
+          }
+        };
+        const deferNeeded =
+          stageEngine.getDiagnostics?.().response_sensitive === true ||
+          stageEngine.getWorkPhase?.() === "CRITICAL";
+        if (deferNeeded && typeof stageEngine?.queuePreparationTask === "function") {
+          this.prepareCompletionDeferredUntilSafe = true;
+          stageEngine.queuePreparationTask(runMeasured, {
+            label: options.label ?? "dynamic-component-prep-stage",
+            estimatedCostMs: options.gpu === true ? 2 : 1,
+          });
+        } else {
+          runMeasured();
+        }
+      };
+      for (const component of allComponents) {
+        component.config.__schedulePreparationStage = scheduleComponentStage;
+      }
+
+      const renderAllComponents = (): void | Promise<void> => {
         // Pass onResponse callback to ALL components so they can end the trial if needed
-        const preparations = allComponents.map((comp) => {
+        const pendingPreparations: Promise<void>[] = [];
+        for (const comp of allComponents) {
           const { instance, config } = comp;
           const _prevLen = visualRenderContainer.children.length;
           const renderedElement = comp.lifecycle.prepare(
@@ -2393,13 +3245,25 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             visualRenderContainer.children.length > _prevLen
               ? (visualRenderContainer.lastElementChild as HTMLElement)
               : null;
-          return Promise.resolve(renderedElement).then((resolvedElement) => {
+          const applyResolvedElement = (resolvedElement: unknown) => {
             if (!comp.renderedEl && resolvedElement instanceof HTMLElement) {
               comp.renderedEl = resolvedElement;
             }
-          });
-        });
-        await Promise.all(preparations);
+          };
+          if (
+            renderedElement &&
+            typeof (renderedElement as PromiseLike<unknown>).then === "function"
+          ) {
+            pendingPreparations.push(
+              Promise.resolve(renderedElement).then(applyResolvedElement),
+            );
+          } else {
+            applyResolvedElement(renderedElement);
+          }
+        }
+        if (pendingPreparations.length > 0) {
+          return Promise.all(pendingPreparations).then(() => undefined);
+        }
       };
 
       // Function to record all pending responses before ending trial
@@ -2506,25 +3370,31 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         requestTimestamp: number,
         reason: string,
       ): boolean => {
-        if (trialEnded || pendingEnd) {
+        if (trialEnded) return false;
+        // P0.1 (iteración 5): el timeout de duración máxima SIEMPRE se
+        // predeclara al onset (aunque response_ends_trial=true). Una
+        // respuesta temprana REEMPLAZA el boundary pendiente — un único
+        // commit, nunca dos.
+        if (reason === "response" && pendingEnd?.reason === "response") {
           return false;
         }
+        // Un timeout nunca debe pisotear una respuesta ya pendiente (p. ej.
+        // response antes del onset o del scheduleAt de respaldo).
+        if (reason === "trial_duration" && pendingEnd !== null) {
+          return false;
+        }
+        const replacing = reason === "response" && pendingEnd !== null;
         pendingEnd = { requestTimestamp, reason };
         if (timing.isGlobalFrameEngine()) {
           const trialDuration = resolveTimingMs(trial.trial_duration, null);
-          const actualOrigin = timing.getTrialTimeOrigin();
-          const targetTime =
-            reason === "trial_duration" &&
-            trialDuration !== null &&
-            actualOrigin !== null
-              ? actualOrigin + trialDuration
-              : requestTimestamp;
+          const isDurationEnd = reason === "trial_duration" && trialDuration !== null;
           const requestedPolicy = String(
-            trial.boundary_policy ?? "frame_tolerant_not_before",
+            trial.boundary_policy ?? "nearest_frame",
           ) as VisualBoundaryPolicy;
           const validPolicies: VisualBoundaryPolicy[] = [
             "strict_not_before_ms",
             "frame_tolerant_not_before",
+            "nearest_frame",
             "frame_locked",
             "frame_count",
           ];
@@ -2547,8 +3417,63 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
               "invalid_frame_count_boundary_missing_count";
             boundaryPolicy = "strict_not_before_ms";
           }
-          return timing.requestBoundary({
-            targetTimeMs: targetTime,
+          const requestedScheduleReference = String(
+            trial.schedule_reference ?? "relative_duration",
+          ) as ScheduleReference;
+          const scheduleReference: ScheduleReference =
+            requestedScheduleReference === "relative_duration" ||
+            requestedScheduleReference === "absolute_phase"
+              ? requestedScheduleReference
+              : "relative_duration";
+          if (
+            requestedScheduleReference !== scheduleReference &&
+            !precisionFallbackReason
+          ) {
+            precisionFallbackReason = `invalid_schedule_reference:${requestedScheduleReference}`;
+          }
+          // P1.1: event_phase_policy define explícitamente cómo un boundary
+          // terminado por response trata la línea temporal ideal.
+          const requestedEventPhasePolicy = String(
+            trial.event_phase_policy ?? "rebase_on_event",
+          );
+          const eventPhasePolicy: "rebase_on_event" | "preserve_global_phase" =
+            requestedEventPhasePolicy === "preserve_global_phase"
+              ? "preserve_global_phase"
+              : "rebase_on_event";
+          if (
+            requestedEventPhasePolicy !== eventPhasePolicy &&
+            !precisionFallbackReason
+          ) {
+            precisionFallbackReason = `invalid_event_phase_policy:${requestedEventPhasePolicy}`;
+          }
+          const isResponseEnd = reason === "response";
+          const responsePhaseOptions =
+            isResponseEnd && eventPhasePolicy === "rebase_on_event"
+              ? { rebasePhase: true as const }
+              : {};
+          // P0.2 (iteración 4): para un boundary de duración fija NO se pasa
+          // targetTimeMs explícito — el FrameEngine deriva el target según
+          // scheduleReference. Para un boundary terminado por response se
+          // preserva el timestamp real de la response; requestedDurationMs
+          // mantiene (preserve) o rebasea la cadena de fase.
+          const boundaryOptions = {
+            ...(isDurationEnd ? {} : { targetTimeMs: requestTimestamp }),
+            // A response arrives after the latest observed display refresh.
+            // Keep nearest-frame phase selection, but constrain the physical
+            // replacement to the next observable frame so successor/audio
+            // pre-arm can never target a frame that has already passed.
+            targetFrameIndex:
+              isResponseEnd &&
+              typeof trialContext.getFrameIndex() === "number"
+                ? trialContext.getFrameIndex()! + 1
+                : undefined,
+            requestedDurationMs:
+              trialDuration !== null && !(
+                isResponseEnd && eventPhasePolicy === "rebase_on_event"
+              )
+                ? trialDuration
+                : undefined,
+            scheduleReference,
             boundaryPolicy,
             frameCount:
               boundaryPolicy === "frame_count" &&
@@ -2558,16 +3483,42 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             requestedAt: requestTimestamp,
             reason,
             allowTerminal: true,
-            onCommit: (boundary) => {
+            ...responsePhaseOptions,
+            onCommit: (boundary: any) => {
+              // P0.3 (iteración 4): PHASE A es mínima (congela timestamps,
+              // cierra autoridad de respuesta, resuelve la promesa) — puede
+              // y debe ejecutarse aunque el successor esté responseSensitive.
               timing.queuePostCritical(
-                () =>
+                () => {
+                  // Safety net de timeout (antes provisto por el timer
+                  // local eliminado): respuestas pendientes no registradas.
+                  if (!hasResponded) {
+                    hasResponded = true;
+                    recordAllPendingResponses();
+                  }
                   endTrial(boundary.timestamp, {
                     postCommitTimestamp: boundary.timestamp,
-                  }),
-                { label: "dynamic_trial_finalize", estimatedCostMs: 8 },
+                  });
+                },
+                {
+                  label: "dynamic_trial_logical_finalize",
+                  estimatedCostMs: 0.5,
+                  responseSafe: true,
+                },
               );
             },
-          });
+          };
+          if (replacing) {
+            // P1.3 (iteración 6): el replacement NO añade un segundo
+            // callback — conserva el único logical-finalize del boundary
+            // original (el mismo closure endTrial).
+            const { onCommit: _replacedCommit, ...replacementOptions } =
+              boundaryOptions;
+            return timing.replaceBoundary
+              ? timing.replaceBoundary(replacementOptions)
+              : timing.requestBoundary(boundaryOptions);
+          }
+          return timing.requestBoundary(boundaryOptions);
         }
         timing.queuePostCommit((commitTimestamp) => {
           endTrial(commitTimestamp, { postCommitTimestamp: commitTimestamp });
@@ -2575,48 +3526,39 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         return true;
       };
 
-      // Function to end the trial and collect data
+      // Function to end the trial and collect data.
+      //
+      // P0.2 (iteration 3): split finalization into two explicit phases.
+      //
+      // PHASE A — minimal logical completion (this function): freezes the
+      // minimal immutable references/timestamps, closes the outgoing response
+      // authority, builds the minimal trial data and resolves the plugin
+      // promise so jsPsych core can advance. No heavy work here.
+      //
+      // PHASE B — deferred data finalization (`deferredFinalize`): renderer
+      // metrics, DOM audit, quality classification, expensive serialization,
+      // component getters, destroy and DOM cleanup. Scheduled through the
+      // engine's safe queue so it never runs in a rAF tick and never blocks
+      // an active response window.
       const endTrial = (
         offsetTime = performance.now(),
         options: { postCommitTimestamp?: number } = {},
       ) => {
         if (trialEnded) return;
         trialEnded = true;
+        const logicalFinalizeStartedAt = performance.now();
         // Our own DOM cleanup must never be interpreted as an external abort.
         unregisterTeardown?.();
         unregisterTeardown = null;
 
-        const timingSummary = timing.getSummary(offsetTime);
-        const outgoingTransition = trialContext
-          ? (timingSummary.transitionTelemetry.find(
-              (transition: any) =>
-                transition.outgoing_context_id === trialContext.id,
-            ) ?? null)
-          : null;
-
-        // Outgoing host handoff: must be registered BEFORE control returns to
-        // jsPsych (resolveTrial). For a P2-aligned end the explicit post-commit
-        // timestamp is authoritative. A continuous end WITHOUT an aligned
-        // commit timestamp is a hard/un-aligned end: NEVER register a previous
-        // committed frame as if it were a valid transition.
-        if (hostTimingAvailable && trial.timing_continuous === true) {
-          if (typeof options.postCommitTimestamp !== "number") {
-            hostRegisterStatus = "skipped_unaligned_end";
-          } else if (typeof hostTiming.registerHandoff === "function") {
-            const registerResult = hostTiming.registerHandoff(
-              options.postCommitTimestamp,
-              {
-                frameIntervalEstimateMs: timing.getFrameIntervalEstimate(),
-              },
-            );
-            hostRegisterStatus =
-              registerResult.status === "pending"
-                ? "pending"
-                : `rejected:${registerResult.reason}`;
-          } else {
-            hostRegisterStatus = "skipped_no_register_api";
-          }
-        }
+        const timingSummary =
+          timing.getCriticalSnapshot?.(offsetTime) ??
+          timing.getSummary(offsetTime);
+        const outgoingTransition =
+          timingSummary.transitionTelemetry.find(
+            (transition: any) =>
+              transition.outgoing_context_id === trialContext.id,
+          ) ?? null;
         const desiredTrialDuration = resolveTimingMs(
           trial.trial_duration,
           null,
@@ -2626,37 +3568,13 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             ? null
             : timingSummary.actualDuration - desiredTrialDuration;
         const diagnostics = getDiagnosticsOptions(trial);
-        if (!trialContext) {
-          for (const stage of getCanvasStages(visualRenderContainer)) {
-            stage.setTrialActive(false);
-          }
-        }
-        const renderMetrics = aggregateRenderMetrics(
-          getCanvasStages(visualRenderContainer).map((stage) =>
-            stage.getMetrics(),
-          ),
-          String(trial.render_backend || "webgl-strict"),
-        );
-        const domAudit = auditDomLayers(stimulusComponents, responseComponents);
-        const visualTimingQuality = classifyTimingQuality(
-          timingSummary,
-          desiredTrialDuration,
-          resolveTimingMs(trial.timing_quality_bad_threshold, 50) ?? 50,
-          renderMetrics,
-          domAudit,
-          { ignoreTrialDurationError: trialEndedByResponse },
-        );
+        // PHASE A: close the outgoing response authority immediately.
         responseTiming.finishWithoutResponse(
           typeof offsetTime === "number" ? offsetTime : null,
         );
         responseTiming.detach();
-        trialContext?.setResponseSensitive?.(false);
+        trialContext.setResponseSensitive?.(false);
         const responseTimingData = responseTiming.getData();
-        const timingQuality = mergeQuality(
-          visualTimingQuality,
-          responseTimingData.response_timing_quality,
-          responseTimingData.response_timing_quality_reason,
-        );
         timing.stop();
 
         const primaryStimulusRecord = getPrimaryStimulusRecord(
@@ -2668,11 +3586,9 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             ? primaryStimulusRecord.frame_onset_abs
             : null;
         const visualOffsetCommitTime =
-          visualFrameBoundaryHandoff && !trialContext
-            ? null
-            : typeof primaryStimulusRecord?.frame_offset_abs === "number"
-              ? primaryStimulusRecord.frame_offset_abs
-              : null;
+          typeof primaryStimulusRecord?.frame_offset_abs === "number"
+            ? primaryStimulusRecord.frame_offset_abs
+            : null;
         const visualDuration =
           typeof visualOnsetCommitTime === "number" &&
           typeof visualOffsetCommitTime === "number"
@@ -2683,24 +3599,54 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             ? visualDuration - desiredTrialDuration
             : null;
         const visualDurationSource =
-          visualFrameBoundaryHandoff && !trialContext
-            ? "reported_on_next_row_previous_visual_duration"
-            : visualDuration === null
-              ? "unavailable"
-              : "stimulus_offset_commit";
-
-        if (trialContext === null && !precisionFallbackReason) {
-          precisionFallbackReason = (this.jsPsych as any)?.precisionTiming
-            ? "precision_context_not_selected"
-            : "global_frame_engine_unavailable";
+          visualDuration === null ? "unavailable" : "stimulus_offset_commit";
+        // P1.3 (iteración 5): las políticas visuales REALES del estímulo
+        // primario, no valores históricos hardcodeados.
+        const primaryStimulusConfig = stimulusComponents[0]?.config ?? null;
+        const primaryStimulusPolicy = primaryStimulusConfig
+          ? {
+              onset: String(
+                resolveRawValue(primaryStimulusConfig.stimulus_onset_policy) ??
+                  "nearest_frame",
+              ),
+              offset: String(
+                resolveRawValue(primaryStimulusConfig.stimulus_duration_policy) ??
+                  "nearest_frame",
+              ),
+            }
+          : null;
+        // P1.3 (iteración 4): un warmup agotado por timeout o con confianza
+        // insuficiente es un fallback explícito, jamás precisión limpia. El
+        // prior de 60 Hz nunca se valida silenciosamente.
+        const warmupTelemetry =
+          hostFrameEngine?.getWarmupTelemetry?.() ??
+          (this.jsPsych as any)?.precisionTiming?.getWarmupTelemetry?.() ??
+          null;
+        const warmupConfidence =
+          typeof warmupTelemetry?.frame_clock_warmup_confidence === "number"
+            ? warmupTelemetry.frame_clock_warmup_confidence
+            : null;
+        const warmupInsufficient =
+          warmupTelemetry?.frame_clock_warmup_timeout === true ||
+          (warmupConfidence !== null && warmupConfidence < 0.5);
+        if (warmupInsufficient && !precisionFallbackReason) {
+          precisionFallbackReason =
+            "frame_clock_warmup_insufficient_confidence";
         }
-        const precisionPath = trialContext
-          ? precisionFallbackReason
-            ? "degraded"
-            : "global_frame_engine"
-          : precisionFallbackReason.startsWith("precision_prepare_failed")
-            ? "degraded"
-            : "legacy";
+        // P0.2 (iteración 6): barrera semántica registrada por el plan físico.
+        const semanticBarrierType =
+          (this.jsPsych as any)?.timing?.getSemanticBarrierAfter?.(
+            this.jsPsych.getProgress?.()?.current_trial_global ?? -1,
+          ) ?? null;
+        if (
+          semanticBarrierType === "resource_horizon_insufficient" &&
+          !precisionFallbackReason
+        ) {
+          precisionFallbackReason = "resource_horizon_insufficient";
+        }
+        const precisionPath = precisionFallbackReason
+          ? "degraded"
+          : "global_frame_engine";
 
         // P1.3 is deliberately compact and always present. Heavy frame/render
         // arrays remain opt-in, but a physical benchmark must never lose the
@@ -2720,23 +3666,27 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           response_timestamp_source:
             responseTimingData.response_timestamp_source,
           response_event_lag: responseTimingData.response_event_lag,
+          pointer_handler_duration:
+            responseTimingData.pointer_handler_duration ?? null,
+          pointer_layout_read_count:
+            responseTimingData.pointer_layout_read_count ?? null,
           response_valid: responseTimingData.response_valid,
           response_invalid_reason: responseTimingData.response_invalid_reason,
           precision_path: precisionPath,
-          precision_path_active: trialContext !== null,
+          precision_path_active: true,
           precision_fallback_reason: precisionFallbackReason,
           precision_ready: precisionReady,
           precision_ready_at: precisionReadyAt,
           precision_ready_reason: precisionReadyReason,
           resource_ready_at: resourceReadyAt,
           gpu_ready_at: gpuReadyAt,
-          early_transition_eligible: trialContext !== null,
+          early_transition_eligible: allowEarlyActivation,
           early_transition_rejected_reason:
-            trialContext === null ? precisionFallbackReason : "",
+            earlyTransitionRejectedReason ?? "",
           boundary_policy:
             outgoingTransition?.boundary_policy ??
             trial.boundary_policy ??
-            "frame_tolerant_not_before",
+            "nearest_frame",
           target_frame_index: outgoingTransition?.target_frame_index ?? null,
           actual_frame_index: outgoingTransition?.actual_frame_index ?? null,
           frames_presented: outgoingTransition?.frames_presented ?? null,
@@ -2762,33 +3712,129 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             outgoingTransition?.atomic_transition_used ?? false,
           visual_commit_count_for_boundary:
             outgoingTransition?.visual_commit_count_for_boundary ?? 0,
+          critical_dom_mutation_count:
+            trialContext.getCriticalDomMutationCount?.() ?? 0,
+          precision_prefetch_authority: "rolling_lookahead",
+          schedule_reference:
+            outgoingTransition?.schedule_reference ?? "relative_duration",
+          ideal_absolute_target:
+            outgoingTransition?.ideal_absolute_target ?? null,
+          actual_absolute_error:
+            outgoingTransition?.actual_absolute_error ?? null,
+          cumulative_phase_error:
+            outgoingTransition?.cumulative_phase_error ?? null,
+          per_stimulus_duration_error:
+            outgoingTransition?.per_stimulus_duration_error ?? null,
+          absolute_duration_error_ms:
+            outgoingTransition?.absolute_duration_error_ms ?? null,
+          selected_frame_policy:
+            outgoingTransition?.selected_frame_policy ?? null,
+          minimum_frame_constraint_applied:
+            outgoingTransition?.minimum_frame_constraint_applied ?? false,
+          unconstrained_nearest_frame_count:
+            outgoingTransition?.unconstrained_nearest_frame_count ?? null,
+          boundary_missed_reason:
+            outgoingTransition?.boundary_missed_reason ?? null,
+          boundary_initial_due_frame:
+            outgoingTransition?.boundary_initial_due_frame ?? null,
+          boundary_actual_commit_frame:
+            outgoingTransition?.boundary_actual_commit_frame ?? null,
+          extra_frames_held: outgoingTransition?.extra_frames_held ?? null,
+          incoming_ready_after_target_ms:
+            outgoingTransition?.incoming_ready_after_target_ms ?? null,
+          precision_path_degraded:
+            (outgoingTransition?.precision_path_degraded ?? false) ||
+            warmupInsufficient,
+          trial_ended_by_response: trialEndedByResponse,
+          trial_end_alignment:
+            options.postCommitTimestamp !== undefined
+              ? "post_commit"
+              : "immediate",
+          trial_end_request_time: pendingEnd?.requestTimestamp ?? null,
+          trial_end_commit_time: options.postCommitTimestamp ?? null,
+          // P1.3 (iteración 5): política REAL usada, siempre presente en la
+          // fila compacta para correlación con hardware.
+          trial_boundary_policy_actual:
+            outgoingTransition?.selected_frame_policy ??
+            outgoingTransition?.boundary_policy ??
+            null,
+          schedule_reference_actual:
+            outgoingTransition?.schedule_reference ?? "relative_duration",
+          stimulus_onset_policy_actual: primaryStimulusPolicy?.onset ?? null,
+          stimulus_offset_policy_actual: primaryStimulusPolicy?.offset ?? null,
+          prepare_cpu_duration: this.prepareCpuDurationMs,
+          prepare_completed_during_response_window:
+            this.prepareCompletedDuringResponseWindow,
+          prepare_completed_near_visual_deadline:
+            this.prepareCompletedNearVisualDeadline,
+          // P0.1 (iteración 6): etapas del scheduler de preparación.
+          prepare_resource_wait_ms: this.prepareResourceWaitMs,
+          prepare_main_thread_ms: this.prepareMainThreadMs,
+          prepare_gpu_ms: this.prepareGpuMs,
+          prepare_publish_ms: this.preparePublishMs,
+          prepare_main_thread_during_response_window:
+            this.prepareMainThreadDuringResponseWindow,
+          prepare_gpu_during_response_window:
+            this.prepareGpuDuringResponseWindow,
+          prepare_completion_deferred_until_safe:
+            this.prepareCompletionDeferredUntilSafe,
+          // P0.2 (iteración 7): materialización runtime response-safe por
+          // contrato (recursos ready) — coste medido honestamente.
+          runtime_materialization_during_response_window:
+            this.runtimeMaterializationDuringResponseWindow,
+          runtime_materialization_cost_estimate_ms:
+            this.runtimeMaterializationCostEstimateMs,
+          runtime_materialization_dom_mutations:
+            this.runtimeMaterializationDomMutations,
+          runtime_materialization_layout_reads:
+            this.runtimeMaterializationLayoutReads,
+          runtime_materialization_gpu_calls:
+            this.runtimeMaterializationGpuCalls,
+          runtime_materialization_cpu_ms:
+            this.runtimeMaterializationCpuMs,
+          // P0.2 (iteración 6): barrera semántica registrada por el plan
+          // físico (conditional/loop/global callback).
+          semantic_barrier_type: semanticBarrierType,
+          precision_run_broken_at_barrier: semanticBarrierType !== null,
+          lookahead_ready_lead_ms:
+            outgoingTransition?.incoming_ready_lead_ms ?? null,
+          frame_clock_warmup_frames:
+            warmupTelemetry?.frame_clock_warmup_frames ?? null,
+          frame_clock_warmup_duration_ms:
+            warmupTelemetry?.frame_clock_warmup_duration_ms ?? null,
+          frame_clock_warmup_refresh_hz:
+            warmupTelemetry?.frame_clock_warmup_refresh_hz ?? null,
+          frame_clock_warmup_confidence: warmupConfidence,
+          frame_clock_warmup_timeout:
+            warmupTelemetry?.frame_clock_warmup_timeout === true,
+          frame_clock_warmup_regime_generation:
+            warmupTelemetry?.frame_clock_warmup_regime_generation ?? null,
         };
 
         if (diagnostics.includeSummary) {
           Object.assign(trialData, {
             timing_schema_version: 2,
-            timing_method:
-              "performance.now + requestAnimationFrame frame-nearest scheduler",
+            timing_method: "FrameEngine single-rAF observed-frame authority",
             timing_prepare_status: prepareStatus,
             timing_prepare_started_at: prepareStartedAt,
             timing_prepare_ready_at: prepareReadyAt,
             timing_activation_path: activationPath,
             timing_prepared_resources_used: preparedResourcesUsed,
             precision_path: precisionPath,
-            precision_path_active: trialContext !== null,
+            precision_path_active: true,
             precision_fallback_reason: precisionFallbackReason,
             precision_ready: precisionReady,
             precision_ready_at: precisionReadyAt,
             precision_ready_reason: precisionReadyReason,
             resource_ready_at: resourceReadyAt,
             gpu_ready_at: gpuReadyAt,
-            early_transition_eligible: trialContext !== null,
+            early_transition_eligible: allowEarlyActivation,
             early_transition_rejected_reason:
-              trialContext === null ? precisionFallbackReason : "",
+              earlyTransitionRejectedReason ?? "",
             boundary_policy:
               outgoingTransition?.boundary_policy ??
-              trial.boundary_policy ??
-              "frame_tolerant_not_before",
+            trial.boundary_policy ??
+            "nearest_frame",
             target_frame_index:
               outgoingTransition?.target_frame_index ?? null,
             actual_frame_index:
@@ -2855,29 +3901,18 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
                     outgoingTransition?.boundary_processing_duration ?? null,
                 }
               : {}),
-            ...(hostTimingAvailable
-              ? {
-                  timing_continuity: timingContinuity,
-                  timing_lost_reason: timingLostReason,
-                  ...(hostOrigin
-                    ? {
-                        timing_handoff_from_trial_index:
-                          hostOrigin.fromTrialIndex,
-                        timing_handoff_frame_index: hostOrigin.frameIndex,
-                        timing_handoff_acquired_at: hostOrigin.acquiredAt,
-                      }
-                    : {}),
-                  ...(hostRegisterStatus !== null
-                    ? { timing_handoff_register_status: hostRegisterStatus }
-                    : {}),
-                }
-              : {}),
             trial_onset_time: timingSummary.onsetTime,
             trial_offset_time: timingSummary.offsetTime,
+            // P1.3 (iteración 5): reportar la política REAL usada, nunca una
+            // política histórica hardcodeada.
             trial_duration_policy:
-              desiredTrialDuration === null ? null : "not_before",
-            stimulus_onset_policy: "nearest",
-            stimulus_offset_policy: "not_before",
+              desiredTrialDuration === null
+                ? null
+                : (outgoingTransition?.selected_frame_policy ??
+                  outgoingTransition?.boundary_policy ??
+                  null),
+            stimulus_onset_policy: primaryStimulusPolicy?.onset ?? null,
+            stimulus_offset_policy: primaryStimulusPolicy?.offset ?? null,
             actual_trial_duration: roundTiming(timingSummary.actualDuration),
             duration_error: roundTiming(trialDurationError),
             trial_ended_by_response: trialEndedByResponse,
@@ -2885,15 +3920,15 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             long_frame_count: timingSummary.longFrameCount,
             estimated_dropped_frame_count: timingSummary.droppedFrameCount,
             dropped_frame_count: timingSummary.droppedFrameCount,
-            frame_interval_source: "requestAnimationFrame_gap",
+            frame_interval_source: "FrameEngine_observed_rAF_gap",
             max_frame_interval: roundTiming(timingSummary.maxFrameInterval),
             mean_frame_interval: roundTiming(timingSummary.meanFrameInterval),
             frame_interval_estimate: roundTiming(
               timingSummary.frameIntervalEstimate,
             ),
-            timing_quality: timingQuality.quality,
-            timing_quality_reason: timingQuality.reason,
-            visual_timing_quality: visualTimingQuality.quality,
+            // timing_quality / visual_timing_quality, render metrics and the
+            // DOM audit are produced by PHASE B (deferred finalization) and
+            // merged into this result object before the core runs on_finish.
             dynamic_trial_sequence: dynamicTrialSequence,
             dynamic_next_trial_sequence: null,
             visual_stimulus: visualStimulus,
@@ -2905,45 +3940,66 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             visual_duration: roundTiming(visualDuration),
             visual_duration_error: roundTiming(visualDurationError),
             visual_duration_source: visualDurationSource,
-            visual_next_onset_commit_time: null,
-            visual_next_stimulus: null,
-            previous_visual_trial_sequence: null,
-            previous_visual_stimulus: null,
-            previous_visual_onset_commit_time: null,
-            previous_visual_offset_commit_time: null,
-            previous_visual_duration: null,
-            previous_visual_duration_error: null,
-            previous_visual_duration_source: null,
-            ...(previousVisualDurationData ?? {}),
-            visual_frame_boundary_handoff: visualFrameBoundaryHandoff,
-            visual_frame_boundary_handoff_lead_ms: roundTiming(
-              visualFrameBoundaryHandoffLeadMs,
+            persistent_visual_boundary: persistentVisualBoundary,
+            persistent_visual_boundary_lead_ms: roundTiming(
+              persistentVisualBoundaryLeadMs,
             ),
-            visual_handoff_available: hostTimingAvailable
-              ? false
-              : (consumedVisualHandoff?.available ?? false),
-            visual_handoff_consumed: hostTimingAvailable
-              ? false
-              : (consumedVisualHandoff?.consumed ?? false),
-            visual_handoff_lost: hostTimingAvailable
-              ? false
-              : (consumedVisualHandoff?.lost ?? false) ||
-                (visualFrameBoundaryHandoff &&
-                  !(consumedVisualHandoff?.available ?? false)),
-            visual_handoff_lost_reason: hostTimingAvailable
-              ? ""
-              : consumedVisualHandoff?.lostReason ||
-                (visualFrameBoundaryHandoff &&
-                !(consumedVisualHandoff?.available ?? false)
-                  ? "not_available"
-                  : ""),
-            visual_handoff_from_trial_sequence: hostTimingAvailable
-              ? null
-              : (consumedVisualHandoff?.fromTrialSequence ?? null),
             response_timing_quality: responseTimingData.response_timing_quality,
             response_timing_quality_reason:
               responseTimingData.response_timing_quality_reason,
             diagnostics_level: diagnostics.level,
+            ...responseTimingData,
+            rt: responseTimingData.rt,
+          });
+        }
+
+        // ---- PHASE B: deferred heavy finalization ----
+        // Everything below is expensive (renderer aggregation, DOM audit,
+        // quality classification, JSON serialization, bounding rects, PNG
+        // capture, component destroy, DOM cleanup). It mutates the processed
+        // result object in place via the core's deferred-finalizer hook.
+        const buildDeferredFields = () => {
+          const heavyFields: Record<string, any> = {};
+          // PHASE B trabaja sobre el summary COMPLETO (arrays incluidos),
+          // nunca sobre el snapshot O(1) de la Phase A.
+          const fullSummary = timing.getSummary(offsetTime);
+          const renderMetrics = aggregateRenderMetricsFromCursors(
+            metricBaselineCursors,
+            metricEndCursors,
+            renderMetricSlices,
+            String(trial.render_backend || "webgl-strict"),
+          );
+          const domAudit = auditDomLayers(
+            stimulusComponents,
+            responseComponents,
+          );
+          const visualTimingQuality = classifyTimingQuality(
+            fullSummary,
+            desiredTrialDuration,
+            resolveTimingMs(trial.timing_quality_bad_threshold, 50) ?? 50,
+            renderMetrics,
+            domAudit,
+            { ignoreTrialDurationError: trialEndedByResponse },
+          );
+          let timingQuality = mergeQuality(
+            visualTimingQuality,
+            responseTimingData.response_timing_quality,
+            responseTimingData.response_timing_quality_reason,
+          );
+          // Iteración 7: sin FrameEngine no hay autoridad temporal — la
+          // degradación se marca con razón explícita, jamás silenciosa.
+          const schedulingDegradedReason =
+            (timing as any).getTimingDegradedReason?.() ?? null;
+          if (schedulingDegradedReason !== null) {
+            timingQuality = {
+              quality: "degraded",
+              reason: schedulingDegradedReason,
+            };
+          }
+          Object.assign(heavyFields, {
+            timing_quality: timingQuality.quality,
+            timing_quality_reason: timingQuality.reason,
+            visual_timing_quality: visualTimingQuality.quality,
             render_backend_requested: renderMetrics.render_backend_requested,
             render_backend: renderMetrics.render_backend,
             visual_backend: renderMetrics.visual_backend,
@@ -2969,6 +4025,12 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             max_gpu_draw_duration: renderMetrics.max_gpu_draw_duration,
             gpu_pending_query_count: renderMetrics.gpu_pending_query_count,
             gpu_disjoint_count: renderMetrics.gpu_disjoint_count,
+            gpu_prepare_sync_mode: renderMetrics.gpu_prepare_sync_mode,
+            gpu_prepare_sync_confirmed:
+              renderMetrics.gpu_prepare_sync_confirmed,
+            gpu_prepare_sync_duration_ms:
+              renderMetrics.gpu_prepare_sync_duration_ms,
+            gpu_prepare_sync_error: renderMetrics.gpu_prepare_sync_error,
             dom_interactive_components: JSON.stringify(
               domAudit.dom_interactive_components,
             ),
@@ -2976,375 +4038,610 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             dom_visual_component_names: JSON.stringify(
               domAudit.dom_visual_component_names,
             ),
-            ...responseTimingData,
-            rt: responseTimingData.rt,
           });
-        }
 
-        if (diagnostics.includeStimulusTiming) {
-          trialData.stimulus_timing = JSON.stringify(
-            timingSummary.stimulusRecords,
-          );
-        }
-
-        if (diagnostics.includeFrameIntervals) {
-          trialData.frame_intervals = JSON.stringify(
-            timingSummary.frameIntervals,
-          );
-        }
-
-        if (diagnostics.includeRenderSeries) {
-          trialData.commit_durations = JSON.stringify(
-            renderMetrics.commit_durations,
-          );
-        }
-
-        if (diagnostics.includeGpuSeries) {
-          trialData.gpu_draw_durations = JSON.stringify(
-            renderMetrics.gpu_draw_durations,
-          );
-        }
-
-        // Add stimulus components data as individual columns
-        stimulusComponents.forEach((comp) => {
-          const { instance, config } = comp;
-          const prefix = config.name; // Component name (e.g., "ImageComponent_1")
-
-          // Add type
-          trialData[`${prefix}_type`] = config.type;
-
-          // Add stimulus if exists
-          if (config.stimulus !== undefined) {
-            trialData[`${prefix}_stimulus`] = config.stimulus;
+          if (diagnostics.includeStimulusTiming) {
+            heavyFields.stimulus_timing = JSON.stringify(
+              fullSummary.stimulusRecords,
+            );
           }
 
-          // TextComponent: save the text content as stimulus data
-          if (config.text !== undefined) {
-            trialData[`${prefix}_text`] = config.text;
+          if (diagnostics.includeFrameIntervals) {
+            heavyFields.frame_intervals = JSON.stringify(
+              fullSummary.frameIntervals,
+            );
           }
 
-          // Coordinates → pixel center in the actual viewport at trial end time.
-          // CSS formula: left = calc(50% + x*0.5 vw), top = calc(50% - y*0.5 vh)
-          if (config.coordinates !== undefined) {
-            const cx = config.coordinates.x ?? 0;
-            const cy = config.coordinates.y ?? 0;
-            trialData[`${prefix}_coordinates`] = JSON.stringify({
-              x: Math.round(window.innerWidth * (0.5 + cx / 200)),
-              y: Math.round(window.innerHeight * (0.5 - cy / 200)),
-            });
+          if (diagnostics.includeRenderSeries) {
+            heavyFields.commit_durations = JSON.stringify(
+              renderMetrics.commit_durations,
+            );
           }
 
-          // Size via component-provided rendered size when canvas rendering is used,
-          // otherwise fall back to the DOM element captured at render time.
-          if (
-            instance.getRenderedSize &&
-            typeof instance.getRenderedSize === "function"
-          ) {
-            const renderedSize = instance.getRenderedSize();
-            if (renderedSize) {
-              trialData[`${prefix}_size`] = JSON.stringify({
-                width: Math.round(renderedSize.width),
-                height: Math.round(renderedSize.height),
+          if (diagnostics.includeGpuSeries) {
+            heavyFields.gpu_draw_durations = JSON.stringify(
+              renderMetrics.gpu_draw_durations,
+            );
+          }
+
+          // Add stimulus components data as individual columns
+          stimulusRetirement.forEach((comp) => {
+            const { instance, config } = comp;
+            const prefix = config.name; // Component name (e.g., "ImageComponent_1")
+
+            // Add type
+            heavyFields[`${prefix}_type`] = config.type;
+
+            // Add stimulus if exists
+            if (config.stimulus !== undefined) {
+              heavyFields[`${prefix}_stimulus`] = config.stimulus;
+            }
+
+            // TextComponent: save the text content as stimulus data
+            if (config.text !== undefined) {
+              heavyFields[`${prefix}_text`] = config.text;
+            }
+
+            // Coordinates → pixel center in the actual viewport at trial end time.
+            // CSS formula: left = calc(50% + x*0.5 vw), top = calc(50% - y*0.5 vh)
+            if (config.coordinates !== undefined) {
+              const cx = config.coordinates.x ?? 0;
+              const cy = config.coordinates.y ?? 0;
+              heavyFields[`${prefix}_coordinates`] = JSON.stringify({
+                x: Math.round(window.innerWidth * (0.5 + cx / 200)),
+                y: Math.round(window.innerHeight * (0.5 - cy / 200)),
               });
             }
-          } else if (comp.renderedEl) {
-            const _r = comp.renderedEl.getBoundingClientRect();
-            trialData[`${prefix}_size`] = JSON.stringify({
-              width: Math.round(_r.width),
-              height: Math.round(_r.height),
-            });
-          }
 
-          // If component has response (like SurveyComponent)
-          if (
-            instance.getResponse &&
-            typeof instance.getResponse === "function"
-          ) {
-            const response = instance.getResponse();
-
-            // For SurveyComponent, flatten the response object
-            if (
-              config.type === "SurveyComponent" &&
-              typeof response === "object" &&
-              response !== null
-            ) {
-              // Each question becomes its own column: {componentName}_{questionName}
-              Object.keys(response).forEach((questionName) => {
-                trialData[`${prefix}_${questionName}`] = response[questionName];
+            // Size via component-provided rendered size when canvas rendering is used,
+            // otherwise fall back to the DOM element captured at render time.
+            // P0.3 (iteración 6): fast-retired components read ONLY frozen data.
+            if (comp.frozen?.renderedSize) {
+              heavyFields[`${prefix}_size`] = JSON.stringify({
+                width: Math.round(comp.frozen.renderedSize.width),
+                height: Math.round(comp.frozen.renderedSize.height),
               });
+            } else if (
+              comp.frozen === null &&
+              instance.getRenderedSize &&
+              typeof instance.getRenderedSize === "function"
+            ) {
+              const renderedSize = instance.getRenderedSize();
+              if (renderedSize) {
+                heavyFields[`${prefix}_size`] = JSON.stringify({
+                  width: Math.round(renderedSize.width),
+                  height: Math.round(renderedSize.height),
+                });
+              }
+            } else if (comp.frozen === null && comp.renderedEl) {
+              const _r = comp.renderedEl.getBoundingClientRect();
+              heavyFields[`${prefix}_size`] = JSON.stringify({
+                width: Math.round(_r.width),
+                height: Math.round(_r.height),
+              });
+            }
+
+            // If component has response (like SurveyComponent)
+            if (
+              comp.frozen === null &&
+              instance.getResponse &&
+              typeof instance.getResponse === "function"
+            ) {
+              const response = instance.getResponse();
+
+              // For SurveyComponent, flatten the response object
+              if (
+                config.type === "SurveyComponent" &&
+                typeof response === "object" &&
+                response !== null
+              ) {
+                // Each question becomes its own column: {componentName}_{questionName}
+                Object.keys(response).forEach((questionName) => {
+                  heavyFields[`${prefix}_${questionName}`] =
+                    response[questionName];
+                });
+              } else {
+                heavyFields[`${prefix}_response`] = response;
+              }
+            } else if (
+              comp.frozen !== null &&
+              comp.frozen.response !== undefined &&
+              comp.frozen.response !== null
+            ) {
+              heavyFields[`${prefix}_response`] = comp.frozen.response;
+            }
+
+            // Response timestamp source diagnostic (handler-fallback when no
+            // DOM event was available for the semantic response).
+            if (
+              comp.frozen !== null &&
+              comp.frozen.responseTimestampSource !== undefined
+            ) {
+              heavyFields[`${prefix}_response_timestamp_source`] =
+                comp.frozen.responseTimestampSource;
+            } else if (
+              comp.frozen === null &&
+              typeof (instance as any).getResponseTimestampSource === "function"
+            ) {
+              heavyFields[`${prefix}_response_timestamp_source`] = (
+                instance as any
+              ).getResponseTimestampSource();
+            }
+
+            // AudioComponent timing diagnostics (clock bridge / fallback).
+            if (config.type === "AudioComponent") {
+              const audioDiagnostics = (instance as any).getDiagnostics?.();
+              if (audioDiagnostics && typeof audioDiagnostics === "object") {
+                for (const [key, value] of Object.entries(audioDiagnostics)) {
+                  heavyFields[`${prefix}_${key}`] = value;
+                }
+              }
+            }
+            if (config.type === "VideoComponent") {
+              const videoDiagnostics = (instance as any).getDiagnostics?.();
+              if (videoDiagnostics && typeof videoDiagnostics === "object") {
+                for (const [key, value] of Object.entries(videoDiagnostics)) {
+                  heavyFields[`${prefix}_${key}`] = value;
+                }
+              }
+            }
+          });
+
+          // Add response components data as individual columns
+          responseRetirement.forEach((comp) => {
+            const { instance, config } = comp;
+            const prefix = config.name; // Component name (e.g., "ButtonResponseComponent_1")
+
+            // Add type
+            if (config.type !== "ClickResponseComponent") {
+              heavyFields[`${prefix}_type`] = config.type;
+            }
+
+            // Coordinates and size (same logic as stimulus components)
+            if (
+              config.coordinates !== undefined &&
+              config.type !== "ClickResponseComponent"
+            ) {
+              const cx = config.coordinates.x ?? 0;
+              const cy = config.coordinates.y ?? 0;
+              heavyFields[`${prefix}_coordinates`] = JSON.stringify({
+                x: Math.round(window.innerWidth * (0.5 + cx / 200)),
+                y: Math.round(window.innerHeight * (0.5 - cy / 200)),
+              });
+            }
+            if (comp.frozen?.renderedSize) {
+              heavyFields[`${prefix}_size`] = JSON.stringify({
+                width: Math.round(comp.frozen.renderedSize.width),
+                height: Math.round(comp.frozen.renderedSize.height),
+              });
+            } else if (
+              comp.frozen === null &&
+              instance.getRenderedSize &&
+              typeof instance.getRenderedSize === "function"
+            ) {
+              const renderedSize = instance.getRenderedSize();
+              if (renderedSize) {
+                heavyFields[`${prefix}_size`] = JSON.stringify({
+                  width: Math.round(renderedSize.width),
+                  height: Math.round(renderedSize.height),
+                });
+              }
+            } else if (comp.frozen === null && comp.renderedEl) {
+              const _r = comp.renderedEl.getBoundingClientRect();
+              heavyFields[`${prefix}_size`] = JSON.stringify({
+                width: Math.round(_r.width),
+                height: Math.round(_r.height),
+              });
+            }
+
+            // Add response
+            if (
+              comp.frozen === null &&
+              instance.getResponse &&
+              typeof instance.getResponse === "function" &&
+              config.type !== "ClickResponseComponent"
+            ) {
+              const response = instance.getResponse();
+              heavyFields[`${prefix}_response`] = response;
+            } else if (
+              comp.frozen !== null &&
+              config.type !== "ClickResponseComponent" &&
+              comp.frozen.response !== undefined &&
+              comp.frozen.response !== null
+            ) {
+              heavyFields[`${prefix}_response`] = comp.frozen.response;
+            }
+
+            // Response timestamp source diagnostic (handler-fallback when no
+            // DOM event was available for the semantic response).
+            if (
+              comp.frozen !== null &&
+              comp.frozen.responseTimestampSource !== undefined
+            ) {
+              heavyFields[`${prefix}_response_timestamp_source`] =
+                comp.frozen.responseTimestampSource;
+            } else if (
+              comp.frozen === null &&
+              typeof (instance as any).getResponseTimestampSource === "function"
+            ) {
+              heavyFields[`${prefix}_response_timestamp_source`] = (
+                instance as any
+              ).getResponseTimestampSource();
+            }
+
+            // KeyboardResponseComponent - correctness score
+            if (
+              config.type === "KeyboardResponseComponent" &&
+              comp.frozen === null &&
+              instance.getCorrect &&
+              typeof instance.getCorrect === "function"
+            ) {
+              heavyFields[`${prefix}_correct`] = instance.getCorrect();
+            } else if (
+              config.type === "KeyboardResponseComponent" &&
+              comp.frozen !== null
+            ) {
+              heavyFields[`${prefix}_correct`] =
+                comp.frozen.correct !== undefined ? comp.frozen.correct : null;
+            }
+
+            // ButtonResponseComponent - response event type diagnostic
+            if (
+              config.type === "ButtonResponseComponent" &&
+              typeof (instance as any).getResponseEventType === "function"
+            ) {
+              heavyFields[`${prefix}_response_event_type`] = (
+                instance as any
+              ).getResponseEventType();
+            }
+
+            // SliderResponseComponent - slider_start
+            if (
+              config.type === "SliderResponseComponent" &&
+              instance.getSliderStart
+            ) {
+              heavyFields[`${prefix}_slider_start`] =
+                instance.getSliderStart();
+            }
+
+            // SketchpadComponent - strokes and png
+            if (config.type === "SketchpadComponent") {
+              if (
+                instance.getStrokes &&
+                typeof instance.getStrokes === "function"
+              ) {
+                heavyFields[`${prefix}_strokes`] = JSON.stringify(
+                  instance.getStrokes(),
+                );
+              }
+              if (
+                instance.getImageData &&
+                typeof instance.getImageData === "function"
+              ) {
+                heavyFields[`${prefix}_png`] = instance.getImageData();
+              }
+            }
+
+            // ClickResponseComponent - response = {x,y}, is_touch separate
+            if (config.type === "ClickResponseComponent") {
+              const clickResponse =
+                comp.frozen !== null
+                  ? comp.frozen.response
+                  : instance.getResponse
+                    ? instance.getResponse()
+                    : null;
+              if (clickResponse && typeof clickResponse === "object") {
+                heavyFields[`${prefix}_response`] = JSON.stringify({
+                  x: clickResponse.x,
+                  y: clickResponse.y,
+                });
+                heavyFields[`${prefix}_is_touch`] = clickResponse.is_touch;
+              }
+            }
+
+            // AudioResponseComponent - special fields
+            if (config.type === "AudioResponseComponent") {
+              const audioResponse = instance.getResponse
+                ? instance.getResponse()
+                : null;
+              if (audioResponse && typeof audioResponse === "object") {
+                heavyFields[`${prefix}_response`] = audioResponse.response;
+                heavyFields[`${prefix}_audio_url`] = audioResponse.audio_url;
+                heavyFields[`${prefix}_estimated_stimulus_onset`] =
+                  audioResponse.estimated_stimulus_onset;
+              }
+            }
+
+            // FileUploadResponseComponent - file metadata fields
+            if (config.type === "FileUploadResponseComponent") {
+              if (
+                instance.getFileUrl &&
+                typeof instance.getFileUrl === "function"
+              ) {
+                heavyFields[`${prefix}_file_url`] = instance.getFileUrl();
+              }
+              if (
+                instance.getFileSize &&
+                typeof instance.getFileSize === "function"
+              ) {
+                heavyFields[`${prefix}_file_size`] = instance.getFileSize();
+              }
+              if (
+                instance.getFileType &&
+                typeof instance.getFileType === "function"
+              ) {
+                heavyFields[`${prefix}_file_type`] = instance.getFileType();
+              }
+            }
+          });
+
+          // Fast-retired components were already destroyed in PHASE R; only
+          // components without the freeze contract are destroyed here.
+          for (const component of stimulusRetirement) {
+            if (component.frozen === null) component.lifecycle.destroy();
+          }
+          for (const component of responseRetirement) {
+            if (component.frozen === null) component.lifecycle.destroy();
+          }
+          // Administrative DOM cleanup remains in PHASE B and therefore never
+          // runs inside the response-safe resource-retirement task.
+          if (!detachedExecution) mainContainer.remove();
+
+          return heavyFields;
+        };
+
+        const criticalLogicalFinalizeDurationMs = Math.max(
+          0,
+          performance.now() - logicalFinalizeStartedAt,
+        );
+        trialData.critical_logical_finalize_duration_ms =
+          roundTiming(criticalLogicalFinalizeDurationMs);
+        trialData.deferred_finalize_duration_ms = null;
+        trialData.logical_finalize_deferred = true;
+        // P0.3 (iteración 5): recursos vivos/retirados y cola de
+        // finalizadores, siempre acotados. P1.2 (iteración 6): el conteo de
+        // retirados se registra DESPUÉS de PHASE R (el snapshot pre-retirement
+        // infra-reportaba el retiro del propio trial).
+        trialData.pending_finalizer_count = pendingFinalizerCount;
+        trialData.peak_pending_finalizers = peakPendingFinalizers;
+        trialData.retained_texture_references = getCanvasStages(
+          visualRenderContainer,
+        ).reduce(
+          (sum, stage) =>
+            sum +
+            ((stage.getResourceDiagnostics?.() ?? {})
+              .retainedTextureReferences ?? 0),
+          0,
+        );
+        trialData.live_trial_containers =
+          display_element.querySelectorAll(
+            '[data-dynamic-plugin-container="true"]',
+          ).length;
+        // ---- PHASE R (P0.3, iteración 5): resource retirement ----
+        // P0.4 (iteración 7): snapshot O(1) SIN poll de GPU y sin copiar
+        // arrays. P1.1 (iteración 7): las métricas de ESTE trial son deltas
+        // de cursores (activación → boundary) + slices acotados por secuencia.
+        const metricEndCursors = getCanvasStages(visualRenderContainer).map(
+          (stage) => stage.snapshotCountersNoPoll(),
+        );
+        const metricBaselineCursors = previousTrialMetricEndCursors;
+        previousTrialMetricEndCursors = metricEndCursors;
+        const renderMetricSlices = getCanvasStages(visualRenderContainer).map(
+          (stage, index) => {
+            const start = metricBaselineCursors?.[index] ?? null;
+            return stage.getMetricSeriesSlice(
+              start?.commit_series_next_index ?? 0,
+              metricEndCursors[index].commit_series_next_index,
+              start?.gpu_series_next_index ?? 0,
+              metricEndCursors[index].gpu_series_next_index,
+            );
+          },
+        );
+        // Sólo los componentes con contrato freezeDataForFinalize se retiran
+        // aquí (destroy + DOM cleanup, acotado y responseSafe). Los que no
+        // soportan fast retirement (snapshots inherentemente pesados, p. ej.
+        // Sketchpad PNG) se destruyen en PHASE B sobre la instancia viva.
+        const stimulusRetirement: Array<{
+          config: any;
+          frozen: Record<string, any> | null;
+          instance: any;
+          renderedEl: HTMLElement | null;
+          lifecycle: any;
+        }> = [];
+        const responseRetirement: Array<{
+          config: any;
+          frozen: Record<string, any> | null;
+          instance: any;
+          renderedEl: HTMLElement | null;
+          lifecycle: any;
+        }> = [];
+        const retireResources = (components: any[], registry: any[]) => {
+          for (const component of components) {
+            let frozen: Record<string, any> | null = null;
+            try {
+              frozen = component.lifecycle.freezeDataForFinalize?.() ?? null;
+            } catch {
+              frozen = null;
+            }
+            if (frozen !== null) {
+              // P0.3 (iteración 6): fast retirement REAL — el finalizer
+              // recibe SÓLO {config, frozenData}. La instancia, el lifecycle
+              // y el DOM se sueltan en PHASE R; PHASE B jamás puede volver a
+              // consultarlos.
+              component.lifecycle.destroy();
+              cumulativeRetiredResources += 1;
+              registry.push({
+                config: component.config,
+                frozen,
+                instance: null,
+                renderedEl: null,
+                lifecycle: null,
+              });
+              component.instance = null;
+              component.lifecycle = null;
+              component.renderedEl = null;
             } else {
-              trialData[`${prefix}_response`] = response;
-            }
-          }
-
-          // Response timestamp source diagnostic (handler-fallback when no
-          // DOM event was available for the semantic response).
-          if (
-            typeof (instance as any).getResponseTimestampSource === "function"
-          ) {
-            trialData[`${prefix}_response_timestamp_source`] = (
-              instance as any
-            ).getResponseTimestampSource();
-          }
-
-          // AudioComponent timing diagnostics (clock bridge / fallback).
-          if (config.type === "AudioComponent") {
-            const audioDiagnostics = (instance as any).getDiagnostics?.();
-            if (audioDiagnostics && typeof audioDiagnostics === "object") {
-              for (const [key, value] of Object.entries(audioDiagnostics)) {
-                trialData[`${prefix}_${key}`] = value;
-              }
-            }
-          }
-          if (config.type === "VideoComponent") {
-            const videoDiagnostics = (instance as any).getDiagnostics?.();
-            if (videoDiagnostics && typeof videoDiagnostics === "object") {
-              for (const [key, value] of Object.entries(videoDiagnostics)) {
-                trialData[`${prefix}_${key}`] = value;
-              }
-            }
-          }
-        });
-
-        // Add response components data as individual columns
-        responseComponents.forEach((comp) => {
-          const { instance, config } = comp;
-          const prefix = config.name; // Component name (e.g., "ButtonResponseComponent_1")
-
-          // Add type
-          if (config.type !== "ClickResponseComponent") {
-            trialData[`${prefix}_type`] = config.type;
-          }
-
-          // Coordinates and size (same logic as stimulus components)
-          if (
-            config.coordinates !== undefined &&
-            config.type !== "ClickResponseComponent"
-          ) {
-            const cx = config.coordinates.x ?? 0;
-            const cy = config.coordinates.y ?? 0;
-            trialData[`${prefix}_coordinates`] = JSON.stringify({
-              x: Math.round(window.innerWidth * (0.5 + cx / 200)),
-              y: Math.round(window.innerHeight * (0.5 - cy / 200)),
-            });
-          }
-          if (
-            instance.getRenderedSize &&
-            typeof instance.getRenderedSize === "function"
-          ) {
-            const renderedSize = instance.getRenderedSize();
-            if (renderedSize) {
-              trialData[`${prefix}_size`] = JSON.stringify({
-                width: Math.round(renderedSize.width),
-                height: Math.round(renderedSize.height),
+              registry.push({
+                config: component.config,
+                frozen: null,
+                instance: component.instance,
+                renderedEl: component.renderedEl ?? null,
+                lifecycle: component.lifecycle,
               });
             }
-          } else if (comp.renderedEl) {
-            const _r = comp.renderedEl.getBoundingClientRect();
-            trialData[`${prefix}_size`] = JSON.stringify({
-              width: Math.round(_r.width),
-              height: Math.round(_r.height),
-            });
           }
-
-          // Add response
-          if (
-            instance.getResponse &&
-            typeof instance.getResponse === "function" &&
-            config.type !== "ClickResponseComponent"
-          ) {
-            const response = instance.getResponse();
-            trialData[`${prefix}_response`] = response;
-          }
-
-          // Response timestamp source diagnostic (handler-fallback when no
-          // DOM event was available for the semantic response).
-          if (
-            typeof (instance as any).getResponseTimestampSource === "function"
-          ) {
-            trialData[`${prefix}_response_timestamp_source`] = (
-              instance as any
-            ).getResponseTimestampSource();
-          }
-
-          // KeyboardResponseComponent - correctness score
-          if (
-            config.type === "KeyboardResponseComponent" &&
-            instance.getCorrect &&
-            typeof instance.getCorrect === "function"
-          ) {
-            trialData[`${prefix}_correct`] = instance.getCorrect();
-          }
-
-          // ButtonResponseComponent - response event type diagnostic
-          if (
-            config.type === "ButtonResponseComponent" &&
-            typeof (instance as any).getResponseEventType === "function"
-          ) {
-            trialData[`${prefix}_response_event_type`] = (
-              instance as any
-            ).getResponseEventType();
-          }
-
-          // SliderResponseComponent - slider_start
-          if (
-            config.type === "SliderResponseComponent" &&
-            instance.getSliderStart
-          ) {
-            trialData[`${prefix}_slider_start`] = instance.getSliderStart();
-          }
-
-          // SketchpadComponent - strokes and png
-          if (config.type === "SketchpadComponent") {
-            if (
-              instance.getStrokes &&
-              typeof instance.getStrokes === "function"
-            ) {
-              trialData[`${prefix}_strokes`] = JSON.stringify(
-                instance.getStrokes(),
-              );
-            }
-            if (
-              instance.getImageData &&
-              typeof instance.getImageData === "function"
-            ) {
-              trialData[`${prefix}_png`] = instance.getImageData();
-            }
-          }
-
-          // ClickResponseComponent - response = {x,y}, is_touch separate
-          if (config.type === "ClickResponseComponent") {
-            const clickResponse = instance.getResponse
-              ? instance.getResponse()
-              : null;
-            if (clickResponse && typeof clickResponse === "object") {
-              trialData[`${prefix}_response`] = JSON.stringify({
-                x: clickResponse.x,
-                y: clickResponse.y,
-              });
-              trialData[`${prefix}_is_touch`] = clickResponse.is_touch;
-            }
-          }
-
-          // AudioResponseComponent - special fields
-          if (config.type === "AudioResponseComponent") {
-            const audioResponse = instance.getResponse
-              ? instance.getResponse()
-              : null;
-            if (audioResponse && typeof audioResponse === "object") {
-              trialData[`${prefix}_response`] = audioResponse.response;
-              trialData[`${prefix}_audio_url`] = audioResponse.audio_url;
-              trialData[`${prefix}_estimated_stimulus_onset`] =
-                audioResponse.estimated_stimulus_onset;
-            }
-          }
-
-          // FileUploadResponseComponent - file metadata fields
-          if (config.type === "FileUploadResponseComponent") {
-            if (
-              instance.getFileUrl &&
-              typeof instance.getFileUrl === "function"
-            ) {
-              trialData[`${prefix}_file_url`] = instance.getFileUrl();
-            }
-            if (
-              instance.getFileSize &&
-              typeof instance.getFileSize === "function"
-            ) {
-              trialData[`${prefix}_file_size`] = instance.getFileSize();
-            }
-            if (
-              instance.getFileType &&
-              typeof instance.getFileType === "function"
-            ) {
-              trialData[`${prefix}_file_type`] = instance.getFileType();
-            }
-          }
-        });
-
-        if (visualFrameBoundaryHandoff && !trialContext) {
-          pendingVisualDurationPatch = {
-            jsPsych: this.jsPsych,
-            trialSequence: dynamicTrialSequence,
-            onsetCommitTime: visualOnsetCommitTime,
-            expectedDuration: desiredTrialDuration,
-            stimulus: visualStimulus,
-            frameBoundaryHandoff: visualFrameBoundaryHandoff,
-          };
-        }
-
-        if (
-          !hostTimingAvailable &&
-          !trialContext &&
-          visualFrameBoundaryHandoff &&
-          typeof offsetTime === "number"
-        ) {
-          setPersistentVisualHandoff(offsetTime, dynamicTrialSequence);
-        } else if (!trialContext) {
-          preserveCanvasVisualBridge(mainContainer, display_element);
-        }
-
-        // Clean up components
-        stimulusComponents.forEach((component) => {
-          component.lifecycle.destroy();
-        });
-
-        responseComponents.forEach((component) => {
-          component.lifecycle.destroy();
-        });
+        };
+        retireResources(stimulusComponents, stimulusRetirement);
+        retireResources(responseComponents, responseRetirement);
+        // The cumulative counter is distinct from the live resource gauges.
+        trialData.cumulative_retired_resources = cumulativeRetiredResources;
+        trialData.live_runtime_component_instances =
+          liveRuntimeComponentInstances;
+        trialData.live_runtime_lifecycles = liveRuntimeLifecycles;
+        trialData.live_drawables = getCanvasStages(
+          visualRenderContainer,
+        ).reduce(
+          (sum, stage) =>
+            sum +
+            ((stage.getResourceDiagnostics?.() ?? {}).drawableCount ?? 0),
+          0,
+        );
+        trialData.pending_finalization_entries = pendingFinalizerCount;
+        // P0.4 (iteración 7): PHASE R es REALMENTE response-safe — sin
+        // removal de DOM pesado (va a PHASE B), sin expulsión de texturas
+        // (tarea de mantenimiento no-responseSafe), sin poll de GPU.
         for (const dispose of visualBackgroundDisposers) dispose();
         visualBackgroundDisposers.length = 0;
-
-        // Clean up resize observer
         resizeObserver?.disconnect();
-
-        // A prepared successor may already be physically active in another
-        // state container. Retire only this trial's administrative layer.
-        if (trialContext) {
-          mainContainer.remove();
+        const runTextureMaintenance = () => {
+          for (const stage of getCanvasStages(visualRenderContainer)) {
+            stage.runTextureMaintenance?.();
+          }
+        };
+        if (typeof hostFrameEngine.queueSafeTask === "function") {
+          hostFrameEngine.queueSafeTask(runTextureMaintenance, {
+            label: "dynamic-texture-maintenance",
+            estimatedCostMs: 2,
+            responseSafe: false,
+          });
         } else {
-          display_element.innerHTML = "";
+          runTextureMaintenance();
         }
 
-        // Return trial data through jsPsych's promise-result path.
+        // P0.5 (iteración 5): PHASE A debe ser O(1). Si excede una fracción
+        // configurable del frame period, el precision path se marca
+        // explícitamente degraded — nunca se reporta como precisión limpia.
+        const phaseABudgetMs =
+          (timing.getFrameIntervalEstimate?.() ?? 1000 / 60) *
+          Math.max(
+            0,
+            resolveTimingMs(trial.phase_a_budget_fraction, 0.5) ?? 0.5,
+          );
+        const criticalFinalizeOverBudget =
+          criticalLogicalFinalizeDurationMs > phaseABudgetMs;
+        trialData.critical_logical_finalize_over_budget =
+          criticalFinalizeOverBudget;
+        trialData.phase_a_budget_ms = roundTiming(phaseABudgetMs);
+        if (criticalFinalizeOverBudget) {
+          trialData.precision_path = "degraded";
+          trialData.precision_path_degraded = true;
+          trialData.precision_fallback_reason =
+            trialData.precision_fallback_reason ||
+            "critical_logical_finalize_over_budget";
+        }
+
+        // The core fork's Trial.run() awaits this
+        // finalizer after processResult and before on_finish, so PHASE B can
+        // complete later without ever losing a field.
+        pendingFinalizerCount += 1;
+        peakPendingFinalizers = Math.max(
+          peakPendingFinalizers,
+          pendingFinalizerCount,
+        );
+        const deferredFinalize = (finalResult: Record<string, any>) => {
+          const sharedEngine: any =
+            hostFrameEngine ?? (this.jsPsych as any)?.precisionTiming;
+          return new Promise<void>((resolveFinalize) => {
+            let settled = false;
+            const settle = () => {
+              if (settled) return;
+              settled = true;
+              pendingFinalizerCount = Math.max(0, pendingFinalizerCount - 1);
+              resolveFinalize();
+            };
+            const removeResetHook =
+              typeof sharedEngine?.onReset === "function"
+                ? sharedEngine.onReset(settle)
+                : null;
+            const applyHeavyFields = () => {
+              const deferredStartedAt = performance.now();
+              try {
+                Object.assign(finalResult, buildDeferredFields());
+                finalResult.deferred_finalize_duration_ms = roundTiming(
+                  Math.max(0, performance.now() - deferredStartedAt),
+                );
+              } finally {
+                removeResetHook?.();
+                settle();
+              }
+            };
+            const task =
+              typeof sharedEngine?.queueSafeTask === "function"
+                ? sharedEngine.queueSafeTask(applyHeavyFields, {
+                    label: "dynamic_deferred_finalize",
+                    estimatedCostMs: 8,
+                  })
+                : null;
+            if (!task) {
+              removeResetHook?.();
+              settle();
+            }
+          });
+        };
+        trialData.__finalize = deferredFinalize;
+
+        // Return the minimal trial data through jsPsych's promise-result
+        // path. PHASE B completes before the core runs on_finish.
         resolveTrial(trialData);
       };
 
-      const startPresentation = async () => {
+      const startPresentation = (): void | Promise<void> => {
         if (trialEnded) return;
+        if (previousTrialMetricEndCursors === null) {
+          // Primer trial del experimento: baseline antes de cualquier commit.
+          previousTrialMetricEndCursors = getCanvasStages(
+            visualRenderContainer,
+          ).map((stage) => stage.snapshotCountersNoPoll());
+        }
 
         const trialDuration = resolveTimingMs(trial.trial_duration, null);
-        visualFrameBoundaryHandoff = isFrameBoundaryVisualTrial(
+        persistentVisualBoundary = isFrameBoundaryVisualTrial(
           trialDuration,
           stimulusComponents,
           responseComponents,
         );
-        if (visualFrameBoundaryHandoff) {
-          removePreservedVisualBridge();
-          visualRenderContainer = getPersistentVisualSurface(
-            canvasWidth,
-            canvasHeight,
-            trialContext
-              ? "transparent"
-              : (trial.__canvasStyles?.backgroundColor ?? "transparent"),
-          );
-          if (hostFrameEngine) {
-            bindPersistentVisualSurfaceToFrameEngine(hostFrameEngine);
-          } else {
-            for (const stage of getCanvasStages(visualRenderContainer)) {
-              stage.resetForTrial();
-            }
+        if (persistentVisualBoundary) {
+          if (!detachedExecution) {
+            throw new Error("persistent_visual_descriptor_mismatch");
           }
+          visualRenderContainer = mainContainer;
+          responseTiming.setContainer(visualRenderContainer);
         } else {
-          closePendingVisualDuration(
-            this.jsPsych,
-            "unclosed_no_next_visual_onset_commit",
-          );
           removePersistentVisualSurface();
           visualRenderContainer = mainContainer;
         }
 
-        await renderAllComponents();
+        // P1.1 (iteración 6): habilitar la grabación de series de métricas
+        // del renderer para ESTE trial (debug diagnostics) — el snapshot del
+        // boundary depende de estos contadores.
+        for (const stage of getCanvasStages(visualRenderContainer)) {
+          stage.setMetricSeriesRecording?.(
+            initialDiagnostics.includeRenderSeries,
+            initialDiagnostics.includeGpuSeries,
+          );
+        }
+
+        const finishPresentation = () => {
         const componentReadiness = allComponents.map((component) =>
           component.lifecycle.getReadinessDiagnostics(),
         );
@@ -3374,254 +4671,165 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         for (const component of allComponents) {
           component.lifecycle.arm();
         }
+        // P1.3: optional prepare-time GPU synchronization. Runs ONLY here
+        // (preparation), never inside the critical rAF tick. `fence` can
+        // CONFIRM driver completion of the texture uploads; `finish`/`none`
+        // only guarantee that commands were issued — the metrics distinguish
+        // the two honestly.
+        // P0.5 (iteración 6): materializar las transacciones visuales
+        // agrupadas (offsets+onsets del mismo target) como transacciones
+        // atómicas del FrameEngine antes de declarar readiness.
+        timing.flushVisualTransactions?.();
+        const gpuPrepareSyncMode = String(
+          resolveRawValue(trial.gpu_prepare_sync) ?? "none",
+        );
+        if (gpuPrepareSyncMode !== "none") {
+          const gpuStartedAt = performance.now();
+          this.prepareGpuDuringResponseWindow =
+            hostFrameEngine.getDiagnostics?.().response_sensitive === true;
+          for (const stage of getCanvasStages(visualRenderContainer)) {
+            try {
+              stage.syncGpuForPrepare();
+            } catch (error) {
+              console.warn("DynamicPlugin prepare-time GPU sync failed:", error);
+            }
+          }
+          this.prepareGpuMs = Math.max(0, performance.now() - gpuStartedAt);
+        }
         // Install one shared response event hub during preparation. The onset
         // tick only switches its active manager; it does not add DOM listeners.
-        if (hasResponseInputs) responseTiming.arm();
-        if (trialContext) {
-          for (const stage of getCanvasStages(visualRenderContainer)) {
-            visualBackgroundDisposers.push(
-              stage.registerRect({
-                id: visualBackgroundId,
-                x: 0,
-                y: 0,
-                width: canvasWidth,
-                height: canvasHeight,
-                color: trial.__canvasStyles?.backgroundColor ?? "transparent",
-                zIndex: -2147483648,
-                visible: false,
-              }),
-            );
-          }
+        if (hasResponseInputs) {
+          responseTiming.arm();
+          responseTiming.refreshPointerLayout?.();
+          ensureSafePointerLayoutRefresh(responseTiming);
         }
+        for (const stage of getCanvasStages(visualRenderContainer)) {
+          visualBackgroundDisposers.push(
+            stage.registerRect({
+              id: visualBackgroundId,
+              x: 0,
+              y: 0,
+              width: canvasWidth,
+              height: canvasHeight,
+              color: trial.__canvasStyles?.backgroundColor ?? "transparent",
+              zIndex: -2147483648,
+              visible: false,
+            }),
+          );
+        }
+        // P1.1/P1.2 (iteración 4): para Image/Text (+ KeyboardResponse o
+        // ClickResponse sin marker, que no dibujan UI) los píxeles
+        // experimentales viven enteramente en la superficie WebGL persistente.
+        // Las mutaciones DOM de layout/style no son parte del path crítico y
+        // jamás deben correr dentro del rAF tick.
+        const responseComponentsDrawDomVisuals = responseComponents.some(
+          ({ config }) => {
+            const type = String(resolveRawValue(config.type) ?? "");
+            if (type === "KeyboardResponseComponent") return false;
+            if (
+              type === "ClickResponseComponent" &&
+              resolveRawValue(config.show_click_marker) === false
+            ) {
+              return false;
+            }
+            return true;
+          },
+        );
+        const pureWebGLPresentation =
+          persistentVisualBoundary &&
+          !responseComponentsDrawDomVisuals;
+        const setContainerVisibility = (visible: boolean) => {
+          if (pureWebGLPresentation) return;
+          mainContainer.style.visibility = visible ? "visible" : "hidden";
+          trialContext.recordCriticalDomMutation?.(1);
+        };
         timing.onStart((timestamp) => {
           presentationActivated = true;
-          mainContainer.style.visibility = "visible";
+          setContainerVisibility(true);
           for (const stage of getCanvasStages(visualRenderContainer)) {
             stage.setDrawableVisibility(visualBackgroundId, true);
           }
-          const physicalComponents = trialContext
-            ? stimulusComponents
-            : allComponents;
-          for (const component of physicalComponents) {
+          for (const component of stimulusComponents) {
             component.lifecycle.activate({ timestamp });
           }
-          if (
-            logicalLifecycleStarted &&
-            hasResponseInputs &&
-            !responseTimingAttached
-          ) {
-            if (trialContext) {
-              for (const component of responseComponents) {
-                component.lifecycle.activate({ timestamp });
-              }
-            }
-            responseTiming.activate();
-            responseTimingAttached = true;
-            trialContext?.setResponseSensitive?.(true);
+          // P0.1 (iteration 3): for an early-transition-safe trial the shared
+          // response hub switches authority in the SAME rAF tick where the
+          // presentation changes. Between the visual commit of B and the core
+          // reaching Trial B.run(), hub.active must already be B — a keydown
+          // whose event.timeStamp is after the commit is never lost. No DOM
+          // listeners are added here: the hub was armed during prepare() and
+          // activate() is an O(1) pointer switch.
+          if (hasResponseInputs && !responseTimingAttached) {
+            activateLogicalResponses();
           }
           for (const stage of getCanvasStages(visualRenderContainer)) {
             stage.setTrialActive(true);
           }
         });
-        const afterVisualCommit = (timestamp: number) => {
-          if (visualFrameBoundaryHandoff && !previousVisualDurationPatched) {
-            const currentVisualRecord = findPrimaryVisualTimingRecord(
-              timing,
-              stimulusComponents,
-            );
-            const currentOnsetCommitTime =
-              typeof currentVisualRecord?.frame_onset_abs === "number"
-                ? currentVisualRecord.frame_onset_abs
-                : null;
-            previousVisualDurationData = patchPreviousVisualDuration(
-              this.jsPsych,
-              currentOnsetCommitTime,
-              getPrimaryStimulusValue(stimulusComponents),
-              dynamicTrialSequence,
-            );
-            previousVisualDurationPatched = previousVisualDurationData !== null;
-          }
-          removePreservedVisualBridge();
-        };
-        if (trialContext) {
-          // The global engine already closes outgoing offsets and incoming
-          // onsets through the shared stage commit. The legacy
-          // `patchPreviousVisualDuration()` path reads jsPsych data and must not
-          // run in this rAF tick; it is only required when separate legacy
-          // trials preserve pixels without a shared transition context.
-          trialContext.setPresentationLifecycle({
-            arm: (info) => {
-              for (const component of allComponents) {
-                component.lifecycle.arm({
-                  scheduledTimestamp: info.targetTime,
-                  reason: info.reason,
-                });
-              }
-            },
-            deactivate: (info) => {
-              for (const stage of getCanvasStages(visualRenderContainer)) {
-                stage.setDrawableVisibility(visualBackgroundId, false);
-              }
-              for (const component of allComponents) {
-                component.lifecycle.deactivate({ timestamp: info.timestamp });
-              }
-              mainContainer.style.visibility = "hidden";
-              if (responseTimingAttached) {
-                responseTiming.deactivate();
-                responseTimingAttached = false;
-              }
-              trialContext?.setResponseSensitive?.(false);
-              // Image/Text offset callbacks are completed by the single shared
-              // stage commit later in this same rAF tick. Closing them here
-              // would erase commit-index/CPU metadata before that commit occurs.
-            },
-          });
-        } else {
-          timing.onFrameCommit((timestamp) => {
-            for (const stage of getCanvasStages(visualRenderContainer)) {
-              stage.commit(timestamp, true);
+        trialContext.setPresentationLifecycle({
+          arm: (info) => {
+            for (const component of allComponents) {
+              component.lifecycle.arm({
+                scheduledTimestamp: info.targetTime,
+                predictedSelectedFrameTime:
+                  info.predictedSelectedFrameTime,
+                reason: info.reason,
+              });
             }
-            afterVisualCommit(timestamp);
-          });
-        }
+          },
+          deactivate: (info) => {
+            for (const stage of getCanvasStages(visualRenderContainer)) {
+              stage.setDrawableVisibility(visualBackgroundId, false);
+            }
+            for (const component of allComponents) {
+              component.lifecycle.deactivate({ timestamp: info.timestamp });
+            }
+            setContainerVisibility(false);
+            if (responseTimingAttached) {
+              responseTiming.deactivate();
+              responseTimingAttached = false;
+            }
+            trialContext.setResponseSensitive?.(false);
+            // Image/Text offset callbacks are completed by the single shared
+            // stage commit later in this same rAF tick.
+          },
+        });
 
         // Handle trial duration on measured animation frames.
         if (trialDuration !== null) {
-          visualFrameBoundaryHandoffLeadMs = visualFrameBoundaryHandoff
+          persistentVisualBoundaryLeadMs = persistentVisualBoundary
             ? 0
             : null;
 
-          // A fixed, non-response-controlled boundary is knowable at onset.
-          // Declare it immediately so the frame engine can arm the already
-          // prepared successor (notably WebAudio) before the target frame.
-          if (
-            trialContext &&
-            (responseComponents.length === 0 ||
-              trial.response_ends_trial === false)
-          ) {
-            timing.onStart((timestamp) => {
-              requestTrialEnd(timestamp, "trial_duration");
-            });
-          }
-
-          timing.scheduleAt(
-            trialDuration,
-            (timestamp) => {
-              if (trialEnded) return;
-              if (!hasResponded) {
-                hasResponded = true;
-                recordAllPendingResponses();
-              }
-              if (trial.timing_continuous === true) {
-                // P2: the due frame must reach its commit phase before the
-                // trial finalizes; the outgoing handoff will use the commit
-                // timestamp (this same frame), not the previous frame.
-                requestTrialEnd(timestamp, "trial_duration");
-              } else {
-                endTrial(timestamp);
-              }
-            },
-            { policy: "not_before" },
-          );
-        }
-
-        if (trialContext) {
-          precisionReadyAt = performance.now();
-          precisionReady = true;
-          precisionReadyReason = "all_first_commit_resources_ready";
-          trialContext.markReady(precisionReadyAt, {
-            precisionReadyReason,
-            precisionFallbackReason: "",
-            resourceReadyAt,
-            gpuReadyAt,
+          // P0.1 (iteración 5): la duración máxima se PREDECLARA como
+          // boundary en el FrameEngine desde el onset, aunque
+          // response_ends_trial=true. Así nearest_frame puede escoger el
+          // frame correcto (3 a 60.1 Hz, no 4); una respuesta temprana
+          // reemplaza el boundary pendiente con un único commit.
+          timing.onStart((timestamp) => {
+            requestTrialEnd(timestamp, "trial_duration");
           });
-          execution.onReady?.();
-          return;
         }
 
-        // Origin authority selection. With the host coordinator present it is
-        // the ONLY authority: a successful acquire starts at the handoff
-        // timestamp; a null acquire falls back to fresh_raf — the legacy
-        // VisualHandoff state is never consulted nor consumed in that case.
-        if (hostTimingAvailable) {
-          const currentTrialIndex =
-            this.jsPsych.getProgress()?.current_trial_global ?? 0;
-
-          // Only a timing_continuous successor acquires a host origin. A normal
-          // trial never acquires (P0 would return null anyway — its slot was
-          // discarded with successor_not_continuous) but may still report that
-          // outcome. Trial index 0 has no predecessor: skip acquisition.
-          if (currentTrialIndex > 0 && trial.timing_continuous === true) {
-            hostOrigin = hostTiming.acquireTrialOrigin(currentTrialIndex);
-          }
-
-          // Outcome MUST be consulted AFTER the acquisition attempt:
-          // acquireTrialOrigin may CREATE the outcome (never_registered,
-          // expired, ...) and returns null.
-          const outcome =
-            typeof hostTiming.getTransitionOutcome === "function"
-              ? hostTiming.getTransitionOutcome(currentTrialIndex)
-              : null;
-
-          if (hostOrigin && typeof hostOrigin.timestamp === "number") {
-            // The retired coordinator can still identify a logical predecessor,
-            // but its past timestamp is not a new presentation opportunity.
-            // Preserve it as diagnostics and acquire a fresh observed rAF origin.
-            timing.start();
-            timingContinuity = "logical_only";
-            timingLostReason = "legacy_timestamp_not_replayed";
-          } else {
-            timing.start();
-            if (outcome && outcome.status === "lost" && outcome.reason) {
-              timingContinuity = "lost";
-              timingLostReason = outcome.reason;
-            } else {
-              timingContinuity = "none";
-              timingLostReason = null;
-            }
-          }
-        } else {
-          // Official-jsPsych compatibility path: the bridge may preserve the
-          // outgoing pixels, but its timestamp is diagnostics only. A past
-          // handoff timestamp must never be replayed as a new observed frame.
-          const handoff = consumePersistentVisualHandoffTimestamp();
-          consumedVisualHandoff = handoff;
-          timing.start();
-        }
-
-        const startSpeculativePreparation = () => {
-          if (trial.prepare_next_manifest) {
-            prepareNextPresentation(this.jsPsych, trial.prepare_next_manifest);
-          }
-
-          if (trial.prefetch_next_trials !== false) {
-            const upcomingAssets = collectUpcomingAssetPreloadList(
-              this.jsPsych,
-              resolveTimingMs(trial.prefetch_trial_count, 3) ?? 3,
-            );
-            preloadAssets(
-              this.jsPsych,
-              upcomingAssets,
-              resolveTimingMs(trial.asset_preload_timeout, 10000) ?? 10000,
-            ).catch((error) => {
-              console.warn(
-                "DynamicPlugin upcoming asset prefetch failed:",
-                error,
-              );
-            });
-          }
+        precisionReadyAt = performance.now();
+        precisionReady = true;
+        precisionReadyReason = "all_first_commit_resources_ready";
+        const publishStartedAt = performance.now();
+        trialContext.markReady(precisionReadyAt, {
+          precisionReadyReason,
+          precisionFallbackReason: "",
+          resourceReadyAt,
+          gpuReadyAt,
+        });
+        this.preparePublishMs = Math.max(
+          0,
+          performance.now() - publishStartedAt,
+        );
+        execution.onReady?.();
         };
-        const sharedEngine =
-          hostFrameEngine ??
-          ((this.jsPsych as any)?.precisionTiming as HostFrameEngine);
-        if (typeof sharedEngine?.queueSafeTask === "function") {
-          sharedEngine.queueSafeTask(startSpeculativePreparation, {
-            label: "dynamic-successor-prefetch",
-            estimatedCostMs: 4,
-          });
-        } else if (sharedEngine?.canStartBackgroundWork?.() !== false) {
-          startSpeculativePreparation();
-        }
+        const rendering = renderAllComponents();
+        if (rendering) return rendering.then(finishPresentation);
+        finishPresentation();
       };
 
       // P4 fast activation path: when every image asset is SYNCHRONOUSLY READY
@@ -3634,7 +4842,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       let activationPath: "prepared_fast" | "normal" = "normal";
       let preparedResourcesUsed = 0;
       const beginPresentation = () => {
-        void startPresentation().catch((error) => {
+        const handlePreparationError = (error: unknown) => {
           execution.onPreparationError?.(error);
           if (!execution.onPreparationError) {
             console.error(
@@ -3647,9 +4855,88 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
               timing_quality_reason: "presentation_preparation_failed",
             });
           }
-        });
+        };
+        try {
+          const pending = startPresentation();
+          if (pending) {
+            void pending.catch(handlePreparationError);
+            return pending;
+          }
+        } catch (error) {
+          handlePreparationError(error);
+        }
       };
 
+      // P0.2 (iteración 7): DOS NIVELES de preparación.
+      // RESOURCE PREP (fetch/decode/GPU pesado) es SAFE-only y se difiere
+      // durante ventanas response-sensitive. RUNTIME CONTEXT MATERIALIZATION
+      // (recursos YA ready, bounded por contrato) puede ejecutarse entre
+      // frames de un trial response-sensitive.
+      const scheduleMainPresentation = (materializationOnly: boolean) => {
+        for (const component of allComponents) {
+          component.config.__materializationOnly = materializationOnly;
+        }
+        const prepEngine = hostFrameEngine;
+        const deferNeeded =
+          !materializationOnly &&
+          (prepEngine.getDiagnostics?.().response_sensitive === true ||
+            prepEngine.getWorkPhase?.() === "CRITICAL");
+        const measuredRun = () => {
+          const mainThreadStartedAt = performance.now();
+          const wasDuringResponseWindow =
+            hostFrameEngine.getDiagnostics?.().response_sensitive === true;
+          try {
+            const pending = beginPresentation();
+            if (materializationOnly && pending) {
+              throw new Error(
+                "response_safe_materialization_became_asynchronous",
+              );
+            }
+          } finally {
+            const duration = Math.max(
+              0,
+              performance.now() - mainThreadStartedAt,
+            );
+            // P1.2 (iteración 7): la etapa main-thread se mide COMPLETA —
+            // se acumulan todas las fases scheduler-owned del trial.
+            this.prepareMainThreadMs = Math.max(
+              0,
+              (this.prepareMainThreadMs ?? 0) + duration,
+            );
+            this.prepareMainThreadDuringResponseWindow =
+              this.prepareMainThreadDuringResponseWindow === true ||
+              wasDuringResponseWindow;
+            if (materializationOnly) {
+              this.runtimeMaterializationDuringResponseWindow =
+                wasDuringResponseWindow;
+            }
+          }
+        };
+        if (
+          deferNeeded &&
+          typeof prepEngine?.queuePreparationTask === "function"
+        ) {
+          this.prepareCompletionDeferredUntilSafe = true;
+          prepEngine.queuePreparationTask(measuredRun, {
+            label: "dynamic-trial-main-prep",
+            estimatedCostMs: 4,
+          });
+        } else {
+          measuredRun();
+        }
+      };
+
+      // P0.2 (iteración 7): materialization-only requiere que TODOS los
+      // componentes declaren sus recursos ready (contrato honesto). Un
+      // componente sin contrato va por el camino pesado (SAFE-only).
+      const componentsResourceReady = allComponents.every((component: any) => {
+        const state =
+          component.lifecycle.getResourceReadinessState?.(component.config) ?? {};
+        return state.resourceReady === true && state.gpuResourceReady === true;
+      });
+      if (descriptorMaterializationOnly && !componentsResourceReady) {
+        throw new Error("prepared_descriptor_readiness_mismatch");
+      }
       if (trial.preload_assets !== false) {
         const currentAssets = collectAssetPreloadList(allComponents);
         const cachedImageCount = currentAssets.images.filter(
@@ -3660,13 +4947,20 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           cachedImageCount === currentAssets.images.length;
         const fastPathEligible =
           allImagesCached &&
-          currentAssets.audio.length === 0 &&
           currentAssets.video.length === 0;
+        const materializationOnly =
+          descriptorMaterializationOnly &&
+          fastPathEligible &&
+          componentsResourceReady;
 
-        if (fastPathEligible) {
+        if (materializationOnly) {
           activationPath = "prepared_fast";
-          beginPresentation();
+          scheduleMainPresentation(true);
         } else {
+          // RESOURCE_ASYNC: la espera del recurso es medible y puede estar en
+          // vuelo durante una response window; su continuación vuelve al
+          // scheduler (nunca continúa arbitrariamente en el main thread).
+          const resourcesStartedAt = performance.now();
           preloadAssets(
             this.jsPsych,
             currentAssets,
@@ -3675,10 +4969,21 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             .catch((error) => {
               console.warn("DynamicPlugin asset preload failed:", error);
             })
-            .then(beginPresentation);
+            .then(() => {
+              this.prepareResourceWaitMs = Math.max(
+                0,
+                performance.now() - resourcesStartedAt,
+              );
+              scheduleMainPresentation(false);
+            });
         }
       } else {
-        beginPresentation();
+        // Desactivar el preloader no concede autoridad para inferir seguridad.
+        // Sólo un PreparedTrialDescriptor publicado explícitamente habilita
+        // materialización durante una ventana response-sensitive.
+        scheduleMainPresentation(
+          descriptorMaterializationOnly && componentsResourceReady,
+        );
       }
     });
   }

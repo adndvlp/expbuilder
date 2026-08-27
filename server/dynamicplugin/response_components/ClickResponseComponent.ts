@@ -363,9 +363,29 @@ class ClickResponseComponent {
     this.markerElement = marker;
   }
 
+  /**
+   * P0.2 (iteración 7): el listener de click es O(1) — ready por contrato.
+   */
+  getResourceReadinessState(_config?: any) {
+    return {
+      resourceReady: true,
+      gpuResourceReady: true,
+      runtimeMaterializationCostEstimateMs: 0.5,
+    };
+  }
   // ── Public getters ────────────────────────────────────────────
 
   /** Returns `{ x, y, is_touch }` or null if no click yet. */
+  /** P0.3 (iteración 5): snapshot pequeño para fast retirement (PHASE R). */
+  freezeDataForFinalize() {
+    return {
+      response: this.getResponse(),
+      responseTimestampSource:
+        typeof (this as any).getResponseTimestampSource === "function"
+          ? (this as any).getResponseTimestampSource()
+          : null,
+    };
+  }
   getResponse(): ClickResponse | null {
     return this.response;
   }

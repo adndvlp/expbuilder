@@ -645,3 +645,164 @@ describe("ResponseTimingManager V2 semantics", () => {
     manager.detach();
   });
 });
+
+describe("shared hub boundary switch (P0.1: zero visible-but-not-responding window)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.innerHTML = "";
+  });
+
+  it("pointerdown after B's commit is captured by B while A's bookkeeping is still pending", () => {
+    const capturedA: any[] = [];
+    const capturedB: any[] = [];
+    let aFinishes = 0;
+    let bFinishes = 0;
+    const timingA = {
+      getOnsetTime: () => 1000,
+      getTrialTimeOrigin: () => 1000,
+      getScheduledTrialTimeOrigin: () => 1000,
+      getFrameIntervalEstimate: () => 1000 / 60,
+      findStimulusRecord: () => ({
+        component_id: "target-a",
+        name: "target-a",
+        scheduled_onset_abs: 1000,
+        frame_onset_abs: 1000,
+      }),
+    };
+    const timingB = {
+      getOnsetTime: () => 2000,
+      getTrialTimeOrigin: () => 2000,
+      getScheduledTrialTimeOrigin: () => 2000,
+      getFrameIntervalEstimate: () => 1000 / 60,
+      findStimulusRecord: () => ({
+        component_id: "target-b",
+        name: "target-b",
+        scheduled_onset_abs: 2000,
+        frame_onset_abs: 2000,
+      }),
+    };
+    const a = createManager({
+      timing: timingA,
+      trial: { response_allowed_from: "trial_onset" },
+      onFinish: () => {
+        aFinishes += 1;
+        return true;
+      },
+    });
+    const b = createManager({
+      timing: timingB,
+      trial: {
+        response_allowed_from: "trial_onset",
+        response_rt_anchor: { from: "stimulus_commit", component: "target-b" },
+      },
+      onFinish: () => {
+        bFinishes += 1;
+        return true;
+      },
+    });
+    // Both hubs armed during prepare(); the shared DOM listeners exist once.
+    a.manager.arm();
+    b.manager.arm();
+    a.manager.registerPointerTarget({
+      componentId: "btn-a",
+      componentName: "Button-A",
+      label: "a",
+      hitTest: () => true,
+      onResponse: (response: any) => capturedA.push(response),
+    });
+    b.manager.registerPointerTarget({
+      componentId: "btn-b",
+      componentName: "Button-B",
+      label: "b",
+      hitTest: () => true,
+      onResponse: (response: any) => capturedB.push(response),
+    });
+
+    // rAF boundary tick: O(1) hub switch, no listener installation.
+    a.manager.activate();
+    const addEventListenerSpy = vi.spyOn(window, "addEventListener");
+    a.manager.deactivate();
+    b.manager.activate();
+    const listenerCallsDuringSwitch = addEventListenerSpy.mock.calls.filter(
+      ([type]) => type === "keydown" || type === "pointerdown",
+    );
+    expect(listenerCallsDuringSwitch).toHaveLength(0);
+
+    // Pointerdown 2 ms after B's visual commit, while A's bookkeeping has not
+    // finished. The event belongs to B only.
+    vi.spyOn(performance, "now").mockReturnValue(2002);
+    const event = pointerdownEvent();
+    Object.defineProperty(event, "timeStamp", { value: 2002 });
+    window.dispatchEvent(event);
+
+    expect(capturedB).toHaveLength(1);
+    expect(capturedB[0].response_time).toBe(2002);
+    expect(capturedB[0].response_timestamp_source).toBe("event.timeStamp");
+    expect(capturedB[0].rt_visual_commit).toBe(2);
+    expect(capturedB[0].rt_trial_origin).toBe(2);
+    expect(capturedB[0].response_valid).toBe(true);
+    expect(capturedA).toHaveLength(0);
+    expect(aFinishes).toBe(0);
+    expect(bFinishes).toBe(1);
+
+    a.manager.detach();
+    b.manager.detach();
+  });
+
+  it("keydown before B's commit is still classified against A, never B", () => {
+    const capturedA: any[] = [];
+    const capturedB: any[] = [];
+    const timingA = {
+      getOnsetTime: () => 1000,
+      getTrialTimeOrigin: () => 1000,
+      getScheduledTrialTimeOrigin: () => 1000,
+      getFrameIntervalEstimate: () => 1000 / 60,
+      findStimulusRecord: () => null,
+    };
+    const timingB = {
+      getOnsetTime: () => 2000,
+      getTrialTimeOrigin: () => 2000,
+      getScheduledTrialTimeOrigin: () => 2000,
+      getFrameIntervalEstimate: () => 1000 / 60,
+      findStimulusRecord: () => null,
+    };
+    const a = createManager({
+      timing: timingA,
+      trial: { response_allowed_from: "trial_onset" },
+      onFinish: () => true,
+    });
+    const b = createManager({
+      timing: timingB,
+      trial: { response_allowed_from: "trial_onset" },
+      onFinish: () => true,
+    });
+    a.manager.arm();
+    b.manager.arm();
+    a.manager.registerKeyboardTarget({
+      componentId: "kb-a",
+      componentName: "Keyboard-A",
+      choices: "ALL_KEYS",
+      caseSensitive: false,
+      minimumValidRtMs: null,
+      onResponse: (response: any) => capturedA.push(response),
+    });
+    b.manager.registerKeyboardTarget({
+      componentId: "kb-b",
+      componentName: "Keyboard-B",
+      choices: "ALL_KEYS",
+      caseSensitive: false,
+      minimumValidRtMs: null,
+      onResponse: (response: any) => capturedB.push(response),
+    });
+    a.manager.activate();
+    // A keydown arriving before the A→B boundary belongs to A's window.
+    vi.spyOn(performance, "now").mockReturnValue(1998);
+    window.dispatchEvent(keydownEvent("x", 1998));
+    expect(capturedA).toHaveLength(1);
+    expect(capturedB).toHaveLength(0);
+    a.manager.deactivate();
+    b.manager.activate();
+    a.manager.detach();
+    b.manager.detach();
+  });
+});

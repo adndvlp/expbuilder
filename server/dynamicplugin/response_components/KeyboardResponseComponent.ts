@@ -280,8 +280,35 @@ class KeyboardResponseComponent {
   }
 
   /**
+   * P0.2 (iteración 7): armar el hub de respuesta es O(1) — ready por
+   * contrato para materialización response-safe.
+   */
+  getResourceReadinessState(_config?: any) {
+    return {
+      resourceReady: true,
+      gpuResourceReady: true,
+      runtimeMaterializationCostEstimateMs: 0.5,
+    };
+  }
+
+  /**
    * Get the response (key pressed)
    */
+  /** P0.3 (iteración 5): snapshot pequeño para fast retirement (PHASE R). */
+  freezeDataForFinalize() {
+    return {
+      response: this.getResponse(),
+      correct: this.getCorrect(),
+      responseTimestampSource:
+        typeof (this as any).getResponseTimestampSource === "function"
+          ? (this as any).getResponseTimestampSource()
+          : null,
+      responseEventType:
+        typeof (this as any).getResponseEventType === "function"
+          ? (this as any).getResponseEventType()
+          : null,
+    };
+  }
   getResponse(): string | null {
     return this.response;
   }

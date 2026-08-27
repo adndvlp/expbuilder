@@ -30,11 +30,13 @@ describe("persistent visual drawable lifecycle", () => {
     assetState.readySource = { width: 100, height: 100 };
     assetState.preloadBitmap.mockReset();
     const pendingVisibilityCommits: Array<(info: any) => void> = [];
+    const residentTextures = new Set<string>();
     stageState.stage = {
       width: 1024,
       height: 768,
       canvas: document.createElement("canvas"),
-      preloadTexture: vi.fn(),
+      preloadTexture: vi.fn((key: string) => residentTextures.add(key)),
+      isTextureResident: vi.fn((key: string) => residentTextures.has(key)),
       registerSprite: vi.fn(() => vi.fn()),
       setDrawableVisibility: vi.fn(
         (_id: string, _visible: boolean, callback?: (info: any) => void) => {
@@ -42,6 +44,7 @@ describe("persistent visual drawable lifecycle", () => {
         },
       ),
       pendingVisibilityCommits,
+      residentTextures,
     };
   });
 
@@ -182,6 +185,7 @@ describe("persistent visual drawable lifecycle", () => {
       scheduleAt: vi.fn(),
     };
     const component = new ImageComponent({} as any);
+    stageState.stage.residentTextures.add("image:white.png");
 
     component.render(document.body, {
       type: "ImageComponent",
