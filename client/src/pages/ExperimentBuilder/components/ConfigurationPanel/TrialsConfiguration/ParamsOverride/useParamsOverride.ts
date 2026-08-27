@@ -8,6 +8,7 @@ import {
   LoadedTrial,
 } from "./types";
 import { DataDefinition } from "../../types";
+import { saveParamsOverrideIntent } from "../../../../modules/experiment-authoring/intents/paramsOverride";
 
 export const useParamsOverride = (selectedTrial: unknown) => {
   const {
@@ -206,8 +207,10 @@ export const useParamsOverride = (selectedTrial: unknown) => {
     const dataToSave = conditionsToSave || conditions;
 
     try {
-      const updatedTrial = await updateTrial(trial.id, {
-        paramsOverride: dataToSave,
+      const updatedTrial = await saveParamsOverrideIntent({
+        trialId: trial.id,
+        conditions: dataToSave,
+        updateTrial,
       });
 
       console.log("Params override conditions saved:", dataToSave);

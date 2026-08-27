@@ -1,6 +1,14 @@
 import { Router } from "express";
 import { db } from "../../../utils/db.js";
 import { findLastItems, getExperimentDoc, syncTimelineBranches } from "./state.js";
+import { buildExperimentGraph } from "../graph/buildExperimentGraph.js";
+import { getItemOwnerId, idsMatch } from "../graph/identity.js";
+import {
+  getOwnedItems,
+  getScopeItemIds,
+  moveItemToScope,
+  removeItemFromScopes,
+} from "../graph/ownership.js";
 
 const router = Router();
 
@@ -68,42 +76,6 @@ function connectLoopBranchesToLastItem(experimentDoc, loopToDelete) {
   }
 }
 
-function restoreChildrenToTimeline(experimentDoc, id, loopIndex) {
-  if (loopIndex === -1) return;
-
-  const trialsToInsert = [];
-
-  experimentDoc.trials.forEach((trial) => {
-    if (trial.parentLoopId === id) {
-      trial.parentLoopId = null;
-      trialsToInsert.push({
-        id: trial.id,
-        type: "trial",
-        name: trial.name,
-        branches: trial.branches || [],
-      });
-    }
-  });
-
-  experimentDoc.loops.forEach((loop) => {
-    if (loop.parentLoopId === id) {
-      loop.parentLoopId = null;
-      trialsToInsert.push({
-        id: loop.id,
-        type: "loop",
-        name: loop.name,
-        branches: loop.branches || [],
-        trials: loop.trials || [],
-        parentLoopId: undefined,
-      });
-    }
-  });
-
-  if (trialsToInsert.length > 0) {
-    experimentDoc.timeline.splice(loopIndex, 0, ...trialsToInsert);
-  }
-}
-
 /* istanbul ignore next -- legacy loop deletion has many graph-shape branches covered by focused smoke tests and newer tool tests. */
 router.delete("/api/loop/:experimentID/:id", async (req, res) => {
   try {
@@ -121,26 +93,38 @@ router.delete("/api/loop/:experimentID/:id", async (req, res) => {
       return res.status(404).json({ success: false, error: "Loop not found" });
     }
 
-    const loopIndex = experimentDoc.timeline.findIndex(
-      (item) => item.id === id && item.type === "loop",
+    const ownerId = getItemOwnerId(experimentDoc, id) ?? null;
+    const ownerOrder = getScopeItemIds(experimentDoc, ownerId);
+    const loopIndex = ownerOrder.findIndex((itemId) => idsMatch(itemId, id));
+    const ownedItems = getOwnedItems(experimentDoc, id);
+    const childIds = [
+      ...(loopToDelete.trials ?? []),
+      ...ownedItems.map((item) => item.id),
+    ].filter(
+      (itemId, index, items) =>
+        items.findIndex((candidate) => idsMatch(candidate, itemId)) === index,
     );
     const firstTrialId = loopToDelete.trials?.[0] || null;
 
     reconnectParents(experimentDoc, id, firstTrialId);
     connectLoopBranchesToLastItem(experimentDoc, loopToDelete);
 
-    experimentDoc.loops = experimentDoc.loops.filter((l) => l.id !== id);
-    experimentDoc.timeline = experimentDoc.timeline.filter(
-      (item) => !(item.id === id && item.type === "loop"),
+    removeItemFromScopes(experimentDoc, id);
+    experimentDoc.loops = experimentDoc.loops.filter((loop) => loop.id !== id);
+    childIds.forEach((itemId, index) =>
+      moveItemToScope(
+        experimentDoc,
+        itemId,
+        ownerId,
+        loopIndex < 0 ? undefined : loopIndex + index,
+      ),
     );
-
-    restoreChildrenToTimeline(experimentDoc, id, loopIndex);
     syncTimelineBranches(experimentDoc);
     experimentDoc.updatedAt = new Date().toISOString();
 
     await db.write();
 
-    res.json({ success: true });
+    res.json({ success: true, graph: buildExperimentGraph(experimentDoc) });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

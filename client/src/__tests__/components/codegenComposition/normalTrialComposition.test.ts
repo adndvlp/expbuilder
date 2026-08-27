@@ -5,6 +5,7 @@ import {
   getColumnValue,
   it,
   normalize,
+  toCodeIdentifier,
   useTrialCode,
   vi,
 } from "./testHarness";
@@ -46,16 +47,17 @@ describe("useTrialCode composition", () => {
     expect(mappedJson).toEqual([
       { stimulus: "<p>Hello</p>", choices: ["y", "n"] },
     ]);
-    expect(code).toContain("const test_stimuli_Intro_Trial = [{stimulus:");
+    const identifier = toCodeIdentifier("Intro Trial");
+    expect(code).toContain(`const test_stimuli_${identifier} = [{stimulus:`);
     expect(code).toContain(
-      "const Intro_Trial_timeline = { type: htmlKeyboardResponse",
+      `const ${identifier}_timeline = { type: htmlKeyboardResponse`,
     );
     expect(code).toContain('stimulus: jsPsych.timelineVariable("stimulus")');
     expect(code).toContain("trial_id: 1");
-    expect(code).toContain("const Intro_Trial_procedure =");
-    expect(code).toContain("timeline_variables: test_stimuli_Intro_Trial");
+    expect(code).toContain(`const ${identifier}_procedure =`);
+    expect(code).toContain(`timeline_variables: test_stimuli_${identifier}`);
     expect(code).toContain("conditional_function: function()");
-    expect(code).toContain("timeline.push(Intro_Trial_procedure)");
+    expect(code).toContain(`timeline.push(${identifier}_procedure)`);
   });
 
   it("generates loop-scoped trial code with prefixed timeline variables and loop branch vars", () => {
@@ -90,15 +92,16 @@ describe("useTrialCode composition", () => {
     });
 
     const code = normalize(genTrialCode());
+    const identifier = toCodeIdentifier("Loop Trial");
 
     expect(code).toContain(
-      'stimulus: jsPsych.timelineVariable("stimulus_Loop_Trial")',
+      `stimulus: jsPsych.timelineVariable("stimulus_${identifier}")`,
     );
     expect(code).toContain("isInLoop: true");
     expect(code).toContain("loop_loop_1_NextTrialId = nextTrialId;");
     expect(code).toContain("loop_loop_1_SkipRemaining = true;");
-    expect(code).not.toContain("const Loop_Trial_procedure =");
-    expect(code).not.toContain("timeline.push(Loop_Trial_procedure)");
+    expect(code).not.toContain(`const ${identifier}_procedure =`);
+    expect(code).not.toContain(`timeline.push(${identifier}_procedure)`);
   });
 
   it("generates orders/categories participant logic for top-level trials", () => {
@@ -125,12 +128,13 @@ describe("useTrialCode composition", () => {
     });
 
     const code = normalize(genTrialCode());
+    const identifier = toCodeIdentifier("Ordered Trial");
 
-    expect(code).toContain("let test_stimuli_Ordered_Trial = [];");
+    expect(code).toContain(`let test_stimuli_${identifier} = [];`);
     expect(code).toContain("const stimuliOrders = [[1,0]];");
     expect(code).toContain('const categoryData = ["practice","main"];');
     expect(code).toContain("const allCategories = [...new Set(categoryData)];");
-    expect(code).toContain("timeline_variables: test_stimuli_Ordered_Trial");
+    expect(code).toContain(`timeline_variables: test_stimuli_${identifier}`);
   });
 
   it("preserves custom lifecycle code while still generating params override and branch code", () => {
@@ -176,6 +180,6 @@ describe("useTrialCode composition", () => {
     expect(code).toContain("trial.customStart = true;");
     expect(code).toContain("display_element.dataset.loaded = 'yes';");
     expect(code).toContain("data.customFinish = true;");
-    expect(code).toContain("window.nextTrialId = 6;");
+    expect(code).toContain("window.nextTrialId = nextTrialId;");
   });
 });

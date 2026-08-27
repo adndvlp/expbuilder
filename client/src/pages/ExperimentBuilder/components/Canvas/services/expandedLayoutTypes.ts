@@ -1,3 +1,5 @@
+import type { GraphBranchEdge } from "../../../modules/experiment-graph/types";
+
 export const ROOT_CANVAS_SCOPE_ID = "root";
 
 export type LayoutItemId = string | number;
@@ -37,10 +39,9 @@ export type ExpandedCanvasNode = {
   draggable: false;
 };
 
-export type ExpandedCanvasEdgeKind =
-  | "flow"
-  | "loop-control"
-  | "loop-return";
+export type ExpandedCanvasEdgeKind = "flow" | "loop-control" | "loop-return";
+
+export type ExpandedCanvasFlowRole = "scope-exit";
 
 export type ExpandedCanvasEdge = {
   id: string;
@@ -52,6 +53,8 @@ export type ExpandedCanvasEdge = {
   data: {
     kind: ExpandedCanvasEdgeKind;
     scopeId: string;
+    flowRole?: ExpandedCanvasFlowRole;
+    semanticEdgeIds?: string[];
   };
 };
 
@@ -65,5 +68,7 @@ export type ExpandedCanvasLayout = {
 export type ComposeExpandedLoopLayoutInput = {
   rootTimeline: readonly LayoutTimelineItem[];
   expandedScopes: readonly ExpandedLoopScope[];
+  branchEdges?: readonly GraphBranchEdge[];
+  scopeParents?: Readonly<Record<string, string | null>>;
   markerHorizontalOffset?: number;
 };

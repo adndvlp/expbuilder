@@ -1,15 +1,12 @@
 import { createContext } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { Loop, Trial } from "../components/ConfigurationPanel/types";
+import type {
+  ExperimentGraphSnapshot,
+  TimelineItem,
+} from "../modules/experiment-graph/types";
 
-export type TimelineItem = {
-  id: string | number;
-  type: "trial" | "loop";
-  name: string;
-  branches?: (string | number)[];
-  trials?: (string | number)[]; // Para loops
-  parentLoopId?: string | null;
-};
+export type { TimelineItem } from "../modules/experiment-graph/types";
 
 export type LoopTimelineCacheEntry =
   | {
@@ -41,6 +38,8 @@ export type NewBranchItem = Pick<TimelineItem, "id" | "name"> & {
 export type TrialsContextType = {
   // Tres arrays planos
   timeline: TimelineItem[];
+  graph: ExperimentGraphSnapshot | null;
+  applyGraphSnapshot: (graph: ExperimentGraphSnapshot) => void;
 
   // Loop timeline para el loop activo
   loopTimeline: TimelineItem[];
@@ -59,7 +58,6 @@ export type TrialsContextType = {
   updateTrial: (
     id: string | number,
     trial: Partial<Trial>,
-    newBranchTrial?: Trial,
   ) => Promise<Trial | null>;
   updateTrialField: (
     id: string | number,
@@ -75,7 +73,6 @@ export type TrialsContextType = {
   updateLoop: (
     id: string | number,
     loop: Partial<Loop>,
-    newBranchItem?: NewBranchItem,
   ) => Promise<Loop | null>;
   updateLoopField: (
     id: string | number,
@@ -89,7 +86,7 @@ export type TrialsContextType = {
   updateTimeline: (timeline: TimelineItem[]) => Promise<boolean>;
 
   // Método para cargar timeline (GET trials timeline)
-  getTimeline: () => Promise<void>;
+  getTimeline: () => Promise<ExperimentGraphSnapshot | null>;
 
   // Método para cargar timeline de trials/loops dentro de un loop
   getLoopTimeline: (
@@ -112,6 +109,8 @@ export type TrialsContextType = {
 
 const TrialsContext = createContext<TrialsContextType>({
   timeline: [],
+  graph: null,
+  applyGraphSnapshot: () => {},
   loopTimeline: [],
   loopTimelineCache: {},
   activeLoopId: null,
@@ -130,7 +129,7 @@ const TrialsContext = createContext<TrialsContextType>({
   updateLoopField: async () => false,
   deleteLoop: async () => false,
   updateTimeline: async () => false,
-  getTimeline: async () => {},
+  getTimeline: async () => null,
   getLoopTimeline: async () => [],
   activateLoopTimeline: () => false,
   clearLoopTimeline: () => {},

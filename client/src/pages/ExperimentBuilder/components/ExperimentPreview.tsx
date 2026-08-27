@@ -134,8 +134,11 @@ function ExperimentPreview({
         const trialCode = `
 ${persistenceCode}
 (async () => {
+localStorage.removeItem('jsPsych_jumpRequest');
 localStorage.removeItem('jsPsych_jumpToTrial');
-  participantNumber = await initParticipant();
+sessionStorage.removeItem('jsPsych_jumpReload');
+sessionStorage.removeItem('jsPsych_jumpContext');
+  participantNumber = await initParticipant(trialSessionId);
 
   if (!Number.isInteger(participantNumber) || participantNumber < 1) {
     alert("The participant number is not assigned. Please, wait.");

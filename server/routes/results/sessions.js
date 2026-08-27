@@ -10,6 +10,7 @@ import {
   previewParticipantNumber,
   sessionProgress,
 } from "../../modules/session-persistence/sessionStore.js";
+import { appendSessionResult } from "../../runtime/sessionStore.js";
 import { db, ensureDbData } from "../../utils/db.js";
 
 const router = Router();
@@ -100,15 +101,12 @@ router.put("/api/append-result/:experimentID", async (req, res) => {
   const { eventId, sequence, sessionId } = req.body || {};
   if (
     !isNonEmptyString(sessionId) ||
-    !isNonEmptyString(eventId) ||
-    !Number.isSafeInteger(sequence) ||
-    sequence < 0 ||
     response === undefined ||
     response === null
   ) {
     return res.status(400).json({
       success: false,
-      error: "sessionId, eventId, non-negative sequence and response required",
+      error: "sessionId and response required",
     });
   }
 
@@ -124,6 +122,21 @@ router.put("/api/append-result/:experimentID", async (req, res) => {
     return res.status(413).json({ success: false, error: "response is too large" });
   }
 
+  // When eventId and sequence are both absent, use simple append (loop-branches mode).
+  // When either is present, require both valid and use the dedup path.
+  const hasEventId = eventId !== undefined && eventId !== null;
+  const hasSequence = sequence !== undefined && sequence !== null;
+  const hasEventMetadata = hasEventId && hasSequence;
+
+  if (hasEventId || hasSequence) {
+    if (!isNonEmptyString(eventId) || !Number.isSafeInteger(sequence) || sequence < 0) {
+      return res.status(400).json({
+        success: false,
+        error: "eventId and non-negative sequence required when either is provided",
+      });
+    }
+  }
+
   return locked(async () => {
     const session = findSession(req.params.experimentID, sessionId);
     if (!session) {
@@ -136,25 +149,26 @@ router.put("/api/append-result/:experimentID", async (req, res) => {
       });
       return res.status(404).json({ success: false, error: "Session not found" });
     }
-    const result = appendEvent(session, { eventId, sequence, response });
-    if (result.conflict) {
-      logSessionEvent("warn", "trial-conflict", {
+    if (hasEventMetadata) {
+      const result = appendEvent(session, { eventId, sequence, response });
+      if (result.conflict) {
+        logSessionEvent("warn", "trial-conflict", {
+          experimentID: req.params.experimentID,
+          sessionId,
+          eventId,
+          sequence,
+          result: result.conflict,
+        });
+        return res.status(409).json({ success: false, error: result.conflict });
+      }
+      if (!result.duplicate) await db.write();
+      logSessionEvent("info", "trial-stored", {
         experimentID: req.params.experimentID,
         sessionId,
         eventId,
         sequence,
-        result: result.conflict,
-      });
-      return res.status(409).json({ success: false, error: result.conflict });
-    }
-    if (!result.duplicate) await db.write();
-    logSessionEvent("info", "trial-stored", {
-      experimentID: req.params.experimentID,
-      sessionId,
-      eventId,
-      sequence,
-      storedCount: session.events.length,
-      result: result.duplicate ? "duplicate" : "stored",
+        storedCount: session.events.length,
+        result: result.duplicate ? "duplicate" : "stored",
     });
     return res.json({
       success: true,
@@ -165,6 +179,29 @@ router.put("/api/append-result/:experimentID", async (req, res) => {
       storedCount: session.events.length,
       participantNumber: participantNumberFor(req.params.experimentID, session),
     });
+    } else {
+      // Simple append mode (loop-branches runtime without outbox)
+      const result = appendSessionResult(
+        req.params.experimentID,
+        sessionId,
+        response,
+      );
+      if (!result.found) {
+        return res.status(404).json({ success: false, error: "Session not found" });
+      }
+      await db.write();
+      logSessionEvent("info", "trial-stored", {
+        experimentID: req.params.experimentID,
+        sessionId,
+        storedCount: (session.data || []).length,
+        result: "stored",
+      });
+      return res.json({
+        success: true,
+        id: sessionId,
+        participantNumber: result.participantNumber,
+      });
+    }
   }, res, {
     experimentID: req.params.experimentID,
     sessionId,
@@ -215,21 +252,57 @@ router.post("/api/complete-session/:experimentID", async (req, res) => {
     if (!session) {
       return res.status(404).json({ success: false, error: "Session not found" });
     }
-    const missing = missingSequences(session, expectedEventCount, lastSequence);
-    if (missing.length > 0 || (session.events || []).length !== expectedEventCount) {
+    const hasEvents = Array.isArray(session.events) && session.events.length > 0;
+    const hasData = Array.isArray(session.data) && session.data.length > 0;
+    if (hasEvents) {
+      const missing = missingSequences(session, expectedEventCount, lastSequence);
+      if (missing.length > 0 || session.events.length !== expectedEventCount) {
+        logSessionEvent("warn", "completion-rejected", {
+          experimentID: req.params.experimentID,
+          sessionId,
+          expectedEventCount,
+          lastSequence,
+          storedCount: session.events.length,
+          result: "missing-results",
+        });
+        return res.status(409).json({
+          success: false,
+          error: "Session has missing results",
+          missingSequences: missing,
+          storedEventCount: session.events.length,
+        });
+      }
+    } else if (hasData && expectedEventCount !== session.data.length) {
+      // Simple append mode: validate data count matches expected
       logSessionEvent("warn", "completion-rejected", {
         experimentID: req.params.experimentID,
         sessionId,
         expectedEventCount,
         lastSequence,
-        storedCount: (session.events || []).length,
+        storedCount: session.data.length,
+        result: "missing-results",
+      });
+      return res.status(409).json({
+        success: false,
+        error: "Session has missing results",
+        storedEventCount: session.data.length,
+      });
+    } else if (!hasData && !hasEvents && expectedEventCount > 0) {
+      // No data stored but expectedEventCount > 0
+      const missing = missingSequences(session, expectedEventCount, lastSequence);
+      logSessionEvent("warn", "completion-rejected", {
+        experimentID: req.params.experimentID,
+        sessionId,
+        expectedEventCount,
+        lastSequence,
+        storedCount: 0,
         result: "missing-results",
       });
       return res.status(409).json({
         success: false,
         error: "Session has missing results",
         missingSequences: missing,
-        storedEventCount: (session.events || []).length,
+        storedEventCount: 0,
       });
     }
     session.state = "completed";
@@ -241,12 +314,12 @@ router.post("/api/complete-session/:experimentID", async (req, res) => {
       sessionId,
       expectedEventCount,
       lastSequence,
-      storedCount: (session.events || []).length,
+      storedCount: hasEvents ? session.events.length : (session.data || []).length,
       result: "completed",
     });
     return res.json({
       success: true,
-      storedEventCount: (session.events || []).length,
+      storedEventCount: hasEvents ? session.events.length : (session.data || []).length,
       lastSequence,
     });
   }, res, {

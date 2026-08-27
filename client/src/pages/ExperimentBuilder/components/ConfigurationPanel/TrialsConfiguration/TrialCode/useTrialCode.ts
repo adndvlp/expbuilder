@@ -19,6 +19,7 @@ import {
   stringifyWithFunctions,
   toCamelCase,
 } from "./utils/trialCodeFormatting";
+import { toCodeIdentifier } from "../../../../utils/codegen/codeIdentifier";
 
 type Props = {
   id: number | undefined;
@@ -87,27 +88,10 @@ export function useTrialCode({
   const safeStimuliOrders = stimuliOrders || [];
   const safeCategoryData = categoryData || [];
 
-  // DEBUG: Log incoming props
-  console.log(`=== useTrialCode DEBUG for ${trialName} ===`);
-  console.log("orders:", orders);
-  console.log("categories:", categories);
-  console.log("stimuliOrders:", stimuliOrders);
-  console.log("safeStimuliOrders:", safeStimuliOrders);
-  console.log("categoryData:", categoryData);
-  console.log("safeCategoryData:", safeCategoryData);
-  console.log("csvJson.length:", csvJson?.length);
-  console.log("isInLoop:", isInLoop);
-  console.log("pluginName:", pluginName);
-
   const activeParameters = parameters.filter(
     (p) => columnMapping[p.key] && columnMapping[p.key].source !== "none",
   );
-  const trialNameSanitized = trialName.replace(/\s+/g, "_");
-
-  // Helper para sanitizar nombres de IDs
-  const sanitizeName = (name: string) => {
-    return name.replace(/[^a-zA-Z0-9_]/g, "_");
-  };
+  const trialNameSanitized = toCodeIdentifier(trialName);
 
   // Helper para generar nombres de variables dinámicos basados en el parentLoopId
   const getVarName = (baseName: string): string => {
@@ -116,7 +100,7 @@ export function useTrialCode({
       return baseName;
     }
     // Trial dentro de un loop - usar prefijo del loop padre
-    const sanitizedParentId = sanitizeName(parentLoopId);
+    const sanitizedParentId = toCodeIdentifier(parentLoopId);
     return `loop_${sanitizedParentId}_${baseName}`;
   };
 
@@ -131,10 +115,6 @@ export function useTrialCode({
     parameters,
     getColumnValue,
   });
-
-  // DEBUG: Log mappedJson
-  console.log(`mappedJson for ${trialName}:`, mappedJson);
-  console.log(`mappedJson.length for ${trialName}:`, mappedJson?.length);
 
   const pluginNameImport = toCamelCase(pluginName);
 
@@ -223,10 +203,6 @@ export function useTrialCode({
       return code;
     } else {
       code += `
-    console.log("=== PROCEDURE SETUP ${trialNameSanitized} ===");
-    console.log("test_stimuli_${trialNameSanitized} before procedure:", test_stimuli_${trialNameSanitized});
-    console.log("test_stimuli_${trialNameSanitized}.length:", test_stimuli_${trialNameSanitized} ? test_stimuli_${trialNameSanitized}.length : 'undefined');
-    
     const ${trialNameSanitized}_procedure = {
     timeline: 
     [${trialNameSanitized}_timeline],`;

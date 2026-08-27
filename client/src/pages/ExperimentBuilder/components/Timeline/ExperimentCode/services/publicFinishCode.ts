@@ -41,6 +41,13 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
   ];
   return `
       on_finish: async function() {
+        if (window.ExpBuilderNavigation.isTransitionPending()) {
+          window.ExpBuilderRuntime?.emit(
+            'experiment-finish-suppressed',
+            { reason: 'jump' }
+          );
+          return;
+        }
         _showLoading('Saving your data\u2026');
         await new Promise(r => setTimeout(r, 0));
         
@@ -103,7 +110,7 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
 
         // Cancel only after the durable completed state was confirmed.
         sessionRef.onDisconnect().cancel();
-        localStorage.removeItem('jsPsych_resumeTrial');
+        window.ExpBuilderNavigation.clearTransientState();
         localStorage.removeItem('jsPsych_currentSessionId');
         localStorage.removeItem('jsPsych_participantNumber');
         sessionStorage.removeItem('jsPsych_captchaPassed');

@@ -5,6 +5,7 @@ import {
   getColumnValue,
   it,
   normalize,
+  toCodeIdentifier,
   useTrialCode,
   vi,
 } from "./testHarness";
@@ -109,6 +110,7 @@ describe("useTrialCode composition", () => {
     expect(code).toContain(
       "extensions: [{ type: jsPsychExtensionWebgazer }] };",
     );
-    expect(code).toContain("timeline.push(Extension_Trial_procedure)");
+    const identifier = toCodeIdentifier("Extension Trial");
+    expect(code).toContain(`timeline.push(${identifier}_procedure)`);
   });
 });

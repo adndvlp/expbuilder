@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useTrialCode } from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/useTrialCode";
 import useLoopCode from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/useLoopCode";
 import type { ColumnMappingEntry } from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/types";
+import { toCodeIdentifier } from "../../../../pages/ExperimentBuilder/utils/codegen/codeIdentifier";
 
 function normalize(code: string) {
   return code.replace(/\s+/g, " ").trim();
@@ -29,6 +30,7 @@ export {
   getColumnValue,
   it,
   normalize,
+  toCodeIdentifier,
   useLoopCode,
   useTrialCode,
   vi,

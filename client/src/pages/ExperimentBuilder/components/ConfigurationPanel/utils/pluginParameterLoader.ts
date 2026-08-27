@@ -1,12 +1,16 @@
 // utils/pluginParameterLoader.ts
 import { mapMetadataToFields, mapMetadataToData } from "./metadataMapper";
 import type { FieldDefinition, DataDefinition } from "../types";
-const API_URL = import.meta.env.VITE_API_URL;
 
 export async function loadPluginParameters(
   pluginName: string,
+  options: { apiBaseUrl?: string; fetchImpl?: typeof fetch } = {},
 ): Promise<{ parameters: FieldDefinition[]; data: DataDefinition[] }> {
-  const response = await fetch(`${API_URL}/api/metadata/${pluginName}.json`);
+  const apiBaseUrl = options.apiBaseUrl ?? import.meta.env.VITE_API_URL;
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const response = await fetchImpl(
+    `${apiBaseUrl}/api/metadata/${pluginName}.json`,
+  );
   if (!response.ok) throw new Error("Metadata not found");
   const metadata = await response.json();
 

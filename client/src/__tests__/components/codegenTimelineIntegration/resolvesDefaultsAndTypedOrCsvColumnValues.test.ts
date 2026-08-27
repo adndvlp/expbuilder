@@ -6,6 +6,7 @@ import {
   resolveColumnValue,
 } from "../../../pages/ExperimentBuilder/utils/generateTrialLoopCodes";
 import type { Trial } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/types";
+import { toCodeIdentifier } from "../../../pages/ExperimentBuilder/utils/codegen/codeIdentifier";
 import {
   loop,
   timelineLoop,
@@ -124,10 +125,11 @@ describe("generateTrialLoopCodes integration", () => {
     );
 
     expect(getTrial).toHaveBeenCalledWith(1);
-    expect(code).toContain("const test_stimuli_Generated_Trial =");
+    const identifier = toCodeIdentifier("Generated Trial");
+    expect(code).toContain(`const test_stimuli_${identifier} =`);
     expect(code).toContain("type: jsPsychHtmlKeyboardResponse");
     expect(code).toContain('stimulus: jsPsych.timelineVariable("stimulus")');
-    expect(code).toContain("timeline.push(Generated_Trial_procedure)");
+    expect(code).toContain(`timeline.push(${identifier}_procedure)`);
   });
 
   it("generates all top-level trial and loop codes from timeline metadata", async () => {
@@ -187,7 +189,10 @@ describe("generateTrialLoopCodes integration", () => {
     );
 
     expect(codes).toHaveLength(2);
-    expect(normalize(codes[0])).toContain("timeline.push(Top_Trial_procedure)");
+    const topIdentifier = toCodeIdentifier("Top Trial");
+    expect(normalize(codes[0])).toContain(
+      `timeline.push(${topIdentifier}_procedure)`,
+    );
     expect(normalize(codes[1])).toContain("const loop_1_procedure = {");
     expect(getLoopTimeline).toHaveBeenCalledWith("loop_1", {
       mode: "query",
@@ -264,7 +269,9 @@ describe("generateTrialLoopCodes integration", () => {
       vi.fn(),
     );
     const sharedTargetCode = normalize(
-      codes.find((code) => code.includes("Shared_Target_timeline")) || "",
+      codes.find((code) =>
+        code.includes(`${toCodeIdentifier("Shared Target")}_timeline`)
+      ) || "",
     );
 
     expect(sharedTargetCode).toContain("window.nextTrialId = null;");

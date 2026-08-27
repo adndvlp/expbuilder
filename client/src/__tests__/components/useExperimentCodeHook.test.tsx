@@ -174,7 +174,7 @@ describe("useExperimentCode", () => {
     renderHook(() => useExperimentCode());
 
     expect(mocks.localProps.evaluateCondition).toContain(
-      "const evaluateCondition = (trialData, condition)",
+      "const evaluateCondition = window.ExpBuilderBranching.evaluateCondition",
     );
     expect(mocks.localProps.evaluateCondition).toContain(
       "window.branchCustomParameters = null",
@@ -183,7 +183,10 @@ describe("useExperimentCode", () => {
       "const nextTrialId = getNextTrialId(lastTrialData);",
     );
     expect(mocks.publicProps.branchingEvaluation).toContain(
-      "jsPsych.abortExperiment('Experiment finished by branching condition'",
+      "jsPsych.abortExperiment(",
+    );
+    expect(mocks.publicProps.branchingEvaluation).toContain(
+      "'Experiment finished by branching condition'",
     );
   });
 });

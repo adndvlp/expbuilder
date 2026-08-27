@@ -104,6 +104,7 @@ describe('POST /api/run-experiment/:experimentID', () => {
       .expect(200)
     expect(res.body.success).toBe(true)
     expect(res.body.experimentUrl).toContain('E1')
+    expect(new URL(res.body.experimentUrl).pathname).toBe('/E1')
   })
 
   test('keeps generated HTML isolated when two experiments share a name', async () => {

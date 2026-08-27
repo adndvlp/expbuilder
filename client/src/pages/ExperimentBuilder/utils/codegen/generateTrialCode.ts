@@ -3,6 +3,7 @@ import { generateConditionalFunctionCode } from "../../components/ConfigurationP
 import { Trial } from "../../components/ConfigurationPanel/types";
 import { generateExtensionCode } from "../generateExtensionCode";
 import { resolveColumnValue } from "./columnValues";
+import { toCodeIdentifier } from "./codeIdentifier";
 import { GeneratedTrialResult, GetTrialFn, UploadedFile } from "./types";
 
 export async function generateTrialCode(
@@ -13,6 +14,7 @@ export async function generateTrialCode(
   isInLoop: boolean = false,
   loopCsvJson?: Record<string, any>[],
   isMergePointInScope: boolean = false,
+  codegenOptions: { apiBaseUrl?: string; fetchImpl?: typeof fetch } = {},
 ): Promise<GeneratedTrialResult> {
   try {
     // Fetch full trial data using getTrial
@@ -45,9 +47,7 @@ export async function generateTrialCode(
         };
       }
 
-      const sanitizeName = (name: string) =>
-        name.replace(/[^a-zA-Z0-9_]/g, "_");
-      const trialName = sanitizeName(fullTrial.name);
+      const trialName = toCodeIdentifier(fullTrial.name);
       const itemsName = `${trialName}_webgazer_items`;
       const capturedCode = savedCode.replace(
         /\btimeline\s*\.\s*push\s*\(/g,
@@ -105,7 +105,10 @@ export async function generateTrialCode(
       "../../components/ConfigurationPanel/utils/pluginParameterLoader"
     );
 
-    const { parameters, data } = await loadPluginParameters(fullTrial.plugin);
+    const { parameters, data } = await loadPluginParameters(
+      fullTrial.plugin,
+      codegenOptions,
+    );
 
     // Generate extension code if needed
     const extensionsCode =
@@ -162,23 +165,6 @@ export async function generateTrialCode(
       customOnLoad: fullTrial.customOnLoad,
       customOnFinish: fullTrial.customOnFinish,
     });
-
-    console.log(
-      "🔍 [generateTrialCode] Trial:",
-      fullTrial.name,
-      "| ID:",
-      fullTrial.id,
-    );
-    console.log("  orders:", fullTrial.orders);
-    console.log("  stimuliOrders:", fullTrial.stimuliOrders);
-    console.log("  categories:", fullTrial.categories);
-    console.log("  categoryData:", fullTrial.categoryData);
-    console.log(
-      "🔍 [TRIAL MAPPED JSON] Trial:",
-      fullTrial.name,
-      "mappedJson:",
-      mappedJson,
-    );
 
     // Return both code and mappedJson
     return {

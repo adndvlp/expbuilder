@@ -1,23 +1,13 @@
 import { useCallback } from "react";
 import { Loop } from "../../../components/ConfigurationPanel/types";
 import { LoopMethodsProps } from "../types";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import { experimentAuthoringClient } from "../../../modules/experiment-authoring";
 
 export default function useGetLoop({ experimentID }: LoopMethodsProps) {
   return useCallback(
     async (id: string | number): Promise<Loop | null> => {
       try {
-        const response = await fetch(
-          `${API_URL}/api/loop/${experimentID}/${id}`,
-        );
-
-        if (!response.ok) {
-          return null;
-        }
-
-        const data = await response.json();
-        return data.loop;
+        return await experimentAuthoringClient.getLoop(experimentID, id);
       } catch (error) {
         console.error("Error getting loop:", error);
         return null;

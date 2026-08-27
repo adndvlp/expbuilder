@@ -6,6 +6,13 @@ import {
   syncTimelineItems,
 } from "./state.js";
 import { createUniqueItemName } from "../uniqueItemName.js";
+import { buildExperimentGraph } from "../graph/buildExperimentGraph.js";
+import {
+  moveItemToScope,
+  removeItemFromScopes,
+} from "../graph/ownership.js";
+import { findLoop, normalizeScopeId } from "../graph/identity.js";
+import { allocateTrialId } from "../graph/itemIds.js";
 
 const router = Router();
 
@@ -13,12 +20,25 @@ router.post("/api/trial/:experimentID", async (req, res) => {
   try {
     const { experimentID } = req.params;
     const trialData = req.body;
-    const experimentDoc = await getExperimentDoc(experimentID, true);
+    const targetScopeId = normalizeScopeId(trialData.parentLoopId);
+    let experimentDoc = await getExperimentDoc(experimentID);
+    const parentLoop =
+      targetScopeId === null || !experimentDoc
+        ? null
+        : findLoop(experimentDoc, targetScopeId);
+    if (targetScopeId !== null && !parentLoop) {
+      return res.status(400).json({
+        success: false,
+        error: `Loop ${targetScopeId} not found`,
+      });
+    }
+    experimentDoc ??= await getExperimentDoc(experimentID, true);
 
-    const id = Date.now();
+    const id = allocateTrialId(experimentDoc);
     const newTrial = {
       ...trialData,
       id,
+      parentLoopId: targetScopeId,
       name: createUniqueItemName(
         experimentDoc,
         trialData.name,
@@ -26,23 +46,22 @@ router.post("/api/trial/:experimentID", async (req, res) => {
       ),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      ...((parentLoop?.csvJson?.length ?? 0) > 0
+        ? { csvFromLoop: true }
+        : {}),
     };
 
     experimentDoc.trials.push(newTrial);
-
-    if (!newTrial.parentLoopId) {
-      experimentDoc.timeline.push({
-        id: newTrial.id,
-        type: "trial",
-        name: newTrial.name,
-        branches: newTrial.branches || [],
-      });
-    }
+    moveItemToScope(experimentDoc, newTrial.id, targetScopeId);
 
     experimentDoc.updatedAt = new Date().toISOString();
     await db.write();
 
-    res.json({ success: true, trial: newTrial });
+    res.json({
+      success: true,
+      trial: newTrial,
+      graph: buildExperimentGraph(experimentDoc),
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -97,6 +116,10 @@ router.patch("/api/trial/:experimentID/:id", async (req, res) => {
       updatedAt: new Date().toISOString(),
     };
 
+    if (Object.hasOwn(updates, "parentLoopId")) {
+      moveItemToScope(experimentDoc, trialId, updates.parentLoopId);
+    }
+
     if (updates.name || updates.branches !== undefined) {
       const timelineIndex = experimentDoc.timeline.findIndex(
         (item) => item.id === trialId && item.type === "trial",
@@ -114,7 +137,11 @@ router.patch("/api/trial/:experimentID/:id", async (req, res) => {
     experimentDoc.updatedAt = new Date().toISOString();
     await db.write();
 
-    res.json({ success: true, trial: experimentDoc.trials[trialIndex] });
+    res.json({
+      success: true,
+      trial: experimentDoc.trials[trialIndex],
+      graph: buildExperimentGraph(experimentDoc),
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -137,20 +164,14 @@ router.delete("/api/trial/:experimentID/:id", async (req, res) => {
     const childrenBranches = trialToDelete?.branches || [];
 
     reconnectParentsToChildren(experimentDoc, trialId, childrenBranches);
+    removeItemFromScopes(experimentDoc, trialId);
     experimentDoc.trials = experimentDoc.trials.filter((t) => t.id !== trialId);
-    experimentDoc.timeline = experimentDoc.timeline.filter(
-      (item) => !(item.id === trialId && item.type === "trial"),
-    );
-    experimentDoc.loops = experimentDoc.loops.map((loop) => ({
-      ...loop,
-      trials: loop.trials?.filter((tid) => tid !== trialId) || [],
-    }));
     syncTimelineItems(experimentDoc);
     experimentDoc.updatedAt = new Date().toISOString();
 
     await db.write();
 
-    res.json({ success: true });
+    res.json({ success: true, graph: buildExperimentGraph(experimentDoc) });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

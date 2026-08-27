@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { db } from "../../utils/db.js";
+import { buildExperimentGraph } from "./graph/buildExperimentGraph.js";
 
 const router = Router();
 
@@ -49,7 +50,11 @@ router.patch("/api/timeline/:experimentID", async (req, res) => {
 
     await db.write();
 
-    res.json({ success: true, timeline });
+    res.json({
+      success: true,
+      timeline,
+      graph: buildExperimentGraph(experimentDoc),
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

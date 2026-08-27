@@ -5,13 +5,14 @@ import type { TimelineItem } from "../../../pages/ExperimentBuilder/contexts/Tri
 import TrialsContext from "../../../pages/ExperimentBuilder/contexts/TrialsContext";
 import TrialsProvider from "../../../pages/ExperimentBuilder/providers/TrialsProvider";
 import {
+  graphJson,
   loop,
   loopDraft,
+  mutationJson,
   notOkJson,
   okJson,
   timelineLoop,
   timelineTrial,
-  trial,
 } from "../../helpers/trialFactories";
 
 function renderTrialsProvider() {
@@ -49,7 +50,7 @@ function queueFetchResponses(...responses: Response[]) {
 }
 
 async function renderLoadedProvider(initialTimeline: TimelineItem[] = []) {
-  queueFetchResponses(okJson({ timeline: initialTimeline }));
+  queueFetchResponses(graphJson(initialTimeline));
 
   const view = renderTrialsProvider();
 
@@ -89,18 +90,7 @@ describe("TrialsProvider", () => {
       branches: [],
     });
 
-    queueFetchResponses(
-      okJson({ loop: createdLoop }),
-      okJson({ trial: trial({ id: 2, parentLoopId: "loop-1" }) }),
-      okJson({ trial: trial({ id: 3, parentLoopId: "loop-1" }) }),
-    );
-
-    const result = await act(async () => {
-      return view.getContext()?.createLoop(draft);
-    });
-
-    expect(result).toEqual(createdLoop);
-    expect(view.getContext()?.timeline).toEqual([
+    const nextTimeline = [
       timelineTrial({ id: 1, name: "Parent", branches: ["loop-1"] }),
       timelineLoop({
         id: "loop-1",
@@ -108,10 +98,18 @@ describe("TrialsProvider", () => {
         trials: [2, 3],
         branches: [],
       }),
-    ]);
+    ];
+    queueFetchResponses(mutationJson({ loop: createdLoop }, nextTimeline));
+
+    const result = await act(async () => {
+      return view.getContext()?.createLoop(draft);
+    });
+
+    expect(result).toEqual(createdLoop);
+    expect(view.getContext()?.timeline).toEqual(nextTimeline);
   });
 
-  it("falls back to loop parent patches while creating loops and reloads top-level create failures", async () => {
+  it("creates a loop in one mutation and reloads after an ambiguous failure", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const view = await renderLoadedProvider([
       timelineTrial({ id: 1, name: "Parent", branches: [2, 3] }),
@@ -124,14 +122,7 @@ describe("TrialsProvider", () => {
       trials: [2, 3],
     });
 
-    fetchMock()
-      .mockResolvedValueOnce(okJson({ loop: createdLoop }))
-      .mockRejectedValueOnce(new Error("trial patch failed"))
-      .mockResolvedValueOnce(
-        okJson({ loop: loop({ id: 2, parentLoopId: "loop-created" }) }),
-      )
-      .mockRejectedValueOnce(new Error("trial patch failed"))
-      .mockRejectedValueOnce(new Error("loop patch failed"));
+    queueFetchResponses(mutationJson({ loop: createdLoop }, []));
 
     const result = await act(async () => {
       return view.getContext()?.createLoop(
@@ -143,13 +134,9 @@ describe("TrialsProvider", () => {
     });
 
     expect(result).toEqual(createdLoop);
-    expect(console.error).toHaveBeenCalledWith(
-      "Error updating parentLoopId for item 3:",
-      expect.any(Error),
-      expect.any(Error),
-    );
+    expect(fetchMock()).toHaveBeenCalledTimes(2);
 
-    queueFetchResponses(notOkJson(), okJson({ timeline: [] }));
+    queueFetchResponses(notOkJson(), graphJson([]));
     let caughtError: unknown;
     await act(async () => {
       try {
@@ -182,26 +169,10 @@ describe("TrialsProvider", () => {
       id: "loop-real",
       name: "Created Loop",
       trials: [2],
-      branches: undefined as any,
+      branches: [],
     });
 
-    queueFetchResponses(
-      okJson({ loop: createdLoop }),
-      okJson({ trial: trial({ id: 2, parentLoopId: "loop-real" }) }),
-    );
-
-    const result = await act(async () => {
-      return view.getContext()?.createLoop(
-        loopDraft({
-          name: "Created Loop",
-          trials: [2],
-          branches: undefined as any,
-        }),
-      );
-    });
-
-    expect(result).toEqual(createdLoop);
-    expect(view.getContext()?.timeline).toEqual([
+    const nextTimeline = [
       timelineTrial({ id: 1, name: "Parent", branches: ["loop-real", 99] }),
       timelineTrial({ id: 99, name: "Unrelated branch" }),
       timelineLoop({
@@ -210,7 +181,21 @@ describe("TrialsProvider", () => {
         trials: [2],
         branches: [],
       }),
-    ]);
+    ];
+    queueFetchResponses(mutationJson({ loop: createdLoop }, nextTimeline));
+
+    const result = await act(async () => {
+      return view.getContext()?.createLoop(
+        loopDraft({
+          name: "Created Loop",
+          trials: [2],
+          branches: [],
+        }),
+      );
+    });
+
+    expect(result).toEqual(createdLoop);
+    expect(view.getContext()?.timeline).toEqual(nextTimeline);
   });
 
   it("updates selectedLoop and visible loop metadata", async () => {
@@ -228,7 +213,10 @@ describe("TrialsProvider", () => {
       expect(view.getContext()?.selectedLoop).toEqual(selected);
     });
 
-    queueFetchResponses(okJson({ loop: updated }));
+    const nextTimeline = [
+      timelineLoop({ id: "loop-1", name: "After", trials: [1] }),
+    ];
+    queueFetchResponses(mutationJson({ loop: updated }, nextTimeline));
 
     const result = await act(async () => {
       return view.getContext()?.updateLoopField("loop-1", "name", "After");
@@ -236,9 +224,7 @@ describe("TrialsProvider", () => {
 
     expect(result).toBe(true);
     expect(view.getContext()?.selectedLoop).toEqual(updated);
-    expect(view.getContext()?.timeline).toEqual([
-      timelineLoop({ id: "loop-1", name: "After", trials: [1] }),
-    ]);
+    expect(view.getContext()?.timeline).toEqual(nextTimeline);
   });
 
   it("returns null when getLoop receives non-ok responses or network errors", async () => {
@@ -280,7 +266,11 @@ describe("TrialsProvider", () => {
       expect(view.getContext()?.selectedLoop).toEqual(selected);
     });
 
-    queueFetchResponses(notOkJson(), okJson({ loop: fresh }));
+    queueFetchResponses(
+      notOkJson(),
+      okJson({ loop: fresh }),
+      graphJson([timelineLoop({ id: "loop-1", name: "Before", trials: [1] })]),
+    );
 
     const result = await act(async () => {
       return view.getContext()?.updateLoopField("loop-1", "name", "Broken");

@@ -9,6 +9,7 @@ import LoopBasicsSection from "./components/LoopBasicsSection";
 import LoopConditionsSection from "./components/LoopConditionsSection";
 import LoopActions from "./components/LoopActions";
 import LoopHeader from "./components/LoopHeader";
+import { saveConditionalLoopIntent } from "../../../../modules/experiment-authoring/intents/conditionalLoop";
 
 type Props = { loop?: Loop };
 
@@ -209,9 +210,10 @@ function LoopsConfig({ loop }: Props) {
     if (!loop) return;
     /* v8 ignore stop */
 
-    await updateLoop(loop.id, {
-      loopConditions: conditions,
-      isConditionalLoop: conditions.length > 0,
+    await saveConditionalLoopIntent({
+      loopId: loop.id,
+      conditions,
+      updateLoop,
     });
     showSaveIndicator("loop conditions");
   };
@@ -295,5 +297,4 @@ function LoopsConfig({ loop }: Props) {
     </div>
   );
 }
-
 export default LoopsConfig;

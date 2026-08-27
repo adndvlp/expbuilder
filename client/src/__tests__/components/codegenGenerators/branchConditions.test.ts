@@ -17,7 +17,8 @@ describe("generateBranchConditionsCode", () => {
       }),
     );
 
-    expect(code).toContain("window.nextTrialId = 2;");
+    expect(code).toContain("window.ExpBuilderBranching.decide( data, [2], []");
+    expect(code).toContain("window.nextTrialId = nextTrialId;");
     expect(code).toContain("window.skipRemaining = true;");
     expect(code).toContain("window.branchingActive = true;");
 
@@ -27,7 +28,7 @@ describe("generateBranchConditionsCode", () => {
         getVarName,
       }),
     );
-    expect(stringCode).toContain('window.nextTrialId = "trial_2";');
+    expect(stringCode).toContain('["trial_2"]');
   });
 
   it("generates automatic loop-scoped branching variables", () => {
@@ -39,8 +40,8 @@ describe("generateBranchConditionsCode", () => {
       }),
     );
 
-    expect(code).toContain('const branches = ["loop_2", 3];');
-    expect(code).toContain("loop_1_NextTrialId = branches[0];");
+    expect(code).toContain('["loop_2",3]');
+    expect(code).toContain("loop_1_NextTrialId = nextTrialId;");
     expect(code).toContain("loop_1_SkipRemaining = true;");
     expect(code).toContain("loop_1_BranchingActive = true;");
   });
@@ -70,12 +71,10 @@ describe("generateBranchConditionsCode", () => {
       }),
     );
 
-    expect(code).toContain("const branchConditions =");
+    expect(code).toContain("window.ExpBuilderBranching.decide(");
     expect(code).toContain('"SurveyComponent_1_choice"');
-    expect(code).toContain("const responseKey = componentName + '_response';");
-    expect(code).toContain("responseData[propertyOrQuestion]");
     expect(code).toContain(
-      "window.branchCustomParameters = matchedCustomParameters;",
+      "window.branchCustomParameters = branchDecision.customParameters;",
     );
 
     const loopCode = normalize(
@@ -87,7 +86,7 @@ describe("generateBranchConditionsCode", () => {
       }),
     );
     expect(loopCode).toContain(
-      "loop_1_BranchCustomParameters = matchedCustomParameters;",
+      "loop_1_BranchCustomParameters = branchDecision.customParameters;",
     );
   });
 });

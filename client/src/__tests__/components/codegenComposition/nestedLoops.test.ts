@@ -1,4 +1,5 @@
 import { describe, expect, it, normalize, useLoopCode } from "./testHarness";
+import { toCodeIdentifier } from "../../../pages/ExperimentBuilder/utils/codegen/codeIdentifier";
 
 describe("useLoopCode composition", () => {
   it("recursively generates nested loop items without precomputed timeline props", () => {
@@ -46,9 +47,13 @@ describe("useLoopCode composition", () => {
       "const precomputed_loop_procedure = { timeline: [] };",
     );
     expect(code).toContain("const parent_loop_procedure =");
+    const precomputed = toCodeIdentifier("Precomputed Loop");
+    const nested = toCodeIdentifier("Nested Loop");
     expect(code).toContain(
-      "timeline: [Precomputed_Loop_wrapper, Nested_Loop_wrapper]",
+      `timeline: [${precomputed}_wrapper, ${nested}_wrapper]`,
     );
+    expect(code).not.toContain("timeline.push(nested_loop_procedure)");
+    expect(code).toContain("timeline.push(parent_loop_procedure)");
   });
 
   it("uses main and Loop fallbacks when the loop id is absent", () => {

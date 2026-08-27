@@ -5,43 +5,72 @@ export const ResumeSection: DocSection = {
   title: "Resume System",
   content: `# Resume System
 
-Local Run Experiment can resume an incomplete session without mixing experiments or tabs.
+Allows the participant to close the browser and resume where they left off.
 
-## Scoped state
+## Per-Trial Persistence
 
-Every key begins with \`expbuilder:local:<experimentID>:\`. The last resumable trial is stored at \`resume-trial\`; the durable UUID is stored at \`session-id\`; each tab also has a private \`tab-id\` and \`tab-session-id\`.
+On each \`on_data_update\` of a trial with \`builder_id\`:
 
 \`\`\`js
-localStorage.setItem(_sessionKeys.resumeTrial, JSON.stringify({
-  branches: data.branches || [],
-  branchConditions: data.branchConditions || [],
-  trialData: data
+localStorage.setItem('jsPsych_resumeTrial', JSON.stringify({
+branches: data.branches || [],
+branchConditions: data.branchConditions || [],
+trialData: data,
 }));
 \`\`\`
 
-## Validation on reload
+## Resolution on Reload
 
 \`\`\`mermaid
 flowchart TD
-  A["Reload experiment"] --> B{"Scoped candidate exists?"}
-  B -->|no| C["Create new UUID session"]
-  B -->|yes| D["GET exact session from db.json"]
-  D -->|HTTP unavailable or invalid| E["Block safe startup; keep local data"]
-  D -->|missing or completed| C
-  D -->|valid and incomplete| F{"Active in another tab?"}
-  F -->|yes| C
-  F -->|no| G["Resume same UUID and outbox"]
-  G --> H["Resolve scoped resume branch"]
+  A["Reload experiment"] --> B{"sessionId in localStorage?"}
+  B -->|no| C["Start new session"]
+  B -->|yes| D["isResuming = true"]
+  D --> E["Read jsPsych_resumeTrial"]
+  E --> F["_resolveResumeBranch()"]
+  F --> G{"Branch resolved?"}
+  G -->|branch| H["Activate the resolved branch route"]
+  G -->|sequential| K["Activate the compiled address cursor"]
+  G -->|no: null| I["Experiment already completed — start new one"]
+  G -->|error| J["Corrupt data — clean reset"]
 \`\`\`
 
-The browser never treats an unverifiable candidate as a new or successfully resumed session. This prevents pending IndexedDB records from becoming detached from their server identity.
+## Branch Resolution
 
-## Branch resolution
+\`_resolveResumeBranch(resumeRaw)\` reconstructs the last state:
 
-\`_resolveResumeBranch()\` reconstructs the last builder state. Zero branches means there is no target; one branch jumps directly; multiple branches evaluate their conditions. Repeat/jump state uses \`_sessionKeys.jumpTrial\`, so two experiments on the same origin cannot consume each other's jump.
+\`\`\`js
+// 1. If 0 branches → experiment finished normally
+// 2. If 1 branch → jump to that trial (without evaluating conditions)
+// 3. If 2+ branches → evaluate branch conditions:
+//    - Build column names (DynamicPlugin support)
+//    - Evaluate rules with operators (==, !=, >, <, >=, <=)
+//    - Arrays: includes()
+//    - Survey: extract nested property
+//    - No match → first branch by default
+\`\`\`
 
-## Recovery and cleanup
+## Anti-Loop Guard
 
-The session outbox replays unresolved records after reload with the original \`eventId\` and \`sequence\`. Browser identity, resume state, and acknowledged IndexedDB records are cleared only after \`complete-session\` confirms the exact stored count and last sequence. Network failure, server rejection, or a missing sequence leaves everything recoverable.
+Prevents a jump/reload from getting stuck in an infinite cycle:
+
+\`\`\`js
+// On startup:
+const startup = window.ExpBuilderNavigation.consumeReloadMarker();
+if (startup.status === 'stalled') {
+  // The same cursor progress was observed on two marked reloads.
+  // Only jump-owned keys are invalidated and execution is blocked safely.
+}
+\`\`\`
+
+## Cleanup on Finish
+
+\`\`\`js
+on_finish: async function() {
+window.ExpBuilderNavigation.clearTransientState();
+localStorage.removeItem('jsPsych_currentSessionId');
+localStorage.removeItem('jsPsych_participantNumber');
+}
+\`\`\`
 `,
 };

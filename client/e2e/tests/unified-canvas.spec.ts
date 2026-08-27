@@ -1,27 +1,43 @@
 import { expect, test } from "../fixtures/test.fixture";
+import { graph, graphScope, routeGraph } from "../helpers/loopBranchGraph";
+import type { TimelineItem } from "../../src/pages/ExperimentBuilder/modules/experiment-graph/types";
 import { getLoopLayoutScopeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/buildUnifiedFlowLayout";
 import { getScopedNodeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/composeExpandedLoopLayout";
 import { ROOT_CANVAS_SCOPE_ID } from "../../src/pages/ExperimentBuilder/components/Canvas/services/expandedLayoutTypes";
 
-const rootTimeline = [
+const rootTimeline: TimelineItem[] = [
   { id: "welcome", type: "trial", name: "Welcome" },
   { id: "instructions", type: "trial", name: "Instructions" },
   { id: "parent", type: "loop", name: "Parent loop" },
   { id: "final", type: "trial", name: "Final" },
 ];
 
-const parentTimeline = [
+const parentTimeline: TimelineItem[] = [
   { id: "parent-first", type: "trial", name: "Parent first" },
   { id: "nested", type: "loop", name: "Nested loop" },
   { id: "parent-last", type: "trial", name: "Parent last" },
 ];
 
-const nestedTimeline = [
+const nestedTimeline: TimelineItem[] = [
   { id: "nested-first", type: "trial", name: "Nested first" },
   { id: "nested-last", type: "trial", name: "Nested last" },
 ];
 
-test("expands parent and nested loops inside one ReactFlow", async ({ page }) => {
+test("expands parent and nested loops inside one ReactFlow", async ({
+  page,
+}) => {
+  await routeGraph(
+    page,
+    "exp-canvas",
+    graph(
+      rootTimeline,
+      {
+        parent: graphScope("parent", null, parentTimeline),
+        nested: graphScope("nested", "parent", nestedTimeline),
+      },
+      [],
+    ),
+  );
   await page.route("**/api/trials-metadata/exp-canvas", (route) =>
     route.fulfill({
       status: 200,
@@ -29,19 +45,16 @@ test("expands parent and nested loops inside one ReactFlow", async ({ page }) =>
       body: JSON.stringify({ timeline: rootTimeline }),
     }),
   );
-  await page.route(
-    "**/api/loop-trials-metadata/exp-canvas/*",
-    (route) => {
-      const nested = route.request().url().endsWith("/nested");
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          trialsMetadata: nested ? nestedTimeline : parentTimeline,
-        }),
-      });
-    },
-  );
+  await page.route("**/api/loop-trials-metadata/exp-canvas/*", (route) => {
+    const nested = route.request().url().endsWith("/nested");
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        trialsMetadata: nested ? nestedTimeline : parentTimeline,
+      }),
+    });
+  });
 
   await page.setViewportSize({ width: 1700, height: 1000 });
   await page.goto("/#/home/experiment/exp-canvas/builder");
@@ -84,14 +97,16 @@ test("expands parent and nested loops inside one ReactFlow", async ({ page }) =>
     .locator(".loop-node", { hasText: "Parent loop" })
     .getByTitle("Collapse loop")
     .click();
-  await expect(canvas.getByText("Nested first", { exact: true })).toHaveCount(0);
-  await expect(canvas.getByText("Parent first", { exact: true })).toHaveCount(0);
+  await expect(canvas.getByText("Nested first", { exact: true })).toHaveCount(
+    0,
+  );
+  await expect(canvas.getByText("Parent first", { exact: true })).toHaveCount(
+    0,
+  );
 });
 
-test("routes a one-item loop as one exterior circuit", async ({
-  page,
-}) => {
-  const branchingTimeline = [
+test("routes a one-item loop as one exterior circuit", async ({ page }) => {
+  const branchingTimeline: TimelineItem[] = [
     { id: "welcome", type: "trial", name: "Welcome", branches: ["consent"] },
     {
       id: "consent",
@@ -116,6 +131,19 @@ test("routes a one-item loop as one exterior circuit", async ({
     { id: "final-2", type: "trial", name: "Final2", branches: [] },
   ];
 
+  await routeGraph(
+    page,
+    "exp-branching",
+    graph(
+      branchingTimeline,
+      {
+        "loop-1": graphScope("loop-1", null, [
+          { id: "task", type: "trial", name: "Task" },
+        ]),
+      },
+      [],
+    ),
+  );
   await page.route("**/api/trials-metadata/exp-branching", (route) =>
     route.fulfill({
       status: 200,
@@ -146,11 +174,7 @@ test("routes a one-item loop as one exterior circuit", async ({
   await expect(canvas.getByText("Task", { exact: true })).toBeVisible();
   await expect(canvas.locator(".react-flow")).toHaveCount(1);
   await expect(canvas.locator(".canvas-breadcrumb")).toHaveCount(0);
-  const markerId = getScopedNodeId(
-    ROOT_CANVAS_SCOPE_ID,
-    "loop",
-    "loop-1",
-  );
+  const markerId = getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "loop", "loop-1");
   const taskId = getScopedNodeId(
     getLoopLayoutScopeId("loop-1"),
     "trial",
@@ -180,9 +204,7 @@ test("routes a one-item loop as one exterior circuit", async ({
     const matrix = svgPath.getScreenCTM()!;
     const length = svgPath.getTotalLength();
     const points = Array.from({ length: 101 }, (_, index) =>
-      svgPath
-        .getPointAtLength((length * index) / 100)
-        .matrixTransform(matrix),
+      svgPath.getPointAtLength((length * index) / 100).matrixTransform(matrix),
     );
     return {
       minY: Math.min(...points.map((point) => point.y)),
@@ -192,15 +214,11 @@ test("routes a one-item loop as one exterior circuit", async ({
   });
   expect(markerBox).not.toBeNull();
   expect(taskBox).not.toBeNull();
-  expect(geometry.minY).toBeLessThan(
-    Math.min(markerBox!.y, taskBox!.y) - 20,
-  );
+  expect(geometry.minY).toBeLessThan(Math.min(markerBox!.y, taskBox!.y) - 20);
   expect(geometry.maxX).toBeGreaterThan(taskBox!.x + taskBox!.width + 20);
   expect(geometry.maxY).toBeGreaterThan(
-    Math.max(
-      markerBox!.y + markerBox!.height,
-      taskBox!.y + taskBox!.height,
-    ) + 20,
+    Math.max(markerBox!.y + markerBox!.height, taskBox!.y + taskBox!.height) +
+      20,
   );
   await page.mouse.move(10, 10);
   await page.waitForTimeout(400);
@@ -212,7 +230,7 @@ test("routes a one-item loop as one exterior circuit", async ({
 test("balances two branch roots when one subtree is wider", async ({
   page,
 }) => {
-  const timeline = [
+  const timeline: TimelineItem[] = [
     {
       id: "parent",
       type: "trial",
@@ -229,6 +247,7 @@ test("balances two branch roots when one subtree is wider", async ({
     { id: "right-child", type: "trial", name: "New Trial 5" },
     { id: "side", type: "trial", name: "New Trial 2" },
   ];
+  await routeGraph(page, "exp-balanced-branches", graph(timeline, {}, []));
   await page.route("**/api/trials-metadata/exp-balanced-branches", (route) =>
     route.fulfill({
       status: 200,
@@ -254,13 +273,13 @@ test("balances two branch roots when one subtree is wider", async ({
   expect(parentBox).not.toBeNull();
   expect(continuationBox).not.toBeNull();
   expect(sideBox).not.toBeNull();
-  const center = (box: NonNullable<typeof parentBox>) =>
-    box.x + box.width / 2;
+  const center = (box: NonNullable<typeof parentBox>) => box.x + box.width / 2;
   expect(center(continuationBox!)).toBeLessThan(center(parentBox!));
   expect(center(sideBox!)).toBeGreaterThan(center(parentBox!));
-  expect(
-    (center(continuationBox!) + center(sideBox!)) / 2,
-  ).toBeCloseTo(center(parentBox!), 1);
+  expect((center(continuationBox!) + center(sideBox!)) / 2).toBeCloseTo(
+    center(parentBox!),
+    1,
+  );
   await canvas.screenshot({
     path: "test-results/unified-canvas-balanced-branches.png",
   });

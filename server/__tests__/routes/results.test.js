@@ -155,6 +155,32 @@ describe('PUT /api/append-result/:experimentID (append data)', () => {
     if (previousLimit === undefined) delete process.env.SESSION_RESULT_MAX_BYTES
     else process.env.SESSION_RESULT_MAX_BYTES = previousLimit
   })
+
+  test('preserves every result when appends arrive concurrently', async () => {
+    const { app, db } = await freshApp()
+    await request(app)
+      .post('/api/append-result/E1')
+      .send({ sessionId: 'concurrent' })
+      .expect(200)
+
+    const trialNumbers = Array.from({ length: 20 }, (_, index) => index)
+    const responses = await Promise.all(
+      trialNumbers.map((trial) =>
+        request(app)
+          .put('/api/append-result/E1')
+          .send({ sessionId: 'concurrent', eventId: `e${trial}`, sequence: trial, response: { trial } }),
+      ),
+    )
+    expect(responses.every((response) => response.status === 200)).toBe(true)
+
+    await db.read()
+    const persisted = db.data.sessionResults.find(
+      (session) => session.sessionId === 'concurrent',
+    )
+    expect(persisted.data).toHaveLength(trialNumbers.length)
+    expect(persisted.data.map(({ trial }) => trial).sort((a, b) => a - b))
+      .toEqual(trialNumbers)
+  })
 })
 
 describe('GET /api/session-results/:experimentID', () => {

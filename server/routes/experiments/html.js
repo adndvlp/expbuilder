@@ -6,32 +6,9 @@ import { withDbLock } from "../../modules/session-persistence/dbQueue.js";
 import { db, ensureDbData } from "../../utils/db.js";
 import { ensureTemplate } from "../../utils/templates.js";
 import { experimentsHtmlDir, trialsPreviewsHtmlDir } from "./paths.js";
+import { applyGeneratedArtifact } from "./artifact.js";
 
 const router = Router();
-
-function appendGeneratedScript($, generatedCode) {
-  $("script#generated-script").remove();
-  $("body").append(
-    `<script id="generated-script">\n${generatedCode}\n</script>`,
-  );
-}
-
-function setExperimentBase($, experimentID) {
-  $("base#experiment-base").remove();
-  $("head").prepend(
-    `<base id="experiment-base" href="/${encodeURIComponent(experimentID)}/">`,
-  );
-}
-
-function appendBackgroundStyle($, canvasStyles) {
-  $("style#canvas-styles").remove();
-  if (canvasStyles?.backgroundColor) {
-    const bg = canvasStyles.backgroundColor;
-    $("head").append(
-      `<style id="canvas-styles">\n  body { background-color: ${bg}; }\n  .jspsych-display-element { background-color: ${bg}; }\n</style>`,
-    );
-  }
-}
 
 function resolveCanvasStyles(canvasStylesFromBody, trialDoc, experiment) {
   let canvasStyles = canvasStylesFromBody;
@@ -98,14 +75,17 @@ router.post("/api/run-experiment/:experimentID", async (req, res) => {
         .json({ success: false, error: "No generated code provided" });
     }
 
-    appendBackgroundStyle($, canvasStyles);
-    setExperimentBase($, experimentID);
-    appendGeneratedScript($, generatedCode);
+    applyGeneratedArtifact($, generatedCode, canvasStyles, {
+      experimentID,
+      requiresDynamicPlugin: trialDoc?.trials?.some(
+        (trial) => trial.plugin === "plugin-dynamic",
+      ),
+    });
     fs.writeFileSync(experimentHtmlPath, $.html());
     res.json({
       success: true,
       message: "Experiment built and ready to run",
-      experimentUrl: `http://localhost:3000/${experimentID}`,
+      experimentUrl: `${req.protocol}://${req.get("host")}/${encodeURIComponent(experimentID)}`,
     });
   } catch (error) {
     console.error(`Error running experiment: ${error.message}`);
@@ -192,14 +172,17 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
         .json({ success: false, error: "No generated code provided" });
     }
 
-    appendBackgroundStyle($, canvasStyles);
-    setExperimentBase($, experimentID);
-    appendGeneratedScript($, generatedCode);
+    applyGeneratedArtifact($, generatedCode, canvasStyles, {
+      experimentID,
+      requiresDynamicPlugin: trialDoc?.trials?.some(
+        (trial) => trial.plugin === "plugin-dynamic",
+      ),
+    });
     fs.writeFileSync(previewHtmlPath, $.html());
     res.json({
       success: true,
       message: "Experiment built and ready to run",
-      experimentUrl: `http://localhost:3000/${experimentID}/preview`,
+      experimentUrl: `${req.protocol}://${req.get("host")}/${encodeURIComponent(experimentID)}/preview`,
     });
   } catch (error) {
     console.error(`Error running experiment: ${error.message}`);

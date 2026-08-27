@@ -24,6 +24,7 @@ if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 
 const adapter = new JSONFile(dbPath);
 export const db = new Low(adapter, {});
+let dbAccessQueue = Promise.resolve();
 
 export function ensureDbData() {
   db.data ||= {};
@@ -34,6 +35,7 @@ export function ensureDbData() {
   db.data.sessionResults ||= [];
   db.data.participantFiles ||= [];
   db.data.sessionCounters ||= {};
+  db.data.mutationReceipts ||= [];
   // Chat agent — intentionally excluded from experiment export/import and factory reset
   db.data.chat ||= {
     apiKeys: {},
@@ -41,6 +43,41 @@ export function ensureDbData() {
     activeModel: "claude-sonnet-4-6",
     conversations: [],
   };
+}
+
+function enqueueDbAccess(operation) {
+  const queued = dbAccessQueue.then(operation);
+  dbAccessQueue = queued.then(
+    () => undefined,
+    () => undefined,
+  );
+  return queued;
+}
+
+export function withDbRead(reader) {
+  return enqueueDbAccess(async () => {
+    await db.read();
+    ensureDbData();
+    return reader(db.data);
+  });
+}
+
+export function withDbMutation(mutator) {
+  return enqueueDbAccess(async () => {
+    await db.read();
+    ensureDbData();
+    const previous = db.data;
+    const candidate = structuredClone(previous);
+    const result = await mutator(candidate);
+    db.data = candidate;
+    try {
+      await db.write();
+      return result;
+    } catch (error) {
+      db.data = previous;
+      throw error;
+    }
+  });
 }
 
 // Exportar userDataRoot, dbPath y dbDir para usar en otros módulos

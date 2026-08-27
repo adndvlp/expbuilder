@@ -58,6 +58,23 @@ export function buildLocalSessionNameCode({
     return parts.length > 0 ? parts.join(_SESSION_NAME_SEPARATOR) : null;
   }
 
+  function _sessionNameHasDynamic() {
+    return _SESSION_NAME_TOKENS.some(function(t) { return t.type === 'counter'; });
+  }
+
+  async function _renameSessionIfNeeded(oldId, newId) {
+    if (!oldId || !newId || oldId === newId) return oldId;
+    try {
+      const _r = await fetch('/api/rename-session/${experimentID}', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldSessionId: oldId, newSessionId: newId })
+      });
+      if (_r.ok) return newId;
+    } catch (_e) {}
+    return oldId;
+  }
+
   async function _setSessionDisplayName(sessionId, displayName) {
     if (!displayName) return;
     try {

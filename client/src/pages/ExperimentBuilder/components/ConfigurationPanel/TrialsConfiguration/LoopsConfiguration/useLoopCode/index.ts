@@ -3,11 +3,17 @@ import BranchingLogicCode from "./BranchingLogicCode";
 import {
   BranchCondition,
   LoopCondition,
-  LoopData,
   RepeatCondition,
   TimelineItem,
 } from "./types";
 import { generateItemWrappers } from "./services/generateItemWrappers";
+import {
+  generateDescendantIdEntries,
+  getLoopId,
+  getTimelineItemName,
+  isLoopData,
+} from "./services/timelineItemIdentity";
+import { toCodeIdentifier } from "../../../../../utils/codegen/codeIdentifier";
 
 type Props = {
   id: string | undefined;
@@ -17,11 +23,11 @@ type Props = {
   repetitions: number;
   randomize: boolean;
   orders: boolean;
-  stimuliOrders: any[];
+  stimuliOrders: unknown[];
   categories: boolean;
-  categoryData: any[];
+  categoryData: unknown[];
   trials: TimelineItem[]; // Can contain trials or loops
-  unifiedStimuli: Record<string, any>[];
+  unifiedStimuli: Record<string, unknown>[];
   loopConditions?: LoopCondition[];
   isConditionalLoop?: boolean;
   parentLoopId?: string | null; // Parent loop ID if this is a nested loop
@@ -48,14 +54,7 @@ export default function useLoopCode({
   mergePointIds = [],
   isMergePoint = false,
 }: Props) {
-  const sanitizeName = (name: string) => {
-    return name.replace(/[^a-zA-Z0-9_]/g, "_");
-  };
-
-  // Helper to check if it is a nested loop
-  const isLoopData = (item: TimelineItem): item is LoopData => {
-    return "isLoop" in item && item.isLoop === true;
-  };
+  const sanitizeName = toCodeIdentifier;
 
   const genLoopCode = (): string => {
     // Sanitize the loop ID to use it in variable names
@@ -71,14 +70,16 @@ export default function useLoopCode({
       .map((item) => {
         if (isLoopData(item)) {
           // If the nested loop already has timelineProps (generated code), use it directly
-          if ((item as any).timelineProps) {
-            return (item as any).timelineProps;
+          if (item.timelineProps) {
+            return item.timelineProps;
           }
+
+          const nestedLoopId = getLoopId(item);
 
           // If it does not have timelineProps, generate code recursively
           // eslint-disable-next-line react-hooks/rules-of-hooks
           const nestedLoopCode = useLoopCode({
-            id: item.loopId,
+            id: nestedLoopId === null ? undefined : String(nestedLoopId),
             branches: item.branches,
             branchConditions: item.branchConditions,
             repeatConditions: item.repeatConditions,
@@ -115,9 +116,7 @@ export default function useLoopCode({
     // Generate the list of wrapper names for the loop timeline
     const timelineRefs = trials
       .map((item) => {
-        const itemName = isLoopData(item)
-          ? item.loopName || (item as any).name // Support both formats
-          : item.trialName;
+        const itemName = getTimelineItemName(item);
         const itemNameSanitized = sanitizeName(itemName);
         return `${itemNameSanitized}_wrapper`;
       })
@@ -178,11 +177,7 @@ export default function useLoopCode({
         } else {
           test_stimuli_${loopIdSanitized} = categoryFilteredStimuli;
         }
-        
-        console.log("Participant:", participantNumber, "Category:", participantCategory);
-        console.log("Category indices:", categoryIndices);
-        console.log("Filtered stimuli:", test_stimuli_${loopIdSanitized});
-        } else {
+      } else if (stimuliOrders.length > 0) {
         // Original logic without categories
         const orderIndex = (participantNumber - 1) % stimuliOrders.length;
         const index_order = stimuliOrders[orderIndex];
@@ -190,10 +185,16 @@ export default function useLoopCode({
         test_stimuli_${loopIdSanitized} = index_order
           .filter((i) => i !== -1 && i >= 0 && i < test_stimuli_previous_${loopIdSanitized}.length)
           .map((i) => test_stimuli_previous_${loopIdSanitized}[i]);
-          
-        console.log(test_stimuli_${loopIdSanitized});
+      } else {
+        test_stimuli_${loopIdSanitized} = test_stimuli_previous_${loopIdSanitized};
       }
-    }`;
+    }
+    window.ExpBuilderRuntime?.emit("stimuli-selected", {
+      loopId: ${JSON.stringify(id ?? null)},
+      count: test_stimuli_${loopIdSanitized}.length,
+      orders: ${orders},
+      categories: ${categories}
+    });`;
     } else {
       code = `
 
@@ -215,6 +216,7 @@ export default function useLoopCode({
       repetitions,
       randomize,
       branches,
+      descendantIdEntries: generateDescendantIdEntries(trials, sanitizeName),
       isConditionalLoop,
       loopConditions,
     });
@@ -241,9 +243,12 @@ export default function useLoopCode({
 
     code = branchesResult.code;
 
+    const appendRootProcedure = parentLoopId
+      ? ""
+      : `timeline.push(${loopIdSanitized}_procedure);`;
     code += `
 };
-timeline.push(${loopIdSanitized}_procedure);
+${appendRootProcedure}
 `;
 
     return code;

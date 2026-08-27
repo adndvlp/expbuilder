@@ -15,9 +15,8 @@ describe("generateConditionalFunctionCode", () => {
     expect(code).toContain("conditional_function: function()");
     expect(code).toContain("const currentId = 42;");
     expect(code).toContain(
-      "window.JSPSYCH_LOCAL_KEYS?.jumpTrial || 'jsPsych_jumpToTrial'",
+      "window.ExpBuilderNavigation?.enterItem(currentId, 'trial')",
     );
-    expect(code).toContain("localStorage.getItem(jumpKey)");
     expect(code).toContain("window.skipRemaining");
     expect(code).toContain("window.nextTrialId = null;");
   });

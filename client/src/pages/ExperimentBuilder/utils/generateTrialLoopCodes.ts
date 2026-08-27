@@ -1,5 +1,6 @@
 import { Loop, Trial } from "../components/ConfigurationPanel/types";
 import type { TimelineItem } from "../contexts/TrialsContext";
+import type { ExperimentGraphSnapshot } from "../modules/experiment-graph/types";
 import { getMergePointIds, isMergePoint } from "./branchGraphUtils";
 import { generateLoopCode } from "./codegen/generateLoopCode";
 import { generateTrialCode } from "./codegen/generateTrialCode";
@@ -16,25 +17,36 @@ export {
 } from "./codegen/columnValues";
 export type { UploadedFile } from "./codegen/types";
 
+export type TimelineCodegenOptions = {
+  apiBaseUrl?: string;
+  fetchImpl?: typeof fetch;
+  throwOnError?: boolean;
+  graph?: ExperimentGraphSnapshot;
+};
+
 export async function generateAllCodes(
   experimentID: string,
   uploadedFiles: UploadedFile[] = [],
   getTrial: GetTrialFn,
   getLoopTimeline: GetLoopTimelineFn,
   getLoop: GetLoopFn,
+  options: TimelineCodegenOptions = {},
 ): Promise<string[]> {
   try {
-    // Fetch timeline metadata
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/trials-metadata/${experimentID}`,
-    );
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch timeline metadata");
+    const fetchImpl = options.fetchImpl ?? fetch;
+    const apiBaseUrl =
+      options.apiBaseUrl ?? import.meta.env.VITE_API_URL ?? "";
+    let timeline: TimelineItem[] = options.graph?.root.items || [];
+    if (!options.graph) {
+      const response = await fetchImpl(
+        `${apiBaseUrl}/api/trials-metadata/${experimentID}`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch timeline metadata");
+      }
+      const data = await response.json();
+      timeline = data.timeline || [];
     }
-
-    const data = await response.json();
-    const timeline: TimelineItem[] = data.timeline || [];
     const topLevelMergePointIds = getMergePointIds(timeline);
 
     const codes: string[] = [];
@@ -50,6 +62,7 @@ export async function generateAllCodes(
           false,
           undefined,
           isMergePoint(topLevelMergePointIds, item.id),
+          options,
         );
         if (result.code) codes.push(result.code);
       } else if (item.type === "loop") {
@@ -62,6 +75,7 @@ export async function generateAllCodes(
           getLoopTimeline,
           getLoop,
           topLevelMergePointIds,
+          options,
         );
         if (code) codes.push(code);
       }
@@ -69,6 +83,7 @@ export async function generateAllCodes(
 
     return codes;
   } catch (error) {
+    if (options.throwOnError) throw error;
     console.error("Error generating codes:", error);
     return [];
   }

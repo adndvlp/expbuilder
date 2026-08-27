@@ -43,7 +43,12 @@ export function buildLocalSessionPrelude(
   const _sessionChannel = typeof BroadcastChannel === 'function'
     ? new BroadcastChannel(_sessionNamespace + 'ownership')
     : null;
-  let trialSessionId = null;
+  let trialSessionId = localStorage.getItem('jsPsych_currentSessionId');
+  if (!trialSessionId) {
+    trialSessionId = _generateSessionName(null) || (crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2, 10));
+  }
   let _claimedSessionId = null;
   let isResuming = false;
   let participantNumber;
