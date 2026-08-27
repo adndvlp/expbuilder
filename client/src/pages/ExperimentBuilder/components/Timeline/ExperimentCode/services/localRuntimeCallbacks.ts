@@ -9,11 +9,7 @@ export function buildLocalDataCallback({
   return `
     on_data_update: function(data) {
       if (data.builder_id !== undefined && data.builder_id !== null) {
-        localStorage.setItem(_sessionKeys.resumeTrial, JSON.stringify({
-          branches: data.branches || [],
-          branchConditions: data.branchConditions || [],
-          trialData: data
-        }));
+        localStorage.setItem(_sessionKeys.resumeTrial, JSON.stringify(_createResumeCheckpoint(data)));
       }
 
       localOutbox.enqueue(data).catch(function(error) {
@@ -85,6 +81,7 @@ export function buildLocalFinishCallback({
           sessionId: trialSessionId,
           state: 'completed'
         });
+        window.ExpBuilderNavigation.clearTransientState();
         await localOutbox.clear();
         _clearSessionIdentity();
         if (_sessionChannel) _sessionChannel.close();

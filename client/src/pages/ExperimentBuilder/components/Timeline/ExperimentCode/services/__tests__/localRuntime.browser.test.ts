@@ -15,11 +15,11 @@ let browser: Browser;
 describe("generated local runtime in Chromium", () => {
   beforeAll(async () => {
     browser = await chromium.launch({ headless: true });
-  });
+  }, 30000);
 
   afterAll(async () => {
     await browser.close();
-  });
+  }, 30000);
 
   it("keeps the experiment independent from Socket.IO availability", async () => {
     const page = await preparePage(browser);

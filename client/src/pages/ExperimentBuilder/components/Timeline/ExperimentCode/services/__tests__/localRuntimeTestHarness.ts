@@ -25,7 +25,7 @@ export function generatedCode(experimentID = "browser-exp"): string {
     sessionNameSeparator: "_",
     evaluateCondition: "",
     branchingEvaluation: "",
-    baseCode: "window.__started = true; jsPsych.run([]);",
+    baseCode: "window.__started = true; if (window.branchCustomParameters) { Object.entries(window.branchCustomParameters).forEach(() => {}); } jsPsych.run([]);",
     customCode: undefined,
     customPreInitCode: { local: "" },
     extensions: "",

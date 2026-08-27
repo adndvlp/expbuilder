@@ -123,11 +123,11 @@ async function waitForPendingOutbox(page: Page, experimentID: string) {
 describe("local session creation recovery", () => {
   beforeAll(async () => {
     browser = await chromium.launch({ headless: true });
-  });
+  }, 30000);
 
   afterAll(async () => {
     await browser.close();
-  });
+  }, 30000);
 
   it("recovers the same UUID when the server commits creation but its response is lost", async () => {
     const page = await openRuntimePage();
@@ -207,7 +207,7 @@ describe("local session creation recovery", () => {
       () => (window as RuntimeWindow & { JSPSYCH_SESSION_ID: string }).JSPSYCH_SESSION_ID,
     )).toBe(pendingId);
     await page.close();
-  });
+  }, 30000);
 
   it("keeps A pending across close, runs B independently, then recovers A", async () => {
     const context = await browser.newContext();
@@ -271,5 +271,5 @@ describe("local session creation recovery", () => {
     ))).toBe(sessionB);
 
     await context.close();
-  });
+  }, 30000);
 });

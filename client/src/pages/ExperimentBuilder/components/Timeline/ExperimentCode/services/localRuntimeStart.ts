@@ -61,12 +61,17 @@ export function buildLocalRuntimeStart({
       localStorage.removeItem(_sessionKeys.jumpTrial);
       localStorage.removeItem(_sessionKeys.resumeTrial);
     } else if (isResuming && resumeRaw && !existingJump) {
-      const resumeTarget = _resolveResumeBranch(resumeRaw);
-      if (resumeTarget !== null) {
-        localStorage.setItem(_sessionKeys.jumpTrial, resumeTarget);
+      const resumeRouteDecision = _resolveResumeBranch(resumeRaw);
+      if (resumeRouteDecision !== null) {
+        localStorage.setItem(_sessionKeys.jumpTrial, resumeRouteDecision);
         sessionStorage.setItem(_tabKeys.jumpReload, '1');
+        window.branchCustomParameters =
+          resumeRouteDecision.customParameters ?? null;
       }
     }
+
+    const _jumpStartup =
+      window.ExpBuilderNavigation.consumeReloadMarker();
 
     const socketReady = await waitForSocket(5000);
     if (socketReady) {
