@@ -1,4 +1,8 @@
-import { readEventTimestamp } from "./EventTiming";
+import {
+  createParticipantResponseSignal,
+  isParticipantResponseSignal,
+  ParticipantResponseSignal,
+} from "./EventTiming";
 
 type TimingQuality = "ok" | "warning" | "bad";
 
@@ -38,7 +42,10 @@ type CalibrationMatchStatus = "matched" | "partial" | "mismatch" | "none";
 type TimestampInfo = {
   response_time: number;
   response_now_at_handler: number;
-  response_timestamp_source: "event.timeStamp" | "performance.now_fallback";
+  response_timestamp_source:
+    | "event.timeStamp"
+    | "explicit"
+    | "performance.now_fallback";
   response_event_lag: number;
 };
 
@@ -73,6 +80,7 @@ export type ResponseTimingResult = ReturnType<
   ResponseTimingManager["getData"]
 > & {
   event?: Event;
+  signal: ParticipantResponseSignal;
 };
 
 const round3 = (value: number | null): number | null =>
@@ -149,7 +157,7 @@ export class ResponseTimingManager {
   private canvasWidth: number;
   private canvasHeight: number;
   private onFinish?: (
-    timestamp?: number | null,
+    signal?: ParticipantResponseSignal | null,
     options?: { force: boolean },
   ) => boolean | void;
   private listenerArmed = false;
@@ -172,6 +180,7 @@ export class ResponseTimingManager {
   private data: Record<string, any>;
   private responseAllowedFrom: ResponseAllowedFrom = "trial_onset";
   private responseRecorded = false;
+  private responseSignal: ParticipantResponseSignal | null = null;
   private hiddenDuringTrial = false;
   private blurDuringTrial = false;
   private responseQualityReasonDetails: string[] = [];
@@ -183,7 +192,7 @@ export class ResponseTimingManager {
     canvasWidth: number;
     canvasHeight: number;
     onFinish?: (
-      timestamp?: number | null,
+      signal?: ParticipantResponseSignal | null,
       options?: { force: boolean },
     ) => boolean | void;
   }) {
@@ -391,7 +400,7 @@ export class ResponseTimingManager {
    * false the recorded response is rolled back.
    */
   recordExternalEvent(
-    event: Event,
+    eventOrSignal: Event | ParticipantResponseSignal,
     details: {
       eventType: string;
       device: string;
@@ -399,21 +408,35 @@ export class ResponseTimingManager {
       minimumValidRtMs?: number | null;
     },
     onAccepted?: (response: ResponseTimingResult) => boolean | void,
+    options: { deferFinish?: boolean } = {},
   ): boolean {
+    const handlerStartedAt = performance.now();
+    const layoutReadsBefore = this.pointerLayoutReadCount;
     if (!this.enabled || this.responseRecorded) return false;
-    const accepted = this.tryRecordResponse(event, details);
+    const signal = this.getResponseSignal(eventOrSignal, details);
+    const accepted = this.tryRecordResponse(signal, details);
     if (!accepted) return false;
 
     const callbackResult = onAccepted?.({
       ...this.getData(),
-      event,
+      event: signal.event,
+      signal,
     });
     if (callbackResult === false) {
       this.clearRecordedResponse();
       return false;
     }
-    this.finishIfNeeded();
+    this.recordHandlerTelemetry(
+      details.eventType,
+      handlerStartedAt,
+      layoutReadsBefore,
+    );
+    if (options.deferFinish !== true) this.finishIfNeeded();
     return true;
+  }
+
+  cancelDeferredResponse(signal: ParticipantResponseSignal) {
+    if (this.responseSignal === signal) this.clearRecordedResponse();
   }
 
   getData() {
@@ -480,12 +503,21 @@ export class ResponseTimingManager {
       response_reference_error_ms: this.data.response_error_ms,
       response_listener_attached: this.data.response_listener_attached,
       response_listener_removed: this.data.response_listener_removed,
+      response_handler_duration_ms: this.data.response_handler_duration_ms,
+      response_handler_layout_reads: this.data.response_handler_layout_reads,
+      response_handler_dom_queries: this.data.response_handler_dom_queries,
+      response_handler_event_type: this.data.response_handler_event_type,
     };
   }
 
   private handleKeydown = (event: KeyboardEvent) => {
+    const handlerStartedAt = performance.now();
+    const layoutReadsBefore = this.pointerLayoutReadCount;
     if (!this.enabled || this.responseRecorded) return;
     if (event.repeat) return;
+    const signal = createParticipantResponseSignal(event, {
+      eventType: "keydown",
+    });
 
     for (const target of this.keyboardTargets) {
       const comparableKey = target.caseSensitive
@@ -497,7 +529,7 @@ export class ResponseTimingManager {
       );
       if (!isChoiceValid(validResponses, comparableKey)) continue;
 
-      const accepted = this.tryRecordResponse(event, {
+      const accepted = this.tryRecordResponse(signal, {
         eventType: "keydown",
         device: "keyboard",
         key: event.key,
@@ -511,12 +543,14 @@ export class ResponseTimingManager {
       const callbackResult = target.onResponse?.({
         ...this.getData(),
         event,
+        signal,
       });
       if (callbackResult === false) {
         this.clearRecordedResponse();
         return;
       }
       event.preventDefault();
+      this.recordHandlerTelemetry("keydown", handlerStartedAt, layoutReadsBefore);
       this.finishIfNeeded();
       return;
     }
@@ -524,7 +558,11 @@ export class ResponseTimingManager {
 
   private handlePointerDown = (event: PointerEvent) => {
     const handlerStartedAt = performance.now();
+    const layoutReadsBefore = this.pointerLayoutReadCount;
     if (!this.enabled || this.responseRecorded) return;
+    const signal = createParticipantResponseSignal(event, {
+      eventType: "pointerdown",
+    });
 
     const coordinates = this.computePointerCoordinates(
       event.clientX,
@@ -538,7 +576,7 @@ export class ResponseTimingManager {
     );
     if (!target) return;
 
-    const accepted = this.tryRecordResponse(event, {
+    const accepted = this.tryRecordResponse(signal, {
       eventType: "pointerdown",
       device: event.pointerType || "pointer",
       clientX: event.clientX,
@@ -554,12 +592,18 @@ export class ResponseTimingManager {
     const callbackResult = target.onResponse?.({
       ...this.getData(),
       event,
+      signal,
     });
     if (callbackResult === false) {
       this.clearRecordedResponse();
       return;
     }
     event.preventDefault();
+    this.recordHandlerTelemetry(
+      "pointerdown",
+      handlerStartedAt,
+      layoutReadsBefore,
+    );
     this.finishIfNeeded();
     this.pointerHandlerDurationMs = Math.max(
       0,
@@ -579,8 +623,24 @@ export class ResponseTimingManager {
     this.data.window_blur_during_trial = true;
   };
 
+  private recordHandlerTelemetry(
+    eventType: string,
+    startedAt: number,
+    layoutReadsBefore: number,
+  ) {
+    this.data.response_handler_duration_ms = round3(
+      Math.max(0, performance.now() - startedAt),
+    );
+    this.data.response_handler_layout_reads = Math.max(
+      0,
+      this.pointerLayoutReadCount - layoutReadsBefore,
+    );
+    this.data.response_handler_dom_queries = 0;
+    this.data.response_handler_event_type = eventType;
+  }
+
   private tryRecordResponse(
-    event: Event,
+    signal: ParticipantResponseSignal,
     details: {
       eventType: string;
       device: string;
@@ -596,8 +656,9 @@ export class ResponseTimingManager {
       minimumValidRtMs?: number | null;
     },
   ) {
-    const timestamp = this.getResponseTimestamp(event);
-    this.applyCommonEventData(timestamp, event, details);
+    const timestamp = this.getResponseTimestamp(signal);
+    this.responseSignal = signal;
+    this.applyCommonEventData(timestamp, signal, details);
 
     const anchor = this.resolveAnchor();
     if (!anchor.ok) {
@@ -613,7 +674,7 @@ export class ResponseTimingManager {
       ) {
         return false;
       }
-      this.recordInvalid(anchor.reason, timestamp, event, details);
+      this.recordInvalid(anchor.reason, timestamp, signal, details);
       this.finishIfNeeded(true);
       return false;
     }
@@ -626,7 +687,7 @@ export class ResponseTimingManager {
         timestamp.response_time - anchor.allowedFromAbs,
       );
       if (this.getPrematurePolicy() === "ignore") return false;
-      this.recordInvalid("before_response_allowed", timestamp, event, details);
+      this.recordInvalid("before_response_allowed", timestamp, signal, details);
       this.finishIfNeeded(true);
       return false;
     }
@@ -656,7 +717,7 @@ export class ResponseTimingManager {
       typeof minimumValidRt === "number" &&
       rtRaw < minimumValidRt
     ) {
-      this.recordInvalid("below_minimum_rt", timestamp, event, details);
+      this.recordInvalid("below_minimum_rt", timestamp, signal, details);
       this.data.rt_raw = null;
       this.data.rt = null;
       this.data.rt_corrected = null;
@@ -831,11 +892,12 @@ export class ResponseTimingManager {
   private recordInvalid(
     reason: ResponseInvalidReason,
     timestamp: TimestampInfo | null,
-    event: Event | null,
+    signal: ParticipantResponseSignal | null,
     details: any,
   ) {
-    if (timestamp && event && details) {
-      this.applyCommonEventData(timestamp, event, details);
+    if (timestamp && signal && details) {
+      this.responseSignal = signal;
+      this.applyCommonEventData(timestamp, signal, details);
     }
     this.data.rt = null;
     this.data.rt_raw = null;
@@ -848,7 +910,7 @@ export class ResponseTimingManager {
 
   private applyCommonEventData(
     timestamp: TimestampInfo,
-    event: Event,
+    signal: ParticipantResponseSignal,
     details: any,
   ) {
     this.data.response_time = round3(timestamp.response_time);
@@ -862,7 +924,7 @@ export class ResponseTimingManager {
     this.data.response_key = details.key ?? "";
     this.data.response_code = details.code ?? "";
     this.data.response_repeat = details.repeat === true;
-    this.data.response_is_trusted = event.isTrusted === true;
+    this.data.response_is_trusted = signal.event?.isTrusted === true;
     this.data.response_client_x =
       typeof details.clientX === "number" ? round3(details.clientX) : null;
     this.data.response_client_y =
@@ -875,13 +937,23 @@ export class ResponseTimingManager {
     this.data.response_target_component = details.targetComponent ?? "";
   }
 
-  private getResponseTimestamp(event: Event): TimestampInfo {
-    const info = readEventTimestamp(event);
+  private getResponseSignal(
+    eventOrSignal: Event | ParticipantResponseSignal,
+    details: { eventType: string; targetComponent?: string | null },
+  ): ParticipantResponseSignal {
+    if (isParticipantResponseSignal(eventOrSignal)) return eventOrSignal;
+    return createParticipantResponseSignal(eventOrSignal, {
+      eventType: details.eventType,
+      componentId: details.targetComponent ?? undefined,
+    });
+  }
+
+  private getResponseTimestamp(signal: ParticipantResponseSignal): TimestampInfo {
     return {
-      response_time: info.responseTime,
-      response_now_at_handler: info.handlerTime,
-      response_timestamp_source: info.source,
-      response_event_lag: info.eventLag,
+      response_time: signal.timestamp,
+      response_now_at_handler: signal.handlerTimestamp,
+      response_timestamp_source: signal.timestampSource,
+      response_event_lag: signal.eventLag,
     };
   }
 
@@ -1124,7 +1196,7 @@ export class ResponseTimingManager {
 
   private finishIfNeeded(force = false) {
     if (force || this.trial.response_ends_trial !== false) {
-      const finished = this.onFinish?.(this.data.response_time, { force });
+      const finished = this.onFinish?.(this.responseSignal, { force });
       if (finished === false) {
         this.clearRecordedResponse();
         return;
@@ -1135,6 +1207,7 @@ export class ResponseTimingManager {
 
   private clearRecordedResponse() {
     this.responseRecorded = false;
+    this.responseSignal = null;
     this.responseQualityReasonDetails = [];
     this.data = {
       ...this.data,
@@ -1172,6 +1245,10 @@ export class ResponseTimingManager {
       canvas_bounding_rect: "",
       response_target_component: "",
       response_error_ms: null,
+      response_handler_duration_ms: null,
+      response_handler_layout_reads: 0,
+      response_handler_dom_queries: 0,
+      response_handler_event_type: "",
     };
   }
 
@@ -1248,6 +1325,10 @@ export class ResponseTimingManager {
       response_listener_attached: false,
       pointer_handler_duration: null,
       pointer_layout_read_count: 0,
+      response_handler_duration_ms: null,
+      response_handler_layout_reads: 0,
+      response_handler_dom_queries: 0,
+      response_handler_event_type: "",
       response_listener_removed: false,
     };
   }

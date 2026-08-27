@@ -4,6 +4,11 @@ import { createPrecisionTiming } from "../utils/PrecisionTiming";
 import KeyboardResponseComponent from "../response_components/KeyboardResponseComponent";
 import ClickResponseComponent from "../response_components/ClickResponseComponent";
 import ButtonResponseComponent from "../response_components/ButtonResponseComponent";
+import InputResponseComponent from "../response_components/InputResponseComponent";
+import SliderResponseComponent from "../response_components/SliderResponseComponent";
+import FileUploadResponseComponent from "../response_components/FileUploadResponseComponent";
+import AudioResponseComponent from "../response_components/AudioResponseComponent";
+import { createParticipantResponseSignal } from "../utils/EventTiming";
 import { installFakeRaf, restoreFakeRaf } from "./helpers/fakeRaf";
 
 function fakeJsPsych() {
@@ -639,5 +644,226 @@ describe("ButtonResponseComponent default canvas path accessibility", () => {
     expect(new Set(ids).size).toBe(2);
     first.destroy();
     second.destroy();
+  });
+});
+
+describe("pending Input/Slider submit timestamp inheritance", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.innerHTML = "";
+  });
+
+  it("records InputResponse with the authoritative submit event, not handler time", () => {
+    const timing = makeTiming(1000);
+    const component = new InputResponseComponent(fakeJsPsych());
+    const display = document.createElement("div");
+    document.body.appendChild(display);
+    const config = {
+      text: "%%",
+      allow_blanks: true,
+      check_answers: false,
+      case_sensitivity: true,
+      autofocus: false,
+      coordinates: { x: 0, y: 0 },
+      __timing: timing,
+    };
+    component.render(display, config);
+    (display.querySelector("input") as HTMLInputElement).value = "answer";
+    vi.spyOn(performance, "now").mockReturnValue(1110);
+    const signal = createParticipantResponseSignal(
+      eventWithTimestamp(new Event("submit"), 1100),
+      { eventType: "submit", componentId: "submit-button" },
+    );
+
+    expect(component.recordResponse(config, signal)).toBe(true);
+    expect(component.getRT()).toBe(100);
+    expect(component.getResponseTimestampSource()).toBe("event.timeStamp");
+    component.destroy();
+  });
+
+  it("records SliderResponse with the authoritative submit event", () => {
+    const timing = makeTiming(1000);
+    const component = new SliderResponseComponent(fakeJsPsych());
+    const display = document.createElement("div");
+    document.body.appendChild(display);
+    const config = {
+      min: 0,
+      max: 100,
+      slider_start: 50,
+      require_movement: false,
+      labels: [],
+      coordinates: { x: 0, y: 0 },
+      __canvasStyles: { width: 1024, height: 768 },
+      __timing: timing,
+    };
+    component.render(display, config);
+    (display.querySelector('input[type="range"]') as HTMLInputElement).value =
+      "73";
+    vi.spyOn(performance, "now").mockReturnValue(1110);
+    const signal = createParticipantResponseSignal(
+      eventWithTimestamp(new Event("submit"), 1100),
+      { eventType: "submit", componentId: "submit-button" },
+    );
+
+    expect(component.recordResponse(config, signal)).toBe(true);
+    expect(component.getResponse()).toBe(73);
+    expect(component.getRT()).toBe(100);
+    expect(component.getResponseTimestampSource()).toBe("event.timeStamp");
+    component.destroy();
+  });
+});
+
+describe("FileUploadResponseComponent scientific RT", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    document.body.innerHTML = "";
+  });
+
+  it("keeps change-event RT when upload completes five seconds later", async () => {
+    const component = new FileUploadResponseComponent(fakeJsPsych());
+    const display = document.createElement("div");
+    document.body.appendChild(display);
+    const manager = makeManager();
+    const onResponse = vi.fn();
+    let resolveFetch!: (value: any) => void;
+    const fetchPromise = new Promise((resolve) => {
+      resolveFetch = resolve;
+    });
+    vi.stubGlobal(
+      "FileReader",
+      class {
+        onload: ((event: any) => void) | null = null;
+        onerror: (() => void) | null = null;
+        readAsDataURL() {
+          this.onload?.({ target: { result: "data:text/plain;base64,QQ==" } });
+        }
+      },
+    );
+    vi.stubGlobal("localStorage", {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    });
+    const fetchMock = vi.fn(() => fetchPromise);
+    vi.stubGlobal("fetch", fetchMock);
+    const now = vi.spyOn(performance, "now").mockReturnValue(1210);
+    component.render(
+      display,
+      {
+        name: "upload",
+        __componentId: "upload",
+        upload_endpoint: "/upload",
+        show_preview: false,
+        coordinates: { x: 0, y: 0 },
+        __timing: makeTiming(1000),
+        __responseTiming: manager,
+      },
+      onResponse,
+    );
+    const input = display.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, "files", {
+      configurable: true,
+      value: [new File(["A"], "answer.txt", { type: "text/plain" })],
+    });
+    input.dispatchEvent(eventWithTimestamp(new Event("change"), 1200));
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    now.mockReturnValue(6200);
+    resolveFetch({
+      ok: true,
+      json: async () => ({ fileUrl: "/stored/answer.txt" }),
+    });
+    await vi.waitFor(() => expect(onResponse).toHaveBeenCalledTimes(1));
+
+    expect(component.getFileSelectionResponseTime()).toBe(1200);
+    expect(component.getRT()).toBe(200);
+    expect(component.getUploadStartedAt()).toBe(1210);
+    expect(component.getUploadCompletedAt()).toBe(6200);
+    expect(component.getUploadDurationMs()).toBe(4990);
+    expect(manager.getData().response_time).toBe(1200);
+    expect(manager.getData().rt_raw).toBe(200);
+    expect(onResponse.mock.calls[0][0]).toMatchObject({
+      timestamp: 1200,
+      timestampSource: "event.timeStamp",
+      eventType: "change",
+    });
+    component.destroy();
+  });
+});
+
+describe("AudioResponseComponent done-event timestamp", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    document.body.innerHTML = "";
+  });
+
+  it("keeps the done click timestamp while recorder shutdown finishes later", async () => {
+    class FakeRecorder extends EventTarget {
+      state = "inactive";
+      start() {
+        this.state = "recording";
+        this.dispatchEvent(eventWithTimestamp(new Event("start"), 1000));
+      }
+      stop() {
+        this.state = "inactive";
+      }
+    }
+    const recorder = new FakeRecorder();
+    const jsPsych = {
+      ...fakeJsPsych(),
+      pluginAPI: { getMicrophoneRecorder: () => recorder },
+    };
+    vi.stubGlobal(
+      "FileReader",
+      class extends EventTarget {
+        result = "data:audio/webm;base64,QQ==";
+        readAsDataURL() {
+          queueMicrotask(() => this.dispatchEvent(new Event("load")));
+        }
+      },
+    );
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:recording");
+    const manager = makeManager();
+    const component = new AudioResponseComponent(jsPsych as any);
+    const display = document.createElement("div");
+    document.body.appendChild(display);
+    const onResponse = vi.fn();
+    const now = vi.spyOn(performance, "now").mockReturnValue(2010);
+
+    await component.render(
+      display,
+      {
+        name: "audio-response",
+        __componentId: "audio-response",
+        __timing: makeTiming(1000),
+        __responseTiming: manager,
+        show_done_button: true,
+        allow_playback: false,
+      },
+      onResponse,
+    );
+    const done = display.querySelector("#finish-trial") as HTMLButtonElement;
+    done.dispatchEvent(
+      eventWithTimestamp(new MouseEvent("click", { bubbles: true }), 2000),
+    );
+    expect(onResponse).not.toHaveBeenCalled();
+
+    now.mockReturnValue(2500);
+    recorder.dispatchEvent(new Event("stop"));
+    await vi.waitFor(() => expect(onResponse).toHaveBeenCalledTimes(1));
+
+    expect(manager.getData().response_time).toBe(2000);
+    expect(manager.getData().rt_raw).toBe(1000);
+    expect(component.getRT()).toBe(1000);
+    expect(component.getResponseTimestampSource()).toBe("event.timeStamp");
+    expect(onResponse.mock.calls[0][0]).toMatchObject({
+      timestamp: 2000,
+      timestampSource: "event.timeStamp",
+      eventType: "click",
+    });
+    component.destroy();
   });
 });

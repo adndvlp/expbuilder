@@ -7,6 +7,10 @@ import {
   resolveTimingMs,
   setResponseStartTime,
 } from "../utils/PrecisionTiming";
+import {
+  createParticipantResponseSignal,
+  ParticipantResponseSignal,
+} from "../utils/EventTiming";
 
 var version = "2.2.0";
 
@@ -248,6 +252,8 @@ class ButtonResponseComponent {
   private componentName: string | null = null;
   private buttonSpriteIds: Record<ButtonVisualState, string> | null = null;
   private responseEventType: string | null = null;
+  private responseSignal: ParticipantResponseSignal | null = null;
+  private buttonElements: HTMLButtonElement[] = [];
 
   /** Guaranteed-unique per-instance identifier, independent of trial.name. */
   private readonly instanceId = ++buttonInstanceCounter;
@@ -883,7 +889,7 @@ class ButtonResponseComponent {
   private renderDomLayer(
     display_element: HTMLElement,
     trial: any,
-    onResponse?: () => void,
+    onResponse?: (signal?: ParticipantResponseSignal) => void,
   ): void {
     // Helper to map coordinate values
     const mapValue = (value: number): number => {
@@ -948,6 +954,9 @@ class ButtonResponseComponent {
 
       this.buttonGroupElement.insertAdjacentHTML("beforeend", html);
       const buttonElement = this.buttonGroupElement.lastChild as HTMLElement;
+      if (buttonElement instanceof HTMLButtonElement) {
+        this.buttonElements.push(buttonElement);
+      }
       buttonElement.dataset.choice = choice;
 
       const manager = this.responseTiming;
@@ -984,18 +993,18 @@ class ButtonResponseComponent {
             if (this.response !== null || !this.buttonsEnabled) return;
             if (!(event instanceof PointerEvent)) return;
             this.responseEventType = "pointerdown";
-            this.storeButtonResponse(choice, event);
+            const signal = this.storeButtonResponse(choice, event);
             if (onResponse) {
-              onResponse();
+              onResponse(signal ?? undefined);
             }
           });
         }
         buttonElement.addEventListener("click", (event) => {
           if (this.response !== null || !this.buttonsEnabled) return;
           this.responseEventType = "click";
-          this.storeButtonResponse(choice, event);
+          const signal = this.storeButtonResponse(choice, event);
           if (onResponse) {
-            onResponse();
+            onResponse(signal ?? undefined);
           }
         });
       }
@@ -1072,6 +1081,7 @@ class ButtonResponseComponent {
           },
         );
       });
+      this.buttonElements.push(button);
       overlay.appendChild(button);
     }
   }
@@ -1082,7 +1092,7 @@ class ButtonResponseComponent {
   render(
     display_element: HTMLElement,
     trial: any,
-    onResponse?: () => void,
+    onResponse?: (signal?: ParticipantResponseSignal) => void,
   ): HTMLElement | void {
     this.timing = trial.__timing || null;
     this.responseTiming = trial.__responseTiming || null;
@@ -1094,6 +1104,8 @@ class ButtonResponseComponent {
     this.buttonsEnabled = true;
     this.validationError = false;
     this.responseEventType = null;
+    this.responseSignal = null;
+    this.buttonElements = [];
     const choices = this.getChoices(trial);
     this.useDomLayer =
       !this.responseTiming?.enabled ||
@@ -1136,19 +1148,28 @@ class ButtonResponseComponent {
     choice: string,
     event?: Event,
     timingResponse?: any,
-  ): void {
+  ): ParticipantResponseSignal | null {
     if (this.response !== null) {
-      return; // Already responded
+      return null;
     }
+
+    const signal: ParticipantResponseSignal =
+      timingResponse?.signal ??
+      createParticipantResponseSignal(event, {
+        eventType: event?.type ?? this.responseEventType ?? undefined,
+        componentId: this.componentId ?? this.componentName ?? undefined,
+      });
 
     this.rt =
       typeof timingResponse?.rt_raw === "number"
         ? timingResponse.rt_raw
-        : getResponseRT(this, this.timing, event);
+        : getResponseRT(this, this.timing, signal);
+    this.responseSignal = signal;
     this.response = choice;
 
     // Disable all buttons after response
     this.disableButtons();
+    return signal;
   }
 
   /**
@@ -1158,9 +1179,7 @@ class ButtonResponseComponent {
     this.buttonsEnabled = false;
     this.updateButtonVisualState();
 
-    if (!this.buttonGroupElement) return;
-    const buttons = this.buttonGroupElement.querySelectorAll("button");
-    buttons.forEach((button) => {
+    this.buttonElements.forEach((button) => {
       button.setAttribute("disabled", "disabled");
     });
     this.stage?.render();
@@ -1173,9 +1192,7 @@ class ButtonResponseComponent {
     this.buttonsEnabled = true;
     this.updateButtonVisualState();
 
-    if (!this.buttonGroupElement) return;
-    const buttons = this.buttonGroupElement.querySelectorAll("button");
-    buttons.forEach((button) => {
+    this.buttonElements.forEach((button) => {
       button.removeAttribute("disabled");
     });
     this.stage?.render();
@@ -1201,6 +1218,10 @@ class ButtonResponseComponent {
    */
   getResponseEventType(): string | null {
     return this.responseEventType;
+  }
+
+  getResponseTimestampSource(): string | null {
+    return this.responseSignal?.timestampSource ?? null;
   }
 
   /** True once a button has been clicked */
@@ -1234,6 +1255,7 @@ class ButtonResponseComponent {
   reset(): void {
     this.response = null;
     this.rt = null;
+    this.responseSignal = null;
     this.enableButtons();
   }
 
@@ -1278,6 +1300,7 @@ class ButtonResponseComponent {
     this.stage = null;
     this.layout = null;
     this.imageSources.clear();
+    this.buttonElements = [];
   }
 }
 

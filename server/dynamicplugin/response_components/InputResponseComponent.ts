@@ -1,5 +1,6 @@
 import { ParameterType } from "jspsych";
 import { getResponseRT, setResponseStartTime } from "../utils/PrecisionTiming";
+import type { ParticipantResponseSignal } from "../utils/EventTiming";
 
 var version = "2.2.0";
 
@@ -355,7 +356,10 @@ class InputResponseComponent {
   /**
    * Manually trigger response recording (called externally, e.g., by a button)
    */
-  recordResponse(trial: any): boolean {
+  recordResponse(
+    trial: any,
+    signal?: ParticipantResponseSignal,
+  ): boolean {
     if (this.response !== null) {
       return false; // Already responded
     }
@@ -367,7 +371,7 @@ class InputResponseComponent {
     }
 
     // Record valid response
-    this.rt = getResponseRT(this, this.timing);
+    this.rt = getResponseRT(this, this.timing, signal);
     this.response = answers;
 
     return true; // Successfully recorded

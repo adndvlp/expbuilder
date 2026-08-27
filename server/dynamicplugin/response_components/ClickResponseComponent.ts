@@ -1,5 +1,9 @@
 import { ParameterType } from "jspsych";
 import { getResponseRT, setResponseStartTime } from "../utils/PrecisionTiming";
+import {
+  createParticipantResponseSignal,
+  ParticipantResponseSignal,
+} from "../utils/EventTiming";
 
 var version = "1.0.0";
 
@@ -119,6 +123,7 @@ class ClickResponseComponent {
   private listenTarget: HTMLElement | EventTarget | null = null;
   private useTouch: boolean = false;
   private timing: any = null;
+  private responseSignal: ParticipantResponseSignal | null = null;
   private unregisterResponseTiming: (() => void) | null = null;
   private fallbackEventType: "pointerdown" | "touchstart" | "click" = "pointerdown";
   responseEventType: string | null = null;
@@ -147,7 +152,7 @@ class ClickResponseComponent {
   render(
     display_element: HTMLElement,
     trial: any,
-    onResponse?: () => void,
+    onResponse?: (signal?: ParticipantResponseSignal) => void,
   ): void {
     this.timing = trial.__timing || null;
     setResponseStartTime(this, this.timing);
@@ -234,6 +239,7 @@ class ClickResponseComponent {
             }
 
             this.rt = response.rt_raw;
+            this.responseSignal = response.signal ?? null;
             this.response = { x, y, is_touch: isTouch };
             this.responseEventType = response.response_event_type ?? "pointerdown";
 
@@ -250,6 +256,10 @@ class ClickResponseComponent {
     // the shared event-timestamp validation.
     const recordFromCoordinates = (clientX: number, clientY: number, isTouch: boolean, e: Event) => {
       if (this.response !== null) return;
+      const signal = createParticipantResponseSignal(e, {
+        eventType: e.type,
+        componentId: trial.__componentId ?? trial.name,
+      });
 
       // Compute coordinates
       let x: number;
@@ -264,7 +274,8 @@ class ClickResponseComponent {
         y = Math.round(clientY);
       }
 
-      this.rt = getResponseRT(this, this.timing, e);
+      this.rt = getResponseRT(this, this.timing, signal);
+      this.responseSignal = signal;
       this.response = { x, y, is_touch: isTouch };
 
       // Show visual marker if requested
@@ -273,7 +284,7 @@ class ClickResponseComponent {
       }
 
       if (onResponse) {
-        onResponse();
+        onResponse(signal);
       }
     };
 
@@ -394,6 +405,10 @@ class ClickResponseComponent {
     return this.rt;
   }
 
+  getResponseTimestampSource(): string | null {
+    return this.responseSignal?.timestampSource ?? null;
+  }
+
   /** True once a click/touch has been recorded. */
   isValid(_trial: any): boolean {
     return this.response !== null;
@@ -414,6 +429,7 @@ class ClickResponseComponent {
   reset(): void {
     this.response = null;
     this.rt = null;
+    this.responseSignal = null;
     this.markerElement?.remove();
     this.markerElement = null;
   }

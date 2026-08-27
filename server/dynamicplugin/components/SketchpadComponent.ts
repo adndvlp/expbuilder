@@ -1,5 +1,6 @@
 import { ParameterType } from "jspsych";
 import { getResponseRT, setResponseStartTime } from "../utils/PrecisionTiming";
+import { createParticipantResponseSignal } from "../utils/EventTiming";
 
 var version = "2.1.0";
 
@@ -556,6 +557,10 @@ class SketchpadComponent {
   }
   start_draw(config: any, e: PointerEvent) {
     if (!this.canvas || !this.ctx) return;
+    const signal = createParticipantResponseSignal(e, {
+      eventType: "pointerdown",
+      componentId: config.__componentId ?? config.name,
+    });
 
     this.is_drawing = true;
     const x = Math.round(e.clientX - this.canvas.getBoundingClientRect().left);
@@ -573,7 +578,8 @@ class SketchpadComponent {
       y,
       color: this.current_stroke_color,
       action: "start",
-      t: getResponseRT(this, this.timing, e),
+      t: getResponseRT(this, this.timing, signal),
+      timestamp_source: signal.timestampSource,
     });
     this.canvas.releasePointerCapture(e.pointerId);
   }
@@ -596,9 +602,13 @@ class SketchpadComponent {
   }
   end_draw(e: PointerEvent) {
     if (this.is_drawing) {
+      const signal = createParticipantResponseSignal(e, {
+        eventType: e.type,
+      });
       this.stroke.push({
         action: "end",
-        t: getResponseRT(this, this.timing, e),
+        t: getResponseRT(this, this.timing, signal),
+        timestamp_source: signal.timestampSource,
       });
       this.strokes.push(this.stroke);
       this.set_undo_btn_state(true, {} as any);

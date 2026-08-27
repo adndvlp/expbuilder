@@ -4,6 +4,7 @@ import { preloadAudioBuffer } from "../utils/AudioTiming";
 import { preloadBitmap } from "../utils/PrecisionTiming";
 import { createFakeAudioContext } from "./helpers/fakeAudioContext";
 import { Timeline } from "@expbuilder-jspsych/packages/jspsych/src/timeline/Timeline";
+import { TimelineVariable } from "@expbuilder-jspsych/packages/jspsych/src/timeline";
 import { TrialFinalizationQueue } from "@expbuilder-jspsych/packages/jspsych/src/timeline/TrialFinalizationQueue";
 import { createFrameEngine } from "@expbuilder-jspsych/packages/jspsych/src/timeline/FrameEngine";
 import { createTimingCoordinator } from "@expbuilder-jspsych/packages/jspsych/src/timeline/TimingCoordinator";
@@ -88,18 +89,39 @@ function createInstrumentedGl(
   } as any;
 }
 
-function realLeaf(imageUrl: string, audioUrl: string | null) {
+function realLeaf(
+  visualStimulus: string | TimelineVariable,
+  audioUrl: string | null,
+  visualKind: "image" | "text" = "image",
+) {
   return {
     components: [
-      {
-        type: "ImageComponent",
-        name: "real-image",
-        stimulus: imageUrl,
-        stimulus_onset: null,
-        stimulus_duration: null,
-        coordinates: { x: 0, y: 0 },
-        zIndex: 0,
-      },
+      visualKind === "image"
+        ? {
+            type: "ImageComponent",
+            name: "real-image",
+            stimulus: visualStimulus,
+            stimulus_onset: null,
+            stimulus_duration: null,
+            coordinates: { x: 0, y: 0 },
+            zIndex: 0,
+          }
+        : {
+            type: "TextComponent",
+            name: "real-text",
+            text: visualStimulus,
+            font_family: "sans-serif",
+            font_size: 22,
+            font_weight: "normal",
+            font_style: "normal",
+            text_align: "center",
+            line_height: 1.5,
+            font_color: "#111111",
+            stimulus_onset: null,
+            stimulus_duration: null,
+            coordinates: { x: 0, y: 0 },
+            zIndex: 0,
+          },
       ...(audioUrl
         ? [
             {
@@ -154,9 +176,28 @@ describe("real-component precision runtime stack", () => {
       () => engineRef?.getDiagnostics().response_sensitive === true,
     );
     const context2d: any = {
+      font: "",
       fillStyle: "",
+      strokeStyle: "",
+      textAlign: "center",
+      textBaseline: "middle",
+      lineWidth: 0,
+      save: () => {},
+      restore: () => {},
+      beginPath: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+      quadraticCurveTo: () => {},
+      closePath: () => {},
+      fill: () => {},
+      stroke: () => {},
       clearRect: () => {},
       fillRect: () => {},
+      translate: () => {},
+      rotate: () => {},
+      setTransform: () => {},
+      fillText: () => {},
+      measureText: (text: string) => ({ width: text.length * 8 }),
       getImageData: () => ({
         data: new Uint8ClampedArray([0, 0, 0, 0]),
       }),
@@ -200,19 +241,34 @@ describe("real-component precision runtime stack", () => {
   });
 
   it.each([
-    { name: "Image+Keyboard", withAudio: false },
-    { name: "Image+Audio+Keyboard", withAudio: true },
+    { name: "Image+Keyboard", withAudio: false, visualKind: "image" as const },
+    {
+      name: "Image+Audio+Keyboard",
+      withAudio: true,
+      visualKind: "image" as const,
+    },
+    { name: "Text+Keyboard", withAudio: false, visualKind: "text" as const },
   ])("keeps 1,000 prepared $name trials atomic with real components", async ({
     withAudio,
+    visualKind,
   }) => {
-    const imageUrl = `real-stack-${withAudio ? "audio" : "image"}.png`;
+    const visualValues =
+      visualKind === "text"
+        ? ["A", "B", "C"]
+        : withAudio
+          ? ["real-stack-audio.png"]
+          : ["white.png", "black.png"];
     const audioUrl = withAudio ? "real-stack-tone.wav" : null;
     const audioContext = createFakeAudioContext({
       currentTime: 0.5,
       baseLatency: 0,
       outputTimestamp: { contextTime: 0.5, performanceTime: 0 },
     });
-    await preloadBitmap(imageUrl, 1_000);
+    if (visualKind === "image") {
+      await Promise.all(
+        visualValues.map((url) => preloadBitmap(url, 1_000)),
+      );
+    }
     if (audioUrl) await preloadAudioBuffer(audioContext as any, audioUrl, 1_000);
 
     const display = document.createElement("div");
@@ -298,10 +354,20 @@ describe("real-component precision runtime stack", () => {
       },
       clearAllTimeouts: () => {},
     };
-    const state = { ...realLeaf(imageUrl, audioUrl), type: DynamicPlugin };
+    const state = {
+      ...realLeaf(
+        new TimelineVariable(visualKind),
+        audioUrl,
+        visualKind,
+      ),
+      type: DynamicPlugin,
+    };
     const timeline = new Timeline(dependencies, {
       timeline: [{ timeline: [state] }],
-      timeline_variables: Array.from({ length: 1_000 }, (_, index) => ({ index })),
+      timeline_variables: Array.from({ length: 1_000 }, (_, index) => ({
+        index,
+        [visualKind]: visualValues[index % visualValues.length],
+      })),
       precision_presentation_plan: {
         static: true,
         states: [state],
@@ -357,6 +423,28 @@ describe("real-component precision runtime stack", () => {
       ),
     ).toBe(true);
     expect(getAudioPlayer).not.toHaveBeenCalled();
+    const textResources = new Map<string, string>();
+    expect(
+      results.every((row, index) => {
+        const expected = visualValues[index % visualValues.length];
+        if (row.logical_stimulus_key !== expected) return false;
+        if (row.physical_activation_index !== index + 1) return false;
+        if (visualKind === "image") {
+          return (
+            row.prepared_resource_key === expected &&
+            row.drawable_texture_key === `image:${expected}`
+          );
+        }
+        const previous = textResources.get(expected);
+        if (previous && previous !== row.prepared_resource_key) return false;
+        textResources.set(expected, row.prepared_resource_key);
+        return row.drawable_texture_key === `text:${row.prepared_resource_key}`;
+      }),
+    ).toBe(true);
+    if (visualKind === "text") {
+      expect(textResources.size).toBe(3);
+      expect(new Set(textResources.values()).size).toBe(3);
+    }
     if (withAudio) {
       expect(audioContext.createdSources.length).toBeGreaterThanOrEqual(1_000);
     }

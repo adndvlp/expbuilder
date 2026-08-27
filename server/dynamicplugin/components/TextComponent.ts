@@ -1,5 +1,7 @@
 import { ParameterType } from "jspsych";
+import type { ParticipantResponseSignal } from "../utils/EventTiming";
 import { getCanvasStage, CanvasStage } from "../renderer/CanvasStage";
+import { PreparedVisualResourceCache } from "../utils/PreparedVisualResourceCache";
 import {
   createPrecisionTiming,
   getResponseRT,
@@ -252,13 +254,52 @@ export type PreparedTextVisualResource = {
   dpr: number;
   resourceReadyAt: number;
   gpuReadyAt: number | null;
+  fontRequested: boolean;
+  fontReady: boolean;
+  fontPrepareWaitMs: number;
+  fontFallbackUsed: boolean;
 };
 
-const textRasterCache = new Map<string, PreparedTextVisualResource>();
-const publishedTextResources = new WeakMap<
-  CanvasStage,
-  Map<string, PreparedTextVisualResource>
+export type TextFontPreparationResult = {
+  fontRequested: boolean;
+  fontReady: boolean;
+  fontPrepareWaitMs: number;
+  fontFallbackUsed: boolean;
+};
+
+const textRasterCache =
+  new PreparedVisualResourceCache<PreparedTextVisualResource>({
+    maxEntries: 256,
+    maxEstimatedBytes: 256 * 1024 * 1024,
+  });
+
+const genericFontFamilies = new Set([
+  "serif",
+  "sans-serif",
+  "monospace",
+  "cursive",
+  "fantasy",
+  "system-ui",
+  "ui-serif",
+  "ui-sans-serif",
+  "ui-monospace",
+  "ui-rounded",
+  "emoji",
+  "math",
+  "fangsong",
+]);
+
+const pendingFontPreparations = new Map<
+  string,
+  Promise<TextFontPreparationResult>
 >();
+
+const textFontTelemetry = {
+  requested: 0,
+  ready: 0,
+  prepareWaitMs: 0,
+  fallbackUsed: 0,
+};
 
 const unwrapTextParam = (raw: any, fallback: any) => {
   if (raw === undefined || raw === null) return fallback;
@@ -296,6 +337,48 @@ export function getTextResourceSignature(config: any, dpr = window.devicePixelRa
   ]);
 }
 
+function getTextFontDescriptor(config: any) {
+  const canvasStyles = unwrapTextParam(config?.__canvasStyles, {});
+  const canvasWidth = Number(unwrapTextParam(canvasStyles?.width, 1024));
+  const configuredFontSize = unwrapTextParam(config?.font_size, 16);
+  const fontSizeVw = unwrapTextParam(config?._font_size_runtime_vw, null);
+  const fontSize =
+    configuredFontSize != null
+      ? Number(configuredFontSize)
+      : fontSizeVw != null
+        ? (Number(fontSizeVw) / 100) * canvasWidth
+        : 16;
+  const family = String(unwrapTextParam(config?.font_family, "sans-serif"));
+  const weight = String(unwrapTextParam(config?.font_weight, "normal"));
+  const style = String(unwrapTextParam(config?.font_style, "normal"));
+  const primaryFamily = family
+    .split(",")[0]
+    .trim()
+    .replace(/^['\"]|['\"]$/g, "")
+    .toLowerCase();
+  return {
+    descriptor: `${style} ${weight} ${fontSize}px ${family}`,
+    sample: String(unwrapTextParam(config?.text, "Text")),
+    requiresLoad: !genericFontFamilies.has(primaryFamily),
+  };
+}
+
+export function configurePreparedTextCache(options: {
+  maxEntries: number;
+  maxEstimatedBytes: number;
+}) {
+  textRasterCache.configure(options);
+}
+
+export function getTextFontTelemetry() {
+  return {
+    font_requested: textFontTelemetry.requested,
+    font_ready: textFontTelemetry.ready,
+    font_prepare_wait_ms: textFontTelemetry.prepareWaitMs,
+    font_fallback_used: textFontTelemetry.fallbackUsed,
+  };
+}
+
 let textComponentCounter = 0;
 
 /**
@@ -319,6 +402,8 @@ class TextComponent {
   private resourceReadyAt: number | null = null;
   private gpuReadyAt: number | null = null;
   private precisionFallbackReason = "";
+  private textResourceCacheKey = "";
+  private releaseTextResourcePin: (() => void) | null = null;
 
   // ── Cloze state ─────────────────────────────────────────────────────────
   private isClozeMode: boolean = false;
@@ -335,11 +420,90 @@ class TextComponent {
 
   static info = info;
 
-  static prepareMainResource(config: any): PreparedTextVisualResource {
+  static async prepareFontResource(
+    config: any,
+  ): Promise<TextFontPreparationResult> {
+    const font = getTextFontDescriptor(config);
+    if (!font.requiresLoad) {
+      return {
+        fontRequested: false,
+        fontReady: true,
+        fontPrepareWaitMs: 0,
+        fontFallbackUsed: false,
+      };
+    }
+
+    const key = JSON.stringify([font.descriptor, font.sample]);
+    const existing = pendingFontPreparations.get(key);
+    if (existing) return existing;
+
+    const pending = (async () => {
+      const startedAt = performance.now();
+      textFontTelemetry.requested += 1;
+      const fonts = document.fonts;
+      if (!fonts || typeof fonts.load !== "function") {
+        throw new Error("text_font_loading_api_unavailable");
+      }
+      if (!fonts.check(font.descriptor, font.sample)) {
+        await fonts.load(font.descriptor, font.sample);
+      }
+      const waitMs = Math.max(0, performance.now() - startedAt);
+      const ready = fonts.check(font.descriptor, font.sample);
+      textFontTelemetry.prepareWaitMs += waitMs;
+      if (!ready) throw new Error("text_font_not_ready");
+      textFontTelemetry.ready += 1;
+      return {
+        fontRequested: true,
+        fontReady: true,
+        fontPrepareWaitMs: waitMs,
+        fontFallbackUsed: false,
+      };
+    })();
+    pendingFontPreparations.set(key, pending);
+    const clearPending = () => {
+      if (pendingFontPreparations.get(key) === pending) {
+        pendingFontPreparations.delete(key);
+      }
+    };
+    void pending.then(clearPending, clearPending);
+    return pending;
+  }
+
+  private static assertFontReady(config: any): TextFontPreparationResult {
+    const font = getTextFontDescriptor(config);
+    if (!font.requiresLoad) {
+      return {
+        fontRequested: false,
+        fontReady: true,
+        fontPrepareWaitMs: 0,
+        fontFallbackUsed: false,
+      };
+    }
+    const fonts = document.fonts;
+    if (!fonts || !fonts.check(font.descriptor, font.sample)) {
+      throw new Error("text_font_not_ready_before_raster");
+    }
+    return {
+      fontRequested: true,
+      fontReady: true,
+      fontPrepareWaitMs: 0,
+      fontFallbackUsed: false,
+    };
+  }
+
+  static prepareMainResource(
+    config: any,
+    preparedFont?: TextFontPreparationResult,
+  ): PreparedTextVisualResource {
     const dpr = window.devicePixelRatio || 1;
     const signature = getTextResourceSignature(config, dpr);
     const cached = textRasterCache.get(signature);
     if (cached) return cached;
+
+    const fontReadiness = preparedFont ?? TextComponent.assertFontReady(config);
+    if (!fontReadiness.fontReady || fontReadiness.fontFallbackUsed) {
+      throw new Error("text_font_not_ready_before_raster");
+    }
 
     const helper = new TextComponent(null);
     const layout = helper.createTextLayout(config);
@@ -360,8 +524,13 @@ class TextComponent {
       dpr,
       resourceReadyAt: performance.now(),
       gpuReadyAt: null,
+      ...fontReadiness,
     };
-    textRasterCache.set(signature, resource);
+    textRasterCache.set(
+      signature,
+      resource,
+      textureCanvas.width * textureCanvas.height * 4,
+    );
     return resource;
   }
 
@@ -373,25 +542,31 @@ class TextComponent {
     if (!stage.isTextureResident(raster.textureKey)) {
       throw new Error("text_gpu_upload_failed");
     }
-    const resource: PreparedTextVisualResource = {
-      ...raster,
-      gpuReadyAt: performance.now(),
-    };
-    let resources = publishedTextResources.get(stage);
-    if (!resources) {
-      resources = new Map();
-      publishedTextResources.set(stage, resources);
-    }
-    resources.set(resource.signature, resource);
-    return resource;
+    raster.gpuReadyAt = performance.now();
+    return raster;
   }
 
   static getPreparedVisualResource(stage: CanvasStage, config: any) {
     const signature = getTextResourceSignature(config);
-    const resource = publishedTextResources.get(stage)?.get(signature) ?? null;
+    const resource = textRasterCache.get(signature) ?? null;
     return resource && stage.isTextureResident(resource.textureKey)
       ? resource
       : null;
+  }
+
+  private pinTextResource(signature: string) {
+    if (this.textResourceCacheKey === signature && this.releaseTextResourcePin) {
+      return;
+    }
+    this.unpinTextResource();
+    this.textResourceCacheKey = signature;
+    this.releaseTextResourcePin = textRasterCache.pin(signature);
+  }
+
+  private unpinTextResource() {
+    this.releaseTextResourcePin?.();
+    this.releaseTextResourcePin = null;
+    this.textResourceCacheKey = "";
   }
 
   /**
@@ -649,6 +824,7 @@ class TextComponent {
     const resource = TextComponent.getPreparedVisualResource(this.stage, config);
     if (!resource) return false;
 
+    this.pinTextResource(resource.signature);
     this.layout = resource.layout;
     this.resourceReadyAt = resource.resourceReadyAt;
     this.gpuReadyAt = resource.gpuReadyAt;
@@ -672,7 +848,7 @@ class TextComponent {
   prepare(
     container: HTMLElement,
     config: any,
-  ): HTMLElement | null {
+  ): HTMLElement | null | Promise<HTMLElement | null> {
     const text = String(this.resolveParam(config.text, "Text"));
     const parts = text.split("%");
     const cloze = parts.length >= 3 && parts.length % 2 === 1;
@@ -695,8 +871,11 @@ class TextComponent {
         this.precisionFallbackReason = "text_resource_not_prepared";
         throw new Error(this.precisionFallbackReason);
       }
-      TextComponent.prepareMainResource(config);
-      TextComponent.prepareGpuResource(stage, config);
+      return TextComponent.prepareFontResource(config).then((fontReadiness) => {
+        TextComponent.prepareMainResource(config, fontReadiness);
+        TextComponent.prepareGpuResource(stage, config);
+        return this.renderCanvasText(container, config);
+      });
     }
     return this.renderCanvasText(container, config);
   }
@@ -705,6 +884,7 @@ class TextComponent {
     container: HTMLElement,
     config: any,
   ): HTMLElement | null {
+    this.unpinTextResource();
     const canvasStyles = this.resolveParam(config.__canvasStyles, {});
     const canvasWidth = this.resolveParam(canvasStyles?.width, 1024);
     const canvasHeight = this.resolveParam(canvasStyles?.height, 768);
@@ -1076,13 +1256,13 @@ class TextComponent {
    * the DynamicPlugin's `recordAllPendingResponses`).
    * Returns true on success, false if validation failed or already recorded.
    */
-  recordResponse(config: any): boolean {
+  recordResponse(config: any, signal?: ParticipantResponseSignal): boolean {
     if (!this.isClozeMode || this.response !== null) return false;
 
     const answers = this.collectCurrentResponse(config);
     if (answers === null) return false;
 
-    this.rt = getResponseRT(this, config.__timing);
+    this.rt = getResponseRT(this, config.__timing, signal);
     this.response = answers;
     return true;
   }
@@ -1099,6 +1279,19 @@ class TextComponent {
       fallbackReason: ready ? "" : this.precisionFallbackReason || "text_not_ready",
       resourceReadyAt: this.resourceReadyAt,
       gpuReadyAt: this.gpuReadyAt,
+      ...(this.textResourceCacheKey
+        ? (() => {
+            const resource = textRasterCache.peek(this.textResourceCacheKey);
+            return resource
+              ? {
+                  font_requested: resource.fontRequested,
+                  font_ready: resource.fontReady,
+                  font_prepare_wait_ms: resource.fontPrepareWaitMs,
+                  font_fallback_used: resource.fontFallbackUsed,
+                }
+              : {};
+          })()
+        : {}),
     };
   }
 
@@ -1115,6 +1308,16 @@ class TextComponent {
       gpuResourceReady:
         resource !== null && !!stage?.isTextureResident(resource.textureKey),
       runtimeMaterializationCostEstimateMs: resource ? 1 : null,
+    };
+  }
+  getPreparedVisualIdentity(config?: any) {
+    const logicalStimulusKey = String(this.resolveParam(config?.text, "Text"));
+    const preparedResourceKey =
+      this.textResourceCacheKey || getTextResourceSignature(config);
+    return {
+      logicalStimulusKey,
+      preparedResourceKey,
+      drawableTextureKey: `text:${preparedResourceKey}`,
     };
   }
   /** Returns the recorded answers, or null when not yet recorded. */
@@ -1176,6 +1379,7 @@ class TextComponent {
   }
 
   destroy(): void {
+    this.unpinTextResource();
     if (this.cancelVisibilitySchedule) this.cancelVisibilitySchedule();
     this.cancelSchedule.forEach((cancel) => cancel());
     this.cancelSchedule = [];

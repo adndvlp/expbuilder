@@ -1,5 +1,11 @@
-import { readEventTimestamp } from "./EventTiming";
+import {
+  createParticipantResponseSignal,
+  isParticipantResponseSignal,
+  ParticipantResponseSignal,
+  readEventTimestamp,
+} from "./EventTiming";
 import { preloadAudioBuffer } from "./AudioTiming";
+import { PreparedVisualResourceCache } from "./PreparedVisualResourceCache";
 
 export type TrialTimeOriginSource =
   | "frame_engine_raf"
@@ -200,9 +206,41 @@ export type StimulusRegistrationMetadata = {
 const round3 = (value: number): number => Math.round(value * 1000) / 1000;
 const imagePreloadCache = new Map<string, Promise<void>>();
 const bitmapPreloadCache = new Map<string, Promise<CanvasBitmapSource>>();
-const bitmapSourceCache = new Map<string, CanvasBitmapSource>();
+const bitmapSourceCache = new PreparedVisualResourceCache<CanvasBitmapSource>(
+  {
+    maxEntries: 256,
+    maxEstimatedBytes: 256 * 1024 * 1024,
+  },
+  (source) => {
+    const close = (source as ImageBitmap & { close?: () => void }).close;
+    if (typeof close === "function") close.call(source);
+  },
+);
 const audioPreloadCache = new Map<string, Promise<void>>();
 const videoPreloadCache = new Map<string, Promise<void>>();
+
+function estimateBitmapBytes(source: CanvasBitmapSource) {
+  const width =
+    "naturalWidth" in source ? source.naturalWidth : Number(source.width);
+  const height =
+    "naturalHeight" in source ? source.naturalHeight : Number(source.height);
+  return Math.max(0, width) * Math.max(0, height) * 4;
+}
+
+function cacheBitmapSource(url: string, source: CanvasBitmapSource) {
+  bitmapSourceCache.set(url, source, estimateBitmapBytes(source));
+}
+
+export function configurePreparedBitmapCache(options: {
+  maxEntries: number;
+  maxEstimatedBytes: number;
+}) {
+  bitmapSourceCache.configure(options);
+}
+
+export function pinPreparedBitmap(url: string): (() => void) | null {
+  return bitmapSourceCache.pin(url);
+}
 
 export function resolveTimingMs(
   raw: any,
@@ -980,29 +1018,33 @@ export function setResponseStartTime(
   target: any,
   timing?: ReturnType<typeof createPrecisionTiming>,
 ) {
-  if (timing) {
-    target.start_time = null;
-    timing.onStart((timestamp) => {
-      target.start_time = timestamp;
-    });
-  } else {
-    target.start_time = performance.now();
+  if (!timing || timing.isGlobalFrameEngine?.() !== true) {
+    throw new Error("response_timing_requires_global_frame_engine");
   }
+  target.start_time = null;
+  timing.onStart((timestamp) => {
+    target.start_time = timestamp;
+  });
 }
 
 export function getResponseRT(
   target: any,
   timing?: ReturnType<typeof createPrecisionTiming>,
-  event?: Event,
+  eventOrSignal?: Event | ParticipantResponseSignal,
 ) {
-  const eventTimestamp = event ? readEventTimestamp(event) : null;
-  const source = eventTimestamp
-    ? eventTimestamp.source
-    : "performance.now_fallback";
-  target.responseTimestampSource = source;
-  const endTime = eventTimestamp?.responseTime ?? performance.now();
-  const startTime = timing?.getOnsetTime() ?? target.start_time ?? endTime;
-  return endTime - startTime;
+  if (!timing || timing.isGlobalFrameEngine?.() !== true) {
+    throw new Error("response_timing_requires_global_frame_engine");
+  }
+  const signal = isParticipantResponseSignal(eventOrSignal)
+    ? eventOrSignal
+    : createParticipantResponseSignal(eventOrSignal);
+  target.responseTimestampSource = signal.timestampSource;
+  target.responseSignal = signal;
+  const startTime = timing.getOnsetTime?.() ?? target.start_time;
+  if (typeof startTime !== "number") {
+    throw new Error("response_timing_global_onset_unavailable");
+  }
+  return signal.timestamp - startTime;
 }
 
 export function preloadImages(
@@ -1015,31 +1057,34 @@ export function preloadImages(
   return Promise.all(
     uniqueUrls.map((url) => {
       if (!imagePreloadCache.has(url)) {
-        imagePreloadCache.set(
-          url,
-          new Promise<void>((resolve) => {
-            const image = new Image();
-            let settled = false;
-            const finish = () => {
-              if (settled) return;
-              settled = true;
-              window.clearTimeout(timeout);
-              resolve();
-            };
-            const timeout = window.setTimeout(finish, timeoutMs);
-            image.onload = finish;
-            image.onerror = finish;
-            image.src = url;
-            if (image.complete && image.naturalWidth !== 0) {
-              finish();
-            } else if ("decode" in image) {
-              image
-                .decode()
-                .then(finish)
-                .catch(() => undefined);
-            }
-          }),
-        );
+        const pending = new Promise<void>((resolve) => {
+          const image = new Image();
+          let settled = false;
+          const finish = () => {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timeout);
+            resolve();
+          };
+          const timeout = window.setTimeout(finish, timeoutMs);
+          image.onload = finish;
+          image.onerror = finish;
+          image.src = url;
+          if (image.complete && image.naturalWidth !== 0) {
+            finish();
+          } else if ("decode" in image) {
+            image
+              .decode()
+              .then(finish)
+              .catch(() => undefined);
+          }
+        });
+        imagePreloadCache.set(url, pending);
+        void pending.finally(() => {
+          if (imagePreloadCache.get(url) === pending) {
+            imagePreloadCache.delete(url);
+          }
+        });
       }
       return imagePreloadCache.get(url)!;
     }),
@@ -1054,10 +1099,12 @@ export function preloadBitmap(
   url: string,
   timeoutMs = 10000,
 ): Promise<CanvasBitmapSource> {
-  if (!bitmapPreloadCache.has(url)) {
-    bitmapPreloadCache.set(
-      url,
-      new Promise<CanvasBitmapSource>((resolve) => {
+  const ready = getReadyPreloadedBitmap(url);
+  if (ready) return Promise.resolve(ready);
+  const existing = bitmapPreloadCache.get(url);
+  if (existing) return existing;
+
+  const pending = new Promise<CanvasBitmapSource>((resolve) => {
         const image = new Image();
         let settled = false;
 
@@ -1073,7 +1120,7 @@ export function preloadBitmap(
           ) {
             try {
               const bitmap = await window.createImageBitmap(image);
-              bitmapSourceCache.set(url, bitmap);
+              cacheBitmapSource(url, bitmap);
               resolve(bitmap);
               return;
             } catch {
@@ -1082,7 +1129,7 @@ export function preloadBitmap(
             }
           }
 
-          bitmapSourceCache.set(url, image);
+          cacheBitmapSource(url, image);
           resolve(image);
         };
 
@@ -1099,11 +1146,14 @@ export function preloadBitmap(
             .then(resolveWithImage)
             .catch(() => undefined);
         }
-      }),
-    );
-  }
-
-  return bitmapPreloadCache.get(url)!;
+      });
+  bitmapPreloadCache.set(url, pending);
+  void pending.finally(() => {
+    if (bitmapPreloadCache.get(url) === pending) {
+      bitmapPreloadCache.delete(url);
+    }
+  });
+  return pending;
 }
 
 export function getPreloadedBitmap(url: string): CanvasBitmapSource | null {

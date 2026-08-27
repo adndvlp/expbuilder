@@ -1,5 +1,9 @@
 import { ParameterType } from "jspsych";
 import { getResponseRT, setResponseStartTime } from "../utils/PrecisionTiming";
+import {
+  createParticipantResponseSignal,
+  ParticipantResponseSignal,
+} from "../utils/EventTiming";
 
 const version = "1.0.0";
 
@@ -87,7 +91,7 @@ const info = {
     file_type: {
       type: ParameterType.STRING,
     },
-    /** Response time in milliseconds from component render to successful upload. */
+    /** Scientific RT from response anchor to the native file-selection change event. */
     rt: {
       type: ParameterType.FLOAT,
     },
@@ -128,6 +132,11 @@ class FileUploadResponseComponent {
   private container: HTMLElement | null = null;
   private isUploading = false;
   private timing: any = null;
+  private responseSignal: ParticipantResponseSignal | null = null;
+  private fileSelectionResponseTime: number | null = null;
+  private uploadStartedAt: number | null = null;
+  private uploadCompletedAt: number | null = null;
+  private uploadDurationMs: number | null = null;
 
   static info = info;
 
@@ -138,7 +147,7 @@ class FileUploadResponseComponent {
   render(
     display_element: HTMLElement,
     trial: any,
-    onResponse?: () => void,
+    onResponse?: (signal?: ParticipantResponseSignal) => void,
   ): void {
     this.timing = trial.__timing || null;
     setResponseStartTime(this, this.timing);
@@ -199,7 +208,11 @@ class FileUploadResponseComponent {
     const statusText = document.createElement("p");
     statusText.style.cssText = "margin: 0; font-size: 13px; color: #555;";
 
-    fileInput.addEventListener("change", async () => {
+    fileInput.addEventListener("change", async (event) => {
+      const signal = createParticipantResponseSignal(event, {
+        eventType: "change",
+        componentId: trial.__componentId ?? trial.name,
+      });
       const files = Array.from(fileInput.files || []);
       if (files.length === 0) return;
 
@@ -270,6 +283,37 @@ class FileUploadResponseComponent {
       // Disable button and show uploading state
       triggerButton.disabled = true;
       this.isUploading = true;
+      this.responseSignal = signal;
+      this.fileSelectionResponseTime = signal.timestamp;
+      const responseTiming = trial.__responseTiming;
+      if (responseTiming?.enabled) {
+        const accepted = responseTiming.recordExternalEvent(
+          signal,
+          {
+            eventType: "change",
+            device: "file-input",
+            targetComponent: trial.name ?? trial.__componentId ?? null,
+            minimumValidRtMs: null,
+          },
+          (response: any) => {
+            if (response.response_valid !== true) return false;
+            this.rt = response.rt_raw;
+            this.responseTimestampSource = signal.timestampSource;
+            return true;
+          },
+          { deferFinish: true },
+        );
+        if (!accepted) {
+          triggerButton.disabled = false;
+          this.isUploading = false;
+          return;
+        }
+      } else {
+        this.rt = getResponseRT(this, this.timing, signal);
+      }
+      this.uploadStartedAt = performance.now();
+      this.uploadCompletedAt = null;
+      this.uploadDurationMs = null;
       statusText.textContent = "Uploading\u2026";
       statusText.style.color = "#555";
 
@@ -333,8 +377,12 @@ class FileUploadResponseComponent {
 
         const data = await res.json();
 
-        // Record response data
-        this.rt = getResponseRT(this, this.timing);
+        this.uploadCompletedAt = performance.now();
+        this.uploadDurationMs = Math.max(
+          0,
+          this.uploadCompletedAt -
+            (this.uploadStartedAt ?? this.uploadCompletedAt),
+        );
         this.response =
           files.length === 1
             ? files[0].name
@@ -356,8 +404,9 @@ class FileUploadResponseComponent {
         triggerButton.disabled = false;
         this.isUploading = false;
 
-        if (onResponse) onResponse();
+        if (onResponse) onResponse(signal);
       } catch (error: any) {
+        trial.__responseTiming?.cancelDeferredResponse?.(signal);
         statusText.textContent = `Upload failed: ${error?.message ?? "Unknown error"}`;
         statusText.style.color = "#e74c3c";
         triggerButton.disabled = false;
@@ -393,9 +442,25 @@ class FileUploadResponseComponent {
     return this.file_type;
   }
 
-  /** Response time in milliseconds from render to upload completion. */
+  /** Scientific RT to the native file-selection change event. */
   getRT(): number | null {
     return this.rt;
+  }
+
+  getFileSelectionResponseTime(): number | null {
+    return this.fileSelectionResponseTime;
+  }
+
+  getUploadStartedAt(): number | null {
+    return this.uploadStartedAt;
+  }
+
+  getUploadCompletedAt(): number | null {
+    return this.uploadCompletedAt;
+  }
+
+  getUploadDurationMs(): number | null {
+    return this.uploadDurationMs;
   }
 
   /**

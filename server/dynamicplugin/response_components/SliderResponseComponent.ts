@@ -1,5 +1,6 @@
 import { ParameterType } from "jspsych";
 import { getResponseRT, setResponseStartTime } from "../utils/PrecisionTiming";
+import type { ParticipantResponseSignal } from "../utils/EventTiming";
 
 var version = "2.1.1";
 
@@ -325,7 +326,10 @@ class SliderResponseComponent {
   /**
    * Record the slider response and RT (called externally, e.g., by a button)
    */
-  recordResponse(trial: any): boolean {
+  recordResponse(
+    trial: any,
+    signal?: ParticipantResponseSignal,
+  ): boolean {
     if (this.response !== null) {
       return false; // Already responded
     }
@@ -335,7 +339,7 @@ class SliderResponseComponent {
       return false; // Can't record yet
     }
 
-    this.rt = getResponseRT(this, this.timing);
+    this.rt = getResponseRT(this, this.timing, signal);
     this.response = this.sliderElement!.valueAsNumber;
 
     return true; // Successfully recorded

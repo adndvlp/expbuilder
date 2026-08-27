@@ -5,7 +5,10 @@ import ImageComponent, {
 import TextComponent from "../components/TextComponent";
 import DynamicPlugin from "../index";
 import { getCanvasStage, type CanvasStage } from "../renderer/CanvasStage";
-import { preloadBitmap } from "../utils/PrecisionTiming";
+import {
+  configurePreparedBitmapCache,
+  preloadBitmap,
+} from "../utils/PrecisionTiming";
 import { createFakeAudioContext } from "./helpers/fakeAudioContext";
 import { createFrameEngine } from "@expbuilder-jspsych/packages/jspsych/src/timeline/FrameEngine";
 import { createTimingCoordinator } from "@expbuilder-jspsych/packages/jspsych/src/timeline/TimingCoordinator";
@@ -219,6 +222,33 @@ describe("real Image/Text resource preparation", () => {
     return { container, stage };
   };
 
+  it("closes an evicted ImageBitmap when the bounded bitmap cache advances", async () => {
+    const firstClose = vi.fn();
+    const secondClose = vi.fn();
+    let bitmapIndex = 0;
+    window.createImageBitmap = vi.fn(async () => ({
+      width: 64,
+      height: 32,
+      close: bitmapIndex++ === 0 ? firstClose : secondClose,
+    })) as any;
+    configurePreparedBitmapCache({
+      maxEntries: 1,
+      maxEstimatedBytes: 1024 * 1024,
+    });
+
+    try {
+      await preloadBitmap("cache-close-first.png");
+      await preloadBitmap("cache-close-second.png");
+      expect(firstClose).toHaveBeenCalledTimes(1);
+      expect(secondClose).not.toHaveBeenCalled();
+    } finally {
+      configurePreparedBitmapCache({
+        maxEntries: 256,
+        maxEstimatedBytes: 256 * 1024 * 1024,
+      });
+    }
+  });
+
   it("keeps bitmap-hot/texture-cold image work out of a response window", async () => {
     const url = `image-texture-cold-${Date.now()}.png`;
     await preloadBitmap(url, 1000);
@@ -349,6 +379,88 @@ describe("real Image/Text resource preparation", () => {
       expect(counters.layoutReads - hotSnapshot.layoutReads).toBe(0);
     },
   );
+
+  it("waits for a custom webfont before measureText/fillText rasterization", async () => {
+    const originalFonts = Object.getOwnPropertyDescriptor(document, "fonts");
+    let ready = false;
+    const fonts = {
+      check: vi.fn(() => ready),
+      load: vi.fn(async () => {
+        expect(counters.measureText).toBe(0);
+        expect(counters.fillText).toBe(0);
+        ready = true;
+        return [];
+      }),
+    };
+    Object.defineProperty(document, "fonts", {
+      configurable: true,
+      value: fonts,
+    });
+    try {
+      const config = {
+        text: `custom-font-${Date.now()}`,
+        font_family: "ExpBuilder Test Font, sans-serif",
+        font_size: 24,
+        font_weight: "700",
+        font_style: "italic",
+        __canvasStyles: { width: 1024, height: 768 },
+      };
+      const fontReadiness = await TextComponent.prepareFontResource(config);
+      expect(fonts.load).toHaveBeenCalledTimes(1);
+      const resource = TextComponent.prepareMainResource(
+        config,
+        fontReadiness,
+      );
+      expect(counters.measureText).toBeGreaterThan(0);
+      expect(counters.fillText).toBeGreaterThan(0);
+      expect(resource).toMatchObject({
+        fontRequested: true,
+        fontReady: true,
+        fontFallbackUsed: false,
+      });
+    } finally {
+      if (originalFonts) {
+        Object.defineProperty(document, "fonts", originalFonts);
+      } else {
+        delete (document as any).fonts;
+      }
+    }
+  });
+
+  it("does not rasterize or cache a custom font that never becomes ready", async () => {
+    const originalFonts = Object.getOwnPropertyDescriptor(document, "fonts");
+    const fonts = {
+      check: vi.fn(() => false),
+      load: vi.fn(async () => []),
+    };
+    Object.defineProperty(document, "fonts", {
+      configurable: true,
+      value: fonts,
+    });
+    try {
+      const config = {
+        text: `missing-font-${Date.now()}`,
+        font_family: "Missing ExpBuilder Font, sans-serif",
+        font_size: 20,
+        __canvasStyles: { width: 1024, height: 768 },
+      };
+      await expect(TextComponent.prepareFontResource(config)).rejects.toThrow(
+        "text_font_not_ready",
+      );
+      expect(() => TextComponent.prepareMainResource(config)).toThrow(
+        "text_font_not_ready_before_raster",
+      );
+      expect(counters.measureText).toBe(0);
+      expect(counters.fillText).toBe(0);
+      expect(counters.texImage2D).toBe(0);
+    } finally {
+      if (originalFonts) {
+        Object.defineProperty(document, "fonts", originalFonts);
+      } else {
+        delete (document as any).fonts;
+      }
+    }
+  });
 
   it("materializes a prepared Image+Text+Keyboard trial with no live DOM, layout or GPU work", async () => {
     const url = `prepared-runtime-${Date.now()}.png`;
@@ -634,9 +746,8 @@ describe("real Image/Text resource preparation", () => {
 
     expect(engine.getDiagnostics().response_sensitive).toBe(true);
     expect(audioContext.decodeAudioData).not.toHaveBeenCalled();
-    expect(coordinator.getSemanticBarrierAfter?.(0)).toBe(
-      "resource_horizon_insufficient",
-    );
+    expect(coordinator.getSemanticBarrierAfter?.(0)).toBeNull();
+    expect(coordinator.getResourceHorizonWarningAfter?.(0)).toBe(true);
     expect(scheduledResourceTask).not.toBeNull();
 
     active.setResponseSensitive(false);

@@ -2,6 +2,10 @@ import "survey-js-ui";
 import { ParameterType } from "jspsych";
 import { Model } from "survey-core";
 import { getResponseRT } from "../utils/PrecisionTiming";
+import {
+  createParticipantResponseSignal,
+  ParticipantResponseSignal,
+} from "../utils/EventTiming";
 
 var version = "4.0.0";
 
@@ -97,6 +101,7 @@ class SurveyjsComponent {
   private responseTimestampSource: string | null = null;
   private startTime: number = 0;
   private timing: any = null;
+  private responseSignal: ParticipantResponseSignal | null = null;
 
   constructor(jsPsych: any) {
     this.jsPsych = jsPsych;
@@ -115,7 +120,11 @@ class SurveyjsComponent {
     return container;
   }
 
-  render(display_element: HTMLElement, trial: any, onResponse?: () => void) {
+  render(
+    display_element: HTMLElement,
+    trial: any,
+    onResponse?: (signal?: ParticipantResponseSignal) => void,
+  ) {
     this.timing = trial.__timing || null;
 
     // Helper to map coordinate values
@@ -141,6 +150,21 @@ class SurveyjsComponent {
     surveyContainer.style.transform = "translate(-50%, -50%)";
 
     display_element.appendChild(surveyContainer);
+    let completionSignal: ParticipantResponseSignal | null = null;
+    const captureCompletionEvent = (event: Event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      const isSubmit = event.type === "submit";
+      const isCompletionControl = !!target?.closest(
+        '.sd-navigation__complete-btn, [data-bind*="complete"], input[type="submit"], button[type="submit"]',
+      );
+      if (!isSubmit && !isCompletionControl) return;
+      completionSignal = createParticipantResponseSignal(event, {
+        eventType: event.type,
+        componentId: trial.__componentId ?? trial.name,
+      });
+    };
+    surveyContainer.addEventListener("click", captureCompletionEvent, true);
+    surveyContainer.addEventListener("submit", captureCompletionEvent, true);
 
     if (
       JSON.stringify(trial.survey_json) === "{}" &&
@@ -179,6 +203,17 @@ class SurveyjsComponent {
       this.survey.onValidateQuestion.add(trial.validation_function);
     }
     this.survey.onComplete.add((sender: any, options: any) => {
+      const exposedEvent = options?.event instanceof Event ? options.event : undefined;
+      const signal = exposedEvent
+        ? createParticipantResponseSignal(exposedEvent, {
+            eventType: exposedEvent.type,
+            componentId: trial.__componentId ?? trial.name,
+          })
+        : completionSignal ??
+          createParticipantResponseSignal(undefined, {
+            eventType: "survey_complete",
+            componentId: trial.__componentId ?? trial.name,
+          });
       const all_questions = sender.getAllQuestions();
       const data_names = Object.keys(sender.data);
       for (const question of all_questions) {
@@ -186,12 +221,33 @@ class SurveyjsComponent {
           sender.mergeData({ [question.name]: question.defaultValue ?? null });
         }
       }
-      this.rt = getResponseRT({ start_time: this.startTime }, this.timing);
+      if (trial.__responseTiming?.enabled) {
+        const accepted = trial.__responseTiming.recordExternalEvent(
+          signal,
+          {
+            eventType: signal.eventType ?? "survey_complete",
+            device: signal.event ? "survey-submit" : "survey-library",
+            targetComponent: trial.name ?? trial.__componentId ?? null,
+            minimumValidRtMs: null,
+          },
+          (response: any) => {
+            if (response.response_valid !== true) return false;
+            this.rt = response.rt_raw;
+            return true;
+          },
+          { deferFinish: true },
+        );
+        if (!accepted) return;
+      } else {
+        this.rt = getResponseRT({ start_time: this.startTime }, this.timing, signal);
+      }
+      this.responseSignal = signal;
+      this.responseTimestampSource = signal.timestampSource;
       this.response = sender.data;
 
       // Call onResponse callback to finish the trial
       if (onResponse && typeof onResponse === "function") {
-        onResponse();
+        onResponse(signal);
       }
     });
     const survey_container = this.createSurveyContainer(
@@ -199,13 +255,12 @@ class SurveyjsComponent {
       trial.min_width || "min(100vw, 800px)",
     );
     this.survey.render(survey_container);
-    if (this.timing) {
-      this.timing.onStart((timestamp: number) => {
-        this.startTime = timestamp;
-      });
-    } else {
-      this.startTime = performance.now();
+    if (!this.timing || this.timing.isGlobalFrameEngine?.() !== true) {
+      throw new Error("response_timing_requires_global_frame_engine");
     }
+    this.timing.onStart((timestamp: number) => {
+      this.startTime = timestamp;
+    });
   }
 
   getResponse() {

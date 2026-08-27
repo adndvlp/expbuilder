@@ -73,6 +73,8 @@ describe("ResponseTimingManager baseline characterization", () => {
     expect(captured[0].response_timestamp_source).toBe("event.timeStamp");
     expect(captured[0].rt_raw).toBe(250);
     expect(captured[0].rt).toBe(250);
+    expect(captured[0].response_handler_layout_reads).toBe(0);
+    expect(captured[0].response_handler_dom_queries).toBe(0);
     manager.detach();
   });
 
@@ -147,6 +149,8 @@ describe("ResponseTimingManager baseline characterization", () => {
     window.dispatchEvent(second);
     expect(captured).toHaveLength(1);
     expect(captured[0].rt_raw).toBe(250);
+    expect(captured[0].response_handler_layout_reads).toBe(0);
+    expect(captured[0].response_handler_dom_queries).toBe(0);
     expect(finishes).toBe(1);
     manager.detach();
   });
@@ -414,6 +418,95 @@ describe("ResponseTimingManager V2 semantics", () => {
     manager.detach();
   });
 
+  it("uses event.timeStamp, not handler time, for the stimulus_commit gate", () => {
+    const stimulusRecord = {
+      component_id: "target",
+      name: "target",
+      scheduled_onset_abs: 100,
+      frame_onset_abs: 100,
+    };
+    const { manager } = createManager({
+      trial: {
+        response_allowed_from: {
+          from: "stimulus_commit",
+          component: "target",
+        },
+        premature_response_policy: "end_invalid",
+      },
+      timing: {
+        getOnsetTime: () => 100,
+        getFrameIntervalEstimate: () => 1000 / 60,
+        findStimulusRecord: () => stimulusRecord,
+      },
+      onFinish: () => true,
+    });
+    manager.attach();
+    manager.registerKeyboardTarget({
+      componentId: "kb",
+      componentName: "Keyboard",
+      choices: "ALL_KEYS",
+      caseSensitive: false,
+      minimumValidRtMs: null,
+    });
+    vi.spyOn(performance, "now").mockReturnValue(102);
+    window.dispatchEvent(keydownEvent("a", 99.8));
+
+    expect(manager.getData()).toMatchObject({
+      response_time: 99.8,
+      response_now_at_handler: 102,
+      response_valid: false,
+      response_invalid_reason: "before_response_allowed",
+    });
+    manager.detach();
+  });
+
+  it("keeps a 0.2ms visual-commit RT when the handler runs at 108ms", () => {
+    const captured: any[] = [];
+    const stimulusRecord = {
+      component_id: "target",
+      name: "target",
+      scheduled_onset_abs: 100,
+      frame_onset_abs: 100,
+    };
+    const { manager } = createManager({
+      trial: {
+        response_allowed_from: {
+          from: "stimulus_commit",
+          component: "target",
+        },
+        response_rt_anchor: {
+          from: "stimulus_commit",
+          component: "target",
+        },
+      },
+      timing: {
+        getOnsetTime: () => 100,
+        getTrialTimeOrigin: () => 100,
+        getFrameIntervalEstimate: () => 1000 / 60,
+        findStimulusRecord: () => stimulusRecord,
+      },
+      onFinish: () => true,
+    });
+    manager.attach();
+    manager.registerKeyboardTarget({
+      componentId: "kb",
+      componentName: "Keyboard",
+      choices: "ALL_KEYS",
+      caseSensitive: false,
+      minimumValidRtMs: null,
+      onResponse: (response: any) => captured.push(response),
+    });
+    vi.spyOn(performance, "now").mockReturnValue(108);
+    window.dispatchEvent(keydownEvent("a", 100.2));
+
+    expect(captured).toHaveLength(1);
+    expect(captured[0].response_time).toBe(100.2);
+    expect(captured[0].response_now_at_handler).toBe(108);
+    expect(captured[0].rt_visual_commit).toBeCloseTo(0.2, 8);
+    expect(captured[0].rt).toBeCloseTo(0.2, 8);
+    manager.detach();
+  });
+
   it("rejects a missing response-allowed component without origin fallback", () => {
     const { manager } = createManager({
       trial: {
@@ -652,7 +745,9 @@ describe("shared hub boundary switch (P0.1: zero visible-but-not-responding wind
     document.body.innerHTML = "";
   });
 
-  it("pointerdown after B's commit is captured by B while A's bookkeeping is still pending", () => {
+  it.each([0.1, 1, 2])(
+    "pointerdown B_commit + %dms is captured before B's administrative run",
+    (delta) => {
     const capturedA: any[] = [];
     const capturedB: any[] = [];
     let aFinishes = 0;
@@ -730,16 +825,16 @@ describe("shared hub boundary switch (P0.1: zero visible-but-not-responding wind
 
     // Pointerdown 2 ms after B's visual commit, while A's bookkeeping has not
     // finished. The event belongs to B only.
-    vi.spyOn(performance, "now").mockReturnValue(2002);
+    vi.spyOn(performance, "now").mockReturnValue(2000 + delta + 8);
     const event = pointerdownEvent();
-    Object.defineProperty(event, "timeStamp", { value: 2002 });
+    Object.defineProperty(event, "timeStamp", { value: 2000 + delta });
     window.dispatchEvent(event);
 
     expect(capturedB).toHaveLength(1);
-    expect(capturedB[0].response_time).toBe(2002);
+    expect(capturedB[0].response_time).toBe(2000 + delta);
     expect(capturedB[0].response_timestamp_source).toBe("event.timeStamp");
-    expect(capturedB[0].rt_visual_commit).toBe(2);
-    expect(capturedB[0].rt_trial_origin).toBe(2);
+    expect(capturedB[0].rt_visual_commit).toBeCloseTo(delta, 8);
+    expect(capturedB[0].rt_trial_origin).toBeCloseTo(delta, 8);
     expect(capturedB[0].response_valid).toBe(true);
     expect(capturedA).toHaveLength(0);
     expect(aFinishes).toBe(0);
@@ -747,7 +842,62 @@ describe("shared hub boundary switch (P0.1: zero visible-but-not-responding wind
 
     a.manager.detach();
     b.manager.detach();
-  });
+    },
+  );
+
+  it.each([0.1, 1, 2])(
+    "keydown B_commit + %dms is owned by B before B.run administrative work",
+    (delta) => {
+      const capturedA: any[] = [];
+      const capturedB: any[] = [];
+      const a = createManager({
+        timing: {
+          getOnsetTime: () => 1000,
+          getTrialTimeOrigin: () => 1000,
+          getFrameIntervalEstimate: () => 1000 / 60,
+        },
+        onFinish: () => true,
+      });
+      const b = createManager({
+        timing: {
+          getOnsetTime: () => 2000,
+          getTrialTimeOrigin: () => 2000,
+          getFrameIntervalEstimate: () => 1000 / 60,
+        },
+        onFinish: () => true,
+      });
+      a.manager.arm();
+      b.manager.arm();
+      a.manager.registerKeyboardTarget({
+        componentId: "kb-a",
+        componentName: "Keyboard-A",
+        choices: "ALL_KEYS",
+        caseSensitive: false,
+        minimumValidRtMs: null,
+        onResponse: (response: any) => capturedA.push(response),
+      });
+      b.manager.registerKeyboardTarget({
+        componentId: "kb-b",
+        componentName: "Keyboard-B",
+        choices: "ALL_KEYS",
+        caseSensitive: false,
+        minimumValidRtMs: null,
+        onResponse: (response: any) => capturedB.push(response),
+      });
+      a.manager.activate();
+      a.manager.deactivate();
+      b.manager.activate();
+      vi.spyOn(performance, "now").mockReturnValue(2000 + delta + 8);
+      window.dispatchEvent(keydownEvent("x", 2000 + delta));
+
+      expect(capturedA).toHaveLength(0);
+      expect(capturedB).toHaveLength(1);
+      expect(capturedB[0].response_time).toBe(2000 + delta);
+      expect(capturedB[0].rt_trial_origin).toBeCloseTo(delta, 8);
+      a.manager.detach();
+      b.manager.detach();
+    },
+  );
 
   it("keydown before B's commit is still classified against A, never B", () => {
     const capturedA: any[] = [];

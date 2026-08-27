@@ -9,7 +9,10 @@ import ImageComponent, {
 } from "./components/ImageComponent";
 import VideoComponent from "./components/VideoComponent";
 import HtmlComponent from "./components/HtmlComponent";
-import TextComponent from "./components/TextComponent";
+import TextComponent, {
+  getTextFontTelemetry,
+  getTextResourceSignature,
+} from "./components/TextComponent";
 import AudioComponent from "./components/AudioComponent";
 import { createPrecisionComponentLifecycle } from "./components/PrecisionComponent";
 
@@ -34,6 +37,11 @@ import {
   VisualBoundaryPolicy,
 } from "./utils/PrecisionTiming";
 import ResponseTimingManager from "./utils/ResponseTimingManager";
+import {
+  createParticipantResponseSignal,
+  ParticipantResponseSignal,
+} from "./utils/EventTiming";
+import { getPreparedVisualResourceCacheTelemetry } from "./utils/PreparedVisualResourceCache";
 import { getPreloadedAudioBuffer } from "./utils/AudioTiming";
 import {
   CanvasStage,
@@ -104,6 +112,7 @@ interface PreparedTrialDescriptor {
 }
 
 interface DynamicPreparedTrialResourceTemplate {
+  resourceKey: string;
   descriptorPublicationSafe: boolean;
   estimatedPublicationCostMs: number;
   resourceReady: boolean;
@@ -129,6 +138,7 @@ let persistentVisualLayout: {
   backgroundColor: string;
 } | null = null;
 let dynamicTrialSequenceCounter = 0;
+let physicalActivationSequenceCounter = 0;
 // P0.3 (iteración 5): métricas de recursos vivos/retirados para el stress
 // de 10,000 trials. La cola de finalización conserva registros pequeños,
 // nunca runtime completo.
@@ -533,6 +543,7 @@ function bindPersistentVisualSurfaceToFrameEngine(engine: HostFrameEngine) {
     // P0.3 (iteración 5): los contadores de recursos viven por experimento —
     // se resetean con el engine.
     cumulativeRetiredResources = 0;
+    physicalActivationSequenceCounter = 0;
     pendingFinalizerCount = 0;
     peakPendingFinalizers = 0;
     liveRuntimeComponentInstances = 0;
@@ -1505,7 +1516,10 @@ function isFrameBoundaryVisualTrial(
       if (type === "KeyboardResponseComponent") return true;
       if (
         type === "ClickResponseComponent" &&
-        resolveRawValue(config.show_click_marker) === false
+        resolveRawValue(config.show_click_marker) === false &&
+        resolveRawValue(config.capture_full_screen) !== false &&
+        resolveRawValue(config.relative_to_element) !== true &&
+        !resolveRawValue(config.target_selector)
       ) {
         return true;
       }
@@ -1591,6 +1605,79 @@ function materializeStaticTrial(rawTrial: any) {
     }
   }
   return trial;
+}
+
+function stableResourceValue(value: any): any {
+  const resolved = resolveRawValue(value);
+  if (resolved === null || typeof resolved !== "object") {
+    return typeof resolved === "function" ? String(resolved) : resolved;
+  }
+  if (Array.isArray(resolved)) {
+    return resolved.map(stableResourceValue);
+  }
+  return Object.fromEntries(
+    Object.keys(resolved)
+      .sort()
+      .map((key) => [key, stableResourceValue(resolved[key])]),
+  );
+}
+
+/**
+ * Deterministic identity of the resources/drawables produced from the fully
+ * materialized trial. Administrative data and response configuration are
+ * intentionally excluded.
+ */
+function createPreparedVisualResourceKey(rawTrial: any): string {
+  const trial = materializeStaticTrial(rawTrial);
+  const canvasStyles = resolveRawValue(trial.__canvasStyles) ?? {};
+  const dpr =
+    typeof window !== "undefined" && Number.isFinite(window.devicePixelRatio)
+      ? window.devicePixelRatio
+      : 1;
+  const backend = String(resolveRawValue(trial.render_backend) ?? "webgl-strict");
+  const visualResources = trial.components.map((config: any) => {
+    const type = String(resolveRawValue(config.type) ?? "");
+    if (type === "ImageComponent") {
+      const coordinates = resolveRawValue(config.coordinates) ?? { x: 0, y: 0 };
+      return [
+        "image-v1",
+        stableResourceValue(config.stimulus),
+        resolveRawValue(config.width) ?? null,
+        resolveRawValue(config.height) ?? null,
+        resolveRawValue(config.maintain_aspect_ratio) ?? true,
+        Number(coordinates.x ?? 0),
+        Number(coordinates.y ?? 0),
+        Number(resolveRawValue(config.zIndex) ?? 0),
+        Number(resolveRawValue(config.rotation) ?? 0),
+        Number(resolveRawValue(config.opacity) ?? 1),
+        String(resolveRawValue(config.rendering_mode) ?? backend),
+      ];
+    }
+    if (type === "TextComponent") {
+      return [
+        "text-v1",
+        getTextResourceSignature({ ...config, __canvasStyles: canvasStyles }, dpr),
+        String(resolveRawValue(config.rendering_mode) ?? backend),
+      ];
+    }
+    // Non-visual/resource components are represented only by their resource
+    // identity so a template can never carry a different prepared asset.
+    return [
+      "resource-v1",
+      type,
+      stableResourceValue(config.stimulus ?? null),
+      resolveRawValue(config.show_controls) ?? null,
+    ];
+  });
+  return JSON.stringify([
+    "dynamic-prepared-visual-v1",
+    Number(resolveRawValue(canvasStyles.width) ?? 1024),
+    Number(resolveRawValue(canvasStyles.height) ?? 768),
+    stableResourceValue(resolveRawValue(canvasStyles.backgroundColor) ?? null),
+    dpr,
+    backend,
+    visualResources,
+  ]);
 }
 
 function isClozeTextComponent(config: any) {
@@ -2128,7 +2215,10 @@ function inspectPreparedResourceReadiness(
     }
     if (
       type === "ClickResponseComponent" &&
-      resolveRawValue(config.show_click_marker) === false
+      resolveRawValue(config.show_click_marker) === false &&
+      resolveRawValue(config.capture_full_screen) !== false &&
+      resolveRawValue(config.relative_to_element) !== true &&
+      !resolveRawValue(config.target_selector)
     ) {
       return { resourceReady: true, gpuReady: true, cost: 0.5 };
     }
@@ -2346,7 +2436,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     );
 
     const runSafePreparationStage = (
-      work: () => void,
+      work: () => void | Promise<void>,
       options: { label: string; estimatedCostMs: number; gpu?: boolean },
     ) =>
       new Promise<void>((resolve, reject) => {
@@ -2355,8 +2445,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           const duringResponse =
             preparation.frameEngine.getDiagnostics?.().response_sensitive ===
             true;
-          try {
-            work();
+          const complete = () => {
             const duration = Math.max(0, performance.now() - startedAt);
             if (options.gpu) {
               this.prepareGpuMs = Math.max(
@@ -2375,6 +2464,14 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
                 duringResponse;
             }
             resolve();
+          };
+          try {
+            const result = work();
+            if (result && typeof result.then === "function") {
+              void result.then(complete, reject);
+            } else {
+              complete();
+            }
           } catch (error) {
             reject(error);
           }
@@ -2401,12 +2498,30 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       });
 
     await runSafePreparationStage(
+      async () => {
+        await Promise.all(
+          stimulusComponents.map(async ({ config }) => {
+            config.__canvasStyles = trial.__canvasStyles;
+            const type = String(resolveRawValue(config.type) ?? "");
+            if (type === "TextComponent" && !isClozeTextComponent(config)) {
+              config.__textFontPreparation =
+                await TextComponent.prepareFontResource(config);
+            }
+          }),
+        );
+      },
+      { label: "dynamic-trial-font-prep", estimatedCostMs: 1 },
+    );
+    await runSafePreparationStage(
       () => {
         for (const { config } of stimulusComponents) {
           config.__canvasStyles = trial.__canvasStyles;
           const type = String(resolveRawValue(config.type) ?? "");
           if (type === "TextComponent" && !isClozeTextComponent(config)) {
-            TextComponent.prepareMainResource(config);
+            TextComponent.prepareMainResource(
+              config,
+              config.__textFontPreparation,
+            );
           }
         }
       },
@@ -2456,6 +2571,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       },
     };
     this.preparedTrialResourceTemplate = {
+      resourceKey: createPreparedVisualResourceKey(trial),
       descriptorPublicationSafe:
         resourceReady && gpuReady && !requiresLiveDom,
       estimatedPublicationCostMs: 0.5,
@@ -2508,6 +2624,10 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     return this.preparedTrialResourceTemplate;
   }
 
+  getPreparedTrialResourceKey(rawTrial: TrialType<Info>) {
+    return createPreparedVisualResourceKey(rawTrial);
+  }
+
   /**
    * READY DESCRIPTOR publication. The reusable template was produced by
    * SAFE-only preparation; this path performs only bounded cloning and cache
@@ -2516,7 +2636,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
    */
   publishPreparedTrialDescriptor(
     displayElement: HTMLElement,
-    _rawTrial: TrialType<Info>,
+    rawTrial: TrialType<Info>,
     preparation: {
       trialIndex: number | null;
       frameEngine: HostFrameEngine;
@@ -2540,21 +2660,25 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     this.prepareGpuDuringResponseWindow = false;
     this.prepareCompletionDeferredUntilSafe = false;
 
+    const currentResourceKey = createPreparedVisualResourceKey(rawTrial);
     if (
       !preparation.timingContinuous ||
       template?.descriptorPublicationSafe !== true ||
+      template.resourceKey !== currentResourceKey ||
       !template.payload?.trial ||
       !template.payload?.stage
     ) {
       this.preparedTrialReady = false;
       this.preparedTrialFallbackReason =
         preparation.earlyTransitionRejectedReason ??
-        "prepared_resource_template_not_publishable";
+        (template?.resourceKey !== currentResourceKey
+          ? "prepared_resource_template_key_mismatch"
+          : "prepared_resource_template_not_publishable");
       return;
     }
 
     const publishStartedAt = performance.now();
-    const trial = clonePreparedTrialResource(template.payload.trial);
+    const trial = materializeStaticTrial(rawTrial);
     trial.timing_continuous = true;
     const stimulusComponents = trial.components.map((config: any) => ({ config }));
     const responseComponents = trial.response_components.map((config: any) => ({
@@ -2583,6 +2707,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       diagnostics: {
         ...(template.payload.descriptor.diagnostics ?? {}),
         resourceTemplateReused: true,
+        resourceKey: currentResourceKey,
       },
     };
     template.resourceReady = descriptor.resourceReady;
@@ -2960,7 +3085,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       let pendingEnd: { requestTimestamp: number; reason: string } | null =
         null;
       let handleParticipantResponse: (
-        offsetTime?: number | null,
+        signal?: ParticipantResponseSignal | null,
         options?: { force?: boolean },
       ) => boolean = () => false;
       let precisionReady = false;
@@ -2975,8 +3100,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         container: mainContainer,
         canvasWidth,
         canvasHeight,
-        onFinish: (timestamp, options) =>
-          handleParticipantResponse(timestamp, options),
+        onFinish: (signal, options) =>
+          handleParticipantResponse(signal, options),
       });
       if (detachedExecution) {
         const surfaceScale = Math.min(
@@ -2993,6 +3118,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         });
       }
       let presentationActivated = false;
+      let physicalActivationIndex: number | null = null;
       let logicalLifecycleStarted = false;
       let responseTimingAttached = false;
       const activateLogicalResponses = () => {
@@ -3236,8 +3362,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           const renderedElement = comp.lifecycle.prepare(
             visualRenderContainer,
             config,
-            () => {
-              handleParticipantResponse();
+            (signal?: ParticipantResponseSignal) => {
+              handleParticipantResponse(signal);
             },
           );
           // Capture the topmost new child appended during render (synchronous DOM op)
@@ -3267,7 +3393,9 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       };
 
       // Function to record all pending responses before ending trial
-      const recordAllPendingResponses = () => {
+      const recordAllPendingResponses = (
+        signal?: ParticipantResponseSignal | null,
+      ) => {
         // Record responses from all response components that haven't responded yet
         responseComponents.forEach(({ instance, config }) => {
           if (
@@ -3275,7 +3403,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             typeof instance.recordResponse === "function"
           ) {
             // Try to record response (will fail gracefully if validation fails)
-            instance.recordResponse(config);
+            instance.recordResponse(config, signal ?? undefined);
           }
         });
 
@@ -3286,7 +3414,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             typeof instance.recordResponse === "function"
           ) {
             // Try to record response (will fail gracefully if validation fails)
-            instance.recordResponse(config);
+            instance.recordResponse(config, signal ?? undefined);
           }
         });
       };
@@ -3327,7 +3455,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       };
 
       handleParticipantResponse = (
-        offsetTime: number | null = null,
+        suppliedSignal: ParticipantResponseSignal | null = null,
         options: { force?: boolean } = {},
       ) => {
         const forceEnd = options.force === true;
@@ -3350,9 +3478,9 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
 
         hasResponded = true;
         trialEndedByResponse = true;
-        recordAllPendingResponses();
-        const responseTime =
-          typeof offsetTime === "number" ? offsetTime : performance.now();
+        const signal = suppliedSignal ?? createParticipantResponseSignal();
+        recordAllPendingResponses(signal);
+        const responseTime = signal.timestamp;
         if (trial.timing_continuous === true) {
           // P2: the response timestamp is captured NOW (RT = E - origin) but
           // the finalization is aligned to the next frame commit.
@@ -3638,15 +3766,17 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           (this.jsPsych as any)?.timing?.getSemanticBarrierAfter?.(
             this.jsPsych.getProgress?.()?.current_trial_global ?? -1,
           ) ?? null;
-        if (
-          semanticBarrierType === "resource_horizon_insufficient" &&
-          !precisionFallbackReason
-        ) {
-          precisionFallbackReason = "resource_horizon_insufficient";
-        }
+        const resourceHorizonWarning =
+          (this.jsPsych as any)?.timing?.getResourceHorizonWarningAfter?.(
+            this.jsPsych.getProgress?.()?.current_trial_global ?? -1,
+          ) === true;
         const precisionPath = precisionFallbackReason
           ? "degraded"
           : "global_frame_engine";
+        const primaryVisualIdentity =
+          stimulusComponents[0]?.instance?.getPreparedVisualIdentity?.(
+            stimulusComponents[0]?.config,
+          ) ?? null;
 
         // P1.3 is deliberately compact and always present. Heavy frame/render
         // arrays remain opt-in, but a physical benchmark must never lose the
@@ -3796,6 +3926,16 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           // físico (conditional/loop/global callback).
           semantic_barrier_type: semanticBarrierType,
           precision_run_broken_at_barrier: semanticBarrierType !== null,
+          resource_horizon_warning: resourceHorizonWarning,
+          logical_stimulus_key:
+            primaryVisualIdentity?.logicalStimulusKey ?? null,
+          prepared_resource_key:
+            primaryVisualIdentity?.preparedResourceKey ?? null,
+          prepared_trial_resource_key:
+            createPreparedVisualResourceKey(trial),
+          drawable_texture_key:
+            primaryVisualIdentity?.drawableTextureKey ?? null,
+          physical_activation_index: physicalActivationIndex,
           lookahead_ready_lead_ms:
             outgoingTransition?.incoming_ready_lead_ms ?? null,
           frame_clock_warmup_frames:
@@ -4372,6 +4512,14 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
               ) {
                 heavyFields[`${prefix}_file_type`] = instance.getFileType();
               }
+              heavyFields[`${prefix}_file_selection_response_time`] =
+                instance.getFileSelectionResponseTime?.() ?? null;
+              heavyFields[`${prefix}_upload_started_at`] =
+                instance.getUploadStartedAt?.() ?? null;
+              heavyFields[`${prefix}_upload_completed_at`] =
+                instance.getUploadCompletedAt?.() ?? null;
+              heavyFields[`${prefix}_upload_duration_ms`] =
+                instance.getUploadDurationMs?.() ?? null;
             }
           });
 
@@ -4495,6 +4643,11 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         retireResources(responseComponents, responseRetirement);
         // The cumulative counter is distinct from the live resource gauges.
         trialData.cumulative_retired_resources = cumulativeRetiredResources;
+        Object.assign(
+          trialData,
+          getPreparedVisualResourceCacheTelemetry(),
+          getTextFontTelemetry(),
+        );
         trialData.live_runtime_component_instances =
           liveRuntimeComponentInstances;
         trialData.live_runtime_lifecycles = liveRuntimeLifecycles;
@@ -4728,7 +4881,10 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             if (type === "KeyboardResponseComponent") return false;
             if (
               type === "ClickResponseComponent" &&
-              resolveRawValue(config.show_click_marker) === false
+              resolveRawValue(config.show_click_marker) === false &&
+              resolveRawValue(config.capture_full_screen) !== false &&
+              resolveRawValue(config.relative_to_element) !== true &&
+              !resolveRawValue(config.target_selector)
             ) {
               return false;
             }
@@ -4745,6 +4901,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         };
         timing.onStart((timestamp) => {
           presentationActivated = true;
+          physicalActivationIndex ??= ++physicalActivationSequenceCounter;
           setContainerVisibility(true);
           for (const stage of getCanvasStages(visualRenderContainer)) {
             stage.setDrawableVisibility(visualBackgroundId, true);

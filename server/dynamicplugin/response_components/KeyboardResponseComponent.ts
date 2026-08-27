@@ -1,5 +1,9 @@
 import { ParameterType } from "jspsych";
 import { getResponseRT, setResponseStartTime } from "../utils/PrecisionTiming";
+import {
+  createParticipantResponseSignal,
+  ParticipantResponseSignal,
+} from "../utils/EventTiming";
 
 var version = "2.1.1";
 
@@ -72,8 +76,9 @@ class KeyboardResponseComponent {
   private keyboardListener: ((e: KeyboardEvent) => void) | null;
   private rootElement: HTMLElement | null = null;
   private _trial: any = null;
-  private _onResponse: (() => void) | null = null;
+  private _onResponse: ((signal?: ParticipantResponseSignal) => void) | null = null;
   private _timing: any = null;
+  private responseSignal: ParticipantResponseSignal | null = null;
   private unregisterResponseTiming: (() => void) | null = null;
 
   static info = info;
@@ -157,7 +162,7 @@ class KeyboardResponseComponent {
   render(
     display_element: HTMLElement,
     trial: any,
-    onResponse?: () => void,
+    onResponse?: (signal?: ParticipantResponseSignal) => void,
   ): void {
     this._trial = trial;
     this._onResponse = onResponse || null;
@@ -190,6 +195,7 @@ class KeyboardResponseComponent {
               this.recordResponse({
                 key: response.response_key,
                 rt: response.rt_raw,
+                signal: response.signal,
               });
             },
           });
@@ -226,14 +232,18 @@ class KeyboardResponseComponent {
       const comparableKey = caseSensitive ? event.key : event.key.toLowerCase();
       if (!this.isResponseValid(validResponses, comparableKey)) return;
 
-      const rt = getResponseRT(this, this._timing, event);
+      const signal = createParticipantResponseSignal(event, {
+        eventType: "keydown",
+        componentId: this._trial.__componentId ?? this._trial.name,
+      });
+      const rt = getResponseRT(this, this._timing, signal);
       if (rt < minimumValidRt) return;
 
       event.preventDefault();
-      this.recordResponse({ key: event.key, rt });
+      this.recordResponse({ key: event.key, rt, signal });
       this.destroyKeyboardListener();
       if (this._onResponse) {
-        this._onResponse();
+        this._onResponse(signal);
       }
     };
 
@@ -277,6 +287,7 @@ class KeyboardResponseComponent {
 
     this.response = info.key;
     this.rt = typeof info.rt === "number" ? info.rt : null;
+    this.responseSignal = info.signal ?? null;
   }
 
   /**
@@ -320,6 +331,14 @@ class KeyboardResponseComponent {
     return this.rt;
   }
 
+  getResponseTimestampSource(): string | null {
+    return this.responseSignal?.timestampSource ?? null;
+  }
+
+  getResponseEventType(): string | null {
+    return this.responseSignal?.eventType ?? null;
+  }
+
   /**
    * Get whether the keyboard response matched correct_response.
    * Returns null when no correct_response is configured.
@@ -338,6 +357,7 @@ class KeyboardResponseComponent {
   reset(): void {
     this.response = null;
     this.rt = null;
+    this.responseSignal = null;
     if (
       this._trial &&
       this.resolveParam(this._trial.choices, "ALL_KEYS") !== "NO_KEYS"

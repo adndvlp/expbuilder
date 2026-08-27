@@ -4,6 +4,7 @@ import {
   CanvasBitmapSource,
   createPrecisionTiming,
   getReadyPreloadedBitmap,
+  pinPreparedBitmap,
   preloadBitmap,
   resolveTimingMs,
 } from "../utils/PrecisionTiming";
@@ -117,6 +118,8 @@ class ImageComponent {
   private element: HTMLElement | null = null;
   private source: CanvasBitmapSource | null = null;
   private sourcePromise: Promise<CanvasBitmapSource> | null = null;
+  private sourceCacheKey = "";
+  private releaseSourcePin: (() => void) | null = null;
   private cancelSchedule: Array<() => void> = [];
   private removeDrawable: (() => void) | null = null;
   private drawableId = "";
@@ -159,6 +162,19 @@ class ImageComponent {
       width: source.width,
       height: source.height,
     };
+  }
+
+  private pinSource(stimulus: string) {
+    if (this.sourceCacheKey === stimulus && this.releaseSourcePin) return;
+    this.releaseSourcePin?.();
+    this.sourceCacheKey = stimulus;
+    this.releaseSourcePin = pinPreparedBitmap(stimulus);
+  }
+
+  private unpinSource() {
+    this.releaseSourcePin?.();
+    this.releaseSourcePin = null;
+    this.sourceCacheKey = "";
   }
 
   private computeDrawRect(
@@ -337,7 +353,20 @@ class ImageComponent {
     };
   }
 
+  getPreparedVisualIdentity(config?: any) {
+    const logicalStimulusKey = String(
+      this.resolveParam(config?.stimulus, this.sourceCacheKey) ?? "",
+    );
+    const preparedResourceKey = this.sourceCacheKey || logicalStimulusKey;
+    return {
+      logicalStimulusKey,
+      preparedResourceKey,
+      drawableTextureKey: getImageTextureKey(preparedResourceKey),
+    };
+  }
+
   render(container: HTMLElement, config: any): HTMLElement {
+    this.unpinSource();
     const canvasStyles = this.resolveParam(config.__canvasStyles, {});
     const canvasWidth = this.resolveParam(canvasStyles?.width, 1024);
     const canvasHeight = this.resolveParam(canvasStyles?.height, 768);
@@ -400,14 +429,18 @@ class ImageComponent {
       const readySource = getReadyPreloadedBitmap(stimulus);
       if (readySource) {
         this.source = readySource;
+        this.pinSource(stimulus);
         this.resourceReadyAt = performance.now();
         // P4 fast path: the resource is synchronously READY — no async
         // loader promise is created for a warm cache hit.
         this.sourcePromise = null;
       } else {
         this.sourcePromise = preloadBitmap(stimulus).then((source) => {
-          this.source = source;
-          this.resourceReadyAt = performance.now();
+          if (!this.destroyed) {
+            this.source = source;
+            this.pinSource(stimulus);
+            this.resourceReadyAt = performance.now();
+          }
           return source;
         });
       }
@@ -571,6 +604,7 @@ class ImageComponent {
 
   destroy() {
     this.destroyed = true;
+    this.unpinSource();
     this.cancelSchedule.forEach((cancel) => cancel());
     this.cancelSchedule = [];
     this.removeDrawable?.();

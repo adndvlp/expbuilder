@@ -4,6 +4,10 @@ import {
   getResponseRT,
   resolveTimingMs,
 } from "../utils/PrecisionTiming";
+import {
+  createParticipantResponseSignal,
+  ParticipantResponseSignal,
+} from "../utils/EventTiming";
 
 const version = "1.0.0";
 
@@ -97,6 +101,7 @@ class AudioResponseComponent {
   private buttonContainer: HTMLElement | null = null;
   private timing: any = null;
   private recordingDurationCancel: (() => void) | null = null;
+  private responseSignal: ParticipantResponseSignal | null = null;
 
   static info = info;
 
@@ -110,9 +115,12 @@ class AudioResponseComponent {
   async render(
     display_element: HTMLElement,
     trial: any,
-    onResponse?: () => void,
+    onResponse?: (signal?: ParticipantResponseSignal) => void,
   ): Promise<void> {
     this.timing = trial.__timing || null;
+    if (!this.timing || this.timing.isGlobalFrameEngine?.() !== true) {
+      throw new Error("response_timing_requires_global_frame_engine");
+    }
 
     // Get the existing recorder (should be initialized by initialize-microphone plugin)
     this.recorder = this.jsPsych.pluginAPI.getMicrophoneRecorder();
@@ -126,17 +134,13 @@ class AudioResponseComponent {
     }
 
     this.setupRecordingEvents(display_element, trial, onResponse);
-    if (this.timing) {
-      this.timing.onStart(() => this.startRecording());
-    } else {
-      this.startRecording();
-    }
+    this.timing.onStart(() => this.startRecording());
   }
 
   private setupRecordingEvents(
     display_element: HTMLElement,
     trial: any,
-    onResponse?: () => void,
+    onResponse?: (signal?: ParticipantResponseSignal) => void,
   ): void {
     if (!this.recorder) return;
 
@@ -192,10 +196,14 @@ class AudioResponseComponent {
   private showDisplay(
     display_element: HTMLElement,
     trial: any,
-    onResponse?: () => void,
+    onResponse?: (signal?: ParticipantResponseSignal) => void,
   ): void {
     // Mark when stimulus is shown (recording already started)
-    this.stimulus_start_time = this.timing?.getOnsetTime?.() ?? performance.now();
+    const onset = this.timing?.getOnsetTime?.();
+    if (typeof onset !== "number") {
+      throw new Error("response_timing_global_onset_unavailable");
+    }
+    this.stimulus_start_time = onset;
 
     // Create button container
     this.buttonContainer = document.createElement("div");
@@ -209,17 +217,42 @@ class AudioResponseComponent {
       doneButton.textContent = trial.done_button_label || "Continue";
 
       doneButton.addEventListener("click", (event) => {
-        this.rt = getResponseRT(
-          { start_time: this.stimulus_start_time },
-          this.timing,
-          event,
-        );
+        const signal = createParticipantResponseSignal(event, {
+          eventType: "click",
+          componentId: trial.__componentId ?? trial.name,
+        });
+        this.responseSignal = signal;
+        this.responseTimestampSource = signal.timestampSource;
+        if (trial.__responseTiming?.enabled) {
+          const accepted = trial.__responseTiming.recordExternalEvent(
+            signal,
+            {
+              eventType: "click",
+              device: "audio-response-done",
+              targetComponent: trial.name ?? trial.__componentId ?? null,
+              minimumValidRtMs: null,
+            },
+            (response: any) => {
+              if (response.response_valid !== true) return false;
+              this.rt = response.rt_raw;
+              return true;
+            },
+            { deferFinish: true },
+          );
+          if (!accepted) return;
+        } else {
+          this.rt = getResponseRT(
+            { start_time: this.stimulus_start_time },
+            this.timing,
+            signal,
+          );
+        }
         this.stopRecording().then(() => {
           if (trial.allow_playback) {
-            this.showPlaybackControls(display_element, trial, onResponse);
+            this.showPlaybackControls(display_element, trial, onResponse, signal);
           } else {
             if (onResponse) {
-              onResponse();
+              onResponse(signal);
             }
           }
         });
@@ -235,12 +268,18 @@ class AudioResponseComponent {
     if (recordingDuration !== null) {
       const stopAtDuration = () => {
         if (this.recorder && this.recorder.state !== "inactive") {
+          const signal = createParticipantResponseSignal(undefined, {
+            eventType: "recording_duration",
+            componentId: trial.__componentId ?? trial.name,
+          });
+          this.responseSignal = signal;
+          this.responseTimestampSource = signal.timestampSource;
           this.stopRecording().then(() => {
             if (trial.allow_playback) {
-              this.showPlaybackControls(display_element, trial, onResponse);
+              this.showPlaybackControls(display_element, trial, onResponse, signal);
             } else {
               if (onResponse) {
-                onResponse();
+                onResponse(signal);
               }
             }
           });
@@ -273,7 +312,8 @@ class AudioResponseComponent {
   private showPlaybackControls(
     display_element: HTMLElement,
     trial: any,
-    onResponse?: () => void,
+    onResponse?: (signal?: ParticipantResponseSignal) => void,
+    responseSignal: ParticipantResponseSignal | null = this.responseSignal,
   ): void {
     // Clear the button container
     if (this.buttonContainer) {
@@ -308,6 +348,7 @@ class AudioResponseComponent {
       URL.revokeObjectURL(this.audio_url);
       this.rt = null;
       this.response = "";
+      this.responseSignal = null;
 
       // Clear and restart
       if (this.buttonContainer) {
@@ -322,7 +363,7 @@ class AudioResponseComponent {
 
     continueButton.addEventListener("click", () => {
       if (onResponse) {
-        onResponse();
+        onResponse(responseSignal ?? createParticipantResponseSignal());
       }
     });
 
