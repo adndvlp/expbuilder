@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { generateSingleLoopCode } from "../../../pages/ExperimentBuilder/utils/generateTrialLoopCodes";
+import { toCodeIdentifier } from "../../../pages/ExperimentBuilder/utils/codegen/codeIdentifier";
 import type { Loop } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/types";
 import {
   loop,
@@ -104,10 +105,12 @@ describe("generateTrialLoopCodes integration", () => {
       mode: "query",
     });
     expect(code).toContain("const test_stimuli_loop_1 = [");
-    expect(code).toContain('"stimulus_Loop_Trial_A": "A"');
-    expect(code).toContain('"stimulus_Loop_Trial_B": "B"');
+    const trialAIdentifier = toCodeIdentifier("Loop Trial A");
+    const trialBIdentifier = toCodeIdentifier("Loop Trial B");
+    expect(code).toContain(`"stimulus_${trialAIdentifier}": "A"`);
+    expect(code).toContain(`"stimulus_${trialBIdentifier}": "B"`);
     expect(code).toContain(
-      "timeline: [Loop_Trial_A_wrapper, Loop_Trial_B_wrapper]",
+      `timeline: [${trialAIdentifier}_wrapper, ${trialBIdentifier}_wrapper]`,
     );
     expect(code).toContain("repetitions: 2");
     expect(code).toContain("randomize_order: true");

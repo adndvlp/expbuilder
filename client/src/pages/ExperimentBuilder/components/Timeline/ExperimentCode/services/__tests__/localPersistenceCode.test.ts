@@ -9,7 +9,8 @@ function options(experimentID: string): LocalExperimentCodeOptions {
     sessionNameSeparator: "_",
     evaluateCondition: "",
     branchingEvaluation: "",
-    baseCode: "jsPsych.run([]);",
+    baseCode:
+      "Object.entries(window.branchCustomParameters); jsPsych.run([]);",
     customCode: undefined,
     customPreInitCode: { local: "" },
     extensions: "",

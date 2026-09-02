@@ -10,6 +10,8 @@ const TEST_ENV = {
   VITE_API_URL: "http://localhost:3000",
   VITE_DATA_API_URL: "http://localhost:3000/api/data",
 };
+const TEST_PORT = process.env.PLAYWRIGHT_PORT ?? "5173";
+const TEST_BASE_URL = `http://localhost:${TEST_PORT}`;
 
 export default defineConfig({
   testDir: "./e2e/tests",
@@ -24,7 +26,7 @@ export default defineConfig({
   timeout: 30000,
   expect: { timeout: 10000 },
   use: {
-    baseURL: "http://localhost:5173",
+    baseURL: TEST_BASE_URL,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
@@ -35,8 +37,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run dev",
-    url: "http://localhost:5173",
+    command: `npm run dev -- --port ${TEST_PORT}`,
+    url: TEST_BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 30000,
     env: TEST_ENV,

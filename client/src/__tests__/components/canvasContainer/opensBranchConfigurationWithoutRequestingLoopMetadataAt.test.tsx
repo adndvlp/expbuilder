@@ -165,7 +165,6 @@ describe("Canvas container", () => {
     expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(
       3,
       { branches: [99] },
-      expect.objectContaining({ id: 99, name: "New Trial" }),
     );
     expect(mocks.trialsContext.setSelectedTrial).toHaveBeenCalledWith(
       expect.objectContaining({ id: 99 }),
@@ -186,7 +185,6 @@ describe("Canvas container", () => {
     expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(
       3,
       { branches: [99] },
-      expect.objectContaining({ id: 99 }),
     );
     trialRender.unmount();
 
@@ -203,7 +201,6 @@ describe("Canvas container", () => {
     expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith(
       "loop-1",
       { branches: [99] },
-      expect.objectContaining({ id: 99 }),
     );
   });
 });

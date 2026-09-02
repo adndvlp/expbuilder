@@ -157,6 +157,39 @@ describe('PUT /api/append-result/:experimentID (append data)', () => {
   })
 })
 
+describe('PUT /api/append-result/:experimentID (concurrency)', () => {
+  test('preserves every sequenced result when appends arrive concurrently', async () => {
+    const { app, db } = await freshApp()
+    await request(app)
+      .post('/api/append-result/E1')
+      .send({ sessionId: 'concurrent' })
+      .expect(200)
+
+    const trialNumbers = Array.from({ length: 20 }, (_, index) => index)
+    const responses = await Promise.all(
+      trialNumbers.map((trial) =>
+        request(app)
+          .put('/api/append-result/E1')
+          .send({
+            sessionId: 'concurrent',
+            eventId: `event-${trial}`,
+            sequence: trial,
+            response: { trial },
+          }),
+      ),
+    )
+    expect(responses.every((response) => response.status === 200)).toBe(true)
+
+    await db.read()
+    const persisted = db.data.sessionResults.find(
+      (session) => session.sessionId === 'concurrent',
+    )
+    expect(persisted.data).toHaveLength(trialNumbers.length)
+    expect(persisted.data.map(({ trial }) => trial)).toEqual(trialNumbers)
+    expect(persisted.events.map(({ sequence }) => sequence)).toEqual(trialNumbers)
+  })
+})
+
 describe('GET /api/session-results/:experimentID', () => {
   test('returns empty when no sessions', async () => {
     const { app } = await freshApp()
@@ -224,6 +257,43 @@ describe('GET /api/session-results/:experimentID', () => {
     expect(res.body.sessions[0].data).toBeUndefined()
     expect(res.body.sessions[0].events).toBeUndefined()
     expect(JSON.stringify(res.body)).not.toContain('private')
+  })
+})
+
+describe('GET /api/session-result/:experimentID/:sessionId', () => {
+  test('returns one session data record without internal delivery events', async () => {
+    const { app, db } = await freshApp()
+    db.data.sessionResults.push({
+      experimentID: 'E1',
+      sessionId: 'same-session',
+      createdAt: new Date().toISOString(),
+      data: [{ marker: 'A' }, { marker: 'B' }, { marker: 'A' }],
+      events: [
+        { eventId: 'event-0', sequence: 0 },
+        { eventId: 'event-1', sequence: 1 },
+        { eventId: 'event-2', sequence: 2 },
+      ],
+      state: 'in-progress',
+      lastUpdate: new Date().toISOString(),
+      metadata: {},
+    })
+    await db.write()
+
+    const res = await request(app)
+      .get('/api/session-result/E1/same-session')
+      .expect(200)
+
+    expect(res.body.success).toBe(true)
+    expect(res.body.session.sessionId).toBe('same-session')
+    expect(res.body.session.data.map(({ marker }) => marker)).toEqual(['A', 'B', 'A'])
+    expect(res.body.session.events).toBeUndefined()
+  })
+
+  test('returns 404 when the requested session does not exist', async () => {
+    const { app } = await freshApp()
+    await request(app)
+      .get('/api/session-result/E1/missing')
+      .expect(404)
   })
 })
 

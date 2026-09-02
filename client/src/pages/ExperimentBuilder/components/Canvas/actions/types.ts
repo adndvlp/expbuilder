@@ -16,7 +16,6 @@ export type LoopCanvasActionScope = {
   loopId: CanvasItemId;
   items: TimelineItem[];
   rootItems: TimelineItem[];
-  refresh?: () => void | Promise<void>;
 };
 
 export type CanvasActionScope =

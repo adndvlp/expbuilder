@@ -1,4 +1,8 @@
 import type { LocalExperimentCodeOptions } from "./localCodeTypes";
+import {
+  activateResumeRouteDecisionCode,
+  resumeJumpStartupCode,
+} from "./resumeJumpStartupCode";
 
 export function buildLocalRuntimeStart({
   customPreInitCode,
@@ -7,17 +11,30 @@ export function buildLocalRuntimeStart({
 }: LocalExperimentCodeOptions): string {
   const id = experimentID ?? "";
   const preInit = customPreInitCode.local?.trim();
+  const resumeTrialKey = `expbuilder:local:${id}:resume-trial`;
   return `
   (async function() {
+    const _runtimeTrace = function(type, payload) {
+      window.ExpBuilderRuntime?.emit(type, payload || {});
+    };
+    const _runtimeError = function(error, context) {
+      window.ExpBuilderRuntime?.reportError(error, context || {});
+    };
+    const hasStoredJumpRequest =
+      localStorage.getItem(_sessionKeys.jumpRequest) !== null;
     const candidate = await _selectSessionCandidate();
-    const resumeRaw = localStorage.getItem(_sessionKeys.resumeTrial);
-    const existingJump = localStorage.getItem(_sessionKeys.jumpTrial);
-    const comingFromJumpReload = sessionStorage.getItem(_tabKeys.jumpReload) === '1';
-    sessionStorage.removeItem(_tabKeys.jumpReload);
 
     let persisted = await _findPersistedSession(candidate);
     if (candidate && persisted.status === 'unavailable') {
       throw new Error('The existing session could not be verified');
+    }
+    if (
+      hasStoredJumpRequest &&
+      (!candidate ||
+        persisted.status !== 'valid' ||
+        persisted.session.state === 'completed')
+    ) {
+      throw new Error('The jump cannot continue without its original session');
     }
     if (candidate && persisted.status === 'valid' && persisted.session.state !== 'completed') {
       trialSessionId = candidate;
@@ -57,16 +74,7 @@ export function buildLocalRuntimeStart({
       );
     }
 
-    if (comingFromJumpReload && existingJump) {
-      localStorage.removeItem(_sessionKeys.jumpTrial);
-      localStorage.removeItem(_sessionKeys.resumeTrial);
-    } else if (isResuming && resumeRaw && !existingJump) {
-      const resumeTarget = _resolveResumeBranch(resumeRaw);
-      if (resumeTarget !== null) {
-        localStorage.setItem(_sessionKeys.jumpTrial, resumeTarget);
-        sessionStorage.setItem(_tabKeys.jumpReload, '1');
-      }
-    }
+${resumeJumpStartupCode(resumeTrialKey)}
 
     const socketReady = await waitForSocket(5000);
     if (socketReady) {
@@ -84,8 +92,12 @@ export function buildLocalRuntimeStart({
     }
 
     ${evaluateCondition}
+${activateResumeRouteDecisionCode()}
 
     const localOutbox = _createLocalOutbox(${JSON.stringify(id)}, trialSessionId);
+    localOutbox.onAcknowledged(function(data) {
+      window.ExpBuilderNavigation.onTrialPersisted(data);
+    });
     await localOutbox.initialize(persistedEventCount);
     void localOutbox.flush().catch(function(error) {
       console.warn('[session-persistence] recovered results remain pending', {

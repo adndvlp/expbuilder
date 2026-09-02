@@ -5,6 +5,7 @@ import type {
   LoopTimelineLoadOptions,
   TimelineItem,
 } from "../../contexts/TrialsContext";
+import type { ExperimentGraphSnapshot } from "../../modules/experiment-graph/types";
 import type { UpdateLoopTimelineItems } from "./hooks/useLoopTimelineCache";
 
 export type LoopMethodsProps = {
@@ -13,7 +14,8 @@ export type LoopMethodsProps = {
   loopTimelineCache: LoopTimelineCache;
   setTimeline: Dispatch<SetStateAction<TimelineItem[]>>;
   updateLoopTimelineItems: UpdateLoopTimelineItems;
-  getTimeline: () => Promise<void>;
+  getTimeline: () => Promise<ExperimentGraphSnapshot | null>;
+  applyGraphSnapshot: (graph: ExperimentGraphSnapshot) => void;
   getLoopTimeline: (
     loopId: string | number,
     options?: LoopTimelineLoadOptions,
@@ -32,7 +34,8 @@ export type TrialMethodsProps = {
   loopTimelineCache: LoopTimelineCache;
   setTimeline: Dispatch<SetStateAction<TimelineItem[]>>;
   updateLoopTimelineItems: UpdateLoopTimelineItems;
-  getTimeline: () => Promise<void>;
+  getTimeline: () => Promise<ExperimentGraphSnapshot | null>;
+  applyGraphSnapshot: (graph: ExperimentGraphSnapshot) => void;
   getLoopTimeline: LoopMethodsProps["getLoopTimeline"];
   getSelectedTrial: () => Trial | null;
   setSelectedTrial: Dispatch<SetStateAction<Trial | null>>;

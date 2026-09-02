@@ -43,14 +43,17 @@ describe("generateParamsOverrideCode", () => {
 
     expect(code).toContain("const paramsOverrideConditions =");
     expect(code).toContain("jsPsych.data.get().values()");
-    expect(code).toContain("String(d.trial_id) === String(rule.trialId)");
     expect(code).toContain(
-      "Object.entries(condition.paramsToOverride).forEach",
+      "window.ExpBuilderBranching.evaluateReferencedCondition",
     );
     expect(code).toContain(
-      "fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue",
+      "Object.entries(matchedOverride.paramsToOverride)",
     );
-    expect(code).toContain("fieldArray[compIndex][propName] = valueToSet;");
-    expect(code).toContain("trial[key] = trial[param.value];");
+    expect(code).toContain(
+      "question.defaultValue = String(valueToSet)",
+    );
+    expect(code).toContain("component[propName] = valueToSet;");
+    expect(code).toContain("trial[key] = valueToSet;");
+    expect(code).toContain("'params-override'");
   });
 });

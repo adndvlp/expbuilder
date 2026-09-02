@@ -8,20 +8,20 @@ import type {
   LayoutTimelineItem,
 } from "./expandedLayoutTypes";
 import { CANVAS_EDGE_HANDLES } from "./canvasHandleIds";
-import { getCanvasNodeDimensions } from "./canvasNodeGeometry";
 import { addExpandedEdge, addExpandedFlowEdges } from "./expandedEdgeFactory";
 import { getMainLayoutItems, sanitizeLayoutTimeline } from "./sanitizeLayoutTimeline";
 import { finalizeExpandedLoopLayout } from "./finalizeExpandedLoopLayout";
-const ROOT_X = 500;
-const ROOT_Y = 80;
-const VERTICAL_GAP = 120;
-const BRANCH_GAP = 260;
+import { getScopedNodeId } from "./scopedNodeId";
+import { createExpandedItemNode } from "./expandedNodeFactory";
+import {
+  addCanonicalBranchEdges,
+  getCanonicalBranchTargets,
+} from "./canonicalBranchProjection";
+export { getScopedNodeId } from "./scopedNodeId";
+const ROOT_X = 500, ROOT_Y = 80;
+const VERTICAL_GAP = 120, BRANCH_GAP = 260;
 const DEFAULT_MARKER_OFFSET = 260;
-type RenderedBlock = {
-  entryId: string;
-  exitIds: string[];
-  maxY: number;
-};
+type RenderedBlock = { entryId: string; exitIds: string[]; maxY: number };
 type RenderedScope = ExpandedCanvasLayout & { maxY: number };
 type ScopeRenderContext = {
   nodes: ExpandedCanvasNode[];
@@ -31,44 +31,12 @@ type ScopeRenderContext = {
   expandedScopes: Map<string, ExpandedLoopScope>;
   visitedScopeIds: Set<string>;
   markerOffset: number;
+  branchTargets: Map<string, Set<string>>;
 };
 
 const idKey = (id: LayoutItemId) => String(id);
 const scopeKey = (parentScopeId: string, loopId: LayoutItemId) =>
   `${parentScopeId}\u0000${idKey(loopId)}`;
-
-export const getScopedNodeId = (
-  scopeId: string,
-  type: LayoutTimelineItem["type"],
-  itemId: LayoutItemId,
-) =>
-  `${encodeURIComponent(scopeId)}::${type}::${encodeURIComponent(String(itemId))}`;
-
-function createItemNode(
-  context: ScopeRenderContext,
-  scopeId: string,
-  item: LayoutTimelineItem,
-  x: number,
-  y: number,
-  expanded: boolean,
-) {
-  const id = getScopedNodeId(scopeId, item.type, item.id);
-  context.nodes.push({
-    id,
-    type: item.type,
-    data: {
-      scopeId,
-      itemId: item.id,
-      name: item.name,
-      role: expanded ? "loop-marker" : "item",
-      expanded,
-    },
-    position: { x, y },
-    measured: getCanvasNodeDimensions(item.type, expanded),
-    draggable: false,
-  });
-  return id;
-}
 
 function renderItem(
   context: ScopeRenderContext,
@@ -91,7 +59,7 @@ function renderItem(
     !context.visitedScopeIds.has(expandedScope.id);
 
   if (!canExpand || !expandedScope) {
-    createItemNode(context, scopeId, item, x, y, false);
+    createExpandedItemNode(context.nodes, scopeId, item, x, y, false);
     const block = { entryId: nodeId, exitIds: [nodeId], maxY: y };
     context.renderedBlocks.set(nodeId, block);
     return block;
@@ -111,8 +79,8 @@ function renderItem(
     x,
     ...context.nodes.slice(innerNodeStart).map((node) => node.position.x),
   );
-  const markerId = createItemNode(
-    context,
+  const markerId = createExpandedItemNode(
+    context.nodes,
     scopeId,
     item,
     innerMinX - context.markerOffset,
@@ -228,7 +196,10 @@ function renderScope(
   startY: number,
 ): RenderedScope {
   const timeline = sanitizeLayoutTimeline(rawTimeline);
-  const mainItems = getMainLayoutItems(timeline);
+  const canonicalTargets = context.branchTargets.get(scopeId) ?? new Set();
+  const mainItems = getMainLayoutItems(timeline).filter(
+    (item) => !canonicalTargets.has(idKey(item.id)),
+  );
   let previousExits: string[] = [];
   let entryId: string | undefined;
   let y = startY;
@@ -253,6 +224,34 @@ function renderScope(
     y = withBranches.maxY + VERTICAL_GAP;
   });
 
+  const detachedTargets = timeline.filter(
+    (item) =>
+      canonicalTargets.has(idKey(item.id)) &&
+      !context.renderedBlocks.has(getScopedNodeId(scopeId, item.type, item.id)),
+  );
+  detachedTargets.forEach((item, index) => {
+    const block = renderItem(
+      context,
+      scopeId,
+      item,
+      x + (index + 1) * BRANCH_GAP,
+      Math.max(startY, maxY),
+    );
+    const nested = renderBranches(
+      context,
+      scopeId,
+      timeline,
+      item,
+      block,
+      x + (index + 1) * BRANCH_GAP,
+      block.maxY + VERTICAL_GAP,
+      new Set([idKey(item.id)]),
+    );
+    if (!entryId) entryId = nested.entryId;
+    previousExits = [...new Set([...previousExits, ...nested.exitIds])];
+    maxY = Math.max(maxY, nested.maxY);
+  });
+
   return {
     nodes: context.nodes,
     edges: context.edges,
@@ -265,6 +264,8 @@ function renderScope(
 export function composeExpandedLoopLayout({
   rootTimeline,
   expandedScopes,
+  branchEdges = [],
+  scopeParents = {},
   markerHorizontalOffset = DEFAULT_MARKER_OFFSET,
 }: ComposeExpandedLoopLayoutInput): ExpandedCanvasLayout {
   const scopeMap = new Map<string, ExpandedLoopScope>();
@@ -280,6 +281,7 @@ export function composeExpandedLoopLayout({
     expandedScopes: scopeMap,
     visitedScopeIds: new Set(),
     markerOffset: markerHorizontalOffset,
+    branchTargets: getCanonicalBranchTargets(branchEdges, expandedScopes),
   };
   const result: ExpandedCanvasLayout = renderScope(
     context,
@@ -288,6 +290,7 @@ export function composeExpandedLoopLayout({
     ROOT_X,
     ROOT_Y,
   );
+  addCanonicalBranchEdges(result, branchEdges, scopeParents, context.renderedBlocks);
   return finalizeExpandedLoopLayout({
     layout: result,
     scopes: expandedScopes,

@@ -1,17 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { getResumeResolver } from "./testHarness";
+import {
+  getResumeCheckpointFactory,
+  getResumeCheckpointFactoryWithManifest,
+  getResumeResolver,
+} from "./testHarness";
 
 describe("resumeCode", () => {
-  it("returns null for missing or corrupt resume data", () => {
+  it("rejects missing, corrupt, and unversioned resume data", () => {
     const resolveResumeBranch = getResumeResolver();
 
     expect(resolveResumeBranch(null)).toBeNull();
     expect(resolveResumeBranch("not-json")).toBeNull();
-  });
-
-  it("returns the only branch without evaluating conditions", () => {
-    const resolveResumeBranch = getResumeResolver();
-
     expect(
       resolveResumeBranch(
         JSON.stringify({
@@ -20,80 +19,97 @@ describe("resumeCode", () => {
           trialData: { response: "anything" },
         }),
       ),
-    ).toBe("42");
+    ).toBeNull();
   });
 
-  it("uses matching condition.nextTrialId for multiple branches", () => {
+  it("resolves a versioned branch checkpoint without reevaluating it", () => {
     const resolveResumeBranch = getResumeResolver();
 
     expect(
       resolveResumeBranch(
         JSON.stringify({
-          branches: [2, 3],
-          branchConditions: [
-            {
-              id: 1,
-              nextTrialId: 3,
-              rules: [{ column: "response", op: "==", value: "yes" }],
+          version: 1,
+          completed: { builderId: "source", trialIndex: 4 },
+          route: {
+            kind: "branch",
+            targetId: "selected",
+            conditionId: 8,
+            customParameters: {
+              stimulus: { source: "typed", value: "restored" },
             },
-          ],
-          trialData: { response: "yes" },
-        }),
-      ),
-    ).toBe("3");
-  });
-
-  it("supports nested survey response fields and array comparisons", () => {
-    const resolveResumeBranch = getResumeResolver();
-
-    expect(
-      resolveResumeBranch(
-        JSON.stringify({
-          branches: [2, 3],
-          branchConditions: [
-            {
-              id: 1,
-              nextTrialId: 3,
-              rules: [
-                {
-                  column: "SurveyComponent_1_choice",
-                  op: "==",
-                  value: "blue",
-                },
-                {
-                  column: "selected_values",
-                  op: "==",
-                  value: "ready",
-                },
-              ],
-            },
-          ],
-          trialData: {
-            SurveyComponent_1_response: { choice: "blue" },
-            selected_values: ["ready", "go"],
+            usedDefault: false,
           },
         }),
       ),
-    ).toBe("3");
+    ).toEqual({
+      kind: "branch",
+      sourceId: "source",
+      targetId: "selected",
+      conditionId: 8,
+      customParameters: {
+        stimulus: { source: "typed", value: "restored" },
+      },
+      usedDefault: false,
+    });
   });
 
-  it("falls back to the first branch when no conditions match", () => {
-    const resolveResumeBranch = getResumeResolver();
+  it("stores the branch decision in the versioned checkpoint", () => {
+    const createCheckpoint = getResumeCheckpointFactory();
 
     expect(
-      resolveResumeBranch(
-        JSON.stringify({
-          branches: [2, 3],
-          branchConditions: [
-            {
-              id: 1,
-              nextTrialId: 3,
-              rules: [{ column: "response", op: "==", value: "yes" }],
+      createCheckpoint({
+        builder_id: "source",
+        trial_index: 4,
+        response: "yes",
+        branches: ["fallback", "selected"],
+        branchConditions: [
+          {
+            id: 8,
+            nextTrialId: "selected",
+            rules: [{ column: "response", op: "==", value: "yes" }],
+            customParameters: {
+              stimulus: { source: "typed", value: "restored" },
             },
-          ],
-          trialData: { response: "no" },
-        }),
-      ),
-    ).toBe("2");
+          },
+        ],
+      }),
+    ).toEqual({
+      version: 1,
+      completed: { builderId: "source", trialIndex: 4 },
+      route: {
+        kind: "branch",
+        targetId: "selected",
+        conditionId: 8,
+        customParameters: {
+          stimulus: { source: "typed", value: "restored" },
+        },
+        usedDefault: false,
+      },
+    });
+  });
+
+  it("stores a sequential route from the compiled address manifest", () => {
+    const createCheckpoint = getResumeCheckpointFactoryWithManifest({
+      first: "second",
+    });
+
+    expect(
+      createCheckpoint({
+        builder_id: "first",
+        trial_index: 0,
+        branches: [],
+        branchConditions: [],
+      }),
+    ).toEqual({
+      version: 1,
+      completed: { builderId: "first", trialIndex: 0 },
+      route: {
+        kind: "sequential",
+        targetId: "second",
+        conditionId: null,
+        customParameters: null,
+        usedDefault: false,
+      },
+    });
   });
 });

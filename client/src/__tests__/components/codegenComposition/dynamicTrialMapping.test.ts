@@ -5,6 +5,7 @@ import {
   getColumnValue,
   it,
   normalize,
+  toCodeIdentifier,
   useTrialCode,
   vi,
 } from "./testHarness";
@@ -102,23 +103,24 @@ describe("useTrialCode composition", () => {
     });
 
     const code = normalize(genTrialCode());
+    const identifier = toCodeIdentifier("Loop Dynamic");
 
     expect(code).toContain("type: DynamicPlugin");
     expect(code).toContain(
-      'components: jsPsych.timelineVariable("components_Loop_Dynamic")',
+      `components: jsPsych.timelineVariable("components_${identifier}")`,
     );
     expect(code).toContain(
-      'response_components: jsPsych.timelineVariable("response_components_Loop_Dynamic")',
+      `response_components: jsPsych.timelineVariable("response_components_${identifier}")`,
     );
     expect(code).toContain(
-      'trial_duration: jsPsych.timelineVariable("trial_duration_Loop_Dynamic")',
+      `trial_duration: jsPsych.timelineVariable("trial_duration_${identifier}")`,
     );
     expect(code).toContain(
-      'response_ends_trial: jsPsych.timelineVariable("response_ends_trial_Loop_Dynamic")',
+      `response_ends_trial: jsPsych.timelineVariable("response_ends_trial_${identifier}")`,
     );
-    expect(code).toContain('response: "response_Loop_Dynamic"');
+    expect(code).toContain(`response: "response_${identifier}"`);
     expect(code).toContain('branches: ["trial-next", 9]');
-    expect(code).toContain("NextTrialId = branches[0];");
-    expect(code).not.toContain("timeline.push(Loop_Dynamic_procedure)");
+    expect(code).toContain("NextTrialId = nextTrialId;");
+    expect(code).not.toContain(`timeline.push(${identifier}_procedure)`);
   });
 });

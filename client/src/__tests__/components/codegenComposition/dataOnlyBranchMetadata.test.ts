@@ -5,6 +5,7 @@ import {
   getColumnValue,
   it,
   normalize,
+  toCodeIdentifier,
   useTrialCode,
   vi,
 } from "./testHarness";
@@ -37,7 +38,8 @@ describe("useTrialCode composition", () => {
 
     const code = normalize(genTrialCode());
 
-    expect(code).toContain("const No_Plugin_timeline = { type:");
+    const identifier = toCodeIdentifier("No Plugin");
+    expect(code).toContain(`const ${identifier}_timeline = { type:`);
     expect(code).toContain('response: "response"');
     expect(code).toContain('branches: ["branch-a", 11]');
     expect(code).not.toContain("timeline_variables:");
@@ -97,6 +99,7 @@ describe("useTrialCode composition", () => {
     const code = normalize(genTrialCode());
 
     expect(code).toContain('branches: ["string-target"]');
-    expect(code).toContain('window.nextTrialId = "string-target";');
+    expect(code).toContain('window.ExpBuilderBranching.decide( data, ["string-target"]');
+    expect(code).toContain("window.nextTrialId = nextTrialId;");
   });
 });

@@ -1,5 +1,9 @@
 import type { TimelineItem } from "../../pages/ExperimentBuilder/contexts/TrialsContext";
 import type { Loop, Trial } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/types";
+import type {
+  ExperimentGraphSnapshot,
+  GraphScopeView,
+} from "../../pages/ExperimentBuilder/modules/experiment-graph/types";
 
 export function timelineTrial(
   overrides: Partial<TimelineItem> & Pick<TimelineItem, "id">,
@@ -102,4 +106,34 @@ export function notOkJson(body: unknown = {}): Response {
     ok: false,
     json: async () => body,
   } as Response;
+}
+
+export function graphSnapshot(
+  rootItems: TimelineItem[] = [],
+  scopes: Record<string, GraphScopeView> = {},
+  edges: ExperimentGraphSnapshot["edges"] = [],
+): ExperimentGraphSnapshot {
+  return {
+    revision: "test-revision",
+    root: { scopeId: null, parentScopeId: null, items: rootItems },
+    scopes,
+    edges,
+    diagnostics: [],
+  };
+}
+
+export function graphJson(
+  rootItems: TimelineItem[] = [],
+  scopes: Record<string, GraphScopeView> = {},
+  edges: ExperimentGraphSnapshot["edges"] = [],
+): Response {
+  return okJson({ graph: graphSnapshot(rootItems, scopes, edges) });
+}
+
+export function mutationJson(
+  body: Record<string, unknown>,
+  rootItems: TimelineItem[] = [],
+  scopes: Record<string, GraphScopeView> = {},
+): Response {
+  return okJson({ ...body, graph: graphSnapshot(rootItems, scopes) });
 }

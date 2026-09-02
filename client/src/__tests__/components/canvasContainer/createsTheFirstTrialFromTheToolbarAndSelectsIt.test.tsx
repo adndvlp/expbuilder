@@ -142,21 +142,14 @@ describe("Canvas container", () => {
         trialCode: "",
       });
     });
-    expect(mocks.trialsContext.updateTimeline).toHaveBeenCalledWith([
-      {
-        id: 99,
-        type: "trial",
-        name: "New Trial",
-        branches: [],
-      },
-    ]);
+    expect(mocks.trialsContext.updateTimeline).not.toHaveBeenCalled();
     expect(mocks.trialsContext.setSelectedTrial).toHaveBeenCalledWith(
       expect.objectContaining({ id: 99, name: "New Trial" }),
     );
     expect(mocks.trialsContext.setSelectedLoop).toHaveBeenCalledWith(null);
   });
 
-  it("normalizes a newly created trial that omits branches", async () => {
+  it("does not synthesize a second timeline after the create response", async () => {
     installTrialsContext({
       timeline: [],
       createTrial: vi.fn(async (data: any) => ({
@@ -170,11 +163,12 @@ describe("Canvas container", () => {
 
     fireEvent.click(screen.getByTitle("Add trial"));
 
-    await waitFor(() => {
-      expect(mocks.trialsContext.updateTimeline).toHaveBeenCalledWith([
-        expect.objectContaining({ id: 99, branches: [] }),
-      ]);
-    });
+    await waitFor(() =>
+      expect(mocks.trialsContext.setSelectedTrial).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 99, name: "New Trial" }),
+      ),
+    );
+    expect(mocks.trialsContext.updateTimeline).not.toHaveBeenCalled();
   });
 
   it("logs toolbar create-trial failures without mutating timeline", async () => {

@@ -36,11 +36,10 @@ export function getLocalOnDataUpdatePreview(
 ): string {
   return `on_data_update: function(data) {
     if (data.builder_id !== undefined && data.builder_id !== null) {
-      localStorage.setItem(_sessionKeys.resumeTrial, JSON.stringify({
-        branches: data.branches || [],
-        branchConditions: data.branchConditions || [],
-        trialData: data
-      }));
+      localStorage.setItem(
+        _sessionKeys.resumeTrial,
+        JSON.stringify(_createResumeCheckpoint(data))
+      );
     }
 
     localOutbox.enqueue(data).catch(error => {
@@ -105,6 +104,7 @@ export function getLocalOnFinishPreview(
     }
 
     await localOutbox.clear();
+    window.ExpBuilderNavigation.clearTransientState();
     _clearSessionIdentity();
     _showSuccess();${injectUserCode(userCode)}
   },`;

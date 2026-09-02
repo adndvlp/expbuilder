@@ -38,7 +38,9 @@ describe("getInitJsPsychPreview helpers", () => {
     expect(code).toContain("const jsPsych = initJsPsych({");
     expect(code).toContain("show_progress_bar: true,");
     expect(code).toContain("localOutbox.enqueue(data)");
-    expect(code).toContain("localStorage.setItem(_sessionKeys.resumeTrial");
+    expect(code).toMatch(
+      /localStorage\.setItem\(\s*_sessionKeys\.resumeTrial/,
+    );
     expect(code).toContain("socket.emit('update-session-state'");
     expect(code).toContain("await fetch(\"/api/complete-session/exp-1\"");
     expect(code).toContain("completeBody.storedEventCount !== stats.total");

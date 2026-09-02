@@ -195,6 +195,28 @@ router.get("/api/session-results/:experimentID", async (req, res) =>
   }, res),
 );
 
+router.get(
+  "/api/session-result/:experimentID/:sessionId",
+  async (req, res) =>
+    locked(() => {
+      const session = findSession(
+        req.params.experimentID,
+        req.params.sessionId,
+      );
+      if (!session) {
+        return res
+          .status(404)
+          .json({ success: false, error: "Session not found" });
+      }
+      const persistedSession = structuredClone(session);
+      delete persistedSession.events;
+      return res.json({ success: true, session: persistedSession });
+    }, res, {
+      experimentID: req.params.experimentID,
+      sessionId: req.params.sessionId,
+    }),
+);
+
 router.post("/api/complete-session/:experimentID", async (req, res) => {
   const { expectedEventCount, lastSequence, sessionId } = req.body || {};
   if (

@@ -229,9 +229,9 @@ describe("generatePhaseCode for WebGazer phases", () => {
     expect(code).toContain("var minimum_percent_acceptable = 75;");
     expect(code).toContain("timeline.push(recalibrate_timeline);");
     expect(code).toContain("timeline.push(calibration_done);");
-    expect(code).toContain("loop_loop_A_NextTrialId = branches[0];");
-    expect(code).toContain("loop_loop_A_SkipRemaining = true;");
-    expect(code).not.toContain("window.nextTrialId = branches[0];");
+    expect(code).toContain("loop_loop$2d$A_NextTrialId = nextTrialId;");
+    expect(code).toContain("loop_loop$2d$A_SkipRemaining = true;");
+    expect(code).not.toContain("window.nextTrialId = nextTrialId;");
   });
 
   it("generates recalibration instructions from mapped values and fallbacks", () => {

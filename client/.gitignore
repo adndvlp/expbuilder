@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 coverage
+!runtime-e2e/coverage/
+!runtime-e2e/coverage/**
 *.local
 .DS_Store
 Dockerfile
@@ -36,5 +38,7 @@ Dockerfile
 /test-results/
 /playwright-report/
 /blob-report/
+/runtime-report/
+/runtime-e2e/artifacts/
 /playwright/.cache/
 /playwright/.auth/

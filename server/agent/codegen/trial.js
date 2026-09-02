@@ -61,6 +61,24 @@ export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
   const rowsMapped = rows.map(r => buildProps(r))
 
   let onStartCode = ''
+  if (isInLoop) {
+    const lid = sanitizeId(loopId)
+    onStartCode += `    const _branchParams = loop_${lid}_BranchCustomParameters;\n`
+    onStartCode += `    if (_branchParams) {\n`
+    onStartCode += `      for (const [_key, _value] of Object.entries(_branchParams)) {\n`
+    onStartCode += `        trial[_key] = _value && typeof _value === 'object' && 'value' in _value ? _value.value : _value;\n`
+    onStartCode += `      }\n`
+    onStartCode += `      loop_${lid}_BranchCustomParameters = null;\n`
+    onStartCode += `    }\n`
+  } else {
+    onStartCode += `    const _branchParams = window.branchCustomParameters;\n`
+    onStartCode += `    if (_branchParams) {\n`
+    onStartCode += `      for (const [_key, _value] of Object.entries(_branchParams)) {\n`
+    onStartCode += `        trial[_key] = _value && typeof _value === 'object' && 'value' in _value ? _value.value : _value;\n`
+    onStartCode += `      }\n`
+    onStartCode += `      window.branchCustomParameters = null;\n`
+    onStartCode += `    }\n`
+  }
   if (trial.paramsOverride?.length) {
     onStartCode += `    // -- Params override --\n`
     onStartCode += `    const _lastData = jsPsych.data.get().last(1).values()[0];\n`
@@ -230,7 +248,11 @@ export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
     code += `  timeline: [${trialIdStr}_timeline],\n`
     code += `  timeline_variables: test_stimuli_${trialIdStr}\n`
     code += `};\n`
-    code += `timeline.push(${trialIdStr}_procedure);\n`
+    if (!isInLoop) code += `timeline.push(${trialIdStr}_procedure);\n`
+  } else if (isInLoop) {
+    code += `const ${trialIdStr}_timeline = {\n`
+    code += buildTrialObj(rowsMapped[0], false)
+    code += `\n};\n`
   } else {
     code += `timeline.push({\n`
     code += buildTrialObj(rowsMapped[0], false)
@@ -239,7 +261,7 @@ export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
 
   return {
     code,
-    timelineRef: hasCsv ? `${trialIdStr}_timeline` : '',
+    timelineRef: hasCsv || isInLoop ? `${trialIdStr}_timeline` : '',
     procedureRef: hasCsv ? `${trialIdStr}_procedure` : '',
     hasCsv,
   }

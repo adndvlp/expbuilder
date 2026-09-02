@@ -12,10 +12,18 @@ export function buildLocalRuntime(options: LocalExperimentCodeOptions): string {
     const jsPsych = initJsPsych({
       ${progressBar ? "show_progress_bar: true," : ""}
       ${extensions}
-      ${localParams.on_trial_start?.trim() ? `on_trial_start: function(trial) {
+      on_trial_start: function(trial) {
+        const trialData = trial && trial.data ? trial.data : {};
+        _runtimeTrace('trial-start', {
+          builderId: trialData.builder_id ?? trialData.trial_id ?? null,
+          trialType: trial && trial.type
+            ? String(trial.type.info?.name || trial.type)
+            : null
+        });${localParams.on_trial_start?.trim() ? `
         // --- User code (on_trial_start) ---
         ${localParams.on_trial_start.trim()}
-      },` : ""}
+        ` : ""}
+      },
       ${buildLocalDataCallback(options)}
       ${buildLocalFinishCallback(options)}${buildLocalExtraOptions(options)}
     });

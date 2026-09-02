@@ -89,7 +89,6 @@ describe("Canvas container", () => {
     expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith(
       "loop-1",
       { branches: [99] },
-      expect.objectContaining({ id: 99 }),
     );
     firstRender.unmount();
 
@@ -116,7 +115,6 @@ describe("Canvas container", () => {
       expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith(
         "loop-1",
         { branches: [99] },
-        expect.objectContaining({ id: 99, branches: [] }),
       );
     });
   });
@@ -161,7 +159,6 @@ describe("Canvas container", () => {
     expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(
       1,
       { branches: [99] },
-      expect.objectContaining({ id: 99, branches: [2] }),
     );
 
     const reorderedTimeline =

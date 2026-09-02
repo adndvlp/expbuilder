@@ -34,6 +34,7 @@ export function ensureDbData() {
   db.data.sessionResults ||= [];
   db.data.participantFiles ||= [];
   db.data.sessionCounters ||= {};
+  db.data.mutationReceipts ||= [];
   // Chat agent — intentionally excluded from experiment export/import and factory reset
   db.data.chat ||= {
     apiKeys: {},

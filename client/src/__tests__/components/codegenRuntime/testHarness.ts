@@ -8,9 +8,18 @@ const hoistedMocks = vi.hoisted(() => ({
   firestoreDoc: vi.fn(),
   firestoreGetDoc: vi.fn(),
   currentUser: { uid: "user-1" } as { uid: string } | null,
+  experimentGraph: {
+    revision: "test-revision",
+    root: { scopeId: null, parentScopeId: null, items: [] },
+    scopes: {},
+    edges: [],
+    diagnostics: [],
+  },
   devMode: {
     isDevMode: false,
-    code: "dev-code",
+    code:
+      "dev-code;" +
+      "if (window.branchCustomParameters) { Object.entries(window.branchCustomParameters).forEach(() => {}); }",
     customInitJsPsychParams: { public: {} as Record<string, string> },
     customPreInitCode: { public: "" },
   },
@@ -22,6 +31,13 @@ vi.mock(
   "../../../pages/ExperimentBuilder/utils/generateTrialLoopCodes",
   () => ({
     generateAllCodes: generateAllCodesMock,
+  }),
+);
+
+vi.mock(
+  "../../../pages/ExperimentBuilder/modules/experiment-graph/api",
+  () => ({
+    loadExperimentGraph: vi.fn(async () => hoistedMocks.experimentGraph),
   }),
 );
 
@@ -50,11 +66,87 @@ function getResumeResolver() {
   const factory = new Function(
     "localStorage",
     "sessionStorage",
-    `${resumeCode()}; return _resolveResumeBranch;`,
+    `const window = {
+       location: { reload: () => undefined },
+       ExpBuilderRuntime: {
+         emit: () => undefined,
+         reportError: () => undefined
+       }
+     };
+     ${resumeCode()};
+     return _resolveResumeBranch;`,
   );
   return factory(createMemoryStorage(), createMemoryStorage()) as (
     resumeRaw: string | null,
-  ) => string | null;
+  ) => ResumeBranchDecision | null;
+}
+
+type ResumeBranchDecision = {
+  kind: "branch" | "sequential";
+  sourceId: string | number | null;
+  targetId: string;
+  conditionId: string | number | null;
+  customParameters: Record<string, unknown> | null;
+  usedDefault: boolean;
+};
+
+function getResumeCheckpointFactory() {
+  const factory = new Function(
+    "localStorage",
+    "sessionStorage",
+    `const window = {
+       location: { reload: () => undefined },
+       ExpBuilderRuntime: {
+         emit: () => undefined,
+         reportError: () => undefined
+       }
+     };
+     ${resumeCode()};
+     return _createResumeCheckpoint;`,
+  );
+  return factory(createMemoryStorage(), createMemoryStorage()) as (
+    trialData: Record<string, unknown>,
+  ) => Record<string, unknown>;
+}
+
+function getResumeCheckpointFactoryWithManifest(
+  nextBySource: Record<string, string>,
+) {
+  const factory = new Function(
+    "localStorage",
+    "sessionStorage",
+    "nextBySource",
+    `const window = {
+       location: { reload: () => undefined },
+       ExpBuilderRuntime: {
+         emit: () => undefined,
+         reportError: () => undefined
+       },
+       ExpBuilderExecutionAddresses: {
+         version: 2,
+         revision: 'r1',
+         nextBySource,
+         addressesByTarget: Object.fromEntries(
+           Object.values(nextBySource).map(targetId => [
+             String(targetId),
+             {
+               targetId,
+               targetKind: 'trial',
+               targetOwnerId: null,
+               enterLoopIds: []
+             }
+           ])
+         )
+       }
+     };
+     ${resumeCode()};
+     return _createResumeCheckpoint;`,
+  );
+  return factory(
+    createMemoryStorage(),
+    createMemoryStorage(),
+    nextBySource,
+  ) as (trialData: Record<string, unknown>) => Record<string, unknown>;
 }
 
 function createMemoryStorage() {
@@ -93,6 +185,8 @@ function PublicConfigurationHarness(
 export {
   ExperimentBaseHarness,
   generateAllCodesMock,
+  getResumeCheckpointFactory,
+  getResumeCheckpointFactoryWithManifest,
   getResumeResolver,
   mocks,
   normalize,

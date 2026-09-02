@@ -8,11 +8,18 @@ export function buildLocalSessionPrelude(
   options: LocalExperimentCodeOptions,
 ): string {
   const experimentID = options.experimentID ?? "";
+  const navigationNamespace = `expbuilder:local:${experimentID}:`;
+  const navigationStorageKeys = {
+    jumpRequest: `${navigationNamespace}jump-request`,
+    jumpReload: `${navigationNamespace}jump-reload`,
+    resumeTrial: `${navigationNamespace}resume-trial`,
+    jumpTarget: `${navigationNamespace}jump-to-trial`,
+    jumpContext: `${navigationNamespace}jump-context`,
+  };
   return `
   window.JSPSYCH_FILE_UPLOAD_ENDPOINT = '/api/participant-files/${experimentID}';
   window.JSPSYCH_EXPERIMENT_ID = ${JSON.stringify(experimentID)};
 
-  ${resumeCode()}
   ${buildLocalSessionNameCode(options)}
   ${buildLocalMetadataCode()}
 
@@ -22,13 +29,19 @@ export function buildLocalSessionPrelude(
     participant: _sessionNamespace + 'participant-number',
     resumeTrial: _sessionNamespace + 'resume-trial',
     jumpTrial: _sessionNamespace + 'jump-to-trial',
+    jumpRequest: _sessionNamespace + 'jump-request',
     owner: _sessionNamespace + 'owner'
   };
   const _tabKeys = {
     id: _sessionNamespace + 'tab-id',
     sessionId: _sessionNamespace + 'tab-session-id',
-    jumpReload: _sessionNamespace + 'jump-reload'
+    jumpReload: _sessionNamespace + 'jump-reload',
+    jumpContext: _sessionNamespace + 'jump-context'
   };
+  window.JSPSYCH_LOCAL_KEYS = _sessionKeys;
+
+  ${resumeCode(navigationStorageKeys)}
+
   const _newId = function() {
     return crypto.randomUUID
       ? crypto.randomUUID()
@@ -39,7 +52,6 @@ export function buildLocalSessionPrelude(
     _tabId = _newId();
     sessionStorage.setItem(_tabKeys.id, _tabId);
   }
-  window.JSPSYCH_LOCAL_KEYS = _sessionKeys;
   const _sessionChannel = typeof BroadcastChannel === 'function'
     ? new BroadcastChannel(_sessionNamespace + 'ownership')
     : null;
@@ -213,11 +225,13 @@ export function buildLocalSessionPrelude(
   function _clearSessionIdentity() {
     sessionStorage.removeItem(_tabKeys.sessionId);
     sessionStorage.removeItem(_tabKeys.jumpReload);
+    sessionStorage.removeItem(_tabKeys.jumpContext);
     if (localStorage.getItem(_sessionKeys.sessionId) === trialSessionId) {
       localStorage.removeItem(_sessionKeys.sessionId);
       localStorage.removeItem(_sessionKeys.participant);
       localStorage.removeItem(_sessionKeys.resumeTrial);
       localStorage.removeItem(_sessionKeys.jumpTrial);
+      localStorage.removeItem(_sessionKeys.jumpRequest);
       localStorage.removeItem(_sessionKeys.owner);
     }
   }

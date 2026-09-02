@@ -2,6 +2,7 @@ import { CANVAS_EDGE_HANDLES } from "./canvasHandleIds";
 import type {
   ExpandedCanvasEdge,
   ExpandedCanvasEdgeKind,
+  ExpandedCanvasFlowRole,
 } from "./expandedLayoutTypes";
 
 type EdgeCollector = {
@@ -21,6 +22,8 @@ export function addExpandedEdge(
   kind: ExpandedCanvasEdgeKind,
   scopeId: string,
   handles: EdgeHandles,
+  flowRole?: ExpandedCanvasFlowRole,
+  semanticEdgeId?: string,
 ) {
   if (source === target && kind !== "loop-return") return;
   const key = [
@@ -30,7 +33,26 @@ export function addExpandedEdge(
     handles.sourceHandle,
     handles.targetHandle,
   ].join("\u0000");
-  if (collector.edgeKeys.has(key)) return;
+  if (collector.edgeKeys.has(key)) {
+    const existing = collector.edges.find(
+      (edge) =>
+        edge.data.kind === kind &&
+        edge.source === source &&
+        edge.target === target &&
+        edge.sourceHandle === handles.sourceHandle &&
+        edge.targetHandle === handles.targetHandle,
+    );
+    if (existing && semanticEdgeId) {
+      existing.data.semanticEdgeIds = [
+        ...new Set([
+          ...(existing.data.semanticEdgeIds ?? []),
+          semanticEdgeId,
+        ]),
+      ].sort();
+    }
+    if (existing && flowRole) existing.data.flowRole = flowRole;
+    return;
+  }
   collector.edgeKeys.add(key);
   collector.edges.push({
     id: `edge::${encodeURIComponent(kind)}::${encodeURIComponent(source)}::${encodeURIComponent(target)}`,
@@ -39,7 +61,12 @@ export function addExpandedEdge(
     sourceHandle: handles.sourceHandle,
     targetHandle: handles.targetHandle,
     type: kind === "flow" ? "default" : "smoothstep",
-    data: { kind, scopeId },
+    data: {
+      kind,
+      scopeId,
+      flowRole,
+      semanticEdgeIds: semanticEdgeId ? [semanticEdgeId] : undefined,
+    },
   });
 }
 
@@ -48,6 +75,8 @@ export function addExpandedFlowEdges(
   sources: string[],
   target: string,
   scopeId: string,
+  flowRole?: ExpandedCanvasFlowRole,
+  semanticEdgeId?: string,
 ) {
   sources.forEach((source) =>
     addExpandedEdge(
@@ -57,6 +86,8 @@ export function addExpandedFlowEdges(
       "flow",
       scopeId,
       CANVAS_EDGE_HANDLES.flow,
+      flowRole,
+      semanticEdgeId,
     ),
   );
 }

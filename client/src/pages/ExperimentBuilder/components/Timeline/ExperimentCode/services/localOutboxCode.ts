@@ -13,6 +13,7 @@ export function buildLocalOutboxCode(): string {
     let nextSequence = 0;
     let serverStoredCount = 0;
     const unsavedRecords = new Map();
+    const acknowledgementListeners = new Set();
 
 ${buildLocalOutboxDatabaseCode()}
 
@@ -48,6 +49,19 @@ ${buildLocalOutboxDatabaseCode()}
       error.retryable = retryable;
       error.status = status || 0;
       return error;
+    }
+
+    function notifyAcknowledged(record) {
+      for (const listener of acknowledgementListeners) {
+        try {
+          listener(record.payload, {
+            eventId: record.eventId,
+            sequence: record.sequence
+          });
+        } catch (error) {
+          console.error('[session-persistence] acknowledgement listener failed', error);
+        }
+      }
     }
 
     async function sendOnce(record) {
@@ -91,6 +105,7 @@ ${buildLocalOutboxDatabaseCode()}
       record.updatedAt = record.acknowledgedAt;
       delete record.lastError;
       await saveRecord(record);
+      notifyAcknowledged(record);
       console.info('[session-persistence] trial acknowledged', {
         experimentID: experimentID,
         sessionId: sessionId,
@@ -145,8 +160,19 @@ ${buildLocalOutboxDatabaseCode()}
           if (error.retryable !== false) scheduleRetry();
           throw error;
         }).finally(function() { flushPromise = null; });
+        window.ExpBuilderPersistence?.track?.(flushPromise);
       }
       return flushPromise;
+    }
+
+    function onAcknowledged(listener) {
+      if (typeof listener !== 'function') {
+        throw new TypeError('Acknowledgement listener must be a function');
+      }
+      acknowledgementListeners.add(listener);
+      return function unsubscribe() {
+        acknowledgementListeners.delete(listener);
+      };
     }
 
     async function waitForIdle() {
@@ -224,6 +250,7 @@ ${buildLocalOutboxDatabaseCode()}
       enqueue: enqueue,
       flush: flush,
       initialize: initialize,
+      onAcknowledged: onAcknowledged,
       stats: stats,
       waitForIdle: waitForIdle
     };

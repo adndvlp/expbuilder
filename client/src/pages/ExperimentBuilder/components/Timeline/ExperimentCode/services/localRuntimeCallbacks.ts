@@ -8,12 +8,15 @@ export function buildLocalDataCallback({
   const id = experimentID ?? "";
   return `
     on_data_update: function(data) {
+      _runtimeTrace('trial-data', {
+        builderId: data.builder_id ?? data.trial_id ?? data.loop_id ?? null,
+        trialIndex: data.trial_index ?? null
+      });
       if (data.builder_id !== undefined && data.builder_id !== null) {
-        localStorage.setItem(_sessionKeys.resumeTrial, JSON.stringify({
-          branches: data.branches || [],
-          branchConditions: data.branchConditions || [],
-          trialData: data
-        }));
+        localStorage.setItem(
+          _sessionKeys.resumeTrial,
+          JSON.stringify(_createResumeCheckpoint(data))
+        );
       }
 
       localOutbox.enqueue(data).catch(function(error) {
@@ -47,6 +50,10 @@ export function buildLocalFinishCallback({
   const id = experimentID ?? "";
   return `
     on_finish: async function() {
+      if (window.ExpBuilderNavigation.isTransitionPending()) {
+        _runtimeTrace('experiment-finish-suppressed', { reason: 'jump' });
+        return;
+      }
       _showLoading('Saving your data…');
       _setLoadingMsg('Verifying every result…');
       let completionRetryDelay = 2000;
@@ -86,8 +93,13 @@ export function buildLocalFinishCallback({
           state: 'completed'
         });
         await localOutbox.clear();
+        window.ExpBuilderNavigation.clearTransientState();
         _clearSessionIdentity();
         if (_sessionChannel) _sessionChannel.close();
+        _runtimeTrace('experiment-finish', {
+          experimentID: ${JSON.stringify(id)},
+          sessionId: trialSessionId
+        });
         _showSuccess();${localParams.on_finish?.trim() ? `
         try {
         // --- User code (on_finish) ---
@@ -99,6 +111,7 @@ export function buildLocalFinishCallback({
         }` : ""}
         return true;
       } catch (error) {
+        _runtimeError(error, { source: 'session-completion' });
         console.error('[session-persistence] completion blocked; data remains recoverable', {
           experimentID: ${JSON.stringify(id)},
           sessionId: trialSessionId,

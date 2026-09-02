@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, vi } from "vitest";
 import type { TimelineItem } from "../../../pages/ExperimentBuilder/contexts/TrialsContext";
 import TrialsContext from "../../../pages/ExperimentBuilder/contexts/TrialsContext";
 import TrialsProvider from "../../../pages/ExperimentBuilder/providers/TrialsProvider";
-import { okJson } from "../../helpers/trialFactories";
+import { graphJson } from "../../helpers/trialFactories";
 
 export const API_URL = "http://localhost:3000";
 
@@ -45,7 +45,7 @@ export function queueFetchResponses(...responses: Response[]) {
 export async function renderLoadedProvider(
   initialTimeline: TimelineItem[] = [],
 ) {
-  queueFetchResponses(okJson({ timeline: initialTimeline }));
+  queueFetchResponses(graphJson(initialTimeline));
 
   const view = renderTrialsProvider();
 

@@ -6,6 +6,7 @@ import type { TimelineItem } from "../../../pages/ExperimentBuilder/contexts/Tri
 import TrialsContext from "../../../pages/ExperimentBuilder/contexts/TrialsContext";
 import TrialsProvider from "../../../pages/ExperimentBuilder/providers/TrialsProvider";
 import {
+  graphJson,
   notOkJson,
   okJson,
   timelineLoop,
@@ -49,7 +50,7 @@ function queueFetchResponses(...responses: Response[]) {
 }
 
 async function renderLoadedProvider(initialTimeline: TimelineItem[] = []) {
-  queueFetchResponses(okJson({ timeline: initialTimeline }));
+  queueFetchResponses(graphJson(initialTimeline));
 
   const view = renderTrialsProvider();
 
@@ -83,7 +84,7 @@ describe("TrialsProvider", () => {
 
     expect(view.getContext()?.timeline).toEqual(initialTimeline);
     expect(fetchMock()).toHaveBeenCalledWith(
-      `${API_URL}/api/trials-metadata/test-exp-123`,
+      `${API_URL}/api/experiment-graph/test-exp-123`,
     );
   });
 
@@ -98,18 +99,18 @@ describe("TrialsProvider", () => {
     });
     expect(view.getContext()?.timeline).toEqual([]);
     expect(console.error).toHaveBeenCalledWith(
-      "Error loading trials timeline:",
+      "Error loading experiment graph:",
       expect.any(Error),
     );
   });
 
   it("defaults omitted top-level and loop timelines to empty arrays", async () => {
-    queueFetchResponses(okJson({}));
+    queueFetchResponses(graphJson());
     const view = renderTrialsProvider();
 
     await waitFor(() => {
       expect(fetchMock()).toHaveBeenCalledWith(
-        `${API_URL}/api/trials-metadata/test-exp-123`,
+        `${API_URL}/api/experiment-graph/test-exp-123`,
       );
     });
     await act(async () => {
@@ -271,7 +272,7 @@ describe("TrialsProvider", () => {
       timelineTrial({ id: 2, name: "New Trial" }),
     ];
 
-    queueFetchResponses(okJson({ timeline: nextTimeline }));
+    queueFetchResponses(graphJson(nextTimeline));
 
     const result = await act(async () => {
       return view.getContext()?.updateTimeline(nextTimeline);

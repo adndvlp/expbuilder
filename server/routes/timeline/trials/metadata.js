@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { buildExperimentGraph } from "../graph/buildExperimentGraph.js";
 import { getExperimentDoc } from "./state.js";
 
 const router = Router();
@@ -13,28 +14,7 @@ router.get("/api/trials-metadata/:experimentID", async (req, res) => {
       return res.json({ timeline: [] });
     }
 
-    const timelineWithBranches = experimentDoc.timeline.map((item) => {
-      if (item.type === "trial") {
-        const trial = experimentDoc.trials.find((t) => t.id === item.id);
-        return {
-          id: item.id,
-          type: item.type,
-          name: item.name,
-          branches: trial?.branches || [],
-        };
-      }
-
-      const loop = experimentDoc.loops.find((l) => l.id === item.id);
-      return {
-        id: item.id,
-        type: item.type,
-        name: item.name,
-        branches: loop?.branches || [],
-        trials: loop?.trials || [],
-      };
-    });
-
-    res.json({ timeline: timelineWithBranches });
+    res.json({ timeline: buildExperimentGraph(experimentDoc).root.items });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

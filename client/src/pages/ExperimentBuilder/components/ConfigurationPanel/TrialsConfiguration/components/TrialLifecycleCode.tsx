@@ -6,6 +6,7 @@ import {
   generateOnLoadCode,
   generateOnStartCode,
 } from "../TrialCode/TrialCodeGenerators";
+import { toCodeIdentifier } from "../../../../utils/codegen/codeIdentifier";
 
 interface Props {
   onSave: (field: string, value: string) => unknown;
@@ -16,7 +17,7 @@ export default function TrialLifecycleCode({ onSave, trial }: Props) {
   const isTrialInLoop = !!trial?.parentLoopId;
   const getVarNameForTrial = (baseName: string): string => {
     if (!trial?.parentLoopId) return baseName;
-    const sanitized = String(trial.parentLoopId).replace(/[^a-zA-Z0-9_]/g, "_");
+    const sanitized = toCodeIdentifier(trial.parentLoopId);
     return `loop_${sanitized}_${baseName}`;
   };
 

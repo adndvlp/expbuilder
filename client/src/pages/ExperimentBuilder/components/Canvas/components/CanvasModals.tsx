@@ -1,9 +1,11 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { TimelineItem } from "../../../contexts/TrialsContext";
 import LoopRangeModal from "../../ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/LoopRangeModal";
 import AddTrialModal from "./AddTrialModal";
 import MoveItemModal from "./MoveItemModal";
 import { CanvasItemToMove } from "../hooks/useCanvasMoveActions";
+import LoopBranchLevelModal from "../features/loop-branching/LoopBranchLevelModal";
+import type { LoopBranchLevel } from "../features/loop-branching/types";
 
 type CanvasModalsProps = {
   timeline: TimelineItem[];
@@ -15,6 +17,11 @@ type CanvasModalsProps = {
   pendingParentId: string | number | null;
   onAddTrial: (addAsBranch: boolean) => Promise<void>;
   onCloseAddTrial: () => void;
+  showLoopBranchLevelModal: boolean;
+  loopBranchLevels: LoopBranchLevel[];
+  isCreatingLoopBranch: boolean;
+  onSelectLoopBranchLevel: (scopeId: string | null) => void | Promise<void>;
+  onCloseLoopBranchLevel: () => void;
   showMoveItemModal: boolean;
   itemToMove: CanvasItemToMove | null;
   onMoveItem: (
@@ -24,9 +31,28 @@ type CanvasModalsProps = {
   onCloseMoveItem: () => void;
 };
 
-function ModalOverlay({ children }: { children: ReactNode }) {
+function ModalOverlay({
+  children,
+  onClose,
+}: {
+  children: ReactNode;
+  onClose?: () => void;
+}) {
+  useEffect(() => {
+    if (!onClose) return undefined;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
     <div
+      data-testid="canvas-modal-overlay"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose?.();
+      }}
       style={{
         position: "fixed",
         top: 0,
@@ -55,6 +81,11 @@ export default function CanvasModals({
   pendingParentId,
   onAddTrial,
   onCloseAddTrial,
+  showLoopBranchLevelModal,
+  loopBranchLevels,
+  isCreatingLoopBranch,
+  onSelectLoopBranchLevel,
+  onCloseLoopBranchLevel,
   showMoveItemModal,
   itemToMove,
   onMoveItem,
@@ -83,7 +114,7 @@ export default function CanvasModals({
   return (
     <>
       {showLoopModal && (
-        <ModalOverlay>
+        <ModalOverlay onClose={onCloseLoop}>
           <LoopRangeModal
             timeline={timeline}
             onConfirm={onAddLoop}
@@ -94,7 +125,7 @@ export default function CanvasModals({
       )}
 
       {showAddTrialModal && (
-        <ModalOverlay>
+        <ModalOverlay onClose={onCloseAddTrial}>
           <AddTrialModal
             onConfirm={onAddTrial}
             onClose={onCloseAddTrial}
@@ -105,8 +136,27 @@ export default function CanvasModals({
         </ModalOverlay>
       )}
 
+      {showLoopBranchLevelModal && (
+        <ModalOverlay
+          onClose={
+            isCreatingLoopBranch ? undefined : onCloseLoopBranchLevel
+          }
+        >
+          <LoopBranchLevelModal
+            sourceName={
+              timeline.find((item) => item.id === pendingParentId)?.name ??
+              "the selected trial"
+            }
+            levels={loopBranchLevels}
+            isSubmitting={isCreatingLoopBranch}
+            onConfirm={onSelectLoopBranchLevel}
+            onClose={onCloseLoopBranchLevel}
+          />
+        </ModalOverlay>
+      )}
+
       {showMoveItemModal && itemToMove && (
-        <ModalOverlay>
+        <ModalOverlay onClose={onCloseMoveItem}>
           <MoveItemModal
             onConfirm={onMoveItem}
             onClose={onCloseMoveItem}
