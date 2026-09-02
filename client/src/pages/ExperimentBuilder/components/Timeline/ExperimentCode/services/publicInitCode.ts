@@ -67,7 +67,7 @@ export function publicInitCode(options: PublicExperimentCodeOptions): string {
         data.experimentID = "${experimentID}";
         if (data.builder_id !== undefined && data.builder_id !== null) {
           localStorage.setItem(
-            'jsPsych_resumeTrial',
+            _publicStorageKeys.resumeTrial,
             JSON.stringify(_createResumeCheckpoint(data))
           );
         }

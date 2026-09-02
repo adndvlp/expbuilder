@@ -111,9 +111,9 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
         // Cancel only after the durable completed state was confirmed.
         sessionRef.onDisconnect().cancel();
         window.ExpBuilderNavigation.clearTransientState();
-        localStorage.removeItem('jsPsych_currentSessionId');
-        localStorage.removeItem('jsPsych_participantNumber');
-        sessionStorage.removeItem('jsPsych_captchaPassed');
+        localStorage.removeItem(_publicStorageKeys.sessionId);
+        localStorage.removeItem(_publicStorageKeys.participant);
+        sessionStorage.removeItem(_publicStorageKeys.captchaPassed);
 
         // --- Recruitment platform redirect ---
         ${

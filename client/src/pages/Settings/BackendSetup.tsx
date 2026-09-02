@@ -41,7 +41,6 @@ export default function BackendSetup() {
   const [token, setToken] = useState("");
   const [loginUrl, setLoginUrl] = useState("");
   const [loginCode, setLoginCode] = useState("");
-  const [loginId, setLoginId] = useState("");
   const [projectId, setProjectId] = useState("");
   const [projectMode, setProjectMode] = useState<"create" | "use">("create");
   const [projectDone, setProjectDone] = useState(false);
@@ -90,7 +89,6 @@ export default function BackendSetup() {
     try {
       const { id } = await window.electron!.startBackendSetup(["login:ci"]);
       loginIdRef.current = id;
-      setLoginId(id);
       setLogs("$ firebase login:ci\n");
       const data = await new Promise<ExitData>((resolve) =>
         exitListeners.current.set(id, resolve),

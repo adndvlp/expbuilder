@@ -171,6 +171,7 @@ test("inserting another loop trial never reconnects an unrelated sibling", async
     sourceTrialId: 8,
     targetScopeId: "loop_4",
     mode: "parallel",
+    expectedRevision: "visual-regression",
   });
   await expect(edge(source, created)).toHaveCount(1);
   await expect(edge(exitSource, exit)).toHaveCount(1);

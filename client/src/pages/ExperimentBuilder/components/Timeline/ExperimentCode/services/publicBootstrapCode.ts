@@ -3,6 +3,7 @@ import {
   activateResumeRouteDecisionCode,
   resumeJumpStartupCode,
 } from "./resumeJumpStartupCode";
+import { getPublicRuntimeStorageKeys } from "./publicRuntimeStorageKeys";
 
 export function publicBootstrapCode(
   options: PublicExperimentCodeOptions,
@@ -45,20 +46,21 @@ export function publicBootstrapCode(
     progressBar,
     baseCode,
   ];
+  const storageKeys = getPublicRuntimeStorageKeys(experimentID);
   return `
   (async () => {
     // --- CAPTCHA gate (hCaptcha / reCAPTCHA) ---
     // Se omite en recargas por jump (sessionStorage persiste entre reloads del mismo tab)
-    if (${captchaConfig.enabled} && "${captchaConfig.siteKey}" && !sessionStorage.getItem('jsPsych_captchaPassed')) {
+    if (${captchaConfig.enabled} && "${captchaConfig.siteKey}" && !sessionStorage.getItem(_publicStorageKeys.captchaPassed)) {
       const _loadingEl = document.getElementById('jspsych-loading-overlay');
       if (_loadingEl) _loadingEl.style.display = 'none';
       await _showCaptchaGate("${captchaConfig.siteKey}", "${captchaConfig.provider}");
-      sessionStorage.setItem('jsPsych_captchaPassed', '1');
+      sessionStorage.setItem(_publicStorageKeys.captchaPassed, '1');
       if (_loadingEl) _loadingEl.style.display = 'flex';
       _setLoadingMsg('Creating session\u2026');
     }
 
-${resumeJumpStartupCode()}
+${resumeJumpStartupCode(storageKeys.resumeTrial)}
     
     // --- Configuración de Batching (cargada desde Firestore) ---
     const BATCH_CONFIG = {
@@ -106,8 +108,8 @@ ${resumeJumpStartupCode()}
     }
 
     // Guardar sessionId y participantNumber en localStorage para futuras retomas
-    localStorage.setItem('jsPsych_currentSessionId', trialSessionId);
-    localStorage.setItem('jsPsych_participantNumber', participantNumber.toString());
+    localStorage.setItem(_publicStorageKeys.sessionId, trialSessionId);
+    localStorage.setItem(_publicStorageKeys.participant, participantNumber.toString());
 
     if (typeof participantNumber !== "number" || isNaN(participantNumber)) {
       alert("The participant number is not assigned. Please, wait.");

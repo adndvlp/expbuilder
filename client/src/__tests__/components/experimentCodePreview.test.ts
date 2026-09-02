@@ -23,11 +23,17 @@ describe("getInitJsPsychPreview helpers", () => {
       "window.publicReady = true;",
     );
 
-    expect(local).toContain("// --- Your code (runs here, before initJsPsych) ---");
+    expect(local).toContain(
+      "// --- Your code (runs here, before initJsPsych) ---",
+    );
     expect(local).toContain("window.localReady = true;");
     expect(local).toContain("const localOutbox = _createLocalOutbox");
-    expect(local).toContain("await localOutbox.initialize(persistedEventCount)");
+    expect(local).toContain(
+      "await localOutbox.initialize(persistedEventCount)",
+    );
     expect(publicPreview).toContain("const pendingBatchSaves = [];");
+    expect(publicPreview).toContain("expbuilder:public:exp-1:session-id");
+    expect(publicPreview).toContain("expbuilder:public:exp-1:trials-v1");
     expect(publicPreview).toContain("const _prolificPID");
     expect(publicPreview).toContain("window.publicReady = true;");
   });
@@ -38,11 +44,9 @@ describe("getInitJsPsychPreview helpers", () => {
     expect(code).toContain("const jsPsych = initJsPsych({");
     expect(code).toContain("show_progress_bar: true,");
     expect(code).toContain("localOutbox.enqueue(data)");
-    expect(code).toMatch(
-      /localStorage\.setItem\(\s*_sessionKeys\.resumeTrial/,
-    );
+    expect(code).toMatch(/localStorage\.setItem\(\s*_sessionKeys\.resumeTrial/);
     expect(code).toContain("socket.emit('update-session-state'");
-    expect(code).toContain("await fetch(\"/api/complete-session/exp-1\"");
+    expect(code).toContain('await fetch("/api/complete-session/exp-1"');
     expect(code).toContain("completeBody.storedEventCount !== stats.total");
     expect(code).toContain("stats.pending !== 0");
   });
@@ -96,13 +100,19 @@ describe("getInitJsPsychPreview helpers", () => {
       "exp-4",
       "data.publicExtra = true;",
     );
-    const onFinish = getPublicOnFinishPreview("exp-4", "window.finished = true;");
+    const onFinish = getPublicOnFinishPreview(
+      "exp-4",
+      "window.finished = true;",
+    );
 
     expect(onTrialStart).toContain("trial.flag = 1;");
     expect(onDataUpdate).toContain("data.publicExtra = true;");
     expect(onDataUpdate).toContain("data.clientTimestamp = Date.now();");
+    expect(onDataUpdate).toContain("_publicStorageKeys.resumeTrial");
     expect(onDataUpdate).toContain("await TrialDB.add(data);");
     expect(onFinish).toContain("window.finished = true;");
     expect(onFinish).toContain("await TrialDB.clear();");
+    expect(onFinish).toContain("_publicStorageKeys.sessionId");
+    expect(onFinish).toContain("_publicStorageKeys.captchaPassed");
   });
 });
