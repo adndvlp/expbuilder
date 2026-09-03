@@ -6,6 +6,8 @@ import { jest } from '@jest/globals'
 import { chromium } from '../client/node_modules/@playwright/test/index.js'
 import {
   CLIENT_DIR,
+  DATABASE_EMULATOR_PORT,
+  DATABASE_EMULATOR_URL,
   getUserDoc,
   PROJECT_ID,
   providerEnv,
@@ -75,6 +77,7 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
     await waitForFunctionsReady(emulator.getLog)
     await waitForPort(9099)
     await waitForPort(8080)
+    await waitForPort(DATABASE_EMULATOR_PORT)
 
     const dbRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'exp-browser-e2e-'))
     serverProc = spawn('node', [
@@ -96,6 +99,7 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
         VITE_DROPBOX_CLIENT_ID: 'e2e-db-client',
         VITE_GOOGLE_DRIVE_CLIENT_ID: 'e2e-gd-client',
         VITE_OSF_CLIENT_ID: 'e2e-osf-client',
+        VITE_FIREBASE_DATABASE_URL: DATABASE_EMULATOR_URL,
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     })

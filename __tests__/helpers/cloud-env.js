@@ -6,6 +6,9 @@ import path from 'path'
 export const PROJECT_ID = 'test-e4cf9'
 export const API_DIR = path.resolve(process.cwd(), 'api')
 export const CLIENT_DIR = path.resolve(process.cwd(), 'client')
+export const DATABASE_EMULATOR_PORT = 9000
+export const DATABASE_EMULATOR_URL =
+  `http://127.0.0.1:${DATABASE_EMULATOR_PORT}?ns=${PROJECT_ID}`
 
 export function nodeCompatBin() {
   const major = Number(process.versions.node.split('.')[0])
@@ -37,7 +40,7 @@ export function startEmulators(extraEnv = {}) {
     'firebase',
     'emulators:start',
     '--only',
-    'auth,firestore,functions',
+    'auth,firestore,functions,database',
     '--project',
     PROJECT_ID,
   ], {

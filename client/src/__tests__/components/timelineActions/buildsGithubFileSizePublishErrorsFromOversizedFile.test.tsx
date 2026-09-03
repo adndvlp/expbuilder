@@ -32,7 +32,10 @@ describe("PublishExperiment", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     globalThis.fetch = vi.fn() as unknown as typeof fetch;
-    (auth as any).currentUser = { uid: "user-123" };
+    (auth as any).currentUser = {
+      uid: "user-123",
+      getIdToken: vi.fn(async () => "firebase-id-token"),
+    };
   });
 
   afterEach(() => {

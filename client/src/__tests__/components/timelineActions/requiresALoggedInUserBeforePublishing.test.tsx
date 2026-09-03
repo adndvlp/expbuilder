@@ -34,7 +34,10 @@ describe("PublishExperiment", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     globalThis.fetch = vi.fn() as unknown as typeof fetch;
-    (auth as any).currentUser = { uid: "user-123" };
+    (auth as any).currentUser = {
+      uid: "user-123",
+      getIdToken: vi.fn(async () => "firebase-id-token"),
+    };
   });
 
   afterEach(() => {
@@ -164,7 +167,10 @@ describe("PublishExperiment", () => {
       `${API_URL}/api/publish-experiment/exp-123`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: "Bearer firebase-id-token",
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           uid: "user-123",
           storage: "googledrive",

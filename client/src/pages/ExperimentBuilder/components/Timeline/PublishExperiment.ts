@@ -132,6 +132,12 @@ export default function PublishExperiment({
     let keepPublishStatus = false;
 
     try {
+      const firebaseUser = auth.currentUser;
+      if (!firebaseUser || firebaseUser.uid !== uid) {
+        throw new Error("User not logged in");
+      }
+      const idToken = await firebaseUser.getIdToken();
+
       // Generar código público para GitHub Pages con el storage seleccionado
       const generatedPublicCode = await generateExperiment(selectedStorage);
 
@@ -145,7 +151,10 @@ export default function PublishExperiment({
         `${API_URL}/api/publish-experiment/${experimentID}`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({
             uid,
             storage: selectedStorage,

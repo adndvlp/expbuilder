@@ -3,7 +3,7 @@ import { nextId, store } from "../store.mjs";
 
 const USERNAME = "mock-researcher";
 
-export async function handleGithub(req, res, url, body) {
+export async function handleGithub(req, res, url, body, pagesOrigin) {
   const { pathname } = url;
 
   if (pathname === "/login/oauth/access_token" && req.method === "POST") {
@@ -99,7 +99,7 @@ export async function handleGithub(req, res, url, body) {
       }
       const pages = {
         status: "built",
-        html_url: `https://${owner}.github.io/${repoName}/`,
+        html_url: `${pagesOrigin}/${owner}/${repoName}/`,
       };
       store.github.pages.set(key, pages);
       sendJson(res, 201, pages);

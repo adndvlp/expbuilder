@@ -1,18 +1,26 @@
 import http from "http";
 import { readBody } from "./http-utils.mjs";
 import { handleGithub } from "./providers/github.mjs";
+import { handleGithubPages } from "./providers/github-pages.mjs";
 import { handleDropbox } from "./providers/dropbox.mjs";
 import { handleGoogleDrive } from "./providers/google-drive.mjs";
 import { handleOsf } from "./providers/osf.mjs";
 import { resetStore } from "./store.mjs";
 
 const BASE_PORT = Number(process.env.MOCK_PROVIDERS_BASE_PORT ?? 4010);
+const origin = (port) => `http://127.0.0.1:${port}`;
+const GITHUB_PAGES_ORIGIN = origin(BASE_PORT + 4);
 
 const PROVIDERS = [
-  { name: "github", port: BASE_PORT, handler: handleGithub },
+  {
+    name: "github",
+    port: BASE_PORT,
+    handler: (req, res, url, body) => handleGithub(req, res, url, body, GITHUB_PAGES_ORIGIN),
+  },
   { name: "dropbox", port: BASE_PORT + 1, handler: handleDropbox },
   { name: "google-drive", port: BASE_PORT + 2, handler: handleGoogleDrive },
   { name: "osf", port: BASE_PORT + 3, handler: handleOsf },
+  { name: "github-pages", port: BASE_PORT + 4, handler: handleGithubPages },
 ];
 
 function onRequest(handler) {
@@ -43,7 +51,6 @@ export function startMockProviders() {
 }
 
 export function mockProviderUrls(basePort = BASE_PORT) {
-  const origin = (port) => `http://127.0.0.1:${port}`;
   return {
     GITHUB_API_BASE: origin(basePort),
     GITHUB_OAUTH_TOKEN_URL: `${origin(basePort)}/login/oauth/access_token`,
@@ -55,6 +62,7 @@ export function mockProviderUrls(basePort = BASE_PORT) {
     OSF_API_BASE: origin(basePort + 3),
     OSF_TOKEN_URL: `${origin(basePort + 3)}/oauth2/token`,
     OSF_AUTHORIZE_URL: origin(basePort + 3),
+    GITHUB_PAGES_BASE: origin(basePort + 4),
   };
 }
 

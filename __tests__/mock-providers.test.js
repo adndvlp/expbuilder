@@ -25,7 +25,9 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  for (const server of servers) server.close()
+  await Promise.all(servers.map((server) => new Promise((resolve, reject) => {
+    server.close((error) => error ? reject(error) : resolve())
+  })))
 })
 
 describe('mock providers', () => {
@@ -53,14 +55,19 @@ describe('mock providers', () => {
       headers: { ...auth, 'Content-Type': 'application/json' },
       body: JSON.stringify({ source: { branch: 'main', path: '/' } }),
     }), 201)).json()
-    expect(pages.html_url).toBe('https://mock-researcher.github.io/exp-1/')
+    expect(pages.html_url).toBe(`${urls.GITHUB_PAGES_BASE}/mock-researcher/exp-1/`)
 
     await expectStatus(await fetch(`${urls.GITHUB_API_BASE}/repos/mock-researcher/exp-1/pages`, { headers: auth }), 200)
+    const publishedHtml = '<!doctype html>\n<html>\n  <body>captured exactly ✓</body>\n</html>\n'
     await expectStatus(await fetch(`${urls.GITHUB_API_BASE}/repos/mock-researcher/exp-1/contents/index.html`, {
       method: 'PUT',
       headers: { ...auth, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: 'publish', content: 'aGVsbG8=' }),
+      body: JSON.stringify({ message: 'publish', content: Buffer.from(publishedHtml).toString('base64') }),
     }), 201)
+
+    const publishedPage = await expectStatus(await fetch(pages.html_url), 200)
+    expect(publishedPage.headers.get('content-type')).toBe('text/html; charset=utf-8')
+    expect(Buffer.from(await publishedPage.arrayBuffer())).toEqual(Buffer.from(publishedHtml))
     await expectStatus(await fetch(`${urls.GITHUB_API_BASE}/repos/mock-researcher/exp-1/branches/main`, { headers: auth }), 200)
   })
 

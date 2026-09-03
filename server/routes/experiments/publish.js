@@ -119,11 +119,12 @@ function collectMediaFiles(experimentName) {
   return { mediaFiles, oversizedFiles };
 }
 
-async function publishToGithub(payload) {
+async function publishToGithub(payload, authorization) {
   const githubUrl = `${process.env.FIREBASE_URL}/publishExperiment`;
   const githubResponse = await fetch(githubUrl, {
     method: "POST",
     headers: {
+      ...(authorization ? { Authorization: authorization } : {}),
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
@@ -220,16 +221,19 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     const htmlContent = $.html();
 
     try {
-      const githubData = await publishToGithub({
-        uid,
-        repoName: sanitizedRepoName,
-        htmlContent,
-        description: `Experiment: ${experiment.name}`,
-        isPrivate: false,
-        mediaFiles: mediaFiles.length > 0 ? mediaFiles : undefined,
-        experimentID,
-        storageProvider: normalizedStorage,
-      });
+      const githubData = await publishToGithub(
+        {
+          uid,
+          repoName: sanitizedRepoName,
+          htmlContent,
+          description: `Experiment: ${experiment.name}`,
+          isPrivate: false,
+          mediaFiles: mediaFiles.length > 0 ? mediaFiles : undefined,
+          experimentID,
+          storageProvider: normalizedStorage,
+        },
+        req.get("authorization"),
+      );
 
       if (githubData.success) {
         console.log(
