@@ -1,4 +1,4 @@
-import { spawn } from 'child_process'
+import { spawn, spawnSync } from 'child_process'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -29,7 +29,28 @@ export function nodeCompatBin() {
   return candidates[0] ?? null
 }
 
+function javaMajorVersion() {
+  const result = spawnSync('java', ['-version'], { encoding: 'utf8' })
+  const output = `${result.stdout ?? ''}${result.stderr ?? ''}`
+  if (result.error || result.status !== 0) {
+    return { major: 0, output: output.trim() || result.error?.message || 'java not found' }
+  }
+  const legacy = output.match(/version "1\.(\d+)/)
+  if (legacy) return { major: Number(legacy[1]), output }
+  const modern = output.match(/version "(\d+)/)
+  return { major: modern ? Number(modern[1]) : 0, output }
+}
+
+function assertJavaForEmulators() {
+  const { major, output } = javaMajorVersion()
+  if (major >= 21) return
+  throw new Error(
+    `Firebase emulators need JDK 21 or newer. Found: ${output.trim() || 'no java'}`,
+  )
+}
+
 export function startEmulators(extraEnv = {}) {
+  assertJavaForEmulators()
   const compatBin = nodeCompatBin()
   const env = {
     ...process.env,
