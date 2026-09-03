@@ -47,32 +47,26 @@ test("[RUNTIME-BRANCH-JUMP] chains an authored branch into a root jump without r
   await runtime.choose("Jump");
   await expect(runtime.trial("branch-jump-target")).toBeVisible();
   const jumpSessionId = await runtime.sessionId();
-  expect(jumpSessionId).not.toBe(branchSessionId);
+  expect(jumpSessionId).toBe(branchSessionId);
   await runtime.continue();
   await expect(runtime.trial("branch-jump-trigger")).toBeVisible();
   await runtime.choose("Continue");
   await expect(page.getByText("Experiment complete. Thank you!")).toBeVisible();
 
-  const beforeJump = await loadPersistedSession(
+  const persisted = await loadPersistedSession(
     author.experimentId,
     branchSessionId,
   );
-  expect(builderIds(beforeJump.session.data)).toEqual([
+  expect(builderIds(persisted.session.data)).toEqual([
     author.id("branch-jump-source"),
     author.id("branch-jump-trigger"),
-  ].map(String));
-  const afterJump = await loadPersistedSession(author.experimentId, jumpSessionId);
-  expect(builderIds(afterJump.session.data)).toEqual([
     author.id("branch-jump-target"),
     author.id("branch-jump-trigger"),
   ].map(String));
-  expect(builderIds(afterJump.session.data)).not.toContain(
-    String(author.id("branch-jump-source")),
-  );
   await runtime.assertNoRuntimeFailures();
 });
 
-test("[RUNTIME-LOOP-EXIT-JUMP] chains a loop exit into a root jump and persists each execution segment once", async ({
+test("[RUNTIME-LOOP-EXIT-JUMP] chains a loop exit into a root jump in one persisted session", async ({
   page,
 }) => {
   const author = new ScenarioAuthor(runtimeApiBaseUrl);
@@ -122,22 +116,19 @@ test("[RUNTIME-LOOP-EXIT-JUMP] chains a loop exit into a root jump and persists 
   await runtime.choose("Jump");
   await expect(runtime.trial("exit-jump-target")).toBeVisible();
   const jumpSessionId = await runtime.sessionId();
-  expect(jumpSessionId).not.toBe(exitSessionId);
+  expect(jumpSessionId).toBe(exitSessionId);
   await runtime.continue();
   await expect(runtime.trial("exit-jump-trigger")).toBeVisible();
   await runtime.choose("Continue");
   await expect(page.getByText("Experiment complete. Thank you!")).toBeVisible();
 
-  const beforeJump = await loadPersistedSession(
+  const persisted = await loadPersistedSession(
     author.experimentId,
     exitSessionId,
   );
-  expect(builderIds(beforeJump.session.data)).toEqual([
+  expect(builderIds(persisted.session.data)).toEqual([
     author.id("exit-jump-source"),
     author.id("exit-jump-trigger"),
-  ].map(String));
-  const afterJump = await loadPersistedSession(author.experimentId, jumpSessionId);
-  expect(builderIds(afterJump.session.data)).toEqual([
     author.id("exit-jump-target"),
     author.id("exit-jump-trigger"),
   ].map(String));

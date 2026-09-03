@@ -185,34 +185,41 @@ ${buildLocalOutboxDatabaseCode()}
     }
 
     async function enqueue(payload) {
-      const sequence = nextSequence;
-      nextSequence += 1;
-      const now = new Date().toISOString();
-      const eventId = sessionId + ':' + sequence;
-      const record = {
-        key: experimentID + '::' + sessionId + '::' + sequence,
-        experimentID: experimentID,
-        sessionId: sessionId,
-        eventId: eventId,
-        sequence: sequence,
-        payload: payload,
-        status: 'pending',
-        attempts: 0,
-        createdAt: now,
-        updatedAt: now
-      };
-      unsavedRecords.set(record.key, record);
-      const queued = enqueueTail.then(async function() {
-        await saveUnsavedRecords();
-      });
-      enqueueTail = queued.catch(function() { return undefined; });
+      const persistenceToken = window.ExpBuilderPersistence?.start?.();
       try {
-        await queued;
-      } catch (error) {
-        scheduleRetry();
-        throw error;
+        const sequence = nextSequence;
+        nextSequence += 1;
+        const now = new Date().toISOString();
+        const eventId = sessionId + ':' + sequence;
+        const record = {
+          key: experimentID + '::' + sessionId + '::' + sequence,
+          experimentID: experimentID,
+          sessionId: sessionId,
+          eventId: eventId,
+          sequence: sequence,
+          payload: payload,
+          status: 'pending',
+          attempts: 0,
+          createdAt: now,
+          updatedAt: now
+        };
+        unsavedRecords.set(record.key, record);
+        const queued = enqueueTail.then(async function() {
+          await saveUnsavedRecords();
+        });
+        enqueueTail = queued.catch(function() { return undefined; });
+        try {
+          await queued;
+        } catch (error) {
+          scheduleRetry();
+          throw error;
+        }
+        return await flush();
+      } finally {
+        if (persistenceToken) {
+          window.ExpBuilderPersistence?.finish?.(persistenceToken);
+        }
       }
-      return flush();
     }
 
     async function stats() {

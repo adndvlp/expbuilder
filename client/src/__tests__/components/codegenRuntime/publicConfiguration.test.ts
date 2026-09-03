@@ -45,8 +45,8 @@ describe("PublicConfigurationHarness", () => {
   }
 
   it("falls back to default public settings when Firestore config loading fails", async () => {
-    const consoleError = vi
-      .spyOn(console, "error")
+    const consoleWarn = vi
+      .spyOn(console, "warn")
       .mockImplementation(() => {});
     mocks.firestoreGetDoc.mockRejectedValueOnce(new Error("load failed"));
     vi.stubGlobal(
@@ -62,8 +62,8 @@ describe("PublicConfigurationHarness", () => {
 
     const code = normalize(await generateExperiment());
 
-    expect(consoleError).toHaveBeenCalledWith(
-      "Error loading batch config:",
+    expect(consoleWarn).toHaveBeenCalledWith(
+      "Error loading batch config; using defaults:",
       expect.any(Error),
     );
     expect(code).toContain("jsPsych.run(timeline);");

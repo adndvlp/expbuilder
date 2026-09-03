@@ -114,7 +114,7 @@ export default function PublicConfiguration({
         }
       }
     } catch (error) {
-      console.error("Error loading batch config:", error);
+      console.warn("Error loading batch config; using defaults:", error);
       // Continuar con valores por defecto
     }
 

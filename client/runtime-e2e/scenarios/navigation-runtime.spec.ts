@@ -3,6 +3,7 @@ import { ScenarioAuthor } from "../authoring/ScenarioAuthor";
 import { RuntimeObserver } from "../runtime/RuntimeObserver";
 import {
   builderIds,
+  localRuntimeStorageKeys,
   loadPersistedSession,
   runtimeApiBaseUrl,
 } from "../support/session";
@@ -121,6 +122,7 @@ test("[RUNTIME-RESUME-BRANCH] [TRES-02] [TRES-09] resumes the resolved route wit
 
   const artifact = await author.compileAndBuild();
   const runtime = new RuntimeObserver(page);
+  const storageKeys = localRuntimeStorageKeys(author.experimentId);
   await page.goto(artifact.experimentUrl);
 
   await expect(runtime.trial("resume-source")).toBeVisible();
@@ -128,8 +130,10 @@ test("[RUNTIME-RESUME-BRANCH] [TRES-02] [TRES-09] resumes the resolved route wit
   await expect(runtime.trial("resume-override")).toBeVisible();
   const originalSessionId = await runtime.sessionId();
   await runtime.waitForPersistence();
-  const checkpoint = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("jsPsych_resumeTrial") ?? "null"),
+  const checkpoint = await page.evaluate(
+    (resumeTrialKey) =>
+      JSON.parse(localStorage.getItem(resumeTrialKey) ?? "null"),
+    storageKeys.resumeTrial,
   );
   expect(checkpoint).toEqual({
     version: 1,
@@ -195,23 +199,23 @@ test("[RUNTIME-RESUME-BRANCH] [TRES-02] [TRES-09] resumes the resolved route wit
     String(author.id("resume-target")),
   ]);
   expect(
-    await page.evaluate(() => ({
-      checkpoint: localStorage.getItem("jsPsych_resumeTrial"),
-      currentSession: localStorage.getItem("jsPsych_currentSessionId"),
-      participant: localStorage.getItem("jsPsych_participantNumber"),
-      jumpRequest: localStorage.getItem("jsPsych_jumpRequest"),
-      legacyJumpTarget: localStorage.getItem("jsPsych_jumpToTrial"),
-      jumpReload: sessionStorage.getItem("jsPsych_jumpReload"),
-      legacyJumpContext: sessionStorage.getItem("jsPsych_jumpContext"),
-    })),
+    await page.evaluate((keys) => ({
+      checkpoint: localStorage.getItem(keys.resumeTrial),
+      currentSession: localStorage.getItem(keys.sessionId),
+      participant: localStorage.getItem(keys.participant),
+      jumpRequest: localStorage.getItem(keys.jumpRequest),
+      jumpTarget: localStorage.getItem(keys.jumpTarget),
+      jumpReload: sessionStorage.getItem(keys.jumpReload),
+      jumpContext: sessionStorage.getItem(keys.jumpContext),
+    }), storageKeys),
   ).toEqual({
     checkpoint: null,
     currentSession: null,
     participant: null,
     jumpRequest: null,
-    legacyJumpTarget: null,
+    jumpTarget: null,
     jumpReload: null,
-    legacyJumpContext: null,
+    jumpContext: null,
   });
   await runtime.assertNoRuntimeFailures();
 });
@@ -232,6 +236,7 @@ test("[RUNTIME-RESUME-SEQUENTIAL] [TRES-01] resumes after a completed root trial
 
   const artifact = await author.compileAndBuild();
   const runtime = new RuntimeObserver(page);
+  const storageKeys = localRuntimeStorageKeys(author.experimentId);
   await page.goto(artifact.experimentUrl);
 
   await expect(runtime.trial("resume-first")).toBeVisible();
@@ -240,8 +245,10 @@ test("[RUNTIME-RESUME-SEQUENTIAL] [TRES-01] resumes after a completed root trial
   const sessionId = await runtime.sessionId();
   await runtime.waitForPersistence();
   expect(
-    await page.evaluate(() =>
-      JSON.parse(localStorage.getItem("jsPsych_resumeTrial") ?? "null"),
+    await page.evaluate(
+      (resumeTrialKey) =>
+        JSON.parse(localStorage.getItem(resumeTrialKey) ?? "null"),
+      storageKeys.resumeTrial,
     ),
   ).toEqual({
     version: 1,

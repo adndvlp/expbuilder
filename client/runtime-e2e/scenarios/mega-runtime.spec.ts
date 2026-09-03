@@ -146,7 +146,7 @@ test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, re
 
   await expect(runtime.trial("mega-jump-target")).toBeVisible();
   const postJumpSessionId = await runtime.sessionId();
-  expect(postJumpSessionId).not.toBe(preJumpSessionId);
+  expect(postJumpSessionId).toBe(preJumpSessionId);
   await runtime.continue();
   await expect(runtime.trial("mega-exit-target")).toBeVisible();
   await runtime.choose("Continue");
@@ -158,11 +158,11 @@ test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, re
   await runtime.continue();
   await expect(page.getByText("Experiment complete. Thank you!")).toBeVisible();
 
-  const beforeJump = await loadPersistedSession(
+  const persisted = await loadPersistedSession(
     author.experimentId,
     preJumpSessionId,
   );
-  expect(builderIds(beforeJump.session.data)).toEqual([
+  expect(builderIds(persisted.session.data)).toEqual([
     "mega-conditional-source",
     "mega-conditional-target",
     "mega-conditional-source",
@@ -170,12 +170,6 @@ test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, re
     "mega-moved-trial",
     "mega-exit-source",
     "mega-exit-target",
-  ].map((alias) => String(author.id(alias))));
-  const afterJump = await loadPersistedSession(
-    author.experimentId,
-    postJumpSessionId,
-  );
-  expect(builderIds(afterJump.session.data)).toEqual([
     "mega-jump-target",
     "mega-exit-target",
     "mega-after-jump",

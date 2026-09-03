@@ -75,7 +75,9 @@
     "pretest": "npm --prefix client exec -- playwright install chromium || echo 'Playwright browsers skipped'",
     "lint": "eslint .",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
-    "test:e2e:cloud": "RUN_CLOUD_E2E=1 node --experimental-vm-modules node_modules/jest/bin/jest.js __tests__/provider-cloud.e2e.test.js --runInBand --forceExit",
+    "test:e2e:cloud": "node scripts/run-cloud-e2e.mjs",
+    "test:e2e:cloud:providers": "node scripts/run-cloud-e2e.mjs providers",
+    "test:e2e:cloud:browser": "node scripts/run-cloud-e2e.mjs browser",
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"
   },
   "jest": {

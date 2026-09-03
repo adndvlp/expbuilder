@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { ScenarioAuthor } from "../authoring/ScenarioAuthor";
 import { RuntimeObserver } from "../runtime/RuntimeObserver";
-import { runtimeApiBaseUrl } from "../support/session";
+import {
+  localRuntimeStorageKeys,
+  runtimeApiBaseUrl,
+} from "../support/session";
 
 test("[RUNTIME-JUMP-INVALID] [TJ-05] [TJ-08] invalid addresses and stalled progress terminate without reload loops", async ({
   page,
@@ -17,17 +20,18 @@ test("[RUNTIME-JUMP-INVALID] [TJ-05] [TJ-08] invalid addresses and stalled progr
 
   const artifact = await author.compileAndBuild();
   const runtime = new RuntimeObserver(page);
+  const storageKeys = localRuntimeStorageKeys(author.experimentId);
   await page.goto(artifact.experimentUrl);
   await expect(runtime.trial("invalid-jump-first")).toBeVisible();
 
-  await page.evaluate(() => {
+  await page.evaluate((keys) => {
     const manifest = (
       window as Window & {
         ExpBuilderExecutionAddresses: { revision: string };
       }
     ).ExpBuilderExecutionAddresses;
     localStorage.setItem(
-      "jsPsych_jumpRequest",
+      keys.jumpRequest,
       JSON.stringify({
         version: 2,
         experimentRevision: manifest.revision,
@@ -44,25 +48,25 @@ test("[RUNTIME-JUMP-INVALID] [TJ-05] [TJ-08] invalid addresses and stalled progr
         context: { navigationKind: "jump" },
       }),
     );
-    sessionStorage.setItem("jsPsych_jumpReload", "1");
-  });
+    sessionStorage.setItem(keys.jumpReload, "1");
+  }, storageKeys);
   await page.reload();
 
   await expect(page.getByText("Experiment complete. Thank you!")).toBeVisible();
   await expect(runtime.trial("invalid-jump-first")).toHaveCount(0);
   await expect(runtime.trial("invalid-jump-second")).toHaveCount(0);
   expect(
-    await page.evaluate(() => ({
-      jumpRequest: localStorage.getItem("jsPsych_jumpRequest"),
-      legacyJumpTarget: localStorage.getItem("jsPsych_jumpToTrial"),
-      jumpReload: sessionStorage.getItem("jsPsych_jumpReload"),
-      legacyJumpContext: sessionStorage.getItem("jsPsych_jumpContext"),
-    })),
+    await page.evaluate((keys) => ({
+      jumpRequest: localStorage.getItem(keys.jumpRequest),
+      jumpTarget: localStorage.getItem(keys.jumpTarget),
+      jumpReload: sessionStorage.getItem(keys.jumpReload),
+      jumpContext: sessionStorage.getItem(keys.jumpContext),
+    }), storageKeys),
   ).toEqual({
     jumpRequest: null,
-    legacyJumpTarget: null,
+    jumpTarget: null,
     jumpReload: null,
-    legacyJumpContext: null,
+    jumpContext: null,
   });
   expect((await runtime.snapshot()).events).toContainEqual(
     expect.objectContaining({
@@ -74,7 +78,7 @@ test("[RUNTIME-JUMP-INVALID] [TJ-05] [TJ-08] invalid addresses and stalled progr
 
   await page.goto(artifact.experimentUrl);
   await expect(runtime.trial("invalid-jump-first")).toBeVisible();
-  await page.evaluate((targetId) => {
+  await page.evaluate(({ keys, targetId }) => {
     const manifest = (
       window as Window & {
         ExpBuilderExecutionAddresses: {
@@ -84,7 +88,7 @@ test("[RUNTIME-JUMP-INVALID] [TJ-05] [TJ-08] invalid addresses and stalled progr
       }
     ).ExpBuilderExecutionAddresses;
     localStorage.setItem(
-      "jsPsych_jumpRequest",
+      keys.jumpRequest,
       JSON.stringify({
         version: 2,
         experimentRevision: manifest.revision,
@@ -96,8 +100,8 @@ test("[RUNTIME-JUMP-INVALID] [TJ-05] [TJ-08] invalid addresses and stalled progr
         context: { navigationKind: "jump" },
       }),
     );
-    sessionStorage.setItem("jsPsych_jumpReload", "1");
-  }, author.id("invalid-jump-first"));
+    sessionStorage.setItem(keys.jumpReload, "1");
+  }, { keys: storageKeys, targetId: author.id("invalid-jump-first") });
   await page.reload();
 
   await expect(page.getByText("Experiment complete. Thank you!")).toBeVisible();

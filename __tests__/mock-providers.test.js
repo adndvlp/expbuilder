@@ -59,11 +59,13 @@ describe('mock providers', () => {
 
     await expectStatus(await fetch(`${urls.GITHUB_API_BASE}/repos/mock-researcher/exp-1/pages`, { headers: auth }), 200)
     const publishedHtml = '<!doctype html>\n<html>\n  <body>captured exactly ✓</body>\n</html>\n'
-    await expectStatus(await fetch(`${urls.GITHUB_API_BASE}/repos/mock-researcher/exp-1/contents/index.html`, {
+    const uploaded = await (await expectStatus(await fetch(`${urls.GITHUB_API_BASE}/repos/mock-researcher/exp-1/contents/index.html`, {
       method: 'PUT',
       headers: { ...auth, 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: 'publish', content: Buffer.from(publishedHtml).toString('base64') }),
-    }), 201)
+    }), 201)).json()
+    expect(uploaded.content.html_url).toContain('/mock-researcher/exp-1/blob/main/index.html')
+    expect(uploaded.commit.sha).toEqual(expect.any(String))
 
     const publishedPage = await expectStatus(await fetch(pages.html_url), 200)
     expect(publishedPage.headers.get('content-type')).toBe('text/html; charset=utf-8')

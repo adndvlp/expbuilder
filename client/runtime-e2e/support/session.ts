@@ -1,6 +1,19 @@
 export const runtimeApiBaseUrl =
   process.env.RUNTIME_SERVER_URL ?? "http://127.0.0.1:3000";
 
+export function localRuntimeStorageKeys(experimentId: string) {
+  const namespace = `expbuilder:local:${experimentId}:`;
+  return {
+    sessionId: `${namespace}session-id`,
+    participant: `${namespace}participant-number`,
+    resumeTrial: `${namespace}resume-trial`,
+    jumpRequest: `${namespace}jump-request`,
+    jumpTarget: `${namespace}jump-to-trial`,
+    jumpReload: `${namespace}jump-reload`,
+    jumpContext: `${namespace}jump-context`,
+  };
+}
+
 export type PersistedSession = {
   session: {
     state: string;

@@ -122,15 +122,23 @@ export async function handleGithub(req, res, url, body, pagesOrigin) {
       const contentKey = `${key}/${filePath}`;
       if (req.method === "PUT") {
         const data = parseJson(body) ?? {};
+        const encodedPath = filePath
+          .split("/")
+          .map((part) => encodeURIComponent(part))
+          .join("/");
         const file = {
           name: filePath.split("/").pop(),
           path: filePath,
           content: data.content ?? "",
           message: data.message ?? "",
           sha: nextId("sha"),
+          html_url: `https://github.com/${owner}/${repoName}/blob/main/${encodedPath}`,
         };
         store.github.contents.set(contentKey, file);
-        sendJson(res, 201, { content: file });
+        sendJson(res, data.sha ? 200 : 201, {
+          content: file,
+          commit: { sha: nextId("commit") },
+        });
         return;
       }
       if (req.method === "GET") {
