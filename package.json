@@ -180,18 +180,10 @@
     "mac": {
       "target": [
         {
-          "target": "dmg",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
+          "target": "dmg"
         },
         {
-          "target": "zip",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
+          "target": "zip"
         }
       ],
       "icon": "icon/icon.icns",
@@ -202,16 +194,10 @@
     "win": {
       "target": [
         {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
+          "target": "nsis"
         },
         {
-          "target": "zip",
-          "arch": [
-            "x64"
-          ]
+          "target": "zip"
         }
       ],
       "icon": "icon/icon.ico"
@@ -219,17 +205,10 @@
     "linux": {
       "target": [
         {
-          "target": "deb",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
+          "target": "deb"
         },
         {
-          "target": "rpm",
-          "arch": [
-            "x64"
-          ]
+          "target": "rpm"
         },
         "AppImage",
         "zip"

@@ -9,5 +9,22 @@ execSync("npm run build --prefix server/jspsych-bundler", {
 });
 execSync("npm run build --prefix client", { stdio: "inherit" });
 await fetchCloudflared();
-const archFlag = process.arch === "arm64" ? "--arm64" : "--x64";
-execSync(`electron-builder ${archFlag}`, { stdio: "inherit" });
+const platformFlag = {
+  darwin: "--mac",
+  linux: "--linux",
+  win32: "--win",
+}[process.platform];
+const archFlag = {
+  arm64: "--arm64",
+  x64: "--x64",
+}[process.arch];
+
+if (!platformFlag || !archFlag) {
+  throw new Error(
+    `Unsupported local build target: ${process.platform}/${process.arch}`,
+  );
+}
+
+execSync(`electron-builder ${platformFlag} ${archFlag}`, {
+  stdio: "inherit",
+});
