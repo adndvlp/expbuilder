@@ -48,7 +48,7 @@ async function runBrowserTests() {
   const environment = { ...process.env, RUN_CLOUD_E2E: "1" };
 
   try {
-    if (!isCi) {
+    if (!isCi && !environment.PLAYWRIGHT_BROWSERS_PATH) {
       browserDirectory = await mkdtemp(
         join(tmpdir(), "expbuilder-cloud-playwright-"),
       );

@@ -28,6 +28,7 @@ jobs:
             package-lock.json
             client/package-lock.json
             api/functions/package-lock.json
+            server/jspsych-bundler/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -38,23 +39,17 @@ jobs:
       - name: Install Functions dependencies
         run: npm ci --prefix api/functions
 
+      - name: Install jsPsych bundler dependencies
+        run: npm ci --prefix server/jspsych-bundler
+
+      - name: Build jsPsych bundle
+        run: npm run build --prefix server/jspsych-bundler
+
       - name: Install Chromium for browser-backed tests
         run: npm --prefix client exec -- playwright install --with-deps chromium
 
-      - name: Run server tests
-        run: npm test
-
-      - name: Run client unit tests
-        run: npm run test:unit --prefix client
-
-      - name: Run Functions tests
-        run: npm --prefix api/functions test -- --runInBand
-
-      - name: Run Builder e2e
-        run: npm --prefix client run test:e2e
-
-      - name: Run cloud e2e
-        run: RUN_CLOUD_E2E=1 npm run test:e2e:cloud
+      - name: Run all tests
+        run: npm run tests
 
   tag:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -107,6 +102,11 @@ jobs:
       - name: Build client
         run: npm ci --prefix client && npm run build --prefix client
 
+      - name: Build jsPsych bundle
+        run: |
+          npm ci --prefix server/jspsych-bundler
+          npm run build --prefix server/jspsych-bundler
+
       - name: Fetch cloudflared binaries
         run: |
           npm run fetch:cloudflared
@@ -158,6 +158,11 @@ jobs:
       - name: Build client
         run: npm ci --prefix client && npm run build --prefix client
 
+      - name: Build jsPsych bundle
+        run: |
+          npm ci --prefix server/jspsych-bundler
+          npm run build --prefix server/jspsych-bundler
+
       - name: Fetch cloudflared binary
         run: npm run fetch:cloudflared
 
@@ -207,6 +212,11 @@ jobs:
       - name: Build client
         run: npm ci --prefix client && npm run build --prefix client
 
+      - name: Build jsPsych bundle
+        run: |
+          npm ci --prefix server/jspsych-bundler
+          npm run build --prefix server/jspsych-bundler
+
       - name: Fetch cloudflared binary
         run: npm run fetch:cloudflared
 
@@ -255,6 +265,11 @@ jobs:
 
       - name: Build client
         run: npm ci --prefix client && npm run build --prefix client
+
+      - name: Build jsPsych bundle
+        run: |
+          npm ci --prefix server/jspsych-bundler
+          npm run build --prefix server/jspsych-bundler
 
       - name: Fetch cloudflared binary
         run: npm run fetch:cloudflared

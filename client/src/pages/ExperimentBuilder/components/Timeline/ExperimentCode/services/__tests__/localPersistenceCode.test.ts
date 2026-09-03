@@ -71,7 +71,7 @@ describe("local session persistence code", () => {
     const code = buildLocalExperimentCode(options("experiment-a"));
 
     expect(code.indexOf("await queued")).toBeLessThan(
-      code.indexOf("return flush();", code.indexOf("async function enqueue")),
+      code.indexOf("return await flush();", code.indexOf("async function enqueue")),
     );
     expect(code).toContain("body.eventId !== record.eventId")
     expect(code).toContain("body.sequence !== record.sequence")

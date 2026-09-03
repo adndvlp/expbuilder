@@ -4,33 +4,22 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const clientRoot = fileURLToPath(new URL("..", import.meta.url));
+const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
+const clientRoot = join(repositoryRoot, "client");
+const jestPath = join(repositoryRoot, "node_modules", "jest", "bin", "jest.js");
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-const vitestArguments = process.argv.slice(2);
-const vitestCommand = [
-  "vitest",
-  "run",
-  ...(vitestArguments.some((argument) =>
-    argument.startsWith("--hookTimeout"),
-  )
-    ? []
-    : ["--hookTimeout=30000"]),
-  ...vitestArguments,
-];
 const isCi =
   process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
 
-function runPackageBinary(args, env) {
-  const result = spawnSync(npmCommand, ["exec", "--", ...args], {
-    cwd: clientRoot,
-    env,
+function run(command, args, environment, timeout) {
+  const result = spawnSync(command, args, {
+    cwd: repositoryRoot,
+    env: environment,
     stdio: "inherit",
+    ...(timeout ? { timeout } : {}),
   });
 
-  if (result.error) {
-    throw result.error;
-  }
-
+  if (result.error) throw result.error;
   return result.status ?? 1;
 }
 
@@ -42,29 +31,46 @@ try {
 
   if (!isCi && !testEnvironment.PLAYWRIGHT_BROWSERS_PATH) {
     browserDirectory = await mkdtemp(
-      join(tmpdir(), "expbuilder-playwright-"),
+      join(tmpdir(), "expbuilder-server-playwright-"),
     );
     testEnvironment.PLAYWRIGHT_BROWSERS_PATH = browserDirectory;
 
     console.log(
       `Installing temporary Chromium for ${process.platform}/${process.arch}...`,
     );
-    const installExitCode = runPackageBinary(
-      ["playwright", "install", "--only-shell", "chromium"],
+    exitCode = run(
+      npmCommand,
+      [
+        "--prefix",
+        clientRoot,
+        "exec",
+        "--",
+        "playwright",
+        "install",
+        "--only-shell",
+        "chromium",
+      ],
+      testEnvironment,
+      600000,
+    );
+  } else {
+    exitCode = 0;
+  }
+
+  if (exitCode === 0) {
+    exitCode = run(
+      process.execPath,
+      [
+        "--experimental-vm-modules",
+        jestPath,
+        ...process.argv.slice(2),
+      ],
       testEnvironment,
     );
-
-    if (installExitCode !== 0) {
-      exitCode = installExitCode;
-    } else {
-      exitCode = runPackageBinary(vitestCommand, testEnvironment);
-    }
-  } else {
-    exitCode = runPackageBinary(vitestCommand, testEnvironment);
   }
 } catch (error) {
   console.error(
-    error instanceof Error ? error.message : "Failed to run client unit tests",
+    error instanceof Error ? error.message : "Failed to run server tests",
   );
   exitCode = 1;
 } finally {

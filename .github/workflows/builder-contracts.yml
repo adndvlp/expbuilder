@@ -50,6 +50,7 @@ jobs:
             package-lock.json
             client/package-lock.json
             api/functions/package-lock.json
+            server/jspsych-bundler/package-lock.json
 
       - name: Install server dependencies
         run: npm ci
@@ -61,6 +62,14 @@ jobs:
       - name: Install Functions dependencies
         working-directory: api/functions
         run: npm ci
+
+      - name: Install jsPsych bundler dependencies
+        working-directory: server/jspsych-bundler
+        run: npm ci
+
+      - name: Build jsPsych bundle
+        working-directory: server/jspsych-bundler
+        run: npm run build
 
       - name: Install Chromium for browser-backed tests
         working-directory: client
