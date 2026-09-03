@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "copy:webgazer": "node copy-webgazer.mjs",
+    "prebuild": "node copy-webgazer.mjs",
     "build": "vite build",
+    "predev": "node copy-webgazer.mjs",
     "dev": "vite build --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
