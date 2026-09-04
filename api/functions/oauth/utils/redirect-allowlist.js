@@ -42,8 +42,8 @@ export function validateRedirectUri(candidate) {
     } catch {
       // ignore malformed env
     }
-  } else {
-    allowedHosts.add("test-e4cf9.firebaseapp.com");
+  } else if (process.env.FIREBASE_PROJECT_ID) {
+    allowedHosts.add(`${process.env.FIREBASE_PROJECT_ID}.firebaseapp.com`);
   }
 
   // OSF callback URL — env-driven.
@@ -54,8 +54,10 @@ export function validateRedirectUri(candidate) {
     } catch {
       // ignore
     }
-  } else {
-    allowedHosts.add("us-central1-test-e4cf9.cloudfunctions.net");
+  } else if (process.env.FIREBASE_PROJECT_ID) {
+    allowedHosts.add(
+      `us-central1-${process.env.FIREBASE_PROJECT_ID}.cloudfunctions.net`,
+    );
   }
 
   // Always allow cloud functions on the configured project (other callbacks).
@@ -66,6 +68,10 @@ export function validateRedirectUri(candidate) {
     } catch {
       // ignore
     }
+  } else if (process.env.FIREBASE_PROJECT_ID) {
+    allowedHosts.add(
+      `us-central1-${process.env.FIREBASE_PROJECT_ID}.cloudfunctions.net`,
+    );
   }
 
   if (!allowedHosts.has(parsed.hostname)) {

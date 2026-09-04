@@ -4,6 +4,7 @@ import * as cheerio from "cheerio";
 import { Router } from "express";
 import { __dirname } from "../../utils/paths.js";
 import { db, userDataRoot } from "../../utils/db.js";
+import { resolveFirebaseFunctionsUrl } from "../../utils/firebaseUrl.js";
 import { ensureTemplate } from "../../utils/templates.js";
 import { getPluginScriptsFromTrials } from "../../utils/plugin-scripts.js";
 import { experimentsHtmlDir } from "./paths.js";
@@ -120,7 +121,11 @@ function collectMediaFiles(experimentName) {
 }
 
 async function publishToGithub(payload, authorization) {
-  const githubUrl = `${process.env.FIREBASE_URL}/publishExperiment`;
+  const functionsUrl = resolveFirebaseFunctionsUrl();
+  if (!functionsUrl) {
+    throw new Error("FIREBASE_URL not configured");
+  }
+  const githubUrl = `${functionsUrl}/publishExperiment`;
   const githubResponse = await fetch(githubUrl, {
     method: "POST",
     headers: {

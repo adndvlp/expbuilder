@@ -17,6 +17,7 @@ import {
   startFirebaseCommand,
   writeBackendEnvFile,
 } from "./server/backend-setup.js";
+import { buildFunctionsBaseUrl } from "./server/utils/firebaseUrl.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Check if running from asar (production) or not (development)
@@ -41,6 +42,22 @@ ipcMain.on("get-api-base-url", (event) => {
   event.returnValue = apiBaseUrl;
 });
 
+function applyFirebaseUrlFromUserConfig() {
+  try {
+    const configPath = path.join(app.getPath("userData"), "firebase-config.json");
+    if (!fs.existsSync(configPath)) return;
+    const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    const projectId = config?.projectId;
+    if (typeof projectId !== "string" || !projectId.trim()) return;
+    process.env.FIREBASE_PROJECT_ID = projectId.trim();
+    if (isProduction || !process.env.FIREBASE_URL) {
+      process.env.FIREBASE_URL = buildFunctionsBaseUrl(projectId);
+    }
+  } catch (error) {
+    console.error("Error applying Firebase Functions URL:", error);
+  }
+}
+
 app.whenReady().then(async () => {
   // Usar la ruta definida en el archivo .env
   // En desarrollo: server/database/db.json
@@ -50,6 +67,8 @@ app.whenReady().then(async () => {
     const userDataPath = app.getPath("userData");
     process.env.DB_ROOT = userDataPath;
   }
+
+  applyFirebaseUrlFromUserConfig();
 
   const apiModule = await import("./server/api.js");
   if (apiModule.whenListening) {

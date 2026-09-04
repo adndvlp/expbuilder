@@ -4,6 +4,7 @@ import { db } from "../../../app.js";
 import { validateRedirectUri } from "../../utils/redirect-allowlist.js";
 import { validateOAuthState } from "../../state-service.js";
 import { PROVIDER_ENDPOINTS as endpoints } from "../../../utils/provider-endpoints.js";
+import { getFirebaseAppBaseUrl, getOAuthWebAppBaseUrl } from "../../../utils/firebase-urls.js";
 
 // Credenciales de Google OAuth (desde functions/.env)
 const CLIENT_ID = process.env.GOOGLE_DRIVE_CLIENT_ID;
@@ -21,9 +22,7 @@ function getRedirectUri(req) {
   if (process.env.FUNCTIONS_EMULATOR === "true") {
     return "http://localhost:5173/google-drive-callback";
   }
-  // Producción web. T-3: derive from FIREBASE_APP_BASE_URL.
-  const base =
-    process.env.FIREBASE_APP_BASE_URL || "https://test-e4cf9.firebaseapp.com";
+  const base = getFirebaseAppBaseUrl() || "http://localhost:5173";
   return `${base}/google-drive-callback`;
 }
 
@@ -134,11 +133,7 @@ export const googleDriveOAuthCallback = onRequest(async (req, res) => {
       });
     }
 
-    // T-3: env-driven base URL.
-    const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
-    const baseUrl = isEmulator
-      ? "http://localhost:5173"
-      : process.env.FIREBASE_APP_BASE_URL || "https://test-e4cf9.firebaseapp.com";
+    const baseUrl = getOAuthWebAppBaseUrl();
     const redirectUrl = `${baseUrl}/settings?status=success&service=google-drive`;
 
     return res.redirect(redirectUrl);
@@ -156,11 +151,7 @@ export const googleDriveOAuthCallback = onRequest(async (req, res) => {
       });
     }
 
-    // T-3: env-driven base URL.
-    const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
-    const baseUrl = isEmulator
-      ? "http://localhost:5173"
-      : process.env.FIREBASE_APP_BASE_URL || "https://test-e4cf9.firebaseapp.com";
+    const baseUrl = getOAuthWebAppBaseUrl();
     const redirectUrl = `${baseUrl}/settings?status=error&service=google-drive&message=${encodeURIComponent(error.message)}`;
 
     return res.redirect(redirectUrl);

@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { Router } from "express";
 import { db, userDataRoot } from "../../utils/db.js";
+import { resolveFirebaseFunctionsUrl } from "../../utils/firebaseUrl.js";
 
 const router = Router();
 
@@ -23,7 +24,9 @@ async function cleanupRemoteExperiment(exp, uid, deleteRepos) {
       bodyPayload.repoName = sanitizedRepoName;
     }
 
-    const firebaseUrl = `${process.env.FIREBASE_URL}/apiDeleteExperiment`;
+    const functionsUrl = resolveFirebaseFunctionsUrl();
+    if (!functionsUrl) return;
+    const firebaseUrl = `${functionsUrl}/apiDeleteExperiment`;
     await fetch(firebaseUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -69,7 +72,7 @@ router.post("/api/app/reset", async (req, res) => {
     await db.read();
     const experiments = db.data.experiments || [];
 
-    if (uid && process.env.FIREBASE_URL) {
+    if (uid && resolveFirebaseFunctionsUrl()) {
       for (const exp of experiments) {
         await cleanupRemoteExperiment(exp, uid, deleteRepos);
       }

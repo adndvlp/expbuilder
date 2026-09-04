@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { buildFunctionsBaseUrl } from "../../../lib/oauthConfig";
+import { buildFunctionsBaseUrl, getBackendProjectId } from "../../../lib/oauthConfig";
 import "../index.css";
 
 export const getGoogleDriveOAuthCallbackUrl = (
@@ -42,7 +42,13 @@ export default function GoogleDriveCallback() {
       try {
         // Determinar la URL del Cloud Function
         const isDev = import.meta.env.DEV;
-        const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+        const projectId = await getBackendProjectId();
+        if (!projectId) {
+          navigate(
+            "/settings?status=error&service=google-drive&message=Firebase%20backend%20is%20not%20configured",
+          );
+          return;
+        }
         const functionUrl = getGoogleDriveOAuthCallbackUrl(isDev, code, state, projectId);
 
         // Llamar al Cloud Function - éste guardará los tokens y redirigirá

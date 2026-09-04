@@ -4,6 +4,7 @@ import { db } from "../../../app.js";
 import { validateRedirectUri } from "../../utils/redirect-allowlist.js";
 import { validateOAuthState } from "../../state-service.js";
 import { PROVIDER_ENDPOINTS as endpoints } from "../../../utils/provider-endpoints.js";
+import { getFirebaseAppBaseUrl, getOAuthWebAppBaseUrl } from "../../../utils/firebase-urls.js";
 
 // Credenciales de Dropbox (desde functions/.env)
 const CLIENT_ID = process.env.DROPBOX_CLIENT_ID;
@@ -21,9 +22,7 @@ function getRedirectUri(req) {
   if (process.env.FUNCTIONS_EMULATOR === "true") {
     return "http://localhost:5173/dropbox-callback";
   }
-  // Producción web. T-3: derive from FIREBASE_APP_BASE_URL with safe default.
-  const base =
-    process.env.FIREBASE_APP_BASE_URL || "https://test-e4cf9.firebaseapp.com";
+  const base = getFirebaseAppBaseUrl() || "http://localhost:5173";
   return `${base}/dropbox-callback`;
 }
 
@@ -138,11 +137,7 @@ export const dropboxOAuthCallback = onRequest(async (req, res) => {
       });
     }
 
-    // Redirigir de vuelta a la app web con mensaje de éxito (T-3: env-driven base).
-    const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
-    const baseUrl = isEmulator
-      ? "http://localhost:5173"
-      : process.env.FIREBASE_APP_BASE_URL || "https://test-e4cf9.firebaseapp.com";
+    const baseUrl = getOAuthWebAppBaseUrl();
     const redirectUrl = `${baseUrl}/settings?status=success&service=dropbox`;
 
     return res.redirect(redirectUrl);
@@ -160,11 +155,7 @@ export const dropboxOAuthCallback = onRequest(async (req, res) => {
       });
     }
 
-    // Redirigir de vuelta a la app web con mensaje de error (T-3: env-driven base).
-    const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
-    const baseUrl = isEmulator
-      ? "http://localhost:5173"
-      : process.env.FIREBASE_APP_BASE_URL || "https://test-e4cf9.firebaseapp.com";
+    const baseUrl = getOAuthWebAppBaseUrl();
     const redirectUrl = `${baseUrl}/settings?status=error&service=dropbox&message=${encodeURIComponent(error.message)}`;
 
     return res.redirect(redirectUrl);

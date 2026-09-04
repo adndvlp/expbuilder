@@ -4,6 +4,7 @@ import { Router } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { withDbLock } from "../../modules/session-persistence/dbQueue.js";
 import { db, ensureDbData, userDataRoot } from "../../utils/db.js";
+import { resolveFirebaseFunctionsUrl } from "../../utils/firebaseUrl.js";
 import { experimentsHtmlDir, trialsPreviewsHtmlDir } from "./paths.js";
 
 const router = Router();
@@ -143,7 +144,12 @@ async function deleteFromFirebase(experiment, experimentID, uid) {
           .toLowerCase()
       : experimentID;
 
-    const firebaseUrl = `${process.env.FIREBASE_URL}/apiDeleteExperiment`;
+    const functionsUrl = resolveFirebaseFunctionsUrl();
+    if (!functionsUrl) {
+      console.warn("Warning: Firebase experiment deletion skipped: Functions URL is not configured");
+      return;
+    }
+    const firebaseUrl = `${functionsUrl}/apiDeleteExperiment`;
     const firebaseResponse = await fetch(firebaseUrl, {
       method: "POST",
       headers: {

@@ -22,6 +22,7 @@ beforeEach(() => {
   delete process.env.OAUTH_STATE_SECRET;
   delete process.env.FUNCTIONS_EMULATOR;
   delete process.env.FIREBASE_APP_BASE_URL;
+  delete process.env.FIREBASE_PROJECT_ID;
   delete process.env.OSF_OAUTH_CALLBACK_URL;
   jest.restoreAllMocks();
 });
@@ -198,18 +199,19 @@ describe("utils/oauth-state", () => {
 });
 
 describe("utils/redirect-allowlist", () => {
-  test("allows local, default production and default Cloud Function callback URLs", () => {
+  test("allows local URLs and hosts derived from FIREBASE_PROJECT_ID", () => {
+    process.env.FIREBASE_PROJECT_ID = "my-proj";
     expect(validateRedirectUri("http://localhost:8888/settings")).toBe(
       "http://localhost:8888/settings",
     );
-    expect(validateRedirectUri("https://test-e4cf9.firebaseapp.com/settings")).toBe(
-      "https://test-e4cf9.firebaseapp.com/settings",
+    expect(validateRedirectUri("https://my-proj.firebaseapp.com/settings")).toBe(
+      "https://my-proj.firebaseapp.com/settings",
     );
     expect(
       validateRedirectUri(
-        "https://us-central1-test-e4cf9.cloudfunctions.net/osfOAuthCallback",
+        "https://us-central1-my-proj.cloudfunctions.net/osfOAuthCallback",
       ),
-    ).toBe("https://us-central1-test-e4cf9.cloudfunctions.net/osfOAuthCallback");
+    ).toBe("https://us-central1-my-proj.cloudfunctions.net/osfOAuthCallback");
   });
 
   test("allows env-configured app and OSF callback hosts", () => {
@@ -232,7 +234,7 @@ describe("utils/redirect-allowlist", () => {
     expect(validateRedirectUri()).toBeNull();
     expect(validateRedirectUri("not a url")).toBeNull();
     expect(validateRedirectUri("https://attacker.example.com/callback")).toBeNull();
-    expect(validateRedirectUri("http://test-e4cf9.firebaseapp.com/settings")).toBeNull();
+    expect(validateRedirectUri("http://my-proj.firebaseapp.com/settings")).toBeNull();
     expect(validateRedirectUri("ftp://localhost/settings")).toBeNull();
   });
 });
