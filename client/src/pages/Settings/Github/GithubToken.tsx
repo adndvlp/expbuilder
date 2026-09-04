@@ -71,7 +71,7 @@ export default function GithubToken() {
     const clientId = await getProviderClientId("github");
     if (!clientId) {
       alert(
-        "GitHub OAuth is not configured. Add your GitHub Client ID in Settings > OAuth Credentials.",
+        "GitHub OAuth is not configured. Add your GitHub Client ID in Settings > Server.",
       );
       return;
     }

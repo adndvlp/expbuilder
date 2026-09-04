@@ -65,26 +65,61 @@ export function startFirebaseCommand({ args, token, cwd, onOutput }) {
       child.on("error", (error) =>
         resolve({ code: null, error: error.message, output }),
       );
-      child.on("close", (code) => resolve({ code, error: null, output }));
+      child.on("close", (code) => {
+        const extra = code === 0 ? "" : formatFirebaseDebugError(cwd);
+        resolve({
+          code,
+          error: null,
+          output: extra ? `${output}\n${extra}` : output,
+        });
+      });
     }),
   };
+}
+
+export function formatFirebaseDebugError(apiDir) {
+  if (!apiDir) return "";
+  const logPath = path.join(apiDir, "firebase-debug.log");
+  if (!fs.existsSync(logPath)) return "";
+  const text = fs.readFileSync(logPath, "utf8");
+  const messages = [...text.matchAll(/Error:\s*(.+)/g)]
+    .map((match) => match[1].trim())
+    .filter((message) => message && message !== "An unexpected error has occurred.");
+  const last = messages.at(-1);
+  return last ? `Error: ${last}` : "";
+}
+
+const RESERVED_FUNCTIONS_ENV_PREFIXES = ["X_GOOGLE_", "FIREBASE_", "EXT_", "KIT_"];
+
+export function isReservedFunctionsEnvKey(key) {
+  const upper = String(key || "").toUpperCase();
+  return RESERVED_FUNCTIONS_ENV_PREFIXES.some((prefix) => upper.startsWith(prefix));
+}
+
+function parseEnvFile(contents) {
+  return contents
+    .split("\n")
+    .filter((line) => line && !line.startsWith("#"))
+    .reduce((acc, line) => {
+      const [key, ...rest] = line.split("=");
+      if (key) acc[key.trim()] = rest.join("=").trim();
+      return acc;
+    }, {});
+}
+
+function withoutReservedEnvKeys(env) {
+  return Object.fromEntries(
+    Object.entries(env).filter(([key]) => key && !isReservedFunctionsEnvKey(key)),
+  );
 }
 
 export function writeBackendEnvFile(apiDir, env) {
   const envPath = path.join(apiDir, "functions", ".env");
   let existing = {};
   if (fs.existsSync(envPath)) {
-    existing = fs
-      .readFileSync(envPath, "utf8")
-      .split("\n")
-      .filter((line) => line && !line.startsWith("#"))
-      .reduce((acc, line) => {
-        const [key, ...rest] = line.split("=");
-        if (key) acc[key.trim()] = rest.join("=").trim();
-        return acc;
-      }, {});
+    existing = parseEnvFile(fs.readFileSync(envPath, "utf8"));
   }
-  const merged = { ...existing, ...env };
+  const merged = withoutReservedEnvKeys({ ...existing, ...env });
   fs.mkdirSync(path.dirname(envPath), { recursive: true });
   fs.writeFileSync(
     envPath,
@@ -94,4 +129,21 @@ export function writeBackendEnvFile(apiDir, env) {
     "utf8",
   );
   return envPath;
+}
+
+export function readBackendSetupState(filePath) {
+  if (!fs.existsSync(filePath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+export function writeBackendSetupState(filePath, state) {
+  fs.writeFileSync(filePath, JSON.stringify(state ?? {}, null, 2), {
+    encoding: "utf8",
+    mode: 0o600,
+  });
+  return filePath;
 }

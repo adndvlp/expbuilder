@@ -126,20 +126,20 @@ describe("Settings OAuth Electron flows", () => {
         Component: (await import("../../../pages/Settings/Github/GithubToken"))
           .default,
         alertText:
-          "GitHub OAuth is not configured. Add your GitHub Client ID in Settings > OAuth Credentials.",
+          "GitHub OAuth is not configured. Add your GitHub Client ID in Settings > Server.",
       },
       {
         Component: (await import("../../../pages/Settings/Dropbox/DropboxToken"))
           .default,
         alertText:
-          "Dropbox OAuth is not configured. Add your Dropbox Client ID in Settings > OAuth Credentials.",
+          "Dropbox OAuth is not configured. Add your Dropbox Client ID in Settings > Server.",
       },
       {
         Component: (
           await import("../../../pages/Settings/GoogleDrive/GoogleDriveToken")
         ).default,
         alertText:
-          "Google Drive OAuth is not configured. Add your Google Drive Client ID in Settings > OAuth Credentials.",
+          "Google Drive OAuth is not configured. Add your Google Drive Client ID in Settings > Server.",
       },
     ] as const;
 

@@ -13,6 +13,7 @@ describe('main.js Electron lifecycle', () => {
       path: expect.stringMatching(/\.env$/),
     })
     expect([...loaded.handlers.keys()].sort()).toEqual([
+      'backend-setup:api',
       'backend-setup:kill',
       'backend-setup:start',
       'backend-setup:write',

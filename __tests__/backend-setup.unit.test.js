@@ -102,10 +102,46 @@ describe('server/backend-setup', () => {
 
     expect(envPath).toBe(path.join(apiDir, 'functions', '.env'))
     const content = fs.readFileSync(envPath, 'utf8')
-    expect(content).toContain('FIREBASE_PROJECT_ID=new-project')
+    expect(content).not.toContain('FIREBASE_PROJECT_ID')
     expect(content).toContain('KEEP_ME=yes')
     expect(content).toContain('GITHUB_CLIENT_ID=gh-id')
 
+    fs.rmSync(apiDir, { recursive: true, force: true })
+  })
+
+  test('strips reserved firebase-tools env prefixes', () => {
+    expect(backendSetup.isReservedFunctionsEnvKey('FIREBASE_PROJECT_ID')).toBe(true)
+    expect(backendSetup.isReservedFunctionsEnvKey('FIREBASE_APP_BASE_URL')).toBe(true)
+    expect(backendSetup.isReservedFunctionsEnvKey('X_GOOGLE_FOO')).toBe(true)
+    expect(backendSetup.isReservedFunctionsEnvKey('GITHUB_CLIENT_ID')).toBe(false)
+
+    const apiDir = fs.mkdtempSync(path.join(os.tmpdir(), 'exp-backend-env-reserved-'))
+    const envPath = backendSetup.writeBackendEnvFile(apiDir, {
+      FIREBASE_PROJECT_ID: 'blocked',
+      FIREBASE_APP_BASE_URL: 'https://blocked.firebaseapp.com',
+      GITHUB_CLIENT_ID: 'gh-id',
+    })
+    const content = fs.readFileSync(envPath, 'utf8')
+    expect(content).toBe('GITHUB_CLIENT_ID=gh-id\n')
+    fs.rmSync(apiDir, { recursive: true, force: true })
+  })
+
+  test('surfaces the last specific error from firebase-debug.log', () => {
+    const apiDir = fs.mkdtempSync(path.join(os.tmpdir(), 'exp-backend-debug-'))
+    expect(backendSetup.formatFirebaseDebugError(apiDir)).toBe('')
+    fs.writeFileSync(
+      path.join(apiDir, 'firebase-debug.log'),
+      [
+        '[debug] Error: Cannot find module \'firebase-functions\'',
+        '[error]',
+        '[error] Error: An unexpected error has occurred.',
+        '',
+      ].join('\n'),
+      'utf8',
+    )
+    expect(backendSetup.formatFirebaseDebugError(apiDir)).toBe(
+      "Error: Cannot find module 'firebase-functions'",
+    )
     fs.rmSync(apiDir, { recursive: true, force: true })
   })
 
@@ -130,5 +166,15 @@ describe('server/backend-setup', () => {
 
   test('resolves the firebase CLI entry point', () => {
     expect(backendSetup.getFirebaseCliPath()).toContain('firebase-tools')
+  })
+
+  test('reads and writes backend setup state', () => {
+    const filePath = path.join(os.tmpdir(), `backend-setup-state-${Date.now()}.json`)
+    expect(backendSetup.readBackendSetupState(filePath)).toBeNull()
+    backendSetup.writeBackendSetupState(filePath, { projectId: 'lab' })
+    expect(backendSetup.readBackendSetupState(filePath)).toEqual({ projectId: 'lab' })
+    fs.writeFileSync(filePath, '{bad', 'utf8')
+    expect(backendSetup.readBackendSetupState(filePath)).toBeNull()
+    fs.unlinkSync(filePath)
   })
 })

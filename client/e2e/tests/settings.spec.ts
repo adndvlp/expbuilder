@@ -41,8 +41,12 @@ test.describe("Settings Page", () => {
     await expect(settings.exportSelectedButton).toBeVisible();
   });
 
-  test("displays Firebase Configuration section", async ({ page }) => {
-    await expect(page.getByText("Firebase Configuration")).toBeVisible();
+  test("displays Server section", async ({ page }) => {
+    await expect(page.getByRole("heading", { name: "Server" })).toBeVisible();
+  });
+
+  test("does not display Advanced section", async ({ page }) => {
+    await expect(page.getByRole("heading", { name: "Advanced" })).toHaveCount(0);
   });
 
   test("shows no-account overlay when not logged in", async () => {

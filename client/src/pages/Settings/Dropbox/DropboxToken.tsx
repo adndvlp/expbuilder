@@ -76,7 +76,7 @@ export default function DropboxToken() {
     const clientId = await getProviderClientId("dropbox");
     if (!clientId) {
       alert(
-        "Dropbox OAuth is not configured. Add your Dropbox Client ID in Settings > OAuth Credentials.",
+        "Dropbox OAuth is not configured. Add your Dropbox Client ID in Settings > Server.",
       );
       return;
     }

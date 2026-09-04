@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "@jest/globals";
 import {
   getFirebaseAppBaseUrl,
+  getFirebaseProjectId,
   getFunctionsBaseUrl,
   getOAuthWebAppBaseUrl,
 } from "../../utils/firebase-urls.js";
@@ -11,6 +12,9 @@ afterEach(() => {
   process.env = { ...OLD_ENV };
   delete process.env.FIREBASE_APP_BASE_URL;
   delete process.env.FIREBASE_PROJECT_ID;
+  delete process.env.GCLOUD_PROJECT;
+  delete process.env.GCP_PROJECT;
+  delete process.env.FIREBASE_CONFIG;
   delete process.env.FUNCTIONS_EMULATOR;
 });
 
@@ -37,5 +41,15 @@ describe("firebase-urls", () => {
     process.env.FUNCTIONS_EMULATOR = "true";
     process.env.FIREBASE_PROJECT_ID = "my-proj";
     expect(getOAuthWebAppBaseUrl()).toBe("http://localhost:5173");
+  });
+
+  test("derives project id from Cloud Functions runtime env", () => {
+    process.env.GCLOUD_PROJECT = "gcloud-proj";
+    expect(getFirebaseProjectId()).toBe("gcloud-proj");
+    expect(getFirebaseAppBaseUrl()).toBe("https://gcloud-proj.firebaseapp.com");
+
+    delete process.env.GCLOUD_PROJECT;
+    process.env.FIREBASE_CONFIG = JSON.stringify({ projectId: "cfg-proj" });
+    expect(getFirebaseProjectId()).toBe("cfg-proj");
   });
 });

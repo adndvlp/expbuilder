@@ -1,325 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import { openExternal } from "../../lib/openExternal";
-import {
-  buildFirebaseConfig,
-  buildFunctionsEnv,
-  buildOauthConfig,
-  OAUTH_CALLBACK_URI,
-  parseCreatedAppId,
-  parseLoginToken,
-  parseLoginUrl,
-  parseSdkConfig,
-  PROVIDER_CONSOLE_URLS,
-  PROVIDER_LABELS,
-  type BackendOAuthState,
-} from "../../lib/backendSetup";
+import PublishingAccounts from "./backend/PublishingAccounts";
+import { useBackendSetup } from "./backend/useBackendSetup";
 
-const isElectron = !!window.electron?.startBackendSetup;
-
-interface ExitData {
-  id: string;
-  code: number | null;
-  error: string | null;
-  output: string;
-}
-
-const EMPTY_OAUTH: BackendOAuthState = {
-  github: { enabled: false, clientId: "", clientSecret: "" },
-  dropbox: { enabled: false, clientId: "", clientSecret: "" },
-  googleDrive: { enabled: false, clientId: "", clientSecret: "" },
-  osf: { enabled: false, clientId: "", clientSecret: "" },
-};
-
-const PROVIDER_KEYS = Object.keys(EMPTY_OAUTH) as Array<
-  keyof BackendOAuthState
->;
+const inputStyle = { padding: "6px 10px", flex: 1 } as const;
 
 export default function BackendSetup() {
-  const [logs, setLogs] = useState("");
-  const [error, setError] = useState("");
-  const [running, setRunning] = useState(false);
-  const [token, setToken] = useState("");
-  const [loginUrl, setLoginUrl] = useState("");
-  const [loginCode, setLoginCode] = useState("");
-  const [projectId, setProjectId] = useState("");
-  const [projectMode, setProjectMode] = useState<"create" | "use">("create");
-  const [projectDone, setProjectDone] = useState(false);
-  const [blazeDone, setBlazeDone] = useState(false);
-  const [firestoreDone, setFirestoreDone] = useState(false);
-  const [authDone, setAuthDone] = useState(false);
-  const [appName, setAppName] = useState("ExpBuilder");
-  const [configSaved, setConfigSaved] = useState(false);
-  const [oauth, setOauth] = useState<BackendOAuthState>(EMPTY_OAUTH);
-  const [envSaved, setEnvSaved] = useState(false);
-  const [deployed, setDeployed] = useState(false);
+  const setup = useBackendSetup();
 
-  const exitListeners = useRef<Map<string, (data: ExitData) => void>>(new Map());
-  const loginIdRef = useRef("");
-
-  useEffect(() => {
-    const offOutput = window.electron?.onBackendSetupOutput?.(({ text }) => {
-      setLogs((prev) => prev + text);
-      const url = parseLoginUrl(text);
-      if (url) {
-        setLoginUrl(url);
-      }
-    });
-    const offExit = window.electron?.onBackendSetupExit?.((data) => {
-      const resolve = exitListeners.current.get(data.id);
-      if (resolve) {
-        exitListeners.current.delete(data.id);
-        resolve(data);
-      }
-    });
-    return () => {
-      offOutput?.();
-      offExit?.();
-    };
-  }, []);
-
-  const runCommand = useCallback(async (args: string[]): Promise<ExitData> => {
-    const { id } = await window.electron!.startBackendSetup(args, token);
-    setLogs((prev) => prev + `$ firebase ${args.join(" ")}\n`);
-    return new Promise((resolve) => exitListeners.current.set(id, resolve));
-  }, [token]);
-
-  const startLogin = async () => {
-    setRunning(true);
-    setError("");
-    try {
-      const { id } = await window.electron!.startBackendSetup(["login:ci"]);
-      loginIdRef.current = id;
-      setLogs("$ firebase login:ci\n");
-      const data = await new Promise<ExitData>((resolve) =>
-        exitListeners.current.set(id, resolve),
-      );
-      const parsedToken = parseLoginToken(data.output);
-      if (data.code === 0 && parsedToken) {
-        setToken(parsedToken);
-      } else {
-        setError(
-          data.error ||
-            "Login failed. Check the log below and try again.",
-        );
-      }
-    } catch (loginError) {
-      setError(
-        loginError instanceof Error
-          ? loginError.message
-          : "Failed to start the login flow",
-      );
-    } finally {
-      setRunning(false);
-    }
-  };
-
-  const submitLoginCode = async () => {
-    await window.electron!.writeBackendSetupInput(
-      loginIdRef.current,
-      `${loginCode.trim()}\n`,
-    );
-  };
-
-  const handleProject = async () => {
-    setRunning(true);
-    setError("");
-    try {
-      const args = [
-        "--project",
-        projectId.trim(),
-        ...(projectMode === "create" ? ["projects:create"] : []),
-      ];
-      const data = await runCommand(args);
-      if (data.code === 0) {
-        setProjectDone(true);
-      } else {
-        setError(
-          data.error || "Project step failed. Check the log below.",
-        );
-      }
-    } catch (projectError) {
-      setError(
-        projectError instanceof Error
-          ? projectError.message
-          : "Failed to run the project step",
-      );
-    } finally {
-      setRunning(false);
-    }
-  };
-
-  const openConsole = (path: string) => {
-    const base = `https://console.firebase.google.com/project/${projectId}`;
-    openExternal(`${base}${path}`);
-  };
-
-  const handleFirestore = async () => {
-    setRunning(true);
-    setError("");
-    try {
-      const data = await runCommand([
-        "--project",
-        projectId,
-        "firestore:databases:create",
-        "(default)",
-        "--location",
-        "nam5",
-      ]);
-      if (data.code === 0) {
-        setFirestoreDone(true);
-      } else {
-        setError(
-          data.error ||
-            "Firestore creation failed. Check the log below.",
-        );
-      }
-    } catch (firestoreError) {
-      setError(
-        firestoreError instanceof Error
-          ? firestoreError.message
-          : "Failed to create Firestore",
-      );
-    } finally {
-      setRunning(false);
-    }
-  };
-
-  const handleCreateApp = async () => {
-    setRunning(true);
-    setError("");
-    try {
-      const created = await runCommand([
-        "--project",
-        projectId,
-        "apps:create",
-        "web",
-        appName.trim() || "ExpBuilder",
-      ]);
-      if (created.code !== 0) {
-        setError(
-          created.error ||
-            "Web app creation failed. Check the log below.",
-        );
-        return;
-      }
-      const appId = parseCreatedAppId(created.output);
-      if (!appId) {
-        setError("Could not read the created app ID from the output.");
-        return;
-      }
-      const sdkResult = await runCommand([
-        "--project",
-        projectId,
-        "apps:sdkconfig",
-        "web",
-        appId,
-      ]);
-      if (sdkResult.code !== 0) {
-        setError(
-          sdkResult.error ||
-            "Reading the Firebase SDK config failed. Check the log below.",
-        );
-        return;
-      }
-      const sdk = parseSdkConfig(sdkResult.output);
-      const firebaseConfig = sdk ? buildFirebaseConfig(sdk) : null;
-      if (!firebaseConfig) {
-        setError("Could not parse the Firebase SDK config from the output.");
-        return;
-      }
-      const saved = await window.electron!.writeFirebaseConfig(firebaseConfig);
-      if (!saved.success) {
-        setError(
-          `Saving the Firebase config failed: ${saved.error || "Unknown error"}`,
-        );
-        return;
-      }
-      setConfigSaved(true);
-    } catch (appError) {
-      setError(
-        appError instanceof Error ? appError.message : "Failed to create the web app",
-      );
-    } finally {
-      setRunning(false);
-    }
-  };
-
-  const handleSaveCredentials = async () => {
-    setRunning(true);
-    setError("");
-    try {
-      const env = buildFunctionsEnv(projectId, oauth);
-      const savedEnv = await window.electron!.writeBackendEnv(env);
-      if (!savedEnv.success) {
-        setError(
-          `Saving backend credentials failed: ${savedEnv.error || "Unknown error"}`,
-        );
-        return;
-      }
-      const oauthConfig = buildOauthConfig(oauth);
-      const savedOauth = await window.electron!.writeOauthConfig(oauthConfig);
-      if (!savedOauth.success) {
-        setError(
-          `Saving OAuth credentials failed: ${savedOauth.error || "Unknown error"}`,
-        );
-        return;
-      }
-      setEnvSaved(true);
-    } catch (saveError) {
-      setError(
-        saveError instanceof Error ? saveError.message : "Failed to save credentials",
-      );
-    } finally {
-      setRunning(false);
-    }
-  };
-
-  const handleDeploy = async () => {
-    setRunning(true);
-    setError("");
-    try {
-      const data = await runCommand([
-        "--project",
-        projectId,
-        "deploy",
-        "--only",
-        "firestore,functions",
-      ]);
-      if (data.code === 0) {
-        setDeployed(true);
-      } else {
-        setError(
-          data.error || "Deploy failed. Check the log below.",
-        );
-      }
-    } catch (deployError) {
-      setError(
-        deployError instanceof Error ? deployError.message : "Failed to deploy",
-      );
-    } finally {
-      setRunning(false);
-    }
-  };
-
-  const toggleProvider = (key: keyof BackendOAuthState) => {
-    setOauth((prev) => ({
-      ...prev,
-      [key]: { ...prev[key], enabled: !prev[key].enabled },
-    }));
-  };
-
-  const updateProvider = (
-    key: keyof BackendOAuthState,
-    field: "clientId" | "clientSecret",
-    value: string,
-  ) => {
-    setOauth((prev) => ({
-      ...prev,
-      [key]: { ...prev[key], [field]: value },
-    }));
-  };
-
-  if (!isElectron) {
+  if (!setup.isElectron) {
     return (
       <div
         style={{
@@ -331,312 +19,264 @@ export default function BackendSetup() {
           fontSize: 14,
         }}
       >
-        Backend setup is only available in the Electron app.
+        Server setup is only available in the Electron app.
       </div>
     );
   }
 
+  if (!setup.ready) {
+    return <p className="backend-copy">Loading saved server…</p>;
+  }
+
+  const showSignIn = !setup.token && !setup.deployed;
+  const showResumeSignIn = setup.deployed && !setup.token;
+  const showProject = Boolean(setup.token && !setup.configSaved);
+  const showBilling = Boolean(setup.configSaved && !setup.billingDone);
+  const showDatabase = Boolean(setup.billingDone && !setup.firestoreDone);
+  const showFinish = Boolean(setup.firestoreDone && !setup.deployed);
+  const hasBillingAccounts = setup.billingAccounts.length > 0;
+
   return (
-    <div style={{ marginTop: 8 }}>
-      <div style={{ fontSize: 13, color: "#666", marginBottom: 12 }}>
-        Create and deploy your own Firebase backend from the app. You need a
-        Google account and a credit card for the Blaze plan (usage stays free
-        for light workloads).
-      </div>
+    <div className="backend-setup" style={{ marginTop: 8 }}>
+      <p className="backend-copy">
+        ExpBuilder will create a private server on your Google account. You
+        need a Google account. Google may ask for a payment card; typical lab
+        use stays within the free quota.
+      </p>
+      <p className="backend-status">{setup.status}</p>
+      {setup.deployed ? (
+        <p className="backend-copy">{setup.publishingNote}</p>
+      ) : null}
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          marginBottom: 12,
-        }}
-      >
-        <button
-          onClick={startLogin}
-          disabled={running || !!token}
-          className="token-button connect"
-        >
-          {token ? "Signed in" : "Sign in with Firebase"}
-        </button>
-        {loginUrl && !token && (
-          <>
-            <button
-              onClick={() => openExternal(loginUrl)}
-              className="token-button"
-              style={{ background: "#3d92b4", color: "white" }}
-            >
-              Open login page
-            </button>
-            <input
-              type="text"
-              value={loginCode}
-              onChange={(e) => setLoginCode(e.target.value)}
-              placeholder="Paste the code from the browser"
-              style={{ padding: "6px 10px", flex: 1 }}
-            />
-            <button
-              onClick={submitLoginCode}
-              disabled={!loginCode.trim()}
-              className="token-button"
-              style={{ background: "#6c757d", color: "white" }}
-            >
-              Submit code
-            </button>
-          </>
-        )}
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          marginBottom: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <select
-          value={projectMode}
-          onChange={(e) => setProjectMode(e.target.value as "create" | "use")}
-          style={{ padding: "6px 10px" }}
-        >
-          <option value="create">Create new project</option>
-          <option value="use">Use existing project</option>
-        </select>
-        <input
-          type="text"
-          value={projectId}
-          onChange={(e) => setProjectId(e.target.value)}
-          placeholder="Firebase project ID"
-          style={{ padding: "6px 10px", flex: 1 }}
-        />
-        <button
-          onClick={handleProject}
-          disabled={running || !token || !projectId.trim() || projectDone}
-          className="token-button connect"
-        >
-          {projectDone ? "Project ready" : "Set project"}
-        </button>
-      </div>
-
-      {projectDone && !configSaved && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            marginBottom: 12,
-            flexWrap: "wrap",
-          }}
-        >
-          <input
-            type="text"
-            value={appName}
-            onChange={(e) => setAppName(e.target.value)}
-            placeholder="Web app display name"
-            style={{ padding: "6px 10px", flex: 1 }}
-          />
+      {(showSignIn || showResumeSignIn) && (
+        <div className="backend-row">
+          {showResumeSignIn ? (
+            <p className="backend-copy">
+              Sign in with Google to add or change publishing accounts.
+            </p>
+          ) : null}
           <button
-            onClick={handleCreateApp}
-            disabled={running}
+            onClick={setup.startLogin}
+            disabled={setup.running}
             className="token-button connect"
           >
-            Create web app
+            Continue with Google
           </button>
+          {setup.loginUrl && (
+            <>
+              <button
+                onClick={() => openExternal(setup.loginUrl)}
+                className="token-button"
+                style={{ background: "#3d92b4", color: "white" }}
+              >
+                Open Google sign-in
+              </button>
+              <input
+                type="text"
+                value={setup.loginCode}
+                onChange={(event) => setup.setLoginCode(event.target.value)}
+                placeholder="If Google showed a code, paste it here"
+                style={inputStyle}
+              />
+              <button
+                onClick={setup.submitLoginCode}
+                disabled={!setup.loginCode.trim()}
+                className="token-button"
+                style={{ background: "#6c757d", color: "white" }}
+              >
+                Submit code
+              </button>
+            </>
+          )}
         </div>
       )}
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          marginBottom: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <button
-          onClick={() => openConsole("/settings/usage")}
-          disabled={!projectDone}
-          className="token-button"
-          style={{ background: "#3d92b4", color: "white" }}
-        >
-          Open Blaze billing page
-        </button>
-        <button
-          onClick={() => setBlazeDone(true)}
-          disabled={!projectDone || blazeDone || running}
-          className="token-button connect"
-        >
-          {blazeDone ? "Blaze plan confirmed" : "I upgraded to Blaze"}
-        </button>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          marginBottom: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <button
-          onClick={handleFirestore}
-          disabled={!blazeDone || firestoreDone || running}
-          className="token-button connect"
-        >
-          {firestoreDone ? "Firestore ready" : "Create Firestore database"}
-        </button>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          marginBottom: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <button
-          onClick={() => openConsole("/authentication/providers")}
-          disabled={!firestoreDone}
-          className="token-button"
-          style={{ background: "#3d92b4", color: "white" }}
-        >
-          Open Auth providers page
-        </button>
-        <button
-          onClick={() => setAuthDone(true)}
-          disabled={!firestoreDone || authDone || running}
-          className="token-button connect"
-        >
-          {authDone
-            ? "Sign-in providers confirmed"
-            : "I enabled Email/Password and Google"}
-        </button>
-      </div>
-
-      {authDone && (
-        <div
-          style={{
-            background: "#f8f9fa",
-            padding: 16,
-            borderRadius: 8,
-            border: "1px solid #dee2e6",
-            marginBottom: 12,
-          }}
-        >
-          <div style={{ fontSize: 13, color: "#666", marginBottom: 12 }}>
-            Create an OAuth app in each provider&apos;s console with this
-            callback URI: <code>{OAUTH_CALLBACK_URI}</code>
-          </div>
-          {PROVIDER_KEYS.map((key) => (
-            <div key={key} style={{ marginBottom: 10 }}>
-              <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      {showProject && (
+        <div className="backend-row" data-testid="backend-step-project">
+          {!setup.projectDone && (
+            <>
+              <select
+                value={setup.projectMode}
+                onChange={(event) =>
+                  setup.setProjectMode(event.target.value as "create" | "use")
+                }
+                style={{ padding: "6px 10px" }}
+              >
+                <option value="create">Create a new server</option>
+                <option value="use">Use an existing project</option>
+              </select>
+              {setup.projectMode === "create" ? (
                 <input
-                  type="checkbox"
-                  checked={oauth[key].enabled}
-                  onChange={() => toggleProvider(key)}
+                  type="text"
+                  value={setup.projectId}
+                  onChange={(event) => setup.setProjectId(event.target.value)}
+                  placeholder="Project name (for example my-lab)"
+                  style={inputStyle}
                 />
-                <span style={{ fontWeight: 600, fontSize: 13 }}>
-                  {PROVIDER_LABELS[key]}
-                </span>
-                <a
-                  href={PROVIDER_CONSOLE_URLS[key]}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    openExternal(PROVIDER_CONSOLE_URLS[key]);
-                  }}
-                  style={{ fontSize: 12 }}
+              ) : (
+                <select
+                  value={setup.projectId}
+                  onChange={(event) => setup.setProjectId(event.target.value)}
+                  style={{ padding: "6px 10px", flex: 1 }}
+                  aria-label="Existing Google project"
                 >
-                  open console
-                </a>
-              </label>
-              {oauth[key].enabled && (
-                <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-                  <input
-                    type="text"
-                    value={oauth[key].clientId}
-                    onChange={(e) =>
-                      updateProvider(key, "clientId", e.target.value)
-                    }
-                    placeholder={`${PROVIDER_LABELS[key]} Client ID`}
-                    style={{ padding: "6px 10px", flex: 1 }}
-                  />
-                  <input
-                    type="text"
-                    value={oauth[key].clientSecret}
-                    onChange={(e) =>
-                      updateProvider(key, "clientSecret", e.target.value)
-                    }
-                    placeholder={`${PROVIDER_LABELS[key]} Client Secret`}
-                    style={{ padding: "6px 10px", flex: 1 }}
-                  />
-                </div>
+                  <option value="">Select a project</option>
+                  {setup.projects.map((project) => (
+                    <option key={project.projectId} value={project.projectId}>
+                      {project.displayName && project.displayName !== project.projectId
+                        ? `${project.displayName} (${project.projectId})`
+                        : project.projectId}
+                    </option>
+                  ))}
+                </select>
               )}
-            </div>
-          ))}
+            </>
+          )}
           <button
-            onClick={handleSaveCredentials}
-            disabled={running || envSaved}
+            onClick={setup.handleSetup}
+            disabled={
+              setup.running || (!setup.projectDone && !setup.projectId.trim())
+            }
             className="token-button connect"
           >
-            {envSaved ? "Credentials saved" : "Save backend credentials"}
+            Set up my server
           </button>
         </div>
       )}
 
-      {envSaved && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            marginBottom: 12,
-          }}
-        >
-          <button
-            onClick={handleDeploy}
-            disabled={running || deployed}
-            className="token-button connect"
-          >
-            {deployed ? "Backend deployed" : "Deploy backend"}
-          </button>
+      {showBilling && (
+        <div data-testid="backend-step-billing">
+          {hasBillingAccounts ? (
+            <>
+              <p className="backend-copy">
+                Link a billing account you already have. Typical lab use stays in
+                the free quota.
+              </p>
+              <div className="backend-row">
+                <select
+                  value={setup.selectedBilling}
+                  onChange={(event) => setup.setSelectedBilling(event.target.value)}
+                  style={{ padding: "6px 10px", flex: 1 }}
+                  aria-label="Billing account"
+                >
+                  <option value="">Select a billing account</option>
+                  {setup.billingAccounts.map((account) => (
+                    <option key={account.name} value={account.name}>
+                      {account.displayName}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={setup.handleLinkBilling}
+                  disabled={setup.running || !setup.selectedBilling}
+                  className="token-button connect"
+                >
+                  Link billing account
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="backend-copy">
+                Google may ask you to add a billing account. Typical lab use stays
+                in the free quota. Open the billing page, then come back and
+                continue.
+              </p>
+              <div className="backend-row">
+                <button
+                  onClick={() => setup.openConsole("/settings/usage")}
+                  disabled={setup.running}
+                  className="token-button"
+                  style={{ background: "#3d92b4", color: "white" }}
+                >
+                  Open billing page
+                </button>
+                <button
+                  onClick={setup.handleBillingContinue}
+                  disabled={setup.running}
+                  className="token-button connect"
+                  aria-label="Continue after billing"
+                >
+                  Continue
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
-      {error && (
-        <div
-          style={{
-            padding: "8px 12px",
-            borderRadius: 4,
-            background: "#ffebee",
-            color: "#c62828",
-            fontSize: 12,
-            marginBottom: 12,
-          }}
-        >
-          {error}
+      {showDatabase && (
+        <div className="backend-row" data-testid="backend-step-database">
+          {setup.running ? (
+            <p className="backend-copy">Setting up the database…</p>
+          ) : (
+            <button
+              onClick={setup.handleFirestore}
+              className="token-button connect"
+            >
+              Try again
+            </button>
+          )}
         </div>
       )}
 
-      <pre
-        style={{
-          background: "#1e1e1e",
-          color: "#d4d4d4",
-          padding: 12,
-          borderRadius: 8,
-          fontSize: 12,
-          maxHeight: 260,
-          overflow: "auto",
-          whiteSpace: "pre-wrap",
-        }}
-      >
-        {logs || "The command output will appear here."}
-      </pre>
+      {showFinish && (
+        <div data-testid="backend-step-finish">
+          {setup.googleAuthNeedsConsole ? (
+            <p className="backend-copy">
+              Email/password is on. Turn on Google on the sign-in page if you
+              want Google login.
+            </p>
+          ) : null}
+          <PublishingAccounts
+            oauth={setup.oauth}
+            onToggle={setup.toggleProvider}
+            onChange={setup.updateProvider}
+          />
+          <div className="backend-row" style={{ marginTop: 12 }}>
+            <button
+              onClick={setup.handleFinish}
+              disabled={setup.running}
+              className="token-button connect"
+            >
+              Finish setup
+            </button>
+          </div>
+        </div>
+      )}
+
+      {setup.deployed && setup.token ? (
+        <div data-testid="backend-publishing">
+          <PublishingAccounts
+            oauth={setup.oauth}
+            onToggle={setup.toggleProvider}
+            onChange={setup.updateProvider}
+          />
+          <div className="backend-row" style={{ marginTop: 12 }}>
+            <button
+              onClick={setup.handleFinish}
+              disabled={setup.running || !setup.publishingDirty}
+              className="token-button connect"
+            >
+              Save publishing credentials
+            </button>
+          </div>
+          {!setup.publishingDirty ? (
+            <p className="backend-copy">
+              Change a publishing account to save again.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {setup.error && <div className="backend-error">{setup.error}</div>}
+
+      {setup.logs.trim() ? (
+        <details className="backend-details">
+          <summary>Technical details</summary>
+          <pre className="backend-log">{setup.logs}</pre>
+        </details>
+      ) : null}
     </div>
   );
 }

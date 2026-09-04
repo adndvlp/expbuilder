@@ -17,7 +17,7 @@ import { uploadParticipantFile } from "./experiment/participant-files/api/upload
 import { setGlobalOptions } from "firebase-functions/v2";
 
 setGlobalOptions({
-  maxInstances: 20,
+  maxInstances: 5,
 });
 
 export {

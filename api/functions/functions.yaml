@@ -1,0 +1,108 @@
+# Checked-in Functions manifest so packaged Electron can deploy without
+# api/functions/node_modules (firebase-tools otherwise tries to load
+# firebase-functions from the asar and fails with MODULE_NOT_FOUND).
+specVersion: v1alpha1
+requiredAPIs:
+  - api: cloudtasks.googleapis.com
+    reason: Needed for task queue functions
+endpoints:
+  apiData:
+    platform: gcfv2
+    entryPoint: apiData
+    region: [us-central1]
+    maxInstances: 5
+    httpsTrigger: {}
+  apiDataComplete:
+    platform: gcfv2
+    entryPoint: apiDataComplete
+    region: [us-central1]
+    maxInstances: 5
+    httpsTrigger: {}
+  apiDeleteExperiment:
+    platform: gcfv2
+    entryPoint: apiDeleteExperiment
+    region: [us-central1]
+    maxInstances: 5
+    httpsTrigger: {}
+  apiCondition:
+    platform: gcfv2
+    entryPoint: apiCondition
+    region: [us-central1]
+    maxInstances: 5
+    httpsTrigger: {}
+  finalizeDisconnectedSessions:
+    platform: gcfv2
+    entryPoint: finalizeDisconnectedSessions
+    region: [us-central1]
+    maxInstances: 5
+    eventTrigger:
+      eventType: google.firebase.database.ref.v1.written
+      eventFilters: {}
+      eventFilterPathPatterns:
+        ref: sessions/{experimentID}/{sessionId}
+        instance: "*"
+      retry: false
+  processSessionTimeout:
+    platform: gcfv2
+    entryPoint: processSessionTimeout
+    region: [us-central1]
+    maxInstances: 5
+    timeoutSeconds: 300
+    taskQueueTrigger:
+      retryConfig:
+        maxAttempts: 5
+        minBackoffSeconds: 30
+        maxBackoffSeconds: 300
+        maxDoublings: 3
+      rateLimits:
+        maxConcurrentDispatches: 20
+        maxDispatchesPerSecond: 20
+  dropboxOAuthCallback:
+    platform: gcfv2
+    entryPoint: dropboxOAuthCallback
+    region: [us-central1]
+    maxInstances: 5
+    httpsTrigger: {}
+  githubOAuthCallback:
+    platform: gcfv2
+    entryPoint: githubOAuthCallback
+    region: [us-central1]
+    maxInstances: 5
+    httpsTrigger: {}
+  publishExperiment:
+    platform: gcfv2
+    entryPoint: publishExperiment
+    region: [us-central1]
+    maxInstances: 5
+    httpsTrigger: {}
+  googleDriveOAuthCallback:
+    platform: gcfv2
+    entryPoint: googleDriveOAuthCallback
+    region: [us-central1]
+    maxInstances: 5
+    httpsTrigger: {}
+  osfManage:
+    platform: gcfv2
+    entryPoint: osfManage
+    region: [us-central1]
+    maxInstances: 5
+    httpsTrigger: {}
+  osfOAuthCallback:
+    platform: gcfv2
+    entryPoint: osfOAuthCallback
+    region: [us-central1]
+    maxInstances: 5
+    httpsTrigger: {}
+  createOAuthStateEndpoint:
+    platform: gcfv2
+    entryPoint: createOAuthStateEndpoint
+    region: [us-central1]
+    maxInstances: 5
+    httpsTrigger: {}
+  uploadParticipantFile:
+    platform: gcfv2
+    entryPoint: uploadParticipantFile
+    region: [us-central1]
+    maxInstances: 5
+    availableMemoryMb: 512
+    httpsTrigger: {}

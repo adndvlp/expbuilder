@@ -90,6 +90,10 @@ describe('preload.js', () => {
       channel: 'backend-setup:write-env',
       payload: { env: { FIREBASE_PROJECT_ID: 'x' } },
     })
+    expect(api.backendSetupApi({ action: 'listProjects', token: 'tok' })).toEqual({
+      channel: 'backend-setup:api',
+      payload: { action: 'listProjects', token: 'tok' },
+    })
     const outputCallback = jest.fn()
     const unsubscribe = api.onBackendSetupOutput(outputCallback)
     expect(on).toHaveBeenCalledWith('backend-setup:output', expect.any(Function))

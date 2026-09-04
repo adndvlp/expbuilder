@@ -75,7 +75,7 @@ export function useOsfToken() {
     const clientId = await getProviderClientId("osf");
     if (!clientId) {
       setError(
-        "OSF OAuth is not configured. Add your OSF Client ID in Settings > OAuth Credentials.",
+        "OSF OAuth is not configured. Add your OSF Client ID in Settings > Server.",
       );
       return;
     }

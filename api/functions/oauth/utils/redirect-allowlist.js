@@ -1,3 +1,8 @@
+import {
+  getFirebaseAppBaseUrl,
+  getFirebaseProjectId,
+} from "../../utils/firebase-urls.js";
+
 /**
  * T-4: open-redirect defense for OAuth callbacks.
  *
@@ -35,15 +40,13 @@ export function validateRedirectUri(candidate) {
   ]);
 
   // The configured production domain — env-driven (matches T-3 migration).
-  const appBaseUrl = process.env.FIREBASE_APP_BASE_URL;
+  const appBaseUrl = getFirebaseAppBaseUrl();
   if (appBaseUrl) {
     try {
       allowedHosts.add(new URL(appBaseUrl).hostname);
     } catch {
       // ignore malformed env
     }
-  } else if (process.env.FIREBASE_PROJECT_ID) {
-    allowedHosts.add(`${process.env.FIREBASE_PROJECT_ID}.firebaseapp.com`);
   }
 
   // OSF callback URL — env-driven.
@@ -54,10 +57,12 @@ export function validateRedirectUri(candidate) {
     } catch {
       // ignore
     }
-  } else if (process.env.FIREBASE_PROJECT_ID) {
-    allowedHosts.add(
-      `us-central1-${process.env.FIREBASE_PROJECT_ID}.cloudfunctions.net`,
-    );
+  }
+
+  const projectId = getFirebaseProjectId();
+  if (projectId) {
+    allowedHosts.add(`${projectId}.firebaseapp.com`);
+    allowedHosts.add(`us-central1-${projectId}.cloudfunctions.net`);
   }
 
   // Always allow cloud functions on the configured project (other callbacks).
@@ -68,10 +73,6 @@ export function validateRedirectUri(candidate) {
     } catch {
       // ignore
     }
-  } else if (process.env.FIREBASE_PROJECT_ID) {
-    allowedHosts.add(
-      `us-central1-${process.env.FIREBASE_PROJECT_ID}.cloudfunctions.net`,
-    );
   }
 
   if (!allowedHosts.has(parsed.hostname)) {

@@ -56,11 +56,24 @@ jest.unstable_mockModule("firebase-functions/v2", () => ({
   setGlobalOptions: mockSetGlobalOptions,
 }));
 
+const { readFileSync } = await import("node:fs");
+const { dirname, join } = await import("node:path");
+const { fileURLToPath } = await import("node:url");
+
 const entrypoints = await import("../../index.js");
+const functionsYamlText = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "../../functions.yaml"),
+  "utf8",
+);
+const functionsYamlEndpoints = [
+  ...functionsYamlText
+    .split("endpoints:\n")[1]
+    .matchAll(/^  ([A-Za-z0-9_]+):$/gm),
+].map((match) => match[1]);
 
 describe("functions/index.js", () => {
   test("sets global function options and re-exports public Cloud Functions", () => {
-    expect(mockSetGlobalOptions).toHaveBeenCalledWith({ maxInstances: 20 });
+    expect(mockSetGlobalOptions).toHaveBeenCalledWith({ maxInstances: 5 });
     expect(entrypoints).toMatchObject({
       apiData,
       apiDataComplete,
@@ -77,5 +90,23 @@ describe("functions/index.js", () => {
       createOAuthStateEndpoint,
       uploadParticipantFile,
     });
+    expect(functionsYamlEndpoints.sort()).toEqual(
+      [
+        "apiData",
+        "apiDataComplete",
+        "apiDeleteExperiment",
+        "apiCondition",
+        "finalizeDisconnectedSessions",
+        "processSessionTimeout",
+        "dropboxOAuthCallback",
+        "githubOAuthCallback",
+        "publishExperiment",
+        "googleDriveOAuthCallback",
+        "osfManage",
+        "osfOAuthCallback",
+        "createOAuthStateEndpoint",
+        "uploadParticipantFile",
+      ].sort(),
+    );
   });
 });

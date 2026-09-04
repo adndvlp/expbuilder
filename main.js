@@ -17,6 +17,7 @@ import {
   startFirebaseCommand,
   writeBackendEnvFile,
 } from "./server/backend-setup.js";
+import { handleBackendSetupApi } from "./server/backend-google.js";
 import { buildFunctionsBaseUrl } from "./server/utils/firebaseUrl.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -380,6 +381,17 @@ ipcMain.handle("backend-setup:write-env", async (_event, { env }) => {
     return { success: true, envPath };
   } catch (error) {
     console.error("Error writing backend env:", error);
+    return { success: false, error: error.message };
+  }
+});
+
+const getBackendSetupStatePath = () =>
+  path.join(app.getPath("userData"), "backend-setup.json");
+
+ipcMain.handle("backend-setup:api", async (_event, payload) => {
+  try {
+    return await handleBackendSetupApi(payload, getBackendSetupStatePath());
+  } catch (error) {
     return { success: false, error: error.message };
   }
 });

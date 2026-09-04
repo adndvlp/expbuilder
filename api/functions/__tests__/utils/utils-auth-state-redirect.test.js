@@ -23,6 +23,9 @@ beforeEach(() => {
   delete process.env.FUNCTIONS_EMULATOR;
   delete process.env.FIREBASE_APP_BASE_URL;
   delete process.env.FIREBASE_PROJECT_ID;
+  delete process.env.GCLOUD_PROJECT;
+  delete process.env.GCP_PROJECT;
+  delete process.env.FIREBASE_CONFIG;
   delete process.env.OSF_OAUTH_CALLBACK_URL;
   jest.restoreAllMocks();
 });

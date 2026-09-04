@@ -52,7 +52,7 @@ describe("Settings OAuth tokens", () => {
 
     expect(
       await screen.findByText(
-        "OSF OAuth is not configured. Add your OSF Client ID in Settings > OAuth Credentials.",
+        "OSF OAuth is not configured. Add your OSF Client ID in Settings > Server.",
       ),
     ).toBeInTheDocument();
     expect(fetchOAuthState).not.toHaveBeenCalled();

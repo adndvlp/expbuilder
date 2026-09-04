@@ -25,7 +25,8 @@ describe("Settings shell", () => {
     expect(screen.getByText(/user@test.dev/)).toBeInTheDocument();
     expect(screen.getByText(/user-123/)).toBeInTheDocument();
     expect(screen.getByTestId("google-drive-token")).toBeInTheDocument();
-    expect(screen.getByTestId("firebase-credentials")).toBeInTheDocument();
+    expect(screen.getByText("Server")).toBeInTheDocument();
+    expect(screen.getByTestId("backend-setup")).toBeInTheDocument();
     expect(screen.queryByText(/You need an account/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Logout"));

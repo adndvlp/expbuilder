@@ -73,6 +73,36 @@ interface ElectronAPI {
     error?: string;
     envPath?: string;
   }>;
+  backendSetupApi: (payload: {
+    action: string;
+    token?: string;
+    projectId?: string;
+    billingAccountName?: string;
+    state?: {
+      projectId?: string;
+      token?: string;
+      configSaved?: boolean;
+      billingDone?: boolean;
+      firestoreDone?: boolean;
+      authDone?: boolean;
+      deployed?: boolean;
+      googleAuthNeedsConsole?: boolean;
+    };
+  }) => Promise<{
+    success: boolean;
+    error?: string;
+    state?: Record<string, unknown> | null;
+    projects?: Array<{
+      projectId: string;
+      displayName: string;
+      projectNumber?: string;
+    }>;
+    accounts?: Array<{ name: string; displayName: string; open?: boolean }>;
+    enabled?: boolean;
+    emailEnabled?: boolean;
+    googleEnabled?: boolean;
+    googleNeedsConsole?: boolean;
+  }>;
 }
 
 interface Window {

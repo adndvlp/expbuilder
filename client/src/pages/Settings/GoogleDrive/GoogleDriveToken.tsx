@@ -76,7 +76,7 @@ export default function GoogleDriveToken() {
     const clientId = await getProviderClientId("googleDrive");
     if (!clientId) {
       alert(
-        "Google Drive OAuth is not configured. Add your Google Drive Client ID in Settings > OAuth Credentials.",
+        "Google Drive OAuth is not configured. Add your Google Drive Client ID in Settings > Server.",
       );
       return;
     }

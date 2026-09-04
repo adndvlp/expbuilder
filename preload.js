@@ -33,4 +33,5 @@ contextBridge.exposeInMainWorld("electron", {
     return () => ipcRenderer.removeListener("backend-setup:exit", listener);
   },
   writeBackendEnv: (env) => ipcRenderer.invoke("backend-setup:write-env", { env }),
+  backendSetupApi: (payload) => ipcRenderer.invoke("backend-setup:api", payload),
 });

@@ -34,7 +34,7 @@ describe('main.js backend setup IPC', () => {
     })
 
     const content = fs.readFileSync(path.join(tmpApi, 'functions', '.env'), 'utf8')
-    expect(content).toContain('FIREBASE_PROJECT_ID=my-project')
+    expect(content).not.toContain('FIREBASE_PROJECT_ID')
     expect(content).toContain('GITHUB_CLIENT_ID=gh')
 
     delete process.env.BACKEND_API_DIR

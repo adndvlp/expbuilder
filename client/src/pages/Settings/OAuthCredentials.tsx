@@ -214,7 +214,7 @@ export default function OAuthCredentials() {
         >
           <div style={{ fontSize: 13, color: "#666", marginBottom: 12 }}>
             Enter the Client IDs of the OAuth apps you registered with each
-            provider. The app connects to your backend using these IDs.
+            provider. The app connects to your server using these IDs.
           </div>
           {FIELDS.map(({ label, field }) => (
             <div key={field} style={{ marginBottom: 12 }}>

@@ -49,8 +49,8 @@ vi.mock("../../../pages/Settings/OsfToken", () => ({
   default: () => <div data-testid="osf-token">OSF</div>,
 }));
 
-vi.mock("../../../pages/Settings/FirebaseCredentials", () => ({
-  default: () => <div data-testid="firebase-credentials">Firebase</div>,
+vi.mock("../../../pages/Settings/BackendSetup", () => ({
+  default: () => <div data-testid="backend-setup">Server setup</div>,
 }));
 
 vi.mock("../../../pages/Settings/ChangePassword", () => ({
