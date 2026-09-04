@@ -67,7 +67,7 @@ function Dashboard() {
     setLoading(true);
 
     // Get the authenticated user's uid if available
-    const uid = auth.currentUser?.uid ?? null;
+    const uid = auth?.currentUser?.uid ?? null;
     const body = uid ? { uid } : {};
     const res = await fetch(`${VITE_API}/api/delete-experiment/${id}`, {
       method: "DELETE",

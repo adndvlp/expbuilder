@@ -17,7 +17,7 @@ export default function DropboxToken() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [hasToken, setHasToken] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const user = auth.currentUser;
+  const user = auth?.currentUser;
 
   // REDIRECT_URI dinámico según el entorno
   const REDIRECT_URI = isElectron

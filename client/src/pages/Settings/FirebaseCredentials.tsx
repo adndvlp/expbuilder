@@ -86,7 +86,7 @@ export default function FirebaseCredentials() {
   const handleReset = async () => {
     if (
       !confirm(
-        "Are you sure you want to reset to default Firebase credentials? The app will need to be restarted.",
+        "Are you sure you want to remove the saved Firebase credentials? The app will need to be restarted.",
       )
     ) {
       return;
@@ -106,7 +106,7 @@ export default function FirebaseCredentials() {
         });
         setIsEditing(false);
         alert(
-          "Firebase credentials reset to default! Please restart the app for changes to take effect.",
+          "Firebase credentials removed. Please restart the app for changes to take effect.",
         );
       } else {
         alert(
@@ -160,7 +160,7 @@ export default function FirebaseCredentials() {
               ✓ Using custom Firebase credentials
             </span>
           ) : (
-            <span>Using default Firebase credentials</span>
+            <span>Firebase is not configured yet</span>
           )}
         </div>
         <div style={{ display: "flex", gap: 8 }}>

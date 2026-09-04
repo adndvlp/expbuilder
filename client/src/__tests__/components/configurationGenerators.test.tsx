@@ -53,6 +53,10 @@ vi.mock("firebase/firestore", () => ({
 vi.mock("../../lib/firebase", () => ({
   auth: { currentUser: { uid: "uid-123" } },
   db: { name: "test-db" },
+  subscribeToAuth: vi.fn((callback) => {
+    callback({ uid: "uid-123" });
+    return vi.fn();
+  }),
 }));
 
 const defaultProps = {

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../../lib/firebase";
+import { getFirebaseAuth } from "../../lib/firebase";
 import "./index.css";
 
 const Login: React.FC = () => {
@@ -20,8 +20,14 @@ const Login: React.FC = () => {
     setSuccess(false);
     setIsSubmitting(true);
     try {
+      const firebaseAuth = await getFirebaseAuth();
+      if (!firebaseAuth) {
+        setErrorEmail("Configure Firebase in Settings before signing in.");
+        setIsSubmitting(false);
+        return;
+      }
       const userCredential = await signInWithEmailAndPassword(
-        auth,
+        firebaseAuth,
         email,
         password,
       );

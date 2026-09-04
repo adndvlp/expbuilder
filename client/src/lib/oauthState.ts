@@ -16,7 +16,7 @@ import { buildFunctionsBaseUrl, getBackendProjectId } from "./oauthConfig";
 export type OAuthProvider = "dropbox" | "googledrive" | "github" | "osf";
 
 export async function fetchOAuthState(provider: OAuthProvider): Promise<string> {
-  const user = auth.currentUser;
+  const user = auth?.currentUser;
   if (!user) {
     throw new Error("Not authenticated — sign in before connecting a provider");
   }

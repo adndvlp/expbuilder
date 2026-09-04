@@ -84,7 +84,7 @@ export default function PublishExperiment({
 }: Props) {
   const handlePublishToGitHub = async () => {
     try {
-      const firebaseUser = auth.currentUser;
+      const firebaseUser = auth?.currentUser;
       if (!firebaseUser) {
         setPublishStatus("Error: User not logged in");
         return;
@@ -132,7 +132,7 @@ export default function PublishExperiment({
     let keepPublishStatus = false;
 
     try {
-      const firebaseUser = auth.currentUser;
+      const firebaseUser = auth?.currentUser;
       if (!firebaseUser || firebaseUser.uid !== uid) {
         throw new Error("User not logged in");
       }

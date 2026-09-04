@@ -141,7 +141,7 @@ export default function PublicConfiguration({
     // Generate codes dynamically from trial/loop data
     const baseCode = isDevMode ? code : await generatedBaseCode();
 
-    const currentUid = auth.currentUser?.uid ?? "";
+    const currentUid = auth?.currentUser?.uid ?? "";
 
     return buildPublicExperimentCode({
       DATA_API_URL,

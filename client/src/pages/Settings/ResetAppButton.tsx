@@ -12,11 +12,11 @@ const ResetAppButton: React.FC = () => {
   const [showConfirm, setShowConfirm] = useState(false);
 
   // Obtener el uid real del usuario validado en Firebase
-  const uid = auth.currentUser?.uid || null;
+  const uid = auth?.currentUser?.uid || null;
 
   const handleReset = async () => {
     // Re-read uid at call time in case auth resolved after initial render
-    const currentUid = auth.currentUser?.uid || null;
+    const currentUid = auth?.currentUser?.uid || null;
     setLoading(true);
     try {
       const resp = await fetch(`${API_URL}/api/app/reset`, {

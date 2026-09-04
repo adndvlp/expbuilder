@@ -39,6 +39,12 @@ vi.mock("firebase/firestore", () => ({
 vi.mock("../../../lib/firebase", () => ({
   auth: mocks.auth,
   db: {},
+  subscribeToAuth: vi.fn((callback) => {
+    callback(mocks.authUser);
+    return mocks.unsubscribe;
+  }),
+  getFirebaseAuth: vi.fn(async () => mocks.auth),
+  getFirebaseDb: vi.fn(async () => ({})),
 }));
 
 vi.mock("../../../lib/openExternal", () => ({

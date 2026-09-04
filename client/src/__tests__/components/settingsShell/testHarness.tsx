@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, vi } from "vitest";
 
-import { auth } from "../../../lib/firebase";
+import { auth, subscribeToAuth } from "../../../lib/firebase";
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
@@ -105,6 +105,10 @@ function registerSettingsShellHooks() {
     };
     mocks.searchParams = new URLSearchParams();
     (auth as any).signOut = vi.fn(async () => undefined);
+    vi.mocked(subscribeToAuth).mockImplementation((callback) => {
+      callback(mocks.authUser as any);
+      return mocks.unsubscribe;
+    });
     globalThis.fetch = vi.fn(async (url: string) => {
       if (url === "http://localhost:3000/api/load-experiments") {
         return okJson({

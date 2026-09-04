@@ -24,7 +24,7 @@ export function useOsfToken() {
   const [error, setError] = useState("");
   const [osfUserName, setOsfUserName] = useState("");
   const [osfProjectId, setOsfProjectId] = useState("");
-  const user = auth.currentUser;
+  const user = auth?.currentUser;
   const redirectUri = getOsfRedirectUri(
     isElectron,
     import.meta.env.DEV,

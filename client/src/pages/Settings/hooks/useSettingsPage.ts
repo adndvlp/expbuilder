@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
-import { onAuthStateChanged, type User } from "firebase/auth";
-import { auth } from "../../../lib/firebase";
+import type { User } from "firebase/auth";
+import { auth, getFirebaseAuth, subscribeToAuth } from "../../../lib/firebase";
 import type { Experiment, SettingsNotification } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -17,11 +17,10 @@ export function useSettingsPage() {
   const [experiments, setExperiments] = useState<Experiment[]>([]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    return subscribeToAuth((firebaseUser) => {
       setUser(firebaseUser);
       setAuthLoading(false);
     });
-    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -56,7 +55,12 @@ export function useSettingsPage() {
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-      await auth.signOut();
+      const firebaseAuth = await getFirebaseAuth();
+      const client =
+        firebaseAuth && typeof firebaseAuth.signOut === "function"
+          ? firebaseAuth
+          : auth;
+      await client?.signOut?.();
       localStorage.removeItem("user");
     } catch (error) {
       console.error("Error logging out:", error);

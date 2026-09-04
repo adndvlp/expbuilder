@@ -11,7 +11,7 @@ export default function DeleteAccount() {
 
   const deleteAccount = async () => {
     setIsDeleting(true);
-    const user = auth.currentUser;
+    const user = auth?.currentUser;
 
     if (!user) {
       setIsDeleting(false);

@@ -55,7 +55,14 @@ vi.mock("../../../lib/firebase", () => {
   Object.defineProperty(auth, "currentUser", {
     get: () => hoistedMocks.currentUser,
   });
-  return { auth, db: {} };
+  return {
+    auth,
+    db: {},
+    subscribeToAuth: vi.fn((callback) => {
+      callback(hoistedMocks.currentUser);
+      return vi.fn();
+    }),
+  };
 });
 
 function normalize(code: string) {
