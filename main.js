@@ -7,7 +7,11 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import pkg from "electron-updater";
-import { createOAuthCallbackServer, isPortAvailable } from "./oauth-handler.js";
+import {
+  createOAuthCallbackServer,
+  isPortAvailable,
+  oauthPortInUseMessage,
+} from "./oauth-handler.js";
 import {
   getApiDir,
   startFirebaseCommand,
@@ -87,7 +91,7 @@ ipcMain.handle(
       const OAUTH_PORT = 8888;
       const portAvailable = await isPortAvailable(OAUTH_PORT);
       if (!portAvailable) {
-        throw new Error(`Port ${OAUTH_PORT} is not available`);
+        throw new Error(oauthPortInUseMessage(OAUTH_PORT));
       }
 
       let authUrl;
@@ -130,9 +134,13 @@ ipcMain.handle(
       };
     } catch (error) {
       console.error("OAuth flow error:", error);
+      const occupied =
+        error?.code === "EADDRINUSE" ||
+        error?.code === "OAUTH_PORT_IN_USE" ||
+        String(error?.message || "").includes("EADDRINUSE");
       return {
         success: false,
-        error: error.message,
+        error: occupied ? oauthPortInUseMessage(8888) : error.message,
       };
     }
   },

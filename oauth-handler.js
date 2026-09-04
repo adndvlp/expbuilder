@@ -160,16 +160,22 @@ export function createOAuthCallbackServer(
 
     server.on("error", (err) => {
       cleanup();
+      if (err?.code === "EADDRINUSE") {
+        const occupied = new Error(oauthPortInUseMessage(port));
+        occupied.code = "OAUTH_PORT_IN_USE";
+        occupied.cause = err;
+        reject(occupied);
+        return;
+      }
       reject(err);
     });
   });
 }
 
-/**
- * Checks if a port is available
- * @param {number} port - Port to check
- * @returns {Promise<boolean>}
- */
+export function oauthPortInUseMessage(port = 8888) {
+  return `OAuth cannot start because port ${port} is already in use. Close the other application using that port and try again. This port is registered as the OAuth redirect and cannot be changed.`;
+}
+
 export function isPortAvailable(port) {
   return new Promise((resolve) => {
     const server = http.createServer();

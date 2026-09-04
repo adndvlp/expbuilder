@@ -5,6 +5,10 @@ import { fetchOAuthState } from "../../../../lib/oauthState";
 import { openExternal } from "../../../../lib/openExternal";
 import { getBackendProjectId, getProviderClientId } from "../../../../lib/oauthConfig";
 import {
+  isOAuthPortInUseError,
+  oauthStartErrorMessage,
+} from "../../../../lib/oauthPortError";
+import {
   getOsfManageUrl,
   getOsfOAuthExchangeUrl,
   getOsfRedirectUri,
@@ -143,15 +147,17 @@ export function useOsfToken() {
           await new Promise((resolve) => setTimeout(resolve, 3000));
           return handleConnectOAuth(retryAttempt + 1);
         }
-        throw new Error(result.error || "OAuth flow failed");
+        throw new Error(oauthStartErrorMessage(result.error));
       }
     } catch (connectError: unknown) {
       console.error("Error connecting OSF:", connectError);
       const message = (connectError as { message?: string }).message;
       setError(
-        message?.includes("invalid_client")
-          ? "OSF OAuth configuration error. Please ensure your application is properly configured at https://osf.io/settings/applications/ and try again in a few seconds."
-          : `Connection failed: ${message}`,
+        isOAuthPortInUseError(message)
+          ? oauthStartErrorMessage(message)
+          : message?.includes("invalid_client")
+            ? "OSF OAuth configuration error. Please ensure your application is properly configured at https://osf.io/settings/applications/ and try again in a few seconds."
+            : `Connection failed: ${message}`,
       );
     } finally {
       setIsConnecting(false);

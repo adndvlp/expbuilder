@@ -80,6 +80,46 @@ describe("Settings OAuth Electron flows", () => {
     });
   });
 
+  it("alerts a visible message when the OAuth callback port is occupied", async () => {
+    const cases = [
+      {
+        load: () =>
+          import("../../../pages/Settings/Github/GithubToken").then(
+            (module) => module.default,
+          ),
+      },
+      {
+        load: () =>
+          import("../../../pages/Settings/Dropbox/DropboxToken").then(
+            (module) => module.default,
+          ),
+      },
+      {
+        load: () =>
+          import("../../../pages/Settings/GoogleDrive/GoogleDriveToken").then(
+            (module) => module.default,
+          ),
+      },
+    ] as const;
+
+    for (const item of cases) {
+      cleanup();
+      vi.clearAllMocks();
+      (window as any).electron.startOAuthFlow.mockResolvedValue({
+        success: false,
+        error: "Port 8888 is not available",
+      });
+      const Component = await item.load();
+      render(<Component />);
+      fireEvent.click(await screen.findByRole("button", { name: "Connect" }));
+      await waitFor(() => {
+        expect(window.alert).toHaveBeenCalledWith(
+          "Error: OAuth cannot start because port 8888 is already in use. Close the other application using that port and try again. This port is registered as the OAuth redirect and cannot be changed.",
+        );
+      });
+    }
+  });
+
   it("alerts when OAuth credentials are not configured for the Electron flow", async () => {
     const cases = [
       {

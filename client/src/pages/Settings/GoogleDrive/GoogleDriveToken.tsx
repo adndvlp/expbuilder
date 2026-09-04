@@ -8,6 +8,7 @@ import {
   getBackendProjectId,
   getProviderClientId,
 } from "../../../lib/oauthConfig";
+import { oauthStartErrorMessage } from "../../../lib/oauthPortError";
 
 // Detectar si estamos en Electron
 const isElectron = !!(window as any).electron?.startOAuthFlow;
@@ -130,7 +131,7 @@ export default function GoogleDriveToken() {
             throw new Error("Failed to exchange tokens");
           }
         } else {
-          throw new Error(result.error || "OAuth flow failed");
+          throw new Error(oauthStartErrorMessage(result.error));
         }
       } catch (error: any) {
         console.error("Error connecting Google Drive:", error);

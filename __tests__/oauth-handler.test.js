@@ -95,7 +95,10 @@ describe('oauth-handler', () => {
     const blocker = http.createServer()
     await new Promise(resolve => blocker.listen(port, resolve))
 
-    await expect(createOAuthCallbackServer(port, 1000)).rejects.toHaveProperty('code', 'EADDRINUSE')
+    await expect(createOAuthCallbackServer(port, 1000)).rejects.toMatchObject({
+      code: 'OAUTH_PORT_IN_USE',
+      message: expect.stringContaining(`port ${port} is already in use`),
+    })
     await new Promise(resolve => blocker.close(resolve))
   })
 })

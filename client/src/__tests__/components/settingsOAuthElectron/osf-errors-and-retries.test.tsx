@@ -8,6 +8,29 @@ import { describe, expect, it, vi } from "vitest";
 describe("Settings OAuth Electron flows", () => {
   registerSettingsOAuthElectronFlowsHooks();
 
+  it("shows a visible OSF error when the OAuth callback port is occupied", async () => {
+    (window as any).electron.startOAuthFlow.mockResolvedValue({
+      success: false,
+      error: "Port 8888 is not available",
+    });
+    const { default: OsfToken } = await import(
+      "../../../pages/Settings/OsfToken"
+    );
+
+    render(<OsfToken />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Connect with OSF OAuth/ }),
+    );
+
+    expect(
+      await screen.findByText(
+        "OAuth cannot start because port 8888 is already in use. Close the other application using that port and try again. This port is registered as the OAuth redirect and cannot be changed.",
+        {},
+        { timeout: 2500 },
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("uses the default OSF Electron OAuth failure message", async () => {
     (window as any).electron.startOAuthFlow.mockResolvedValue({
       success: false,
