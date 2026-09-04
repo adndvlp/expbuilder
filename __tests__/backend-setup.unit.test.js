@@ -41,12 +41,13 @@ describe('server/backend-setup', () => {
 
     expect(spawnMock).toHaveBeenCalledWith(
       process.execPath,
-      [backendSetup.getFirebaseCliPath(), '--token', 'tok-123', 'projects:list'],
+      [backendSetup.getFirebaseCliPath(), '--interactive', '--token', 'tok-123', 'projects:list'],
       {
         cwd: '/tmp/api',
         env: expect.objectContaining({
           ELECTRON_RUN_AS_NODE: '1',
           FORCE_COLOR: '0',
+          CI: '',
         }),
       },
     )

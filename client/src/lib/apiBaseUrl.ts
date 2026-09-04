@@ -11,7 +11,7 @@ export function getApiBaseUrl(): string {
       return trimTrailingSlash(fromElectron);
     }
   }
-  const fromEnv = import.meta.env.VITE_API_URL;
+  const fromEnv = import.meta.env?.VITE_API_URL;
   if (typeof fromEnv === "string" && fromEnv.length > 0) {
     return trimTrailingSlash(fromEnv);
   }

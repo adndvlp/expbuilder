@@ -30,10 +30,19 @@ export function getApiDir(isProduction) {
 }
 
 export function startFirebaseCommand({ args, token, cwd, onOutput }) {
-  const fullArgs = token ? ["--token", token, ...args] : [...args];
+  const fullArgs = [
+    "--interactive",
+    ...(token ? ["--token", token] : []),
+    ...args,
+  ];
   const child = spawn(process.execPath, [getFirebaseCliPath(), ...fullArgs], {
     cwd,
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: "1", FORCE_COLOR: "0" },
+    env: {
+      ...process.env,
+      ELECTRON_RUN_AS_NODE: "1",
+      FORCE_COLOR: "0",
+      CI: "",
+    },
   });
 
   let output = "";
