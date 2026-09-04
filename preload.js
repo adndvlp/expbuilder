@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electron", {
+  getApiBaseUrl: () => ipcRenderer.sendSync("get-api-base-url"),
   openExternal: (url) => ipcRenderer.invoke("open-external", url),
   startOAuthFlow: (config) => ipcRenderer.invoke("start-oauth-flow", config),
   saveCsvZip: (files, defaultName) =>

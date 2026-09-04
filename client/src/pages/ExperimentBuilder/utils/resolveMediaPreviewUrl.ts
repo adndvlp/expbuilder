@@ -1,3 +1,4 @@
+import { getApiBaseUrl } from "../../../lib/apiBaseUrl";
 import {
   mapFileToUrl,
   type UploadedFile,
@@ -15,7 +16,7 @@ type MediaPreviewUrlOptions = {
 export function resolveMediaPreviewUrl(
   value: string,
   {
-    apiUrl = import.meta.env.VITE_API_URL || "",
+    apiUrl = getApiBaseUrl() || "",
     experimentID,
     uploadedFiles = [],
   }: MediaPreviewUrlOptions = {},

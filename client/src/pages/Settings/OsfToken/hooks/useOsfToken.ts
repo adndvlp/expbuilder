@@ -32,13 +32,14 @@ export function useOsfToken() {
   );
 
   useEffect(() => {
-    if (!user) {
+    const firestore = db;
+    if (!user || !firestore) {
       setIsLoading(false);
       return;
     }
     const loadTokenStatus = async () => {
       try {
-        const snapshot = await getDoc(doc(db, "users", user.uid));
+        const snapshot = await getDoc(doc(firestore, "users", user.uid));
         if (snapshot.exists()) {
           const data = snapshot.data();
           setHasToken(
@@ -124,12 +125,14 @@ export function useOsfToken() {
         if (!response.ok && !response.redirected) {
           throw new Error("Failed to exchange tokens");
         }
-        const snapshot = await getDoc(doc(db, "users", user.uid));
-        if (snapshot.exists()) {
-          const data = snapshot.data();
-          setHasToken(!!data.osfTokens?.access_token);
-          setOsfUserName(data.osfUserName || "");
-          setOsfProjectId(data.osfProjectId || "");
+        if (user && db) {
+          const snapshot = await getDoc(doc(db, "users", user.uid));
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+            setHasToken(!!data.osfTokens?.access_token);
+            setOsfUserName(data.osfUserName || "");
+            setOsfProjectId(data.osfProjectId || "");
+          }
         }
         alert("OSF connected successfully via OAuth!");
       } else {

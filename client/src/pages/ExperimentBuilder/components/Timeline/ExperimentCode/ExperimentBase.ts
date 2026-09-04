@@ -5,12 +5,13 @@ import type {
   GetLoopTimelineFn,
   GetTrialFn,
 } from "../../../utils/codegen/types";
+import { getApiBaseUrl } from "../../../../../lib/apiBaseUrl";
 import {
   generateExperimentBaseCode,
   renderExperimentBaseCode,
 } from "./services/generateExperimentBaseCode";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = getApiBaseUrl();
 
 type Props = {
   experimentID: string | undefined;

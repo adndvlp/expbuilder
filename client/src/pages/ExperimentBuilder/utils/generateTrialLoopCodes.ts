@@ -4,6 +4,7 @@ import type { ExperimentGraphSnapshot } from "../modules/experiment-graph/types"
 import { getMergePointIds, isMergePoint } from "./branchGraphUtils";
 import { generateLoopCode } from "./codegen/generateLoopCode";
 import { generateTrialCode } from "./codegen/generateTrialCode";
+import { getApiBaseUrl } from "../../../lib/apiBaseUrl";
 import {
   GetLoopFn,
   GetLoopTimelineFn,
@@ -35,7 +36,7 @@ export async function generateAllCodes(
   try {
     const fetchImpl = options.fetchImpl ?? fetch;
     const apiBaseUrl =
-      options.apiBaseUrl ?? import.meta.env.VITE_API_URL ?? "";
+      options.apiBaseUrl ?? getApiBaseUrl() ?? "";
     let timeline: TimelineItem[] = options.graph?.root.items || [];
     if (!options.graph) {
       const response = await fetchImpl(

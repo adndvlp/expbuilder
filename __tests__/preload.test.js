@@ -7,6 +7,7 @@ describe('preload.js', () => {
   test('exposes the expected Electron bridge methods', () => {
     const exposeInMainWorld = jest.fn()
     const invoke = jest.fn((channel, payload) => ({ channel, payload }))
+    const sendSync = jest.fn((channel) => `sync:${channel}`)
     const on = jest.fn((channel, listener) => listener)
     const removeListener = jest.fn()
     const filename = path.resolve(process.cwd(), 'preload.js')
@@ -19,7 +20,7 @@ describe('preload.js', () => {
         }
         return {
           contextBridge: { exposeInMainWorld },
-          ipcRenderer: { invoke, on, removeListener },
+          ipcRenderer: { invoke, sendSync, on, removeListener },
         }
       },
     }, { filename })
@@ -28,6 +29,7 @@ describe('preload.js', () => {
     const [namespace, api] = exposeInMainWorld.mock.calls[0]
     expect(namespace).toBe('electron')
 
+    expect(api.getApiBaseUrl()).toBe('sync:get-api-base-url')
     expect(api.openExternal('https://example.com')).toEqual({
       channel: 'open-external',
       payload: 'https://example.com',

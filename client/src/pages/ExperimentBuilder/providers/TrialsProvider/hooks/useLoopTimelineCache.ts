@@ -12,8 +12,9 @@ import type {
   TimelineItem,
 } from "../../../contexts/TrialsContext";
 import type { GraphScopeView } from "../../../modules/experiment-graph/types";
+import { getApiBaseUrl } from "../../../../../lib/apiBaseUrl";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = getApiBaseUrl();
 
 type CacheUpdater = (cache: LoopTimelineCache) => LoopTimelineCache;
 

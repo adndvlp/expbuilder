@@ -9,6 +9,7 @@ import type { UploadedFile } from "../../../utils/codegen/types";
 import ExperimentBase from "./ExperimentBase";
 import LocalConfiguration from "./LocalConfiguration";
 import PublicConfiguration from "./PublicConfiguration";
+import { getApiBaseUrl } from "../../../../../lib/apiBaseUrl";
 import {
   branchingEvaluationRuntimeCode,
   evaluateConditionRuntimeCode,
@@ -30,7 +31,7 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
     if (!experimentID) return "";
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/trials-extensions/${experimentID}`,
+        `${getApiBaseUrl()}/api/trials-extensions/${experimentID}`,
       );
       const data = (await response.json()) as { extensions?: string[] };
       const extensions = data.extensions ?? [];

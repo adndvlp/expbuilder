@@ -3,8 +3,9 @@ import { useSearchParams } from "react-router";
 import type { User } from "firebase/auth";
 import { auth, getFirebaseAuth, subscribeToAuth } from "../../../lib/firebase";
 import type { Experiment, SettingsNotification } from "../types";
+import { getApiBaseUrl } from "../../../lib/apiBaseUrl";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = getApiBaseUrl();
 
 export function useSettingsPage() {
   const [user, setUser] = useState<User | null>(null);

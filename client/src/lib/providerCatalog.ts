@@ -12,8 +12,9 @@ import {
 } from "react-icons/fi";
 import { TbBrandAzure } from "react-icons/tb";
 import type { Provider, AIModel, ModelTier } from "../components/Chat/providers";
+import { getApiBaseUrl } from "./apiBaseUrl";
 
-const API_BASE = "http://localhost:3000";
+const API_BASE = getApiBaseUrl();
 
 /* ── Static metadata for well-known providers ─────────── */
 const META: Record<string, {

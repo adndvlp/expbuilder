@@ -19,6 +19,7 @@ describe('main.js Electron lifecycle', () => {
       'backend-setup:write-env',
       'delete-firebase-config',
       'delete-oauth-config',
+      'get-api-base-url',
       'open-external',
       'read-firebase-config',
       'read-oauth-config',
@@ -59,6 +60,17 @@ describe('main.js Electron lifecycle', () => {
     } else {
       process.env.NODE_ENV = envBefore
     }
+  })
+
+  test('reports the bound API URL over sync IPC after the server starts', async () => {
+    const loaded = await loadMain({ listeningPort: 3012 })
+    const event = { returnValue: undefined }
+    loaded.handlers.get('get-api-base-url')(event)
+    expect(event.returnValue).toBe('http://localhost:3000')
+
+    await loaded.readyCallback()
+    loaded.handlers.get('get-api-base-url')(event)
+    expect(event.returnValue).toBe('http://localhost:3012')
   })
 
   test('opens external URLs through IPC', async () => {

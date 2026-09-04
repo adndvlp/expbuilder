@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { auth } from "../../lib/firebase";
+import { getApiBaseUrl } from "../../lib/apiBaseUrl";
 
 export const resolveResetApiUrl = (configuredUrl?: string) =>
   configuredUrl || "http://localhost:3000";
 
-const API_URL = resolveResetApiUrl(import.meta.env.VITE_API_URL);
+const API_URL = resolveResetApiUrl(getApiBaseUrl());
 
 const ResetAppButton: React.FC = () => {
   const [loading, setLoading] = useState(false);

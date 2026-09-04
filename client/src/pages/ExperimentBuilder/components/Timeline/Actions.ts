@@ -1,10 +1,11 @@
 import { Dispatch, SetStateAction, useEffect } from "react";
 import useDevMode from "../../hooks/useDevMode";
+import { getApiBaseUrl } from "../../../../lib/apiBaseUrl";
 import {
   ArtifactBuildError,
   buildExperimentArtifact,
 } from "../../modules/experiment-runtime/experimentArtifact";
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = getApiBaseUrl();
 
 type Props = {
   experimentID: string | undefined;

@@ -31,6 +31,12 @@ dotenv.config({ path: envPath });
 
 // Importar el backend dinámicamente después de definir DB_PATH
 let backendLoaded = false;
+let apiBaseUrl = "http://localhost:3000";
+
+ipcMain.on("get-api-base-url", (event) => {
+  event.returnValue = apiBaseUrl;
+});
+
 app.whenReady().then(async () => {
   // Usar la ruta definida en el archivo .env
   // En desarrollo: server/database/db.json
@@ -41,7 +47,11 @@ app.whenReady().then(async () => {
     process.env.DB_ROOT = userDataPath;
   }
 
-  await import("./server/api.js");
+  const apiModule = await import("./server/api.js");
+  if (apiModule.whenListening) {
+    const port = await apiModule.whenListening;
+    apiBaseUrl = `http://localhost:${port}`;
+  }
   backendLoaded = true;
   createWindow();
   autoUpdater.checkForUpdatesAndNotify();

@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import PluginsContext from "../contexts/PluginsContext";
 import isEqual from "lodash.isequal";
+import { getApiBaseUrl } from "../../../lib/apiBaseUrl";
 
 type Plugin = {
   name: string;
@@ -19,7 +20,7 @@ export default function PluginsProvider({ children }: Props) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState(false);
   const [metadataError, setMetadataError] = useState<string>("");
-  const API_URL = import.meta.env.VITE_API_URL;
+  const API_URL = getApiBaseUrl();
 
   // Load all plugins from backend (single request)
   useEffect(() => {

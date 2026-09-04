@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { getApiBaseUrl } from "../../lib/apiBaseUrl";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = getApiBaseUrl();
 
 type Props = {
   experimentID: string | undefined;

@@ -80,7 +80,7 @@ router.post("/api/create-tunnel", async (req, res) => {
     const args = [
       "tunnel",
       "--url",
-      "http://localhost:3000",
+      process.env.API_URL || "http://localhost:3000",
       "--no-autoupdate",
     ];
     if (customHostname) {

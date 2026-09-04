@@ -5,6 +5,7 @@ import useDevMode from "../../../hooks/useDevMode";
 import { auth } from "../../../../../lib/firebase";
 import { buildPublicExperimentCode } from "./services/buildPublicExperimentCode";
 import { SessionNameToken } from "./services/localCodeTypes";
+import { getApiBaseUrl } from "../../../../../lib/apiBaseUrl";
 import type {
   GetLoopFn,
   GetLoopTimelineFn,
@@ -12,7 +13,7 @@ import type {
 } from "../../../utils/codegen/types";
 
 /* v8 ignore start -- import-time env fallbacks cannot be toggled after this module is loaded in Vitest. */
-const API_URL = import.meta.env.VITE_API_URL ?? "";
+const API_URL = getApiBaseUrl() ?? "";
 const DATA_API_URL = import.meta.env.VITE_DATA_API_URL;
 const FIREBASE_DATABASE_URL =
   import.meta.env.VITE_FIREBASE_DATABASE_URL ||
@@ -84,7 +85,7 @@ export default function PublicConfiguration({
       const { doc, getDoc } = await import("firebase/firestore");
       const { db } = await import("../../../../../lib/firebase");
 
-      if (experimentID) {
+      if (experimentID && db) {
         const docRef = doc(db, "experiments", experimentID);
         const docSnap = await getDoc(docRef);
 

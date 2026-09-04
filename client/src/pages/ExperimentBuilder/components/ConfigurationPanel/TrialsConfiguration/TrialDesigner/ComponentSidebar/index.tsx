@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { useExperimentID } from "../../../../../hooks/useExperimentID";
 import { ComponentType, TrialComponent } from "../types";
 import LeftSideBar from "./LeftSideBar";
+import { getApiBaseUrl } from "../../../../../../../lib/apiBaseUrl";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = getApiBaseUrl();
 type Props = {
   setLeftPanelWidth: React.Dispatch<React.SetStateAction<number>>;
   leftPanelWidth: number;

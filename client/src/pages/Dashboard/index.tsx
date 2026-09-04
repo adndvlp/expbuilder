@@ -4,7 +4,8 @@ import { Outlet, useNavigate } from "react-router";
 import { PromptModal } from "./PromptModal";
 import { auth } from "../../lib/firebase";
 import { experimentAuthoringClient } from "../ExperimentBuilder/modules/experiment-authoring";
-const VITE_API = import.meta.env.VITE_API_URL;
+import { getApiBaseUrl } from "../../lib/apiBaseUrl";
+const VITE_API = getApiBaseUrl();
 
 type Experiment = {
   experimentID: string;

@@ -33,7 +33,7 @@ export function schedulePersistentTunnelAutostart() {
           "--hostname",
           candidate.hostname,
           "--url",
-          "http://localhost:3000",
+          process.env.API_URL || "http://localhost:3000",
           "--no-autoupdate",
         ]);
         setTunnelProcess(processRef);

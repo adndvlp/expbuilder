@@ -1,12 +1,13 @@
 // utils/pluginParameterLoader.ts
 import { mapMetadataToFields, mapMetadataToData } from "./metadataMapper";
 import type { FieldDefinition, DataDefinition } from "../types";
+import { getApiBaseUrl } from "../../../../../lib/apiBaseUrl";
 
 export async function loadPluginParameters(
   pluginName: string,
   options: { apiBaseUrl?: string; fetchImpl?: typeof fetch } = {},
 ): Promise<{ parameters: FieldDefinition[]; data: DataDefinition[] }> {
-  const apiBaseUrl = options.apiBaseUrl ?? import.meta.env.VITE_API_URL;
+  const apiBaseUrl = options.apiBaseUrl ?? getApiBaseUrl();
   const fetchImpl = options.fetchImpl ?? fetch;
   const response = await fetchImpl(
     `${apiBaseUrl}/api/metadata/${pluginName}.json`,

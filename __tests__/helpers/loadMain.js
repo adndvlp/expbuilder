@@ -37,6 +37,9 @@ export const loadMain = async (options = {}) => {
     handle: jest.fn((channel, handler) => {
       handlers.set(channel, handler)
     }),
+    on: jest.fn((channel, handler) => {
+      handlers.set(channel, handler)
+    }),
   }
   const shell = {
     openExternal: jest.fn().mockResolvedValue(undefined),
@@ -82,8 +85,10 @@ export const loadMain = async (options = {}) => {
     createOAuthCallbackServer,
     isPortAvailable,
   }))
+  const listeningPort = options.listeningPort ?? 3000
   jest.unstable_mockModule('../../server/api.js', () => ({
     io: {},
+    whenListening: Promise.resolve(listeningPort),
   }))
 
   await import('../../main.js')

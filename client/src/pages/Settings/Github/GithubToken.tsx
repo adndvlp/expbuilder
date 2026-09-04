@@ -36,14 +36,15 @@ export default function GithubToken() {
 
   // Cargar estado del token
   useEffect(() => {
-    if (!user) {
+    const firestore = db;
+    if (!user || !firestore) {
       setIsLoading(false);
       return;
     }
 
     const loadTokenStatus = async () => {
       try {
-        const docRef = doc(db, "users", user.uid);
+        const docRef = doc(firestore, "users", user.uid);
         const docSnap = await import("firebase/firestore").then(({ getDoc }) =>
           getDoc(docRef),
         );
@@ -141,7 +142,7 @@ export default function GithubToken() {
   // Función para borrar el token
   const handleDeleteToken = async () => {
     /* v8 ignore start -- the disconnect button is only rendered from a signed-in token state. */
-    if (!user) return;
+    if (!user || !db) return;
     /* v8 ignore stop */
 
     setIsDeleting(true);

@@ -1,11 +1,12 @@
 import { ReactNode, useEffect, useState } from "react";
 import CanvasStylesContext from "../contexts/CanvasStylesContext";
+import { getApiBaseUrl } from "../../../lib/apiBaseUrl";
 import {
   CanvasStyles,
   DEFAULT_CANVAS_STYLES,
 } from "../components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = getApiBaseUrl();
 
 export default function CanvasStylesProvider({
   children,

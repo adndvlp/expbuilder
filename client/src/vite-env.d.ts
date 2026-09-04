@@ -17,6 +17,7 @@ interface OAuthConfig {
 }
 
 interface ElectronAPI {
+  getApiBaseUrl: () => string;
   openExternal: (url: string) => Promise<void>;
   startOAuthFlow: (config: {
     provider: string;

@@ -1,5 +1,6 @@
 import { UploadedFile } from "../types";
-const API_URL = import.meta.env.VITE_API_URL;
+import { getApiBaseUrl } from "../../../../../lib/apiBaseUrl";
+const API_URL = getApiBaseUrl();
 
 export type UploadJob = {
   id: string;

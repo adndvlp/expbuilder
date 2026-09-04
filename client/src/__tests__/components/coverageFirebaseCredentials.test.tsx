@@ -100,7 +100,7 @@ describe("coverage settings: FirebaseCredentials", () => {
 
     render(<FirebaseCredentials />);
 
-    await screen.findByText("Using default Firebase credentials");
+    await screen.findByText("Firebase is not configured yet");
     fireEvent.click(screen.getByText("Set Custom Credentials"));
     fireEvent.click(screen.getByText("Save"));
     expect(alert).toHaveBeenCalledWith("Please fill in all fields");
@@ -110,7 +110,7 @@ describe("coverage settings: FirebaseCredentials", () => {
     expect(screen.queryByText("Save")).not.toBeInTheDocument();
   });
 
-  it("logs Firebase config load failures and still leaves the default state", async () => {
+  it("logs Firebase config load failures and still leaves the unconfigured state", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     const loadError = new Error("read failed");
     (window as any).electron = {
@@ -122,7 +122,7 @@ describe("coverage settings: FirebaseCredentials", () => {
 
     render(<FirebaseCredentials />);
 
-    await screen.findByText("Using default Firebase credentials");
+    await screen.findByText("Firebase is not configured yet");
     expect(consoleError).toHaveBeenCalledWith(
       "Error loading Firebase config:",
       loadError,
@@ -146,7 +146,7 @@ describe("coverage settings: FirebaseCredentials", () => {
 
     render(<FirebaseCredentials />);
 
-    await screen.findByText("Using default Firebase credentials");
+    await screen.findByText("Firebase is not configured yet");
     fireEvent.click(screen.getByText("Set Custom Credentials"));
     fillFirebaseForm();
 
@@ -189,12 +189,12 @@ describe("coverage settings: FirebaseCredentials", () => {
 
     await waitFor(() => expect(deleteFirebaseConfig).toHaveBeenCalled());
     expect(confirm).toHaveBeenCalledWith(
-      "Are you sure you want to reset to default Firebase credentials? The app will need to be restarted.",
+      "Are you sure you want to remove the saved Firebase credentials? The app will need to be restarted.",
     );
     expect(alert).toHaveBeenCalledWith(
-      "Firebase credentials reset to default! Please restart the app for changes to take effect.",
+      "Firebase credentials removed. Please restart the app for changes to take effect.",
     );
-    expect(screen.getByText("Using default Firebase credentials")).toBeInTheDocument();
+    expect(screen.getByText("Firebase is not configured yet")).toBeInTheDocument();
   });
 
   it("cancels and reports Firebase reset failures", async () => {

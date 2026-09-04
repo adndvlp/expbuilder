@@ -190,7 +190,6 @@ describe("Timeline component", () => {
         ts: Date.now(),
       }),
     );
-    mocks.auth.currentUser = null;
 
     renderTimeline();
 
@@ -203,6 +202,8 @@ describe("Timeline component", () => {
       screen.getByRole("button", { name: "Publish to GitHub Pages" }),
     );
     await screen.findByTestId("storage-modal");
+
+    mocks.auth.currentUser = null;
     fireEvent.click(screen.getByRole("button", { name: "confirm storage" }));
 
     expect(mocks.publishWithStorageSpy).not.toHaveBeenCalled();

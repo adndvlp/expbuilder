@@ -13,9 +13,10 @@ import { usePanelResize } from "./hooks/usePanelResize";
 import CanvasStylesProvider from "./providers/CanvasStylesProvider";
 import TrialsProvider from "./providers/TrialsProvider";
 import UrlProvider from "./providers/UrlProvider";
+import { getApiBaseUrl } from "../../lib/apiBaseUrl";
 
 function ExperimentBuilder() {
-  const API_URL = import.meta.env.VITE_API_URL;
+  const API_URL = getApiBaseUrl();
   const { id } = useParams();
   const navigate = useNavigate();
   const { isDevMode, setDevMode, isSaveMode, setSaveMode } = useDevMode();

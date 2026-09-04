@@ -1,7 +1,8 @@
 import { Trial } from "../../ConfigurationPanel/types";
+import { getApiBaseUrl } from "../../../../../lib/apiBaseUrl";
 export { generateUniqueName } from "../actions/generateUniqueName";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = getApiBaseUrl();
 
 export function isTrial(item: any): item is Trial {
   // In the flat structure: loops have a "trials" array, trials do NOT

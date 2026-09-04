@@ -4,7 +4,8 @@ import useTrials from "../hooks/useTrials";
 import usePlugins from "../hooks/usePlugins";
 import { pluginEditorOptions } from "./PluginEditor/editorOptions";
 import { Plugin, PluginEditorProps } from "./PluginEditor/types";
-const API_URL = import.meta.env.VITE_API_URL;
+import { getApiBaseUrl } from "../../../lib/apiBaseUrl";
+const API_URL = getApiBaseUrl();
 
 const PluginEditor: React.FC<PluginEditorProps> = ({ selectedPluginName }) => {
   const { plugins, setPlugins } = usePlugins();

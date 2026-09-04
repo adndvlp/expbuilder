@@ -9,6 +9,7 @@ import {
   getEmptyMessage,
   getFilterOptions,
 } from "./services/sessionFiltering";
+import { getApiBaseUrl } from "../../../../lib/apiBaseUrl";
 import {
   EMPTY_FILTERS,
   Filters,
@@ -20,7 +21,7 @@ import {
 
 export type { ParticipantFile, SessionMeta, TabType } from "./types";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = getApiBaseUrl();
 
 type ResultsListProps = { activeTab: TabType };
 

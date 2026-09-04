@@ -53,7 +53,7 @@ export default function OsfCallback() {
       if (success === "true") {
         // Verificar que los tokens se guardaron correctamente
         const user = auth?.currentUser;
-        if (user) {
+        if (user && db) {
           try {
             const docRef = doc(db, "users", user.uid);
             const docSnap = await getDoc(docRef);
