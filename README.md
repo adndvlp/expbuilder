@@ -79,17 +79,17 @@ The installers are written to `dist/`.
 
 # Releases and CI
 
-Releases are built and published automatically with GitHub Actions (`.github/workflows/build.yml`):
+Desktop installers are built by GitHub Actions (`.github/workflows/build.yml`). The `[build]` flag is a substring anywhere in a commit message (this repo puts it at the end).
 
 | Trigger | Tests | Builds | Tag / Release |
 | --- | --- | --- | --- |
-| Commit with `[build]` in the message (any branch except `main`) | Yes | Yes, installers as workflow artifacts | No |
-| Commit without `[build]` on a branch other than `main` | No | No | No |
-| Push to `main` (with or without `[build]`) | Yes | Yes | Yes, creates the `v<version>` tag and publishes the release |
-| Push of a `v*` tag | Yes | Yes | Yes, publishes the release |
-| Manual run (`workflow_dispatch`) | Yes | Yes | No |
+| Push to a branch other than `main`, with `[build]` in **any** commit of that push | Yes | Yes, installers as workflow artifacts | No |
+| Push to a branch other than `main`, without `[build]` | No | No | No |
+| Push to `main` whose **head** commit message contains `[build]`, and `package.json` version has no `v<version>` tag yet | No | Yes | Yes, creates `v<version>` and publishes the release |
+| Push to `main` without `[build]` in the head commit, or when `v<version>` already exists | No | No | No |
+| Manual run (`workflow_dispatch`) | Yes | Yes, artifacts only | No |
 
-The `[build]` flag is detected in any commit of the push, not only the last one.
+On `main`, CI does not re-run tests. A fast-forward merge does not create a merge commit: `[build]` must then be in the tip commit itself. Use `git merge --no-ff` (or put `[build]` on that tip) so the head message is what CI reads.
 
 Supported targets:
 
@@ -99,10 +99,17 @@ Supported targets:
 
 To publish a new release:
 
-1. Bump the version locally (e.g. `npm version patch`), which updates `package.json` and the lockfile
-2. Push to `main` — the workflow runs the tests, tags the new version, builds every OS on its native runner, and publishes the release
+1. Bump the version locally (e.g. `npm version patch`), which updates `package.json` and the lockfile. The tag `v<version>` must not already exist.
+2. Merge into `main` so the **head** commit message contains `[build]`, for example:
 
-The workflow requires a `GH_TOKEN` secret (a personal access token with `repo` scope) to create the tag and publish the release.
+   ```bash
+   git merge --no-ff <branch> -m "feat(settings): your change [build]"
+   git push origin main
+   ```
+
+3. The workflow tags `v<version>`, builds every OS on its native runner, and publishes the GitHub release.
+
+The workflow uses the default `GITHUB_TOKEN` (`contents: write`) to create the tag and publish the release. No personal access token is required.
 
 # Usage
 

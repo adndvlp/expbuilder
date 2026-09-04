@@ -80,7 +80,7 @@ jobs:
             echo "created=true" >> "$GITHUB_OUTPUT"
           fi
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   mac:
     needs: [test, tag]
@@ -129,7 +129,7 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: npm run build:electron -- --mac --arm64 --x64 --publish always
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build (no publish)
         if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
@@ -187,7 +187,7 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: npm run build:electron -- --win --x64 --publish always
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build (no publish)
         if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
@@ -245,7 +245,7 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: npm run build:electron -- --linux deb rpm --x64 --publish always
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build (no publish)
         if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
@@ -303,7 +303,7 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: npm run build:electron -- --linux deb --arm64 --publish always
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build (no publish)
         if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
