@@ -3,6 +3,18 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import ConfigurationPanel from "../../../pages/ExperimentBuilder/components/ConfigurationPanel";
 
+async function choosePlugin(value: string) {
+  const select = await screen.findByLabelText("plugin select");
+  await waitFor(() => {
+    expect(
+      Array.from(select.querySelectorAll("option")).some(
+        (option) => (option as HTMLOptionElement).value === value,
+      ),
+    ).toBe(true);
+  });
+  fireEvent.change(select, { target: { value } });
+}
+
 describe("ConfigurationPanel selection and routing", () => {
   beforeEach(resetPanelMocks);
 
@@ -25,10 +37,7 @@ describe("ConfigurationPanel selection and routing", () => {
       "plugin-dynamic",
     );
     fireEvent.click(screen.getByLabelText("Toggle jsPsych plugins"));
-    await screen.findByLabelText("plugin select");
-    fireEvent.change(screen.getByLabelText("plugin select"), {
-      target: { value: "plugin-html-keyboard-response" },
-    });
+    await choosePlugin("plugin-html-keyboard-response");
     expect(mocks.updateTrial).toHaveBeenCalledWith(1, {
       plugin: "plugin-html-keyboard-response",
     });
@@ -41,10 +50,7 @@ describe("ConfigurationPanel selection and routing", () => {
     mocks.selectedTrial = makeTrial();
     render(<ConfigurationPanel />);
     fireEvent.click(screen.getByLabelText("Toggle jsPsych plugins"));
-    await screen.findByLabelText("plugin select");
-    fireEvent.change(screen.getByLabelText("plugin select"), {
-      target: { value: "webgazer" },
-    });
+    await choosePlugin("webgazer");
     expect(mocks.updateTrial).toHaveBeenCalledWith(1, { plugin: "webgazer" });
     expect(screen.getByTestId("webgazer-config")).toHaveTextContent(
       "plugin-webgazer-calibrate",
