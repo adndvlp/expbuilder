@@ -47,6 +47,9 @@ jobs:
       - name: Build jsPsych bundle
         run: npm run build --prefix server/jspsych-bundler
 
+      - name: Check maintained file limits
+        run: npm run check:max-lines --prefix client
+
       - name: Install Chromium for browser-backed tests
         run: npm --prefix client exec -- playwright install --with-deps chromium
 

@@ -2,7 +2,7 @@ name: Builder contracts
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
     paths:
       - "client/**"
       - "server/**"

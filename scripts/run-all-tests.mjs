@@ -12,6 +12,10 @@ const isCi =
 
 const suites = [
   {
+    name: "client file size limits",
+    args: ["--prefix", "client", "run", "check:max-lines"],
+  },
+  {
     name: "jsPsych runtime bundle",
     args: ["--prefix", "server/jspsych-bundler", "run", "build"],
   },

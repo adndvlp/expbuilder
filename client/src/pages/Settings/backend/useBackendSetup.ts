@@ -2,10 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { openExternal } from "../../../lib/openExternal";
 import { publishingSummary, setupStatus } from "../../../lib/backendCopy";
 import {
-  buildFunctionsEnv,
-  buildOauthConfig,
   commandError,
-  functionsDeployOnly,
   projectSetupArgs,
   publishingFingerprint,
   type BackendOAuthState,
@@ -13,6 +10,7 @@ import {
   type FirebaseProjectOption,
 } from "../../../lib/backendSetup";
 import { createWebApp } from "./createWebApp";
+import { finishBackendDeploy } from "./finishBackendDeploy";
 import { provisionDatabase } from "./provisionDatabase";
 import { useBackendSession } from "./useBackendSession";
 
@@ -205,38 +203,16 @@ export function useBackendSetup() {
     setError("");
     setLogs("");
     try {
-      const savedEnv = await window.electron!.writeBackendEnv(
-        buildFunctionsEnv(projectId, oauth),
-      );
-      if (!savedEnv.success) {
-        setError(
-          `Could not save server credentials: ${savedEnv.error || "Unknown error"}`,
-        );
-        return;
-      }
-      const savedOauth = await window.electron!.writeOauthConfig(
-        buildOauthConfig(oauth),
-      );
-      if (!savedOauth.success) {
-        setError(
-          `Could not save OAuth credentials: ${savedOauth.error || "Unknown error"}`,
-        );
-        return;
-      }
-      const data = await runCommand([
-        "--project",
+      await finishBackendDeploy({
         projectId,
-        "deploy",
-        "--only",
-        functionsDeployOnly(deployed),
-      ]);
-      if (data.code !== 0) {
-        setError(commandError(data, "Could not deploy the server. Try again."));
-        return;
-      }
-      setDeployed(true);
-      setSavedPublishing(publishingFingerprint(oauth));
-      await persist({ deployed: true });
+        oauth,
+        deployed,
+        runCommand,
+        persist,
+        setError,
+        setDeployed,
+        setSavedPublishing,
+      });
     } catch (finishError) {
       setError(
         finishError instanceof Error ? finishError.message : "Could not finish setup.",

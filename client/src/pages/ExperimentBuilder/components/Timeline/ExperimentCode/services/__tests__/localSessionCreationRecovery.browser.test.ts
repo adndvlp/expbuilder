@@ -1,124 +1,16 @@
-import {
-  chromium,
-  type Browser,
-  type BrowserContext,
-  type Page,
-} from "@playwright/test";
+import { chromium, type Browser } from "@playwright/test";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { generatedCode, type RuntimeWindow } from "./localRuntimeTestHarness";
-
-const SESSION_KEY = "expbuilder:local:browser-exp:session-id";
-const SERVER_SESSION_KEY = "test:server-session-id";
+import {
+  SERVER_SESSION_KEY,
+  SESSION_KEY,
+  defaultRuntimeSetup,
+  installRuntime,
+  openRuntimePage,
+  waitForPendingOutbox,
+} from "./localSessionCreationRecoveryHarness";
 
 let browser: Browser;
-
-async function openRuntimePage(
-  target: Browser | BrowserContext = browser,
-): Promise<Page> {
-  const page = await target.newPage();
-  await page.route("http://creation-recovery.test/**", async (route) => {
-    if (route.request().url().includes("socket.io/socket.io.js")) {
-      await route.abort();
-      return;
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: "text/html",
-      body: "<!doctype html><html><head></head><body></body></html>",
-    });
-  });
-  await page.goto("http://creation-recovery.test/");
-  return page;
-}
-
-type RuntimeSetup = {
-  experimentID: string;
-  runtimeCode: string;
-  serverKey: string;
-  failPuts: boolean;
-};
-
-async function installRuntime(page: Page, setup: RuntimeSetup): Promise<void> {
-  await page.evaluate(({ experimentID, failPuts, runtimeCode, serverKey }) => {
-    const putBodies: unknown[] = [];
-    window.fetch = async (input, init) => {
-      const method = init?.method || "GET";
-      const url = String(input);
-      if (method === "GET") {
-        const sessionId = localStorage.getItem(serverKey);
-        return new Response(JSON.stringify({ sessions: sessionId ? [{
-          experimentID,
-          sessionId,
-          participantNumber: 1,
-          storedEventCount: 0,
-          lastSequence: -1,
-          sequenceTracked: true,
-          state: "in-progress",
-          createdAt: new Date().toISOString(),
-        }] : [] }), { status: 200, headers: { "Content-Type": "application/json" } });
-      }
-      const body = init?.body ? JSON.parse(String(init.body)) : {};
-      if (method === "POST" && url.includes("append-result")) {
-        localStorage.setItem(serverKey, body.sessionId);
-        return new Response(JSON.stringify({
-          success: true,
-          id: body.sessionId,
-          participantNumber: 1,
-        }), { status: 200, headers: { "Content-Type": "application/json" } });
-      }
-      if (method === "PUT") {
-        putBodies.push(body);
-        if (failPuts) throw new TypeError("server unavailable");
-        return new Response(JSON.stringify({
-          success: true,
-          eventId: body.eventId,
-          sequence: body.sequence,
-          storedCount: Number(body.sequence) + 1,
-        }), { status: 200, headers: { "Content-Type": "application/json" } });
-      }
-      if (url.includes("complete-session")) {
-        return new Response(JSON.stringify({
-          success: true,
-          storedEventCount: body.expectedEventCount,
-          lastSequence: body.lastSequence,
-        }), { status: 200, headers: { "Content-Type": "application/json" } });
-      }
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    };
-    Object.assign(window, {
-      __putBodies: putBodies,
-      _hideLoading: () => undefined,
-      _setLoadingMsg: () => undefined,
-      initJsPsych: (settings: Record<string, unknown>) => {
-        (window as RuntimeWindow).__settings = settings as RuntimeWindow["__settings"];
-        return { run: () => Promise.resolve() };
-      },
-    });
-    new Function(runtimeCode)();
-  }, setup);
-  await page.waitForFunction(() => Boolean((window as RuntimeWindow).__started));
-}
-
-async function waitForPendingOutbox(page: Page, experimentID: string) {
-  await page.waitForFunction(async (expectedExperimentID) => {
-    const records = await new Promise<Record<string, unknown>[]>((resolve, reject) => {
-      const request = indexedDB.open("expbuilder-local-session-outbox-v1", 1);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        const transaction = request.result.transaction("trial-events", "readonly");
-        const all = transaction.objectStore("trial-events").getAll();
-        all.onerror = () => reject(all.error);
-        all.onsuccess = () => resolve(all.result);
-      };
-    });
-    return records.some(
-      (record) => record.experimentID === expectedExperimentID,
-    );
-  }, experimentID);
-}
 
 describe("local session creation recovery", () => {
   beforeAll(async () => {
@@ -130,7 +22,7 @@ describe("local session creation recovery", () => {
   });
 
   it("recovers the same UUID when the server commits creation but its response is lost", async () => {
-    const page = await openRuntimePage();
+    const page = await openRuntimePage(browser);
     const code = generatedCode();
 
     await page.evaluate(({ runtimeCode, serverKey }) => {
@@ -210,13 +102,8 @@ describe("local session creation recovery", () => {
   });
 
   it("keeps persistence busy while a new result enters the outbox", async () => {
-    const page = await openRuntimePage();
-    await installRuntime(page, {
-      experimentID: "persistence-race",
-      runtimeCode: generatedCode("persistence-race"),
-      serverKey: "test:server-persistence-race",
-      failPuts: false,
-    });
+    const page = await openRuntimePage(browser);
+    await installRuntime(page, defaultRuntimeSetup("persistence-race", false));
 
     const result = await page.evaluate(async () => {
       const runtime = window as RuntimeWindow & {
@@ -253,12 +140,7 @@ describe("local session creation recovery", () => {
   it("keeps A pending across close, runs B independently, then recovers A", async () => {
     const context = await browser.newContext();
     const firstA = await openRuntimePage(context);
-    await installRuntime(firstA, {
-      experimentID: "experiment-a",
-      runtimeCode: generatedCode("experiment-a"),
-      serverKey: "test:server-a",
-      failPuts: true,
-    });
+    await installRuntime(firstA, defaultRuntimeSetup("experiment-a", true));
     const sessionA = await firstA.evaluate(
       () => (window as RuntimeWindow & { JSPSYCH_SESSION_ID: string }).JSPSYCH_SESSION_ID,
     );
@@ -272,12 +154,7 @@ describe("local session creation recovery", () => {
     await firstA.close();
 
     const pageB = await openRuntimePage(context);
-    await installRuntime(pageB, {
-      experimentID: "experiment-b",
-      runtimeCode: generatedCode("experiment-b"),
-      serverKey: "test:server-b",
-      failPuts: false,
-    });
+    await installRuntime(pageB, defaultRuntimeSetup("experiment-b", false));
     const sessionB = await pageB.evaluate(
       () => (window as RuntimeWindow & { JSPSYCH_SESSION_ID: string }).JSPSYCH_SESSION_ID,
     );
@@ -288,12 +165,7 @@ describe("local session creation recovery", () => {
     await pageB.close();
 
     const reopenedA = await openRuntimePage(context);
-    await installRuntime(reopenedA, {
-      experimentID: "experiment-a",
-      runtimeCode: generatedCode("experiment-a"),
-      serverKey: "test:server-a",
-      failPuts: false,
-    });
+    await installRuntime(reopenedA, defaultRuntimeSetup("experiment-a", false));
     await reopenedA.waitForFunction(
       () => ((window as RuntimeWindow).__putBodies?.length || 0) === 1,
     );
