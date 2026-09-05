@@ -58,6 +58,10 @@ vi.mock("../lib/firebase", () => ({
   getFirebaseAuth: vi.fn(() => Promise.resolve({ currentUser: null })),
   getFirebaseDb: vi.fn(() => Promise.resolve({})),
   getFirebaseApp: vi.fn(() => Promise.resolve({ name: "test-app" })),
+  subscribeToAuth: vi.fn((callback) => {
+    callback(null);
+    return vi.fn();
+  }),
 }));
 
 // Mock socket.io-client

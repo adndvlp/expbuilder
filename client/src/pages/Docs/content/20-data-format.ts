@@ -90,9 +90,11 @@ Format: \`[ComponentType]_[Index]_[Property]\`
 |---|---|---|
 | \`expbuilder:local:<id>:session-id\` | At validated session start | Confirmed completion only |
 | \`expbuilder:local:<id>:participant-number\` | After strict creation ACK | Confirmed completion only |
-| \`expbuilder:local:<id>:resume-trial\` | Each \`on_data_update\` | Confirmed completion only |
-| \`expbuilder:local:<id>:jump-to-trial\` | Repeat/jump triggered | When consumed |
-| \`expbuilder:local:<id>:jump-reload\` | \`sessionStorage\` | At experiment start |
+| \`expbuilder:local:<id>:resume-trial\` | Each \`on_data_update\`; versioned resolved route | Confirmed completion or intentional jump continuation |
+| \`expbuilder:local:<id>:jump-request\` | Repeat/jump triggered; versioned compiled address | Target consumed, invalidation, or confirmed completion |
+
+The matching \`sessionStorage\` namespace contains \`tab-id\`,
+\`tab-session-id\` and the one-use \`jump-reload\` marker.
 
 ## Local IndexedDB Outbox
 

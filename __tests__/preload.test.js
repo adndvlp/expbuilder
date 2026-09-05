@@ -7,6 +7,9 @@ describe('preload.js', () => {
   test('exposes the expected Electron bridge methods', () => {
     const exposeInMainWorld = jest.fn()
     const invoke = jest.fn((channel, payload) => ({ channel, payload }))
+    const sendSync = jest.fn((channel) => `sync:${channel}`)
+    const on = jest.fn((channel, listener) => listener)
+    const removeListener = jest.fn()
     const filename = path.resolve(process.cwd(), 'preload.js')
     const source = fs.readFileSync(filename, 'utf8')
 
@@ -17,7 +20,7 @@ describe('preload.js', () => {
         }
         return {
           contextBridge: { exposeInMainWorld },
-          ipcRenderer: { invoke },
+          ipcRenderer: { invoke, sendSync, on, removeListener },
         }
       },
     }, { filename })
@@ -26,6 +29,7 @@ describe('preload.js', () => {
     const [namespace, api] = exposeInMainWorld.mock.calls[0]
     expect(namespace).toBe('electron')
 
+    expect(api.getApiBaseUrl()).toBe('sync:get-api-base-url')
     expect(api.openExternal('https://example.com')).toEqual({
       channel: 'open-external',
       payload: 'https://example.com',
@@ -58,5 +62,48 @@ describe('preload.js', () => {
       channel: 'delete-firebase-config',
       payload: undefined,
     })
+    expect(api.readOauthConfig()).toEqual({
+      channel: 'read-oauth-config',
+      payload: undefined,
+    })
+    expect(api.writeOauthConfig({ githubClientId: 'gh' })).toEqual({
+      channel: 'write-oauth-config',
+      payload: { githubClientId: 'gh' },
+    })
+    expect(api.deleteOauthConfig()).toEqual({
+      channel: 'delete-oauth-config',
+      payload: undefined,
+    })
+    expect(api.startBackendSetup(['projects:list'], 'tok')).toEqual({
+      channel: 'backend-setup:start',
+      payload: { args: ['projects:list'], token: 'tok' },
+    })
+    expect(api.writeBackendSetupInput('id-1', 'code')).toEqual({
+      channel: 'backend-setup:write',
+      payload: { id: 'id-1', text: 'code' },
+    })
+    expect(api.killBackendSetup('id-1')).toEqual({
+      channel: 'backend-setup:kill',
+      payload: { id: 'id-1' },
+    })
+    expect(api.writeBackendEnv({ FIREBASE_PROJECT_ID: 'x' })).toEqual({
+      channel: 'backend-setup:write-env',
+      payload: { env: { FIREBASE_PROJECT_ID: 'x' } },
+    })
+    expect(api.backendSetupApi({ action: 'listProjects', token: 'tok' })).toEqual({
+      channel: 'backend-setup:api',
+      payload: { action: 'listProjects', token: 'tok' },
+    })
+    const outputCallback = jest.fn()
+    const unsubscribe = api.onBackendSetupOutput(outputCallback)
+    expect(on).toHaveBeenCalledWith('backend-setup:output', expect.any(Function))
+    unsubscribe()
+    expect(removeListener).toHaveBeenCalledWith(
+      'backend-setup:output',
+      expect.any(Function),
+    )
+    const exitCallback = jest.fn()
+    api.onBackendSetupExit(exitCallback)
+    expect(on).toHaveBeenCalledWith('backend-setup:exit', expect.any(Function))
   })
 })

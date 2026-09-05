@@ -17,8 +17,12 @@ const setupApi = async (seedFn, options = {}) => {
   jest.resetModules()
 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'exp-api-'))
+  const previousPort = process.env.PORT
+  const previousApiUrl = process.env.API_URL
   process.env.DB_ROOT = tmpDir
   delete process.env.DB_PATH
+  delete process.env.PORT
+  delete process.env.API_URL
   if (options.origin) process.env.ORIGIN = options.origin
   else delete process.env.ORIGIN
 
@@ -30,8 +34,24 @@ const setupApi = async (seedFn, options = {}) => {
 
   let capturedApp
   const listenPromises = []
+  const listenErrorCodes = options.listenErrorCodes ?? []
+  let listenAttempt = 0
+  let errorHandler
   const httpServer = {
+    once: jest.fn((event, handler) => {
+      if (event === 'error') errorHandler = handler
+      return httpServer
+    }),
+    off: jest.fn(),
     listen: jest.fn((_port, callback) => {
+      const code = listenErrorCodes[listenAttempt]
+      listenAttempt += 1
+      if (code) {
+        const handler = errorHandler
+        errorHandler = undefined
+        handler?.({ code })
+        return httpServer
+      }
       if (callback) listenPromises.push(Promise.resolve(callback()))
       return httpServer
     }),
@@ -67,8 +87,9 @@ const setupApi = async (seedFn, options = {}) => {
   jest.unstable_mockModule('../routes/db.js', () => ({ default: makeRouter('db') }))
   jest.unstable_mockModule('../agent/routes.js', () => ({ default: makeRouter('agent') }))
 
-  await import('../api.js')
+  const apiModule = await import('../api.js')
   await Promise.all(listenPromises)
+  if (apiModule.whenListening) await apiModule.whenListening
 
   return {
     app: capturedApp,
@@ -76,6 +97,10 @@ const setupApi = async (seedFn, options = {}) => {
       fs.rmSync(tmpDir, { recursive: true, force: true })
       delete process.env.DB_ROOT
       delete process.env.ORIGIN
+      if (previousPort === undefined) delete process.env.PORT
+      else process.env.PORT = previousPort
+      if (previousApiUrl === undefined) delete process.env.API_URL
+      else process.env.API_URL = previousApiUrl
     },
     connectionHandler,
     createServer,
@@ -107,11 +132,25 @@ describe('api.js app setup', () => {
       }),
     }))
     expect(httpServer.listen).toHaveBeenCalledWith(3000, expect.any(Function))
+    expect(process.env.PORT).toBe('3000')
+    expect(process.env.API_URL).toBe('http://localhost:3000')
 
     await db.read()
     expect(db.data.experiments[0].tunnelUrl).toBeUndefined()
 
     await request(app).get('/__test/experiments').expect(200, { router: 'experiments' })
+    cleanup()
+  })
+
+  test('retries listen on EADDRINUSE and publishes the bound port', async () => {
+    const { cleanup, httpServer } = await setupApi(undefined, {
+      listenErrorCodes: ['EADDRINUSE'],
+    })
+
+    expect(httpServer.listen).toHaveBeenNthCalledWith(1, 3000, expect.any(Function))
+    expect(httpServer.listen).toHaveBeenNthCalledWith(2, 3001, expect.any(Function))
+    expect(process.env.PORT).toBe('3001')
+    expect(process.env.API_URL).toBe('http://localhost:3001')
     cleanup()
   })
 

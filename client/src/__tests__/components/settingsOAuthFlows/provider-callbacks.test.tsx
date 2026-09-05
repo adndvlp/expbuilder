@@ -19,14 +19,20 @@ describe("Settings OAuth callback pages", () => {
   registerSettingsOAuthCallbackPagesHooks();
 
   it("builds deployed callback URLs for all providers", () => {
-    expect(getGoogleDriveOAuthCallbackUrl(false, "a b", "signed/state")).toBe(
-      "https://us-central1-test-e4cf9.cloudfunctions.net/googleDriveOAuthCallback?code=a%20b&state=signed%2Fstate",
+    expect(
+      getGoogleDriveOAuthCallbackUrl(false, "a b", "signed/state", "test-project"),
+    ).toBe(
+      "https://us-central1-test-project.cloudfunctions.net/googleDriveOAuthCallback?code=a%20b&state=signed%2Fstate",
     );
-    expect(getDropboxOAuthCallbackUrl(false, "a b", "signed/state")).toBe(
-      "https://us-central1-test-e4cf9.cloudfunctions.net/dropboxOAuthCallback?code=a%20b&state=signed%2Fstate",
+    expect(
+      getDropboxOAuthCallbackUrl(false, "a b", "signed/state", "test-project"),
+    ).toBe(
+      "https://us-central1-test-project.cloudfunctions.net/dropboxOAuthCallback?code=a%20b&state=signed%2Fstate",
     );
-    expect(getGithubOAuthCallbackUrl(false, "a b", "signed/state")).toBe(
-      "https://us-central1-test-e4cf9.cloudfunctions.net/githubOAuthCallback?code=a%20b&state=signed%2Fstate",
+    expect(
+      getGithubOAuthCallbackUrl(false, "a b", "signed/state", "test-project"),
+    ).toBe(
+      "https://us-central1-test-project.cloudfunctions.net/githubOAuthCallback?code=a%20b&state=signed%2Fstate",
     );
   });
 

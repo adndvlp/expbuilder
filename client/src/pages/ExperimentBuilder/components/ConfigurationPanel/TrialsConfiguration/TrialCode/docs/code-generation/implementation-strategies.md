@@ -194,43 +194,36 @@ const sanitizeName = (name: string) => {
 
 Esto garantiza que los IDs sean válidos en JavaScript.
 
-### 7. Manejo de Repeat/Jump Global
+### 7. Manejo de Repeat/Jump por dirección
 
 El feature de repeat/jump permite reiniciar el experimento desde un trial específico:
 
 ```javascript
-// Trial que activa repeat
 on_finish: function(data) {
   if (condition) {
-    // Guardar ID del trial destino en localStorage
-    localStorage.setItem('jsPsych_jumpToTrial', '123');
-
-    // Limpiar contenedor
-    document.getElementById('jspsych-container').innerHTML = '';
-
-    // Reiniciar timeline
-    setTimeout(() => {
-      jsPsych.run(timeline);
-    }, 100);
+    window.ExpBuilderNavigation.requestJump(
+      '123',
+      { sourceId: data.builder_id, conditionId: condition.id },
+      data,
+      () => jsPsych.pauseExperiment(),
+    );
   }
 }
 
-// Todos los trials verifican si deben ejecutarse
+// El wrapper del scope sólo consulta; el trial/loop real consume.
+const canInclude = window.ExpBuilderNavigation.allowsItem(currentId, itemKind);
 conditional_function: function() {
-  const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
-  if (jumpToTrial) {
-    if (String(currentId) === String(jumpToTrial)) {
-      // Este es el trial destino
-      localStorage.removeItem('jsPsych_jumpToTrial');
-      return true;
-    }
-    // No es el destino, saltar
-    return false;
-  }
-  // Ejecución normal
-  return true;
+  const decision = window.ExpBuilderNavigation.enterItem(
+    currentId,
+    itemKind,
+  );
+  return decision === null ? true : decision;
 }
 ```
+
+El request persistido incluye revisión, tipo de target, owner, ancestry de loops,
+cursor y progreso. El reinicio espera a que el source sea durable y el guard
+rechaza una segunda recarga marcada si el cursor no avanzó.
 
 **Archivo**: [`repeatConditionsGenerator.ts`](./TrialCodeGenerators/repeatConditionsGenerator.ts)
 

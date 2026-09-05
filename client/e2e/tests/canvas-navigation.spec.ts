@@ -1,5 +1,7 @@
 import type { Locator } from "@playwright/test";
 import { expect, test } from "../fixtures/test.fixture";
+import { fulfillGraph, graph } from "../helpers/loopBranchGraph";
+import type { TimelineItem } from "../../src/pages/ExperimentBuilder/modules/experiment-graph/types";
 
 type Viewport = {
   x: number;
@@ -7,7 +9,7 @@ type Viewport = {
   zoom: number;
 };
 
-const timeline = [
+const timeline: TimelineItem[] = [
   { id: "first", type: "trial", name: "First" },
   { id: "second", type: "trial", name: "Second" },
   { id: "third", type: "trial", name: "Third" },
@@ -21,12 +23,8 @@ async function readViewport(viewport: Locator): Promise<Viewport> {
 }
 
 test("supports pinch zoom but ignores double-click zoom", async ({ page }) => {
-  await page.route("**/api/trials-metadata/exp-navigation", (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ timeline }),
-    }),
+  await page.route("**/api/experiment-graph/exp-navigation", (route) =>
+    route.fulfill(fulfillGraph(graph(timeline, {}, []))),
   );
   await page.setViewportSize({ width: 1500, height: 900 });
   await page.goto("/#/home/experiment/exp-navigation/builder");

@@ -12,6 +12,34 @@ import OsfToken from "../../../pages/Settings/OsfToken";
 describe("Settings OAuth tokens", () => {
   registerSettingsOAuthTokensHooks();
 
+  it("shows a backend error when saving a manual token without Firebase config", async () => {
+    vi.stubEnv("VITE_FIREBASE_PROJECT_ID", "");
+
+    render(<OsfToken />);
+
+    fireEvent.click(
+      await screen.findByText("Use Personal Access Token instead"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Enter Manual Token" }));
+    fireEvent.change(
+      screen.getByPlaceholderText("Parent Project ID (e.g., abc12)"),
+      {
+        target: { value: "abc12" },
+      },
+    );
+    fireEvent.change(screen.getByPlaceholderText("Paste your OSF token here"), {
+      target: { value: "osf-token" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Token" }));
+
+    expect(
+      await screen.findAllByText(
+        "Firebase backend is not configured. Set your Firebase credentials in Settings first.",
+      ),
+    ).toHaveLength(2);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("shows OSF manual token save failures and clears the manual form on cancel", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       okJson({ success: false, message: "Token rejected" }),
@@ -134,7 +162,7 @@ describe("Settings OAuth tokens", () => {
 
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
-        "http://127.0.0.1:5001/test-e4cf9/us-central1/osfManage",
+        "http://127.0.0.1:5001/test-project/us-central1/osfManage",
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({

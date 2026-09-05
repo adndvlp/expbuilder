@@ -2,6 +2,7 @@ import { captchaCode } from "../CaptchaCode";
 import { loadingOverlayCode } from "../LoadingOverlay";
 import { resumeCode } from "../ResumeCode";
 import { PublicExperimentCodeOptions } from "./publicCodeTypes";
+import { getPublicRuntimeStorageKeys } from "./publicRuntimeStorageKeys";
 
 export function publicSessionCode(
   options: PublicExperimentCodeOptions,
@@ -44,8 +45,11 @@ export function publicSessionCode(
     progressBar,
     baseCode,
   ];
+  const storageKeys = getPublicRuntimeStorageKeys(experimentID);
   return `
-  ${resumeCode()}
+  const _publicStorageKeys = ${JSON.stringify(storageKeys)};
+
+  ${resumeCode(storageKeys)}
 
   // --- Session Name Configuration ---
   const _SESSION_NAME_TOKENS = ${JSON.stringify(sessionNameTokens)};
@@ -99,8 +103,8 @@ export function publicSessionCode(
   }
 
   // Recuperar sessionId de localStorage o crear uno nuevo
-  let trialSessionId = localStorage.getItem('jsPsych_currentSessionId');
-  let storedParticipantNumber = localStorage.getItem('jsPsych_participantNumber');
+  let trialSessionId = localStorage.getItem(_publicStorageKeys.sessionId);
+  let storedParticipantNumber = localStorage.getItem(_publicStorageKeys.participant);
   let isResuming = false;
   
   if (!trialSessionId) {

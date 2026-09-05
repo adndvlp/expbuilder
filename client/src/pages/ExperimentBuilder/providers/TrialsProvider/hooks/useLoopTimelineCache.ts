@@ -11,8 +11,10 @@ import type {
   LoopTimelineLoadOptions,
   TimelineItem,
 } from "../../../contexts/TrialsContext";
+import type { GraphScopeView } from "../../../modules/experiment-graph/types";
+import { getApiBaseUrl } from "../../../../../lib/apiBaseUrl";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = getApiBaseUrl();
 
 type CacheUpdater = (cache: LoopTimelineCache) => LoopTimelineCache;
 
@@ -54,6 +56,26 @@ export default function useLoopTimelineCache(
     setCache({});
     setActiveLoopId(null);
   }, []);
+
+  const replaceLoopTimelines = useCallback(
+    (scopes: Record<string, GraphScopeView>) => {
+      experimentVersionRef.current += 1;
+      requestVersionsRef.current.clear();
+      const next = Object.fromEntries(
+        Object.entries(scopes).map(([key, scope]) => [
+          key,
+          {
+            status: "ready" as const,
+            items: scope.items,
+            revision: (cacheRef.current[key]?.revision ?? 0) + 1,
+          },
+        ]),
+      );
+      cacheRef.current = next;
+      setCache(next);
+    },
+    [],
+  );
 
   useEffect(() => {
     resetLoopTimelineCache();
@@ -206,6 +228,7 @@ export default function useLoopTimelineCache(
     activateLoopTimeline,
     clearLoopTimeline: () => activateLoopTimeline(null),
     updateLoopTimelineItems,
+    replaceLoopTimelines,
     resetLoopTimelineCache,
   };
 }

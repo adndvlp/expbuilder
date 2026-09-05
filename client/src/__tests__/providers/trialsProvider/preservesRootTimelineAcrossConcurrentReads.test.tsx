@@ -1,7 +1,7 @@
 import { act, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { TimelineItem } from "../../../pages/ExperimentBuilder/contexts/TrialsContext";
-import { loop, okJson, trial } from "../../helpers/trialFactories";
+import { graphJson, loop, okJson, trial } from "../../helpers/trialFactories";
 import {
   fetchMock,
   registerTrialsProviderLifecycle,
@@ -32,7 +32,7 @@ describe("TrialsProvider root timeline concurrency", () => {
     const populatedTimeline = [item("welcome", "Welcome")];
     fetchMock()
       .mockImplementationOnce(() => slowInitialLoad.promise)
-      .mockResolvedValueOnce(okJson({ timeline: populatedTimeline }));
+      .mockResolvedValueOnce(graphJson(populatedTimeline));
 
     const view = renderTrialsProvider();
     await waitFor(() => {
@@ -45,7 +45,7 @@ describe("TrialsProvider root timeline concurrency", () => {
     expect(view.getContext()?.timeline).toEqual(populatedTimeline);
 
     await act(async () => {
-      slowInitialLoad.resolve(okJson({ timeline: [] }));
+      slowInitialLoad.resolve(graphJson([]));
       await slowInitialLoad.promise;
     });
 
@@ -60,7 +60,7 @@ describe("TrialsProvider root timeline concurrency", () => {
     const slowRefresh = deferredResponse();
     fetchMock()
       .mockImplementationOnce(() => slowRefresh.promise)
-      .mockResolvedValueOnce(okJson({ timeline: savedTimeline }));
+      .mockResolvedValueOnce(graphJson(savedTimeline));
 
     act(() => {
       void view.getContext()?.getTimeline();
@@ -75,7 +75,7 @@ describe("TrialsProvider root timeline concurrency", () => {
     expect(view.getContext()?.timeline).toEqual(savedTimeline);
 
     await act(async () => {
-      slowRefresh.resolve(okJson({ timeline: originalTimeline }));
+      slowRefresh.resolve(graphJson(originalTimeline));
       await slowRefresh.promise;
     });
 
@@ -115,7 +115,7 @@ describe("TrialsProvider root timeline concurrency", () => {
       await view.getContext()?.updateLoop("loop-1", { repetitions: 2 });
     });
     await act(async () => {
-      slowInitialLoad.resolve(okJson({ timeline: populatedTimeline }));
+      slowInitialLoad.resolve(graphJson(populatedTimeline));
       await slowInitialLoad.promise;
     });
 

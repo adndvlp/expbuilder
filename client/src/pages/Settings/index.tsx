@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import FirebaseCredentials from "./FirebaseCredentials";
+import BackendSetup from "./BackendSetup";
 import ResetAppButton from "./ResetAppButton";
 import { AccountSettings } from "./components/AccountSettings";
 import { BackupSection } from "./components/BackupSection";
@@ -101,12 +101,8 @@ export default function Settings() {
         />
 
         <div className="settings-section">
-          <h2 className="settings-section-title">Firebase Configuration</h2>
-          <div style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>
-            Configure your own Firebase project credentials. This allows you to
-            connect the app to your own Firebase backend.
-          </div>
-          <FirebaseCredentials />
+          <h2 className="settings-section-title">Server</h2>
+          <BackendSetup />
         </div>
 
         {!user && (

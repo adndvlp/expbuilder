@@ -33,8 +33,8 @@ export const ApiReferenceSection: DocSection = {
 |---|---|---|
 | \`expbuilder:local:<id>:session-id\` | Durable session UUID | Cleared only after confirmed completion |
 | \`expbuilder:local:<id>:participant-number\` | Positive server-assigned number | Cleared only after confirmed completion |
-| \`expbuilder:local:<id>:resume-trial\` | \`{ branches, branchConditions, trialData }\` | Updated each trial; scoped by experiment |
-| \`expbuilder:local:<id>:jump-to-trial\` | builder_id of target trial | Cleared when consumed |
+| \`expbuilder:local:<id>:resume-trial\` | Versioned checkpoint with resolved branch/sequential route | Updated each trial; scoped by experiment |
+| \`expbuilder:local:<id>:jump-request\` | Versioned compiled address, cursor, progress and source identity | Cleared when the target is consumed or navigation is invalidated |
 
 ## sessionStorage Keys
 
@@ -58,6 +58,7 @@ export const ApiReferenceSection: DocSection = {
 | POST | \`/api/append-result/:id\` | \`{ sessionId, metadata?, displayName? }\` → \`{ success, id, participantNumber, created }\` |
 | PUT | \`/api/append-result/:id\` | \`{ sessionId, eventId, sequence, response }\` → matching ACK + \`storedCount\` |
 | GET | \`/api/session-results/:id?sessionId=:sid\` | Validate/query one persisted session |
+| GET | \`/api/session-result/:id/:sid\` | Read one session including \`data\`; internal delivery events are omitted |
 | POST | \`/api/complete-session/:id\` | \`{ sessionId, expectedEventCount, lastSequence }\` → matching count/sequence |
 | POST | \`/api/participant-files/:id\` | \`{ sessionId, files: [{ name, data, type?, size? }] }\` |
 | PATCH | \`/api/rename-session/:id\` | \`{ sessionId, displayName }\`; identity is unchanged |

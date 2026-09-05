@@ -136,7 +136,7 @@ function Timeline({
         isOpen={showStorageModal}
         availableStorages={availableStorages}
         onConfirm={async (storage) => {
-          const firebaseUser = auth.currentUser;
+          const firebaseUser = auth?.currentUser;
           if (firebaseUser) {
             await publishWithStorage(firebaseUser.uid, storage);
           }

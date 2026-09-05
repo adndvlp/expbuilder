@@ -7,7 +7,18 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import pkg from "electron-updater";
-import { createOAuthCallbackServer, isPortAvailable } from "./oauth-handler.js";
+import {
+  createOAuthCallbackServer,
+  isPortAvailable,
+  oauthPortInUseMessage,
+} from "./oauth-handler.js";
+import {
+  getApiDir,
+  startFirebaseCommand,
+  writeBackendEnvFile,
+} from "./server/backend-setup.js";
+import { handleBackendSetupApi } from "./server/backend-google.js";
+import { buildFunctionsBaseUrl } from "./server/utils/firebaseUrl.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Check if running from asar (production) or not (development)
@@ -26,6 +37,28 @@ dotenv.config({ path: envPath });
 
 // Importar el backend dinámicamente después de definir DB_PATH
 let backendLoaded = false;
+let apiBaseUrl = "http://localhost:3000";
+
+ipcMain.on("get-api-base-url", (event) => {
+  event.returnValue = apiBaseUrl;
+});
+
+function applyFirebaseUrlFromUserConfig() {
+  try {
+    const configPath = path.join(app.getPath("userData"), "firebase-config.json");
+    if (!fs.existsSync(configPath)) return;
+    const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    const projectId = config?.projectId;
+    if (typeof projectId !== "string" || !projectId.trim()) return;
+    process.env.FIREBASE_PROJECT_ID = projectId.trim();
+    if (isProduction || !process.env.FIREBASE_URL) {
+      process.env.FIREBASE_URL = buildFunctionsBaseUrl(projectId);
+    }
+  } catch (error) {
+    console.error("Error applying Firebase Functions URL:", error);
+  }
+}
+
 app.whenReady().then(async () => {
   // Usar la ruta definida en el archivo .env
   // En desarrollo: server/database/db.json
@@ -36,7 +69,13 @@ app.whenReady().then(async () => {
     process.env.DB_ROOT = userDataPath;
   }
 
-  await import("./server/api.js");
+  applyFirebaseUrlFromUserConfig();
+
+  const apiModule = await import("./server/api.js");
+  if (apiModule.whenListening) {
+    const port = await apiModule.whenListening;
+    apiBaseUrl = `http://localhost:${port}`;
+  }
   backendLoaded = true;
   createWindow();
   autoUpdater.checkForUpdatesAndNotify();
@@ -72,7 +111,7 @@ ipcMain.handle(
       const OAUTH_PORT = 8888;
       const portAvailable = await isPortAvailable(OAUTH_PORT);
       if (!portAvailable) {
-        throw new Error(`Port ${OAUTH_PORT} is not available`);
+        throw new Error(oauthPortInUseMessage(OAUTH_PORT));
       }
 
       let authUrl;
@@ -115,9 +154,13 @@ ipcMain.handle(
       };
     } catch (error) {
       console.error("OAuth flow error:", error);
+      const occupied =
+        error?.code === "EADDRINUSE" ||
+        error?.code === "OAUTH_PORT_IN_USE" ||
+        String(error?.message || "").includes("EADDRINUSE");
       return {
         success: false,
-        error: error.message,
+        error: occupied ? oauthPortInUseMessage(8888) : error.message,
       };
     }
   },
@@ -239,6 +282,116 @@ ipcMain.handle("delete-firebase-config", async () => {
     return { success: true };
   } catch (error) {
     console.error("Error deleting firebase config:", error);
+    return { success: false, error: error.message };
+  }
+});
+
+// OAuth config handlers
+const getOauthConfigPath = () => {
+  return path.join(app.getPath("userData"), "oauth-config.json");
+};
+
+ipcMain.handle("read-oauth-config", async () => {
+  try {
+    const configPath = getOauthConfigPath();
+    /* istanbul ignore else -- missing config is covered through the null return path in IPC tests. */
+    if (fs.existsSync(configPath)) {
+      const data = fs.readFileSync(configPath, "utf8");
+      return JSON.parse(data);
+    }
+    return null;
+  } catch (error) {
+    console.error("Error reading oauth config:", error);
+    return null;
+  }
+});
+
+ipcMain.handle("write-oauth-config", async (_event, config) => {
+  try {
+    const configPath = getOauthConfigPath();
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), "utf8");
+    return { success: true };
+  } catch (error) {
+    console.error("Error writing oauth config:", error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle("delete-oauth-config", async () => {
+  try {
+    const configPath = getOauthConfigPath();
+    if (fs.existsSync(configPath)) {
+      fs.unlinkSync(configPath);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting oauth config:", error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Backend setup handlers
+const backendSetupProcesses = new Map();
+
+ipcMain.handle("backend-setup:start", async (event, { args, token }) => {
+  const cwd = getApiDir(isProduction);
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const handle = startFirebaseCommand({
+    args: args ?? [],
+    token,
+    cwd,
+    onOutput: ({ stream, text }) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send("backend-setup:output", { id, stream, text });
+      }
+    },
+  });
+  backendSetupProcesses.set(id, handle);
+  handle.done
+    .then((result) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send("backend-setup:exit", { id, ...result });
+      }
+    })
+    .finally(() => backendSetupProcesses.delete(id));
+  return { id };
+});
+
+ipcMain.handle("backend-setup:write", async (_event, { id, text }) => {
+  const handle = backendSetupProcesses.get(id);
+  if (!handle) {
+    return { success: false, error: "Unknown backend setup process" };
+  }
+  handle.write(text);
+  return { success: true };
+});
+
+ipcMain.handle("backend-setup:kill", async (_event, { id }) => {
+  const handle = backendSetupProcesses.get(id);
+  if (!handle) {
+    return { success: false, error: "Unknown backend setup process" };
+  }
+  handle.kill();
+  return { success: true };
+});
+
+ipcMain.handle("backend-setup:write-env", async (_event, { env }) => {
+  try {
+    const envPath = writeBackendEnvFile(getApiDir(isProduction), env);
+    return { success: true, envPath };
+  } catch (error) {
+    console.error("Error writing backend env:", error);
+    return { success: false, error: error.message };
+  }
+});
+
+const getBackendSetupStatePath = () =>
+  path.join(app.getPath("userData"), "backend-setup.json");
+
+ipcMain.handle("backend-setup:api", async (_event, payload) => {
+  try {
+    return await handleBackendSetupApi(payload, getBackendSetupStatePath());
+  } catch (error) {
     return { success: false, error: error.message };
   }
 });

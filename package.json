@@ -1,13 +1,17 @@
 {
   "name": "expbuilder",
-  "version": "2.4.1",
+  "version": "2.5.0",
   "description": "Experiment Builder App",
   "author": {
     "name": "Andrés Pacheco Fabián",
     "email": "andngdv.lpr@gmail.com"
   },
+  "workspaces": [
+    "server/dynamicplugin"
+  ],
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "concurrently": "^9.1.2",
     "electron": "^43.2.0",
     "electron-builder": "26.15.7",
     "eslint": "^10.8.0",
@@ -28,6 +32,7 @@
     "electron-updater": "^6.8.9",
     "express": "^4.21.2",
     "ffmpeg-static": "^5.3.0",
+    "firebase-tools": "^15.28.1",
     "json2csv": "^6.0.0-alpha.2",
     "jszip": "^3.10.1",
     "lowdb": "^7.0.1",
@@ -60,10 +65,19 @@
   "main": "main.js",
   "type": "module",
   "scripts": {
+    "postinstall": "npm run build --workspace=jspsych-expbuilder-plugin-dynamic",
     "electron": "electron .",
+    "build": "node scripts/build.mjs",
     "build:electron": "electron-builder",
+    "dev": "concurrently -k -n api,client,app -c blue,green,magenta \"npm run emulators:dev --prefix api\" \"npm run dev --prefix client\" \"npm run electron\"",
+    "predev": "npm install --prefix api/functions && npm install --prefix client",
+    "fetch:cloudflared": "node scripts/fetch-cloudflared.mjs",
     "lint": "eslint .",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test": "node scripts/run-root-tests.mjs",
+    "tests": "node scripts/run-all-tests.mjs",
+    "test:e2e:cloud": "node scripts/run-cloud-e2e.mjs",
+    "test:e2e:cloud:providers": "node scripts/run-cloud-e2e.mjs providers",
+    "test:e2e:cloud:browser": "node scripts/run-cloud-e2e.mjs browser",
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"
   },
   "jest": {
@@ -99,6 +113,7 @@
       "/node_modules/",
       "/dist/",
       "/landing-page/",
+      "/api/",
       "/server/cloudflared/",
       "/server/dynamicplugin/",
       "/server/jspsych-bundle/",
@@ -108,7 +123,7 @@
   },
   "build": {
     "productName": "ExpBuilder",
-    "appId": "com.tuapp.id",
+    "appId": "com.flowlab.id",
     "publish": [
       {
         "provider": "github",
@@ -139,41 +154,50 @@
       {
         "from": "server/cloudflared",
         "to": "cloudflared"
+      },
+      {
+        "from": "api",
+        "to": "api",
+        "filter": [
+          "**/*",
+          "!**/node_modules/**",
+          "!**/.firebase/**",
+          "!**/emulator-backup/**",
+          "!**/*.log",
+          "!**/.env.local",
+          "!**/env_local.txt",
+          "!**/.codegraph/**",
+          "!**/.codebase-memory/**",
+          "!**/sdkconfig.json"
+        ]
       }
+    ],
+    "asarUnpack": [
+      "**/node_modules/firebase-tools/**/*",
+      "**/node_modules/ffmpeg-static/**/*"
     ],
     "icon": "icon/icon.png",
     "mac": {
       "target": [
         {
-          "target": "dmg",
-          "arch": [
-            "arm64"
-          ]
+          "target": "dmg"
         },
         {
-          "target": "zip",
-          "arch": [
-            "arm64"
-          ]
+          "target": "zip"
         }
       ],
       "icon": "icon/icon.icns",
-      "identity": null,
-      "hardenedRuntime": false
+      "identity": "-",
+      "hardenedRuntime": false,
+      "notarize": false
     },
     "win": {
       "target": [
         {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
+          "target": "nsis"
         },
         {
-          "target": "zip",
-          "arch": [
-            "x64"
-          ]
+          "target": "zip"
         }
       ],
       "icon": "icon/icon.ico"
@@ -181,16 +205,10 @@
     "linux": {
       "target": [
         {
-          "target": "deb",
-          "arch": [
-            "arm64"
-          ]
+          "target": "deb"
         },
         {
-          "target": "rpm",
-          "arch": [
-            "x64"
-          ]
+          "target": "rpm"
         },
         "AppImage",
         "zip"

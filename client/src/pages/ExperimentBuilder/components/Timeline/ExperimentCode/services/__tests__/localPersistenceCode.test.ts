@@ -9,7 +9,8 @@ function options(experimentID: string): LocalExperimentCodeOptions {
     sessionNameSeparator: "_",
     evaluateCondition: "",
     branchingEvaluation: "",
-    baseCode: "jsPsych.run([]);",
+    baseCode:
+      "Object.entries(window.branchCustomParameters); jsPsych.run([]);",
     customCode: undefined,
     customPreInitCode: { local: "" },
     extensions: "",
@@ -70,7 +71,7 @@ describe("local session persistence code", () => {
     const code = buildLocalExperimentCode(options("experiment-a"));
 
     expect(code.indexOf("await queued")).toBeLessThan(
-      code.indexOf("return flush();", code.indexOf("async function enqueue")),
+      code.indexOf("return await flush();", code.indexOf("async function enqueue")),
     );
     expect(code).toContain("body.eventId !== record.eventId")
     expect(code).toContain("body.sequence !== record.sequence")

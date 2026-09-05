@@ -33,7 +33,7 @@ describe("fetchOAuthState", () => {
 
     expect(auth.currentUser?.getIdToken).toHaveBeenCalled();
     expect(fetch).toHaveBeenCalledWith(
-      "http://127.0.0.1:5001/test-e4cf9/us-central1/createOAuthStateEndpoint",
+      "http://127.0.0.1:5001/test-project/us-central1/createOAuthStateEndpoint",
       {
         method: "POST",
         headers: {
@@ -50,6 +50,15 @@ describe("fetchOAuthState", () => {
 
     await expect(fetchOAuthState("dropbox")).rejects.toThrow(
       "Not authenticated",
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects when the Firebase backend project is not configured", async () => {
+    vi.stubEnv("VITE_FIREBASE_PROJECT_ID", "");
+
+    await expect(fetchOAuthState("github")).rejects.toThrow(
+      "Firebase backend is not configured",
     );
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -99,7 +108,7 @@ describe("fetchOAuthState", () => {
       "signed-state",
     );
     expect(fetch).toHaveBeenCalledWith(
-      "https://us-central1-test-e4cf9.cloudfunctions.net/createOAuthStateEndpoint",
+      "https://us-central1-test-project.cloudfunctions.net/createOAuthStateEndpoint",
       expect.any(Object),
     );
   });

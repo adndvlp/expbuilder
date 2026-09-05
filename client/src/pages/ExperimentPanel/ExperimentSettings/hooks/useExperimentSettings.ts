@@ -9,6 +9,7 @@ import type {
   SessionNameTokenType,
   StatusMessage,
 } from "../types";
+import { getApiBaseUrl } from "../../../../lib/apiBaseUrl";
 import {
   getSessionNameUniquenessError,
   makeSessionToken,
@@ -16,7 +17,7 @@ import {
   previewToken,
 } from "../utils/sessionName";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "";
+const API_URL = getApiBaseUrl() ?? "";
 
 export function useExperimentSettings(experimentID: string | undefined) {
   const [config, setConfig] = useState<BatchConfig>({
@@ -57,6 +58,7 @@ export function useExperimentSettings(experimentID: string | undefined) {
       })
       .catch(() => {});
 
+    if (!db) return;
     getDoc(doc(db, "experiments", experimentID))
       .then((snapshot) => {
         if (!snapshot.exists()) return;
@@ -163,6 +165,7 @@ export function useExperimentSettings(experimentID: string | undefined) {
     setSaving(true);
     setMessage(null);
     try {
+      if (!db) throw new Error("Firebase is not configured");
       await setDoc(
         doc(db, "experiments", experimentID),
         { batchConfig: config, recruitmentConfig, captchaConfig },

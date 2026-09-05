@@ -317,7 +317,7 @@ describe('POST /api/run-experiment/:experimentID', () => {
       .send({ generatedCode: 'const generated = true;' })
       .expect(200)
 
-    expect(res.body.experimentUrl).toBe('http://localhost:3000/E1')
+    expect(new URL(res.body.experimentUrl).pathname).toBe('/E1')
     const html = fs.readFileSync(path.join(tmpDir, 'experiments_html', 'E1.html'), 'utf8')
     expect(html).toContain('const generated = true;')
     expect(html).toContain('background-color: #abcdef')
@@ -388,7 +388,7 @@ describe('POST /api/trials-preview/:experimentID', () => {
       .send({ generatedCode: 'const preview = true;' })
       .expect(200)
 
-    expect(res.body.experimentUrl).toBe('http://localhost:3000/E1/preview')
+    expect(new URL(res.body.experimentUrl).pathname).toBe('/E1/preview')
     const html = fs.readFileSync(path.join(tmpDir, 'trials_previews_html', 'E1.html'), 'utf8')
     expect(html).toContain('const preview = true;')
     expect(html).toContain('background-color: #445566')
@@ -439,12 +439,14 @@ describe('POST /api/publish-experiment/:experimentID', () => {
 
     const res = await request(app)
       .post('/api/publish-experiment/E1')
+      .set('Authorization', 'Bearer firebase-id-token')
       .send({ uid: 'u1', storage: 'dropbox', generatedPublicCode: 'const publicCode = true;' })
       .expect(200)
 
     expect(res.body.pagesUrl).toBe('https://pages.example.com/publish-exp')
     const body = JSON.parse(global.fetch.mock.calls[0][1].body)
     expect(global.fetch.mock.calls[0][0]).toBe('https://firebase.example.com/publishExperiment')
+    expect(global.fetch.mock.calls[0][1].headers.Authorization).toBe('Bearer firebase-id-token')
     expect(body.repoName).toBe('publish-exp')
     expect(body.storageProvider).toBe('dropbox')
     expect(body.htmlContent).toContain('const publicCode = true;')

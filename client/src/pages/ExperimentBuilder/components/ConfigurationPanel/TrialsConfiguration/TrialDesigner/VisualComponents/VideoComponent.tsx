@@ -6,7 +6,8 @@ import videoPlaceholder from "../../../../../../../assets/video.png";
 import { useExperimentID } from "../../../../../hooks/useExperimentID";
 import { resolveMediaPreviewUrl } from "../../../../../utils/resolveMediaPreviewUrl";
 import { snapKonvaNode, SnapHandlers } from "../snapKonvaNode";
-const API_URL = import.meta.env.VITE_API_URL;
+import { getApiBaseUrl } from "../../../../../../../lib/apiBaseUrl";
+const API_URL = getApiBaseUrl();
 
 interface TrialComponent {
   id: string;

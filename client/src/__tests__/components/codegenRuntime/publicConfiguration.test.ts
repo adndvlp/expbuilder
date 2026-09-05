@@ -12,7 +12,9 @@ describe("PublicConfigurationHarness", () => {
     mocks.currentUser = { uid: "user-1" };
     mocks.devMode = {
       isDevMode: false,
-      code: "dev-code",
+      code:
+        "dev-code;" +
+        "if (window.branchCustomParameters) { Object.entries(window.branchCustomParameters).forEach(() => {}); }",
       customInitJsPsychParams: { public: {} },
       customPreInitCode: { public: "" },
     };
@@ -22,7 +24,8 @@ describe("PublicConfigurationHarness", () => {
       data: () => ({}),
     });
     generateAllCodesMock.mockResolvedValue([
-      "const Trial_A_procedure = {}; timeline.push(Trial_A_procedure);",
+      "const Trial_A_procedure = {}; timeline.push(Trial_A_procedure);" +
+        "if (window.branchCustomParameters) { Object.entries(window.branchCustomParameters).forEach(() => {}); }",
     ]);
   });
 
@@ -42,8 +45,8 @@ describe("PublicConfigurationHarness", () => {
   }
 
   it("falls back to default public settings when Firestore config loading fails", async () => {
-    const consoleError = vi
-      .spyOn(console, "error")
+    const consoleWarn = vi
+      .spyOn(console, "warn")
       .mockImplementation(() => {});
     mocks.firestoreGetDoc.mockRejectedValueOnce(new Error("load failed"));
     vi.stubGlobal(
@@ -59,8 +62,8 @@ describe("PublicConfigurationHarness", () => {
 
     const code = normalize(await generateExperiment());
 
-    expect(consoleError).toHaveBeenCalledWith(
-      "Error loading batch config:",
+    expect(consoleWarn).toHaveBeenCalledWith(
+      "Error loading batch config; using defaults:",
       expect.any(Error),
     );
     expect(code).toContain("jsPsych.run(timeline);");
@@ -149,7 +152,8 @@ describe("PublicConfigurationHarness", () => {
     mocks.currentUser = null;
     mocks.devMode.isDevMode = true;
     mocks.devMode.code =
-      "timeline.push({ type: jsPsychHtmlKeyboardResponse });";
+      "timeline.push({ type: jsPsychHtmlKeyboardResponse });" +
+      "if (window.branchCustomParameters) { Object.entries(window.branchCustomParameters).forEach(() => {}); }";
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => {
@@ -268,7 +272,7 @@ describe("PublicConfigurationHarness", () => {
     expect(code).toContain("jsPsych.data.addProperties");
   });
 
-  it("keeps the backend session id stable when a counter display name is generated", async () => {
+  it("[TG-09] emits parseable code while keeping the backend session id stable", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => ({

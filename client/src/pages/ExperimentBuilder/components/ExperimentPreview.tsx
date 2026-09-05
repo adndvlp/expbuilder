@@ -9,7 +9,8 @@ import {
 import useDevMode from "../hooks/useDevMode";
 import { useExperimentCode } from "./Timeline/ExperimentCode/useExperimentCode";
 import { buildSelectedPreviewPersistence } from "./experiment-preview/selectedPreviewPersistence";
-const API_URL = import.meta.env.VITE_API_URL;
+import { getApiBaseUrl } from "../../../lib/apiBaseUrl";
+const API_URL = getApiBaseUrl();
 
 type UploadedFile = { name: string; url: string; type: string };
 

@@ -1,11 +1,9 @@
 import type { Trial } from "../../ConfigurationPanel/types";
 import type { TimelineItem } from "../../../contexts/TrialsContext";
-import { generateUniqueName } from "../utils/trialUtils";
+import { generateUniqueName } from "./generateUniqueName";
 import {
   getItemBranches,
   getScopeNames,
-  propagateLoopCsv,
-  refreshScope,
   updateItemBranches,
 } from "./itemMutations";
 import type {
@@ -41,12 +39,6 @@ function createTrialInput(
   };
 }
 
-async function finishLoopTrial(input: ScopedBranchInput, trial: Trial) {
-  if (input.scope.kind === "loop") {
-    await propagateLoopCsv(input.scope, trial, input.dependencies);
-  }
-}
-
 export async function addScopedBranchTrial(
   input: ScopedBranchInput,
 ): Promise<Trial | null> {
@@ -57,19 +49,15 @@ export async function addScopedBranchTrial(
   const trial = await input.dependencies.createTrial(
     createTrialInput(name, input),
   );
-  await finishLoopTrial(input, trial);
-
   const parentBranches = await getItemBranches(parentItem, input.dependencies);
   if (!parentBranches) return null;
   await updateItemBranches(
     parentItem,
     [...parentBranches, trial.id],
     input.dependencies,
-    trial,
   );
 
   input.onSelectTrial?.(trial);
-  await refreshScope(input.scope);
   return trial;
 }
 
@@ -106,12 +94,10 @@ export async function addScopedParentTrial(
   const trial = await input.dependencies.createTrial(
     createTrialInput(name, input, parentBranches),
   );
-  await finishLoopTrial(input, trial);
   await updateItemBranches(
     parentItem,
     [trial.id],
     input.dependencies,
-    trial,
   );
 
   if (input.scope.kind === "root") {
@@ -121,6 +107,5 @@ export async function addScopedParentTrial(
   }
 
   input.onSelectTrial?.(trial);
-  await refreshScope(input.scope);
   return trial;
 }

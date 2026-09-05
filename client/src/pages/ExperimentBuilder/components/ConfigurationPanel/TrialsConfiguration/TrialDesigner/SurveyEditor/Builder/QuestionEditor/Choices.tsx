@@ -1,7 +1,8 @@
 import { FiPlus } from "react-icons/fi";
 import { Question, ChoiceItem, UploadedFile } from "../types";
+import { getApiBaseUrl } from "../../../../../../../../../lib/apiBaseUrl";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = getApiBaseUrl();
 
 type Props = {
   question: Question;

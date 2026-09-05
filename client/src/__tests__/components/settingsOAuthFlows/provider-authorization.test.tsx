@@ -29,7 +29,7 @@ describe("Settings OAuth tokens", () => {
 
   it("builds OSF URLs for Electron, development and production", () => {
     expect(getOsfRedirectUri(true, true)).toBe(
-      "http://localhost:8888/oauth/osf/callback",
+      "http://localhost:8888/callback",
     );
     expect(getOsfRedirectUri(false, true)).toBe(
       "http://localhost:5173/oauth/osf/callback",
@@ -38,16 +38,24 @@ describe("Settings OAuth tokens", () => {
       "https://example.test/osf",
     );
     expect(getOsfRedirectUri(false, false)).toBe(
-      "https://us-central1-test-e4cf9.cloudfunctions.net/osfOAuthCallback",
+      "http://localhost:8888/callback",
     );
-    expect(getOsfManageUrl(true)).toContain("127.0.0.1:5001");
-    expect(getOsfManageUrl(false)).toBe(
-      "https://us-central1-test-e4cf9.cloudfunctions.net/osfManage",
+    expect(getOsfManageUrl(true, "test-project")).toContain(
+      "127.0.0.1:5001/test-project/us-central1/osfManage",
+    );
+    expect(getOsfManageUrl(false, "test-project")).toBe(
+      "https://us-central1-test-project.cloudfunctions.net/osfManage",
     );
     expect(
-      getOsfOAuthExchangeUrl(true, "a b", "signed/state", "http://local/cb"),
+      getOsfOAuthExchangeUrl(
+        true,
+        "a b",
+        "signed/state",
+        "http://local/cb",
+        "test-project",
+      ),
     ).toBe(
-      "http://127.0.0.1:5001/test-e4cf9/us-central1/osfOAuthCallback?code=a%20b&state=signed%2Fstate&redirect_uri=http%3A%2F%2Flocal%2Fcb",
+      "http://127.0.0.1:5001/test-project/us-central1/osfOAuthCallback?code=a%20b&state=signed%2Fstate&redirect_uri=http%3A%2F%2Flocal%2Fcb",
     );
     expect(
       getOsfOAuthExchangeUrl(
@@ -55,9 +63,10 @@ describe("Settings OAuth tokens", () => {
         "code",
         "state",
         "https://app.test/callback",
+        "test-project",
       ),
     ).toContain(
-      "https://us-central1-test-e4cf9.cloudfunctions.net/osfOAuthCallback",
+      "https://us-central1-test-project.cloudfunctions.net/osfOAuthCallback",
     );
   });
 

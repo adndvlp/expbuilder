@@ -1,4 +1,6 @@
 import {
+  WEBGAZER_JS_SHA256,
+  WEBGAZER_JS_URL,
   getPluginScripts,
   getPluginScriptsFromTrials,
   buildHtmlTags,
@@ -36,7 +38,13 @@ describe("getPluginScripts", () => {
       "plugin-html-keyboard-response",
       "plugin-webgazer-calibrate",
     ]);
-    expect(scriptUrls[0]).toMatch(/webgazer\.js$/);
+    expect(scriptUrls[0]).toBe(WEBGAZER_JS_URL);
+    expect(WEBGAZER_JS_URL).toBe(
+      "https://cdn.jsdelivr.net/gh/jspsych/jspsych@jspsych@7.0.0/examples/js/webgazer/webgazer.js",
+    );
+    expect(WEBGAZER_JS_SHA256).toBe(
+      "65840eaae573c10c1d015b432b447c04607bb2d709be6302482c0e7582975dde",
+    );
     expect(scriptUrls[scriptUrls.length - 1]).toMatch(/plugin-webgazer-calibrate/);
   });
 

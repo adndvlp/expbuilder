@@ -1,7 +1,8 @@
 import { useRef, useState, type Dispatch, type SetStateAction } from "react";
 import type { Experiment, SettingsNotification } from "../types";
+import { getApiBaseUrl } from "../../../lib/apiBaseUrl";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = getApiBaseUrl();
 
 interface BackupOptions {
   experiments: Experiment[];

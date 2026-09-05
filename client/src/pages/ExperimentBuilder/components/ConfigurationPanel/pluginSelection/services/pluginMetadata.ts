@@ -1,4 +1,5 @@
-const API_URL = import.meta.env.VITE_API_URL;
+import { getApiBaseUrl } from "../../../../../../lib/apiBaseUrl";
+const API_URL = getApiBaseUrl();
 
 export async function fetchPluginList(): Promise<string[]> {
   const response = await fetch(`${API_URL}/api/plugins-list`);

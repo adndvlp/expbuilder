@@ -37,6 +37,9 @@ export const loadMain = async (options = {}) => {
     handle: jest.fn((channel, handler) => {
       handlers.set(channel, handler)
     }),
+    on: jest.fn((channel, handler) => {
+      handlers.set(channel, handler)
+    }),
   }
   const shell = {
     openExternal: jest.fn().mockResolvedValue(undefined),
@@ -53,12 +56,19 @@ export const loadMain = async (options = {}) => {
     quitAndInstall: jest.fn(),
   }
   const dotenvConfig = jest.fn()
-  const createOAuthCallbackServer = jest
-    .fn()
-    .mockResolvedValue(options.oauthResult ?? { code: 'code-123', state: 'state-123' })
+  const createOAuthCallbackServer = jest.fn()
+  if (options.oauthCallbackError) {
+    createOAuthCallbackServer.mockRejectedValue(options.oauthCallbackError)
+  } else {
+    createOAuthCallbackServer.mockResolvedValue(
+      options.oauthResult ?? { code: 'code-123', state: 'state-123' },
+    )
+  }
   const isPortAvailable = jest
     .fn()
     .mockResolvedValue(options.portAvailable ?? true)
+  const oauthPortInUseMessage = (port = 8888) =>
+    `OAuth cannot start because port ${port} is already in use. Close the other application using that port and try again. This port is registered as the OAuth redirect and cannot be changed.`
 
   jest.unstable_mockModule('electron', () => ({
     app,
@@ -81,9 +91,12 @@ export const loadMain = async (options = {}) => {
   jest.unstable_mockModule('../../oauth-handler.js', () => ({
     createOAuthCallbackServer,
     isPortAvailable,
+    oauthPortInUseMessage,
   }))
+  const listeningPort = options.listeningPort ?? 3000
   jest.unstable_mockModule('../../server/api.js', () => ({
     io: {},
+    whenListening: Promise.resolve(listeningPort),
   }))
 
   await import('../../main.js')

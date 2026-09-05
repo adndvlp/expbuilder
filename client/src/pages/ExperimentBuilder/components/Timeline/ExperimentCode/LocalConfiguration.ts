@@ -4,6 +4,7 @@ import useDevMode from "../../../hooks/useDevMode";
 import { CanvasStyles } from "../../ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
 import { buildLocalExperimentCode } from "./services/buildLocalExperimentCode";
 import { SessionNameToken } from "./services/localCodeTypes";
+import { getApiBaseUrl } from "../../../../../lib/apiBaseUrl";
 import type {
   GetLoopFn,
   GetLoopTimelineFn,
@@ -11,7 +12,7 @@ import type {
 } from "../../../utils/codegen/types";
 
 export const resolveApiUrl = (value: string | undefined) => value ?? "";
-const API_URL = resolveApiUrl(import.meta.env.VITE_API_URL);
+const API_URL = resolveApiUrl(getApiBaseUrl());
 
 type Props = {
   experimentID: string | undefined;

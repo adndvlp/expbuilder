@@ -16,6 +16,7 @@ describe("coverage infrastructure: firebase module", () => {
     vi.doMock("firebase/app", () => ({ initializeApp }));
     vi.doMock("firebase/auth", () => ({
       getAuth: vi.fn(() => auth),
+      onAuthStateChanged: vi.fn(),
       connectAuthEmulator,
     }));
     vi.doMock("firebase/firestore", () => ({
@@ -53,7 +54,11 @@ describe("coverage infrastructure: firebase module", () => {
 
     vi.doUnmock("../../../lib/firebase");
     vi.doMock("firebase/app", () => ({ initializeApp }));
-    vi.doMock("firebase/auth", () => ({ getAuth, connectAuthEmulator }));
+    vi.doMock("firebase/auth", () => ({
+      getAuth,
+      onAuthStateChanged: vi.fn(),
+      connectAuthEmulator,
+    }));
     vi.doMock("firebase/firestore", () => ({
       getFirestore,
       connectFirestoreEmulator,
@@ -84,18 +89,18 @@ describe("coverage infrastructure: firebase module", () => {
     });
   });
 
-  it("falls back to default Firebase config when Electron returns no api key", async () => {
-    const app = { name: "default-app" };
-    const initializeApp = vi.fn(() => app);
+  it("does not initialize Firebase when Electron has no saved api key", async () => {
+    const initializeApp = vi.fn();
 
     vi.doUnmock("../../../lib/firebase");
     vi.doMock("firebase/app", () => ({ initializeApp }));
     vi.doMock("firebase/auth", () => ({
-      getAuth: vi.fn(() => ({ currentUser: null })),
+      getAuth: vi.fn(),
+      onAuthStateChanged: vi.fn(),
       connectAuthEmulator: vi.fn(),
     }));
     vi.doMock("firebase/firestore", () => ({
-      getFirestore: vi.fn(() => ({ app })),
+      getFirestore: vi.fn(),
       connectFirestoreEmulator: vi.fn(),
     }));
     const log = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -105,26 +110,25 @@ describe("coverage infrastructure: firebase module", () => {
 
     const firebase = await import("../../../lib/firebase");
 
-    await expect(firebase.getFirebaseApp()).resolves.toBe(app);
-    expect(log).toHaveBeenCalledWith("Using default Firebase configuration");
-    expect(initializeApp).toHaveBeenCalledWith(
-      expect.objectContaining({ apiKey: "test-key" }),
-    );
+    await expect(firebase.getFirebaseApp()).resolves.toBeUndefined();
+    await expect(firebase.getFirebaseAuth()).resolves.toBeUndefined();
+    expect(log).toHaveBeenCalledWith("Firebase is not configured yet");
+    expect(initializeApp).not.toHaveBeenCalled();
   });
 
-  it("falls back to default Firebase config when Electron config loading fails", async () => {
-    const app = { name: "fallback-app" };
+  it("does not initialize Firebase when Electron config loading fails", async () => {
+    const initializeApp = vi.fn();
     const error = new Error("read failed");
-    const initializeApp = vi.fn(() => app);
 
     vi.doUnmock("../../../lib/firebase");
     vi.doMock("firebase/app", () => ({ initializeApp }));
     vi.doMock("firebase/auth", () => ({
-      getAuth: vi.fn(() => ({ currentUser: null })),
+      getAuth: vi.fn(),
+      onAuthStateChanged: vi.fn(),
       connectAuthEmulator: vi.fn(),
     }));
     vi.doMock("firebase/firestore", () => ({
-      getFirestore: vi.fn(() => ({ app })),
+      getFirestore: vi.fn(),
       connectFirestoreEmulator: vi.fn(),
     }));
     const log = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -136,13 +140,11 @@ describe("coverage infrastructure: firebase module", () => {
 
     const firebase = await import("../../../lib/firebase");
 
-    await expect(firebase.getFirebaseApp()).resolves.toBe(app);
+    await expect(firebase.getFirebaseAuth()).resolves.toBeUndefined();
     expect(log).toHaveBeenCalledWith(
-      "Error loading custom Firebase config, using default",
+      "Error loading custom Firebase config",
       error,
     );
-    expect(initializeApp).toHaveBeenCalledWith(
-      expect.objectContaining({ apiKey: "test-key" }),
-    );
+    expect(initializeApp).not.toHaveBeenCalled();
   });
 });

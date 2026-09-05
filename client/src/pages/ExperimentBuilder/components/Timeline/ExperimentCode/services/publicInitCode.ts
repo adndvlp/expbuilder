@@ -58,17 +58,18 @@ export function publicInitCode(options: PublicExperimentCodeOptions): string {
       ${extensions}
 
       on_data_update: async function (data) {
+        const persistenceToken = window.ExpBuilderPersistence.start();
+        try {
 
         // Agregar timestamp del cliente para ordenamiento correcto
         data.clientTimestamp = Date.now();
         data.sessionId = trialSessionId;
         data.experimentID = "${experimentID}";
         if (data.builder_id !== undefined && data.builder_id !== null) {
-          localStorage.setItem('jsPsych_resumeTrial', JSON.stringify({
-            branches: data.branches || [],
-            branchConditions: data.branchConditions || [],
-            trialData: data
-          }));
+          localStorage.setItem(
+            _publicStorageKeys.resumeTrial,
+            JSON.stringify(_createResumeCheckpoint(data))
+          );
         }
 
         // Actualizar estado a 'in-progress' en la primera actualización
@@ -83,7 +84,7 @@ export function publicInitCode(options: PublicExperimentCodeOptions): string {
           // --- CON IndexedDB: Batching habilitado ---
           try {
             await TrialDB.add(data);
-            console.log(\`Trial \${data.trial_index} saved to IndexedDB\`);
+            window.ExpBuilderNavigation.onTrialPersisted(data);
           } catch (error) {
             console.error('Error saving to IndexedDB:', error);
             return;
@@ -124,7 +125,7 @@ export function publicInitCode(options: PublicExperimentCodeOptions): string {
             if (!response.ok) {
               console.error('Error sending trial to Firestore:', await response.text());
             } else {
-              console.log(\`Trial \${data.trial_index} sent to Firestore\`);
+              window.ExpBuilderNavigation.onTrialPersisted(data);
             }
           } catch (error) {
             console.error('Error sending trial:', error);
@@ -132,6 +133,9 @@ export function publicInitCode(options: PublicExperimentCodeOptions): string {
         }
 
         ${branchingEvaluation}${publicParams.on_data_update?.trim() ? `\n\n        // --- User code (on_data_update) ---\n        ${publicParams.on_data_update.trim()}` : ""}
+        } finally {
+          window.ExpBuilderPersistence.finish(persistenceToken);
+        }
       },
 `;
 }

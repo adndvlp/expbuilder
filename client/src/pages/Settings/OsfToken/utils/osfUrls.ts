@@ -1,19 +1,17 @@
-const OSF_FUNCTION_BASE = "https://us-central1-test-e4cf9.cloudfunctions.net";
-
 export function getOsfRedirectUri(
   electron: boolean,
   isDev: boolean,
   productionOverride?: string,
 ) {
-  if (electron) return "http://localhost:8888/oauth/osf/callback";
+  if (electron) return "http://localhost:8888/callback";
   if (isDev) return "http://localhost:5173/oauth/osf/callback";
-  return productionOverride || `${OSF_FUNCTION_BASE}/osfOAuthCallback`;
+  return productionOverride || "http://localhost:8888/callback";
 }
 
-export function getOsfManageUrl(isDev: boolean) {
+export function getOsfManageUrl(isDev: boolean, projectId: string) {
   return isDev
-    ? "http://127.0.0.1:5001/test-e4cf9/us-central1/osfManage"
-    : `${OSF_FUNCTION_BASE}/osfManage`;
+    ? `http://127.0.0.1:5001/${projectId}/us-central1/osfManage`
+    : `https://us-central1-${projectId}.cloudfunctions.net/osfManage`;
 }
 
 export function getOsfOAuthExchangeUrl(
@@ -21,9 +19,10 @@ export function getOsfOAuthExchangeUrl(
   code: string,
   state: string,
   redirectUri: string,
+  projectId: string,
 ) {
   const baseUrl = isDev
-    ? "http://127.0.0.1:5001/test-e4cf9/us-central1/osfOAuthCallback"
-    : `${OSF_FUNCTION_BASE}/osfOAuthCallback`;
+    ? `http://127.0.0.1:5001/${projectId}/us-central1/osfOAuthCallback`
+    : `https://us-central1-${projectId}.cloudfunctions.net/osfOAuthCallback`;
   return `${baseUrl}?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
 }

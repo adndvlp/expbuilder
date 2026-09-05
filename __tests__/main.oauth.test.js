@@ -40,7 +40,8 @@ describe('main.js OAuth IPC', () => {
       state: 's',
     })).resolves.toEqual({
       success: false,
-      error: 'Port 8888 is not available',
+      error:
+        'OAuth cannot start because port 8888 is already in use. Close the other application using that port and try again. This port is registered as the OAuth redirect and cannot be changed.',
     })
     expect(unavailable.shell.openExternal).not.toHaveBeenCalled()
 
@@ -54,6 +55,23 @@ describe('main.js OAuth IPC', () => {
     expect(result).toEqual({
       success: false,
       error: 'Unsupported provider: unknown',
+    })
+  })
+
+  test('maps callback-server EADDRINUSE to the visible port error', async () => {
+    const occupied = Object.assign(new Error('listen EADDRINUSE: address already in use :::8888'), {
+      code: 'EADDRINUSE',
+    })
+    const loaded = await loadMain({ oauthCallbackError: occupied })
+    await expect(loaded.handlers.get('start-oauth-flow')(null, {
+      provider: 'github',
+      clientId: 'id',
+      scope: 'repo',
+      state: 's',
+    })).resolves.toEqual({
+      success: false,
+      error:
+        'OAuth cannot start because port 8888 is already in use. Close the other application using that port and try again. This port is registered as the OAuth redirect and cannot be changed.',
     })
   })
 })

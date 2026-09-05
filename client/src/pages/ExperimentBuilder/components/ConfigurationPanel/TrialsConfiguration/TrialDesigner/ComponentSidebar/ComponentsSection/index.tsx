@@ -4,7 +4,8 @@ import { resolveMediaPreviewUrl } from "../../../../../../utils/resolveMediaPrev
 import { ComponentType } from "../../types";
 import GenericComponents from "./GenericComponents";
 import MediaSectionToggle from "./MediaSectionToggle";
-const API_URL = import.meta.env.VITE_API_URL;
+import { getApiBaseUrl } from "../../../../../../../../lib/apiBaseUrl";
+const API_URL = getApiBaseUrl();
 
 type Props = {
   type: ComponentType;

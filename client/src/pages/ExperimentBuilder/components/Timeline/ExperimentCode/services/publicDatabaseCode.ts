@@ -1,4 +1,5 @@
 import { PublicExperimentCodeOptions } from "./publicCodeTypes";
+import { getPublicRuntimeStorageKeys } from "./publicRuntimeStorageKeys";
 
 export function publicDatabaseCode(
   options: PublicExperimentCodeOptions,
@@ -41,6 +42,7 @@ export function publicDatabaseCode(
     progressBar,
     baseCode,
   ];
+  const storageKeys = getPublicRuntimeStorageKeys(experimentID);
   return `
   // --- FileUploadResponseComponent endpoint (Firebase Cloud Function) ---
   window.JSPSYCH_FILE_UPLOAD_ENDPOINT = '${DATA_API_URL}'.replace('/apiData', '/uploadParticipantFile');
@@ -48,7 +50,7 @@ export function publicDatabaseCode(
 
   // --- IndexedDB Wrapper para Batching con TTL (3 días) ---
   const TrialDB = {
-    dbName: 'jsPsychTrialsDB',
+    dbName: ${JSON.stringify(storageKeys.trialDatabase)},
     storeName: 'trials',
     db: null,
     TTL_DAYS: 3,

@@ -74,7 +74,7 @@ describe("generateOnFinishCode merge points", () => {
       }),
     );
 
-    expect(code).toContain("window.nextTrialId = 2;");
+    expect(code).toContain("window.nextTrialId = nextTrialId;");
     expect(code).toContain("window.branchingActive = true;");
   });
 });

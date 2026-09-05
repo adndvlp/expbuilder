@@ -1,5 +1,14 @@
 import { SetStateAction } from "react";
 import { Condition, Parameter } from "../types";
+import {
+  addBranchingCondition,
+  addBranchingCustomParameter,
+  addBranchingRule,
+  removeBranchingCondition,
+  removeBranchingRule,
+  selectBranchingTarget,
+  updateBranchingRule,
+} from "../../../../../modules/experiment-authoring/intents/branching";
 
 type Props = {
   loadTargetTrialParameters: (trialId: string | number) => Promise<void>;
@@ -23,88 +32,31 @@ export default function useBranchConditions({
     isTargetDynamic: boolean,
   ) => {
     setConditionsWrapper(
-      conditions.map((c) => {
-        if (c.id === conditionId) {
-          const newParams = { ...(c.customParameters || {}) };
-          if (isTargetDynamic) {
-            // For dynamic plugins, add a template parameter with unique key
-            // Use timestamp to ensure uniqueness
-            const newKey = `components::::_${Date.now()}`;
-            newParams[newKey] = {
-              source: "none",
-              value: null,
-            };
-          } else {
-            const existingKeys = Object.keys(newParams);
-            const availableParams =
-              c.nextTrialId && targetTrialParameters[c.nextTrialId]
-                ? targetTrialParameters[c.nextTrialId]
-                : [];
-
-            // Find first parameter not already added
-            const nextParam = availableParams.find(
-              (p) => !existingKeys.includes(p.key),
-            );
-
-            if (nextParam) {
-              newParams[nextParam.key] = {
-                source: "none",
-                value: null,
-              };
-            }
-          }
-
-          return { ...c, customParameters: newParams };
-        }
-        return c;
+      addBranchingCustomParameter({
+        conditions,
+        conditionId,
+        isTargetDynamic,
+        targetTrialParameters,
       }),
       true,
     );
   };
 
   const addCondition = () => {
-    setConditionsWrapper([
-      ...conditions,
-      {
-        id: Date.now(),
-        rules: [{ column: "", op: "==", value: "" }],
-        nextTrialId: null,
-        customParameters: {},
-      },
-    ]);
+    setConditionsWrapper(addBranchingCondition(conditions));
   };
 
   const removeCondition = (conditionId: number) => {
-    setConditionsWrapper(conditions.filter((c) => c.id !== conditionId));
+    setConditionsWrapper(removeBranchingCondition(conditions, conditionId));
   };
 
   const addRuleToCondition = (conditionId: number) => {
-    setConditionsWrapper(
-      conditions.map((c) =>
-        c.id === conditionId
-          ? {
-              ...c,
-              rules: [
-                ...c.rules,
-                {
-                  column: "",
-                  op: "==",
-                  value: "",
-                },
-              ],
-            }
-          : c,
-      ),
-    );
+    setConditionsWrapper(addBranchingRule(conditions, conditionId));
   };
 
   const removeRuleFromCondition = (conditionId: number, ruleIndex: number) => {
     setConditionsWrapper(
-      conditions.map((c) =>
-        c.id === conditionId
-          ? { ...c, rules: c.rules.filter((_, idx) => idx !== ruleIndex) }
-          : c,
-      ),
+      removeBranchingRule(conditions, conditionId, ruleIndex),
     );
   };
 
@@ -116,15 +68,12 @@ export default function useBranchConditions({
     shouldSave: boolean = true,
   ) => {
     setConditionsWrapper(
-      conditions.map((c) =>
-        c.id === conditionId
-          ? {
-              ...c,
-              rules: c.rules.map((r, idx) =>
-                idx === ruleIndex ? { ...r, [field]: value } : r,
-              ),
-            }
-          : c,
+      updateBranchingRule(
+        conditions,
+        conditionId,
+        ruleIndex,
+        field as keyof Condition["rules"][number],
+        value,
       ),
       shouldSave,
     );
@@ -132,9 +81,7 @@ export default function useBranchConditions({
 
   const updateNextTrial = (conditionId: number, nextTrialId: string) => {
     setConditionsWrapper(
-      conditions.map((c) =>
-        c.id === conditionId ? { ...c, nextTrialId, customParameters: {} } : c,
-      ),
+      selectBranchingTarget(conditions, conditionId, nextTrialId),
       true, // shouldSave: true to persist the change
     );
 

@@ -20,19 +20,25 @@
    cd expbuilder
    ```
 
-2. Install dependencies for both client and server:
+2. Build the app for your OS:
+
    ```bash
-   cd client
-   npm install
-   cd ../server
-   npm install
-   cd ..
+   npm run build
    ```
+
+   This installs all dependencies, builds the client, downloads the correct Cloudflare Tunnel binary for your OS and architecture, and packages the Electron app into `dist/`.
+
+Requires Node.js 18 or newer.
 
 # Cloudflare Tunnel Setup
 
-- Add a folder named `cloudflared` inside the `server` directory.
-- Place the Cloudflare Tunnel binary ([Download here](https://github.com/cloudflare/cloudflared/releases)) for your operating system and CPU architecture inside this folder.
+The Cloudflare Tunnel binary is downloaded automatically into `server/cloudflared/` for your OS and architecture by `npm run build` (or `npm run fetch:cloudflared`). The version is pinned in `scripts/fetch-cloudflared.mjs` and can be overridden:
+
+```bash
+CLOUDFLARED_VERSION=2026.8.2 npm run fetch:cloudflared
+```
+
+To force a re-download of an existing binary: `npm run fetch:cloudflared -- --force`.
 
 # Development
 
@@ -56,21 +62,54 @@ Make sure both processes are running for full functionality.
 
 # Build Instructions
 
-To create a production build of the app:
+From the root of the project:
 
-2. Build the client:
+```bash
+npm run build
+```
+
+This will:
+
+1. Install the root and client dependencies (`sharp` resolves automatically for your OS and architecture)
+2. Build the client
+3. Download the Cloudflare Tunnel binary for your OS and architecture
+4. Run `electron-builder` for your CPU architecture
+
+The installers are written to `dist/`.
+
+# Releases and CI
+
+Desktop installers are built by GitHub Actions (`.github/workflows/build.yml`). The `[build]` flag is a substring anywhere in a commit message (this repo puts it at the end).
+
+| Trigger | Tests | Builds | Tag / Release |
+| --- | --- | --- | --- |
+| Push to a branch other than `main`, with `[build]` in **any** commit of that push | Yes | Yes, installers as workflow artifacts | No |
+| Push to a branch other than `main`, without `[build]` | No | No | No |
+| Push to `main` whose **head** commit message contains `[build]`, and `package.json` version has no `v<version>` tag yet | No | Yes | Yes, creates `v<version>` and publishes the release |
+| Push to `main` without `[build]` in the head commit, or when `v<version>` already exists | No | No | No |
+| Manual run (`workflow_dispatch`) | Yes | Yes, artifacts only | No |
+
+On `main`, CI does not re-run tests. A fast-forward merge does not create a merge commit: `[build]` must then be in the tip commit itself. Use `git merge --no-ff` (or put `[build]` on that tip) so the head message is what CI reads.
+
+Supported targets:
+
+- macOS arm64 and x64 (`dmg`, `zip`)
+- Windows x64 (`nsis`, `zip`)
+- Linux x64 (`deb`, `rpm`) and arm64 (`deb`)
+
+To publish a new release:
+
+1. Bump the version locally (e.g. `npm version patch`), which updates `package.json` and the lockfile. The tag `v<version>` must not already exist.
+2. Merge into `main` so the **head** commit message contains `[build]`, for example:
 
    ```bash
-   cd client
-   npm run build
+   git merge --no-ff <branch> -m "feat(settings): your change [build]"
+   git push origin main
    ```
 
-3. Specify the correct architecture (`arch`) in the root `package.json` file to ensure compatibility with your system.
+3. The workflow tags `v<version>`, builds every OS on its native runner, and publishes the GitHub release.
 
-4. From the root of the project, build the Electron app:
-   ```bash
-   npm run build:electron
-   ```
+The workflow uses the default `GITHUB_TOKEN` (`contents: write`) to create the tag and publish the release. No personal access token is required.
 
 # Usage
 

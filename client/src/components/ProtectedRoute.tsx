@@ -1,7 +1,7 @@
 import { Navigate } from "react-router";
 import React, { useEffect, useState } from "react";
-import { onAuthStateChanged, User } from "firebase/auth";
-import { auth } from "../lib/firebase";
+import { User } from "firebase/auth";
+import { subscribeToAuth } from "../lib/firebase";
 
 type Props = {
   children: React.ReactNode;
@@ -12,11 +12,10 @@ function ProtectedRoute({ children }: Props) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    return subscribeToAuth((firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
     });
-    return () => unsubscribe();
   }, []);
 
   if (loading) {

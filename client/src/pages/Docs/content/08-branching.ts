@@ -115,24 +115,26 @@ If the value is an array (checkbox/multi-select response), \`includes()\` is use
 
 ## 4. Repeat / Jump Conditions
 
-Allows restarting the experiment from a specific trial (via \`localStorage\`):
+Allows restarting the experiment from a compiled execution address:
 
 \`\`\`js
 // on_finish of the source trial:
-localStorage.setItem(_sessionKeys.jumpTrial, String(targetTrialId));
-document.getElementById('jspsych-container').innerHTML = '';
-setTimeout(() => jsPsych.run(timeline), 100);
+window.ExpBuilderNavigation.requestJump(
+  targetTrialId,
+  { sourceId, conditionId, sourceSessionId: trialSessionId },
+  data,
+  () => jsPsych.pauseExperiment(),
+);
 
-// In conditional_function of each procedure:
-const jumpTo = localStorage.getItem(_sessionKeys.jumpTrial);
-if (jumpTo) {
-if (String(currentId) === String(jumpTo)) {
-  localStorage.removeItem(_sessionKeys.jumpTrial);
-  return true;  // run this trial
-}
-return false;   // skip
-}
+// Scope wrappers inspect without consuming; real entries consume once.
+const canInclude = window.ExpBuilderNavigation.allowsItem(itemId, itemKind);
+const canEnter = window.ExpBuilderNavigation.enterItem(itemId, itemKind);
 \`\`\`
+
+The versioned request contains the target kind, owner and ordered
+\`enterLoopIds\`. Reload waits until the source trial is durably acknowledged.
+Local Run stores this state under \`expbuilder:local:<id>:jump-request\`;
+published runtimes retain the current global storage default.
 
 **Key difference**: Jump can skip to **any** trial (even previous ones). Branch only jumps forward within the same scope.
 
@@ -165,14 +167,11 @@ Each procedure has a \`conditional_function\` that determines whether it runs or
 conditional_function: function() {
 const currentId = 123;
 
-// Priority 1: pending jump/repeat (localStorage)
-const jumpToTrial = localStorage.getItem(_sessionKeys.jumpTrial);
-if (jumpToTrial) {
-  if (String(currentId) === String(jumpToTrial)) {
-    localStorage.removeItem(_sessionKeys.jumpTrial);
-    return true;
-  }
-  return false;
+// Priority 1: pending jump/repeat address
+const navigationDecision =
+  window.ExpBuilderNavigation.enterItem(currentId, 'trial');
+if (navigationDecision !== null) {
+  return navigationDecision;
 }
 
 // Priority 2: active branching (window globals)

@@ -85,7 +85,17 @@ npm run check:max-lines
 
 # Linting
 npm run lint
+
+# Unit tests
+npm run test:unit
+
+# Authoring-to-generated-HTML runtime tests
+npm run test:runtime
 ```
+
+The runtime suite creates experiments through the same authoring intents and
+Canvas actions used by the UI, then executes the generated artifact in
+Chromium. See [runtime-e2e/README.md](runtime-e2e/README.md).
 
 ## Project Structure
 
@@ -268,14 +278,6 @@ Output will be in `client/dist/` and will be copied to `resources/client/dist` b
 ### React DevTools
 
 Install the browser extension to inspect components.
-
-### Redux DevTools (if applicable)
-
-Although Redux is not used, providers expose state that you can inspect.
-
-### Console Logs
-
-In development, many components log important actions.
 
 ## Additional Resources
 

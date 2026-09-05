@@ -1,5 +1,7 @@
 import type { ExpandedCanvasEdge } from "./expandedLayoutTypes";
 import { BRANCH_EDGE_COLOR_COUNT } from "./branchEdgeTheme";
+import type { GraphBranchEdge } from "../../../modules/experiment-graph/types";
+import { getCanonicalBranchEdgeId } from "./canonicalBranchProjection";
 
 type FlowGraph = {
   incoming: Map<string, ExpandedCanvasEdge[]>;
@@ -43,7 +45,42 @@ function assignSplitSlots(graph: FlowGraph) {
   return directSlots;
 }
 
-export function assignBranchColorSlots(edges: ExpandedCanvasEdge[]) {
+function canonicalSourceKey(edge: GraphBranchEdge) {
+  return JSON.stringify([
+    edge.sourceOwnerId === null ? "root" : String(edge.sourceOwnerId),
+    String(edge.sourceId),
+  ]);
+}
+
+function assignCanonicalSlots(edges: readonly GraphBranchEdge[]) {
+  const groups = new Map<string, GraphBranchEdge[]>();
+  edges.forEach((edge) => {
+    const key = canonicalSourceKey(edge);
+    const outgoing = groups.get(key) ?? [];
+    outgoing.push(edge);
+    groups.set(key, outgoing);
+  });
+  const slots = new Map<string, number>();
+  let nextSlot = 0;
+  [...groups.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .forEach(([, outgoing]) => {
+      if (outgoing.length < 2) return;
+      outgoing
+        .map(getCanonicalBranchEdgeId)
+        .sort()
+        .forEach((edgeId, index) => {
+          slots.set(edgeId, (nextSlot + index) % BRANCH_EDGE_COLOR_COUNT);
+        });
+      nextSlot = (nextSlot + outgoing.length) % BRANCH_EDGE_COLOR_COUNT;
+    });
+  return slots;
+}
+
+export function assignBranchColorSlots(
+  edges: ExpandedCanvasEdge[],
+  canonicalEdges: readonly GraphBranchEdge[] = [],
+) {
   const flowEdges = edges.filter((edge) => edge.data.kind === "flow");
   const graph = buildFlowGraph(flowEdges);
   const directSlots = assignSplitSlots(graph);
@@ -72,6 +109,13 @@ export function assignBranchColorSlots(edges: ExpandedCanvasEdge[]) {
   flowEdges.forEach((edge) => {
     const slot = resolve(edge);
     if (slot !== undefined) slots.set(edge.id, slot);
+  });
+  const canonicalSlots = assignCanonicalSlots(canonicalEdges);
+  flowEdges.forEach((edge) => {
+    const stableSlot = edge.data.semanticEdgeIds
+      ?.map((semanticId) => canonicalSlots.get(semanticId))
+      .find((slot): slot is number => slot !== undefined);
+    if (stableSlot !== undefined) slots.set(edge.id, stableSlot);
   });
   return slots;
 }

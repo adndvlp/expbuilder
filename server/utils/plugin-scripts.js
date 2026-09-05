@@ -52,9 +52,16 @@ const WEBGAZER_DEPENDENT_PLUGINS = new Set([
 /**
  * URL for the webgazer.js library itself.
  * Must be inserted before any WEBGAZER_DEPENDENT_PLUGINS script.
+ *
+ * This is the jsPsych 7.0.0 examples copy, not npm `webgazer`. Local builds
+ * fetch the same artifact in server/jspsych-bundler/copy-webgazer.mjs.
  */
-const WEBGAZER_JS_URL =
+export const WEBGAZER_JS_URL =
   "https://cdn.jsdelivr.net/gh/jspsych/jspsych@jspsych@7.0.0/examples/js/webgazer/webgazer.js";
+
+/** sha256 of WEBGAZER_JS_URL; the file previously tracked in jspsych-bundle. */
+export const WEBGAZER_JS_SHA256 =
+  "65840eaae573c10c1d015b432b447c04607bb2d709be6302482c0e7582975dde";
 
 /**
  * Plugins that also need the survey CSS stylesheet injected.

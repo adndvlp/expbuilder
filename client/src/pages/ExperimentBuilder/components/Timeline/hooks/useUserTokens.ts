@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "../../../../../lib/firebase";
+import { subscribeToAuth } from "../../../../../lib/firebase";
 
 export type UserTokens = {
   drive: boolean;
@@ -32,6 +31,7 @@ export async function getUserTokens(uid: string): Promise<UserTokens> {
   try {
     const { doc, getDoc } = await import("firebase/firestore");
     const { db } = await import("../../../../../lib/firebase");
+    if (!db) return EMPTY_TOKENS;
     const docSnapshot = await getDoc(doc(db, "users", uid));
     if (!docSnapshot.exists()) {
       localStorage.setItem(
@@ -57,14 +57,13 @@ export async function getUserTokens(uid: string): Promise<UserTokens> {
 export function useUserTokens() {
   const [userTokens, setUserTokens] = useState<UserTokens | null>(null);
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    return subscribeToAuth((firebaseUser) => {
       if (firebaseUser?.uid) {
         getUserTokens(firebaseUser.uid).then(setUserTokens);
       } else {
         setUserTokens(null);
       }
     });
-    return () => unsubscribe();
   }, []);
 
   const isDisabledByTokens = () =>

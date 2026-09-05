@@ -4,6 +4,7 @@ import {
   generateSingleTrialCode,
 } from "../../../pages/ExperimentBuilder/utils/generateTrialLoopCodes";
 import type { Trial } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/types";
+import { toCodeIdentifier } from "../../../pages/ExperimentBuilder/utils/codegen/codeIdentifier";
 import { loop, timelineTrial, trial } from "../../helpers/trialFactories";
 
 vi.mock(
@@ -237,8 +238,9 @@ describe("generateTrialLoopCodes integration", () => {
       vi.fn(async () => parentLoop),
     );
 
-    expect(code).toContain("const Web_Gazer_timeline = {");
-    expect(code).toContain("timeline: [Web_Gazer_timeline]");
+    const identifier = toCodeIdentifier("Web Gazer");
+    expect(code).toContain(`const ${identifier}_timeline = {`);
+    expect(code).toContain(`timeline: [${identifier}_timeline]`);
     expect(code).toContain("builder_id: 2");
   });
 
@@ -273,6 +275,6 @@ describe("generateTrialLoopCodes integration", () => {
       vi.fn(async () => null),
     );
 
-    expect(code).toContain("Orphaned_trial");
+    expect(code).toContain(toCodeIdentifier("Orphaned trial"));
   });
 });

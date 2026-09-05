@@ -13,14 +13,23 @@ describe('main.js Electron lifecycle', () => {
       path: expect.stringMatching(/\.env$/),
     })
     expect([...loaded.handlers.keys()].sort()).toEqual([
+      'backend-setup:api',
+      'backend-setup:kill',
+      'backend-setup:start',
+      'backend-setup:write',
+      'backend-setup:write-env',
       'delete-firebase-config',
+      'delete-oauth-config',
+      'get-api-base-url',
       'open-external',
       'read-firebase-config',
+      'read-oauth-config',
       'save-csv-zip',
       'save-json-file',
       'save-zip-file',
       'start-oauth-flow',
       'write-firebase-config',
+      'write-oauth-config',
     ])
 
     await loaded.readyCallback()
@@ -52,6 +61,17 @@ describe('main.js Electron lifecycle', () => {
     } else {
       process.env.NODE_ENV = envBefore
     }
+  })
+
+  test('reports the bound API URL over sync IPC after the server starts', async () => {
+    const loaded = await loadMain({ listeningPort: 3012 })
+    const event = { returnValue: undefined }
+    loaded.handlers.get('get-api-base-url')(event)
+    expect(event.returnValue).toBe('http://localhost:3000')
+
+    await loaded.readyCallback()
+    loaded.handlers.get('get-api-base-url')(event)
+    expect(event.returnValue).toBe('http://localhost:3012')
   })
 
   test('opens external URLs through IPC', async () => {

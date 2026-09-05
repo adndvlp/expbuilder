@@ -1,10 +1,12 @@
 import { expect, test } from "../fixtures/test.fixture";
 import type { Locator } from "@playwright/test";
+import { graph, graphScope, routeGraph } from "../helpers/loopBranchGraph";
+import type { TimelineItem } from "../../src/pages/ExperimentBuilder/modules/experiment-graph/types";
 import { getScopedNodeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/composeExpandedLoopLayout";
 import { getLoopLayoutScopeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/buildUnifiedFlowLayout";
 import { ROOT_CANVAS_SCOPE_ID } from "../../src/pages/ExperimentBuilder/components/Canvas/services/expandedLayoutTypes";
 
-const rootTimeline = [
+const rootTimeline: TimelineItem[] = [
   { id: "welcome", type: "trial", name: "Welcome" },
   {
     id: "instructions",
@@ -17,7 +19,7 @@ const rootTimeline = [
   { id: "final-right", type: "trial", name: "Final1" },
 ];
 
-const outerTimeline = [
+const outerTimeline: TimelineItem[] = [
   {
     id: "question",
     type: "trial",
@@ -70,7 +72,7 @@ const outerTimeline = [
   { id: "final", type: "trial", name: "Trial" },
 ];
 
-const nestedTimeline = [
+const nestedTimeline: TimelineItem[] = [
   { id: "nested-task", type: "trial", name: "Task" },
   { id: "loca", type: "trial", name: "Loca" },
 ];
@@ -106,6 +108,18 @@ async function pathCrossesNode(path: Locator, node: Locator) {
 test("renders the complete branching loop topology in one canvas", async ({
   page,
 }) => {
+  await routeGraph(
+    page,
+    "exp-complex",
+    graph(
+      rootTimeline,
+      {
+        "loop-1": graphScope("loop-1", null, outerTimeline),
+        "nested-loop": graphScope("nested-loop", "loop-1", nestedTimeline),
+      },
+      [],
+    ),
+  );
   await page.route("**/api/trials-metadata/exp-complex", (route) =>
     route.fulfill({
       status: 200,

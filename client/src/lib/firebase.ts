@@ -1,65 +1,92 @@
-import { initializeApp, FirebaseApp } from "firebase/app";
-import { getAuth, Auth } from "firebase/auth";
-import { getFirestore, Firestore } from "firebase/firestore";
+import { initializeApp, type FirebaseApp } from "firebase/app";
+import { getAuth, onAuthStateChanged, type Auth, type User } from "firebase/auth";
+import { getFirestore, type Firestore } from "firebase/firestore";
 
-// Default configuration
-const defaultConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+type FirebaseConfig = {
+  apiKey: string;
+  authDomain: string;
+  projectId: string;
+  storageBucket: string;
+  messagingSenderId: string;
+  appId: string;
 };
 
-// Variables for the initialized app
-let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
+function envFirebaseConfig(): FirebaseConfig | null {
+  const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+  if (!apiKey) return null;
+  return {
+    apiKey,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  };
+}
+
+function isUsableConfig(config: unknown): config is FirebaseConfig {
+  return Boolean(
+    config &&
+      typeof config === "object" &&
+      "apiKey" in config &&
+      typeof (config as FirebaseConfig).apiKey === "string" &&
+      (config as FirebaseConfig).apiKey.length > 0,
+  );
+}
+
+let app: FirebaseApp | undefined;
+let auth: Auth | undefined;
+let db: Firestore | undefined;
 let isInitialized = false;
 
-// Function to initialize Firebase
+async function resolveFirebaseConfig(): Promise<FirebaseConfig | null> {
+  const isElectron = typeof window !== "undefined" && !!window.electron?.readFirebaseConfig;
+  if (isElectron) {
+    try {
+      const customConfig = await window.electron!.readFirebaseConfig();
+      if (isUsableConfig(customConfig)) {
+        console.log("Using custom Firebase configuration");
+        return customConfig;
+      }
+      console.log("Firebase is not configured yet");
+      return null;
+    } catch (error) {
+      console.log("Error loading custom Firebase config", error);
+      return null;
+    }
+  }
+  return envFirebaseConfig();
+}
+
 async function initializeFirebase() {
   /* v8 ignore start -- module-private re-entry guard; initPromise invokes this once per module instance. */
   if (isInitialized) return { app, auth, db };
   /* v8 ignore stop */
 
-  let firebaseConfig = defaultConfig;
-
-  // In Electron, try to load custom config
-  const isElectron = !!window.electron?.readFirebaseConfig;
-  if (isElectron) {
-    try {
-      const customConfig = await window.electron!.readFirebaseConfig();
-      if (customConfig && customConfig.apiKey) {
-        console.log("Using custom Firebase configuration");
-        firebaseConfig = customConfig;
-      } else {
-        console.log("Using default Firebase configuration");
-      }
-    } catch (e) {
-      console.log("Error loading custom Firebase config, using default", e);
-    }
+  const firebaseConfig = await resolveFirebaseConfig();
+  if (!firebaseConfig) {
+    isInitialized = true;
+    app = undefined;
+    auth = undefined;
+    db = undefined;
+    return { app, auth, db };
   }
 
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
 
-  // Connect to local emulators in development
   if (import.meta.env.DEV) {
-    // Auth Emulator
     import("firebase/auth").then(({ connectAuthEmulator }) => {
       try {
-        connectAuthEmulator(auth, "http://localhost:9099");
+        if (auth) connectAuthEmulator(auth, "http://localhost:9099");
       } catch {
         // Emulator might not be running
       }
     });
-    // Firestore Emulator
     import("firebase/firestore").then(({ connectFirestoreEmulator }) => {
       try {
-        connectFirestoreEmulator(db, "localhost", 8080);
+        if (db) connectFirestoreEmulator(db, "localhost", 8080);
       } catch {
         // Emulator might not be running
       }
@@ -70,20 +97,33 @@ async function initializeFirebase() {
   return { app, auth, db };
 }
 
-// Initialize immediately
-const initPromise = initializeFirebase();
+let initPromise = initializeFirebase();
 
-// Export a promise that resolves with the initialized objects
 export const getFirebaseApp = () => initPromise.then(({ app }) => app);
 export const getFirebaseAuth = () => initPromise.then(({ auth }) => auth);
 export const getFirebaseDb = () => initPromise.then(({ db }) => db);
 
-// For compatibility, also export synchronously (will be initialized later)
-initPromise.then(({ app: _app, auth: _auth, db: _db }) => {
-  app = _app;
-  auth = _auth;
-  db = _db;
+initPromise.then(({ app: nextApp, auth: nextAuth, db: nextDb }) => {
+  app = nextApp;
+  auth = nextAuth;
+  db = nextDb;
 });
 
-// Synchronous exports that will be available after initialization
+export function subscribeToAuth(callback: (user: User | null) => void): () => void {
+  let unsubscribe = () => {};
+  let cancelled = false;
+  getFirebaseAuth().then((firebaseAuth) => {
+    if (cancelled) return;
+    if (!firebaseAuth) {
+      callback(null);
+      return;
+    }
+    unsubscribe = onAuthStateChanged(firebaseAuth, callback);
+  });
+  return () => {
+    cancelled = true;
+    unsubscribe();
+  };
+}
+
 export { auth, db, app };

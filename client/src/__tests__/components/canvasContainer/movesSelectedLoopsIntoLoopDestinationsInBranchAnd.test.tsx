@@ -153,7 +153,7 @@ describe("Canvas container", () => {
     expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(2, {
       branches: [],
     });
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(4, {
+    expect(mocks.trialsContext.updateTrial).not.toHaveBeenCalledWith(4, {
       branches: [2],
     });
   });

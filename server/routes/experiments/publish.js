@@ -4,6 +4,7 @@ import * as cheerio from "cheerio";
 import { Router } from "express";
 import { __dirname } from "../../utils/paths.js";
 import { db, userDataRoot } from "../../utils/db.js";
+import { resolveFirebaseFunctionsUrl } from "../../utils/firebaseUrl.js";
 import { ensureTemplate } from "../../utils/templates.js";
 import { getPluginScriptsFromTrials } from "../../utils/plugin-scripts.js";
 import { experimentsHtmlDir } from "./paths.js";
@@ -12,6 +13,7 @@ import {
   GITHUB_FILE_LIMIT_BYTES,
   isPublishableMediaFile,
 } from "./media.js";
+import { applyGeneratedArtifact } from "./artifact.js";
 
 const router = Router();
 
@@ -44,11 +46,12 @@ function injectPublicAssets($, experiment, experimentID) {
     `<link href="https://unpkg.com/jspsych@8.2.2/css/jspsych.css" rel="stylesheet" type="text/css" />`,
   );
   $("head").append(`<script src="https://unpkg.com/jspsych@8.2.2"></script>`);
-  $("head").append(`<script src="${getDynamicPluginCdn()}"></script>`);
-
   const trialDoc = db.data.trials.find(
     (t) => t.experimentID === experimentID,
   );
+  if (trialDoc?.trials?.some((trial) => trial.plugin === "plugin-dynamic")) {
+    $("head").append(`<script src="${getDynamicPluginCdn()}"></script>`);
+  }
   const { scriptUrls, styleUrls } = getPluginScriptsFromTrials(
     trialDoc?.trials ?? [],
   );
@@ -117,11 +120,16 @@ function collectMediaFiles(experimentName) {
   return { mediaFiles, oversizedFiles };
 }
 
-async function publishToGithub(payload) {
-  const githubUrl = `${process.env.FIREBASE_URL}/publishExperiment`;
+async function publishToGithub(payload, authorization) {
+  const functionsUrl = resolveFirebaseFunctionsUrl();
+  if (!functionsUrl) {
+    throw new Error("FIREBASE_URL not configured");
+  }
+  const githubUrl = `${functionsUrl}/publishExperiment`;
   const githubResponse = await fetch(githubUrl, {
     method: "POST",
     headers: {
+      ...(authorization ? { Authorization: authorization } : {}),
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
@@ -186,10 +194,7 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     console.log(
       "Replacing script with PUBLIC experiment code for publishing...",
     );
-    $("script#generated-script").remove();
-    $("body").append(
-      `<script id=\"generated-script\">\n${generatedPublicCode}\n</script>`,
-    );
+    applyGeneratedArtifact($, generatedPublicCode);
 
     injectPublicAssets($, experiment, experimentID);
 
@@ -221,16 +226,19 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     const htmlContent = $.html();
 
     try {
-      const githubData = await publishToGithub({
-        uid,
-        repoName: sanitizedRepoName,
-        htmlContent,
-        description: `Experiment: ${experiment.name}`,
-        isPrivate: false,
-        mediaFiles: mediaFiles.length > 0 ? mediaFiles : undefined,
-        experimentID,
-        storageProvider: normalizedStorage,
-      });
+      const githubData = await publishToGithub(
+        {
+          uid,
+          repoName: sanitizedRepoName,
+          htmlContent,
+          description: `Experiment: ${experiment.name}`,
+          isPrivate: false,
+          mediaFiles: mediaFiles.length > 0 ? mediaFiles : undefined,
+          experimentID,
+          storageProvider: normalizedStorage,
+        },
+        req.get("authorization"),
+      );
 
       if (githubData.success) {
         console.log(

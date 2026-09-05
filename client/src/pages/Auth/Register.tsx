@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
-import { auth, db } from "../../lib/firebase";
+import { getFirebaseAuth, getFirebaseDb } from "../../lib/firebase";
 import "./index.css";
 import { Link } from "react-router";
 
@@ -31,13 +31,20 @@ const Register: React.FC = () => {
     }
     setIsSubmitting(true);
     try {
+      const firebaseAuth = await getFirebaseAuth();
+      const firebaseDb = await getFirebaseDb();
+      if (!firebaseAuth || !firebaseDb) {
+        setErrorEmail("Configure Firebase in Settings before creating an account.");
+        setIsSubmitting(false);
+        return;
+      }
       const userCredential = await createUserWithEmailAndPassword(
-        auth,
+        firebaseAuth,
         email,
         password,
       );
       const user = userCredential.user;
-      await setDoc(doc(db, "users", user.uid), {
+      await setDoc(doc(firebaseDb, "users", user.uid), {
         email: user.email,
         uid: user.uid,
         osfTokens: null,

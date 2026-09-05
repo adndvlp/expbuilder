@@ -23,6 +23,10 @@ vi.mock("../../../lib/firebase", () => ({
   getFirebaseAuth: vi.fn(async () => mocks.auth),
   getFirebaseDb: vi.fn(async () => mocks.db),
   getFirebaseApp: vi.fn(async () => ({ name: "test-app" })),
+  subscribeToAuth: vi.fn((callback) => {
+    callback(mocks.auth.currentUser);
+    return vi.fn();
+  }),
 }));
 
 vi.mock("firebase/auth", () => ({
@@ -116,6 +120,20 @@ function registerSettingsOAuthElectronFlowsHooks() {
         success: true,
         code: "auth-code",
         state: "signed-state-123",
+      })),
+      readOauthConfig: vi.fn(async () => ({
+        githubClientId: "gh-client-id",
+        dropboxClientId: "db-client-id",
+        googleDriveClientId: "drive-client-id",
+        osfClientId: "osf-client-id",
+      })),
+      readFirebaseConfig: vi.fn(async () => ({
+        apiKey: "test-key",
+        authDomain: "myproj.firebaseapp.com",
+        projectId: "myproj",
+        storageBucket: "myproj.appspot.com",
+        messagingSenderId: "000000000000",
+        appId: "1:000000000000:web:0000000000000000000000",
       })),
     };
   });

@@ -8,7 +8,9 @@ import PublicConfiguration from "../../pages/ExperimentBuilder/components/Timeli
 const mocks = vi.hoisted(() => ({
   devMode: {
     isDevMode: false,
-    code: "DEV_MODE_CODE();",
+    code:
+      "DEV_MODE_CODE();" +
+      "if (window.branchCustomParameters) { Object.entries(window.branchCustomParameters).forEach(() => {}); }",
     customCode: "",
     customInitJsPsychParams: {
       local: {} as Record<string, string>,
@@ -19,7 +21,11 @@ const mocks = vi.hoisted(() => ({
       public: "",
     },
   },
-  generatedBaseCode: vi.fn(async () => "BASE_TIMELINE_CODE();"),
+  generatedBaseCode: vi.fn(
+    async () =>
+      "BASE_TIMELINE_CODE();" +
+      "if (window.branchCustomParameters) { Object.entries(window.branchCustomParameters).forEach(() => {}); }",
+  ),
   firestoreData: null as null | Record<string, any>,
 }));
 
@@ -47,6 +53,10 @@ vi.mock("firebase/firestore", () => ({
 vi.mock("../../lib/firebase", () => ({
   auth: { currentUser: { uid: "uid-123" } },
   db: { name: "test-db" },
+  subscribeToAuth: vi.fn((callback) => {
+    callback({ uid: "uid-123" });
+    return vi.fn();
+  }),
 }));
 
 const defaultProps = {
@@ -103,7 +113,9 @@ describe("experiment configuration generators", () => {
     mocks.firestoreData = null;
     mocks.devMode = {
       isDevMode: false,
-      code: "DEV_MODE_CODE();",
+      code:
+        "DEV_MODE_CODE();" +
+        "if (window.branchCustomParameters) { Object.entries(window.branchCustomParameters).forEach(() => {}); }",
       customCode: "",
       customInitJsPsychParams: {
         local: {},
@@ -159,7 +171,9 @@ describe("experiment configuration generators", () => {
 
   it("uses dev-mode code as the local timeline when dev mode is enabled", async () => {
     mocks.devMode.isDevMode = true;
-    mocks.devMode.code = "DEV_TIMELINE();";
+    mocks.devMode.code =
+      "DEV_TIMELINE();" +
+      "if (window.branchCustomParameters) { Object.entries(window.branchCustomParameters).forEach(() => {}); }";
 
     const { result } = renderHook(() => LocalConfiguration(defaultProps));
 

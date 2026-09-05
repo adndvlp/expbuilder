@@ -6,8 +6,9 @@ import type { AIModel, ModelTier, Provider } from "../types/providers";
 import { ProviderDetails } from "./ProviderDetails";
 import { ProviderList } from "./ProviderList";
 import { isConnected } from "./providerUtils";
+import { getApiBaseUrl } from "../../../lib/apiBaseUrl";
 
-const API_BASE = import.meta.env.VITE_API_URL;
+const API_BASE = getApiBaseUrl();
 
 interface LocalModelResponse {
   id: string;

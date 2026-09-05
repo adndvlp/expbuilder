@@ -2,6 +2,7 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { buildExperimentHtml, buildPublicExperimentHtml } from '../../codegen.js'
 import { db, readDb } from './state.js'
+import { resolveFirebaseFunctionsUrl } from '../../../utils/firebaseUrl.js'
 
 export const buildTools = {
   // ── Build & Run ──────────────────────────────────────────────────────────────
@@ -45,7 +46,7 @@ export const buildTools = {
         .replace(/[^a-zA-Z0-9-_]/g, '')
         .toLowerCase()
 
-      const firebaseUrl = process.env.FIREBASE_URL
+      const firebaseUrl = resolveFirebaseFunctionsUrl()
       if (!firebaseUrl) return { error: 'FIREBASE_URL not configured — cannot publish' }
 
       try {

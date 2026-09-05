@@ -1,0 +1,120 @@
+name: Builder contracts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "client/**"
+      - "server/**"
+      - "api/functions/**"
+      - "docs/loop-branching-spec/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/builder-contracts.yml"
+  pull_request:
+    paths:
+      - "client/**"
+      - "server/**"
+      - "api/functions/**"
+      - "docs/loop-branching-spec/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/builder-contracts.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: builder-contracts-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    name: Authoring to generated runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CI: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            client/package-lock.json
+            api/functions/package-lock.json
+            server/jspsych-bundler/package-lock.json
+
+      - name: Install server dependencies
+        run: npm ci
+
+      - name: Install client dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Install Functions dependencies
+        working-directory: api/functions
+        run: npm ci
+
+      - name: Install jsPsych bundler dependencies
+        working-directory: server/jspsych-bundler
+        run: npm ci
+
+      - name: Build jsPsych bundle
+        working-directory: server/jspsych-bundler
+        run: npm run build
+
+      - name: Install Chromium for browser-backed tests
+        working-directory: client
+        run: npx playwright install --with-deps chromium
+
+      - name: Test server contracts
+        env:
+          DB_ROOT: ${{ runner.temp }}/expbuilder-server-tests
+        run: npm test -- --runInBand
+
+      - name: Test shared UI and authoring contracts
+        working-directory: client
+        run: npm run test:unit
+
+      - name: Test Functions
+        working-directory: api/functions
+        run: npm test -- --runInBand
+
+      - name: Check maintained file limits
+        working-directory: client
+        run: npm run check:max-lines
+
+      - name: Check acceptance coverage registry
+        working-directory: client
+        run: npm run check:runtime-coverage
+
+      - name: Build production client
+        working-directory: client
+        run: npm run build
+
+      - name: Test Builder end to end
+        working-directory: client
+        run: npm run test:e2e
+
+      - name: Execute generated experiments
+        working-directory: client
+        run: npm run test:runtime
+
+      - name: Upload runtime failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-runtime-failure-${{ github.run_id }}
+          path: |
+            client/runtime-e2e/artifacts
+            client/runtime-report
+          if-no-files-found: ignore
+          retention-days: 14

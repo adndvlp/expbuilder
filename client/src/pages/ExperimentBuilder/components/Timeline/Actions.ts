@@ -1,6 +1,11 @@
 import { Dispatch, SetStateAction, useEffect } from "react";
 import useDevMode from "../../hooks/useDevMode";
-const API_URL = import.meta.env.VITE_API_URL;
+import { getApiBaseUrl } from "../../../../lib/apiBaseUrl";
+import {
+  ArtifactBuildError,
+  buildExperimentArtifact,
+} from "../../modules/experiment-runtime/experimentArtifact";
+const API_URL = getApiBaseUrl();
 
 type Props = {
   experimentID: string | undefined;
@@ -49,72 +54,37 @@ export default function Actions({
 
         setCode(await generatedBaseCode());
 
-        const config = {
-          generatedCode: generatedLocalCode, // Código local para ejecutar
-        };
-
-        // Paso 1: Guarda la configuración
-        const response = await fetch(
-          `${API_URL}/api/save-config/${experimentID}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ config, isDevMode }),
-            credentials: "include",
-            mode: "cors",
-          },
-        );
-
-        if (!response.ok) {
-          throw new Error(`Server responded with status: ${response.status}`);
-        }
-        const result = await response.json();
-        if (!result.success) {
-          setSubmitStatus("Failed to save configuration.");
-          setIsSubmitting(false);
-          return;
-        }
-
-        setSubmitStatus("Saved Configuration! Building experiment...");
       }
 
-      // Paso 2: Llama al build/run-experiment con código LOCAL
-      setSubmitStatus("Running experiment...");
-      const runResponse = await fetch(
-        `${API_URL}/api/run-experiment/${experimentID}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ generatedCode: generatedLocalCode }),
-          credentials: "include",
-          mode: "cors",
-        },
-      );
-
-      if (!runResponse.ok) {
-        throw new Error(
-          `Server responded with status: ${runResponse.status} when running experiment`,
-        );
-      }
-
-      const runResult = await runResponse.json();
-      if (runResult.success) {
-        // setExperimentUrl(result.urlExperiment);
-        setSubmitStatus("Experiment ready!");
-        // window.alert("Experiment ready!");
-        setSubmitStatus("");
-
-        // window.open(runResult.experimentUrl, "_blank"); // <--- ABRE AUTOMÁTICAMENTE
-      } else {
-        setSubmitStatus(
-          "Saved configuration but failed at running the experiment.",
-        );
-        window.alert(
-          "Saved configuration but failed at running the experiment.",
-        );
-      }
+      await buildExperimentArtifact({
+        experimentId: experimentID,
+        generatedCode: generatedLocalCode,
+        apiBaseUrl: API_URL,
+        saveConfiguration: !isDevMode,
+        isDevMode,
+        onStage: (stage) =>
+          setSubmitStatus(
+            stage === "saving"
+              ? "Saving configuration..."
+              : "Running experiment...",
+          ),
+      });
+      setSubmitStatus("Experiment ready!");
+      setSubmitStatus("");
     } catch (error) {
       console.error("Error submitting configuration:", error);
+      if (
+        error instanceof ArtifactBuildError &&
+        error.reason === "rejected"
+      ) {
+        const message =
+          error.stage === "saving"
+            ? "Failed to save configuration."
+            : "Saved configuration but failed at running the experiment.";
+        setSubmitStatus(message);
+        if (error.stage === "building") window.alert(message);
+        return;
+      }
       setSubmitStatus(
         `An error occurred: ${
           error instanceof Error ? error.message : "Unknown error"

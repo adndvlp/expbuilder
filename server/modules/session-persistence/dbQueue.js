@@ -24,6 +24,32 @@ export async function withDbLock(operation) {
   }
 }
 
+export function withDbRead(reader) {
+  return withDbLock(async () => {
+    await db.read();
+    ensureDbData();
+    return reader(db.data);
+  });
+}
+
+export function withDbMutation(mutator) {
+  return withDbLock(async () => {
+    await db.read();
+    ensureDbData();
+    const previous = db.data;
+    const candidate = structuredClone(previous);
+    const result = await mutator(candidate);
+    db.data = candidate;
+    try {
+      await db.write();
+      return result;
+    } catch (error) {
+      db.data = previous;
+      throw error;
+    }
+  });
+}
+
 export function serializeDbRequest(req, res, next) {
   const method = req.method || "GET";
   if (

@@ -3,6 +3,12 @@ import { openExternal } from "../../../lib/openExternal";
 import { doc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../../../lib/firebase";
 import { fetchOAuthState } from "../../../lib/oauthState";
+import {
+  buildFunctionsBaseUrl,
+  getBackendProjectId,
+  getProviderClientId,
+} from "../../../lib/oauthConfig";
+import { oauthStartErrorMessage } from "../../../lib/oauthPortError";
 
 // Detectar si estamos en Electron
 const isElectron = !!(window as any).electron?.startOAuthFlow;
@@ -12,36 +18,34 @@ export default function GithubToken() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [hasToken, setHasToken] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const user = auth.currentUser;
-
-  // Parámetros de GitHub OAuth
-  const CLIENT_ID = "Ov23limim0vbyTd5J4fK";
+  const user = auth?.currentUser;
 
   // REDIRECT_URI dinámico según el entorno
   const REDIRECT_URI = isElectron
     ? "http://localhost:8888/callback" // Puerto local para Electron
     : import.meta.env.DEV
       ? "http://localhost:5173/github-callback"
-      : "https://test-e4cf9.firebaseapp.com/github-callback";
+      : `https://${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com/github-callback`;
 
   const SCOPE = "public_repo delete_repo workflow";
 
   // T-5: state obtained from backend (server-signed HMAC) at click time.
-  const buildOAuthUrl = (state: string) =>
-    `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
+  const buildOAuthUrl = (state: string, clientId: string) =>
+    `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
       REDIRECT_URI,
     )}&scope=${encodeURIComponent(SCOPE)}&state=${encodeURIComponent(state)}`;
 
   // Cargar estado del token
   useEffect(() => {
-    if (!user) {
+    const firestore = db;
+    if (!user || !firestore) {
       setIsLoading(false);
       return;
     }
 
     const loadTokenStatus = async () => {
       try {
-        const docRef = doc(db, "users", user.uid);
+        const docRef = doc(firestore, "users", user.uid);
         const docSnap = await import("firebase/firestore").then(({ getDoc }) =>
           getDoc(docRef),
         );
@@ -64,6 +68,14 @@ export default function GithubToken() {
   const handleConnect = async () => {
     if (!user) return;
 
+    const clientId = await getProviderClientId("github");
+    if (!clientId) {
+      alert(
+        "GitHub OAuth is not configured. Add your GitHub Client ID in Settings > Server.",
+      );
+      return;
+    }
+
     // T-5: fetch signed state from backend before any redirect.
     let signedState: string;
     try {
@@ -76,11 +88,19 @@ export default function GithubToken() {
 
     // Si estamos en Electron, usar el flujo nativo
     if (isElectron) {
+      const projectId = await getBackendProjectId();
+      if (!projectId) {
+        alert(
+          "Firebase backend is not configured. Set your Firebase credentials in Settings first.",
+        );
+        return;
+      }
+
       setIsConnecting(true);
       try {
         const result = await (window as any).electron.startOAuthFlow({
           provider: "github",
-          clientId: CLIENT_ID,
+          clientId,
           scope: SCOPE,
           state: signedState,
         });
@@ -90,10 +110,10 @@ export default function GithubToken() {
           // IMPORTANTE: Pasar el redirect_uri que se usó originalmente (localhost:8888 para Electron)
           const electronRedirectUri = "http://localhost:8888/callback";
           const functionUrl = import.meta.env.DEV
-            ? `http://127.0.0.1:5001/test-e4cf9/us-central1/githubOAuthCallback?code=${encodeURIComponent(
+            ? `http://127.0.0.1:5001/${projectId}/us-central1/githubOAuthCallback?code=${encodeURIComponent(
                 result.code,
               )}&state=${encodeURIComponent(result.state)}&redirect_uri=${encodeURIComponent(electronRedirectUri)}`
-            : `https://us-central1-test-e4cf9.cloudfunctions.net/githubOAuthCallback?code=${encodeURIComponent(
+            : `${buildFunctionsBaseUrl(projectId)}/githubOAuthCallback?code=${encodeURIComponent(
                 result.code,
               )}&state=${encodeURIComponent(result.state)}&redirect_uri=${encodeURIComponent(electronRedirectUri)}`;
 
@@ -106,7 +126,7 @@ export default function GithubToken() {
             throw new Error("Failed to exchange tokens");
           }
         } else {
-          throw new Error(result.error || "OAuth flow failed");
+          throw new Error(oauthStartErrorMessage(result.error));
         }
       } catch (error: any) {
         console.error("Error connecting GitHub:", error);
@@ -116,14 +136,14 @@ export default function GithubToken() {
       }
     } else {
       // Flujo web normal — usa state firmado.
-      openExternal(buildOAuthUrl(signedState));
+      openExternal(buildOAuthUrl(signedState, clientId));
     }
   };
 
   // Función para borrar el token
   const handleDeleteToken = async () => {
     /* v8 ignore start -- the disconnect button is only rendered from a signed-in token state. */
-    if (!user) return;
+    if (!user || !db) return;
     /* v8 ignore stop */
 
     setIsDeleting(true);

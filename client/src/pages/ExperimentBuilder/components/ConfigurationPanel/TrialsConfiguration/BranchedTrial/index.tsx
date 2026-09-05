@@ -1,17 +1,14 @@
 import { useState } from "react";
 import useTrials from "../../../../hooks/useTrials";
 import { loadPluginParameters } from "../../utils/pluginParameterLoader";
-import { Loop, Trial } from "../../types";
 import { Condition, Props, Parameter } from "./types";
 import useLoadData from "./useLoadData";
 import BranchedTrialLayout from "./BranchedTrialLayout";
-import { buildBranchingSaveUpdates } from "./branchingSaveUtils";
 import {
-  idsEqual,
-  includesId,
-  isForwardSameScopeTarget,
-  itemIdKey,
-} from "../../../../utils/branchGraphUtils";
+  isBranchTargetFromUserContext,
+  saveBranchingIntent,
+} from "../../../../modules/experiment-authoring/intents/branching";
+import { itemIdKey } from "../../../../utils/branchGraphUtils";
 import BranchedTrialModalFrame from "./components/BranchedTrialModalFrame";
 
 function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
@@ -197,28 +194,15 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
     selectedTrial?.parentLoopId ? loopTimeline : timeline;
 
   const isBranchTarget = (trialId: string | number | null): boolean => {
-    /* v8 ignore start -- handleSaveConditions exits without a selected trial, and buildBranchingSaveUpdates filters falsy targets. */
-    if (!trialId || !selectedTrial) return false;
+    /* v8 ignore start -- handleSaveConditions exits without a selected trial. */
+    if (!selectedTrial) return false;
     /* v8 ignore stop */
-
-    if (includesId(selectedTrial.branches, trialId)) {
-      return true;
-    }
-
-    const scopeTimeline = getBranchScopeTimeline();
-    const target = scopeTimeline.find((item) => idsEqual(item.id, trialId));
-    if (!target) return false;
-
-    if (
-      !selectedTrial.parentLoopId &&
-      target.type === "trial" &&
-      (target.parentLoopId ||
-        getTopLevelLoopTrialIds().has(itemIdKey(target.id)))
-    ) {
-      return false;
-    }
-
-    return isForwardSameScopeTarget(scopeTimeline, selectedTrial.id, trialId);
+    return isBranchTargetFromUserContext({
+      selectedItem: selectedTrial,
+      targetId: trialId,
+      scopeTimeline: getBranchScopeTimeline(),
+      topLevelLoopTrialIds: getTopLevelLoopTrialIds(),
+    });
   };
 
   /**
@@ -232,24 +216,12 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
     if (!selectedTrial) return;
 
     const currentConditions = conditionsToSave || conditions;
-    const updates = buildBranchingSaveUpdates({
+    void saveBranchingIntent({
+      item: selectedTrial,
       conditions: currentConditions,
-      existingBranches: selectedTrial.branches || [],
       isBranchTarget,
-    });
-
-    // Update backend and selectedTrial
-    const saveBranchingConfiguration = async () => {
-      if ("trials" in selectedTrial) {
-        await updateLoop(selectedTrial.id, updates as Partial<Loop>);
-      } else {
-        await updateTrial(selectedTrial.id, updates as Partial<Trial>);
-      }
-    };
-
-    saveBranchingConfiguration().catch((error) => {
-      console.error("Error saving conditions:", error);
-    });
+      dependencies: { updateTrial, updateLoop },
+    }).catch((error) => console.error("Error saving conditions:", error));
 
     // Show save indicator
     setSaveIndicator(true);

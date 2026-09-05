@@ -14,11 +14,10 @@ describe("scoped Canvas loop actions", () => {
 
   it("creates nested loops and replaces selected direct children in the parent", async () => {
     const dependencies = createDependencies();
-    const refresh = vi.fn();
     const onSelectLoop = vi.fn();
 
     await createScopedLoop({
-      scope: createLoopScope(refresh),
+      scope: createLoopScope(),
       itemIds: [10, 11],
       dependencies,
       onSelectLoop,
@@ -31,21 +30,17 @@ describe("scoped Canvas loop actions", () => {
         parentLoopId: "parent-loop",
       }),
     );
-    expect(dependencies.updateLoop).toHaveBeenCalledWith("parent-loop", {
-      trials: ["nested-loop"],
-    });
+    expect(dependencies.updateLoop).not.toHaveBeenCalled();
     expect(onSelectLoop).toHaveBeenCalledWith(
       expect.objectContaining({ id: "nested-loop" }),
     );
-    expect(refresh).toHaveBeenCalledOnce();
   });
 
   it("adds a direct trial to a loop without updating the root timeline", async () => {
     const dependencies = createDependencies();
-    const refresh = vi.fn();
 
     await createScopedTrial({
-      scope: createLoopScope(refresh),
+      scope: createLoopScope(),
       trialType: "Trial",
       dependencies,
     });
@@ -53,20 +48,12 @@ describe("scoped Canvas loop actions", () => {
     expect(dependencies.createTrial).toHaveBeenCalledWith(
       expect.objectContaining({ parentLoopId: "parent-loop" }),
     );
-    expect(dependencies.updateTrialField).toHaveBeenCalledWith(
-      99,
-      "csvFromLoop",
-      true,
-      false,
-    );
-    expect(dependencies.updateLoop).toHaveBeenCalledWith("parent-loop", {
-      trials: [10, 11, 99],
-    });
+    expect(dependencies.updateTrialField).not.toHaveBeenCalled();
+    expect(dependencies.updateLoop).not.toHaveBeenCalled();
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
-    expect(refresh).toHaveBeenCalledOnce();
   });
 
-  it("keeps root trial creation on updateTimeline", async () => {
+  it("lets the create endpoint own root trial insertion", async () => {
     const dependencies = createDependencies();
 
     await createScopedTrial({
@@ -78,9 +65,6 @@ describe("scoped Canvas loop actions", () => {
     expect(dependencies.createTrial).toHaveBeenCalledWith(
       expect.not.objectContaining({ parentLoopId: expect.anything() }),
     );
-    expect(dependencies.updateTimeline).toHaveBeenCalledWith([
-      ...createRootScope().items,
-      expect.objectContaining({ id: 99, type: "trial" }),
-    ]);
+    expect(dependencies.updateTimeline).not.toHaveBeenCalled();
   });
 });

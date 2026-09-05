@@ -2,6 +2,10 @@ import { spawn } from "child_process";
 import ffmpegPath from "ffmpeg-static";
 import sharp from "sharp";
 
+const ffmpegBin = ffmpegPath
+  ? ffmpegPath.replace("app.asar", "app.asar.unpacked")
+  : null;
+
 /* istanbul ignore next -- exercised only through ffmpeg stderr progress parsing. */
 function timestampToSeconds(timestamp) {
   const [hours, minutes, seconds] = timestamp.split(":");
@@ -11,12 +15,12 @@ function timestampToSeconds(timestamp) {
 /* istanbul ignore next -- ffmpeg execution is an external binary integration. */
 function runFfmpeg(args, onProgress) {
   return new Promise((resolve, reject) => {
-    if (!ffmpegPath) {
+    if (!ffmpegBin) {
       reject(new Error("ffmpeg binary not available"));
       return;
     }
 
-    const ffmpeg = spawn(ffmpegPath, args);
+    const ffmpeg = spawn(ffmpegBin, args);
     let stderr = "";
     let durationSeconds = 0;
 

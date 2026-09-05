@@ -3,8 +3,9 @@ import useImage from "use-image";
 import { useExperimentID } from "../../../../../../hooks/useExperimentID";
 import { resolveMediaPreviewUrl } from "../../../../../../utils/resolveMediaPreviewUrl";
 import { isImageUrl } from "./buttonModel";
+import { getApiBaseUrl } from "../../../../../../../../lib/apiBaseUrl";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = getApiBaseUrl();
 
 interface Props {
   borderColor: string;

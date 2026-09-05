@@ -96,7 +96,8 @@ export async function buildExperimentHtml(experimentID) {
   $('body').append(`<script id="generated-script">\nconst timeline = [];\n\n${code}\n</script>`)
   fs.writeFileSync(htmlPath, $.html())
 
-  return { success: true, experimentUrl: `http://localhost:3000/${encodeURIComponent(experimentName)}`, htmlPath }
+  const apiUrl = (process.env.API_URL || 'http://localhost:3000').replace(/\/$/, '')
+  return { success: true, experimentUrl: `${apiUrl}/${encodeURIComponent(experimentName)}`, htmlPath }
 }
 
 /* istanbul ignore next -- public export side effects are covered by route/codegen integration tests. */

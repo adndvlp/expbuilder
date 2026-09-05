@@ -1,3 +1,5 @@
+import { getPublicRuntimeStorageKeys } from "../services/publicRuntimeStorageKeys";
+
 function injectUserCode(userCode: string | undefined): string {
   const trimmed = userCode?.trim() ?? "";
   if (!trimmed) return "";
@@ -5,9 +7,10 @@ function injectUserCode(userCode: string | undefined): string {
 }
 
 export function getPreInitPublicPreview(
-  _eid: string,
+  eid: string,
   userCode?: string,
 ): string {
+  const storageKeys = getPublicRuntimeStorageKeys(eid);
   const userBlock = userCode?.trim()
     ? `\n// --- Your code (runs here, before initJsPsych) ---\n${userCode.trim()}\n`
     : "\n// (your code will run here)\n";
@@ -15,6 +18,9 @@ export function getPreInitPublicPreview(
 
 // Builder: track pending batch saves
 const pendingBatchSaves = [];
+
+// Builder: browser state owned only by this published experiment
+const _publicStorageKeys = ${JSON.stringify(storageKeys)};
 
 // Builder: clean up stale jsPsych wrappers
 document.querySelectorAll('.jspsych-content-wrapper').forEach(el => el.remove());
@@ -51,11 +57,10 @@ export function getPublicOnDataUpdatePreview(
     data.sessionId = trialSessionId;
     data.experimentID = '${eid}';
     if (data.builder_id !== undefined && data.builder_id !== null) {
-      localStorage.setItem('jsPsych_resumeTrial', JSON.stringify({
-        branches: data.branches || [],
-        branchConditions: data.branchConditions || [],
-        trialData: data
-      }));
+      localStorage.setItem(
+        _publicStorageKeys.resumeTrial,
+        JSON.stringify(_createResumeCheckpoint(data))
+      );
     }
 
     if (data.trial_index === 0) {
@@ -125,9 +130,10 @@ export function getPublicOnFinishPreview(
     });
 
     sessionRef.onDisconnect().cancel();
-    localStorage.removeItem('jsPsych_resumeTrial');
-    localStorage.removeItem('jsPsych_currentSessionId');
-    localStorage.removeItem('jsPsych_participantNumber');
+    window.ExpBuilderNavigation.clearTransientState();
+    localStorage.removeItem(_publicStorageKeys.sessionId);
+    localStorage.removeItem(_publicStorageKeys.participant);
+    sessionStorage.removeItem(_publicStorageKeys.captchaPassed);
     // [recruitment redirect: Prolific / MTurk / none → _showSuccess()]
     _showSuccess();${injectUserCode(userCode)}
   },`;

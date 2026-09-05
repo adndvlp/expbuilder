@@ -6,6 +6,7 @@ export async function loadOnlineSessions(
   experimentID: string,
 ): Promise<SessionMeta[]> {
   const db = await getFirebaseDb();
+  if (!db) return [];
   const metadataRef = collection(
     db,
     "experiments",
@@ -31,6 +32,7 @@ export async function loadOnlineSessionFiles(
   sessionId: string,
 ): Promise<ParticipantFile[]> {
   const db = await getFirebaseDb();
+  if (!db) return [];
   const filesRef = collection(
     db,
     "experiments",

@@ -4,8 +4,9 @@ import { useExperimentID } from "../../../../../../hooks/useExperimentID";
 import { resolveMediaPreviewUrl } from "../../../../../../utils/resolveMediaPreviewUrl";
 import type { HtmlSceneNode, HtmlSceneNodeMetric } from "../sceneModel";
 import { renderRuntimeCopy } from "../runtimePreviewDom";
+import { getApiBaseUrl } from "../../../../../../../../lib/apiBaseUrl";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = getApiBaseUrl();
 
 interface Props {
   isDomActive: boolean;

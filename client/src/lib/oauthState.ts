@@ -1,4 +1,5 @@
 import { auth } from "./firebase";
+import { buildFunctionsBaseUrl, getBackendProjectId } from "./oauthConfig";
 
 /**
  * T-5: fetch a server-signed OAuth `state` from the backend before redirecting
@@ -12,20 +13,26 @@ import { auth } from "./firebase";
  * Must be called with a logged-in Firebase user; the endpoint requires
  * `Authorization: Bearer <ID token>` and binds the state to the authed uid.
  */
-const FUNCTIONS_BASE = import.meta.env.DEV
-  ? "http://127.0.0.1:5001/test-e4cf9/us-central1"
-  : "https://us-central1-test-e4cf9.cloudfunctions.net";
-
 export type OAuthProvider = "dropbox" | "googledrive" | "github" | "osf";
 
 export async function fetchOAuthState(provider: OAuthProvider): Promise<string> {
-  const user = auth.currentUser;
+  const user = auth?.currentUser;
   if (!user) {
     throw new Error("Not authenticated — sign in before connecting a provider");
   }
+  const projectId = await getBackendProjectId();
+  if (!projectId) {
+    throw new Error(
+      "Firebase backend is not configured. Set your Firebase credentials in Settings first.",
+    );
+  }
   const idToken = await user.getIdToken();
 
-  const res = await fetch(`${FUNCTIONS_BASE}/createOAuthStateEndpoint`, {
+  const functionsBase = import.meta.env.DEV
+    ? `http://127.0.0.1:5001/${projectId}/us-central1`
+    : buildFunctionsBaseUrl(projectId);
+
+  const res = await fetch(`${functionsBase}/createOAuthStateEndpoint`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${idToken}`,

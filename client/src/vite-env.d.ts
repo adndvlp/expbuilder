@@ -9,7 +9,15 @@ interface FirebaseConfig {
   appId: string;
 }
 
+interface OAuthConfig {
+  githubClientId?: string;
+  dropboxClientId?: string;
+  googleDriveClientId?: string;
+  osfClientId?: string;
+}
+
 interface ElectronAPI {
+  getApiBaseUrl: () => string;
   openExternal: (url: string) => Promise<void>;
   startOAuthFlow: (config: {
     provider: string;
@@ -35,6 +43,66 @@ interface ElectronAPI {
     config: FirebaseConfig
   ) => Promise<{ success: boolean; error?: string }>;
   deleteFirebaseConfig: () => Promise<{ success: boolean; error?: string }>;
+  readOauthConfig: () => Promise<OAuthConfig | null>;
+  writeOauthConfig: (
+    config: OAuthConfig
+  ) => Promise<{ success: boolean; error?: string }>;
+  deleteOauthConfig: () => Promise<{ success: boolean; error?: string }>;
+  startBackendSetup: (
+    args: string[],
+    token?: string
+  ) => Promise<{ id: string }>;
+  writeBackendSetupInput: (
+    id: string,
+    text: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  killBackendSetup: (id: string) => Promise<{ success: boolean; error?: string }>;
+  onBackendSetupOutput: (callback: (data: {
+    id: string;
+    stream: "stdout" | "stderr";
+    text: string;
+  }) => void) => () => void;
+  onBackendSetupExit: (callback: (data: {
+    id: string;
+    code: number | null;
+    error: string | null;
+    output: string;
+  }) => void) => () => void;
+  writeBackendEnv: (env: Record<string, string>) => Promise<{
+    success: boolean;
+    error?: string;
+    envPath?: string;
+  }>;
+  backendSetupApi: (payload: {
+    action: string;
+    token?: string;
+    projectId?: string;
+    billingAccountName?: string;
+    state?: {
+      projectId?: string;
+      token?: string;
+      configSaved?: boolean;
+      billingDone?: boolean;
+      firestoreDone?: boolean;
+      authDone?: boolean;
+      deployed?: boolean;
+      googleAuthNeedsConsole?: boolean;
+    };
+  }) => Promise<{
+    success: boolean;
+    error?: string;
+    state?: Record<string, unknown> | null;
+    projects?: Array<{
+      projectId: string;
+      displayName: string;
+      projectNumber?: string;
+    }>;
+    accounts?: Array<{ name: string; displayName: string; open?: boolean }>;
+    enabled?: boolean;
+    emailEnabled?: boolean;
+    googleEnabled?: boolean;
+    googleNeedsConsole?: boolean;
+  }>;
 }
 
 interface Window {

@@ -184,7 +184,6 @@ describe("Canvas container", () => {
       expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(
         1,
         { branches: [2, 99] },
-        expect.objectContaining({ id: 99 }),
       );
     });
   });

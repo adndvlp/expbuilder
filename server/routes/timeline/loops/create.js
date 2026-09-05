@@ -6,6 +6,9 @@ import {
   syncTimelineBranches,
 } from "./state.js";
 import { createUniqueItemName } from "../uniqueItemName.js";
+import { buildExperimentGraph } from "../graph/buildExperimentGraph.js";
+import { moveItemToScope } from "../graph/ownership.js";
+import { allocateLoopId } from "../graph/itemIds.js";
 
 const router = Router();
 
@@ -16,7 +19,7 @@ router.post("/api/loop/:experimentID", async (req, res) => {
     const loopData = req.body;
     const experimentDoc = await getExperimentDoc(experimentID, true);
 
-    const id = "loop_" + Date.now();
+    const id = allocateLoopId(experimentDoc);
     const newLoop = {
       ...loopData,
       id,
@@ -26,21 +29,13 @@ router.post("/api/loop/:experimentID", async (req, res) => {
       updatedAt: new Date().toISOString(),
     };
 
+    const childIds = [...newLoop.trials];
+    newLoop.trials = [];
     experimentDoc.loops.push(newLoop);
-
-    if (!newLoop.parentLoopId) {
-      experimentDoc.timeline = experimentDoc.timeline.filter(
-        (item) => !(item.type === "trial" && newLoop.trials.includes(item.id)),
-      );
-
-      experimentDoc.timeline.push({
-        id: newLoop.id,
-        type: "loop",
-        name: newLoop.name,
-        branches: newLoop.branches || [],
-        trials: newLoop.trials || [],
-      });
-    }
+    moveItemToScope(experimentDoc, newLoop.id, newLoop.parentLoopId);
+    childIds.forEach((itemId) =>
+      moveItemToScope(experimentDoc, itemId, newLoop.id),
+    );
 
     replaceGroupedTrialBranches(experimentDoc, newLoop);
     syncTimelineBranches(experimentDoc);
@@ -48,7 +43,11 @@ router.post("/api/loop/:experimentID", async (req, res) => {
 
     await db.write();
 
-    res.json({ success: true, loop: newLoop });
+    res.json({
+      success: true,
+      loop: newLoop,
+      graph: buildExperimentGraph(experimentDoc),
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

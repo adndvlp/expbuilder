@@ -1,100 +1,61 @@
-import { act, render, waitFor } from "@testing-library/react";
-import React from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { TimelineItem } from "../../../pages/ExperimentBuilder/contexts/TrialsContext";
-import TrialsContext from "../../../pages/ExperimentBuilder/contexts/TrialsContext";
-import TrialsProvider from "../../../pages/ExperimentBuilder/providers/TrialsProvider";
+import { act, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import {
+  graphJson,
   loop,
+  mutationJson,
   notOkJson,
-  okJson,
   timelineLoop,
   timelineTrial,
 } from "../../helpers/trialFactories";
+import {
+  fetchMock,
+  queueFetchResponses,
+  registerTrialsProviderLifecycle,
+  renderTrialsProvider,
+} from "./testHarness";
 
-function renderTrialsProvider() {
-  let contextValue: React.ContextType<typeof TrialsContext> | null = null;
+const parentScope = (items: ReturnType<typeof timelineTrial>[]) => ({
+  "loop-parent": {
+    scopeId: "loop-parent",
+    parentScopeId: null,
+    items,
+  },
+});
 
-  function TestConsumer() {
-    const ctx = React.useContext(TrialsContext);
-
-    React.useEffect(() => {
-      contextValue = ctx;
-    }, [ctx]);
-
-    return null;
-  }
-
-  render(
-    <TrialsProvider>
-      <TestConsumer />
-    </TrialsProvider>,
-  );
-
-  return {
-    getContext: () => contextValue,
-  };
-}
-
-function fetchMock() {
-  return vi.mocked(globalThis.fetch);
-}
-
-function queueFetchResponses(...responses: Response[]) {
-  responses.forEach((response) => {
-    fetchMock().mockResolvedValueOnce(response);
-  });
-}
-
-async function renderLoadedProvider(initialTimeline: TimelineItem[] = []) {
-  queueFetchResponses(okJson({ timeline: initialTimeline }));
-
+async function renderGraph(
+  root: ReturnType<typeof timelineLoop>[],
+  scopes: ReturnType<typeof parentScope>,
+) {
+  queueFetchResponses(graphJson(root, scopes));
   const view = renderTrialsProvider();
-
   await waitFor(() => {
-    expect(view.getContext()?.timeline).toEqual(initialTimeline);
-    expect(view.getContext()?.isLoading).toBe(false);
+    expect(view.getContext()?.timeline).toEqual(root);
+    expect(view.getContext()?.loopTimelineCache["loop-parent"]?.items).toEqual(
+      scopes["loop-parent"].items,
+    );
   });
-
   return view;
 }
 
-describe("TrialsProvider", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    globalThis.fetch = vi.fn() as unknown as typeof fetch;
-  });
+describe("TrialsProvider canonical loop updates", () => {
+  registerTrialsProviderLifecycle();
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("reloads parent loop timeline when nested loop update fails", async () => {
+  it("reloads the complete graph after a structural nested-loop update fails", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    const selected = loop({
-      id: "loop-child",
-      name: "Child Loop",
-      parentLoopId: "loop-parent",
-      trials: [1],
-    });
-    const view = await renderLoadedProvider([
-      timelineLoop({
-        id: "loop-parent",
-        name: "Parent Loop",
-        trials: ["loop-child"],
-      }),
-    ]);
-    const reloaded = [timelineTrial({ id: 5, name: "Reloaded" })];
+    const root = [
+      timelineLoop({ id: "loop-parent", name: "Parent", trials: [1] }),
+    ];
+    const reloaded = [timelineTrial({ id: 2, name: "Server state" })];
+    const view = await renderGraph(
+      root,
+      parentScope([timelineTrial({ id: 1 })]),
+    );
 
-    act(() => {
-      view.getContext()?.setSelectedLoop(selected);
-    });
-
-    queueFetchResponses(notOkJson(), okJson({ trialsMetadata: reloaded }));
-
-    const result = await act(async () => {
-      return view.getContext()?.updateLoop("loop-child", { name: "Broken" });
-    });
+    queueFetchResponses(notOkJson(), graphJson(root, parentScope(reloaded)));
+    const result = await act(async () =>
+      view.getContext()?.updateLoop("loop-child", { trials: [2] }),
+    );
 
     expect(result).toBeNull();
     await waitFor(() => {
@@ -102,199 +63,42 @@ describe("TrialsProvider", () => {
         view.getContext()?.loopTimelineCache["loop-parent"]?.items,
       ).toEqual(reloaded);
     });
-    expect(view.getContext()?.activeLoopId).toBeNull();
+    expect(fetchMock()).toHaveBeenCalledTimes(3);
   });
 
-  it("updates nested loop fields in loopTimeline without syncing selectedLoop when disabled", async () => {
+  it("applies a nested-loop field response without mutating selected-loop state", async () => {
+    const before = [timelineTrial({ id: 1, name: "Before" })];
+    const after = [timelineTrial({ id: 2, name: "After" })];
+    const root = [
+      timelineLoop({ id: "loop-parent", trials: ["loop-child"] }),
+    ];
+    const view = await renderGraph(root, parentScope(before));
     const selected = loop({
       id: "loop-child",
-      name: "Child Before",
       parentLoopId: "loop-parent",
       trials: [1],
     });
     const updated = loop({
       id: "loop-child",
-      name: "Child After",
       parentLoopId: "loop-parent",
-      trials: [1, 2],
+      trials: [2],
     });
-    const view = await renderLoadedProvider([
-      timelineLoop({
-        id: "loop-parent",
-        name: "Parent Loop",
-        trials: ["loop-child"],
-      }),
-    ]);
+    act(() => view.getContext()?.setSelectedLoop(selected));
 
     queueFetchResponses(
-      okJson({
-        trialsMetadata: [
-          timelineLoop({
-            id: "loop-child",
-            name: "Child Before",
-            trials: [1],
-          }),
-        ],
-      }),
+      mutationJson({ loop: updated }, root, parentScope(after)),
     );
-    await act(async () => {
-      await view.getContext()?.getLoopTimeline("loop-parent");
-    });
-    act(() => {
-      view.getContext()?.setSelectedLoop(selected);
-    });
-
-    queueFetchResponses(okJson({ loop: updated }));
-
-    const result = await act(async () => {
-      return view
+    const result = await act(async () =>
+      view
         .getContext()
-        ?.updateLoopField("loop-child", "trials", [1, 2], false);
-    });
+        ?.updateLoopField("loop-child", "trials", [2], false),
+    );
 
     expect(result).toBe(true);
     expect(view.getContext()?.selectedLoop).toEqual(selected);
-    expect(view.getContext()?.loopTimeline).toEqual([
-      timelineLoop({
-        id: "loop-child",
-        name: "Child After",
-        trials: [1, 2],
-      }),
-    ]);
-  });
-
-  it("keeps unrelated timeline items while updating top-level loop fields", async () => {
-    const view = await renderLoadedProvider([
-      timelineLoop({ id: "loop-1", name: "Before", trials: [1] }),
-      timelineTrial({ id: 99, name: "Bystander" }),
-    ]);
-    const updated = loop({ id: "loop-1", name: "After", trials: [1] });
-
-    queueFetchResponses(okJson({ loop: updated }));
-
-    const result = await act(async () => {
-      return view.getContext()?.updateLoopField("loop-1", "name", "After");
-    });
-
-    expect(result).toBe(true);
-    expect(view.getContext()?.timeline).toEqual([
-      timelineLoop({ id: "loop-1", name: "After", trials: [1] }),
-      timelineTrial({ id: 99, name: "Bystander" }),
-    ]);
-  });
-
-  it("updates non-structural loop fields and skips refresh for unrelated failures", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    const initialTimeline = [
-      timelineLoop({ id: "loop-1", name: "Before", trials: [1] }),
-    ];
-    const view = await renderLoadedProvider(initialTimeline);
-    const updated = loop({ id: "loop-1", name: "Before", randomize: true });
-
-    queueFetchResponses(okJson({ loop: updated }));
-    const randomizeResult = await act(async () => {
-      return view.getContext()?.updateLoopField("loop-1", "randomize", true);
-    });
-
-    expect(randomizeResult).toBe(true);
-    expect(view.getContext()?.timeline).toEqual(initialTimeline);
-
-    queueFetchResponses(notOkJson());
-    const failedResult = await act(async () => {
-      return view
-        .getContext()
-        ?.updateLoopField("other-loop", "randomize", false);
-    });
-
-    expect(failedResult).toBe(false);
-    expect(console.error).toHaveBeenCalledWith(
-      "Error updating randomize:",
-      expect.any(Error),
+    expect(view.getContext()?.loopTimelineCache["loop-parent"]?.items).toEqual(
+      after,
     );
-  });
-
-  it("handles loop field responses missing arrays and stale selected refresh misses", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    const selected = loop({
-      id: "loop-1",
-      name: "Before",
-      trials: [1],
-      branches: [2],
-    });
-    const view = await renderLoadedProvider([
-      timelineLoop({
-        id: "loop-1",
-        name: "Before",
-        trials: [1],
-        branches: [2],
-      }),
-    ]);
-
-    act(() => {
-      view.getContext()?.setSelectedLoop(selected);
-    });
-    await waitFor(() => {
-      expect(view.getContext()?.selectedLoop).toEqual(selected);
-    });
-    const responseWithoutCollections = loop({
-      id: "loop-1",
-      name: "Server Missing Arrays",
-    });
-    Reflect.deleteProperty(responseWithoutCollections, "branches");
-    Reflect.deleteProperty(responseWithoutCollections, "trials");
-
-    queueFetchResponses(
-      okJson({
-        loop: responseWithoutCollections,
-      }),
-    );
-
-    const result = await act(async () => {
-      return view.getContext()?.updateLoopField("loop-1", "name", "Optimistic");
-    });
-
-    expect(result).toBe(true);
-    expect(view.getContext()?.timeline).toEqual([
-      timelineLoop({
-        id: "loop-1",
-        name: "Server Missing Arrays",
-        branches: [],
-        trials: [],
-      }),
-    ]);
-
-    queueFetchResponses(notOkJson(), notOkJson());
-    const failed = await act(async () => {
-      return view.getContext()?.updateLoopField("loop-1", "name", "Broken");
-    });
-
-    expect(failed).toBe(false);
-    expect(console.error).toHaveBeenCalledWith(
-      "Error updating name:",
-      expect.any(Error),
-    );
-  });
-
-  it("reloads the top-level timeline when deleting a missing loop", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    const view = await renderLoadedProvider([
-      timelineLoop({ id: "loop-1", name: "Existing Loop" }),
-    ]);
-    const reloaded = [timelineTrial({ id: 8, name: "Reloaded" })];
-
-    queueFetchResponses(notOkJson(), okJson({ timeline: reloaded }));
-
-    const result = await act(async () => {
-      return view.getContext()?.deleteLoop("missing-loop");
-    });
-
-    expect(result).toBe(false);
-    await waitFor(() => {
-      expect(view.getContext()?.timeline).toEqual(reloaded);
-    });
-    expect(console.error).toHaveBeenCalledWith(
-      "Error deleting loop:",
-      expect.any(Error),
-    );
+    expect(fetchMock()).toHaveBeenCalledTimes(2);
   });
 });

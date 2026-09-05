@@ -1,8 +1,10 @@
 import { expect, test } from "../fixtures/test.fixture";
+import { branchEdge, fulfillGraph, graph } from "../helpers/loopBranchGraph";
 import { getScopedNodeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/composeExpandedLoopLayout";
 import { ROOT_CANVAS_SCOPE_ID } from "../../src/pages/ExperimentBuilder/components/Canvas/services/expandedLayoutTypes";
+import type { TimelineItem } from "../../src/pages/ExperimentBuilder/modules/experiment-graph/types";
 
-const timeline = [
+const timeline: TimelineItem[] = [
   { id: "start", type: "trial", name: "Start" },
   {
     id: "question",
@@ -50,6 +52,18 @@ const timeline = [
   { id: "after", type: "trial", name: "After" },
 ];
 
+const snapshot = graph(timeline, {}, [
+  branchEdge("question", "left", null, null),
+  branchEdge("question", "middle", null, null),
+  branchEdge("question", "right", null, null),
+  branchEdge("left", "left-step", null, null),
+  branchEdge("left-step", "merge", null, null),
+  branchEdge("middle", "middle-step", null, null),
+  branchEdge("middle-step", "merge", null, null),
+  branchEdge("right", "right-step", null, null),
+  branchEdge("right-step", "merge", null, null),
+]);
+
 const nodeId = (itemId: string) =>
   getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "trial", itemId);
 
@@ -76,12 +90,8 @@ const expected = {
 for (const theme of ["light", "dark"] as const) {
   test(`keeps trial branches readable in ${theme} mode`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: theme });
-    await page.route("**/api/trials-metadata/exp-branch-colors", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ timeline }),
-      }),
+    await page.route("**/api/experiment-graph/exp-branch-colors", (route) =>
+      route.fulfill(fulfillGraph(snapshot)),
     );
     await page.setViewportSize({ width: 1800, height: 1100 });
     await page.goto("/#/home/experiment/exp-branch-colors/builder");

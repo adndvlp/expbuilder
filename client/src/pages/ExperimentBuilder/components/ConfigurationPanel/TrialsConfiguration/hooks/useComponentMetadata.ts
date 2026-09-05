@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-const API_URL = import.meta.env.VITE_API_URL;
+import { getApiBaseUrl } from "../../../../../../lib/apiBaseUrl";
+const API_URL = getApiBaseUrl();
 
 type ComponentParameter = {
   type: string;

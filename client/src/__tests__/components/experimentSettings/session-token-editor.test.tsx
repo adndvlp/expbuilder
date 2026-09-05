@@ -163,7 +163,7 @@ describe("ExperimentSettings", () => {
     ).toBeInTheDocument();
   });
 
-  it("falls back to relative API URLs when the API env var is absent", async () => {
+  it("falls back to the local API URL when the API env var is absent", async () => {
     vi.resetModules();
     vi.stubEnv("VITE_API_URL", undefined);
     fetchMock().mockResolvedValueOnce(okJson({}));
@@ -175,7 +175,7 @@ describe("ExperimentSettings", () => {
 
     await waitFor(() => {
       expect(fetchMock()).toHaveBeenCalledWith(
-        "/api/session-name-config/exp-relative-api",
+        "http://localhost:3000/api/session-name-config/exp-relative-api",
       );
     });
   });

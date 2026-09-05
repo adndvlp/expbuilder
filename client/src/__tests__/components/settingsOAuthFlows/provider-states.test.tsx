@@ -161,7 +161,7 @@ describe("Settings OAuth tokens", () => {
       expect(openExternal).toHaveBeenCalled();
     });
     expect(lastOpenedUrl().searchParams.get("redirect_uri")).toBe(
-      "https://test-e4cf9.firebaseapp.com/dropbox-callback",
+      "https://test-project.firebaseapp.com/dropbox-callback",
     );
   });
 
@@ -183,7 +183,7 @@ describe("Settings OAuth tokens", () => {
       expect(openExternal).toHaveBeenCalled();
     });
     expect(lastOpenedUrl().searchParams.get("redirect_uri")).toBe(
-      "https://test-e4cf9.firebaseapp.com/google-drive-callback",
+      "https://test-project.firebaseapp.com/google-drive-callback",
     );
   });
 
@@ -205,7 +205,7 @@ describe("Settings OAuth tokens", () => {
       expect(openExternal).toHaveBeenCalled();
     });
     expect(lastOpenedUrl().searchParams.get("redirect_uri")).toBe(
-      "https://test-e4cf9.firebaseapp.com/github-callback",
+      "https://test-project.firebaseapp.com/github-callback",
     );
   });
 

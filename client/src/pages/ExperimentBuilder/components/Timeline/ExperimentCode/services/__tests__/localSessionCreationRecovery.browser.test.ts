@@ -209,6 +209,47 @@ describe("local session creation recovery", () => {
     await page.close();
   });
 
+  it("keeps persistence busy while a new result enters the outbox", async () => {
+    const page = await openRuntimePage();
+    await installRuntime(page, {
+      experimentID: "persistence-race",
+      runtimeCode: generatedCode("persistence-race"),
+      serverKey: "test:server-persistence-race",
+      failPuts: false,
+    });
+
+    const result = await page.evaluate(async () => {
+      const runtime = window as RuntimeWindow & {
+        ExpBuilderPersistence?: {
+          pendingCount(): number;
+          whenIdle(): Promise<void>;
+        };
+      };
+      runtime.__settings?.on_data_update({
+        trial_index: 0,
+        builder_id: "source-before-reload",
+      });
+      const pendingImmediately =
+        runtime.ExpBuilderPersistence?.pendingCount() ?? -1;
+      await runtime.ExpBuilderPersistence?.whenIdle();
+      return {
+        pendingImmediately,
+        putBodies: runtime.__putBodies || [],
+      };
+    });
+
+    expect(result.pendingImmediately).toBeGreaterThan(0);
+    expect(result.putBodies).toHaveLength(1);
+    expect(result.putBodies[0]).toMatchObject({
+      sequence: 0,
+      response: {
+        trial_index: 0,
+        builder_id: "source-before-reload",
+      },
+    });
+    await page.close();
+  });
+
   it("keeps A pending across close, runs B independently, then recovers A", async () => {
     const context = await browser.newContext();
     const firstA = await openRuntimePage(context);

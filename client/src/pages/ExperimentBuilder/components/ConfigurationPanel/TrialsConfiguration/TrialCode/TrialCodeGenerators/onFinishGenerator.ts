@@ -55,7 +55,9 @@ export function generateOnFinishCode(options: {
 
     if (isInLoop) {
       return `on_finish: function(data) {${customBlock}
-      if (typeof ${getVarName("HasBranches")} !== 'undefined' && ${getVarName("HasBranches")}) {
+      if (${getVarName("BranchingActive")} && ${getVarName("TargetExecuted")}) {
+        ${getVarName("ShouldBranchOnFinish")} = false;
+      } else if (typeof ${getVarName("HasBranches")} !== 'undefined' && ${getVarName("HasBranches")}) {
         ${getVarName("ShouldBranchOnFinish")} = true;
       } else if (!${getVarName("HasBranches")}) {
         if (window.branchingActive) {
@@ -92,7 +94,9 @@ export function generateOnFinishCode(options: {
     }
 
     return `on_finish: function(data) {${repeatConditionsCode}${customBlock}
-      if (typeof ${getVarName("HasBranches")} !== 'undefined' && ${getVarName("HasBranches")}) {
+      if (${getVarName("BranchingActive")} && ${getVarName("TargetExecuted")}) {
+        ${getVarName("ShouldBranchOnFinish")} = false;
+      } else if (typeof ${getVarName("HasBranches")} !== 'undefined' && ${getVarName("HasBranches")}) {
         ${getVarName("ShouldBranchOnFinish")} = true;
       } else if (!${getVarName("HasBranches")}) {
         if (window.branchingActive) {

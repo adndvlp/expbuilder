@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { auth } from "../../lib/firebase";
+import { getApiBaseUrl } from "../../lib/apiBaseUrl";
 
 export const resolveResetApiUrl = (configuredUrl?: string) =>
   configuredUrl || "http://localhost:3000";
 
-const API_URL = resolveResetApiUrl(import.meta.env.VITE_API_URL);
+const API_URL = resolveResetApiUrl(getApiBaseUrl());
 
 const ResetAppButton: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -12,11 +13,11 @@ const ResetAppButton: React.FC = () => {
   const [showConfirm, setShowConfirm] = useState(false);
 
   // Obtener el uid real del usuario validado en Firebase
-  const uid = auth.currentUser?.uid || null;
+  const uid = auth?.currentUser?.uid || null;
 
   const handleReset = async () => {
     // Re-read uid at call time in case auth resolved after initial render
-    const currentUid = auth.currentUser?.uid || null;
+    const currentUid = auth?.currentUser?.uid || null;
     setLoading(true);
     try {
       const resp = await fetch(`${API_URL}/api/app/reset`, {

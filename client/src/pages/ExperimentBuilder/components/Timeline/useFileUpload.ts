@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useExperimentID } from "../../hooks/useExperimentID";
 import { UploadedFile } from "./types";
+import { getApiBaseUrl } from "../../../../lib/apiBaseUrl";
 import {
   ExpectedCompressedFile,
   describeJobProgress,
@@ -22,7 +23,7 @@ export {
 export type { ExpectedCompressedFile, UploadJob };
 export type { UploadedFile } from "./types";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = getApiBaseUrl();
 const GITHUB_FILE_LIMIT_BYTES = 100 * 1024 * 1024;
 
 type UseFileUploadProps = { folder: string };

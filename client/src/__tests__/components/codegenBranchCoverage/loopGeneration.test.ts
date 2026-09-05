@@ -46,8 +46,10 @@ describe("loop and branch code generation coverage", () => {
       id: "loop-a",
     } as any).code;
 
-    expect(automatic).toContain("const branches = [];");
-    expect(repeated).toContain("const branches = [];");
+    expect(automatic).toContain("window.ExpBuilderBranching.decide(");
+    expect(automatic).toContain("loopLastData,\n      [],\n      []");
+    expect(repeated).toContain("window.ExpBuilderBranching.decide(");
+    expect(repeated).toContain("loopLastData,\n      [],\n      []");
   });
 
   it("resets branch state for terminal merge-point loops", () => {

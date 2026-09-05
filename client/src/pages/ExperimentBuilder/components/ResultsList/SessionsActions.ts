@@ -10,8 +10,9 @@ import {
 } from "./services/onlineSessions";
 import { sessionTimestamp } from "./services/sessionDates";
 import { ParticipantFile, SessionMeta, SessionPresence, TabType } from "./types";
+import { getApiBaseUrl } from "../../../../lib/apiBaseUrl";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = getApiBaseUrl();
 
 type Props = {
   experimentID: string | undefined;

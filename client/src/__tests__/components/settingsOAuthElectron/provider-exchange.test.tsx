@@ -130,7 +130,7 @@ describe("Settings OAuth Electron flows", () => {
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining(
-          "https://us-central1-test-e4cf9.cloudfunctions.net/dropboxOAuthCallback",
+          "https://us-central1-myproj.cloudfunctions.net/dropboxOAuthCallback",
         ),
       );
     });
@@ -158,7 +158,7 @@ describe("Settings OAuth Electron flows", () => {
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining(
-          "https://us-central1-test-e4cf9.cloudfunctions.net/googleDriveOAuthCallback",
+          "https://us-central1-myproj.cloudfunctions.net/googleDriveOAuthCallback",
         ),
       );
     });
@@ -186,7 +186,7 @@ describe("Settings OAuth Electron flows", () => {
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining(
-          "https://us-central1-test-e4cf9.cloudfunctions.net/githubOAuthCallback",
+          "https://us-central1-myproj.cloudfunctions.net/githubOAuthCallback",
         ),
       );
     });

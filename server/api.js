@@ -46,7 +46,7 @@ const io = new Server(httpServer, {
     callback(null, socketOriginAllowed(req, socketOrigins)),
 });
 
-const port = 3000;
+const preferredPort = Number(process.env.PORT || 3000);
 
 app.use((req, res, next) =>
   cors({
@@ -141,9 +141,44 @@ process.on("unhandledRejection", (reason, promise) => {
   // Optionally log to a file or external service
 });
 
-/* istanbul ignore next -- startup listen callback is covered through mocked import; error branch is host-state dependent. */
-httpServer.listen(port, async () => {
-  // Clear all tunnel URLs on startup — any previous tunnel process is dead
+function listenOnAvailablePort(server, startPort, maxAttempts = 50) {
+  return new Promise((resolve, reject) => {
+    let port = startPort;
+    const maxPort = startPort + maxAttempts - 1;
+
+    const tryListen = () => {
+      const handleError = (err) => {
+        if (err?.code === "EADDRINUSE" && port < maxPort) {
+          port += 1;
+          tryListen();
+          return;
+        }
+        reject(err);
+      };
+      if (typeof server.once === "function") {
+        server.once("error", handleError);
+      }
+      server.listen(port, () => {
+        if (typeof server.off === "function") {
+          server.off("error", handleError);
+        }
+        resolve(port);
+      });
+    };
+
+    tryListen();
+  });
+}
+
+export const whenListening = listenOnAvailablePort(
+  httpServer,
+  preferredPort,
+).then(async (port) => {
+  process.env.PORT = String(port);
+  process.env.API_URL = `http://localhost:${port}`;
+  if (!DEV_ORIGINS.includes(`http://localhost:${port}`)) {
+    DEV_ORIGINS.push(`http://localhost:${port}`);
+  }
   try {
     await withDbLock(async () => {
       await db.read();
@@ -165,6 +200,7 @@ httpServer.listen(port, async () => {
   console.log(`Experiment URL: http://localhost:${port}/experiment`);
   console.log(`API URL: http://localhost:${port}/api`);
   console.log(`WebSocket enabled for real-time session tracking`);
+  return port;
 });
 
 export { io };

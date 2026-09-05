@@ -25,7 +25,7 @@ export default function ChangePassword() {
     setSuccessMessage("");
     setErrorMessage("");
 
-    const user = auth.currentUser;
+    const user = auth?.currentUser;
 
     try {
       await updatePassword(user!, password);

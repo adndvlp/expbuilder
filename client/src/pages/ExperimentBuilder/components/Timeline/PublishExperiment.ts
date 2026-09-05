@@ -1,6 +1,7 @@
 import { Dispatch, SetStateAction } from "react";
 import { auth } from "../../../../lib/firebase";
-const API_URL = import.meta.env.VITE_API_URL;
+import { getApiBaseUrl } from "../../../../lib/apiBaseUrl";
+const API_URL = getApiBaseUrl();
 
 type PublishErrorFile = {
   url?: string;
@@ -84,7 +85,7 @@ export default function PublishExperiment({
 }: Props) {
   const handlePublishToGitHub = async () => {
     try {
-      const firebaseUser = auth.currentUser;
+      const firebaseUser = auth?.currentUser;
       if (!firebaseUser) {
         setPublishStatus("Error: User not logged in");
         return;
@@ -132,6 +133,12 @@ export default function PublishExperiment({
     let keepPublishStatus = false;
 
     try {
+      const firebaseUser = auth?.currentUser;
+      if (!firebaseUser || firebaseUser.uid !== uid) {
+        throw new Error("User not logged in");
+      }
+      const idToken = await firebaseUser.getIdToken();
+
       // Generar código público para GitHub Pages con el storage seleccionado
       const generatedPublicCode = await generateExperiment(selectedStorage);
 
@@ -145,7 +152,10 @@ export default function PublishExperiment({
         `${API_URL}/api/publish-experiment/${experimentID}`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({
             uid,
             storage: selectedStorage,

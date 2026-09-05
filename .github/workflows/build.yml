@@ -1,0 +1,319 @@
+name: Build and Publish Desktop Apps
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref != 'refs/heads/main' && contains(join(github.event.commits.*.message, ' '), '[build]'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            client/package-lock.json
+            api/functions/package-lock.json
+            server/jspsych-bundler/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install client dependencies
+        run: npm ci --prefix client
+
+      - name: Install Functions dependencies
+        run: npm ci --prefix api/functions
+
+      - name: Install jsPsych bundler dependencies
+        run: npm ci --prefix server/jspsych-bundler
+
+      - name: Build jsPsych bundle
+        run: npm run build --prefix server/jspsych-bundler
+
+      - name: Install Chromium for browser-backed tests
+        run: npm --prefix client exec -- playwright install --with-deps chromium
+
+      - name: Run all tests
+        run: npm run tests
+
+  tag:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[build]')
+    runs-on: ubuntu-latest
+    outputs:
+      created: ${{ steps.create_tag.outputs.created }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Create release tag
+        id: create_tag
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            echo "Tag v$VERSION already exists, nothing to do"
+            echo "created=false" >> "$GITHUB_OUTPUT"
+          else
+            git tag "v$VERSION"
+            git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "v$VERSION"
+            echo "created=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  mac:
+    needs: [test, tag]
+    if: |
+      always() &&
+      !cancelled() &&
+      (
+        (github.event_name == 'workflow_dispatch' && needs.test.result == 'success') ||
+        (github.event_name == 'push' && github.ref != 'refs/heads/main' && contains(join(github.event.commits.*.message, ' '), '[build]') && needs.test.result == 'success') ||
+        (github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[build]') && needs.tag.result == 'success' && needs.tag.outputs.created == 'true')
+      )
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install x64 sharp binaries
+        run: npm install --no-save --no-package-lock --force @img/sharp-darwin-x64@0.35.3 @img/sharp-libvips-darwin-x64@1.3.2
+
+      - name: Build client
+        run: npm ci --prefix client && npm run build --prefix client
+
+      - name: Build jsPsych bundle
+        run: |
+          npm ci --prefix server/jspsych-bundler
+          npm run build --prefix server/jspsych-bundler
+
+      - name: Fetch cloudflared binaries
+        run: |
+          npm run fetch:cloudflared
+          npm_config_platform=darwin npm_config_arch=x64 node scripts/fetch-cloudflared.mjs
+
+      - name: Fetch release tags
+        run: git fetch --tags --force
+
+      - name: Build and publish
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: npm run build:electron -- --mac --arm64 --x64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build (no publish)
+        if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+        run: npm run build:electron -- --mac --arm64 --x64 --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.yml
+            dist/*.blockmap
+          if-no-files-found: ignore
+
+  win:
+    needs: [test, tag]
+    if: |
+      always() &&
+      !cancelled() &&
+      (
+        (github.event_name == 'workflow_dispatch' && needs.test.result == 'success') ||
+        (github.event_name == 'push' && github.ref != 'refs/heads/main' && contains(join(github.event.commits.*.message, ' '), '[build]') && needs.test.result == 'success') ||
+        (github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[build]') && needs.tag.result == 'success' && needs.tag.outputs.created == 'true')
+      )
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build client
+        run: npm ci --prefix client && npm run build --prefix client
+
+      - name: Build jsPsych bundle
+        run: |
+          npm ci --prefix server/jspsych-bundler
+          npm run build --prefix server/jspsych-bundler
+
+      - name: Fetch cloudflared binary
+        run: npm run fetch:cloudflared
+
+      - name: Fetch release tags
+        run: git fetch --tags --force
+
+      - name: Build and publish
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: npm run build:electron -- --win --x64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build (no publish)
+        if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+        run: npm run build:electron -- --win --x64 --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win
+          path: |
+            dist/*.exe
+            dist/*.zip
+            dist/*.yml
+            dist/*.blockmap
+          if-no-files-found: ignore
+
+  linux-x64:
+    needs: [test, tag]
+    if: |
+      always() &&
+      !cancelled() &&
+      (
+        (github.event_name == 'workflow_dispatch' && needs.test.result == 'success') ||
+        (github.event_name == 'push' && github.ref != 'refs/heads/main' && contains(join(github.event.commits.*.message, ' '), '[build]') && needs.test.result == 'success') ||
+        (github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[build]') && needs.tag.result == 'success' && needs.tag.outputs.created == 'true')
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build client
+        run: npm ci --prefix client && npm run build --prefix client
+
+      - name: Build jsPsych bundle
+        run: |
+          npm ci --prefix server/jspsych-bundler
+          npm run build --prefix server/jspsych-bundler
+
+      - name: Fetch cloudflared binary
+        run: npm run fetch:cloudflared
+
+      - name: Fetch release tags
+        run: git fetch --tags --force
+
+      - name: Build and publish
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: npm run build:electron -- --linux deb rpm --x64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build (no publish)
+        if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+        run: npm run build:electron -- --linux deb rpm --x64 --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x64
+          path: |
+            dist/*.deb
+            dist/*.rpm
+            dist/*.yml
+            dist/*.blockmap
+          if-no-files-found: ignore
+
+  linux-arm64:
+    needs: [test, tag]
+    if: |
+      always() &&
+      !cancelled() &&
+      (
+        (github.event_name == 'workflow_dispatch' && needs.test.result == 'success') ||
+        (github.event_name == 'push' && github.ref != 'refs/heads/main' && contains(join(github.event.commits.*.message, ' '), '[build]') && needs.test.result == 'success') ||
+        (github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[build]') && needs.tag.result == 'success' && needs.tag.outputs.created == 'true')
+      )
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build client
+        run: npm ci --prefix client && npm run build --prefix client
+
+      - name: Build jsPsych bundle
+        run: |
+          npm ci --prefix server/jspsych-bundler
+          npm run build --prefix server/jspsych-bundler
+
+      - name: Fetch cloudflared binary
+        run: npm run fetch:cloudflared
+
+      - name: Fetch release tags
+        run: git fetch --tags --force
+
+      - name: Build and publish
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: npm run build:electron -- --linux deb --arm64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build (no publish)
+        if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+        run: npm run build:electron -- --linux deb --arm64 --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-arm64
+          path: |
+            dist/*.deb
+            dist/*.yml
+            dist/*.blockmap
+          if-no-files-found: ignore

@@ -5,11 +5,10 @@ import Register from "../../pages/Auth/Register";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import {
   createUserWithEmailAndPassword,
-  onAuthStateChanged,
   signInWithEmailAndPassword,
 } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
-import { auth } from "../../lib/firebase";
+import { getFirebaseAuth, getFirebaseDb, subscribeToAuth } from "../../lib/firebase";
 
 const routerMocks = vi.hoisted(() => ({
   navigate: vi.fn(),
@@ -98,9 +97,10 @@ describe("Auth flows", () => {
     fillAuthForm(container, ["user@test.dev", "secret"]);
     fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
 
+    const firebaseAuth = await getFirebaseAuth();
     await waitFor(() => {
       expect(signInWithEmailAndPassword).toHaveBeenCalledWith(
-        auth,
+        firebaseAuth,
         "user@test.dev",
         "secret",
       );
@@ -189,14 +189,16 @@ describe("Auth flows", () => {
     ]);
     fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
 
+    const firebaseAuth = await getFirebaseAuth();
+    const firebaseDb = await getFirebaseDb();
     await waitFor(() => {
       expect(createUserWithEmailAndPassword).toHaveBeenCalledWith(
-        auth,
+        firebaseAuth,
         "new@test.dev",
         "long-enough-password",
       );
     });
-    expect(doc).toHaveBeenCalledWith({}, "users", "user-456");
+    expect(doc).toHaveBeenCalledWith(firebaseDb, "users", "user-456");
     expect(setDoc).toHaveBeenCalledWith("users/user-456", {
       email: "new@test.dev",
       uid: "user-456",
@@ -260,7 +262,7 @@ describe("Auth flows", () => {
   });
 
   it("renders protected children or redirects based on auth state", async () => {
-    vi.mocked(onAuthStateChanged).mockImplementationOnce((_auth, callback) => {
+    vi.mocked(subscribeToAuth).mockImplementationOnce((callback) => {
       callback({ uid: "user-123" } as any);
       return vi.fn();
     });
@@ -274,7 +276,7 @@ describe("Auth flows", () => {
     expect(await screen.findByText("Private App")).toBeInTheDocument();
     unmount();
 
-    vi.mocked(onAuthStateChanged).mockImplementationOnce((_auth, callback) => {
+    vi.mocked(subscribeToAuth).mockImplementationOnce((callback) => {
       callback(null);
       return vi.fn();
     });
