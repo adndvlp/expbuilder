@@ -7,6 +7,7 @@ interface FirebaseConfig {
   storageBucket: string;
   messagingSenderId: string;
   appId: string;
+  connectionMode?: "owner" | "member";
 }
 
 interface OAuthConfig {
@@ -32,42 +33,49 @@ interface ElectronAPI {
   }>;
   saveCsvZip: (
     files: Array<{ name: string; content: string }>,
-    defaultName: string
+    defaultName: string,
   ) => Promise<{ success: boolean; error?: string }>;
   saveJsonFile: (
     content: string,
-    defaultName: string
+    defaultName: string,
   ) => Promise<{ success: boolean; error?: string }>;
   readFirebaseConfig: () => Promise<FirebaseConfig | null>;
   writeFirebaseConfig: (
-    config: FirebaseConfig
+    config: FirebaseConfig,
   ) => Promise<{ success: boolean; error?: string }>;
   deleteFirebaseConfig: () => Promise<{ success: boolean; error?: string }>;
+  restartApp: () => Promise<{ success: boolean }>;
   readOauthConfig: () => Promise<OAuthConfig | null>;
   writeOauthConfig: (
-    config: OAuthConfig
+    config: OAuthConfig,
   ) => Promise<{ success: boolean; error?: string }>;
   deleteOauthConfig: () => Promise<{ success: boolean; error?: string }>;
   startBackendSetup: (
     args: string[],
-    token?: string
+    token?: string,
   ) => Promise<{ id: string }>;
   writeBackendSetupInput: (
     id: string,
-    text: string
+    text: string,
   ) => Promise<{ success: boolean; error?: string }>;
-  killBackendSetup: (id: string) => Promise<{ success: boolean; error?: string }>;
-  onBackendSetupOutput: (callback: (data: {
-    id: string;
-    stream: "stdout" | "stderr";
-    text: string;
-  }) => void) => () => void;
-  onBackendSetupExit: (callback: (data: {
-    id: string;
-    code: number | null;
-    error: string | null;
-    output: string;
-  }) => void) => () => void;
+  killBackendSetup: (
+    id: string,
+  ) => Promise<{ success: boolean; error?: string }>;
+  onBackendSetupOutput: (
+    callback: (data: {
+      id: string;
+      stream: "stdout" | "stderr";
+      text: string;
+    }) => void,
+  ) => () => void;
+  onBackendSetupExit: (
+    callback: (data: {
+      id: string;
+      code: number | null;
+      error: string | null;
+      output: string;
+    }) => void,
+  ) => () => void;
   writeBackendEnv: (env: Record<string, string>) => Promise<{
     success: boolean;
     error?: string;

@@ -16,6 +16,8 @@ export const loadMain = async (options = {}) => {
     getPath: jest.fn(() => userDataDir),
     on: jest.fn(),
     quit: jest.fn(),
+    relaunch: jest.fn(),
+    exit: jest.fn(),
     whenReady: jest.fn(() => ({
       then: (cb) => {
         readyCallback = cb

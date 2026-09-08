@@ -24,6 +24,7 @@ describe('main.js Electron lifecycle', () => {
       'open-external',
       'read-firebase-config',
       'read-oauth-config',
+      'restart-app',
       'save-csv-zip',
       'save-json-file',
       'save-zip-file',
@@ -78,6 +79,13 @@ describe('main.js Electron lifecycle', () => {
     const { handlers, shell } = await loadMain()
     await handlers.get('open-external')(null, 'https://example.com')
     expect(shell.openExternal).toHaveBeenCalledWith('https://example.com')
+  })
+
+  test('restarts the app through IPC', async () => {
+    const { handlers, app } = await loadMain()
+    await handlers.get('restart-app')()
+    expect(app.relaunch).toHaveBeenCalled()
+    expect(app.exit).toHaveBeenCalledWith(0)
   })
 
   test('uses production env, DB root, and loadFile when running from asar', async () => {

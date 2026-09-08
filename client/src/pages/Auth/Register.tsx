@@ -4,6 +4,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { getFirebaseAuth, getFirebaseDb } from "../../lib/firebase";
 import "./index.css";
 import { Link } from "react-router";
+import SharedServerConnect from "../Settings/components/SharedServerConnect";
 
 const Register: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -34,7 +35,9 @@ const Register: React.FC = () => {
       const firebaseAuth = await getFirebaseAuth();
       const firebaseDb = await getFirebaseDb();
       if (!firebaseAuth || !firebaseDb) {
-        setErrorEmail("Configure Firebase in Settings before creating an account.");
+        setErrorEmail(
+          "Configure Firebase in Settings before creating an account.",
+        );
         setIsSubmitting(false);
         return;
       }
@@ -80,6 +83,7 @@ const Register: React.FC = () => {
       }}
     >
       <h2 className="auth-text-color">Sign Up</h2>
+      <SharedServerConnect />
       <form onSubmit={onSubmit}>
         <div style={{ marginBottom: 16 }}>
           <label className="auth-text-color">Email</label>

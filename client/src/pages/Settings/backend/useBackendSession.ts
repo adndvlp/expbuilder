@@ -9,6 +9,7 @@ import {
   type BackendOAuthState,
   type BackendSetupPersistState,
 } from "../../../lib/backendSetup";
+import { getConnectionMode } from "../../../lib/serverConnection";
 
 export const isElectron = !!window.electron?.startBackendSetup;
 
@@ -28,6 +29,9 @@ export function useBackendSession() {
   const [loginUrl, setLoginUrl] = useState("");
   const [loginCode, setLoginCode] = useState("");
   const [projectId, setProjectId] = useState("");
+  const [connectionMode, setConnectionMode] = useState<
+    "owner" | "member" | null
+  >(null);
   const [projectDone, setProjectDone] = useState(false);
   const [configSaved, setConfigSaved] = useState(false);
   const [billingDone, setBillingDone] = useState(false);
@@ -36,7 +40,9 @@ export function useBackendSession() {
   const [deployed, setDeployed] = useState(false);
   const [googleAuthNeedsConsole, setGoogleAuthNeedsConsole] = useState(false);
   const [oauth, setOauth] = useState<BackendOAuthState>(EMPTY_OAUTH);
-  const exitListeners = useRef<Map<string, (data: ExitData) => void>>(new Map());
+  const exitListeners = useRef<Map<string, (data: ExitData) => void>>(
+    new Map(),
+  );
   const loginIdRef = useRef("");
   const openedLoginUrl = useRef("");
   const persistRef = useRef<BackendSetupPersistState>({});
@@ -57,7 +63,9 @@ export function useBackendSession() {
 
   const api = useCallback(
     async (
-      payload: Parameters<NonNullable<typeof window.electron>["backendSetupApi"]>[0],
+      payload: Parameters<
+        NonNullable<typeof window.electron>["backendSetupApi"]
+      >[0],
     ) => window.electron!.backendSetupApi(payload),
     [],
   );
@@ -106,6 +114,7 @@ export function useBackendSession() {
       if (state.projectId || config?.projectId) {
         setProjectId(state.projectId || config?.projectId || "");
       }
+      setConnectionMode(getConnectionMode(config));
       setProjectDone(Boolean(state.configSaved || config));
       setConfigSaved(Boolean(state.configSaved || config));
       setBillingDone(Boolean(state.billingDone));
@@ -130,7 +139,9 @@ export function useBackendSession() {
     [appendLog, token],
   );
 
-  const startLogin = async (onSignedIn?: (accessToken: string) => Promise<void>) => {
+  const startLogin = async (
+    onSignedIn?: (accessToken: string) => Promise<void>,
+  ) => {
     setRunning(true);
     setError("");
     try {
@@ -181,6 +192,7 @@ export function useBackendSession() {
     setLoginCode,
     projectId,
     setProjectId,
+    connectionMode,
     projectDone,
     setProjectDone,
     configSaved,
