@@ -24,7 +24,9 @@ export async function createWebApp(options: {
       "ExpBuilder",
     ]);
     if (created.code !== 0) {
-      setError(commandError(created, "Could not create the web app. Try again."));
+      setError(
+        commandError(created, "Could not create the web app. Try again."),
+      );
       return false;
     }
     appId = parseCreatedAppId(created.output);
@@ -41,7 +43,9 @@ export async function createWebApp(options: {
     appId,
   ]);
   if (sdkResult.code !== 0) {
-    setError(commandError(sdkResult, "Could not read the app config. Try again."));
+    setError(
+      commandError(sdkResult, "Could not read the app config. Try again."),
+    );
     return false;
   }
   const sdk = parseSdkConfig(sdkResult.output);
@@ -50,7 +54,10 @@ export async function createWebApp(options: {
     setError("Could not parse the app config.");
     return false;
   }
-  const saved = await window.electron!.writeFirebaseConfig(firebaseConfig);
+  const saved = await window.electron!.writeFirebaseConfig({
+    ...firebaseConfig,
+    connectionMode: "owner",
+  });
   if (!saved.success) {
     setError(
       `Could not save the Firebase config: ${saved.error || "Unknown error"}`,

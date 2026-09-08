@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { getFirebaseAuth } from "../../lib/firebase";
+import SharedServerConnect from "../Settings/components/SharedServerConnect";
 import "./index.css";
 
 const Login: React.FC = () => {
@@ -64,6 +65,7 @@ const Login: React.FC = () => {
       }}
     >
       <h2 className="auth-text-color">Sign In</h2>
+      <SharedServerConnect />
       <form onSubmit={onSubmit}>
         <div style={{ marginBottom: 16 }}>
           <label className="auth-text-color">Email</label>

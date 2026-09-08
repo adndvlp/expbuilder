@@ -1,6 +1,10 @@
 import { openExternal } from "../../lib/openExternal";
 import PublishingAccounts from "./backend/PublishingAccounts";
 import { useBackendSetup } from "./backend/useBackendSetup";
+import DesktopServerOnlyNotice from "./components/DesktopServerOnlyNotice";
+import ServerSharing from "./components/ServerSharing";
+import SharedServerConnect from "./components/SharedServerConnect";
+import SharedServerStatus from "./components/SharedServerStatus";
 
 const inputStyle = { padding: "6px 10px", flex: 1 } as const;
 
@@ -8,24 +12,21 @@ export default function BackendSetup() {
   const setup = useBackendSetup();
 
   if (!setup.isElectron) {
-    return (
-      <div
-        style={{
-          padding: "12px 16px",
-          background: "#fff3cd",
-          border: "1px solid #ffc107",
-          borderRadius: 8,
-          color: "#856404",
-          fontSize: 14,
-        }}
-      >
-        Server setup is only available in the Electron app.
-      </div>
-    );
+    return <DesktopServerOnlyNotice />;
   }
 
   if (!setup.ready) {
     return <p className="backend-copy">Loading saved server…</p>;
+  }
+
+  if (setup.connectionMode === "member") {
+    return (
+      <SharedServerStatus
+        projectId={setup.projectId}
+        error={setup.error}
+        onError={setup.setError}
+      />
+    );
   }
 
   const showSignIn = !setup.token && !setup.deployed;
@@ -38,10 +39,16 @@ export default function BackendSetup() {
 
   return (
     <div className="backend-setup" style={{ marginTop: 8 }}>
+      {showSignIn ? <SharedServerConnect /> : null}
+      {showSignIn ? (
+        <p className="backend-copy" style={{ fontWeight: 600 }}>
+          Or set up your own server:
+        </p>
+      ) : null}
       <p className="backend-copy">
-        ExpBuilder will create a private server on your Google account. You
-        need a Google account. Google may ask for a payment card; typical lab
-        use stays within the free quota.
+        ExpBuilder will create a private server on your Google account. You need
+        a Google account. Google may ask for a payment card; typical lab use
+        stays within the free quota.
       </p>
       <p className="backend-status">{setup.status}</p>
       {setup.deployed ? (
@@ -123,7 +130,8 @@ export default function BackendSetup() {
                   <option value="">Select a project</option>
                   {setup.projects.map((project) => (
                     <option key={project.projectId} value={project.projectId}>
-                      {project.displayName && project.displayName !== project.projectId
+                      {project.displayName &&
+                      project.displayName !== project.projectId
                         ? `${project.displayName} (${project.projectId})`
                         : project.projectId}
                     </option>
@@ -149,13 +157,15 @@ export default function BackendSetup() {
           {hasBillingAccounts ? (
             <>
               <p className="backend-copy">
-                Link a billing account you already have. Typical lab use stays in
-                the free quota.
+                Link a billing account you already have. Typical lab use stays
+                in the free quota.
               </p>
               <div className="backend-row">
                 <select
                   value={setup.selectedBilling}
-                  onChange={(event) => setup.setSelectedBilling(event.target.value)}
+                  onChange={(event) =>
+                    setup.setSelectedBilling(event.target.value)
+                  }
                   style={{ padding: "6px 10px", flex: 1 }}
                   aria-label="Billing account"
                 >
@@ -178,9 +188,9 @@ export default function BackendSetup() {
           ) : (
             <>
               <p className="backend-copy">
-                Google may ask you to add a billing account. Typical lab use stays
-                in the free quota. Open the billing page, then come back and
-                continue.
+                Google may ask you to add a billing account. Typical lab use
+                stays in the free quota. Open the billing page, then come back
+                and continue.
               </p>
               <div className="backend-row">
                 <button
@@ -268,6 +278,8 @@ export default function BackendSetup() {
           ) : null}
         </div>
       ) : null}
+
+      {setup.deployed ? <ServerSharing projectId={setup.projectId} /> : null}
 
       {setup.error && <div className="backend-error">{setup.error}</div>}
 
