@@ -23,7 +23,9 @@ describe("coverage settings: BackendSetup project and database", () => {
     expect(mocks.openExternal).toHaveBeenCalledWith(
       "https://console.firebase.google.com/project/my-proj/settings/usage",
     );
-    fireEvent.click(screen.getByRole("button", { name: "Continue after billing" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue after billing" }),
+    );
     await waitFor(() =>
       expect(mocks.startBackendSetup).toHaveBeenCalledWith(
         [
@@ -37,14 +39,18 @@ describe("coverage settings: BackendSetup project and database", () => {
         "1//token-abc",
       ),
     );
-    const firestoreId = mocks.startBackendSetup.mock.calls.at(-1)?.[0].join("-");
+    const firestoreId = mocks.startBackendSetup.mock.calls
+      .at(-1)?.[0]
+      .join("-");
     await emitExit(`proc-${firestoreId}`, 0, "firestore ok");
     await waitFor(() =>
       expect(mocks.backendSetupApi).toHaveBeenCalledWith(
         expect.objectContaining({ action: "enableAuth", projectId: "my-proj" }),
       ),
     );
-    expect(await screen.findByRole("button", { name: "Finish setup" })).toBeEnabled();
+    expect(
+      await screen.findByRole("button", { name: "Finish setup" }),
+    ).toBeEnabled();
   });
 
   it("reports project step failures and start exceptions", async () => {
@@ -69,15 +75,17 @@ describe("coverage settings: BackendSetup project and database", () => {
   });
 
   it("uses an existing project without creating it", async () => {
-    mocks.backendSetupApi.mockImplementation(async (payload: { action: string }) => {
-      if (payload.action === "listProjects") {
-        return {
-          success: true,
-          projects: [{ projectId: "existing-proj", displayName: "Existing" }],
-        };
-      }
-      return defaultApi(payload);
-    });
+    mocks.backendSetupApi.mockImplementation(
+      async (payload: { action: string }) => {
+        if (payload.action === "listProjects") {
+          return {
+            success: true,
+            projects: [{ projectId: "existing-proj", displayName: "Existing" }],
+          };
+        }
+        return defaultApi(payload);
+      },
+    );
     await signIn();
     await fillProject("existing-proj", "use");
     fireEvent.click(screen.getByRole("button", { name: "Set up my server" }));
@@ -97,7 +105,9 @@ describe("coverage settings: BackendSetup project and database", () => {
     await signIn();
     await setUpBackend("my-proj");
     mocks.startBackendSetup.mockResolvedValueOnce({ id: "f1" });
-    fireEvent.click(screen.getByRole("button", { name: "Continue after billing" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue after billing" }),
+    );
     await waitFor(() =>
       expect(mocks.startBackendSetup).toHaveBeenCalledWith(
         expect.arrayContaining(["firestore:databases:create"]),
@@ -135,6 +145,7 @@ describe("coverage settings: BackendSetup project and database", () => {
       storageBucket: "my-proj.appspot.com",
       messagingSenderId: "123456",
       appId: "1:123:web:abc",
+      connectionMode: "owner",
     });
     expect(
       screen.queryByRole("button", { name: "Set up my server" }),

@@ -286,6 +286,12 @@ ipcMain.handle("delete-firebase-config", async () => {
   }
 });
 
+ipcMain.handle("restart-app", async () => {
+  app.relaunch();
+  app.exit(0);
+  return { success: true };
+});
+
 // OAuth config handlers
 const getOauthConfigPath = () => {
   return path.join(app.getPath("userData"), "oauth-config.json");

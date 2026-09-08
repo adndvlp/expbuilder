@@ -17,20 +17,22 @@ describe("coverage settings: BackendSetup deploy", () => {
   it("saves backend credentials from enabled providers and deploys", async () => {
     await signIn();
     await setUpBackend("my-proj");
-    fireEvent.click(screen.getByRole("button", { name: "Continue after billing" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue after billing" }),
+    );
     await waitFor(() =>
       expect(mocks.startBackendSetup).toHaveBeenCalledWith(
         expect.arrayContaining(["firestore:databases:create"]),
         "1//token-abc",
       ),
     );
-    const firestoreId = mocks.startBackendSetup.mock.calls.at(-1)?.[0].join("-");
+    const firestoreId = mocks.startBackendSetup.mock.calls
+      .at(-1)?.[0]
+      .join("-");
     await emitExit(`proc-${firestoreId}`, 0, "");
     await screen.findByRole("button", { name: "Finish setup" });
 
-    fireEvent.click(
-      screen.getByText(/Add publishing later/),
-    );
+    fireEvent.click(screen.getByText(/Add publishing later/));
     const githubCheckbox = screen.getAllByRole("checkbox")[0];
     fireEvent.click(githubCheckbox);
     fireEvent.change(screen.getByPlaceholderText("GitHub Client ID"), {
@@ -73,7 +75,9 @@ describe("coverage settings: BackendSetup deploy", () => {
     await screen.findByText("Connected to my-proj.");
 
     fireEvent.click(screen.getByText("Technical details"));
-    expect(screen.getByText(/\$ firebase --project my-proj deploy/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/\$ firebase --project my-proj deploy/),
+    ).toBeInTheDocument();
 
     expect(
       screen.getByRole("button", { name: "Save publishing credentials" }),
@@ -85,7 +89,9 @@ describe("coverage settings: BackendSetup deploy", () => {
     fireEvent.change(screen.getByPlaceholderText("GitHub Client Secret"), {
       target: { value: "gh-secret-2" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save publishing credentials" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save publishing credentials" }),
+    );
     await waitFor(() =>
       expect(mocks.startBackendSetup).toHaveBeenCalledWith(
         ["--project", "my-proj", "deploy", "--only", "functions"],
@@ -97,14 +103,18 @@ describe("coverage settings: BackendSetup deploy", () => {
   it("reports credential save and deploy failures", async () => {
     await signIn();
     await setUpBackend("my-proj");
-    fireEvent.click(screen.getByRole("button", { name: "Continue after billing" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue after billing" }),
+    );
     await waitFor(() =>
       expect(mocks.startBackendSetup).toHaveBeenCalledWith(
         expect.arrayContaining(["firestore:databases:create"]),
         "1//token-abc",
       ),
     );
-    const firestoreId = mocks.startBackendSetup.mock.calls.at(-1)?.[0].join("-");
+    const firestoreId = mocks.startBackendSetup.mock.calls
+      .at(-1)?.[0]
+      .join("-");
     await emitExit(`proc-${firestoreId}`, 0, "");
     await screen.findByRole("button", { name: "Finish setup" });
 
@@ -139,14 +149,18 @@ describe("coverage settings: BackendSetup deploy", () => {
   it("reports deploy failures and exceptions", async () => {
     await signIn();
     await setUpBackend("my-proj");
-    fireEvent.click(screen.getByRole("button", { name: "Continue after billing" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue after billing" }),
+    );
     await waitFor(() =>
       expect(mocks.startBackendSetup).toHaveBeenCalledWith(
         expect.arrayContaining(["firestore:databases:create"]),
         "1//token-abc",
       ),
     );
-    const firestoreId = mocks.startBackendSetup.mock.calls.at(-1)?.[0].join("-");
+    const firestoreId = mocks.startBackendSetup.mock.calls
+      .at(-1)?.[0]
+      .join("-");
     await emitExit(`proc-${firestoreId}`, 0, "");
     await screen.findByRole("button", { name: "Finish setup" });
 
@@ -201,32 +215,63 @@ describe("coverage settings: BackendSetup deploy", () => {
       appId: "1:1:web:1",
     });
     mocks.readOauthConfig.mockResolvedValue({ githubClientId: "gh" });
-    mocks.backendSetupApi.mockImplementation(async (payload: { action: string }) => {
-      if (payload.action === "readState") {
-        return {
-          success: true,
-          state: {
-            projectId: "lab",
-            token: "1//token-abc",
-            configSaved: true,
-            billingDone: true,
-            firestoreDone: true,
-            authDone: true,
-            deployed: true,
-          },
-        };
-      }
-      return defaultApi(payload);
-    });
+    mocks.backendSetupApi.mockImplementation(
+      async (payload: { action: string }) => {
+        if (payload.action === "readState") {
+          return {
+            success: true,
+            state: {
+              projectId: "lab",
+              token: "1//token-abc",
+              configSaved: true,
+              billingDone: true,
+              firestoreDone: true,
+              authDone: true,
+              deployed: true,
+            },
+          };
+        }
+        return defaultApi(payload);
+      },
+    );
     const BackendSetup = await importBackendSetup();
     render(<BackendSetup />);
     await screen.findByText("Connected to lab.");
-    expect(screen.getByText(/GitHub ready. Still to set up/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/GitHub ready. Still to set up/),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Save publishing credentials" }),
     ).toBeDisabled();
     expect(
       screen.queryByRole("button", { name: "Continue with Google" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("hides server setup for a shared installation and can disconnect it", async () => {
+    mocks.readFirebaseConfig.mockResolvedValue({
+      apiKey: "k",
+      authDomain: "shared-lab.firebaseapp.com",
+      projectId: "shared-lab",
+      storageBucket: "shared-lab.appspot.com",
+      messagingSenderId: "1",
+      appId: "1:1:web:1",
+      connectionMode: "member",
+    });
+    const BackendSetup = await importBackendSetup();
+    render(<BackendSetup />);
+
+    await screen.findByText("Connected to shared-lab.");
+    expect(
+      screen.queryByRole("button", { name: "Continue with Google" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Set up my server" }),
+    ).not.toBeInTheDocument();
+
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    fireEvent.click(screen.getByRole("button", { name: "Disconnect" }));
+    await waitFor(() => expect(mocks.deleteFirebaseConfig).toHaveBeenCalled());
+    expect(mocks.restartApp).toHaveBeenCalled();
   });
 });

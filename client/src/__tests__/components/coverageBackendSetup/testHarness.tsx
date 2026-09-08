@@ -1,4 +1,11 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, expect, vi } from "vitest";
 
 const hoistedMocks = vi.hoisted(() => ({
@@ -10,6 +17,8 @@ const hoistedMocks = vi.hoisted(() => ({
   writeOauthConfig: vi.fn(),
   readFirebaseConfig: vi.fn(),
   readOauthConfig: vi.fn(),
+  deleteFirebaseConfig: vi.fn(),
+  restartApp: vi.fn(),
   backendSetupApi: vi.fn(),
   openExternal: vi.fn(),
 }));
@@ -22,13 +31,16 @@ vi.mock("../../../lib/openExternal", () => ({
   openExternal: mocks.openExternal,
 }));
 
-let outputListener: ((data: { id: string; text: string }) => void) | null = null;
-let exitListener: ((data: {
-  id: string;
-  code: number | null;
-  error: string | null;
-  output: string;
-}) => void) | null = null;
+let outputListener: ((data: { id: string; text: string }) => void) | null =
+  null;
+let exitListener:
+  | ((data: {
+      id: string;
+      code: number | null;
+      error: string | null;
+      output: string;
+    }) => void)
+  | null = null;
 
 export function defaultApi({ action }: { action: string }) {
   switch (action) {
@@ -62,6 +74,8 @@ function installElectron() {
     writeOauthConfig: mocks.writeOauthConfig,
     readFirebaseConfig: mocks.readFirebaseConfig,
     readOauthConfig: mocks.readOauthConfig,
+    deleteFirebaseConfig: mocks.deleteFirebaseConfig,
+    restartApp: mocks.restartApp,
     backendSetupApi: mocks.backendSetupApi,
     onBackendSetupOutput: (cb: any) => {
       outputListener = cb;
@@ -119,18 +133,27 @@ export async function signIn() {
   mocks.startBackendSetup.mockImplementation((args: string[]) =>
     Promise.resolve({ id: `proc-${args.join("-")}` }),
   );
-  fireEvent.click(await screen.findByRole("button", { name: "Continue with Google" }));
-  await waitFor(() => expect(mocks.startBackendSetup).toHaveBeenCalledWith(["login:ci"]));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Continue with Google" }),
+  );
+  await waitFor(() =>
+    expect(mocks.startBackendSetup).toHaveBeenCalledWith(["login:ci"]),
+  );
   const id = "proc-login:ci";
   emitOutput(
     id,
     "Visit this URL to log in:\n\nhttps://accounts.google.com/x\n\nWaiting for authentication...",
   );
   await screen.findByRole("button", { name: "Open Google sign-in" });
-  expect(mocks.openExternal).toHaveBeenCalledWith("https://accounts.google.com/x");
-  fireEvent.change(screen.getByPlaceholderText("If Google showed a code, paste it here"), {
-    target: { value: "code-123" },
-  });
+  expect(mocks.openExternal).toHaveBeenCalledWith(
+    "https://accounts.google.com/x",
+  );
+  fireEvent.change(
+    screen.getByPlaceholderText("If Google showed a code, paste it here"),
+    {
+      target: { value: "code-123" },
+    },
+  );
   fireEvent.click(screen.getByRole("button", { name: "Submit code" }));
   expect(mocks.writeBackendSetupInput).toHaveBeenCalledWith(id, "code-123\n");
   await emitExit(
@@ -142,7 +165,10 @@ export async function signIn() {
   return { BackendSetup };
 }
 
-export async function fillProject(projectId = "my-proj", mode: "create" | "use" = "create") {
+export async function fillProject(
+  projectId = "my-proj",
+  mode: "create" | "use" = "create",
+) {
   if (mode === "use") {
     fireEvent.change(screen.getByDisplayValue("Create a new server"), {
       target: { value: "use" },
@@ -152,9 +178,12 @@ export async function fillProject(projectId = "my-proj", mode: "create" | "use" 
     });
     return;
   }
-  fireEvent.change(screen.getByPlaceholderText("Project name (for example my-lab)"), {
-    target: { value: projectId },
-  });
+  fireEvent.change(
+    screen.getByPlaceholderText("Project name (for example my-lab)"),
+    {
+      target: { value: projectId },
+    },
+  );
 }
 
 export async function emitProjectResult(
@@ -173,7 +202,10 @@ export async function emitProjectResult(
   await emitExit(`proc-${id}`, code, output, error);
 }
 
-export async function emitAppsList(projectId: string, output = "No apps found.") {
+export async function emitAppsList(
+  projectId: string,
+  output = "No apps found.",
+) {
   await waitFor(() =>
     expect(mocks.startBackendSetup).toHaveBeenCalledWith(
       ["--project", projectId, "apps:list", "WEB"],
@@ -184,7 +216,10 @@ export async function emitAppsList(projectId: string, output = "No apps found.")
   await emitExit(`proc-${listId}`, 0, output);
 }
 
-export async function emitWebAppSuccess(projectId = "my-proj", appId = "1:123:web:abc") {
+export async function emitWebAppSuccess(
+  projectId = "my-proj",
+  appId = "1:123:web:abc",
+) {
   await emitAppsList(projectId);
   await waitFor(() =>
     expect(mocks.startBackendSetup).toHaveBeenCalledWith(
@@ -205,7 +240,10 @@ export async function emitWebAppSuccess(projectId = "my-proj", appId = "1:123:we
   await screen.findByRole("button", { name: "Open billing page" });
 }
 
-export async function setUpBackend(projectId = "my-proj", mode: "create" | "use" = "create") {
+export async function setUpBackend(
+  projectId = "my-proj",
+  mode: "create" | "use" = "create",
+) {
   await fillProject(projectId, mode);
   fireEvent.click(screen.getByRole("button", { name: "Set up my server" }));
   if (mode === "create") {
@@ -225,6 +263,8 @@ export function installBackendSetupHooks() {
     mocks.writeOauthConfig.mockResolvedValue({ success: true });
     mocks.readFirebaseConfig.mockResolvedValue(null);
     mocks.readOauthConfig.mockResolvedValue(null);
+    mocks.deleteFirebaseConfig.mockResolvedValue({ success: true });
+    mocks.restartApp.mockResolvedValue({ success: true });
     mocks.backendSetupApi.mockImplementation(defaultApi);
   });
 

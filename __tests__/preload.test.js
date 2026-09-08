@@ -62,6 +62,10 @@ describe('preload.js', () => {
       channel: 'delete-firebase-config',
       payload: undefined,
     })
+    expect(api.restartApp()).toEqual({
+      channel: 'restart-app',
+      payload: undefined,
+    })
     expect(api.readOauthConfig()).toEqual({
       channel: 'read-oauth-config',
       payload: undefined,
