@@ -348,6 +348,27 @@ describe('delete_trial', () => {
     cleanup(tmpDir)
   })
 
+  test('prunes dangling branch targets instead of inheriting them', async () => {
+    const { createTrialTools, db, tmpDir } = await freshSetup((data) => {
+      data.trials.push({
+        experimentID: 'e1',
+        trials: [
+          { id: 1, name: 'T1', branches: [2] },
+          { id: 2, name: 'T2', branches: ['ghost'] },
+          { id: 3, name: 'T3', branches: [] },
+        ],
+        loops: [],
+        timeline: [],
+      })
+    })
+    const result = await createTrialTools.delete_trial.execute({ experimentID: 'e1', trialId: 2 })
+    expect(result.success).toBe(true)
+    await db.read()
+    const doc = db.data.trials.find(t => t.experimentID === 'e1')
+    expect(doc.trials.find(t => t.id === 1).branches).toEqual([])
+    cleanup(tmpDir)
+  })
+
   test('returns errors for missing docs and missing trials', async () => {
     const { createTrialTools, tmpDir } = await freshSetup()
     await expect(createTrialTools.delete_trial.execute({ experimentID: 'e1', trialId: 1 }))

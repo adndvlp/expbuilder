@@ -1,6 +1,10 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import { db, readDb, getDoc, ensureDoc, columnMappingEntrySchema } from './state.js'
+import {
+  pruneDanglingBranches,
+  reconnectParentsToChildren,
+} from '../../../routes/timeline/trials/state.js'
 
 export const trialTools = {
   // ── Create ─────────────────────────────────────────────────────────────────
@@ -148,32 +152,17 @@ export const trialTools = {
 
       const childrenBranches = trialToDelete.branches ?? []
 
-      // Smart reconnect in trials
-      doc.trials.forEach(trial => {
-        if (trial.branches?.includes(trialId)) {
-          const filtered = trial.branches.filter(id => id !== trialId)
-          childrenBranches.forEach(cid => {
-            if (!filtered.includes(cid)) filtered.push(cid)
-          })
-          trial.branches = filtered
-        }
-      })
+      // Smart reconnect (inherits only existing targets) + prune dangling refs
+      reconnectParentsToChildren(doc, trialId, childrenBranches)
 
-      // Smart reconnect in loops
+      // Remove from loop.trials
       doc.loops.forEach(loop => {
-        if (loop.branches?.includes(trialId)) {
-          const filtered = loop.branches.filter(id => id !== trialId)
-          childrenBranches.forEach(cid => {
-            if (!filtered.includes(cid)) filtered.push(cid)
-          })
-          loop.branches = filtered
-        }
-        // Remove from loop.trials
         if (loop.trials) loop.trials = loop.trials.filter(id => id !== trialId)
       })
 
       // Remove from trials[]
       doc.trials = doc.trials.filter(t => t.id !== trialId)
+      pruneDanglingBranches(doc)
 
       // Remove from timeline
       doc.timeline = doc.timeline.filter(item => !(item.id === trialId && item.type === 'trial'))

@@ -250,6 +250,28 @@ describe('DELETE /api/loop/:experimentID/:id', () => {
     expect(db.data.trials[0].loops).toHaveLength(0)
   })
 
+  test('prunes dangling branch targets inherited from the deleted loop', async () => {
+    const { app, db } = await freshApp()
+    db.data.trials.push({
+      experimentID: 'E1',
+      trials: [
+        { id: 1, name: 'T1', parentLoopId: 'loop_1', branches: [] },
+        { id: 2, name: 'T2', parentLoopId: null, branches: [] },
+      ],
+      loops: [{ id: 'loop_1', name: 'L1', trials: [1], branches: ['ghost'] }],
+      timeline: [
+        { id: 'loop_1', type: 'loop', name: 'L1', branches: ['ghost'], trials: [1] },
+        { id: 2, type: 'trial', name: 'T2', branches: [] },
+      ],
+    })
+    await db.write()
+    const res = await request(app).delete('/api/loop/E1/loop_1').expect(200)
+    expect(res.body.success).toBe(true)
+    await db.read()
+    expect(db.data.trials[0].trials.find(t => t.id === 1).branches).toEqual([])
+    expect(res.body.graph.diagnostics.map(d => d.code)).not.toContain('BRANCH_TARGET_NOT_FOUND')
+  })
+
   test('reconnects parent branches to first trial', async () => {
     const { app, db } = await freshApp()
     db.data.trials.push({

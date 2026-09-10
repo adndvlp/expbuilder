@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "../../../utils/db.js";
 import {
   getExperimentDoc,
+  pruneDanglingBranches,
   reconnectParentsToChildren,
   syncTimelineItems,
 } from "./state.js";
@@ -166,6 +167,7 @@ router.delete("/api/trial/:experimentID/:id", async (req, res) => {
     reconnectParentsToChildren(experimentDoc, trialId, childrenBranches);
     removeItemFromScopes(experimentDoc, trialId);
     experimentDoc.trials = experimentDoc.trials.filter((t) => t.id !== trialId);
+    pruneDanglingBranches(experimentDoc);
     syncTimelineItems(experimentDoc);
     experimentDoc.updatedAt = new Date().toISOString();
 

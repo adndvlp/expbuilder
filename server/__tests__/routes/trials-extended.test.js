@@ -149,6 +149,54 @@ describe('DELETE /api/trial/:experimentID/:id', () => {
     await db.read()
     expect(db.data.trials[0].loops[0].trials).not.toContain(1)
   })
+
+  test('does not inherit dangling branch targets from the deleted trial', async () => {
+    const { app, db } = await freshApp()
+    db.data.trials.push({
+      experimentID: 'E1',
+      trials: [
+        { id: 1, name: 'Parent', branches: [2] },
+        { id: 2, name: 'ToDelete', branches: ['ghost'] },
+        { id: 3, name: 'Child', branches: [] },
+      ],
+      loops: [],
+      timeline: [
+        { id: 1, type: 'trial', name: 'Parent' },
+        { id: 2, type: 'trial', name: 'ToDelete' },
+        { id: 3, type: 'trial', name: 'Child' },
+      ],
+    })
+    await db.write()
+    const res = await request(app).delete('/api/trial/E1/2').expect(200)
+    expect(res.body.success).toBe(true)
+    await db.read()
+    const parent = db.data.trials[0].trials.find(t => t.id === 1)
+    expect(parent.branches).toEqual([])
+    expect(res.body.graph.diagnostics.map(d => d.code)).not.toContain('BRANCH_TARGET_NOT_FOUND')
+  })
+
+  test('prunes pre-existing dangling branch targets on delete', async () => {
+    const { app, db } = await freshApp()
+    db.data.trials.push({
+      experimentID: 'E1',
+      trials: [
+        { id: 1, name: 'A', branches: [999] },
+        { id: 2, name: 'B', branches: [] },
+      ],
+      loops: [{ id: 'loop_1', name: 'L1', trials: [], branches: [999] }],
+      timeline: [
+        { id: 1, type: 'trial', name: 'A' },
+        { id: 2, type: 'trial', name: 'B' },
+      ],
+    })
+    await db.write()
+    const res = await request(app).delete('/api/trial/E1/2').expect(200)
+    expect(res.body.success).toBe(true)
+    await db.read()
+    expect(db.data.trials[0].trials.find(t => t.id === 1).branches).toEqual([])
+    expect(db.data.trials[0].loops[0].branches).toEqual([])
+    expect(res.body.graph.diagnostics.map(d => d.code)).not.toContain('BRANCH_TARGET_NOT_FOUND')
+  })
 })
 
 describe('DELETE /api/trials/:experimentID', () => {

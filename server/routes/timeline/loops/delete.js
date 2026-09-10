@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db } from "../../../utils/db.js";
 import { findLastItems, getExperimentDoc, syncTimelineBranches } from "./state.js";
+import { pruneDanglingBranches } from "../trials/state.js";
 import { buildExperimentGraph } from "../graph/buildExperimentGraph.js";
 import { getItemOwnerId, idsMatch } from "../graph/identity.js";
 import {
@@ -119,6 +120,7 @@ router.delete("/api/loop/:experimentID/:id", async (req, res) => {
         loopIndex < 0 ? undefined : loopIndex + index,
       ),
     );
+    pruneDanglingBranches(experimentDoc);
     syncTimelineBranches(experimentDoc);
     experimentDoc.updatedAt = new Date().toISOString();
 

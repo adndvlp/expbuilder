@@ -1,3 +1,5 @@
+import { serializeRuntimeFunctions } from "./serializeRuntimeFunctions";
+
 export type ExecutionAddress = {
   targetId: string | number;
   targetKind: "trial" | "loop";
@@ -205,15 +207,19 @@ export function observeJumpReload(request: JumpRequestV2): JumpReloadResult {
 }
 
 export function getJumpRequestRuntimeCode(): string {
+  const serialized = serializeRuntimeFunctions([
+    ["isRecord", isRecord],
+    ["normalizeNavigationId", normalizeNavigationId],
+    ["isJumpRequest", isJumpRequest],
+    ["parseJumpRequest", parseJumpRequest],
+    ["createJumpRequest", createJumpRequest],
+    ["allowsJumpItem", allowsJumpItem],
+    ["enterJumpItem", enterJumpItem],
+    ["observeJumpReload", observeJumpReload],
+  ]);
   return `
-    const isRecord = ${isRecord.toString()};
-    const normalizeNavigationId = ${normalizeNavigationId.toString()};
-    const isJumpRequest = ${isJumpRequest.toString()};
-    const parseJumpRequest = ${parseJumpRequest.toString()};
-    const createJumpRequest = ${createJumpRequest.toString()};
-    const allowsJumpItem = ${allowsJumpItem.toString()};
-    const enterJumpItem = ${enterJumpItem.toString()};
-    const observeJumpReload = ${observeJumpReload.toString()};
+  {
+    ${serialized}
     window.ExpBuilderJumpProtocol = Object.freeze({
       parse: parseJumpRequest,
       create: createJumpRequest,
@@ -221,5 +227,6 @@ export function getJumpRequestRuntimeCode(): string {
       enter: enterJumpItem,
       observeReload: observeJumpReload
     });
+  }
   `;
 }
