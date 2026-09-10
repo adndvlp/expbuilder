@@ -1,16 +1,12 @@
 {
   "name": "ButtonResponseComponent",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "parameters": {
     "name": {
       "type": "string"
     },
     "choices": {
       "type": "string_array"
-    },
-    "button_html": {
-      "type": "function",
-      "default": "function (choice: string, choice_index: number) {\n        return `<button class=\"jspsych-btn\">${choice}</button>`;\n      }"
     },
     "image_button_width": {
       "type": "number",

@@ -85,7 +85,7 @@ Drawing canvas. Parameters: `canvas_width`, `canvas_height`, `stroke_color`, `st
 ## Response Components
 
 ### 1. ButtonResponseComponent
-Clickable buttons. Parameters: `choices` (button labels array), `button_html`, `margin_vertical`, `margin_horizontal`, `coordinates`
+Clickable buttons. Parameters: `choices` (button labels array), `button_layout`, `grid_rows`, `grid_columns`, `coordinates`
 
 ### 2. ClickResponseComponent
 Click/tap anywhere. Parameters: `target` (null=anywhere), `coordinates`

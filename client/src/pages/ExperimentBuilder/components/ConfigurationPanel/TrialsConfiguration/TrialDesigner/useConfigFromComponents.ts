@@ -64,12 +64,15 @@ export default function useConfigComponents({
       if (comp.config) {
         Object.entries(comp.config).forEach(([key, entry]: [string, any]) => {
           // Ignorar propiedades estructurales - estas ya se manejan arriba
+          // button_html se erradicó de ButtonResponseComponent: se filtra aquí
+          // para no re-emitir valores guardados en trials antiguos.
           if (
             key !== "coordinates" &&
             key !== "width" &&
             key !== "height" &&
             key !== "rotation" &&
-            key !== "zIndex"
+            key !== "zIndex" &&
+            key !== "button_html"
           ) {
             // Guardar directamente en formato {source, value}
             const value =

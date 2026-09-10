@@ -75,13 +75,16 @@ export default function useLoadComponents({
         // Reconstruir config desde las propiedades guardadas en formato {source, value}
         Object.entries(comp).forEach(([key, value]) => {
           // Ignorar propiedades estructurales y type
+          // button_html se erradicó de ButtonResponseComponent: se descarta aquí
+          // para migrar trials antiguos.
           if (
             key !== "type" &&
             key !== "coordinates" &&
             key !== "width" &&
             key !== "height" &&
             key !== "rotation" &&
-            key !== "zIndex"
+            key !== "zIndex" &&
+            key !== "button_html"
           ) {
             // Asumir que siempre está en formato {source, value}
             if (
@@ -171,13 +174,16 @@ export default function useLoadComponents({
         // Reconstruir config desde las propiedades guardadas en formato {source, value}
         Object.entries(comp).forEach(([key, value]) => {
           // Ignorar propiedades estructurales y type
+          // button_html se erradicó de ButtonResponseComponent: se descarta aquí
+          // para migrar trials antiguos.
           if (
             key !== "type" &&
             key !== "coordinates" &&
             key !== "width" &&
             key !== "height" &&
             key !== "rotation" &&
-            key !== "zIndex"
+            key !== "zIndex" &&
+            key !== "button_html"
           ) {
             // Si ya está en formato {source, value}, usarlo directamente
             if (

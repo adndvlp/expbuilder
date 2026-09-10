@@ -12,12 +12,11 @@ Response components capture the participant's response and determine when the tr
 
 ### ButtonResponseComponent
 
-Clickable buttons with flexible layout. Standard button visuals are drawn in Canvas, with transparent native buttons overlaid for real interaction. Custom \`button_html\` uses the DOM path.
+Clickable buttons with flexible layout. Standard button visuals are drawn in Canvas, with transparent native buttons overlaid for real interaction. Image choices fall back to the DOM path.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | \`choices\` | string[] | \`[]\` | Button texts |
-| \`button_html\` | string | \`""\` | HTML template (\`{{choice}}\` = button text) |
 | \`button_layout\` | string | \`"flex"\` | \`flex\`, \`grid\` |
 | \`columns\` | number | \`1\` | Columns in grid mode |
 | \`rows\` | number | \`1\` | Rows in grid mode |

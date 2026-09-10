@@ -44,7 +44,7 @@ The current runtime uses a shared \`CanvasStage\` for timing-critical visual dra
 |---|---|
 | \`ImageComponent\` | Preloads/decodes the image, prepares an \`ImageBitmap\` when available, and draws the image into Canvas at onset. |
 | \`TextComponent\` | Plain text is drawn into Canvas. Cloze/input text still uses DOM because it needs real inputs. |
-| \`ButtonResponseComponent\` | Standard button visuals are drawn into Canvas; transparent native buttons remain on top for click, focus, keyboard, and accessibility behavior. Custom \`button_html\` falls back to DOM. |
+| \`ButtonResponseComponent\` | Standard button visuals are drawn into Canvas; transparent native buttons remain on top for click, focus, keyboard, and accessibility behavior. Image buttons fall back to DOM. |
 | \`SliderResponseComponent\` | Slider visuals are drawn into Canvas; a transparent native \`input[type=range]\` remains on top for real browser interaction. |
 | \`ClickResponseComponent\` | Click/touch capture uses a DOM overlay; the optional response marker is drawn into Canvas. |
 | \`SketchpadComponent\` | Uses its own drawing canvas because the participant draws into it. |
