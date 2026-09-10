@@ -11,6 +11,7 @@ export async function waitForGithubRepoReady(
   const maxWaitMs = options.maxWaitMs ?? 30000;
   const pollIntervalMs = options.pollIntervalMs ?? 500;
   const startTime = Date.now();
+  let waitedMs = 0;
 
   while (Date.now() - startTime < maxWaitMs) {
     const r = await fetch(
@@ -24,9 +25,10 @@ export async function waitForGithubRepoReady(
       },
     );
     if (r.ok) {
-      return { success: true, waitedMs: Date.now() - startTime };
+      return { success: true, waitedMs };
     }
     await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    waitedMs += pollIntervalMs;
   }
 
   return {
