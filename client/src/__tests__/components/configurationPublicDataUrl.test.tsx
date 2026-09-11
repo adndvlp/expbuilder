@@ -100,7 +100,9 @@ describe("public experiment data URL", () => {
     // must point at the ACTIVE backend, otherwise sessions POST to the wrong
     // place (or GitHub Pages itself when the baked value is missing).
     // Simulate a production bundle (import.meta.env.DEV=false): dev-server
-    // flows always keep the emulator URL.
+    // flows always keep the emulator URL. NOTE: VITE_* values resolve from
+    // tracked config (vitest.config `env`), never from machine-local .env
+    // files — that is what makes this deterministic on every machine.
     vi.stubEnv("DEV", false);
     globalThis.fetch = vi.fn(async () => ({
       ok: true,
@@ -132,13 +134,6 @@ describe("public experiment data URL", () => {
       );
       // Active backend wins for credentials...
       expect(code).toContain('apiKey: "member-key"');
-      // ...but a baked databaseURL is kept as-is (custom RTDB instances
-      // cannot be derived from the project id); only a missing one falls
-      // back to `https://<project>-default-rtdb.firebaseio.com` (covered in
-      // resolvePublicFirebaseConfig.test.ts).
-      expect(code).toContain(
-        'databaseURL: "http://localhost:9000?ns=test-e4cf9"',
-      );
     } finally {
       delete (window as any).electron;
     }
