@@ -61,14 +61,16 @@ const command = (app, key, body = {}) =>
 describe("atomic loop branch command", () => {
   test("[TA-03] rolls back target allocation when post-mutation graph validation fails", async () => {
     const { app, db } = await freshApp();
-    db.data.trials[0].trials[0].branches = ["missing-target"];
+    // A self-reference survives dangling-branch healing (its target exists),
+    // so it still drives post-mutation validation to GRAPH_INVALID.
+    db.data.trials[0].trials[0].branches = [1];
     await db.write();
 
     const response = await command(app, "rollback-after-allocation").expect(409);
     expect(response.body.code).toBe("GRAPH_INVALID");
     await db.read();
     expect(db.data.trials[0].trials.map(({ id }) => id)).toEqual([1, 2]);
-    expect(db.data.trials[0].trials[0].branches).toEqual(["missing-target"]);
+    expect(db.data.trials[0].trials[0].branches).toEqual([1]);
     expect(db.data.mutationReceipts).toEqual([]);
   });
 

@@ -169,6 +169,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     contextMenu,
     copy: copySelectedComponents,
     cut: cutSelectedComponents,
+    del: deleteSelectedComponents,
     editingTextId,
     isDemoRunning,
     isOpen,

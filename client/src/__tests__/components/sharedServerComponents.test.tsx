@@ -51,7 +51,7 @@ describe("shared server controls", () => {
     );
     expect(restartApp).toHaveBeenCalled();
     expect(
-      screen.getByText("Connected. ExpBuilder is restarting…"),
+      await screen.findByText("Connected. ExpBuilder is restarting…"),
     ).toBeInTheDocument();
   });
 

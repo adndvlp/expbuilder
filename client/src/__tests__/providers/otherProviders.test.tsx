@@ -126,6 +126,10 @@ describe("PluginsProvider", () => {
     });
   });
 
+  // NOTE: the provider autosaves through a real 1000ms debounce, and this
+  // test walks three save cycles in series. Under full-suite load the event
+  // loop can stall long enough to exceed the default 5s per-test timeout,
+  // so this behavioral test carries an explicit budget (assertions unchanged).
   it("uses a fallback message for metadata extraction errors", async () => {
     let saveResult: Record<string, unknown> = { metadataStatus: "error" };
     let rejectSave = false;
@@ -156,7 +160,7 @@ describe("PluginsProvider", () => {
 
     await waitFor(() => {
       expect(getContext()?.metadataError).toBe("Error extracting metadata");
-    }, { timeout: 5000 });
+    }, { timeout: 10000 });
 
     saveResult = { metadataStatus: "ok" };
     act(() => {
@@ -165,7 +169,7 @@ describe("PluginsProvider", () => {
 
     await waitFor(() => {
       expect(getContext()?.metadataError).toBe("");
-    }, { timeout: 5000 });
+    }, { timeout: 10000 });
 
     rejectSave = true;
     act(() => {
@@ -176,8 +180,8 @@ describe("PluginsProvider", () => {
         "Error saving plugin config:",
         expect.any(Error),
       );
-    }, { timeout: 5000 });
-  });
+    }, { timeout: 10000 });
+  }, 30000);
 });
 
 describe("UrlProvider", () => {

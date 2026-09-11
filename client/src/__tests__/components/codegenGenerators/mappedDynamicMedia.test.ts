@@ -37,7 +37,6 @@ describe("MappedJson", () => {
             {
               type: "ButtonResponseComponent",
               choices: { source: "csv", value: "missing_choices" },
-              button_html: { source: "typed", value: "<button>Keep</button>" },
               unsupported: { source: "computed", value: "keep-wrapper" },
             },
           ],
@@ -77,7 +76,6 @@ describe("MappedJson", () => {
           {
             type: "ButtonResponseComponent",
             choices: ["missing_choices"],
-            button_html: "<button>Keep</button>",
             unsupported: { source: "computed", value: "keep-wrapper" },
           },
         ],

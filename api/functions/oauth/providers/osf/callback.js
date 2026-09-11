@@ -54,7 +54,7 @@ export const osfOAuthCallback = onRequest({ cors: true }, async (req, res) => {
 
   try {
     // T-5: signed-state required. Rejects raw state=uid (legacy CSRF vector).
-    const stateCheck = validateOAuthState(state, "osf");
+    const stateCheck = await validateOAuthState(state, "osf");
     if (!stateCheck.ok) {
       return res.status(400).json({
         success: false,

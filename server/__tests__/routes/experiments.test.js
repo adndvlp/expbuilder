@@ -404,6 +404,79 @@ describe('POST /api/publish-experiment/:experimentID', () => {
     await request(app).post('/api/publish-experiment/E1').send({ uid: 'u1', generatedPublicCode: 'code' }).expect(404)
   })
 
+  test('blocks publishing a structurally invalid graph', async () => {
+    const githubFetch = jest.fn()
+    const originalFetch = global.fetch
+    global.fetch = githubFetch
+    process.env.FIREBASE_URL = 'https://firebase.example.com'
+    const { app, db } = await freshApp()
+    db.data.experiments.push({
+      experimentID: 'E1',
+      name: 'Broken Exp',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    // Self-branch survives dangling-branch healing: unpublishable as-is.
+    db.data.trials.push({
+      experimentID: 'E1',
+      trials: [{ id: 1, name: 'T1', branches: [1] }],
+      loops: [],
+      timeline: [{ id: 1, type: 'trial', name: 'T1', branches: [1] }],
+    })
+    await db.write()
+
+    const res = await request(app)
+      .post('/api/publish-experiment/E1')
+      .send({ uid: 'u1', generatedPublicCode: 'code' })
+      .expect(400)
+
+    expect(res.body.code).toBe('GRAPH_INVALID')
+    expect(res.body.diagnostics.map((d) => d.code)).toContain('BRANCH_SELF_REFERENCE')
+    expect(githubFetch).not.toHaveBeenCalled()
+    global.fetch = originalFetch
+  })
+
+  test('heals dangling branches and publishes', async () => {
+    const originalFetch = global.fetch
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      json: async () => ({
+        success: true,
+        pagesUrl: 'https://pages.example.com/healed-exp',
+        repoUrl: 'https://github.com/u/healed-exp',
+      }),
+    })
+    process.env.FIREBASE_URL = 'https://firebase.example.com'
+    const { app, db } = await freshApp()
+    db.data.experiments.push({
+      experimentID: 'E1',
+      name: 'Healed Exp',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    db.data.trials.push({
+      experimentID: 'E1',
+      trials: [
+        { id: 1, name: 'T1', branches: [1788987326502] },
+        { id: 2, name: 'T2', branches: [] },
+      ],
+      loops: [],
+      timeline: [
+        { id: 1, type: 'trial', name: 'T1', branches: [1788987326502] },
+        { id: 2, type: 'trial', name: 'T2', branches: [] },
+      ],
+    })
+    await db.write()
+
+    await request(app)
+      .post('/api/publish-experiment/E1')
+      .send({ uid: 'u1', generatedPublicCode: 'const publicCode = true;' })
+      .expect(200)
+
+    await db.read()
+    expect(db.data.trials[0].trials.find((t) => t.id === 1).branches).toEqual([])
+    global.fetch = originalFetch
+  })
+
   test('publishes from existing HTML with media, CDN swaps, plugin scripts, and storage update', async () => {
     const originalFetch = global.fetch
     global.fetch = jest.fn().mockResolvedValueOnce({

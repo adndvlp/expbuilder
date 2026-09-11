@@ -25,6 +25,6 @@ if (!platformFlag || !archFlag) {
   );
 }
 
-execSync(`electron-builder ${platformFlag} ${archFlag}`, {
+execSync(`electron-builder ${platformFlag} ${archFlag} -p never`, {
   stdio: "inherit",
 });

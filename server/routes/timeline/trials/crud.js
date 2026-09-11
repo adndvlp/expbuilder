@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { db } from "../../../utils/db.js";
 import {
+  filterLiveConditions,
   getExperimentDoc,
+  itemExists,
+  pruneDanglingBranches,
   reconnectParentsToChildren,
   syncTimelineItems,
 } from "./state.js";
@@ -11,7 +14,7 @@ import {
   moveItemToScope,
   removeItemFromScopes,
 } from "../graph/ownership.js";
-import { findLoop, normalizeScopeId } from "../graph/identity.js";
+import { findLoop, idsMatch, normalizeScopeId } from "../graph/identity.js";
 import { allocateTrialId } from "../graph/itemIds.js";
 
 const router = Router();
@@ -70,7 +73,6 @@ router.post("/api/trial/:experimentID", async (req, res) => {
 router.get("/api/trial/:experimentID/:id", async (req, res) => {
   try {
     const { experimentID, id } = req.params;
-    const trialId = Number(id);
     const experimentDoc = await getExperimentDoc(experimentID);
 
     if (!experimentDoc) {
@@ -79,7 +81,7 @@ router.get("/api/trial/:experimentID/:id", async (req, res) => {
         .json({ success: false, error: "Experiment not found" });
     }
 
-    const trial = experimentDoc.trials.find((t) => t.id === trialId);
+    const trial = experimentDoc.trials.find((t) => idsMatch(t.id, id));
     if (!trial) {
       return res.status(404).json({ success: false, error: "Trial not found" });
     }
@@ -104,9 +106,35 @@ router.patch("/api/trial/:experimentID/:id", async (req, res) => {
         .json({ success: false, error: "Experiment not found" });
     }
 
-    const trialIndex = experimentDoc.trials.findIndex((t) => t.id === trialId);
+    const trialIndex = experimentDoc.trials.findIndex((t) =>
+      idsMatch(t.id, id),
+    );
     if (trialIndex === -1) {
       return res.status(404).json({ success: false, error: "Trial not found" });
+    }
+
+    // Branch sets can carry ids of already-deleted items (stale canvas
+    // state): drop them instead of persisting an invalid graph. The same
+    // applies to condition targets, which would otherwise stall or throw
+    // the run when they fire.
+    if (updates.branches !== undefined) {
+      updates.branches = (updates.branches ?? []).filter((branchId) =>
+        itemExists(experimentDoc, branchId),
+      );
+    }
+    if (updates.branchConditions !== undefined) {
+      updates.branchConditions = filterLiveConditions(
+        experimentDoc,
+        updates.branchConditions,
+        "nextTrialId",
+      );
+    }
+    if (updates.repeatConditions !== undefined) {
+      updates.repeatConditions = filterLiveConditions(
+        experimentDoc,
+        updates.repeatConditions,
+        "jumpToTrialId",
+      );
     }
 
     experimentDoc.trials[trialIndex] = {
@@ -117,12 +145,21 @@ router.patch("/api/trial/:experimentID/:id", async (req, res) => {
     };
 
     if (Object.hasOwn(updates, "parentLoopId")) {
+      // Moving a trial into a deleted (or never existing) loop must fail
+      // with a clear 400, not a 500 from moveItemToScope.
+      const targetScopeId = normalizeScopeId(updates.parentLoopId);
+      if (targetScopeId !== null && !findLoop(experimentDoc, targetScopeId)) {
+        return res.status(400).json({
+          success: false,
+          error: `Loop ${targetScopeId} not found`,
+        });
+      }
       moveItemToScope(experimentDoc, trialId, updates.parentLoopId);
     }
 
     if (updates.name || updates.branches !== undefined) {
       const timelineIndex = experimentDoc.timeline.findIndex(
-        (item) => item.id === trialId && item.type === "trial",
+        (item) => idsMatch(item.id, trialId) && item.type === "trial",
       );
       if (timelineIndex !== -1) {
         if (updates.name) {
@@ -160,12 +197,17 @@ router.delete("/api/trial/:experimentID/:id", async (req, res) => {
         .json({ success: false, error: "Experiment not found" });
     }
 
-    const trialToDelete = experimentDoc.trials.find((t) => t.id === trialId);
+    const trialToDelete = experimentDoc.trials.find((t) =>
+      idsMatch(t.id, id),
+    );
     const childrenBranches = trialToDelete?.branches || [];
 
     reconnectParentsToChildren(experimentDoc, trialId, childrenBranches);
     removeItemFromScopes(experimentDoc, trialId);
-    experimentDoc.trials = experimentDoc.trials.filter((t) => t.id !== trialId);
+    experimentDoc.trials = experimentDoc.trials.filter(
+      (t) => !idsMatch(t.id, trialId),
+    );
+    pruneDanglingBranches(experimentDoc);
     syncTimelineItems(experimentDoc);
     experimentDoc.updatedAt = new Date().toISOString();
 

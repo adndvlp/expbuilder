@@ -9,7 +9,7 @@ import {
   setResponseStartTime,
 } from "../utils/PrecisionTiming";
 
-var version = "2.2.0";
+var version = "2.3.0";
 
 const info = {
   name: "ButtonResponseComponent",
@@ -28,18 +28,6 @@ const info = {
       default: void 0,
       array: true,
     },
-    /**
-     *  A function that generates the HTML for each button in the `choices` array. The function gets the string and index
-     * of the item in the `choices` array and should return valid HTML. If you want to use different markup for each
-     * button, you can do that by using a conditional on either parameter. The default parameter returns a button element
-     * with the text label of the choice, or an image if the choice is a URL to an image.
-     */
-    button_html: {
-      type: ParameterType.FUNCTION,
-      default: function (choice: string, choice_index: number) {
-        return `<button class="jspsych-btn">${choice}</button>`;
-      },
-    },
     /** Width of image buttons in pixels. Only applies when choices contain image URLs. */
     image_button_width: {
       type: ParameterType.INT,
@@ -53,8 +41,7 @@ const info = {
 
     /** Setting to `'grid'` will make the container element have the CSS property `display: grid` and enable the
      * use of `grid_rows` and `grid_columns`. Setting to `'flex'` will make the container element have the CSS
-     * property `display: flex`. You can customize how the buttons are laid out by adding inline CSS in the
-     * `button_html` parameter.
+     * property `display: flex`.
      */
     button_layout: {
       type: ParameterType.STRING,
@@ -224,7 +211,7 @@ let buttonComponentCounter = 0;
  * ButtonResponseComponent
  *
  * Standard text buttons use retained WebGL textures plus canvas-coordinate
- * hitboxes. Custom HTML and image buttons use the interactive DOM layer.
+ * hitboxes. Image buttons use the interactive DOM layer.
  */
 class ButtonResponseComponent {
   private jsPsych: any;
@@ -934,16 +921,9 @@ class ButtonResponseComponent {
       this.buttonGroupElement.classList.add("jspsych-btn-group-flex");
     }
 
-    const rawButtonHtml = this.resolveParam(trial.button_html, null);
-    const buttonHtml =
-      typeof rawButtonHtml === "function"
-        ? rawButtonHtml
-        : (choice: string, choice_index: number) =>
-            this.generateButtonHtml(choice, choice_index, trial);
-
     for (let i = 0; i < choices.length; i++) {
       const choice = choices[i];
-      const html = buttonHtml(choice, i);
+      const html = this.generateButtonHtml(choice, i, trial);
 
       this.buttonGroupElement.insertAdjacentHTML("beforeend", html);
       const buttonElement = this.buttonGroupElement.lastChild as HTMLElement;
@@ -979,7 +959,6 @@ class ButtonResponseComponent {
     const choices = this.getChoices(trial);
     this.useDomLayer =
       !this.responseTiming?.enabled ||
-      typeof this.resolveParam(trial.button_html, null) === "function" ||
       choices.some((choice) => this.isImageUrl(choice));
 
     if (this.useDomLayer) {

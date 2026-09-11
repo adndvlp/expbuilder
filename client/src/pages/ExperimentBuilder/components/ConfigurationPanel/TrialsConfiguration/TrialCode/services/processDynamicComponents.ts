@@ -68,15 +68,10 @@ export function processDynamicComponents(
       }
     });
 
-    // Eliminar button_html si es undefined o null para no contaminar el objeto
+    // button_html se erradicó de ButtonResponseComponent: eliminar siempre
+    // para migrar trials antiguos que aún lo tengan guardado.
     if ("button_html" in processedComp) {
-      if (
-        processedComp.button_html === undefined ||
-        processedComp.button_html === null
-      ) {
-        delete processedComp.button_html;
-      }
-      // Si es función o string, dejarla como está - stringifyWithFunctions la manejará
+      delete processedComp.button_html;
     }
 
     // Luego, mapear archivos multimedia en componentes (stimulus, src, etc.)

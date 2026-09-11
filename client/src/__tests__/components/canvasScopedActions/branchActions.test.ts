@@ -106,4 +106,33 @@ describe("scoped Canvas branch actions", () => {
     );
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
   });
+
+  it("resolves parents across string/number id types", async () => {
+    const dependencies = createDependencies();
+    const onSelectTrial = vi.fn();
+
+    await addScopedParentTrial({
+      scope: createRootScope(),
+      parentId: "1",
+      dependencies,
+      onSelectTrial,
+    });
+
+    expect(dependencies.createTrial).toHaveBeenCalledWith(
+      expect.objectContaining({ branches: [2] }),
+    );
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(
+      1,
+      { branches: [99] },
+    );
+    expect(dependencies.updateTimeline).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 1, branches: [99] }),
+      expect.objectContaining({ id: 99, branches: [2] }),
+      expect.objectContaining({ id: 2 }),
+      expect.objectContaining({ id: "parent-loop" }),
+    ]);
+    expect(onSelectTrial).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 99 }),
+    );
+  });
 });

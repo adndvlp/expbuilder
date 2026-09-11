@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { buildExperimentGraph } from "../graph/buildExperimentGraph.js";
+import { idsMatch } from "../graph/identity.js";
 import { getExperimentDoc } from "./state.js";
 
 const router = Router();
@@ -16,7 +17,7 @@ router.get(
         return res.status(404).json({ error: "Experiment not found" });
       }
 
-      const loop = experimentDoc.loops.find((l) => l.id === loopId);
+      const loop = experimentDoc.loops.find((l) => idsMatch(l.id, loopId));
       if (!loop) {
         return res.status(404).json({ error: "Loop not found" });
       }
@@ -41,14 +42,16 @@ router.get("/api/loop/:experimentID/:id", async (req, res) => {
         .json({ success: false, error: "Experiment not found" });
     }
 
-    const loop = experimentDoc.loops.find((l) => l.id === id);
+    const loop = experimentDoc.loops.find((l) => idsMatch(l.id, id));
     if (!loop) {
       return res.status(404).json({ success: false, error: "Loop not found" });
     }
 
     const trialsMetadata = loop.trials
       .map((trialId) => {
-        const trial = experimentDoc.trials.find((t) => t.id === trialId);
+        const trial = experimentDoc.trials.find((t) =>
+          idsMatch(t.id, trialId),
+        );
         return trial ? { id: trial.id, name: trial.name } : null;
       })
       .filter(Boolean);

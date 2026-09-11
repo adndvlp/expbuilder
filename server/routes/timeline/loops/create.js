@@ -7,8 +7,10 @@ import {
 } from "./state.js";
 import { createUniqueItemName } from "../uniqueItemName.js";
 import { buildExperimentGraph } from "../graph/buildExperimentGraph.js";
+import { findItem, findLoop, normalizeScopeId } from "../graph/identity.js";
 import { moveItemToScope } from "../graph/ownership.js";
 import { allocateLoopId } from "../graph/itemIds.js";
+import { pruneDanglingBranches } from "../trials/state.js";
 
 const router = Router();
 
@@ -18,6 +20,16 @@ router.post("/api/loop/:experimentID", async (req, res) => {
     const { experimentID } = req.params;
     const loopData = req.body;
     const experimentDoc = await getExperimentDoc(experimentID, true);
+
+    // A nested loop whose parent was deleted (or never existed) must fail
+    // with a clear 400, not a 500 from moveItemToScope.
+    const parentScopeId = normalizeScopeId(loopData.parentLoopId);
+    if (parentScopeId !== null && !findLoop(experimentDoc, parentScopeId)) {
+      return res.status(400).json({
+        success: false,
+        error: `Loop ${parentScopeId} not found`,
+      });
+    }
 
     const id = allocateLoopId(experimentDoc);
     const newLoop = {
@@ -33,11 +45,16 @@ router.post("/api/loop/:experimentID", async (req, res) => {
     newLoop.trials = [];
     experimentDoc.loops.push(newLoop);
     moveItemToScope(experimentDoc, newLoop.id, newLoop.parentLoopId);
-    childIds.forEach((itemId) =>
-      moveItemToScope(experimentDoc, itemId, newLoop.id),
-    );
+    // The canvas auto-includes branch descendants when grouping items, so
+    // childIds can reference trials deleted before dangling-branch pruning
+    // existed. Skip unknown items instead of failing the whole request with
+    // `Item <id> not found`, then prune the stale references below.
+    childIds
+      .filter((itemId) => findItem(experimentDoc, itemId))
+      .forEach((itemId) => moveItemToScope(experimentDoc, itemId, newLoop.id));
 
     replaceGroupedTrialBranches(experimentDoc, newLoop);
+    pruneDanglingBranches(experimentDoc);
     syncTimelineBranches(experimentDoc);
     experimentDoc.updatedAt = new Date().toISOString();
 

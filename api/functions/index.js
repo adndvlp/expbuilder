@@ -13,6 +13,7 @@ import { googleDriveOAuthCallback } from "./oauth/api/callbacks/google-drive.js"
 import { osfOAuthCallback } from "./oauth/api/callbacks/osf.js";
 import { osfManage } from "./oauth/api/osf-manage.js";
 import { createOAuthStateEndpoint } from "./oauth/api/state.js";
+import { getOAuthClientIds } from "./oauth/api/public-client-ids.js";
 import { uploadParticipantFile } from "./experiment/participant-files/api/upload.js";
 import { setGlobalOptions } from "firebase-functions/v2";
 
@@ -34,5 +35,6 @@ export {
   osfManage,
   osfOAuthCallback,
   createOAuthStateEndpoint,
+  getOAuthClientIds,
   uploadParticipantFile,
 };

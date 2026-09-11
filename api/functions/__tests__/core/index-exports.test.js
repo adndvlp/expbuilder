@@ -13,6 +13,7 @@ const googleDriveOAuthCallback = jest.fn();
 const osfOAuthCallback = jest.fn();
 const osfManage = jest.fn();
 const createOAuthStateEndpoint = jest.fn();
+const getOAuthClientIds = jest.fn();
 const uploadParticipantFile = jest.fn();
 const mockSetGlobalOptions = jest.fn();
 
@@ -48,6 +49,9 @@ jest.unstable_mockModule("../../oauth/api/osf-manage.js", () => ({
 }));
 jest.unstable_mockModule("../../oauth/api/state.js", () => ({
   createOAuthStateEndpoint,
+}));
+jest.unstable_mockModule("../../oauth/api/public-client-ids.js", () => ({
+  getOAuthClientIds,
 }));
 jest.unstable_mockModule("../../experiment/participant-files/api/upload.js", () => ({
   uploadParticipantFile,
@@ -88,6 +92,7 @@ describe("functions/index.js", () => {
       osfManage,
       osfOAuthCallback,
       createOAuthStateEndpoint,
+      getOAuthClientIds,
       uploadParticipantFile,
     });
     expect(functionsYamlEndpoints.sort()).toEqual(
@@ -105,6 +110,7 @@ describe("functions/index.js", () => {
         "osfManage",
         "osfOAuthCallback",
         "createOAuthStateEndpoint",
+        "getOAuthClientIds",
         "uploadParticipantFile",
       ].sort(),
     );

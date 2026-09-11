@@ -167,6 +167,7 @@ export default function CanvasContextMenu({
       />
       <MenuItem
         label="Delete"
+        shortcut="Del"
         disabled={!canCopy}
         destructive
         onClick={() => runAction(onDelete)}

@@ -1,3 +1,5 @@
+import { serializeRuntimeFunctions } from "./serializeRuntimeFunctions";
+
 export type RuntimeBranchRule = {
   column?: string;
   componentIdx?: string;
@@ -159,13 +161,17 @@ export function decideBranch(
 }
 
 export function getBranchEvaluatorRuntimeCode() {
+  const serialized = serializeRuntimeFunctions([
+    ["readBranchRuleValue", readBranchRuleValue],
+    ["compareBranchValue", compareBranchValue],
+    ["evaluateBranchCondition", evaluateBranchCondition],
+    ["findLatestTrialData", findLatestTrialData],
+    ["evaluateReferencedCondition", evaluateReferencedCondition],
+    ["decideBranch", decideBranch],
+  ]);
   return `
-    const readBranchRuleValue = ${readBranchRuleValue.toString()};
-    const compareBranchValue = ${compareBranchValue.toString()};
-    const evaluateBranchCondition = ${evaluateBranchCondition.toString()};
-    const findLatestTrialData = ${findLatestTrialData.toString()};
-    const evaluateReferencedCondition = ${evaluateReferencedCondition.toString()};
-    const decideBranch = ${decideBranch.toString()};
+  {
+    ${serialized}
     window.ExpBuilderBranching = {
       readRuleValue: readBranchRuleValue,
       compareValue: compareBranchValue,
@@ -173,5 +179,6 @@ export function getBranchEvaluatorRuntimeCode() {
       evaluateReferencedCondition: evaluateReferencedCondition,
       decide: decideBranch
     };
+  }
   `;
 }

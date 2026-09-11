@@ -210,15 +210,27 @@ test("[RUNTIME-CORRUPT-ROUTE-GUARD] [TR-13] [TA-14] [TG-08] rejects a dangling r
   });
   await author.configureButtonTrial("safe-sequential-trial");
 
+  // Dangling targets are healed on write (never persisted), so the graph
+  // carries no BRANCH_TARGET_NOT_FOUND and the artifact compiles cleanly.
+  const healed = await author.session.refreshGraph();
+  expect(healed.diagnostics.map((d) => d.code)).not.toContain(
+    "BRANCH_TARGET_NOT_FOUND",
+  );
+  await author.compileAndBuild();
+
+  // Corruption that healing cannot fix (self-reference) must still refuse
+  // to generate a runnable artifact.
+  await author.configureButtonTrial("corrupt-source", {
+    branches: [author.id("corrupt-source")],
+  });
   const graph = await author.session.refreshGraph();
   expect(graph.diagnostics).toContainEqual(
     expect.objectContaining({
-      code: "BRANCH_TARGET_NOT_FOUND",
+      code: "BRANCH_SELF_REFERENCE",
       sourceId: author.id("corrupt-source"),
-      targetId: "missing-target",
     }),
   );
   await expect(author.compileAndBuild()).rejects.toThrow(
-    "BRANCH_TARGET_NOT_FOUND",
+    "Invalid authored graph",
   );
 });

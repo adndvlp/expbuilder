@@ -638,7 +638,7 @@ The current runtime uses a shared \`CanvasStage\` for timing-critical visual dra
 |---|---|
 | \`ImageComponent\` | Preloads/decodes the image, prepares an \`ImageBitmap\` when available, and draws the image into Canvas at onset. |
 | \`TextComponent\` | Plain text is drawn into Canvas. Cloze/input text still uses DOM because it needs real inputs. |
-| \`ButtonResponseComponent\` | Standard button visuals are drawn into Canvas; transparent native buttons remain on top for click, focus, keyboard, and accessibility behavior. Custom \`button_html\` falls back to DOM. |
+| \`ButtonResponseComponent\` | Standard button visuals are drawn into Canvas; transparent native buttons remain on top for click, focus, keyboard, and accessibility behavior. Image buttons fall back to DOM. |
 | \`SliderResponseComponent\` | Slider visuals are drawn into Canvas; a transparent native \`input[type=range]\` remains on top for real browser interaction. |
 | \`ClickResponseComponent\` | Click/touch capture uses a DOM overlay; the optional response marker is drawn into Canvas. |
 | \`SketchpadComponent\` | Uses its own drawing canvas because the participant draws into it. |
@@ -826,12 +826,11 @@ Response components capture the participant's response and determine when the tr
 
 ### ButtonResponseComponent
 
-Clickable buttons with flexible layout. Standard button visuals are drawn in Canvas, with transparent native buttons overlaid for real interaction. Custom \`button_html\` uses the DOM path.
+Clickable buttons with flexible layout. Standard button visuals are drawn in Canvas, with transparent native buttons overlaid for real interaction. Image choices fall back to the DOM path.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | \`choices\` | string[] | \`[]\` | Button texts |
-| \`button_html\` | string | \`""\` | HTML template (\`{{choice}}\` = button text) |
 | \`button_layout\` | string | \`"flex"\` | \`flex\`, \`grid\` |
 | \`columns\` | number | \`1\` | Columns in grid mode |
 | \`rows\` | number | \`1\` | Rows in grid mode |

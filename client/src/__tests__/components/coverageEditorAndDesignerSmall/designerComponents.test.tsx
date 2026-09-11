@@ -72,7 +72,7 @@ describe("coverage designer small components", () => {
     fireEvent.mouseDown(menu);
     fireEvent.click(screen.getByRole("menuitem", { name: /Copy/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: /Cut/ }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Delete/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: /Undo/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: /Select All/ }));
     expect(actions.onCopy).toHaveBeenCalled();

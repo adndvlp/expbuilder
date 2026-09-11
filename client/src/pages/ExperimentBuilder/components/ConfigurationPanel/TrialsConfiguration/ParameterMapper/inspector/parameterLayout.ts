@@ -23,7 +23,6 @@ const primaryOrder: Record<string, number> = {
   choices: 0,
   html: 0,
   stimulus: 0,
-  button_html: 10,
   input_type: 20,
   name: 30,
 };

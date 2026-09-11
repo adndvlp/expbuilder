@@ -5,6 +5,7 @@ interface Args {
   contextMenu: CanvasContextMenuState | null;
   copy: () => boolean;
   cut: () => boolean;
+  del: () => boolean;
   editingTextId: string | null;
   isDemoRunning: boolean;
   isOpen: boolean;
@@ -30,6 +31,7 @@ export function useDesignerKeyboard({
   contextMenu,
   copy,
   cut,
+  del,
   editingTextId,
   isDemoRunning,
   isOpen,
@@ -88,4 +90,19 @@ export function useDesignerKeyboard({
     document.addEventListener("keydown", handleCommand);
     return () => document.removeEventListener("keydown", handleCommand);
   }, [copy, cut, editingTextId, isDemoRunning, isOpen, paste, selectAll, undo]);
+
+  useEffect(() => {
+    if (!isOpen || isDemoRunning || editingTextId) return;
+    const handleDelete = (event: KeyboardEvent) => {
+      if (event.key !== "Delete" && event.key !== "Backspace") return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (isEditableShortcutTarget(event.target)) return;
+      if (del()) {
+        event.preventDefault();
+        setContextMenu(null);
+      }
+    };
+    document.addEventListener("keydown", handleDelete);
+    return () => document.removeEventListener("keydown", handleDelete);
+  }, [del, editingTextId, isDemoRunning, isOpen, setContextMenu]);
 }

@@ -132,7 +132,7 @@ describe("Canvas container", () => {
     installTrialsContext();
   });
 
-  it("creates a loop from the range modal including branch descendants", async () => {
+  it("creates a loop from the range modal within the selected sequence", async () => {
     render(<Canvas />);
 
     fireEvent.click(screen.getByTitle("Add loop"));
@@ -140,7 +140,12 @@ describe("Canvas container", () => {
       "Are you sure you want to group these trials/loops into a loop?",
     );
 
-    fireEvent.click(screen.getByLabelText("Trial 1"));
+    // Selecting Trial 1 greys out Trial 3 (outside its sequence) while Trial 2
+    // stays available; confirming sends only the manual selection.
+    fireEvent.click(screen.getByLabelText("Trial 1", { exact: false }));
+    expect(screen.getByLabelText("Trial 3", { exact: false })).toBeDisabled();
+    expect(screen.getByLabelText("Trial 2", { exact: false })).not.toBeDisabled();
+    fireEvent.click(screen.getByLabelText("Trial 2", { exact: false }));
     fireEvent.click(screen.getByText("Confirm (2 items)"));
 
     await waitFor(() => {
@@ -170,7 +175,7 @@ describe("Canvas container", () => {
     render(<Canvas />);
 
     fireEvent.click(screen.getByTitle("Add loop"));
-    fireEvent.click(screen.getByLabelText("Trial 3"));
+    fireEvent.click(screen.getByLabelText("Trial 3", { exact: false }));
     fireEvent.click(screen.getByText("Confirm (1 items)"));
 
     await waitFor(() => {
