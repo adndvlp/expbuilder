@@ -14,6 +14,8 @@ import {
   isPublishableMediaFile,
 } from "./media.js";
 import { applyGeneratedArtifact } from "./artifact.js";
+import { buildExperimentGraph } from "../timeline/graph/buildExperimentGraph.js";
+import { pruneDanglingBranches } from "../timeline/trials/state.js";
 
 const router = Router();
 
@@ -170,6 +172,36 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
         success: false,
         error: "Experiment not found",
       });
+    }
+
+    // A published artifact freezes the timeline: heal legacy dangling
+    // references first, then refuse to freeze a graph whose routing is
+    // broken (unresolvable targets, cycles, self-references, invalid
+    // scopes). Duplicates are deduplicated at runtime and orphan items
+    // simply never execute, so neither blocks publishing.
+    const trialDoc = db.data.trials.find(
+      (t) => t.experimentID === experimentID,
+    );
+    if (trialDoc) {
+      pruneDanglingBranches(trialDoc);
+      const blocking = buildExperimentGraph(trialDoc).diagnostics.filter(
+        (diagnostic) =>
+          diagnostic.code !== "BRANCH_DUPLICATE" &&
+          diagnostic.code !== "OWNER_NOT_FOUND",
+      );
+      await db.write();
+      if (blocking.length > 0) {
+        const message =
+          `Experiment graph is invalid (${blocking.map((diagnostic) => diagnostic.code).join(", ")}). ` +
+          "Fix the timeline branches before publishing.";
+        return res.status(400).json({
+          success: false,
+          code: "GRAPH_INVALID",
+          message,
+          error: message,
+          diagnostics: blocking,
+        });
+      }
     }
 
     if (experiment.storage !== normalizedStorage) {

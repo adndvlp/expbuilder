@@ -20,7 +20,9 @@ export function useCanvasMoveActions(
   };
 
   const onMoveItem = (itemId: string | number) => {
-    const item = scope.items.find((candidate) => candidate.id === itemId);
+    const item = scope.items.find(
+      (candidate) => String(candidate.id) === String(itemId),
+    );
     if (!item) return;
     setItemToMove({ id: item.id, name: item.name, type: item.type });
     setShowMoveItemModal(true);

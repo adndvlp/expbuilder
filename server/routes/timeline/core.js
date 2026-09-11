@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db } from "../../utils/db.js";
 import { buildExperimentGraph } from "./graph/buildExperimentGraph.js";
+import { idsMatch } from "./graph/identity.js";
 
 const router = Router();
 
@@ -76,7 +77,9 @@ router.get("/api/timeline-names/:experimentID", async (req, res) => {
     const loopTrialNames = experimentDoc.loops.flatMap((loop) => {
       return loop.trials
         .map((trialId) => {
-          const trial = experimentDoc.trials.find((t) => t.id === trialId);
+          const trial = experimentDoc.trials.find((t) =>
+            idsMatch(t.id, trialId),
+          );
           return trial ? trial.name : null;
         })
         .filter(Boolean);

@@ -52,9 +52,15 @@ describe('PATCH /api/trial/:experimentID/:id', () => {
     const { app, db } = await freshApp()
     db.data.trials.push({
       experimentID: 'E1',
-      trials: [{ id: 1, name: 'Old', plugin: 'p', branches: [] }],
+      trials: [
+        { id: 1, name: 'Old', plugin: 'p', branches: [] },
+        { id: 2, name: 'T2', plugin: 'p', branches: [] },
+      ],
       loops: [],
-      timeline: [{ id: 1, type: 'trial', name: 'Old', branches: [] }],
+      timeline: [
+        { id: 1, type: 'trial', name: 'Old', branches: [] },
+        { id: 2, type: 'trial', name: 'T2', branches: [] },
+      ],
     })
     await db.write()
     const res = await request(app)
@@ -97,6 +103,133 @@ describe('PATCH /api/trial/:experimentID/:id', () => {
       .expect(200)
     expect(res.body.trial.trialCode).toBe('newCode')
     expect(res.body.trial.plugin).toBe('plugin-2')
+  })
+
+  test('moves a trial into a loop and back to the timeline', async () => {
+    const { app, db } = await freshApp()
+    db.data.trials.push({
+      experimentID: 'E1',
+      trials: [{ id: 1, name: 'T1', branches: [] }],
+      loops: [{ id: 'loop_1', name: 'L1', trials: [], branches: [] }],
+      timeline: [
+        { id: 1, type: 'trial', name: 'T1', branches: [] },
+        { id: 'loop_1', type: 'loop', name: 'L1', branches: [], trials: [] },
+      ],
+    })
+    await db.write()
+
+    await request(app)
+      .patch('/api/trial/E1/1')
+      .send({ parentLoopId: 'loop_1' })
+      .expect(200)
+    await db.read()
+    expect(db.data.trials[0].trials.find(t => t.id === 1).parentLoopId).toBe('loop_1')
+    expect(db.data.trials[0].loops.find(l => l.id === 'loop_1').trials).toEqual([1])
+
+    await request(app)
+      .patch('/api/trial/E1/1')
+      .send({ parentLoopId: null })
+      .expect(200)
+    await db.read()
+    expect(db.data.trials[0].trials.find(t => t.id === 1).parentLoopId).toBeNull()
+    expect(db.data.trials[0].loops.find(l => l.id === 'loop_1').trials).toEqual([])
+  })
+
+  test('400 when moving a trial into a missing loop', async () => {
+    const { app, db } = await freshApp()
+    db.data.trials.push({
+      experimentID: 'E1',
+      trials: [{ id: 1, name: 'T1', branches: [] }],
+      loops: [],
+      timeline: [{ id: 1, type: 'trial', name: 'T1', branches: [] }],
+    })
+    await db.write()
+
+    const res = await request(app)
+      .patch('/api/trial/E1/1')
+      .send({ parentLoopId: 'loop_ghost' })
+      .expect(400)
+
+    expect(res.body.success).toBe(false)
+    expect(res.body.error).toBe('Loop loop_ghost not found')
+    await db.read()
+    expect(db.data.trials[0].trials.find(t => t.id === 1).parentLoopId ?? null).toBeNull()
+  })
+
+  test('drops deleted branch targets instead of persisting an invalid graph', async () => {
+    const { app, db } = await freshApp()
+    const ghost = 1788987326502
+    db.data.trials.push({
+      experimentID: 'E1',
+      trials: [
+        { id: 1, name: 'T1', branches: [ghost] },
+        { id: 2, name: 'T2', branches: [] },
+      ],
+      loops: [],
+      timeline: [
+        { id: 1, type: 'trial', name: 'T1', branches: [ghost] },
+        { id: 2, type: 'trial', name: 'T2', branches: [] },
+      ],
+    })
+    await db.write()
+
+    const res = await request(app)
+      .patch('/api/trial/E1/1')
+      .send({ branches: [2, ghost] })
+      .expect(200)
+
+    expect(res.body.success).toBe(true)
+    await db.read()
+    expect(db.data.trials[0].trials.find(t => t.id === 1).branches).toEqual([2])
+    expect(res.body.graph.diagnostics.map(d => d.code)).not.toContain('BRANCH_TARGET_NOT_FOUND')
+  })
+
+  test('drops condition entries whose target no longer exists', async () => {
+    const { app, db } = await freshApp()
+    const ghost = 1788987326502
+    db.data.trials.push({
+      experimentID: 'E1',
+      trials: [
+        {
+          id: 1,
+          name: 'T1',
+          branches: [],
+          branchConditions: [
+            { id: 'c1', rules: [], nextTrialId: 2 },
+            { id: 'c2', rules: [], nextTrialId: ghost },
+            { id: 'c3', rules: [], nextTrialId: null },
+          ],
+          repeatConditions: [
+            { id: 'r1', rules: [], jumpToTrialId: ghost },
+          ],
+        },
+        { id: 2, name: 'T2', branches: [] },
+      ],
+      loops: [],
+      timeline: [
+        { id: 1, type: 'trial', name: 'T1', branches: [] },
+        { id: 2, type: 'trial', name: 'T2', branches: [] },
+      ],
+    })
+    await db.write()
+
+    const res = await request(app)
+      .patch('/api/trial/E1/1')
+      .send({
+        branchConditions: [
+          { id: 'c1', rules: [], nextTrialId: 2 },
+          { id: 'c2', rules: [], nextTrialId: ghost },
+          { id: 'c3', rules: [], nextTrialId: null },
+        ],
+        repeatConditions: [{ id: 'r1', rules: [], jumpToTrialId: ghost }],
+      })
+      .expect(200)
+
+    expect(res.body.success).toBe(true)
+    await db.read()
+    const t1 = db.data.trials[0].trials.find(t => t.id === 1)
+    expect(t1.branchConditions.map(c => c.id)).toEqual(['c1', 'c3'])
+    expect(t1.repeatConditions).toEqual([])
   })
 })
 
@@ -196,6 +329,49 @@ describe('DELETE /api/trial/:experimentID/:id', () => {
     expect(db.data.trials[0].trials.find(t => t.id === 1).branches).toEqual([])
     expect(db.data.trials[0].loops[0].branches).toEqual([])
     expect(res.body.graph.diagnostics.map(d => d.code)).not.toContain('BRANCH_TARGET_NOT_FOUND')
+  })
+
+  test('prunes condition targets pointing at the deleted trial', async () => {
+    const { app, db } = await freshApp()
+    db.data.trials.push({
+      experimentID: 'E1',
+      trials: [
+        {
+          id: 1,
+          name: 'A',
+          branches: [2],
+          branchConditions: [
+            { id: 'c1', rules: [], nextTrialId: 2 },
+            { id: 'c2', rules: [], nextTrialId: 3 },
+          ],
+          repeatConditions: [{ id: 'r1', rules: [], jumpToTrialId: 2 }],
+        },
+        { id: 2, name: 'ToDelete', branches: [] },
+        { id: 3, name: 'C', branches: [] },
+      ],
+      loops: [
+        {
+          id: 'loop_1',
+          name: 'L1',
+          trials: [],
+          branches: [],
+          branchConditions: [{ id: 'lc1', rules: [], nextTrialId: 2 }],
+        },
+      ],
+      timeline: [
+        { id: 1, type: 'trial', name: 'A' },
+        { id: 2, type: 'trial', name: 'ToDelete' },
+        { id: 3, type: 'trial', name: 'C' },
+      ],
+    })
+    await db.write()
+    const res = await request(app).delete('/api/trial/E1/2').expect(200)
+    expect(res.body.success).toBe(true)
+    await db.read()
+    const doc = db.data.trials[0]
+    expect(doc.trials.find(t => t.id === 1).branchConditions.map(c => c.id)).toEqual(['c2'])
+    expect(doc.trials.find(t => t.id === 1).repeatConditions).toEqual([])
+    expect(doc.loops.find(l => l.id === 'loop_1').branchConditions).toEqual([])
   })
 })
 

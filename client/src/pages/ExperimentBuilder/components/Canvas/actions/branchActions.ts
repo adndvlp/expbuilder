@@ -18,7 +18,9 @@ type ScopedBranchInput = ScopedActionInput &
   };
 
 function getParentItem(input: ScopedBranchInput) {
-  return input.scope.items.find((item) => item.id === input.parentId);
+  return input.scope.items.find(
+    (item) => String(item.id) === String(input.parentId),
+  );
 }
 
 function createTrialInput(
@@ -66,12 +68,17 @@ function reorderRootItems(
   parentId: CanvasItemId,
   trial: Trial,
 ) {
+  const parentKey = String(parentId);
   const nextItems = items
     .map((item) =>
-      item.id === parentId ? { ...item, branches: [trial.id] } : item,
+      String(item.id) === parentKey
+        ? { ...item, branches: [trial.id] }
+        : item,
     )
-    .filter((item) => item.id !== trial.id);
-  const parentIndex = nextItems.findIndex((item) => item.id === parentId);
+    .filter((item) => String(item.id) !== String(trial.id));
+  const parentIndex = nextItems.findIndex(
+    (item) => String(item.id) === parentKey,
+  );
   const insertIndex = parentIndex >= 0 ? parentIndex + 1 : nextItems.length;
   nextItems.splice(insertIndex, 0, {
     id: trial.id,

@@ -1,6 +1,7 @@
 import { buildExperimentGraph } from "../graph/buildExperimentGraph.js";
 import { createLoopBranch } from "./createLoopBranch.js";
 import { findTrial } from "./scopeGraph.js";
+import { pruneDanglingBranches } from "../trials/state.js";
 
 const OPERATION = "create-loop-branch";
 
@@ -69,6 +70,10 @@ export function executeLoopBranchCommand(data, command) {
       404,
     );
   }
+  // Legacy docs can hold branch targets deleted before dangling-branch
+  // pruning existed. Heal them here so an unrelated stale reference cannot
+  // fail validation (GRAPH_INVALID) of an otherwise valid branch creation.
+  pruneDanglingBranches(experimentDoc);
   const currentGraph = buildExperimentGraph(experimentDoc);
   if (
     command.expectedRevision !== undefined &&

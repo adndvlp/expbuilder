@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { TimelineItem } from "../../../../contexts/TrialsContext";
 
 type Props = {
@@ -12,19 +12,19 @@ function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
   const [selectedIds, setSelectedIds] = useState<Set<number | string>>(
     new Set(),
   );
-  const [autoSelectedIds, setAutoSelectedIds] = useState<Set<number | string>>(
-    new Set(),
-  );
 
   // Recursive function to obtain all branches of an item
+  // IDs compare by string value: trials use numeric ids while loops use
+  // strings, and either side can arrive stringified after a JSON round-trip.
   const getAllBranchIds = (
     itemId: number | string,
-    visited = new Set<number | string>(),
+    visited = new Set<string>(),
   ): (number | string)[] => {
-    if (visited.has(itemId)) return [];
-    visited.add(itemId);
+    const itemKey = String(itemId);
+    if (visited.has(itemKey)) return [];
+    visited.add(itemKey);
 
-    const item = timeline.find((t) => t.id === itemId);
+    const item = timeline.find((t) => String(t.id) === itemKey);
     if (!item || !item.branches || item.branches.length === 0) {
       return [];
     }
@@ -40,17 +40,20 @@ function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
     return branchIds;
   };
 
-  // Update auto-selection when manual selection changes
-  useEffect(() => {
-    const auto = new Set<number | string>();
-
-    selectedIds.forEach((id) => {
-      const branches = getAllBranchIds(id);
-      branches.forEach((branchId) => auto.add(branchId));
-    });
-
-    setAutoSelectedIds(auto);
-  }, [selectedIds, timeline]);
+  // The sequence of a trial is the trial itself plus its recursive branch
+  // descendants. Once the user selects something, only items inside the
+  // selected sequences stay available; everything else is greyed out and
+  // disabled so a loop can group a single trial or a sub-chain of one
+  // sequence, but never items from unrelated sequences.
+  const allowedKeys =
+    selectedIds.size === 0
+      ? null
+      : new Set<string>(
+          [...selectedIds].flatMap((id) => [
+            String(id),
+            ...getAllBranchIds(id).map((branchId) => String(branchId)),
+          ]),
+        );
 
   const handleToggle = (id: number | string) => {
     const newSelected = new Set(selectedIds);
@@ -70,9 +73,6 @@ function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
   const getItemLabel = (item: TimelineItem) => {
     return item.type === "loop" ? `${item.name}` : item.name;
   };
-
-  // Combine manual and automatic selections
-  const allSelectedIds = new Set([...selectedIds, ...autoSelectedIds]);
 
   return (
     <div
@@ -111,7 +111,8 @@ function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
           opacity: 0.8,
         }}
       >
-        Select at least 1 item. Branches will be auto-included.
+        Select at least 1 item. Only items in the selected sequence stay
+        available.
       </div>
 
       <div
@@ -125,8 +126,9 @@ function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
       >
         {timeline.map((item) => {
           const isManuallySelected = selectedIds.has(item.id);
-          const isAutoSelected = autoSelectedIds.has(item.id);
-          const isSelected = isManuallySelected || isAutoSelected;
+          const isExcluded =
+            allowedKeys !== null && !allowedKeys.has(String(item.id));
+          const isSelected = isManuallySelected;
 
           return (
             <label
@@ -137,18 +139,14 @@ function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
                 padding: "8px 12px",
                 marginBottom: "6px",
                 borderRadius: "6px",
-                cursor:
-                  isAutoSelected && !isManuallySelected ? "default" : "pointer",
+                cursor: isExcluded ? "default" : "pointer",
+                opacity: isExcluded ? 0.45 : 1,
                 background: isSelected
-                  ? isManuallySelected
-                    ? "rgba(76, 175, 80, 0.2)"
-                    : "rgba(76, 175, 80, 0.1)"
+                  ? "rgba(76, 175, 80, 0.2)"
                   : "rgba(255, 255, 255, 0.05)",
                 border: `1px solid ${
                   isSelected
-                    ? isManuallySelected
-                      ? "rgba(76, 175, 80, 0.5)"
-                      : "rgba(76, 175, 80, 0.3)"
+                    ? "rgba(76, 175, 80, 0.5)"
                     : "rgba(255, 255, 255, 0.1)"
                 }`,
                 transition: "all 0.2s",
@@ -158,13 +156,10 @@ function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
                 type="checkbox"
                 checked={isSelected}
                 onChange={() => handleToggle(item.id)}
-                disabled={isAutoSelected && !isManuallySelected}
+                disabled={isExcluded}
                 style={{
                   marginRight: "12px",
-                  cursor:
-                    isAutoSelected && !isManuallySelected
-                      ? "default"
-                      : "pointer",
+                  cursor: isExcluded ? "default" : "pointer",
                   width: "18px",
                   height: "18px",
                 }}
@@ -178,17 +173,6 @@ function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
               >
                 {getItemLabel(item)}
               </span>
-              {isAutoSelected && !isManuallySelected && (
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: "rgba(76, 175, 80, 0.8)",
-                    fontStyle: "italic",
-                  }}
-                >
-                  (auto-included)
-                </span>
-              )}
             </label>
           );
         })}
@@ -225,30 +209,30 @@ function LoopRangeModal({ timeline, onConfirm, onClose }: Props) {
         <button
           onClick={() => {
             /* v8 ignore start */
-            if (allSelectedIds.size < 1) {
+            if (selectedIds.size < 1) {
               alert("Please select at least 1 item to create a loop.");
               return;
             }
             /* v8 ignore stop */
-            const ids = Array.from(allSelectedIds);
+            const ids = Array.from(selectedIds);
             onConfirm(ids);
             if (onClose) onClose();
           }}
-          disabled={allSelectedIds.size < 1}
+          disabled={selectedIds.size < 1}
           style={{
-            background: allSelectedIds.size < 1 ? "#ccc" : "#4caf50",
+            background: selectedIds.size < 1 ? "#ccc" : "#4caf50",
             color: "#fff",
             padding: "8px 24px",
             borderRadius: 6,
             fontSize: 15,
             border: "none",
-            cursor: allSelectedIds.size < 1 ? "not-allowed" : "pointer",
+            cursor: selectedIds.size < 1 ? "not-allowed" : "pointer",
             fontWeight: 500,
             boxShadow: "0 1px 4px rgba(76,175,80,0.12)",
             transition: "background 0.2s",
           }}
         >
-          Confirm ({allSelectedIds.size} items)
+          Confirm ({selectedIds.size} items)
         </button>
       </div>
     </div>

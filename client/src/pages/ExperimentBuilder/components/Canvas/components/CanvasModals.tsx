@@ -92,13 +92,20 @@ export default function CanvasModals({
   onCloseMoveItem,
 }: CanvasModalsProps) {
   const currentParent = itemToMove
-    ? timeline.find((item) => item.branches?.includes(itemToMove.id))
+    ? timeline.find((item) =>
+        item.branches?.some(
+          (branchId) => String(branchId) === String(itemToMove.id),
+        ),
+      )
     : undefined;
   const availableDestinations = itemToMove
     ? timeline
         .filter((item) => {
-          if (item.id === itemToMove.id) return false;
-          if (currentParent && item.id === currentParent.id) {
+          if (String(item.id) === String(itemToMove.id)) return false;
+          if (
+            currentParent &&
+            String(item.id) === String(currentParent.id)
+          ) {
             return currentParent.branches!.length > 1;
           }
           return true;
@@ -130,7 +137,9 @@ export default function CanvasModals({
             onConfirm={onAddTrial}
             onClose={onCloseAddTrial}
             parentName={
-              timeline.find((item) => item.id === pendingParentId)?.name
+              timeline.find(
+                (item) => String(item.id) === String(pendingParentId),
+              )?.name
             }
           />
         </ModalOverlay>
@@ -144,8 +153,9 @@ export default function CanvasModals({
         >
           <LoopBranchLevelModal
             sourceName={
-              timeline.find((item) => item.id === pendingParentId)?.name ??
-              "the selected trial"
+              timeline.find(
+                (item) => String(item.id) === String(pendingParentId),
+              )?.name ?? "the selected trial"
             }
             levels={loopBranchLevels}
             isSubmitting={isCreatingLoopBranch}

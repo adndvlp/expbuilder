@@ -262,4 +262,30 @@ describe("loop exit branches", () => {
       expect.objectContaining({ sourceId: 1, targetId: 3 }),
     );
   });
+
+  test("heals unrelated legacy dangling branches instead of failing validation", async () => {
+    const { app, db } = await freshApp();
+    await seedNestedExperiment(db);
+
+    // Trial 3 lives on the root timeline, unrelated to the inner-loop branch
+    // below. A stale reference on it must not 409 a valid branch creation.
+    const ghost = 1788987326502;
+    await db.read();
+    db.data.trials[0].trials.find((trial) => trial.id === 3).branches.push(ghost);
+    await db.write();
+
+    const response = await request(app)
+      .post("/api/loop-branch/E1")
+      .set("Idempotency-Key", "parallel-heals-ghost")
+      .send({ sourceTrialId: 1, targetScopeId: "outer", mode: "parallel" })
+      .expect(200);
+
+    expect(response.body.success).toBe(true);
+    await db.read();
+    const doc = db.data.trials[0];
+    expect(doc.trials.find((trial) => trial.id === 3).branches).toEqual([]);
+    expect(
+      response.body.graph.diagnostics.map((diagnostic) => diagnostic.code),
+    ).not.toContain("BRANCH_TARGET_NOT_FOUND");
+  });
 });

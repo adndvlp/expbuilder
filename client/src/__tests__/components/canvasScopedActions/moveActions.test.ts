@@ -95,4 +95,37 @@ describe("scoped Canvas move actions", () => {
     expect(result).toEqual({ status: "destination-not-found" });
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
   });
+
+  it("resolves moves across string/number id types", async () => {
+    const dependencies = createDependencies();
+    const scope = createRootScope();
+    // Same items, but branch refs and the move payload arrive stringified
+    // after a JSON round-trip while timeline ids stay numeric.
+    scope.items = scope.items.map((item) => ({
+      ...item,
+      branches: (item.branches ?? []).map((id) => String(id)),
+    }));
+
+    const result = await moveScopedItem({
+      scope,
+      item: { id: 2, type: "trial", name: "End" },
+      destinationId: "1",
+      addAsBranch: true,
+      dependencies,
+    });
+
+    expect(result).toEqual({ status: "moved" });
+    // Detach reconnects the stringified branch ref, attach re-adds it.
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(1, {
+      branches: [],
+    });
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(1, {
+      branches: [2],
+    });
+    expect(dependencies.updateTimeline).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 1 }),
+      expect.objectContaining({ id: 2 }),
+      expect.objectContaining({ id: "parent-loop" }),
+    ]);
+  });
 });

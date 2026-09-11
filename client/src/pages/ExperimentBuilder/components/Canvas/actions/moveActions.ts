@@ -19,19 +19,21 @@ type MoveScopedItemInput = ScopedActionInput & {
 type MovePlacement = "branch-edge" | "implicit-order";
 
 async function detachFromCurrentParent(input: MoveScopedItemInput) {
+  const itemKey = String(input.item.id);
   const currentParent = input.scope.items.find((item) =>
-    item.branches?.includes(input.item.id),
+    item.branches?.some((branchId) => String(branchId) === itemKey),
   );
   if (!currentParent) return;
 
   const movedItem = input.scope.items.find(
-    (item) => item.id === input.item.id,
+    (item) => String(item.id) === itemKey,
   );
   const nextBranches = (currentParent.branches ?? []).filter(
-    (id) => id !== input.item.id,
+    (id) => String(id) !== itemKey,
   );
   for (const childId of movedItem?.branches ?? []) {
-    if (!nextBranches.includes(childId)) nextBranches.push(childId);
+    if (!nextBranches.some((id) => String(id) === String(childId)))
+      nextBranches.push(childId);
   }
   await updateItemBranches(
     currentParent,
@@ -105,11 +107,12 @@ async function attachSequentially(
 }
 
 function reorderRootItems(input: MoveScopedItemInput) {
+  const itemKey = String(input.item.id);
   const nextItems = input.scope.items.filter(
-    (item) => item.id !== input.item.id,
+    (item) => String(item.id) !== itemKey,
   );
   const destinationIndex = nextItems.findIndex(
-    (item) => item.id === input.destinationId,
+    (item) => String(item.id) === String(input.destinationId),
   );
   const movedItem: TimelineItem = { ...input.item, branches: [] };
   if (destinationIndex < 0) nextItems.push(movedItem);
@@ -151,7 +154,7 @@ export async function moveScopedItem(
   input: MoveScopedItemInput,
 ): Promise<CanvasMoveResult> {
   const destination = input.scope.items.find(
-    (item) => item.id === input.destinationId,
+    (item) => String(item.id) === String(input.destinationId),
   );
   if (!destination) return { status: "destination-not-found" };
 
