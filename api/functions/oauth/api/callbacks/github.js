@@ -45,7 +45,7 @@ export const githubOAuthCallback = onRequest(async (req, res) => {
   }
 
   // T-5: signed-state required.
-  const stateCheck = validateOAuthState(rawState, "github");
+  const stateCheck = await validateOAuthState(rawState, "github");
   if (!stateCheck.ok) {
     return res.status(400).send(`Invalid OAuth state: ${stateCheck.reason}`);
   }

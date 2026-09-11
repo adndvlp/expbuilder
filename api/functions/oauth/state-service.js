@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { db } from "../app.js";
 
 /**
  * T-5: server-signed OAuth `state` parameter to prevent CSRF / login-fixation.
@@ -15,27 +16,66 @@ import crypto from "node:crypto";
  * re-derives the HMAC, checks `ts` is within 10 minutes, and only then
  * accepts the uid as the actor.
  *
- * The HMAC secret comes from env var `OAUTH_STATE_SECRET`. If missing in
- * production the helper throws — callers must set it before deploy.
+ * The HMAC secret resolves, in order, from:
+ *   1. env var `OAUTH_STATE_SECRET` (explicit operator override),
+ *   2. a dev-only fallback when running under the Functions emulator,
+ *   3. a self-provisioned random secret persisted in Firestore.
+ *
+ * Case 3 is what researchers and self-hosted operators hit: the first
+ * backend call mints a random secret and stores it where only backend code
+ * can read it, so OAuth works with zero configuration and zero redeploys.
+ * The Firestore document intentionally matches NO `firestore.rules` stanza
+ * (default deny for clients); only the Admin SDK used here bypasses rules.
  */
 
 const TEN_MIN_MS = 10 * 60 * 1000;
 
-function getSecret() {
-  const secret = process.env.OAUTH_STATE_SECRET;
-  if (!secret) {
-    if (process.env.FUNCTIONS_EMULATOR === "true") {
-      // Local dev fallback so the emulator works without extra config.
-      return "dev-only-oauth-state-secret-DO-NOT-USE-IN-PROD";
-    }
-    throw new Error("OAUTH_STATE_SECRET env var is not configured");
-  }
-  return secret;
+const DEV_FALLBACK_SECRET = "dev-only-oauth-state-secret-DO-NOT-USE-IN-PROD";
+const SERVER_CONFIG_COLLECTION = "_serverConfig";
+const OAUTH_STATE_DOC_ID = "oauthState";
+
+function isEmulator() {
+  return process.env.FUNCTIONS_EMULATOR === "true";
 }
 
-function sign(uid, provider, ts, nonce) {
+async function getOrCreateSecret() {
+  const configured = process.env.OAUTH_STATE_SECRET;
+  if (configured) return configured;
+  if (isEmulator()) return DEV_FALLBACK_SECRET;
+
+  const ref = db
+    .collection(SERVER_CONFIG_COLLECTION)
+    .doc(OAUTH_STATE_DOC_ID);
+  const existing = await ref.get();
+  const stored = existing.exists ? existing.data()?.secret : null;
+  if (typeof stored === "string" && stored.length > 0) return stored;
+
+  // First backend call: mint and persist. The transaction keeps exactly one
+  // winner; every instance re-reads afterwards, so even a lost race ends up
+  // on the canonical stored value.
+  const fresh = crypto.randomBytes(32).toString("base64");
+  await db.runTransaction(async (t) => {
+    const snap = await t.get(ref);
+    const current = snap.exists ? snap.data()?.secret : null;
+    if (typeof current === "string" && current.length > 0) return;
+    t.set(
+      ref,
+      { secret: fresh, createdAt: new Date().toISOString() },
+      { merge: true },
+    );
+  });
+  const canonical = await ref.get();
+  const canonicalSecret = canonical.exists
+    ? canonical.data()?.secret
+    : null;
+  return typeof canonicalSecret === "string" && canonicalSecret.length > 0
+    ? canonicalSecret
+    : fresh;
+}
+
+function signWith(secret, uid, provider, ts, nonce) {
   return crypto
-    .createHmac("sha256", getSecret())
+    .createHmac("sha256", secret)
     .update(`${uid}|${provider}|${ts}|${nonce}`)
     .digest("base64url");
 }
@@ -44,9 +84,9 @@ function sign(uid, provider, ts, nonce) {
  * Mint a signed state for `uid` initiating OAuth with `provider`.
  * @param {string} uid
  * @param {string} provider - "dropbox" | "googledrive" | "github" | "osf"
- * @returns {string} base64url-encoded JSON
+ * @returns {Promise<string>} base64url-encoded JSON
  */
-export function createOAuthState(uid, provider) {
+export async function createOAuthState(uid, provider) {
   if (typeof uid !== "string" || uid.length === 0) {
     throw new Error("createOAuthState: uid required");
   }
@@ -55,7 +95,7 @@ export function createOAuthState(uid, provider) {
   }
   const ts = Date.now();
   const nonce = crypto.randomBytes(16).toString("base64url");
-  const sig = sign(uid, provider, ts, nonce);
+  const sig = signWith(await getOrCreateSecret(), uid, provider, ts, nonce);
   const payload = { uid, provider, ts, nonce, sig };
   return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
 }
@@ -64,9 +104,9 @@ export function createOAuthState(uid, provider) {
  * Validate a `state` parameter coming back from an OAuth provider.
  * @param {string} stateParam
  * @param {string} expectedProvider
- * @returns {{ok: true, uid: string}|{ok: false, reason: string}}
+ * @returns {Promise<{ok: true, uid: string}|{ok: false, reason: string}>}
  */
-export function validateOAuthState(stateParam, expectedProvider) {
+export async function validateOAuthState(stateParam, expectedProvider) {
   if (typeof stateParam !== "string" || stateParam.length === 0) {
     return { ok: false, reason: "missing state" };
   }
@@ -88,7 +128,13 @@ export function validateOAuthState(stateParam, expectedProvider) {
   if (Date.now() - ts > TEN_MIN_MS) {
     return { ok: false, reason: "state expired" };
   }
-  const expectedSig = sign(uid, provider, ts, nonce);
+  const expectedSig = signWith(
+    await getOrCreateSecret(),
+    uid,
+    provider,
+    ts,
+    nonce,
+  );
   // Timing-safe comparison
   const a = Buffer.from(sig);
   const b = Buffer.from(expectedSig);

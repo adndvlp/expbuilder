@@ -97,7 +97,11 @@ endpoints:
     platform: gcfv2
     entryPoint: createOAuthStateEndpoint
     region: [us-central1]
-    maxInstances: 5
+    httpsTrigger: {}
+  getOAuthClientIds:
+    platform: gcfv2
+    entryPoint: getOAuthClientIds
+    region: [us-central1]
     httpsTrigger: {}
   uploadParticipantFile:
     platform: gcfv2

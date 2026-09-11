@@ -43,7 +43,7 @@ export const createOAuthStateEndpoint = onRequest(
     }
 
     try {
-      const state = createOAuthState(uid, provider);
+      const state = await createOAuthState(uid, provider);
       res.status(200).json({ success: true, state });
     } catch (err) {
       console.error("createOAuthState failed:", err);

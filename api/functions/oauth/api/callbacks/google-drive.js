@@ -45,7 +45,7 @@ export const googleDriveOAuthCallback = onRequest(async (req, res) => {
   }
 
   // T-5: signed-state required.
-  const stateCheck = validateOAuthState(rawState, "googledrive");
+  const stateCheck = await validateOAuthState(rawState, "googledrive");
   if (!stateCheck.ok) {
     return res.status(400).send(`Invalid OAuth state: ${stateCheck.reason}`);
   }

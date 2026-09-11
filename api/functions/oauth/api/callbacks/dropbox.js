@@ -45,7 +45,7 @@ export const dropboxOAuthCallback = onRequest(async (req, res) => {
   }
 
   // T-5: signed-state required. Rejects raw `state=uid` (legacy CSRF vector).
-  const stateCheck = validateOAuthState(rawState, "dropbox");
+  const stateCheck = await validateOAuthState(rawState, "dropbox");
   if (!stateCheck.ok) {
     return res.status(400).send(`Invalid OAuth state: ${stateCheck.reason}`);
   }

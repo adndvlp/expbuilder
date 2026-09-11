@@ -6,7 +6,40 @@ const mockVerifyIdToken = jest.fn();
 jest.unstable_mockModule("firebase-admin/auth", () => ({
   getAuth: jest.fn(() => ({ verifyIdToken: mockVerifyIdToken })),
 }));
-jest.unstable_mockModule("../../app.js", () => ({ app: {} }));
+jest.unstable_mockModule("../../app.js", () => ({ app: {}, db: dbStub }));
+
+const makeDbStub = () => {
+  const docs = new Map();
+  const docRef = (path) => ({
+    get: async () => ({
+      exists: docs.has(path),
+      data: () => docs.get(path),
+    }),
+    set: async (data) => {
+      docs.set(path, { ...(docs.get(path) ?? {}), ...data });
+    },
+  });
+  return {
+    __docs: docs,
+    collection: (name) => ({ doc: (id) => docRef(`${name}/${id}`) }),
+    runTransaction: async (fn) =>
+      fn({
+        get: (ref) => ref.get(),
+        set: (ref, data) => ref.set(data),
+      }),
+  };
+};
+
+// Mutable holder so each test gets a fresh Firestore stub.
+const dbStub = {
+  impl: makeDbStub(),
+  collection(name) {
+    return this.impl.collection(name);
+  },
+  runTransaction(fn) {
+    return this.impl.runTransaction(fn);
+  },
+};
 
 const { verifyFirebaseAuth, requireAuth } = await import("../../utils/auth.js");
 const { createOAuthState, validateOAuthState } = await import(
@@ -27,6 +60,7 @@ beforeEach(() => {
   delete process.env.GCP_PROJECT;
   delete process.env.FIREBASE_CONFIG;
   delete process.env.OSF_OAUTH_CALLBACK_URL;
+  dbStub.impl = makeDbStub();
   jest.restoreAllMocks();
 });
 
@@ -125,76 +159,131 @@ describe("utils/auth", () => {
 });
 
 describe("utils/oauth-state", () => {
-  test("round-trips a signed state for the expected provider", () => {
+  test("round-trips a signed state for the expected provider", async () => {
     process.env.OAUTH_STATE_SECRET = "test-secret";
     jest.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
 
-    const state = createOAuthState("u1", "github");
+    const state = await createOAuthState("u1", "github");
 
     expect(typeof state).toBe("string");
-    expect(validateOAuthState(state, "github")).toEqual({ ok: true, uid: "u1" });
-  });
-
-  test("requires uid, provider and configured secret outside the emulator", () => {
-    expect(() => createOAuthState("", "github")).toThrow(/uid required/);
-    expect(() => createOAuthState("u1", "")).toThrow(/provider required/);
-    expect(() => createOAuthState("u1", "github")).toThrow(
-      /OAUTH_STATE_SECRET/,
-    );
-  });
-
-  test("uses the emulator fallback secret only when FUNCTIONS_EMULATOR=true", () => {
-    process.env.FUNCTIONS_EMULATOR = "true";
-    jest.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
-
-    const state = createOAuthState("u1", "dropbox");
-
-    expect(validateOAuthState(state, "dropbox")).toEqual({
+    await expect(validateOAuthState(state, "github")).resolves.toEqual({
       ok: true,
       uid: "u1",
     });
   });
 
-  test("rejects missing, malformed, incomplete, provider-mismatched and expired state", () => {
+  test("requires uid and provider", async () => {
+    await expect(createOAuthState("", "github")).rejects.toThrow(
+      /uid required/,
+    );
+    await expect(createOAuthState("u1", "")).rejects.toThrow(
+      /provider required/,
+    );
+  });
+
+  test("self-provisions and persists a secret when none is configured", async () => {
+    // No OAUTH_STATE_SECRET and no emulator: the backend mints its own
+    // secret on first use so researchers never configure anything.
+    jest.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+
+    const state = await createOAuthState("u1", "github");
+
+    expect(typeof state).toBe("string");
+    await expect(validateOAuthState(state, "github")).resolves.toEqual({
+      ok: true,
+      uid: "u1",
+    });
+    const stored = dbStub.impl.__docs.get("_serverConfig/oauthState");
+    expect(typeof stored?.secret).toBe("string");
+    expect(stored.secret.length).toBeGreaterThan(0);
+  });
+
+  test("reuses the provisioned secret instead of minting a new one", async () => {
+    jest.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+
+    await createOAuthState("u1", "github");
+    const first = dbStub.impl.__docs.get("_serverConfig/oauthState").secret;
+    await createOAuthState("u1", "github");
+    const second = dbStub.impl.__docs.get("_serverConfig/oauthState").secret;
+
+    expect(second).toBe(first);
+  });
+
+  test("prefers an explicitly configured secret over the provisioned one", async () => {
+    process.env.OAUTH_STATE_SECRET = "operator-secret";
+    const touchDb = jest.fn();
+    const throwingCollection = () => {
+      touchDb();
+      throw new Error("db must not be touched");
+    };
+    dbStub.impl = {
+      __docs: new Map(),
+      collection: throwingCollection,
+      runTransaction: throwingCollection,
+    };
+    jest.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+
+    const state = await createOAuthState("u1", "github");
+
+    await expect(validateOAuthState(state, "github")).resolves.toEqual({
+      ok: true,
+      uid: "u1",
+    });
+    expect(touchDb).not.toHaveBeenCalled();
+  });
+
+  test("uses the emulator fallback secret only when FUNCTIONS_EMULATOR=true", async () => {
+    process.env.FUNCTIONS_EMULATOR = "true";
+    jest.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+
+    const state = await createOAuthState("u1", "dropbox");
+
+    await expect(validateOAuthState(state, "dropbox")).resolves.toEqual({
+      ok: true,
+      uid: "u1",
+    });
+  });
+
+  test("rejects missing, malformed, incomplete, provider-mismatched and expired state", async () => {
     process.env.OAUTH_STATE_SECRET = "test-secret";
     jest.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
-    const state = createOAuthState("u1", "github");
+    const state = await createOAuthState("u1", "github");
 
-    expect(validateOAuthState("", "github")).toEqual({
+    await expect(validateOAuthState("", "github")).resolves.toEqual({
       ok: false,
       reason: "missing state",
     });
-    expect(validateOAuthState("not-json", "github")).toEqual({
+    await expect(validateOAuthState("not-json", "github")).resolves.toEqual({
       ok: false,
       reason: "state not base64url JSON",
     });
-    expect(
+    await expect(
       validateOAuthState(
         Buffer.from(JSON.stringify({ uid: "u1" })).toString("base64url"),
         "github",
       ),
-    ).toEqual({ ok: false, reason: "state payload incomplete" });
-    expect(validateOAuthState(state, "dropbox")).toEqual({
+    ).resolves.toEqual({ ok: false, reason: "state payload incomplete" });
+    await expect(validateOAuthState(state, "dropbox")).resolves.toEqual({
       ok: false,
       reason: "provider mismatch",
     });
 
     jest.spyOn(Date, "now").mockReturnValue(1_700_000_000_000 + 600_001);
-    expect(validateOAuthState(state, "github")).toEqual({
+    await expect(validateOAuthState(state, "github")).resolves.toEqual({
       ok: false,
       reason: "state expired",
     });
   });
 
-  test("rejects state payloads with a tampered HMAC", () => {
+  test("rejects state payloads with a tampered HMAC", async () => {
     process.env.OAUTH_STATE_SECRET = "test-secret";
     jest.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
-    const state = createOAuthState("u1", "github");
+    const state = await createOAuthState("u1", "github");
     const payload = JSON.parse(Buffer.from(state, "base64url").toString("utf8"));
     payload.uid = "attacker";
     const tampered = Buffer.from(JSON.stringify(payload)).toString("base64url");
 
-    expect(validateOAuthState(tampered, "github")).toEqual({
+    await expect(validateOAuthState(tampered, "github")).resolves.toEqual({
       ok: false,
       reason: "invalid HMAC",
     });
