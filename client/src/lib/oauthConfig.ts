@@ -1,4 +1,5 @@
 import { auth } from "./firebase";
+import type { PublicFirebaseConfig } from "./serverConnection";
 
 export type OAuthProviderKey = "github" | "dropbox" | "googleDrive" | "osf";
 
@@ -48,6 +49,30 @@ export async function getBackendProjectId(): Promise<string | null> {
     }
   }
   return import.meta.env.VITE_FIREBASE_PROJECT_ID || null;
+}
+
+/**
+ * Full Firebase web config of the ACTIVE backend (operator or member
+ * settings), or null when the app has none (e.g. web builds rely on env).
+ * Used to bake correct Firebase credentials into generated public
+ * experiments instead of trusting the build env.
+ */
+export async function getActiveFirebaseConfig(): Promise<PublicFirebaseConfig | null> {
+  try {
+    const config = await window.electron?.readFirebaseConfig?.();
+    if (
+      config &&
+      typeof config.apiKey === "string" &&
+      config.apiKey.length > 0 &&
+      typeof config.projectId === "string" &&
+      config.projectId.length > 0
+    ) {
+      return config as PublicFirebaseConfig;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export function buildFunctionsBaseUrl(projectId: string): string {

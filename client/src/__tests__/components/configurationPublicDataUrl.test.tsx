@@ -107,7 +107,14 @@ describe("public experiment data URL", () => {
       json: async () => ({}),
     })) as unknown as typeof fetch;
     (window as any).electron = {
-      readFirebaseConfig: vi.fn(async () => ({ projectId: "member-proj" })),
+      readFirebaseConfig: vi.fn(async () => ({
+        apiKey: "member-key",
+        authDomain: "member.firebaseapp.com",
+        projectId: "member-proj",
+        storageBucket: "member.appspot.com",
+        messagingSenderId: "333",
+        appId: "1:333:web:ccc",
+      })),
     };
     try {
       const { result } = renderHook(() =>
@@ -122,6 +129,15 @@ describe("public experiment data URL", () => {
 
       expect(code).toContain(
         "window.JSPSYCH_FILE_UPLOAD_ENDPOINT = 'https://us-central1-member-proj.cloudfunctions.net/apiData'.replace('/apiData', '/uploadParticipantFile');",
+      );
+      // Active backend wins for credentials...
+      expect(code).toContain('apiKey: "member-key"');
+      // ...but a baked databaseURL is kept as-is (custom RTDB instances
+      // cannot be derived from the project id); only a missing one falls
+      // back to `https://<project>-default-rtdb.firebaseio.com` (covered in
+      // resolvePublicFirebaseConfig.test.ts).
+      expect(code).toContain(
+        'databaseURL: "http://localhost:9000?ns=test-e4cf9"',
       );
     } finally {
       delete (window as any).electron;

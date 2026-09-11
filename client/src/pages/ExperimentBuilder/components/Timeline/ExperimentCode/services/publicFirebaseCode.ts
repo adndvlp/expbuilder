@@ -6,6 +6,7 @@ export function publicFirebaseCode(
   const {
     DATA_API_URL,
     FIREBASE_DATABASE_URL,
+    firebaseWebConfig,
     experimentID,
     useStorage,
     batchConfig,
@@ -25,6 +26,7 @@ export function publicFirebaseCode(
   void [
     DATA_API_URL,
     FIREBASE_DATABASE_URL,
+    firebaseWebConfig,
     experimentID,
     useStorage,
     batchConfig,
@@ -41,6 +43,10 @@ export function publicFirebaseCode(
     progressBar,
     baseCode,
   ];
+  // Values resolve from the active backend first (members have no build
+  // env); the build env stays as fallback. Undefined stays undefined so a
+  // missing setup fails visibly at generation review, not silently at run.
+  const firebaseWeb = options.firebaseWebConfig ?? {};
   return `
   // --- Recolectar metadata del sistema ---
   const getMetadata = () => {
@@ -88,13 +94,13 @@ export function publicFirebaseCode(
 
   // --- Firebase config ---
   const firebaseConfig = {
-    apiKey: "${import.meta.env.VITE_FIREBASE_API_KEY}",
-    authDomain: "${import.meta.env.VITE_FIREBASE_AUTH_DOMAIN}",
-    databaseURL: "${FIREBASE_DATABASE_URL}",
-    projectId: "${import.meta.env.VITE_FIREBASE_PROJECT_ID}",
-    storageBucket: "${import.meta.env.VITE_FIREBASE_STORAGE_BUCKET}",
-    messagingSenderId: "${import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID}",
-    appId: "${import.meta.env.VITE_FIREBASE_APP_ID}"
+    apiKey: "${firebaseWeb.apiKey ?? import.meta.env.VITE_FIREBASE_API_KEY}",
+    authDomain: "${firebaseWeb.authDomain ?? import.meta.env.VITE_FIREBASE_AUTH_DOMAIN}",
+    databaseURL: "${firebaseWeb.databaseURL ?? FIREBASE_DATABASE_URL}",
+    projectId: "${firebaseWeb.projectId ?? import.meta.env.VITE_FIREBASE_PROJECT_ID}",
+    storageBucket: "${firebaseWeb.storageBucket ?? import.meta.env.VITE_FIREBASE_STORAGE_BUCKET}",
+    messagingSenderId: "${firebaseWeb.messagingSenderId ?? import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID}",
+    appId: "${firebaseWeb.appId ?? import.meta.env.VITE_FIREBASE_APP_ID}"
   };
 
   // --- Cargar Firebase SDK ---

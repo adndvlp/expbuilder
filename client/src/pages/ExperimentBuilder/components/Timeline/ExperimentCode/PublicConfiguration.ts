@@ -3,9 +3,13 @@ import { CanvasStyles } from "../../ConfigurationPanel/TrialsConfiguration/Trial
 import ExperimentBase from "./ExperimentBase";
 import useDevMode from "../../../hooks/useDevMode";
 import { auth } from "../../../../../lib/firebase";
-import { getBackendProjectId } from "../../../../../lib/oauthConfig";
+import {
+  getActiveFirebaseConfig,
+  getBackendProjectId,
+} from "../../../../../lib/oauthConfig";
 import { buildPublicExperimentCode } from "./services/buildPublicExperimentCode";
 import { resolvePublicDataApiUrl } from "./services/resolvePublicDataApiUrl";
+import { resolvePublicFirebaseConfig } from "./services/resolvePublicFirebaseConfig";
 import { SessionNameToken } from "./services/localCodeTypes";
 import { getApiBaseUrl } from "../../../../../lib/apiBaseUrl";
 import type {
@@ -157,9 +161,28 @@ export default function PublicConfiguration({
       getBackendProjectId,
     });
 
+    // Same rule for Firebase credentials: the active backend wins so member
+    // machines without build env still ship working pages.
+    const activeFirebase = await getActiveFirebaseConfig().catch(() => null);
+    const firebaseWebConfig = resolvePublicFirebaseConfig(
+      {
+        VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY,
+        VITE_FIREBASE_AUTH_DOMAIN: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+        VITE_FIREBASE_DATABASE_URL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+        VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+        VITE_FIREBASE_STORAGE_BUCKET:
+          import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+        VITE_FIREBASE_MESSAGING_SENDER_ID:
+          import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        VITE_FIREBASE_APP_ID: import.meta.env.VITE_FIREBASE_APP_ID,
+      },
+      activeFirebase,
+    );
+
     return buildPublicExperimentCode({
       DATA_API_URL: dataApiUrl,
       FIREBASE_DATABASE_URL,
+      firebaseWebConfig,
       experimentID,
       useStorage,
       batchConfig,
