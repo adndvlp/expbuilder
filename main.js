@@ -13,7 +13,7 @@ import {
   oauthPortInUseMessage,
 } from "./oauth-handler.js";
 import {
-  getApiDir,
+  ensureWritableApiDir,
   startFirebaseCommand,
   writeBackendEnvFile,
 } from "./server/backend-setup.js";
@@ -340,7 +340,18 @@ ipcMain.handle("delete-oauth-config", async () => {
 const backendSetupProcesses = new Map();
 
 ipcMain.handle("backend-setup:start", async (event, { args, token }) => {
-  const cwd = getApiDir(isProduction);
+  let cwd;
+  try {
+    cwd = ensureWritableApiDir({
+      isProduction,
+      userDataDir: app.getPath("userData"),
+      appVersion:
+        typeof app.getVersion === "function" ? app.getVersion() : undefined,
+    });
+  } catch (error) {
+    console.error("Error staging backend api dir:", error);
+    return { error: error.message };
+  }
   const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const handle = startFirebaseCommand({
     args: args ?? [],
@@ -383,7 +394,15 @@ ipcMain.handle("backend-setup:kill", async (_event, { id }) => {
 
 ipcMain.handle("backend-setup:write-env", async (_event, { env }) => {
   try {
-    const envPath = writeBackendEnvFile(getApiDir(isProduction), env);
+    const envPath = writeBackendEnvFile(
+      ensureWritableApiDir({
+        isProduction,
+        userDataDir: app.getPath("userData"),
+        appVersion:
+          typeof app.getVersion === "function" ? app.getVersion() : undefined,
+      }),
+      env,
+    );
     return { success: true, envPath };
   } catch (error) {
     console.error("Error writing backend env:", error);

@@ -29,6 +29,75 @@ export function getApiDir(isProduction) {
   return path.join(process.cwd(), "api");
 }
 
+export const STAGED_API_VERSION_FILENAME = ".staged-version";
+
+const tryReadText = (filePath) => {
+  try {
+    return fs.existsSync(filePath) ? fs.readFileSync(filePath, "utf8") : null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Resolves a writable api dir for backend operations (firebase CLI cwd and
+ * functions/.env writes).
+ *
+ * In production the bundled `api` dir lives inside the app package, which is
+ * read-only on macOS (and doubly so under AppTranslocation when the app runs
+ * outside /Applications) — writing functions/.env there fails with EROFS.
+ * So production stages a copy under `userDataDir` and operates there:
+ * the copy is (re)made when the app version changes, node_modules/.git are
+ * excluded (deploys work without bundled node_modules by design), and a
+ * previously saved functions/.env is preserved across re-stages.
+ *
+ * Dev and BACKEND_API_DIR override keep the legacy direct behavior.
+ */
+export function ensureWritableApiDir({
+  isProduction,
+  userDataDir,
+  appVersion,
+}) {
+  if (process.env.BACKEND_API_DIR) {
+    return process.env.BACKEND_API_DIR;
+  }
+  if (!isProduction) {
+    return path.join(process.cwd(), "api");
+  }
+  const sourceDir = path.join(process.resourcesPath ?? process.cwd(), "api");
+  if (!userDataDir) {
+    throw new Error("userDataDir is required to stage the backend api dir");
+  }
+  if (!fs.existsSync(sourceDir)) {
+    throw new Error(`Bundled backend not found at ${sourceDir}`);
+  }
+  const stagedDir = path.join(userDataDir, "api");
+  const stampPath = path.join(stagedDir, STAGED_API_VERSION_FILENAME);
+  const stagedVersion = (tryReadText(stampPath) ?? "").trim() || null;
+  if (stagedVersion !== String(appVersion ?? "")) {
+    // Preserve credentials saved by previous runs before refreshing.
+    const stagedEnvPath = path.join(stagedDir, "functions", ".env");
+    const preservedEnv = tryReadText(stagedEnvPath);
+    fs.rmSync(stagedDir, { recursive: true, force: true });
+    fs.mkdirSync(stagedDir, { recursive: true });
+    fs.cpSync(sourceDir, stagedDir, {
+      recursive: true,
+      filter: (src) => {
+        const rel = path.relative(sourceDir, src);
+        if (!rel) return true;
+        const top = rel.split(path.sep)[0];
+        return top !== "node_modules" && top !== ".git";
+      },
+    });
+    if (preservedEnv !== null) {
+      fs.mkdirSync(path.dirname(stagedEnvPath), { recursive: true });
+      fs.writeFileSync(stagedEnvPath, preservedEnv, "utf8");
+    }
+    fs.writeFileSync(stampPath, String(appVersion ?? ""), "utf8");
+  }
+  return stagedDir;
+}
+
 export function startFirebaseCommand({ args, token, cwd, onOutput }) {
   const fullArgs = [
     "--interactive",

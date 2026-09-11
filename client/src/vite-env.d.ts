@@ -53,7 +53,7 @@ interface ElectronAPI {
   startBackendSetup: (
     args: string[],
     token?: string,
-  ) => Promise<{ id: string }>;
+  ) => Promise<{ id?: string; error?: string }>;
   writeBackendSetupInput: (
     id: string,
     text: string,

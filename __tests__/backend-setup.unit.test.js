@@ -164,6 +164,127 @@ describe('server/backend-setup', () => {
     expect(backendSetup.getApiDir(false)).toBe(path.join(process.cwd(), 'api'))
   })
 
+  describe('ensureWritableApiDir', () => {
+    const makeSourceApi = () => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'exp-backend-src-'))
+      const sourceDir = path.join(root, 'api')
+      fs.mkdirSync(path.join(sourceDir, 'functions'), { recursive: true })
+      fs.writeFileSync(path.join(sourceDir, 'firebase.json'), '{}\n', 'utf8')
+      fs.writeFileSync(
+        path.join(sourceDir, 'functions', 'index.js'),
+        'export const x = 1\n',
+        'utf8',
+      )
+      fs.mkdirSync(path.join(sourceDir, 'node_modules', 'some-dep'), { recursive: true })
+      fs.writeFileSync(
+        path.join(sourceDir, 'node_modules', 'some-dep', 'index.js'),
+        'module.exports = {}\n',
+        'utf8',
+      )
+      return { root, sourceDir }
+    }
+
+    const withResourcesPath = (sourceRoot, fn) => {
+      const previous = process.resourcesPath
+      Object.defineProperty(process, 'resourcesPath', {
+        configurable: true,
+        value: sourceRoot,
+      })
+      try {
+        return fn()
+      } finally {
+        if (previous === undefined) {
+          delete process.resourcesPath
+        } else {
+          Object.defineProperty(process, 'resourcesPath', {
+            configurable: true,
+            value: previous,
+          })
+        }
+      }
+    }
+
+    test('prefers BACKEND_API_DIR and dev cwd without touching the disk', () => {
+      process.env.BACKEND_API_DIR = '/override/api'
+      expect(
+        backendSetup.ensureWritableApiDir({ isProduction: true, userDataDir: '/nope', appVersion: '1' }),
+      ).toBe('/override/api')
+      delete process.env.BACKEND_API_DIR
+
+      const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'exp-backend-user-'))
+      expect(
+        backendSetup.ensureWritableApiDir({ isProduction: false, userDataDir, appVersion: '1' }),
+      ).toBe(path.join(process.cwd(), 'api'))
+      expect(fs.existsSync(path.join(userDataDir, 'api'))).toBe(false)
+      fs.rmSync(userDataDir, { recursive: true, force: true })
+    })
+
+    test('stages the bundled api dir under userData, excluding node_modules', () => {
+      const { root } = makeSourceApi()
+      const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'exp-backend-user-'))
+      const staged = withResourcesPath(root, () =>
+        backendSetup.ensureWritableApiDir({ isProduction: true, userDataDir, appVersion: '2.5.2' }),
+      )
+      expect(staged).toBe(path.join(userDataDir, 'api'))
+      expect(fs.readFileSync(path.join(staged, 'firebase.json'), 'utf8')).toBe('{}\n')
+      expect(fs.readFileSync(path.join(staged, 'functions', 'index.js'), 'utf8')).toBe('export const x = 1\n')
+      expect(fs.existsSync(path.join(staged, 'node_modules'))).toBe(false)
+      expect(
+        fs.readFileSync(path.join(staged, backendSetup.STAGED_API_VERSION_FILENAME), 'utf8'),
+      ).toBe('2.5.2')
+      fs.rmSync(root, { recursive: true, force: true })
+      fs.rmSync(userDataDir, { recursive: true, force: true })
+    })
+
+    test('skips re-staging when the version stamp matches', () => {
+      const { root } = makeSourceApi()
+      const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'exp-backend-user-'))
+      const options = { isProduction: true, userDataDir, appVersion: '2.5.2' }
+      withResourcesPath(root, () => backendSetup.ensureWritableApiDir(options))
+      const stampPath = path.join(userDataDir, 'api', backendSetup.STAGED_API_VERSION_FILENAME)
+      const before = fs.statSync(stampPath).mtimeMs
+      withResourcesPath(root, () => backendSetup.ensureWritableApiDir(options))
+      expect(fs.statSync(stampPath).mtimeMs).toBe(before)
+      fs.rmSync(root, { recursive: true, force: true })
+      fs.rmSync(userDataDir, { recursive: true, force: true })
+    })
+
+    test('re-stages on version bump but preserves a saved functions/.env', () => {
+      const { root } = makeSourceApi()
+      const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'exp-backend-user-'))
+      withResourcesPath(root, () =>
+        backendSetup.ensureWritableApiDir({ isProduction: true, userDataDir, appVersion: '2.5.1' }),
+      )
+      const stagedEnv = path.join(userDataDir, 'api', 'functions', '.env')
+      backendSetup.writeBackendEnvFile(path.join(userDataDir, 'api'), { OSF_CLIENT_ID: 'saved-id' })
+
+      withResourcesPath(root, () =>
+        backendSetup.ensureWritableApiDir({ isProduction: true, userDataDir, appVersion: '2.5.2' }),
+      )
+      expect(fs.readFileSync(stagedEnv, 'utf8')).toBe('OSF_CLIENT_ID=saved-id\n')
+      expect(
+        fs.readFileSync(path.join(userDataDir, 'api', backendSetup.STAGED_API_VERSION_FILENAME), 'utf8'),
+      ).toBe('2.5.2')
+      fs.rmSync(root, { recursive: true, force: true })
+      fs.rmSync(userDataDir, { recursive: true, force: true })
+    })
+
+    test('throws a clear error when userDataDir is missing or the bundle lacks api', () => {
+      expect(() =>
+        backendSetup.ensureWritableApiDir({ isProduction: true, appVersion: '1' }),
+      ).toThrow(/userDataDir is required/)
+      const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'exp-backend-empty-'))
+      const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'exp-backend-user-'))
+      expect(() =>
+        withResourcesPath(empty, () =>
+          backendSetup.ensureWritableApiDir({ isProduction: true, userDataDir, appVersion: '1' }),
+        ),
+      ).toThrow(/Bundled backend not found/)
+      fs.rmSync(empty, { recursive: true, force: true })
+      fs.rmSync(userDataDir, { recursive: true, force: true })
+    })
+  })
+
   test('resolves the firebase CLI entry point', () => {
     expect(backendSetup.getFirebaseCliPath()).toContain('firebase-tools')
   })

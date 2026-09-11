@@ -132,7 +132,11 @@ export function useBackendSession() {
 
   const runCommand = useCallback(
     async (args: string[]): Promise<ExitData> => {
-      const { id } = await window.electron!.startBackendSetup(args, token);
+      const result = await window.electron!.startBackendSetup(args, token);
+      const id = result?.id;
+      if (!id) {
+        throw new Error(result?.error || "Could not start backend command");
+      }
       appendLog(`$ firebase ${args.join(" ")}\n`);
       return new Promise((resolve) => exitListeners.current.set(id, resolve));
     },
@@ -145,7 +149,11 @@ export function useBackendSession() {
     setRunning(true);
     setError("");
     try {
-      const { id } = await window.electron!.startBackendSetup(["login:ci"]);
+      const started = await window.electron!.startBackendSetup(["login:ci"]);
+      if (!started?.id) {
+        throw new Error(started?.error || "Could not start Google sign-in");
+      }
+      const { id } = started;
       loginIdRef.current = id;
       appendLog("Starting Google sign-in…\n");
       const data = await new Promise<ExitData>((resolve) =>
