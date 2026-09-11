@@ -261,8 +261,10 @@ describe("experiment configuration generators", () => {
     const code = await result.current.generateExperiment();
 
     expect(defaultProps.fetchExtensions).toHaveBeenCalled();
+    // DATA_API_URL resolves from the active backend (VITE_FIREBASE_PROJECT_ID
+    // "test-project" here), not the baked build env.
     expect(code).toContain(
-      "window.JSPSYCH_FILE_UPLOAD_ENDPOINT = 'http://localhost:3000/api/data'.replace('/apiData', '/uploadParticipantFile');",
+      "window.JSPSYCH_FILE_UPLOAD_ENDPOINT = 'https://us-central1-test-project.cloudfunctions.net/apiData'.replace('/apiData', '/uploadParticipantFile');",
     );
     expect(code).toContain("await _showCaptchaGate(\"site-key-123\", \"recaptcha\")");
     expect(code).toContain("batchSize: 5");
@@ -279,5 +281,31 @@ describe("experiment configuration generators", () => {
       "https://app.prolific.com/submissions/complete?cc=COMPLETE123",
     );
     expect(code).toContain("BASE_TIMELINE_CODE();");
+  });
+
+  it("derives the public data URL from a member backend instead of the build env", async () => {
+    // A shared-server member has no build env of its own: the published page
+    // must point at the ACTIVE backend, otherwise sessions POST to the wrong
+    // place (or GitHub Pages itself when the baked value is missing).
+    (window as any).electron = {
+      readFirebaseConfig: vi.fn(async () => ({ projectId: "member-proj" })),
+    };
+    try {
+      const { result } = renderHook(() =>
+        PublicConfiguration({
+          ...defaultProps,
+          experimentName: "Public Experiment",
+          storage: "firebase",
+        }),
+      );
+
+      const code = await result.current.generateExperiment();
+
+      expect(code).toContain(
+        "window.JSPSYCH_FILE_UPLOAD_ENDPOINT = 'https://us-central1-member-proj.cloudfunctions.net/apiData'.replace('/apiData', '/uploadParticipantFile');",
+      );
+    } finally {
+      delete (window as any).electron;
+    }
   });
 });
