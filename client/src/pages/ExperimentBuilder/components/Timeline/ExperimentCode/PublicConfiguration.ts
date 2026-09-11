@@ -149,8 +149,10 @@ export default function PublicConfiguration({
     // Bake the ACTIVE backend's data URL (not the build env's): members on
     // other backends — or builds missing the env var — would otherwise ship
     // pages that POST sessions to the wrong place (or GitHub Pages itself).
+    // Keyed on the build (import.meta.env.DEV), NOT the experiment's dev-mode
+    // flag: dev-server flows must keep the emulator URL.
     const dataApiUrl = await resolvePublicDataApiUrl({
-      dev: isDevMode,
+      dev: import.meta.env.DEV,
       bakedUrl: DATA_API_URL,
       getBackendProjectId,
     });

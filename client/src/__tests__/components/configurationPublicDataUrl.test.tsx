@@ -1,5 +1,5 @@
 import { renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import PublicConfiguration from "../../pages/ExperimentBuilder/components/Timeline/ExperimentCode/PublicConfiguration";
 
 const mocks = vi.hoisted(() => ({
@@ -91,10 +91,17 @@ const defaultProps = {
 };
 
 describe("public experiment data URL", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("derives the public data URL from a member backend instead of the build env", async () => {
     // A shared-server member has no build env of its own: the published page
     // must point at the ACTIVE backend, otherwise sessions POST to the wrong
     // place (or GitHub Pages itself when the baked value is missing).
+    // Simulate a production bundle (import.meta.env.DEV=false): dev-server
+    // flows always keep the emulator URL.
+    vi.stubEnv("DEV", false);
     globalThis.fetch = vi.fn(async () => ({
       ok: true,
       json: async () => ({}),

@@ -261,10 +261,10 @@ describe("experiment configuration generators", () => {
     const code = await result.current.generateExperiment();
 
     expect(defaultProps.fetchExtensions).toHaveBeenCalled();
-    // DATA_API_URL resolves from the active backend (VITE_FIREBASE_PROJECT_ID
-    // "test-project" here), not the baked build env.
+    // Vitest runs with import.meta.env.DEV=true, so generation keeps the
+    // baked (emulator) URL instead of deriving from the backend project.
     expect(code).toContain(
-      "window.JSPSYCH_FILE_UPLOAD_ENDPOINT = 'https://us-central1-test-project.cloudfunctions.net/apiData'.replace('/apiData', '/uploadParticipantFile');",
+      "window.JSPSYCH_FILE_UPLOAD_ENDPOINT = 'http://localhost:3000/api/data'.replace('/apiData', '/uploadParticipantFile');",
     );
     expect(code).toContain("await _showCaptchaGate(\"site-key-123\", \"recaptcha\")");
     expect(code).toContain("batchSize: 5");
