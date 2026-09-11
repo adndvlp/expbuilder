@@ -3,7 +3,9 @@ import { CanvasStyles } from "../../ConfigurationPanel/TrialsConfiguration/Trial
 import ExperimentBase from "./ExperimentBase";
 import useDevMode from "../../../hooks/useDevMode";
 import { auth } from "../../../../../lib/firebase";
+import { getBackendProjectId } from "../../../../../lib/oauthConfig";
 import { buildPublicExperimentCode } from "./services/buildPublicExperimentCode";
+import { resolvePublicDataApiUrl } from "./services/resolvePublicDataApiUrl";
 import { SessionNameToken } from "./services/localCodeTypes";
 import { getApiBaseUrl } from "../../../../../lib/apiBaseUrl";
 import type {
@@ -144,8 +146,17 @@ export default function PublicConfiguration({
 
     const currentUid = auth?.currentUser?.uid ?? "";
 
+    // Bake the ACTIVE backend's data URL (not the build env's): members on
+    // other backends — or builds missing the env var — would otherwise ship
+    // pages that POST sessions to the wrong place (or GitHub Pages itself).
+    const dataApiUrl = await resolvePublicDataApiUrl({
+      dev: isDevMode,
+      bakedUrl: DATA_API_URL,
+      getBackendProjectId,
+    });
+
     return buildPublicExperimentCode({
-      DATA_API_URL,
+      DATA_API_URL: dataApiUrl,
       FIREBASE_DATABASE_URL,
       experimentID,
       useStorage,
