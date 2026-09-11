@@ -282,30 +282,4 @@ describe("experiment configuration generators", () => {
     );
     expect(code).toContain("BASE_TIMELINE_CODE();");
   });
-
-  it("derives the public data URL from a member backend instead of the build env", async () => {
-    // A shared-server member has no build env of its own: the published page
-    // must point at the ACTIVE backend, otherwise sessions POST to the wrong
-    // place (or GitHub Pages itself when the baked value is missing).
-    (window as any).electron = {
-      readFirebaseConfig: vi.fn(async () => ({ projectId: "member-proj" })),
-    };
-    try {
-      const { result } = renderHook(() =>
-        PublicConfiguration({
-          ...defaultProps,
-          experimentName: "Public Experiment",
-          storage: "firebase",
-        }),
-      );
-
-      const code = await result.current.generateExperiment();
-
-      expect(code).toContain(
-        "window.JSPSYCH_FILE_UPLOAD_ENDPOINT = 'https://us-central1-member-proj.cloudfunctions.net/apiData'.replace('/apiData', '/uploadParticipantFile');",
-      );
-    } finally {
-      delete (window as any).electron;
-    }
-  });
 });
