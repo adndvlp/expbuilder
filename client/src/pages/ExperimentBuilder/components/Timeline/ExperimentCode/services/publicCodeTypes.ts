@@ -4,9 +4,20 @@ import {
 } from "../../../../contexts/DevModeContext";
 import { SessionNameToken } from "./localCodeTypes";
 
+export type PublicFirebaseWebConfig = {
+  apiKey?: string;
+  authDomain?: string;
+  databaseURL?: string;
+  projectId?: string;
+  storageBucket?: string;
+  messagingSenderId?: string;
+  appId?: string;
+};
+
 export type PublicExperimentCodeOptions = {
   DATA_API_URL: string | undefined;
   FIREBASE_DATABASE_URL: string;
+  firebaseWebConfig?: PublicFirebaseWebConfig;
   experimentID: string | undefined;
   useStorage: string | undefined;
   batchConfig: {

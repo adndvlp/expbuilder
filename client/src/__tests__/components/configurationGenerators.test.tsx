@@ -261,6 +261,8 @@ describe("experiment configuration generators", () => {
     const code = await result.current.generateExperiment();
 
     expect(defaultProps.fetchExtensions).toHaveBeenCalled();
+    // Vitest runs with import.meta.env.DEV=true, so generation keeps the
+    // baked (emulator) URL instead of deriving from the backend project.
     expect(code).toContain(
       "window.JSPSYCH_FILE_UPLOAD_ENDPOINT = 'http://localhost:3000/api/data'.replace('/apiData', '/uploadParticipantFile');",
     );

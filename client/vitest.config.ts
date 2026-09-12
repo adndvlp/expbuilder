@@ -18,6 +18,7 @@ export default defineConfig({
       VITE_FIREBASE_MESSAGING_SENDER_ID: "000000000000",
       VITE_FIREBASE_APP_ID: "1:000000000000:web:0000000000000000000000",
       VITE_DATA_API_URL: "http://localhost:3000/api/data",
+      VITE_FIREBASE_DATABASE_URL: "http://localhost:9000?ns=test-e4cf9",
     },
     coverage: {
       provider: "v8",
