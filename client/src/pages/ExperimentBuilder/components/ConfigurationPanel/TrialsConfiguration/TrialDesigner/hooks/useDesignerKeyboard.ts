@@ -17,14 +17,33 @@ interface Args {
   undo: () => boolean;
 }
 
+const EDITABLE_SELECTOR =
+  'input, textarea, select, [contenteditable="true"], [role="textbox"]';
+
+/**
+ * True when the shortcut belongs to a text field instead of the canvas.
+ *
+ * Checks the event target AND the currently focused element: components
+ * edited by double click (inline text overlay, DOM-activated scene nodes)
+ * can retarget or lose the event target, and deleting the selected
+ * component while the user is deleting typed characters is never intended.
+ * Focus inside the live scene overlay (`[data-scene-node-id]`) also counts
+ * as editing, because that DOM only becomes interactive when the user
+ * activated the component.
+ */
 function isEditableShortcutTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  return Boolean(
-    target.closest(
-      'input, textarea, select, [contenteditable="true"], [role="textbox"]',
-    ),
-  );
+  const candidates: Array<EventTarget | Element | null> = [
+    target,
+    typeof document !== "undefined" ? document.activeElement : null,
+  ];
+  return candidates.some((candidate) => {
+    if (!(candidate instanceof HTMLElement)) return false;
+    if (candidate.isContentEditable) return true;
+    if (candidate.closest(EDITABLE_SELECTOR)) return true;
+    return Boolean(
+      candidate.closest('[data-scene-node-id], [data-html-scene-overlay]'),
+    );
+  });
 }
 
 export function useDesignerKeyboard({
