@@ -45,6 +45,13 @@ describe("appendResult — googledrive", () => {
     const r = await appendResult("googledrive", "tok", "folder", "EID", "SID", "csv-data");
     expect(r.success).toBe(true);
     expect(r.id).toBe("drv-new");
+
+    // The search and the multipart create are scoped to the experiment
+    // folder, so session CSVs land inside /ExpBuilder/<experiment name>
+    // (per-experiment folder) instead of the Drive root / My Drive.
+    const calls = fetchMock.__getCalls();
+    expect(decodeURIComponent(calls[0].url)).toContain("'folder' in parents");
+    expect(calls[1].options.body).toContain('"parents":["folder"]');
   });
 
   test("PATCH existing file when search returns one", async () => {
