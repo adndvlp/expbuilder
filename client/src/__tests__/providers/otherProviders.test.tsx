@@ -154,6 +154,13 @@ describe("PluginsProvider", () => {
       expect(globalThis.fetch).toHaveBeenCalledTimes(1);
     });
 
+    // Let the provider's initial load settle before touching the plugin list.
+    // Otherwise a consumer update racing the load can be captured as the
+    // autosave baseline, skipping the save this test asserts on.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
     act(() => {
       getContext().setPlugins([{ index: 4, name: "Custom Plugin" }]);
     });
