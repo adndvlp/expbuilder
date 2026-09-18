@@ -8,7 +8,11 @@ Generated data: \`SketchpadComponent_N_strokes\` (array of strokes) and \`Sketch
 
 ## Response Components (8)
 
-Response components capture the participant's response and determine when the trial ends.
+Response components capture the participant's response and determine when the trial ends. By default any valid response can end the trial. Use the trial-level \`require_response_components\` parameter (list of component ids or runtime names) to require valid responses from specific components before the trial can be advanced; an empty list means no response is required.
+
+\`\`\`js
+require_response_components: ["ButtonResponseComponent_1", "SurveyComponent_1"]
+\`\`\`
 
 ### ButtonResponseComponent
 
@@ -31,7 +35,6 @@ Clickable buttons with flexible layout. Standard button visuals are drawn in Can
 | \`button_padding\` | number | \`10\` | Internal padding (px) |
 | \`button_image_width\` | number | \`50\` | Image width in button with image |
 | \`button_image_height\` | number | \`50\` | Image height in button with image |
-| \`require_response\` | boolean | \`true\` | Requires response to advance |
 
 Data: \`ButtonResponseComponent_N_response\` (button text), \`ButtonResponseComponent_N_rt\`.
 
@@ -42,7 +45,6 @@ Captures pressed keys.
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | \`allowed_keys\` | string[] | \`[]\` | Allowed keys (empty = all) |
-| \`require_response\` | boolean | \`true\` | Requires response to advance |
 
 Data: \`KeyboardResponseComponent_N_response\` (key), \`KeyboardResponseComponent_N_rt\`.
 
@@ -60,7 +62,6 @@ Range-type slider with labels. The visual slider is drawn in Canvas, with a tran
 | \`label_right\` | string | \`""\` | Right label |
 | \`show_value\` | boolean | \`true\` | Show numeric value |
 | \`require_movement\` | boolean | \`true\` | Requires moving the slider |
-| \`require_response\` | boolean | \`true\` | Requires response to advance |
 | \`slider_color\` | string | \`"#4a90d9"\` | Bar color |
 | \`slider_height\` | number | \`6\` | Bar height (px) |
 | \`slider_width\` | number | \`300\` | Slider width (px) |
@@ -85,7 +86,6 @@ Text field.
 | \`cloze_mode\` | boolean | \`false\` | Cloze mode (automatic correction) |
 | \`cloze_answer\` | string | \`""\` | Correct cloze answer |
 | \`cloze_case_sensitive\` | boolean | \`true\` | Case sensitive cloze |
-| \`require_response\` | boolean | \`true\` | Requires response to advance |
 
 Data: \`InputResponseComponent_N_response\` (text), \`InputResponseComponent_N_rt\`.
 
@@ -96,7 +96,6 @@ Captures click/touch coordinates in the viewport. The capture layer is DOM-based
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | \`target\` | string | \`"fullscreen"\` | \`fullscreen\` or \`component_1\` (component ID) |
-| \`require_response\` | boolean | \`true\` | Requires response to advance |
 
 Data: \`ClickResponseComponent_N_response\` (array \`[x, y]\`), \`ClickResponseComponent_N_rt\`.
 
@@ -107,7 +106,6 @@ Audio recording with microphone. Play/Pause, Done, Record Again buttons.
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | \`max_duration\` | number | \`60000\` | Maximum recording duration (ms) |
-| \`require_response\` | boolean | \`true\` | Requires response to advance |
 
 Data: \`AudioResponseComponent_N_response\` (audio base64), \`AudioResponseComponent_N_rt\`.
 
@@ -119,7 +117,6 @@ Participant file upload.
 |---|---|---|---|
 | \`allowed_types\` | string[] | \`[]\` | Allowed extensions (empty = all) |
 | \`max_file_size\` | number | \`10\` | Maximum size in MB |
-| \`require_response\` | boolean | \`true\` | Requires response to advance |
 
 Uses \`window.JSPSYCH_FILE_UPLOAD_ENDPOINT\` as the upload destination.
 

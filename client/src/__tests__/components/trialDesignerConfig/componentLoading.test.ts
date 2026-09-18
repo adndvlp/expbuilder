@@ -50,6 +50,7 @@ describe("useLoadComponents", () => {
             value: [
               {
                 type: "ButtonResponseComponent",
+                component_id: "button-restored",
                 coordinates: { x: 50, y: 40 },
                 width: 20,
                 height: 6,
@@ -101,6 +102,7 @@ describe("useLoadComponents", () => {
     );
     expect(loadedComponents[1]).toEqual(
       expect.objectContaining({
+        id: "button-restored",
         type: "ButtonResponseComponent",
         x: 500,
         y: 400,

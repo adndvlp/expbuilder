@@ -53,6 +53,69 @@ describe("ParameterMapper diagnostics and styling", () => {
     });
   });
 
+  it("saves required response components and clears them when disabled", () => {
+    vi.useFakeTimers();
+    const onSave = vi.fn();
+    render(
+      <MapperHarness
+        parameters={[
+          {
+            key: "require_response_components",
+            label: "Require Response Components",
+            type: "object_array",
+          },
+        ]}
+        onSave={onSave}
+        initialMapping={{
+          response_components: {
+            source: "typed",
+            value: [
+              { type: "ButtonResponseComponent", component_id: "button-1" },
+              { type: "SurveyComponent", component_id: "survey-1" },
+            ],
+          },
+        }}
+      />,
+    );
+
+    const toggle = screen.getByTestId("require-response-toggle");
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(screen.queryByRole("listbox")).toBeNull();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-checked", "true");
+    expect(
+      screen.getByRole("option", { name: "Button Response 1" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Survey 1" })).toBeInTheDocument();
+
+    const buttonOption = screen.getByRole("option", {
+      name: "Button Response 1",
+    }) as HTMLOptionElement;
+    buttonOption.selected = true;
+    fireEvent.change(screen.getByRole("listbox"));
+
+    expect(readMapping().require_response_components).toEqual({
+      source: "typed",
+      value: ["button-1"],
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+
+    expect(onSave).toHaveBeenCalledWith("require_response_components", {
+      source: "typed",
+      value: ["button-1"],
+    });
+
+    fireEvent.click(toggle);
+    expect(readMapping().require_response_components).toEqual({
+      source: "typed",
+      value: [],
+    });
+  });
+
   it("groups component inspector controls by section and supplies visual defaults", () => {
     render(
       <MapperHarness

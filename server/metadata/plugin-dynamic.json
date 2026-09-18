@@ -10,9 +10,9 @@
       "type": "object_array",
       "default": []
     },
-    "require_response": {
-      "type": "boolean",
-      "default": false
+    "require_response_components": {
+      "type": "object_array",
+      "default": []
     },
     "trial_duration": {
       "type": "number",

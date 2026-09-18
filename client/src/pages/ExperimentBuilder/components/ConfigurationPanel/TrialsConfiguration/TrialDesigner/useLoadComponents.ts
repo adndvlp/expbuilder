@@ -84,7 +84,8 @@ export default function useLoadComponents({
             key !== "height" &&
             key !== "rotation" &&
             key !== "zIndex" &&
-            key !== "button_html"
+            key !== "button_html" &&
+            key !== "component_id"
           ) {
             // Asumir que siempre está en formato {source, value}
             if (
@@ -143,7 +144,7 @@ export default function useLoadComponents({
             : 0;
 
         const base: TrialComponent = {
-          id: `${comp.type}-${idCounter++}`,
+          id: comp.component_id || `${comp.type}-${idCounter++}`,
           type: comp.type as ComponentType,
           x: canvasCoords.x,
           y: canvasCoords.y,
@@ -183,7 +184,8 @@ export default function useLoadComponents({
             key !== "height" &&
             key !== "rotation" &&
             key !== "zIndex" &&
-            key !== "button_html"
+            key !== "button_html" &&
+            key !== "component_id"
           ) {
             // Si ya está en formato {source, value}, usarlo directamente
             if (
@@ -248,7 +250,7 @@ export default function useLoadComponents({
             : 0;
 
         const base: TrialComponent = {
-          id: `${comp.type}-${idCounter++}`,
+          id: comp.component_id || `${comp.type}-${idCounter++}`,
           type: comp.type as ComponentType,
           x: canvasCoords.x,
           y: canvasCoords.y,

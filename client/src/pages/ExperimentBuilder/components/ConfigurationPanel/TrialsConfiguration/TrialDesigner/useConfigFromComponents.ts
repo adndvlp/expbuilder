@@ -144,6 +144,9 @@ export default function useConfigComponents({
         comp.type === "ClickResponseComponent";
 
       if (isResponseComponent) {
+        // Stable designer id: lets the trial keep required-response selections
+        // (and the runtime component identity) across reloads.
+        componentData.component_id = comp.id;
         responseComponents.push(componentData);
       } else {
         stimulusComponents.push(componentData);

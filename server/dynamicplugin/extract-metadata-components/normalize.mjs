@@ -1,7 +1,7 @@
 const publicDynamicPluginParameters = new Set([
   "components",
   "response_components",
-  "require_response",
+  "require_response_components",
   "trial_duration",
   "response_ends_trial",
   "dynamic_csv_diagnostics",

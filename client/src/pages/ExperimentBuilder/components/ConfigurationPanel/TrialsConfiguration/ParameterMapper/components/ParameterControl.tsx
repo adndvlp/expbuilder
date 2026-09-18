@@ -2,6 +2,7 @@ import type React from "react";
 import Switch from "react-switch";
 import ParameterInputField from "../ParameterInputField";
 import TypedParameterInput from "../TypedParameterInput";
+import RequireResponseControl from "./RequireResponseControl";
 import {
   getVisualDefaultValue,
   isVisualStyleParameter,
@@ -123,6 +124,20 @@ export default function ParameterControl({
             width={44}
           />
         </div>
+      </div>
+    );
+  }
+
+  // ── Special: require_response_components → pick components required to continue ──
+  if (key === "require_response_components") {
+    return (
+      <div key={key} style={fieldStyle}>
+        <RequireResponseControl
+          columnMapping={columnMapping}
+          componentMode={componentMode}
+          onSave={onSave}
+          setColumnMapping={setColumnMapping}
+        />
       </div>
     );
   }

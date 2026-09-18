@@ -83,6 +83,7 @@ describe("useConfigFromComponents", () => {
     expect(config.response_components.value).toEqual([
       expect.objectContaining({
         type: "ButtonResponseComponent",
+        component_id: "button-1",
         coordinates: { x: 50, y: 40 },
         width: 20,
         height: 6,
