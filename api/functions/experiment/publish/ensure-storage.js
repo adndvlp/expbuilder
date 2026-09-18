@@ -1,6 +1,8 @@
 import { db } from "../../app.js";
-import { getValidToken } from "../../oauth/index.js";
-import { createFolder } from "../sessions/services/folder.js";
+import {
+  buildProviderFields,
+  ensureProviderFolder,
+} from "./provider-folder.js";
 
 function failure(status, message, error) {
   return {
@@ -26,17 +28,7 @@ export async function ensureExperimentStorage(
   uid,
   fallbackName,
 ) {
-  const tokenResult = await getValidToken(provider, uid);
-  if (!tokenResult.success) {
-    return failure(
-      400,
-      `Could not get a valid ${provider} token to create the experiment folder`,
-      tokenResult.error,
-    );
-  }
-
   const fallbackPath = `/ExpBuilder/${fallbackName}`;
-  const providerFields = {};
   let folderPath;
   let componentName = fallbackName;
 
@@ -59,30 +51,28 @@ export async function ensureExperimentStorage(
     return failure(400, "Unknown storage provider", provider);
   }
 
-  const folderResult = await createFolder(
+  const folderResult = await ensureProviderFolder({
     provider,
-    tokenResult.access_token,
+    uid,
     folderPath,
     componentName,
-  );
+  });
   if (!folderResult.success) {
-    return failure(
-      400,
-      `Could not create the experiment folder in ${provider}`,
-      folderResult.errorText,
-    );
+    return folderResult.code === "TOKEN_ERROR"
+      ? failure(
+          400,
+          `Could not get a valid ${provider} token to create the experiment folder`,
+          folderResult.error,
+        )
+      : failure(
+          400,
+          `Could not create the experiment folder in ${provider}`,
+          folderResult.error,
+        );
   }
 
-  if (provider === "googledrive") {
-    providerFields.driveFolderPath = folderPath;
-    providerFields.driveFolderId = folderResult.folderId ?? null;
-  } else if (provider === "dropbox") {
-    providerFields.dropboxFolder = folderPath;
-  } else if (provider === "osf") {
-    providerFields.osfComponentId = folderResult.componentId ?? null;
-    providerFields.osfUploadLink = folderResult.uploadLink ?? null;
-  }
-
-  await experimentRef.update(providerFields);
+  await experimentRef.update(
+    buildProviderFields(provider, folderPath, folderResult),
+  );
   return { ok: true };
 }
