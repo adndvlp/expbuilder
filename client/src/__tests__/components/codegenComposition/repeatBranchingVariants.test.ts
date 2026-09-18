@@ -71,8 +71,10 @@ describe("useLoopCode composition", () => {
     const code = normalize(genLoopCode());
 
     expect(code).toContain('const branches = [10, "branch_b"];');
-    expect(code).toContain("window.ExpBuilderBranching.decide(");
-    expect(code).toContain("window.nextTrialId = branches[0];");
+    // Loop-level branches are ignored: loops always iterate their rows and
+    // branching lives on the trials inside them.
+    expect(code).toContain("loop_loop_branch_only_HasBranches = false;");
+    expect(code).not.toContain("window.ExpBuilderBranching.decide(");
   });
 
   it("propagates nested loop branching to parent loop variables", () => {
