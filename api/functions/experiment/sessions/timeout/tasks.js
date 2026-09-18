@@ -11,36 +11,6 @@ import {
 export { scheduleSessionTimeoutTask };
 
 const NO_DATA_ERRORS = new Set(["SESSION_NOT_FOUND", "NO_RESULTS"]);
-const FIRESTORE_DELETE_BATCH_SIZE = 500;
-
-async function deleteTemporarySessionData(experimentID, sessionId) {
-  const sessionRef = db
-    .collection("experiments")
-    .doc(experimentID)
-    .collection("sessions")
-    .doc(sessionId);
-  const trialsRef = sessionRef.collection("trials");
-
-  let trialsDeleted = 0;
-
-  while (true) {
-    const trialsSnapshot = await trialsRef
-      .limit(FIRESTORE_DELETE_BATCH_SIZE)
-      .get();
-    if (trialsSnapshot.empty) break;
-
-    const batch = db.batch();
-    trialsSnapshot.docs.forEach((doc) => batch.delete(doc.ref));
-    await batch.commit();
-
-    trialsDeleted += trialsSnapshot.size;
-    if (trialsSnapshot.size < FIRESTORE_DELETE_BATCH_SIZE) break;
-  }
-
-  await sessionRef.delete();
-
-  return { trialsDeleted };
-}
 
 async function writeExpiredSessionMetadata(
   experimentID,
@@ -105,26 +75,10 @@ export async function handleSessionTimeoutTask(data) {
     throw new Error("SESSION_TIMEOUT_NOT_EXPIRED");
   }
 
-  const useIndexedDB = currentData.useIndexedDB !== false;
-  const storageProvider = currentData.storageProvider || "googledrive";
-
-  if (useIndexedDB) {
-    const { trialsDeleted } = await deleteTemporarySessionData(
-      experimentID,
-      sessionId,
-    );
-    await writeExpiredSessionMetadata(experimentID, sessionId, currentData, {
-      trialsDeleted,
-    });
-    await sessionRef.update(buildExpiredRtdbUpdate({ trialsDeleted }));
-
-    return { status: "expired_indexeddb_session", trialsDeleted };
-  }
-
-  if (storageProvider !== "osf") {
-    return { status: "no_timeout_required" };
-  }
-
+  // The participant never reconnected: save whatever was collected so far to
+  // the experiment storage. finalizeSession cleans the temporary Firestore
+  // session data only after a successful upload, so a failed save never
+  // destroys the trials.
   try {
     const result = await finalizeSession(experimentID, sessionId);
     const resultsSent = result?.resultsSent ?? 0;
@@ -133,7 +87,7 @@ export async function handleSessionTimeoutTask(data) {
     });
     await sessionRef.update(buildExpiredRtdbUpdate({ resultsSent }));
 
-    return { status: "expired_osf_session", resultsSent };
+    return { status: "expired_session_saved", resultsSent };
   } catch (error) {
     if (!NO_DATA_ERRORS.has(error.message)) {
       throw error;
@@ -150,7 +104,7 @@ export async function handleSessionTimeoutTask(data) {
       }),
     );
 
-    return { status: "expired_osf_no_data", error: error.message };
+    return { status: "expired_no_data", error: error.message };
   }
 }
 

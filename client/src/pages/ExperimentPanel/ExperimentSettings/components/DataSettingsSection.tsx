@@ -109,7 +109,8 @@ export function DataSettingsSection({
           setConfig({ ...config, resumeTimeoutMinutes: value || 30 })
         }
       >
-        Time before disconnected session data is deleted (1-1440 minutes)
+        Time before a disconnected session is saved to storage with the data
+        collected so far (1-1440 minutes)
       </NumberSetting>
 
       <div
@@ -151,6 +152,10 @@ export function DataSettingsSection({
               <li>
                 Participants can reconnect within {config.resumeTimeoutMinutes}{" "}
                 minutes
+              </li>
+              <li>
+                If they do not reconnect, the partial session is saved to
+                storage when the timeout expires
               </li>
             </>
           ) : (
