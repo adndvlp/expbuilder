@@ -36,7 +36,9 @@ describe("runtime preview DOM renderers", () => {
       config({ stimulus: { source: "typed", value: "<b>Hello</b>" } }),
       { coordinateMode: "canvas", canvasStyles },
     );
-    expect(html.innerHTML).toContain("<b>Hello</b>");
+    // Pasted HTML is isolated in a shadow root (styles must not leak), so
+    // the markup lives in shadowRoot instead of the light-DOM innerHTML.
+    expect(html.shadowRoot?.innerHTML).toContain("<b>Hello</b>");
     expect(html.style.position).toBe("absolute");
     expect(html.style.left).toBe("500px");
 

@@ -115,7 +115,7 @@ function fallbackSize(
     );
     return {
       width: component.inputWidth || width || 10 * fontSize * 0.55,
-      height: height || fontSize * 1.5,
+      height: component.inputHeight || height || fontSize * 1.5,
     };
   }
 

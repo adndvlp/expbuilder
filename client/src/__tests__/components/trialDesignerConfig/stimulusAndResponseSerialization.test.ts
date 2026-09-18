@@ -129,6 +129,7 @@ describe("useConfigFromComponents", () => {
       height: 80,
       inputFontSize: 22,
       inputWidth: 240,
+      inputHeight: 60,
       config: {
         placeholder: { source: "typed", value: "Answer" },
       },
@@ -154,6 +155,35 @@ describe("useConfigFromComponents", () => {
           value: expect.closeTo(2.2),
         },
         width: 24,
+        height: 6,
+      }),
+    );
+  });
+
+  it("falls back to the font-derived input height when the box was not resized", () => {
+    const inputComponent: TrialComponent = {
+      id: "input-2",
+      type: "InputResponseComponent",
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+      inputFontSize: 22,
+      config: {},
+    };
+
+    const { result } = renderHook(() =>
+      useConfigComponents({
+        toJsPsychCoords,
+        columnMapping: {},
+        canvasStyles,
+      }),
+    );
+
+    const config = result.current([inputComponent]);
+    expect(config.response_components.value[0]).toEqual(
+      expect.objectContaining({
+        width: expect.closeTo(12.1),
         height: expect.closeTo(3.3),
       }),
     );

@@ -50,6 +50,7 @@ export type TrialComponent = {
   inputBorderWidth?: number;
   inputBorderRadius?: number;
   inputWidth?: number;
+  inputHeight?: number;
   config: Record<string, any>;
 };
 

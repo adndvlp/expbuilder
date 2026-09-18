@@ -97,12 +97,12 @@ describe("coverage trial designer EditorHitBox", () => {
       },
       "canvas_width",
     ],
-    ["HtmlComponent", {}, '"width":0'],
+    ["HtmlComponent", {}, '"width":150'],
     ["FileUploadResponseComponent", {}, '"height":0'],
     [
       "InputResponseComponent",
       { config: { input_font_size: { source: "typed", value: "bad-size" } } },
-      "inputFontSize",
+      "inputHeight",
     ],
     [
       "TextComponent",

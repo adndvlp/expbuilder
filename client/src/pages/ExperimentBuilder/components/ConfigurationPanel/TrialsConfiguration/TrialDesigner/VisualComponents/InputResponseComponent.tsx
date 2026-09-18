@@ -71,11 +71,11 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
   const typeInfo = getInputTypeInfo(inputType, placeholder);
   const iconAreaWidth = typeInfo.hasIcon ? INPUT_ICON_AREA_WIDTH : 0;
 
-  // Width: only use explicitly-resized value (inputWidth), never the legacy shapeProps.width.
-  // Height: always derived from fontSize (never from stored height).
+  // Width/height: only use explicitly-resized values (inputWidth/inputHeight),
+  // never the legacy shapeProps.width. Font size stays independent of the box.
   const naturalWidth = 10 * fontSize * 0.55; // 10ch — same as TextComponent cloze blank
   const effectiveWidth = shapeProps.inputWidth ?? naturalWidth;
-  const drawHeight = fontSize * 1.5;
+  const drawHeight = shapeProps.inputHeight ?? fontSize * 1.5;
 
   return (
     <>
@@ -117,10 +117,10 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
           const scaleY = node.scaleY();
           node.scaleX(1);
           node.scaleY(1);
-          // Vertical scale → font size (same as TextComponent cloze)
-          const newFontSize = Math.max(1, Math.round(fontSize * scaleY));
+          // The box resizes; the font size is left untouched so users can
+          // change the input size without changing the text size.
           const nextWidth = Math.max(40, effectiveWidth * scaleX);
-          const nextHeight = newFontSize * 1.5;
+          const nextHeight = Math.max(20, drawHeight * scaleY);
           const snapped = snapKonvaNode({
             node,
             id: shapeProps.id,
@@ -134,9 +134,8 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
             ...shapeProps,
             x: snapped.x,
             y: snapped.y,
-            inputWidth: nextWidth, // explicit resize
-            // height is NOT stored — always derived from inputFontSize
-            inputFontSize: newFontSize,
+            inputWidth: nextWidth,
+            inputHeight: nextHeight,
             rotation: node.rotation(),
           });
         }}

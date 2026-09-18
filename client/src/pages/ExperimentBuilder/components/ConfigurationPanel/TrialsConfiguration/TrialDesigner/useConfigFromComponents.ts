@@ -123,11 +123,12 @@ export default function useConfigComponents({
           source: "typed",
           value: (ifsPx / canvasStyles.width) * 100,
         };
-        // Derive width and height from fontSize so runtime always matches canvas.
-        // Canvas: box width = inputWidth (if user resized) or 10*fontSize*0.55 ; box height = fontSize*1.5
+        // Derive width and height from the resized box when present, so the
+        // runtime matches the canvas without touching the font size.
         const canvasWidth = comp.inputWidth ?? 10 * ifsPx * 0.55;
         componentData.width = (canvasWidth / canvasStyles.width) * 100;
-        componentData.height = ((ifsPx * 1.5) / canvasStyles.width) * 100;
+        const inputHeightPx = comp.inputHeight ?? ifsPx * 1.5;
+        componentData.height = (inputHeightPx / canvasStyles.width) * 100;
       }
 
       // Categorize
