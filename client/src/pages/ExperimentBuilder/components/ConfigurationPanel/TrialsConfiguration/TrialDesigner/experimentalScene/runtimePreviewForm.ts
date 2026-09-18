@@ -21,10 +21,20 @@ export function renderPreviewInputComponent(
   );
   const fontSize = resolvePreviewParam(config.input_font_size, 14);
   const placeholder = resolvePreviewParam(config.placeholder, "");
+  const inputType = String(resolvePreviewParam(config.input_type, "text"));
+  const isLongText = inputType === "long_text";
 
   for (let index = 0; index < inputCount; index++) {
-    const input = document.createElement("input");
-    input.type = String(resolvePreviewParam(config.input_type, "text"));
+    let input: HTMLInputElement | HTMLTextAreaElement;
+    if (isLongText) {
+      const textarea = document.createElement("textarea");
+      textarea.rows = 4;
+      textarea.style.resize = "none";
+      input = textarea;
+    } else {
+      input = document.createElement("input");
+      input.type = inputType;
+    }
     input.id = `input${index}`;
     input.classList.add("jspsych-input-response");
     input.value = "";

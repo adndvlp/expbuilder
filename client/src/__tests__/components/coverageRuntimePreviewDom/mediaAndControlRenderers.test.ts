@@ -126,6 +126,18 @@ describe("runtime preview DOM renderers", () => {
     expect(inputElement.type).toBe("email");
     expect(inputElement.placeholder).toBe("type");
 
+    const longText = renderPreviewInputComponent(
+      container,
+      config({
+        placeholder: "Tell us more",
+        input_type: "long_text",
+      }),
+    );
+    const textarea = longText.querySelector("textarea")!;
+    expect(longText.querySelector("input")).toBeNull();
+    expect(textarea.placeholder).toBe("Tell us more");
+    expect(textarea.style.resize).toBe("none");
+
     const slider = renderPreviewSliderComponent(
       container,
       config({

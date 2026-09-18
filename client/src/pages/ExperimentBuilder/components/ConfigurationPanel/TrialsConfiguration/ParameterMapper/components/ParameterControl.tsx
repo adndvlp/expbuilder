@@ -146,6 +146,7 @@ export default function ParameterControl({
   if (key === "input_type") {
     const INPUT_TYPE_OPTIONS = [
       { value: "text", label: "Text" },
+      { value: "long_text", label: "Long Text (textarea)" },
       { value: "date", label: "Date (calendar)" },
       { value: "time", label: "Time (clock)" },
       { value: "datetime-local", label: "Date & Time" },

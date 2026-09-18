@@ -9,7 +9,7 @@
       "type": "string",
       "default": "text",
       "pretty_name": "Input Type",
-      "description": "HTML input type (text, date, time, datetime-local, number, email, password, tel)"
+      "description": "Input control: HTML input type (text, date, time, datetime-local, number, email, password, tel) or long_text (textarea)"
     },
     "text": {
       "type": "html_string"
