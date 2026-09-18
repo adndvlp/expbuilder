@@ -60,9 +60,11 @@ describe("useConfigFromComponents", () => {
 
     expect(config.trial_duration).toEqual({ source: "typed", value: 1000 });
     expect(config.stale_field).toBeUndefined();
+    // Only the layout size is persisted per trial; background color, full
+    // screen and progress bar belong to the experiment appearance settings.
     expect(config.__canvasStyles).toEqual({
       source: "typed",
-      value: canvasStyles,
+      value: { width: canvasStyles.width, height: canvasStyles.height },
     });
     expect(config.components.value).toEqual([
       expect.objectContaining({

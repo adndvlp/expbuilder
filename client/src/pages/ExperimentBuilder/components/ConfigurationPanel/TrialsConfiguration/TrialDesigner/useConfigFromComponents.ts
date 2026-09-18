@@ -180,11 +180,16 @@ export default function useConfigComponents({
       delete dynamicPluginConfig.response_components;
     }
 
-    // Persist canvas styles so they can be restored on re-open
+    // Persist only the trial layout size so it can be restored on re-open.
+    // Background color, full screen and progress bar are experiment-level
+    // settings owned by AppearanceSettings, not by the trial.
     if (canvasStyles) {
       dynamicPluginConfig.__canvasStyles = {
         source: "typed",
-        value: canvasStyles,
+        value: {
+          width: canvasStyles.width,
+          height: canvasStyles.height,
+        },
       };
     }
 

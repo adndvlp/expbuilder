@@ -270,23 +270,22 @@ export default function useLoadComponents({
       setSelectedId(null);
     }
 
-    // Restore canvas styles if previously saved.
-    // backgroundColor and fullScreen are experiment-level settings managed by
-    // AppearanceSettings (already loaded into context by CanvasStylesProvider).
-    // Only restore layout settings (width, height) from __canvasStyles so we
-    // don't overwrite the values the user set in Experiment Settings.
+    // Restore only the layout size from the trial. Background color, full
+    // screen and progress bar are experiment-level settings managed by
+    // AppearanceSettings (already loaded into context by CanvasStylesProvider),
+    // so we never take them from the trial.
     setCanvasStyles((prev) => {
       const saved = (columnMapping.__canvasStyles?.value ??
         {}) as Partial<CanvasStyles>;
       // First open (no saved size) → auto-detect user's screen and snap to nearest preset
-      const autoSize = !saved.width && !saved.height ? getInitialCanvasSize() : {};
+      const autoSize: Partial<Pick<CanvasStyles, "width" | "height">> =
+        !saved.width && !saved.height ? getInitialCanvasSize() : {};
       return {
-        ...DEFAULT_CANVAS_STYLES,
-        ...autoSize,
-        ...saved,
-        // Keep appearance settings from context (loaded from AppearanceSettings)
+        width: saved.width ?? autoSize.width ?? DEFAULT_CANVAS_STYLES.width,
+        height: saved.height ?? autoSize.height ?? DEFAULT_CANVAS_STYLES.height,
         backgroundColor: prev.backgroundColor,
         fullScreen: prev.fullScreen,
+        progressBar: prev.progressBar,
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps

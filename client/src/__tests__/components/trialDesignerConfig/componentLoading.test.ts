@@ -110,11 +110,13 @@ describe("useLoadComponents", () => {
         buttonColor: "#0088ff",
       }),
     );
+    // Only width/height come from the trial; appearance settings (including
+    // progressBar) stay as loaded by CanvasStylesProvider from the experiment.
     expect(currentCanvasStyles).toEqual(
       expect.objectContaining({
         width: 1000,
         height: 700,
-        progressBar: true,
+        progressBar: false,
         backgroundColor: "#202020",
         fullScreen: false,
       }),

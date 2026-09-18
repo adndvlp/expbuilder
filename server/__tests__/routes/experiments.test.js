@@ -394,6 +394,32 @@ describe('POST /api/trials-preview/:experimentID', () => {
     expect(html).toContain('background-color: #445566')
     expect(html).toContain('<base id="experiment-base" href="/E1/">')
   })
+
+  test('preview background comes from experiment appearance settings, not the trial', async () => {
+    const { app, db, tmpDir } = await freshApp()
+    db.data.experiments.push({
+      experimentID: 'E1',
+      name: 'PreviewAppearance',
+      appearanceSettings: { backgroundColor: '#abcdef', fullScreen: false, progressBar: true },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    db.data.trials.push({
+      experimentID: 'E1',
+      trials: [{ id: 1, columnMapping: { __canvasStyles: { value: { width: 800, height: 600 } } } }],
+      loops: [],
+      timeline: [],
+    })
+    await db.write()
+
+    await request(app)
+      .post('/api/trials-preview/E1')
+      .send({ generatedCode: 'const preview = true;' })
+      .expect(200)
+
+    const html = fs.readFileSync(path.join(tmpDir, 'trials_previews_html', 'E1.html'), 'utf8')
+    expect(html).toContain('background-color: #abcdef')
+  })
 })
 
 describe('POST /api/publish-experiment/:experimentID', () => {

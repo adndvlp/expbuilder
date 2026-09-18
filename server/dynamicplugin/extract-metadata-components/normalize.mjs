@@ -1,5 +1,4 @@
 const publicDynamicPluginParameters = new Set([
-  "__canvasStyles",
   "components",
   "response_components",
   "require_response",

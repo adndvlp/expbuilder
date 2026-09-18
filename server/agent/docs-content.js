@@ -964,17 +964,16 @@ Components use normalized coordinates:
 
 ## Canvas Size and Scaling
 
-The Trial Designer stores a fixed design canvas in \`__canvasStyles\`:
+The Trial Designer stores the design canvas size in \`__canvasStyles\`:
 
 \`\`\`js
 "__canvasStyles": {
-  "backgroundColor": "#ffffff",
   "width": 1440,
-  "height": 900,
-  "fullScreen": true,
-  "progressBar": false
+  "height": 900
 }
 \`\`\`
+
+Background color, full screen mode and progress bar are experiment-level settings configured in **Experiment Settings → Experiment Appearance**, not per trial.
 
 Component positions are saved as normalized coordinates. Width and height are saved as percentages relative to the design canvas width, so the runtime can recreate the visual layout at the participant's viewport size without saving separate per-device layout maps.
 

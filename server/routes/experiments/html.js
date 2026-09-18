@@ -158,10 +158,13 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
     const trialDoc = db.data.trials.find(
       (t) => t.experimentID === experimentID,
     );
+    // Merge the experiment-level appearance settings (owned by
+    // AppearanceSettings) so the preview background no longer depends on the
+    // per-trial __canvasStyles, which only stores the layout size.
     const canvasStyles = resolveCanvasStyles(
       canvasStylesFromBody,
       trialDoc,
-      { appearanceSettings: null },
+      experiment,
     );
 
     const templatePath = ensureTemplate("trials_preview_template.html");
