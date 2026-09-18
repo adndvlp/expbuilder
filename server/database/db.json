@@ -1,7 +1,342 @@
 {
-  "experiments": [],
-  "trials": [],
-  "configs": [],
+  "experiments": [
+    {
+      "experimentID": "41825a82-730b-4bb1-aa68-2cb023fba10c",
+      "name": "b",
+      "createdAt": "2026-09-18T22:38:34.868Z",
+      "updatedAt": "2026-09-18T22:38:34.868Z"
+    },
+    {
+      "experimentID": "5cbbc827-ed56-4b28-9dd5-863e4a37736b",
+      "name": "gorilla",
+      "createdAt": "2026-09-18T22:48:53.342Z",
+      "updatedAt": "2026-09-18T22:48:53.342Z"
+    }
+  ],
+  "trials": [
+    {
+      "experimentID": "41825a82-730b-4bb1-aa68-2cb023fba10c",
+      "trials": [
+        {
+          "type": "Trial",
+          "name": "New Trial",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1789771117801,
+          "parentLoopId": null,
+          "createdAt": "2026-09-18T22:38:37.802Z",
+          "updatedAt": "2026-09-18T22:46:17.480Z",
+          "branches": [
+            "loop_1789771127277",
+            "loop_1789771507717"
+          ]
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 1",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1789771120135,
+          "parentLoopId": "loop_1789771127277",
+          "createdAt": "2026-09-18T22:38:40.135Z",
+          "updatedAt": "2026-09-18T22:44:15.168Z",
+          "branches": [
+            "loop_1789771527567"
+          ]
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 2",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1789771122302,
+          "parentLoopId": "loop_1789771507717",
+          "createdAt": "2026-09-18T22:38:42.302Z",
+          "updatedAt": "2026-09-18T22:46:03.235Z",
+          "branchConditions": [],
+          "repeatConditions": [
+            {
+              "id": 1789771543164,
+              "rules": [
+                {
+                  "column": "",
+                  "op": "==",
+                  "value": ""
+                }
+              ],
+              "jumpToTrialId": "loop_1789771527567"
+            }
+          ],
+          "branches": []
+        },
+        {
+          "id": 1789771455168,
+          "type": "Trial",
+          "name": "New Trial 3",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "branches": [],
+          "createdAt": "2026-09-18T22:44:15.168Z",
+          "updatedAt": "2026-09-18T22:44:15.168Z",
+          "parentLoopId": "loop_1789771527567"
+        }
+      ],
+      "loops": [
+        {
+          "name": "Loop 1",
+          "repetitions": 1,
+          "randomize": false,
+          "orders": false,
+          "stimuliOrders": [],
+          "orderColumns": [],
+          "categoryColumn": "",
+          "categories": false,
+          "categoryData": [],
+          "trials": [
+            1789771120135
+          ],
+          "code": "",
+          "id": "loop_1789771127277",
+          "createdAt": "2026-09-18T22:38:47.277Z",
+          "updatedAt": "2026-09-18T22:44:15.168Z",
+          "parentLoopId": null
+        },
+        {
+          "name": "Loop 2",
+          "repetitions": 1,
+          "randomize": false,
+          "orders": false,
+          "stimuliOrders": [],
+          "orderColumns": [],
+          "categoryColumn": "",
+          "categories": false,
+          "categoryData": [],
+          "trials": [
+            1789771122302
+          ],
+          "code": "",
+          "id": "loop_1789771507717",
+          "createdAt": "2026-09-18T22:45:07.717Z",
+          "updatedAt": "2026-09-18T23:09:05.026Z",
+          "parentLoopId": null,
+          "branches": []
+        },
+        {
+          "name": "Loop 3",
+          "repetitions": 1,
+          "randomize": false,
+          "orders": false,
+          "stimuliOrders": [],
+          "orderColumns": [],
+          "categoryColumn": "",
+          "categories": false,
+          "categoryData": [],
+          "trials": [
+            1789771455168
+          ],
+          "code": "",
+          "id": "loop_1789771527567",
+          "createdAt": "2026-09-18T22:45:27.567Z",
+          "updatedAt": "2026-09-18T22:45:27.567Z",
+          "parentLoopId": null
+        }
+      ],
+      "timeline": [
+        {
+          "id": 1789771117801,
+          "type": "trial",
+          "name": "New Trial",
+          "branches": [
+            "loop_1789771127277",
+            "loop_1789771507717"
+          ]
+        },
+        {
+          "id": "loop_1789771127277",
+          "type": "loop",
+          "name": "Loop 1",
+          "branches": [],
+          "trials": [
+            1789771120135
+          ]
+        },
+        {
+          "id": "loop_1789771507717",
+          "type": "loop",
+          "name": "Loop 2",
+          "branches": [],
+          "trials": [
+            1789771122302
+          ]
+        },
+        {
+          "id": "loop_1789771527567",
+          "type": "loop",
+          "name": "Loop 3",
+          "branches": [],
+          "trials": [
+            1789771455168
+          ]
+        }
+      ],
+      "createdAt": "2026-09-18T22:38:37.801Z",
+      "updatedAt": "2026-09-18T23:09:07.143Z"
+    },
+    {
+      "experimentID": "5cbbc827-ed56-4b28-9dd5-863e4a37736b",
+      "trials": [
+        {
+          "type": "Trial",
+          "name": "New Trial",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1789771736031,
+          "parentLoopId": null,
+          "createdAt": "2026-09-18T22:48:56.031Z",
+          "updatedAt": "2026-09-18T22:49:00.310Z",
+          "branches": [
+            1789771737893,
+            1789771740297
+          ]
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 1",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1789771737893,
+          "parentLoopId": null,
+          "createdAt": "2026-09-18T22:48:57.893Z",
+          "updatedAt": "2026-09-18T22:49:01.707Z",
+          "branches": [
+            1789771741693
+          ]
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 2",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1789771740297,
+          "parentLoopId": null,
+          "createdAt": "2026-09-18T22:49:00.298Z",
+          "updatedAt": "2026-09-18T22:49:19.005Z",
+          "branchConditions": [
+            {
+              "id": 1789771754340,
+              "rules": [
+                {
+                  "column": "",
+                  "op": "==",
+                  "value": ""
+                }
+              ],
+              "nextTrialId": "1789771741693",
+              "customParameters": {}
+            }
+          ],
+          "repeatConditions": [],
+          "branches": [
+            "1789771741693"
+          ]
+        },
+        {
+          "type": "Trial",
+          "name": "New Trial 3",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1789771741693,
+          "parentLoopId": null,
+          "createdAt": "2026-09-18T22:49:01.693Z",
+          "updatedAt": "2026-09-18T22:49:01.693Z"
+        }
+      ],
+      "loops": [],
+      "timeline": [
+        {
+          "id": 1789771736031,
+          "type": "trial",
+          "name": "New Trial",
+          "branches": [
+            1789771737893,
+            1789771740297
+          ]
+        },
+        {
+          "id": 1789771737893,
+          "type": "trial",
+          "name": "New Trial 1",
+          "branches": [
+            1789771741693
+          ]
+        },
+        {
+          "id": 1789771740297,
+          "type": "trial",
+          "name": "New Trial 2",
+          "branches": [
+            "1789771741693"
+          ]
+        },
+        {
+          "id": 1789771741693,
+          "type": "trial",
+          "name": "New Trial 3",
+          "branches": []
+        }
+      ],
+      "createdAt": "2026-09-18T22:48:56.031Z",
+      "updatedAt": "2026-09-18T22:49:19.005Z"
+    }
+  ],
+  "configs": [
+    {
+      "experimentID": "41825a82-730b-4bb1-aa68-2cb023fba10c",
+      "data": {
+        "generatedCode": "",
+        "customCode": "",
+        "customInitJsPsychParams": {
+          "local": {},
+          "public": {}
+        },
+        "customPreInitCode": {
+          "local": "",
+          "public": ""
+        }
+      },
+      "isDevMode": false,
+      "isSaveMode": false,
+      "createdAt": "2026-09-18T22:38:38.031Z",
+      "updatedAt": "2026-09-18T23:08:56.155Z"
+    },
+    {
+      "experimentID": "5cbbc827-ed56-4b28-9dd5-863e4a37736b",
+      "data": {
+        "generatedCode": "",
+        "customCode": "",
+        "customInitJsPsychParams": {
+          "local": {},
+          "public": {}
+        },
+        "customPreInitCode": {
+          "local": "",
+          "public": ""
+        }
+      },
+      "isDevMode": false,
+      "isSaveMode": false,
+      "createdAt": "2026-09-18T22:48:55.929Z",
+      "updatedAt": "2026-09-18T23:09:22.827Z"
+    }
+  ],
   "pluginConfigs": [],
   "sessionResults": [],
   "participantFiles": [],
@@ -14,5 +349,505 @@
     "conversations": []
   },
   "sessionCounters": {},
-  "mutationReceipts": []
+  "mutationReceipts": [
+    {
+      "operation": "create-loop-branch",
+      "idempotencyKey": "f671b608-ac84-4da8-a189-08553b2ae37a",
+      "experimentId": "41825a82-730b-4bb1-aa68-2cb023fba10c",
+      "payload": "{\"experimentId\":\"41825a82-730b-4bb1-aa68-2cb023fba10c\",\"sourceTrialId\":\"1789771120135\",\"targetScopeId\":null,\"mode\":\"parallel\"}",
+      "response": {
+        "success": true,
+        "source": {
+          "type": "Trial",
+          "name": "New Trial 1",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1789771120135,
+          "parentLoopId": "loop_1789771127277",
+          "createdAt": "2026-09-18T22:38:40.135Z",
+          "updatedAt": "2026-09-18T22:43:53.604Z",
+          "branches": [
+            1789771433605
+          ]
+        },
+        "target": {
+          "id": 1789771433605,
+          "type": "Trial",
+          "name": "New Trial 3",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "branches": [],
+          "createdAt": "2026-09-18T22:43:53.604Z",
+          "updatedAt": "2026-09-18T22:43:53.604Z"
+        },
+        "trial": {
+          "id": 1789771433605,
+          "type": "Trial",
+          "name": "New Trial 3",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "branches": [],
+          "createdAt": "2026-09-18T22:43:53.604Z",
+          "updatedAt": "2026-09-18T22:43:53.604Z"
+        },
+        "route": {
+          "sourceId": 1789771120135,
+          "targetId": 1789771433605,
+          "sourceOwnerId": "loop_1789771127277",
+          "targetOwnerId": null,
+          "exitedLoopIds": [
+            "loop_1789771127277"
+          ]
+        },
+        "revision": "2026-09-18T22:43:53.604Z",
+        "graph": {
+          "revision": "2026-09-18T22:43:53.604Z",
+          "root": {
+            "scopeId": null,
+            "parentScopeId": null,
+            "items": [
+              {
+                "id": 1789771117801,
+                "type": "trial",
+                "name": "New Trial",
+                "branches": [
+                  1789771122302,
+                  "loop_1789771127277"
+                ],
+                "parentLoopId": null
+              },
+              {
+                "id": 1789771122302,
+                "type": "trial",
+                "name": "New Trial 2",
+                "branches": [],
+                "parentLoopId": null
+              },
+              {
+                "id": "loop_1789771127277",
+                "type": "loop",
+                "name": "Loop 1",
+                "branches": [],
+                "parentLoopId": null,
+                "trials": [
+                  1789771120135
+                ]
+              },
+              {
+                "id": 1789771433605,
+                "type": "trial",
+                "name": "New Trial 3",
+                "branches": [],
+                "parentLoopId": null
+              }
+            ]
+          },
+          "scopes": {
+            "loop_1789771127277": {
+              "scopeId": "loop_1789771127277",
+              "parentScopeId": null,
+              "items": [
+                {
+                  "id": 1789771120135,
+                  "type": "trial",
+                  "name": "New Trial 1",
+                  "branches": [
+                    1789771433605
+                  ],
+                  "parentLoopId": "loop_1789771127277"
+                }
+              ]
+            }
+          },
+          "edges": [
+            {
+              "sourceId": 1789771117801,
+              "targetId": 1789771122302,
+              "sourceOwnerId": null,
+              "targetOwnerId": null,
+              "exitedLoopIds": []
+            },
+            {
+              "sourceId": 1789771117801,
+              "targetId": "loop_1789771127277",
+              "sourceOwnerId": null,
+              "targetOwnerId": null,
+              "exitedLoopIds": []
+            },
+            {
+              "sourceId": 1789771120135,
+              "targetId": 1789771433605,
+              "sourceOwnerId": "loop_1789771127277",
+              "targetOwnerId": null,
+              "exitedLoopIds": [
+                "loop_1789771127277"
+              ]
+            }
+          ],
+          "diagnostics": []
+        },
+        "crossedLoopIds": [
+          "loop_1789771127277"
+        ]
+      },
+      "createdAt": "2026-09-18T22:43:53.605Z"
+    },
+    {
+      "operation": "create-loop-branch",
+      "idempotencyKey": "626de93a-5f10-4b66-90fe-31d30697d505",
+      "experimentId": "41825a82-730b-4bb1-aa68-2cb023fba10c",
+      "payload": "{\"experimentId\":\"41825a82-730b-4bb1-aa68-2cb023fba10c\",\"sourceTrialId\":\"1789771120135\",\"targetScopeId\":null,\"mode\":\"parallel\"}",
+      "response": {
+        "success": true,
+        "source": {
+          "type": "Trial",
+          "name": "New Trial 1",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1789771120135,
+          "parentLoopId": "loop_1789771127277",
+          "createdAt": "2026-09-18T22:38:40.135Z",
+          "updatedAt": "2026-09-18T22:44:15.168Z",
+          "branches": [
+            1789771455168
+          ]
+        },
+        "target": {
+          "id": 1789771455168,
+          "type": "Trial",
+          "name": "New Trial 3",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "branches": [],
+          "createdAt": "2026-09-18T22:44:15.168Z",
+          "updatedAt": "2026-09-18T22:44:15.168Z"
+        },
+        "trial": {
+          "id": 1789771455168,
+          "type": "Trial",
+          "name": "New Trial 3",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "branches": [],
+          "createdAt": "2026-09-18T22:44:15.168Z",
+          "updatedAt": "2026-09-18T22:44:15.168Z"
+        },
+        "route": {
+          "sourceId": 1789771120135,
+          "targetId": 1789771455168,
+          "sourceOwnerId": "loop_1789771127277",
+          "targetOwnerId": null,
+          "exitedLoopIds": [
+            "loop_1789771127277"
+          ]
+        },
+        "revision": "2026-09-18T22:44:15.168Z",
+        "graph": {
+          "revision": "2026-09-18T22:44:15.168Z",
+          "root": {
+            "scopeId": null,
+            "parentScopeId": null,
+            "items": [
+              {
+                "id": 1789771117801,
+                "type": "trial",
+                "name": "New Trial",
+                "branches": [
+                  1789771122302,
+                  "loop_1789771127277"
+                ],
+                "parentLoopId": null
+              },
+              {
+                "id": 1789771122302,
+                "type": "trial",
+                "name": "New Trial 2",
+                "branches": [],
+                "parentLoopId": null
+              },
+              {
+                "id": "loop_1789771127277",
+                "type": "loop",
+                "name": "Loop 1",
+                "branches": [],
+                "parentLoopId": null,
+                "trials": [
+                  1789771120135
+                ]
+              },
+              {
+                "id": 1789771455168,
+                "type": "trial",
+                "name": "New Trial 3",
+                "branches": [],
+                "parentLoopId": null
+              }
+            ]
+          },
+          "scopes": {
+            "loop_1789771127277": {
+              "scopeId": "loop_1789771127277",
+              "parentScopeId": null,
+              "items": [
+                {
+                  "id": 1789771120135,
+                  "type": "trial",
+                  "name": "New Trial 1",
+                  "branches": [
+                    1789771455168
+                  ],
+                  "parentLoopId": "loop_1789771127277"
+                }
+              ]
+            }
+          },
+          "edges": [
+            {
+              "sourceId": 1789771117801,
+              "targetId": 1789771122302,
+              "sourceOwnerId": null,
+              "targetOwnerId": null,
+              "exitedLoopIds": []
+            },
+            {
+              "sourceId": 1789771117801,
+              "targetId": "loop_1789771127277",
+              "sourceOwnerId": null,
+              "targetOwnerId": null,
+              "exitedLoopIds": []
+            },
+            {
+              "sourceId": 1789771120135,
+              "targetId": 1789771455168,
+              "sourceOwnerId": "loop_1789771127277",
+              "targetOwnerId": null,
+              "exitedLoopIds": [
+                "loop_1789771127277"
+              ]
+            }
+          ],
+          "diagnostics": []
+        },
+        "crossedLoopIds": [
+          "loop_1789771127277"
+        ]
+      },
+      "createdAt": "2026-09-18T22:44:15.168Z"
+    },
+    {
+      "operation": "create-loop-branch",
+      "idempotencyKey": "0db3e6eb-3792-425b-ae60-20332ef6e56c",
+      "experimentId": "41825a82-730b-4bb1-aa68-2cb023fba10c",
+      "payload": "{\"experimentId\":\"41825a82-730b-4bb1-aa68-2cb023fba10c\",\"sourceTrialId\":\"1789771122302\",\"targetScopeId\":null,\"mode\":\"parallel\"}",
+      "response": {
+        "success": true,
+        "source": {
+          "type": "Trial",
+          "name": "New Trial 2",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "id": 1789771122302,
+          "parentLoopId": "loop_1789771507717",
+          "createdAt": "2026-09-18T22:38:42.302Z",
+          "updatedAt": "2026-09-18T22:46:03.235Z",
+          "branchConditions": [],
+          "repeatConditions": [
+            {
+              "id": 1789771543164,
+              "rules": [
+                {
+                  "column": "",
+                  "op": "==",
+                  "value": ""
+                }
+              ],
+              "jumpToTrialId": "loop_1789771527567"
+            }
+          ],
+          "branches": [
+            1789771563235
+          ]
+        },
+        "target": {
+          "id": 1789771563235,
+          "type": "Trial",
+          "name": "New Trial 4",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "branches": [],
+          "createdAt": "2026-09-18T22:46:03.235Z",
+          "updatedAt": "2026-09-18T22:46:03.235Z"
+        },
+        "trial": {
+          "id": 1789771563235,
+          "type": "Trial",
+          "name": "New Trial 4",
+          "plugin": "plugin-dynamic",
+          "parameters": {},
+          "trialCode": "",
+          "branches": [],
+          "createdAt": "2026-09-18T22:46:03.235Z",
+          "updatedAt": "2026-09-18T22:46:03.235Z"
+        },
+        "route": {
+          "sourceId": 1789771122302,
+          "targetId": 1789771563235,
+          "sourceOwnerId": "loop_1789771507717",
+          "targetOwnerId": null,
+          "exitedLoopIds": [
+            "loop_1789771507717"
+          ]
+        },
+        "revision": "2026-09-18T22:46:03.235Z",
+        "graph": {
+          "revision": "2026-09-18T22:46:03.235Z",
+          "root": {
+            "scopeId": null,
+            "parentScopeId": null,
+            "items": [
+              {
+                "id": 1789771117801,
+                "type": "trial",
+                "name": "New Trial",
+                "branches": [
+                  "loop_1789771127277",
+                  "loop_1789771507717"
+                ],
+                "parentLoopId": null
+              },
+              {
+                "id": "loop_1789771127277",
+                "type": "loop",
+                "name": "Loop 1",
+                "branches": [],
+                "parentLoopId": null,
+                "trials": [
+                  1789771120135
+                ]
+              },
+              {
+                "id": "loop_1789771507717",
+                "type": "loop",
+                "name": "Loop 2",
+                "branches": [],
+                "parentLoopId": null,
+                "trials": [
+                  1789771122302
+                ]
+              },
+              {
+                "id": "loop_1789771527567",
+                "type": "loop",
+                "name": "Loop 3",
+                "branches": [],
+                "parentLoopId": null,
+                "trials": [
+                  1789771455168
+                ]
+              },
+              {
+                "id": 1789771563235,
+                "type": "trial",
+                "name": "New Trial 4",
+                "branches": [],
+                "parentLoopId": null
+              }
+            ]
+          },
+          "scopes": {
+            "loop_1789771127277": {
+              "scopeId": "loop_1789771127277",
+              "parentScopeId": null,
+              "items": [
+                {
+                  "id": 1789771120135,
+                  "type": "trial",
+                  "name": "New Trial 1",
+                  "branches": [
+                    "loop_1789771527567"
+                  ],
+                  "parentLoopId": "loop_1789771127277"
+                }
+              ]
+            },
+            "loop_1789771507717": {
+              "scopeId": "loop_1789771507717",
+              "parentScopeId": null,
+              "items": [
+                {
+                  "id": 1789771122302,
+                  "type": "trial",
+                  "name": "New Trial 2",
+                  "branches": [
+                    1789771563235
+                  ],
+                  "parentLoopId": "loop_1789771507717"
+                }
+              ]
+            },
+            "loop_1789771527567": {
+              "scopeId": "loop_1789771527567",
+              "parentScopeId": null,
+              "items": [
+                {
+                  "id": 1789771455168,
+                  "type": "trial",
+                  "name": "New Trial 3",
+                  "branches": [],
+                  "parentLoopId": "loop_1789771527567"
+                }
+              ]
+            }
+          },
+          "edges": [
+            {
+              "sourceId": 1789771117801,
+              "targetId": "loop_1789771127277",
+              "sourceOwnerId": null,
+              "targetOwnerId": null,
+              "exitedLoopIds": []
+            },
+            {
+              "sourceId": 1789771117801,
+              "targetId": "loop_1789771507717",
+              "sourceOwnerId": null,
+              "targetOwnerId": null,
+              "exitedLoopIds": []
+            },
+            {
+              "sourceId": 1789771120135,
+              "targetId": "loop_1789771527567",
+              "sourceOwnerId": "loop_1789771127277",
+              "targetOwnerId": null,
+              "exitedLoopIds": [
+                "loop_1789771127277"
+              ]
+            },
+            {
+              "sourceId": 1789771122302,
+              "targetId": 1789771563235,
+              "sourceOwnerId": "loop_1789771507717",
+              "targetOwnerId": null,
+              "exitedLoopIds": [
+                "loop_1789771507717"
+              ]
+            }
+          ],
+          "diagnostics": []
+        },
+        "crossedLoopIds": [
+          "loop_1789771507717"
+        ]
+      },
+      "createdAt": "2026-09-18T22:46:03.235Z"
+    }
+  ]
 }
