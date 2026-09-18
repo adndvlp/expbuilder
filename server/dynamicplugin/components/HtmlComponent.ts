@@ -38,6 +38,18 @@ const info = {
       type: ParameterType.INT,
       default: null,
     },
+    /** Box width as a percentage of the canvas width (vw units). When unset the box hugs its content, capped to the canvas. */
+    width: {
+      type: ParameterType.FLOAT,
+      default: null,
+      pretty_name: "Width",
+    },
+    /** Minimum box height as a percentage of the canvas width. Content can grow past it. */
+    height: {
+      type: ParameterType.FLOAT,
+      default: null,
+      pretty_name: "Height",
+    },
   },
   // prettier-ignore
   citations: {
@@ -54,6 +66,7 @@ class HtmlComponent {
   private jsPsych: any;
   private stimulusElement: HTMLElement | null = null;
   private cancelVisibilitySchedule: (() => void) | null = null;
+  private lastStimulus = "";
 
   constructor(jsPsych: any) {
     this.jsPsych = jsPsych;
@@ -82,8 +95,31 @@ class HtmlComponent {
       : "jspsych-dynamic-html-stimulus";
     stimulusElement.className = "dynamic-html-component-stimulus";
     stimulusElement.style.position = "absolute";
-    stimulusElement.style.width = "max-content";
     stimulusElement.style.zIndex = String(config.zIndex ?? 0);
+
+    // Size: honor an explicit design box (width/height arrive as vw
+    // percentages of the canvas width). Without one, hug the content but
+    // never exceed the canvas — long unbroken text used to spill out of it.
+    const canvasWidth = Number(config.__canvasStyles?.width) || 1024;
+    const explicitWidth = Number(config.width);
+    const explicitHeight = Number(config.height);
+    const hasExplicitWidth =
+      Number.isFinite(explicitWidth) && explicitWidth > 0;
+    const hasExplicitHeight =
+      Number.isFinite(explicitHeight) && explicitHeight > 0;
+
+    if (hasExplicitWidth) {
+      stimulusElement.style.width = `${(explicitWidth / 100) * canvasWidth}px`;
+    } else {
+      stimulusElement.style.width = "max-content";
+      stimulusElement.style.maxWidth = `${canvasWidth}px`;
+    }
+    if (hasExplicitHeight) {
+      stimulusElement.style.minHeight = `${(explicitHeight / 100) * canvasWidth}px`;
+    }
+    // Wrap long words inside the (capped or explicit) box instead of letting
+    // them widen it past the canvas.
+    stimulusElement.style.overflowWrap = "break-word";
 
     const xVw = mapValue(config.coordinates.x);
     const yVh = mapValue(config.coordinates.y);
@@ -91,7 +127,18 @@ class HtmlComponent {
     stimulusElement.style.top = `calc(50% - ${yVh}vh)`;
     stimulusElement.style.transform = "translate(-50%, -50%)";
 
-    stimulusElement.innerHTML = config.stimulus;
+    // Isolate the pasted markup inside a shadow root: its <style> rules and
+    // classes must not leak into the experiment page. Leaked CSS could
+    // disable gestures (e.g. block pinch zoom) or restyle other components.
+    const html = String(config.stimulus ?? "");
+    this.lastStimulus = html;
+    if (typeof stimulusElement.attachShadow === "function") {
+      const shadowRoot = stimulusElement.attachShadow({ mode: "open" });
+      shadowRoot.innerHTML = html;
+    } else {
+      // Extremely old engines without shadow DOM: best effort.
+      stimulusElement.innerHTML = html;
+    }
     container.appendChild(stimulusElement);
     this.stimulusElement = stimulusElement;
 
@@ -144,7 +191,7 @@ class HtmlComponent {
    * Get the HTML content that was displayed
    */
   getStimulus(): string {
-    return this.stimulusElement ? this.stimulusElement.innerHTML : "";
+    return this.lastStimulus;
   }
 }
 

@@ -56,7 +56,6 @@ function resolveComponentConfig(
   config.__canvas_width = canvasStyles.width;
 
   const exportsBoxSize =
-    component.type !== "HtmlComponent" &&
     component.type !== "SurveyComponent" &&
     component.type !== "SketchpadComponent" &&
     component.type !== "FileUploadResponseComponent";

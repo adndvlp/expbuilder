@@ -171,8 +171,10 @@ export default function EditorHitBox({
             }),
       };
     } else if (shapeProps.type === "HtmlComponent") {
-      update.width = 0;
-      update.height = 0;
+      // Keep the manual box size: the runtime honors explicit width/height
+      // and otherwise caps content to the canvas, so resizing must persist.
+      update.width = Math.max(40, node.width * scaleX);
+      update.height = Math.max(20, node.height * scaleY);
     } else if (shapeProps.type === "FileUploadResponseComponent") {
       update.width = 0;
       update.height = 0;

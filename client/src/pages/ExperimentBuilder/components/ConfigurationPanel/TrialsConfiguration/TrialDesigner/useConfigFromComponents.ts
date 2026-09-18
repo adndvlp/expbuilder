@@ -30,13 +30,12 @@ export default function useConfigComponents({
       };
 
       const exportsEditorBoxSize =
-        comp.type !== "HtmlComponent" &&
         comp.type !== "SurveyComponent" &&
         comp.type !== "SketchpadComponent" &&
         comp.type !== "FileUploadResponseComponent";
 
       // Only export editor box size for components whose backend uses width/height.
-      // HTML, Survey, Sketchpad, and FileUpload size from runtime parameters/DOM.
+      // Survey, Sketchpad, and FileUpload size from runtime parameters/DOM.
       if (exportsEditorBoxSize && comp.width > 0) {
         componentData.width = canvasStyles
           ? (comp.width / canvasStyles.width) * 100

@@ -151,7 +151,30 @@ export function getHtmlSceneNode(
 ): HtmlSceneNode | null {
   if (!isHtmlSceneComponent(component.type)) return null;
 
-  const size = metrics?.[component.id] || fallbackSize(component, canvasStyles);
+  // HtmlComponent is content-sized until the user resizes it: an explicit
+  // box must win over the measured DOM size, otherwise manual resizing is
+  // reverted by the next measurement pass.
+  const explicitHtmlSize =
+    component.type === "HtmlComponent"
+      ? (() => {
+          const width = configuredPixels(
+            component,
+            "width",
+            canvasStyles.width,
+          );
+          const height = configuredPixels(
+            component,
+            "height",
+            canvasStyles.width,
+          );
+          return width && height ? { width, height } : null;
+        })()
+      : null;
+
+  const size =
+    explicitHtmlSize ||
+    metrics?.[component.id] ||
+    fallbackSize(component, canvasStyles);
   return {
     id: component.id,
     type: component.type,
