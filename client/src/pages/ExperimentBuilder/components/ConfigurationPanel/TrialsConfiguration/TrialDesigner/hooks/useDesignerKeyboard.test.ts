@@ -1,6 +1,10 @@
 import { fireEvent, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useDesignerKeyboard } from "./useDesignerKeyboard";
+import {
+  registerEditorModal,
+  unregisterEditorModal,
+} from "../../ParameterMapper/modalMarker";
 
 type Args = Parameters<typeof useDesignerKeyboard>[0];
 
@@ -28,7 +32,13 @@ function renderKeyboard(overrides: Partial<Args> = {}) {
   return { del, view };
 }
 
+let editorToken: symbol | null = null;
+
 afterEach(() => {
+  if (editorToken) {
+    unregisterEditorModal(editorToken);
+    editorToken = null;
+  }
   document.body.innerHTML = "";
   vi.restoreAllMocks();
 });
@@ -110,6 +120,29 @@ describe("designer delete shortcut", () => {
     fireEvent.keyDown(document.body, { key: "Backspace" });
     expect(closed.del).not.toHaveBeenCalled();
     closed.view.unmount();
+  });
+
+  it("stays inert while a content editor modal is open", () => {
+    const selectAll = vi.fn(() => true);
+    const onClose = vi.fn();
+    const { del } = renderKeyboard({ onClose, selectAll });
+    editorToken = Symbol("editor-modal");
+    registerEditorModal(editorToken);
+
+    fireEvent.keyDown(document.body, { key: "Backspace" });
+    fireEvent.keyDown(document.body, { key: "Delete" });
+    fireEvent.keyDown(document.body, { key: "a", ctrlKey: true });
+    fireEvent.keyDown(document.body, { key: "Escape" });
+
+    expect(del).not.toHaveBeenCalled();
+    expect(selectAll).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+
+    unregisterEditorModal(editorToken);
+    editorToken = null;
+
+    fireEvent.keyDown(document.body, { key: "Backspace" });
+    expect(del).toHaveBeenCalledTimes(1);
   });
 
   it("lets the inline editor win even with an empty field list", () => {

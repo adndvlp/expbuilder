@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { CanvasContextMenuState } from "../CanvasContextMenu";
+import { isEditorModalOpen } from "../../ParameterMapper/modalMarker";
 
 interface Args {
   contextMenu: CanvasContextMenuState | null;
@@ -64,6 +65,8 @@ export function useDesignerKeyboard({
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || !isOpen) return;
+      // An open content editor owns Escape: it closes the editor, not the designer.
+      if (isEditorModalOpen()) return;
       if (contextMenu) {
         setContextMenu(null);
       } else if (editingTextId) {
@@ -96,6 +99,7 @@ export function useDesignerKeyboard({
     if (!isOpen || isDemoRunning || editingTextId) return;
     const handleCommand = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      if (isEditorModalOpen()) return;
       if (isEditableShortcutTarget(event.target)) return;
       const commands: Record<string, () => boolean> = {
         a: selectAll,
@@ -115,6 +119,8 @@ export function useDesignerKeyboard({
     const handleDelete = (event: KeyboardEvent) => {
       if (event.key !== "Delete" && event.key !== "Backspace") return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
+      // While an editor modal is open the key belongs to the edited content.
+      if (isEditorModalOpen()) return;
       if (isEditableShortcutTarget(event.target)) return;
       if (del()) {
         event.preventDefault();
