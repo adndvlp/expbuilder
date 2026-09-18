@@ -92,7 +92,6 @@ export function createLoopNode(
   y: number,
   isSelected: boolean,
   onClick: () => void,
-  onAddBranch?: () => void,
   onOpenLoop?: () => void,
 ): LayoutNode {
   return {
@@ -101,7 +100,6 @@ export function createLoopNode(
     data: {
       name,
       selected: isSelected,
-      onAddBranch: isSelected ? onAddBranch : undefined,
       onOpenLoop,
       onClick,
     },

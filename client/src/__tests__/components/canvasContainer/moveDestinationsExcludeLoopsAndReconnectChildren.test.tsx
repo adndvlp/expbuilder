@@ -4,7 +4,6 @@ import Canvas from "../../../pages/ExperimentBuilder/components/Canvas";
 import {
   bindCanvasMocks,
   installTrialsContext,
-  makeLoop,
   makeTrial,
   setupCanvasTest,
 } from "./testHarness";
@@ -60,20 +59,11 @@ bindCanvasMocks(mocks);
 describe("Canvas container", () => {
   beforeEach(setupCanvasTest);
 
-  it("moves selected loops into loop destinations in branch and sequential modes", async () => {
+  it("does not offer loops as move destinations", () => {
     installTrialsContext({
-      selectedLoop: makeLoop("loop-child", {
-        name: "Child Loop",
-        branches: [8],
-      }),
+      selectedTrial: makeTrial(3),
       timeline: [
-        {
-          id: "loop-child",
-          type: "loop",
-          name: "Child Loop",
-          trials: [8],
-          branches: [8],
-        },
+        { id: 3, type: "trial", name: "Trial 3", branches: [] },
         {
           id: "loop-1",
           type: "loop",
@@ -82,27 +72,15 @@ describe("Canvas container", () => {
           branches: [2],
         },
         { id: 2, type: "trial", name: "Trial 2", branches: [] },
-        { id: 8, type: "trial", name: "Trial 8", branches: [] },
       ],
     });
-    const firstRender = render(<Canvas />);
+
+    render(<Canvas />);
 
     fireEvent.click(screen.getByTitle("Move Item"));
-    fireEvent.click(screen.getByText("Loop 1"));
-    fireEvent.click(screen.getByText("Move"));
 
-    await waitFor(() => {
-      expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith(
-        "loop-child",
-        {
-          branches: [],
-        },
-      );
-    });
-    expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith("loop-1", {
-      branches: ["loop-child"],
-    });
-    firstRender.unmount();
+    expect(screen.getByText("Trial 2")).toBeInTheDocument();
+    expect(screen.queryByText("Loop 1")).not.toBeInTheDocument();
   });
 
   it("does not open the move modal when the selected item is absent from the timeline", () => {

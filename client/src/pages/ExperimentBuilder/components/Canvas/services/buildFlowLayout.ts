@@ -94,7 +94,6 @@ export function buildFlowLayout(options: FlowLayoutOptions) {
           yPos,
           !!isSelected,
           () => onSelectLoop(item),
-          isSelected ? () => onAddBranch(item.id) : undefined,
           onOpenLoop ? () => onOpenLoop(String(item.id)) : undefined,
         ),
       );

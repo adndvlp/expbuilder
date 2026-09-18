@@ -126,42 +126,6 @@ describe("Canvas container", () => {
     installTrialsContext();
   });
 
-  it("moves a selected trial sequentially behind a loop destination", async () => {
-    installTrialsContext({
-      selectedTrial: makeTrial(3),
-      timeline: [
-        { id: 3, type: "trial", name: "Trial 3", branches: [] },
-        {
-          id: "loop-1",
-          type: "loop",
-          name: "Loop 1",
-          trials: [1],
-          branches: [2],
-        },
-        { id: 2, type: "trial", name: "Trial 2", branches: [] },
-      ],
-      getLoop: vi.fn(async (id: number | string) =>
-        makeLoop(String(id), { branches: [2] }),
-      ),
-    });
-
-    render(<Canvas />);
-
-    fireEvent.click(screen.getByTitle("Move Item"));
-    fireEvent.click(screen.getByText("Loop 1"));
-    fireEvent.click(screen.getByText("Sequential"));
-    fireEvent.click(screen.getByText("Move"));
-
-    await waitFor(() => {
-      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(3, {
-        branches: [2],
-      });
-    });
-    expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith("loop-1", {
-      branches: [3],
-    });
-  });
-
   it("logs move failures and missing destinations", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     installTrialsContext({

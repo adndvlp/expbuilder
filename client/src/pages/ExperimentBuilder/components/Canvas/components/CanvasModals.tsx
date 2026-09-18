@@ -101,6 +101,7 @@ export default function CanvasModals({
   const availableDestinations = itemToMove
     ? timeline
         .filter((item) => {
+          if (item.type === "loop") return false;
           if (String(item.id) === String(itemToMove.id)) return false;
           if (
             currentParent &&

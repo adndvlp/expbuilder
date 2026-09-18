@@ -156,12 +156,8 @@ describe("Canvas container", () => {
   it.each([
     ["branch", "trial", "missing"],
     ["branch", "trial", "without branches"],
-    ["branch", "loop", "missing"],
-    ["branch", "loop", "without branches"],
     ["sequential", "trial", "missing"],
     ["sequential", "trial", "without branches"],
-    ["sequential", "loop", "missing"],
-    ["sequential", "loop", "without branches"],
   ] as const)(
     "moves with a %s %s destination whose lookup is %s",
     async (mode, destinationType, lookupState) => {

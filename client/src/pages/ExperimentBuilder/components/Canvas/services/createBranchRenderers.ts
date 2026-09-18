@@ -122,7 +122,6 @@ export function createBranchRenderers({
         y,
         !!isSelected,
         () => onSelectLoop(loop),
-        isSelected ? () => onAddBranch(loop.id) : undefined,
         onOpenLoop ? () => onOpenLoop(String(loop.id)) : undefined,
       ),
     );
