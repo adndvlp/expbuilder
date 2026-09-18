@@ -68,12 +68,24 @@ export async function createExperimentIfMissing(
       uid,
       provider,
     );
+    if (!createResult.success) {
+      // All-or-nothing: without a storage folder the experiment cannot
+      // collect data, so publishing must fail instead of continuing.
+      const setupError = new Error(
+        createResult.storageError ||
+          "Could not create the experiment storage folder",
+      );
+      setupError.code = "EXPERIMENT_STORAGE_SETUP_FAILED";
+      throw setupError;
+    }
     console.log("Experiment created in Firestore:", createResult);
   } catch (createError) {
-    console.warn(
-      "Warning: Could not create experiment in Firestore:",
-      createError.message,
-    );
-    // No detener la publicación, solo advertir
+    // A concurrent publish may have created the document first; the winner
+    // owns the folder setup, so this race is benign.
+    if (createError?.message === "EXPERIMENT_ALREADY_EXISTS") {
+      console.log("Experiment was created concurrently; continuing");
+      return;
+    }
+    throw createError;
   }
 }

@@ -75,12 +75,23 @@ export const publishExperiment = onRequest({ cors: true }, async (req, res) => {
       const experimentDoc = await experimentRef.get();
 
       if (!experimentDoc.exists) {
-        await createExperimentIfMissing(
-          experimentID,
-          repoName,
-          uid,
-          storageProvider,
-        );
+        try {
+          await createExperimentIfMissing(
+            experimentID,
+            repoName,
+            uid,
+            storageProvider,
+          );
+        } catch (storageSetupError) {
+          // All-or-nothing: publishing without the experiment storage folder
+          // would silently lose participant data.
+          return res.status(400).json({
+            success: false,
+            message:
+              "Could not set up experiment storage. Connect the storage provider and try again.",
+            error: storageSetupError.message,
+          });
+        }
       } else {
         console.log("Experiment already exists in Firestore");
 

@@ -87,7 +87,7 @@ beforeEach(() => {
 // ─────────────────────────────────────────────────────────────────────────
 
 describe("createExperiment — folder failure", () => {
-  test("createFolder errorText propagated as storageError", async () => {
+  test("fails creation and surfaces the folder error", async () => {
     mockGetValidToken.mockResolvedValueOnce({ success: true, access_token: "tok" });
     mockCreateFolder.mockResolvedValueOnce({
       success: false,
@@ -95,8 +95,9 @@ describe("createExperiment — folder failure", () => {
     });
 
     const r = await createExperiment("EID", "Exp", "u1", "dropbox");
-    expect(r.success).toBe(true);
-    expect(r.folderCreated).toBe(false);
+    expect(r.success).toBe(false);
     expect(r.storageError).toBe("quota exceeded");
+    // All-or-nothing: no experiment document without its storage folder.
+    expect(fs.getRef("experiments/EID").create).not.toHaveBeenCalled();
   });
 });

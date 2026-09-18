@@ -17,6 +17,20 @@ export async function handleProviderChange(
     return { ok: true };
   }
 
+  // All-or-nothing: the provider field is written first so the rest of the
+  // flow can proceed, so every failure path must restore it. Otherwise the
+  // experiment ends up pointing at a provider with no folder to write to.
+  const restoreProviderField = async () => {
+    try {
+      await experimentRef.update({ storageProvider: currentProvider });
+    } catch (rollbackError) {
+      console.warn(
+        "[PROVIDER CHANGE] Could not restore previous storageProvider:",
+        rollbackError.message,
+      );
+    }
+  };
+
   console.log(
     `Updating storage provider from ${currentProvider} to ${newProvider}`,
   );
@@ -219,22 +233,50 @@ export async function handleProviderChange(
           await experimentRef.update(clearFields);
         }
       } else {
-        console.warn(
-          `Warning: Could not create folder in ${newProvider}:`,
-          folderResult.errorText,
-        );
+        await restoreProviderField();
+        return {
+          ok: false,
+          response: {
+            status: 400,
+            body: {
+              success: false,
+              message: `Could not create the experiment folder in ${newProvider}`,
+              error: folderResult.errorText,
+            },
+          },
+        };
       }
     } else {
       console.error(
         `[PROVIDER CHANGE] Failed to get valid token for ${newProvider}:`,
         tokenResult.error,
       );
+      await restoreProviderField();
+      return {
+        ok: false,
+        response: {
+          status: 400,
+          body: {
+            success: false,
+            message: `Could not get a valid ${newProvider} token to create the experiment folder`,
+            error: tokenResult.error,
+          },
+        },
+      };
     }
   } catch (updateError) {
-    console.warn(
-      "Warning: Could not update storage provider:",
-      updateError.message,
-    );
+    await restoreProviderField();
+    return {
+      ok: false,
+      response: {
+        status: 500,
+        body: {
+          success: false,
+          message: "Could not update the storage provider",
+          error: updateError.message,
+        },
+      },
+    };
   }
 
   return { ok: true };
