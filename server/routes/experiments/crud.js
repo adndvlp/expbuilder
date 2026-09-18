@@ -9,6 +9,17 @@ import { experimentsHtmlDir, trialsPreviewsHtmlDir } from "./paths.js";
 
 const router = Router();
 
+function receiptBelongsToExperiment(receipt, experimentID) {
+  if (receipt.experimentId !== undefined && receipt.experimentId !== null) {
+    return String(receipt.experimentId) === String(experimentID);
+  }
+  try {
+    return String(JSON.parse(receipt.payload || "{}").experimentId) === String(experimentID);
+  } catch {
+    return false;
+  }
+}
+
 router.get("/api/load-experiments", async (req, res) => {
   try {
     await db.read();
@@ -100,6 +111,9 @@ router.delete("/api/delete-experiment/:experimentID", async (req, res) => {
     db.data.participantFiles ||= [];
     db.data.participantFiles = db.data.participantFiles.filter(
       (f) => f.experimentID !== experimentID,
+    );
+    db.data.mutationReceipts = (db.data.mutationReceipts || []).filter(
+      (receipt) => !receiptBelongsToExperiment(receipt, experimentID),
     );
     delete db.data.sessionCounters[experimentID];
 

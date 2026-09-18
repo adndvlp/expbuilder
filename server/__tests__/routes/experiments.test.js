@@ -114,6 +114,12 @@ describe('DELETE /api/delete-experiment/:experimentID', () => {
     db.data.sessionResults.push({ experimentID: 'E1', sessionId: 's1', createdAt: new Date().toISOString(), data: [], state: 'completed', lastUpdate: new Date().toISOString(), metadata: {} })
     db.data.participantFiles.push({ id: 'pf1', experimentID: 'E1', filename: 'f.txt' })
     db.data.sessionCounters.E1 = 7
+    db.data.mutationReceipts = [
+      { operation: 'create-loop-branch', idempotencyKey: 'k1', experimentId: 'E1', payload: '{}', response: {}, createdAt: new Date().toISOString() },
+      { operation: 'create-loop-branch', idempotencyKey: 'k2', payload: JSON.stringify({ experimentId: 'E1' }), response: {}, createdAt: new Date().toISOString() },
+      { operation: 'create-loop-branch', idempotencyKey: 'k3', experimentId: 'E2', payload: JSON.stringify({ experimentId: 'E2' }), response: {}, createdAt: new Date().toISOString() },
+      { operation: 'create-loop-branch', idempotencyKey: 'k4', payload: 'not-json', response: {}, createdAt: new Date().toISOString() },
+    ]
     // Create upload directory
     fs.mkdirSync(path.join(tmpDir, 'Exp1', 'img'), { recursive: true })
     fs.writeFileSync(path.join(tmpDir, 'Exp1', 'img', 'photo.jpg'), 'data')
@@ -131,6 +137,7 @@ describe('DELETE /api/delete-experiment/:experimentID', () => {
     expect(db.data.sessionResults).toHaveLength(0)
     expect(db.data.participantFiles).toHaveLength(0)
     expect(db.data.sessionCounters.E1).toBeUndefined()
+    expect(db.data.mutationReceipts.map((receipt) => receipt.idempotencyKey)).toEqual(['k3', 'k4'])
   })
 
   test('calls Firebase delete and logs partial success flags', async () => {
