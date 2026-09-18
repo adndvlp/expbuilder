@@ -7,6 +7,7 @@ import { uploadMediaFiles } from "./media.js";
 import { provisionRepository, enablePages } from "./repo.js";
 import { handleProviderChange } from "./provider-change.js";
 import { createExperimentIfMissing } from "./create-if-missing.js";
+import { ensureExperimentStorage } from "./ensure-storage.js";
 
 /**
  * Endpoint unificado para publicar experimento en GitHub
@@ -112,6 +113,22 @@ export const publishExperiment = onRequest({ cors: true }, async (req, res) => {
             return res
               .status(providerChange.response.status)
               .json(providerChange.response.body);
+          }
+        } else {
+          // All-or-nothing: on republish the storage token must still be
+          // valid and the experiment folder must still exist, otherwise the
+          // published experiment would silently fail to save data.
+          const storageCheck = await ensureExperimentStorage(
+            experimentRef,
+            currentData,
+            currentProvider,
+            uid,
+            repoName,
+          );
+          if (!storageCheck.ok) {
+            return res
+              .status(storageCheck.response.status)
+              .json(storageCheck.response.body);
           }
         }
       }
