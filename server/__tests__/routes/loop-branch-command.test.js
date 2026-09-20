@@ -90,6 +90,42 @@ describe("atomic loop branch command", () => {
     expect(db.data.mutationReceipts).toHaveLength(1);
   });
 
+  test("keeps only the newest receipts per experiment", async () => {
+    const { app, db } = await freshApp();
+    db.data.mutationReceipts = Array.from({ length: 10 }, (_, index) => ({
+      operation: "create-loop-branch",
+      idempotencyKey: `seed-${index}`,
+      experimentId: "E1",
+      payload: "{}",
+      response: {},
+      createdAt: "2026-01-01T00:00:00.000Z",
+    }));
+    db.data.mutationReceipts.push({
+      operation: "create-loop-branch",
+      idempotencyKey: "other-experiment",
+      experimentId: "E2",
+      payload: "{}",
+      response: {},
+      createdAt: "2026-01-01T00:00:00.000Z",
+    });
+    await db.write();
+
+    await command(app, "cap-command").expect(200);
+
+    await db.read();
+    const e1Keys = db.data.mutationReceipts
+      .filter((receipt) => receipt.experimentId === "E1")
+      .map((receipt) => receipt.idempotencyKey);
+    expect(e1Keys).toHaveLength(10);
+    expect(e1Keys).toContain("cap-command");
+    expect(e1Keys).not.toContain("seed-0");
+    expect(
+      db.data.mutationReceipts.some(
+        (receipt) => receipt.idempotencyKey === "other-experiment",
+      ),
+    ).toBe(true);
+  });
+
   test("[TA-06] rejects a stale revision and returns the current graph", async () => {
     const { app, db } = await freshApp();
     const response = await command(app, "stale-revision", {

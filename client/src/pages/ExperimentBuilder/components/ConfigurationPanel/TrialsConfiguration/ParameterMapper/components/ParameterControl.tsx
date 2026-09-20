@@ -2,6 +2,7 @@ import type React from "react";
 import Switch from "react-switch";
 import ParameterInputField from "../ParameterInputField";
 import TypedParameterInput from "../TypedParameterInput";
+import RequireResponseControl from "./RequireResponseControl";
 import {
   getVisualDefaultValue,
   isVisualStyleParameter,
@@ -127,10 +128,25 @@ export default function ParameterControl({
     );
   }
 
+  // ── Special: require_response_components → pick components required to continue ──
+  if (key === "require_response_components") {
+    return (
+      <div key={key} style={fieldStyle}>
+        <RequireResponseControl
+          columnMapping={columnMapping}
+          componentMode={componentMode}
+          onSave={onSave}
+          setColumnMapping={setColumnMapping}
+        />
+      </div>
+    );
+  }
+
   // ── Special: input_type → always show as a select dropdown ──
   if (key === "input_type") {
     const INPUT_TYPE_OPTIONS = [
       { value: "text", label: "Text" },
+      { value: "long_text", label: "Long Text (textarea)" },
       { value: "date", label: "Date (calendar)" },
       { value: "time", label: "Time (clock)" },
       { value: "datetime-local", label: "Date & Time" },

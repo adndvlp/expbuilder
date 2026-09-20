@@ -8,6 +8,7 @@ import {
 } from "../utils/generateTrialLoopCodes";
 import useDevMode from "../hooks/useDevMode";
 import { useExperimentCode } from "./Timeline/ExperimentCode/useExperimentCode";
+import { resumeCode } from "./Timeline/ExperimentCode/ResumeCode";
 import { buildSelectedPreviewPersistence } from "./experiment-preview/selectedPreviewPersistence";
 import { getApiBaseUrl } from "../../../lib/apiBaseUrl";
 const API_URL = getApiBaseUrl();
@@ -134,6 +135,7 @@ function ExperimentPreview({
         });
         const trialCode = `
 ${persistenceCode}
+${resumeCode()}
 (async () => {
 localStorage.removeItem('jsPsych_jumpToTrial');
   participantNumber = await initParticipant();

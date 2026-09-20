@@ -62,7 +62,7 @@ export function getComponentSnapBox(
       x: component.x,
       y: component.y,
       width: component.inputWidth ?? 10 * fontSize * 0.55,
-      height: fontSize * 1.5,
+      height: component.inputHeight ?? fontSize * 1.5,
       rotation: component.rotation ?? 0,
     };
   }

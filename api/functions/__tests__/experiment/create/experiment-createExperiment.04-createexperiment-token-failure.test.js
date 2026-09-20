@@ -87,17 +87,15 @@ beforeEach(() => {
 // ─────────────────────────────────────────────────────────────────────────
 
 describe("createExperiment — token failure", () => {
-  test("storageError reflects token error; doc still saved without folderId", async () => {
+  test("fails creation instead of saving a doc without folderId", async () => {
     mockGetValidToken.mockResolvedValueOnce({ success: false, error: "expired" });
 
     const r = await createExperiment("EID", "Exp", "u1", "googledrive");
 
-    expect(r.success).toBe(true);
-    expect(r.folderCreated).toBe(false);
+    expect(r.success).toBe(false);
     expect(r.storageError).toBe("Token error: expired");
     expect(mockCreateFolder).not.toHaveBeenCalled();
-
-    const body = fs.getRef("experiments/EID").create.mock.calls[0][0];
-    expect(body.driveFolderId).toBe(null);
+    // All-or-nothing: no experiment document without its storage folder.
+    expect(fs.getRef("experiments/EID").create).not.toHaveBeenCalled();
   });
 });

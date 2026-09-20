@@ -25,6 +25,16 @@
     "stimulus_duration": {
       "type": "number",
       "default": null
+    },
+    "width": {
+      "type": "number",
+      "default": null,
+      "pretty_name": "Width"
+    },
+    "height": {
+      "type": "number",
+      "default": null,
+      "pretty_name": "Height"
     }
   },
   "data": {}

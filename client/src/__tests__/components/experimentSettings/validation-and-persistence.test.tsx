@@ -65,8 +65,8 @@ describe("ExperimentSettings", () => {
 
     render(<ExperimentSettings experimentID="exp-published" />);
 
-    await screen.findByText("Save Configuration");
-    fireEvent.click(screen.getByText("Save Configuration"));
+    await screen.findAllByText("Save Configuration");
+    fireEvent.click(screen.getAllByText("Save Configuration")[0]);
 
     expect(
       await screen.findByText("Session name configuration is invalid."),
@@ -89,8 +89,8 @@ describe("ExperimentSettings", () => {
 
     render(<ExperimentSettings experimentID="exp-published" />);
 
-    await screen.findByText("Save Configuration");
-    fireEvent.click(screen.getByText("Save Configuration"));
+    await screen.findAllByText("Save Configuration");
+    fireEvent.click(screen.getAllByText("Save Configuration")[0]);
 
     expect(
       await screen.findByText("Error saving configuration"),

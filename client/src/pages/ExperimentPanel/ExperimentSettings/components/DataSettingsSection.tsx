@@ -1,10 +1,13 @@
 import type { Dispatch, SetStateAction } from "react";
-import type { BatchConfig } from "../types";
+import type { BatchConfig, StatusMessage } from "../types";
 
 interface DataSettingsSectionProps {
   experimentExists: boolean;
   config: BatchConfig;
   setConfig: Dispatch<SetStateAction<BatchConfig>>;
+  onSave?: () => void;
+  saving?: boolean;
+  message?: StatusMessage | null;
 }
 
 const fieldStyle = {
@@ -21,6 +24,9 @@ export function DataSettingsSection({
   experimentExists,
   config,
   setConfig,
+  onSave,
+  saving = false,
+  message = null,
 }: DataSettingsSectionProps) {
   if (!experimentExists) {
     return (
@@ -109,7 +115,8 @@ export function DataSettingsSection({
           setConfig({ ...config, resumeTimeoutMinutes: value || 30 })
         }
       >
-        Time before disconnected session data is deleted (1-1440 minutes)
+        Time before a disconnected session is saved to storage with the data
+        collected so far (1-1440 minutes)
       </NumberSetting>
 
       <div
@@ -152,6 +159,10 @@ export function DataSettingsSection({
                 Participants can reconnect within {config.resumeTimeoutMinutes}{" "}
                 minutes
               </li>
+              <li>
+                If they do not reconnect, the partial session is saved to
+                storage when the timeout expires
+              </li>
             </>
           ) : (
             <>
@@ -171,6 +182,40 @@ export function DataSettingsSection({
           )}
         </ul>
       </div>
+
+      {onSave && (
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+            marginBottom: 32,
+          }}
+        >
+          <button
+            onClick={onSave}
+            disabled={saving}
+            className="gradient-btn"
+            style={{
+              opacity: saving ? 0.6 : 1,
+              cursor: saving ? "not-allowed" : "pointer",
+            }}
+          >
+            {saving ? "Saving..." : "Save Configuration"}
+          </button>
+          {message && (
+            <p
+              style={{
+                color: message.type === "success" ? "#4caf50" : "#f44336",
+                fontWeight: "600",
+                fontSize: 14,
+              }}
+            >
+              {message.text}
+            </p>
+          )}
+        </div>
+      )}
     </>
   );
 }

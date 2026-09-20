@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { CanvasContextMenuState } from "../CanvasContextMenu";
+import { isEditorModalOpen } from "../../ParameterMapper/modalMarker";
 
 interface Args {
   contextMenu: CanvasContextMenuState | null;
@@ -17,14 +18,33 @@ interface Args {
   undo: () => boolean;
 }
 
+const EDITABLE_SELECTOR =
+  'input, textarea, select, [contenteditable="true"], [role="textbox"]';
+
+/**
+ * True when the shortcut belongs to a text field instead of the canvas.
+ *
+ * Checks the event target AND the currently focused element: components
+ * edited by double click (inline text overlay, DOM-activated scene nodes)
+ * can retarget or lose the event target, and deleting the selected
+ * component while the user is deleting typed characters is never intended.
+ * Focus inside the live scene overlay (`[data-scene-node-id]`) also counts
+ * as editing, because that DOM only becomes interactive when the user
+ * activated the component.
+ */
 function isEditableShortcutTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  return Boolean(
-    target.closest(
-      'input, textarea, select, [contenteditable="true"], [role="textbox"]',
-    ),
-  );
+  const candidates: Array<EventTarget | Element | null> = [
+    target,
+    typeof document !== "undefined" ? document.activeElement : null,
+  ];
+  return candidates.some((candidate) => {
+    if (!(candidate instanceof HTMLElement)) return false;
+    if (candidate.isContentEditable) return true;
+    if (candidate.closest(EDITABLE_SELECTOR)) return true;
+    return Boolean(
+      candidate.closest('[data-scene-node-id], [data-html-scene-overlay]'),
+    );
+  });
 }
 
 export function useDesignerKeyboard({
@@ -45,6 +65,8 @@ export function useDesignerKeyboard({
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || !isOpen) return;
+      // An open content editor owns Escape: it closes the editor, not the designer.
+      if (isEditorModalOpen()) return;
       if (contextMenu) {
         setContextMenu(null);
       } else if (editingTextId) {
@@ -77,6 +99,7 @@ export function useDesignerKeyboard({
     if (!isOpen || isDemoRunning || editingTextId) return;
     const handleCommand = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      if (isEditorModalOpen()) return;
       if (isEditableShortcutTarget(event.target)) return;
       const commands: Record<string, () => boolean> = {
         a: selectAll,
@@ -96,6 +119,8 @@ export function useDesignerKeyboard({
     const handleDelete = (event: KeyboardEvent) => {
       if (event.key !== "Delete" && event.key !== "Backspace") return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
+      // While an editor modal is open the key belongs to the edited content.
+      if (isEditorModalOpen()) return;
       if (isEditableShortcutTarget(event.target)) return;
       if (del()) {
         event.preventDefault();

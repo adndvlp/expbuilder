@@ -15,11 +15,38 @@ export function renderPreviewHtmlComponent(
     ? `jspsych-dynamic-${config.name}-stimulus`
     : "jspsych-dynamic-html-stimulus";
   stimulusElement.className = "dynamic-html-component-stimulus";
-  stimulusElement.style.width = "max-content";
+
+  // Same sizing rules as the runtime component: honor an explicit design box
+  // (vw percentages) and otherwise hug the content capped to the canvas, so
+  // long unbroken text cannot spill outside it.
+  const canvasWidth = Number(context.canvasStyles?.width) || 1024;
+  const explicitWidth = Number(resolvePreviewParam(config.width, null));
+  const explicitHeight = Number(resolvePreviewParam(config.height, null));
+  const hasExplicitWidth = Number.isFinite(explicitWidth) && explicitWidth > 0;
+  const hasExplicitHeight =
+    Number.isFinite(explicitHeight) && explicitHeight > 0;
+
+  if (hasExplicitWidth) {
+    stimulusElement.style.width = `${(explicitWidth / 100) * canvasWidth}px`;
+  } else {
+    stimulusElement.style.width = "max-content";
+    stimulusElement.style.maxWidth = `${canvasWidth}px`;
+  }
+  if (hasExplicitHeight) {
+    stimulusElement.style.minHeight = `${(explicitHeight / 100) * canvasWidth}px`;
+  }
+  stimulusElement.style.overflowWrap = "break-word";
+
   applyPreviewPosition(stimulusElement, config, context);
-  stimulusElement.innerHTML = makeGrapesHtmlPortable(
-    resolvePreviewParam(config.stimulus, ""),
-  );
+  // Same isolation as the runtime component: the pasted markup lives in a
+  // shadow root so its styles cannot leak into the designer page.
+  const html = makeGrapesHtmlPortable(resolvePreviewParam(config.stimulus, ""));
+  if (typeof stimulusElement.attachShadow === "function") {
+    const shadowRoot = stimulusElement.attachShadow({ mode: "open" });
+    shadowRoot.innerHTML = html;
+  } else {
+    stimulusElement.innerHTML = html;
+  }
   container.appendChild(stimulusElement);
   return stimulusElement;
 }

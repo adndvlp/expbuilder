@@ -52,7 +52,7 @@ afterEach(() => {
 });
 
 describe("handleProviderChange", () => {
-  test("creates an OSF project on demand, then tolerates folder creation failure", async () => {
+  test("fails provider change when the folder cannot be created and restores the previous provider", async () => {
     const experimentRef = fs.getRef("experiments/EID");
     const userRef = fs.getRef("users/u1");
     userRef.get.mockResolvedValueOnce(makeDocSnapshot({ id: "u1", data: {} }));
@@ -77,7 +77,17 @@ describe("handleProviderChange", () => {
         "u1",
         "repo",
       ),
-    ).resolves.toEqual({ ok: true });
+    ).resolves.toEqual({
+      ok: false,
+      response: {
+        status: 400,
+        body: {
+          success: false,
+          message: "Could not create the experiment folder in osf",
+          error: "component quota",
+        },
+      },
+    });
 
     expect(userRef.update).toHaveBeenCalledWith({ osfProjectId: "proj-new" });
     expect(mockCreateFolder).toHaveBeenCalledWith(
@@ -86,12 +96,17 @@ describe("handleProviderChange", () => {
       "proj-new",
       "repo",
     );
+    // All-or-nothing: the provider field is restored so the experiment
+    // keeps writing to its previous (working) storage.
+    expect(experimentRef.update).toHaveBeenCalledWith({
+      storageProvider: "dropbox",
+    });
     expect(experimentRef.update).not.toHaveBeenCalledWith(
       expect.objectContaining({ osfComponentId: expect.any(String) }),
     );
   });
 
-  test("continues after token failure for the new provider", async () => {
+  test("fails provider change after token failure for the new provider", async () => {
     const experimentRef = fs.getRef("experiments/EID");
     mockGetValidToken.mockResolvedValueOnce({
       success: false,
@@ -106,10 +121,24 @@ describe("handleProviderChange", () => {
         "u1",
         "repo",
       ),
-    ).resolves.toEqual({ ok: true });
+    ).resolves.toEqual({
+      ok: false,
+      response: {
+        status: 400,
+        body: {
+          success: false,
+          message:
+            "Could not get a valid googledrive token to create the experiment folder",
+          error: "no drive token",
+        },
+      },
+    });
 
     expect(experimentRef.update).toHaveBeenCalledWith({
       storageProvider: "googledrive",
+    });
+    expect(experimentRef.update).toHaveBeenCalledWith({
+      storageProvider: "dropbox",
     });
     expect(mockCreateFolder).not.toHaveBeenCalled();
   });
@@ -148,7 +177,7 @@ describe("handleProviderChange", () => {
     });
   });
 
-  test("continues when the initial provider update throws", async () => {
+  test("fails when the initial provider update throws", async () => {
     const experimentRef = fs.getRef("experiments/EID");
     experimentRef.update.mockRejectedValueOnce(new Error("update failed"));
 
@@ -160,11 +189,16 @@ describe("handleProviderChange", () => {
         "u1",
         "repo",
       ),
-    ).resolves.toEqual({ ok: true });
-
-    expect(console.warn).toHaveBeenCalledWith(
-      "Warning: Could not update storage provider:",
-      "update failed",
-    );
+    ).resolves.toEqual({
+      ok: false,
+      response: {
+        status: 500,
+        body: {
+          success: false,
+          message: "Could not update the storage provider",
+          error: "update failed",
+        },
+      },
+    });
   });
 });

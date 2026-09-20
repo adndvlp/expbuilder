@@ -76,7 +76,7 @@ describe("ExperimentSettings", () => {
       target: { value: "recaptcha-site-key" },
     });
     fireEvent.click(screen.getByText("- hyphen"));
-    fireEvent.click(screen.getByText("Save Configuration"));
+    fireEvent.click(screen.getAllByText("Save Configuration")[0]);
 
     await waitFor(() => {
       expect(firestoreMocks.setDoc).toHaveBeenCalledWith(
@@ -127,9 +127,9 @@ describe("ExperimentSettings", () => {
       <ExperimentSettings experimentID="exp-will-clear" />,
     );
 
-    await screen.findByText("Save Configuration");
+    await screen.findAllByText("Save Configuration");
     rerender(<ExperimentSettings experimentID={undefined} />);
-    fireEvent.click(screen.getByText("Save Configuration"));
+    fireEvent.click(screen.getAllByText("Save Configuration")[0]);
 
     expect(firestoreMocks.setDoc).not.toHaveBeenCalled();
     expect(fetchMock()).toHaveBeenCalledTimes(1);

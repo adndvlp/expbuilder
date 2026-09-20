@@ -30,13 +30,12 @@ export default function useConfigComponents({
       };
 
       const exportsEditorBoxSize =
-        comp.type !== "HtmlComponent" &&
         comp.type !== "SurveyComponent" &&
         comp.type !== "SketchpadComponent" &&
         comp.type !== "FileUploadResponseComponent";
 
       // Only export editor box size for components whose backend uses width/height.
-      // HTML, Survey, Sketchpad, and FileUpload size from runtime parameters/DOM.
+      // Survey, Sketchpad, and FileUpload size from runtime parameters/DOM.
       if (exportsEditorBoxSize && comp.width > 0) {
         componentData.width = canvasStyles
           ? (comp.width / canvasStyles.width) * 100
@@ -124,11 +123,12 @@ export default function useConfigComponents({
           source: "typed",
           value: (ifsPx / canvasStyles.width) * 100,
         };
-        // Derive width and height from fontSize so runtime always matches canvas.
-        // Canvas: box width = inputWidth (if user resized) or 10*fontSize*0.55 ; box height = fontSize*1.5
+        // Derive width and height from the resized box when present, so the
+        // runtime matches the canvas without touching the font size.
         const canvasWidth = comp.inputWidth ?? 10 * ifsPx * 0.55;
         componentData.width = (canvasWidth / canvasStyles.width) * 100;
-        componentData.height = ((ifsPx * 1.5) / canvasStyles.width) * 100;
+        const inputHeightPx = comp.inputHeight ?? ifsPx * 1.5;
+        componentData.height = (inputHeightPx / canvasStyles.width) * 100;
       }
 
       // Categorize
@@ -144,6 +144,9 @@ export default function useConfigComponents({
         comp.type === "ClickResponseComponent";
 
       if (isResponseComponent) {
+        // Stable designer id: lets the trial keep required-response selections
+        // (and the runtime component identity) across reloads.
+        componentData.component_id = comp.id;
         responseComponents.push(componentData);
       } else {
         stimulusComponents.push(componentData);
@@ -180,11 +183,16 @@ export default function useConfigComponents({
       delete dynamicPluginConfig.response_components;
     }
 
-    // Persist canvas styles so they can be restored on re-open
+    // Persist only the trial layout size so it can be restored on re-open.
+    // Background color, full screen and progress bar are experiment-level
+    // settings owned by AppearanceSettings, not by the trial.
     if (canvasStyles) {
       dynamicPluginConfig.__canvasStyles = {
         source: "typed",
-        value: canvasStyles,
+        value: {
+          width: canvasStyles.width,
+          height: canvasStyles.height,
+        },
       };
     }
 

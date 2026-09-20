@@ -50,6 +50,7 @@ describe("useLoadComponents", () => {
             value: [
               {
                 type: "ButtonResponseComponent",
+                component_id: "button-restored",
                 coordinates: { x: 50, y: 40 },
                 width: 20,
                 height: 6,
@@ -101,6 +102,7 @@ describe("useLoadComponents", () => {
     );
     expect(loadedComponents[1]).toEqual(
       expect.objectContaining({
+        id: "button-restored",
         type: "ButtonResponseComponent",
         x: 500,
         y: 400,
@@ -110,11 +112,13 @@ describe("useLoadComponents", () => {
         buttonColor: "#0088ff",
       }),
     );
+    // Only width/height come from the trial; appearance settings (including
+    // progressBar) stay as loaded by CanvasStylesProvider from the experiment.
     expect(currentCanvasStyles).toEqual(
       expect.objectContaining({
         width: 1000,
         height: 700,
-        progressBar: true,
+        progressBar: false,
         backgroundColor: "#202020",
         fullScreen: false,
       }),

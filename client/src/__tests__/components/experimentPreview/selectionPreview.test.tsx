@@ -85,6 +85,8 @@ describe("ExperimentPreview selected item previews", () => {
     const body = requestBodyFromLastPreviewPost();
     expect(body.generatedCode).toContain('"Practice Loop_result_"');
     expect(body.generatedCode).toContain("const singleLoop = {};");
+    expect(body.generatedCode).toContain("window.ExpBuilderBranching = {");
+    expect(body.generatedCode).toContain("window.ExpBuilderNavigation = Object.freeze");
   });
 
   it("uses an empty experiment id for a trial without a route id", async () => {

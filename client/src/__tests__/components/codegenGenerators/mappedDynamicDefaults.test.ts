@@ -53,7 +53,10 @@ describe("MappedJson", () => {
           ],
         },
         trial_duration: { source: "typed", value: 1000 },
-        require_response: { source: "none", value: null },
+        require_response_components: {
+          source: "typed",
+          value: ["ButtonResponseComponent_1"],
+        },
       },
       getColumnValue,
       trialNameSanitized: "trial_a",
@@ -79,6 +82,7 @@ describe("MappedJson", () => {
           },
         ],
         trial_duration: 1000,
+        require_response_components: ["ButtonResponseComponent_1"],
       },
     ]);
   });

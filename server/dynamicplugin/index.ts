@@ -215,12 +215,14 @@ const info = <const>{
       array: true,
       default: [],
     },
-    /** If true, all response components must provide a valid response before the trial can end
-     * via participant action. Respects each component's own validation rules (allow_blanks,
-     * require_movement, etc.). Does NOT block trial end caused by trial_duration timeout. */
-    require_response: {
-      type: ParameterType.BOOL,
-      default: false,
+    /** IDs of the response components that must provide a valid response before the trial can
+     * end via participant action. Respects each component's own validation rules (allow_blanks,
+     * require_movement, etc.). An empty array means no response is required.
+     * Does NOT block trial end caused by trial_duration timeout. */
+    require_response_components: {
+      type: ParameterType.COMPLEX,
+      array: true,
+      default: [],
     },
     /** How long to wait for the participant to make a response before ending the trial in milliseconds. If the participant
      * fails to make a response before this timer is reached, the participant's response will be recorded as null for the trial
@@ -1433,39 +1435,52 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       });
     };
 
-    const clearResponseValidationErrors = () => {
-      responseComponents.forEach(({ instance: ri }) => {
+    const getRequiredResponseIds = () => {
+      const raw = resolveRawValue(trial.require_response_components);
+      return Array.isArray(raw) ? raw.map((value) => String(value)) : [];
+    };
+
+    const requiredResponseComponents = (requiredIds: string[]) =>
+      responseComponents.filter(({ config: rc }) =>
+        requiredIds.includes(String(rc.__componentId ?? rc.name ?? "")),
+      );
+
+    const clearResponseValidationErrors = (requiredIds: string[]) => {
+      requiredResponseComponents(requiredIds).forEach(({ instance: ri }) => {
         if (typeof (ri as any).clearValidationError === "function") {
           (ri as any).clearValidationError();
         }
       });
     };
 
-    const allRequiredResponsesValid = () =>
-      responseComponents.every(({ instance: ri, config: rc }) =>
-        typeof (ri as any).isValid === "function"
-          ? (ri as any).isValid(rc)
-          : true,
+    const allRequiredResponsesValid = (requiredIds: string[]) =>
+      requiredResponseComponents(requiredIds).every(
+        ({ instance: ri, config: rc }) =>
+          typeof (ri as any).isValid === "function"
+            ? (ri as any).isValid(rc)
+            : true,
       );
 
-    const resetResponseComponents = () => {
-      responseComponents.forEach(({ instance: ri }) => {
+    const resetResponseComponents = (requiredIds: string[]) => {
+      requiredResponseComponents(requiredIds).forEach(({ instance: ri }) => {
         if (typeof (ri as any).reset === "function") {
           (ri as any).reset();
         }
       });
     };
 
-    const showResponseValidationErrors = () => {
-      responseComponents.forEach(({ instance: ri, config: rc }) => {
-        if (
-          typeof (ri as any).isValid === "function" &&
-          !(ri as any).isValid(rc) &&
-          typeof (ri as any).showValidationError === "function"
-        ) {
-          (ri as any).showValidationError();
-        }
-      });
+    const showResponseValidationErrors = (requiredIds: string[]) => {
+      requiredResponseComponents(requiredIds).forEach(
+        ({ instance: ri, config: rc }) => {
+          if (
+            typeof (ri as any).isValid === "function" &&
+            !(ri as any).isValid(rc) &&
+            typeof (ri as any).showValidationError === "function"
+          ) {
+            (ri as any).showValidationError();
+          }
+        },
+      );
     };
 
     handleParticipantResponse = (
@@ -1481,11 +1496,12 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         return false;
       }
 
-      if (trial.require_response && !forceEnd) {
-        clearResponseValidationErrors();
-        if (!allRequiredResponsesValid()) {
-          resetResponseComponents();
-          showResponseValidationErrors();
+      const requiredResponseIds = getRequiredResponseIds();
+      if (!forceEnd && requiredResponseIds.length > 0) {
+        clearResponseValidationErrors(requiredResponseIds);
+        if (!allRequiredResponsesValid(requiredResponseIds)) {
+          resetResponseComponents(requiredResponseIds);
+          showResponseValidationErrors(requiredResponseIds);
           return false;
         }
       }

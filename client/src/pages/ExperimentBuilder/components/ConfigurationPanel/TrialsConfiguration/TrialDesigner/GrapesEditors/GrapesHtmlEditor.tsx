@@ -96,7 +96,12 @@ const GrapesHtmlEditor: React.FC<GrapesHtmlEditorProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+      suppressDesignerShortcuts
+    >
       <div
         style={{
           width: "100vw",

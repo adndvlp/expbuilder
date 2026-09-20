@@ -161,8 +161,9 @@ describe("useLoopCode composition", () => {
     );
     expect(code).toContain("window.ExpBuilderBranching.evaluateCondition");
     expect(code).toContain("window.ExpBuilderNavigation.requestJump(");
-    expect(code).toContain('const branches = [10, "loop_next"];');
-    expect(code).toContain("window.ExpBuilderBranching.decide(");
-    expect(code).toContain("window.nextTrialId = branches[0];");
+    // Loop-level branches are ignored: loops always iterate their rows and
+    // branching lives on the trials inside them.
+    expect(code).toContain("loop_loop_combo_HasBranches = false;");
+    expect(code).not.toContain("window.ExpBuilderBranching.decide(");
   });
 });

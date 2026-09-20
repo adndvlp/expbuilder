@@ -217,7 +217,7 @@ describe("ExperimentalHtmlSceneLayer", () => {
       transform: "scale(0.5)",
       zIndex: "5",
     });
-    expect(screen.getByTestId("runtime-html")).toBeInTheDocument();
+    expect(screen.queryByTestId("runtime-html")).toBeNull();
 
     const htmlNode = container.querySelector(
       "[data-scene-node-id='html-1']",
@@ -226,6 +226,15 @@ describe("ExperimentalHtmlSceneLayer", () => {
       pointerEvents: "auto",
       zIndex: "2",
     });
+
+    // Pasted HTML is isolated in a shadow root so its styles cannot leak
+    // into the page; the test markup lives there, not in the light DOM.
+    const htmlStimulus = htmlNode.querySelector(
+      ".dynamic-html-component-stimulus",
+    ) as HTMLElement | null;
+    expect(
+      htmlStimulus?.shadowRoot?.querySelector("[data-testid='runtime-html']"),
+    ).not.toBeNull();
 
     const textNode = container.querySelector(
       "[data-scene-node-id='text-1']",

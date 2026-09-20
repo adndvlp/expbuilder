@@ -10,6 +10,11 @@ export function getInputTypeInfo(
   userPlaceholder: string,
 ): InputTypeInfo {
   switch (type) {
+    case "long_text":
+      return {
+        displayPlaceholder: userPlaceholder || "Type your answer here...",
+        hasIcon: false,
+      };
     case "date":
       return {
         displayPlaceholder: userPlaceholder || "YYYY-MM-DD",
