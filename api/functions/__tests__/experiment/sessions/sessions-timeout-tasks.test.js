@@ -1,8 +1,5 @@
 import { jest } from "@jest/globals";
-import {
-  makeFsMock,
-  makeSnapshot,
-} from "../../helpers/firestore-mock.js";
+import { makeFsMock } from "../../helpers/firestore-mock.js";
 
 const fs = makeFsMock();
 const mockFinalizeSession = jest.fn();
@@ -123,7 +120,7 @@ describe("handleSessionTimeoutTask", () => {
     expect(rtdbRef.update).not.toHaveBeenCalled();
   });
 
-  test("expires IndexedDB sessions and deletes temp Firestore trials in batches", async () => {
+  test("saves IndexedDB session data at expiry instead of deleting it", async () => {
     const expiresAt = Date.now() - 1000;
     rtdbRef.once.mockResolvedValueOnce({
       val: () => ({
@@ -135,19 +132,7 @@ describe("handleSessionTimeoutTask", () => {
         metadata: { browser: "Chrome" },
       }),
     });
-
-    const firstBatch = makeSnapshot(
-      Array.from({ length: 500 }, (_, i) => ({
-        id: `trial-${i}`,
-        data: { trial_index: i },
-      })),
-    );
-    const secondBatch = makeSnapshot([
-      { id: "trial-500", data: { trial_index: 500 } },
-    ]);
-    fs.getCol("experiments/EID/sessions/S1/trials").get
-      .mockResolvedValueOnce(firstBatch)
-      .mockResolvedValueOnce(secondBatch);
+    mockFinalizeSession.mockResolvedValueOnce({ success: true, resultsSent: 501 });
 
     const result = await handleSessionTimeoutTask({
       experimentID: "EID",
@@ -156,13 +141,10 @@ describe("handleSessionTimeoutTask", () => {
     });
 
     expect(result).toEqual({
-      status: "expired_indexeddb_session",
-      trialsDeleted: 501,
+      status: "expired_session_saved",
+      resultsSent: 501,
     });
-    expect(fs.db.batch).toHaveBeenCalledTimes(2);
-    expect(fs.db.batch.mock.results[0].value.__ops).toHaveLength(500);
-    expect(fs.db.batch.mock.results[1].value.__ops).toHaveLength(1);
-    expect(fs.getRef("experiments/EID/sessions/S1").delete).toHaveBeenCalled();
+    expect(mockFinalizeSession).toHaveBeenCalledWith("EID", "S1");
     expect(
       fs.getRef("experiments/EID/session_metadata/S1").set,
     ).toHaveBeenCalledWith(
@@ -171,6 +153,7 @@ describe("handleSessionTimeoutTask", () => {
         state: "expired",
         metadata: { browser: "Chrome" },
         storageProvider: "googledrive",
+        resultsSent: 501,
       }),
       { merge: true },
     );
@@ -178,6 +161,7 @@ describe("handleSessionTimeoutTask", () => {
       expect.objectContaining({
         state: "expired",
         finalizationProcessed: true,
+        resultsSent: 501,
         resumeTimeoutTaskStatus: "processed",
       }),
     );
@@ -204,7 +188,7 @@ describe("handleSessionTimeoutTask", () => {
     });
 
     expect(result).toEqual({
-      status: "expired_osf_session",
+      status: "expired_session_saved",
       resultsSent: 7,
     });
     expect(mockFinalizeSession).toHaveBeenCalledWith("EID", "S1");
@@ -249,7 +233,7 @@ describe("handleSessionTimeoutTask", () => {
     });
 
     expect(result).toEqual({
-      status: "expired_osf_no_data",
+      status: "expired_no_data",
       error: "NO_RESULTS",
     });
     expect(rtdbRef.update).toHaveBeenCalledWith(

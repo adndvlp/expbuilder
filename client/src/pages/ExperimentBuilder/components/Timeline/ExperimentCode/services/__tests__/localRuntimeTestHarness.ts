@@ -188,11 +188,16 @@ export async function prepareSharedPage(
             participantNumber: participant,
           }), { status: 200, headers: { "Content-Type": "application/json" } });
         }
-        const candidate = localStorage.getItem(
-          "expbuilder:local:browser-exp:session-id",
-        );
+        // Serve persisted sessions by the sessionId requested in the URL,
+        // like the real server does. Reading localStorage here made the
+        // two-tab claim test racy: the losing tab overwrites the stored id
+        // before the winner's GET is served, hiding the winner's session.
+        const requestedSessionId = new URL(
+          String(input),
+          "http://tabs.test",
+        ).searchParams.get("sessionId");
         return new Response(JSON.stringify({
-          sessions: persisted && candidate === persisted ? [{
+          sessions: persisted && requestedSessionId === persisted ? [{
             experimentID: "browser-exp",
             sessionId: persisted,
             participantNumber: 1,

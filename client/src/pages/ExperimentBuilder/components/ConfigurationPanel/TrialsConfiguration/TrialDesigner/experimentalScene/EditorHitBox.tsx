@@ -171,19 +171,18 @@ export default function EditorHitBox({
             }),
       };
     } else if (shapeProps.type === "HtmlComponent") {
-      update.width = 0;
-      update.height = 0;
+      // Keep the manual box size: the runtime honors explicit width/height
+      // and otherwise caps content to the canvas, so resizing must persist.
+      update.width = Math.max(40, node.width * scaleX);
+      update.height = Math.max(20, node.height * scaleY);
     } else if (shapeProps.type === "FileUploadResponseComponent") {
       update.width = 0;
       update.height = 0;
     } else if (shapeProps.type === "InputResponseComponent") {
-      const fontSize = numberOr(
-        shapeProps.inputFontSize ??
-          getConfigValue(shapeProps, "input_font_size", 16),
-        16,
-      );
+      // Resizing the box resizes the input only: the font size stays as
+      // configured and the box grows/shrinks with the drag.
       update.inputWidth = Math.max(40, node.width * scaleX);
-      update.inputFontSize = Math.max(1, Math.round(fontSize * scaleY));
+      update.inputHeight = Math.max(20, node.height * scaleY);
     } else {
       update.width = Math.max(40, node.width * scaleX);
       update.height = Math.max(20, node.height * scaleY);

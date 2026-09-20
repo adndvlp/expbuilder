@@ -87,13 +87,13 @@ beforeEach(() => {
 // ─────────────────────────────────────────────────────────────────────────
 
 describe("createExperiment — getValidToken throw caught", () => {
-  test("unexpected throw becomes storageError, doc still written", async () => {
+  test("unexpected throw fails creation and is surfaced as storageError", async () => {
     mockGetValidToken.mockRejectedValueOnce(new Error("network down"));
 
     const r = await createExperiment("EID", "Exp", "u1", "googledrive");
-    expect(r.success).toBe(true);
+    expect(r.success).toBe(false);
     expect(r.storageError).toBe("network down");
-    expect(fs.getRef("experiments/EID").create).toHaveBeenCalled();
+    expect(fs.getRef("experiments/EID").create).not.toHaveBeenCalled();
   });
 });
 

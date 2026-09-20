@@ -9,7 +9,7 @@ export function isSafeFolderPath(path) {
   if (typeof path !== "string" || path.length === 0 || path.length > 1024) {
     return false;
   }
-  if (/\\|[ -]|\0/.test(path)) return false;
+  if (/\\|[\u0000-\u001F]/.test(path)) return false;
   const segments = path.split("/").filter(Boolean);
   if (segments.length === 0) return false;
   for (const seg of segments) {

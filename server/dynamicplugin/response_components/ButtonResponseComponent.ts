@@ -1070,7 +1070,7 @@ class ButtonResponseComponent {
     this.stage?.render();
   }
 
-  /** Reset state so the user can click again after a failed require_response validation */
+  /** Reset state so the user can click again after a failed require_response_components validation */
   reset(): void {
     this.response = null;
     this.rt = null;

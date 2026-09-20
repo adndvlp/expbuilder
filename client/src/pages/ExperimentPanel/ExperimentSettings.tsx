@@ -1,3 +1,4 @@
+import { useState } from "react";
 import AppearanceSettings from "./AppearanceSettings";
 import CustomDomainSettings from "./CustomDomainSettings";
 import { CaptchaSection } from "./ExperimentSettings/components/CaptchaSection";
@@ -12,6 +13,17 @@ type ExperimentSettingsProps = {
 
 function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
   const settings = useExperimentSettings(experimentID);
+  const [saveOrigin, setSaveOrigin] = useState<"batch" | "rest" | null>(null);
+
+  const saveFromBatch = () => {
+    setSaveOrigin("batch");
+    void settings.handleSave();
+  };
+
+  const saveFromRest = () => {
+    setSaveOrigin("rest");
+    void settings.handleSave();
+  };
 
   return (
     <div
@@ -30,6 +42,9 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
         experimentExists={settings.experimentExists}
         config={settings.config}
         setConfig={settings.setConfig}
+        onSave={saveFromBatch}
+        saving={settings.saving}
+        message={saveOrigin === "batch" ? settings.message : null}
       />
       <SessionNameSection
         tokens={settings.sessionNameTokens}
@@ -56,7 +71,7 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
           />
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <button
-              onClick={settings.handleSave}
+              onClick={saveFromRest}
               disabled={settings.saving}
               className="gradient-btn"
               style={{
@@ -66,7 +81,7 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
             >
               {settings.saving ? "Saving..." : "Save Configuration"}
             </button>
-            {settings.message && (
+            {saveOrigin === "rest" && settings.message && (
               <p
                 style={{
                   color:

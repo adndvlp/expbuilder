@@ -201,8 +201,10 @@ export default function useLoopCode({
     const test_stimuli_${loopIdSanitized} = ${JSON.stringify(unifiedStimuli, null, 2)};`;
     }
 
-    // Check if loop has branches
-    const hasBranchesLoop = branches && branches.length > 0;
+    // Legacy loop.branches are intentionally ignored: branches belong to the
+    // trials inside the loop, so a loop always iterates its timeline variables.
+    // This aligns with the upcoming loop-branches rework.
+    const hasBranchesLoop = false;
 
     const branchingResult = BranchingLogicCode({
       code,

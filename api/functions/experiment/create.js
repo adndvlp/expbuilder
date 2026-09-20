@@ -1,8 +1,10 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "../app.js";
 import writeLog from "./sessions/logging/write-log.js";
-import { createFolder } from "./sessions/services/folder.js";
-import { getValidToken } from "../oauth/index.js";
+import {
+  buildProviderFields,
+  ensureProviderFolder,
+} from "./publish/provider-folder.js";
 
 /**
  * Función reutilizable para crear experimento
@@ -26,54 +28,53 @@ export async function createExperiment(
   let folderCreated = false;
   let folderId = null;
   let uploadLink = null; // Para OSF
-  let storageError = null;
 
   if (uid) {
+    // All-or-nothing: the experiment document is only created after the
+    // per-experiment storage folder exists. If the token is missing or the
+    // folder cannot be created, creation fails (publish surfaces the error)
+    // instead of leaving an experiment whose data has no folder to go to.
     try {
-      const tokenResult = await getValidToken(storageProvider, uid);
-
-      if (tokenResult.success) {
-        // Para OSF, necesitamos el projectId del usuario
-        let projectPath = folderPath;
-        if (storageProvider === "osf") {
-          const userDoc = await db.collection("users").doc(uid).get();
-          const userData = userDoc.exists ? userDoc.data() : null;
-          projectPath = userData?.osfProjectId || folderPath;
-        }
-
-        const folderResult = await createFolder(
-          storageProvider,
-          tokenResult.access_token,
-          projectPath,
-          experimentName, // componentName para OSF
-        );
-
-        if (folderResult.success) {
-          folderCreated = true;
-          folderId = folderResult.folderId || folderResult.componentId; // Google Drive o OSF
-          uploadLink = folderResult.uploadLink; // Solo para OSF
-        } else {
-          storageError = folderResult.errorText;
-        }
-      } else {
-        storageError = `Token error: ${tokenResult.error}`;
+      // Para OSF, necesitamos el projectId del usuario
+      let projectPath = folderPath;
+      if (storageProvider === "osf") {
+        const userDoc = await db.collection("users").doc(uid).get();
+        const userData = userDoc.exists ? userDoc.data() : null;
+        projectPath = userData?.osfProjectId || folderPath;
       }
+
+      const folderResult = await ensureProviderFolder({
+        provider: storageProvider,
+        uid,
+        folderPath: projectPath,
+        componentName: experimentName,
+      });
+
+      if (!folderResult.success) {
+        return {
+          success: false,
+          storageError:
+            folderResult.code === "TOKEN_ERROR"
+              ? `Token error: ${folderResult.error}`
+              : folderResult.error,
+        };
+      }
+
+      folderCreated = true;
+      folderId = folderResult.folderId; // Google Drive o OSF
+      uploadLink = folderResult.uploadLink; // Solo para OSF
     } catch (error) {
-      storageError = error.message;
+      return {
+        success: false,
+        storageError: error.message,
+      };
     }
   }
 
-  // Configurar campos específicos del proveedor
-  const providerFields = {};
-  if (storageProvider === "googledrive") {
-    providerFields.driveFolderPath = folderPath;
-    providerFields.driveFolderId = folderId;
-  } else if (storageProvider === "dropbox") {
-    providerFields.dropboxFolder = folderPath;
-  } else if (storageProvider === "osf") {
-    providerFields.osfComponentId = folderId;
-    providerFields.osfUploadLink = uploadLink;
-  }
+  const providerFields = buildProviderFields(storageProvider, folderPath, {
+    folderId,
+    uploadLink,
+  });
 
   // E-3: defaults are overridable per-call. Counters (`sessions`,
   // `currentCondition`), the `id`/`owner`/`createdAt` fields, and the
@@ -138,6 +139,5 @@ export async function createExperiment(
     folderPath: folderPath,
     ...(folderId && { folderId }),
     folderCreated: folderCreated,
-    ...(storageError && { storageError }),
   };
 }

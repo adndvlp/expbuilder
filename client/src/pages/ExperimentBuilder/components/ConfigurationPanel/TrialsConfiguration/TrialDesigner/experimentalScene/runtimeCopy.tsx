@@ -56,7 +56,6 @@ function resolveComponentConfig(
   config.__canvas_width = canvasStyles.width;
 
   const exportsBoxSize =
-    component.type !== "HtmlComponent" &&
     component.type !== "SurveyComponent" &&
     component.type !== "SketchpadComponent" &&
     component.type !== "FileUploadResponseComponent";
@@ -73,8 +72,9 @@ function resolveComponentConfig(
       component.inputFontSize ?? config.input_font_size ?? 16,
     );
     const width = component.inputWidth ?? 10 * fontSize * 0.55;
+    const height = component.inputHeight ?? fontSize * 1.5;
     config.width = (width / canvasStyles.width) * 100;
-    config.height = ((fontSize * 1.5) / canvasStyles.width) * 100;
+    config.height = (height / canvasStyles.width) * 100;
   }
 
   config.__preview_width =

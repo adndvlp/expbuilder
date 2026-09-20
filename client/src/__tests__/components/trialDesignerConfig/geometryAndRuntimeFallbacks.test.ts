@@ -45,8 +45,11 @@ describe("useConfigFromComponents", () => {
     const [image, html] = config.components.value;
 
     expect(image).toEqual(expect.objectContaining({ width: 240, height: 120 }));
-    expect(html.width).toBeUndefined();
-    expect(html.height).toBeUndefined();
+    // HtmlComponent now exports its manual box size so the runtime can honor
+    // a resized HTML box instead of letting content overflow the canvas.
+    // (canvasStyles is undefined here, so sizes stay in raw pixels)
+    expect(html.width).toBe(400);
+    expect(html.height).toBe(200);
     expect(html.stimulus.value).toContain("&#9733;");
     expect(html.stimulus.value).not.toContain("fa-star");
     expect(config.__canvasStyles).toBeUndefined();

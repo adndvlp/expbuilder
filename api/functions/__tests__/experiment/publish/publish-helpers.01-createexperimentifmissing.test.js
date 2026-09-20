@@ -110,15 +110,32 @@ describe("createExperimentIfMissing", () => {
     expect(mockCreateExperiment).toHaveBeenCalledWith("EID", "repo", "u1", "osf");
   });
 
-  test("does not block publishing when experiment creation throws", async () => {
+  test("propagates creation errors so publishing fails", async () => {
     mockCreateExperiment.mockRejectedValueOnce(new Error("firestore down"));
 
     await expect(
       createExperimentIfMissing("EID", "repo", "u1", "dropbox"),
-    ).resolves.toBeUndefined();
-    expect(console.warn).toHaveBeenCalledWith(
-      "Warning: Could not create experiment in Firestore:",
-      "firestore down",
+    ).rejects.toThrow("firestore down");
+  });
+
+  test("fails when the storage folder could not be created", async () => {
+    mockCreateExperiment.mockResolvedValueOnce({
+      success: false,
+      storageError: "quota exceeded",
+    });
+
+    await expect(
+      createExperimentIfMissing("EID", "repo", "u1", "googledrive"),
+    ).rejects.toThrow("quota exceeded");
+  });
+
+  test("continues when the experiment was created concurrently", async () => {
+    mockCreateExperiment.mockRejectedValueOnce(
+      new Error("EXPERIMENT_ALREADY_EXISTS"),
     );
+
+    await expect(
+      createExperimentIfMissing("EID", "repo", "u1", "googledrive"),
+    ).resolves.toBeUndefined();
   });
 });

@@ -12,15 +12,15 @@ const info = {
       default: undefined,
     },
     /**
-     * HTML input type attribute (text, date, time, datetime-local, number, email, password, tel).
-     * Defaults to "text".
+     * Input control to render: HTML input types (text, date, time, datetime-local, number,
+     * email, password, tel) or "long_text" for a multi-line textarea. Defaults to "text".
      */
     input_type: {
       type: ParameterType.STRING,
       pretty_name: "Input Type",
       default: "text",
       description:
-        "HTML input type (text, date, time, datetime-local, number, email, password, tel)",
+        "Input control: HTML input type (text, date, time, datetime-local, number, email, password, tel) or long_text (textarea)",
     },
     /**
      * The cloze text to be displayed. Blanks are indicated by %% signs and automatically replaced by
@@ -173,7 +173,7 @@ class InputResponseComponent {
   private clozeContainer: HTMLElement | null;
   private solutions: string[][];
   private inputCount: number;
-  private inputElements: HTMLInputElement[];
+  private inputElements: (HTMLInputElement | HTMLTextAreaElement)[];
   private timing: any = null;
 
   static info = info;
@@ -259,13 +259,23 @@ class InputResponseComponent {
 
     display_element.appendChild(this.clozeContainer);
 
-    // Create one <input> per solution slot (at least 1 for non-cloze types)
+    // Create one input per solution slot (at least 1 for non-cloze types)
     this.inputElements = [];
     this.inputCount = Math.max(1, this.solutions.length);
+    const isLongText = inputType === "long_text";
 
     for (let i = 0; i < this.inputCount; i++) {
-      const input = document.createElement("input");
-      input.type = inputType;
+      let input: HTMLInputElement | HTMLTextAreaElement;
+      if (isLongText) {
+        const textarea = document.createElement("textarea");
+        textarea.rows = 4;
+        // The designer owns the size; participants must not resize the field.
+        textarea.style.resize = "none";
+        input = textarea;
+      } else {
+        input = document.createElement("input");
+        input.type = inputType;
+      }
       input.id = `input${i}`;
       input.classList.add("jspsych-input-response");
       input.value = "";
@@ -377,6 +387,7 @@ class InputResponseComponent {
    */
   private getSolutions(text: string, case_sensitive: boolean): string[][] {
     const solutions: string[][] = [];
+    if (typeof text !== "string") return solutions;
     const elements = text.split("%");
 
     for (let i = 1; i < elements.length; i += 2) {
@@ -414,7 +425,7 @@ class InputResponseComponent {
 
   /** Highlight empty inputs and show native browser validation tooltip */
   showValidationError(): void {
-    let firstInvalid: HTMLInputElement | null = null;
+    let firstInvalid: HTMLInputElement | HTMLTextAreaElement | null = null;
     this.inputElements.forEach((input) => {
       if (!input.value.trim()) {
         input.classList.add("jspsych-require-response-error");
@@ -424,7 +435,7 @@ class InputResponseComponent {
     });
     // reportValidity shows the native browser bubble on the first invalid field
     if (firstInvalid) {
-      (firstInvalid as HTMLInputElement).reportValidity();
+      (firstInvalid as HTMLInputElement | HTMLTextAreaElement).reportValidity();
     }
   }
 

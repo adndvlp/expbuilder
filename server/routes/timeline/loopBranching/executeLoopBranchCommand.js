@@ -4,6 +4,7 @@ import { findTrial } from "./scopeGraph.js";
 import { pruneDanglingBranches } from "../trials/state.js";
 
 const OPERATION = "create-loop-branch";
+const MAX_RECEIPTS_PER_EXPERIMENT = 10;
 
 export class LoopBranchCommandError extends Error {
   constructor(code, message, status = 400, details = {}) {
@@ -38,6 +39,20 @@ const findReceipt = (data, idempotencyKey) =>
       receipt.operation === OPERATION &&
       receipt.idempotencyKey === idempotencyKey,
   );
+
+function pruneReceiptsForExperiment(data, experimentId) {
+  const target = String(experimentId);
+  let kept = 0;
+  data.mutationReceipts = data.mutationReceipts
+    .slice()
+    .reverse()
+    .filter((receipt) => {
+      if (String(receipt.experimentId) !== target) return true;
+      kept += 1;
+      return kept <= MAX_RECEIPTS_PER_EXPERIMENT;
+    })
+    .reverse();
+}
 
 export function executeLoopBranchCommand(data, command) {
   const idempotencyKey = String(command.idempotencyKey ?? "");
@@ -135,9 +150,11 @@ export function executeLoopBranchCommand(data, command) {
   data.mutationReceipts.push({
     operation: OPERATION,
     idempotencyKey,
+    experimentId: String(command.experimentId),
     payload,
     response: structuredClone(response),
     createdAt: new Date().toISOString(),
   });
+  pruneReceiptsForExperiment(data, command.experimentId);
   return response;
 }

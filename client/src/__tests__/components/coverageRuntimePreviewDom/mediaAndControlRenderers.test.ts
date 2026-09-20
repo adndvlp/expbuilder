@@ -36,7 +36,9 @@ describe("runtime preview DOM renderers", () => {
       config({ stimulus: { source: "typed", value: "<b>Hello</b>" } }),
       { coordinateMode: "canvas", canvasStyles },
     );
-    expect(html.innerHTML).toContain("<b>Hello</b>");
+    // Pasted HTML is isolated in a shadow root (styles must not leak), so
+    // the markup lives in shadowRoot instead of the light-DOM innerHTML.
+    expect(html.shadowRoot?.innerHTML).toContain("<b>Hello</b>");
     expect(html.style.position).toBe("absolute");
     expect(html.style.left).toBe("500px");
 
@@ -123,6 +125,18 @@ describe("runtime preview DOM renderers", () => {
     const inputElement = input.querySelector("input")!;
     expect(inputElement.type).toBe("email");
     expect(inputElement.placeholder).toBe("type");
+
+    const longText = renderPreviewInputComponent(
+      container,
+      config({
+        placeholder: "Tell us more",
+        input_type: "long_text",
+      }),
+    );
+    const textarea = longText.querySelector("textarea")!;
+    expect(longText.querySelector("input")).toBeNull();
+    expect(textarea.placeholder).toBe("Tell us more");
+    expect(textarea.style.resize).toBe("none");
 
     const slider = renderPreviewSliderComponent(
       container,

@@ -47,7 +47,7 @@ export function generateTrialProps({
     const dynamicPassthroughParams = [
       "trial_duration",
       "response_ends_trial",
-      "require_response",
+      "require_response_components",
       "dynamic_csv_diagnostics",
       "__canvasStyles",
     ];

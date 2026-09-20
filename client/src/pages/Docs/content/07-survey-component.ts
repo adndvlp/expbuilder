@@ -86,6 +86,6 @@ propValue = propValue["question1"]; // access specific question
 
 ## Validation
 
-SurveyJS handles its own validation (required, regular expressions, numeric ranges). If \`require_response\` is active, the component prevents advancing until the survey is valid.
+SurveyJS handles its own validation (required, regular expressions, numeric ranges). If the survey is included in the trial-level \`require_response_components\` list, the component prevents advancing until the survey is valid.
 `,
 };

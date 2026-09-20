@@ -82,7 +82,7 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
+    <Modal isOpen={isOpen} onClose={onClose} suppressDesignerShortcuts>
       <div
         style={{
           display: "flex",
