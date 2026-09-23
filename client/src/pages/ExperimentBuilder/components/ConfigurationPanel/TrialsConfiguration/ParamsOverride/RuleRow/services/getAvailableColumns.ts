@@ -1,5 +1,6 @@
 import type { DataDefinition } from "../../../../types";
 import type { LoadedTrial } from "../../types";
+import { collectSurveyQuestions } from "../../../utils/surveyElements";
 
 export interface AvailableColumn {
   value: string;
@@ -170,8 +171,6 @@ function getSurveyQuestions(
   component: DynamicComponent,
   getPropValue: (prop: unknown) => unknown,
 ) {
-  const surveyJson = getPropValue(component.survey_json) as
-    | { elements?: Array<{ name: string; title?: string }> }
-    | undefined;
-  return surveyJson?.elements || [];
+  const surveyJson = getPropValue(component.survey_json);
+  return collectSurveyQuestions(surveyJson as Record<string, unknown>);
 }

@@ -1,5 +1,5 @@
 // Custom Survey Editor - Editor visual de JSON para encuestas
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { FiPlus } from "react-icons/fi";
 import QuestionEditor from "./QuestionEditor";
 import { UploadedFile, Question } from "./types";
@@ -7,6 +7,7 @@ import { useQuestionActions } from "./useQuestionActions";
 import ThemeCustomization from "./ThemeCustomization";
 import { useChoiceActions } from "./useChoiceActions";
 import { useRateValueActions } from "./useRateValueActions";
+import { collectSurveyQuestions } from "../../../utils/surveyElements";
 
 type CustomSurveyEditorProps = {
   surveyJson: Record<string, unknown>;
@@ -20,7 +21,10 @@ const CustomSurveyEditor: React.FC<CustomSurveyEditorProps> = ({
   uploadedFiles = [],
 }) => {
   const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
-  const questions = (surveyJson?.elements as Question[]) || [];
+  const questions = useMemo(
+    () => collectSurveyQuestions(surveyJson) as unknown as Question[],
+    [surveyJson],
+  );
 
   const { addQuestion, updateQuestion, deleteQuestion, moveQuestion } =
     useQuestionActions({ questions, onChange, surveyJson });
