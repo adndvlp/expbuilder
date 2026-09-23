@@ -35,18 +35,33 @@ export default function RuntimeCopyNode({
   useLayoutEffect(() => {
     const host = hostRef.current!;
     host.innerHTML = "";
-    const rendered = renderRuntimeCopy(
-      host,
-      node.component,
-      node.canvasStyles,
-      (value) =>
-        resolveMediaPreviewUrl(value, {
-          apiUrl: API_URL,
-          experimentID,
-          uploadedFiles,
-        }),
-    );
-    return () => rendered.destroy();
+    let rendered: ReturnType<typeof renderRuntimeCopy> | null = null;
+    try {
+      rendered = renderRuntimeCopy(
+        host,
+        node.component,
+        node.canvasStyles,
+        (value) =>
+          resolveMediaPreviewUrl(value, {
+            apiUrl: API_URL,
+            experimentID,
+            uploadedFiles,
+          }),
+      );
+    } catch (error) {
+      // User-authored component configs must never take the editor down: a
+      // broken component is shown as a local fallback instead of throwing
+      // during the layout effect (which would hit the app ErrorBoundary).
+      console.error(
+        "[TrialDesigner] Runtime copy failed to render:",
+        node.component.type,
+        error,
+      );
+      host.appendChild(createRuntimeCopyErrorMessage(node.component.type));
+    }
+    return () => {
+      rendered?.destroy();
+    };
   }, [
     experimentID,
     node.id,
@@ -127,6 +142,24 @@ export default function RuntimeCopyNode({
       />
     </div>
   );
+}
+
+function createRuntimeCopyErrorMessage(componentType: string): HTMLElement {
+  const message = document.createElement("div");
+  message.dataset.runtimeCopyError = "true";
+  message.textContent = `${componentType} could not be rendered. Check its configuration.`;
+  message.style.cssText = [
+    "border: 2px dashed #dc2626",
+    "border-radius: 6px",
+    "padding: 12px 16px",
+    "color: #dc2626",
+    "font-family: Arial, sans-serif",
+    "font-size: 13px",
+    "line-height: 1.4",
+    "max-width: 260px",
+    "text-align: center",
+  ].join(";");
+  return message;
 }
 
 function getRuntimeRenderSignature(node: HtmlSceneNode) {
