@@ -82,7 +82,6 @@ export default function ExperimentalHtmlSceneLayer({
         pointerEvents: "none",
         zIndex: activeDomId ? 5 : 3,
         overflow: "hidden",
-        borderRadius: 8,
         textAlign: "left",
       }}
     >

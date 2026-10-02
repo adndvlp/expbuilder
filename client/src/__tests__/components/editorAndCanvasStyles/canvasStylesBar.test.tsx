@@ -43,7 +43,7 @@ describe("CanvasStylesBar", () => {
       <CanvasStylesHarness onRunDemo={onRunDemo} onStopDemo={onStopDemo} />,
     );
 
-    expect(screen.getByText("Experiment Layout")).toBeInTheDocument();
+    expect(screen.getByText("Screen Preview")).toBeInTheDocument();
     expect(screen.getByText("1024×768px")).toBeInTheDocument();
     expect(screen.getByText("Zoom 75%")).toBeInTheDocument();
 

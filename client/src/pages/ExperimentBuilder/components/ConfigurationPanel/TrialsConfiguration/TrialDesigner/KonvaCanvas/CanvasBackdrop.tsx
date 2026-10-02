@@ -11,11 +11,8 @@ export default function CanvasBackdrop({ backgroundColor, stageScale }: Props) {
       style={{
         position: "absolute",
         inset: 0,
-        border: "2px solid var(--neutral-mid)",
-        borderRadius: "8px",
         overflow: "hidden",
         background: backgroundColor,
-        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
         pointerEvents: "none",
       }}
     >

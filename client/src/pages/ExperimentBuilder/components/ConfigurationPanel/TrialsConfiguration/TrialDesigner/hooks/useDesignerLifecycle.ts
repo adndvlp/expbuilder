@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import type React from "react";
 import type { CanvasStyles } from "../types";
 import type { CanvasContextMenuState } from "../CanvasContextMenu";
@@ -8,7 +8,6 @@ import useLoadComponents from "../useLoadComponents";
 
 interface Args {
   canvasHeight: number;
-  canvasStyles: CanvasStyles;
   canvasWidth: number;
   columnMapping: Record<string, any>;
   components: TrialComponent[];
@@ -18,9 +17,7 @@ interface Args {
     x: number;
     y: number;
   };
-  generateConfig: (components: TrialComponent[]) => Record<string, unknown>;
   isOpen: boolean;
-  onAutoSave?: (config: Record<string, unknown>) => void;
   selectedId: string | null;
   setActiveGuides: React.Dispatch<React.SetStateAction<CanvasGuide[]>>;
   setCanvasStyles: React.Dispatch<React.SetStateAction<CanvasStyles>>;
@@ -34,10 +31,6 @@ interface Args {
 }
 
 export function useDesignerLifecycle(args: Args) {
-  const previousCanvasSize = useRef<{ width: number; height: number } | null>(
-    null,
-  );
-
   useEffect(() => {
     args.componentsRef.current = args.components;
     args.setSelectedIds((selectedIds) => {
@@ -75,34 +68,4 @@ export function useDesignerLifecycle(args: Args) {
     fromJsPsychCoords: args.fromJsPsychCoords,
     setCanvasStyles: args.setCanvasStyles,
   });
-
-  useEffect(() => {
-    const previous = previousCanvasSize.current;
-    if (
-      previous &&
-      (previous.width !== args.canvasWidth ||
-        previous.height !== args.canvasHeight)
-    ) {
-      args.setComponents((components) => {
-        if (components.length === 0) return components;
-        const rescaled = components.map((component) => ({
-          ...component,
-          x: (component.x / previous.width) * args.canvasWidth,
-          y: (component.y / previous.height) * args.canvasHeight,
-          width: (component.width / previous.width) * args.canvasWidth,
-          height: (component.height / previous.width) * args.canvasWidth,
-        }));
-        if (args.onAutoSave) {
-          const config = args.generateConfig(rescaled);
-          setTimeout(() => args.onAutoSave?.(config), 100);
-        }
-        return rescaled;
-      });
-    }
-    previousCanvasSize.current = {
-      width: args.canvasWidth,
-      height: args.canvasHeight,
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [args.canvasWidth, args.canvasHeight]);
 }

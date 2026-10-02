@@ -4,7 +4,6 @@ import { useComponentMetadata } from "../hooks/useComponentMetadata";
 import { TrialComponent, KonvaTrialDesignerProps } from "./types";
 import useConfigComponents from "./useConfigFromComponents";
 import type { CanvasContextMenuState } from "./CanvasContextMenu";
-import useCanvasStyles from "../../../../hooks/useCanvasStyles";
 import { CanvasGuide } from "./editorGuides";
 import { getDefaultConfig } from "./utils/getDefaultConfig";
 import TrialDesignerLayout from "./components/TrialDesignerLayout";
@@ -14,6 +13,7 @@ import { useDesignerPanels } from "./hooks/useDesignerPanels";
 import { useDesignerLifecycle } from "./hooks/useDesignerLifecycle";
 import { useDesignerActions } from "./hooks/useDesignerActions";
 import { useComponentSelection } from "./hooks/useComponentSelection";
+import { useDesignerViewport } from "./hooks/useDesignerViewport";
 
 const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   isOpen,
@@ -33,7 +33,8 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   const [contextMenu, setContextMenu] = useState<CanvasContextMenuState | null>(
     null,
   );
-  const { canvasStyles, setCanvasStyles } = useCanvasStyles();
+  const { canvasStyles, previewStyles, setPreviewStyles } =
+    useDesignerViewport(columnMapping);
   const [isDemoRunning, setIsDemoRunning] = useState(false);
 
   const stageRef = useRef<Konva.Stage>(null);
@@ -59,7 +60,9 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     showLeftPanel,
     showRightPanel,
     stageScale,
-  } = useDesignerPanels(CANVAS_WIDTH, CANVAS_HEIGHT);
+    viewportWidth,
+    viewportHeight,
+  } = useDesignerPanels(CANVAS_WIDTH, CANVAS_HEIGHT, previewStyles, isOpen);
 
   const toJsPsychCoords = useCallback(
     (x: number, y: number) => {
@@ -123,19 +126,16 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
 
   useDesignerLifecycle({
     canvasHeight: CANVAS_HEIGHT,
-    canvasStyles,
     canvasWidth: CANVAS_WIDTH,
     columnMapping,
     components,
     componentsRef,
     editingTextId,
     fromJsPsychCoords,
-    generateConfig: generateConfigFromComponents,
     isOpen,
-    onAutoSave,
     selectedId,
     setActiveGuides,
-    setCanvasStyles,
+    setCanvasStyles: setPreviewStyles,
     setComponents,
     setContextMenu,
     setEditingTextId,
@@ -190,15 +190,19 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     <TrialDesignerLayout
       modalProps={{ isOpen, onClose }}
       toolbarProps={{
-        canvasStyles,
-        setCanvasStyles,
+        canvasStyles: previewStyles,
+        setCanvasStyles: setPreviewStyles,
         stageScale,
         isDemoRunning,
         onRunDemo: () => setIsDemoRunning(true),
         onStopDemo: () => setIsDemoRunning(false),
       }}
       isDemoRunning={isDemoRunning}
-      previewProps={{ uploadedFiles, canvasStyles, autoStart: true }}
+      previewProps={{
+        uploadedFiles,
+        canvasStyles: previewStyles,
+        autoStart: true,
+      }}
       sidebarProps={{
         setLeftPanelWidth,
         leftPanelWidth,
@@ -222,6 +226,8 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
         CANVAS_HEIGHT,
         CANVAS_WIDTH,
         stageScale,
+        viewportWidth,
+        viewportHeight,
         stageRef,
         selectedId,
         onDrop,

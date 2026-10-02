@@ -41,9 +41,9 @@ export default function handleDrop({
   const stage = stageRef.current;
   if (!stage) return;
 
-  const containerRect = stage.container().getBoundingClientRect();
-  const x = e.clientX - containerRect.left;
-  const y = e.clientY - containerRect.top;
+  const containerRect = e.currentTarget.getBoundingClientRect();
+  const x = (e.clientX - containerRect.left) / stage.scaleX();
+  const y = (e.clientY - containerRect.top) / stage.scaleY();
 
   // Convert to jsPsych coordinates
   const coords = toJsPsychCoords(x, y);

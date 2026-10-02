@@ -7,8 +7,11 @@ import {
 } from "./types";
 import { restoreStyleFields } from "./syncConfigToComponent";
 
-function getInitialCanvasSize(): { width: number; height: number } {
-  return { width: window.screen.width, height: window.screen.height };
+export function getInitialCanvasSize(): { width: number; height: number } {
+  return {
+    width: window.screen.width || DEFAULT_CANVAS_STYLES.width,
+    height: window.screen.height || DEFAULT_CANVAS_STYLES.height,
+  };
 }
 
 function importsEditorBoxSize(type: string): boolean {
@@ -272,14 +275,13 @@ export default function useLoadComponents({
       setSelectedId(null);
     }
 
-    // Restore only the layout size from the trial. Background color, full
-    // screen and progress bar are experiment-level settings managed by
-    // AppearanceSettings (already loaded into context by CanvasStylesProvider),
-    // so we never take them from the trial.
+    // Initialize the preview viewport only. The reference canvas is resolved
+    // separately before loading components; it must not follow device selection.
+    // Appearance stays owned by the experiment's CanvasStylesProvider.
     setCanvasStyles((prev) => {
       const saved = (columnMapping.__canvasStyles?.value ??
         {}) as Partial<CanvasStyles>;
-      // First open (no saved size) → auto-detect user's screen and snap to nearest preset
+      // First open (no saved size) → preview the user's screen.
       const autoSize: Partial<Pick<CanvasStyles, "width" | "height">> =
         !saved.width && !saved.height ? getInitialCanvasSize() : {};
       return {

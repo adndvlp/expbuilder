@@ -33,6 +33,8 @@ function CanvasStylesBar({
 
   const handleDeviceSelect = (preset: DevicePreset) => {
     setShowCustomSize(false);
+    setCustomW(String(preset.width));
+    setCustomH(String(preset.height));
     setCanvasStyles((prev) => ({
       ...prev,
       width: preset.width,
@@ -87,7 +89,7 @@ function CanvasStylesBar({
           letterSpacing: "0.3px",
         }}
       >
-        Experiment Layout
+        Screen Preview
       </span>
       {divider}
 
@@ -98,7 +100,7 @@ function CanvasStylesBar({
           const active = isDeviceActive(preset);
           return (
             <button
-              key={preset.label}
+              key={`${preset.label}-${preset.width}-${preset.height}`}
               onClick={() => handleDeviceSelect(preset)}
               title={`${preset.label} — ${preset.description}`}
               style={{

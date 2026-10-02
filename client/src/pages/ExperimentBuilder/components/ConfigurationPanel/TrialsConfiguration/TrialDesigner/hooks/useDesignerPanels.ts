@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import useHandleResize from "../useHandleResize";
 
-export function useDesignerPanels(canvasWidth: number, canvasHeight: number) {
+export function useDesignerPanels(
+  canvasWidth: number,
+  canvasHeight: number,
+  previewSize: { width: number; height: number },
+  isOpen: boolean,
+) {
   const [leftPanelWidth, setLeftPanelWidth] = useState(280);
   const [rightPanelWidth, setRightPanelWidth] = useState(400);
   const [showLeftPanel, setShowLeftPanel] = useState(true);
   const [showRightPanel, setShowRightPanel] = useState(true);
-  const [stageScale, setStageScale] = useState(1);
+  const [viewportFit, setViewportFit] = useState(1);
   const isResizingLeft = useRef(false);
   const isResizingRight = useRef(false);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -21,28 +26,33 @@ export function useDesignerPanels(canvasWidth: number, canvasHeight: number) {
   });
 
   useEffect(() => {
+    if (!isOpen) return;
+    const container = canvasContainerRef.current;
+    if (!container) return;
     const updateScale = () => {
-      const container = canvasContainerRef.current;
-      if (!container) return;
-      const scaleX = container.clientWidth / canvasWidth;
-      const scaleY = container.clientHeight / canvasHeight;
-      setStageScale(Math.min(scaleX, scaleY, 1));
+      if (!container.clientWidth || !container.clientHeight) return;
+      setViewportFit(
+        Math.min(
+          container.clientWidth / previewSize.width,
+          container.clientHeight / previewSize.height,
+          1,
+        ),
+      );
     };
     updateScale();
-    window.addEventListener("resize", updateScale);
-    const intervalId = setInterval(updateScale, 100);
-    return () => {
-      window.removeEventListener("resize", updateScale);
-      clearInterval(intervalId);
-    };
-  }, [
-    canvasHeight,
-    canvasWidth,
-    leftPanelWidth,
-    rightPanelWidth,
-    showLeftPanel,
-    showRightPanel,
-  ]);
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [isOpen, previewSize.width, previewSize.height]);
+
+  // The runtime fits the entire reference scene into the selected viewport.
+  // The editor then fits that viewport into the available panel space.
+  const stageScale =
+    viewportFit *
+    Math.min(
+      previewSize.width / canvasWidth,
+      previewSize.height / canvasHeight,
+    );
 
   const fromJsPsychCoords = (coords: { x: number; y: number }) => ({
     x: canvasWidth / 2 + (coords.x / 100) * (canvasWidth / 2),
@@ -63,5 +73,7 @@ export function useDesignerPanels(canvasWidth: number, canvasHeight: number) {
     showLeftPanel,
     showRightPanel,
     stageScale,
+    viewportWidth: previewSize.width * viewportFit,
+    viewportHeight: previewSize.height * viewportFit,
   };
 }
