@@ -56,20 +56,38 @@ export function renderExperimentBaseCode(
   canvasStyles?: CanvasStyles,
 ) {
   const fullScreen = canvasStyles?.fullScreen ?? true;
+  const getMediaUrls = (type: "img" | "aud" | "vid") =>
+    uploadedFiles.flatMap((file) =>
+      file?.type === type && file.url ? [file.url] : [],
+    );
+  const images = getMediaUrls("img");
+  const audio = getMediaUrls("aud");
+  const video = getMediaUrls("vid");
+  const hasMedia = images.length > 0 || audio.length > 0 || video.length > 0;
 
   return `const timeline = [];
-${uploadedFiles.length > 0 ? `
+${
+  hasMedia
+    ? `
     const globalPreload = {
       type: jsPsychPreload,
-      files: ${JSON.stringify(uploadedFiles.filter((file) => file?.url).map((file) => file.url))}
+      images: ${JSON.stringify(images)},
+      audio: ${JSON.stringify(audio)},
+      video: ${JSON.stringify(video)}
     };
-    timeline.push(globalPreload);` : ""}
-${fullScreen ? `
+    timeline.push(globalPreload);`
+    : ""
+}
+${
+  fullScreen
+    ? `
     timeline.push({
       type: jsPsychFullscreen,
       fullscreen_mode: true,
       conditional_function: function() { return !document.fullscreenElement; }
-    });` : ""}
+    });`
+    : ""
+}
 
 ${codes.join("\n\n")}
 

@@ -22,8 +22,8 @@ describe("ExperimentBaseHarness", () => {
     const { generatedBaseCode } = ExperimentBaseHarness({
       experimentID: "experiment-1",
       uploadedFiles: [
-        { name: "a.png", url: "https://cdn.test/a.png", type: "image" },
-        { name: "missing-url.png", type: "image" },
+        { name: "a.png", url: "https://cdn.test/a.png", type: "img" },
+        { name: "missing-url.png", type: "img" },
       ],
       getTrial,
       getLoopTimeline,
@@ -42,8 +42,8 @@ describe("ExperimentBaseHarness", () => {
     expect(generateAllCodesMock).toHaveBeenCalledWith(
       "experiment-1",
       [
-        { name: "a.png", url: "https://cdn.test/a.png", type: "image" },
-        { name: "missing-url.png", type: "image" },
+        { name: "a.png", url: "https://cdn.test/a.png", type: "img" },
+        { name: "missing-url.png", type: "img" },
       ],
       getTrial,
       getLoopTimeline,
@@ -57,7 +57,10 @@ describe("ExperimentBaseHarness", () => {
     );
     expect(code).toContain("const timeline = [];");
     expect(code).toContain("type: jsPsychPreload");
-    expect(code).toContain('files: ["https://cdn.test/a.png"]');
+    expect(code).toContain('images: ["https://cdn.test/a.png"]');
+    expect(code).toContain("audio: []");
+    expect(code).toContain("video: []");
+    expect(code).not.toContain("files:");
     expect(code).toContain("type: jsPsychFullscreen");
     expect(code).toContain(
       "conditional_function: function() { return !document.fullscreenElement; }",
@@ -97,7 +100,7 @@ describe("ExperimentBaseHarness", () => {
     generateAllCodesMock.mockRejectedValueOnce(new Error("codegen failed"));
     const { generatedBaseCode } = ExperimentBaseHarness({
       experimentID: "experiment-1",
-      uploadedFiles: [],
+      uploadedFiles: [{ url: "aud/alert.mp3", type: "aud" }],
       getTrial: vi.fn(),
       getLoopTimeline: vi.fn(),
       getLoop: vi.fn(),
@@ -110,6 +113,8 @@ describe("ExperimentBaseHarness", () => {
       expect.any(Error),
     );
     expect(code).toContain("const timeline = [];");
+    expect(code).toContain('audio: ["aud/alert.mp3"]');
+    expect(code).not.toContain("files:");
     expect(code).toContain("jsPsych.run(timeline);");
   });
 });
