@@ -661,21 +661,21 @@ describe('delete_loop', () => {
     cleanup(tmpDir)
   })
 
-  test('reconnects parents to first child and appends loop branches to last child', async () => {
+  test('preserves trial connections and restores direct owned children in order', async () => {
     const { createTrialTools, db, tmpDir } = await freshSetup((data) => {
       data.trials.push({
         experimentID: 'e1',
         trials: [
-          { id: 1, name: 'Parent', branches: ['loop_1'] },
+          { id: 1, name: 'Parent', branches: ['2'] },
           { id: 2, name: 'First', parentLoopId: 'loop_1', branches: [3] },
-          { id: 3, name: 'Last', parentLoopId: 'loop_1', branches: [] },
+          { id: 3, name: 'Last', parentLoopId: 'loop_1', branches: [4] },
           { id: 4, name: 'After', branches: [] },
         ],
         loops: [
-          { id: 'loop_1', name: 'L', trials: [2, 3], branches: [4] },
-          { id: 'nested', name: 'Nested', trials: [], parentLoopId: 'loop_1', branches: [] },
+          { id: 'loop_1', name: 'L', trials: [2, 3] },
+          { id: 'nested', name: 'Nested', trials: [], parentLoopId: 'loop_1' },
         ],
-        timeline: [{ id: 'loop_1', type: 'loop', name: 'L', branches: [4], trials: [2, 3] }],
+        timeline: [{ id: 'loop_1', type: 'loop', name: 'L', trials: [2, 3] }],
       })
     })
 
@@ -683,18 +683,18 @@ describe('delete_loop', () => {
 
     await db.read()
     const doc = db.data.trials.find(t => t.experimentID === 'e1')
-    expect(doc.trials.find(t => t.id === 1).branches).toEqual([2])
+    expect(doc.trials.find(t => t.id === 1).branches).toEqual(['2'])
     expect(doc.trials.find(t => t.id === 3).branches).toEqual([4])
     expect(doc.loops.find(l => l.id === 'nested').parentLoopId).toBeNull()
     expect(doc.timeline.map(item => item.id)).toEqual([2, 3, 'nested'])
     cleanup(tmpDir)
   })
 
-  test('removes empty loop references when deleting a loop with no children', async () => {
+  test('deletes an empty loop while preserving unrelated trial connections', async () => {
     const { createTrialTools, db, tmpDir } = await freshSetup((data) => {
       data.trials.push({
         experimentID: 'e1',
-        trials: [{ id: 1, name: 'Parent', branches: ['loop_1'] }],
+        trials: [{ id: 1, name: 'Parent', branches: [2] }, { id: 2, name: 'Target', branches: [] }],
         loops: [{ id: 'loop_1', name: 'Empty', trials: [], }],
         timeline: [],
       })
@@ -704,7 +704,7 @@ describe('delete_loop', () => {
 
     await db.read()
     const doc = db.data.trials.find(t => t.experimentID === 'e1')
-    expect(doc.trials[0].branches).toEqual([])
+    expect(doc.trials[0].branches).toEqual([2])
     cleanup(tmpDir)
   })
 

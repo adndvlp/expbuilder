@@ -5,7 +5,7 @@
 - Fecha: 2026-10-01.
 - Rama de trabajo: `loop-branches`.
 - HEAD al cerrar la revisión: `5c9ae40` (`case for testing`).
-- Estado: alcance acordado; implementación pendiente. Decisión final: eliminar completamente la acción de mover loops.
+- Estado: puntos 1 y 2 implementados y verificados. El usuario creó el commit del punto 1 (`99c5d4e`). Siguiente entrega: punto 3, eliminar completamente la acción de mover loops.
 - Este documento conserva las decisiones del usuario y el resultado de la revisión para continuar el trabajo después de perder contexto.
 
 ## Objetivo
@@ -181,12 +181,12 @@ Verificar específicamente el recorrido normal de varias filas y repeticiones, l
 - [ ] Ninguna mutación crea una rama cuyo origen o destino real sea un loop.
 - [x] API, grafo y herramientas del agente aplican la misma regla.
 - [x] Agrupar B dentro de un loop conserva `A.branches = [B]`.
-- [ ] Desagrupar conserva esas referencias y restaura el contenido en su posición correspondiente.
+- [x] Desagrupar conserva esas referencias y restaura el contenido en su posición correspondiente.
 - [ ] Seleccionar un loop no ofrece ni abre la acción `Move Item`.
 - [ ] Los tipos, hooks, handlers y acciones de movimiento admiten únicamente trials como elementos movibles.
 - [x] Invocar directamente el movimiento con un loop como origen o destino se rechaza sin modificar conexiones, pertenencia ni orden.
 - [ ] El movimiento de trials conserva su funcionamiento, también dentro de loops.
-- [ ] Crear y desagrupar loops sigue funcionando, incluyendo contenedores anidados.
+- [x] Crear y desagrupar loops sigue funcionando, incluyendo contenedores anidados.
 - [ ] Expandir y colapsar un loop conserva la identidad real de los extremos de sus conexiones.
 - [ ] El canvas no depende de `loop.branches` para representar el flujo.
 - [ ] La generación de código no contiene decisiones ni fallbacks basados en ramas propias de loops.
@@ -237,9 +237,36 @@ La ejecución real de loops con varias filas/repeticiones y la limpieza completa
 
 Título previsto: `refactor(branching): restrict branches to trials`.
 
-#### Siguiente punto: agrupación y desagrupación
+#### Punto 2: agrupación y desagrupación — implementado
 
-Completar el punto 2. La sustitución de destinos al agrupar ya se retiró como dependencia del contrato. Falta eliminar las reconexiones hacia el primer elemento y las transferencias de ramas del contenedor al desagrupar, retirar `findLastItems` si queda sin consumidores y revisar la pertenencia/orden en las herramientas del agente. Verificar múltiples finales con destinos distintos, niveles anidados e IDs numéricos/string. Mantener intactas las referencias y condiciones entre trials.
+Base de esta entrega: `99c5d4e` (`refactor(branching): restrict branches to trials`), creado por el usuario.
+
+- REST y las herramientas `create_loop`, `update_loop` y `delete_loop` comparten las mutaciones de contención en `server/routes/timeline/loops/mutations.js`.
+- Agrupar conserva los IDs de destino, las condiciones y los parámetros de los trials. El contenedor ocupa la primera posición seleccionada en su scope; su lista conserva el orden solicitado de los elementos existentes. Si no hay elementos seleccionados en ese scope, se añade al final.
+- Desagrupar elimina únicamente el contenedor y restaura sus hijos directos en su posición dentro del padre correspondiente. Los loops anidados permanecen intactos; sus descendientes mantienen su pertenencia. La restauración respeta el orden mixto de trials y loops.
+- Se retiraron `reconnectParents` y `connectLoopBranchesToLastItem`: no se elige un primer/último trial para sustituir referencias ni se transfieren ramas del loop a su contenido. Los finales con destinos X e Y conservan ambas conexiones independientes.
+- Se retiraron ambos `findLastItems`. También se retiraron `syncTimelineBranches` y `collectAllItemIds` de `loops/state.js`, tras comprobar que quedaron sin consumidores; se conservan las utilidades compartidas de scopes.
+- Las ediciones de pertenencia sacan los elementos incorporados de sus scopes anteriores. Los hijos retirados vuelven al padre del contenedor, inmediatamente después de este, en su orden anterior. Se sincronizan las listas del timeline con las listas reales de los loops.
+- Los IDs de pertenencia se resuelven contra el elemento real y se eliminan duplicados por identidad. Las ramas y condiciones conservan su representación original (por ejemplo, `"2"` sigue siendo `"2"`). Las actualizaciones mantienen también el ID real de un loop numérico aunque la petición lo envíe como string.
+- Se mantiene la política de omitir IDs de miembros ya eliminados. Al desagrupar, se restauran también hijos existentes cuyo `parentLoopId` apunta al contenedor pero que faltan en su lista, después de los miembros ordenados.
+- Los padres inexistentes, las listas de miembros inválidas y los ciclos de contención se rechazan antes de cambiar el documento o escribir. Un rechazo de creación tampoco crea un documento de experimento ausente.
+- Se conserva la configuración de repeticiones y se aplica en REST y el agente la actualización existente de `csvFromLoop` para hijos directos cuando se crea un loop con CSV o se cambia su `csvJson`. No se modifican las reglas de ejecución de filas/repeticiones; su verificación sigue en el punto 5.
+
+Verificación de esta entrega:
+
+- **Regresiones:** `server/__tests__/routes/loop-containment.test.js` contiene 32 casos para REST y el agente. Antes del cambio se ejecutaron los 24 casos iniciales: 23 fallaron, reproduciendo los problemas. La versión final pasa todos los casos.
+- **Servidor:** 314 pruebas pasaron en 20 archivos de rutas del timeline y herramientas del agente. Incluye el contrato del punto 1, las nuevas regresiones, agrupación anidada, condiciones/parámetros, identidad, asignación de IDs y nombres únicos. Todas las bases usadas son temporales.
+- **Cliente:** 58 pruebas pasaron en 16 archivos: `providers/trialsProvider`, `providers/loopTimelineUpdates.test.ts` y `components/canvasScopedActions/loopActions.test.ts`. No se modificó código del cliente en esta entrega.
+- **ESLint:** sin errores ni advertencias de código en los módulos de producción modificados. La instalación informa que la regla `no-unused-modules` del plugin no está operativa con ESLint 10; los consumidores de los helpers retirados se comprobaron mediante búsqueda de código.
+- **Diff:** `git diff --check` pasó. No se hizo staging ni se crearon commits. Se conservaron los cambios locales previos en `server/database/db.json`, `server/experiments_html/` y `server/gorilla/`.
+
+Reportes fuera del repositorio: `/tmp/loop-branches-point2-server-final.json` y `/tmp/loop-branches-point2-client.json`.
+
+Título previsto: `refactor(loops): preserve trial connections when grouping and ungrouping`.
+
+#### Siguiente punto: eliminar el movimiento de loops
+
+Completar el punto 3: retirar la acción `Move Item` para loops de la UI, tipos, hooks y handlers; conservarla para trials. La acción interna ya rechaza loops como origen o destino desde el punto 1. Verificar que seleccionar un loop no ofrezca ni abra el modal de movimiento y que mover trials dentro y fuera de loops conserve su funcionamiento. Mantener los helpers de contención necesarios para agrupar y desagrupar.
 
 Los puntos 3, 4 y 5 siguen pendientes. Las pruebas y documentación se actualizan dentro de cada punto; el punto 6 agrupa la revisión final de la cobertura restante.
 

@@ -401,8 +401,8 @@ describe('DELETE /api/loop/:experimentID/:id', () => {
         { id: 1, name: 'T1', parentLoopId: 'loop_1', branches: [] },
         { id: 2, name: 'T2', parentLoopId: 'loop_1', branches: [] },
       ],
-      loops: [{ id: 'loop_1', name: 'L1', trials: [1, 2], branches: [3] }],
-      timeline: [{ id: 'loop_1', type: 'loop', name: 'L1', branches: [3], trials: [1, 2] }],
+      loops: [{ id: 'loop_1', name: 'L1', trials: [1, 2] }],
+      timeline: [{ id: 'loop_1', type: 'loop', name: 'L1', trials: [1, 2] }],
     })
     await db.write()
     const res = await request(app).delete('/api/loop/E1/loop_1').expect(200)
@@ -420,7 +420,7 @@ describe('DELETE /api/loop/:experimentID/:id', () => {
     const { app, db } = await freshApp()
     db.data.trials.push({
       experimentID: 'E1',
-      trials: [{ id: 1, name: 'T1', branches: ['loop_1'] }],
+      trials: [{ id: 1, name: 'T1', branches: [] }],
       loops: [{ id: 'loop_1', name: 'Empty', trials: [], }],
       timeline: [{ id: 'loop_1', type: 'loop', name: 'Empty',  trials: [] }],
     })
@@ -430,17 +430,17 @@ describe('DELETE /api/loop/:experimentID/:id', () => {
     expect(db.data.trials[0].loops).toHaveLength(0)
   })
 
-  test('prunes dangling branch targets inherited from the deleted loop', async () => {
+  test('prunes dangling trial targets when ungrouping', async () => {
     const { app, db } = await freshApp()
     db.data.trials.push({
       experimentID: 'E1',
       trials: [
-        { id: 1, name: 'T1', parentLoopId: 'loop_1', branches: [] },
+        { id: 1, name: 'T1', parentLoopId: 'loop_1', branches: ['ghost'] },
         { id: 2, name: 'T2', parentLoopId: null, branches: [] },
       ],
-      loops: [{ id: 'loop_1', name: 'L1', trials: [1], branches: ['ghost'] }],
+      loops: [{ id: 'loop_1', name: 'L1', trials: [1] }],
       timeline: [
-        { id: 'loop_1', type: 'loop', name: 'L1', branches: ['ghost'], trials: [1] },
+        { id: 'loop_1', type: 'loop', name: 'L1', trials: [1] },
         { id: 2, type: 'trial', name: 'T2', branches: [] },
       ],
     })
@@ -452,12 +452,12 @@ describe('DELETE /api/loop/:experimentID/:id', () => {
     expect(res.body.graph.diagnostics.map(d => d.code)).not.toContain('BRANCH_TARGET_NOT_FOUND')
   })
 
-  test('reconnects parent branches to first trial', async () => {
+  test('preserves parent branches to the contained trial', async () => {
     const { app, db } = await freshApp()
     db.data.trials.push({
       experimentID: 'E1',
       trials: [
-        { id: 1, name: 'Parent', branches: ['loop_1'] },
+        { id: 1, name: 'Parent', branches: ['2'] },
         { id: 2, name: 'Child', parentLoopId: 'loop_1', branches: [] },
       ],
       loops: [{ id: 'loop_1', name: 'L1', trials: [2], }],
@@ -470,7 +470,7 @@ describe('DELETE /api/loop/:experimentID/:id', () => {
     await request(app).delete('/api/loop/E1/loop_1').expect(200)
     await db.read()
     const parent = db.data.trials[0].trials.find(t => t.id === 1)
-    expect(parent.branches).toContain(2)
+    expect(parent.branches).toEqual(['2'])
     expect(parent.branches).not.toContain('loop_1')
   })
 
@@ -480,12 +480,12 @@ describe('DELETE /api/loop/:experimentID/:id', () => {
     db.data.trials.push({
       experimentID: 'E1',
       trials: [
-        { id: 1, name: 'Parent', branches: ['loop_1'] },
+        { id: 1, name: 'Parent', branches: ['2'] },
         { id: 2, name: 'Child', parentLoopId: 'loop_1', branches: [] },
       ],
       loops: [{ id: 'loop_1', name: 'L1', trials: [ghost, 2], }],
       timeline: [
-        { id: 1, type: 'trial', name: 'Parent', branches: ['loop_1'] },
+        { id: 1, type: 'trial', name: 'Parent', branches: ['2'] },
         { id: 'loop_1', type: 'loop', name: 'L1',  trials: [ghost, 2] },
       ],
     })
@@ -495,9 +495,9 @@ describe('DELETE /api/loop/:experimentID/:id', () => {
     await db.read()
     const doc = db.data.trials[0]
     expect(doc.loops).toHaveLength(0)
-    // The live child is restored and the parent reconnects to it (not the ghost)
+    // Restore the live child without changing the parent's existing trial target.
     expect(doc.timeline.some(t => t.id === 2)).toBe(true)
-    expect(doc.trials.find(t => t.id === 1).branches).toEqual([2])
+    expect(doc.trials.find(t => t.id === 1).branches).toEqual(['2'])
     expect(res.body.graph.diagnostics.map(d => d.code)).not.toContain('BRANCH_TARGET_NOT_FOUND')
   })
 })

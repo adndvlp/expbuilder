@@ -1,34 +1,28 @@
 import { Router } from "express";
 import { db } from "../../../utils/db.js";
-import { getExperimentDoc, syncTimelineBranches } from "./state.js";
+import { getExperimentDoc } from "./state.js";
 import { createUniqueItemName } from "../uniqueItemName.js";
 import { buildExperimentGraph } from "../graph/buildExperimentGraph.js";
-import { findItem, findLoop, normalizeScopeId } from "../graph/identity.js";
-import { moveItemToScope } from "../graph/ownership.js";
 import { allocateLoopId } from "../graph/itemIds.js";
-import { pruneDanglingBranches } from "../trials/state.js";
+import { groupItemsInLoop } from "./mutations.js";
 
 import { assertLoopHasNoBranching } from "../branchContract.js";
 
 const router = Router();
 
-/* istanbul ignore next -- legacy REST loop handler is covered by route smoke tests; core loop mutations are tested in agent tools. */
 router.post("/api/loop/:experimentID", async (req, res) => {
   try {
     const { experimentID } = req.params;
     const loopData = req.body;
     assertLoopHasNoBranching(loopData);
-    const experimentDoc = await getExperimentDoc(experimentID, true);
-
-    // A nested loop whose parent was deleted (or never existed) must fail
-    // with a clear 400, not a 500 from moveItemToScope.
-    const parentScopeId = normalizeScopeId(loopData.parentLoopId);
-    if (parentScopeId !== null && !findLoop(experimentDoc, parentScopeId)) {
-      return res.status(400).json({
-        success: false,
-        error: `Loop ${parentScopeId} not found`,
-      });
-    }
+    const existingDoc = await getExperimentDoc(experimentID);
+    const experimentDoc = existingDoc ?? {
+      experimentID,
+      trials: [],
+      loops: [],
+      timeline: [],
+      createdAt: new Date().toISOString(),
+    };
 
     const id = allocateLoopId(experimentDoc);
     const newLoop = {
@@ -40,20 +34,8 @@ router.post("/api/loop/:experimentID", async (req, res) => {
       updatedAt: new Date().toISOString(),
     };
 
-    const childIds = [...newLoop.trials];
-    newLoop.trials = [];
-    experimentDoc.loops.push(newLoop);
-    moveItemToScope(experimentDoc, newLoop.id, newLoop.parentLoopId);
-    // The canvas auto-includes branch descendants when grouping items, so
-    // childIds can reference trials deleted before dangling-branch pruning
-    // existed. Skip unknown items instead of failing the whole request with
-    // `Item <id> not found`, then prune the stale references below.
-    childIds
-      .filter((itemId) => findItem(experimentDoc, itemId))
-      .forEach((itemId) => moveItemToScope(experimentDoc, itemId, newLoop.id));
-
-    pruneDanglingBranches(experimentDoc);
-    syncTimelineBranches(experimentDoc);
+    groupItemsInLoop(experimentDoc, newLoop);
+    if (!existingDoc) db.data.trials.push(experimentDoc);
     experimentDoc.updatedAt = new Date().toISOString();
 
     await db.write();

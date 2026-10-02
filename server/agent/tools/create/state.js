@@ -32,15 +32,3 @@ export const columnMappingEntrySchema = z.object({
   source: z.enum(['csv', 'typed', 'none']).describe('"csv" = read from CSV column, "typed" = direct value, "none" = use plugin default'),
   value: z.any().optional().describe('CSV column name (if source=csv) or the literal value (if source=typed)'),
 })
-
-export function findLastItems(trialIds, trials, loops) {
-  const lastItems = []
-  for (const tid of trialIds) {
-    const t = trials.find(t => t.id === tid)
-    const l = loops.find(l => l.id === tid)
-    const branches = t?.branches ?? l?.branches ?? []
-    const hasBranchInside = branches.some(bid => trialIds.includes(bid))
-    if (!hasBranchInside) lastItems.push(tid)
-  }
-  return lastItems.length > 0 ? lastItems : [trialIds[0]]
-}

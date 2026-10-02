@@ -34,6 +34,7 @@ export function syncTimelineItems(experimentDoc) {
       const trial = experimentDoc.trials.find((t) => idsMatch(t.id, item.id));
       return {
         ...item,
+        name: trial?.name ?? item.name,
         branches: trial?.branches || [],
       };
     }
@@ -41,6 +42,7 @@ export function syncTimelineItems(experimentDoc) {
       const loop = experimentDoc.loops.find((l) => idsMatch(l.id, item.id));
       return {
         ...item,
+        name: loop?.name ?? item.name,
         trials: loop?.trials || [],
       };
     }
