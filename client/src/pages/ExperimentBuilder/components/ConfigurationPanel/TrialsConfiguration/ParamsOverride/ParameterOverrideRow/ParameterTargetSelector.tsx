@@ -1,4 +1,5 @@
 import type { Parameter } from "../types";
+import { collectSurveyQuestions } from "../../utils/surveyElements";
 
 interface ComponentConfig {
   name?: unknown;
@@ -163,15 +164,18 @@ export default function ParameterTargetSelector({
                   disabled={!actualParamKey}
                 >
                   <option value="">Select question</option>
-                  {(
+                  {collectSurveyQuestions(
                     getPropValue(comp.survey_json) as
-                      | { elements?: Array<{ name: string; title?: string }> }
-                      | undefined
-                  )?.elements?.map((q) => (
-                    <option key={q.name} value={q.name}>
-                      {q.title || q.name}
+                      | Record<string, unknown>
+                      | undefined,
+                  ).map((question) => (
+                    <option
+                      key={String(question.name)}
+                      value={String(question.name)}
+                    >
+                      {String(question.title || question.name || "Question")}
                     </option>
-                  )) || []}
+                  ))}
                 </select>
               ) : (
                 <span className="text-xs text-gray-400 px-2">-</span>

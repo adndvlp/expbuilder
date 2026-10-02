@@ -1,5 +1,6 @@
 import { LoopCondition, LoopConditionRule } from "./types";
 import { updateProp } from "./ruleUpdateHelpers";
+import { collectSurveyQuestions } from "../../utils/surveyElements";
 
 type Props = {
   rule: LoopConditionRule;
@@ -44,15 +45,17 @@ export function DynamicPluginPropertyColumn({
 
     // Survey Component - Add survey_json questions
     if (compType === "SurveyComponent") {
-      const surveyJson = getPropValue(
-        (comp as { survey_json?: unknown }).survey_json,
-      ) as { elements?: Array<{ name: string; title?: string }> } | undefined;
+      const surveyQuestions = collectSurveyQuestions(
+        getPropValue((comp as { survey_json?: unknown }).survey_json) as
+          | Record<string, unknown>
+          | undefined,
+      );
 
-      if (surveyJson?.elements && surveyJson.elements.length > 0) {
-        surveyJson.elements.forEach((q) => {
+      if (surveyQuestions.length > 0) {
+        surveyQuestions.forEach((question) => {
           properties.push({
-            value: q.name,
-            label: q.title || q.name,
+            value: String(question.name),
+            label: String(question.title || question.name || "Question"),
           });
         });
       } else {

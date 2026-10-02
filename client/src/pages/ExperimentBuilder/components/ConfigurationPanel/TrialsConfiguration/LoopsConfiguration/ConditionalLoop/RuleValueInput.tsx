@@ -1,4 +1,5 @@
 import { LoopConditionRule } from "./types";
+import { findSurveyQuestion } from "../../utils/surveyElements";
 
 type Props = {
   rule: LoopConditionRule;
@@ -38,16 +39,13 @@ export function RuleValueInput({
   ) {
     const surveyJson = getPropValue(
       (comp as { survey_json?: unknown }).survey_json,
-    ) as
+    ) as Record<string, unknown> | undefined;
+    const question = findSurveyQuestion(surveyJson, rule.prop) as
       | {
-          elements?: Array<{
-            name: string;
-            type?: string;
-            choices?: Array<string | { value: string; text?: string }>;
-          }>;
+          type?: string;
+          choices?: Array<string | { value: string; text?: string }>;
         }
       | undefined;
-    const question = surveyJson?.elements?.find((q) => q.name === rule.prop);
     if (question && question.type === "radiogroup" && question.choices) {
       return (
         <select

@@ -56,4 +56,34 @@ describe("generateParamsOverrideCode", () => {
     expect(code).toContain("trial[key] = valueToSet;");
     expect(code).toContain("'params-override'");
   });
+
+  it("locates survey questions inside pages in the generated runtime code", () => {
+    const code = normalize(
+      generateParamsOverrideCode([
+        {
+          id: 2,
+          rules: [
+            {
+              trialId: 1,
+              column: "response",
+              op: "==",
+              value: "yes",
+            },
+          ],
+          paramsToOverride: {
+            "response_components::Survey_1::survey_json::mood_q": {
+              source: "typed",
+              value: "happy",
+            },
+          },
+        },
+      ]),
+    );
+
+    expect(code).toContain("const findSurveyQuestion =");
+    expect(code).toContain("Array.isArray(surveyJson.pages)");
+    expect(code).toContain(
+      "findSurveyQuestion(component?.survey_json, questionName)",
+    );
+  });
 });

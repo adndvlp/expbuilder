@@ -1,8 +1,9 @@
 // Custom Survey Builder - Editor visual con preview en tiempo real
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import Modal from "../../ParameterMapper/Modal";
 import CustomSurveyEditor from "./Builder";
 import SurveyPreview from "./Preview";
+import { ensureQuestionNames } from "./ensureQuestionNames";
 
 type UploadedFile = { name: string; url: string; type: string };
 
@@ -62,7 +63,7 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({
   }, [isOpen, value]);
 
   const handleSave = () => {
-    onChange(surveyJson);
+    onChange(ensureQuestionNames(surveyJson));
     onClose();
   };
 
@@ -72,12 +73,17 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({
         clearTimeout(autoSaveTimeoutRef.current);
       }
       autoSaveTimeoutRef.current = setTimeout(() => {
-        onAutoSave(newJson);
+        onAutoSave(ensureQuestionNames(newJson));
         setSaveIndicator(true);
         setTimeout(() => setSaveIndicator(false), 1500);
       }, 1000);
     }
   };
+
+  const previewJson = useMemo(
+    () => ensureQuestionNames(surveyJson),
+    [surveyJson],
+  );
 
   if (!isOpen) return null;
 
@@ -210,7 +216,7 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({
             >
               Live Preview
             </div>
-            <SurveyPreview surveyJson={surveyJson} />
+            <SurveyPreview surveyJson={previewJson} />
           </div>
         </div>
       </div>

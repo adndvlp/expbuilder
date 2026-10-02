@@ -25,11 +25,27 @@ export function generateBranchCustomParametersCode(
                 if (Array.isArray(fieldArray)) {
                   const compIndex = fieldArray.findIndex(c => c.name === componentName);
                   if (compIndex !== -1 && fieldArray[compIndex].survey_json) {
-                    // Find the question in survey_json.elements
-                    const elements = fieldArray[compIndex].survey_json.elements || [];
-                    const questionIndex = elements.findIndex(q => q.name === questionName);
+                    // Survey questions can live in a root "elements" array or
+                    // inside "pages"; survey-core ignores page questions when
+                    // both exist.
+                    const findSurveyQuestion = (surveyJson, questionName) => {
+                      if (!surveyJson) return undefined;
+                      const lists = [];
+                      if (Array.isArray(surveyJson.pages)) {
+                        for (const page of surveyJson.pages) {
+                          if (Array.isArray(page && page.elements)) lists.push(page.elements);
+                        }
+                      }
+                      if (Array.isArray(surveyJson.elements)) lists.push(surveyJson.elements);
+                      for (const list of lists) {
+                        const found = list.find((item) => item && item.name === questionName);
+                        if (found) return found;
+                      }
+                      return undefined;
+                    };
+                    const question = findSurveyQuestion(fieldArray[compIndex].survey_json, questionName);
                     
-                    if (questionIndex !== -1) {
+                    if (question) {
                       // Apply the override value (from typed or csv)
                       let valueToSet;
                       if (param.source === 'typed') {
@@ -39,7 +55,7 @@ export function generateBranchCustomParametersCode(
                       }
                       
                       if (valueToSet !== undefined && valueToSet !== null) {
-                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;
+                        question.defaultValue = valueToSet;
                       }
                     }
                   }
@@ -102,11 +118,27 @@ export function generateBranchCustomParametersCode(
                 if (Array.isArray(fieldArray)) {
                   const compIndex = fieldArray.findIndex(c => c.name === componentName);
                   if (compIndex !== -1 && fieldArray[compIndex].survey_json) {
-                    // Find the question in survey_json.elements
-                    const elements = fieldArray[compIndex].survey_json.elements || [];
-                    const questionIndex = elements.findIndex(q => q.name === questionName);
+                    // Survey questions can live in a root "elements" array or
+                    // inside "pages"; survey-core ignores page questions when
+                    // both exist.
+                    const findSurveyQuestion = (surveyJson, questionName) => {
+                      if (!surveyJson) return undefined;
+                      const lists = [];
+                      if (Array.isArray(surveyJson.pages)) {
+                        for (const page of surveyJson.pages) {
+                          if (Array.isArray(page && page.elements)) lists.push(page.elements);
+                        }
+                      }
+                      if (Array.isArray(surveyJson.elements)) lists.push(surveyJson.elements);
+                      for (const list of lists) {
+                        const found = list.find((item) => item && item.name === questionName);
+                        if (found) return found;
+                      }
+                      return undefined;
+                    };
+                    const question = findSurveyQuestion(fieldArray[compIndex].survey_json, questionName);
                     
-                    if (questionIndex !== -1) {
+                    if (question) {
                       // Apply the override value (from typed or csv)
                       let valueToSet;
                       if (param.source === 'typed') {
@@ -116,7 +148,7 @@ export function generateBranchCustomParametersCode(
                       }
                       
                       if (valueToSet !== undefined && valueToSet !== null) {
-                        fieldArray[compIndex].survey_json.elements[questionIndex].defaultValue = valueToSet;
+                        question.defaultValue = valueToSet;
                       }
                     }
                   }

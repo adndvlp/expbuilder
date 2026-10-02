@@ -86,6 +86,10 @@ export const publishExperiment = onRequest({ cors: true }, async (req, res) => {
         } catch (storageSetupError) {
           // All-or-nothing: publishing without the experiment storage folder
           // would silently lose participant data.
+          console.error(
+            "[publish] Experiment storage setup failed:",
+            storageSetupError.message,
+          );
           return res.status(400).json({
             success: false,
             message:

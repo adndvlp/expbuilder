@@ -22,6 +22,24 @@ export function generateParamsOverrideCode(
           return undefined;
         };
 
+        // Survey questions can live in a root "elements" array or inside
+        // "pages"; survey-core ignores page questions when both exist.
+        const findSurveyQuestion = (surveyJson, questionName) => {
+          if (!surveyJson) return undefined;
+          const lists = [];
+          if (Array.isArray(surveyJson.pages)) {
+            for (const page of surveyJson.pages) {
+              if (Array.isArray(page && page.elements)) lists.push(page.elements);
+            }
+          }
+          if (Array.isArray(surveyJson.elements)) lists.push(surveyJson.elements);
+          for (const list of lists) {
+            const found = list.find((item) => item && item.name === questionName);
+            if (found) return found;
+          }
+          return undefined;
+        };
+
         for (const [key, param] of Object.entries(matchedOverride.paramsToOverride)) {
           if (!param || param.source === 'none') continue;
           const valueToSet = resolveOverrideValue(param);
@@ -33,8 +51,7 @@ export function generateParamsOverrideCode(
             const fieldArray = trial[fieldType];
             if (!Array.isArray(fieldArray) || propName !== 'survey_json') continue;
             const component = fieldArray.find(item => item.name === componentName);
-            const elements = component?.survey_json?.elements || [];
-            const question = elements.find(item => item.name === questionName);
+            const question = findSurveyQuestion(component?.survey_json, questionName);
             if (question) question.defaultValue = String(valueToSet);
             continue;
           }
