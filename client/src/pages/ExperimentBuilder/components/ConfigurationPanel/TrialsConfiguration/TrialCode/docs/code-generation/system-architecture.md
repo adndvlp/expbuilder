@@ -18,8 +18,8 @@ TrialCode/
 
 LoopsConfiguration/useLoopCode/
 ├── index.ts                           # Generador principal de loops
-├── BranchingLogicCode.ts             # Lógica de branching en loops
-├── BranchesCode.ts                   # Generación de branches
+├── LoopProcedureCode.ts              # Contenedor y transporte de rutas de trials
+├── services/                         # Wrappers, iteración, finalización y repetición
 └── types.ts                          # Tipos TypeScript
 
 Timeline/ExperimentCode/
@@ -101,14 +101,9 @@ const propValue = data[columnName];
 // = "sabor"
 ```
 
-**Archivos que implementan este patrón**:
+**Evaluación actual de condiciones**:
 
-1. `branchConditionsGenerator.ts` (líneas 66-115, 214-251)
-2. `BranchingLogicCode.ts` (líneas 57-95, 214-220)
-3. `useExperimentCode.ts` (líneas 75-95)
-4. `paramsOverrideGenerator.ts` (líneas 44-52)
-5. `repeatConditionsGenerator.ts` (líneas 26-34)
-6. `BranchesCode.ts` (líneas 50-52)
+Los generadores de trials delegan en `window.ExpBuilderBranching`: `decide` evalúa ramas del trial y `evaluateReferencedCondition` consulta los datos del trial referenciado. `generateConditionalLoopFunction.ts` usa ese evaluador para `loopConditions`. Los contenedores transportan decisiones de trials sin evaluar ramas propias.
 
 ### 3. Variables Globales vs Loop-Scoped
 
@@ -133,18 +128,18 @@ let loop_myLoop_SkipRemaining = false;
 let loop_myLoop_BranchingActive = false;
 let loop_myLoop_BranchCustomParameters = null;
 let loop_myLoop_TargetExecuted = false;
-let loop_myLoop_IterationComplete = false;
-let loop_myLoop_HasBranches = true;
-let loop_myLoop_ShouldBranchOnFinish = false;
+let loop_myLoop_RouteInherited = false;
+let loop_myLoop_InheritedTrialId = null;
+let loop_myLoop_InheritedTrialExecuted = false;
 ```
 
-**Uso**: Branching entre trials dentro del mismo loop
+**Uso**: transporte de decisiones entre trials dentro del scope y hacia otros scopes. El objeto de iteración limpia decisiones locales resueltas después de cada fila; la finalización propaga sólo un destino pendiente con sus parámetros. El ID heredado permite reconocer que el destino recibido ya se ejecutó aunque encadene otra rama.
 
 **Función de nombres dinámicos**:
 
 ```typescript
 const getVarName = (baseName: string): string => {
-  if (!isInLoop || !parentLoopId) {
+  if (!isInLoop || parentLoopId === null || parentLoopId === undefined) {
     return baseName; // Trial fuera de loop
   }
   // Trial dentro de loop

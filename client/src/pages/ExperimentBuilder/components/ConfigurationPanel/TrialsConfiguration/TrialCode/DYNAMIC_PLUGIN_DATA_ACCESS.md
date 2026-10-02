@@ -128,42 +128,14 @@ if (parts.length >= 2) {
 
 Todos estos archivos DEBEN seguir el patrón documentado arriba:
 
-### ✅ Implementación Correcta (Actualizada)
+### Evaluación compartida actual
 
-1. **`branchConditionsGenerator.ts`**
-   - Ubicación: `client/src/pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/`
-   - Usado para: Evaluación de condiciones de branching en trials (loop y global)
-   - Líneas: 66-115 (loop), 214-251 (global)
+- Los generadores de branching de trials (`TrialCodeGenerators/branchConditions/`) usan `window.ExpBuilderBranching.decide`.
+- `LoopsConfiguration/useLoopCode/services/generateConditionalLoopFunction.ts` usa `evaluateReferencedCondition` para `loopConditions`.
+- `paramsOverrideGenerator.ts` y `repeatConditionsGenerator.ts` conservan sus condiciones de parámetros y navegación.
+- El runtime compartido de condiciones resuelve los nombres de columnas y valores de DynamicPlugin.
 
-2. **`BranchingLogicCode.ts`**
-   - Ubicación: `client/src/pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/useLoopCode/`
-   - Usado para: Evaluación de condiciones dentro de loops (función `evaluateLoopCondition_${loopId}`)
-   - Líneas: 57-95
-
-3. **`BranchingLogicCode.ts` (loop conditions)**
-   - Mismo archivo
-   - Usado para: Evaluación de condiciones de repetición de loops condicionales
-   - Líneas: 214-220
-
-4. **`useExperimentCode.ts`**
-   - Ubicación: `client/src/pages/ExperimentBuilder/components/Timeline/ExeperimentCode/`
-   - Usado para: Evaluación de condiciones en el timeline global
-   - Líneas: 75-95
-
-5. **`BranchesCode.ts`**
-   - Ubicación: `client/src/pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/useLoopCode/`
-   - Usado para: Evaluación de condiciones de repeat en loops
-   - Líneas: 50-52
-
-6. **`repeatConditionsGenerator.ts`**
-   - Ubicación: `client/src/pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/`
-   - Usado para: Evaluación de condiciones para reiniciar experimento desde un trial específico
-   - Líneas: 26-34
-
-7. **`paramsOverrideGenerator.ts`**
-   - Ubicación: `client/src/pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/`
-   - Usado para: Evaluación de condiciones para override de parámetros basado en trials previos
-   - Líneas: 44-52
+Los loops transportan destinos y parámetros decididos por trials. No tienen `branches` ni `branchConditions` propios.
 
 ## Ejemplos de Uso
 

@@ -16,7 +16,7 @@ const mockTimeline = [
   { id: 2, type: "trial", name: "Trial B", branches: [4] },
   { id: 3, type: "trial", name: "Trial C", branches: [] },
   { id: 4, type: "trial", name: "Trial D", branches: [] },
-  { id: "loop_1", type: "loop", name: "Loop 1", trials: [5, 6], branches: [] },
+  { id: "loop_1", type: "loop", name: "Loop 1", trials: [5, 6] },
   { id: 5, type: "trial", name: "Nested Trial 1", branches: [] },
   { id: 6, type: "trial", name: "Nested Trial 2", branches: [] },
 ];
@@ -163,8 +163,8 @@ describe("getTrialIdsInLoops", () => {
 
   it("flattens multiple loops", () => {
     const timeline = [
-      { id: "loop_1", type: "loop", name: "L1", trials: [1, 2], branches: [] },
-      { id: "loop_2", type: "loop", name: "L2", trials: [3, 4], branches: [] },
+      { id: "loop_1", type: "loop", name: "L1", trials: [1, 2] },
+      { id: "loop_2", type: "loop", name: "L2", trials: [3, 4] },
     ];
     expect(getTrialIdsInLoops(timeline)).toEqual([1, 2, 3, 4]);
   });

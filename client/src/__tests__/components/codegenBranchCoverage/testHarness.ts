@@ -153,7 +153,7 @@ export function loop(overrides: Record<string, unknown> = {}) {
     id: "loop-a",
     name: "Loop A",
     trials: [],
-    branches: [],
+
     repetitions: 1,
     randomize: false,
     ...overrides,

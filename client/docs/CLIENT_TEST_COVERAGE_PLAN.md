@@ -1,5 +1,7 @@
 # Client Test Coverage Plan
 
+> Revisión 2026-10-01: las entradas históricas que describen ramas propias de loops, transferencia de sus ramas o movimiento de loops fueron reemplazadas por el contrato de [LOOP_BRANCHES_SDD.md](../../LOOP_BRANCHES_SDD.md). Las conexiones actuales son trial → trial; `Move Item` admite sólo trials. Los registros anteriores se conservan como evidencia histórica.
+
 Fecha de inicio: 2026-05-23
 
 Este documento es el registro vivo del plan de cobertura para `/client`. Su objetivo es conservar el contexto tecnico fuera de la conversacion y servir como guia para implementar tests sin perder el mapa completo del sistema.
@@ -175,7 +177,7 @@ No usar `eval` como estrategia base de tests unitarios.
 
 - Hay duplicacion de logica de branching entre generadores/runtime/resume que debe probarse con una matriz comun de condiciones.
 - `MappedJson` y trial codegen parecen tener convenciones distintas para dynamic plugins, por ejemplo `plugin-dynamic` vs `DynamicPlugin`; esto debe quedar cubierto por tests antes de cambiarlo.
-- Loop-level branching parece menos completo que trial-level branching; los tests deben exponer el comportamiento real actual.
+- Los tests deben rechazar loops como origen o destino de ramas y verificar el transporte de decisiones de trials entre scopes, filas y repeticiones.
 - Nested loops pueden perder scope si el parent loop no se propaga correctamente en codegen.
 - Los tests existentes parecen mas smoke tests que cobertura funcional profunda.
 

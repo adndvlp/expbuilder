@@ -71,7 +71,7 @@ describe("TrialsConfig", () => {
       "loop_loop_1_BranchCustomParameters",
     );
     expect(screen.getByTestId("preview-empty-onFinish")).toHaveTextContent(
-      "loop_loop_1_HasBranches",
+      "loop_loop_1_BranchingActive",
     );
 
     installTrialsContext(makeTrial({ parentLoopId: undefined }));

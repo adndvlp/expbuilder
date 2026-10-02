@@ -42,8 +42,8 @@ generateTrialLoopCodes.ts             useTrialCode() + useLoopCode()       all t
   └─ generateAllCodes()         →      → iterates timeline                 loop code
 
 useLoopCode/index.ts                  generateLoopCode()                   loop
-  └─ BranchingLogicCode.ts      →      → wrappers, flags, conditional_fn   structure
-  └─ BranchesCode.ts            →      → on_finish, repeat/jump
+  ├─ LoopProcedureCode.ts       →      → scoped trial routing + wrappers  structure
+  └─ services/                 →      → row cleanup, finish, repetition
 
 generateExtensionCode.ts              useTrialCode()                       extension
   └─ generateExtensionCode()    →      → mouse-tracking/webgazer config    configs
@@ -168,23 +168,22 @@ Returns `{ genTrialCode(), mappedJson }`.
 
 Generates the complete jsPsych loop timeline. See [05-TRIALS_AND_LOOPS.md](05-TRIALS_AND_LOOPS.md) for the loop data model and configuration. The generated structure produces:
 
-### BranchingLogicCode.ts
+### LoopProcedureCode.ts and services/
 
-Generates the loop's internal branching infrastructure:
-- Loop-scoped flags: `loop_xxx_NextTrialId`, `loop_xxx_SkipRemaining`, `loop_xxx_BranchingActive`, etc.
-- Per-item wrappers with `conditional_function` that check flags
-- Nested loop support: delegates branching to parent loop via `loop_{parent}_NextTrialId`
-- Conditional loop support: `loop_function` that evaluates `loopConditions` against trial data
-- `on_timeline_start`: resets flags for each iteration
-- `on_timeline_finish`: handles branch propagation to parent or root timeline
+Loops own containment, CSV rows and repetition. Only trials own structural branch decisions. `LoopProcedureCode.ts` builds the container using these services:
 
-### BranchesCode.ts
+- `generateLoopRoutingLifecycle.ts`: initializes scoped transport state and admits actual descendant trial targets.
+- `generateItemWrappers.ts`: admits a trial or a nested scope containing the trial target.
+- `generateLoopIteration.ts`: wraps each CSV row and clears resolved local decisions even when the last trial was skipped.
+- `generateLoopFinishLifecycle.ts`: acknowledges an inherited trial once and propagates an unresolved exit with its exact target and custom parameters.
+- `generateConditionalLoopFunction.ts`: evaluates `loopConditions` for conditional repetition.
+- `generateLoopRepeatLifecycle.ts`: retains existing loop repeat/jump navigation.
 
-Generates the loop-level `on_finish` handler:
-- **With repeat conditions**: evaluates `repeatConditions` against loop data, then writes the experiment-scoped `_sessionKeys.jumpTrial` and restarts the timeline
-- **With branches**: evaluates `branchConditions`, activates `window.nextTrialId` / `window.skipRemaining`
-- **Terminal loop** (no branches/repeats): calls `jsPsych.abortExperiment()` if branching was active
-- Rule evaluation logic: handles numeric comparison, string equality, array includes, dynamic plugin column names
+The generated state includes `NextTrialId`, `SkipRemaining`, `BranchingActive`, `BranchCustomParameters`, `TargetExecuted`, `RouteInherited`, `InheritedTrialId` and `InheritedTrialExecuted`. `DescendantTrialIds` admits structural branch targets by trial identity.
+
+Resolved local decisions are cleared per row; unresolved exits and inherited routes are preserved until consumed. The original inherited trial remains identifiable even when it chooses a new branch. This prevents repeating that entry across remaining rows or repetitions.
+
+The agent's `server/agent/codegen/loop.js`, `loopRouting.js` and `trialBranching.js` follow the same trial routing and CSV/repetition contract. Neither generator reads branches from a loop or chooses a loop fallback destination.
 
 ---
 

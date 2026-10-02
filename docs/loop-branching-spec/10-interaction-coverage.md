@@ -1,5 +1,7 @@
 # 10 — Cobertura vertical de interacciones
 
+> Contrato vigente: “loop branching” en esta matriz significa decisiones de trials contenidos en loops. Los loops no tienen ramas propias. Ver [LOOP_BRANCHES_SDD.md](../../LOOP_BRANCHES_SDD.md) para el refactor y su verificación final. Los estados asociados a decisiones anteriores conservan el alcance de aquella propuesta.
+
 ## Propósito y límite
 
 Esta matriz amplía la cobertura a combinaciones de funcionalidades que históricamente se validaban a mano. Es incremental y **no exhaustiva**: no afirma cubrir el producto cartesiano de configuraciones, nesting, datos y rutas. Cada incremento debe permitir descubrir y agregar nuevos casos sin reemplazar el harness.

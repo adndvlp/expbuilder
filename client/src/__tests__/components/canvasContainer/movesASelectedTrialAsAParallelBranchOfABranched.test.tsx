@@ -67,7 +67,6 @@ function makeLoop(id: string, overrides: Record<string, unknown> = {}) {
     type: "loop",
     name: id === "loop-child" ? "Child Loop" : "Loop 1",
     trials: [1, 2],
-    branches: [],
     ...overrides,
   };
 }
@@ -154,30 +153,24 @@ describe("Canvas container", () => {
   });
 
   it.each([
-    ["branch", "trial", "missing"],
-    ["branch", "trial", "without branches"],
-    ["sequential", "trial", "missing"],
-    ["sequential", "trial", "without branches"],
+    ["branch", "missing"],
+    ["branch", "without branches"],
+    ["sequential", "missing"],
+    ["sequential", "without branches"],
   ] as const)(
-    "moves with a %s %s destination whose lookup is %s",
-    async (mode, destinationType, lookupState) => {
-      const destinationId = destinationType === "trial" ? 3 : "loop-1";
-      const destination =
-        destinationType === "trial"
-          ? { id: 3, type: "trial", name: "Trial 3", branches: [9] }
-          : {
-              id: "loop-1",
-              type: "loop",
-              name: "Loop 1",
-              trials: [1],
-              branches: [9],
-            };
+    "moves with a %s trial destination whose lookup is %s",
+    async (mode, lookupState) => {
+      const destinationId = 3;
+      const destination = {
+        id: 3,
+        type: "trial",
+        name: "Trial 3",
+        branches: [9],
+      };
       const lookupResult =
         lookupState === "missing"
           ? undefined
-          : destinationType === "trial"
-            ? makeTrial(3, { branches: undefined })
-            : makeLoop("loop-1", { branches: undefined });
+          : makeTrial(3, { branches: undefined });
 
       installTrialsContext({
         selectedTrial: makeTrial(2),
@@ -185,9 +178,7 @@ describe("Canvas container", () => {
           { id: 2, type: "trial", name: "Trial 2", branches: [] },
           destination,
         ],
-        ...(destinationType === "trial"
-          ? { getTrial: vi.fn(async () => lookupResult) }
-          : { getLoop: vi.fn(async () => lookupResult) }),
+        getTrial: vi.fn(async () => lookupResult),
       });
       render(<Canvas />);
 
@@ -204,10 +195,7 @@ describe("Canvas container", () => {
         expect(mocks.trialsContext.updateTimeline).toHaveBeenCalled();
       });
 
-      const destinationUpdater =
-        destinationType === "trial"
-          ? mocks.trialsContext.updateTrial
-          : mocks.trialsContext.updateLoop;
+      const destinationUpdater = mocks.trialsContext.updateTrial;
       if (lookupState === "missing") {
         expect(
           destinationUpdater.mock.calls.some(

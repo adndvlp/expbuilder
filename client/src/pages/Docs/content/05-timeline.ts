@@ -72,7 +72,7 @@ prompt: jsPsych.timelineVariable('prompt'),
 // Metadata injected by the Builder
 data: {
   trial_id: 123,              // Numeric ID (DB)
-  builder_id: "uuid-v4",      // Stable UUID for resume and branching
+  builder_id: 123,            // Stable builder trial identity
   trial_name: "Encoding Task",
   isInLoop: false,
   branches: [],               // Target trial IDs for branching
@@ -113,9 +113,17 @@ timeline: [trialA_timeline],
 conditional_function: function() { /* skip with loop vars */ }
 };
 
+// One iteration per CSV row
+const loop_abc123_iteration = {
+  timeline: [trialA_proc, trialB_proc],
+  on_timeline_finish: function() {
+    // Clear resolved local decisions; preserve pending trial routes.
+  }
+};
+
 // Main loop
 const loop_abc123 = {
-timeline: [trialA_proc, trialB_proc],
+timeline: [loop_abc123_iteration],
 timeline_variables: loop_abc123_stimuli,
 randomize_order: false,
 repetitions: 3,
@@ -125,13 +133,13 @@ loop_function: function(data) {
   // Evaluates loopConditions → true = repeat, false = exit
 },
 
-// Initialize and cleanup branching variables per iteration
+// Initialize trial routing state when entering the container
 on_timeline_start: function() {
-  window.loop_abc123_NextTrialId = null;
-  window.loop_abc123_SkipRemaining = false;
+  loop_abc123_NextTrialId = null;
+  loop_abc123_SkipRemaining = false;
 },
 on_timeline_finish: function() {
-  // Sync loop state to global scope if branching is active
+  // Acknowledge inherited trial execution and transport an unresolved exit
 },
 };
 
@@ -145,15 +153,15 @@ timeline.push(loop_abc123_procedure);
 
 ## Branching Variables with Loop Scope
 
-Each loop declares its own variables with a prefix to avoid collisions with the global scope and other nested loops:
+Each loop declares lexical variables to transport its contained trials' decisions. Structural destinations are actual trials, including trials in other scopes. Loops have no branch fields of their own:
 
 | Variable | Scope | Purpose |
 |---|---|---|
-| \`window.loop_ID_NextTrialId\` | Inside loop ID | Branch target trial |
-| \`window.loop_ID_SkipRemaining\` | Inside loop ID | Active skip flag |
-| \`window.loop_ID_BranchingActive\` | Inside loop ID | Indicates ongoing branch |
-| \`window.loop_ID_BranchCustomParameters\` | Inside loop ID | Active branch params |
+| \`loop_ID_NextTrialId\` | Inside loop ID | Branch target trial |
+| \`loop_ID_SkipRemaining\` | Inside loop ID | Active skip flag |
+| \`loop_ID_BranchingActive\` | Inside loop ID | Indicates ongoing branch |
+| \`loop_ID_BranchCustomParameters\` | Inside loop ID | Active branch params |
 
-Where \`ID\` is the loop's UUID in the database.
+Where \`ID\` is the sanitized loop ID. Grouping and ungrouping preserve the trial endpoints; a collapsed loop displays their projected connections. \`Move Item\` accepts trials only.
 `,
 };

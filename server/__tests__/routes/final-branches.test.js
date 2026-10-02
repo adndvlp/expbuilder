@@ -39,14 +39,14 @@ describe('validate-connection findItemById string id', () => {
     expect(res.body.isValid).toBeDefined()
   })
 
-  test('resolves loop string id to loop without parseInt', async () => {
+  test('rejects loop string ids as connection endpoints', async () => {
     const { app, db } = await freshApp()
     db.data.trials.push({
       experimentID: 'E1',
       trials: [],
       loops: [
         { id: 'loop_1', name: 'L1', },
-        { id: 'loop_2', name: 'L2', branches: ['loop_1'] },
+        { id: 'loop_2', name: 'L2' },
       ],
       timeline: [],
     })
@@ -54,7 +54,7 @@ describe('validate-connection findItemById string id', () => {
     const res = await request(app)
       .get('/api/validate-connection/E1?source=loop_1&target=loop_2')
       .expect(200)
-    expect(res.body.isValid).toBeDefined()
+    expect(res.body.isValid).toBe(false)
   })
 })
 

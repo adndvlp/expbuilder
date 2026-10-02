@@ -3,8 +3,7 @@ const evidence = (file, title) => ({ file, title });
 const serverLoopBranches = "server/__tests__/routes/loop-branches.test.js";
 const graphIdentity = "server/__tests__/routes/graph-identity.test.js";
 const experimentGraph = "server/__tests__/routes/experiment-graph.test.js";
-const loopBranchCommand =
-  "server/__tests__/routes/loop-branch-command.test.js";
+const loopBranchCommand = "server/__tests__/routes/loop-branch-command.test.js";
 const loopProjection =
   "client/src/__tests__/components/loopBranching/loopBranchProjection.test.ts";
 const branchHook =
@@ -14,8 +13,7 @@ const levelModal =
 const canvasModals =
   "client/src/__tests__/components/loopBranching/CanvasModals.test.tsx";
 const visual = "client/e2e/tests/loop-branching-visual.spec.ts";
-const case2Visual =
-  "client/e2e/tests/loop-branching-case2-visual.spec.ts";
+const case2Visual = "client/e2e/tests/loop-branching-case2-visual.spec.ts";
 const graphDiagnosticsVisual =
   "client/e2e/tests/graph-diagnostics-visual.spec.ts";
 const loopLayout =
@@ -44,6 +42,19 @@ const publicConfiguration =
   "client/src/__tests__/components/codegenRuntime/publicConfiguration.test.ts";
 
 export const coveredRequirements = {
+  "TA-13": {
+    status: "covered",
+    evidence: [
+      evidence(
+        "server/__tests__/routes/branch-contract.test.js",
+        "[TA-13] API rejects",
+      ),
+      evidence(
+        "server/__tests__/routes/branch-contract.test.js",
+        "[TA-13] agent rejects",
+      ),
+    ],
+  },
   "TD-01": {
     status: "covered",
     evidence: [evidence(graphIdentity, "[TD-01] [TG-01] returns one unique")],
@@ -262,13 +273,19 @@ export const coveredRequirements = {
   "TL-12": {
     status: "covered",
     evidence: [
-      evidence(loopLayout, "[TL-12] anchors one exit outside its loop boundary"),
+      evidence(
+        loopLayout,
+        "[TL-12] anchors one exit outside its loop boundary",
+      ),
     ],
   },
   "TL-13": {
     status: "covered",
     evidence: [
-      evidence(graphDiagnosticsVisual, "[TL-13] reports a dangling canonical edge"),
+      evidence(
+        graphDiagnosticsVisual,
+        "[TL-13] reports a dangling canonical edge",
+      ),
     ],
   },
   "TR-01": {
@@ -300,10 +317,7 @@ export const coveredRequirements = {
   "TR-13": {
     status: "covered",
     evidence: [
-      evidence(
-        branchingRuntime,
-        "[RUNTIME-CORRUPT-ROUTE-GUARD] [TR-13]",
-      ),
+      evidence(branchingRuntime, "[RUNTIME-CORRUPT-ROUTE-GUARD] [TR-13]"),
     ],
   },
   "TR-16": {
@@ -330,9 +344,7 @@ export const coveredRequirements = {
   },
   "TG-04": {
     status: "covered",
-    evidence: [
-      evidence(branchingRuntime, "[TR-16] [TG-04] [TG-10]"),
-    ],
+    evidence: [evidence(branchingRuntime, "[TR-16] [TG-04] [TG-10]")],
   },
   "TG-07": {
     status: "covered",
@@ -368,10 +380,7 @@ export const coveredRequirements = {
   "TJ-05": {
     status: "covered",
     evidence: [
-      evidence(
-        navigationNegativeRuntime,
-        "[RUNTIME-JUMP-INVALID] [TJ-05]",
-      ),
+      evidence(navigationNegativeRuntime, "[RUNTIME-JUMP-INVALID] [TJ-05]"),
     ],
   },
   "TJ-06": {
@@ -382,10 +391,7 @@ export const coveredRequirements = {
     status: "covered",
     evidence: [
       evidence(jumpRequest, "[TJ-08] accepts a marked reload"),
-      evidence(
-        navigationCoordinator,
-        "[TJ-08] rejects a reload attempt",
-      ),
+      evidence(navigationCoordinator, "[TJ-08] rejects a reload attempt"),
       evidence(
         navigationNegativeRuntime,
         "[RUNTIME-JUMP-INVALID] [TJ-05] [TJ-08]",
@@ -412,10 +418,7 @@ export const coveredRequirements = {
   "TRES-01": {
     status: "covered",
     evidence: [
-      evidence(
-        navigationRuntime,
-        "[RUNTIME-RESUME-SEQUENTIAL] [TRES-01]",
-      ),
+      evidence(navigationRuntime, "[RUNTIME-RESUME-SEQUENTIAL] [TRES-01]"),
     ],
   },
   "TRES-09": {

@@ -1,5 +1,7 @@
 # Avances de cobertura del cliente
 
+> Revisión 2026-10-01: las entradas históricas que describen ramas propias de loops, transferencia de sus ramas o movimiento de loops fueron reemplazadas por el contrato de [LOOP_BRANCHES_SDD.md](../../LOOP_BRANCHES_SDD.md). Las conexiones actuales son trial → trial; `Move Item` admite sólo trials. Los registros anteriores se conservan como evidencia histórica.
+
 [Volver al plan de cobertura](./CLIENT_TEST_COVERAGE_PLAN.md).
 
 - 2026-05-23: Se definio que el scope real no es solo codegen. Incluye providers, canvas principal, SubCanvas, TrialDesigner/Konva, panels de configuracion, transformaciones, generadores y E2E.

@@ -51,23 +51,21 @@ Delete Trial1 → Trial0 → [Trial2, Trial3]
 |--------|------|-------------|
 | POST | `/api/loop/:experimentID` | Create loop. Body: `{ name, trials[], ...loopConfig }`. Auto-updates parentLoopId on trials |
 | GET | `/api/loop/:experimentID/:id` | Get single loop with trials metadata |
-| GET | `/api/loop-trials-metadata/:experimentID/:loopId` | Get trials within a loop (recursive for branches) |
+| GET | `/api/loop-trials-metadata/:experimentID/:loopId` | Get ordered direct members from the loop scope |
 | PATCH | `/api/loop/:experimentID/:id` | Partial update loop. Syncs parentLoopId on trial add/remove |
-| DELETE | `/api/loop/:experimentID/:id` | Delete loop. Restores trials to timeline. Smart reconnect |
+| DELETE | `/api/loop/:experimentID/:id` | Ungroup loop. Restore direct members and preserve trial connections |
 
-### Smart Delete Behavior (Loops)
-```
-Before: Trial0 → Loop1 [TrialA, TrialB] → TrialC
-Delete Loop1:
-  - Trial0 → TrialA (first item of loop)
-  - TrialB → TrialC (last item gets loop's branches)
-  - TrialA, TrialB restored to timeline
+### Grouping and Ungrouping
+
+```text
+Before grouping: Trial0 → TrialA → TrialB → TrialC
+After grouping:  same trial connections; Loop1 contains TrialA and TrialB
+After deleting Loop1: same trial connections; TrialA and TrialB restored in order
 ```
 
-### Loop Creation Side Effects
-1. Removes trials from main timeline
-2. Sets `parentLoopId` on all contained trials/loops
-3. Updates branches on other items that referenced contained trials (replaces trial IDs with loop ID)
+Creation inserts the container at the first selected position and updates direct member ownership. Deletion replaces the container with its direct members at that position; nested loops remain containers. Neither operation substitutes loop IDs into branches or transfers branches from a loop to a trial. Responses include the canonical graph for the provider to adopt.
+
+Loops reject `branches` and `branchConditions`, including empty arrays. Trial mutations and timeline replacement reject existing loop IDs as branch destinations. REST and agent tools use the same validation contract; there is no legacy migration.
 
 ---
 

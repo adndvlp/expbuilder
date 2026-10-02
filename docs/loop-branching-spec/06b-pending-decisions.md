@@ -1,5 +1,7 @@
 # 06B — Decisiones pendientes: runtime, edición y entrega
 
+> Alcance histórico: este documento pertenece a la auditoría y propuesta anterior al refactor `loop-branches`. Para la limpieza vigente rige [LOOP_BRANCHES_SDD.md](../../LOOP_BRANCHES_SDD.md): ramas trial → trial, sin campos de branching ni `Move Item` para loops y sin migración legacy. Las decisiones abiertas de aquella propuesta no bloquean ni amplían esta limpieza.
+
 ## Resume y jump
 
 ### DEC-20 — Fidelidad de resume — BLOQUEANTE
@@ -37,13 +39,10 @@
 - Opciones reales: sin límite de producto con guard técnico; máximo fijo; máximo configurable por experimento.
 - Pregunta: ¿qué profundidad máxima de nesting debe soportarse y probarse?
 
-### DEC-24 — Experimentos legacy ambiguos — BLOQUEANTE
+### DEC-24 — Experimentos legacy ambiguos — RESUELTA
 
-- Entendido: el loader actual puede mezclar targets externos con metadata interna.
-- Falta: política para datos ya guardados que parezcan cross-scope.
-- Impacto: compatibilidad y riesgo de reinterpretar experimentos.
-- Opciones reales: validar/reportar; reparación asistida; heurística aprobada y auditable; bloquear publicación hasta reparar.
-- Pregunta: ¿cómo deben tratarse los grafos legacy ambiguos y se requiere una herramienta de reparación?
+- Decisión del usuario: no hay experimentos que conservar; no desarrollar migración ni reparación legacy.
+- El contrato actual rechaza loops como origen/destino estructural y sus campos de branching.
 
 ### DEC-25 — Alcance de documentación
 
@@ -138,13 +137,11 @@
 
 ## Significado canónico y superficies
 
-### DEC-36 — Source trial o transferencia al nodo loop — BLOQUEANTE
+### DEC-36 — Source trial o transferencia al nodo loop — RESUELTA
 
-- Entendido: el mismo trial tiene ramas por nivel, pero el pedido también dice “rama de Nested loop”.
-- Falta: si eso describe proyección/owner o cambia el source persistido.
-- Impacto: identity, conditions, `branches[]`, canvas y codegen.
-- Opciones reales: source siempre trial y loop edges proyectadas; cadena trial→loops→target; transferir branch al loop elegido con metadata adicional.
-- Pregunta: ¿las branches pertenecen canónicamente al trial origen o a los nodos loop que cruzan?
+- Decisión 2026-10-01: source y target canónicos siempre son trials.
+- Agrupar/desagrupar, expandir/colapsar y transportar rutas entre scopes no cambian esa identidad ni transfieren ramas al contenedor.
+- Se conserva la proyección visual de conexiones sobre loops colapsados.
 
 ### DEC-37 — Superficies de ejecución obligatorias — BLOQUEANTE
 

@@ -88,8 +88,8 @@ type Trial = {
   categoryData?: any[];
 
   // Branching
-  branches?: Array<string | number>;          // Connected trials/loops (same scope)
-  branchConditions?: BranchCondition[];        // Conditional branching within scope
+  branches?: Array<string | number>;          // Target trial IDs, including trials in other scopes
+  branchConditions?: BranchCondition[];        // Conditions selecting target trials
   repeatConditions?: RepeatCondition[];        // Jump conditions (any target)
   paramsOverride?: ParamsOverrideCondition[];  // On-start param overrides
 
@@ -114,7 +114,7 @@ type Loop = {
 
   // Loop configuration
   repetitions: number;       // Number of repetitions (1+)
-  randomize: boolean;        // Randomize order of trials inside
+  randomize: boolean;        // Randomize timeline-variable row order
 
   // CSV
   csvJson?: any[];           // CSV data (managed at loop level)
@@ -129,11 +129,9 @@ type Loop = {
   categoryData: any[];        // Category values from CSV
 
   // Contents
-  trials: (string | number)[];  // IDs of trials inside this loop
+  trials: (string | number)[];  // IDs of direct trials and nested loops
 
-  // Branching
-  branches?: Array<string | number>;
-  branchConditions?: BranchCondition[];
+  // Existing repeat/jump navigation
   repeatConditions?: RepeatCondition[];
 
   // Conditional Loop
@@ -155,16 +153,25 @@ type Loop = {
 ### TimelineItem
 
 ```typescript
-type TimelineItem = {
-  id: string | number;           // Trial ID (number) or Loop ID (string "loop_xxx")
-  type: "trial" | "loop";
-  name: string;
-  branches?: (string | number)[]; // Connected items (visual arrows)
-  trials?: (string | number)[];   // For loops: IDs of contained trials
-};
+type TimelineItem =
+  | {
+      id: string | number;
+      type: "trial";
+      name: string;
+      branches?: (string | number)[];
+      branchConditions?: BranchCondition[];
+    }
+  | {
+      id: string | number;
+      type: "loop";
+      name: string;
+      trials: (string | number)[];
+      branches?: never;
+      branchConditions?: never;
+    };
 ```
 
-The `timeline` is a flat, ordered array. Loops are top-level items that contain trial IDs. When a loop is selected, a separate `loopTimeline` is loaded showing the loop's internal structure.
+The root `timeline` is a flat, ordered array. Each loop owns an ordered scope containing trials and nested loops. Selecting a loop loads that scope as `loopTimeline`. Branch endpoints are resolved by actual trial identity; an ID prefix does not determine the entity type. Grouping and ungrouping change containment without rewriting trial connections. Loops cannot own `branches` or `branchConditions`, even empty arrays; REST and agent mutations reject those fields and loop IDs as branch targets.
 
 ---
 
@@ -174,7 +181,7 @@ The `timeline` is a flat, ordered array. Loops are top-level items that contain 
 type BranchCondition = {
   id: number;           // Unique condition ID
   rules: Rule[];        // AND conditions (all must match)
-  nextTrialId: number | string | null;  // Target trial/loop (must be in branches[])
+  nextTrialId: number | string | null;  // Target trial in branches[]; null uses the default branch
   customParameters?: Record<string, ColumnMappingEntry>;  // Params to override
 };
 ```
@@ -384,14 +391,13 @@ type ParticipantFile = {
 Experiment (experiments[])
   └── ExperimentDoc (trials[])
         ├── Trial[] (trials in experiment)
-        │     ├── branches[] → other Trial/Loop IDs
+        │     ├── branches[] → other Trial IDs
         │     ├── branchConditions[] → navigate within branches[]
         │     ├── repeatConditions[] → navigate to any Trial/Loop
         │     ├── paramsOverride[] → conditional param changes
         │     └── parentLoopId → Loop
         ├── Loop[] (loops in experiment)
-        │     ├── trials[] → Trial IDs inside loop
-        │     ├── branches[] → other Trial/Loop IDs
+        │     ├── trials[] → direct Trial and nested Loop IDs
         │     ├── loopConditions[] → repeat conditions
         │     └── parentLoopId → parent Loop (nested)
         └── TimelineItem[] (ordered display)

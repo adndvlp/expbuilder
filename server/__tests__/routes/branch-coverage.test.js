@@ -151,7 +151,7 @@ describe('loop-trials-metadata with nested loops', () => {
       trials: [],
       loops: [
         { id: 'loop_1', name: 'L1', trials: ['loop_nested'], },
-        { id: 'loop_nested', name: 'Nested', trials: [], branches: [99] },
+        { id: 'loop_nested', name: 'Nested', trials: [] },
       ],
       timeline: [],
     })

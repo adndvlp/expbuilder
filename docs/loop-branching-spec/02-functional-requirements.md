@@ -1,5 +1,7 @@
 # 02 — Requisitos funcionales y reglas
 
+> Alcance histórico: este documento pertenece a la auditoría y propuesta anterior al refactor `loop-branches`. Para la limpieza vigente rige [LOOP_BRANCHES_SDD.md](../../LOOP_BRANCHES_SDD.md): ramas trial → trial, sin campos de branching ni `Move Item` para loops y sin migración legacy. Las decisiones abiertas de aquella propuesta no bloquean ni amplían esta limpieza.
+
 ## Glosario operativo
 
 - **Scope raíz:** `timeline[]` del experimento; no tiene loop owner.
@@ -175,7 +177,7 @@ La UX exacta para operaciones que cambiarían una ruta depende de DEC-22.
 
 - COMP-01: experiments sin branches cross-scope deben conservar layout y runtime.
 - COMP-02: branches existentes de trial dentro del mismo scope conservan su semántica.
-- COMP-03: branches existentes de nodos loop conservan su semántica hasta que una migración aprobada diga lo contrario.
+- COMP-03 (resuelta 2026-10-01): los loops no tienen ramas propias ni pueden ser destinos de ramas. Se rechazan los campos legacy; no hay experimentos que requieran migración.
 - COMP-04: datos legacy no se reinterpretan como cross-scope sólo porque un loader los encuentre en otra caché.
 - COMP-05: no se escriben nuevos campos hasta que el contrato y migración estén aprobados.
 - COMP-06: el build iniciado por el agente y el iniciado por el cliente producen la misma traza para el mismo snapshot, o la ruta no compatible se bloquea explícitamente.

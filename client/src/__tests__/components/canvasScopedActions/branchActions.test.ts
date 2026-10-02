@@ -88,7 +88,7 @@ describe("scoped Canvas branch actions", () => {
     const scope = createLoopScope();
     scope.items = [
       ...scope.items,
-      { id: "child-loop", type: "loop", name: "Child loop", branches: [11] },
+      { id: "child-loop", type: "loop", name: "Child loop" },
     ];
 
     await addScopedBranchTrial({

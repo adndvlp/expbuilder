@@ -1,5 +1,7 @@
 # 08 — Plan de implementación e impacto
 
+> Alcance histórico: este documento pertenece a la auditoría y propuesta anterior al refactor `loop-branches`. Para la limpieza vigente rige [LOOP_BRANCHES_SDD.md](../../LOOP_BRANCHES_SDD.md): ramas trial → trial, sin campos de branching ni `Move Item` para loops y sin migración legacy. Las decisiones abiertas de aquella propuesta no bloquean ni amplían esta limpieza.
+
 ## Estado del plan
 
 Es un plan de trabajo condicionado a las respuestas de [06A](./06-pending-decisions.md) y [06B](./06b-pending-decisions.md). Los nombres de módulos son candidatos de separación por dominio, no autorización para escribirlos todavía.

@@ -17,7 +17,7 @@ describe("TrialsProvider canonical loop deletion", () => {
 
   it("accepts the server snapshot when deleting an empty loop", async () => {
     const initial = [
-      timelineTrial({ id: 1, name: "Parent", branches: ["empty-loop", 2] }),
+      timelineTrial({ id: 1, name: "Parent", branches: [2] }),
       timelineLoop({ id: "empty-loop", name: "Empty Loop" }),
       timelineTrial({ id: 2, name: "Sibling" }),
     ];
@@ -37,13 +37,12 @@ describe("TrialsProvider canonical loop deletion", () => {
     expect(fetchMock()).toHaveBeenCalledTimes(2);
   });
 
-  it("uses server-owned unwrapping instead of reconstructing incomplete metadata", async () => {
+  it("adopts the ungrouped snapshot while preserving trial references", async () => {
     const initial = [
-      timelineTrial({ id: 1, branches: ["loop-edge"] }),
+      timelineTrial({ id: 1, branches: [10] }),
       timelineLoop({
         id: "loop-edge",
         trials: [10, "nested-loop"],
-        branches: [99],
       }),
       timelineTrial({ id: 99 }),
     ];

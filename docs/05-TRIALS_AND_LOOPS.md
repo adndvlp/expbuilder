@@ -60,7 +60,7 @@ The "Save" button calls `handleSave()` which does one `updateTrial()` call with 
 ```typescript
 type Loop = {
   repetitions: number;           // How many times to repeat
-  randomize: boolean;            // Randomize trial order inside
+  randomize: boolean;            // Randomize CSV/timeline-variable row order
   orders: boolean;               // Order stimuli by CSV column
   orderColumns: string[];        // Which columns define ordering
   stimuliOrders: any[];         // Computed order arrays
@@ -79,12 +79,19 @@ type Loop = {
 1. User selects trials on canvas → "Create Loop"
 2. `createLoop({ name, trials, ...config })` is called
 3. `POST /api/loop/:experimentID`
-4. Backend side effects:
-   - Removes selected trials from main timeline
-   - Adds loop to timeline
-   - Sets `parentLoopId` on all contained trials
-   - Updates branches on other items (replaces trial IDs with loop ID)
-5. Frontend updates parentLoopId on each contained item
+4. The server groups the selected members in their existing order, inserts the loop at the first selected position and updates direct ownership.
+5. The provider adopts the canonical graph returned by that single mutation, including its scopes.
+
+All trial IDs, `branches`, `branchConditions` and their parameter payloads remain unchanged. If A points to B, grouping B into L preserves A → B.
+
+### Ungrouping
+Deleting a loop restores its direct members at the container's position and updates their ownership. Nested loops remain intact. Existing trial connections are preserved; exits to different target trials remain distinct.
+
+### Move Item
+`Move Item` is available only for trials. Its UI, types and handlers reject loops as sources or destinations before mutating state. Grouping, ungrouping and scope membership still support nested containers.
+
+### Canvas Connections
+A collapsed loop can represent connections to hidden trials. Visible endpoints are projected onto the container while the real source and target IDs remain trial IDs. Expanding or collapsing changes presentation only.
 
 ### Loop Selection
 When a loop is selected in the canvas:
@@ -149,7 +156,7 @@ Four lifecycle hooks with code editors:
 - Has access to trial data
 
 ### Code Generation Functions
-These are in `TrialCode/TrialCodeGenerators.ts`:
+These are in `TrialCode/TrialCodeGenerators/`:
 - `generateInitializeCode(userCode)` → wraps user code in `initialize: async function() {...}`
 - `generateOnStartCode({ paramsOverride, isInLoop, getVarName, customOnStart })` → params override + variable injection + user code
 - `generateOnLoadCode(userCode)` → wraps in `on_load: function() {...}`
@@ -159,22 +166,11 @@ These are in `TrialCode/TrialCodeGenerators.ts`:
 
 ## CSV Integration
 
-### The Golden Rule: Loop CSV Owns Trial CSV
+### CSV Source and Iteration
 
-**When a trial is inside a loop that has CSV, the trial inherits the loop's CSV and its own `csvJson` is ignored at code generation time.** This is enforced at `generateTrialLoopCodes.ts:197-200`:
+A child trial with `csvFromLoop` uses its owner's CSV rows. Otherwise its own mapping is compiled separately; a fixed mapped row is reused across the owner's rows. Loop rows become `timeline_variables`, with `repetitions` controlling full passes and `randomize_order` controlling row order.
 
-```typescript
-const effectiveCsvJson =
-  fullTrial.csvFromLoop && loopCsvJson && loopCsvJson.length > 0
-    ? loopCsvJson             // loop CSV wins — trial's own csvJson is IGNORED
-    : fullTrial.csvJson || []; // trial's own CSV only used if NOT in a loop with CSV
-```
-
-**Consequences:**
-- A trial inside a loop with CSV **cannot** have its own independent CSV
-- The trial's `columnMapping` references the **loop's** CSV columns, not its own
-- To give a trial its own different CSV, it must be placed **outside** any loop that has CSV (or in a loop that has no CSV)
-- A trial with `csvJson` that gets added to a loop with its own CSV will silently lose its original csvJson at runtime
+Every row runs an iteration wrapper. After the row, resolved local trial decisions are cleared so they do not suppress later rows or repetitions. An unresolved trial exit retains its concrete target and custom parameters until the owning ancestor or sibling scope can execute that trial. A target inherited from another scope is executed once even if its container has multiple rows or repetitions.
 
 ### Data Flow
 1. CSV uploaded in `LoopsConfig` → `handleCsvUpload()` → data stored on loop as `loop.csvJson` + `loop.csvColumns`
@@ -208,8 +204,10 @@ When CSV is updated in a loop, all child trials get `csvFromLoop` flag updated v
 ## Loop Timeline Code
 
 Loops generate jsPsych timeline code that:
-1. Creates a `jsPsychTimelineVariable` array from CSV data
-2. Uses `jsPsych.randomization.sampleWithReplacement` or `repeat` for repetition
-3. Optionally randomizes with `jsPsych.randomization.shuffle`
-4. Handles orders via `jsPsych.randomization.shuffle` with stimuli orders
-5. Handles conditional loops with `conditional_function` that evaluates `loopConditions`
+1. Merges loop CSV rows with scoped child trial mappings into `timeline_variables`.
+2. Uses `repetitions` and `randomize_order` for normal iteration.
+3. Wraps each row in an iteration procedure that clears resolved trial routing state.
+4. Uses `loop_function` to evaluate `loopConditions` when conditional repetition is configured.
+5. Transports pending trial decisions through nested scopes with their original target IDs and parameters.
+
+Loops do not evaluate branch conditions or select a fallback branch when they finish. Both the client and agent code generators follow this contract.

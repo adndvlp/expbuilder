@@ -73,7 +73,6 @@ function makeLoop(id: string, overrides: Record<string, unknown> = {}) {
     type: "loop",
     name: id === "loop-child" ? "Child Loop" : "Loop 1",
     trials: [1, 2],
-    branches: [],
     ...overrides,
   };
 }
@@ -189,7 +188,7 @@ describe("Canvas container", () => {
 
     installTrialsContext({
       timeline: [{ id: "loop-1", type: "loop", name: "Loop 1", trials: [1] }],
-      getLoop: vi.fn(async () => makeLoop("loop-1", { branches: undefined })),
+      getLoop: vi.fn(async () => makeLoop("loop-1", {})),
     });
     render(<Canvas />);
 

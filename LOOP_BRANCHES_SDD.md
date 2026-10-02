@@ -4,8 +4,8 @@
 
 - Fecha: 2026-10-01.
 - Rama de trabajo: `loop-branches`.
-- HEAD al cerrar la revisión: `5c9ae40` (`case for testing`).
-- Estado: puntos 1 a 5 implementados y verificados. El usuario creó los commits de los puntos 1 a 4 (`99c5d4e`, `b35b07a`, `97a17a0`, `9c2cac5`). Siguiente entrega: punto 6, revisión final de pruebas, fixtures y documentación.
+- HEAD de la revisión inicial: `5c9ae40` (`case for testing`).
+- Estado: puntos 1 a 6 implementados y verificados. El usuario creó los commits de los puntos 1 a 5 (`99c5d4e`, `b35b07a`, `97a17a0`, `9c2cac5`, `34d5628`). El punto 6 está listo para el commit del usuario.
 - Este documento conserva las decisiones del usuario y el resultado de la revisión para continuar el trabajo después de perder contexto.
 
 ## Objetivo
@@ -178,7 +178,7 @@ Verificar específicamente el recorrido normal de varias filas y repeticiones, l
 ## Criterios de aceptación
 
 - [x] Los tipos y documentos actuales de loops no incluyen `branches` ni `branchConditions`.
-- [ ] Ninguna mutación crea una rama cuyo origen o destino real sea un loop.
+- [x] Ninguna mutación crea una rama cuyo origen o destino real sea un loop.
 - [x] API, grafo y herramientas del agente aplican la misma regla.
 - [x] Agrupar B dentro de un loop conserva `A.branches = [B]`.
 - [x] Desagrupar conserva esas referencias y restaura el contenido en su posición correspondiente.
@@ -353,9 +353,37 @@ Reportes fuera del repositorio: `/tmp/loop-branches-point5-client-final.json`, `
 
 Título previsto: `refactor(codegen): remove loop branching and preserve trial routing`.
 
-#### Siguiente punto: revisión final
+#### Punto 6: revisión final de pruebas, fixtures y documentación — implementado
 
-Completar el punto 6: revisar fixtures y documentación que todavía describan ramas propias de loops o el movimiento de contenedores, y cerrar la verificación conjunta de los criterios de aceptación. Las pruebas y documentación se han actualizado dentro de cada punto. Quedan fixtures anteriores en otras suites del provider que aún simulan la sustitución de destinos por IDs de loops o la transferencia de ramas del contenedor; esas expectativas no definen comportamientos a conservar.
+Base de esta entrega: `34d5628` (`refactor(codegen): remove loop branching and preserve trial routing`), creado por el usuario.
+
+- Las suites del provider de creación y eliminación de loops ahora conservan referencias a trials y adoptan el snapshot del servidor. Se renombraron para retirar las expectativas de sustituir el destino por un ID de loop o transferir ramas del contenedor. La creación comprueba que no se envían campos propios de branching y que se adopta el scope del loop sin otra petición.
+- Los factories de `TimelineItem` distinguen el tipo de trial del de loop. Se retiraron campos legacy de los fixtures normales de contexto, canvas, movimiento, utilidades, persistencia y generación. Se conservan datos inválidos únicamente en regresiones que comprueban rechazo o ausencia de decisiones del contenedor.
+- El mock de previews dejó de generar el flag retirado `HasBranches`. La suite que todavía importaba `BranchesCode.ts` usa el generador vigente y ejecuta su callback de repetición con condiciones coincidentes y no coincidentes, comprobando que no decide una rama del loop.
+- Las pruebas de canvas comprueban que un loop válido no abre el modal de agregar ramas. Se retiró la variante inalcanzable de mover hacia un loop en la matriz de movimiento de trials. La capacidad de ejecución se llama `RUNTIME-LOOP-TRIAL-MOVE` para identificar el movimiento de un trial dentro de su contenedor.
+- Modelo, API, agrupación/desagrupación, canvas y generación documentan el contrato trial → trial. La documentación de CSV/repetición describe la limpieza por fila y el transporte del destino concreto y sus parámetros. La ayuda del cliente y su copia estática para el agente tienen contenido idéntico en timeline, branching y loops condicionales/anidados.
+- Las auditorías y planes anteriores quedaron señalados como históricos. Las decisiones de origen canónico, loops como fuentes y ausencia de migración se registraron como resueltas. El workaround del último trial quedó expresamente fuera de vigencia.
+- El criterio `TA-13` ya no exige una migración: registra el rechazo de campos/destinos legacy antes de mutar o escribir. Se enlazó a las pruebas existentes de REST y agente; no se creó compatibilidad. Los estados pendientes del registro amplio pertenecen a aquella propuesta y no dejan puntos abiertos en este refactor.
+- El codegraph respondió correctamente durante toda esta entrega; se indexó el workspace actual y la búsqueda final no encontró lectores de ramas propias de loops ni los helpers/flags retirados en los módulos de producción revisados.
+
+Verificación de esta entrega:
+
+- **Cliente completo:** 1,628 pruebas pasaron, sin suites fallidas. Comando desde `client`: `node scripts/run-unit-tests.mjs --reporter=json --outputFile=/tmp/loop-branches-point6-client-verified.json`, con Chromium temporal.
+- **Servidor completo:** 793 pruebas pasaron en 73 suites; 5 pruebas en 2 suites quedaron omitidas por sus condiciones existentes de ejecución. Se ejecutaron las 75 suites del runner raíz con `--roots server/__tests__ __tests__ --runInBand`, base temporal y heap de 4 GB. La primera ejecución no terminó por agotamiento del heap; la repetición completó el gate. No se cambió la configuración del proyecto.
+- **Contrato referenciado por cobertura:** 35 pruebas pasaron tras actualizar sus etiquetas `TA-13`; verifican rechazo previo a escritura, identidad real, agrupación, condiciones y parámetros para REST y agente.
+- **Ejecución real completa:** 34 escenarios pasaron en Chromium, con bases temporales. Incluyen ambos generadores, filas/repeticiones, rutas dentro y entre scopes, parámetros, movimiento de trials, condiciones, jumps, resume y el escenario compuesto.
+- **Tipos:** `node node_modules/typescript/bin/tsc -b --pretty false` pasó desde `client`.
+- **Lint:** documentación TS, factories tipados, suites renombradas del provider y la suite de generación ajustada pasaron. Los fixtures anteriores conservan errores de `no-explicit-any`: la comparación con HEAD pasó de 119 a 114 errores y no introdujo ninguno. No se modificaron las reglas de lint.
+- **Documentación duplicada:** se transpilaron los cuatro módulos TS afectados y se comparó su contenido con `server/agent/docs-content.js`; las cuatro secciones coinciden exactamente.
+- **Registro de cobertura:** pasó con 115 criterios registrados sin entradas ausentes y 29 capacidades de runtime. `TA-13` dejó de figurar bloqueado por la decisión de migración ya resuelta.
+- **Regresiones encontradas y corregidas:** el primer recorrido completo del cliente detectó el import del archivo eliminado; al retirar campos legacy de los fixtures, otro recorrido detectó una expectativa que abría el modal secuencial para un loop. La suite completa final carga todos sus archivos y verifica el rechazo previo a abrir el modal.
+- **Integridad:** `git diff --check` pasó. No se hizo staging ni se crearon commits. Se conservaron los cambios del usuario en `server/database/db.json`, `server/experiments_html/` y `server/gorilla/`. La instalación temporal de Chromium se eliminó al cerrar los gates.
+
+Reportes fuera del repositorio: `/tmp/loop-branches-point6-client-verified.json`, `/tmp/loop-branches-point6-server-scoped.json`, `/tmp/loop-branches-point6-contract.json`, `/tmp/loop-branches-point6-runtime-final.log`, `/tmp/loop-branches-point6-types.log` y `/tmp/loop-branches-point6-lint-baseline.json`.
+
+Título previsto: `test(branching): align fixtures and docs with trial-only branches`.
+
+Los seis puntos del plan quedaron completos y los criterios de aceptación están verificados. El siguiente paso corresponde al commit del usuario.
 
 Cambios locales existentes antes de crear este documento:
 

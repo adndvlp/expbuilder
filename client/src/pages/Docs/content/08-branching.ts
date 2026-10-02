@@ -5,9 +5,9 @@ export const BranchingSection: DocSection = {
   title: "Branching System",
   content: `# Branching System
 
-Branching allows the experiment flow to change based on the participant's responses. There are **five mechanisms** that interact with each other.
+Branching allows the experiment flow to change based on the participant's responses. Every structural connection is trial → trial. Loops contain trials and nested loops; they never own \`branches\` or \`branchConditions\`, and their IDs cannot be branch targets. Grouping or ungrouping a trial preserves its connections. A collapsed loop can visually represent connections to its hidden trials without changing their IDs.
 
-## Branching Globals
+## Routing State
 
 \`\`\`js
 window.skipRemaining          // boolean — skip trials until finding the target
@@ -16,7 +16,9 @@ window.branchingActive         // boolean — indicates a branch is in progress
 window.branchCustomParameters  // object | null — params to inject into the target trial
 \`\`\`
 
-## Full Flow
+Trials at the root use these globals. Trials inside a loop use lexical variables for their owner scope. A pending decision carries the actual target trial ID and its parameters through the enclosing containers.
+
+## Full Flow (Root Trials)
 
 \`\`\`mermaid
 sequenceDiagram
@@ -51,44 +53,32 @@ Evaluated when a trial ends. If a condition is met, the experiment jumps to the 
 
 \`\`\`js
 on_finish: function(data) {
-const branchConditions = [
-  {
-    tags: ["target-trial-uuid"],
+  const branches = [20, 30];
+  const branchConditions = [{
+    id: 1,
+    nextTrialId: 30,
     rules: [
       { column: "response", op: "==", value: "f" },
-      { column: "rt", op: "<", value: 1000 }
-    ]
-  }
-];
-
-// OR between conditions, AND between rules of each condition
-for (const condition of branchConditions) {
-  const allMatch = condition.rules.every(rule => {
-    let propValue = data[rule.column];
-    if (Array.isArray(propValue)) return propValue.includes(rule.value);
-    if (typeof propValue === "number" || typeof rule.value === "number") {
-      return compareNumeric(propValue, rule.op, Number(rule.value));
+      { column: "rt", op: "<", value: "1000" }
+    ],
+    customParameters: {
+      stimulus: { source: "typed", value: "feedback.png" }
     }
-    return compareString(String(propValue), rule.op, String(rule.value));
-  });
+  }];
 
-  if (allMatch) {
-    window.nextTrialId = condition.nextTrialId;
+  const decision = window.ExpBuilderBranching.decide(
+    data, branches, branchConditions
+  );
+  if (decision.targetId !== null && decision.targetId !== undefined) {
+    window.nextTrialId = decision.targetId;
     window.skipRemaining = true;
     window.branchingActive = true;
-    window.branchCustomParameters = condition.customParameters;
-    break;
+    window.branchCustomParameters = decision.customParameters;
   }
 }
-
-// No match → auto-branch to the first trial in the list by default
-if (!window.skipRemaining && branches.length > 0) {
-  window.nextTrialId = branches[0];
-  window.skipRemaining = true;
-  window.branchingActive = true;
-}
-}
 \`\`\`
+
+Conditions use AND between rules; the first matching condition wins. With no match, the first trial in \`branches\` is the default. For a trial inside a loop, the generated assignments use that scope's variables instead of root globals.
 
 ## 2. Comparison Operators
 
@@ -136,7 +126,7 @@ The versioned request contains the target kind, owner and ordered
 Local Run stores this state under \`expbuilder:local:<id>:jump-request\`;
 published runtimes retain the current global storage default.
 
-**Key difference**: Jump can skip to **any** trial (even previous ones). Branch only jumps forward within the same scope.
+Repeat/jump navigation uses compiled addresses and can restart at a previous target. Structural branches retain their saved trial destinations across scopes, including entering or leaving nested loops.
 
 ## 5. Custom Params on Branch
 
@@ -154,14 +144,13 @@ if (window.branchCustomParameters) {
   // "fieldType::componentName::survey_json::questionName"
   Object.assign(trial, window.branchCustomParameters);
   window.branchCustomParameters = null;
-  window.branchingActive = false;
 }
 }
 \`\`\`
 
 ## 6. Conditional Function (procedure)
 
-Each procedure has a \`conditional_function\` that determines whether it runs or is skipped:
+Root trial procedures use a \`conditional_function\` to determine whether they run or are skipped:
 
 \`\`\`js
 conditional_function: function() {
@@ -187,6 +176,8 @@ if (window.skipRemaining) {
 return true; // run normally
 }
 \`\`\`
+
+Loop wrappers admit a nested container only when it contains the actual trial target. Row cleanup clears resolved local decisions and keeps pending exits with their parameters. Inherited target execution is acknowledged once, including when that target creates another trial branch.
 
 ## 7. Params Override (conditional, on_start)
 

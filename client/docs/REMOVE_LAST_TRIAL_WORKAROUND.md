@@ -1,5 +1,7 @@
 # Eliminación del Workaround del "Last Trial"
 
+> Documento histórico, reemplazado por [LOOP_BRANCHES_SDD.md](../../LOOP_BRANCHES_SDD.md). Los archivos y pasos de este workaround ya no describen la implementación vigente; no deben aplicarse. El generador actual transporta decisiones entre trials sin ramas propias del loop ni un destino final fijo.
+
 Este documento detalla los pasos necesarios para revertir y eliminar la lógica temporal que fuerza un salto (`jump`) hacia el `Last_Trial` (ID: `1778798102194`) en lugar de usar `jsPsych.abortExperiment('', {});`.
 
 Esta solución temporal se implementó para evitar que el experimento se abortara abruptamente y asegurar que la pantalla final ("Ya puedes cerrar esta ventana") siempre se mostrara, pero se planea refactorizar el sistema de branching en el futuro.

@@ -8,9 +8,12 @@ import type {
   GraphScopeView,
 } from "../../pages/ExperimentBuilder/modules/experiment-graph/types";
 
+type TimelineTrial = Extract<TimelineItem, { type: "trial" }>;
+type TimelineLoop = Extract<TimelineItem, { type: "loop" }>;
+
 export function timelineTrial(
-  overrides: Partial<TimelineItem> & Pick<TimelineItem, "id">,
-): TimelineItem {
+  overrides: Partial<TimelineTrial> & Pick<TimelineTrial, "id">,
+): TimelineTrial {
   return {
     type: "trial",
     name: `Trial ${overrides.id}`,
@@ -20,8 +23,8 @@ export function timelineTrial(
 }
 
 export function timelineLoop(
-  overrides: Partial<TimelineItem> & Pick<TimelineItem, "id">,
-): TimelineItem {
+  overrides: Partial<TimelineLoop> & Pick<TimelineLoop, "id">,
+): TimelineLoop {
   return {
     type: "loop",
     name: `Loop ${overrides.id}`,

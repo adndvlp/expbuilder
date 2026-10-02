@@ -168,7 +168,7 @@ describe("trial-only branching contract", () => {
       "BRANCH_TARGET_NOT_TRIAL",
     ],
   ])(
-    "API rejects %s %s: %j without changes",
+    "[TA-13] API rejects %s %s: %j without changes",
     async (method, url, payload, code) => {
       await expectUnchanged(
         async () =>
@@ -253,7 +253,7 @@ describe("trial-only branching contract", () => {
       },
       "BRANCH_TARGET_NOT_TRIAL",
     ],
-  ])("agent rejects %s: %j without changes", async (tool, payload, code) => {
+  ])("[TA-13] agent rejects %s: %j without changes", async (tool, payload, code) => {
     await expectUnchanged(
       () => agent[tool].execute({ experimentID: "E1", ...payload }),
       code,

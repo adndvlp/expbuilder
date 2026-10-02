@@ -15,7 +15,7 @@ The application has three distinct systems for conditional behavior:
 ## BranchConditions
 
 ### Concept
-Branch conditions allow a trial to navigate to different subsequent trials based on the participant's response. The target must be in the trial's `branches[]` array (same scope — typically the same loop or timeline level).
+Branch conditions allow a trial to navigate to different subsequent trials based on the participant's response. The target must be an actual trial in the source trial's `branches[]`. It can belong to another scope, including a nested or sibling loop. Loops own containment and repetition settings, never `branches` or `branchConditions`. Grouping and ungrouping preserve the trial endpoints; collapsed canvas connections are visual projections.
 
 ### Data Structure
 ```typescript
@@ -53,23 +53,10 @@ customParameters: {
 ```
 
 ### Generated Code (on_finish)
-```javascript
-on_finish: function(data) {
-  // Branch condition 1
-  if (data.response === 'yes' && data.rt < 1000) {
-    jsPsych.data.get().push({ next_trial_params: {
-      stimulus: 'happy_face.jpg',
-      trial_duration: 3000
-    }});
-    return; // continues to next trial in timeline (the branch target)
-  }
-  // Branch condition 2
-  if (data.response === 'no') {
-    return; // continues to timeline default
-  }
-  // User custom code appended here
-}
-```
+
+The runtime evaluates trial conditions in order (AND between rules, first matching condition wins), selects the specified target or the first default branch, and carries `customParameters` to that exact target. The generated handler writes root globals for root trials or scoped state for trials inside a loop.
+
+Pending exits are transported through containers without selecting a different target. Per-row cleanup clears decisions already resolved inside the loop and preserves unresolved exits and inherited targets. See [13-CODE_GENERATION.md](13-CODE_GENERATION.md).
 
 ---
 
@@ -115,16 +102,8 @@ conditions.forEach(condition => {
 ```
 
 ### Generated Code (on_finish)
-```javascript
-on_finish: function(data) {
-  // Jump condition
-  if (data.response === 'retry') {
-    jsPsych.endCurrentTimeline();  // returns to parent timeline
-    return -1;                     // jump signal
-  }
-  // Branch conditions continue normally
-}
-```
+
+Matching repeat conditions call `window.ExpBuilderNavigation.requestJump(...)` with the compiled target and source metadata. Scope wrappers admit the target's path and the actual entry consumes it once. This navigation remains unchanged by the removal of loop branch fields.
 
 ---
 
@@ -243,13 +222,8 @@ loop_function: function(data) {
 
 ---
 
-## Trial Availability Rules
+## Target Availability
 
-When configuring branches/paramsOverride, a trial can only reference trials that come **before** it in the timeline:
-
-### If trial is in main timeline
-- Only trials/loops with lower indices are available
-
-### If trial is inside a loop
-- Trials from same loop that come before it (from `loopTimeline`)
-- PLUS all trials from main timeline (to allow jumping out)
+- Branch conditions use actual trial IDs already saved in `branches[]`, including targets outside the current scope. Loops are excluded as structural branch endpoints.
+- Parameter overrides reference data from previously executed trials; their data picker is separate from branch target selection.
+- Existing repeat/jump navigation uses its compiled address contract. It is preserved by this refactor.

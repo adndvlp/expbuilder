@@ -1,5 +1,7 @@
 # 07 — Estrategia TDD y criterios de aceptación
 
+> Alcance histórico: este documento pertenece a la auditoría y propuesta anterior al refactor `loop-branches`. Para la limpieza vigente rige [LOOP_BRANCHES_SDD.md](../../LOOP_BRANCHES_SDD.md): ramas trial → trial, sin campos de branching ni `Move Item` para loops y sin migración legacy. Las decisiones abiertas de aquella propuesta no bloquean ni amplían esta limpieza.
+
 ## Regla de ejecución
 
 Conforme a `SPEC.md`, cada slice comienza con una prueba roja que expresa comportamiento de negocio. Después se implementa lo mínimo, se refactoriza y se ejecutan regresiones. No se aceptan snapshots de strings como única prueba del runtime generado.
@@ -97,7 +99,7 @@ Variantes cartesianas acotadas:
 - TA-10: read models de root/outer/nested clasifican exit edge sin duplicarla.
 - TA-11: condiciones cross-scope permanecen branch conditions.
 - TA-12: custom parameters sobreviven round-trip.
-- TA-13: migración legacy es idempotente y no adivina datos ambiguos.
+- TA-13 (decisión vigente): REST y agente rechazan campos de branching de loops y destinos de tipo loop antes de mutar o escribir; no hay migración legacy.
 - TA-14: invalid graph bloquea publicación con diagnóstico.
 - TA-15: create/update/delete por agente y REST respetan los mismos invariantes.
 - TA-16: la tool del agente no borra, re-owna ni reconecta una exit con su algoritmo legacy.
@@ -230,7 +232,7 @@ La ampliación vertical de combinaciones está inventariada en [10 — Cobertura
 
 - branches raíz existentes;
 - branches same-scope dentro de loop;
-- branches de nodo loop;
+- rechazo de loops como origen o destino de ramas; proyecciones visuales con endpoints reales de trials;
 - merge points y cleanup;
 - loop CSV y typed values;
 - loop repetitions/randomize/conditional sin exits;

@@ -1,5 +1,7 @@
 # 03 — Dominio, datos y API
 
+> Alcance histórico: este documento pertenece a la auditoría y propuesta anterior al refactor `loop-branches`. Para la limpieza vigente rige [LOOP_BRANCHES_SDD.md](../../LOOP_BRANCHES_SDD.md): ramas trial → trial, sin campos de branching ni `Move Item` para loops y sin migración legacy. Las decisiones abiertas de aquella propuesta no bloquean ni amplían esta limpieza.
+
 ## Problema de representación
 
 Hoy una branch es sólo un target en `source.branches[]`. El owner se encuentra, cuando no se perdió en metadata, leyendo `target.parentLoopId`. Para una branch de salida podrían derivarse los límites cruzados comparando los ancestros de source y target. Esto es viable únicamente si:
@@ -229,7 +231,7 @@ El selector puede auto-incluir branches únicamente si el target seguirá siendo
 
 ### Mover
 
-Antes de mover source, target o loop ancestro, el servidor calcula impacto sobre routes. Debe seguir la política elegida en DEC-22: rechazar, pedir confirmación/recalcular o preservar ruta explícita.
+Decisión vigente: `Move Item` sólo admite trials. Un loop se rechaza como origen o destino. La agrupación/desagrupación actual cambia contención y orden conservando las referencias entre trials. Las políticas propuestas en DEC-22 corresponden a una ampliación distinta.
 
 ### Borrar trial
 
@@ -239,19 +241,9 @@ No se reutiliza automáticamente `reconnectParentsToChildren` para cross-scope. 
 
 No se elige “último último item”. Se re-ownan hijos directos y se recompila cada route afectada, o se rechaza la operación si no existe transformación equivalente.
 
-## Migración y versionado
+## Legacy: decisión vigente
 
-La persistencia debe incorporar un `graphSchemaVersion` o mecanismo equivalente.
-
-Fases requeridas, independientemente de la alternativa:
-
-1. lector compatible con datos legacy;
-2. validador que clasifica branches same-scope y branches de nodo loop sin reinterpretarlas;
-3. escritura del formato nuevo sólo para la feature aprobada;
-4. migración determinista, auditable y repetible;
-5. eliminación de dual-write únicamente cuando no haya consumidores legacy.
-
-No se puede asumir que una branch encontrada fuera del owner actual es intencional: el loader vigente ya produce contaminación de scopes. Los datos ambiguos deben reportarse, no migrarse por heurística silenciosa.
+El usuario confirmó que no hay experimentos que conservar. No se implementa lector compatible, dual-write ni migración. Las mutaciones actuales rechazan `branches` y `branchConditions` en loops, incluso vacíos, y referencias a loops como destinos estructurales.
 
 ## Seguridad e integridad operacional
 

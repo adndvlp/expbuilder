@@ -73,7 +73,6 @@ function makeLoop(id: string, overrides: Record<string, unknown> = {}) {
     type: "loop",
     name: id === "loop-child" ? "Child Loop" : "Loop 1",
     trials: [1, 2],
-    branches: [],
     ...overrides,
   };
 }
@@ -144,7 +143,9 @@ describe("Canvas container", () => {
     // stays available; confirming sends only the manual selection.
     fireEvent.click(screen.getByLabelText("Trial 1", { exact: false }));
     expect(screen.getByLabelText("Trial 3", { exact: false })).toBeDisabled();
-    expect(screen.getByLabelText("Trial 2", { exact: false })).not.toBeDisabled();
+    expect(
+      screen.getByLabelText("Trial 2", { exact: false }),
+    ).not.toBeDisabled();
     fireEvent.click(screen.getByLabelText("Trial 2", { exact: false }));
     fireEvent.click(screen.getByText("Confirm (2 items)"));
 

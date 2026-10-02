@@ -330,7 +330,7 @@ SubCanvas (loopTimeline[])
 The `loopTimeline` is loaded via `getLoopTimeline(loopId)` which calls:
 `GET /api/loop-trials-metadata/:experimentID/:loopId`
 
-Returns metadata for all trials inside the loop (including branches recursively).
+Returns the ordered direct members of the loop scope, including nested loop containers. Loading another scope does not follow branch reachability or pull external targets into the container.
 
 ---
 

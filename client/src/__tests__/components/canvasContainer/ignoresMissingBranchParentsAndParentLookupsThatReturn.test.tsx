@@ -73,7 +73,6 @@ function makeLoop(id: string, overrides: Record<string, unknown> = {}) {
     type: "loop",
     name: id === "loop-child" ? "Child Loop" : "Loop 1",
     trials: [1, 2],
-    branches: [],
     ...overrides,
   };
 }
@@ -181,10 +180,9 @@ describe("Canvas container", () => {
     fireEvent.click(screen.getByText("As Branch (Parallel)"));
 
     await waitFor(() => {
-      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(
-        1,
-        { branches: [2, 99] },
-      );
+      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, {
+        branches: [2, 99],
+      });
     });
   });
 

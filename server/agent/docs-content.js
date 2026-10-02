@@ -439,14 +439,14 @@ The timeline is built in \`generateTrialLoopCodes.ts\` and assembled at the end 
 
 \`\`\`mermaid
 flowchart LR
-    A["timeline = []"] --> B["1. Preload trial"]
-    B --> C["2. Fullscreen trial"]
-    C --> D["3. Trials / Loops"]
-    D --> E["jsPsych.run(timeline)"]
+  A["timeline = []"] --> B["1. Preload trial"]
+  B --> C["2. Fullscreen trial"]
+  C --> D["3. Trials / Loops"]
+  D --> E["jsPsych.run(timeline)"]
 
-    B1["jsPsychPreload with all uploaded files"] -.- B
-    C1["jsPsychFullscreen · fullscreen_mode: true"] -.- C
-    D1["Procedures, loops, nested loops"] -.- D
+  B1["jsPsychPreload with all uploaded files"] -.- B
+  C1["jsPsychFullscreen · fullscreen_mode: true"] -.- C
+  D1["Procedures, loops, nested loops"] -.- D
 \`\`\`
 
 \`\`\`js
@@ -454,20 +454,20 @@ const timeline = [];
 
 // 1. Preload (only if files were uploaded from the Timeline panel)
 if (uploadedFiles.length > 0) {
-  const preload_trial = {
-    type: jsPsychPreload,
-    auto_preload: false,
-    images: allImageUrls,
-    video: allVideoUrls,
-    audio: allAudioUrls,
-  };
-  timeline.push(preload_trial);
+const preload_trial = {
+  type: jsPsychPreload,
+  auto_preload: false,
+  images: allImageUrls,
+  video: allVideoUrls,
+  audio: allAudioUrls,
+};
+timeline.push(preload_trial);
 }
 
 // 2. Fullscreen (configurable in Canvas Styles)
 const fullscreen_trial = {
-  type: jsPsychFullscreen,
-  fullscreen_mode: true,
+type: jsPsychFullscreen,
+fullscreen_mode: true,
 };
 timeline.push(fullscreen_trial);
 
@@ -491,35 +491,35 @@ In jsPsych, standalone trials inside a loop must be wrapped in a \`procedure\` o
 \`\`\`js
 // Individual trial definition
 const myTrial_timeline = {
-  type: jsPsychHtmlKeyboardResponse,
+type: jsPsychHtmlKeyboardResponse,
 
-  // Plugin parameters (with timeline variables if CSV is present)
-  stimulus: jsPsych.timelineVariable('stimulus'),
-  prompt: jsPsych.timelineVariable('prompt'),
+// Plugin parameters (with timeline variables if CSV is present)
+stimulus: jsPsych.timelineVariable('stimulus'),
+prompt: jsPsych.timelineVariable('prompt'),
 
-  // Metadata injected by the Builder
-  data: {
-    trial_id: 123,              // Numeric ID (DB)
-    builder_id: "uuid-v4",      // Stable UUID for resume and branching
-    trial_name: "Encoding Task",
-    isInLoop: false,
-    branches: [],               // Target trial IDs for branching
-    branchConditions: [],       // Active branch conditions on this trial
-  },
+// Metadata injected by the Builder
+data: {
+  trial_id: 123,              // Numeric ID (DB)
+  builder_id: 123,            // Stable builder trial identity
+  trial_name: "Encoding Task",
+  isInLoop: false,
+  branches: [],               // Target trial IDs for branching
+  branchConditions: [],       // Active branch conditions on this trial
+},
 
-  // Callbacks (generated if applicable)
-  on_start: function(trial) { /* params override + branch custom params */ },
-  on_finish: function(data)  { /* repeat/jump + branch conditions */ },
+// Callbacks (generated if applicable)
+on_start: function(trial) { /* params override + branch custom params */ },
+on_finish: function(data)  { /* repeat/jump + branch conditions */ },
 };
 
 // Procedure wrapper
 const myTrial_procedure = {
-  timeline: [myTrial_timeline],
-  timeline_variables: test_stimuli_myTrial, // CSV object array
-  randomize_order: false,
-  conditional_function: function() {
-    // Skip/jump/branch logic (see Branching System)
-  },
+timeline: [myTrial_timeline],
+timeline_variables: test_stimuli_myTrial, // CSV object array
+randomize_order: false,
+conditional_function: function() {
+  // Skip/jump/branch logic (see Branching System)
+},
 };
 
 timeline.push(myTrial_procedure);
@@ -530,42 +530,50 @@ timeline.push(myTrial_procedure);
 \`\`\`js
 // Unified variables from all trials inside the loop
 const loop_abc123_stimuli = [
-  { trialA_stimulus: "img1.png", trialB_word: "hello" },
-  { trialA_stimulus: "img2.png", trialB_word: "world" },
+{ trialA_stimulus: "img1.png", trialB_word: "hello" },
+{ trialA_stimulus: "img2.png", trialB_word: "world" },
 ];
 
 // Individual trials inside the loop (each with its conditional_function)
 const trialA_timeline = { type: ..., data: { isInLoop: true, ... } };
 const trialA_proc = {
-  timeline: [trialA_timeline],
-  conditional_function: function() { /* skip with loop vars */ }
+timeline: [trialA_timeline],
+conditional_function: function() { /* skip with loop vars */ }
+};
+
+// One iteration per CSV row
+const loop_abc123_iteration = {
+  timeline: [trialA_proc, trialB_proc],
+  on_timeline_finish: function() {
+    // Clear resolved local decisions; preserve pending trial routes.
+  }
 };
 
 // Main loop
 const loop_abc123 = {
-  timeline: [trialA_proc, trialB_proc],
-  timeline_variables: loop_abc123_stimuli,
-  randomize_order: false,
-  repetitions: 3,
+timeline: [loop_abc123_iteration],
+timeline_variables: loop_abc123_stimuli,
+randomize_order: false,
+repetitions: 3,
 
-  // If conditional loop:
-  loop_function: function(data) {
-    // Evaluates loopConditions → true = repeat, false = exit
-  },
+// If conditional loop:
+loop_function: function(data) {
+  // Evaluates loopConditions → true = repeat, false = exit
+},
 
-  // Initialize and cleanup branching variables per iteration
-  on_timeline_start: function() {
-    window.loop_abc123_NextTrialId = null;
-    window.loop_abc123_SkipRemaining = false;
-  },
-  on_timeline_finish: function() {
-    // Sync loop state to global scope if branching is active
-  },
+// Initialize trial routing state when entering the container
+on_timeline_start: function() {
+  loop_abc123_NextTrialId = null;
+  loop_abc123_SkipRemaining = false;
+},
+on_timeline_finish: function() {
+  // Acknowledge inherited trial execution and transport an unresolved exit
+},
 };
 
 const loop_abc123_procedure = {
-  timeline: [loop_abc123],
-  conditional_function: function() { /* skip entire loop */ }
+timeline: [loop_abc123],
+conditional_function: function() { /* skip entire loop */ }
 };
 
 timeline.push(loop_abc123_procedure);
@@ -573,16 +581,16 @@ timeline.push(loop_abc123_procedure);
 
 ## Branching Variables with Loop Scope
 
-Each loop declares its own variables with a prefix to avoid collisions with the global scope and other nested loops:
+Each loop declares lexical variables to transport its contained trials' decisions. Structural destinations are actual trials, including trials in other scopes. Loops have no branch fields of their own:
 
 | Variable | Scope | Purpose |
 |---|---|---|
-| \`window.loop_ID_NextTrialId\` | Inside loop ID | Branch target trial |
-| \`window.loop_ID_SkipRemaining\` | Inside loop ID | Active skip flag |
-| \`window.loop_ID_BranchingActive\` | Inside loop ID | Indicates ongoing branch |
-| \`window.loop_ID_BranchCustomParameters\` | Inside loop ID | Active branch params |
+| \`loop_ID_NextTrialId\` | Inside loop ID | Branch target trial |
+| \`loop_ID_SkipRemaining\` | Inside loop ID | Active skip flag |
+| \`loop_ID_BranchingActive\` | Inside loop ID | Indicates ongoing branch |
+| \`loop_ID_BranchCustomParameters\` | Inside loop ID | Active branch params |
 
-Where \`ID\` is the loop's UUID in the database.
+Where \`ID\` is the sanitized loop ID. Grouping and ungrouping preserve the trial endpoints; a collapsed loop displays their projected connections. \`Move Item\` accepts trials only.
 `,
   },
 
@@ -1139,9 +1147,9 @@ SurveyJS handles its own validation (required, regular expressions, numeric rang
     title: "Branching System",
     content: `# Branching System
 
-Branching allows the experiment flow to change based on the participant's responses. There are **five mechanisms** that interact with each other.
+Branching allows the experiment flow to change based on the participant's responses. Every structural connection is trial → trial. Loops contain trials and nested loops; they never own \`branches\` or \`branchConditions\`, and their IDs cannot be branch targets. Grouping or ungrouping a trial preserves its connections. A collapsed loop can visually represent connections to its hidden trials without changing their IDs.
 
-## Branching Globals
+## Routing State
 
 \`\`\`js
 window.skipRemaining          // boolean — skip trials until finding the target
@@ -1150,33 +1158,35 @@ window.branchingActive         // boolean — indicates a branch is in progress
 window.branchCustomParameters  // object | null — params to inject into the target trial
 \`\`\`
 
-## Full Flow
+Trials at the root use these globals. Trials inside a loop use lexical variables for their owner scope. A pending decision carries the actual target trial ID and its parameters through the enclosing containers.
+
+## Full Flow (Root Trials)
 
 \`\`\`mermaid
 sequenceDiagram
-    participant T1 as Trial A (source)
-    participant W as window globals
-    participant T2 as Trial B (intermediate procedures)
-    participant T3 as Trial C (target)
+  participant T1 as Trial A (source)
+  participant W as window globals
+  participant T2 as Trial B (intermediate procedures)
+  participant T3 as Trial C (target)
 
-    T1->>T1: on_finish: evaluate branchConditions
-    T1->>W: window.nextTrialId = "C"
-    T1->>W: window.skipRemaining = true
-    T1->>W: window.branchingActive = true
-    T1->>W: window.branchCustomParameters = {...}
+  T1->>T1: on_finish: evaluate branchConditions
+  T1->>W: window.nextTrialId = "C"
+  T1->>W: window.skipRemaining = true
+  T1->>W: window.branchingActive = true
+  T1->>W: window.branchCustomParameters = {...}
 
-    loop Each next procedure
-        T2->>T2: conditional_function()
-        alt window.skipRemaining && id !== nextTrialId
-            T2-->>T2: return false (skip)
-        else id === nextTrialId
-            T2->>W: window.skipRemaining = false
-            T2->>W: window.nextTrialId = null
-            T2-->>T2: return true (run)
-        end
-    end
+  loop Each next procedure
+      T2->>T2: conditional_function()
+      alt window.skipRemaining && id !== nextTrialId
+          T2-->>T2: return false (skip)
+      else id === nextTrialId
+          T2->>W: window.skipRemaining = false
+          T2->>W: window.nextTrialId = null
+          T2-->>T2: return true (run)
+      end
+  end
 
-    T3->>T3: on_start: apply branchCustomParameters
+  T3->>T3: on_start: apply branchCustomParameters
 \`\`\`
 
 ## 1. Branch Conditions (on_finish)
@@ -1185,44 +1195,32 @@ Evaluated when a trial ends. If a condition is met, the experiment jumps to the 
 
 \`\`\`js
 on_finish: function(data) {
-  const branchConditions = [
-    {
-      tags: ["target-trial-uuid"],
-      rules: [
-        { column: "response", op: "==", value: "f" },
-        { column: "rt", op: "<", value: 1000 }
-      ]
+  const branches = [20, 30];
+  const branchConditions = [{
+    id: 1,
+    nextTrialId: 30,
+    rules: [
+      { column: "response", op: "==", value: "f" },
+      { column: "rt", op: "<", value: "1000" }
+    ],
+    customParameters: {
+      stimulus: { source: "typed", value: "feedback.png" }
     }
-  ];
+  }];
 
-  // OR between conditions, AND between rules of each condition
-  for (const condition of branchConditions) {
-    const allMatch = condition.rules.every(rule => {
-      let propValue = data[rule.column];
-      if (Array.isArray(propValue)) return propValue.includes(rule.value);
-      if (typeof propValue === "number" || typeof rule.value === "number") {
-        return compareNumeric(propValue, rule.op, Number(rule.value));
-      }
-      return compareString(String(propValue), rule.op, String(rule.value));
-    });
-
-    if (allMatch) {
-      window.nextTrialId = condition.nextTrialId;
-      window.skipRemaining = true;
-      window.branchingActive = true;
-      window.branchCustomParameters = condition.customParameters;
-      break;
-    }
-  }
-
-  // No match → auto-branch to the first trial in the list by default
-  if (!window.skipRemaining && branches.length > 0) {
-    window.nextTrialId = branches[0];
+  const decision = window.ExpBuilderBranching.decide(
+    data, branches, branchConditions
+  );
+  if (decision.targetId !== null && decision.targetId !== undefined) {
+    window.nextTrialId = decision.targetId;
     window.skipRemaining = true;
     window.branchingActive = true;
+    window.branchCustomParameters = decision.customParameters;
   }
 }
 \`\`\`
+
+Conditions use AND between rules; the first matching condition wins. With no match, the first trial in \`branches\` is the default. For a trial inside a loop, the generated assignments use that scope's variables instead of root globals.
 
 ## 2. Comparison Operators
 
@@ -1249,26 +1247,28 @@ If the value is an array (checkbox/multi-select response), \`includes()\` is use
 
 ## 4. Repeat / Jump Conditions
 
-Allows restarting the experiment from a specific trial (via \`localStorage\`):
+Allows restarting the experiment from a compiled execution address:
 
 \`\`\`js
 // on_finish of the source trial:
-localStorage.setItem('jsPsych_jumpToTrial', String(targetTrialId));
-document.getElementById('jspsych-container').innerHTML = '';
-setTimeout(() => jsPsych.run(timeline), 100);
+window.ExpBuilderNavigation.requestJump(
+  targetTrialId,
+  { sourceId, conditionId, sourceSessionId: trialSessionId },
+  data,
+  () => jsPsych.pauseExperiment(),
+);
 
-// In conditional_function of each procedure:
-const jumpTo = localStorage.getItem('jsPsych_jumpToTrial');
-if (jumpTo) {
-  if (String(currentId) === String(jumpTo)) {
-    localStorage.removeItem('jsPsych_jumpToTrial');
-    return true;  // run this trial
-  }
-  return false;   // skip
-}
+// Scope wrappers inspect without consuming; real entries consume once.
+const canInclude = window.ExpBuilderNavigation.allowsItem(itemId, itemKind);
+const canEnter = window.ExpBuilderNavigation.enterItem(itemId, itemKind);
 \`\`\`
 
-**Key difference**: Jump can skip to **any** trial (even previous ones). Branch only jumps forward within the same scope.
+The versioned request contains the target kind, owner and ordered
+\`enterLoopIds\`. Reload waits until the source trial is durably acknowledged.
+Local Run stores this state under \`expbuilder:local:<id>:jump-request\`;
+published runtimes retain the current global storage default.
+
+Repeat/jump navigation uses compiled addresses and can restart at a previous target. Structural branches retain their saved trial destinations across scopes, including entering or leaving nested loops.
 
 ## 5. Custom Params on Branch
 
@@ -1276,52 +1276,50 @@ When a branch includes \`customParameters\`, they are injected into the target t
 
 \`\`\`js
 on_start: function(trial) {
-  // 1. Conditional params override (based on previous trial data)
-  // ... (see section below)
+// 1. Conditional params override (based on previous trial data)
+// ... (see section below)
 
-  // 2. Branch custom parameters (HIGHER priority — overrides the override)
-  if (window.branchCustomParameters) {
-    // Supports nesting in DynamicPlugin:
-    // "fieldType::componentName::property"
-    // "fieldType::componentName::survey_json::questionName"
-    Object.assign(trial, window.branchCustomParameters);
-    window.branchCustomParameters = null;
-    window.branchingActive = false;
-  }
+// 2. Branch custom parameters (HIGHER priority — overrides the override)
+if (window.branchCustomParameters) {
+  // Supports nesting in DynamicPlugin:
+  // "fieldType::componentName::property"
+  // "fieldType::componentName::survey_json::questionName"
+  Object.assign(trial, window.branchCustomParameters);
+  window.branchCustomParameters = null;
+}
 }
 \`\`\`
 
 ## 6. Conditional Function (procedure)
 
-Each procedure has a \`conditional_function\` that determines whether it runs or is skipped:
+Root trial procedures use a \`conditional_function\` to determine whether they run or are skipped:
 
 \`\`\`js
 conditional_function: function() {
-  const currentId = 123;
+const currentId = 123;
 
-  // Priority 1: pending jump/repeat (localStorage)
-  const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
-  if (jumpToTrial) {
-    if (String(currentId) === String(jumpToTrial)) {
-      localStorage.removeItem('jsPsych_jumpToTrial');
-      return true;
-    }
-    return false;
+// Priority 1: pending jump/repeat address
+const navigationDecision =
+  window.ExpBuilderNavigation.enterItem(currentId, 'trial');
+if (navigationDecision !== null) {
+  return navigationDecision;
+}
+
+// Priority 2: active branching (window globals)
+if (window.skipRemaining) {
+  if (String(currentId) === String(window.nextTrialId)) {
+    window.skipRemaining = false;
+    window.nextTrialId = null;
+    return true;
   }
+  return false;
+}
 
-  // Priority 2: active branching (window globals)
-  if (window.skipRemaining) {
-    if (String(currentId) === String(window.nextTrialId)) {
-      window.skipRemaining = false;
-      window.nextTrialId = null;
-      return true;
-    }
-    return false;
-  }
-
-  return true; // run normally
+return true; // run normally
 }
 \`\`\`
+
+Loop wrappers admit a nested container only when it contains the actual trial target. Row cleanup clears resolved local decisions and keeps pending exits with their parameters. Inherited target execution is acknowledged once, including when that target creates another trial branch.
 
 ## 7. Params Override (conditional, on_start)
 
@@ -1329,33 +1327,33 @@ Modifies trial parameters based on responses from **previous trials**:
 
 \`\`\`js
 on_start: function(trial) {
-  const overrides = [
-    {
-      rules: [
-        { trialId: 10, column: "response", op: "==", value: "angry" }
-      ],
-      paramsToOverride: {
-        "stimulus": { source: "typed", value: "angry_face.png" },
-        "components::TextComponent::text": { source: "typed", value: "Mood: Angry" },
-        "response_components::SurveyComponent::survey_json::mood_q": { source: "typed", value: "upset" }
-      }
-    }
-  ];
-
-  const allData = jsPsych.data.get().values();
-  for (const condition of overrides) {
-    const allMatch = condition.rules.every(rule => {
-      const trialData = allData.filter(d => String(d.trial_id) === String(rule.trialId));
-      // ... evaluate rule ...
-    });
-    if (allMatch) {
-      // Apply each override. Key format:
-      // "paramName" → trial[paramName] = value
-      // "components::ComponentName::propName" → trial.components[compIdx][propName] = value
-      // "response_components::SurveyComponent::survey_json::qName" → nested
-      break;
+const overrides = [
+  {
+    rules: [
+      { trialId: 10, column: "response", op: "==", value: "angry" }
+    ],
+    paramsToOverride: {
+      "stimulus": { source: "typed", value: "angry_face.png" },
+      "components::TextComponent::text": { source: "typed", value: "Mood: Angry" },
+      "response_components::SurveyComponent::survey_json::mood_q": { source: "typed", value: "upset" }
     }
   }
+];
+
+const allData = jsPsych.data.get().values();
+for (const condition of overrides) {
+  const allMatch = condition.rules.every(rule => {
+    const trialData = allData.filter(d => String(d.trial_id) === String(rule.trialId));
+    // ... evaluate rule ...
+  });
+  if (allMatch) {
+    // Apply each override. Key format:
+    // "paramName" → trial[paramName] = value
+    // "components::ComponentName::propName" → trial.components[compIdx][propName] = value
+    // "response_components::SurveyComponent::survey_json::qName" → nested
+    break;
+  }
+}
 }
 \`\`\`
 `,
@@ -1454,77 +1452,60 @@ on_finish: async function() {
     title: "Conditional Loops (While)",
     content: `# Conditional Loops (While)
 
-A **conditional loop** repeats its content as long as a condition is met, similar to a \`while\` in programming.
-
-Configured in **Builder → Loop → Conditional Loop Settings**.
+A conditional loop repeats its content while its configured conditions match. Configure it in **Builder → Loop → Conditional Loop Settings**.
 
 ## loop_function
 
-The generated code includes a \`loop_function\` that jsPsych evaluates after each iteration:
+jsPsych evaluates \`loop_function\` after completing the container's row pass. It receives a DataCollection for that pass and reads the referenced trial's latest row:
 
 \`\`\`js
 loop_function: function(data) {
-  // data = latest data generated in this loop iteration
-  const loopConditions = [
-    {
-      rules: [
-        { column: "ButtonResponseComponent_1_response", op: "!=", value: "Done" }
-      ]
-    }
-  ];
-
-  // OR between conditions, AND between rules
-  for (const condition of loopConditions) {
-    const allMatch = condition.rules.every(rule => {
-      let propValue = data[rule.column];
-      // ... same evaluation as branch conditions ...
-    });
-    if (allMatch) return true; // repeat the loop
-  }
-
-  return false; // exit the loop
+  const loopConditions = [{
+    id: 1,
+    rules: [{
+      trialId: 20,
+      column: "ButtonResponseComponent_1_response",
+      op: "!=",
+      value: "Done"
+    }]
+  }];
+  return loopConditions.some(condition =>
+    window.ExpBuilderBranching.evaluateReferencedCondition(
+      data.values(), condition
+    )
+  );
 }
 \`\`\`
+
+Rules within a condition use AND; conditions use OR. Conditional repetition uses \`loop_function\`; fixed repetition uses \`repetitions\`.
 
 ## Flow
 
 \`\`\`mermaid
 flowchart TD
-    A["Loop start"] --> B["on_timeline_start: reset loop vars"]
-    B --> C["Run iteration"]
-    C --> D["loop_function(data)"]
-    D -->|true| E["on_timeline_finish"]
-    E --> C
-    D -->|false| F["on_timeline_finish final"]
-    F --> G["Continue timeline"]
+  A["Container start: initialize routing state"] --> B["Run one CSV row"]
+  B --> C["Row finish: clear resolved local decisions"]
+  C --> D{"More rows?"}
+  D -->|yes| B
+  D -->|no| E["loop_function(data)"]
+  E -->|true| B
+  E -->|false| F["Container finish: transport pending trial exit"]
+  F --> G["Continue timeline"]
 \`\`\`
 
-## Interaction with Branching Inside the Loop
+## Trial Branches Inside the Loop
 
-Branching code inside a conditional loop uses loop-scoped variables:
+Only trials evaluate \`branches\` and \`branchConditions\`. Their targets remain trial IDs, including targets outside the loop. The scope keeps lexical routing variables for these decisions.
 
-\`\`\`js
-// on_finish of a trial inside the conditional loop:
-if (allMatch && rule.nextTrialId) {
-  window.loop_LOOPID_NextTrialId = rule.nextTrialId;
-  window.loop_LOOPID_SkipRemaining = true;
-  window.loop_LOOPID_BranchingActive = true;
-}
+A pending exit transports its concrete target and custom parameters to the enclosing scope. A decision resolved inside the loop is cleared at the row boundary so later rows can run. When a route enters a trial inside a repeated container, the inherited target is acknowledged once.
 
-// on_timeline_finish of the loop:
-// Syncs the loop state to the global scope so branching continues after exiting
-if (window.loop_LOOPID_BranchingActive) {
-  window.skipRemaining = true;
-  window.nextTrialId = window.loop_LOOPID_NextTrialId;
-  window.branchingActive = true;
-}
-\`\`\`
+Loops have no branch decision or fallback destination of their own. \`loopConditions\` continue to control repetition.
 
-## Limitations
+## Data Used by Conditions
 
-- Loop conditions only access data from the **current iteration** (not accumulated from previous iterations)
-- Loop conditions are evaluated with the same operators as branching (\`==\`, \`!=\`, \`>\`, \`<\`, \`>=\`, \`<=\`)
-- For accumulated data across iterations, use \`jsPsych.data.get().last(N)\` in custom code
+- Conditions reference trial data generated in the current container pass.
+- Comparison operators match the trial condition evaluator.
+- Custom code can query accumulated data through \`jsPsych.data.get()\`.
 `,
   },
 
@@ -1536,67 +1517,57 @@ if (window.loop_LOOPID_BranchingActive) {
     title: "Nested Loops",
     content: `# Nested Loops
 
-A loop can contain other loops, creating nested structures (e.g. trial blocks that repeat within a larger block).
+A loop can contain trials and other loops. Each item has one direct owner; \`parentLoopId\` and the container's ordered member list describe containment.
 
 ## Recursive Generation
 
-\`generateTrialLoopCodes.ts\` handles the recursion:
+The compiler loads each loop scope and generates its members recursively. Both the client and agent generators produce an iteration procedure inside each container:
 
 \`\`\`js
-function generateLoopCode(loop) {
-  const items = getLoopTimeline(loop.id); // trials and sub-loops
-
-  for (const item of items) {
-    if (item.type === 'trial') {
-      codes.push(generateTrialCode(item, /* isInLoop: true */));
-    } else if (item.type === 'loop') {
-      codes.push(generateLoopCode(item)); // recursion
-    }
+const inner_iteration = {
+  timeline: [trialA_wrapper, trialB_wrapper],
+  on_timeline_finish: function() {
+    // Clear decisions resolved in this row; retain pending trial routes.
   }
-
-  return wrapInLoopProcedure(codes, loop);
-}
+};
+const inner_procedure = {
+  timeline: [inner_iteration],
+  timeline_variables: stimuli_inner,
+  repetitions: 2,
+  randomize_order: false
+};
 \`\`\`
 
-## CSV Merge Across Levels
+## CSV and Repetition
 
-When a parent loop has a CSV, the data is inherited by its children:
+Trials using their owner's CSV read the current loop row. Child mappings are merged into that row under scoped variable names. A fixed child mapping is reused for all owner rows. Nested containers keep their own row iteration and repetition settings.
+
+## Trial Routing Across Scopes
+
+Every structural edge connects actual trials. Grouping, ungrouping, expanding and collapsing preserve those IDs and their conditions and parameters. A collapsed container can display a projected edge to a hidden trial; the container is never the persisted branch endpoint.
+
+Each scope keeps lexical variables such as:
 
 \`\`\`js
-// If the parent loop has a CSV with columns A, B, C
-// and a child trial has columns D, E:
-// → timeline_variables of the loop = [{ A, B, C, trial_D, trial_E }, ...]
+let loop_OUTER_NextTrialId = null;
+let loop_OUTER_SkipRemaining = false;
+let loop_OUTER_BranchCustomParameters = null;
+let loop_INNER_NextTrialId = null;
+let loop_INNER_SkipRemaining = false;
+let loop_INNER_BranchCustomParameters = null;
 \`\`\`
 
-Each trial inside the loop uses \`jsPsych.timelineVariable()\` with names prefixed by the trial name (sanitized) to avoid collisions.
+These variables transport decisions made by contained trials. Loops do not own \`branches\` or \`branchConditions\`.
 
-## Branching Variables in Nested Loops
+## Completing a Container
 
-Each loop level has its own namespace:
+At each row boundary, resolved local decisions are cleared. An exit keeps the exact target trial and payload while leaving the nested container. Finishing a container propagates only an unresolved trial route to its parent or root; it never selects a branch of its own.
 
-\`\`\`js
-// Outer loop
-window.loop_OUTER_NextTrialId = ...;
-window.loop_OUTER_SkipRemaining = ...;
+Incoming routes retain the original inherited trial ID and record when it executed. This acknowledges the target once across repeated rows, including when it immediately selects another trial branch. A target can be a non-first trial inside a sibling or nested loop.
 
-// Inner loop (inside the outer)
-window.loop_INNER_NextTrialId = ...;
-window.loop_INNER_SkipRemaining = ...;
-\`\`\`
+## Moving Items
 
-## on_timeline_finish in Nesting
-
-When an inner loop activates branching, upon finishing its iteration, \`on_timeline_finish\` propagates the state to the parent loop:
-
-\`\`\`js
-// on_timeline_finish of the inner loop:
-if (window.loop_INNER_BranchingActive) {
-  // Propagate to outer loop
-  window.loop_OUTER_NextTrialId = window.loop_INNER_NextTrialId;
-  window.loop_OUTER_SkipRemaining = true;
-  window.loop_OUTER_BranchingActive = true;
-}
-\`\`\`
+\`Move Item\` accepts trials only. Loops are excluded as movable sources and destinations. Creating and ungrouping nested containers remains supported.
 `,
   },
 

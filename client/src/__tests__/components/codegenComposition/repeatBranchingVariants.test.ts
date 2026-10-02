@@ -78,8 +78,6 @@ describe("useLoopCode composition", () => {
   it("propagates concrete trial exits to the parent scope", () => {
     const genLoopCode = useLoopCode({
       id: "loop_child",
-      branches: [99],
-      branchConditions: undefined,
       repetitions: 1,
       randomize: false,
       orders: false,

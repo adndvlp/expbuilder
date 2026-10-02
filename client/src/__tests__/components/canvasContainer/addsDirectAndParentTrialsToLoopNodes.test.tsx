@@ -66,7 +66,7 @@ bindCanvasMocks(mocks);
 describe("Canvas container", () => {
   beforeEach(setupCanvasTest);
 
-  it("rejects direct and sequential branch creation from loop nodes", async () => {
+  it("rejects branch creation from loop nodes before opening the modal", async () => {
     installTrialsContext({
       timeline: [
         {
@@ -74,29 +74,6 @@ describe("Canvas container", () => {
           type: "loop",
           name: "Loop 1",
           trials: [1],
-          branches: [],
-        },
-        { id: 2, type: "trial", name: "Trial 2", branches: [] },
-      ],
-    });
-    const firstRender = render(<Canvas />);
-
-    await act(async () => {
-      await mocks.flowLayoutProps.onAddBranch("loop-1");
-    });
-
-    expect(mocks.trialsContext.createTrial).not.toHaveBeenCalled();
-    expect(mocks.trialsContext.updateLoop).not.toHaveBeenCalled();
-    firstRender.unmount();
-
-    installTrialsContext({
-      timeline: [
-        {
-          id: "loop-1",
-          type: "loop",
-          name: "Loop 1",
-          trials: [1],
-          branches: [2],
         },
         { id: 2, type: "trial", name: "Trial 2", branches: [] },
       ],
@@ -106,11 +83,13 @@ describe("Canvas container", () => {
     await act(async () => {
       await mocks.flowLayoutProps.onAddBranch("loop-1");
     });
-    fireEvent.click(screen.getByText("As Parent (Sequential)"));
 
-    await act(async () => {});
     expect(mocks.trialsContext.createTrial).not.toHaveBeenCalled();
     expect(mocks.trialsContext.updateLoop).not.toHaveBeenCalled();
+    expect(screen.queryByText("Add New Trial")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("As Parent (Sequential)"),
+    ).not.toBeInTheDocument();
   });
 
   it("closes add-trial and move-item modals without confirming", async () => {

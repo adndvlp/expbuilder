@@ -1,5 +1,7 @@
 # 06A — Decisiones pendientes: elegibilidad, modal y loops
 
+> Alcance histórico: este documento pertenece a la auditoría y propuesta anterior al refactor `loop-branches`. Para la limpieza vigente rige [LOOP_BRANCHES_SDD.md](../../LOOP_BRANCHES_SDD.md): ramas trial → trial, sin campos de branching ni `Move Item` para loops y sin migración legacy. Las decisiones abiertas de aquella propuesta no bloquean ni amplían esta limpieza.
+
 ## Cómo responder este registro
 
 Estas preguntas no detuvieron la auditoría ni las áreas independientes de la spec. Las marcadas **BLOQUEANTE** deben resolverse antes de implementar el contrato afectado. Ninguna opción es default ni recomendación: el usuario decide.
@@ -24,13 +26,11 @@ Cada decisión sigue el formato exigido por `SPEC.md`: entendido, dato faltante,
 - Decisión: el owner directo identifica el scope actual y su ancestry determina todos los niveles disponibles.
 - Consecuencia: cualquier trial dentro de un nested loop puede elegir su scope actual, cada ancestro y raíz.
 
-### DEC-04 — Nodo loop como origen
+### DEC-04 — Nodo loop como origen — RESUELTA
 
-- Entendido: el pedido nombra un `trial`, aunque el canvas también permite branches de nodos loop.
-- Falta: si el caso especial aplica al `+` de un loop terminal.
-- Impacto: UI, commands y compatibilidad de loop branching.
-- Opciones reales: limitar a trials; incluir también loops; mantener loop branching actual sin selector nuevo.
-- Pregunta: ¿esta feature se limita estrictamente a trials o incluye nodos loop?
+- Decisión 2026-10-01: toda rama nace en un trial y apunta a otro trial.
+- Los loops no tienen `branches` ni `branchConditions`; REST, agente y canvas aplican la misma regla.
+- Las conexiones visibles sobre un loop colapsado proyectan los endpoints reales de trials.
 
 ### DEC-05 — Un solo nivel de loop — RESUELTA
 

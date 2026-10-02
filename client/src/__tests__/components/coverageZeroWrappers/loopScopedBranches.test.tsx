@@ -16,13 +16,12 @@ import {
 describe("coverage zero wrappers: BranchedTrial", () => {
   it("preserves loop jump rules without saving branching fields", async () => {
     trialsState.value = baseTrialsState({
-      selectedTrial: selectedTrial({
+      selectedTrial: {
         id: "loop_1",
         name: "Loop Selection",
         type: "loop",
         trials: ["inner-a"],
-        branches: ["target-a"],
-      }),
+      },
     });
 
     render(

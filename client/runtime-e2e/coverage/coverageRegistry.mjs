@@ -18,7 +18,7 @@ export const verticalCapabilities = {
   "RUNTIME-DYNAMIC-ASSET": "branching-runtime.spec.ts",
   "RUNTIME-CORRUPT-ROUTE-GUARD": "branching-runtime.spec.ts",
   "RUNTIME-MOVE-ORDER": "composed-runtime.spec.ts",
-  "RUNTIME-LOOP-MOVE": "composed-runtime.spec.ts",
+  "RUNTIME-LOOP-TRIAL-MOVE": "composed-runtime.spec.ts",
   "RUNTIME-EXIT-PARAMS": "composed-runtime.spec.ts",
   "RUNTIME-PARAMS-OVERRIDE": "conditions-runtime.spec.ts",
   "RUNTIME-CONDITIONAL-LOOP": "conditions-runtime.spec.ts",
@@ -29,12 +29,10 @@ export const verticalCapabilities = {
   "RUNTIME-NESTED-ROOT-EXIT": "nested-loop-runtime.spec.ts",
   "RUNTIME-NESTED-PARENT-EXIT": "nested-loop-runtime.spec.ts",
   "RUNTIME-NESTED-ANCESTOR-EXIT": "nested-loop-runtime.spec.ts",
-  "RUNTIME-BRANCH-CONDITIONAL-LOOP":
-    "interaction-conditions-runtime.spec.ts",
+  "RUNTIME-BRANCH-CONDITIONAL-LOOP": "interaction-conditions-runtime.spec.ts",
   "RUNTIME-LOOP-EXIT-CONDITIONAL-LOOP":
     "interaction-conditions-runtime.spec.ts",
-  "RUNTIME-PARAMS-CONDITIONAL-LOOP":
-    "interaction-conditions-runtime.spec.ts",
+  "RUNTIME-PARAMS-CONDITIONAL-LOOP": "interaction-conditions-runtime.spec.ts",
   "RUNTIME-BRANCH-JUMP": "interaction-navigation-runtime.spec.ts",
   "RUNTIME-LOOP-EXIT-JUMP": "interaction-navigation-runtime.spec.ts",
   "RUNTIME-NESTED-EXIT-RESUME": "interaction-navigation-runtime.spec.ts",

@@ -7,7 +7,7 @@ import {
   runtimeApiBaseUrl,
 } from "../support/session";
 
-test("[RUNTIME-LOOP-MOVE] moves a trial between direct children of a loop and executes the saved order", async ({ page }) => {
+test("[RUNTIME-LOOP-TRIAL-MOVE] moves a trial between direct children of a loop and executes the saved order", async ({ page }) => {
   const author = new ScenarioAuthor(runtimeApiBaseUrl);
   await author.createExperiment(`runtime-loop-move-${Date.now()}`);
   const aliases = ["loop-move-first", "loop-move-second", "loop-move-third"];

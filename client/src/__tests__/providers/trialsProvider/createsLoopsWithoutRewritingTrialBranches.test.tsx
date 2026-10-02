@@ -72,7 +72,7 @@ describe("TrialsProvider", () => {
     vi.restoreAllMocks();
   });
 
-  it("creates a top-level loop and replaces branch references with the real loop id", async () => {
+  it("creates a top-level loop without changing the target trial", async () => {
     const view = await renderLoadedProvider([
       timelineTrial({ id: 1, name: "Parent", branches: [2] }),
       timelineTrial({ id: 2, name: "Loop item A" }),
@@ -82,24 +82,29 @@ describe("TrialsProvider", () => {
       id: "loop-1",
       name: "Created Loop",
       trials: [2, 3],
-      branches: [],
     });
     const draft = loopDraft({
       name: "Created Loop",
       trials: [2, 3],
-      branches: [],
     });
 
     const nextTimeline = [
-      timelineTrial({ id: 1, name: "Parent", branches: ["loop-1"] }),
+      timelineTrial({ id: 1, name: "Parent", branches: [2] }),
       timelineLoop({
         id: "loop-1",
         name: "Created Loop",
         trials: [2, 3],
-        branches: [],
       }),
     ];
-    queueFetchResponses(mutationJson({ loop: createdLoop }, nextTimeline));
+    queueFetchResponses(
+      mutationJson({ loop: createdLoop }, nextTimeline, {
+        [createdLoop.id]: {
+          scopeId: createdLoop.id,
+          parentScopeId: null,
+          items: createdLoop.trials.map((id) => timelineTrial({ id })),
+        },
+      }),
+    );
 
     const result = await act(async () => {
       return view.getContext()?.createLoop(draft);
@@ -107,6 +112,14 @@ describe("TrialsProvider", () => {
 
     expect(result).toEqual(createdLoop);
     expect(view.getContext()?.timeline).toEqual(nextTimeline);
+    const request = JSON.parse(fetchMock().mock.calls[1][1]!.body as string);
+    expect(request).not.toHaveProperty("branches");
+    expect(request).not.toHaveProperty("branchConditions");
+    expect(await view.getContext()?.getLoopTimeline("loop-1")).toEqual([
+      timelineTrial({ id: 2 }),
+      timelineTrial({ id: 3 }),
+    ]);
+    expect(fetchMock()).toHaveBeenCalledTimes(2);
   });
 
   it("creates a loop in one mutation and reloads after an ambiguous failure", async () => {
@@ -154,13 +167,12 @@ describe("TrialsProvider", () => {
     );
   });
 
-  it("creates loops without duplicating existing temp branch references", async () => {
-    vi.spyOn(Date, "now").mockReturnValue(123);
+  it("preserves multiple trial targets when grouping one of them", async () => {
     const view = await renderLoadedProvider([
       timelineTrial({
         id: 1,
         name: "Parent",
-        branches: [2, "temp-loop-123", 99],
+        branches: [2, 99],
       }),
       timelineTrial({ id: 2, name: "Loop item" }),
       timelineTrial({ id: 99, name: "Unrelated branch" }),
@@ -169,27 +181,32 @@ describe("TrialsProvider", () => {
       id: "loop-real",
       name: "Created Loop",
       trials: [2],
-      branches: [],
     });
 
     const nextTimeline = [
-      timelineTrial({ id: 1, name: "Parent", branches: ["loop-real", 99] }),
+      timelineTrial({ id: 1, name: "Parent", branches: [2, 99] }),
       timelineTrial({ id: 99, name: "Unrelated branch" }),
       timelineLoop({
         id: "loop-real",
         name: "Created Loop",
         trials: [2],
-        branches: [],
       }),
     ];
-    queueFetchResponses(mutationJson({ loop: createdLoop }, nextTimeline));
+    queueFetchResponses(
+      mutationJson({ loop: createdLoop }, nextTimeline, {
+        [createdLoop.id]: {
+          scopeId: createdLoop.id,
+          parentScopeId: null,
+          items: createdLoop.trials.map((id) => timelineTrial({ id })),
+        },
+      }),
+    );
 
     const result = await act(async () => {
       return view.getContext()?.createLoop(
         loopDraft({
           name: "Created Loop",
           trials: [2],
-          branches: [],
         }),
       );
     });

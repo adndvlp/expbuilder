@@ -1,5 +1,7 @@
 # 09 — Trazabilidad e inventario de impacto
 
+> Alcance histórico: este documento pertenece a la auditoría y propuesta anterior al refactor `loop-branches`. Para la limpieza vigente rige [LOOP_BRANCHES_SDD.md](../../LOOP_BRANCHES_SDD.md): ramas trial → trial, sin campos de branching ni `Move Item` para loops y sin migración legacy. Las decisiones abiertas de aquella propuesta no bloquean ni amplían esta limpieza.
+
 ## Propósito
 
 Este documento permite revisar que el pedido, las imágenes y las superficies ejecutables tengan un requisito y una prueba asociados. No convierte archivos candidatos en una autorización de implementación.
