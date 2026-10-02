@@ -5,7 +5,7 @@
 - Fecha: 2026-10-01.
 - Rama de trabajo: `loop-branches`.
 - HEAD al cerrar la revisión: `5c9ae40` (`case for testing`).
-- Estado: puntos 1 y 2 implementados y verificados. El usuario creó el commit del punto 1 (`99c5d4e`). Siguiente entrega: punto 3, eliminar completamente la acción de mover loops.
+- Estado: puntos 1, 2 y 3 implementados y verificados. El usuario creó los commits de los puntos 1 y 2 (`99c5d4e`, `b35b07a`). Siguiente entrega: punto 4, configuración y representación visual de las conexiones entre trials.
 - Este documento conserva las decisiones del usuario y el resultado de la revisión para continuar el trabajo después de perder contexto.
 
 ## Objetivo
@@ -182,10 +182,10 @@ Verificar específicamente el recorrido normal de varias filas y repeticiones, l
 - [x] API, grafo y herramientas del agente aplican la misma regla.
 - [x] Agrupar B dentro de un loop conserva `A.branches = [B]`.
 - [x] Desagrupar conserva esas referencias y restaura el contenido en su posición correspondiente.
-- [ ] Seleccionar un loop no ofrece ni abre la acción `Move Item`.
-- [ ] Los tipos, hooks, handlers y acciones de movimiento admiten únicamente trials como elementos movibles.
+- [x] Seleccionar un loop no ofrece ni abre la acción `Move Item`.
+- [x] Los tipos, hooks, handlers y acciones de movimiento admiten únicamente trials como elementos movibles.
 - [x] Invocar directamente el movimiento con un loop como origen o destino se rechaza sin modificar conexiones, pertenencia ni orden.
-- [ ] El movimiento de trials conserva su funcionamiento, también dentro de loops.
+- [x] El movimiento de trials conserva su funcionamiento, también dentro de loops.
 - [x] Crear y desagrupar loops sigue funcionando, incluyendo contenedores anidados.
 - [ ] Expandir y colapsar un loop conserva la identidad real de los extremos de sus conexiones.
 - [ ] El canvas no depende de `loop.branches` para representar el flujo.
@@ -264,11 +264,38 @@ Reportes fuera del repositorio: `/tmp/loop-branches-point2-server-final.json` y 
 
 Título previsto: `refactor(loops): preserve trial connections when grouping and ungrouping`.
 
-#### Siguiente punto: eliminar el movimiento de loops
+#### Punto 3: eliminar el movimiento de loops — implementado
 
-Completar el punto 3: retirar la acción `Move Item` para loops de la UI, tipos, hooks y handlers; conservarla para trials. La acción interna ya rechaza loops como origen o destino desde el punto 1. Verificar que seleccionar un loop no ofrezca ni abra el modal de movimiento y que mover trials dentro y fuera de loops conserve su funcionamiento. Mantener los helpers de contención necesarios para agrupar y desagrupar.
+Base de esta entrega: `b35b07a` (`refactor(loops): preserve trial connections when grouping and ungrouping`), creado por el usuario.
 
-Los puntos 3, 4 y 5 siguen pendientes. Las pruebas y documentación se actualizan dentro de cada punto; el punto 6 agrupa la revisión final de la cobertura restante.
+- `Canvas` entrega la acción del toolbar únicamente para una selección de trial. Seleccionar un loop, tanto en root como dentro de otro loop, conserva las acciones de agrupación y no ofrece `Move Item`.
+- `useCanvasMoveActions` solo abre el modal para elementos de tipo trial en el scope. `CanvasModals` tampoco lo muestra para un payload de loop ni para un ID de loop conocido presentado como trial. Se mantiene el comportamiento existente cuando un trial desaparece del snapshot después de abrir el modal.
+- `CanvasItemToMove` se deriva exclusivamente de `TrialTimelineItem`; `MoveDestination` declara únicamente `type: "trial"`. La lista de destinos ya no implementa etiquetas ni variantes para loops. Se retiró el tipo sin consumidores `MoveItemParams`, que todavía admitía mover loops.
+- Se retiraron los handlers internos que intentaban actualizar ramas o pertenencia del loop movido. El movimiento solo actualiza trials; puede actualizar la lista de hijos del contenedor del trial. Las validaciones de origen/destino anteriores a cualquier escritura permanecen vigentes, incluyendo los payloads con tipo falsificado.
+- Se conservan los helpers de contención del servidor para agrupar y desagrupar. Esta entrega no cambia el servidor.
+- Se corrigió una pérdida de posición en el movimiento secuencial de trials dentro de loops: después de guardar la lista ordenada, reasignar `parentLoopId` volvía a insertar el trial al final. Ahora la actualización de pertenencia conserva la posición guardada y evita esa segunda asignación. La nueva prueba de ejecución reprodujo el fallo antes del arreglo.
+- El helper de autoría de escenarios de ejecución también restringe el origen a trials. El escenario compuesto usaba un loop como destino, aunque los destinos de la UI ya lo excluían: ahora mueve el trial después de un trial de referencia real y comprueba la secuencia correspondiente.
+
+Verificación de esta entrega:
+
+- **Regresiones de acceso:** la primera ejecución de los tres archivos iniciales pasó 3 casos y falló 5, reproduciendo el botón visible para loops, la apertura desde el hook en root/loop y la apertura del modal con tipos reales/falsificados. La versión final pasa todos los casos.
+- **Cliente:** 86 pruebas pasaron en 24 archivos del canvas. Incluye la UI de selección en root/loop, el hook, el modal, los rechazos sin mutación, destinos exclusivamente trials, IDs string/número y movimientos paralelos/secuenciales válidos.
+- **Ejecución real:** 3 escenarios pasaron en Chromium: `RUNTIME-MOVE-ORDER`, `RUNTIME-LOOP-MOVE` y `RUNTIME-RESOLVED-MEGA`. El nuevo caso dentro del loop comprobó primero que el orden solicitado se perdía; después del arreglo verifica el grafo guardado y la ejecución en ese mismo orden. El escenario compuesto mantiene condiciones, parámetros, salida anidada, salto y recuperación de sesión.
+- Los escenarios usan servidores locales y bases temporales. Chromium se instaló en `/tmp` y se eliminó al terminar. Los artefactos de estas ejecuciones se guardaron fuera del repositorio.
+- **Tipos:** `node node_modules/typescript/bin/tsc -b --pretty false` desde `client` pasó.
+- **ESLint:** sin errores ni advertencias en los módulos de producción y escenarios de ejecución revisados.
+- **Registro de cobertura:** `node runtime-e2e/coverage/checkCoverage.mjs` pasó; el nuevo escenario está registrado como capacidad de ejecución.
+- **Diff:** `git diff --check` pasó. No se hizo staging ni se crearon commits. Se conservaron los cambios locales previos del usuario.
+
+Reportes fuera del repositorio: `/tmp/loop-branches-point3-client-final.json` y `/tmp/loop-branches-point3-runtime-final.log`. Artefactos de Chromium: `/tmp/loop-branches-point3-runtime-final-artifacts`.
+
+Título previsto: `refactor(canvas): remove loop move actions`.
+
+#### Siguiente punto: configuración y canvas
+
+Completar el punto 4: retirar lectores/escritores residuales de branching propio de loops en la configuración y el layout. Revisar `renderLoopWithBranches` y las proyecciones de conexiones de loops colapsados, conservando la identidad real de los trials al expandir y colapsar contenedores. La representación visual del bloque se mantiene. Probar conexiones entrantes/salientes múltiples, destinos compartidos y niveles anidados sin escribir IDs de loops como extremos reales.
+
+Los puntos 4 y 5 siguen pendientes. Las pruebas y documentación se actualizan dentro de cada punto; el punto 6 agrupa la revisión final de la cobertura restante. La ejecución real del punto 3 no sustituye las pruebas de varias filas de CSV y repeticiones ni la limpieza de generadores prevista en el punto 5.
 
 Cambios locales existentes antes de crear este documento:
 

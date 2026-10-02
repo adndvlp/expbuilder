@@ -4,7 +4,10 @@ import type { TimelineItem } from "../../../contexts/TrialsContext";
 
 export type CanvasItemId = string | number;
 
-export type CanvasItemToMove = Pick<TimelineItem, "id" | "name" | "type">;
+export type CanvasItemToMove = Pick<
+  Extract<TimelineItem, { type: "trial" }>,
+  "id" | "name" | "type"
+>;
 
 export type RootCanvasActionScope = {
   kind: "root";
@@ -18,9 +21,7 @@ export type LoopCanvasActionScope = {
   rootItems: TimelineItem[];
 };
 
-export type CanvasActionScope =
-  | RootCanvasActionScope
-  | LoopCanvasActionScope;
+export type CanvasActionScope = RootCanvasActionScope | LoopCanvasActionScope;
 
 export type CanvasActionDependencies = Pick<
   ReturnType<typeof useTrials>,

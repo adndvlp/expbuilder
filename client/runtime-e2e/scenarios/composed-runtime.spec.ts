@@ -7,6 +7,32 @@ import {
   runtimeApiBaseUrl,
 } from "../support/session";
 
+test("[RUNTIME-LOOP-MOVE] moves a trial between direct children of a loop and executes the saved order", async ({ page }) => {
+  const author = new ScenarioAuthor(runtimeApiBaseUrl);
+  await author.createExperiment(`runtime-loop-move-${Date.now()}`);
+  const aliases = ["loop-move-first", "loop-move-second", "loop-move-third"];
+  for (const alias of aliases) await author.createTrial(alias);
+  await author.configureButtonTrials(aliases);
+  await author.createLoop("move-container", aliases);
+
+  const graph = await author.moveAfter("loop-move-third", "loop-move-first", "move-container");
+  const expectedIds = ["loop-move-first", "loop-move-third", "loop-move-second"]
+    .map((alias) => String(author.id(alias)));
+  expect(graph.scopes[String(author.id("move-container"))].items.map((item) => String(item.id))).toEqual(expectedIds);
+  expect(graph.edges).toEqual([]);
+  expect(graph.diagnostics).toEqual([]);
+
+  const artifact = await author.compileAndBuild();
+  const runtime = new RuntimeObserver(page);
+  await page.goto(artifact.experimentUrl);
+  for (const alias of ["loop-move-first", "loop-move-third", "loop-move-second"]) {
+    await expect(runtime.trial(alias)).toBeVisible();
+    await runtime.continue();
+  }
+  await expect(page.getByText("Experiment complete. Thank you!")).toBeVisible();
+  await runtime.assertNoRuntimeFailures();
+});
+
 test("[RUNTIME-MOVE-ORDER] moves trials through the canvas action and executes the generated order", async ({
   page,
 }) => {

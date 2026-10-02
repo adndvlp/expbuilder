@@ -31,9 +31,9 @@ describe("Canvas modals", () => {
         itemName="Probe trial"
         availableDestinations={[
           {
-            id: "loop-1",
-            name: "Loop target",
-            type: "loop",
+            id: "trial-1",
+            name: "Trial target",
+            type: "trial",
             hasBranches: true,
           },
         ]}
@@ -42,11 +42,11 @@ describe("Canvas modals", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Loop target"));
+    fireEvent.click(screen.getByText("Trial target"));
     fireEvent.click(screen.getByText("Branch (Parallel)"));
     fireEvent.click(screen.getByText("Move"));
 
-    expect(onConfirm).toHaveBeenCalledWith("loop-1", true);
+    expect(onConfirm).toHaveBeenCalledWith("trial-1", true);
   });
 
   it("greys out items outside the selected LoopRangeModal sequence", () => {

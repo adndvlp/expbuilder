@@ -25,6 +25,7 @@ export async function moveScenarioItem(options: MoveScenarioItemOptions) {
     (candidate) => String(candidate.id) === String(options.itemId),
   );
   if (!item) throw new Error(`Could not find ${options.itemId} in move scope`);
+  if (item.type !== "trial") throw new Error("Only trials can be moved");
   const result = await moveScopedItem({
     scope,
     dependencies: options.dependencies,

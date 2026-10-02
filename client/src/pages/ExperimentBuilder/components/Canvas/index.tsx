@@ -37,6 +37,7 @@ function Canvas() {
     moveActions,
   } = workspace;
   const isDark = getIsDarkMode();
+  const selectedTrial = workspace.trials.selectedTrial;
   const selectedItemId = selectedItem?.id ?? null;
   const layoutSignature = getCanvasLayoutSignature(nodes, edges);
 
@@ -53,8 +54,8 @@ function Canvas() {
           onAddTrial={() => void loopActions.onAddTrial("Trial")}
           onShowBranches={() => workspace.setShowBranchedModal(true)}
           onMoveItem={
-            hasSelection && selectedItem
-              ? () => moveActions.onMoveItem(selectedItem.id)
+            hasSelection && selectedTrial
+              ? () => moveActions.onMoveItem(selectedTrial.id)
               : undefined
           }
         />
@@ -106,14 +107,10 @@ function Canvas() {
           onCloseAddTrial={() => {
             branchActions.cancelLoopBranchFlow();
           }}
-          showLoopBranchLevelModal={
-            branchActions.showLoopBranchLevelModal
-          }
+          showLoopBranchLevelModal={branchActions.showLoopBranchLevelModal}
           loopBranchLevels={branchActions.loopBranchLevels}
           isCreatingLoopBranch={branchActions.isCreatingLoopBranch}
-          onSelectLoopBranchLevel={
-            branchActions.handleLoopBranchLevelConfirm
-          }
+          onSelectLoopBranchLevel={branchActions.handleLoopBranchLevelConfirm}
           onCloseLoopBranchLevel={branchActions.cancelLoopBranchFlow}
           showMoveItemModal={moveActions.showMoveItemModal}
           itemToMove={moveActions.itemToMove}

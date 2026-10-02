@@ -91,22 +91,29 @@ export default function CanvasModals({
   onMoveItem,
   onCloseMoveItem,
 }: CanvasModalsProps) {
-  const currentParent = itemToMove
-    ? timeline.find((item) =>
-        item.branches?.some(
-          (branchId) => String(branchId) === String(itemToMove.id),
-        ),
+  const movingTrial =
+    itemToMove?.type === "trial" &&
+    !timeline.some(
+      (item) =>
+        String(item.id) === String(itemToMove.id) && item.type === "loop",
+    )
+      ? itemToMove
+      : null;
+  const currentParent = movingTrial
+    ? timeline.find(
+        (item) =>
+          item.type === "trial" &&
+          item.branches?.some(
+            (branchId) => String(branchId) === String(movingTrial.id),
+          ),
       )
     : undefined;
-  const availableDestinations = itemToMove
+  const availableDestinations = movingTrial
     ? timeline
         .filter((item) => {
-          if (item.type === "loop") return false;
-          if (String(item.id) === String(itemToMove.id)) return false;
-          if (
-            currentParent &&
-            String(item.id) === String(currentParent.id)
-          ) {
+          if (item.type !== "trial") return false;
+          if (String(item.id) === String(movingTrial.id)) return false;
+          if (currentParent && String(item.id) === String(currentParent.id)) {
             return currentParent.branches!.length > 1;
           }
           return true;
@@ -114,7 +121,7 @@ export default function CanvasModals({
         .map((item) => ({
           id: item.id,
           name: item.name,
-          type: item.type,
+          type: "trial" as const,
           hasBranches: (item.branches?.length || 0) > 0,
         }))
     : [];
@@ -148,9 +155,7 @@ export default function CanvasModals({
 
       {showLoopBranchLevelModal && (
         <ModalOverlay
-          onClose={
-            isCreatingLoopBranch ? undefined : onCloseLoopBranchLevel
-          }
+          onClose={isCreatingLoopBranch ? undefined : onCloseLoopBranchLevel}
         >
           <LoopBranchLevelModal
             sourceName={
@@ -166,12 +171,12 @@ export default function CanvasModals({
         </ModalOverlay>
       )}
 
-      {showMoveItemModal && itemToMove && (
+      {showMoveItemModal && movingTrial && (
         <ModalOverlay onClose={onCloseMoveItem}>
           <MoveItemModal
             onConfirm={onMoveItem}
             onClose={onCloseMoveItem}
-            itemName={itemToMove.name}
+            itemName={movingTrial.name}
             availableDestinations={availableDestinations}
           />
         </ModalOverlay>

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { moveScopedItem } from "../../../pages/ExperimentBuilder/components/Canvas/actions";
+import type { CanvasItemToMove } from "../../../pages/ExperimentBuilder/components/Canvas/actions";
 import {
   createDependencies,
   createLoopScope,
@@ -29,7 +30,7 @@ describe("scoped Canvas move actions", () => {
     ]);
   });
 
-  it("moves loop items through canonical mutation responses", async () => {
+  it("moves trials inside loops through canonical mutation responses", async () => {
     const dependencies = createDependencies();
 
     const result = await moveScopedItem({
@@ -50,6 +51,38 @@ describe("scoped Canvas move actions", () => {
     expect(dependencies.updateTrial).toHaveBeenCalledWith(11, {
       parentLoopId: "parent-loop",
     });
+    expect(dependencies.updateTimeline).not.toHaveBeenCalled();
+  });
+
+  it("reorders a direct loop trial sequentially without introducing branch edges", async () => {
+    const dependencies = createDependencies();
+    dependencies.getTrial.mockImplementation(async (id) =>
+      makeTrial(Number(id)),
+    );
+    const scope = createLoopScope();
+    scope.items = scope.items.map((item) => ({ ...item, branches: [] }));
+
+    expect(
+      await moveScopedItem({
+        scope,
+        item: { id: 10, type: "trial", name: "Task" },
+        destinationId: "11",
+        addAsBranch: false,
+        dependencies,
+      }),
+    ).toEqual({ status: "moved" });
+
+    expect(dependencies.updateLoop).toHaveBeenCalledWith("parent-loop", {
+      trials: [11, 10],
+    });
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(10, { branches: [] });
+    expect(dependencies.updateTrial).not.toHaveBeenCalledWith(10, {
+      parentLoopId: "parent-loop",
+    });
+    expect(dependencies.updateTrial).not.toHaveBeenCalledWith(11, {
+      branches: [10],
+    });
+    expect(dependencies.updateLoop).toHaveBeenCalledTimes(1);
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
   });
 
@@ -110,7 +143,7 @@ describe("scoped Canvas move actions", () => {
       await expect(
         moveScopedItem({
           scope,
-          item,
+          item: item as CanvasItemToMove,
           destinationId,
           addAsBranch: false,
           dependencies,

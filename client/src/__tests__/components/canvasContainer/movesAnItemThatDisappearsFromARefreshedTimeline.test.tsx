@@ -91,7 +91,7 @@ describe("Canvas container", () => {
     expect(reorderedTimeline.map((item: any) => item.id)).toEqual([1, 3, 2]);
   });
 
-  it("rejects a loop move without changing trial connections", async () => {
+  it("does not offer a move action for a selected loop", () => {
     installTrialsContext({
       selectedLoop: makeLoop("loop-child", {
         name: "Child Loop",
@@ -111,20 +111,10 @@ describe("Canvas container", () => {
       ),
     });
 
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
     render(<Canvas />);
 
-    fireEvent.click(screen.getByTitle("Move Item"));
-    fireEvent.click(screen.getByText("Trial 4"));
-    fireEvent.click(screen.getByText("Sequential"));
-    fireEvent.click(screen.getByText("Move"));
-
-    await waitFor(() => {
-      expect(error).toHaveBeenCalledWith(
-        "Error moving item:",
-        expect.any(Error),
-      );
-    });
+    expect(screen.queryByTitle("Move Item")).not.toBeInTheDocument();
+    expect(screen.queryByText("Move Item")).not.toBeInTheDocument();
     expect(mocks.trialsContext.updateLoop).not.toHaveBeenCalled();
     expect(mocks.trialsContext.updateTrial).not.toHaveBeenCalled();
     expect(mocks.trialsContext.updateTimeline).not.toHaveBeenCalled();

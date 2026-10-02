@@ -69,7 +69,6 @@ describe("Canvas container", () => {
           type: "loop",
           name: "Loop 1",
           trials: [1],
-          branches: [2],
         },
         { id: 2, type: "trial", name: "Trial 2", branches: [] },
       ],

@@ -131,12 +131,6 @@ export type Trial = {
   parentLoopId?: string | null;
 };
 
-export type MoveItemParams = {
-  dragged: { type: "trial" | "loop"; id: string | number };
-  target: { type: "trial" | "loop"; id: string | number | null };
-  position: "before" | "after" | "inside";
-};
-
 export type FieldType =
   | "string"
   | "html_string"

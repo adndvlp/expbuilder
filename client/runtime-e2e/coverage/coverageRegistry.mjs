@@ -15,6 +15,7 @@ export const verticalCapabilities = {
   "RUNTIME-DYNAMIC-ASSET": "branching-runtime.spec.ts",
   "RUNTIME-CORRUPT-ROUTE-GUARD": "branching-runtime.spec.ts",
   "RUNTIME-MOVE-ORDER": "composed-runtime.spec.ts",
+  "RUNTIME-LOOP-MOVE": "composed-runtime.spec.ts",
   "RUNTIME-EXIT-PARAMS": "composed-runtime.spec.ts",
   "RUNTIME-PARAMS-OVERRIDE": "conditions-runtime.spec.ts",
   "RUNTIME-CONDITIONAL-LOOP": "conditions-runtime.spec.ts",

@@ -19,6 +19,7 @@ test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, re
     "mega-conditional-source",
     "mega-conditional-target",
   ]);
+  await author.createTrial("mega-move-anchor");
 
   await author.createTrial("mega-exit-source");
   await author.createTrial("mega-inner-skipped");
@@ -54,6 +55,7 @@ test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, re
     "mega-after-jump",
     "mega-jump-target",
     "mega-moved-trial",
+    "mega-move-anchor",
     "mega-root-branch-target",
   ]);
   await author.configureButtonTrial(
@@ -104,7 +106,7 @@ test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, re
 
   const graph = await author.moveAfter(
     "mega-moved-trial",
-    "mega-conditional-loop",
+    "mega-move-anchor",
   );
   expect(graph.edges.some((edge) =>
     String(edge.sourceId) === String(author.id("mega-root-branch-source")) &&
@@ -120,6 +122,8 @@ test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, re
     await expect(runtime.trial("mega-params-applied")).toBeVisible();
     await runtime.continue();
   }
+  await expect(runtime.trial("mega-move-anchor")).toBeVisible();
+  await runtime.continue();
   await expect(runtime.trial("mega-moved-trial")).toBeVisible();
   await runtime.continue();
   await expect(runtime.trial("mega-exit-source")).toBeVisible();
@@ -167,6 +171,7 @@ test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, re
     "mega-conditional-target",
     "mega-conditional-source",
     "mega-conditional-target",
+    "mega-move-anchor",
     "mega-moved-trial",
     "mega-exit-source",
     "mega-exit-target",

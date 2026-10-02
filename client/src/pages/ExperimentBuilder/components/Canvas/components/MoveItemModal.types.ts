@@ -1,7 +1,7 @@
 export type MoveDestination = {
   id: number | string;
   name: string;
-  type: "trial" | "loop";
+  type: "trial";
   hasBranches: boolean;
 };
 

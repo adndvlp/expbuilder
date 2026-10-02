@@ -14,11 +14,14 @@ type MoveScopedItemInput = ScopedActionInput & {
 };
 
 type MovePlacement = "branch-edge" | "implicit-order";
+type TrialTimelineItem = Extract<TimelineItem, { type: "trial" }>;
 
 async function detachFromCurrentParent(input: MoveScopedItemInput) {
   const itemKey = String(input.item.id);
-  const currentParent = input.scope.items.find((item) =>
-    item.branches?.some((branchId) => String(branchId) === itemKey),
+  const currentParent = input.scope.items.find(
+    (item) =>
+      item.type === "trial" &&
+      item.branches?.some((branchId) => String(branchId) === itemKey),
   );
   if (!currentParent) return;
 
@@ -39,16 +42,12 @@ async function updateMovedItem(
   input: MoveScopedItemInput,
   branches: CanvasItemId[],
 ) {
-  if (input.item.type === "trial") {
-    await input.dependencies.updateTrial(input.item.id, { branches });
-  } else {
-    throw new Error("Branch sources must be trials");
-  }
+  await input.dependencies.updateTrial(input.item.id, { branches });
 }
 
 async function attachAsBranch(
   input: MoveScopedItemInput,
-  destination: TimelineItem,
+  destination: TrialTimelineItem,
 ) {
   await updateMovedItem(input, []);
   const destinationBranches = await getItemBranches(
@@ -66,17 +65,19 @@ async function attachAsBranch(
 
 async function attachSequentially(
   input: MoveScopedItemInput,
-  destination: TimelineItem,
+  destination: TrialTimelineItem,
 ): Promise<MovePlacement> {
   const destinationBranches = await getItemBranches(
     destination,
     input.dependencies,
   );
   if (!destinationBranches) return "branch-edge";
-  const destinationIsBranchTarget = input.scope.items.some((item) =>
-    item.branches?.some(
-      (branchId) => String(branchId) === String(destination.id),
-    ),
+  const destinationIsBranchTarget = input.scope.items.some(
+    (item) =>
+      item.type === "trial" &&
+      item.branches?.some(
+        (branchId) => String(branchId) === String(destination.id),
+      ),
   );
   const parentLoop =
     input.scope.kind === "loop"
@@ -109,7 +110,6 @@ function reorderRootItems(input: MoveScopedItemInput) {
   const destinationIndex = nextItems.findIndex(
     (item) => String(item.id) === String(input.destinationId),
   );
-  if (input.item.type !== "trial") throw new Error("Only trials can be moved");
   const movedItem: TimelineItem = {
     ...input.item,
     type: "trial",
@@ -139,15 +139,12 @@ async function updateLoopDirectChildren(
   }
 
   await input.dependencies.updateLoop(input.scope.loopId, { trials });
-  if (input.item.type === "trial") {
-    await input.dependencies.updateTrial(input.item.id, {
-      parentLoopId: String(input.scope.loopId),
-    });
-  } else {
-    await input.dependencies.updateLoop(input.item.id, {
-      parentLoopId: String(input.scope.loopId),
-    });
-  }
+  // The membership update already places the trial in this scope. Reassigning
+  // its parent would append it again and undo the saved sequential position.
+  if (placement === "implicit-order") return;
+  await input.dependencies.updateTrial(input.item.id, {
+    parentLoopId: String(input.scope.loopId),
+  });
 }
 
 export async function moveScopedItem(
