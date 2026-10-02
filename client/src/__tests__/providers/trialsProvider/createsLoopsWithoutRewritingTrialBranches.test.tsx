@@ -169,11 +169,7 @@ describe("TrialsProvider", () => {
 
   it("preserves multiple trial targets when grouping one of them", async () => {
     const view = await renderLoadedProvider([
-      timelineTrial({
-        id: 1,
-        name: "Parent",
-        branches: [2, 99],
-      }),
+      timelineTrial({ id: 1, name: "Parent", branches: [2, 99] }),
       timelineTrial({ id: 2, name: "Loop item" }),
       timelineTrial({ id: 99, name: "Unrelated branch" }),
     ]);
