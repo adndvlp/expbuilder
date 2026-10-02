@@ -50,15 +50,15 @@ const seedMatrix = async (db) => {
       { id: 4, name: 'T4-in-loop', parentLoopId: 'loop_1', branches: [] },
     ],
     loops: [
-      { id: 'loop_1', name: 'L1', trials: [4], branches: [2] },
-      { id: 'loop_2', name: 'L2', trials: [], branches: [GHOST] },
+      { id: 'loop_1', name: 'L1', trials: [4] },
+      { id: 'loop_2', name: 'L2', trials: [] },
     ],
     timeline: [
       { id: 1, type: 'trial', name: 'T1', branches: [2] },
       { id: 2, type: 'trial', name: 'T2', branches: [] },
       { id: '3', type: 'trial', name: 'T3-string-id', branches: [] },
-      { id: 'loop_1', type: 'loop', name: 'L1', branches: [2], trials: [4] },
-      { id: 'loop_2', type: 'loop', name: 'L2', branches: [GHOST], trials: [] },
+      { id: 'loop_1', type: 'loop', name: 'L1', trials: [4] },
+      { id: 'loop_2', type: 'loop', name: 'L2', trials: [] },
     ],
   })
   await db.write()
@@ -191,20 +191,18 @@ describe('PATCH /api/loop/:experimentID/:id', () => {
     expect(db.data.trials[0].loops.find((l) => l.id === 'loop_2').parentLoopId).toBe('loop_1')
   })
 
-  test('ignores ghost member ids and filters ghost branches/conditions', async () => {
+  test('ignores ghost member ids without adding loop branching', async () => {
     const { app, db } = await freshApp()
     await seedMatrix(db)
     const res = await request(app)
       .patch('/api/loop/E1/loop_1')
       .send({
         trials: [4, GHOST],
-        branches: [2, GHOST],
-        branchConditions: [{ id: 'c1', rules: [], nextTrialId: GHOST }],
       })
       .expect(200)
     expect(res.body.loop.trials).toEqual([4])
-    expect(res.body.loop.branches).toEqual([2])
-    expect(res.body.loop.branchConditions).toEqual([])
+    expect(res.body.loop).not.toHaveProperty('branches')
+    expect(res.body.loop).not.toHaveProperty('branchConditions')
   })
 })
 

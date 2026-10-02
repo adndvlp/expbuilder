@@ -1,5 +1,8 @@
 import type { TimelineItem } from "../../pages/ExperimentBuilder/contexts/TrialsContext";
-import type { Loop, Trial } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/types";
+import type {
+  Loop,
+  Trial,
+} from "../../pages/ExperimentBuilder/components/ConfigurationPanel/types";
 import type {
   ExperimentGraphSnapshot,
   GraphScopeView,
@@ -22,7 +25,6 @@ export function timelineLoop(
   return {
     type: "loop",
     name: `Loop ${overrides.id}`,
-    branches: [],
     trials: [],
     ...overrides,
   };
@@ -43,7 +45,9 @@ export function trial(overrides: Partial<Trial> = {}): Trial {
   };
 }
 
-export function trialDraft(overrides: Partial<Omit<Trial, "id">> = {}): Omit<Trial, "id"> {
+export function trialDraft(
+  overrides: Partial<Omit<Trial, "id">> = {},
+): Omit<Trial, "id"> {
   return {
     type: "trial",
     name: "Draft Trial",
@@ -71,12 +75,13 @@ export function loop(overrides: Partial<Loop> = {}): Loop {
     categoryData: [],
     trials: [],
     code: "",
-    branches: [],
     ...overrides,
   };
 }
 
-export function loopDraft(overrides: Partial<Omit<Loop, "id">> = {}): Omit<Loop, "id"> {
+export function loopDraft(
+  overrides: Partial<Omit<Loop, "id">> = {},
+): Omit<Loop, "id"> {
   return {
     name: "Draft Loop",
     repetitions: 1,
@@ -89,7 +94,6 @@ export function loopDraft(overrides: Partial<Omit<Loop, "id">> = {}): Omit<Loop,
     categoryData: [],
     trials: [],
     code: "",
-    branches: [],
     ...overrides,
   };
 }

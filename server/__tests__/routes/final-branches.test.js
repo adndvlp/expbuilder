@@ -45,7 +45,7 @@ describe('validate-connection findItemById string id', () => {
       experimentID: 'E1',
       trials: [],
       loops: [
-        { id: 'loop_1', name: 'L1', branches: [] },
+        { id: 'loop_1', name: 'L1', },
         { id: 'loop_2', name: 'L2', branches: ['loop_1'] },
       ],
       timeline: [],
@@ -103,7 +103,7 @@ describe('validate-connection item without branches field', () => {
 
 /* ── index.js lines 289-290: recursive branch traversal ────────────────── */
 describe('validate-connection recursive isAncestor traversal', () => {
-  test('detects transitive ancestor via recursion through loops', async () => {
+  test('rejects a connection between loops', async () => {
     const { app, db } = await freshApp()
     db.data.trials.push({
       experimentID: 'E1',
@@ -115,18 +115,13 @@ describe('validate-connection recursive isAncestor traversal', () => {
       timeline: [],
     })
     await db.write()
-    // isAncestor(target, source): isAncestor(loop_1, loop_99)
-    // source=loop_99, target=loop_1
-    // L99.branches=[1], check L99 for loop_1? No. L99.branches has 1 (a number).
-    // We need target.branches to contain source. 
-    // Let me use trial+loop: T1.branches=['loop_1'], loop_1.branches=['loop_2'], loop_2.branches=[]
     const res = await request(app)
       .get('/api/validate-connection/E1?source=loop_99&target=loop_1')
       .expect(200)
-    expect(res.body.isValid).toBe(true)
+    expect(res.body.isValid).toBe(false)
   })
 
-  test('allows redundant recursive connection when source already reaches target', async () => {
+  test('rejects a trial connection whose target is a loop', async () => {
     const { app, db } = await freshApp()
     db.data.trials.push({
       experimentID: 'E1',
@@ -134,7 +129,7 @@ describe('validate-connection recursive isAncestor traversal', () => {
         { id: 1, name: 'T1', branches: ['loop_1'] },
       ],
       loops: [
-        { id: 'loop_1', name: 'L1', branches: [] },
+        { id: 'loop_1', name: 'L1', },
       ],
       timeline: [],
     })
@@ -142,7 +137,7 @@ describe('validate-connection recursive isAncestor traversal', () => {
     const res = await request(app)
       .get('/api/validate-connection/E1?source=1&target=loop_1')
       .expect(200)
-    expect(res.body.isValid).toBe(true)
+    expect(res.body.isValid).toBe(false)
   })
 
   test('detects recursive cycle in validate-connection', async () => {
@@ -153,7 +148,7 @@ describe('validate-connection recursive isAncestor traversal', () => {
         { id: 1, name: 'T1', branches: ['loop_1'] },
       ],
       loops: [
-        { id: 'loop_1', name: 'L1', branches: [] },
+        { id: 'loop_1', name: 'L1', },
       ],
       timeline: [],
     })

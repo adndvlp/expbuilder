@@ -36,7 +36,7 @@ const freshApp = async () => {
       },
     ],
     loops: [
-      { id: "outer", name: "Outer", trials: [1, 2], branches: [] },
+      { id: "outer", name: "Outer", trials: [1, 2], },
     ],
   });
   await db.write();

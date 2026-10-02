@@ -123,18 +123,17 @@ describe("useFlowLayout", () => {
     const node = result.current.nodes[0];
 
     expect(node.data.selected).toBe(true);
-    expect(typeof node.data.onAddBranch).toBe("function");
+    expect(node.data.onAddBranch).toBeUndefined();
     expect(node.data.onOpenLoop).toBeUndefined();
 
     act(() => {
       node.data.onClick();
-      node.data.onAddBranch();
     });
 
     expect(onSelectLoop).toHaveBeenCalledWith(
       expect.objectContaining({ id: "loop_open", name: "Open Loop" }),
     );
-    expect(onAddBranch).toHaveBeenCalledWith("loop_open");
+    expect(onAddBranch).not.toHaveBeenCalled();
   });
 
   it("wires callbacks for selected trial branch nodes", () => {
@@ -199,19 +198,18 @@ describe("useFlowLayout", () => {
     )!;
 
     expect(node.data.selected).toBe(true);
-    expect(typeof node.data.onAddBranch).toBe("function");
+    expect(node.data.onAddBranch).toBeUndefined();
     expect(typeof node.data.onOpenLoop).toBe("function");
 
     act(() => {
       node.data.onClick();
-      node.data.onAddBranch();
       node.data.onOpenLoop();
     });
 
     expect(onSelectLoop).toHaveBeenCalledWith(
       expect.objectContaining({ id: "loop_branch", name: "Branch Loop" }),
     );
-    expect(onAddBranch).toHaveBeenCalledWith("loop_branch");
+    expect(onAddBranch).not.toHaveBeenCalled();
     expect(onOpenLoop).toHaveBeenCalledWith("loop_branch");
   });
 });

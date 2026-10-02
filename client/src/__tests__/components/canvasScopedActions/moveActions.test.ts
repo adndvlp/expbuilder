@@ -96,6 +96,34 @@ describe("scoped Canvas move actions", () => {
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
   });
 
+  it.each([
+    [{ id: "parent-loop", type: "loop" as const, name: "Loop" }, 1],
+    [{ id: "parent-loop", type: "trial" as const, name: "Loop" }, 1],
+    [{ id: 2, type: "trial" as const, name: "End" }, "parent-loop"],
+  ])(
+    "rejects loop endpoints before detaching any trial: %j → %s",
+    async (item, destinationId) => {
+      const dependencies = createDependencies();
+      const scope = createRootScope();
+      const before = structuredClone(scope);
+
+      await expect(
+        moveScopedItem({
+          scope,
+          item,
+          destinationId,
+          addAsBranch: false,
+          dependencies,
+        }),
+      ).rejects.toThrow("Only trials can be moved");
+
+      expect(scope).toEqual(before);
+      for (const dependency of Object.values(dependencies)) {
+        expect(dependency).not.toHaveBeenCalled();
+      }
+    },
+  );
+
   it("resolves moves across string/number id types", async () => {
     const dependencies = createDependencies();
     const scope = createRootScope();

@@ -91,11 +91,10 @@ describe("Canvas container", () => {
     expect(reorderedTimeline.map((item: any) => item.id)).toEqual([1, 3, 2]);
   });
 
-  it("moves a selected loop sequentially behind a trial destination", async () => {
+  it("rejects a loop move without changing trial connections", async () => {
     installTrialsContext({
       selectedLoop: makeLoop("loop-child", {
         name: "Child Loop",
-        branches: [8],
       }),
       timeline: [
         {
@@ -103,7 +102,6 @@ describe("Canvas container", () => {
           type: "loop",
           name: "Child Loop",
           trials: [8],
-          branches: [8],
         },
         { id: 4, type: "trial", name: "Trial 4", branches: [5] },
         { id: 5, type: "trial", name: "Trial 5", branches: [] },
@@ -113,6 +111,7 @@ describe("Canvas container", () => {
       ),
     });
 
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
     render(<Canvas />);
 
     fireEvent.click(screen.getByTitle("Move Item"));
@@ -121,16 +120,13 @@ describe("Canvas container", () => {
     fireEvent.click(screen.getByText("Move"));
 
     await waitFor(() => {
-      expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith(
-        "loop-child",
-        {
-          branches: [5],
-        },
+      expect(error).toHaveBeenCalledWith(
+        "Error moving item:",
+        expect.any(Error),
       );
     });
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(4, {
-      branches: ["loop-child"],
-    });
+    expect(mocks.trialsContext.updateLoop).not.toHaveBeenCalled();
+    expect(mocks.trialsContext.updateTrial).not.toHaveBeenCalled();
+    expect(mocks.trialsContext.updateTimeline).not.toHaveBeenCalled();
   });
-
 });

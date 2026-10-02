@@ -205,7 +205,7 @@ describe('create_trial', () => {
         experimentID: 'e1',
         trials: [],
         loops: [{ id: 'loop_1', name: 'L', trials: [], repetitions: 3 }],
-        timeline: [{ id: 'loop_1', type: 'loop', name: 'L', branches: [], trials: [] }],
+        timeline: [{ id: 'loop_1', type: 'loop', name: 'L',  trials: [] }],
       })
     })
     await createTrialTools.create_trial.execute({ experimentID: 'e1', name: 'T', plugin: 'plugin-html-keyboard-response', parentLoopId: 'loop_1' })
@@ -383,7 +383,7 @@ describe('delete_trial', () => {
     cleanup(seededTmp)
   })
 
-  test('updates loop branches, loop membership, and timeline loop entries', async () => {
+  test('reconnects trial branches and updates loop membership and timeline entries', async () => {
     const { createTrialTools, db, tmpDir } = await freshSetup((data) => {
       data.trials.push({
         experimentID: 'e1',
@@ -392,10 +392,10 @@ describe('delete_trial', () => {
           { id: 2, name: 'Delete', branches: [3] },
           { id: 3, name: 'Child', branches: [] },
         ],
-        loops: [{ id: 'loop_1', name: 'L', trials: [2, 3], branches: [2] }],
+        loops: [{ id: 'loop_1', name: 'L', trials: [2, 3] }],
         timeline: [
           { id: 1, type: 'trial', name: 'Parent', branches: [2] },
-          { id: 'loop_1', type: 'loop', name: 'L', branches: [2], trials: [2, 3] },
+          { id: 'loop_1', type: 'loop', name: 'L', trials: [2, 3] },
           { id: 'custom', type: 'note', name: 'Untouched' },
         ],
       })
@@ -405,9 +405,10 @@ describe('delete_trial', () => {
 
     await db.read()
     const doc = db.data.trials.find(t => t.experimentID === 'e1')
-    expect(doc.loops[0].branches).toEqual([3])
+    expect(doc.trials.find(t => t.id === 1).branches).toEqual([3])
+    expect(doc.loops[0]).not.toHaveProperty('branches')
     expect(doc.loops[0].trials).toEqual([3])
-    expect(doc.timeline.find(item => item.id === 'loop_1')).toMatchObject({ branches: [3], trials: [3] })
+    expect(doc.timeline.find(item => item.id === 'loop_1')).toMatchObject({ trials: [3] })
     expect(doc.timeline.find(item => item.id === 'custom')).toMatchObject({ id: 'custom', type: 'note' })
     cleanup(tmpDir)
   })
@@ -496,7 +497,7 @@ describe('create_loop', () => {
     cleanup(tmpDir)
   })
 
-  test('nests loops, rewrites incoming branches, and syncs timeline branch data', async () => {
+  test('nests loops and preserves incoming trial references', async () => {
     const { createTrialTools, db, tmpDir } = await freshSetup((data) => {
       data.experiments.push({ experimentID: 'e1', name: 'E', createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-01T00:00:00.000Z' })
       data.trials.push({
@@ -507,11 +508,11 @@ describe('create_loop', () => {
           { id: 3, name: 'Inside B', branches: [] },
         ],
         loops: [
-          { id: 'outer', name: 'Outer', trials: [], branches: [2], repetitions: 1 },
+          { id: 'outer', name: 'Outer', trials: [], repetitions: 1 },
         ],
         timeline: [
           { id: 1, type: 'trial', name: 'Outside', branches: [2, 3] },
-          { id: 'outer', type: 'loop', name: 'Outer', branches: [2], trials: [] },
+          { id: 'outer', type: 'loop', name: 'Outer', trials: [] },
           { id: 2, type: 'trial', name: 'Inside A', branches: [] },
           { id: 3, type: 'trial', name: 'Inside B', branches: [] },
         ],
@@ -523,7 +524,6 @@ describe('create_loop', () => {
       name: 'Nested',
       trials: [2, 3],
       parentLoopId: 'outer',
-      branches: [1],
       csvJson: [{ stim: 'a' }],
     })
 
@@ -531,8 +531,8 @@ describe('create_loop', () => {
     await db.read()
     const doc = db.data.trials.find(t => t.experimentID === 'e1')
     expect(doc.loops.find(l => l.id === 'outer').trials).toContain(result.loop.id)
-    expect(doc.trials.find(t => t.id === 1).branches).toEqual([result.loop.id])
-    expect(doc.loops.find(l => l.id === 'outer').branches).toEqual([result.loop.id])
+    expect(doc.trials.find(t => t.id === 1).branches).toEqual([2, 3])
+    expect(doc.loops.find(l => l.id === 'outer')).not.toHaveProperty('branches')
     expect(doc.trials.find(t => t.id === 2).parentLoopId).toBe(result.loop.id)
     expect(doc.trials.find(t => t.id === 2).csvFromLoop).toBe(true)
     cleanup(tmpDir)
@@ -548,7 +548,7 @@ describe('update_loop', () => {
         experimentID: 'e1',
         trials: [],
         loops: [{ id: 'loop_1', name: 'L', trials: [], repetitions: 1, randomize: false }],
-        timeline: [{ id: 'loop_1', type: 'loop', name: 'L', branches: [], trials: [] }],
+        timeline: [{ id: 'loop_1', type: 'loop', name: 'L',  trials: [] }],
       })
     })
     const result = await createTrialTools.update_loop.execute({ experimentID: 'e1', loopId: 'loop_1', updates: { repetitions: 5, randomize: true } })
@@ -591,8 +591,8 @@ describe('update_loop', () => {
           { id: 'loop_child', name: 'Nested', trials: [], parentLoopId: 'loop_old' },
         ],
         timeline: [
-          { id: 'loop_1', type: 'loop', name: 'Target', branches: [], trials: [1] },
-          { id: 'loop_old', type: 'loop', name: 'Old', branches: [], trials: [2, 'loop_child'] },
+          { id: 'loop_1', type: 'loop', name: 'Target',  trials: [1] },
+          { id: 'loop_old', type: 'loop', name: 'Old',  trials: [2, 'loop_child'] },
           { id: 2, type: 'trial', name: 'Moved child', branches: [] },
         ],
       })
@@ -601,7 +601,7 @@ describe('update_loop', () => {
     await createTrialTools.update_loop.execute({
       experimentID: 'e1',
       loopId: 'loop_1',
-      updates: { name: 'Updated', branches: ['done'], trials: [2, 'loop_child'], csvJson: [] },
+      updates: { name: 'Updated', trials: [2, 'loop_child'], csvJson: [] },
     })
 
     await db.read()
@@ -611,7 +611,7 @@ describe('update_loop', () => {
     expect(doc.trials.find(t => t.id === 2).parentLoopId).toBe('loop_1')
     expect(doc.loops.find(l => l.id === 'loop_child').parentLoopId).toBe('loop_1')
     expect(doc.loops.find(l => l.id === 'loop_old').trials).toEqual([])
-    expect(doc.timeline.find(item => item.id === 'loop_1')).toMatchObject({ name: 'Updated', branches: ['done'], trials: [2, 'loop_child'] })
+    expect(doc.timeline.find(item => item.id === 'loop_1')).toMatchObject({ name: 'Updated', trials: [2, 'loop_child'] })
     cleanup(tmpDir)
   })
 
@@ -643,8 +643,8 @@ describe('delete_loop', () => {
           { id: 1, name: 'T1', parentLoopId: 'loop_1', branches: [] },
           { id: 2, name: 'T2', parentLoopId: 'loop_1', branches: [] },
         ],
-        loops: [{ id: 'loop_1', name: 'L', trials: [1, 2], branches: [] }],
-        timeline: [{ id: 'loop_1', type: 'loop', name: 'L', branches: [], trials: [1, 2] }],
+        loops: [{ id: 'loop_1', name: 'L', trials: [1, 2], }],
+        timeline: [{ id: 'loop_1', type: 'loop', name: 'L',  trials: [1, 2] }],
       })
     })
     const result = await createTrialTools.delete_loop.execute({ experimentID: 'e1', loopId: 'loop_1' })
@@ -695,7 +695,7 @@ describe('delete_loop', () => {
       data.trials.push({
         experimentID: 'e1',
         trials: [{ id: 1, name: 'Parent', branches: ['loop_1'] }],
-        loops: [{ id: 'loop_1', name: 'Empty', trials: [], branches: [] }],
+        loops: [{ id: 'loop_1', name: 'Empty', trials: [], }],
         timeline: [],
       })
     })

@@ -149,8 +149,6 @@ export async function generateLoopCode(
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const genLoopCode = useLoopCode({
       id: fullLoop.id,
-      branches: fullLoop.branches,
-      branchConditions: fullLoop.branchConditions,
       repeatConditions: fullLoop.repeatConditions,
       repetitions: fullLoop.repetitions,
       randomize: fullLoop.randomize,

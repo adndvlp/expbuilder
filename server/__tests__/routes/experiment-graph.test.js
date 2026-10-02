@@ -31,27 +31,26 @@ const seedGraph = async (db) => {
     updatedAt: "2026-08-20T00:00:00.000Z",
     timeline: [
       { id: 1, type: "trial", name: "Start", branches: [2, 3] },
-      { id: 2, type: "trial", name: "Left", branches: ["outer"] },
+      { id: 2, type: "trial", name: "Left", branches: [4] },
       { id: 3, type: "trial", name: "Right", branches: [] },
       {
         id: "outer",
         type: "loop",
         name: "Outer",
-        branches: [8],
         trials: [4, "inner"],
       },
       { id: 8, type: "trial", name: "Root exit", branches: [] },
     ],
     trials: [
       { id: 1, type: "Trial", name: "Start", branches: [2, 3] },
-      { id: 2, type: "Trial", name: "Left", branches: ["outer"] },
+      { id: 2, type: "Trial", name: "Left", branches: [4] },
       { id: 3, type: "Trial", name: "Right", branches: [] },
       {
         id: 4,
         type: "Trial",
         name: "Outer source",
         parentLoopId: "outer",
-        branches: [5, "inner", 8],
+        branches: [5, 6, 8],
       },
       {
         id: 5,
@@ -74,7 +73,6 @@ const seedGraph = async (db) => {
         id: "outer",
         name: "Outer",
         trials: [4, "inner"],
-        branches: [],
         exitBranchRoutes: [
           { sourceTrialId: 3, targetTrialId: 8 },
         ],
@@ -84,7 +82,6 @@ const seedGraph = async (db) => {
         name: "Inner",
         parentLoopId: "outer",
         trials: [6],
-        branches: [],
       },
     ],
   });
@@ -129,8 +126,8 @@ describe("canonical experiment graph", () => {
         targetOwnerId: null,
         exitedLoopIds: ["outer"],
       });
-    expect(graph.root.items.find((item) => item.id === "outer").branches)
-      .toEqual([]);
+    expect(graph.root.items.find((item) => item.id === "outer"))
+      .not.toHaveProperty("branches");
     expect(graph.scopes.outer.items.map((item) => item.id))
       .toEqual([4, "inner", 5]);
   });
@@ -193,7 +190,6 @@ describe("canonical experiment graph", () => {
         name: "Nested around source",
         parentLoopId: "outer",
         trials: [4],
-        branches: [],
         repetitions: 1,
       })
       .expect(200);

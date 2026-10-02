@@ -76,19 +76,18 @@ describe("useFlowLayout", () => {
 
     expect(node.id).toBe("loop-loop_1");
     expect(node.data.selected).toBe(true);
-    expect(typeof node.data.onAddBranch).toBe("function");
+    expect(node.data.onAddBranch).toBeUndefined();
     expect(typeof node.data.onOpenLoop).toBe("function");
 
     act(() => {
       node.data.onClick();
-      node.data.onAddBranch();
       node.data.onOpenLoop();
     });
 
     expect(onSelectLoop).toHaveBeenCalledWith(
       expect.objectContaining({ id: "loop_1", name: "Practice Loop" }),
     );
-    expect(onAddBranch).toHaveBeenCalledWith("loop_1");
+    expect(onAddBranch).not.toHaveBeenCalled();
     expect(onOpenLoop).toHaveBeenCalledWith("loop_1");
   });
 

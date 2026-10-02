@@ -110,10 +110,10 @@ describe('PATCH /api/trial/:experimentID/:id', () => {
     db.data.trials.push({
       experimentID: 'E1',
       trials: [{ id: 1, name: 'T1', branches: [] }],
-      loops: [{ id: 'loop_1', name: 'L1', trials: [], branches: [] }],
+      loops: [{ id: 'loop_1', name: 'L1', trials: [], }],
       timeline: [
         { id: 1, type: 'trial', name: 'T1', branches: [] },
-        { id: 'loop_1', type: 'loop', name: 'L1', branches: [], trials: [] },
+        { id: 'loop_1', type: 'loop', name: 'L1',  trials: [] },
       ],
     })
     await db.write()
@@ -274,7 +274,7 @@ describe('DELETE /api/trial/:experimentID/:id', () => {
     db.data.trials.push({
       experimentID: 'E1',
       trials: [{ id: 1, name: 'T1', branches: [] }],
-      loops: [{ id: 'loop_1', name: 'L1', trials: [1], branches: [] }],
+      loops: [{ id: 'loop_1', name: 'L1', trials: [1], }],
       timeline: [],
     })
     await db.write()
@@ -316,7 +316,7 @@ describe('DELETE /api/trial/:experimentID/:id', () => {
         { id: 1, name: 'A', branches: [999] },
         { id: 2, name: 'B', branches: [] },
       ],
-      loops: [{ id: 'loop_1', name: 'L1', trials: [], branches: [999] }],
+      loops: [{ id: 'loop_1', name: 'L1', trials: [] }],
       timeline: [
         { id: 1, type: 'trial', name: 'A' },
         { id: 2, type: 'trial', name: 'B' },
@@ -327,7 +327,7 @@ describe('DELETE /api/trial/:experimentID/:id', () => {
     expect(res.body.success).toBe(true)
     await db.read()
     expect(db.data.trials[0].trials.find(t => t.id === 1).branches).toEqual([])
-    expect(db.data.trials[0].loops[0].branches).toEqual([])
+    expect(db.data.trials[0].loops[0]).not.toHaveProperty('branches')
     expect(res.body.graph.diagnostics.map(d => d.code)).not.toContain('BRANCH_TARGET_NOT_FOUND')
   })
 
@@ -354,8 +354,8 @@ describe('DELETE /api/trial/:experimentID/:id', () => {
           id: 'loop_1',
           name: 'L1',
           trials: [],
-          branches: [],
-          branchConditions: [{ id: 'lc1', rules: [], nextTrialId: 2 }],
+
+          repeatConditions: [{ id: 'lc1', rules: [], jumpToTrialId: 2 }],
         },
       ],
       timeline: [
@@ -371,7 +371,7 @@ describe('DELETE /api/trial/:experimentID/:id', () => {
     const doc = db.data.trials[0]
     expect(doc.trials.find(t => t.id === 1).branchConditions.map(c => c.id)).toEqual(['c2'])
     expect(doc.trials.find(t => t.id === 1).repeatConditions).toEqual([])
-    expect(doc.loops.find(l => l.id === 'loop_1').branchConditions).toEqual([])
+    expect(doc.loops.find(l => l.id === 'loop_1').repeatConditions).toEqual([])
   })
 })
 

@@ -12,9 +12,10 @@ import {
 import { moveItemToScope } from "../graph/ownership.js";
 import {
   filterLiveConditions,
-  itemExists,
   pruneDanglingBranches,
 } from "../trials/state.js";
+
+import { assertLoopHasNoBranching } from "../branchContract.js";
 
 const router = Router();
 
@@ -23,6 +24,7 @@ router.patch("/api/loop/:experimentID/:id", async (req, res) => {
   try {
     const { experimentID, id } = req.params;
     const updates = req.body;
+    assertLoopHasNoBranching(updates);
     const experimentDoc = await getExperimentDoc(experimentID);
 
     if (!experimentDoc) {
@@ -31,9 +33,7 @@ router.patch("/api/loop/:experimentID/:id", async (req, res) => {
         .json({ success: false, error: "Experiment not found" });
     }
 
-    const loopIndex = experimentDoc.loops.findIndex((l) =>
-      idsMatch(l.id, id),
-    );
+    const loopIndex = experimentDoc.loops.findIndex((l) => idsMatch(l.id, id));
     if (loopIndex === -1) {
       return res.status(404).json({ success: false, error: "Loop not found" });
     }
@@ -41,22 +41,6 @@ router.patch("/api/loop/:experimentID/:id", async (req, res) => {
     const currentLoop = experimentDoc.loops[loopIndex];
     const previousTrials = [...(currentLoop.trials ?? [])];
     const { trials: requestedTrials, parentLoopId, ...loopUpdates } = updates;
-    // Branch sets can carry ids of already-deleted items (stale canvas
-    // state): drop them instead of persisting an invalid graph. The same
-    // applies to condition targets, which would otherwise stall or throw
-    // the run when they fire.
-    if (loopUpdates.branches !== undefined) {
-      loopUpdates.branches = (loopUpdates.branches ?? []).filter((branchId) =>
-        itemExists(experimentDoc, branchId),
-      );
-    }
-    if (loopUpdates.branchConditions !== undefined) {
-      loopUpdates.branchConditions = filterLiveConditions(
-        experimentDoc,
-        loopUpdates.branchConditions,
-        "nextTrialId",
-      );
-    }
     if (loopUpdates.repeatConditions !== undefined) {
       loopUpdates.repeatConditions = filterLiveConditions(
         experimentDoc,
@@ -104,20 +88,13 @@ router.patch("/api/loop/:experimentID/:id", async (req, res) => {
       pruneDanglingBranches(experimentDoc);
     }
 
-    if (
-      updates.name ||
-      updates.branches !== undefined ||
-      updates.trials !== undefined
-    ) {
+    if (updates.name || updates.trials !== undefined) {
       const timelineIndex = experimentDoc.timeline.findIndex(
         (item) => idsMatch(item.id, id) && item.type === "loop",
       );
       if (timelineIndex !== -1) {
         if (updates.name) {
           experimentDoc.timeline[timelineIndex].name = updates.name;
-        }
-        if (updates.branches !== undefined) {
-          experimentDoc.timeline[timelineIndex].branches = updates.branches;
         }
         if (updates.trials !== undefined) {
           experimentDoc.timeline[timelineIndex].trials = updatedLoop.trials;
@@ -134,7 +111,13 @@ router.patch("/api/loop/:experimentID/:id", async (req, res) => {
       graph: buildExperimentGraph(experimentDoc),
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res
+      .status(error.status ?? 500)
+      .json({
+        success: false,
+        error: error.message,
+        ...(error.code ? { code: error.code } : {}),
+      });
   }
 });
 

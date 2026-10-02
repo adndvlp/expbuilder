@@ -20,8 +20,9 @@ function summarizeItem(experimentDoc, item) {
     id: item.id,
     type,
     name: item.name,
-    branches: uniqueIds(item.branches ?? []),
-    ...(type === "loop" ? { trials: uniqueIds(item.trials ?? []) } : {}),
+    ...(type === "loop"
+      ? { trials: uniqueIds(item.trials ?? []) }
+      : { branches: uniqueIds(item.branches ?? []) }),
   };
 }
 
@@ -53,7 +54,9 @@ export function moveItemToScope(
   if (!item) throw new Error(`Item ${itemId} not found`);
   const normalizedTarget = normalizeScopeId(targetScopeId);
   const targetLoop =
-    normalizedTarget === null ? null : findLoop(experimentDoc, normalizedTarget);
+    normalizedTarget === null
+      ? null
+      : findLoop(experimentDoc, normalizedTarget);
   if (normalizedTarget !== null && !targetLoop) {
     throw new Error(`Loop ${normalizedTarget} not found`);
   }

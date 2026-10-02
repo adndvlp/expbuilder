@@ -66,7 +66,7 @@ bindCanvasMocks(mocks);
 describe("Canvas container", () => {
   beforeEach(setupCanvasTest);
 
-  it("adds direct and parent trials to loop nodes", async () => {
+  it("rejects direct and sequential branch creation from loop nodes", async () => {
     installTrialsContext({
       timeline: [
         {
@@ -85,11 +85,8 @@ describe("Canvas container", () => {
       await mocks.flowLayoutProps.onAddBranch("loop-1");
     });
 
-    expect(mocks.trialsContext.getLoop).toHaveBeenCalledWith("loop-1");
-    expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith(
-      "loop-1",
-      { branches: [99] },
-    );
+    expect(mocks.trialsContext.createTrial).not.toHaveBeenCalled();
+    expect(mocks.trialsContext.updateLoop).not.toHaveBeenCalled();
     firstRender.unmount();
 
     installTrialsContext({
@@ -111,12 +108,9 @@ describe("Canvas container", () => {
     });
     fireEvent.click(screen.getByText("As Parent (Sequential)"));
 
-    await waitFor(() => {
-      expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith(
-        "loop-1",
-        { branches: [99] },
-      );
-    });
+    await act(async () => {});
+    expect(mocks.trialsContext.createTrial).not.toHaveBeenCalled();
+    expect(mocks.trialsContext.updateLoop).not.toHaveBeenCalled();
   });
 
   it("closes add-trial and move-item modals without confirming", async () => {
@@ -156,10 +150,9 @@ describe("Canvas container", () => {
         branches: [2],
       });
     });
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(
-      1,
-      { branches: [99] },
-    );
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, {
+      branches: [99],
+    });
 
     const reorderedTimeline =
       mocks.trialsContext.updateTimeline.mock.calls.at(-1)?.[0];

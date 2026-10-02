@@ -221,7 +221,7 @@ describe('get_loop', () => {
           { id: 2, name: 'T2', plugin: 'plugin-dynamic' },
         ],
         loops: [
-          { id: 'loop_1', name: 'Practice', trials: [1, 2], repetitions: 2, randomize: false, branches: [] },
+          { id: 'loop_1', name: 'Practice', trials: [1, 2], repetitions: 2, randomize: false, },
         ],
         timeline: [],
       })

@@ -14,7 +14,7 @@ import {
 } from "./testHarness";
 
 describe("coverage zero wrappers: BranchedTrial", () => {
-  it("uses loop-scope available trials and saves loop selections", async () => {
+  it("preserves loop jump rules without saving branching fields", async () => {
     trialsState.value = baseTrialsState({
       selectedTrial: selectedTrial({
         id: "loop_1",
@@ -35,14 +35,14 @@ describe("coverage zero wrappers: BranchedTrial", () => {
 
     fireEvent.click(screen.getByText("save branch conditions"));
     await waitFor(() => {
-      expect(trialsState.value.updateLoop).toHaveBeenCalledWith(
-        "loop_1",
-        expect.objectContaining({
-          branchConditions: expect.any(Array),
-          repeatConditions: expect.any(Array),
-        }),
-      );
+      expect(trialsState.value.updateLoop).toHaveBeenCalledWith("loop_1", {
+        repeatConditions: expect.any(Array),
+      });
     });
+    const updates = trialsState.value.updateLoop.mock.calls[0][1];
+    expect(updates).not.toHaveProperty("branches");
+    expect(updates).not.toHaveProperty("branchConditions");
+    expect(trialsState.value.updateTrial).not.toHaveBeenCalled();
   });
 
   it("builds loop-scope available trials and saves an in-loop branch target", async () => {

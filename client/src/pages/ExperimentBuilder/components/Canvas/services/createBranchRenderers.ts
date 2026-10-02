@@ -6,6 +6,7 @@ import {
   createTrialNode,
 } from "../utils/layoutUtils";
 import { findItemById } from "../utils/trialUtils";
+import type { LayoutTimelineItem } from "./expandedLayoutTypes";
 import { BranchRendererContext } from "./flowLayoutTypes";
 
 export function createBranchRenderers({
@@ -97,8 +98,9 @@ export function createBranchRenderers({
     return maxDepth + 1;
   };
 
+  // Collapsed containers receive visual edges projected from canonical trials.
   const renderLoopWithBranches = (
-    loop: Loop,
+    loop: Loop & Pick<LayoutTimelineItem, "branches">,
     parentId: string,
     x: number,
     y: number,

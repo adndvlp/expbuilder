@@ -97,7 +97,7 @@ describe("Canvas container", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("reconnects children and updates a loop parent when moving a trial", async () => {
+  it("reconnects trial parents without writing branches to nearby loops", async () => {
     installTrialsContext({
       selectedTrial: makeTrial(2, { branches: [3] }),
       timeline: [
@@ -106,8 +106,8 @@ describe("Canvas container", () => {
           type: "loop",
           name: "Loop 1",
           trials: [2],
-          branches: [2],
         },
+        { id: 1, type: "trial", name: "Trial 1", branches: [2] },
         { id: 2, type: "trial", name: "Trial 2", branches: [3] },
         { id: 3, type: "trial", name: "Trial 3", branches: [] },
         { id: 4, type: "trial", name: "Trial 4", branches: [] },
@@ -124,10 +124,11 @@ describe("Canvas container", () => {
     fireEvent.click(screen.getByText("Move"));
 
     await waitFor(() => {
-      expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith("loop-1", {
+      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, {
         branches: [3],
       });
     });
+    expect(mocks.trialsContext.updateLoop).not.toHaveBeenCalled();
     expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(2, {
       branches: [],
     });

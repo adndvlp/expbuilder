@@ -183,7 +183,8 @@ describe("coverage branched wrappers: BranchConditions", () => {
     );
 
     const list = screen.getByTestId("conditions-list");
-    expect(list).toHaveTextContent("branches:target-a,target-b,loop-1");
+    expect(list).toHaveTextContent("branches:target-a,target-b");
+    expect(list).not.toHaveTextContent("branches:target-a,target-b,loop-1");
     expect(list).toHaveTextContent("jumps:jump-a,inside-loop");
     expect(list).toHaveTextContent(
       "columns:stim_type,stim_stimulus,stim_q1,stim_response,stim_rt,rt",

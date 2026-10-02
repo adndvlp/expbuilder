@@ -141,11 +141,12 @@ function BranchConditions({
 
   // Get available trials/loops for branches in the same scope.
   const branchTrials = useMemo(() => {
-    if (!selectedTrial) return [];
+    if (!selectedTrial || "trials" in selectedTrial) return [];
 
     return relevantTimeline
       .filter((item) => {
-        if (idsEqual(item.id, selectedTrial.id)) return false;
+        if (item.type !== "trial" || idsEqual(item.id, selectedTrial.id))
+          return false;
 
         if (
           !selectedTrial.parentLoopId &&

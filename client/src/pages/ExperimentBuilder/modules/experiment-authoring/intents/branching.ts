@@ -27,10 +27,7 @@ export type BranchingMutationDependencies = {
     id: string | number,
     updates: Partial<Trial>,
   ) => Promise<unknown>;
-  updateLoop: (
-    id: string | number,
-    updates: Partial<Loop>,
-  ) => Promise<unknown>;
+  updateLoop: (id: string | number, updates: Partial<Loop>) => Promise<unknown>;
 };
 
 export function addBranchingCondition(
@@ -63,10 +60,7 @@ export function addBranchingRule(
     condition.id === conditionId
       ? {
           ...condition,
-          rules: [
-            ...condition.rules,
-            { column: "", op: "==", value: "" },
-          ],
+          rules: [...condition.rules, { column: "", op: "==", value: "" }],
         }
       : condition,
   );
@@ -147,7 +141,7 @@ export function addBranchingCustomParameter(options: {
     } else {
       const existingKeys = Object.keys(customParameters);
       const availableParameters = condition.nextTrialId
-        ? options.targetTrialParameters[condition.nextTrialId] ?? []
+        ? (options.targetTrialParameters[condition.nextTrialId] ?? [])
         : [];
       const nextParameter = availableParameters.find(
         (parameter) => !existingKeys.includes(parameter.key),
@@ -169,6 +163,13 @@ export function isBranchTargetFromUserContext(options: {
 }): boolean {
   const { selectedItem, targetId, scopeTimeline } = options;
   if (!targetId) return false;
+  if ("trials" in selectedItem) return false;
+  if (
+    scopeTimeline.some(
+      (item) => idsEqual(item.id, targetId) && item.type === "loop",
+    )
+  )
+    return false;
   if (includesId(selectedItem.branches, targetId)) return true;
 
   const target = scopeTimeline.find((item) => idsEqual(item.id, targetId));
@@ -231,17 +232,34 @@ export async function saveBranchingIntent(options: {
   conditions: Condition[];
   isBranchTarget: (trialId: string | number) => boolean;
   dependencies: BranchingMutationDependencies;
-}): Promise<BranchingSaveUpdates> {
+}): Promise<BranchingSaveUpdates | Pick<Loop, "repeatConditions">> {
+  if ("trials" in options.item) {
+    if (
+      options.conditions.some(
+        (condition) =>
+          condition.nextTrialId != null &&
+          options.isBranchTarget(condition.nextTrialId),
+      )
+    ) {
+      throw new Error("Branch sources must be trials");
+    }
+    // The unified condition editor also saves existing jump rules. A loop
+    // may save those rules without receiving any structural branching fields.
+    const updates = {
+      repeatConditions: buildBranchingSaveUpdates({
+        conditions: options.conditions,
+        isBranchTarget: () => false,
+      }).repeatConditions,
+    };
+    await options.dependencies.updateLoop(options.item.id, updates);
+    return updates;
+  }
   const updates = buildBranchingSaveUpdates({
     conditions: options.conditions,
     existingBranches: options.item.branches ?? [],
     isBranchTarget: options.isBranchTarget,
   });
 
-  if ("trials" in options.item) {
-    await options.dependencies.updateLoop(options.item.id, updates);
-  } else {
-    await options.dependencies.updateTrial(options.item.id, updates);
-  }
+  await options.dependencies.updateTrial(options.item.id, updates);
   return updates;
 }

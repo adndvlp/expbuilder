@@ -1,8 +1,5 @@
 import type { TimelineItem } from "../../../contexts/TrialsContext";
-import {
-  getItemBranches,
-  updateItemBranches,
-} from "./itemMutations";
+import { getItemBranches, updateItemBranches } from "./itemMutations";
 import type {
   CanvasItemId,
   CanvasItemToMove,
@@ -35,11 +32,7 @@ async function detachFromCurrentParent(input: MoveScopedItemInput) {
     if (!nextBranches.some((id) => String(id) === String(childId)))
       nextBranches.push(childId);
   }
-  await updateItemBranches(
-    currentParent,
-    nextBranches,
-    input.dependencies,
-  );
+  await updateItemBranches(currentParent, nextBranches, input.dependencies);
 }
 
 async function updateMovedItem(
@@ -49,7 +42,7 @@ async function updateMovedItem(
   if (input.item.type === "trial") {
     await input.dependencies.updateTrial(input.item.id, { branches });
   } else {
-    await input.dependencies.updateLoop(input.item.id, { branches });
+    throw new Error("Branch sources must be trials");
   }
 }
 
@@ -85,15 +78,17 @@ async function attachSequentially(
       (branchId) => String(branchId) === String(destination.id),
     ),
   );
-  const parentLoop = input.scope.kind === "loop"
-    ? await input.dependencies.getLoop(input.scope.loopId)
-    : null;
+  const parentLoop =
+    input.scope.kind === "loop"
+      ? await input.dependencies.getLoop(input.scope.loopId)
+      : null;
   const destinationIsDirectLoopChild = Boolean(
     parentLoop?.trials?.some(
       (itemId) => String(itemId) === String(destination.id),
     ),
   );
-  const usesImplicitOrder = destinationBranches.length === 0 &&
+  const usesImplicitOrder =
+    destinationBranches.length === 0 &&
     (input.scope.kind === "root"
       ? !destinationIsBranchTarget
       : destinationIsDirectLoopChild);
@@ -114,7 +109,12 @@ function reorderRootItems(input: MoveScopedItemInput) {
   const destinationIndex = nextItems.findIndex(
     (item) => String(item.id) === String(input.destinationId),
   );
-  const movedItem: TimelineItem = { ...input.item, branches: [] };
+  if (input.item.type !== "trial") throw new Error("Only trials can be moved");
+  const movedItem: TimelineItem = {
+    ...input.item,
+    type: "trial",
+    branches: [],
+  };
   if (destinationIndex < 0) nextItems.push(movedItem);
   else nextItems.splice(destinationIndex + 1, 0, movedItem);
   return nextItems;
@@ -157,6 +157,16 @@ export async function moveScopedItem(
     (item) => String(item.id) === String(input.destinationId),
   );
   if (!destination) return { status: "destination-not-found" };
+  const source = input.scope.items.find(
+    (item) => String(item.id) === String(input.item.id),
+  );
+  if (
+    input.item.type !== "trial" ||
+    source?.type === "loop" ||
+    destination.type !== "trial"
+  ) {
+    throw new Error("Only trials can be moved or used as move destinations");
+  }
 
   await detachFromCurrentParent(input);
   let placement: MovePlacement = "branch-edge";

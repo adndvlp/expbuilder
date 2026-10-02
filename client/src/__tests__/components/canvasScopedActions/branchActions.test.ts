@@ -26,10 +26,9 @@ describe("scoped Canvas branch actions", () => {
     expect(dependencies.createTrial).toHaveBeenCalledWith(
       expect.objectContaining({ branches: [2] }),
     );
-    expect(dependencies.updateTrial).toHaveBeenCalledWith(
-      1,
-      { branches: [99] },
-    );
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(1, {
+      branches: [99],
+    });
     expect(dependencies.updateTimeline).toHaveBeenCalledWith([
       expect.objectContaining({ id: 1, branches: [99] }),
       expect.objectContaining({ id: 99, branches: [2] }),
@@ -56,10 +55,9 @@ describe("scoped Canvas branch actions", () => {
       expect.objectContaining({ parentLoopId: "parent-loop" }),
     );
     expect(dependencies.updateTrialField).not.toHaveBeenCalled();
-    expect(dependencies.updateTrial).toHaveBeenCalledWith(
-      10,
-      { branches: [11, 99] },
-    );
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(10, {
+      branches: [11, 99],
+    });
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
     expect(onSelectTrial).toHaveBeenCalled();
   });
@@ -79,14 +77,13 @@ describe("scoped Canvas branch actions", () => {
         branches: [11],
       }),
     );
-    expect(dependencies.updateTrial).toHaveBeenCalledWith(
-      10,
-      { branches: [99] },
-    );
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(10, {
+      branches: [99],
+    });
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
   });
 
-  it("adds a branch to a child loop within the active scope", async () => {
+  it("rejects a loop branch source before creating a trial", async () => {
     const dependencies = createDependencies();
     const scope = createLoopScope();
     scope.items = [
@@ -100,10 +97,8 @@ describe("scoped Canvas branch actions", () => {
       dependencies,
     });
 
-    expect(dependencies.updateLoop).toHaveBeenCalledWith(
-      "child-loop",
-      { branches: [11, 99] },
-    );
+    expect(dependencies.createTrial).not.toHaveBeenCalled();
+    expect(dependencies.updateLoop).not.toHaveBeenCalled();
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
   });
 
@@ -121,10 +116,9 @@ describe("scoped Canvas branch actions", () => {
     expect(dependencies.createTrial).toHaveBeenCalledWith(
       expect.objectContaining({ branches: [2] }),
     );
-    expect(dependencies.updateTrial).toHaveBeenCalledWith(
-      1,
-      { branches: [99] },
-    );
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(1, {
+      branches: [99],
+    });
     expect(dependencies.updateTimeline).toHaveBeenCalledWith([
       expect.objectContaining({ id: 1, branches: [99] }),
       expect.objectContaining({ id: 99, branches: [2] }),

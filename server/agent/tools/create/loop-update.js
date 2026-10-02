@@ -2,19 +2,26 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { db, readDb, getDoc } from './state.js'
 
+import { assertLoopHasNoBranching } from '../../../routes/timeline/branchContract.js'
+
 export const loopUpdateTools = {
   update_loop: tool({
     description:
       'Update one or more fields on an existing loop (PATCH semantics). ' +
       'If trials[] changes, new trial IDs are pulled from the main timeline into the loop. ' +
       'If csvJson is added/removed, csvFromLoop is updated on all child trials automatically. ' +
-      'Commonly updated: name, repetitions, randomize, csvJson, csvColumns, branches, loopConditions, isConditionalLoop, customOnTimelineStart, customOnTimelineFinish.',
+      'Commonly updated: name, repetitions, randomize, csvJson, csvColumns, loopConditions, isConditionalLoop, customOnTimelineStart, customOnTimelineFinish.',
     parameters: z.object({
       experimentID: z.string().describe('Experiment UUID'),
       loopId: z.string().describe('Loop ID — starts with "loop_"'),
       updates: z.record(z.any()).describe('Fields to update. E.g. { "repetitions": 3 } or { "csvJson": [...], "csvColumns": ["stimulus","condition"] }.'),
     }),
     execute: async ({ experimentID, loopId, updates }) => {
+      try {
+        assertLoopHasNoBranching(updates)
+      } catch (error) {
+        return { error: error.message, code: error.code }
+      }
       await readDb()
       const doc = getDoc(experimentID)
       if (!doc) return { error: `Experiment ${experimentID} not found` }
@@ -39,7 +46,6 @@ export const loopUpdateTools = {
       const tIdx = doc.timeline.findIndex(item => item.id === loopId && item.type === 'loop')
       if (tIdx !== -1) {
         if (updates.name !== undefined) doc.timeline[tIdx].name = updates.name
-        if (updates.branches !== undefined) doc.timeline[tIdx].branches = updates.branches
         if (updates.trials !== undefined) {
           doc.timeline[tIdx].trials = updates.trials
           // Pull any newly-added trials out of the main timeline

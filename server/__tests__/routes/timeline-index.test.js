@@ -176,7 +176,7 @@ describe('GET /api/validate-ancestor/:experimentID', () => {
     expect(res.body.isAncestor).toBe(false)
   })
 
-  test('checks loops too', async () => {
+  test('does not treat a loop as a branching ancestor', async () => {
     const { app, db } = await freshApp()
     db.data.trials.push({
       experimentID: 'E1',
@@ -193,7 +193,7 @@ describe('GET /api/validate-ancestor/:experimentID', () => {
     const res = await request(app)
       .get('/api/validate-ancestor/E1?source=1&target=loop_1')
       .expect(200)
-    expect(res.body.isAncestor).toBe(true)
+    expect(res.body.isAncestor).toBe(false)
   })
 })
 

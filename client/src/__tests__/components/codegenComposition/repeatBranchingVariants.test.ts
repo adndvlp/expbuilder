@@ -1,7 +1,7 @@
 import { describe, expect, it, normalize, useLoopCode } from "./testHarness";
 
 describe("useLoopCode composition", () => {
-  it("generates repeat conditions with automatic loop branching", () => {
+  it("preserves repeat conditions while ignoring obsolete loop branch fields", () => {
     const genLoopCode = useLoopCode({
       id: "loop_repeat_branch",
       branches: [10, "fallback_branch"],
@@ -35,11 +35,11 @@ describe("useLoopCode composition", () => {
 
     expect(code).toContain("const repeatConditions =");
     expect(code).toContain("window.ExpBuilderNavigation.requestJump(");
-    expect(code).toContain('const branches = [10, "fallback_branch"];');
-    expect(code).toContain("window.nextTrialId = branches[0];");
+    expect(code).not.toContain('const branches = [10, "fallback_branch"];');
+    expect(code).toContain("window.nextTrialId = pendingBranchTarget;");
   });
 
-  it("generates conditional loop branching without repeat conditions", () => {
+  it("does not generate conditional branching from obsolete loop fields", () => {
     const genLoopCode = useLoopCode({
       id: "loop_branch_only",
       branches: [10, "branch_b"],
@@ -70,12 +70,12 @@ describe("useLoopCode composition", () => {
 
     const code = normalize(genLoopCode());
 
-    expect(code).toContain('const branches = [10, "branch_b"];');
-    expect(code).toContain("window.ExpBuilderBranching.decide(");
-    expect(code).toContain("window.nextTrialId = branches[0];");
+    expect(code).not.toContain('const branches = [10, "branch_b"];');
+    expect(code).not.toContain("window.ExpBuilderBranching.decide(");
+    expect(code).toContain("window.nextTrialId = pendingBranchTarget;");
   });
 
-  it("propagates nested loop branching to parent loop variables", () => {
+  it("propagates concrete trial exits to the parent scope", () => {
     const genLoopCode = useLoopCode({
       id: "loop_child",
       branches: [99],
@@ -101,7 +101,9 @@ describe("useLoopCode composition", () => {
 
     const code = normalize(genLoopCode());
 
-    expect(code).toContain("loop_loop_parent_NextTrialId = branches[0];");
+    expect(code).toContain(
+      "loop_loop_parent_NextTrialId = pendingBranchTarget;",
+    );
     expect(code).toContain("loop_loop_parent_SkipRemaining = true;");
     expect(code).toContain("loop_loop_parent_BranchingActive = true;");
     expect(code).not.toContain("window.nextTrialId = branches[0];");

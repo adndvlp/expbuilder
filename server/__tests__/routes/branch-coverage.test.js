@@ -28,7 +28,7 @@ describe('trials-metadata with loops in timeline', () => {
     db.data.trials.push({
       experimentID: 'E1',
       trials: [{ id: 1, name: 'T1', branches: [] }],
-      loops: [{ id: 'loop_1', name: 'L1', branches: [], trials: [1] }],
+      loops: [{ id: 'loop_1', name: 'L1',  trials: [1] }],
       timeline: [
         { id: 1, type: 'trial', name: 'T1' },
         { id: 'loop_1', type: 'loop', name: 'L1' },
@@ -43,18 +43,18 @@ describe('trials-metadata with loops in timeline', () => {
 })
 
 /* ── trials.js: lines 343-352 (delete trial reconnects loop branches) ──── */
-describe('DELETE trial reconnects loop branches', () => {
-  test('replaces deleted trial in loop branches with its children', async () => {
+describe('DELETE trial reconnects trial branches across loop scopes', () => {
+  test('reconnects an outside trial to children of a deleted in-loop trial', async () => {
     const { app, db } = await freshApp()
     db.data.trials.push({
       experimentID: 'E1',
       trials: [
-        { id: 1, name: 'T1', branches: [] },
-        { id: 2, name: 'T2', branches: [3] },
+        { id: 1, name: 'T1', branches: [2] },
+        { id: 2, name: 'T2', parentLoopId: 'loop_1', branches: [3] },
         { id: 3, name: 'T3', branches: [] },
       ],
       loops: [
-        { id: 'loop_1', name: 'L1', branches: [2], trials: [] },
+        { id: 'loop_1', name: 'L1', trials: [2] },
       ],
       timeline: [
         { id: 1, type: 'trial', name: 'T1' },
@@ -65,15 +65,15 @@ describe('DELETE trial reconnects loop branches', () => {
     await db.write()
     await request(app).delete('/api/trial/E1/2').expect(200)
     await db.read()
-    const loop = db.data.trials[0].loops.find(l => l.id === 'loop_1')
-    expect(loop.branches).not.toContain(2)
-    expect(loop.branches).toContain(3)
+    const parent = db.data.trials[0].trials.find(t => t.id === 1)
+    expect(parent.branches).toEqual([3])
+    expect(db.data.trials[0].loops[0]).not.toHaveProperty('branches')
   })
 })
 
 /* ── trials.js: lines 379-387 (timeline loop items branches update) ────── */
 describe('DELETE trial updates timeline loop items', () => {
-  test('syncs loop timeline branches after trial delete', async () => {
+  test('keeps loop timeline metadata free of branches after trial delete', async () => {
     const { app, db } = await freshApp()
     db.data.trials.push({
       experimentID: 'E1',
@@ -82,7 +82,7 @@ describe('DELETE trial updates timeline loop items', () => {
         { id: 2, name: 'T2', branches: [] },
       ],
       loops: [
-        { id: 'loop_1', name: 'L1', branches: [1], trials: [] },
+        { id: 'loop_1', name: 'L1', trials: [] },
       ],
       timeline: [
         { id: 1, type: 'trial', name: 'T1' },
@@ -93,22 +93,22 @@ describe('DELETE trial updates timeline loop items', () => {
     await request(app).delete('/api/trial/E1/1').expect(200)
     await db.read()
     const tlLoop = db.data.trials[0].timeline.find(t => t.id === 'loop_1')
-    expect(tlLoop.branches).toEqual([])
+    expect(tlLoop).not.toHaveProperty('branches')
   })
 })
 
 /* ── loops.js: lines 105-117 (other loops referencing looped trials) ───── */
-describe('POST loop updates other loops branches', () => {
-  test('other loops that branch to a trial inside the new loop get branch replaced', async () => {
+describe('POST loop preserves trial edges from other loops', () => {
+  test('an in-loop trial retains its exact destination when that trial is grouped', async () => {
     const { app, db } = await freshApp()
     db.data.trials.push({
       experimentID: 'E1',
       trials: [
         { id: 1, name: 'T1', branches: [] },
-        { id: 2, name: 'T2', branches: [] },
+        { id: 2, name: 'T2', parentLoopId: 'loop_existing', branches: [1] },
       ],
       loops: [
-        { id: 'loop_existing', name: 'LE', branches: [1], trials: [] },
+        { id: 'loop_existing', name: 'LE', trials: [] },
       ],
       timeline: [
         { id: 1, type: 'trial', name: 'T1' },
@@ -122,8 +122,8 @@ describe('POST loop updates other loops branches', () => {
       .expect(200)
     await db.read()
     const le = db.data.trials[0].loops.find(l => l.id === 'loop_existing')
-    expect(le.branches).not.toContain(1)
-    expect(le.branches.some(b => String(b).startsWith('loop_'))).toBe(true)
+    expect(le).not.toHaveProperty('branches')
+    expect(db.data.trials[0].trials.find(t => t.id === 2).branches).toEqual([1])
   })
 })
 
@@ -150,7 +150,7 @@ describe('loop-trials-metadata with nested loops', () => {
       experimentID: 'E1',
       trials: [],
       loops: [
-        { id: 'loop_1', name: 'L1', trials: ['loop_nested'], branches: [] },
+        { id: 'loop_1', name: 'L1', trials: ['loop_nested'], },
         { id: 'loop_nested', name: 'Nested', trials: [], branches: [99] },
       ],
       timeline: [],
@@ -175,11 +175,11 @@ describe('PATCH loop updates timeline when trials change', () => {
         { id: 2, name: 'T2', branches: [] },
         { id: 3, name: 'T3', branches: [] },
       ],
-      loops: [{ id: 'loop_1', name: 'L1', trials: [1], branches: [] }],
+      loops: [{ id: 'loop_1', name: 'L1', trials: [1], }],
       timeline: [
         { id: 1, type: 'trial', name: 'T1' },
         { id: 3, type: 'trial', name: 'T3' },
-        { id: 'loop_1', type: 'loop', name: 'L1', branches: [], trials: [1] },
+        { id: 'loop_1', type: 'loop', name: 'L1',  trials: [1] },
       ],
     })
     await db.write()
@@ -204,8 +204,8 @@ describe('PATCH loop updates timeline name', () => {
     db.data.trials.push({
       experimentID: 'E1',
       trials: [],
-      loops: [{ id: 'loop_1', name: 'OldName', trials: [], branches: [] }],
-      timeline: [{ id: 'loop_1', type: 'loop', name: 'OldName', branches: [], trials: [] }],
+      loops: [{ id: 'loop_1', name: 'OldName', trials: [], }],
+      timeline: [{ id: 'loop_1', type: 'loop', name: 'OldName',  trials: [] }],
     })
     await db.write()
     await request(app)
@@ -224,7 +224,7 @@ describe('PATCH loop error handling', () => {
     db.data.trials.push({
       experimentID: 'E1',
       trials: [],
-      loops: [{ id: 'loop_1', name: 'L1', trials: [], branches: [] }],
+      loops: [{ id: 'loop_1', name: 'L1', trials: [], }],
       timeline: [],
     })
     await db.write()
@@ -245,8 +245,8 @@ describe('DELETE loop error handling', () => {
     db.data.trials.push({
       experimentID: 'E1',
       trials: [],
-      loops: [{ id: 'loop_1', name: 'L1', trials: [], branches: [] }],
-      timeline: [{ id: 'loop_1', type: 'loop', name: 'L1', branches: [], trials: [] }],
+      loops: [{ id: 'loop_1', name: 'L1', trials: [], }],
+      timeline: [{ id: 'loop_1', type: 'loop', name: 'L1',  trials: [] }],
     })
     await db.write()
     const origWrite = db.write
@@ -290,7 +290,7 @@ describe('timeline-names with missing loop trial references', () => {
 
 /* ── index.js: validate-ancestor with loop items (lines 170-171, 178) ──── */
 describe('validate-ancestor with loop source/target', () => {
-  test('handles loop_ids in ancestor check', async () => {
+  test('does not traverse obsolete loop branches', async () => {
     const { app, db } = await freshApp()
     db.data.trials.push({
       experimentID: 'E1',
@@ -306,7 +306,7 @@ describe('validate-ancestor with loop source/target', () => {
     const res = await request(app)
       .get('/api/validate-ancestor/E1?source=1&target=loop_2')
       .expect(200)
-    expect(res.body.isAncestor).toBe(true)
+    expect(res.body.isAncestor).toBe(false)
   })
 })
 

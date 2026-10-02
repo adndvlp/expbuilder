@@ -49,7 +49,7 @@ describe('GET /api/loop-trials-metadata/:experimentID/:loopId', () => {
         { id: 1, name: 'T1', branches: [2] },
         { id: 2, name: 'T2', branches: [] },
       ],
-      loops: [{ id: 'loop_1', name: 'L1', trials: [1], branches: [] }],
+      loops: [{ id: 'loop_1', name: 'L1', trials: [1], }],
       timeline: [],
     })
     await db.write()

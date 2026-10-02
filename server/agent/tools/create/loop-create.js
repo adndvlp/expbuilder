@@ -2,6 +2,8 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { db, readDb, ensureDoc } from './state.js'
 
+import { assertLoopHasNoBranching } from '../../../routes/timeline/branchContract.js'
+
 export const loopCreateTools = {
   // ── Loops ──────────────────────────────────────────────────────────────────
 
@@ -16,11 +18,19 @@ export const loopCreateTools = {
       isConditionalLoop: z.boolean().optional().default(false).describe('Conditional loop'),
       loopConditions: z.array(z.any()).optional().describe('Loop condition rules'),
       parentLoopId: z.string().optional().describe('Nested parent loop'),
-      branches: z.array(z.union([z.string(), z.number()])).optional().describe('Branch targets'),
       csvJson: z.array(z.any()).optional().describe('CSV rows for timeline_variables'),
       csvColumns: z.array(z.string()).optional().describe('CSV column names'),
-    }),
-    execute: async ({ experimentID, name, trials: trialIds, repetitions, randomize, isConditionalLoop, loopConditions, parentLoopId, branches, csvJson, csvColumns }) => {
+    }).strict(),
+    execute: async (args) => {
+      try {
+        assertLoopHasNoBranching(args)
+      } catch (error) {
+        return { error: error.message, code: error.code }
+      }
+      const {
+        experimentID, name, trials: trialIds, repetitions, randomize,
+        isConditionalLoop, loopConditions, parentLoopId, csvJson, csvColumns,
+      } = args
       await readDb()
       const trimmed = (name ?? '').trim()
       if (!trimmed || /^undefined$/i.test(trimmed) || /^null$/i.test(trimmed)) {
@@ -47,7 +57,6 @@ export const loopCreateTools = {
         categoryData: [],
         isConditionalLoop: isConditionalLoop ?? false,
         ...(loopConditions !== undefined && { loopConditions }),
-        branches: branches ?? [],
         ...(parentLoopId ? { parentLoopId } : {}),
         ...(csvJson !== undefined && { csvJson }),
         ...(csvColumns !== undefined && { csvColumns }),
@@ -68,7 +77,6 @@ export const loopCreateTools = {
           id: newLoop.id,
           type: 'loop',
           name: newLoop.name,
-          branches: newLoop.branches,
           trials: newLoop.trials,
         })
       } else {
@@ -81,34 +89,11 @@ export const loopCreateTools = {
         }
       }
 
-      // Replace grouped trial IDs with loop ID in other trials' branches
-      doc.trials.forEach(trial => {
-        if (newLoop.trials.includes(trial.id)) return
-        if (!trial.branches?.length) return
-        if (trial.branches.some(bid => newLoop.trials.includes(bid))) {
-          const filtered = trial.branches.filter(bid => !newLoop.trials.includes(bid))
-          if (!filtered.includes(newLoop.id)) filtered.push(newLoop.id)
-          trial.branches = filtered
-        }
-      })
-
-      doc.loops.forEach(loop => {
-        if (loop.id === newLoop.id || !loop.branches?.length) return
-        if (loop.branches.some(bid => newLoop.trials.includes(bid))) {
-          const filtered = loop.branches.filter(bid => !newLoop.trials.includes(bid))
-          if (!filtered.includes(newLoop.id)) filtered.push(newLoop.id)
-          loop.branches = filtered
-        }
-      })
-
       // Sync timeline branches
       doc.timeline.forEach(item => {
         if (item.type === 'trial') {
           const t = doc.trials.find(t => t.id === item.id)
           if (t) item.branches = t.branches ?? []
-        } else if (item.type === 'loop') {
-          const l = doc.loops.find(l => l.id === item.id)
-          if (l) item.branches = l.branches ?? []
         }
       })
 

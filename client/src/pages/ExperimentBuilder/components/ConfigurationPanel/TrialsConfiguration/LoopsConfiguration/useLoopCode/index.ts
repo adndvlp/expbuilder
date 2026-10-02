@@ -1,11 +1,6 @@
 import BranchesCode from "./BranchesCode";
 import BranchingLogicCode from "./BranchingLogicCode";
-import {
-  BranchCondition,
-  LoopCondition,
-  RepeatCondition,
-  TimelineItem,
-} from "./types";
+import { LoopCondition, RepeatCondition, TimelineItem } from "./types";
 import { generateItemWrappers } from "./services/generateItemWrappers";
 import {
   generateDescendantIdEntries,
@@ -17,8 +12,6 @@ import { toCodeIdentifier } from "../../../../../utils/codegen/codeIdentifier";
 
 type Props = {
   id: string | undefined;
-  branches: (string | number)[] | undefined;
-  branchConditions: BranchCondition[] | undefined;
   repeatConditions?: RepeatCondition[];
   repetitions: number;
   randomize: boolean;
@@ -37,8 +30,6 @@ type Props = {
 
 export default function useLoopCode({
   id,
-  branches,
-  branchConditions,
   repeatConditions,
   repetitions,
   randomize,
@@ -80,8 +71,6 @@ export default function useLoopCode({
           // eslint-disable-next-line react-hooks/rules-of-hooks
           const nestedLoopCode = useLoopCode({
             id: nestedLoopId === null ? undefined : String(nestedLoopId),
-            branches: item.branches,
-            branchConditions: item.branchConditions,
             repeatConditions: item.repeatConditions,
             repetitions: item.repetitions || 1,
             randomize: item.randomize || false,
@@ -201,8 +190,7 @@ export default function useLoopCode({
     const test_stimuli_${loopIdSanitized} = ${JSON.stringify(unifiedStimuli, null, 2)};`;
     }
 
-    // Check if loop has branches
-    const hasBranchesLoop = branches && branches.length > 0;
+    const hasBranchesLoop = false;
 
     const branchingResult = BranchingLogicCode({
       code,
@@ -215,7 +203,7 @@ export default function useLoopCode({
       timelineRefs,
       repetitions,
       randomize,
-      branches,
+      branches: undefined,
       descendantIdEntries: generateDescendantIdEntries(trials, sanitizeName),
       isConditionalLoop,
       loopConditions,
@@ -232,8 +220,8 @@ export default function useLoopCode({
     const branchesResult = BranchesCode({
       code,
       hasBranchesLoop,
-      branches,
-      branchConditions,
+      branches: undefined,
+      branchConditions: undefined,
       repeatConditions,
       id,
       loopIdSanitized,

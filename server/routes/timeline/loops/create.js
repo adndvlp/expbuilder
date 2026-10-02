@@ -1,16 +1,14 @@
 import { Router } from "express";
 import { db } from "../../../utils/db.js";
-import {
-  getExperimentDoc,
-  replaceGroupedTrialBranches,
-  syncTimelineBranches,
-} from "./state.js";
+import { getExperimentDoc, syncTimelineBranches } from "./state.js";
 import { createUniqueItemName } from "../uniqueItemName.js";
 import { buildExperimentGraph } from "../graph/buildExperimentGraph.js";
 import { findItem, findLoop, normalizeScopeId } from "../graph/identity.js";
 import { moveItemToScope } from "../graph/ownership.js";
 import { allocateLoopId } from "../graph/itemIds.js";
 import { pruneDanglingBranches } from "../trials/state.js";
+
+import { assertLoopHasNoBranching } from "../branchContract.js";
 
 const router = Router();
 
@@ -19,6 +17,7 @@ router.post("/api/loop/:experimentID", async (req, res) => {
   try {
     const { experimentID } = req.params;
     const loopData = req.body;
+    assertLoopHasNoBranching(loopData);
     const experimentDoc = await getExperimentDoc(experimentID, true);
 
     // A nested loop whose parent was deleted (or never existed) must fail
@@ -53,7 +52,6 @@ router.post("/api/loop/:experimentID", async (req, res) => {
       .filter((itemId) => findItem(experimentDoc, itemId))
       .forEach((itemId) => moveItemToScope(experimentDoc, itemId, newLoop.id));
 
-    replaceGroupedTrialBranches(experimentDoc, newLoop);
     pruneDanglingBranches(experimentDoc);
     syncTimelineBranches(experimentDoc);
     experimentDoc.updatedAt = new Date().toISOString();
@@ -66,7 +64,13 @@ router.post("/api/loop/:experimentID", async (req, res) => {
       graph: buildExperimentGraph(experimentDoc),
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res
+      .status(error.status ?? 500)
+      .json({
+        success: false,
+        error: error.message,
+        ...(error.code ? { code: error.code } : {}),
+      });
   }
 });
 

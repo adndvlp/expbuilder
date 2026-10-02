@@ -1,13 +1,25 @@
 export type GraphScopeId = string | null;
 
-export type TimelineItem = {
+type TimelineItemBase = {
   id: string | number;
-  type: "trial" | "loop";
   name: string;
-  branches?: (string | number)[];
-  trials?: (string | number)[];
   parentLoopId?: string | null;
 };
+
+export type TrialTimelineItem = TimelineItemBase & {
+  type: "trial";
+  branches?: (string | number)[];
+  trials?: never;
+};
+
+export type LoopTimelineItem = TimelineItemBase & {
+  type: "loop";
+  trials?: (string | number)[];
+  branches?: never;
+  branchConditions?: never;
+};
+
+export type TimelineItem = TrialTimelineItem | LoopTimelineItem;
 
 export type GraphBranchEdge = {
   sourceId: string | number;

@@ -20,12 +20,10 @@ export interface Loop {
   categories: boolean;
   categoryColumn: string;
   categoryData: any[];
-  trials: (string | number)[]; // Solo IDs de trials, estructura plana
+  trials: (string | number)[]; // IDs de elementos contenidos (trials o loops)
   code: string;
   csvJson?: any[];
   csvColumns?: string[];
-  branches?: Array<string | number>;
-  branchConditions?: BranchCondition[];
   repeatConditions?: RepeatCondition[];
   loopConditions?: LoopCondition[];
   isConditionalLoop?: boolean;

@@ -53,19 +53,19 @@ const seedNested = async (db) => {
       { id: 4, name: 'Deep', parentLoopId: 'inner', branches: [] },
     ],
     loops: [
-      { id: 'outer', name: 'Outer', trials: ['inner'], branches: [] },
+      { id: 'outer', name: 'Outer', trials: ['inner'], },
       {
         id: 'inner',
         name: 'Inner',
         parentLoopId: 'outer',
         trials: [3, 4],
-        branches: [],
+
       },
     ],
     timeline: [
       { id: 1, type: 'trial', name: 'Root', branches: [] },
       { id: 2, type: 'trial', name: 'Landing', branches: [] },
-      { id: 'outer', type: 'loop', name: 'Outer', branches: [], trials: ['inner'] },
+      { id: 'outer', type: 'loop', name: 'Outer',  trials: ['inner'] },
     ],
   })
   await db.write()
@@ -126,8 +126,8 @@ describe('repeat jump from inside a loop to the root timeline', () => {
   })
 })
 
-describe('loop carrying loopConditions, branches and branchConditions', () => {
-  test('conditional loop with exit branch and condition combined', async () => {
+describe('conditional loop with trial branching', () => {
+  test('loop conditions coexist with branch conditions on the child trial', async () => {
     const { app, db } = await freshApp()
     await seedNested(db)
 
@@ -136,20 +136,23 @@ describe('loop carrying loopConditions, branches and branchConditions', () => {
       .send({
         isConditionalLoop: true,
         loopConditions: [{ id: 'lc1', rules: [] }],
-        branches: [2],
-        branchConditions: [
-          { id: 'c1', rules: [], nextTrialId: 2 },
-        ],
       })
       .expect(200)
     expectValidGraph(res)
+
+    const trialResponse = await request(app)
+      .patch('/api/trial/E1/4')
+      .send({ branches: [2], branchConditions: [{ id: 'c1', rules: [], nextTrialId: 2 }] })
+      .expect(200)
+    expectValidGraph(trialResponse)
 
     await db.read()
     const loop = db.data.trials[0].loops.find((l) => l.id === 'inner')
     expect(loop.isConditionalLoop).toBe(true)
     expect(loop.loopConditions).toEqual([{ id: 'lc1', rules: [] }])
-    expect(loop.branches).toEqual([2])
-    expect(loop.branchConditions.map((c) => c.id)).toEqual(['c1'])
+    expect(loop).not.toHaveProperty('branches')
+    expect(loop).not.toHaveProperty('branchConditions')
+    expect(db.data.trials[0].trials.find(t => t.id === 4).branchConditions.map(c => c.id)).toEqual(['c1'])
   })
 })
 

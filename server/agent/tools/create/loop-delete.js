@@ -77,7 +77,7 @@ export const loopDeleteTools = {
         doc.loops.forEach(l => {
           if (l.parentLoopId === loopId) {
             l.parentLoopId = null
-            toInsert.push({ id: l.id, type: 'loop', name: l.name, branches: l.branches ?? [], trials: l.trials ?? [] })
+            toInsert.push({ id: l.id, type: 'loop', name: l.name, trials: l.trials ?? [] })
           }
         })
 
@@ -89,9 +89,7 @@ export const loopDeleteTools = {
         if (item.type === 'trial') {
           const t = doc.trials.find(t => t.id === item.id)
           if (t) item.branches = t.branches ?? []
-        } else if (item.type === 'loop') {
-          const l = doc.loops.find(l => l.id === item.id)
-          if (l) item.branches = l.branches ?? []
+
         }
       })
 

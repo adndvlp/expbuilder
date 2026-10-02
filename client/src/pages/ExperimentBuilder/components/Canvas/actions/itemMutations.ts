@@ -1,8 +1,5 @@
 import type { TimelineItem } from "../../../contexts/TrialsContext";
-import type {
-  CanvasActionDependencies,
-  CanvasActionScope,
-} from "./types";
+import type { CanvasActionDependencies, CanvasActionScope } from "./types";
 
 export function getScopeNames(scope: CanvasActionScope): string[] {
   const items =
@@ -18,16 +15,14 @@ export async function updateItemBranches(
   if (item.type === "trial") {
     return dependencies.updateTrial(item.id, { branches });
   }
-  return dependencies.updateLoop(item.id, { branches });
+  throw new Error("Branch sources must be trials");
 }
 
 export async function getItemBranches(
   item: TimelineItem,
   dependencies: CanvasActionDependencies,
 ): Promise<(string | number)[] | null> {
-  const fullItem =
-    item.type === "trial"
-      ? await dependencies.getTrial(item.id)
-      : await dependencies.getLoop(item.id);
-  return fullItem ? fullItem.branches ?? [] : null;
+  if (item.type !== "trial") throw new Error("Branch sources must be trials");
+  const trial = await dependencies.getTrial(item.id);
+  return trial ? (trial.branches ?? []) : null;
 }

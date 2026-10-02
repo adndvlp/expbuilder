@@ -110,7 +110,7 @@ describe("useLoopCode composition", () => {
     expect(code).toContain("loop_loop_merge_ShouldBranchOnFinish = false;");
   });
 
-  it("generates loop repeat conditions together with branch conditions", () => {
+  it("preserves repeat conditions without generating loop branch decisions", () => {
     const genLoopCode = useLoopCode({
       id: "loop_combo",
       branches: [10, "loop_next"],
@@ -161,8 +161,8 @@ describe("useLoopCode composition", () => {
     );
     expect(code).toContain("window.ExpBuilderBranching.evaluateCondition");
     expect(code).toContain("window.ExpBuilderNavigation.requestJump(");
-    expect(code).toContain('const branches = [10, "loop_next"];');
-    expect(code).toContain("window.ExpBuilderBranching.decide(");
-    expect(code).toContain("window.nextTrialId = branches[0];");
+    expect(code).not.toContain('const branches = [10, "loop_next"];');
+    expect(code).not.toContain("window.ExpBuilderBranching.decide(");
+    expect(code).toContain("window.nextTrialId = pendingBranchTarget;");
   });
 });

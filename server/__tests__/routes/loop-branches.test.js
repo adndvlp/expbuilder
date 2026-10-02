@@ -56,21 +56,20 @@ const seedNestedExperiment = async (db) => {
         id: "outer",
         name: "Outer loop",
         trials: ["middle"],
-        branches: [],
+
       },
       {
         id: "middle",
         name: "Middle loop",
         parentLoopId: "outer",
         trials: ["inner", 2],
-        branches: [],
       },
       {
         id: "inner",
         name: "Inner loop",
         parentLoopId: "middle",
         trials: [1, 4],
-        branches: [],
+
       },
     ],
     timeline: [
@@ -78,7 +77,6 @@ const seedNestedExperiment = async (db) => {
         id: "outer",
         type: "loop",
         name: "Outer loop",
-        branches: [3],
         trials: ["middle"],
       },
       { id: 3, type: "trial", name: "Root exit", branches: [] },
@@ -200,7 +198,7 @@ describe("loop exit branches", () => {
     expect(response.body.timeline[0]).toMatchObject({
       id: "outer",
       type: "loop",
-      branches: [],
+
     });
     const graphResponse = await request(app)
       .get("/api/experiment-graph/E1")

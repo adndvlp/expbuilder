@@ -6,6 +6,8 @@ import {
   reconnectParentsToChildren,
 } from '../../../routes/timeline/trials/state.js'
 
+import { normalizeTrialBranching } from '../../../routes/timeline/branchContract.js'
+
 export const trialTools = {
   // ── Create ─────────────────────────────────────────────────────────────────
 
@@ -18,9 +20,10 @@ export const trialTools = {
       parameters: z.record(z.any()).optional().describe('Plugin params. Auto-converted to columnMapping.'),
       columnMapping: z.record(columnMappingEntrySchema).optional().describe('{ param: { source:"csv"|"typed"|"none", value } }'),
       parentLoopId: z.string().optional().describe('Parent loop ID'),
-      branches: z.array(z.union([z.string(), z.number()])).optional().describe('Branch target IDs'),
+      branches: z.array(z.union([z.string(), z.number()])).optional().describe('Trial branch target IDs'),
+      branchConditions: z.array(z.any()).optional().describe('Conditional trial branch rules'),
     }),
-    execute: async ({ experimentID, name, plugin, parameters, columnMapping, parentLoopId, branches }) => {
+    execute: async ({ experimentID, name, plugin, parameters, columnMapping, parentLoopId, branches, branchConditions }) => {
       await readDb()
       const trimmed = (name ?? '').trim()
       if (!trimmed || /^undefined$/i.test(trimmed) || /^null$/i.test(trimmed)) {
@@ -29,6 +32,16 @@ export const trialTools = {
       const exp = db.data.experiments.find(e => e.experimentID === experimentID)
       if (!exp) return { error: `Experiment ${experimentID} not found` }
 
+      try {
+        const branching = normalizeTrialBranching(
+          getDoc(experimentID) ?? { trials: [], loops: [] },
+          { branches, ...(branchConditions !== undefined ? { branchConditions } : {}) },
+        )
+        branches = branching.branches
+        branchConditions = branching.branchConditions
+      } catch (error) {
+        return { error: error.message, code: error.code }
+      }
       const doc = ensureDoc(experimentID)
 
       const id = Date.now()
@@ -52,6 +65,7 @@ export const trialTools = {
         parameters: parameters ?? {},
         columnMapping: Object.keys(finalColumnMapping).length > 0 ? finalColumnMapping : undefined,
         branches: branches ?? [],
+        ...(branchConditions !== undefined ? { branchConditions } : {}),
         ...(parentLoopId ? { parentLoopId } : {}),
         createdAt: now,
         updatedAt: now,
@@ -110,6 +124,12 @@ export const trialTools = {
       const idx = doc.trials.findIndex(t => t.id === trialId)
       if (idx === -1) return { error: `Trial ${trialId} not found` }
 
+      try {
+        updates = normalizeTrialBranching(doc, updates)
+      } catch (error) {
+        return { error: error.message, code: error.code }
+      }
+
       const now = new Date().toISOString()
       doc.trials[idx] = {
         ...doc.trials[idx],
@@ -137,7 +157,7 @@ export const trialTools = {
 
   delete_trial: tool({
     description:
-      'Delete a trial and clean up all references. Smart reconnect: any trial/loop that had this trial in its branches[] will inherit the deleted trial\'s own branches[] so the timeline graph stays connected. Also removes the trial from its parent loop\'s trials[] if applicable.',
+      'Delete a trial and clean up all references. Smart reconnect: any trial that had this trial in its branches[] will inherit the deleted trial\'s own branches[] so the timeline graph stays connected. Also removes the trial from its parent loop\'s trials[] if applicable.',
     parameters: z.object({
       experimentID: z.string().describe('Experiment UUID'),
       trialId: z.number().describe('Numeric trial ID to delete'),
@@ -175,7 +195,7 @@ export const trialTools = {
         }
         if (item.type === 'loop') {
           const l = doc.loops.find(l => l.id === item.id)
-          return { ...item, branches: l?.branches ?? [], trials: l?.trials ?? [] }
+          return { ...item, trials: l?.trials ?? [] }
         }
         return item
       })

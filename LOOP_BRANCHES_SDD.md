@@ -1,0 +1,252 @@
+# SDD: eliminación del branching legacy de loops
+
+## Estado y propósito
+
+- Fecha: 2026-10-01.
+- Rama de trabajo: `loop-branches`.
+- HEAD al cerrar la revisión: `5c9ae40` (`case for testing`).
+- Estado: alcance acordado; implementación pendiente. Decisión final: eliminar completamente la acción de mover loops.
+- Este documento conserva las decisiones del usuario y el resultado de la revisión para continuar el trabajo después de perder contexto.
+
+## Objetivo
+
+Eliminar la capacidad de los loops de tener ramas y la posibilidad de que una rama de un trial apunte al ID de un loop.
+
+Los loops son contenedores de trials y otros loops. Las conexiones del flujo se expresan mediante referencias entre trials. El canvas puede representar un loop como un bloque conectado, pero esa representación no convierte al loop en el origen o destino real de una rama.
+
+## Decisiones acordadas con el usuario
+
+### 1. Toda rama conecta trials
+
+| Origen real | Destino real | Permitido |
+| --- | --- | --- |
+| Trial | Trial | Sí |
+| Trial | Loop | No |
+| Loop | Trial | No |
+| Loop | Loop | No |
+
+- Eliminar `loop.branches` y `loop.branchConditions` del contrato, la persistencia, el grafo, los consumidores y la generación de código.
+- Aplicar la regla también a las escrituras realizadas por las herramientas del agente del servidor.
+- Una referencia entre trials no cambia porque uno de ellos pertenezca a un loop.
+- La contención se representa mediante la pertenencia al scope, `parentLoopId` y la lista de elementos del loop; no mediante ramas propias del loop.
+
+### 2. Agrupar y desagrupar conserva las referencias
+
+Si `A.branches = [B]`, agrupar B en L debe conservar `A.branches = [B]`.
+
+```text
+Antes:   A → B
+Después: A → B, con B contenido en L
+```
+
+- Agrupar no debe sustituir B por L en las ramas de A.
+- Desagrupar debe restaurar el contenido y su posición conservando las conexiones entre trials.
+- Eliminar la lógica que transfiere ramas propias del loop a su último elemento: el loop dejará de tener esas ramas.
+- Conservar el soporte de loops anidados.
+
+### 3. Eliminar completamente la acción de mover loops
+
+Decisión final del usuario: «mejor erradicamos completamente el mover para loops».
+
+- `Move Item` debe estar disponible únicamente para trials.
+- Retirar de la UI el acceso a esa acción cuando el elemento seleccionado sea un loop.
+- Eliminar el soporte de loops como elementos movibles de los tipos, hooks, handlers y acciones de movimiento.
+- Mantener los loops excluidos de los destinos del movimiento de trials.
+- Las acciones de movimiento deben rechazar un loop como origen o destino antes de modificar el estado, incluso si se invocan directamente.
+- Conservar el movimiento de trials, también cuando pertenezcan a un loop.
+- Retirar código y pruebas que implementan o esperan el movimiento de un loop como bloque del flujo.
+
+Esta decisión reemplaza el diseño de mover el contenedor conectando su primer y último trial. Se descartan las reglas de inserción, reconexión de la posición anterior y redirección de múltiples finales propias de ese diseño; no queda pendiente una política de salidas para mover loops.
+
+La creación, agrupación y desagrupación siguen formando parte del refactor. Las utilidades de pertenencia a scopes necesarias para esas operaciones deben conservarse aunque internamente utilicen el verbo `move`.
+
+### 4. Se conserva la representación visual del loop
+
+- Un loop puede seguir apareciendo como un bloque conectado en el canvas.
+- Las conexiones visibles deben representar conexiones reales entre trials.
+- La representación de un loop colapsado no debe escribir el ID del contenedor como destino de una rama.
+- Retirar la dependencia de `loop.branches` en los renderizadores y cálculos de layout.
+- Revisar `renderLoopWithBranches` por su comportamiento: retirar el soporte de ramas propias y destinos reales de tipo loop, conservando la representación visual necesaria del contenedor.
+- Al expandir o colapsar un loop, los IDs reales de origen y destino deben permanecer intactos.
+
+### 5. La ejecución conserva la iteración del contenido
+
+- Retirar las decisiones de branching propias del loop.
+- Conservar el soporte de ejecución que transporta o consume una decisión tomada por un trial a través de la jerarquía de contenedores.
+- Un estado de ejecución asociado al scope del loop no implica que el loop tenga ramas propias.
+- La eliminación del branching propio del loop debe conservar el recorrido normal de sus filas de CSV, iteraciones y repeticiones. Las decisiones entre trials conservan su comportamiento.
+- Conservar los destinos concretos y los parámetros de las conexiones entre trials.
+
+### 6. No hace falta una migración de experimentos
+
+El usuario aclaró: «no hay experimentos que guardar».
+
+- No desarrollar una migración de compatibilidad para preservar el formato legacy.
+- La eliminación debe quedar completa en el contrato actual.
+- Los datos locales de prueba no son una especificación de comportamientos que haya que conservar.
+
+## Contexto de la revisión
+
+El commit `43f9e04e9d348a90e385bf698ec3e93257028daf` (`fix(loop): ignore legacy loop branches so CSV loops always iterate`) hizo un parche para ignorar las ramas propias del loop mediante `hasBranchesLoop = false`.
+
+Ese parche conserva los campos y los mecanismos legacy. La rama `loop-branches` revisada no contiene ese commit: su generador todavía calcula `hasBranchesLoop` a partir de `branches.length`. El commit de referencia y esta rama comparten como base `a2af702`.
+
+También existe una limpieza parcial del canvas en `eafe8a5`: se quitó el botón de agregar ramas en loops y se excluyeron loops de los destinos de `Move Item`. Esto no elimina los caminos internos que todavía producen ramas desde o hacia loops.
+
+## Hallazgos y archivos afectados
+
+### Modelo y proyecciones
+
+- `client/src/pages/ExperimentBuilder/components/ConfigurationPanel/types/index.ts`: `Loop` declara `branches` y `branchConditions`.
+- `client/src/pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/useLoopCode/types.ts`: `LoopData` también conserva esos campos.
+- `client/src/pages/ExperimentBuilder/modules/experiment-graph/types.ts`: `TimelineItem` permite `branches` tanto en trials como en loops.
+- Las proyecciones del timeline y scopes del servidor copian `branches` de loops.
+
+### Mutaciones del servidor
+
+- `server/routes/timeline/loops/state.js`, `replaceGroupedTrialBranches`: sustituye destinos de trials agrupados por el ID del nuevo loop. Debe retirarse ese comportamiento.
+- `server/routes/timeline/loops/create.js`: invoca esa sustitución al crear el loop.
+- `server/routes/timeline/loops/delete.js`: reconecta padres que apuntan al loop y transfiere las ramas del loop al último elemento. Debe ajustarse a referencias entre trials y a la restauración del contenido.
+- Los helpers `findLastItems` de `server/routes/timeline/loops/state.js` y `server/agent/tools/create/state.js` participan en la transferencia legacy de ramas del loop al contenido. Revisar sus consumidores y retirarlos si quedan sin uso después de eliminar esa transferencia.
+- `server/routes/timeline/loops/update.js`: acepta y sincroniza `branches` y `branchConditions` del loop.
+- `server/routes/timeline/trials/crud.js`: la comprobación de existencia de destinos también admite loops.
+- `server/routes/timeline/trials/state.js`: la poda, reconexión y sincronización todavía consideran ramas de loops.
+- `server/routes/timeline/core.js`: el reemplazo del timeline acepta metadatos sin restringir el branching a trials.
+
+### Grafo y validación
+
+- `server/routes/timeline/graph/buildExperimentGraph.js`: construye ramas recorriendo trials y loops, y resuelve destinos de ambos tipos.
+- `server/routes/timeline/graph/ownership.js`: las representaciones de elementos incluyen ramas del contenedor.
+- `server/routes/timeline/validation.js`: no exige que ambos extremos de una conexión sean trials.
+- Durante la revisión se construyó un ejemplo en memoria con `Trial → Loop` y `Loop → Trial`. El grafo aceptó ambas conexiones sin diagnósticos.
+
+### Canvas y configuración
+
+- `client/src/pages/ExperimentBuilder/components/Canvas/actions/itemMutations.ts`: obtiene y actualiza ramas de trials o loops.
+- `client/src/pages/ExperimentBuilder/components/Canvas/actions/moveActions.ts`: al insertar un loop en una cadena con ramas puede escribir el ID del loop en las ramas del padre y asignar ramas al loop.
+- `client/src/pages/ExperimentBuilder/components/Canvas/hooks/useCanvasMoveActions.ts`: admite la selección de loops para moverlos; debe restringirse a trials.
+- `client/src/pages/ExperimentBuilder/components/Canvas/components/CanvasToolbar.tsx`: revisar la visibilidad de `Move Item` según el tipo del elemento seleccionado.
+- Los tipos de acciones del canvas, incluido `CanvasItemToMove`, deben representar exclusivamente trials como elementos movibles.
+- `client/src/pages/ExperimentBuilder/components/Canvas/components/CanvasModals.tsx`: conserva el filtro que excluye loops como destinos; también debe impedir abrir el modal para mover un loop.
+- `client/src/pages/ExperimentBuilder/components/Canvas/services/createBranchRenderers.ts`: `renderLoopWithBranches` representa ramas propias del loop y loops como destinos reales.
+- `client/src/pages/ExperimentBuilder/components/Canvas/services/canonicalBranchProjection.ts`: proyecta extremos reales hacia nodos visibles; revisar cómo conservar la representación del contenedor sin modificar la identidad de los trials.
+- La configuración `BranchedTrial` y los intents en `modules/experiment-authoring/intents/branching.ts` todavía admiten loops como elementos o destinos de configuración de ramas.
+
+### Generación de código y ejecución
+
+- `client/src/pages/ExperimentBuilder/utils/codegen/generateLoopCode.ts`: transmite los campos legacy del loop al generador.
+- `client/src/pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/useLoopCode/index.ts`: calcula `hasBranchesLoop` y transmite los campos a los generadores auxiliares.
+- `LoopsConfiguration/useLoopCode/BranchesCode.ts`: permite decidir una rama propia del loop al finalizar.
+- `LoopsConfiguration/useLoopCode/BranchingLogicCode.ts`: genera `HasBranches` y `ShouldBranchOnFinish`.
+- `LoopsConfiguration/useLoopCode/services/generateLoopFinishLifecycle.ts`: contiene un fallback a las ramas propias del loop, además de propagación válida de destinos concretos de trials.
+- `TrialCode/TrialCodeGenerators/onFinishGenerator.ts`: los callbacks de trials dependen de `HasBranches` y `ShouldBranchOnFinish` del loop.
+- `generateItemWrappers`, `generateLoopRoutingLifecycle` y las rutas entre scopes contienen soporte necesario para ejecutar decisiones de trials; revisar sus dependencias antes de retirar estado.
+
+### Implementación paralela del agente
+
+- `server/agent/tools/create/loop-create.js`: acepta ramas propias del loop y sustituye destinos agrupados por el ID del loop.
+- `server/agent/tools/create/loop-update.js`: permite actualizar y sincronizar esos campos.
+- `server/agent/tools/create/loop-delete.js`: transfiere ramas propias del loop al contenido.
+- `server/agent/tools/create/trials.js` y `timeline.js`: permiten introducir destinos o metadatos legacy.
+- `server/agent/codegen/loop.js` y `loopRouting.js`: generan comportamiento relacionado con ramas propias y rutas de loops.
+
+## Plan de implementación
+
+1. **Cerrar el contrato y la validación.** Diferenciar los tipos de trial y loop; eliminar campos de branching de loops; validar que origen y destino reales sean trials en las mutaciones y el grafo. Cubrir también las herramientas del agente.
+2. **Corregir agrupación y desagrupación.** Conservar IDs y referencias entre trials; retirar la sustitución por IDs de loops y la transferencia de ramas del contenedor.
+3. **Eliminar el movimiento de loops.** Retirar su acceso en la UI y su soporte en tipos, hooks y handlers. Restringir la acción a trials y rechazar loops como origen o destino antes de cualquier modificación. Conservar las utilidades de contención necesarias para agrupar y desagrupar.
+4. **Adaptar la configuración y el canvas.** Retirar lectores/escritores de ramas propias de loops; conservar bloques y conexiones visibles como representación de las referencias reales entre trials.
+5. **Limpiar ambos generadores de código.** Retirar decisiones propias, flags y fallbacks legacy; conservar la ejecución de conexiones entre trials y el recorrido normal de las filas e iteraciones del loop.
+6. **Actualizar pruebas y documentación afectada.** Sustituir expectativas que exigen branching propio de loops y verificar los criterios de aceptación siguientes.
+
+No implementar la propuesta anterior de mover loops mediante sus extremos ni desarrollar una política para redirigir sus múltiples salidas. La decisión vigente es retirar completamente esa acción. El contenido anidado conserva sus conexiones entre trials y sus ciclos de ejecución.
+
+## Revisión de aclaraciones pendientes
+
+Después de retirar el movimiento de loops, la revisión no ha identificado otra decisión funcional pendiente comparable a elegir qué hacer con sus múltiples salidas. Los demás puntos se rigen por conservar las conexiones y decisiones existentes de los trials y retirar la participación del loop como origen o destino real de ramas.
+
+- **Contrato y validación:** una rama con origen o destino de tipo loop es inválida. Restringir las escrituras antes de persistirlas; no sustituir ese destino por un trial elegido arbitrariamente.
+- **Agrupar y desagrupar:** conservar todas las referencias entre trials. Si distintos finales apuntan a X e Y, mantener esas conexiones; estas operaciones no necesitan elegir un único final ni un hijo común.
+- **Canvas:** conservar la representación del contenedor y proyectar las conexiones entre trials sobre los elementos visibles. No diseñar nuevas reglas de conexiones por expandir o colapsar un loop.
+- **Ejecución:** preservar las decisiones de los trials. No interpretar «recorrido normal del CSV» como una orden de ignorar una rama del trial que selecciona otro destino.
+- **Herramientas del agente:** aplicar el mismo contrato; no conservar una excepción para su implementación paralela.
+
+El principal riesgo técnico pendiente está en la generación de código: el estado asociado al scope del loop participa en la ejecución de ramas de trials, además de contener mecanismos legacy. Separar esos usos antes de eliminar flags o callbacks.
+
+Verificar específicamente el recorrido normal de varias filas y repeticiones, las rutas dentro del mismo scope, las conexiones entre niveles anidados, las condiciones y parámetros, y la continuación tras destinos compartidos. Las pruebas revisadas incluyen rutas desde trials no terminales a destinos externos; esa cobertura no sustituye la verificación de escenarios con varias filas y repeticiones. Estos son trabajos de implementación y validación, no motivos para inventar otra política de conexiones.
+
+## Criterios de aceptación
+
+- [x] Los tipos y documentos actuales de loops no incluyen `branches` ni `branchConditions`.
+- [ ] Ninguna mutación crea una rama cuyo origen o destino real sea un loop.
+- [x] API, grafo y herramientas del agente aplican la misma regla.
+- [x] Agrupar B dentro de un loop conserva `A.branches = [B]`.
+- [ ] Desagrupar conserva esas referencias y restaura el contenido en su posición correspondiente.
+- [ ] Seleccionar un loop no ofrece ni abre la acción `Move Item`.
+- [ ] Los tipos, hooks, handlers y acciones de movimiento admiten únicamente trials como elementos movibles.
+- [x] Invocar directamente el movimiento con un loop como origen o destino se rechaza sin modificar conexiones, pertenencia ni orden.
+- [ ] El movimiento de trials conserva su funcionamiento, también dentro de loops.
+- [ ] Crear y desagrupar loops sigue funcionando, incluyendo contenedores anidados.
+- [ ] Expandir y colapsar un loop conserva la identidad real de los extremos de sus conexiones.
+- [ ] El canvas no depende de `loop.branches` para representar el flujo.
+- [ ] La generación de código no contiene decisiones ni fallbacks basados en ramas propias de loops.
+- [ ] El recorrido normal de los loops respeta todas las filas de CSV, iteraciones y repeticiones; se prueba con ejecución real además de inspección de código generado.
+- [ ] Se conservan los destinos concretos y los parámetros de ramas entre trials.
+
+## Verificación realizada y estado para retomar
+
+Durante la revisión se ejecutaron estos archivos con Vitest:
+
+- `client/src/__tests__/components/loopBranching/loopExitCodegen.test.ts`.
+- `client/src/__tests__/components/loopBranching/loopRoutingCodegen.test.ts`.
+- `client/src/__tests__/components/codegenComposition/loopBranching.test.ts`.
+- `client/src/__tests__/components/codegenComposition/repeatBranchingVariants.test.ts`.
+
+Resultado: **4 archivos y 17 pruebas pasaron**. Es una línea base previa al refactor; algunas expectativas todavía exigen el comportamiento legacy. Conservar la cobertura útil de propagación de destinos concretos y parámetros, y reemplazar las expectativas sobre ramas propias de loops.
+
+### Ejecución por puntos y commits
+
+El usuario ejecuta los commits. El agente implementa y verifica un punto completo por entrega, actualiza este documento y proporciona el título del commit. No hacer staging ni crear commits.
+
+#### Punto 1: contrato y validación — implementado
+
+- `Loop` y `LoopData` ya no declaran campos de branching. `TimelineItem` distingue trials y loops; el tipo de loop impide asignarle ramas.
+- `server/routes/timeline/branchContract.js` concentra la validación compartida por REST y herramientas del agente. Crear o actualizar un loop con `branches` o `branchConditions`, incluso vacíos, se rechaza. Crear o actualizar un trial con un loop como destino de ramas o condiciones se rechaza antes de mutar el documento. El reemplazo del timeline aplica la misma regla.
+- El grafo emite conexiones entre trials y diagnostica orígenes/destinos de tipo loop. Los resúmenes de loops contienen pertenencia, sin ramas. La validación de conexiones y el recorrido de ancestros consultan trials por identidad real, sin deducir el tipo por el prefijo del ID.
+- Se conserva la poda existente de referencias a trials eliminados y de condiciones sin destino vigente. Referenciar un loop existente provoca un rechazo, sin redirigirlo a otro trial.
+- El grafo conserva el destino concreto al entrar en un loop descendiente o pasar a un loop hermano. Los scopes que se abandonan se calculan hasta el ancestro común; no se cambia el ID del destino.
+- Se retiró desde este punto la sustitución de IDs de trials agrupados por el ID del loop, tanto en REST como en `create_loop`: mantenerla habría permitido que la propia creación produjera conexiones prohibidas.
+- Las escrituras de ramas del canvas rechazan loops. El movimiento valida ambos extremos antes de modificar conexiones u orden, incluyendo un payload que presente como trial un ID de loop conocido en el scope. La eliminación de su acceso en la UI y de sus tipos/hooks corresponde todavía al punto 3.
+- El generador del cliente dejó de recibir campos de branching propios del loop; su indicador de ramas propias queda desactivado. Retirar los flags, helpers y fallbacks residuales de ambos generadores sigue pendiente en el punto 5.
+- Los cambios de timeline de loops sincronizan nombre y contenido. El layout mantiene su tipo separado para las conexiones visuales proyectadas; la limpieza de renderers corresponde al punto 4.
+- Los `repeatConditions` existentes conservan su mecanismo. El editor unificado puede guardar esas reglas en loops enviando únicamente `repeatConditions`, sin introducir campos de branching vacíos.
+
+Nuevas regresiones: rechazo sin escrituras ni cambios en memoria/disco; schemas del agente sin ramas propias de loops; condiciones y parámetros entre trials; IDs numéricos/string conservados al agrupar; conexiones entre scopes anidados y hermanos; rechazo de movimiento con extremos de tipo loop; rechazo de decisiones de ramas desde loops en los intents del cliente.
+
+Verificación de esta entrega:
+
+- **Servidor:** 280 pruebas pasaron en 17 archivos de rutas del timeline y herramientas del agente, usando Jest con bases de datos temporales. Incluye las 35 regresiones de `server/__tests__/routes/branch-contract.test.js`.
+- **Cliente:** 1607 pruebas pasaron en 399 archivos con `node scripts/run-unit-tests.mjs`, incluyendo las 15 pruebas de navegador. El runner instaló Chromium temporalmente y eliminó esa instalación al terminar. La primera ejecución directa de Vitest había pasado las pruebas sin navegador, pero no podía preparar las cinco suites de Chromium por faltar el ejecutable; el runner resolvió esa limitación.
+- **Tipos:** `node node_modules/typescript/bin/tsc -b --pretty false` desde `client` pasó.
+- **Diff:** `git diff --check` pasó. No se crearon commits ni se hizo staging.
+- Una ejecución amplia de rutas registró un timeout en `tunnel-session-flow.test.js`; al repetirlo aislado pasó, sin cambiar su código. El cierre del punto usa las suites afectadas del timeline y agente enumeradas arriba.
+
+Reportes de esta sesión, guardados fuera del repositorio: `/tmp/loop-branches-server-final.json` y `/tmp/loop-branches-client-verified.json`.
+
+La ejecución real de loops con varias filas/repeticiones y la limpieza completa de ambos generadores siguen siendo las verificaciones del punto 5; esta entrega no marca ese punto como completado.
+
+Título previsto: `refactor(branching): restrict branches to trials`.
+
+#### Siguiente punto: agrupación y desagrupación
+
+Completar el punto 2. La sustitución de destinos al agrupar ya se retiró como dependencia del contrato. Falta eliminar las reconexiones hacia el primer elemento y las transferencias de ramas del contenedor al desagrupar, retirar `findLastItems` si queda sin consumidores y revisar la pertenencia/orden en las herramientas del agente. Verificar múltiples finales con destinos distintos, niveles anidados e IDs numéricos/string. Mantener intactas las referencias y condiciones entre trials.
+
+Los puntos 3, 4 y 5 siguen pendientes. Las pruebas y documentación se actualizan dentro de cada punto; el punto 6 agrupa la revisión final de la cobertura restante.
+
+Cambios locales existentes antes de crear este documento:
+
+- `SESSION_PERSISTENCE_SDD.md`: eliminado en el workspace.
+- `server/database/db.json`: modificado.
+- `server/experiments_html/`, `server/gorilla/` y `session-ses_f306.md`: sin seguimiento.
+
+Estos cambios no se modificaron durante la revisión ni al crear este SDD. Comprobar el estado actual al retomar para evitar sobrescribir trabajo del usuario.

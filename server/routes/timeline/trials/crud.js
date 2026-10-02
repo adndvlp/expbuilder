@@ -3,26 +3,24 @@ import { db } from "../../../utils/db.js";
 import {
   filterLiveConditions,
   getExperimentDoc,
-  itemExists,
   pruneDanglingBranches,
   reconnectParentsToChildren,
   syncTimelineItems,
 } from "./state.js";
 import { createUniqueItemName } from "../uniqueItemName.js";
 import { buildExperimentGraph } from "../graph/buildExperimentGraph.js";
-import {
-  moveItemToScope,
-  removeItemFromScopes,
-} from "../graph/ownership.js";
+import { moveItemToScope, removeItemFromScopes } from "../graph/ownership.js";
 import { findLoop, idsMatch, normalizeScopeId } from "../graph/identity.js";
 import { allocateTrialId } from "../graph/itemIds.js";
+
+import { normalizeTrialBranching } from "../branchContract.js";
 
 const router = Router();
 
 router.post("/api/trial/:experimentID", async (req, res) => {
   try {
     const { experimentID } = req.params;
-    const trialData = req.body;
+    let trialData = req.body;
     const targetScopeId = normalizeScopeId(trialData.parentLoopId);
     let experimentDoc = await getExperimentDoc(experimentID);
     const parentLoop =
@@ -35,6 +33,10 @@ router.post("/api/trial/:experimentID", async (req, res) => {
         error: `Loop ${targetScopeId} not found`,
       });
     }
+    trialData = normalizeTrialBranching(
+      experimentDoc ?? { trials: [], loops: [] },
+      trialData,
+    );
     experimentDoc ??= await getExperimentDoc(experimentID, true);
 
     const id = allocateTrialId(experimentDoc);
@@ -42,16 +44,10 @@ router.post("/api/trial/:experimentID", async (req, res) => {
       ...trialData,
       id,
       parentLoopId: targetScopeId,
-      name: createUniqueItemName(
-        experimentDoc,
-        trialData.name,
-        "New Trial",
-      ),
+      name: createUniqueItemName(experimentDoc, trialData.name, "New Trial"),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      ...((parentLoop?.csvJson?.length ?? 0) > 0
-        ? { csvFromLoop: true }
-        : {}),
+      ...((parentLoop?.csvJson?.length ?? 0) > 0 ? { csvFromLoop: true } : {}),
     };
 
     experimentDoc.trials.push(newTrial);
@@ -66,7 +62,13 @@ router.post("/api/trial/:experimentID", async (req, res) => {
       graph: buildExperimentGraph(experimentDoc),
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res
+      .status(error.status ?? 500)
+      .json({
+        success: false,
+        error: error.message,
+        ...(error.code ? { code: error.code } : {}),
+      });
   }
 });
 
@@ -88,7 +90,13 @@ router.get("/api/trial/:experimentID/:id", async (req, res) => {
 
     res.json({ success: true, trial });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res
+      .status(error.status ?? 500)
+      .json({
+        success: false,
+        error: error.message,
+        ...(error.code ? { code: error.code } : {}),
+      });
   }
 });
 
@@ -97,7 +105,7 @@ router.patch("/api/trial/:experimentID/:id", async (req, res) => {
   try {
     const { experimentID, id } = req.params;
     const trialId = Number(id);
-    const updates = req.body;
+    let updates = req.body;
     const experimentDoc = await getExperimentDoc(experimentID);
 
     if (!experimentDoc) {
@@ -113,22 +121,7 @@ router.patch("/api/trial/:experimentID/:id", async (req, res) => {
       return res.status(404).json({ success: false, error: "Trial not found" });
     }
 
-    // Branch sets can carry ids of already-deleted items (stale canvas
-    // state): drop them instead of persisting an invalid graph. The same
-    // applies to condition targets, which would otherwise stall or throw
-    // the run when they fire.
-    if (updates.branches !== undefined) {
-      updates.branches = (updates.branches ?? []).filter((branchId) =>
-        itemExists(experimentDoc, branchId),
-      );
-    }
-    if (updates.branchConditions !== undefined) {
-      updates.branchConditions = filterLiveConditions(
-        experimentDoc,
-        updates.branchConditions,
-        "nextTrialId",
-      );
-    }
+    updates = normalizeTrialBranching(experimentDoc, updates);
     if (updates.repeatConditions !== undefined) {
       updates.repeatConditions = filterLiveConditions(
         experimentDoc,
@@ -180,7 +173,13 @@ router.patch("/api/trial/:experimentID/:id", async (req, res) => {
       graph: buildExperimentGraph(experimentDoc),
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res
+      .status(error.status ?? 500)
+      .json({
+        success: false,
+        error: error.message,
+        ...(error.code ? { code: error.code } : {}),
+      });
   }
 });
 
@@ -197,9 +196,7 @@ router.delete("/api/trial/:experimentID/:id", async (req, res) => {
         .json({ success: false, error: "Experiment not found" });
     }
 
-    const trialToDelete = experimentDoc.trials.find((t) =>
-      idsMatch(t.id, id),
-    );
+    const trialToDelete = experimentDoc.trials.find((t) => idsMatch(t.id, id));
     const childrenBranches = trialToDelete?.branches || [];
 
     reconnectParentsToChildren(experimentDoc, trialId, childrenBranches);
@@ -215,7 +212,13 @@ router.delete("/api/trial/:experimentID/:id", async (req, res) => {
 
     res.json({ success: true, graph: buildExperimentGraph(experimentDoc) });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res
+      .status(error.status ?? 500)
+      .json({
+        success: false,
+        error: error.message,
+        ...(error.code ? { code: error.code } : {}),
+      });
   }
 });
 
@@ -231,7 +234,13 @@ router.delete("/api/trials/:experimentID", async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res
+      .status(error.status ?? 500)
+      .json({
+        success: false,
+        error: error.message,
+        ...(error.code ? { code: error.code } : {}),
+      });
   }
 });
 

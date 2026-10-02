@@ -1,5 +1,5 @@
 import { db } from "../../../utils/db.js";
-import { idsMatch } from "../graph/identity.js";
+import { findTrial, idsMatch } from "../graph/identity.js";
 
 const itemExists = (experimentDoc, id) =>
   (experimentDoc.trials ?? []).some((trial) => idsMatch(trial.id, id)) ||
@@ -41,7 +41,6 @@ export function syncTimelineItems(experimentDoc) {
       const loop = experimentDoc.loops.find((l) => idsMatch(l.id, item.id));
       return {
         ...item,
-        branches: loop?.branches || [],
         trials: loop?.trials || [],
       };
     }
@@ -49,11 +48,16 @@ export function syncTimelineItems(experimentDoc) {
   });
 }
 
-export function reconnectParentsToChildren(experimentDoc, trialId, childrenBranches) {
+export function reconnectParentsToChildren(
+  experimentDoc,
+  trialId,
+  childrenBranches,
+) {
   // Only inherit targets that actually exist: otherwise deleting a trial
   // propagates (or preserves) dangling branch references (BRANCH_TARGET_NOT_FOUND).
   const liveChildren = (childrenBranches ?? []).filter(
-    (childId) => !idsMatch(childId, trialId) && itemExists(experimentDoc, childId),
+    (childId) =>
+      !idsMatch(childId, trialId) && findTrial(experimentDoc, childId),
   );
   const inherit = (branches) => {
     const next = (branches ?? []).filter(
@@ -75,15 +79,6 @@ export function reconnectParentsToChildren(experimentDoc, trialId, childrenBranc
       trial.branches = inherit(trial.branches);
     }
   });
-
-  experimentDoc.loops.forEach((loop) => {
-    if (
-      loop.branches &&
-      loop.branches.some((branchId) => idsMatch(branchId, trialId))
-    ) {
-      loop.branches = inherit(loop.branches);
-    }
-  });
 }
 
 /**
@@ -101,12 +96,14 @@ export function filterLiveConditions(experimentDoc, conditions, targetKey) {
       condition == null ||
       condition[targetKey] === null ||
       condition[targetKey] === undefined ||
-      itemExists(experimentDoc, condition[targetKey]),
+      (targetKey === "nextTrialId"
+        ? findTrial(experimentDoc, condition[targetKey])
+        : itemExists(experimentDoc, condition[targetKey])),
   );
 }
 
 /**
- * Drops branch targets that reference no existing trial or loop.
+ * Drops branch targets that reference no existing trial.
  * Structural edges must always resolve, otherwise the experiment graph is
  * invalid (BRANCH_TARGET_NOT_FOUND) and the run cannot continue past them.
  * Condition targets are pruned as well (see filterLiveConditions).
@@ -115,20 +112,10 @@ export function pruneDanglingBranches(experimentDoc) {
   for (const trial of experimentDoc.trials ?? []) {
     if (Array.isArray(trial.branches)) {
       const pruned = trial.branches.filter((branchId) =>
-        itemExists(experimentDoc, branchId),
+        findTrial(experimentDoc, branchId),
       );
       if (pruned.length !== trial.branches.length) {
         trial.branches = pruned;
-      }
-    }
-  }
-  for (const loop of experimentDoc.loops ?? []) {
-    if (Array.isArray(loop.branches)) {
-      const pruned = loop.branches.filter((branchId) =>
-        itemExists(experimentDoc, branchId),
-      );
-      if (pruned.length !== loop.branches.length) {
-        loop.branches = pruned;
       }
     }
   }
@@ -136,7 +123,10 @@ export function pruneDanglingBranches(experimentDoc) {
     ...(experimentDoc.trials ?? []),
     ...(experimentDoc.loops ?? []),
   ]) {
-    if (Array.isArray(item.branchConditions)) {
+    if (
+      findTrial(experimentDoc, item.id) &&
+      Array.isArray(item.branchConditions)
+    ) {
       const pruned = filterLiveConditions(
         experimentDoc,
         item.branchConditions,

@@ -32,8 +32,6 @@ export type LoopData = {
   stimuliOrders: unknown[];
   categories: boolean;
   categoryData: unknown[];
-  branches?: (string | number)[];
-  branchConditions?: BranchCondition[];
   repeatConditions?: RepeatCondition[];
   loopConditions?: LoopCondition[];
   isConditionalLoop?: boolean;

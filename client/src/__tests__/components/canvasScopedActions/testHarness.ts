@@ -21,10 +21,7 @@ export const loopItems: TimelineItem[] = [
   { id: 11, type: "trial", name: "Loca", branches: [] },
 ];
 
-export function makeTrial(
-  id: number,
-  overrides: Partial<Trial> = {},
-): Trial {
+export function makeTrial(id: number, overrides: Partial<Trial> = {}): Trial {
   return {
     id,
     type: "Trial",
@@ -71,7 +68,7 @@ export function createDependencies() {
         csvJson: [{ stimulus: "a.png" }],
       }),
     ],
-    ["child-loop", makeLoop("child-loop", { branches: [11] })],
+    ["child-loop", makeLoop("child-loop")],
   ]);
   const dependencies = {
     createTrial: vi.fn(async (input: Omit<Trial, "id">) =>

@@ -14,7 +14,7 @@ describe("sequential loop branch ordering", () => {
     const source = trial(1, "Source", "inner", [2]);
     const document = {
       trials: [source, trial(2, "Existing exit")],
-      loops: [{ id: "inner", name: "Inner", trials: [1], branches: [] }],
+      loops: [{ id: "inner", name: "Inner", trials: [1], }],
       timeline: [
         { id: "inner", type: "loop", name: "Inner" },
         { id: 2, type: "trial", name: "Existing exit" },
@@ -48,14 +48,14 @@ describe("sequential loop branch ordering", () => {
           id: "outer",
           name: "Outer",
           trials: ["inner", 2],
-          branches: [],
+
         },
         {
           id: "inner",
           name: "Inner",
           parentLoopId: "outer",
           trials: [1],
-          branches: [],
+
         },
       ],
       timeline: [{ id: "outer", type: "loop", name: "Outer" }],

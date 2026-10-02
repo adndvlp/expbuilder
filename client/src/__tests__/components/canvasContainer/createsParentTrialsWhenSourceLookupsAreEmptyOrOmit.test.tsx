@@ -176,8 +176,6 @@ describe("Canvas container", () => {
 
     await runScenario("trial", undefined);
     await runScenario("trial", makeTrial(1, { branches: undefined }));
-    await runScenario("loop", undefined);
-    await runScenario("loop", makeLoop("loop-1", { branches: undefined }));
   });
 
   it("appends a colliding parent result and normalizes its missing branches", async () => {
