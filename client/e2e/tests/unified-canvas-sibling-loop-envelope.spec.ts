@@ -1,17 +1,26 @@
 import { expect, test } from "../fixtures/test.fixture";
 import type { Locator } from "@playwright/test";
+import { fulfillGraph } from "../helpers/loopBranchGraph";
+import type {
+  ExperimentGraphSnapshot,
+  TimelineItem,
+} from "../../src/pages/ExperimentBuilder/modules/experiment-graph/types";
 import { getLoopLayoutScopeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/buildUnifiedFlowLayout";
 import { getScopedNodeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/composeExpandedLoopLayout";
 import { ROOT_CANVAS_SCOPE_ID } from "../../src/pages/ExperimentBuilder/components/Canvas/services/expandedLayoutTypes";
 
-const trial = (id: string, name: string, branches: string[] = []) => ({
+const trial = (
+  id: string,
+  name: string,
+  branches: string[] = [],
+): TimelineItem => ({
   id,
   type: "trial",
   name,
   branches,
 });
 
-const loop = (id: string, name: string, trials: string[]) => ({
+const loop = (id: string, name: string, trials: string[]): TimelineItem => ({
   id,
   type: "loop",
   name,
@@ -20,7 +29,7 @@ const loop = (id: string, name: string, trials: string[]) => ({
 
 const rootTimeline = [
   trial("start", "New Trial", ["left", "right"]),
-  trial("left", "New Trial 1", ["outer"]),
+  trial("left", "New Trial 1", ["outer-source"]),
   trial("right", "New Trial 2", ["right-a", "right-b"]),
   trial("right-a", "New Trial 16", ["right-tail"]),
   trial("right-tail", "New Trial 15"),
@@ -39,7 +48,7 @@ const outerTimeline = [
   trial("outer-source", "New Trial 3", [
     "outer-left",
     "outer-exit",
-    "nested",
+    "nested-source",
     "outer-right",
   ]),
   trial("outer-left", "New Trial 4"),
@@ -66,7 +75,7 @@ const edge = (
   exitedLoopIds,
 });
 
-const graphSnapshot = {
+const graphSnapshot: ExperimentGraphSnapshot = {
   revision: "sibling-loop-envelope-regression",
   root: { scopeId: null, parentScopeId: null, items: rootTimeline },
   scopes: {
@@ -84,13 +93,13 @@ const graphSnapshot = {
   edges: [
     edge("start", "left", null, null),
     edge("start", "right", null, null),
-    edge("left", "outer", null, null),
+    edge("left", "outer-source", null, "outer"),
     edge("right", "right-a", null, null),
     edge("right", "right-b", null, null),
     edge("right-a", "right-tail", null, null),
     edge("outer-source", "outer-left", "outer", "outer"),
     edge("outer-source", "outer-exit", "outer", null, ["outer"]),
-    edge("outer-source", "nested", "outer", "outer"),
+    edge("outer-source", "nested-source", "outer", "nested"),
     edge("outer-source", "outer-right", "outer", "outer"),
     edge("nested-source", "nested-left", "nested", "nested"),
     edge("nested-source", "nested-exit", "nested", null, ["nested", "outer"]),
@@ -137,11 +146,7 @@ test("keeps a branched sibling outside the complete loop envelope", async ({
   page,
 }) => {
   await page.route("**/api/experiment-graph/exp-sibling-envelope", (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ graph: graphSnapshot }),
-    }),
+    route.fulfill(fulfillGraph(graphSnapshot)),
   );
   await page.route("**/api/trials-metadata/exp-sibling-envelope", (route) =>
     route.fulfill({

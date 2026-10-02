@@ -26,14 +26,13 @@ test("[TC-10] [TL-01] [TL-02] [TL-03] renders exact exit sources through expande
       name: "New Trial",
       branches: ["left", "right"],
     },
-    { id: "left", type: "trial", name: "New Trial 1", branches: ["outer"] },
+    { id: "left", type: "trial", name: "New Trial 1", branches: ["source"] },
     { id: "right", type: "trial", name: "New Trial 2", branches: [] },
     {
       id: "outer",
       type: "loop",
       name: "Outer Loop",
       trials: ["inner", "outer-target"],
-      branches: [],
     },
     {
       id: "root-target",
@@ -49,7 +48,6 @@ test("[TC-10] [TL-01] [TL-02] [TL-03] renders exact exit sources through expande
       name: "Nested Loop",
       parentLoopId: "outer",
       trials: ["source", "later"],
-      branches: [],
     },
     {
       id: "outer-target",
@@ -65,7 +63,7 @@ test("[TC-10] [TL-01] [TL-02] [TL-03] renders exact exit sources through expande
       type: "trial",
       name: "Nested Earlier Trial",
       parentLoopId: "inner",
-      branches: ["outer-target", "root-target"],
+      branches: ["later", "outer-target", "root-target"],
     },
     {
       id: "later",
@@ -84,7 +82,8 @@ test("[TC-10] [TL-01] [TL-02] [TL-03] renders exact exit sources through expande
     [
       branchEdge("split", "left", null, null),
       branchEdge("split", "right", null, null),
-      branchEdge("left", "outer", null, null),
+      branchEdge("left", "source", null, "inner"),
+      branchEdge("source", "later", "inner", "inner"),
       branchEdge("source", "outer-target", "inner", "outer", ["inner"]),
       branchEdge("source", "root-target", "inner", null, ["inner", "outer"]),
     ],
