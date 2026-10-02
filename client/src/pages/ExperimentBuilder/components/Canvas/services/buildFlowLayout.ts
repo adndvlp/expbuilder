@@ -1,4 +1,4 @@
-import { Loop, Trial } from "../../ConfigurationPanel/types";
+import { Trial } from "../../ConfigurationPanel/types";
 import {
   alignMergePointNodes,
   calculateBranchWidth,
@@ -19,10 +19,12 @@ import {
 } from "../../../utils/branchGraphUtils";
 import { createBranchRenderers } from "./createBranchRenderers";
 import { FlowLayoutOptions } from "./flowLayoutTypes";
+import { sanitizeLayoutTimeline } from "./sanitizeLayoutTimeline";
+import type { TimelineItem } from "../../../contexts/TrialsContext";
 
 export function buildFlowLayout(options: FlowLayoutOptions) {
   const {
-    timeline,
+    timeline: rawTimeline,
     selectedTrialId,
     selectedLoopId,
     openLoopId,
@@ -31,6 +33,7 @@ export function buildFlowLayout(options: FlowLayoutOptions) {
     onAddBranch,
     onOpenLoop,
   } = options;
+  const timeline = sanitizeLayoutTimeline(rawTimeline) as TimelineItem[];
   const nodes: LayoutNode[] = [];
   const edges: LayoutEdge[] = [];
   const renderedItems = new Map<number | string, string>();
@@ -53,15 +56,15 @@ export function buildFlowLayout(options: FlowLayoutOptions) {
         !branchIds.has(itemIdKey(item.id))
       : !branchIds.has(itemIdKey(item.id)),
   );
-  const { renderTrialWithBranches, renderLoopWithBranches } =
-    createBranchRenderers({
-      ...options,
-      nodes,
-      edges,
-      renderedItems,
-      branchHorizontalSpacing,
-      branchVerticalOffset,
-    });
+  const { renderTrialWithBranches } = createBranchRenderers({
+    ...options,
+    timeline,
+    nodes,
+    edges,
+    renderedItems,
+    branchHorizontalSpacing,
+    branchVerticalOffset,
+  });
 
   let yPos = 100;
   allBlocks.forEach((item) => {
@@ -81,7 +84,7 @@ export function buildFlowLayout(options: FlowLayoutOptions) {
           xTrial,
           yPos,
           !!isSelected,
-          () => onSelectTrial(item),
+          () => onSelectTrial(item as Trial),
           isSelected ? () => onAddBranch(item.id) : undefined,
         ),
       );
@@ -101,6 +104,7 @@ export function buildFlowLayout(options: FlowLayoutOptions) {
 
     let maxBranchDepth = 0;
     if (
+      item.type === "trial" &&
       item.branches &&
       Array.isArray(item.branches) &&
       item.branches.length > 0
@@ -118,22 +122,14 @@ export function buildFlowLayout(options: FlowLayoutOptions) {
         if (branchItem) {
           const branchWidth = branchWidths[index];
           const branchX = currentX + branchWidth / 2;
-          const branchDepth =
-            branchItem.type === "trial"
-              ? renderTrialWithBranches(
-                  branchItem as Trial,
-                  itemId,
-                  branchX,
-                  yPos + branchVerticalOffset,
-                  0,
-                )
-              : renderLoopWithBranches(
-                  branchItem as Loop,
-                  itemId,
-                  branchX,
-                  yPos + branchVerticalOffset,
-                  0,
-                );
+          if (branchItem.type !== "trial") return;
+          const branchDepth = renderTrialWithBranches(
+            branchItem as Trial,
+            itemId,
+            branchX,
+            yPos + branchVerticalOffset,
+            0,
+          );
           maxBranchDepth = Math.max(maxBranchDepth, branchDepth);
           currentX += branchWidth;
         }
@@ -154,7 +150,7 @@ export function buildFlowLayout(options: FlowLayoutOptions) {
       item.type === "trial" ? getTrialNodeId(item.id) : getLoopNodeId(item.id),
   });
   for (let index = 0; index < allBlocks.length - 1; index++) {
-    if (allBlocks[index].branches?.length > 0) continue;
+    if ((allBlocks[index].branches?.length ?? 0) > 0) continue;
     const currentId =
       allBlocks[index].type === "trial"
         ? getTrialNodeId(allBlocks[index].id)

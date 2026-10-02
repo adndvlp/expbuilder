@@ -3,7 +3,7 @@
  *
  * This component handles both Branch and Jump conditions in a unified interface:
  *
- * - BRANCH: Navigate to downstream trials/loops within the same scope.
+ * - BRANCH: Navigate to trials connected to the selected trial.
  *   Allows parameter overriding for the target trial.
  *
  * - JUMP: Navigate to ANY trial in the entire experiment, regardless of hierarchy.
@@ -13,7 +13,7 @@
  * based on whether it is downstream in the same scope or already saved as a branch.
  */
 
-import { Dispatch, SetStateAction, useMemo } from "react";
+import { Dispatch, SetStateAction, useCallback, useMemo } from "react";
 import { Condition, Parameter } from "../types";
 import useTrials from "../../../../../hooks/useTrials";
 import { DataDefinition, Loop, Trial } from "../../../types";
@@ -21,12 +21,8 @@ import ConditionsList from "./ConditionsList";
 import useAvailableColumns from "./useAvailableColumns";
 import useBranchConditions from "./useBranchConditions";
 import Descriptions from "./Descriptions";
-import {
-  idsEqual,
-  includesId,
-  isForwardSameScopeTarget,
-  itemIdKey,
-} from "../../../../../utils/branchGraphUtils";
+import { idsEqual, itemIdKey } from "../../../../../utils/branchGraphUtils";
+import { isBranchTargetFromUserContext } from "../../../../../modules/experiment-authoring/intents/branching";
 import AddConditionButton from "./components/AddConditionButton";
 import ConditionsEmptyState from "./components/ConditionsEmptyState";
 
@@ -34,7 +30,7 @@ type Props = {
   conditions: Condition[];
   setConditions: Dispatch<SetStateAction<Condition[]>>;
   loadTargetTrialParameters: (trialId: string | number) => Promise<void>;
-  findTrialById: (trialId: string | number) => any;
+  findTrialById: (trialId: string | number) => Trial | Loop | null;
   targetTrialParameters: Record<string, Parameter[]>;
   targetTrialCsvColumns: Record<string, string[]>;
   selectedTrial: Trial | Loop | null;
@@ -86,7 +82,7 @@ function BranchConditions({
     }
   };
 
-  const getPropValue = (prop: any): any => {
+  const getPropValue = (prop: unknown): unknown => {
     if (
       prop &&
       typeof prop === "object" &&
@@ -139,40 +135,63 @@ function BranchConditions({
     [timeline],
   );
 
-  // Get available trials/loops for branches in the same scope.
+  const isInBranches = useCallback(
+    (trialId: string | number | null): boolean =>
+      selectedTrial !== null &&
+      isBranchTargetFromUserContext({
+        selectedItem: selectedTrial,
+        targetId: trialId,
+        scopeTimeline: relevantTimeline,
+        topLevelLoopTrialIds,
+      }),
+    [selectedTrial, relevantTimeline, topLevelLoopTrialIds],
+  );
+
+  // Saved destinations remain trials even when grouping changes their scope.
   const branchTrials = useMemo(() => {
     if (!selectedTrial || "trials" in selectedTrial) return [];
-
-    return relevantTimeline
-      .filter((item) => {
-        if (item.type !== "trial" || idsEqual(item.id, selectedTrial.id))
-          return false;
-
-        if (
-          !selectedTrial.parentLoopId &&
+    const available = relevantTimeline
+      .filter(
+        (item) =>
           item.type === "trial" &&
-          (item.parentLoopId || topLevelLoopTrialIds.has(itemIdKey(item.id)))
-        ) {
-          return false;
-        }
-
-        return (
-          includesId(selectedTrial.branches, item.id) ||
-          isForwardSameScopeTarget(relevantTimeline, selectedTrial.id, item.id)
-        );
-      })
+          !idsEqual(item.id, selectedTrial.id) &&
+          isInBranches(item.id),
+      )
       .map((item) => ({
         id: item.id,
         name: item.name,
-        isLoop: item.type === "loop",
+        isLoop: false,
       }));
-  }, [relevantTimeline, selectedTrial, topLevelLoopTrialIds]);
-
-  // Helper function to check if a trialId should be handled as a branch target
-  const isInBranches = (trialId: string | number | null): boolean => {
-    if (!trialId) return false;
-    return branchTrials.some((branch) => idsEqual(branch.id, trialId));
-  };
+    (selectedTrial.branches ?? []).forEach((targetId) => {
+      if (
+        !isInBranches(targetId) ||
+        available.some((item) => idsEqual(item.id, targetId))
+      )
+        return;
+      const target =
+        [...timeline, ...loopTimeline].find((item) =>
+          idsEqual(item.id, targetId),
+        ) ?? findTrialById(targetId);
+      if (
+        target &&
+        ("trials" in target || ("type" in target && target.type === "loop"))
+      )
+        return;
+      available.push({
+        id: targetId,
+        name: target?.name ?? String(targetId),
+        isLoop: false,
+      });
+    });
+    return available;
+  }, [
+    relevantTimeline,
+    selectedTrial,
+    timeline,
+    loopTimeline,
+    findTrialById,
+    isInBranches,
+  ]);
 
   // Helper function to determine if condition is a jump (not a branch target)
   const isJumpCondition = (condition: Condition): boolean => {

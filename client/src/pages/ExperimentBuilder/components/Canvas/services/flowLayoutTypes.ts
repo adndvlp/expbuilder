@@ -1,13 +1,14 @@
-import { Loop, Trial } from "../../ConfigurationPanel/types";
+import type { TimelineItem } from "../../../contexts/TrialsContext";
+import { Trial } from "../../ConfigurationPanel/types";
 import { LayoutEdge, LayoutNode } from "../utils/layoutUtils";
 
 export type FlowLayoutOptions = {
-  timeline: any[];
+  timeline: TimelineItem[];
   selectedTrialId?: string | number;
   selectedLoopId?: string | number;
   openLoopId?: string | number;
   onSelectTrial: (trial: Trial) => void;
-  onSelectLoop: (loop: any) => void;
+  onSelectLoop: (loop: TimelineItem) => void;
   onAddBranch: (id: number | string) => void;
   onOpenLoop?: (loopId: string) => void;
 };
@@ -19,11 +20,3 @@ export type BranchRendererContext = FlowLayoutOptions & {
   branchHorizontalSpacing: number;
   branchVerticalOffset: number;
 };
-
-export type BranchRenderer = (
-  item: Trial | Loop,
-  parentId: string,
-  x: number,
-  y: number,
-  depth?: number,
-) => number;

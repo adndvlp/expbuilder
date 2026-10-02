@@ -7,6 +7,29 @@ import type {
 import { useLoadDataHarness } from "./testHarness";
 
 describe("BranchedTrial useLoadData initial loading", () => {
+  it("ignores legacy branch conditions on loops while preserving repeat rules", async () => {
+    const loadTargetTrialParameters = vi.fn(async () => {});
+    const { result } = renderHook(() =>
+      useLoadDataHarness({
+        selectedTrial: {
+          id: "loop",
+          trials: [],
+          branchConditions: [{ id: 1, rules: [], nextTrialId: "invalid" }],
+          repeatConditions: [{ id: 2, rules: [], jumpToTrialId: "previous" }],
+        },
+        loadTargetTrialParameters,
+      }),
+    );
+    await waitFor(() =>
+      expect(result.current.conditions).toEqual([
+        { id: 2, rules: [], nextTrialId: "previous", customParameters: {} },
+      ]),
+    );
+    expect(loadTargetTrialParameters).not.toHaveBeenCalledWith("invalid");
+    expect(result.current.repeatConditions).toEqual([
+      { id: 2, rules: [], jumpToTrialId: "previous" },
+    ]);
+  });
   it("loads selected trial data fields from plugin metadata", async () => {
     const loadPluginParameters = vi.fn(async () => ({
       parameters: [],

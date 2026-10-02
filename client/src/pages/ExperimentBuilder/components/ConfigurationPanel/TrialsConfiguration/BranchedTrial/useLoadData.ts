@@ -4,13 +4,16 @@ import {
   DataDefinition,
   FieldDefinition,
   RepeatCondition,
+  Trial,
+  Loop,
 } from "../../types";
 import { Condition, Parameter, RepeatConditionState } from "./types";
+import type { TimelineItem } from "../../../../contexts/TrialsContext";
 
 type Props = {
   isOpen: boolean;
   conditions: Condition[];
-  selectedTrial: any;
+  selectedTrial: Trial | Loop | null;
   targetTrialParameters: Record<string, Parameter[]>;
   loadTargetTrialParameters: (trialId: string | number) => Promise<void>;
   setData: Dispatch<SetStateAction<DataDefinition[]>>;
@@ -20,7 +23,7 @@ type Props = {
     parameters: FieldDefinition[];
     data: DataDefinition[];
   }>;
-  getLoopTimeline: (loopId: string | number) => Promise<any>;
+  getLoopTimeline: (loopId: string | number) => Promise<TimelineItem[]>;
   setConditions: Dispatch<SetStateAction<Condition[]>>;
   setRepeatConditions: Dispatch<SetStateAction<RepeatConditionState[]>>;
 };
@@ -57,7 +60,7 @@ export default function useLoadData({
   useEffect(() => {
     const pluginName =
       selectedTrial && "plugin" in selectedTrial
-        ? (selectedTrial as any).plugin
+        ? selectedTrial.plugin
         : undefined;
     if (!pluginName) {
       setData([]);
@@ -99,7 +102,7 @@ export default function useLoadData({
     const allConditions: Condition[] = [];
 
     // Load branch conditions (within scope)
-    if (selectedTrial && selectedTrial.branchConditions) {
+    if (!("trials" in selectedTrial) && selectedTrial.branchConditions) {
       const loadedBranchConditions = selectedTrial.branchConditions.map(
         (bc: BranchCondition) => ({
           ...bc,

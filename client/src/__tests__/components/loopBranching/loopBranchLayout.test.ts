@@ -20,14 +20,10 @@ const trial = (
   branches: LayoutItemId[] = [],
 ): LayoutTimelineItem => ({ id, type: "trial", name: String(id), branches });
 
-const loop = (
-  id: LayoutItemId,
-  branches: LayoutItemId[] = [],
-): LayoutTimelineItem => ({
+const loop = (id: LayoutItemId): LayoutTimelineItem => ({
   id,
   type: "loop",
   name: String(id),
-  branches,
 });
 
 const scope = (
@@ -91,13 +87,13 @@ describe("loop branch layout", () => {
   it("[TL-12] anchors one exit outside its loop boundary at every collapse level", () => {
     const rootTimeline = [
       trial("split", ["left", "right"]),
-      trial("left", ["outer"]),
+      trial("left", ["question"]),
       trial("right"),
       loop("outer"),
       trial("root-exit"),
     ];
     const outerScope = scope("outer-scope", "root", "outer", [
-      trial("question", ["outer-leaf", "inner"]),
+      trial("question", ["outer-leaf", "source"]),
       trial("outer-leaf"),
       loop("inner"),
     ]);
@@ -108,9 +104,9 @@ describe("loop branch layout", () => {
     const branchEdges = [
       edge("split", "left", null, null),
       edge("split", "right", null, null),
-      edge("left", "outer", null, null),
+      edge("left", "question", null, "outer"),
       edge("question", "outer-leaf", "outer", "outer"),
-      edge("question", "inner", "outer", "outer"),
+      edge("question", "source", "outer", "inner"),
       edge("source", "inner-leaf", "inner", "inner"),
       edge("source", "root-exit", "inner", null, ["inner", "outer"]),
     ];
@@ -137,10 +133,10 @@ describe("loop branch layout", () => {
     expect(position(expanded, rootExit).y).toBeGreaterThan(
       position(expanded, expandedSource).y,
     );
-    const outerLane = getLoopScopeLanes(
-      expanded.nodes,
-      [outerScope, innerScope],
-    ).get("outer-scope");
+    const outerLane = getLoopScopeLanes(expanded.nodes, [
+      outerScope,
+      innerScope,
+    ]).get("outer-scope");
     expect(outerLane).toBeDefined();
     expect(position(expanded, rootExit).y).toBeGreaterThanOrEqual(
       outerLane!.bottomY + LOOP_NODE_ROUTE_GAP,

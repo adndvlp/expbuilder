@@ -1,23 +1,17 @@
-import { Loop, Trial } from "../../ConfigurationPanel/types";
+import { Trial } from "../../ConfigurationPanel/types";
 import {
   calculateBranchWidth,
   createEdge,
-  createLoopNode,
   createTrialNode,
 } from "../utils/layoutUtils";
 import { findItemById } from "../utils/trialUtils";
-import type { LayoutTimelineItem } from "./expandedLayoutTypes";
 import { BranchRendererContext } from "./flowLayoutTypes";
 
 export function createBranchRenderers({
   timeline,
   selectedTrialId,
-  selectedLoopId,
-  openLoopId,
   onSelectTrial,
-  onSelectLoop,
   onAddBranch,
-  onOpenLoop,
   nodes,
   edges,
   renderedItems,
@@ -25,7 +19,6 @@ export function createBranchRenderers({
   branchVerticalOffset,
 }: BranchRendererContext) {
   const getTrialNodeId = (id: number | string) => `trial-${id}`;
-  const getLoopNodeId = (id: number | string) => `loop-${id}`;
 
   const renderTrialWithBranches = (
     trial: Trial,
@@ -74,22 +67,14 @@ export function createBranchRenderers({
           const branchWidth = branchWidths[index];
           const branchX = currentX + branchWidth / 2;
           const branchY = y + branchVerticalOffset;
-          const branchDepth =
-            item.type === "trial"
-              ? renderTrialWithBranches(
-                  item as Trial,
-                  trialId,
-                  branchX,
-                  branchY,
-                  depth + 1,
-                )
-              : renderLoopWithBranches(
-                  item as Loop,
-                  trialId,
-                  branchX,
-                  branchY,
-                  depth + 1,
-                );
+          if (item.type !== "trial") return;
+          const branchDepth = renderTrialWithBranches(
+            item as Trial,
+            trialId,
+            branchX,
+            branchY,
+            depth + 1,
+          );
           maxDepth = Math.max(maxDepth, branchDepth);
           currentX += branchWidth;
         }
@@ -98,77 +83,5 @@ export function createBranchRenderers({
     return maxDepth + 1;
   };
 
-  // Collapsed containers receive visual edges projected from canonical trials.
-  const renderLoopWithBranches = (
-    loop: Loop & Pick<LayoutTimelineItem, "branches">,
-    parentId: string,
-    x: number,
-    y: number,
-    depth: number = 0,
-  ): number => {
-    const loopId = getLoopNodeId(loop.id);
-    const isSelected = selectedLoopId === loop.id || openLoopId === loop.id;
-    const existingNodeId = renderedItems.get(loop.id);
-    if (existingNodeId) {
-      edges.push(createEdge(parentId, existingNodeId));
-      return 0;
-    }
-
-    renderedItems.set(loop.id, loopId);
-    edges.push(createEdge(parentId, loopId));
-    nodes.push(
-      createLoopNode(
-        loopId,
-        loop.name,
-        x,
-        y,
-        !!isSelected,
-        () => onSelectLoop(loop),
-        onOpenLoop ? () => onOpenLoop(String(loop.id)) : undefined,
-      ),
-    );
-
-    let maxDepth = 0;
-    if (
-      loop.branches &&
-      Array.isArray(loop.branches) &&
-      loop.branches.length > 0
-    ) {
-      const branchWidths = loop.branches.map((branchId) =>
-        calculateBranchWidth(branchId, timeline, branchHorizontalSpacing),
-      );
-      const totalWidth = branchWidths.reduce((sum, width) => sum + width, 0);
-      let currentX = x - totalWidth / 2;
-
-      loop.branches.forEach((branchId: number | string, index: number) => {
-        const item = findItemById(timeline, branchId);
-        if (item) {
-          const branchWidth = branchWidths[index];
-          const branchX = currentX + branchWidth / 2;
-          const branchY = y + branchVerticalOffset;
-          const branchDepth =
-            item.type === "trial"
-              ? renderTrialWithBranches(
-                  item as Trial,
-                  loopId,
-                  branchX,
-                  branchY,
-                  depth + 1,
-                )
-              : renderLoopWithBranches(
-                  item as Loop,
-                  loopId,
-                  branchX,
-                  branchY,
-                  depth + 1,
-                );
-          maxDepth = Math.max(maxDepth, branchDepth);
-          currentX += branchWidth;
-        }
-      });
-    }
-    return maxDepth + 1;
-  };
-
-  return { renderTrialWithBranches, renderLoopWithBranches };
+  return { renderTrialWithBranches };
 }

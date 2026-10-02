@@ -83,12 +83,10 @@ describe("buildUnifiedFlowLayout", () => {
       (edge) => edge.data.kind === "loop-return",
     );
     expect(returns).toHaveLength(2);
-    expect(
-      returns.every((edge) => edge.source === edge.target),
-    ).toBe(true);
-    expect(
-      result.edges.some((edge) => edge.data.kind === "loop-control"),
-    ).toBe(false);
+    expect(returns.every((edge) => edge.source === edge.target)).toBe(true);
+    expect(result.edges.some((edge) => edge.data.kind === "loop-control")).toBe(
+      false,
+    );
     const parentReturn = returns.find(
       (edge) => edge.data.scopeId === getLoopLayoutScopeId("parent"),
     );
@@ -200,10 +198,19 @@ describe("buildUnifiedFlowLayout", () => {
           id: "start",
           type: "trial",
           name: "Start",
-          branches: ["parent", "right"],
+          branches: [1, "right"],
         },
         { id: "parent", type: "loop", name: "Parent" },
         { id: "right", type: "trial", name: "Right" },
+      ],
+      branchEdges: [
+        {
+          sourceId: "start",
+          targetId: 1,
+          sourceOwnerId: null,
+          targetOwnerId: "parent",
+          exitedLoopIds: [],
+        },
       ],
       expandedPath: path,
       selectedItemId: null,

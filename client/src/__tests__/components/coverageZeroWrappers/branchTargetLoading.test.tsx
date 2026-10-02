@@ -14,6 +14,29 @@ import {
 } from "./testHarness";
 
 describe("coverage zero wrappers: BranchedTrial", () => {
+  it("loads a saved trial destination whose ID starts with loop_ as a trial", async () => {
+    trialsState.value = baseTrialsState({
+      selectedTrial: {
+        ...trialsState.value.selectedTrial,
+        branches: ["loop_1"],
+      },
+    });
+    render(
+      <BranchedTrial
+        selectedTrial={trialsState.value.selectedTrial}
+        onClose={vi.fn()}
+        isOpen
+      />,
+    );
+    fireEvent.click(screen.getByText("load target loop"));
+    await waitFor(() =>
+      expect(screen.getByTestId("branched-layout")).toHaveTextContent(
+        "layout-params:loop_1",
+      ),
+    );
+    expect(trialsState.value.getTrial).toHaveBeenCalledWith("loop_1");
+    expect(trialsState.value.getLoop).not.toHaveBeenCalled();
+  });
   it("loads target metadata, exposes available trials, closes and saves a trial", async () => {
     const onClose = vi.fn();
 

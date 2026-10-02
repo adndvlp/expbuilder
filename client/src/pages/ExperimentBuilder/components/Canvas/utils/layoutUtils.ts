@@ -16,7 +16,7 @@ export const LAYOUT_CONSTANTS = {
 export interface LayoutNode {
   id: string;
   type: string;
-  data: any;
+  data: Record<string, unknown>;
   position: { x: number; y: number };
   draggable: boolean;
 }
@@ -35,14 +35,13 @@ export interface LayoutResult {
 
 export function calculateBranchWidth(
   branchId: number | string,
-  trials: any[],
+  trials: BranchGraphItem[],
   branchHorizontalSpacing: number,
 ): number {
   const item = findItemById(trials, branchId);
   if (!item) return branchHorizontalSpacing;
 
-  // Check if it has branches (both trials and loops)
-  const itemBranches = item.branches || [];
+  const itemBranches = item.type === "trial" ? item.branches || [] : [];
 
   if (itemBranches.length === 0) {
     return branchHorizontalSpacing;

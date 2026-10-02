@@ -5,7 +5,7 @@
 - Fecha: 2026-10-01.
 - Rama de trabajo: `loop-branches`.
 - HEAD al cerrar la revisión: `5c9ae40` (`case for testing`).
-- Estado: puntos 1, 2 y 3 implementados y verificados. El usuario creó los commits de los puntos 1 y 2 (`99c5d4e`, `b35b07a`). Siguiente entrega: punto 4, configuración y representación visual de las conexiones entre trials.
+- Estado: puntos 1, 2, 3 y 4 implementados y verificados. El usuario creó los commits de los puntos 1, 2 y 3 (`99c5d4e`, `b35b07a`, `97a17a0`). Siguiente entrega: punto 5, limpieza de ambos generadores de código.
 - Este documento conserva las decisiones del usuario y el resultado de la revisión para continuar el trabajo después de perder contexto.
 
 ## Objetivo
@@ -187,8 +187,8 @@ Verificar específicamente el recorrido normal de varias filas y repeticiones, l
 - [x] Invocar directamente el movimiento con un loop como origen o destino se rechaza sin modificar conexiones, pertenencia ni orden.
 - [x] El movimiento de trials conserva su funcionamiento, también dentro de loops.
 - [x] Crear y desagrupar loops sigue funcionando, incluyendo contenedores anidados.
-- [ ] Expandir y colapsar un loop conserva la identidad real de los extremos de sus conexiones.
-- [ ] El canvas no depende de `loop.branches` para representar el flujo.
+- [x] Expandir y colapsar un loop conserva la identidad real de los extremos de sus conexiones.
+- [x] El canvas no depende de `loop.branches` para representar el flujo.
 - [ ] La generación de código no contiene decisiones ni fallbacks basados en ramas propias de loops.
 - [ ] El recorrido normal de los loops respeta todas las filas de CSV, iteraciones y repeticiones; se prueba con ejecución real además de inspección de código generado.
 - [ ] Se conservan los destinos concretos y los parámetros de ramas entre trials.
@@ -291,11 +291,41 @@ Reportes fuera del repositorio: `/tmp/loop-branches-point3-client-final.json` y 
 
 Título previsto: `refactor(canvas): remove loop move actions`.
 
-#### Siguiente punto: configuración y canvas
+#### Punto 4: configuración y canvas — implementado
 
-Completar el punto 4: retirar lectores/escritores residuales de branching propio de loops en la configuración y el layout. Revisar `renderLoopWithBranches` y las proyecciones de conexiones de loops colapsados, conservando la identidad real de los trials al expandir y colapsar contenedores. La representación visual del bloque se mantiene. Probar conexiones entrantes/salientes múltiples, destinos compartidos y niveles anidados sin escribir IDs de loops como extremos reales.
+Base de esta entrega: `97a17a0` (`refactor(canvas): remove loop move actions`), creado por el usuario.
 
-Los puntos 4 y 5 siguen pendientes. Las pruebas y documentación se actualizan dentro de cada punto; el punto 6 agrupa la revisión final de la cobertura restante. La ejecución real del punto 3 no sustituye las pruebas de varias filas de CSV y repeticiones ni la limpieza de generadores prevista en el punto 5.
+- `LayoutTimelineItem` distingue trials y loops e impide ramas propias del contenedor. `sanitizeLayoutTimeline` descarta los campos legacy del loop y no admite sus IDs como destinos reales de las ramas de trials.
+- Se retiró `renderLoopWithBranches`, incluyendo la recursión que permitía ramas desde y hacia loops. El layout anterior conserva nodos de loops secuenciales y procesa únicamente ramas entre trials. Se retiraron el tipo sin consumidores `BranchRenderer` y el helper sin consumidores `collectAllBranchIds`, que conservaba referencias legacy a loops.
+- El canvas unificado calcula la adyacencia visual en `layoutBranchProjection.ts`, sin añadir `branches` al objeto del loop. La proyección usa las conexiones del grafo entre trials y la jerarquía de scopes; conserva el orden de los destinos definidos en el trial aunque algunos se representen sobre un contenedor.
+- `canonicalBranchProjection.ts` resuelve el trial concreto si está visible y, si está oculto, el loop colapsado más cercano. Se retiró la sustitución de un destino real de tipo loop por su primer trial y la sustitución de un origen real de tipo loop por todos sus finales.
+- Cada conexión visual conserva sus `semanticEdgeIds`, derivados de los extremos reales. Cuando varias conexiones se dibujan sobre el mismo par de bloques colapsados, se conservan todas sus identidades; al expandir, vuelven a sus trials correspondientes.
+- Se corrigieron conexiones implícitas adicionales que podían dibujarse hacia el primer trial de un loop aunque la rama apuntara a otro trial interno. La adyacencia proyectada posiciona los bloques; las conexiones explícitas se dibujan desde sus extremos reales.
+- Una entrada desde otro scope no retira al trial destino de la secuencia normal de su propio contenedor. Se preservan también las conexiones secuenciales después de destinos compartidos y su alineación visual, los circuitos de loops y el espacio para ramas laterales.
+- La composición se dividió en `expandedScopeRenderer.ts` y `expandedItemRenderer.ts` para mantener separadas la disposición de conexiones y la representación de contenedores; `composeExpandedLoopLayout.ts` prepara la proyección y compone el resultado.
+- Un loop seleccionado ya no recibe el callback de agregar ramas en `buildUnifiedFlowLayout`. Los hooks de actualización de loops dejaron de considerar `branches` como un campo del grafo del contenedor.
+- El editor no carga `branchConditions` propias de loops ni ofrece sus parámetros como overrides de ramas. Las reglas existentes de `repeatConditions` siguen usando el editor unificado sin escribir campos de branching en loops.
+- El editor reconoce los destinos guardados en `trial.branches` aunque pertenezcan a otro scope, manteniendo la condición como rama y sus parámetros habilitados. Sus opciones incluyen los trials guardados externos al scope; no los sustituyen por el loop.
+- La carga de metadatos de un destino guardado de rama usa `getTrial`, incluso si su ID comienza con `loop_`. Los helpers del layout también resuelven IDs por identidad real, incluyendo trials con IDs string y loops numéricos.
+- Las pruebas afectadas que conectaban directamente con loops se reemplazaron por conexiones entre trials y sus proyecciones visibles. Las pruebas de actualización de loops usan pertenencia y ramas de los trials internos, sin campos de branching propios del loop.
+
+Verificación de esta entrega:
+
+- **Regresiones iniciales:** de los 5 casos iniciales, 1 pasó y 4 fallaron antes del cambio. Reprodujeron conexiones adicionales al primer trial, lectura de branching legacy del loop y el callback de agregar ramas en un contenedor seleccionado.
+- **Cliente:** 324 pruebas pasaron en 75 archivos. Incluye layout anterior/unificado, expansión y colapso, selección y acciones del canvas, carga/configuración de condiciones, intents de branching, provider y utilidades. Las regresiones nuevas cubren múltiples entradas y salidas, destinos compartidos, conexiones entre loops hermanos, destino interno no inicial, identidad sin mutación y conservación de la secuencia del contenedor.
+- **Tipos:** `node node_modules/typescript/bin/tsc -b --pretty false` desde `client` pasó.
+- **ESLint:** cero errores en los módulos de producción modificados. Permanecen dos advertencias preexistentes de dependencias de efectos en `useLoadData`; se verificaron las mismas advertencias contra la versión del archivo en HEAD.
+- **Diff:** `git diff --check` pasó. No se hizo staging ni se crearon commits. Se conservaron los cambios locales del usuario en la base de datos y las carpetas de experimentos.
+
+Reportes fuera del repositorio: `/tmp/loop-branches-point4-client-verified.json`, `/tmp/loop-branches-point4-types-verified.log` y `/tmp/loop-branches-point4-lint.log`.
+
+Título previsto: `refactor(canvas): project loop connections from trial branches`.
+
+#### Siguiente punto: generación de código
+
+Completar el punto 5 en el cliente y el agente del servidor: retirar decisiones, flags y fallbacks basados en ramas propias del loop. Revisar `BranchesCode.ts`, `BranchingLogicCode.ts`, `generateLoopFinishLifecycle.ts`, los callbacks de trials y `server/agent/codegen/loop.js` y `loopRouting.js`. Conservar el transporte de decisiones de trials por la jerarquía de scopes, los destinos concretos y sus parámetros.
+
+El punto 5 sigue pendiente. Las pruebas y documentación se actualizan dentro de cada punto; el punto 6 agrupa la revisión final de la cobertura restante, incluyendo fixtures legacy que todavía existan fuera de las suites adaptadas. Las verificaciones de los puntos 3 y 4 no sustituyen las pruebas de ejecución real con varias filas de CSV y repeticiones previstas en el punto 5.
 
 Cambios locales existentes antes de crear este documento:
 

@@ -4,69 +4,52 @@ export { generateUniqueName } from "../actions/generateUniqueName";
 
 const API_URL = getApiBaseUrl();
 
-export function isTrial(item: any): item is Trial {
+export function isTrial(item: object): item is Trial {
   // In the flat structure: loops have a "trials" array, trials do NOT
   return !("trials" in item);
 }
 
 // ==================== FUNCTIONS THAT USE ONLY TIMELINE METADATA ====================
 
-export function findTrialById(
-  timeline: any[],
+type TimelineMetadata = {
+  id: string | number;
+  type?: string;
+  trials?: readonly (string | number)[];
+};
+
+export function findTrialById<T extends TimelineMetadata>(
+  timeline: readonly T[],
   id: number | string,
-): any | null {
-  const numId = typeof id === "string" ? parseInt(id) : id;
+): T | null {
   const found = timeline.find(
-    (item) => item.type === "trial" && item.id === numId,
+    (item) => item.type === "trial" && String(item.id) === String(id),
   );
   return found || null;
 }
 
-export function findLoopById(timeline: any[], id: string): any | null {
-  const found = timeline.find((item) => item.type === "loop" && item.id === id);
+export function findLoopById<T extends TimelineMetadata>(
+  timeline: readonly T[],
+  id: string | number,
+): T | null {
+  const found = timeline.find(
+    (item) => item.type === "loop" && String(item.id) === String(id),
+  );
   return found || null;
 }
 
-export function findItemById(timeline: any[], id: number | string): any | null {
-  if (typeof id === "string" && id.startsWith("loop_")) {
-    return findLoopById(timeline, id);
-  }
-  return findTrialById(timeline, id);
+export function findItemById<T extends TimelineMetadata>(
+  timeline: readonly T[],
+  id: number | string,
+): T | null {
+  return timeline.find((item) => String(item.id) === String(id)) ?? null;
 }
 
-export function collectAllBranchIds(timeline: any[]): Set<number | string> {
-  const branchIds = new Set<number | string>();
-
-  const processItem = (item: any) => {
-    if (item.branches && Array.isArray(item.branches)) {
-      item.branches.forEach((branchId: number | string) => {
-        branchIds.add(branchId);
-
-        const numId =
-          typeof branchId === "string" && !branchId.startsWith("loop_")
-            ? parseInt(branchId)
-            : typeof branchId === "number"
-              ? branchId
-              : null;
-
-        if (numId !== null) {
-          const branchTrial = findTrialById(timeline, numId);
-          if (branchTrial) {
-            processItem(branchTrial);
-          }
-        }
-      });
-    }
-  };
-
-  timeline.forEach(processItem);
-  return branchIds;
-}
-
-export function getTrialIdsInLoops(timeline: any[]): (number | string)[] {
+export function getTrialIdsInLoops(
+  timeline: readonly TimelineMetadata[],
+): (number | string)[] {
   return timeline
     .filter((item) => item.type === "loop")
-    .flatMap((loop: any) => loop.trials || []);
+    .flatMap((loop) => loop.trials || []);
 }
 
 // ==================== ASYNC FUNCTIONS THAT USE ENDPOINTS ====================

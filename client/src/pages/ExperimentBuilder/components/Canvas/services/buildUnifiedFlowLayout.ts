@@ -6,16 +6,10 @@ import type {
 } from "../hooks/useExpandedLoopPath";
 import { composeExpandedLoopLayout } from "./composeExpandedLoopLayout";
 import { ROOT_CANVAS_SCOPE_ID } from "./expandedLayoutTypes";
-import type {
-  ExpandedCanvasNodeData,
-  LayoutTimelineItem,
-} from "./expandedLayoutTypes";
+import type { ExpandedCanvasNodeData } from "./expandedLayoutTypes";
 import { assignBranchColorSlots } from "./assignBranchEdgeColors";
 import { getBranchEdgeStroke } from "./branchEdgeTheme";
-import {
-  getLoopRouteData,
-  getLoopScopeLanes,
-} from "./loopScopeGeometry";
+import { getLoopRouteData, getLoopScopeLanes } from "./loopScopeGeometry";
 import { collapseLoopEdgesToCircuits } from "./collapseLoopEdgesToCircuits";
 
 export type UnifiedCanvasNodeData = ExpandedCanvasNodeData & {
@@ -70,7 +64,7 @@ export function buildUnifiedFlowLayout(input: BuildUnifiedFlowLayoutInput) {
       id,
       parentScopeId: toLayoutScopeId(entry.loop.parentLoopId),
       loopId: entry.loop.id,
-      timeline: entry.items as LayoutTimelineItem[],
+      timeline: entry.items,
     };
   });
   const selectedLayoutScopeId = toLayoutScopeId(input.selectedScopeId);
@@ -98,9 +92,10 @@ export function buildUnifiedFlowLayout(input: BuildUnifiedFlowLayoutInput) {
         if (item.type === "trial") input.onSelectTrial(item, domainScopeId);
         else input.onSelectLoop(item, domainScopeId);
       },
-      onAddBranch: selected
-        ? () => input.onAddBranch(item.id, domainScopeId)
-        : undefined,
+      onAddBranch:
+        selected && item.type === "trial"
+          ? () => input.onAddBranch(item.id, domainScopeId)
+          : undefined,
       onOpenLoop:
         item.type === "loop"
           ? () => input.onToggleLoop(item, domainScopeId)
@@ -113,10 +108,7 @@ export function buildUnifiedFlowLayout(input: BuildUnifiedFlowLayoutInput) {
     layout.edges,
     input.branchEdges,
   );
-  const visualEdges = collapseLoopEdgesToCircuits(
-    layout.nodes,
-    layout.edges,
-  );
+  const visualEdges = collapseLoopEdgesToCircuits(layout.nodes, layout.edges);
   const edges = visualEdges.map((edge) => {
     const isLoopEdge = edge.data.kind === "loop-return";
     const routeData = getLoopRouteData(edge, loopRoutes);

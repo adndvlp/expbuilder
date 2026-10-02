@@ -5,7 +5,6 @@ import {
   findLoopById,
   findItemById,
   generateUniqueName,
-  collectAllBranchIds,
   getTrialIdsInLoops,
   getAllExistingNames,
   isAncestor,
@@ -33,19 +32,31 @@ describe("isTrial", () => {
   });
 
   it("returns false for objects with trials array", () => {
-    expect(isTrial({ id: "loop_1", type: "loop", name: "Loop", trials: [] })).toBe(false);
+    expect(
+      isTrial({ id: "loop_1", type: "loop", name: "Loop", trials: [] }),
+    ).toBe(false);
   });
 });
 
 describe("findTrialById", () => {
   it("finds trial by numeric id", () => {
     const result = findTrialById(mockTimeline, 1);
-    expect(result).toEqual({ id: 1, type: "trial", name: "Trial A", branches: [2, 3] });
+    expect(result).toEqual({
+      id: 1,
+      type: "trial",
+      name: "Trial A",
+      branches: [2, 3],
+    });
   });
 
   it("finds trial by string id", () => {
     const result = findTrialById(mockTimeline, "2");
-    expect(result).toEqual({ id: 2, type: "trial", name: "Trial B", branches: [4] });
+    expect(result).toEqual({
+      id: 2,
+      type: "trial",
+      name: "Trial B",
+      branches: [4],
+    });
   });
 
   it("returns null for non-existent trial", () => {
@@ -76,7 +87,7 @@ describe("findItemById", () => {
     expect(result?.type).toBe("trial");
   });
 
-  it("finds loop by loop_ prefix", () => {
+  it("finds a loop by its actual identity", () => {
     const result = findItemById(mockTimeline, "loop_1");
     expect(result?.type).toBe("loop");
   });
@@ -86,6 +97,20 @@ describe("findItemById", () => {
     expect(result).toBeDefined();
   });
 
+  it("resolves string trials and numeric loops without inferring type from IDs", () => {
+    const timeline = [
+      { id: "loop_trial", type: "trial" },
+      { id: 7, type: "loop" },
+      { id: "trial-string", type: "trial" },
+    ];
+    expect(findItemById(timeline, "loop_trial")?.type).toBe("trial");
+    expect(findTrialById(timeline, "loop_trial")?.type).toBe("trial");
+    expect(findTrialById(timeline, "trial-string")?.id).toBe("trial-string");
+    expect(findItemById(timeline, "7")?.type).toBe("loop");
+    expect(findLoopById(timeline, "7")?.id).toBe(7);
+    expect(findTrialById(timeline, "7")).toBeNull();
+  });
+
   it("returns null for non-existent item", () => {
     expect(findItemById(mockTimeline, 999)).toBeNull();
   });
@@ -93,7 +118,9 @@ describe("findItemById", () => {
 
 describe("generateUniqueName", () => {
   it("returns base name when not taken", () => {
-    expect(generateUniqueName(["Trial A", "Trial B"], "New Trial")).toBe("New Trial");
+    expect(generateUniqueName(["Trial A", "Trial B"], "New Trial")).toBe(
+      "New Trial",
+    );
   });
 
   it("appends counter when name is taken", () => {
@@ -101,7 +128,12 @@ describe("generateUniqueName", () => {
   });
 
   it("increments counter for multiple duplicates", () => {
-    expect(generateUniqueName(["New Trial", "New Trial 1", "New Trial 2"], "New Trial")).toBe("New Trial 3");
+    expect(
+      generateUniqueName(
+        ["New Trial", "New Trial 1", "New Trial 2"],
+        "New Trial",
+      ),
+    ).toBe("New Trial 3");
   });
 
   it("uses default base name when not provided", () => {
@@ -110,61 +142,6 @@ describe("generateUniqueName", () => {
 
   it("handles empty existing names array", () => {
     expect(generateUniqueName([], "Custom Name")).toBe("Custom Name");
-  });
-});
-
-describe("collectAllBranchIds", () => {
-  it("collects all branch ids from the timeline", () => {
-    const result = collectAllBranchIds(mockTimeline);
-    expect(result.has(2)).toBe(true);
-    expect(result.has(3)).toBe(true);
-    expect(result.has(4)).toBe(true);
-  });
-
-  it("collects nested branch ids recursively", () => {
-    // Trial A -> [2, 3], Trial B -> [4]
-    const result = collectAllBranchIds(mockTimeline);
-    expect(result.size).toBeGreaterThanOrEqual(3);
-  });
-
-  it("returns empty set for timeline without branches", () => {
-    const simpleTimeline = [{ id: 1, type: "trial", name: "Solo", branches: [] }];
-    const result = collectAllBranchIds(simpleTimeline);
-    expect(result.size).toBe(0);
-  });
-
-  it("handles empty timeline", () => {
-    const result = collectAllBranchIds([]);
-    expect(result.size).toBe(0);
-  });
-
-  it("skips items without branches property", () => {
-    const timeline = [{ id: 1, type: "trial", name: "No branches property" }];
-    const result = collectAllBranchIds(timeline);
-    expect(result.size).toBe(0);
-  });
-
-  it("collects string loop branch ids without trying to parse them as trials", () => {
-    const timeline = [
-      { id: 1, type: "trial", name: "Parent", branches: ["loop_1", "2"] },
-      { id: 2, type: "trial", name: "Child", branches: [3] },
-      { id: 3, type: "trial", name: "Grandchild", branches: [] },
-      { id: "loop_1", type: "loop", name: "Loop", trials: [] },
-    ];
-
-    const result = collectAllBranchIds(timeline);
-
-    expect(result.has("loop_1")).toBe(true);
-    expect(result.has("2")).toBe(true);
-    expect(result.has(3)).toBe(true);
-  });
-
-  it("keeps branch ids that do not resolve to timeline trials", () => {
-    const result = collectAllBranchIds([
-      { id: 1, type: "trial", branches: [99] },
-    ]);
-
-    expect(result).toEqual(new Set([99]));
   });
 });
 
@@ -259,7 +236,9 @@ describe("trialUtils API helpers", () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      expect.stringContaining("/api/validate-connection/exp-1?source=1&target=2"),
+      expect.stringContaining(
+        "/api/validate-connection/exp-1?source=1&target=2",
+      ),
     );
   });
 

@@ -91,87 +91,53 @@ describe("useFlowLayout", () => {
     expect(onOpenLoop).toHaveBeenCalledWith("loop_1");
   });
 
-  it("renders recursive trial and loop branches without duplicating shared nodes", () => {
-    const timeline = [
-      timelineTrial({ id: 1, name: "Start", branches: [2, "loop_branch"] }),
-      timelineTrial({ id: 2, name: "Branch A", branches: [3] }),
-      timelineTrial({ id: 3, name: "Shared terminal" }),
-      timelineLoop({
-        id: "loop_branch",
-        name: "Loop Branch",
-        branches: [3, "loop_nested"],
-      }),
-      timelineLoop({
-        id: "loop_nested",
-        name: "Nested Branch Loop",
-        branches: [4],
-      }),
-      timelineTrial({ id: 4, name: "Nested terminal" }),
-    ];
-
-    const { result } = renderFlowLayout(timeline);
-
-    expect(result.current.nodes.map((node) => node.id)).toEqual([
-      "trial-1",
-      "trial-2",
-      "trial-3",
-      "loop-loop_branch",
-      "loop-loop_nested",
-      "trial-4",
+  it("renders recursive trial branches and keeps loops as sequential containers", () => {
+    const { result } = renderFlowLayout([
+      timelineTrial({ id: 1, branches: [2, 3] }),
+      timelineTrial({ id: 2, branches: [4] }),
+      timelineTrial({ id: 3, branches: [4] }),
+      timelineTrial({ id: 4 }),
+      timelineLoop({ id: "loop_after" }),
     ]);
+    expect(
+      result.current.nodes.filter((node) => node.id === "trial-4"),
+    ).toHaveLength(1);
     expect(
       result.current.edges.map((edge) => [edge.source, edge.target]),
     ).toEqual(
       expect.arrayContaining([
         ["trial-1", "trial-2"],
-        ["trial-2", "trial-3"],
-        ["trial-1", "loop-loop_branch"],
-        ["loop-loop_branch", "trial-3"],
-        ["loop-loop_branch", "loop-loop_nested"],
-        ["loop-loop_nested", "trial-4"],
+        ["trial-1", "trial-3"],
+        ["trial-2", "trial-4"],
+        ["trial-3", "trial-4"],
+        ["trial-4", "loop-loop_after"],
       ]),
     );
   });
 
-  it("skips missing and legacy branch references", () => {
-    const timeline = [
-      timelineTrial({ id: 1, name: "Root", branches: [999, 2, "loop_branch"] }),
-      timelineTrial({ id: 2, name: "Nested Trial", branches: [998, 3] }),
-      { id: 3, name: "Legacy Child", branches: [] },
-      timelineLoop({
-        id: "loop_branch",
-        name: "Loop Branch",
-        branches: [997, "legacy_loop_child"],
-      }),
-      {
-        id: "legacy_loop_child",
-        name: "Legacy Loop Child",
-        trials: [],
-        branches: [],
-      },
-      timelineTrial({ id: 10, name: "Sequential Trial" }),
-      timelineLoop({ id: "loop_11", name: "Sequential Loop" }),
-    ];
-
-    const { result } = renderFlowLayout(timeline, {
-      onOpenLoop: undefined,
-    });
-
-    expect(result.current.nodes.map((node) => node.id)).toEqual(
-      expect.arrayContaining([
-        "trial-1",
-        "trial-2",
-        "loop-loop_branch",
-        "trial-10",
-        "loop-loop_11",
-      ]),
-    );
+  it("ignores missing targets and legacy loop branching without hiding containers", () => {
+    const { result } = renderFlowLayout([
+      timelineTrial({ id: 1, branches: [999, 2, "loop_branch"] }),
+      timelineTrial({ id: 2 }),
+      { ...timelineLoop({ id: "loop_branch" }), branches: [10] },
+      timelineTrial({ id: 9 }),
+      timelineTrial({ id: 10 }),
+    ]);
     expect(result.current.nodes.map((node) => node.id)).not.toContain(
       "trial-999",
     );
     expect(
       result.current.edges.map((edge) => [edge.source, edge.target]),
-    ).toContainEqual(["trial-10", "loop-loop_11"]);
+    ).toContainEqual(["trial-1", "trial-2"]);
+    expect(
+      result.current.edges.map((edge) => [edge.source, edge.target]),
+    ).not.toContainEqual(["trial-1", "loop-loop_branch"]);
+    expect(
+      result.current.edges.map((edge) => [edge.source, edge.target]),
+    ).not.toContainEqual(["loop-loop_branch", "trial-10"]);
+    expect(
+      result.current.edges.map((edge) => [edge.source, edge.target]),
+    ).toContainEqual(["loop-loop_branch", "trial-9"]);
   });
 
   it("continues from a shared terminal branch target to the next top-level item", () => {

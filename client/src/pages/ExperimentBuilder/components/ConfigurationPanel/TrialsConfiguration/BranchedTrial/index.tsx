@@ -8,8 +8,13 @@ import {
   isBranchTargetFromUserContext,
   saveBranchingIntent,
 } from "../../../../modules/experiment-authoring/intents/branching";
-import { itemIdKey } from "../../../../utils/branchGraphUtils";
+import {
+  idsEqual,
+  includesId,
+  itemIdKey,
+} from "../../../../utils/branchGraphUtils";
 import BranchedTrialModalFrame from "./components/BranchedTrialModalFrame";
+import type { Trial, Loop } from "../../types";
 
 function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
   const {
@@ -32,7 +37,9 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
   const [targetTrialCsvColumns, setTargetTrialCsvColumns] = useState<
     Record<string, string[]>
   >({});
-  const [loadedTrials, setLoadedTrials] = useState<Record<string, any>>({});
+  const [loadedTrials, setLoadedTrials] = useState<
+    Record<string, Trial | Loop>
+  >({});
 
   const loadTargetTrialParameters = async (trialId: string | number) => {
     const targetTrial = await findTrialById(trialId);
@@ -43,29 +50,15 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
     setLoadedTrials((prev) => ({ ...prev, [trialId]: targetTrial }));
 
     // Load CSV columns if available
-    if (targetTrial.csvColumns && targetTrial.csvColumns.length > 0) {
+    const csvColumns = targetTrial.csvColumns;
+    if (csvColumns && csvColumns.length > 0) {
       setTargetTrialCsvColumns((prev) => ({
         ...prev,
-        [trialId]: targetTrial.csvColumns,
+        [trialId]: csvColumns,
       }));
     }
 
-    // Check if it's a Loop - loops have different parameters
-    if ("trials" in targetTrial) {
-      // Define loop-specific parameters
-      const loopParameters: Parameter[] = [
-        { label: "Repetitions", key: "repetitions", type: "number" },
-        { label: "Randomize", key: "randomize", type: "boolean" },
-        { label: "Categories", key: "categories", type: "boolean" },
-        { label: "Category Column", key: "categoryColumn", type: "string" },
-        { label: "Orders", key: "orders", type: "boolean" },
-      ];
-      setTargetTrialParameters((prev) => ({
-        ...prev,
-        [trialId]: loopParameters,
-      }));
-      return;
-    }
+    if ("trials" in targetTrial) return;
 
     if ("plugin" in targetTrial && targetTrial.plugin) {
       try {
@@ -96,10 +89,22 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
   });
 
   // Find trial or loop by ID using the API
-  const findTrialById = async (trialId: string | number): Promise<any> => {
+  const findTrialById = async (
+    trialId: string | number,
+  ): Promise<Trial | Loop | null> => {
     try {
-      // Check if it's a loop (IDs start with "loop_")
-      const isLoop = String(trialId).startsWith("loop_");
+      const isSavedBranch =
+        selectedTrial &&
+        !("trials" in selectedTrial) &&
+        includesId(selectedTrial.branches, trialId);
+      // Loop metadata is still used by existing jump rules. Structural branch
+      // targets always load trial metadata, independently of their ID spelling.
+      const isLoop =
+        !isSavedBranch &&
+        ([...timeline, ...loopTimeline].some(
+          (item) => item.type === "loop" && idsEqual(item.id, trialId),
+        ) ||
+          String(trialId).startsWith("loop_"));
 
       if (isLoop) {
         const loop = await getLoop(trialId);
@@ -115,7 +120,7 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
   };
 
   // Find trial or loop by ID synchronously from loaded trials
-  const findTrialByIdSync = (trialId: string | number): any => {
+  const findTrialByIdSync = (trialId: string | number): Trial | Loop | null => {
     return loadedTrials[trialId] || null;
   };
 

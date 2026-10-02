@@ -6,7 +6,7 @@ import type { LoopMethodsWithGetLoop } from "../types";
 const idsMatch = (left: string | number, right: string | number) =>
   String(left) === String(right);
 const affectsGraph = (updates: Partial<Loop>) =>
-  ["name", "branches", "trials", "parentLoopId"].some((field) =>
+  ["name", "trials", "parentLoopId"].some((field) =>
     Object.prototype.hasOwnProperty.call(updates, field),
   );
 

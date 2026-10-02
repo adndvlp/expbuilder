@@ -10,16 +10,17 @@ import {
   type LayoutTimelineItem,
 } from "../../../pages/ExperimentBuilder/components/Canvas/services/expandedLayoutTypes";
 
-const trial = (
-  id: string,
-  branches?: string[],
-): LayoutTimelineItem => ({ id, type: "trial", name: id, branches });
+const trial = (id: string, branches?: string[]): LayoutTimelineItem => ({
+  id,
+  type: "trial",
+  name: id,
+  branches,
+});
 
-const loop = (id: string, branches?: string[]): LayoutTimelineItem => ({
+const loop = (id: string): LayoutTimelineItem => ({
   id,
   type: "loop",
   name: id,
-  branches,
   trials: [],
 });
 
@@ -77,13 +78,8 @@ describe("expanded loop graph topology", () => {
         ]),
       ],
     });
-    const marker = getScopedNodeId(
-      ROOT_CANVAS_SCOPE_ID,
-      "loop",
-      "outer",
-    );
-    const inner = (id: string) =>
-      getScopedNodeId("outer-scope", "trial", id);
+    const marker = getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "loop", "outer");
+    const inner = (id: string) => getScopedNodeId("outer-scope", "trial", id);
 
     expect(edgePairs(result, "loop-control")).toEqual(
       new Set([
@@ -100,15 +96,38 @@ describe("expanded loop graph topology", () => {
     const result = composeExpandedLoopLayout({
       rootTimeline: [
         trial("welcome"),
-        trial("instructions", ["left-final", "outer", "right-final"]),
+        trial("instructions", ["left-final", "question", "right-final"]),
         trial("left-final"),
         loop("outer"),
         trial("right-final"),
       ],
+      branchEdges: [
+        {
+          sourceId: "instructions",
+          targetId: "question",
+          sourceOwnerId: null,
+          targetOwnerId: "outer",
+          exitedLoopIds: [],
+        },
+        {
+          sourceId: "question",
+          targetId: "nested-task",
+          sourceOwnerId: "outer",
+          targetOwnerId: "nested",
+          exitedLoopIds: [],
+        },
+        {
+          sourceId: "loca",
+          targetId: "final",
+          sourceOwnerId: "nested",
+          targetOwnerId: "outer",
+          exitedLoopIds: ["nested"],
+        },
+      ],
       expandedScopes: [
         scope("outer-scope", ROOT_CANVAS_SCOPE_ID, "outer", [
-          trial("question", ["nested", "task-2"]),
-          loop("nested", ["final"]),
+          trial("question", ["nested-task", "task-2"]),
+          loop("nested"),
           trial("task-2", ["right-task"]),
           trial("right-task", ["end"]),
           trial("end", ["end-left", "end-middle", "end-right"]),
@@ -119,7 +138,7 @@ describe("expanded loop graph topology", () => {
         ]),
         scope("nested-scope", "outer-scope", "nested", [
           trial("nested-task"),
-          trial("loca"),
+          trial("loca", ["final"]),
         ]),
       ],
     });
@@ -127,8 +146,7 @@ describe("expanded loop graph topology", () => {
       getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "trial", id);
     const rootLoopId = (id: string) =>
       getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "loop", id);
-    const outerId = (id: string) =>
-      getScopedNodeId("outer-scope", "trial", id);
+    const outerId = (id: string) => getScopedNodeId("outer-scope", "trial", id);
     const outerLoopId = (id: string) =>
       getScopedNodeId("outer-scope", "loop", id);
     const nestedId = (id: string) =>
@@ -177,10 +195,7 @@ describe("expanded loop graph topology", () => {
     );
     const final = positions.get(outerId("final"))!;
     const mergeParents = ["loca", "end-left", "end-middle", "end-right"].map(
-      (id) =>
-        positions.get(
-          id === "loca" ? nestedId(id) : outerId(id),
-        )!,
+      (id) => positions.get(id === "loca" ? nestedId(id) : outerId(id))!,
     );
     expect(final.y).toBeGreaterThan(
       Math.max(...mergeParents.map((position) => position.y)),
@@ -197,8 +212,7 @@ describe("expanded loop graph topology", () => {
     );
     const outerSubtree = result.nodes.filter(
       (node) =>
-        node.data.scopeId === "outer-scope" ||
-        node.id === rootLoopId("outer"),
+        node.data.scopeId === "outer-scope" || node.id === rootLoopId("outer"),
     );
     const subtreeLeft = Math.min(
       ...outerSubtree.map((node) => node.position.x),

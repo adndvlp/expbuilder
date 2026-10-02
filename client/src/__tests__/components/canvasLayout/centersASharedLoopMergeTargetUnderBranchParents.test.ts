@@ -1,7 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { useFlowLayout } from "../../../pages/ExperimentBuilder/components/Canvas/hooks/useFlowLayout";
-import { LAYOUT_CONSTANTS } from "../../../pages/ExperimentBuilder/components/Canvas/utils/layoutUtils";
 import {
   loop,
   timelineLoop,
@@ -14,8 +13,8 @@ describe("useFlowLayout", () => {
     const timeline = [
       timelineTrial({ id: 1, name: "Welcome" }),
       timelineTrial({ id: 2, name: "Consent", branches: [3, 4] }),
-      timelineTrial({ id: 3, name: "Instructions", branches: ["loop_1"] }),
-      timelineTrial({ id: 4, name: "Final1", branches: ["loop_1"] }),
+      timelineTrial({ id: 3, name: "Instructions", branches: ["entry"] }),
+      timelineTrial({ id: 4, name: "Final1", branches: ["entry"] }),
       timelineLoop({ id: "loop_1", name: "Loop 1" }),
       timelineTrial({ id: 5, name: "Final2" }),
     ];
@@ -23,8 +22,17 @@ describe("useFlowLayout", () => {
     const { result } = renderHook(() =>
       useFlowLayout({
         timeline,
-        selectedTrial: null,
-        selectedLoop: null,
+        expandedPath: [],
+        selectedItemId: null,
+        selectedScopeId: null,
+        branchEdges: [3, 4].map((sourceId) => ({
+          sourceId,
+          targetId: "entry",
+          sourceOwnerId: null,
+          targetOwnerId: "loop_1",
+          exitedLoopIds: [],
+        })),
+        onToggleLoop: vi.fn(),
         onSelectTrial: vi.fn(),
         onSelectLoop: vi.fn(),
         onAddBranch: vi.fn(),
@@ -36,28 +44,27 @@ describe("useFlowLayout", () => {
       result.current.edges.map((edge) => [edge.source, edge.target]),
     ).toEqual(
       expect.arrayContaining([
-        ["trial-2", "trial-3"],
-        ["trial-2", "trial-4"],
-        ["trial-3", "loop-loop_1"],
-        ["trial-4", "loop-loop_1"],
-        ["loop-loop_1", "trial-5"],
+        ["root::trial::2", "root::trial::3"],
+        ["root::trial::2", "root::trial::4"],
+        ["root::trial::3", "root::loop::loop_1"],
+        ["root::trial::4", "root::loop::loop_1"],
+        ["root::loop::loop_1", "root::trial::5"],
       ]),
     );
 
     const nodesById = new Map(
       result.current.nodes.map((node) => [node.id, node]),
     );
-    const instructions = nodesById.get("trial-3")!;
-    const final1 = nodesById.get("trial-4")!;
-    const mergeLoop = nodesById.get("loop-loop_1")!;
-    const final2 = nodesById.get("trial-5")!;
+    const instructions = nodesById.get("root::trial::3")!;
+    const final1 = nodesById.get("root::trial::4")!;
+    const mergeLoop = nodesById.get("root::loop::loop_1")!;
+    const final2 = nodesById.get("root::trial::5")!;
 
     expect(mergeLoop.position.x).toBeCloseTo(
       (instructions.position.x + final1.position.x) / 2,
     );
     expect(mergeLoop.position.y).toBe(
-      Math.max(instructions.position.y, final1.position.y) +
-        LAYOUT_CONSTANTS.branchVerticalOffset,
+      Math.max(instructions.position.y, final1.position.y) + 120,
     );
     expect(final2.position.x).toBeCloseTo(mergeLoop.position.x);
   });
@@ -172,7 +179,7 @@ describe("useFlowLayout", () => {
     expect(onAddBranch).toHaveBeenCalledWith(2);
   });
 
-  it("wires callbacks for selected loop branch nodes", () => {
+  it("wires callbacks for selected collapsed loop nodes", () => {
     const onSelectLoop = vi.fn();
     const onAddBranch = vi.fn();
     const onOpenLoop = vi.fn();
@@ -181,7 +188,7 @@ describe("useFlowLayout", () => {
     const { result } = renderHook(() =>
       useFlowLayout({
         timeline: [
-          timelineTrial({ id: 1, name: "Parent", branches: ["loop_branch"] }),
+          timelineTrial({ id: 1, name: "Parent" }),
           timelineLoop({ id: "loop_branch", name: "Branch Loop" }),
         ],
         selectedTrial: null,

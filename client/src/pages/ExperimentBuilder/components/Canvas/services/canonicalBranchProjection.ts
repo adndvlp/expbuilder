@@ -19,11 +19,6 @@ export const getCanonicalBranchEdgeId = (edge: GraphBranchEdge) =>
     idKey(edge.targetId),
   ]);
 
-type RenderedEndpointBlock = {
-  entryId: string;
-  exitIds: readonly string[];
-};
-
 const edgeKey = (edge: {
   source: string;
   target: string;
@@ -42,6 +37,7 @@ const edgeKey = (edge: {
 export function getCanonicalBranchTargets(
   edges: readonly GraphBranchEdge[],
   scopes: readonly ExpandedLoopScope[],
+  scopeParents: Readonly<Record<string, string | null>> = {},
 ) {
   const layoutScopeByOwner = new Map<string | null, string>([
     [null, ROOT_CANVAS_SCOPE_ID],
@@ -51,6 +47,24 @@ export function getCanonicalBranchTargets(
   );
   const targets = new Map<string, Set<string>>();
   edges.forEach((edge) => {
+    // Entering a container does not remove its target trial from that
+    // container's normal sequence. Exits remain separate in their destination.
+    if (
+      edge.targetOwnerId !== null &&
+      edge.sourceOwnerId !== edge.targetOwnerId
+    ) {
+      const visited = new Set<string>();
+      let owner = edge.sourceOwnerId;
+      while (
+        owner !== null &&
+        owner !== edge.targetOwnerId &&
+        !visited.has(owner)
+      ) {
+        visited.add(owner);
+        owner = scopeParents[owner] ?? null;
+      }
+      if (owner !== edge.targetOwnerId) return;
+    }
     const scopeId = layoutScopeByOwner.get(
       edge.targetOwnerId === null ? null : idKey(edge.targetOwnerId),
     );
@@ -65,8 +79,11 @@ export function getCanonicalBranchTargets(
 function findItemNode(
   nodes: readonly ExpandedCanvasNode[],
   itemId: string | number,
+  type: "trial" | "loop",
 ) {
-  return nodes.find((node) => idKey(node.data.itemId) === idKey(itemId));
+  return nodes.find(
+    (node) => node.type === type && idKey(node.data.itemId) === idKey(itemId),
+  );
 }
 
 function resolveVisibleNodes(
@@ -74,30 +91,18 @@ function resolveVisibleNodes(
   itemId: string | number,
   ownerId: string | null,
   scopeParents: Readonly<Record<string, string | null>>,
-  renderedBlocks: ReadonlyMap<string, RenderedEndpointBlock>,
-  endpoint: "source" | "target",
 ) {
-  const directNode = findItemNode(nodes, itemId);
+  const directNode = findItemNode(nodes, itemId, "trial");
   if (directNode) {
-    const block = directNode.data.expanded
-      ? renderedBlocks.get(directNode.id)
-      : undefined;
-    const nodeIds = block
-      ? endpoint === "source"
-        ? block.exitIds
-        : [block.entryId]
-      : [directNode.id];
-    return nodeIds
-      .map((id) => nodes.find((node) => node.id === id))
-      .filter((node): node is ExpandedCanvasNode => Boolean(node));
+    return [directNode];
   }
 
   const visited = new Set<string>();
   let scopeId = ownerId;
   while (scopeId !== null && !visited.has(scopeId)) {
     visited.add(scopeId);
-    const container = findItemNode(nodes, scopeId);
-    if (container) return [container];
+    const container = findItemNode(nodes, scopeId, "loop");
+    if (container && !container.data.expanded) return [container];
     scopeId = scopeParents[scopeId] ?? null;
   }
   return [];
@@ -107,7 +112,6 @@ export function addCanonicalBranchEdges(
   layout: ExpandedCanvasLayout,
   edges: readonly GraphBranchEdge[],
   scopeParents: Readonly<Record<string, string | null>>,
-  renderedBlocks: ReadonlyMap<string, RenderedEndpointBlock>,
 ) {
   const collector = {
     edges: layout.edges,
@@ -119,16 +123,12 @@ export function addCanonicalBranchEdges(
       edge.sourceId,
       edge.sourceOwnerId,
       scopeParents,
-      renderedBlocks,
-      "source",
     );
     const targets = resolveVisibleNodes(
       layout.nodes,
       edge.targetId,
       edge.targetOwnerId,
       scopeParents,
-      renderedBlocks,
-      "target",
     );
     targets.forEach((target) => {
       const visibleSources = sources.filter(

@@ -4,14 +4,18 @@ export const ROOT_CANVAS_SCOPE_ID = "root";
 
 export type LayoutItemId = string | number;
 
-export type LayoutTimelineItem = {
+type LayoutItem = {
   id: LayoutItemId;
-  type: "trial" | "loop";
   name: string;
-  branches?: readonly LayoutItemId[];
   trials?: readonly LayoutItemId[];
   parentLoopId?: string | null;
 };
+
+export type LayoutTimelineItem = LayoutItem &
+  (
+    | { type: "trial"; branches?: readonly LayoutItemId[] }
+    | { type: "loop"; branches?: never }
+  );
 
 export type ExpandedLoopScope = {
   id: string;
